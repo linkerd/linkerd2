@@ -304,13 +304,13 @@ func newMockGrpcServer(exp expectedStatRPC) (*prometheus.MockProm, *grpcServer, 
 	}
 
 	mockProm := &prometheus.MockProm{Res: exp.mockPromResponse}
-	fakeGrpcServer := newGrpcServer(
-		mockProm,
-		k8sAPI,
-		"linkerd",
-		"cluster.local",
-		[]string{},
-	)
+	fakeGrpcServer := &grpcServer{
+		prometheusAPI:       mockProm,
+		k8sAPI:              k8sAPI,
+		controllerNamespace: "linkerd",
+		clusterDomain:       "mycluster.local",
+		ignoredNamespaces:   []string{},
+	}
 
 	k8sAPI.Sync(nil)
 

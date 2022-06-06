@@ -37,7 +37,6 @@ func main() {
 	staticDir := cmd.String("static-dir", "app/dist", "directory to search for static files")
 	reload := cmd.Bool("reload", true, "reloading set to true or false")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-	vizNamespace := cmd.String("viz-namespace", "linkerd", "namespace in which Linkerd viz is installed")
 	enforcedHost := cmd.String("enforced-host", "", "regexp describing the allowed values for the Host header; protects from DNS-rebinding attacks")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
@@ -52,7 +51,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to parse metrics API server address: %s", *vizAPIAddr)
 	}
-	client, err := client.NewInternalClient(*vizNamespace, *vizAPIAddr)
+	client, err := client.NewInternalClient(*vizAPIAddr)
 	if err != nil {
 		log.Fatalf("failed to construct client for viz API server URL %s", *vizAPIAddr)
 	}
