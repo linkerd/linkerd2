@@ -39,7 +39,7 @@ func PublicIPToString(ip *l5dNetPb.IPAddress) string {
 		oBigInt.SetBytes(b)
 		netIP = IntToIPv6(oBigInt)
 	} else if ip.GetIpv4() != 0 {
-		netIP =decodeIPv4ToNetIP(ip.GetIpv4())
+		netIP = decodeIPv4ToNetIP(ip.GetIpv4())
 	}
 	if netIP == nil {
 		return ""

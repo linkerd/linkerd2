@@ -78,7 +78,7 @@ func TestPublicIPToString(t *testing.T) {
 		},
 		{
 			name: "narmal ipv6",
-			addr:&l5dNetPb.IPAddress{
+			addr: &l5dNetPb.IPAddress{
 				Ip: &l5dNetPb.IPAddress_Ipv6{
 					Ipv6: &l5dNetPb.IPv6{
 						First: 2306139570357600256,
@@ -90,7 +90,7 @@ func TestPublicIPToString(t *testing.T) {
 		},
 		{
 			name: "ipv6 with zero as prefix",
-			addr:&l5dNetPb.IPAddress{
+			addr: &l5dNetPb.IPAddress{
 				Ip: &l5dNetPb.IPAddress_Ipv6{
 					Ipv6: &l5dNetPb.IPv6{
 						First: 49320,
