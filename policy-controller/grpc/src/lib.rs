@@ -203,10 +203,12 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
 
     let labels = match &srv.reference {
         ServerRef::Default(name) => convert_args!(hashmap!(
+            "group" => "",
             "kind" => "default",
             "name" => name,
         )),
         ServerRef::Server(name) => convert_args!(hashmap!(
+            "group" => "policy.linkerd.io",
             "kind" => "server",
             "name" => name,
         )),
@@ -249,14 +251,17 @@ fn to_authz(
 
     let labels = match reference {
         AuthorizationRef::Default(name) => convert_args!(hashmap!(
+            "group" => "",
             "kind" => "default",
             "name" => name,
         )),
         AuthorizationRef::ServerAuthorization(name) => convert_args!(hashmap!(
+            "group" => "policy.linkerd.io",
             "kind" => "serverauthorization",
             "name" => name,
         )),
         AuthorizationRef::AuthorizationPolicy(name) => convert_args!(hashmap!(
+            "group" => "policy.linkerd.io",
             "kind" => "authorizationpolicy",
             "name" => name,
         )),
