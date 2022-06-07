@@ -15,6 +15,7 @@ macro_rules! assert_is_default_all_unauthenticated {
         assert_eq!(
             $config.labels,
             vec![
+                ("group".to_string(), "".to_string()),
                 ("kind".to_string(), "default".to_string()),
                 ("name".to_string(), "all-unauthenticated".to_string()),
             ]
