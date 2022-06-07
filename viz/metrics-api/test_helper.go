@@ -308,7 +308,7 @@ func newMockGrpcServer(exp expectedStatRPC) (*prometheus.MockProm, *grpcServer, 
 		prometheusAPI:       mockProm,
 		k8sAPI:              k8sAPI,
 		controllerNamespace: "linkerd",
-		clusterDomain:       "mycluster.local",
+		clusterDomain:       "cluster.local",
 		ignoredNamespaces:   []string{},
 	}
 
