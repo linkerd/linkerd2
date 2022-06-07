@@ -2572,7 +2572,7 @@ transparent to the application, and work with any network topology.
   attempts to prevent the most common traffic-loop scenarios to protect against
   this.
 
-***NOTE***: Linkerd's `multicluster` extension does not yet work on Amazon
+_**NOTE**_: Linkerd's `multicluster` extension does not yet work on Amazon
 EKS. We expect to follow this release with a stable-2.8.1 to address this
 issue. Follow [#4582](https://github.com/linkerd/linkerd2/pull/4582) for updates.
 
@@ -5508,8 +5508,8 @@ to reduce possible naming collisions. To upgrade an existing installation:
 For more information, see the [Upgrade Guide](https://linkerd.io/2/upgrade/).
 
 * CLI
-  * **Improved** `linkerd routes` command displays per-route stats for *any
-    resource*!
+  * **Improved** `linkerd routes` command displays per-route stats for _any
+    resource_!
   * **New** Service profiles are now supported for external authorities!
   * **New** `linkerd routes --open-api` flag generates a service profile based
     on an OpenAPI specification (swagger) file

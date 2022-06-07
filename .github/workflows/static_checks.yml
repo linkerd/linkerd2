@@ -76,16 +76,6 @@ jobs:
         rootPath: bin/win/tools
         failOnInfos: true
 
-  markdown_lint:
-    name: Markdown lint
-    timeout-minutes: 10
-    runs-on: ubuntu-20.04
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-    - name: Markdown lint
-      run: bin/markdownlint-all
-
   chart_docs_diff:
     name: Chart readme diff check
     runs-on: ubuntu-20.04
