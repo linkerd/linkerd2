@@ -55,6 +55,8 @@ func (c *grpcOverHTTPClient) TopRoutes(ctx context.Context, req *pb.TopRoutesReq
 	return &msg, err
 }
 
+// Gateways is being deprecated in 2.12 and will be removed in 2.13.
+//nolint:staticcheck
 func (c *grpcOverHTTPClient) Gateways(ctx context.Context, req *pb.GatewaysRequest, _ ...grpc.CallOption) (*pb.GatewaysResponse, error) {
 	var msg pb.GatewaysResponse
 	err := c.apiRequest(ctx, "Gateways", req, &msg)
