@@ -46,6 +46,8 @@ const (
 	promClientCheckDescription = "linkerd viz can talk to Prometheus"
 )
 
+// NewGrpcServer creates a new instance of the Api server and registers it
+// with Prometheus.
 func NewGrpcServer(
 	promAPI promv1.API,
 	k8sAPI *k8s.API,
