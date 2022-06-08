@@ -14,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/viz/metrics-api/util"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -45,15 +46,17 @@ const (
 	promClientCheckDescription = "linkerd viz can talk to Prometheus"
 )
 
-func newGrpcServer(
+// NewGrpcServer creates a new instance of the Api server and registers it
+// with Prometheus.
+func NewGrpcServer(
 	promAPI promv1.API,
 	k8sAPI *k8s.API,
 	controllerNamespace string,
 	clusterDomain string,
 	ignoredNamespaces []string,
-) *grpcServer {
+) *grpc.Server {
 
-	grpcServer := &grpcServer{
+	server := &grpcServer{
 		prometheusAPI:       promAPI,
 		k8sAPI:              k8sAPI,
 		controllerNamespace: controllerNamespace,
@@ -61,9 +64,11 @@ func newGrpcServer(
 		ignoredNamespaces:   ignoredNamespaces,
 	}
 
-	pb.RegisterApiServer(prometheus.NewGrpcServer(), grpcServer)
+	pb.RegisterApiServer(prometheus.NewGrpcServer(), server)
+	s := prometheus.NewGrpcServer()
+	pb.RegisterApiServer(s, server)
 
-	return grpcServer
+	return s
 }
 
 func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb.ListPodsResponse, error) {
