@@ -479,6 +479,35 @@ func (api *API) GetObjects(namespace, restype, name string, label labels.Selecto
 	}
 }
 
+// KindSupported returns true if there is an informer configured for the
+// specified resource type.
+func (api *API) KindSupported(restype string) bool {
+	switch restype {
+	case k8s.Namespace:
+		return api.ns != nil
+	case k8s.CronJob:
+		return api.cj != nil
+	case k8s.DaemonSet:
+		return api.ds != nil
+	case k8s.Deployment:
+		return api.deploy != nil
+	case k8s.Job:
+		return api.job != nil
+	case k8s.Pod:
+		return api.pod != nil
+	case k8s.ReplicationController:
+		return api.rc != nil
+	case k8s.ReplicaSet:
+		return api.rs != nil
+	case k8s.Service:
+		return api.svc != nil
+	case k8s.StatefulSet:
+		return api.ss != nil
+	default:
+		return false
+	}
+}
+
 // GetOwnerKindAndName returns the pod owner's kind and name, using owner
 // references from the Kubernetes API. The kind is represented as the Kubernetes
 // singular resource type (e.g. deployment, daemonset, job, etc.).
