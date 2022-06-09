@@ -39,6 +39,8 @@ the builds are pinned only to minor — rather than patch — versions.
   linkerd-multicluster
 * Added the `promm` package for making programatic Prometheus assertions in
   tests (thanks @krzysztofdrys!)
+* Added the `runAsUser` configuration to extensions to fix a PodSecurityPolicy
+  violation when CNI is enabled
 
 ## edge-22.5.3
 
