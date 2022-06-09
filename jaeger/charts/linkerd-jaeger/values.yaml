@@ -22,6 +22,9 @@ tolerations: &default_tolerations
 # deprecated since k8s v1.21
 enablePSP: false
 
+# -- Default UID for all the jaeger components
+defaultUID: 2103
+
 # -- Kubernetes DNS Domain name to use
 clusterDomain: cluster.local
 collector:
@@ -56,6 +59,9 @@ collector:
   # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
   # for more information
   tolerations: *default_tolerations
+
+  # -- UID for the collector resource
+  UID:
 
   # -- OpenTelemetry Collector config, See the
   # [Configuration docs](https://opentelemetry.io/docs/collector/configuration/)
@@ -128,6 +134,9 @@ jaeger:
   # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
   # for more information
   tolerations: *default_tolerations
+
+  # -- UID for the jaeger resource
+  UID:
 
 linkerdVersion: &linkerd_version linkerdVersionValue
 
@@ -208,3 +217,6 @@ webhook:
   # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
   # for more information
   tolerations: *default_tolerations
+
+  # -- UID for the webhook resource
+  UID:

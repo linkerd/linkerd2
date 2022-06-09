@@ -38,6 +38,8 @@ spec:
       containers:
         - name: pause
           image: gcr.io/google_containers/pause:3.2
+          securityContext:
+            runAsUser: 2103
       serviceAccountName: linkerd-gateway
 ---
 apiVersion: v1
