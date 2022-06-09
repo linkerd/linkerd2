@@ -150,7 +150,10 @@ func Inject(linkerdNamespace string) webhook.Handler {
 			return nil, err
 		}
 
-		var admissionResp *admissionv1beta1.AdmissionResponse
+		admissionResp := &admissionv1beta1.AdmissionResponse{
+			UID:     request.UID,
+			Allowed: true,
+		}
 		if len(patchJSON) != 0 {
 			// If resource needs to be patched with annotations (e.g opaque
 			// ports), then admit the request with the relevant patch
@@ -170,10 +173,6 @@ func Inject(linkerdNamespace string) webhook.Handler {
 			// entirely skipped and admit without any mutations
 			log.Infof("skipped %s: %s", report.ResName(), readableReasons)
 			proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "true", strings.Join(reasons, ","), report.InjectAnnotationAt, configLabels)).Inc()
-			admissionResp = &admissionv1beta1.AdmissionResponse{
-				UID:     request.UID,
-				Allowed: true,
-			}
 		}
 
 		return admissionResp, nil
