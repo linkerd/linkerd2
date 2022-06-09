@@ -27,6 +27,8 @@ spec:
       - name: namespace-metadata
         image: curlimages/curl:7.78.0
         command: ["/bin/sh"]
+        securityContext:
+          runAsUser: {{.Values.defaultUID}}
         args:
         - -c
         - |
