@@ -41,6 +41,8 @@ spec:
       containers:
         - name: pause
           image: gcr.io/google_containers/pause:3.2
+          securityContext:
+            runAsUser: {{.Values.gateway.UID}}
       serviceAccountName: {{.Values.gateway.name}}
 {{- if .Values.enablePodAntiAffinity }}
 ---

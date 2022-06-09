@@ -26,6 +26,9 @@ gateway:
   # -- Set loadBalancerIP on gateway service
   loadBalancerIP: ""
 
+  # -- User id under which the gateway shall be ran
+  UID: 2103
+
 # -- Control plane version
 linkerdVersion: linkerdVersionValue
 # -- The port on which the proxy accepts outbound traffic
