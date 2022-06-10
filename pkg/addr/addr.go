@@ -129,7 +129,7 @@ func decodeIPv4ToNetIP(ip uint32) net.IP {
 }
 
 func decodeIPv6ToNetIP(ip *l5dNetPb.IPv6) net.IP {
-	b := make([]byte, 16)
+	b := make([]byte, net.IPv6len)
 	binary.BigEndian.PutUint64(b[:8], ip.GetFirst())
 	binary.BigEndian.PutUint64(b[8:], ip.GetLast())
 	return net.IP(b)
