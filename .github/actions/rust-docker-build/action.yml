@@ -1,16 +1,16 @@
 name: Rust Image Build
 description: Builds linkerd's rust images
+
 inputs:
   docker-registry:
     description: The docker registry used to tag the images
-    required: false
-    default: cr.l5d.io/linkerd
+    required: true
   docker-ghcr-username:
     description: GH username under which to push images
-    required: false
+    required: true
   docker-ghcr-pat:
     description: GH PAT for docker-ghcr-username
-    required: false
+    required: true
   component:
     description: Image to build
     required: true
@@ -20,28 +20,28 @@ inputs:
   arch:
     description: Target architecture
     required: true
+  tag:
+    description: Docker image tag
+    required: true
+
 runs:
   using: composite
   steps:
-  - name: Set up Docker Buildx
-    uses: docker/setup-buildx-action@dc7b9719a96d48369863986a06765841d7ea23f6
-  - name: Set environment variables from scripts
-    run: |
-      echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
-      echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
-  - name: Cache docker layers
-    uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
-    with:
-      path: ${{ env.DOCKER_BUILDKIT_CACHE }}
-      key: ${{ inputs.component }}-${{ inputs.arch }}-${{ env.TAG }}
-      restore-keys: ${{ inputs.component }}-
-  - name: Build ${{ inputs.component }} ${{ inputs.arch }}
-    env:
-      DOCKER_REGISTRY: ${{ inputs.docker-registry }}
-    run: |
-      echo "${{ inputs.docker-ghcr-pat }}" | docker login ghcr.io -u "${{ inputs.docker-ghcr-username }}" --password-stdin
-      docker buildx build --push . \
-        -f ./${{ inputs.component-path }}/${{ inputs.arch }}.dockerfile \
-        -t $DOCKER_REGISTRY/${{ inputs.component }}:$TAG-${{ inputs.arch }} \
-        --cache-from type=local,src=${DOCKER_BUILDKIT_CACHE} \
-        --cache-to type=local,dest=${DOCKER_BUILDKIT_CACHE},mode=max
+    - uses: docker/setup-buildx-action@dc7b9719a96d48369863986a06765841d7ea23f6
+    - uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+      with:
+        path: ${{ runner.temp }}/.buildx-cache
+        key: ${{ inputs.component }}-${{ inputs.arch }}-${{ inputs.tag }}
+        restore-keys: ${{ inputs.component }}-
+    - uses: docker/login-action@49ed152c8eca782a232dede0303416e8f356c37b
+      with:
+        registry: ghcr.io
+        username: ${{ inputs.docker-ghcr-username }}
+        password: ${{ inputs.docker-ghcr-pat }}
+    - name: Build and push ${{ inputs.component }} ${{ inputs.arch }}
+      run: |
+        docker buildx build --push . \
+          -f ./${{ inputs.component-path }}/${{ inputs.arch }}.dockerfile \
+          --tag=${{ inputs.docker-registry }}/${{ inputs.component }}:${{ inputs.tag }}-${{ inputs.arch }} \
+          --cache-from type=local,src=${{ runner.temp }}/.buildx-cache \
+          --cache-to type=local,dest=${{ runner.temp }}/.buildx-cache,mode=max
