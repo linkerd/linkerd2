@@ -150,4 +150,3 @@ func IntToIPv4(intip *big.Int) net.IP {
 	binary.BigEndian.PutUint32(ipByte, uint32(uint32IP))
 	return net.IP(ipByte)
 }
-
