@@ -2,9 +2,6 @@ name: Rust Docker Manifest
 description: Creates a unified docker image manifest for rust multiarch builds
 
 inputs:
-  docker-registry:
-    description: The docker registry used to tag the images
-    required: true
   docker-ghcr-username:
     description: GH username under which to push images
     required: true
@@ -28,9 +25,9 @@ runs:
         password: ${{ inputs.docker-ghcr-pat }}
     - name: Create multiarch manifest
       run: |
-        img=${{ inputs.docker-registry }}/${{ inputs.component }}:${{ inputs.tag }}
+        img=ghcr.io/${{ github.repository_owner }}/${{ inputs.component }}:${{ inputs.tag }}
         docker manifest create $img ${img}-amd64 ${img}-arm64 ${img}-arm
         for arch in amd64 arm64 arm ; do
           docker manifest annotate $img ${img}-${arch} --os=linux --arch=${arch}
         done
-    - run: docker manifest push ${{ inputs.docker-registry }}/${{ inputs.component }}:${{ inputs.tag }}
+    - run: docker manifest push ghcr.io/${{ github.repository_owner }}/${{ inputs.component }}:${{ inputs.tag }}

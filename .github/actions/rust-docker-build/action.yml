@@ -2,9 +2,6 @@ name: Rust Image Build
 description: Builds linkerd's rust images
 
 inputs:
-  docker-registry:
-    description: The docker registry used to tag the images
-    required: true
   docker-ghcr-username:
     description: GH username under which to push images
     required: true
@@ -42,6 +39,6 @@ runs:
       run: |
         docker buildx build --push . \
           -f ./${{ inputs.component-path }}/${{ inputs.arch }}.dockerfile \
-          --tag=${{ inputs.docker-registry }}/${{ inputs.component }}:${{ inputs.tag }}-${{ inputs.arch }} \
+          --tag=ghcr.io/${{ github.repository_owner }}/${{ inputs.component }}:${{ inputs.tag }}-${{ inputs.arch }} \
           --cache-from type=local,src=${{ runner.temp }}/.buildx-cache \
           --cache-to type=local,dest=${{ runner.temp }}/.buildx-cache,mode=max
