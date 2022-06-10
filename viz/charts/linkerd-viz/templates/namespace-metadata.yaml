@@ -28,6 +28,8 @@ spec:
         image: curlimages/curl:7.78.0
         imagePullPolicy: {{.Values.defaultImagePullPolicy}}
         command: ["/bin/sh"]
+        securityContext:
+          runAsUser: {{.Values.defaultUID}}
         args:
         - -c
         - |

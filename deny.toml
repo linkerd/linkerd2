@@ -11,11 +11,7 @@ vulnerability = "deny"
 unmaintained = "warn"
 yanked = "deny"
 notice = "warn"
-ignore = [
-    # https://github.com/kube-rs/kube-rs/issues/650
-    # https://github.com/kube-rs/kube-rs/issues/660
-    "RUSTSEC-2020-0159",
-]
+ignore = []
 
 [licenses]
 unlicensed = "deny"
@@ -46,8 +42,6 @@ deny = []
 skip = [
     # Waiting on h2, tonic, etc
     { name = "tokio-util", version = "0.6" },
-    # Waiting on kube-client
-    { name = "rustls-pemfile", version = "0.3" },
 ]
 
 [sources]

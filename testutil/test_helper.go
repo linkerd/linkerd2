@@ -724,8 +724,6 @@ func (h *TestHelper) DownloadCLIBinary(filepath, version string) error {
 	if err != nil {
 		return err
 	}
-	// This is a test and we don't care about errors that can occur here.
-	//nolint:gosec
 	defer out.Close()
 
 	_, err = io.Copy(out, resp.Body)

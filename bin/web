@@ -34,7 +34,7 @@ check-for-linkerd-and-viz() {
 }
 
 dev() {
-  while getopts "p:" opt; do
+  while getopts 'p:' opt; do
     case "$opt" in
       p) DEV_PORT=$OPTARG;;
       *) ;;
@@ -58,7 +58,7 @@ get-pod() {
 
 
   selector="linkerd.io/control-plane-component=$2"
-  if [ "$1" == "linkerd-viz" ]; then
+  if [ "$1" = 'linkerd-viz' ]; then
     selector="component=$2"
   fi
 
@@ -74,8 +74,8 @@ port-forward() {
     exit 1
   fi
 
-  port_from=""
-  port_to=""
+  port_from=''
+  port_to=''
   if [ $# -eq 4 ]; then
     port_from=$3
     port_to=$4

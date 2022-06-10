@@ -26,6 +26,8 @@ import (
 	admissionRegistration "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,6 +65,11 @@ const (
 	// This check is dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
 	LinkerdPreInstallChecks CategoryID = "pre-kubernetes-setup"
+
+	// LinkerdCRDChecks adds checks to validate that the control plane CRDs
+	// exist. These checks can be run after installing the control plane CRDs
+	// but before installing the control plane itself.
+	LinkerdCRDChecks CategoryID = "linkerd-crd"
 
 	// LinkerdConfigChecks enabled by `linkerd check config`
 
@@ -394,6 +401,7 @@ type Options struct {
 	RetryDeadline         time.Time
 	CNIEnabled            bool
 	InstallManifest       string
+	CRDManifest           string
 	ChartValues           *l5dcharts.Values
 }
 
@@ -626,6 +634,21 @@ func (hc *HealthChecker) allCategories() []*Category {
 			false,
 		),
 		NewCategory(
+			LinkerdCRDChecks,
+			[]Checker{
+				{
+					description:   "control plane CustomResourceDefinitions exist",
+					hintAnchor:    "l5d-existence-crd",
+					fatal:         true,
+					retryDeadline: hc.RetryDeadline,
+					check: func(ctx context.Context) error {
+						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, hc.CRDManifest)
+					},
+				},
+			},
+			false,
+		),
+		NewCategory(
 			LinkerdControlPlaneExistenceChecks,
 			[]Checker{
 				{
@@ -693,27 +716,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 					},
 				},
 				{
-					description: "cluster networks can be verified",
-					hintAnchor:  "l5d-cluster-networks-verified",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						nodes, err := hc.kubeAPI.GetNodes(ctx)
-						if err != nil {
-							return err
-						}
-						var warningNodes []string
-						for _, node := range nodes {
-							if node.Spec.PodCIDR == "" {
-								warningNodes = append(warningNodes, node.Name)
-							}
-						}
-						if len(warningNodes) > 0 {
-							return fmt.Errorf("the following nodes do not expose a podCIDR:\n\t%s", strings.Join(warningNodes, "\n\t"))
-						}
-						return nil
-					},
-				},
-				{
 					description: "cluster networks contains all node podCIDRs",
 					hintAnchor:  "l5d-cluster-networks-cidr",
 					check: func(ctx context.Context) error {
@@ -724,6 +726,13 @@ func (hc *HealthChecker) allCategories() []*Category {
 							return err
 						}
 						return hc.checkClusterNetworks(ctx)
+					},
+				},
+				{
+					description: "cluster networks contains all pods",
+					hintAnchor:  "l5d-cluster-networks-pods",
+					check: func(ctx context.Context) error {
+						return hc.checkClusterNetworksContainAllPods(ctx)
 					},
 				},
 			},
@@ -769,7 +778,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "l5d-existence-crd",
 					fatal:       true,
 					check: func(ctx context.Context) error {
-						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, true)
+						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, hc.CRDManifest)
 					},
 				},
 				{
@@ -1875,6 +1884,43 @@ func cluterNetworksContainCIDR(clusterIPNets []*net.IPNet, podIPNet *net.IPNet, 
 	return false
 }
 
+func clusterNetworksContainPod(clusterIPNets []*net.IPNet, pod corev1.Pod) bool {
+	for _, clusterIPNet := range clusterIPNets {
+		if clusterIPNet.Contains(net.ParseIP(pod.Status.PodIP)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (hc *HealthChecker) checkClusterNetworksContainAllPods(ctx context.Context) error {
+	clusterNetworks := strings.Split(hc.linkerdConfig.ClusterNetworks, ",")
+	clusterIPNets := make([]*net.IPNet, len(clusterNetworks))
+	var err error
+	for i, clusterNetwork := range clusterNetworks {
+		_, clusterIPNets[i], err = net.ParseCIDR(clusterNetwork)
+		if err != nil {
+			return err
+		}
+	}
+	pods, err := hc.kubeAPI.CoreV1().Pods(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, pod := range pods.Items {
+		if pod.Spec.HostNetwork {
+			continue
+		}
+		if len(pod.Status.PodIP) == 0 {
+			continue
+		}
+		if !clusterNetworksContainPod(clusterIPNets, pod) {
+			return fmt.Errorf("the Linkerd clusterNetworks [%q] do not include pod %s/%s (%s)", hc.linkerdConfig.ClusterNetworks, pod.Namespace, pod.Name, pod.Status.PodIP)
+		}
+	}
+	return nil
+}
+
 func (hc *HealthChecker) expectedRBACNames() []string {
 	return []string{
 		fmt.Sprintf("linkerd-%s-identity", hc.ControlPlaneNamespace),
@@ -2060,29 +2106,56 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 
 // CheckCustomResourceDefinitions checks that all of the Linkerd CRDs are
 // installed on the cluster.
-func CheckCustomResourceDefinitions(ctx context.Context, k8sAPI *k8s.KubernetesAPI, shouldExist bool) error {
-	options := metav1.ListOptions{
-		LabelSelector: controlPlaneComponentsSelector(),
-	}
-	crdList, err := k8sAPI.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().List(ctx, options)
-	if err != nil {
-		return err
+func CheckCustomResourceDefinitions(ctx context.Context, k8sAPI *k8s.KubernetesAPI, expectedCRDManifests string) error {
+
+	crdYamls := strings.Split(expectedCRDManifests, "---")
+	crdVersions := []struct{ name, version string }{}
+	for _, crdYaml := range crdYamls {
+		var crd apiextv1.CustomResourceDefinition
+		err := yaml.Unmarshal([]byte(crdYaml), &crd)
+		if err != nil {
+			return err
+		}
+		if len(crd.Spec.Versions) == 0 {
+			continue
+		}
+		versionIndex := len(crd.Spec.Versions) - 1
+		crdVersions = append(crdVersions, struct{ name, version string }{
+			name:    crd.Name,
+			version: crd.Spec.Versions[versionIndex].Name,
+		})
 	}
 
-	objects := []runtime.Object{}
-	for _, item := range crdList.Items {
-		item := item // pin
-		objects = append(objects, &item)
-	}
+	errMsgs := []string{}
 
-	return checkResources("CustomResourceDefinitions", objects, []string{
-		"authorizationpolicies.policy.linkerd.io",
-		"meshtlsauthentications.policy.linkerd.io",
-		"networkauthentications.policy.linkerd.io",
-		"servers.policy.linkerd.io",
-		"serverauthorizations.policy.linkerd.io",
-		"serviceprofiles.linkerd.io",
-	}, shouldExist)
+	for _, crdVersion := range crdVersions {
+		name := crdVersion.name
+		version := crdVersion.version
+
+		crd, err := k8sAPI.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, name, metav1.GetOptions{})
+		if err != nil && kerrors.IsNotFound(err) {
+			errMsgs = append(errMsgs, fmt.Sprintf("missing %s", name))
+			continue
+		} else if err != nil {
+			return err
+		}
+		if !crdHasVersion(crd, version) {
+			errMsgs = append(errMsgs, fmt.Sprintf("CRD %s is missing version %s", name, version))
+		}
+	}
+	if len(errMsgs) > 0 {
+		return errors.New(strings.Join(errMsgs, ", "))
+	}
+	return nil
+}
+
+func crdHasVersion(crd *v1.CustomResourceDefinition, version string) bool {
+	for _, crdVersion := range crd.Spec.Versions {
+		if crdVersion.Name == version {
+			return true
+		}
+	}
+	return false
 }
 
 // CheckNodesHaveNonDockerRuntime checks that each node has a non-Docker

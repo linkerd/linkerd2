@@ -41,7 +41,8 @@ pub async fn await_condition<T>(
     ns: &str,
     name: &str,
     cond: impl kube::runtime::wait::Condition<T>,
-) where
+) -> Option<T>
+where
     T: kube::Resource + serde::Serialize + serde::de::DeserializeOwned,
     T: Clone + std::fmt::Debug + Send + 'static,
     T::DynamicType: Default,
@@ -79,18 +80,14 @@ pub async fn await_pod_ip(client: &kube::Client, ns: &str, name: &str) -> std::n
         pod.status.as_ref()?.pod_ip.clone()
     }
 
-    await_condition(client, ns, name, |obj: Option<&k8s::Pod>| -> bool {
+    let pod = await_condition(client, ns, name, |obj: Option<&k8s::Pod>| -> bool {
         if let Some(pod) = obj {
             return get_ip(pod).is_some();
         }
         false
     })
-    .await;
-
-    let pod = kube::Api::namespaced(client.clone(), ns)
-        .get(name)
-        .await
-        .expect("must fetch pod");
+    .await
+    .expect("must fetch pod");
     get_ip(&pod)
         .expect("pod must have an IP")
         .parse()

@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/sirupsen/logrus"
@@ -62,8 +62,8 @@ func TestHandleTap(t *testing.T) {
 			if recorder.Code != exp.code {
 				t.Errorf("Unexpected code: %d, expected: %d", recorder.Code, exp.code)
 			}
-			if !reflect.DeepEqual(recorder.Header(), exp.header) {
-				t.Errorf("Unexpected header: %v, expected: %v", recorder.Header(), exp.header)
+			if diff := deep.Equal(recorder.Header(), exp.header); diff != nil {
+				t.Errorf("Unexpected header: %v", diff)
 			}
 			if recorder.Body.String() != exp.body {
 				t.Errorf("Unexpected body: %s, expected: %s", recorder.Body.String(), exp.body)

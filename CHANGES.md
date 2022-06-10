@@ -1,5 +1,104 @@
 # Changes
 
+## edge-22.6.1
+
+This edge release fixes an issue where Linkerd injected pods could not be
+evicted by Cluster Autoscaler. It also adds the `--crds` flag to `linkerd check`
+which validates that the Linkerd CRDs have been installed with the proper
+versions.
+
+The previously noisy "cluster networks can be verified" check has been replaced
+with one that now verifies each running Pod IP is contained within the current
+`clusterNetworks` configuration value.
+
+Additionally, linkerd-viz is no longer required for linkerd-multicluster's
+`gateways` command — allowing the `Gateways` API to marked as deprecated for
+2.12.
+
+Finally, several security issues have been patched in the Docker images now that
+the builds are pinned only to minor — rather than patch — versions.
+
+* Replaced manual IP address parsing with functions available in the Go standard
+  library (thanks @zhlsunshine!)
+* Removed linkerd-multicluster's `gateway` command dependency on the linkerd-viz
+  extension
+* Fixed issue where Linkerd injected pods were prevented from being evicted by
+  Cluster Autoscaler
+* Added the `dst_target_cluster` metric to linkerd-multicluster's service-mirror
+  controller probe traffic
+* Added the `--crds` flag to `linkerd check` which validates that the Linkerd
+  CRDs have been installed
+* Removed the Docker image's hardcoded patch versions so that builds pick up
+  patch releases without manual intervention
+* Replaced the "cluster networks can be verified check" check with a "cluster
+  networks contains all pods" check which ensures that all currently running Pod
+  IPs are contained by the current `clusterNetworks` configuration
+* Added IPv6 compatible IP address generation in certain control plane
+  components that were only generating IPv4 (thanks @zhlsunshine!)
+* Deprecated linkerd-viz's `Gateways` API which is no longer used by
+  linkerd-multicluster
+* Added the `promm` package for making programatic Prometheus assertions in
+  tests (thanks @krzysztofdrys!)
+* Added the `runAsUser` configuration to extensions to fix a PodSecurityPolicy
+  violation when CNI is enabled
+
+## edge-22.5.3
+
+This edge release fixes a few proxy issues, improves the upgrade process, and
+introduces proto retries to Service Profiles. Also included are updates to the
+bash scripts to ensure that they follow best practices.
+
+* Polished the shell scripts (thanks @joakimr-axis)
+* Introduced retries to Service Profiles based on the idempotency option of the
+  method by adding an isRetryable function to the proto definition
+ (thanks @mahlunar)
+* Fixed proxy responses to CONNECT requests by removing the content-length
+  and/or transfer-encoding headers from the response
+* Fixed DNS lookups in the proxy to consistently use A records when SRV records
+  cannot be resolved
+* Added dynamic policy discovery to the proxy by evaluating traffic on ports
+  not included in the LINKERD2_PROXY_INBOUND_PORTS environment variable
+* Added logic to require that the linkerd CRDs are installed when running
+  the `linkerd upgrade` command
+
+## edge-22.5.2
+
+This edge release ships a few changes to the chart values, a fix for
+multicluster headless services, and notable proxy features. HA functionality,
+such as PDBs, deployment strategies, and pod anti-affinity, have been split
+from the HA values and are now configurable for the control plane. On the proxy
+side, non-HTTP traffic will now be forwarded on the outbound side within the
+cluster when the proxy runs in ingress mode.
+
+* Updated `ingress-mode` proxies to forward non-HTTP traffic within the cluster
+  (protocol detection will always be attempted for outbound connections)
+* Added a new proxy metric `process_uptime_seconds_total` to keep track of the
+  number of seconds since the proxy started
+* Fixed an issue with multicluster headless service mirroring, where exported
+  endpoints would be mirrored with a delay, or when changes to the export label
+  would be ignored
+* Split HA functionality, such as PodDisruptionBudgets, into multiple
+  configurable values (thanks @evan-hines-firebolt for the initial work)
+
+## edge-22.5.1
+
+This edge release adds more flexibility to the MeshTLSAuthentication and
+AuthorizationPolicy policy resources by allowing them to target entire
+namespaces. It also fixes a race condition when multiple CNI plugins are
+installed together as well as a number of other bug fixes.
+
+* Added support for MeshTLSAuthentication resources to target an entire
+  namespace, authenticating all ServiceAccounts in that namespace
+* Fixed a panic in `linkerd install` when the `--ignore-cluster` flag is passed
+* Fixed issue where pods would fail to start when `enablePSP` and
+  `proxyInit.runAsRoot` are set
+* Added support for AuthorizationPolicy resources to target namespaces, applying
+  to all Servers in that namespace
+* Fixed a race condition where the Linkerd CNI configuration could be
+  overwritten when multiple CNI plugins are installed
+* Added test for opaque ports using Service and Pod IPs (thanks @krzysztofdrys!)
+* Fixed an error in the linkerd-viz Helm chart in HA mode
+
 ## edge-22.4.1
 
 In order to support having custom resources in the default Linkerd installation,
@@ -2515,7 +2614,7 @@ transparent to the application, and work with any network topology.
   attempts to prevent the most common traffic-loop scenarios to protect against
   this.
 
-***NOTE***: Linkerd's `multicluster` extension does not yet work on Amazon
+_**NOTE**_: Linkerd's `multicluster` extension does not yet work on Amazon
 EKS. We expect to follow this release with a stable-2.8.1 to address this
 issue. Follow [#4582](https://github.com/linkerd/linkerd2/pull/4582) for updates.
 
@@ -5451,8 +5550,8 @@ to reduce possible naming collisions. To upgrade an existing installation:
 For more information, see the [Upgrade Guide](https://linkerd.io/2/upgrade/).
 
 * CLI
-  * **Improved** `linkerd routes` command displays per-route stats for *any
-    resource*!
+  * **Improved** `linkerd routes` command displays per-route stats for _any
+    resource_!
   * **New** Service profiles are now supported for external authorities!
   * **New** `linkerd routes --open-api` flag generates a service profile based
     on an OpenAPI specification (swagger) file

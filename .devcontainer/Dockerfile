@@ -41,15 +41,24 @@ COPY bin/scurl /usr/local/bin/scurl
 RUN scurl -v https://raw.githubusercontent.com/rancher/k3d/$K3D_VERSION/install.sh \
     | USE_SUDO=false K3D_INSTALL_DIR=/usr/local/bin bash
 
-FROM docker.io/rust:${RUST_TOOLCHAIN}-bullseye as just
+FROM docker.io/golang:${GO_VERSION}-bullseye as just
 ARG JUST_VERSION=1.1.3
 RUN curl --proto '=https' --tlsv1.3 -vsSfL "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
     | tar zvxf - -C /usr/local/bin just
 
-FROM docker.io/rust:${RUST_TOOLCHAIN}-bullseye as nextest
+FROM docker.io/golang:${GO_VERSION}-bullseye as nextest
 ARG NEXTEST_VERSION=0.9.14
 RUN curl --proto '=https' --tlsv1.3 -vsSfL "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${NEXTEST_VERSION}/cargo-nextest-${NEXTEST_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
     | tar zvxf - -C /usr/local/bin cargo-nextest
+
+FROM docker.io/rust:${RUST_TOOLCHAIN}-bullseye as protoc
+ARG PROTOC_VERSION=v3.20.1
+WORKDIR /tmp
+RUN arch="$(uname -m)" ; \
+    version="$PROTOC_VERSION" ; \
+    curl --proto '=https' --tlsv1.3 -vsSfLo protoc.zip  "https://github.com/google/protobuf/releases/download/$version/protoc-${version#v}-linux-$arch.zip" && \
+    unzip protoc.zip bin/protoc && \
+    chmod 755 bin/protoc
 
 FROM docker.io/rust:${RUST_TOOLCHAIN}-bullseye as rust
 RUN rustup component add rustfmt clippy rls
@@ -60,25 +69,24 @@ RUN rustup component add rustfmt clippy rls
 
 FROM docker.io/golang:${GO_VERSION}-bullseye
 
-# Note: we do *not* delete the apt cache so subsequent steps (like docker,
-# dotfiles) need not pull the cache again. This comes at the cost of a fatter
-# container image.
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update && apt upgrade -y
-RUN apt install -y \
-    clang \
-    cmake \
-    jq \
-    libssl-dev \
-    lldb \
-    locales \
-    lsb-release \
-    npm \
-    shellcheck \
-    sudo \
-    time \
-    unzip
-RUN npm install markdownlint-cli@0.23.1 --global
+RUN apt update && \
+    apt upgrade -y --autoremove && \
+    apt install -y \
+        clang \
+        cmake \
+        jq \
+        libssl-dev \
+        lldb \
+        locales \
+        lsb-release \
+        npm \
+        shellcheck \
+        sudo \
+        time \
+        unzip && \
+    rm -rf /var/lib/apt/lists/*
+RUN npm install markdownlint-cli2@0.4.0 --global
 
 RUN sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && locale-gen
 
@@ -111,6 +119,10 @@ COPY --from=kubectl /usr/local/bin/kubectl /usr/local/bin/kubectl
 COPY --from=yq /usr/local/bin/yq /usr/local/bin/yq
 COPY --from=just /usr/local/bin/just /usr/local/bin/just
 COPY --from=nextest /usr/local/bin/cargo-nextest /usr/local/bin/cargo-nextest
+
+COPY --from=protoc /tmp/bin/protoc /usr/local/bin/protoc
+ENV PROTOC_NO_VENDOR=1
+ENV PROTOC=/usr/local/bin/protoc
 
 COPY --from=rust /usr/local/cargo /usr/local/cargo
 COPY --from=rust /usr/local/rustup /usr/local/rustup

@@ -1,8 +1,11 @@
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: slow-cooker-opaque-service
 spec:
+  selector:
+    matchLabels:
+      app: slow-cooker-opaque-service
   template:
     metadata:
       annotations:
@@ -19,13 +22,15 @@ spec:
         - http://{{ .ServiceCookerOpaqueServiceTargetHost}}:8080
         ports:
         - containerPort: 9999
-      restartPolicy: OnFailure
 ---
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: slow-cooker-opaque-pod
 spec:
+  selector:
+    matchLabels:
+      app: slow-cooker-opaque-pod
   template:
     metadata:
       annotations:
@@ -42,13 +47,15 @@ spec:
         - http://{{ .ServiceCookerOpaquePodTargetHost}}:8080
         ports:
         - containerPort: 9999
-      restartPolicy: OnFailure
 ---
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: slow-cooker-opaque-unmeshed-svc
 spec:
+  selector:
+    matchLabels:
+      app: slow-cooker-opaque-unmeshed-svc
   template:
     metadata:
       annotations:
@@ -65,4 +72,3 @@ spec:
         - http://{{ .ServiceCookerOpaqueUnmeshedSVCTargetHost}}:8080
         ports:
         - containerPort: 9999
-      restartPolicy: OnFailure

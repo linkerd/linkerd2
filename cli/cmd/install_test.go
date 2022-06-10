@@ -32,6 +32,7 @@ func TestRender(t *testing.T) {
 	// by `render()`.
 	metaValues := &charts.Values{
 		ControllerImage:         "ControllerImage",
+		LinkerdVersion:          "LinkerdVersion",
 		ControllerUID:           2103,
 		EnableH2Upgrade:         true,
 		WebhookFailurePolicy:    "WebhookFailurePolicy",
@@ -153,6 +154,7 @@ func TestRender(t *testing.T) {
 	haWithOverridesValues.ControllerReplicas = 2
 	haWithOverridesValues.Proxy.Resources.CPU.Request = "400m"
 	haWithOverridesValues.Proxy.Resources.Memory.Request = "300Mi"
+	haWithOverridesValues.EnablePodDisruptionBudget = true
 	addFakeTLSSecrets(haWithOverridesValues)
 
 	cniEnabledValues, err := testInstallOptions()
@@ -239,7 +241,9 @@ func TestRender(t *testing.T) {
 			if err := renderControlPlane(&buf, tc.values, valuesOverrides); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
-			testDataDiffer.DiffTestdata(t, tc.goldenFileName, buf.String())
+			if err := testDataDiffer.DiffTestYAML(tc.goldenFileName, buf.String()); err != nil {
+				t.Error(err)
+			}
 		})
 	}
 }
@@ -268,7 +272,9 @@ func TestRenderCRDs(t *testing.T) {
 	if err := renderCRDs(&buf); err != nil {
 		t.Fatalf("Failed to render templates: %v", err)
 	}
-	testDataDiffer.DiffTestdata(t, "install_crds.golden", buf.String())
+	if err := testDataDiffer.DiffTestYAML("install_crds.golden", buf.String()); err != nil {
+		t.Error(err)
+	}
 }
 
 func TestValidateAndBuild_Errors(t *testing.T) {

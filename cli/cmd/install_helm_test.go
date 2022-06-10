@@ -168,7 +168,9 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 		}
 	}
 
-	testDataDiffer.DiffTestdata(t, goldenFileName, buf.String())
+	if err := testDataDiffer.DiffTestYAML(goldenFileName, buf.String()); err != nil {
+		t.Error(err)
+	}
 }
 
 func chartCrds(t *testing.T, additionalConfig string, ignoreOutboundPorts string, ignoreInboundPorts string) *chart.Chart {
@@ -200,7 +202,7 @@ func chartCrds(t *testing.T, additionalConfig string, ignoreOutboundPorts string
 		"templates/_pull-secrets.tpl",
 	}
 
-	chartPartials := chartPartials(t, partialPaths)
+	chartPartials := chartPartials(partialPaths)
 
 	rawValues, err := yaml.Marshal(values)
 	if err != nil {
@@ -232,7 +234,7 @@ func chartCrds(t *testing.T, additionalConfig string, ignoreOutboundPorts string
 
 	for _, template := range linkerd2Chart.Templates {
 		filepath := filepath.Join(linkerd2Chart.Metadata.Sources[0], template.Name)
-		template.Data = []byte(testutil.ReadTestdata(t, filepath))
+		template.Data = []byte(testutil.ReadTestdata(filepath))
 	}
 
 	return linkerd2Chart
@@ -267,7 +269,7 @@ func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOut
 		"templates/_pull-secrets.tpl",
 	}
 
-	chartPartials := chartPartials(t, partialPaths)
+	chartPartials := chartPartials(partialPaths)
 
 	rawValues, err := yaml.Marshal(values)
 	if err != nil {
@@ -299,13 +301,13 @@ func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOut
 
 	for _, template := range linkerd2Chart.Templates {
 		filepath := filepath.Join(linkerd2Chart.Metadata.Sources[0], template.Name)
-		template.Data = []byte(testutil.ReadTestdata(t, filepath))
+		template.Data = []byte(testutil.ReadTestdata(filepath))
 	}
 
 	return linkerd2Chart
 }
 
-func chartPartials(t *testing.T, paths []string) *chart.Chart {
+func chartPartials(paths []string) *chart.Chart {
 	var partialTemplates []*chart.File
 	for _, path := range paths {
 		partialTemplates = append(partialTemplates, &chart.File{Name: path})
@@ -324,7 +326,7 @@ func chartPartials(t *testing.T, paths []string) *chart.Chart {
 	for _, template := range chart.Templates {
 		template := template
 		filepath := filepath.Join(chart.Metadata.Sources[0], template.Name)
-		template.Data = []byte(testutil.ReadTestdata(t, filepath))
+		template.Data = []byte(testutil.ReadTestdata(filepath))
 	}
 
 	return chart

@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/controller/proxy-injector/fake"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/inject"
@@ -137,9 +137,8 @@ func TestGetPodPatch(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Unexpected error: %s", err)
 				}
-				if !reflect.DeepEqual(expectedPatch, actualPatch) {
-					t.Fatalf("The actual patch didn't match what was expected.\nExpected: %s\nActual: %s",
-						expectedPatchBytes, patchJSON)
+				if diff := deep.Equal(expectedPatch, actualPatch); diff != nil {
+					t.Fatalf("The actual patch didn't match what was expected.\n%+v", diff)
 				}
 
 			})
@@ -176,11 +175,9 @@ func TestGetPodPatch(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
-		if !reflect.DeepEqual(expectedPatch, actualPatch) {
-			t.Fatalf("The actual patch didn't match what was expected.\nExpected: %s\nActual: %s",
-				expectedPatchBytes, patchJSON)
+		if diff := deep.Equal(expectedPatch, actualPatch); diff != nil {
+			t.Fatalf("The actual patch didn't match what was expected.\n%+v", diff)
 		}
-
 	})
 
 	t.Run("by checking pod inherits config annotations from namespace", func(t *testing.T) {
@@ -217,8 +214,8 @@ func TestGetPodPatch(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
-		if !reflect.DeepEqual(expectedPatch, actualPatch) {
-			t.Fatalf("The actual patch didn't match what was expected.\nExpected: %s\nActual: %s", expectedPatchBytes, patchJSON)
+		if diff := deep.Equal(expectedPatch, actualPatch); diff != nil {
+			t.Fatalf("The actual patch didn't match what was expected.\n+%v", diff)
 		}
 	})
 
@@ -392,9 +389,8 @@ func TestGetAnnotationPatch(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Unexpected error: %s", err)
 				}
-				if !reflect.DeepEqual(testCase.expectedPatch, actualPatch) {
-					t.Fatalf("The actual patch didn't match what was expected.\nExpected: %s\nActual: %s",
-						testCase.expectedPatchBytes, patchJSON)
+				if diff := deep.Equal(testCase.expectedPatch, actualPatch); diff != nil {
+					t.Fatalf("The actual patch didn't match what was expected.\n%+v", diff)
 				}
 			})
 		}

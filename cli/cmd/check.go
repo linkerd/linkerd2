@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -23,6 +24,7 @@ import (
 type checkOptions struct {
 	versionOverride    string
 	preInstallOnly     bool
+	crdsOnly           bool
 	dataPlaneOnly      bool
 	wait               time.Duration
 	namespace          string
@@ -35,6 +37,7 @@ func newCheckOptions() *checkOptions {
 	return &checkOptions{
 		versionOverride:    "",
 		preInstallOnly:     false,
+		crdsOnly:           false,
 		dataPlaneOnly:      false,
 		wait:               300 * time.Second,
 		namespace:          "",
@@ -51,6 +54,7 @@ func (options *checkOptions) nonConfigFlagSet() *pflag.FlagSet {
 	flags.BoolVar(&options.cniEnabled, "linkerd-cni-enabled", options.cniEnabled, "When running pre-installation checks (--pre), assume the linkerd-cni plugin is already installed, and a NET_ADMIN check is not needed")
 	flags.StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	flags.BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
+	flags.BoolVar(&options.crdsOnly, "crds", options.crdsOnly, "Only run checks which determine if the Linkerd CRDs have been installed")
 	flags.BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
 
 	return flags
@@ -71,6 +75,9 @@ func (options *checkOptions) checkFlagSet() *pflag.FlagSet {
 func (options *checkOptions) validate() error {
 	if options.preInstallOnly && options.dataPlaneOnly {
 		return errors.New("--pre and --proxy flags are mutually exclusive")
+	}
+	if options.preInstallOnly && options.crdsOnly {
+		return errors.New("--pre and --crds flags are mutually exclusive")
 	}
 	if !options.preInstallOnly && options.cniEnabled {
 		return errors.New("--linkerd-cni-enabled can only be used with --pre")
@@ -134,6 +141,11 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 		healthcheck.LinkerdVersionChecks,
 	}
 
+	crdManifest := bytes.Buffer{}
+	err = renderCRDs(&crdManifest)
+	if err != nil {
+		return err
+	}
 	var installManifest string
 	var values *charts.Values
 	if options.preInstallOnly {
@@ -146,6 +158,8 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 			fmt.Fprintf(os.Stderr, "Error rendering install manifest: %s\n", err)
 			os.Exit(1)
 		}
+	} else if options.crdsOnly {
+		checks = append(checks, healthcheck.LinkerdCRDChecks)
 	} else {
 		checks = append(checks, healthcheck.LinkerdConfigChecks)
 
@@ -179,6 +193,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 		RetryDeadline:         time.Now().Add(options.wait),
 		CNIEnabled:            options.cniEnabled,
 		InstallManifest:       installManifest,
+		CRDManifest:           crdManifest.String(),
 		ChartValues:           values,
 	})
 
@@ -187,17 +202,20 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 	}
 	success, warning := healthcheck.RunChecks(wout, werr, hc, options.output)
 
-	extensionSuccess, extensionWarning, err := runExtensionChecks(cmd, wout, werr, options)
-	if err != nil {
-		fmt.Fprintf(werr, "Failed to run extensions checks: %s\n", err)
-		os.Exit(1)
+	if !options.preInstallOnly && !options.crdsOnly {
+		extensionSuccess, extensionWarning, err := runExtensionChecks(cmd, wout, werr, options)
+		if err != nil {
+			fmt.Fprintf(werr, "Failed to run extensions checks: %s\n", err)
+			os.Exit(1)
+		}
+
+		success = success && extensionSuccess
+		warning = warning || extensionWarning
 	}
 
-	totalSuccess := success && extensionSuccess
-	totalWarning := warning || extensionWarning
-	healthcheck.PrintChecksResult(wout, options.output, totalSuccess, totalWarning)
+	healthcheck.PrintChecksResult(wout, options.output, success, warning)
 
-	if !totalSuccess {
+	if !success {
 		os.Exit(1)
 	}
 

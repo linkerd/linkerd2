@@ -2,7 +2,9 @@ package servicemirror
 
 import (
 	"fmt"
+	"net"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -87,7 +89,9 @@ func (pw *ProbeWorker) doProbe() {
 		Timeout: httpGatewayTimeoutMillis * time.Millisecond,
 	}
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d%s", pw.localGatewayName, pw.probeSpec.Port, pw.probeSpec.Path), nil)
+	strPort := strconv.Itoa(int(pw.probeSpec.Port))
+	urlAddress := net.JoinHostPort(pw.localGatewayName, strPort)
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s%s", urlAddress, pw.probeSpec.Path), nil)
 	if err != nil {
 		pw.log.Errorf("Could not create a GET request to gateway: %s", err)
 		return
@@ -117,6 +121,7 @@ func (pw *ProbeWorker) doProbe() {
 	} else {
 		pw.log.Debug("Gateway is healthy")
 		pw.metrics.alive.Set(1)
+		pw.metrics.latency.Set(float64(end.Milliseconds()))
 		pw.metrics.latencies.Observe(float64(end.Milliseconds()))
 		pw.metrics.probes.With(successLabel).Inc()
 		if !pw.alive {

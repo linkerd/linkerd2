@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -301,7 +303,8 @@ func buildExtractHTTP(extract *tapPb.TapByResourceRequest_Extract_Http) *proxy.O
 // less than 1s, we sleep until the end of the window before calling Observe
 // again.
 func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *proxy.ObserveRequest_Match, extract *proxy.ObserveRequest_Extract, addr string, events chan *tapPb.TapEvent) {
-	tapAddr := fmt.Sprintf("%s:%d", addr, s.tapPort)
+	strPort := strconv.Itoa(int(s.tapPort))
+	tapAddr := net.JoinHostPort(addr, strPort)
 	log.Infof("Establishing tap on %s", tapAddr)
 	conn, err := grpc.DialContext(ctx, tapAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {

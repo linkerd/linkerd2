@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/prometheus/common/model"
@@ -90,8 +90,8 @@ metadata:
 			}
 
 			v := K8sValues(ctx, k8sAPI, tc.namespace)
-			if !reflect.DeepEqual(v, tc.expected) {
-				t.Fatalf("K8sValues returned: %+v, expected: %+v", v, tc.expected)
+			if diff := deep.Equal(v, tc.expected); diff != nil {
+				t.Fatalf("K8sValues %v", diff)
 			}
 		})
 	}
@@ -136,8 +136,8 @@ func TestPromValues(t *testing.T) {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			v := PromValues(&prometheus.MockProm{Res: tc.promRes}, tc.namespace)
-			if !reflect.DeepEqual(v, tc.expected) {
-				t.Fatalf("PromValues returned: %+v, expected: %+v", v, tc.expected)
+			if diff := deep.Equal(v, tc.expected); diff != nil {
+				t.Fatalf("PromValues %v", diff)
 			}
 		})
 	}
@@ -174,8 +174,8 @@ func TestMergeValues(t *testing.T) {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			v := MergeValues(tc.v1, tc.v2)
-			if !reflect.DeepEqual(v, tc.expected) {
-				t.Fatalf("MergeValues returned: %+v, expected: %+v", v, tc.expected)
+			if diff := deep.Equal(v, tc.expected); diff != nil {
+				t.Fatalf("MergeValues %v", diff)
 			}
 		})
 	}
@@ -200,7 +200,7 @@ func TestSend(t *testing.T) {
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(
 				func(w http.ResponseWriter, r *http.Request) {
-					if !reflect.DeepEqual(r.URL.Query(), tc.v) {
+					if diff := deep.Equal(r.URL.Query(), tc.v); diff != nil {
 						t.Fatalf("Send queried for: %+v, expected: %+v", r.URL.Query(), tc.v)
 					}
 					w.Write([]byte(`{"stable":"stable-a.b.c","edge":"edge-d.e.f"}`))
@@ -209,8 +209,8 @@ func TestSend(t *testing.T) {
 			defer ts.Close()
 
 			err := send(ts.Client(), ts.URL, tc.v)
-			if !reflect.DeepEqual(err, tc.err) {
-				t.Fatalf("Send returned: %+v, expected: %+v", err, tc.err)
+			if diff := deep.Equal(err, tc.err); diff != nil {
+				t.Fatalf("Send: %+v", diff)
 			}
 		})
 	}

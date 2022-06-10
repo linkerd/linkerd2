@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"reflect"
 	"strconv"
 	"testing"
 
+	"github.com/go-test/deep"
 	proxy "github.com/linkerd/linkerd2-proxy-api/go/tap"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -446,9 +446,8 @@ status:
 				if !ok {
 					t.Fatalf("FromIncomingContext failed given: %+v", mockProxyTapServer.ctx)
 				}
-
-				if !reflect.DeepEqual(md.Get(pkgK8s.RequireIDHeader), []string{exp.requireID}) {
-					t.Fatalf("Unexpected l5d-require-id header [%+v] expected [%+v]", md.Get(pkgK8s.RequireIDHeader), []string{exp.requireID})
+				if diff := deep.Equal(md.Get(pkgK8s.RequireIDHeader), []string{exp.requireID}); diff != nil {
+					t.Fatalf("Unexpected l5d-require-id header: %+v", diff)
 				}
 			}
 
@@ -673,8 +672,8 @@ status:
 				t.Fatalf("Error parsing IP %s: %s", exp.requestedIP, err)
 			}
 			s.hydrateIPLabels(ctx, ip, labels)
-			if !reflect.DeepEqual(labels, exp.labels) {
-				t.Fatalf("Unexpected labels: [%#v], expected: [%#v]", labels, exp.labels)
+			if diff := deep.Equal(labels, exp.labels); diff != nil {
+				t.Fatalf("Unexpected labels: %+v", diff)
 			}
 		})
 	}

@@ -67,8 +67,8 @@ KUBECONFIG_FILE_NAME=${KUBECONFIG_FILE_NAME:-ZZZ-linkerd-cni-kubeconfig}
 # file will be removed.
 cleanup() {
   # First, kill 'inotifywait' so we don't process any DELETE/CREATE events
-  if [ -n "$(pgrep inotifywait)" ]; then
-    echo "Sending SIGKILL to inotifywait"
+  if [ "$(pgrep inotifywait)" ]; then
+    echo 'Sending SIGKILL to inotifywait'
     kill -s KILL "$(pgrep inotifywait)"
   fi
 
@@ -77,7 +77,7 @@ cleanup() {
   # Find all conflist files and print them out using a NULL separator instead of
   # writing each file in a new line. We will subsequently read each string and
   # attempt to rm linkerd config from it using jq helper.
-  local cni_data=""
+  local cni_data=''
   find "${HOST_CNI_NET}" -maxdepth 1 -type f \( -iname '*conflist' \) -print0 |
     while read -r -d $'\0' file; do
       echo "Removing linkerd-cni config from $file"
@@ -139,7 +139,7 @@ create_cni_conf() {
   if [ -e "${CNI_NETWORK_CONFIG_FILE}" ]; then
     echo "Using CNI config template from ${CNI_NETWORK_CONFIG_FILE}."
     cp "${CNI_NETWORK_CONFIG_FILE}" "${TMP_CONF}"
-  elif [ "${CNI_NETWORK_CONFIG}" != "" ]; then
+  elif [ "${CNI_NETWORK_CONFIG}" ]; then
     echo 'Using CNI config template from CNI_NETWORK_CONFIG environment variable.'
     cat >"${TMP_CONF}" <<EOF
 ${CNI_NETWORK_CONFIG}
@@ -219,11 +219,11 @@ EOF
 }
 
 install_cni_conf() {
-  local cni_conf_path="$1"
+  local cni_conf_path=$1
  
   create_cni_conf
-  local tmp_data=""
-  local conf_data=""
+  local tmp_data=''
+  local conf_data=''
   if [ -e "${cni_conf_path}" ]; then
    # Add the linkerd-cni plugin to the existing list
    tmp_data=$(cat "${TMP_CONF}")
@@ -233,7 +233,7 @@ install_cni_conf() {
 
   # If the old config filename ends with .conf, rename it to .conflist, because it has changed to be a list
   filename=${cni_conf_path##*/}
-  extension="${filename##*.}"
+  extension=${filename##*.}
   if [ "${filename}" != '01-linkerd-cni.conf' ] && [ "${extension}" = 'conf' ]; then
    echo "Renaming ${cni_conf_path} extension to .conflist"
    cni_conf_path="${cni_conf_path}list"
@@ -258,15 +258,15 @@ install_cni_conf() {
 # Based on the changed file and event type, sync() might re-install the CNI
 # plugin's configuration file.
 sync() {
-  local filename="$1"
-  local ev="$2"
+  local filename=$1
+  local ev=$2
   local filepath="${HOST_CNI_NET}/$filename"
 
-  local prev_sha="$3"
+  local prev_sha=$3
 
   local config_file_count
   local new_sha
-  if [ "$ev" = "DELETE" ]; then
+  if [ "$ev" = 'DELETE' ]; then
     # When the event type is 'DELETE', we check to see if there are any `*conf` or `*conflist`
     # files on the host's filesystem. If none are present, we install in
     # 'interface' mode, using our own CNI config file.
@@ -275,11 +275,11 @@ sync() {
       echo "No active CNI configuration file found after $ev event; re-installing in \"interface\" mode"
       install_cni_conf "${DEFAULT_CNI_CONF_PATH}"
     fi
-  elif [ "$ev" = "CREATE" ]; then
+  elif [ "$ev" = 'CREATE' ]; then
     # When the event type is 'CREATE', we check the previously observed SHA (updated
     # with each file watch) and compare it against the new file's SHA. If they
     # differ, it means something has changed.
-    new_sha=$(sha256sum "${filepath}" | awk '{print $1}')
+    new_sha=$(sha256sum "${filepath}" | while read -r s _; do echo "$s"; done)
     if [ "$new_sha" != "$prev_sha" ]; then
       # Create but don't rm old one since we don't know if this will be configured
       # to run as _the_ cni plugin.
@@ -309,7 +309,7 @@ monitor() {
         # When file exists (i.e we didn't deal with a DELETE ev)
         # then calculate its sha to be used the next turn.
         if [ -e "$directory/$filename" ]; then
-          cni_conf_sha="$(sha256sum "$directory/$filename" | awk '{print $1}')"
+          cni_conf_sha="$(sha256sum "$directory/$filename" | while read -r s _; do echo "$s"; done)"
         fi
       fi
     done
@@ -324,7 +324,7 @@ install_cni_bin
 # Install CNI configuration. If we have an existing CNI configuration file (*.conflist or *.conf) that is not linkerd's,
 # then append our configuration to that file. Otherwise, if no CNI config files
 # are present, install our stand-alone config file.
-config_file_count=$(find "${HOST_CNI_NET}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | grep -v "linkerd" | sort | wc -l)
+config_file_count=$(find "${HOST_CNI_NET}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | grep -v linkerd | sort | wc -l)
 if [ "$config_file_count" -eq 0 ]; then
   echo "No active CNI configuration files found; installing in \"interface\" mode in ${DEFAULT_CNI_CONF_PATH}"
   install_cni_conf "${DEFAULT_CNI_CONF_PATH}"
@@ -339,7 +339,7 @@ fi
 # Compute SHA for first config file found; this will be updated after every iteration.
 # First config file is likely to be chosen as the de facto CNI config by the
 # host.
-cni_conf_sha="$(sha256sum "$(find "${HOST_CNI_NET}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | sort | head -n 1)" | awk '{print $1}')"
+cni_conf_sha="$(sha256sum "$(find "${HOST_CNI_NET}" -maxdepth 1 -type f \( -iname '*conflist' -o -iname '*conf' \) | sort | head -n 1)" | while read -r s _; do echo "$s"; done)"
 
 # Watch in bg so we can receive interrupt signals through 'trap'. From 'man
 # bash': 

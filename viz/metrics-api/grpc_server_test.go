@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -379,19 +379,19 @@ status:
 
 			mProm := prometheus.MockProm{Res: exp.promRes}
 
-			fakeGrpcServer := newGrpcServer(
-				&mProm,
-				k8sAPI,
-				"linkerd",
-				"mycluster.local",
-				[]string{},
-			)
+			fakeGrpcServer := grpcServer{
+				prometheusAPI:       &mProm,
+				k8sAPI:              k8sAPI,
+				controllerNamespace: "linkerd",
+				clusterDomain:       "mycluster.local",
+				ignoredNamespaces:   []string{},
+			}
 
 			k8sAPI.Sync(nil)
 
 			rsp, err := fakeGrpcServer.ListPods(context.TODO(), exp.req)
-			if !reflect.DeepEqual(err, exp.err) {
-				t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
+			if diff := deep.Equal(err, exp.err); diff != nil {
+				t.Fatalf("%+v", diff)
 			}
 
 			if !listPodResponsesEqual(exp.res, rsp) {
@@ -480,13 +480,13 @@ metadata:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			fakeGrpcServer := newGrpcServer(
-				&prometheus.MockProm{},
-				k8sAPI,
-				"linkerd",
-				"mycluster.local",
-				[]string{},
-			)
+			fakeGrpcServer := grpcServer{
+				prometheusAPI:       &prometheus.MockProm{},
+				k8sAPI:              k8sAPI,
+				controllerNamespace: "linkerd",
+				clusterDomain:       "mycluster.local",
+				ignoredNamespaces:   []string{},
+			}
 
 			k8sAPI.Sync(nil)
 

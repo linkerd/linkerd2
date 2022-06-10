@@ -501,6 +501,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - -controller-namespace=linkerd
@@ -1248,7 +1249,6 @@ spec:
         - -cluster-domain=cluster.local
         - -grafana-addr=grafana.grafana:3000
         - -controller-namespace=linkerd
-        - -viz-namespace=linkerd-viz
         - -log-level=debug
         - -log-format=plain
         - -enforced-host=^(localhost|127\.0\.0\.1|web\.linkerd-viz\.svc\.cluster\.local|web\.linkerd-viz\.svc|\[::1\])(:\d+)?$

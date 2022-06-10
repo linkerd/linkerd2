@@ -35,7 +35,7 @@ type testCase struct {
 	scChecks  []check
 }
 
-type check func(metrics string) error
+type check func(metrics, ns string) error
 
 func checks(c ...check) []check { return c }
 
@@ -77,36 +77,37 @@ func TestOpaquePortsCalledByServiceTarget(t *testing.T) {
 			ServiceCookerOpaquePodTargetHost:         serviceName(opaquePodApp),
 			ServiceCookerOpaqueUnmeshedSVCTargetHost: serviceName(opaqueUnmeshedSvcApp),
 		}
-		if err := deployClients(opaquePortsNs, tmplArgs); err != nil {
+		if err := deployTemplate(opaquePortsNs, opaquePortsClientTemplate, tmplArgs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy client pods", err)
 		}
+		waitForClientDeploymentReady(t, opaquePortsNs)
 
 		runTests(ctx, t, opaquePortsNs, []testCase{
 			{
 				name:   "calling a meshed service when opaque annotation is on receiving pod",
 				scName: opaquePodSC,
 				scChecks: checks(
-					hasNoOutbondHTTPRequest,
+					hasNoOutboundHTTPRequest,
 					hasOutboundTCPWithTLSAndNoAuthority,
 				),
 				appName:   opaquePodApp,
-				appChecks: checks(hasInboundTCPTraffic),
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
 			},
 			{
-				name:   "calling a meshed service when opaque annotation is on calling pod",
+				name:   "calling a meshed service when opaque annotation is on receiving service",
 				scName: opaqueSvcSC,
 				scChecks: checks(
-					hasNoOutbondHTTPRequest,
+					hasNoOutboundHTTPRequest,
 					hasOutboundTCPWithTLSAndAuthority,
 				),
 				appName:   opaqueSvcApp,
-				appChecks: checks(hasInboundTCPTraffic),
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
 			},
 			{
-				name:   "calling an unmeshed service",
+				name:   "calling an unmeshed service when opaque annotation is on service",
 				scName: opaqueUnmeshedSvcSC,
 				scChecks: checks(
-					hasNoOutbondHTTPRequest,
+					hasNoOutboundHTTPRequest,
 					hasOutboundTCPWithAuthorityAndNoTLS,
 				),
 			},
@@ -128,36 +129,40 @@ func TestOpaquePortsCalledByPodTarget(t *testing.T) {
 			testutil.AnnotatedFatal(t, "failed to fetch pod IPs", err)
 		}
 
-		if err := deployClients(opaquePortsNs, tmplArgs); err != nil {
+		if err := deployTemplate(opaquePortsNs, opaquePortsClientTemplate, tmplArgs); err != nil {
 			testutil.AnnotatedFatal(t, "failed to deploy client pods", err)
 		}
+		waitForClientDeploymentReady(t, opaquePortsNs)
+
 		runTests(ctx, t, opaquePortsNs, []testCase{
 			{
 				name:   "calling a meshed service when opaque annotation is on receiving pod",
 				scName: opaquePodSC,
 				scChecks: checks(
-					hasNoOutbondHTTPRequest,
+					hasNoOutboundHTTPRequest,
 					hasOutboundTCPWithTLSAndNoAuthority,
 				),
 				appName:   opaquePodApp,
-				appChecks: checks(hasInboundTCPTraffic),
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
 			},
 			{
-				name:   "calling a meshed service when opaque annotation is on calling pod",
+				name:   "calling a meshed service when opaque annotation is on receiving service",
 				scName: opaqueSvcSC,
 				scChecks: checks(
-					hasNoOutbondHTTPRequest,
+					// We call pods directly, so annotation on a service is ignored.
+					hasOutboundHTTPRequestWithTLS,
 					// No authority here, because we are calling the pod directly.
 					hasOutboundTCPWithTLSAndNoAuthority,
 				),
 				appName:   opaqueSvcApp,
-				appChecks: checks(hasInboundTCPTraffic),
+				appChecks: checks(hasInboundTCPTrafficWithTLS),
 			},
 			{
 				name:   "calling an unmeshed service",
 				scName: opaqueUnmeshedSvcSC,
 				scChecks: checks(
-					hasNoOutbondHTTPRequest,
+					// We call pods directly, so annotation on a service is ignored.
+					hasOutboundHTTPRequestNoTLS,
 					// No authority here, because we are calling the pod directly.
 					hasOutboundTCPWithNoTLSAndNoAuthority,
 				),
@@ -177,6 +182,23 @@ func waitForAppDeploymentReady(t *testing.T, opaquePortsNs string) {
 			Replicas:  1,
 		},
 		opaqueUnmeshedSvcPod: {
+			Namespace: opaquePortsNs,
+			Replicas:  1,
+		},
+	})
+}
+
+func waitForClientDeploymentReady(t *testing.T, opaquePortsNs string) {
+	TestHelper.WaitRollout(t, map[string]testutil.DeploySpec{
+		opaquePodSC: {
+			Namespace: opaquePortsNs,
+			Replicas:  1,
+		},
+		opaqueSvcSC: {
+			Namespace: opaquePortsNs,
+			Replicas:  1,
+		},
+		opaqueUnmeshedSvcSC: {
 			Namespace: opaquePortsNs,
 			Replicas:  1,
 		},
@@ -209,13 +231,13 @@ func runTests(ctx context.Context, t *testing.T, ns string, tcs []testCase) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := TestHelper.RetryFor(30*time.Second, func() error {
 				if err := checkPodMetrics(ctx, ns, tc.scName, tc.scChecks); err != nil {
-					return fmt.Errorf("failed to check metrics for client pod:%w", err)
+					return fmt.Errorf("failed to check metrics for client pod: %w", err)
 				}
 				if tc.appName == "" {
 					return nil
 				}
 				if err := checkPodMetrics(ctx, ns, tc.appName, tc.appChecks); err != nil {
-					return fmt.Errorf("failed to check metrics for app pod:%w", err)
+					return fmt.Errorf("failed to check metrics for app pod: %w", err)
 				}
 				return nil
 			})
@@ -239,8 +261,8 @@ func checkPodMetrics(ctx context.Context, opaquePortsNs string, podAppLabel stri
 		return fmt.Errorf("error getting metrics for pod %q: %w", pods[0].Name, err)
 	}
 	for _, check := range checks {
-		if err := check(metrics); err != nil {
-			return fmt.Errorf("validation of client pod metrics failed: %w", err)
+		if err := check(metrics, opaquePortsNs); err != nil {
+			return fmt.Errorf("validation of pod metrics failed: %w", err)
 		}
 	}
 	return nil
@@ -252,10 +274,6 @@ func deployApplications(ns string) error {
 		return fmt.Errorf("failed apply deployment file %q: %w", out, err)
 	}
 	return nil
-}
-
-func deployClients(ns string, templateArgs clientTemplateArgs) error {
-	return deployTemplate(ns, opaquePortsClientTemplate, templateArgs)
 }
 
 func deployTemplate(ns string, tmpl *template.Template, templateArgs interface{}) error {

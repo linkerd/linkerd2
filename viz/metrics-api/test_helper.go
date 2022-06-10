@@ -3,9 +3,9 @@ package api
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sort"
 
+	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
@@ -304,13 +304,13 @@ func newMockGrpcServer(exp expectedStatRPC) (*prometheus.MockProm, *grpcServer, 
 	}
 
 	mockProm := &prometheus.MockProm{Res: exp.mockPromResponse}
-	fakeGrpcServer := newGrpcServer(
-		mockProm,
-		k8sAPI,
-		"linkerd",
-		"cluster.local",
-		[]string{},
-	)
+	fakeGrpcServer := &grpcServer{
+		prometheusAPI:       mockProm,
+		k8sAPI:              k8sAPI,
+		controllerNamespace: "linkerd",
+		clusterDomain:       "cluster.local",
+		ignoredNamespaces:   []string{},
+	}
 
 	k8sAPI.Sync(nil)
 
@@ -328,9 +328,8 @@ func (exp expectedStatRPC) verifyPromQueries(mockProm *prometheus.MockProm) erro
 			return nil
 		}
 
-		if !reflect.DeepEqual(exp.expectedPrometheusQueries, mockProm.QueriesExecuted) {
-			return fmt.Errorf("Prometheus queries incorrect. \nExpected:\n%+v \nGot:\n%+v",
-				exp.expectedPrometheusQueries, mockProm.QueriesExecuted)
+		if diff := deep.Equal(exp.expectedPrometheusQueries, mockProm.QueriesExecuted); diff != nil {
+			return fmt.Errorf("Prometheus queries incorrect: %+v", diff)
 		}
 	}
 	return nil

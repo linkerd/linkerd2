@@ -3,72 +3,231 @@ package opaqueports
 import (
 	"fmt"
 	"regexp"
+
+	"github.com/linkerd/linkerd2/testutil/prommatch"
 )
 
 var (
-	tcpMetricRE = regexp.MustCompile(
-		`tcp_open_total\{direction="inbound",peer="src",target_addr="[0-9\.]+:[0-9]+",target_ip="[0-9\.]+",target_port="[0-9]+",tls="true",client_id="default\.linkerd-opaque-ports[\-a-z]+-test\.serviceaccount\.identity\.linkerd\.cluster\.local",srv_kind="default",srv_name="all-unauthenticated".*} [0-9]+`,
-	)
-	tcpMetricOutUnmeshedAuthorityRE = regexp.MustCompile(
-		`tcp_open_total\{direction="outbound",peer="dst",authority="[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+",target_addr="[0-9\.]+:[0-9]+",target_ip="[0-9\.]+",target_port="[0-9]+",tls="no_identity",no_tls_reason="not_provided_by_service_discovery",.*\} [0-9]+`,
-	)
-	tcpMetricOutUnmeshedNoAuthorityRE = regexp.MustCompile(
-		`tcp_open_total\{direction="outbound",peer="dst",target_addr="[0-9\.]+:[0-9]+",target_ip="[0-9\.]+",target_port="[0-9]+",tls="no_identity",no_tls_reason="not_provided_by_service_discovery",.*\} [0-9]+`,
-	)
-	httpRequestTotalMetricRE = regexp.MustCompile(
-		`request_total\{direction="outbound",authority="[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:8080",target_addr="[0-9\.]+:8080",target_ip="[0-9\.]+",target_port="8080",tls="true",.*`,
-	)
-	httpRequestTotalUnmeshedRE = regexp.MustCompile(
-		`request_total\{direction="outbound",authority="[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:8080",target_addr="[0-9\.]+:8080",target_ip="[0-9\.]+",target_port="8080",tls="no_identity",.*`,
-	)
-	tcpMetricOutboundMeshedNoAuthorityRE = regexp.MustCompile(
-		`tcp_open_total\{direction="outbound",peer="dst",target_addr="[0-9\.]+:8080",target_ip="[0-9\.]+",target_port="8080",tls="true",server_id="default.linkerd-opaque-ports[\-a-z]+\-test.serviceaccount.identity.linkerd.cluster.local",dst_control_plane_ns="linkerd".*`,
-	)
-	tcpMetricOutboundMeshedAuthorityRE = regexp.MustCompile(
-		`tcp_open_total\{direction="outbound",peer="dst",authority="[a-zA-Z\-]+\.linkerd-opaque-ports[\-a-z]+\-test\.svc.cluster\.local:8080",target_addr="[0-9\.]+:8080",target_ip="[0-9\.]+",target_port="8080",tls="true".*`,
-	)
+	addrRE      = regexp.MustCompile(`[0-9\.]+:[0-9]+`)
+	ipRE        = regexp.MustCompile(`[0-9\.]+`)
+	authorityRE = regexp.MustCompile(`[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+`)
 )
 
-func hasNoOutbondHTTPRequest(metrics string) error {
-	if httpRequestTotalMetricRE.MatchString(metrics) {
-		return fmt.Errorf("expected not to find HTTP outbound requests when pod is opaque\n%s", metrics)
+// hasNoOutboundHTTPRequest returns error if there is any
+// series matching request_total{direction="outbound"}
+func hasNoOutboundHTTPRequest(metrics, ns string) error {
+	m := prommatch.NewMatcher("request_total", prommatch.Labels{
+		"direction": prommatch.Equals("outbound"),
+	})
+	ok, err := m.HasMatchInString(metrics)
+	if err != nil {
+		return fmt.Errorf("failed to run a check of against the provided metrics: %w", err)
 	}
-	if httpRequestTotalUnmeshedRE.MatchString(metrics) {
-		return fmt.Errorf("expected not to find HTTP outbound requests when pod is opaque\n%s", metrics)
+	if ok {
+		return fmt.Errorf("expected not to find HTTP outbound requests \n%s", metrics)
 	}
 	return nil
 }
 
-func hasInboundTCPTraffic(metrics string) error {
-	if !tcpMetricRE.MatchString(metrics) {
+// hasOutboundHTTPRequestWithTLS checks there is a series matching:
+// request_total{
+//   direction="outbound",
+//   target_addr=~"[0-9\.]+:[0-9]+",
+//   target_ip=~"[0-9.]+",
+//   tls="true",
+//   dst_namespace="default.${ns}.serviceaccount.identity.linkerd.cluster.local",
+//   dst_serviceaccount="default"
+// }
+func hasOutboundHTTPRequestWithTLS(metrics, ns string) error {
+	m := prommatch.NewMatcher("request_total", prommatch.Labels{
+		"direction":          prommatch.Equals("outbound"),
+		"target_addr":        prommatch.Like(addrRE),
+		"target_ip":          prommatch.Like(ipRE),
+		"tls":                prommatch.Equals("true"),
+		"server_id":          prommatch.Equals(fmt.Sprintf("default.%s.serviceaccount.identity.linkerd.cluster.local", ns)),
+		"dst_namespace":      prommatch.Equals(ns),
+		"dst_serviceaccount": prommatch.Equals("default"),
+	},
+		prommatch.HasPositiveValue())
+	ok, err := m.HasMatchInString(metrics)
+	if err != nil {
+		return fmt.Errorf("failed to run a check of against the provided metrics: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("expected to find HTTP TLS outbound requests \n%s", metrics)
+	}
+	return nil
+}
+
+// hasOutboundHTTPRequestNoTLS checks there is a series matching:
+// request_total{
+//   direction="outbound",
+//   target_addr=~"[0-9\.]+:[0-9]+",
+//   target_ip=~"[0-9.]+",
+//   tls="no_identity",
+//   no_tls_reason="not_provided_by_service_discovery",
+//   dst_namespace="default.${ns}.serviceaccount.identity.linkerd.cluster.local",
+//   dst_serviceaccount="default"
+// }
+func hasOutboundHTTPRequestNoTLS(metrics, ns string) error {
+	m := prommatch.NewMatcher("request_total", prommatch.Labels{
+		"direction":          prommatch.Equals("outbound"),
+		"target_addr":        prommatch.Like(addrRE),
+		"target_ip":          prommatch.Like(ipRE),
+		"tls":                prommatch.Equals("no_identity"),
+		"no_tls_reason":      prommatch.Equals("not_provided_by_service_discovery"),
+		"dst_namespace":      prommatch.Equals(ns),
+		"dst_serviceaccount": prommatch.Equals("default"),
+	},
+		prommatch.HasPositiveValue())
+	ok, err := m.HasMatchInString(metrics)
+	if err != nil {
+		return fmt.Errorf("failed to run a check of against the provided metrics: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("expected to find HTTP non-TLS outbound requests\n%s", metrics)
+	}
+	return nil
+}
+
+// hasInboundTCPTrafficWithTLS checks there is a series matching:
+// tcp_open_total{
+//   direction="inbound",
+//   peer="src",
+//   tls="true",
+//   client_id="default.${ns}.serviceaccount.identity.linkerd.cluster.local",
+//   srv_kind="default",
+//   srv_name="all-unauthenticated",
+//   target_addr=~"[0-9\.]+:[0-9]+",
+//   target_ip=~"[0-9\.]+"
+// }
+func hasInboundTCPTrafficWithTLS(metrics, ns string) error {
+	m := prommatch.NewMatcher(
+		"tcp_open_total",
+		prommatch.Labels{
+			"direction":   prommatch.Equals("inbound"),
+			"peer":        prommatch.Equals("src"),
+			"tls":         prommatch.Equals("true"),
+			"client_id":   prommatch.Equals(fmt.Sprintf("default.%s.serviceaccount.identity.linkerd.cluster.local", ns)),
+			"srv_kind":    prommatch.Equals("default"),
+			"srv_name":    prommatch.Equals("all-unauthenticated"),
+			"target_addr": prommatch.Like(addrRE),
+			"target_ip":   prommatch.Like(ipRE),
+		},
+		prommatch.HasPositiveValue(),
+	)
+	ok, err := m.HasMatchInString(metrics)
+	if err != nil {
+		return fmt.Errorf("failed to run a check of against the provided metrics: %w", err)
+	}
+	if !ok {
 		return fmt.Errorf("failed to find expected metric for inbound TLS TCP traffic\n%s", metrics)
 	}
 	return nil
 }
 
-func hasOutboundTCPWithAuthorityAndNoTLS(metrics string) error {
-	if !tcpMetricOutUnmeshedAuthorityRE.MatchString(metrics) {
+// hasOutboundTCPWithAuthorityAndNoTLS checks there is a series matching:
+// tcp_open_total{
+//   direction="outbound",
+//   peer="dst",
+//   tls="no_identity",
+//   no_tls_reason="not_provided_by_service_discovery",
+//   authority=~"[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+"
+// }
+func hasOutboundTCPWithAuthorityAndNoTLS(metrics, ns string) error {
+	m := prommatch.NewMatcher("tcp_open_total", prommatch.Labels{
+		"direction":     prommatch.Equals("outbound"),
+		"peer":          prommatch.Equals("dst"),
+		"tls":           prommatch.Equals("no_identity"),
+		"no_tls_reason": prommatch.Equals("not_provided_by_service_discovery"),
+		"authority":     prommatch.Like(authorityRE),
+	},
+		prommatch.HasPositiveValue())
+	ok, err := m.HasMatchInString(metrics)
+	if err != nil {
+		return fmt.Errorf("failed to run a check of against the provided metrics: %w", err)
+	}
+	if !ok {
 		return fmt.Errorf("failed to find expected metric for outbound non-TLS TCP traffic\n%s", metrics)
 	}
 	return nil
 }
 
-func hasOutboundTCPWithNoTLSAndNoAuthority(metrics string) error {
-	if !tcpMetricOutUnmeshedNoAuthorityRE.MatchString(metrics) {
+// hasOutboundTCPWithNoTLSAndNoAuthority checks there is a series matching:
+// tcp_open_total{
+//   direction="outbound",
+//   peer="dst",
+//   tls="no_identity",
+//   no_tls_reason="not_provided_by_service_discovery",
+//   authority=""
+// }
+func hasOutboundTCPWithNoTLSAndNoAuthority(metrics, ns string) error {
+	m := prommatch.NewMatcher("tcp_open_total", prommatch.Labels{
+		"direction":     prommatch.Equals("outbound"),
+		"peer":          prommatch.Equals("dst"),
+		"tls":           prommatch.Equals("no_identity"),
+		"no_tls_reason": prommatch.Equals("not_provided_by_service_discovery"),
+		"authority":     prommatch.Absent(),
+	})
+	ok, err := m.HasMatchInString(metrics)
+	if err != nil {
+		return fmt.Errorf("failed to run a check of against the provided metrics: %w", err)
+	}
+	if !ok {
 		return fmt.Errorf("failed to find expected metric for outbound non-TLS TCP traffic\n%s", metrics)
 	}
 	return nil
 }
 
-func hasOutboundTCPWithTLSAndAuthority(metrics string) error {
-	if !tcpMetricOutboundMeshedAuthorityRE.MatchString(metrics) {
+// hasOutboundTCPWithTLSAndAuthority checks there is a series matching:
+// tcp_open_total{
+//   direction="outbound",
+//   peer="dst",
+//   tls="true",
+//   target_addr=~"[0-9\.]+:[0-9]+",
+//   authority=~"[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+"
+// }
+func hasOutboundTCPWithTLSAndAuthority(metrics, ns string) error {
+	m := prommatch.NewMatcher("tcp_open_total", prommatch.Labels{
+		"direction":   prommatch.Equals("outbound"),
+		"peer":        prommatch.Equals("dst"),
+		"tls":         prommatch.Equals("true"),
+		"target_addr": prommatch.Like(addrRE),
+		"authority":   prommatch.Like(authorityRE),
+	},
+		prommatch.HasPositiveValue())
+	ok, err := m.HasMatchInString(metrics)
+	if err != nil {
+		return fmt.Errorf("failed to run a check against the provided metrics: %w", err)
+	}
+	if !ok {
 		return fmt.Errorf("failed to find expected metric for outbound TLS TCP traffic\n%s", metrics)
 	}
 	return nil
 }
 
-func hasOutboundTCPWithTLSAndNoAuthority(metrics string) error {
-	if !tcpMetricOutboundMeshedNoAuthorityRE.MatchString(metrics) {
+// hasOutboundTCPWithTLSAndNoAuthority checks there is a series matching:
+// tcp_open_total{
+//   direction="outbound",
+//   peer="dst",
+//   tls="true",
+//   target_addr=~"[0-9\.]+:[0-9]+",
+//   authority=""
+// }
+func hasOutboundTCPWithTLSAndNoAuthority(metrics, ns string) error {
+	m := prommatch.NewMatcher("tcp_open_total", prommatch.Labels{
+		"direction":   prommatch.Equals("outbound"),
+		"peer":        prommatch.Equals("dst"),
+		"tls":         prommatch.Equals("true"),
+		"target_addr": prommatch.Like(addrRE),
+		"authority":   prommatch.Absent(),
+	},
+		prommatch.HasPositiveValue())
+	ok, err := m.HasMatchInString(metrics)
+	if err != nil {
+		return fmt.Errorf("failed to run a check of against the provided metrics: %w", err)
+	}
+	if !ok {
 		return fmt.Errorf("failed to find expected metric for outbound TLS TCP traffic\n%s", metrics)
 	}
 	return nil
