@@ -133,9 +133,7 @@ func decodeIPv6ToNetIP(ip *l5dNetPb.IPv6) net.IP {
 	b := make([]byte, 16)
 	binary.BigEndian.PutUint64(b[:8], ip.GetFirst())
 	binary.BigEndian.PutUint64(b[8:], ip.GetLast())
-	oBigInt := big.NewInt(0)
-	oBigInt.SetBytes(b)
-	return IntToIPv6(oBigInt)
+	return net.IP(b)
 }
 
 // IPToInt converts net.IP to bigInt
@@ -154,30 +152,3 @@ func IntToIPv4(intip *big.Int) net.IP {
 	return net.IP(ipByte)
 }
 
-// IntToIPv6 converts IPv6 bigInt into an IPv6 net.IP
-// This function can fix the bug if there is 0/: as the prefix of ipv6, such as ::1
-func IntToIPv6(intip *big.Int) net.IP {
-	result := net.IPv6zero
-	ipv6Bytes := intip.Bytes()
-	// It's possible for ipv6Bytes to be less than IPv6len bytes in size
-	if len(ipv6Bytes) < net.IPv6len {
-		buf := new(bytes.Buffer)
-		buf.Grow(net.IPv6len)
-		for i := len(ipv6Bytes); i < net.IPv6len; i++ {
-			if err := binary.Write(buf, binary.BigEndian, byte(0)); err != nil {
-				return nil
-			}
-		}
-		for _, b := range ipv6Bytes {
-			if err := binary.Write(buf, binary.BigEndian, b); err != nil {
-				return nil
-			}
-		}
-		ipv6Bytes = buf.Bytes()
-	}
-	index := copy(result, ipv6Bytes)
-	if index != net.IPv6len {
-		return nil
-	}
-	return result
-}
