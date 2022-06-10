@@ -1,7 +1,6 @@
 package addr
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"math/big"
