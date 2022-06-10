@@ -73,15 +73,17 @@ func Inject(linkerdNamespace string) webhook.Handler {
 		var parent *runtime.Object
 		var ownerKind string
 		if ownerRef := resourceConfig.GetOwnerRef(); ownerRef != nil {
-			objs, err := api.GetObjects(request.Namespace, ownerRef.Kind, ownerRef.Name, labels.Everything())
-			if err != nil {
-				log.Warnf("couldn't retrieve parent object %s-%s-%s; error: %s", request.Namespace, ownerRef.Kind, ownerRef.Name, err)
-			} else if len(objs) == 0 {
-				log.Warnf("couldn't retrieve parent object %s-%s-%s", request.Namespace, ownerRef.Kind, ownerRef.Name)
-			} else {
-				parent = &objs[0]
+			if api.KindSupported(ownerRef.Kind) {
+				objs, err := api.GetObjects(request.Namespace, ownerRef.Kind, ownerRef.Name, labels.Everything())
+				if err != nil {
+					log.Warnf("couldn't retrieve parent object %s-%s-%s; error: %s", request.Namespace, ownerRef.Kind, ownerRef.Name, err)
+				} else if len(objs) == 0 {
+					log.Warnf("couldn't retrieve parent object %s-%s-%s", request.Namespace, ownerRef.Kind, ownerRef.Name)
+				} else {
+					parent = &objs[0]
+				}
+				ownerKind = strings.ToLower(ownerRef.Kind)
 			}
-			ownerKind = strings.ToLower(ownerRef.Kind)
 		}
 
 		configLabels := configToPrometheusLabels(resourceConfig)
