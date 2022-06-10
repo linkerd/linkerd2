@@ -31,6 +31,7 @@ import (
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
 )
 
@@ -1175,14 +1176,55 @@ func ToWholeCPUCores(q k8sResource.Quantity) (int64, error) {
 	return 0, fmt.Errorf("Could not parse cores: %s", q.String())
 }
 
+// getPodInboundPorts will return a string-formatted list of ports (in ascending
+// order) based on a PodSpec object. The function will check each container in
+// the pod and extract any defined ports. Additionally, it will also extract any
+// healthcheck target probes, provided the probe is an HTTP healthcheck
 func getPodInboundPorts(podSpec *corev1.PodSpec) string {
-	ports := []string{}
+	ports := make(map[int32]struct{})
 	if podSpec != nil {
 		for _, container := range podSpec.Containers {
 			for _, port := range container.Ports {
-				ports = append(ports, strconv.Itoa(int(port.ContainerPort)))
+				ports[port.ContainerPort] = struct{}{}
+			}
+
+			if readiness := container.ReadinessProbe; readiness != nil {
+				if port, ok := getProbePort(readiness); ok {
+					ports[port] = struct{}{}
+				}
+			}
+
+			if liveness := container.LivenessProbe; liveness != nil {
+				if port, ok := getProbePort(liveness); ok {
+					ports[port] = struct{}{}
+				}
 			}
 		}
 	}
-	return strings.Join(ports, ",")
+
+	portList := make([]string, 0, len(ports))
+	for port := range ports {
+		portList = append(portList, strconv.Itoa(int(port)))
+	}
+
+	// sort slice in ascending order
+	sort.Strings(portList)
+	return strings.Join(portList, ",")
+}
+
+// getProbePort takes the healthcheck probe spec of a container and returns the
+// target port if the probe is configured to do an HTTPGet. The function returns
+// the probe's target port and a success value (if successful)
+func getProbePort(probe *corev1.Probe) (int32, bool) {
+	if probe.HTTPGet != nil {
+		// HTTPGet probes use a named port, in this case, do not return it. A
+		// named port must be declared in the container's own ports; if probe uses
+		// a named port it is likely the port has been seen before.
+		switch probe.HTTPGet.Port.Type {
+		case intstr.Int:
+			return probe.HTTPGet.Port.IntVal, true
+		}
+	}
+
+	return 0, false
 }
