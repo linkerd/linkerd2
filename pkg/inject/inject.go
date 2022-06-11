@@ -26,7 +26,6 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -492,7 +491,7 @@ func (conf *ResourceConfig) getFreshWorkloadObj() runtime.Object {
 	case k8s.Namespace:
 		return &corev1.Namespace{}
 	case k8s.CronJob:
-		return &batchv1beta1.CronJob{}
+		return &batchv1.CronJob{}
 	case k8s.Service:
 		return &corev1.Service{}
 	}
@@ -625,7 +624,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 			conf.workload.Meta.Annotations = map[string]string{}
 		}
 
-	case *batchv1beta1.CronJob:
+	case *batchv1.CronJob:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
@@ -811,7 +810,7 @@ func (conf *ResourceConfig) injectPodAnnotations(values *podPatch) {
 	// ObjectMetaAnnotations.Annotations is nil for new empty structs, but we always initialize
 	// it to an empty map in parse() above, so we follow suit here.
 	emptyMeta := &metav1.ObjectMeta{Annotations: map[string]string{}}
-	// Cronjobs in batch/v1beta1 might have an empty `spec.jobTemplate.spec.template.metadata`
+	// Cronjobs might have an empty `spec.jobTemplate.spec.template.metadata`
 	// field so we make sure to create it if needed, before attempting adding annotations
 	values.AddRootMetadata = reflect.DeepEqual(conf.pod.meta, emptyMeta)
 	values.AddRootAnnotations = len(conf.pod.meta.Annotations) == 0

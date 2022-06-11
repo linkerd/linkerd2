@@ -11,7 +11,7 @@ import (
 
 	spscheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
-	discovery "k8s.io/api/discovery/v1beta1"
+	discovery "k8s.io/api/discovery/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apiextensionsfake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
@@ -95,7 +95,7 @@ func NewFakeClientSets(configs ...string) (
 		}
 	}
 
-	endpointslice, err := ToRuntimeObject(`apiVersion: discovery.k8s.io/v1beta1
+	endpointslice, err := ToRuntimeObject(`apiVersion: discovery.k8s.io/v1
 kind: EndpointSlice
 metadata:
   name: kubernetes
