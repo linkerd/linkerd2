@@ -121,13 +121,6 @@ spec:
                     Supersedes the `config.linkerd.io/opaque-ports` annotation.
                   type: string
                   default: unknown
-                  enum:
-                    - unknown
-                    - HTTP/1
-                    - HTTP/2
-                    - gRPC
-                    - opaque
-                    - TLS
       additionalPrinterColumns:
       - name: Port
         type: string
