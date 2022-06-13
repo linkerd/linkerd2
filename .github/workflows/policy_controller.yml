@@ -98,7 +98,7 @@ jobs:
     strategy:
       matrix:
         k8s:
-          - v1.20
+          - v1.21
           - v1.23
     name: Policy controller integration (k8s ${{ matrix.k8s }})
 
