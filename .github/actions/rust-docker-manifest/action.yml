@@ -1,42 +1,33 @@
 name: Rust Docker Manifest
-description: Action to create and unify docker image manifests for rust multiarch builds
+description: Creates a unified docker image manifest for rust multiarch builds
+
 inputs:
-  docker-registry:
-    description: The docker registry used to tag the images
-    required: false
-    default: cr.l5d.io/linkerd
   docker-ghcr-username:
     description: GH username under which to push images
-    required: false
+    required: true
   docker-ghcr-pat:
     description: GH PAT for docker-ghcr-username
-    required: false
+    required: true
   component:
     description: Image to build
     required: true
+  tag:
+    description: Docker image tag
+    required: true
+
 runs:
   using: composite
   steps:
-  - name: Set environment variables from scripts
-    run: |
-      echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
-      echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
-      echo "DOCKER_REGISTRY=${{ inputs.docker-registry }}" >> $GITHUB_ENV
-  - name: Create multiarch manifest
-    run: |
-      docker manifest create $DOCKER_REGISTRY/${{ inputs.component }}:$TAG \
-          $DOCKER_REGISTRY/${{ inputs.component }}:$TAG-amd64 \
-          $DOCKER_REGISTRY/${{ inputs.component }}:$TAG-arm64 \
-          $DOCKER_REGISTRY/${{ inputs.component }}:$TAG-arm
-  - name: Annotate multiarch manifest
-    run: |
-      docker manifest annotate $DOCKER_REGISTRY/${{ inputs.component }}:$TAG \
-          $DOCKER_REGISTRY/${{ inputs.component }}:${TAG}-amd64 --os=linux --arch=amd64
-      docker manifest annotate $DOCKER_REGISTRY/${{ inputs.component }}:$TAG \
-          $DOCKER_REGISTRY/${{ inputs.component }}:${TAG}-arm64 --os=linux --arch=arm64
-      docker manifest annotate $DOCKER_REGISTRY/${{ inputs.component }}:$TAG \
-          $DOCKER_REGISTRY/${{ inputs.component }}:${TAG}-arm --os=linux --arch=arm
-  - name: Push multiarch manifest
-    run: |
-      echo "${{ secrets.DOCKER_GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.DOCKER_GHCR_USERNAME }}" --password-stdin
-      docker manifest push $DOCKER_REGISTRY/${{ inputs.component }}:$TAG
+    - uses: docker/login-action@49ed152c8eca782a232dede0303416e8f356c37b
+      with:
+        registry: ghcr.io
+        username: ${{ inputs.docker-ghcr-username }}
+        password: ${{ inputs.docker-ghcr-pat }}
+    - name: Create multiarch manifest
+      run: |
+        img=ghcr.io/${{ github.repository_owner }}/${{ inputs.component }}:${{ inputs.tag }}
+        docker manifest create $img ${img}-amd64 ${img}-arm64 ${img}-arm
+        for arch in amd64 arm64 arm ; do
+          docker manifest annotate $img ${img}-${arch} --os=linux --arch=${arch}
+        done
+    - run: docker manifest push ghcr.io/${{ github.repository_owner }}/${{ inputs.component }}:${{ inputs.tag }}

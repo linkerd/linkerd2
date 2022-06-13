@@ -36,7 +36,6 @@ jobs:
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - uses: ./.github/actions/docker-build
       with:
-        docker-registry: ${{ env.DOCKER_REGISTRY }}
         docker-target: multi-arch
         docker-push: 1
         docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
@@ -82,14 +81,18 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+    - name: Set tag
+      run: |
+        . bin/_tag.sh
+        echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
     - uses: ./.github/actions/rust-docker-build
       with:
-        docker-registry: ${{ env.DOCKER_REGISTRY }}
         docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
         docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
         component: policy-controller
         component-path: ./policy-controller
         arch: ${{ matrix.arch }}
+        tag: ${{ env.TAG }}
     - name: Install Cosign
       uses: sigstore/cosign-installer@main
     - name: Sign the image with Cosign
@@ -110,12 +113,16 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+    - name: Set tag
+      run: |
+        . bin/_tag.sh
+        echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
     - uses: ./.github/actions/rust-docker-manifest
       with:
-        docker-registry: ${{ env.DOCKER_REGISTRY }}
         docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
         docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PATH }}
         component: policy-controller
+        tag: ${{ env.TAG }}
 
   windows_static_cli_tests:
     name: Static CLI tests (windows)
