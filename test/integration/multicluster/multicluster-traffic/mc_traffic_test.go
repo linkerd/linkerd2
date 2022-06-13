@@ -86,7 +86,7 @@ func TestGateways(t *testing.T) {
 			return errors.New("response is empty")
 		}
 		fields := strings.Fields(rows[1])
-		if len(fields) < 6 {
+		if len(fields) < 4 {
 			return fmt.Errorf("unexpected number of columns: %d", len(fields))
 		}
 		if fields[0] != "target" {

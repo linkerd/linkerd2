@@ -66,6 +66,11 @@ const (
 	// checks must be added first.
 	LinkerdPreInstallChecks CategoryID = "pre-kubernetes-setup"
 
+	// LinkerdCRDChecks adds checks to validate that the control plane CRDs
+	// exist. These checks can be run after installing the control plane CRDs
+	// but before installing the control plane itself.
+	LinkerdCRDChecks CategoryID = "linkerd-crd"
+
 	// LinkerdConfigChecks enabled by `linkerd check config`
 
 	// LinkerdConfigChecks adds a series of checks to validate that the Linkerd
@@ -629,6 +634,21 @@ func (hc *HealthChecker) allCategories() []*Category {
 			false,
 		),
 		NewCategory(
+			LinkerdCRDChecks,
+			[]Checker{
+				{
+					description:   "control plane CustomResourceDefinitions exist",
+					hintAnchor:    "l5d-existence-crd",
+					fatal:         true,
+					retryDeadline: hc.RetryDeadline,
+					check: func(ctx context.Context) error {
+						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, hc.CRDManifest)
+					},
+				},
+			},
+			false,
+		),
+		NewCategory(
 			LinkerdControlPlaneExistenceChecks,
 			[]Checker{
 				{
@@ -696,27 +716,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 					},
 				},
 				{
-					description: "cluster networks can be verified",
-					hintAnchor:  "l5d-cluster-networks-verified",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						nodes, err := hc.kubeAPI.GetNodes(ctx)
-						if err != nil {
-							return err
-						}
-						var warningNodes []string
-						for _, node := range nodes {
-							if node.Spec.PodCIDR == "" {
-								warningNodes = append(warningNodes, node.Name)
-							}
-						}
-						if len(warningNodes) > 0 {
-							return fmt.Errorf("the following nodes do not expose a podCIDR:\n\t%s", strings.Join(warningNodes, "\n\t"))
-						}
-						return nil
-					},
-				},
-				{
 					description: "cluster networks contains all node podCIDRs",
 					hintAnchor:  "l5d-cluster-networks-cidr",
 					check: func(ctx context.Context) error {
@@ -727,6 +726,13 @@ func (hc *HealthChecker) allCategories() []*Category {
 							return err
 						}
 						return hc.checkClusterNetworks(ctx)
+					},
+				},
+				{
+					description: "cluster networks contains all pods",
+					hintAnchor:  "l5d-cluster-networks-pods",
+					check: func(ctx context.Context) error {
+						return hc.checkClusterNetworksContainAllPods(ctx)
 					},
 				},
 			},
@@ -1876,6 +1882,43 @@ func cluterNetworksContainCIDR(clusterIPNets []*net.IPNet, podIPNet *net.IPNet, 
 		}
 	}
 	return false
+}
+
+func clusterNetworksContainPod(clusterIPNets []*net.IPNet, pod corev1.Pod) bool {
+	for _, clusterIPNet := range clusterIPNets {
+		if clusterIPNet.Contains(net.ParseIP(pod.Status.PodIP)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (hc *HealthChecker) checkClusterNetworksContainAllPods(ctx context.Context) error {
+	clusterNetworks := strings.Split(hc.linkerdConfig.ClusterNetworks, ",")
+	clusterIPNets := make([]*net.IPNet, len(clusterNetworks))
+	var err error
+	for i, clusterNetwork := range clusterNetworks {
+		_, clusterIPNets[i], err = net.ParseCIDR(clusterNetwork)
+		if err != nil {
+			return err
+		}
+	}
+	pods, err := hc.kubeAPI.CoreV1().Pods(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, pod := range pods.Items {
+		if pod.Spec.HostNetwork {
+			continue
+		}
+		if len(pod.Status.PodIP) == 0 {
+			continue
+		}
+		if !clusterNetworksContainPod(clusterIPNets, pod) {
+			return fmt.Errorf("the Linkerd clusterNetworks [%q] do not include pod %s/%s (%s)", hc.linkerdConfig.ClusterNetworks, pod.Namespace, pod.Name, pod.Status.PodIP)
+		}
+	}
+	return nil
 }
 
 func (hc *HealthChecker) expectedRBACNames() []string {
