@@ -210,7 +210,7 @@
         },
         {
           "name": "LINKERD2_PROXY_INBOUND_PORTS",
-          "value": "80"
+          "value": "80,9090"
         },
         {
           "name": "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES",
