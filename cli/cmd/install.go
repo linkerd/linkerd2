@@ -148,7 +148,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 				return nil
 			}
 
-			return installControlPlane(cmd.Context(), k8sAPI, os.Stdout, values, flags, options)
+			return installControlPlane(cmd.Context(), k8sAPI, os.Stdout, values, flags, options, false)
 		},
 	}
 
@@ -191,7 +191,7 @@ func installCRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer) er
 	return renderCRDs(w)
 }
 
-func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, options valuespkg.Options) error {
+func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, options valuespkg.Options, dryRun bool) error {
 	err := flag.ApplySetFlags(values, flags)
 	if err != nil {
 		return err
@@ -218,7 +218,7 @@ func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Wr
 			return err
 		}
 
-		if !isRunAsRoot(valuesOverrides) {
+		if !dryRun && !isRunAsRoot(valuesOverrides) {
 			err = healthcheck.CheckNodesHaveNonDockerRuntime(ctx, k8sAPI)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
