@@ -31,7 +31,10 @@ func PublicAddressToString(addr *l5dNetPb.TcpAddress) string {
 func PublicIPToString(ip *l5dNetPb.IPAddress) string {
 	var netIP net.IP
 	if ip.GetIpv6() != nil {
-		netIP = decodeIPv6ToNetIP(ip.GetIpv6())
+		b := make([]byte, net.IPv6len)
+		binary.BigEndian.PutUint64(b[:8], ip.GetIpv6().GetFirst())
+		binary.BigEndian.PutUint64(b[8:], ip.GetIpv6().GetLast())
+		netIP = net.IP(b)
 	} else if ip.GetIpv4() != 0 {
 		netIP = decodeIPv4ToNetIP(ip.GetIpv4())
 	}
@@ -126,13 +129,6 @@ func decodeIPv4ToNetIP(ip uint32) net.IP {
 	oBigInt := big.NewInt(0)
 	oBigInt = oBigInt.SetUint64(uint64(ip))
 	return IntToIPv4(oBigInt)
-}
-
-func decodeIPv6ToNetIP(ip *l5dNetPb.IPv6) net.IP {
-	b := make([]byte, net.IPv6len)
-	binary.BigEndian.PutUint64(b[:8], ip.GetFirst())
-	binary.BigEndian.PutUint64(b[8:], ip.GetLast())
-	return net.IP(b)
 }
 
 // IPToInt converts net.IP to bigInt
