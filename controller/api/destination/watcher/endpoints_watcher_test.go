@@ -10,7 +10,7 @@ import (
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	dv1beta1 "k8s.io/api/discovery/v1beta1"
+	dv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -706,7 +706,7 @@ func TestEndpointsWatcherWithEndpointSlices(t *testing.T) {
 			k8sConfigs: []string{`
 kind: APIResourceList
 apiVersion: v1
-groupVersion: discovery.k8s.io/v1beta1
+groupVersion: discovery.k8s.io/v1
 resources:
   - name: endpointslices
     singularName: endpointslice
@@ -733,7 +733,7 @@ spec:
   - port: 8989`,
 				`
 addressType: IPv4
-apiVersion: discovery.k8s.io/v1beta1
+apiVersion: discovery.k8s.io/v1
 endpoints:
 - addresses:
   - 172.17.0.12
@@ -834,7 +834,7 @@ status:
 			k8sConfigs: []string{`
 kind: APIResourceList
 apiVersion: v1
-groupVersion: discovery.k8s.io/v1beta1
+groupVersion: discovery.k8s.io/v1
 resources:
   - name: endpointslices
     singularName: endpointslice
@@ -860,7 +860,7 @@ spec:
   ports:
   - port: 8989`, `
 addressType: IPv4
-apiVersion: discovery.k8s.io/v1beta1
+apiVersion: discovery.k8s.io/v1
 endpoints:
 - addresses:
   - 172.17.0.23
@@ -925,7 +925,7 @@ status:
 			k8sConfigs: []string{`
 kind: APIResourceList
 apiVersion: v1
-groupVersion: discovery.k8s.io/v1beta1
+groupVersion: discovery.k8s.io/v1
 resources:
   - name: endpointslices
     singularName: endpointslice
@@ -963,7 +963,7 @@ spec:
 			k8sConfigs: []string{`
 kind: APIResourceList
 apiVersion: v1
-groupVersion: discovery.k8s.io/v1beta1
+groupVersion: discovery.k8s.io/v1
 resources:
   - name: endpointslices
     singularName: endpointslice
@@ -1010,7 +1010,7 @@ spec:
 			k8sConfigs: []string{`
 kind: APIResourceList
 apiVersion: v1
-groupVersion: discovery.k8s.io/v1beta1
+groupVersion: discovery.k8s.io/v1
 resources:
   - name: endpointslices
     singularName: endpointslice
@@ -1036,7 +1036,7 @@ spec:
   ports:
   - port: 8989`, `
 addressType: IPv4
-apiVersion: discovery.k8s.io/v1beta1
+apiVersion: discovery.k8s.io/v1
 endpoints:
 - addresses:
   - 172.17.0.12
@@ -1129,7 +1129,7 @@ status:
 			k8sConfigs: []string{`
 kind: APIResourceList
 apiVersion: v1
-groupVersion: discovery.k8s.io/v1beta1
+groupVersion: discovery.k8s.io/v1
 resources:
   - name: endpointslices
     singularName: endpointslice
@@ -1155,7 +1155,7 @@ spec:
   ports:
   - port: 8989`, `
 addressType: IPv4
-apiVersion: discovery.k8s.io/v1beta1
+apiVersion: discovery.k8s.io/v1
 endpoints:
 - addresses:
   - 172.17.0.12
@@ -1200,7 +1200,7 @@ status:
 			k8sConfigs: []string{`
 kind: APIResourceList
 apiVersion: v1
-groupVersion: discovery.k8s.io/v1beta1
+groupVersion: discovery.k8s.io/v1
 resources:
   - name: endpointslices
     singularName: endpointslice
@@ -1226,7 +1226,7 @@ spec:
   ports:
   - port: 9000`, `
 addressType: IPv6
-apiVersion: discovery.k8s.io/v1beta1
+apiVersion: discovery.k8s.io/v1
 endpoints:
 - addresses:
   - 0:0:0:0:0:0:0:1
@@ -1422,7 +1422,7 @@ func TestEndpointsWatcherDeletionWithEndpointSlices(t *testing.T) {
 	k8sConfigsWithES := []string{`
 kind: APIResourceList
 apiVersion: v1
-groupVersion: discovery.k8s.io/v1beta1
+groupVersion: discovery.k8s.io/v1
 resources:
   - name: endpointslices
     singularName: endpointslice
@@ -1448,7 +1448,7 @@ spec:
   ports:
   - port: 8989`, `
 addressType: IPv4
-apiVersion: discovery.k8s.io/v1beta1
+apiVersion: discovery.k8s.io/v1
 endpoints:
 - addresses:
   - 172.17.0.12
@@ -1595,7 +1595,7 @@ spec:
   ports:
   - port: 8989`,
 				`
-apiVersion: discovery.k8s.io/v1beta1
+apiVersion: discovery.k8s.io/v1
 kind: EndpointSlice
 metadata:
   name: name1-remote-xxxx
@@ -1820,18 +1820,18 @@ func endpoints(identity string) *corev1.Endpoints {
 	}
 }
 
-func createTestEndpointSlice() *dv1beta1.EndpointSlice {
-	return &dv1beta1.EndpointSlice{
+func createTestEndpointSlice() *dv1.EndpointSlice {
+	return &dv1.EndpointSlice{
 		AddressType: "IPv4",
-		ObjectMeta:  metav1.ObjectMeta{Name: "name1-del", Namespace: "ns", Labels: map[string]string{dv1beta1.LabelServiceName: "name1"}},
-		Endpoints: []dv1beta1.Endpoint{
+		ObjectMeta:  metav1.ObjectMeta{Name: "name1-del", Namespace: "ns", Labels: map[string]string{dv1.LabelServiceName: "name1"}},
+		Endpoints: []dv1.Endpoint{
 			{
 				Addresses:  []string{"172.17.0.12"},
-				Conditions: dv1beta1.EndpointConditions{Ready: func(b bool) *bool { return &b }(true)},
+				Conditions: dv1.EndpointConditions{Ready: func(b bool) *bool { return &b }(true)},
 				TargetRef:  &corev1.ObjectReference{Name: "name1-1", Namespace: "ns", Kind: "Pod"},
 			},
 		},
-		Ports: []dv1beta1.EndpointPort{
+		Ports: []dv1.EndpointPort{
 			{
 				Name: func(s string) *string { return &s }(""),
 				Port: func(i int32) *int32 { return &i }(8989),

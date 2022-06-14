@@ -200,14 +200,14 @@ metadata:
 				resType:   k8s.CronJob,
 				name:      "my-cronjob",
 				k8sResResults: []string{`
-apiVersion: batch/v1beta1
+apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: my-cronjob
   namespace: my-ns`,
 				},
 				k8sResMisc: []string{`
-apiVersion: batch/v1beta1
+apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: my-cronjob
@@ -499,7 +499,7 @@ status:
 			{
 				err: nil,
 				k8sResInput: `
-apiVersion: batch/v1beta1
+apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: emoji
@@ -527,7 +527,7 @@ metadata:
   namespace: emojivoto
   uid: job
   ownerReferences:
-  - apiVersion: batch/v1beta1
+  - apiVersion: batch/v1
     uid: cronjob
 spec:
   selector:
@@ -1066,7 +1066,7 @@ metadata:
   name: my-job
   namespace: my-ns
   ownerReferences:
-  - apiVersion: batch/v1beta1
+  - apiVersion: batch/v1
     kind: CronJob
     name: my-cronjob`,
 			},
