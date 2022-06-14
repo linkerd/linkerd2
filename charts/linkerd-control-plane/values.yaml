@@ -54,6 +54,8 @@ podAnnotations: {}
 podLabels: {}
 # -- Kubernetes priorityClassName for the Linkerd Pods
 priorityClassName: ""
+# -- Runtime Class Name for all the pods
+runtimeClassName: ""
 
 # policy controller configuration
 policyController:
