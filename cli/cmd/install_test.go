@@ -256,7 +256,7 @@ func TestIgnoreCluster(t *testing.T) {
 	addFakeTLSSecrets(defaultValues)
 
 	var buf bytes.Buffer
-	if err := installControlPlane(context.Background(), nil, &buf, defaultValues, nil, values.Options{}); err != nil {
+	if err := installControlPlane(context.Background(), nil, &buf, defaultValues, nil, values.Options{}, false); err != nil {
 		t.Fatal(err)
 	}
 }
