@@ -441,6 +441,7 @@ data:
     identityTrustDomain: test.trust.domain
     imagePullPolicy: IfNotPresent
     imagePullSecrets: []
+    installHttpRoute: true
     linkerdVersion: linkerd-version
     nodeAffinity: null
     nodeSelector:

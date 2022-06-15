@@ -142,7 +142,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 	}
 
 	crdManifest := bytes.Buffer{}
-	err = renderCRDs(&crdManifest)
+	err = renderCRDs(&crdManifest, valuespkg.Options{})
 	if err != nil {
 		return err
 	}

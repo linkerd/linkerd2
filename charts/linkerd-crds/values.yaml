@@ -1,0 +1,2 @@
+# -- If set, installs the HTTPRoute CRD.
+installHttpRoute: true

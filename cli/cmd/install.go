@@ -50,6 +50,7 @@ var (
 		"templates/policy/server.yaml",
 		"templates/policy/server-authorization.yaml",
 		"templates/serviceprofile.yaml",
+		"templates/httproute.yaml",
 	}
 
 	templatesControlPlane = []string{
@@ -122,7 +123,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 
 				if !crds {
 					crds := bytes.Buffer{}
-					err := renderCRDs(&crds)
+					err := renderCRDs(&crds, options)
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "%q", err)
 						os.Exit(1)
@@ -138,7 +139,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 			if crds {
 				// The CRD chart is not configurable.
 				// TODO(ver): Error if values have been configured?
-				if err = installCRDs(cmd.Context(), k8sAPI, os.Stdout); err != nil {
+				if err = installCRDs(cmd.Context(), k8sAPI, os.Stdout, options); err != nil {
 					return err
 				}
 
@@ -183,12 +184,12 @@ func checkNoConfig(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
 	return nil
 }
 
-func installCRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer) error {
+func installCRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, options valuespkg.Options) error {
 	if err := checkNoConfig(ctx, k8sAPI); err != nil {
 		return err
 	}
 
-	return renderCRDs(w)
+	return renderCRDs(w, options)
 }
 
 func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, options valuespkg.Options) error {
@@ -305,7 +306,7 @@ func renderChartToBuffer(files []*loader.BufferedFile, values *l5dcharts.Values,
 	return &buf, vals, nil
 }
 
-func renderCRDs(w io.Writer) error {
+func renderCRDs(w io.Writer, options valuespkg.Options) error {
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
@@ -321,7 +322,14 @@ func renderCRDs(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	buf, _, err := renderChartToBuffer(files, values, map[string]interface{}{})
+
+	// Create values override
+	valuesOverrides, err := options.MergeValues(nil)
+	if err != nil {
+		return err
+	}
+
+	buf, _, err := renderChartToBuffer(files, values, valuesOverrides)
 	if err != nil {
 		return err
 	}

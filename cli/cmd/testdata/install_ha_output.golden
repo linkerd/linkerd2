@@ -492,6 +492,7 @@ data:
     identityTrustDomain: cluster.local
     imagePullPolicy: IfNotPresent
     imagePullSecrets: null
+    installHttpRoute: true
     linkerdVersion: install-control-plane-version
     nodeAffinity: null
     nodeSelector:
