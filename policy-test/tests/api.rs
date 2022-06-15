@@ -330,9 +330,12 @@ async fn retry_watch_server(
     // policy.
     let mut policy_api = grpc::PolicyClient::port_forwarded(client).await;
     loop {
-        if let Ok(rx) = policy_api.watch_port(ns, pod_name, 4191).await {
-            return rx;
+        match policy_api.watch_port(ns, pod_name, 4191).await {
+            Ok(rx) => return rx,
+            Err(error) => {
+                tracing::error!(?error);
+                time::sleep(Duration::from_secs(1)).await;
+            }
         }
-        time::sleep(Duration::from_secs(1)).await;
     }
 }
