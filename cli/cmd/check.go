@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/cli/flag"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -18,7 +17,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	valuespkg "helm.sh/helm/v3/pkg/cli/values"
 )
 
 type checkOptions struct {
@@ -268,20 +266,25 @@ func getExtensionCheckFlags(lf *pflag.FlagSet) []string {
 }
 
 func renderInstallManifest(ctx context.Context) (*charts.Values, string, error) {
+	// Create the default values.
+	k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 30*time.Second)
+	if err != nil {
+		return nil, "", err
+	}
 	values, err := charts.NewValues()
 	if err != nil {
 		return nil, "", err
 	}
-
-	k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 30*time.Second)
+	err = initializeIssuerCredentials(ctx, k8sAPI, values)
 	if err != nil {
-		return values, "", err
+		return nil, "", err
 	}
 
+	// Use empty valuesOverrides because there are no option values to merge.
 	var b strings.Builder
-	err = installControlPlane(ctx, k8sAPI, &b, values, []flag.Flag{}, valuespkg.Options{}, true)
+	err = renderControlPlane(&b, values, map[string]interface{}{})
 	if err != nil {
-		return values, "", err
+		return nil, "", err
 	}
 	return values, b.String(), nil
 }
