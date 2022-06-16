@@ -160,8 +160,6 @@ func TestNewValues(t *testing.T) {
 		ProxyInjector:    &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorInjector},
 		ProfileValidator: &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorSimple},
 		PolicyValidator:  &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorSimple},
-
-		InstallHTTPRoute: true,
 	}
 
 	// pin the versions to ensure consistent test result.

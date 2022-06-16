@@ -931,7 +931,11 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
     api-approved.kubernetes.io: https://github.com/kubernetes-sigs/gateway-api/pull/891
+  labels:
+    helm.sh/chart: linkerd-crds-1.1.1-edge
+    linkerd.io/control-plane-ns: linkerd
   creationTimestamp: null
   name: httproutes.gateway.networking.k8s.io
 spec:

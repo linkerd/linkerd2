@@ -465,7 +465,6 @@ data:
     identityTrustDomain: example.com
     imagePullPolicy: IfNotPresent
     imagePullSecrets: []
-    installHttpRoute: true
     linkerdVersion: install-control-plane-version
     nodeAffinity: null
     nodeSelector:

@@ -79,8 +79,6 @@ type (
 		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
-
-		InstallHTTPRoute bool `json:"installHttpRoute"`
 	}
 
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration

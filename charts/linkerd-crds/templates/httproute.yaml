@@ -5,7 +5,11 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
+    {{ include "partials.annotations.created-by" . }}
     api-approved.kubernetes.io: https://github.com/kubernetes-sigs/gateway-api/pull/891
+  labels:
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
   creationTimestamp: null
   name: httproutes.gateway.networking.k8s.io
 spec:
