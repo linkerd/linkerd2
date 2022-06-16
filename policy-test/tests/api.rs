@@ -333,7 +333,7 @@ async fn retry_watch_server(
         match policy_api.watch_port(ns, pod_name, 4191).await {
             Ok(rx) => return rx,
             Err(error) => {
-                tracing::error!(?error);
+                tracing::error!(?error, ns, pod_name, "failed to watch policy for port 4191");
                 time::sleep(Duration::from_secs(1)).await;
             }
         }
