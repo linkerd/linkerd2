@@ -1,2 +1,2 @@
-# -- If set, installs the HTTPRoute CRD.
-installHttpRoute: true
+# -- If set, installs the Gateway API CRDs.
+installGatewayApi: true
