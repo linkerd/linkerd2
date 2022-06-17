@@ -163,13 +163,9 @@ dependencies = [
  "clap_derive",
  "clap_lex",
  "indexmap",
-<<<<<<< HEAD
- "lazy_static",
+ "once_cell",
  "strsim",
  "termcolor",
-=======
- "once_cell",
->>>>>>> b8e549e239437b8b1150170a5bda27c36699ab8b
  "textwrap",
 ]
 
