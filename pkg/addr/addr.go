@@ -97,7 +97,7 @@ func ParsePublicIPV4(ip string) (*l5dNetPb.IPAddress, error) {
 }
 
 // NetToPublic converts a Proxy API TCPAddress to a Viz API
-// TCPAddress
+// TCPAddress.
 func NetToPublic(net *pb.TcpAddress) *l5dNetPb.TcpAddress {
 	var ip *l5dNetPb.IPAddress
 
@@ -125,6 +125,7 @@ func NetToPublic(net *pb.TcpAddress) *l5dNetPb.TcpAddress {
 	}
 }
 
+// decodeIPv4ToNetIP converts IPv4 uint32 to an IPv4 net IP.
 func decodeIPv4ToNetIP(ip uint32) net.IP {
 	oBigInt := big.NewInt(0)
 	oBigInt = oBigInt.SetUint64(uint64(ip))
@@ -132,14 +133,14 @@ func decodeIPv4ToNetIP(ip uint32) net.IP {
 }
 
 // IPToInt converts net.IP to bigInt
-// It can support both IPv4 and IPv6
+// It can support both IPv4 and IPv6.
 func IPToInt(ip net.IP) *big.Int {
 	oBigInt := big.NewInt(0)
 	oBigInt.SetBytes(ip)
 	return oBigInt
 }
 
-// IntToIPv4 converts IPv4 bigInt into an IPv4 net.IP
+// IntToIPv4 converts IPv4 bigInt into an IPv4 net IP.
 func IntToIPv4(intip *big.Int) net.IP {
 	ipByte := make([]byte, net.IPv4len)
 	uint32IP := intip.Uint64()
