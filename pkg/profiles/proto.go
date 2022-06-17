@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/emicklei/proto"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
@@ -52,12 +53,14 @@ func protoToServiceProfile(parser *proto.Parser, namespace, name, clusterDomain 
 				default:
 					path = fmt.Sprintf("/%s.%s/%s", pkg, service.Name, typed.Name)
 				}
+
 				route := &sp.RouteSpec{
 					Name: typed.Name,
 					Condition: &sp.RequestMatch{
 						Method:    http.MethodPost,
 						PathRegex: regexp.QuoteMeta(path),
 					},
+					IsRetryable: isMethodRetryable(typed),
 				}
 				routes = append(routes, route)
 			}
@@ -76,4 +79,25 @@ func protoToServiceProfile(parser *proto.Parser, namespace, name, clusterDomain 
 			Routes: routes,
 		},
 	}, nil
+}
+
+func isMethodRetryable(rpc *proto.RPC) bool {
+	for _, e := range rpc.Elements {
+		option, ok := e.(*proto.Option)
+		if !ok {
+			// Not an option
+			continue
+		}
+
+		// method options can be wrapped in parentheses so we trim them away
+		if strings.Trim(option.Name, "()") != "idempotency_level" {
+			// Not an idempotency option
+			continue
+		}
+
+		return option.Constant.Source == "IDEMPOTENT" ||
+			option.Constant.Source == "NO_SIDE_EFFECTS"
+	}
+
+	return false
 }

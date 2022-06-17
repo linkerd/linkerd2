@@ -702,6 +702,7 @@ spec:
       annotations:
         linkerd.io/created-by: CliVersion
         linkerd.io/proxy-version: ProxyVersion
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: identity
@@ -1046,6 +1047,7 @@ spec:
       annotations:
         linkerd.io/created-by: CliVersion
         linkerd.io/proxy-version: ProxyVersion
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: destination
@@ -1344,7 +1346,7 @@ spec:
 ###
 ### Heartbeat
 ###
-apiVersion: batch/v1beta1
+apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: linkerd-heartbeat
@@ -1419,6 +1421,7 @@ spec:
       annotations:
         linkerd.io/created-by: CliVersion
         linkerd.io/proxy-version: ProxyVersion
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
         config.linkerd.io/opaque-ports: "8443"
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:

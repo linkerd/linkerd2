@@ -6,20 +6,23 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 . "$bindir"/_test-helpers.sh
 handle_tests_input "$@"
 
-if [ -n "$test_name" ]; then
+if [ "$test_name" ]; then
   start_test "$test_name"
 else
-  printf '==================RUNNING ALL TESTS==================
-Note: cluster-domain, cni-calico-deep and multicluster require a specific cluster configuration and are skipped by default\n\n'
+  echo '==================RUNNING ALL TESTS==================
+Note: cluster-domain, cni-calico-deep and multicluster require a specific cluster configuration and are skipped by default
+'
 
   for test_name in "${default_test_names[@]}"; do
     start_test "$test_name"
   done
 
   if [ $exit_code -eq 0 ]; then
-  printf '\n=== PASS: all tests passed\n'
+    echo '
+=== PASS: all tests passed'
   else
-    printf '\n=== FAIL: at least one test failed\n'
+    echo '
+=== FAIL: at least one test failed'
   fi
 
   exit $exit_code

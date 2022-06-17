@@ -73,15 +73,17 @@ func Inject(linkerdNamespace string) webhook.Handler {
 		var parent *runtime.Object
 		var ownerKind string
 		if ownerRef := resourceConfig.GetOwnerRef(); ownerRef != nil {
-			objs, err := api.GetObjects(request.Namespace, ownerRef.Kind, ownerRef.Name, labels.Everything())
-			if err != nil {
-				log.Warnf("couldn't retrieve parent object %s-%s-%s; error: %s", request.Namespace, ownerRef.Kind, ownerRef.Name, err)
-			} else if len(objs) == 0 {
-				log.Warnf("couldn't retrieve parent object %s-%s-%s", request.Namespace, ownerRef.Kind, ownerRef.Name)
-			} else {
-				parent = &objs[0]
+			if api.KindSupported(ownerRef.Kind) {
+				objs, err := api.GetObjects(request.Namespace, ownerRef.Kind, ownerRef.Name, labels.Everything())
+				if err != nil {
+					log.Warnf("couldn't retrieve parent object %s-%s-%s; error: %s", request.Namespace, ownerRef.Kind, ownerRef.Name, err)
+				} else if len(objs) == 0 {
+					log.Warnf("couldn't retrieve parent object %s-%s-%s", request.Namespace, ownerRef.Kind, ownerRef.Name)
+				} else {
+					parent = &objs[0]
+				}
+				ownerKind = strings.ToLower(ownerRef.Kind)
 			}
-			ownerKind = strings.ToLower(ownerRef.Kind)
 		}
 
 		configLabels := configToPrometheusLabels(resourceConfig)
@@ -131,15 +133,27 @@ func Inject(linkerdNamespace string) webhook.Handler {
 			}, nil
 		}
 
+		// Resource could not be injected with the sidecar, format the reason
+		// for injection being skipped to emit an event
+		readableReasons := make([]string, 0, len(reasons))
+		for _, reason := range reasons {
+			readableReasons = append(readableReasons, inject.Reasons[reason])
+		}
+		readableMsg := strings.Join(readableReasons, ", ")
+
+		if parent != nil {
+			recorder.Eventf(*parent, v1.EventTypeNormal, eventTypeSkipped, "Linkerd sidecar proxy injection skipped: %s", readableMsg)
+		}
+
 		// Create a patch which adds the opaque ports annotation if the workload
-		// does already have it set.
+		// doesn't already have it set.
 		patchJSON, err := resourceConfig.CreateOpaquePortsPatch()
 		if err != nil {
 			return nil, err
 		}
 
-		// If patchJSON holds a patch after checking the workload annotations,
-		// then we admit the request.
+		// If resource needs to be patched with annotations (e.g opaque
+		// ports), then admit the request with the relevant patch
 		if len(patchJSON) != 0 {
 			log.Infof("annotation patch generated for: %s", report.ResName())
 			log.Debugf("annotation patch: %s", patchJSON)
@@ -153,26 +167,18 @@ func Inject(linkerdNamespace string) webhook.Handler {
 			}, nil
 		}
 
-		// The resource should be admitted without a patch. If it is a pod, create
-		// an event to record that injection was skipped.
+		// If the resource is a pod, and no annotation patch has
+		// been generated, record in the metrics (and log) that it has been
+		// entirely skipped and admit without any mutations
 		if resourceConfig.IsPod() {
-			var readableReasons, metricReasons string
-			metricReasons = strings.Join(reasons, ",")
-			for _, reason := range reasons {
-				readableReasons = readableReasons + ", " + inject.Reasons[reason]
-			}
-			// removing the initial comma, space
-			readableReasons = readableReasons[2:]
-			if parent != nil {
-				recorder.Eventf(*parent, v1.EventTypeNormal, eventTypeSkipped, "Linkerd sidecar proxy injection skipped: %s", readableReasons)
-			}
-			log.Infof("skipped %s: %s", report.ResName(), readableReasons)
-			proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "true", metricReasons, report.InjectAnnotationAt, configLabels)).Inc()
+			log.Infof("skipped %s: %s", report.ResName(), readableMsg)
+			proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "true", strings.Join(reasons, ","), report.InjectAnnotationAt, configLabels)).Inc()
 			return &admissionv1beta1.AdmissionResponse{
 				UID:     request.UID,
 				Allowed: true,
 			}, nil
 		}
+
 		return &admissionv1beta1.AdmissionResponse{
 			UID:     request.UID,
 			Allowed: true,

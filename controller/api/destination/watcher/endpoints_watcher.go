@@ -14,7 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	discovery "k8s.io/api/discovery/v1beta1"
+	discovery "k8s.io/api/discovery/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -708,15 +708,16 @@ func metricLabels(resource interface{}) map[string]string {
 	remoteClusterName, hasRemoteClusterName := resLabels[consts.RemoteClusterNameLabel]
 	serviceFqn, hasServiceFqn := resAnnotations[consts.RemoteServiceFqName]
 
-	if hasRemoteClusterName && hasServiceFqn {
+	if hasRemoteClusterName {
 		// this means we are looking at Endpoints created for the purpose of mirroring
 		// an out of cluster service.
 		labels[targetCluster] = remoteClusterName
-
-		fqParts := strings.Split(serviceFqn, ".")
-		if len(fqParts) >= 2 {
-			labels[targetService] = fqParts[0]
-			labels[targetServiceNamespace] = fqParts[1]
+		if hasServiceFqn {
+			fqParts := strings.Split(serviceFqn, ".")
+			if len(fqParts) >= 2 {
+				labels[targetService] = fqParts[0]
+				labels[targetServiceNamespace] = fqParts[1]
+			}
 		}
 	}
 	return labels

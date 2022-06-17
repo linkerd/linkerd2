@@ -13,7 +13,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/api/discovery/v1beta1"
+	v1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -89,14 +89,14 @@ var (
 	west1aAddress = watcher.Address{
 		IP:   "1.1.1.1",
 		Port: 1,
-		ForZones: []v1beta1.ForZone{
+		ForZones: []v1.ForZone{
 			{Name: "west-1a"},
 		},
 	}
 	west1bAddress = watcher.Address{
 		IP:   "1.1.1.1",
 		Port: 2,
-		ForZones: []v1beta1.ForZone{
+		ForZones: []v1.ForZone{
 			{Name: "west-1b"},
 		},
 	}

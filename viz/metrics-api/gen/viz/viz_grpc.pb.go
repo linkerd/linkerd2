@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 type ApiClient interface {
 	StatSummary(ctx context.Context, in *StatSummaryRequest, opts ...grpc.CallOption) (*StatSummaryResponse, error)
 	Edges(ctx context.Context, in *EdgesRequest, opts ...grpc.CallOption) (*EdgesResponse, error)
+	// Deprecated: Do not use.
 	Gateways(ctx context.Context, in *GatewaysRequest, opts ...grpc.CallOption) (*GatewaysResponse, error)
 	TopRoutes(ctx context.Context, in *TopRoutesRequest, opts ...grpc.CallOption) (*TopRoutesResponse, error)
 	ListPods(ctx context.Context, in *ListPodsRequest, opts ...grpc.CallOption) (*ListPodsResponse, error)
@@ -57,6 +58,7 @@ func (c *apiClient) Edges(ctx context.Context, in *EdgesRequest, opts ...grpc.Ca
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *apiClient) Gateways(ctx context.Context, in *GatewaysRequest, opts ...grpc.CallOption) (*GatewaysResponse, error) {
 	out := new(GatewaysResponse)
 	err := c.cc.Invoke(ctx, "/linkerd2.viz.Api/Gateways", in, out, opts...)
@@ -108,6 +110,7 @@ func (c *apiClient) SelfCheck(ctx context.Context, in *SelfCheckRequest, opts ..
 type ApiServer interface {
 	StatSummary(context.Context, *StatSummaryRequest) (*StatSummaryResponse, error)
 	Edges(context.Context, *EdgesRequest) (*EdgesResponse, error)
+	// Deprecated: Do not use.
 	Gateways(context.Context, *GatewaysRequest) (*GatewaysResponse, error)
 	TopRoutes(context.Context, *TopRoutesRequest) (*TopRoutesResponse, error)
 	ListPods(context.Context, *ListPodsRequest) (*ListPodsResponse, error)

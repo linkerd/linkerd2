@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"errors"
@@ -17,9 +18,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/servicemirror"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
-	vizCmd "github.com/linkerd/linkerd2/viz/cmd"
-	"github.com/linkerd/linkerd2/viz/metrics-api/client"
-	vizPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	"github.com/prometheus/common/expfmt"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -151,7 +150,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	}
 
 	hc := newHealthChecker(linkerdHC)
-	category := multiclusterCategory(hc)
+	category := multiclusterCategory(hc, options.wait)
 	hc.AppendCategories(category)
 	success, warning := healthcheck.RunChecks(wout, werr, hc, options.output)
 	healthcheck.PrintChecksResult(wout, options.output, success, warning)
@@ -161,7 +160,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	return nil
 }
 
-func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
+func multiclusterCategory(hc *healthChecker, wait time.Duration) *healthcheck.Category {
 	checkers := []healthcheck.Checker{}
 	checkers = append(checkers,
 		*healthcheck.NewChecker("Link CRD exists").
@@ -205,7 +204,7 @@ func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 		*healthcheck.NewChecker("all gateway mirrors are healthy").
 			WithHintAnchor("l5d-multicluster-gateways-endpoints").
 			WithCheck(func(ctx context.Context) error {
-				return hc.checkIfGatewayMirrorsHaveEndpoints(ctx)
+				return hc.checkIfGatewayMirrorsHaveEndpoints(ctx, wait)
 			}))
 	checkers = append(checkers,
 		*healthcheck.NewChecker("all mirror services have endpoints").
@@ -543,10 +542,16 @@ func (hc *healthChecker) checkServiceMirrorController(ctx context.Context) error
 	return healthcheck.VerboseSuccess{Message: strings.Join(clusterNames, "\n")}
 }
 
-func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context) error {
+func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context, wait time.Duration) error {
+	multiclusterNs, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, MulticlusterExtensionName)
+	if err != nil {
+		return healthcheck.SkipError{Reason: fmt.Sprintf("failed to find the linkerd-multicluster namespace: %s", err)}
+	}
+
 	links := []string{}
 	errors := []error{}
 	for _, link := range hc.links {
+		// Check that each gateway probe service has endpoints.
 		selector := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s,%s=%s", k8s.MirroredGatewayLabel, k8s.RemoteClusterNameLabel, link.TargetClusterName)}
 		gatewayMirrors, err := hc.KubeAPIClient().CoreV1().Services(metav1.NamespaceAll).List(ctx, selector)
 		if err != nil {
@@ -558,45 +563,47 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 			continue
 		}
 		svc := gatewayMirrors.Items[0]
-		// Check if there is a relevant end-point
 		endpoints, err := hc.KubeAPIClient().CoreV1().Endpoints(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
 		if err != nil || len(endpoints.Subsets) == 0 {
 			errors = append(errors, fmt.Errorf("%s.%s mirrored from cluster [%s] has no endpoints", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel]))
 			continue
 		}
 
-		vizNs, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, vizCmd.ExtensionName)
+		// Get the service mirror component in the linkerd-multicluster
+		// namespace which corresponds to the current link.
+		selector = metav1.ListOptions{LabelSelector: fmt.Sprintf("component=linkerd-service-mirror,mirror.linkerd.io/cluster-name=%s", link.TargetClusterName)}
+		pods, err := hc.KubeAPIClient().CoreV1().Pods(multiclusterNs.Name).List(ctx, selector)
 		if err != nil {
-			return healthcheck.SkipError{Reason: "failed to fetch gateway metrics"}
+			errors = append(errors, fmt.Errorf("failed to get the service-mirror component for target cluster %s: %w", link.TargetClusterName, err))
+			continue
 		}
 
-		// Check gateway liveness according to probes
-		vizClient, err := client.NewExternalClient(ctx, vizNs.Name, hc.KubeAPIClient())
+		// Get and parse the gateway metrics so that we can extract liveness
+		// information.
+		gatewayMetrics := getGatewayMetrics(hc.KubeAPIClient(), pods.Items, wait)
+		if len(gatewayMetrics) != 1 {
+			errors = append(errors, fmt.Errorf("expected exactly one gateway metric for target cluster %s; got %d", link.TargetClusterName, len(gatewayMetrics)))
+			continue
+		}
+		var metricsParser expfmt.TextParser
+		parsedMetrics, err := metricsParser.TextToMetricFamilies(bytes.NewReader(gatewayMetrics[0].metrics))
 		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to initialize viz client: %w", err))
+			errors = append(errors, fmt.Errorf("failed to parse gateway metrics for target cluster %s: %w", link.TargetClusterName, err))
+			continue
+		}
+
+		// Ensure the gateway for the current link is alive.
+		for _, metrics := range parsedMetrics["gateway_alive"].GetMetric() {
+			if !isTargetClusterMetric(metrics, link.TargetClusterName) {
+				continue
+			}
+			if metrics.GetGauge().GetValue() != 1 {
+				err = fmt.Errorf("liveness checks failed for %s", link.TargetClusterName)
+			}
 			break
 		}
-		req := vizPb.GatewaysRequest{
-			TimeWindow:        "1m",
-			RemoteClusterName: link.TargetClusterName,
-		}
-		rsp, err := vizClient.Gateways(ctx, &req)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to fetch gateway metrics for %s.%s: %w", svc.Name, svc.Namespace, err))
-			continue
-		}
-		table := rsp.GetOk().GetGatewaysTable()
-		if table == nil {
-			errors = append(errors, fmt.Errorf("failed to fetch gateway metrics for %s.%s: %s", svc.Name, svc.Namespace, rsp.GetError().GetError()))
-			continue
-		}
-		if len(table.Rows) != 1 {
-			errors = append(errors, fmt.Errorf("wrong number of (%d) gateway metrics entries for %s.%s", len(table.Rows), svc.Name, svc.Namespace))
-			continue
-		}
-		row := table.Rows[0]
-		if !row.Alive {
-			errors = append(errors, fmt.Errorf("liveness checks failed for %s", link.TargetClusterName))
+			errors = append(errors, err)
 			continue
 		}
 		links = append(links, fmt.Sprintf("\t* %s", link.TargetClusterName))

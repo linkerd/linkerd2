@@ -6,6 +6,7 @@
 [![GitHub Actions Status][github-actions-badge]][github-actions]
 [![GitHub license][license-badge]](LICENSE)
 [![Go Report Card][go-report-card-badge]][go-report-card]
+[![Go Reference][go-doc-badge]][go-doc]
 [![Slack Status][slack-badge]][slack]
 
 :balloon: Welcome to Linkerd! :wave:
@@ -114,6 +115,8 @@ specific language governing permissions and limitations under the License.
 [golang]: https://golang.org/
 [go-report-card]: https://goreportcard.com/report/github.com/linkerd/linkerd2
 [go-report-card-badge]: https://goreportcard.com/badge/github.com/linkerd/linkerd2
+[go-doc-badge]: https://pkg.go.dev/badge/github.com/linkerd/linkerd2.svg
+[go-doc]: https://pkg.go.dev/github.com/linkerd/linkerd2
 [license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [linkerd1]: https://github.com/linkerd/linkerd
 [linkerd2]: https://github.com/linkerd/linkerd2
