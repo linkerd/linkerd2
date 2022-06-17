@@ -30,6 +30,7 @@
 - [HomeChoice](https://www.homechoice.co.za/)
 - [HP Inc](https://www8.hp.com/us/en/home.html)
 - [In Loco](https://inloco.com.br/en/)
+- [Info Support](https://infosupport.com/)
 - [Ingrid](https://ingrid.com/)
 - [Jimdo](https://www.jimdo.com/)
 - [Just Football](https://justfootball.io)

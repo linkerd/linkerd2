@@ -1,5 +1,47 @@
 # Changes
 
+## edge-22.6.1
+
+This edge release fixes an issue where Linkerd injected pods could not be
+evicted by Cluster Autoscaler. It also adds the `--crds` flag to `linkerd check`
+which validates that the Linkerd CRDs have been installed with the proper
+versions.
+
+The previously noisy "cluster networks can be verified" check has been replaced
+with one that now verifies each running Pod IP is contained within the current
+`clusterNetworks` configuration value.
+
+Additionally, linkerd-viz is no longer required for linkerd-multicluster's
+`gateways` command — allowing the `Gateways` API to marked as deprecated for
+2.12.
+
+Finally, several security issues have been patched in the Docker images now that
+the builds are pinned only to minor — rather than patch — versions.
+
+* Replaced manual IP address parsing with functions available in the Go standard
+  library (thanks @zhlsunshine!)
+* Removed linkerd-multicluster's `gateway` command dependency on the linkerd-viz
+  extension
+* Fixed issue where Linkerd injected pods were prevented from being evicted by
+  Cluster Autoscaler
+* Added the `dst_target_cluster` metric to linkerd-multicluster's service-mirror
+  controller probe traffic
+* Added the `--crds` flag to `linkerd check` which validates that the Linkerd
+  CRDs have been installed
+* Removed the Docker image's hardcoded patch versions so that builds pick up
+  patch releases without manual intervention
+* Replaced the "cluster networks can be verified check" check with a "cluster
+  networks contains all pods" check which ensures that all currently running Pod
+  IPs are contained by the current `clusterNetworks` configuration
+* Added IPv6 compatible IP address generation in certain control plane
+  components that were only generating IPv4 (thanks @zhlsunshine!)
+* Deprecated linkerd-viz's `Gateways` API which is no longer used by
+  linkerd-multicluster
+* Added the `promm` package for making programatic Prometheus assertions in
+  tests (thanks @krzysztofdrys!)
+* Added the `runAsUser` configuration to extensions to fix a PodSecurityPolicy
+  violation when CNI is enabled
+
 ## edge-22.5.3
 
 This edge release fixes a few proxy issues, improves the upgrade process, and
@@ -2572,7 +2614,7 @@ transparent to the application, and work with any network topology.
   attempts to prevent the most common traffic-loop scenarios to protect against
   this.
 
-***NOTE***: Linkerd's `multicluster` extension does not yet work on Amazon
+_**NOTE**_: Linkerd's `multicluster` extension does not yet work on Amazon
 EKS. We expect to follow this release with a stable-2.8.1 to address this
 issue. Follow [#4582](https://github.com/linkerd/linkerd2/pull/4582) for updates.
 
@@ -5508,8 +5550,8 @@ to reduce possible naming collisions. To upgrade an existing installation:
 For more information, see the [Upgrade Guide](https://linkerd.io/2/upgrade/).
 
 * CLI
-  * **Improved** `linkerd routes` command displays per-route stats for *any
-    resource*!
+  * **Improved** `linkerd routes` command displays per-route stats for _any
+    resource_!
   * **New** Service profiles are now supported for external authorities!
   * **New** `linkerd routes --open-api` flag generates a service profile based
     on an OpenAPI specification (swagger) file

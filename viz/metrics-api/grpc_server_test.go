@@ -379,13 +379,13 @@ status:
 
 			mProm := prometheus.MockProm{Res: exp.promRes}
 
-			fakeGrpcServer := newGrpcServer(
-				&mProm,
-				k8sAPI,
-				"linkerd",
-				"mycluster.local",
-				[]string{},
-			)
+			fakeGrpcServer := grpcServer{
+				prometheusAPI:       &mProm,
+				k8sAPI:              k8sAPI,
+				controllerNamespace: "linkerd",
+				clusterDomain:       "mycluster.local",
+				ignoredNamespaces:   []string{},
+			}
 
 			k8sAPI.Sync(nil)
 
@@ -480,13 +480,13 @@ metadata:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			fakeGrpcServer := newGrpcServer(
-				&prometheus.MockProm{},
-				k8sAPI,
-				"linkerd",
-				"mycluster.local",
-				[]string{},
-			)
+			fakeGrpcServer := grpcServer{
+				prometheusAPI:       &prometheus.MockProm{},
+				k8sAPI:              k8sAPI,
+				controllerNamespace: "linkerd",
+				clusterDomain:       "mycluster.local",
+				ignoredNamespaces:   []string{},
+			}
 
 			k8sAPI.Sync(nil)
 

@@ -40,7 +40,6 @@ CGO_ENABLED=0 GOOS=linux GOARCH=$arch go install -mod=readonly \
     k8s.io/client-go/kubernetes/typed/autoscaling/v1 \
     k8s.io/client-go/kubernetes/typed/autoscaling/v2beta1 \
     k8s.io/client-go/kubernetes/typed/batch/v1 \
-    k8s.io/client-go/kubernetes/typed/batch/v1beta1 \
     k8s.io/client-go/kubernetes/typed/certificates/v1beta1 \
     k8s.io/client-go/kubernetes/typed/core/v1 \
     k8s.io/client-go/kubernetes/typed/events/v1beta1 \

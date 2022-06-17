@@ -56,7 +56,11 @@ async fn server_with_server_authorization() {
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,
-            convert_args!(hashmap!("kind" => "server", "name" => "linkerd-admin")),
+            convert_args!(hashmap!(
+                "group" => "policy.linkerd.io",
+                "kind" => "server",
+                "name" => "linkerd-admin"
+            )),
         );
 
         // Create a server authorizaation that refers to the `linkerd-admin`
@@ -100,6 +104,7 @@ async fn server_with_server_authorization() {
         assert_eq!(
             config.authorizations.first().unwrap().labels,
             convert_args!(hashmap!(
+                "group" => "policy.linkerd.io",
                 "kind" => "serverauthorization",
                 "name" => "all-admin",
             )),
@@ -120,7 +125,11 @@ async fn server_with_server_authorization() {
         );
         assert_eq!(
             config.labels,
-            convert_args!(hashmap!("kind" => "server", "name" => server.name()))
+            convert_args!(hashmap!(
+                "group" => "policy.linkerd.io",
+                "kind" => "server",
+                "name" => server.name()
+            ))
         );
 
         // Delete the `Server` and ensure that the update reverts to the
@@ -188,7 +197,11 @@ async fn server_with_authorization_policy() {
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,
-            convert_args!(hashmap!("kind" => "server", "name" => server.name()))
+            convert_args!(hashmap!(
+                "group" => "policy.linkerd.io",
+                "kind" => "server",
+                "name" => server.name()
+            ))
         );
 
         let all_nets = create(
@@ -251,6 +264,7 @@ async fn server_with_authorization_policy() {
         assert_eq!(
             config.authorizations.first().unwrap().labels,
             convert_args!(hashmap!(
+                "group" => "policy.linkerd.io",
                 "kind" => "authorizationpolicy",
                 "name" => authz_policy.name(),
             ))
@@ -271,7 +285,11 @@ async fn server_with_authorization_policy() {
         );
         assert_eq!(
             config.labels,
-            convert_args!(hashmap!("kind" => "server", "name" => server.name()))
+            convert_args!(hashmap!(
+                "group" => "policy.linkerd.io",
+                "kind" => "server",
+                "name" => server.name()
+            ))
         );
     })
     .await;

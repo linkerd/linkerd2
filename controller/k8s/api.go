@@ -21,7 +21,6 @@ import (
 	"google.golang.org/grpc/status"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,9 +31,8 @@ import (
 	arinformers "k8s.io/client-go/informers/admissionregistration/v1beta1"
 	appv1informers "k8s.io/client-go/informers/apps/v1"
 	batchv1informers "k8s.io/client-go/informers/batch/v1"
-	batchv1beta1informers "k8s.io/client-go/informers/batch/v1beta1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
-	discoveryinformers "k8s.io/client-go/informers/discovery/v1beta1"
+	discoveryinformers "k8s.io/client-go/informers/discovery/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
@@ -71,7 +69,7 @@ type API struct {
 	Client        kubernetes.Interface
 	DynamicClient dynamic.Interface
 
-	cj       batchv1beta1informers.CronJobInformer
+	cj       batchv1informers.CronJobInformer
 	cm       coreinformers.ConfigMapInformer
 	deploy   appv1informers.DeploymentInformer
 	ds       appv1informers.DaemonSetInformer
@@ -196,7 +194,7 @@ func NewAPI(
 	for _, resource := range resources {
 		switch resource {
 		case CJ:
-			api.cj = sharedInformers.Batch().V1beta1().CronJobs()
+			api.cj = sharedInformers.Batch().V1().CronJobs()
 			api.syncChecks = append(api.syncChecks, api.cj.Informer().HasSynced)
 			api.addInformerSizeGauge("cron_job", api.cj.Informer())
 		case CM:
@@ -216,7 +214,7 @@ func NewAPI(
 			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
 			api.addInformerSizeGauge("endpoint", api.endpoint.Informer())
 		case ES:
-			api.es = sharedInformers.Discovery().V1beta1().EndpointSlices()
+			api.es = sharedInformers.Discovery().V1().EndpointSlices()
 			api.syncChecks = append(api.syncChecks, api.es.Informer().HasSynced)
 			api.addInformerSizeGauge("endpoint_slice", api.es.Informer())
 		case Job:
@@ -441,7 +439,7 @@ func (api *API) Secret() coreinformers.SecretInformer {
 }
 
 // CJ provides access to a shared informer and lister for CronJobs.
-func (api *API) CJ() batchv1beta1informers.CronJobInformer {
+func (api *API) CJ() batchv1informers.CronJobInformer {
 	if api.cj == nil {
 		panic("CJ informer not configured")
 	}
@@ -476,6 +474,35 @@ func (api *API) GetObjects(namespace, restype, name string, label labels.Selecto
 		return api.getStatefulsets(namespace, name, label)
 	default:
 		return nil, status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", restype)
+	}
+}
+
+// KindSupported returns true if there is an informer configured for the
+// specified resource type.
+func (api *API) KindSupported(restype string) bool {
+	switch restype {
+	case k8s.Namespace:
+		return api.ns != nil
+	case k8s.CronJob:
+		return api.cj != nil
+	case k8s.DaemonSet:
+		return api.ds != nil
+	case k8s.Deployment:
+		return api.deploy != nil
+	case k8s.Job:
+		return api.job != nil
+	case k8s.Pod:
+		return api.pod != nil
+	case k8s.ReplicationController:
+		return api.rc != nil
+	case k8s.ReplicaSet:
+		return api.rs != nil
+	case k8s.Service:
+		return api.svc != nil
+	case k8s.StatefulSet:
+		return api.ss != nil
+	default:
+		return false
 	}
 }
 
@@ -551,7 +578,7 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*corev1.Po
 		namespace = typed.Name
 		selector = labels.Everything()
 
-	case *batchv1beta1.CronJob:
+	case *batchv1.CronJob:
 		namespace = typed.Namespace
 		selector = labels.Everything()
 		jobs, err := api.Job().Lister().Jobs(namespace).List(selector)
@@ -672,7 +699,7 @@ func GetNameAndNamespaceOf(obj runtime.Object) (string, string, error) {
 	case *corev1.Namespace:
 		return typed.Name, typed.Name, nil
 
-	case *batchv1beta1.CronJob:
+	case *batchv1.CronJob:
 		return typed.Name, typed.Namespace, nil
 
 	case *appsv1.DaemonSet:
@@ -925,16 +952,16 @@ func (api *API) getServices(namespace, name string) ([]runtime.Object, error) {
 
 func (api *API) getCronjobs(namespace, name string, labelSelector labels.Selector) ([]runtime.Object, error) {
 	var err error
-	var cronjobs []*batchv1beta1.CronJob
+	var cronjobs []*batchv1.CronJob
 
 	if namespace == "" {
 		cronjobs, err = api.CJ().Lister().List(labelSelector)
 	} else if name == "" {
 		cronjobs, err = api.CJ().Lister().CronJobs(namespace).List(labelSelector)
 	} else {
-		var cronjob *batchv1beta1.CronJob
+		var cronjob *batchv1.CronJob
 		cronjob, err = api.CJ().Lister().CronJobs(namespace).Get(name)
-		cronjobs = []*batchv1beta1.CronJob{cronjob}
+		cronjobs = []*batchv1.CronJob{cronjob}
 	}
 	if err != nil {
 		return nil, err
