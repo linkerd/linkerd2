@@ -1120,6 +1120,22 @@ impl PolicyIndex {
                 );
             }
         }
+        for tgt in spec.authentications.iter() {
+            if let AuthenticationTarget::ServiceAccount {
+                ref namespace,
+                ref name,
+            } = tgt
+            {
+                // There can only be a single required ServiceAccount. This is
+                // enforced by the admission controller.
+                if identities.is_some() {
+                    bail!("policy must not include multiple ServiceAccounts");
+                }
+                let namespace = namespace.as_deref().unwrap_or(&self.namespace);
+                let id = self.cluster_info.service_account_identity(namespace, name);
+                identities = Some(vec![IdentityMatch::Exact(id)])
+            }
+        }
 
         let mut networks = None;
         for tgt in spec.authentications.iter() {

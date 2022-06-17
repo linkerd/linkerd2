@@ -218,6 +218,15 @@ impl Validate<AuthorizationPolicySpec> for Admission {
             bail!("only a single MeshTLSAuthentication may be set");
         }
 
+        let sa_authns_count = spec
+            .required_authentication_refs
+            .iter()
+            .filter(|authn| authn.targets_kind::<ServiceAccount>())
+            .count();
+        if sa_authns_count > 1 {
+            bail!("only a single ServiceAccount may be set");
+        }
+
         let net_authns_count = spec
             .required_authentication_refs
             .iter()
@@ -227,13 +236,20 @@ impl Validate<AuthorizationPolicySpec> for Admission {
             bail!("only a single NetworkAuthentication may be set");
         }
 
-        if mtls_authns_count + net_authns_count < spec.required_authentication_refs.len() {
+        if mtls_authns_count + sa_authns_count > 1 {
+            bail!("only MeshTLSAuthentication or ServiceAccount may be set");
+        }
+
+        if mtls_authns_count + sa_authns_count + net_authns_count
+            < spec.required_authentication_refs.len()
+        {
             let kinds = spec
                 .required_authentication_refs
                 .iter()
                 .filter(|authn| {
                     !authn.targets_kind::<MeshTLSAuthentication>()
                         && !authn.targets_kind::<NetworkAuthentication>()
+                        && !authn.targets_kind::<ServiceAccount>()
                 })
                 .map(|authn| authn.canonical_kind())
                 .collect::<Vec<_>>();
