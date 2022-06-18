@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/containernetworking/cni/pkg/skel"
@@ -224,6 +225,25 @@ func cmdAdd(args *skel.CmdArgs) error {
 			if inboundSkipOverride != "" {
 				logEntry.Debugf("linkerd-cni: overriding InboundPortsToIgnore to %s", inboundSkipOverride)
 				options.InboundPortsToIgnore = strings.Split(inboundSkipOverride, ",")
+			}
+
+			// Override ProxyUID from annotations.
+			proxyUIDOverride, err := getAnnotationOverride(ctx, client, pod, k8s.ProxyUIDAnnotation)
+			if err != nil {
+				logEntry.Errorf("linkerd-cni: could not retrieve overridden annotations: %s", err)
+				return err
+			}
+
+			if proxyUIDOverride != "" {
+				logEntry.Debugf("linkerd-cni: overriding ProxyUID to %s", proxyUIDOverride)
+
+				parsed, err := strconv.Atoi(proxyUIDOverride)
+				if err != nil {
+					logEntry.Errorf("linkerd-cni: could not parse ProxyUID to integer: %s", err)
+					return err
+				}
+
+				options.ProxyUserID = parsed
 			}
 
 			if pod.GetLabels()[k8s.ControllerComponentLabel] != "" {
