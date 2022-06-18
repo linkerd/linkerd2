@@ -220,6 +220,30 @@ func (conf *ResourceConfig) AppendNamespaceAnnotations() {
 	}
 }
 
+// AppendMultusAnnotations appends Multus specific annotation if the namespace
+// has the MultusAttachAnnotation.
+func (conf *ResourceConfig) AppendMultusAnnotations() {
+	// Skip if Multus NetworkAttach is not requested by namespace.
+	if conf.nsAnnotations[k8s.MultusAttachAnnotation] != k8s.MultusAttachEnabled {
+		return
+	}
+
+	if existingNetworks, ok := conf.pod.meta.Annotations[k8s.MultusNetworkAttachAnnotation]; ok {
+		// Check for duplicates.
+		for _, net := range strings.Split(existingNetworks, ",") {
+			if net == k8s.MultusNetworkAttachmentDefinitionName {
+				return
+			}
+		}
+
+		conf.AppendPodAnnotation(k8s.MultusNetworkAttachAnnotation,
+			existingNetworks+","+k8s.MultusNetworkAttachmentDefinitionName)
+	} else {
+		conf.AppendPodAnnotation(k8s.MultusNetworkAttachAnnotation,
+			k8s.MultusNetworkAttachmentDefinitionName)
+	}
+}
+
 // AppendPodAnnotations appends the given annotations to the pod spec in conf
 func (conf *ResourceConfig) AppendPodAnnotations(annotations map[string]string) {
 	for annotation, value := range annotations {

@@ -99,6 +99,9 @@ func Inject(linkerdNamespace string) webhook.Handler {
 			// over to pod's template.
 			resourceConfig.AppendNamespaceAnnotations()
 
+			// If namespace requires Linkerd Multus support, add the Multus annotation.
+			resourceConfig.AppendMultusAnnotations()
+
 			// If the pod did not inherit the opaque ports annotation from the
 			// namespace, then add the default value from the config values. This
 			// ensures that the generated patch always sets the opaue ports
