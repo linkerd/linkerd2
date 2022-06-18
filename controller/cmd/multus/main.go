@@ -23,7 +23,8 @@ func Main(args []string) {
 	metricsAddr := cmd.String("metrics-address", ":8081", "Prometheus metrics bind address")
 	probeAddr := cmd.String("probe-address", ":8082", "Health probe address")
 	enableLeaderElection := cmd.Bool("leader-election", true, "Enable controller leader election")
-
+	cniNamespace := cmd.String("cni-namespace", "linkerd-cni", "namespace in which Linkerd-CNI is installed")
+	cniKubeconfigFilePath := cmd.String("cni-kubeconfig", "/etc/cni/net.d/ZZZ-linkerd-cni-kubeconfig", "Linkerd-CNI Kubeconfig path")
 	componentName := "linkerd-multus.linkerd.io"
 
 	opts := zap.Options{
@@ -36,6 +37,15 @@ func Main(args []string) {
 	flags.ConfigureAndParse(cmd, args)
 
 	setupLogger := ctrl.Log.WithName("setup")
+
+	setupLogger.Info("Starting controller with settings",
+		"metricsAddr", *metricsAddr,
+		"healthProbeAddr", *probeAddr,
+		"enableLeaderSelectiion", *enableLeaderElection,
+		"cniNamespace", *cniNamespace,
+		"cniKubeconfigPath", *cniKubeconfigFilePath,
+		"componentName", componentName,
+	)
 
 	// Manager.
 	var scheme = runtime.NewScheme()
@@ -55,9 +65,10 @@ func Main(args []string) {
 	}
 
 	//
-	// Create, initialize and run service
+	// Create, initialize and run service.
 	//
-	cniGen := multusctrl.NewCNIGenerator(context.Background(), mgr.GetClient(), componentName)
+	cniGen := multusctrl.NewAttachReconciler(context.Background(), mgr.GetClient(),
+		componentName, *cniNamespace, *cniKubeconfigFilePath)
 
 	if err := cniGen.SetupWithManager(mgr); err != nil {
 		setupLogger.Error(err, "Can not setup controller")
