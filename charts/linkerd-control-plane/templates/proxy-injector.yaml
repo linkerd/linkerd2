@@ -38,6 +38,7 @@ spec:
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
         config.linkerd.io/opaque-ports: "8443"
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
+        {{- include "partials.multus.annotation" . | nindent 8 }}
       labels:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: {{.Release.Namespace}}

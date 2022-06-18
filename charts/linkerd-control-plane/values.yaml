@@ -471,3 +471,20 @@ nodeSelector:
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
 # for more information
 #nodeAffinity:
+
+multusNetworkAttacher:
+  enabled: false
+
+  cniNamespace: "linkerd-cni"
+
+  resources:
+    # cpu:
+      # -- Maximum amount of CPU units that the proxy can use
+      #limit: ""
+      # -- Amount of CPU units that the proxy requests
+      #request: ""
+    # memory:
+      # -- Maximum amount of memory that the proxy can use
+      # limit: ""
+      # -- Maximum amount of memory that the proxy requests
+      # request: ""

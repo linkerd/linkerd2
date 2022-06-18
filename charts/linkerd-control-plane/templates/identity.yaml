@@ -125,6 +125,7 @@ spec:
         {{- include "partials.proxy.annotations" . | nindent 8}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
+        {{- include "partials.multus.annotation" . | nindent 8 }}
       labels:
         linkerd.io/control-plane-component: identity
         linkerd.io/control-plane-ns: {{.Release.Namespace}}

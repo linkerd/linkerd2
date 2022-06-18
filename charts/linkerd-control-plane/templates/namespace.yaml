@@ -9,6 +9,7 @@ metadata:
   name: {{ .Release.Namespace }}
   annotations:
     linkerd.io/inject: disabled
+    {{- include "partials.multus.annotation" . | nindent 8 }}
   labels:
     linkerd.io/is-control-plane: "true"
     config.linkerd.io/admission-webhooks: disabled

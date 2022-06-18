@@ -1,0 +1,128 @@
+{{- if .Values.multusNetworkAttacher.enabled }}
+---
+###
+### Multus Attach Definition Controller
+###
+{{- $tree := deepCopy . }}
+{{ $_ := set $tree.Values.proxy "workloadKind" "deployment" -}}
+{{ $_ := set $tree.Values.proxy "component" "linkerd-multus-attach-controller" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+  labels:
+    app.kubernetes.io/name: multus-attach-controller
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{.Values.linkerdVersion}}
+    linkerd.io/control-plane-component: multus-attach-controller
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+  name: linkerd-multus-attach-controller
+  {{ include "partials.namespace" . }}
+spec:
+  replicas: {{.Values.controllerReplicas}}
+  selector:
+    matchLabels:
+      linkerd.io/control-plane-component: multus-attach-controller
+  {{- if .Values.deploymentStrategy }}
+  strategy:
+    {{- with .Values.deploymentStrategy }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  {{- end }}
+  template:
+    metadata:
+      annotations:
+        {{- if empty .Values.cliVersion }}
+        linkerd.io/helm-release-version: {{.Release.Revision | quote}}
+        {{- end }}
+        {{ include "partials.annotations.created-by" . }}
+        {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+      labels:
+        linkerd.io/control-plane-component: multus-attach-controller
+        linkerd.io/control-plane-ns: {{.Release.Namespace}}
+        linkerd.io/workload-ns: {{.Release.Namespace}}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+    spec:
+      {{- with .Values.runtimeClassName }}
+      runtimeClassName: {{ . | quote }}
+      {{- end }}
+      {{- if .Values.tolerations -}}
+      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- end -}}
+      {{- include "linkerd.node-selector" . | nindent 6 }}
+      {{- $_ := set $tree "component" "multus-attach-controller" -}}
+      {{- include "linkerd.affinity" $tree | nindent 6 }}
+      containers:
+      - args:
+        - multus
+        - -log-level={{.Values.controllerLogLevel}}
+        - -log-format={{.Values.controllerLogFormat}}
+        - -linkerd-namespace={{.Release.Namespace}}
+        - -cni-namespace={{.Values.multusNetworkAttacher.cniNamespace | default "linkerd-cni"}}
+        - -probe-address=:8082
+        - -metrics-address=:8081
+        image: {{.Values.controllerImage}}:{{.Values.linkerdVersion}}
+        imagePullPolicy: {{.Values.imagePullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8082
+          initialDelaySeconds: 10
+        name: multus-attach-controller
+        ports:
+        - containerPort: 8081
+          name: metrics
+        - containerPort: 8082
+          name: health
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /readyz
+            port: 8082
+        {{- if .Values.multusNetworkAttacher.resources -}}
+        {{- include "partials.resources" .Values.multusNetworkAttacher.resources | nindent 8 }}
+        {{- end }}
+        securityContext:
+          runAsUser: {{.Values.controllerUID}}
+          allowPrivilegeEscalation: false
+      {{- if .Values.priorityClassName -}}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
+      serviceAccountName: linkerd-multus-attach-controller
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-multus-attach-controller
+  {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/control-plane-component: multus-attach-controller
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/control-plane-component: multus-attach-controller
+  ports:
+  - name: multus-attach-controller
+    port: 9996
+    targetPort: metrics
+{{- if .Values.enablePodDisruptionBudget }}
+---
+kind: PodDisruptionBudget
+apiVersion: policy/v1beta1
+metadata:
+  name: linkerd-multus-attach-controller
+  {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/control-plane-component: multus-attach-controller
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      linkerd.io/control-plane-component: multus-attach-controller
+{{- end }}
+{{- end }}

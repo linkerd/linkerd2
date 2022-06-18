@@ -1,0 +1,110 @@
+{{- if .Values.multusNetworkAttacher.enabled }}
+---
+###
+### Multus Attach Definition Controller RBAC
+###
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-{{.Release.Namespace}}-multus-attach-controller
+  labels:
+    linkerd.io/control-plane-component: multus-attach-controller
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list", "get", "watch"]
+  # Required to list and get Linkerd CNI ConfigMap
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["k8s.cni.cncf.io"]
+  resources: ["network-attachment-definitions"]
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-{{.Release.Namespace}}-multus-attach-controller
+  labels:
+    linkerd.io/control-plane-component: multus-attach-controller
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+subjects:
+- kind: ServiceAccount
+  name: linkerd-multus-attach-controller
+  namespace: {{.Release.Namespace}}
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: linkerd-{{.Release.Namespace}}-multus-attach-controller
+  apiGroup: rbac.authorization.k8s.io
+---
+# permissions to do leader election.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: linkerd-multus-attach-controller-leader-election
+  {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/control-plane-component: multus-attach-controller
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: linkerd-multus-attach-controller-leader-election
+  {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/control-plane-component: multus-attach-controller
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: linkerd-multus-attach-controller-leader-election
+subjects:
+- kind: ServiceAccount
+  name: linkerd-multus-attach-controller
+  {{ include "partials.namespace" . }}
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-multus-attach-controller
+  {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/control-plane-component: multus-attach-controller
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
+{{- end }}
