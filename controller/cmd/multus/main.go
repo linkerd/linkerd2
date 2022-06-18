@@ -3,6 +3,7 @@ package multus
 import (
 	"context"
 	"flag"
+
 	"os"
 
 	"github.com/linkerd/linkerd2/pkg/flags"
@@ -10,6 +11,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	multusapi "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
@@ -25,6 +27,8 @@ func Main(args []string) {
 	enableLeaderElection := cmd.Bool("leader-election", true, "Enable controller leader election")
 	cniNamespace := cmd.String("cni-namespace", "linkerd-cni", "namespace in which Linkerd-CNI is installed")
 	cniKubeconfigFilePath := cmd.String("cni-kubeconfig", "/etc/cni/net.d/ZZZ-linkerd-cni-kubeconfig", "Linkerd-CNI Kubeconfig path")
+	linkerdNamespace := cmd.String("linkerd-namespace", "", "namespace in which Linkerd is installed")
+
 	componentName := "linkerd-multus.linkerd.io"
 
 	opts := zap.Options{
@@ -45,6 +49,7 @@ func Main(args []string) {
 		"cniNamespace", *cniNamespace,
 		"cniKubeconfigPath", *cniKubeconfigFilePath,
 		"componentName", componentName,
+		"linkerdNamespace", *linkerdNamespace,
 	)
 
 	// Manager.
@@ -68,13 +73,24 @@ func Main(args []string) {
 	// Create, initialize and run service.
 	//
 	cniGen := multusctrl.NewAttachReconciler(context.Background(), mgr.GetClient(),
-		componentName, *cniNamespace, *cniKubeconfigFilePath)
+		componentName, *cniNamespace, *cniKubeconfigFilePath, *linkerdNamespace)
 
 	if err := cniGen.SetupWithManager(mgr); err != nil {
 		setupLogger.Error(err, "Can not setup controller")
 		os.Exit(1)
 	}
 
+	// Probes.
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		setupLogger.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		setupLogger.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
+
+	// Start.
 	if err := mgr.Start(context.Background()); err != nil {
 		setupLogger.Error(err, "Can not start Manager")
 		os.Exit(1)

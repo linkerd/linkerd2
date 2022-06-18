@@ -29,41 +29,53 @@ type AttachReconciler struct {
 	controllerName    string
 	cniNamespace      string
 	cniKubeconfigPath string
+	linkerdNamespace  string
 }
 
 // NewAttachReconciler creates a new AttachReconciler.
 func NewAttachReconciler(ctx context.Context, k8s client.Client,
-	controllerName, cniNamespace, cniKubeconfigPath string) *AttachReconciler {
+	controllerName, cniNamespace, cniKubeconfigPath, linkerdNamespace string) *AttachReconciler {
 	return &AttachReconciler{
 		ctx:               ctx,
 		controllerName:    controllerName,
 		k8s:               k8s,
 		cniNamespace:      cniNamespace,
 		cniKubeconfigPath: cniKubeconfigPath,
+		linkerdNamespace:  linkerdNamespace,
 	}
 }
 
 // Reconcile performs reconcile cycle.
 func (cng *AttachReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithValues("namespace", req.Name)
+	logger := log.FromContext(ctx).WithValues("request_namespace", req.Name)
 
 	logger.Info("Reconcile event")
 
-	var ns = &corev1.Namespace{}
+	// Check if Multus NetworkAttachmentDefinition must be in the namespace.
+	var isMultusRequired bool
 
-	if err := cng.k8s.Get(ctx, req.NamespacedName, ns); err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info("Namespace was deleted")
+	if req.Name == cng.linkerdNamespace {
+		logger.Info("Controller namespace must always have NetworkAttachmentDefinition")
 
-			return ctrl.Result{}, nil
+		isMultusRequired = true
+	} else {
+		var ns = &corev1.Namespace{}
+
+		if err := cng.k8s.Get(ctx, req.NamespacedName, ns); err != nil {
+			if errors.IsNotFound(err) {
+				logger.Info("Namespace was deleted, no action needed")
+
+				return ctrl.Result{}, nil
+			}
+
+			logger.Error(err, "Can not get Namespace")
+
+			return ctrl.Result{}, err
 		}
 
-		logger.Error(err, "Can not get Namespace")
-		return ctrl.Result{}, err
+		// Check if Multus is requested in the Namespace.
+		isMultusRequired = (ns.Annotations[k8s.MultusAttachAnnotation] == k8s.MultusAttachEnabled)
 	}
-
-	// Check if Multus is requested in the Namespace.
-	var isMultusRequired = ns.Annotations[k8s.MultusAttachAnnotation] == k8s.MultusAttachEnabled
 
 	var (
 		multusNetAttach = &netattachv1.NetworkAttachmentDefinition{}
@@ -78,39 +90,61 @@ func (cng *AttachReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	logger.Info("Checked if Multus NetworkAttachmentDefinition is required", "is_required", isMultusRequired)
 
 	if err := cng.k8s.Get(ctx, multusRef, multusNetAttach); err != nil {
-		// All errors except Not Found are problems.
+		// Errors except NotFound are treated as errors.
 		if !errors.IsNotFound(err) {
 			logger.Error(err, "Can not get Multus NetworkAttachmentDefinition")
 
 			return ctrl.Result{}, err
 		}
 
-		// No Multus and not needed in the namespace do nothing.
-		if !isMultusRequired {
-			logger.Info("Multus NetworkAttachmentDefinition is not in the Namespace and not required, do nothing")
+		// Here we have the state "NetworkAttachmentDefinition is not found in the namespace".
+
+		// No Multus in the namespace and required - create new.
+		if isMultusRequired {
+			logger.Info("Multus NetworkAttachmentDefinition is not in the Namespace and required, creating")
+
+			if err := createMultusNetAttach(ctx, cng.k8s, multusRef,
+				cng.cniNamespace, cng.cniKubeconfigPath); err != nil {
+				logger.Error(err, "can not create Multus NetworkAttachmentDefinition")
+
+				return ctrl.Result{}, err
+			}
 
 			return ctrl.Result{}, nil
 		}
 
-		// No Multus and required - create new.
-		logger.Info("Multus NetworkAttachmentDefinition is not in the Namespace and required, creating")
+		// Multus NetworkAttachmentDefinition is not found and not required.
+		logger.Info("Multus NetworkAttachmentDefinition is not found in the Namespace and not required, do nothing")
 
-		return ctrl.Result{}, createMultusNetAttach(ctx, cng.k8s, multusRef,
-			cng.cniNamespace, cng.cniKubeconfigPath)
+		return ctrl.Result{}, nil
 	}
+
+	// Here we have the state "NetworkAttachmentDefinition is found in the namespace".
 
 	// We have Multus in the Namespace, decide what to do with it.
 	if !isMultusRequired {
 		logger.Info("Multus NetworkAttachmentDefinition is in the Namespace and not required, deleting")
 
-		return ctrl.Result{}, deleteMultusNetAttach(ctx, cng.k8s, multusNetAttach)
+		if err := deleteMultusNetAttach(ctx, cng.k8s, multusNetAttach); err != nil {
+			logger.Error(err, "can not delete Multus NetworkAttachmentDefinition")
+
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, nil
 	}
 
 	// Update multus if necessary.
 	logger.Info("Multus NetworkAttachmentDefinition is in the Namespace and required, patch if changed")
 
-	return ctrl.Result{}, updateMultusNetAttach(ctx, cng.k8s, logger,
-		multusNetAttach, cng.cniNamespace, cng.cniKubeconfigPath)
+	if err := updateMultusNetAttach(ctx, cng.k8s, logger,
+		multusNetAttach, cng.cniNamespace, cng.cniKubeconfigPath); err != nil {
+		logger.Error(err, "can not update Multus NetworkAttachmentDefinition")
+
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager configures AttachReconciler with provided manager.
