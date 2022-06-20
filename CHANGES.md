@@ -7,7 +7,7 @@ to `v1.21`, introduces some new changes, and includes a few bug fixes. Most
 notably, a bug has been fixed in the proxy's outbound load balancer that could
 cause panics, especially when the balancer would process many service discovery
 updates in a short period of time. This release also fixes a panic in the
-proxy-injector and introduces a change that will include HTTP probe ports in
+proxy-injector, and introduces a change that will include HTTP probe ports in
 the proxy's inbound ports configuration, to be used for policy discovery.
 
 * Fixed a bug in the proxy's outbound load balancer that could cause panics
