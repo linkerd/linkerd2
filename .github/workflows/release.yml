@@ -108,6 +108,8 @@ jobs:
       # so we manually do that to avoid bloating the cache
       shell: bash
       run: bin/docker-cache-prune
+      env:
+        DOCKER_BUILDKIT_CACHE: "${{ runner.temp }}/.buildx-cache"
 
   policy_controller_manifest:
     runs-on: ubuntu-20.04
