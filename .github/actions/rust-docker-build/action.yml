@@ -36,6 +36,7 @@ runs:
         username: ${{ inputs.docker-ghcr-username }}
         password: ${{ inputs.docker-ghcr-pat }}
     - name: Build and push ${{ inputs.component }} ${{ inputs.arch }}
+      shell: bash
       run: |
         docker buildx build --push . \
           -f ./${{ inputs.component-path }}/${{ inputs.arch }}.dockerfile \
