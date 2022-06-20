@@ -1,5 +1,31 @@
 # Changes
 
+## edge-22.6.2
+
+This edge release bumps the minimum supported Kubernetes version from `v1.20`
+to `v1.21`, introduces some new changes, and includes a few bug fixes. Most
+notably, a bug has been fixed in the proxy's outbound load balancer that could
+cause panics, especially when the balancer would process many service discovery
+updates in a short period of time. This release also fixes a panic in the
+proxy-injector, and introduces a change that will include HTTP probe ports in
+the proxy's inbound ports configuration, to be used for policy discovery.
+
+* Fixed a bug in the proxy's outbound load balancer that could cause panics
+  when many discovery updates were processed in short time periods
+* Added `runtimeClassName` options to Linkerd's Helm chart (thanks @jtcarnes!)
+* Introduced a change in the proxy-injector that will configure the inbound
+  ports proxy configuration with the pod's probe ports (HTTPGet)
+* Added godoc links in the project README file (thanks @spacewander!)
+* Increased minimum supported Kubernetes version to `v1.21` from `v1.20`
+* Fixed an issue where the proxy-injector would not emit events for resources
+  that receive annotation patches but are skipped for injection
+* Refactored `PublicIPToString` to handle both IPv4 and IPv6 addresses in a
+  similar behavior (thanks @zhlsunshine!)
+* Replaced the usage of branch with tags, and pinned `cosign-installer` action
+  to `v1` (thanks @saschagrunert!)
+* Fixed an issue where the proxy-injector would panic if resources have an
+  unsupported owner kind
+
 ## edge-22.6.1
 
 This edge release fixes an issue where Linkerd injected pods could not be

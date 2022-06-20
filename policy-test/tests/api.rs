@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use futures::prelude::*;
 use kube::ResourceExt;
 use linkerd_policy_controller_core::{Ipv4Net, Ipv6Net};
@@ -19,14 +21,7 @@ async fn server_with_server_authorization() {
         let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
         tracing::trace!(?pod);
 
-        // Port-forward to the control plane and start watching the pod's admin
-        // server's policy and ensure that the first update uses the default
-        // policy.
-        let mut policy_api = grpc::PolicyClient::port_forwarded(&client).await;
-        let mut rx = policy_api
-            .watch_port(&ns, &pod.name(), 4191)
-            .await
-            .expect("failed to establish watch");
+        let mut rx = retry_watch_server(&client, &ns, &pod.name()).await;
         let config = rx
             .next()
             .await
@@ -160,14 +155,7 @@ async fn server_with_authorization_policy() {
         let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
         tracing::trace!(?pod);
 
-        // Port-forward to the control plane and start watching the pod's admin
-        // server's policy and ensure that the first update uses the default
-        // policy.
-        let mut policy_api = grpc::PolicyClient::port_forwarded(&client).await;
-        let mut rx = policy_api
-            .watch_port(&ns, &pod.name(), 4191)
-            .await
-            .expect("failed to establish watch");
+        let mut rx = retry_watch_server(&client, &ns, &pod.name()).await;
         let config = rx
             .next()
             .await
@@ -329,5 +317,25 @@ fn mk_admin_server(ns: &str, name: &str) -> k8s::policy::Server {
             port: k8s::policy::server::Port::Number(4191),
             proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
         },
+    }
+}
+
+async fn retry_watch_server(
+    client: &kube::Client,
+    ns: &str,
+    pod_name: &str,
+) -> tonic::Streaming<grpc::inbound::Server> {
+    // Port-forward to the control plane and start watching the pod's admin
+    // server's policy and ensure that the first update uses the default
+    // policy.
+    let mut policy_api = grpc::PolicyClient::port_forwarded(client).await;
+    loop {
+        match policy_api.watch_port(ns, pod_name, 4191).await {
+            Ok(rx) => return rx,
+            Err(error) => {
+                tracing::error!(?error, ns, pod_name, "failed to watch policy for port 4191");
+                time::sleep(Duration::from_secs(1)).await;
+            }
+        }
     }
 }
