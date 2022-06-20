@@ -1,4 +1,6 @@
 ---
+# Source: linkerd-crds/templates/gateway.networking.k8s.io/httproute.yaml
+---
 # Source: linkerd-crds/templates/policy/authorization-policy.yaml
 ---
 apiVersion: apiextensions.k8s.io/v1
@@ -242,154 +244,6 @@ spec:
                         type: array
                         items:
                           type: string
----
-# Source: linkerd-crds/templates/policy/server.yaml
----
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: servers.policy.linkerd.io
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-  labels:
-    helm.sh/chart: linkerd-crds-
-    linkerd.io/control-plane-ns: linkerd-dev
-spec:
-  group: policy.linkerd.io
-  names:
-    kind: Server
-    plural: servers
-    singular: server
-    shortNames: [srv]
-  scope: Namespaced
-  versions:
-    - name: v1alpha1
-      served: true
-      storage: false
-      deprecated: true
-      deprecationWarning: "policy.linkerd.io/v1alpha1 Server is deprecated; use policy.linkerd.io/v1beta1 Server"
-      schema:
-        openAPIV3Schema:
-          type: object
-          required: [spec]
-          properties:
-            spec:
-              type: object
-              required:
-                - podSelector
-                - port
-              properties:
-                podSelector:
-                  type: object
-                  description: >-
-                    Selects pods in the same namespace.
-                  oneOf:
-                    - required: [matchExpressions]
-                    - required: [matchLabels]
-                  properties:
-                    matchLabels:
-                      type: object
-                      x-kubernetes-preserve-unknown-fields: true
-                    matchExpressions:
-                      type: array
-                      items:
-                        type: object
-                        required: [key, operator]
-                        properties:
-                          key:
-                            type: string
-                          operator:
-                            type: string
-                            enum: [In, NotIn, Exists, DoesNotExist]
-                          values:
-                            type: array
-                            items:
-                              type: string
-                port:
-                  description: >-
-                    A port name or number. Must exist in a pod spec.
-                  x-kubernetes-int-or-string: true
-                proxyProtocol:
-                  description: >-
-                    Configures protocol discovery for inbound connections.
-
-                    Supersedes the `config.linkerd.io/opaque-ports` annotation.
-                  type: string
-                  default: unknown
-                  enum:
-                    - unknown
-                    - HTTP/1
-                    - HTTP/2
-                    - gRPC
-                    - opaque
-                    - TLS
-    - name: v1beta1
-      served: true
-      storage: true
-      schema:
-        openAPIV3Schema:
-          type: object
-          required: [spec]
-          properties:
-            spec:
-              type: object
-              required:
-                - podSelector
-                - port
-              properties:
-                podSelector:
-                  type: object
-                  description: >-
-                    Selects pods in the same namespace.
-
-                    The result of matchLabels and matchExpressions are ANDed.
-                    Selects all if empty.
-                  properties:
-                    matchLabels:
-                      type: object
-                      x-kubernetes-preserve-unknown-fields: true
-                    matchExpressions:
-                      type: array
-                      items:
-                        type: object
-                        required: [key, operator]
-                        properties:
-                          key:
-                            type: string
-                          operator:
-                            type: string
-                            enum: [In, NotIn, Exists, DoesNotExist]
-                          values:
-                            type: array
-                            items:
-                              type: string
-                port:
-                  description: >-
-                    A port name or number. Must exist in a pod spec.
-                  x-kubernetes-int-or-string: true
-                proxyProtocol:
-                  description: >-
-                    Configures protocol discovery for inbound connections.
-
-                    Supersedes the `config.linkerd.io/opaque-ports` annotation.
-                  type: string
-                  default: unknown
-                  enum:
-                    - unknown
-                    - HTTP/1
-                    - HTTP/2
-                    - gRPC
-                    - opaque
-                    - TLS
-      additionalPrinterColumns:
-      - name: Port
-        type: string
-        description: The port the server is listening on
-        jsonPath: .spec.port
-      - name: Protocol
-        type: string
-        description: The protocol of the server
-        jsonPath: .spec.proxyProtocol
 ---
 # Source: linkerd-crds/templates/policy/server-authorization.yaml
 ---
@@ -658,6 +512,154 @@ spec:
         type: string
         description: The server that this grants access to
         jsonPath: .spec.server.name
+---
+# Source: linkerd-crds/templates/policy/server.yaml
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: servers.policy.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+  labels:
+    helm.sh/chart: linkerd-crds-
+    linkerd.io/control-plane-ns: linkerd-dev
+spec:
+  group: policy.linkerd.io
+  names:
+    kind: Server
+    plural: servers
+    singular: server
+    shortNames: [srv]
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: false
+      deprecated: true
+      deprecationWarning: "policy.linkerd.io/v1alpha1 Server is deprecated; use policy.linkerd.io/v1beta1 Server"
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required:
+                - podSelector
+                - port
+              properties:
+                podSelector:
+                  type: object
+                  description: >-
+                    Selects pods in the same namespace.
+                  oneOf:
+                    - required: [matchExpressions]
+                    - required: [matchLabels]
+                  properties:
+                    matchLabels:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    matchExpressions:
+                      type: array
+                      items:
+                        type: object
+                        required: [key, operator]
+                        properties:
+                          key:
+                            type: string
+                          operator:
+                            type: string
+                            enum: [In, NotIn, Exists, DoesNotExist]
+                          values:
+                            type: array
+                            items:
+                              type: string
+                port:
+                  description: >-
+                    A port name or number. Must exist in a pod spec.
+                  x-kubernetes-int-or-string: true
+                proxyProtocol:
+                  description: >-
+                    Configures protocol discovery for inbound connections.
+
+                    Supersedes the `config.linkerd.io/opaque-ports` annotation.
+                  type: string
+                  default: unknown
+                  enum:
+                    - unknown
+                    - HTTP/1
+                    - HTTP/2
+                    - gRPC
+                    - opaque
+                    - TLS
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required:
+                - podSelector
+                - port
+              properties:
+                podSelector:
+                  type: object
+                  description: >-
+                    Selects pods in the same namespace.
+
+                    The result of matchLabels and matchExpressions are ANDed.
+                    Selects all if empty.
+                  properties:
+                    matchLabels:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    matchExpressions:
+                      type: array
+                      items:
+                        type: object
+                        required: [key, operator]
+                        properties:
+                          key:
+                            type: string
+                          operator:
+                            type: string
+                            enum: [In, NotIn, Exists, DoesNotExist]
+                          values:
+                            type: array
+                            items:
+                              type: string
+                port:
+                  description: >-
+                    A port name or number. Must exist in a pod spec.
+                  x-kubernetes-int-or-string: true
+                proxyProtocol:
+                  description: >-
+                    Configures protocol discovery for inbound connections.
+
+                    Supersedes the `config.linkerd.io/opaque-ports` annotation.
+                  type: string
+                  default: unknown
+                  enum:
+                    - unknown
+                    - HTTP/1
+                    - HTTP/2
+                    - gRPC
+                    - opaque
+                    - TLS
+      additionalPrinterColumns:
+      - name: Port
+        type: string
+        description: The port the server is listening on
+        jsonPath: .spec.port
+      - name: Protocol
+        type: string
+        description: The protocol of the server
+        jsonPath: .spec.proxyProtocol
 ---
 # Source: linkerd-crds/templates/serviceprofile.yaml
 ---
@@ -938,5 +940,3 @@ spec:
     kind: ServiceProfile
     shortNames:
     - sp
----
-# Source: linkerd-crds/templates/httproute.yaml
