@@ -38,6 +38,7 @@ jobs:
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - uses: ./.github/actions/docker-build
       with:
+        docker-registry: ${{ env.DOCKER_REGISTRY }}
         docker-target: multi-arch
         docker-push: 1
         docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
