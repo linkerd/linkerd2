@@ -127,7 +127,7 @@ jobs:
     - uses: ./.github/actions/rust-docker-manifest
       with:
         docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
-        docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PATH }}
+        docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
         component: policy-controller
         tag: ${{ env.TAG }}
 
