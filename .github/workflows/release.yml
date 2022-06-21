@@ -169,6 +169,8 @@ jobs:
       # so we manually do that to avoid bloating the cache
       shell: bash
       run: bin/docker-cache-prune
+      env:
+        DOCKER_BUILDKIT_CACHE: "${{ runner.temp }}/.buildx-cache"
 
   cni_validator_manifest:
     runs-on: ubuntu-20.04
@@ -185,7 +187,7 @@ jobs:
     - uses: ./.github/actions/rust-docker-manifest
       with:
         docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
-        docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PATH }}
+        docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
         component: linkerd-cni-validator
         tag: ${{ env.TAG }}
 
