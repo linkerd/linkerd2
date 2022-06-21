@@ -38,13 +38,14 @@ jobs:
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - uses: ./.github/actions/docker-build
       with:
+        docker-registry: ${{ env.DOCKER_REGISTRY }}
         docker-target: multi-arch
         docker-push: 1
         docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
         docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
         component: ${{ matrix.component }}
     - name: Install Cosign
-      uses: sigstore/cosign-installer@main
+      uses: sigstore/cosign-installer@v2
     - name: Sign the images with Cosign
       env:
         COSIGN_EXPERIMENTAL: 1
@@ -98,7 +99,7 @@ jobs:
         arch: ${{ matrix.arch }}
         tag: ${{ env.TAG }}
     - name: Install Cosign
-      uses: sigstore/cosign-installer@main
+      uses: sigstore/cosign-installer@v2
     - name: Sign the image with Cosign
       env:
         COSIGN_EXPERIMENTAL: 1
@@ -108,6 +109,8 @@ jobs:
       # so we manually do that to avoid bloating the cache
       shell: bash
       run: bin/docker-cache-prune
+      env:
+        DOCKER_BUILDKIT_CACHE: "${{ runner.temp }}/.buildx-cache"
 
   policy_controller_manifest:
     runs-on: ubuntu-20.04
@@ -124,7 +127,7 @@ jobs:
     - uses: ./.github/actions/rust-docker-manifest
       with:
         docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
-        docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PATH }}
+        docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
         component: policy-controller
         tag: ${{ env.TAG }}
 

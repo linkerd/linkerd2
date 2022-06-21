@@ -46,7 +46,7 @@ func TestPublicAddressToString(t *testing.T) {
 		{
 			name:     "nil",
 			addr:     nil,
-			expected: "<nil>:0",
+			expected: ":0",
 		},
 	}
 
@@ -54,6 +54,63 @@ func TestPublicAddressToString(t *testing.T) {
 		c := c
 		t.Run(c.name, func(t *testing.T) {
 			got := PublicAddressToString(c.addr)
+			if c.expected != got {
+				t.Errorf("expected: %v, got: %v", c.expected, got)
+			}
+		})
+	}
+}
+
+func TestPublicIPToString(t *testing.T) {
+	cases := []struct {
+		name     string
+		addr     *l5dNetPb.IPAddress
+		expected string
+	}{
+		{
+			name: "ipv4",
+			addr: &l5dNetPb.IPAddress{
+				Ip: &l5dNetPb.IPAddress_Ipv4{
+					Ipv4: 3232235521,
+				},
+			},
+			expected: "192.168.0.1",
+		},
+		{
+			name: "narmal ipv6",
+			addr: &l5dNetPb.IPAddress{
+				Ip: &l5dNetPb.IPAddress_Ipv6{
+					Ipv6: &l5dNetPb.IPv6{
+						First: 2306139570357600256,
+						Last:  151930230829876,
+					},
+				},
+			},
+			expected: "2001:db8:85a3::8a2e:370:7334",
+		},
+		{
+			name: "ipv6 with zero as prefix",
+			addr: &l5dNetPb.IPAddress{
+				Ip: &l5dNetPb.IPAddress_Ipv6{
+					Ipv6: &l5dNetPb.IPv6{
+						First: 49320,
+						Last:  1,
+					},
+				},
+			},
+			expected: "::c0a8:0:0:0:1",
+		},
+		{
+			name:     "nil",
+			addr:     nil,
+			expected: "",
+		},
+	}
+
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			got := PublicIPToString(c.addr)
 			if c.expected != got {
 				t.Errorf("expected: %v, got: %v", c.expected, got)
 			}

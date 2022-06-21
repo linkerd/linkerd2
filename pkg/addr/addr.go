@@ -29,16 +29,19 @@ func PublicAddressToString(addr *l5dNetPb.TcpAddress) string {
 
 // PublicIPToString formats a Viz API IPAddress as a string.
 func PublicIPToString(ip *l5dNetPb.IPAddress) string {
-	var b []byte
+	var netIP net.IP
 	if ip.GetIpv6() != nil {
-		b = make([]byte, 16)
+		b := make([]byte, net.IPv6len)
 		binary.BigEndian.PutUint64(b[:8], ip.GetIpv6().GetFirst())
 		binary.BigEndian.PutUint64(b[8:], ip.GetIpv6().GetLast())
+		netIP = net.IP(b)
 	} else if ip.GetIpv4() != 0 {
-		b = make([]byte, 4)
-		binary.BigEndian.PutUint32(b, ip.GetIpv4())
+		netIP = decodeIPv4ToNetIP(ip.GetIpv4())
 	}
-	return net.IP(b).String()
+	if netIP == nil {
+		return ""
+	}
+	return netIP.String()
 }
 
 // ProxyAddressToString formats a Proxy API TCPAddress as a string.
@@ -94,7 +97,7 @@ func ParsePublicIPV4(ip string) (*l5dNetPb.IPAddress, error) {
 }
 
 // NetToPublic converts a Proxy API TCPAddress to a Viz API
-// TCPAddress
+// TCPAddress.
 func NetToPublic(net *pb.TcpAddress) *l5dNetPb.TcpAddress {
 	var ip *l5dNetPb.IPAddress
 
@@ -122,6 +125,7 @@ func NetToPublic(net *pb.TcpAddress) *l5dNetPb.TcpAddress {
 	}
 }
 
+// decodeIPv4ToNetIP converts IPv4 uint32 to an IPv4 net IP.
 func decodeIPv4ToNetIP(ip uint32) net.IP {
 	oBigInt := big.NewInt(0)
 	oBigInt = oBigInt.SetUint64(uint64(ip))
@@ -129,16 +133,16 @@ func decodeIPv4ToNetIP(ip uint32) net.IP {
 }
 
 // IPToInt converts net.IP to bigInt
-// It can support both IPv4 and IPv6
+// It can support both IPv4 and IPv6.
 func IPToInt(ip net.IP) *big.Int {
 	oBigInt := big.NewInt(0)
 	oBigInt.SetBytes(ip)
 	return oBigInt
 }
 
-// IntToIPv4 converts bigInt to an IPv4 net.IP
+// IntToIPv4 converts IPv4 bigInt into an IPv4 net IP.
 func IntToIPv4(intip *big.Int) net.IP {
-	ipByte := make([]byte, 4)
+	ipByte := make([]byte, net.IPv4len)
 	uint32IP := intip.Uint64()
 	binary.BigEndian.PutUint32(ipByte, uint32(uint32IP))
 	return net.IP(ipByte)

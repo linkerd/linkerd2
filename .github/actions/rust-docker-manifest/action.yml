@@ -24,6 +24,7 @@ runs:
         username: ${{ inputs.docker-ghcr-username }}
         password: ${{ inputs.docker-ghcr-pat }}
     - name: Create multiarch manifest
+      shell: bash
       run: |
         img=ghcr.io/${{ github.repository_owner }}/${{ inputs.component }}:${{ inputs.tag }}
         docker manifest create $img ${img}-amd64 ${img}-arm64 ${img}-arm
@@ -31,3 +32,4 @@ runs:
           docker manifest annotate $img ${img}-${arch} --os=linux --arch=${arch}
         done
     - run: docker manifest push ghcr.io/${{ github.repository_owner }}/${{ inputs.component }}:${{ inputs.tag }}
+      shell: bash
