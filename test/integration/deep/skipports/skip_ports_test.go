@@ -19,19 +19,21 @@ var (
 )
 
 func secureRequestMatcher(dst string) *prommatch.Matcher {
-	return prommatch.NewMatcher("request_total", prommatch.Labels{
-		"direction":   prommatch.Equals("outbound"),
-		"tls":         prommatch.Equals("true"),
-		"dst_service": prommatch.Equals(dst),
-	})
+	return prommatch.NewMatcher("request_total",
+		prommatch.Labels{
+			"direction":   prommatch.Equals("outbound"),
+			"tls":         prommatch.Equals("true"),
+			"dst_service": prommatch.Equals(dst),
+		})
 }
 
 func insecureRequestMatcher(dst string) *prommatch.Matcher {
-	return prommatch.NewMatcher("request_total", prommatch.Labels{
-		"direction":   prommatch.Equals("outbound"),
-		"tls":         prommatch.Equals("no_identity"),
-		"dst_service": prommatch.Equals(dst),
-	})
+	return prommatch.NewMatcher("request_total",
+		prommatch.Labels{
+			"direction":   prommatch.Equals("outbound"),
+			"tls":         prommatch.Equals("no_identity"),
+			"dst_service": prommatch.Equals(dst),
+		})
 }
 
 func TestMain(m *testing.M) {

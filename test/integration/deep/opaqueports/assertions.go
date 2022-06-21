@@ -14,9 +14,10 @@ var (
 // hasNoOutboundHTTPRequest returns error if there is any
 // series matching request_total{direction="outbound"}
 func hasNoOutboundHTTPRequest(metrics, ns string) error {
-	m := prommatch.NewMatcher("request_total", prommatch.Labels{
-		"direction": prommatch.Equals("outbound"),
-	})
+	m := prommatch.NewMatcher("request_total",
+		prommatch.Labels{
+			"direction": prommatch.Equals("outbound"),
+		})
 	ok, err := m.HasMatchInString(metrics)
 	if err != nil {
 		return fmt.Errorf("failed to run a check of against the provided metrics: %w", err)
@@ -37,13 +38,14 @@ func hasNoOutboundHTTPRequest(metrics, ns string) error {
 //   dst_serviceaccount="default"
 // }
 func hasOutboundHTTPRequestWithTLS(metrics, ns string) error {
-	m := prommatch.NewMatcher("request_total", prommatch.Labels{
-		"direction":          prommatch.Equals("outbound"),
-		"tls":                prommatch.Equals("true"),
-		"server_id":          prommatch.Equals(fmt.Sprintf("default.%s.serviceaccount.identity.linkerd.cluster.local", ns)),
-		"dst_namespace":      prommatch.Equals(ns),
-		"dst_serviceaccount": prommatch.Equals("default"),
-	},
+	m := prommatch.NewMatcher("request_total",
+		prommatch.Labels{
+			"direction":          prommatch.Equals("outbound"),
+			"tls":                prommatch.Equals("true"),
+			"server_id":          prommatch.Equals(fmt.Sprintf("default.%s.serviceaccount.identity.linkerd.cluster.local", ns)),
+			"dst_namespace":      prommatch.Equals(ns),
+			"dst_serviceaccount": prommatch.Equals("default"),
+		},
 		prommatch.TargetAddrLabels(),
 		prommatch.HasPositiveValue())
 	ok, err := m.HasMatchInString(metrics)
@@ -67,13 +69,14 @@ func hasOutboundHTTPRequestWithTLS(metrics, ns string) error {
 //   dst_serviceaccount="default"
 // }
 func hasOutboundHTTPRequestNoTLS(metrics, ns string) error {
-	m := prommatch.NewMatcher("request_total", prommatch.Labels{
-		"direction":          prommatch.Equals("outbound"),
-		"tls":                prommatch.Equals("no_identity"),
-		"no_tls_reason":      prommatch.Equals("not_provided_by_service_discovery"),
-		"dst_namespace":      prommatch.Equals(ns),
-		"dst_serviceaccount": prommatch.Equals("default"),
-	},
+	m := prommatch.NewMatcher("request_total",
+		prommatch.Labels{
+			"direction":          prommatch.Equals("outbound"),
+			"tls":                prommatch.Equals("no_identity"),
+			"no_tls_reason":      prommatch.Equals("not_provided_by_service_discovery"),
+			"dst_namespace":      prommatch.Equals(ns),
+			"dst_serviceaccount": prommatch.Equals("default"),
+		},
 		prommatch.TargetAddrLabels(),
 		prommatch.HasPositiveValue())
 	ok, err := m.HasMatchInString(metrics)
@@ -130,13 +133,14 @@ func hasInboundTCPTrafficWithTLS(metrics, ns string) error {
 //   authority=~"[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+"
 // }
 func hasOutboundTCPWithAuthorityAndNoTLS(metrics, ns string) error {
-	m := prommatch.NewMatcher("tcp_open_total", prommatch.Labels{
-		"direction":     prommatch.Equals("outbound"),
-		"peer":          prommatch.Equals("dst"),
-		"tls":           prommatch.Equals("no_identity"),
-		"no_tls_reason": prommatch.Equals("not_provided_by_service_discovery"),
-		"authority":     prommatch.Like(authorityRE),
-	},
+	m := prommatch.NewMatcher("tcp_open_total",
+		prommatch.Labels{
+			"direction":     prommatch.Equals("outbound"),
+			"peer":          prommatch.Equals("dst"),
+			"tls":           prommatch.Equals("no_identity"),
+			"no_tls_reason": prommatch.Equals("not_provided_by_service_discovery"),
+			"authority":     prommatch.Like(authorityRE),
+		},
 		prommatch.HasPositiveValue())
 	ok, err := m.HasMatchInString(metrics)
 	if err != nil {
@@ -157,13 +161,14 @@ func hasOutboundTCPWithAuthorityAndNoTLS(metrics, ns string) error {
 //   authority=""
 // }
 func hasOutboundTCPWithNoTLSAndNoAuthority(metrics, ns string) error {
-	m := prommatch.NewMatcher("tcp_open_total", prommatch.Labels{
-		"direction":     prommatch.Equals("outbound"),
-		"peer":          prommatch.Equals("dst"),
-		"tls":           prommatch.Equals("no_identity"),
-		"no_tls_reason": prommatch.Equals("not_provided_by_service_discovery"),
-		"authority":     prommatch.Absent(),
-	})
+	m := prommatch.NewMatcher("tcp_open_total",
+		prommatch.Labels{
+			"direction":     prommatch.Equals("outbound"),
+			"peer":          prommatch.Equals("dst"),
+			"tls":           prommatch.Equals("no_identity"),
+			"no_tls_reason": prommatch.Equals("not_provided_by_service_discovery"),
+			"authority":     prommatch.Absent(),
+		})
 	ok, err := m.HasMatchInString(metrics)
 	if err != nil {
 		return fmt.Errorf("failed to run a check of against the provided metrics: %w", err)
@@ -183,12 +188,13 @@ func hasOutboundTCPWithNoTLSAndNoAuthority(metrics, ns string) error {
 //   authority=~"[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+"
 // }
 func hasOutboundTCPWithTLSAndAuthority(metrics, ns string) error {
-	m := prommatch.NewMatcher("tcp_open_total", prommatch.Labels{
-		"direction": prommatch.Equals("outbound"),
-		"peer":      prommatch.Equals("dst"),
-		"tls":       prommatch.Equals("true"),
-		"authority": prommatch.Like(authorityRE),
-	},
+	m := prommatch.NewMatcher("tcp_open_total",
+		prommatch.Labels{
+			"direction": prommatch.Equals("outbound"),
+			"peer":      prommatch.Equals("dst"),
+			"tls":       prommatch.Equals("true"),
+			"authority": prommatch.Like(authorityRE),
+		},
 		prommatch.TargetAddrLabels(),
 		prommatch.HasPositiveValue())
 	ok, err := m.HasMatchInString(metrics)
@@ -210,12 +216,13 @@ func hasOutboundTCPWithTLSAndAuthority(metrics, ns string) error {
 //   authority=""
 // }
 func hasOutboundTCPWithTLSAndNoAuthority(metrics, ns string) error {
-	m := prommatch.NewMatcher("tcp_open_total", prommatch.Labels{
-		"direction": prommatch.Equals("outbound"),
-		"peer":      prommatch.Equals("dst"),
-		"tls":       prommatch.Equals("true"),
-		"authority": prommatch.Absent(),
-	},
+	m := prommatch.NewMatcher("tcp_open_total",
+		prommatch.Labels{
+			"direction": prommatch.Equals("outbound"),
+			"peer":      prommatch.Equals("dst"),
+			"tls":       prommatch.Equals("true"),
+			"authority": prommatch.Absent(),
+		},
 		prommatch.TargetAddrLabels(),
 		prommatch.HasPositiveValue())
 	ok, err := m.HasMatchInString(metrics)
