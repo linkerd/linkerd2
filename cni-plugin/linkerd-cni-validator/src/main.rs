@@ -208,7 +208,10 @@ pub fn parse_timeout(s: &str) -> Result<time::Duration> {
         "m" => 1000 * 60,
         "h" => 1000 * 60 * 60,
         "d" => 1000 * 60 * 60 * 24,
-        _ => anyhow::bail!("invalid duration unit {} (expected one of 'ms', 's', 'm', 'h', or 'd')", unit),
+        _ => anyhow::bail!(
+            "invalid duration unit {} (expected one of 'ms', 's', 'm', 'h', or 'd')",
+            unit
+        ),
     };
 
     let ms = magnitude
