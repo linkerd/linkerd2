@@ -1092,81 +1092,74 @@ impl PolicyIndex {
         use authorization_policy::AuthenticationTarget;
 
         let mut identities = None;
-        for tgt in spec.authentications.iter() {
-            if let AuthenticationTarget::MeshTLS {
-                ref namespace,
-                ref name,
-            } = tgt
-            {
-                let namespace = namespace.as_deref().unwrap_or(&self.namespace);
-                tracing::trace!(ns = %namespace, %name, "Finding MeshTLSAuthentication");
-                if let Some(ns) = all_authentications.by_ns.get(namespace) {
-                    if let Some(authn) = ns.meshtls.get(name) {
-                        tracing::trace!(ns = %namespace, %name, ids = ?authn.matches, "Found MeshTLSAuthentication");
-                        // There can only be a single required MeshTLSAuthentication. This is
-                        // enforced by the admission controller.
-                        if identities.is_some() {
-                            bail!("policy must not include multiple MeshTLSAuthentications");
-                        }
-                        let ids = authn.matches.clone();
-                        identities = Some(ids);
-                        continue;
-                    }
-                }
-                bail!(
-                    "could not find MeshTLSAuthentication {} in namespace {}",
-                    name,
-                    namespace
-                );
-            }
-        }
-        for tgt in spec.authentications.iter() {
-            if let AuthenticationTarget::ServiceAccount {
-                ref namespace,
-                ref name,
-            } = tgt
-            {
-                // There can only be a single required ServiceAccount. This is
-                // enforced by the admission controller.
-                if identities.is_some() {
-                    bail!("policy must not include multiple ServiceAccounts");
-                }
-                let namespace = namespace.as_deref().unwrap_or(&self.namespace);
-                let id = self.cluster_info.service_account_identity(namespace, name);
-                identities = Some(vec![IdentityMatch::Exact(id)])
-            }
-        }
-
         let mut networks = None;
         for tgt in spec.authentications.iter() {
-            if let AuthenticationTarget::Network {
-                ref namespace,
-                ref name,
-            } = tgt
-            {
-                let namespace = namespace.as_deref().unwrap_or(&self.namespace);
-                tracing::trace!(ns = %namespace, %name, "Finding NetworkAuthentication");
-                if let Some(ns) = all_authentications.by_ns.get(namespace) {
-                    if let Some(authn) = ns.network.get(name).as_ref() {
-                        tracing::trace!(ns = %namespace, %name, nets = ?authn.matches, "Found NetworkAuthentication");
-                        // There can only be a single required NetworkAuthentication. This is
-                        // enforced by the admission controller.
-                        if networks.is_some() {
-                            bail!("policy must not include multiple NetworkAuthentications");
+            match tgt {
+                AuthenticationTarget::Network {
+                    ref namespace,
+                    ref name,
+                } => {
+                    let namespace = namespace.as_deref().unwrap_or(&self.namespace);
+                    tracing::trace!(ns = %namespace, %name, "Finding NetworkAuthentication");
+                    if let Some(ns) = all_authentications.by_ns.get(namespace) {
+                        if let Some(authn) = ns.network.get(name).as_ref() {
+                            tracing::trace!(ns = %namespace, %name, nets = ?authn.matches, "Found NetworkAuthentication");
+                            // There can only be a single required NetworkAuthentication. This is
+                            // enforced by the admission controller.
+                            if networks.is_some() {
+                                bail!("policy must not include multiple NetworkAuthentications");
+                            }
+                            let nets = authn.matches.clone();
+                            networks = Some(nets);
+                            continue;
                         }
-                        let nets = authn.matches.clone();
-                        networks = Some(nets);
-                        continue;
                     }
+                    bail!(
+                        "could not find NetworkAuthentication {} in namespace {}",
+                        name,
+                        namespace
+                    );
                 }
-                bail!(
-                    "could not find NetworkAuthentication {} in namespace {}",
-                    name,
-                    namespace
-                );
+                AuthenticationTarget::MeshTLS {
+                    ref namespace,
+                    ref name,
+                } => {
+                    let namespace = namespace.as_deref().unwrap_or(&self.namespace);
+                    tracing::trace!(ns = %namespace, %name, "Finding MeshTLSAuthentication");
+                    if let Some(ns) = all_authentications.by_ns.get(namespace) {
+                        if let Some(authn) = ns.meshtls.get(name) {
+                            tracing::trace!(ns = %namespace, %name, ids = ?authn.matches, "Found MeshTLSAuthentication");
+                            // There can only be a single required MeshTLSAuthentication. This is
+                            // enforced by the admission controller.
+                            if identities.is_some() {
+                                bail!("policy must not include multiple MeshTLSAuthentications");
+                            }
+                            let ids = authn.matches.clone();
+                            identities = Some(ids);
+                            continue;
+                        }
+                    }
+                    bail!(
+                        "could not find MeshTLSAuthentication {} in namespace {}",
+                        name,
+                        namespace
+                    );
+                }
+                AuthenticationTarget::ServiceAccount {
+                    ref namespace,
+                    ref name,
+                } => {
+                    // There can only be a single required ServiceAccount. This is
+                    // enforced by the admission controller.
+                    if identities.is_some() {
+                        bail!("policy must not include multiple ServiceAccounts");
+                    }
+                    let namespace = namespace.as_deref().unwrap_or(&self.namespace);
+                    let id = self.cluster_info.service_account_identity(namespace, name);
+                    identities = Some(vec![IdentityMatch::Exact(id)])
+                }
             }
         }
-
         Ok(ClientAuthorization {
             // If MTLS identities are configured, use them. Otherwise, do not require
             // authentication.
