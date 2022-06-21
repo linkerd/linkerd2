@@ -119,7 +119,7 @@ async fn validate_outbound_redirect(
         debug!("Building validation client");
         let socket = TcpStream::connect(target_addr).await?;
         debug_assert_eq!(target_addr, socket.peer_addr().unwrap());
-        debug!(original_dst = %target_addr, "Client connected to validation server");
+        debug!("Connection established");
         socket
     };
 
@@ -208,12 +208,12 @@ pub fn parse_timeout(s: &str) -> Result<time::Duration> {
         "m" => 1000 * 60,
         "h" => 1000 * 60 * 60,
         "d" => 1000 * 60 * 60 * 24,
-        _ => anyhow::bail!("invalid duration unit {}", unit),
+        _ => anyhow::bail!("invalid duration unit {} (expected one of 'ms', 's', 'm', 'h', or 'd')", unit),
     };
 
     let ms = magnitude
         .checked_mul(mul)
-        .ok_or_else(|| anyhow!("{} has an invalid duration time", s))?;
+        .ok_or_else(|| anyhow!("Timeout value {} overflows when converted to 'ms'", s))?;
     Ok(time::Duration::from_millis(ms))
 }
 
