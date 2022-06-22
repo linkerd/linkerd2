@@ -4,22 +4,37 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"regexp"
 	"testing"
 	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
+	"github.com/linkerd/linkerd2/testutil/prommatch"
 )
 
 var TestHelper *testutil.TestHelper
 
 var (
-	skipPortsNs               = "skip-ports-test"
-	booksappDeployments       = []string{"books", "traffic", "authors", "webapp"}
-	httpResponseTotalMetricRE = regexp.MustCompile(
-		`route_response_total\{direction="outbound",dst="books\.skip-ports-test\.svc\.cluster\.local:7002",classification="failure".*`,
-	)
+	skipPortsNs         = "skip-ports-test"
+	booksappDeployments = []string{"books", "traffic", "authors", "webapp"}
 )
+
+func secureRequestMatcher(dst string) *prommatch.Matcher {
+	return prommatch.NewMatcher("request_total",
+		prommatch.Labels{
+			"direction":   prommatch.Equals("outbound"),
+			"tls":         prommatch.Equals("true"),
+			"dst_service": prommatch.Equals(dst),
+		})
+}
+
+func insecureRequestMatcher(dst string) *prommatch.Matcher {
+	return prommatch.NewMatcher("request_total",
+		prommatch.Labels{
+			"direction":   prommatch.Equals("outbound"),
+			"tls":         prommatch.Equals("no_identity"),
+			"dst_service": prommatch.Equals(dst),
+		})
+}
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
@@ -62,7 +77,7 @@ func TestSkipInboundPorts(t *testing.T) {
 			}
 		}
 
-		t.Run("expect webapp to not have any 5xx response errors", func(t *testing.T) {
+		t.Run("check webapp metrics", func(t *testing.T) {
 			// Wait for slow-cookers to start sending requests by using a short
 			// time window through RetryFor.
 			err := TestHelper.RetryFor(30*time.Second, func() error {
@@ -78,11 +93,14 @@ func TestSkipInboundPorts(t *testing.T) {
 				if err != nil {
 					return fmt.Errorf("error getting metrics for pod\n%w", err)
 				}
-
-				if httpResponseTotalMetricRE.MatchString(metrics) {
-					return fmt.Errorf("expected not to find HTTP outbound requests when pod is skipping inbound port\n%s", metrics)
+				s := prommatch.Suite{}.
+					MustContain("secure requests to authors", secureRequestMatcher("authors")).
+					MustContain("insecure requests to books", insecureRequestMatcher("books")).
+					MustNotContain("insecure requests to authors", insecureRequestMatcher("authors")).
+					MustNotContain("secure requests to books", secureRequestMatcher("books"))
+				if err := s.CheckString(metrics); err != nil {
+					return fmt.Errorf("error matching metrics\n%w", err)
 				}
-
 				return nil
 			})
 
