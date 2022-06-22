@@ -7,9 +7,9 @@ license = "Apache-2.0"
 publish = false
 
 [dependencies]
-anyhow = "1.0.57"
-clap = { version = "3.1.16", features = ["derive", "env"] }
+anyhow = "1"
+clap = { version = "3", default-features = false, features = ["derive", "env", "std"] }
 kubert = { version = "0.8", features = ["log", "shutdown"] }
-rand = "0.8.5"
+rand = "0.8"
 tokio = { version = "1", features = ["rt", "macros", "net", "sync", "time", "io-util"] }
 tracing = "0.1"
