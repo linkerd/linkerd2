@@ -1,12 +1,12 @@
 [workspace]
 members = [
+    "cni-plugin/linkerd-cni-validator",
     "policy-controller",
     "policy-controller/core",
     "policy-controller/grpc",
     "policy-controller/k8s/api",
     "policy-controller/k8s/index",
     "policy-test",
-    "cni-plugin/linkerd-cni-validator"
 ]
 
 [profile.release]
