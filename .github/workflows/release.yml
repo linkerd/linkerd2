@@ -159,7 +159,7 @@ jobs:
         arch: ${{ matrix.arch }}
         tag: ${{ env.TAG }}
     - name: Install Cosign
-      uses: sigstore/cosign-installer@main
+      uses: sigstore/cosign-installer@v2
     - name: Sign the image with Cosign
       env:
         COSIGN_EXPERIMENTAL: 1
