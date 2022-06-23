@@ -28,7 +28,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
 	github.com/prometheus/client_golang v1.12.2
-	github.com/prometheus/common v0.34.0
+	github.com/prometheus/common v0.35.0
 	github.com/sergi/go-diff v1.2.0
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd
@@ -42,11 +42,11 @@ require (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.28.0
 	helm.sh/helm/v3 v3.9.0
-	k8s.io/api v0.24.1
+	k8s.io/api v0.24.2
 	k8s.io/apiextensions-apiserver v0.24.0
-	k8s.io/apimachinery v0.24.1
-	k8s.io/client-go v0.24.1
-	k8s.io/code-generator v0.24.1
+	k8s.io/apimachinery v0.24.2
+	k8s.io/client-go v0.24.2
+	k8s.io/code-generator v0.24.2
 	k8s.io/klog/v2 v2.60.1
 	k8s.io/kube-aggregator v0.23.5
 	sigs.k8s.io/gateway-api v0.4.3

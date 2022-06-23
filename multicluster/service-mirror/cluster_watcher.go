@@ -196,6 +196,8 @@ func NewRemoteClusterServiceWatcher(
 		repairPeriod:            repairPeriod,
 		liveness:                liveness,
 		headlessServicesEnabled: enableHeadlessSvc,
+		// always instantiate the gatewayAlive=true to prevent unexpected service fail fast
+		gatewayAlive: true,
 	}, nil
 }
 
