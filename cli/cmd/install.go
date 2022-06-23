@@ -320,7 +320,7 @@ func renderCRDs(w io.Writer, options valuespkg.Options) error {
 		return err
 	}
 	var defaultValues map[string]interface{}
-	err := yaml.Unmarshal(charts.InsertVersion(valuesFile.Data), &defaultValues)
+	err := yaml.Unmarshal(valuesFile.Data, &defaultValues)
 	if err != nil {
 		return err
 	}
