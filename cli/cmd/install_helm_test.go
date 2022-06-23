@@ -22,14 +22,14 @@ func TestRenderHelm(t *testing.T) {
 	// override certain defaults with pinned values.
 	// use the Helm lib to render the templates.
 	t.Run("Non-HA mode", func(t *testing.T) {
-		chartCrds := chartCrds(t, "111", "222")
+		chartCrds := chartCrds(t)
 		chartControlPlane := chartControlPlane(t, false, "", "111", "222")
 		testRenderHelm(t, chartCrds, "install_helm_crds_output.golden")
 		testRenderHelm(t, chartControlPlane, "install_helm_control_plane_output.golden")
 	})
 
 	t.Run("HA mode", func(t *testing.T) {
-		chartCrds := chartCrds(t, "111", "222")
+		chartCrds := chartCrds(t)
 		chartControlPlane := chartControlPlane(t, true, "", "111", "222")
 		testRenderHelm(t, chartCrds, "install_helm_crds_output_ha.golden")
 		testRenderHelm(t, chartControlPlane, "install_helm_control_plane_output_ha.golden")
@@ -177,7 +177,7 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 	}
 }
 
-func chartCrds(t *testing.T, ignoreOutboundPorts string, ignoreInboundPorts string) *chart.Chart {
+func chartCrds(t *testing.T) *chart.Chart {
 	partialPaths := []string{
 		"templates/_proxy.tpl",
 		"templates/_proxy-init.tpl",
