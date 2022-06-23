@@ -17,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	valuespkg "helm.sh/helm/v3/pkg/cli/values"
 )
 
 type checkOptions struct {
