@@ -154,8 +154,8 @@ jobs:
       with:
         docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
         docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
-        component: linkerd-cni-validator
-        component-path: cni-plugin/linkerd-cni-validator
+        component: cni-validator
+        component-path: ./cni-validator
         arch: ${{ matrix.arch }}
         tag: ${{ env.TAG }}
     - name: Install Cosign
@@ -188,7 +188,7 @@ jobs:
       with:
         docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
         docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
-        component: linkerd-cni-validator
+        component: ./cni-validator
         tag: ${{ env.TAG }}
 
   windows_static_cli_tests:
