@@ -8,7 +8,7 @@ if [ $# -ne 0 ]; then
 fi
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
-rootdir=$( cd "$bindir"/../cni-plugin/linkerd-cni-validator && pwd)
+rootdir=$( cd "$bindir"/../cni-validator && pwd)
 
 # shellcheck source=_docker.sh
 . "$bindir"/_docker.sh
@@ -21,4 +21,4 @@ tag="${TAG:-$(head_root_tag)}"
 
 arch=$(architecture)
 dockerfile=$rootdir/$arch.dockerfile
-docker_build linkerd-cni-validator "$tag" "$dockerfile"
+docker_build cni-validator "$tag" "$dockerfile"

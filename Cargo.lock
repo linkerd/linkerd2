@@ -178,6 +178,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cni-validator"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "kubert",
+ "rand",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -920,18 +932,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47186c6da4d81ca383c7c47c1bfc80f4b95f4720514d860a5407aaf4233f9588"
 dependencies = [
  "linked-hash-map",
-]
-
-[[package]]
-name = "linkerd-cni-validator"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "kubert",
- "rand",
- "tokio",
- "tracing",
 ]
 
 [[package]]

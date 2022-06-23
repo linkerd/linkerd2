@@ -17,15 +17,15 @@ RUN cargo new policy-controller --lib && \
     cargo new policy-controller/k8s/index --lib && \
     cargo new policy-test --lib
 COPY Cargo.toml Cargo.lock .
-COPY cni-plugin/linkerd-cni-validator /build/
+COPY cni-validator /build/
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.60.0,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo fetch
 RUN --mount=type=cache,target=target \
     --mount=type=cache,from=rust:1.60.0,source=/usr/local/cargo,target=/usr/local/cargo \
-    cargo build --locked --target=armv7-unknown-linux-gnueabihf --release --package=linkerd-cni-validator && \
-    mv target/armv7-unknown-linux-gnueabihf/release/linkerd-cni-validator /tmp/
+    cargo build --locked --target=armv7-unknown-linux-gnueabihf --release --package=cni-validator && \
+    mv target/armv7-unknown-linux-gnueabihf/release/cni-validator /tmp/
 
 FROM $RUNTIME_IMAGE
-COPY --from=build /tmp/linkerd-cni-validator /bin/
-ENTRYPOINT ["/bin/linkerd-cni-validator"]
+COPY --from=build /tmp/cni-validator /bin/
+ENTRYPOINT ["/bin/cni-validator"]

@@ -20,8 +20,8 @@ use tracing::{debug, error, info, Instrument};
 struct Args {
     #[clap(
         long,
-        env = "LINKERD_VALIDATION_LOG_LEVEL",
-        default_value = "linkerd_cni_validator=info,warn"
+        env = "CNI_VALIDATOR_LOG_LEVEL",
+        default_value = "cni_validator=info,warn"
     )]
     log_level: kubert::LogFilter,
 

@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "cni-plugin/linkerd-cni-validator",
+    "cni-validator",
     "policy-controller",
     "policy-controller/core",
     "policy-controller/grpc",

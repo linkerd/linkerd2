@@ -1,5 +1,5 @@
 [package]
-name = "linkerd-cni-validator"
+name = "cni-validator"
 version = "0.1.0"
 authors = ["Linkerd Authors <cncf-linkerd-dev@lists.cncf.io>"]
 edition = "2018"

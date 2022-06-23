@@ -31,9 +31,9 @@ export SUPPORTED_ARCHS=${SUPPORTED_ARCHS:-linux/amd64,linux/arm64,linux/arm/v7}
 export DOCKER_IMAGES=(${DOCKER_IMAGES:-
     cli-bin
     cni-plugin
+    cni-validator
     controller
     policy-controller
-    linkerd-cni-validator
     metrics-api
     debug
     proxy
