@@ -1100,7 +1100,8 @@ impl PolicyIndex {
                     ref name,
                 } => {
                     let namespace = namespace.as_deref().unwrap_or(&self.namespace);
-                    tracing::trace!(ns = %namespace, %name, "Finding NetworkAuthentication");
+                    let _span = tracing::trace_span!("network", ns = %namespace, %name).entered();
+                    tracing::trace!("Finding NetworkAuthentication...");
                     let authn = all_authentications
                         .by_ns
                         .get(namespace)
@@ -1112,7 +1113,7 @@ impl PolicyIndex {
                                 namespace
                             )
                         })?;
-                    tracing::trace!(ns = %namespace, %name, nets = ?authn.matches, "Found NetworkAuthentication");
+                    tracing::trace!(nets = ?authn.matches, "Found NetworkAuthentication");
                     if networks.is_some() {
                         bail!("policy must not include multiple NetworkAuthentications");
                     }
@@ -1125,7 +1126,8 @@ impl PolicyIndex {
                     ref name,
                 } => {
                     let namespace = namespace.as_deref().unwrap_or(&self.namespace);
-                    tracing::trace!(ns = %namespace, %name, "Finding MeshTLSAuthentication");
+                    let _span = tracing::trace_span!("mesh_tls", ns = %namespace, %name).entered();
+                    tracing::trace!("Finding MeshTLSAuthentication...");
                     let authn = all_authentications
                         .by_ns
                         .get(namespace)
@@ -1137,7 +1139,7 @@ impl PolicyIndex {
                                 namespace
                             )
                         })?;
-                    tracing::trace!(ns = %namespace, %name, ids = ?authn.matches, "Found MeshTLSAuthentication");
+                    tracing::trace!(ids = ?authn.matches, "Found MeshTLSAuthentication");
                     if identities.is_some() {
                         bail!("policy must not include multiple MeshTLSAuthentications");
                     }
