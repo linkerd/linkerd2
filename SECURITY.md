@@ -33,3 +33,7 @@ fixed in the near future, the security team may delay the release of a Security
 Advisory, so that one unique, comprehensive Security Advisory covering several
 vulnerabilities can be issued. Communication with vendors and other
 distributions shipping the same code may also cause these delays.
+
+## Security Audits
+
+Unredacted security audits are published in the audits/ subdirectory.
