@@ -51,6 +51,11 @@ ARG NEXTEST_VERSION=0.9.14
 RUN curl --proto '=https' --tlsv1.3 -vsSfL "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${NEXTEST_VERSION}/cargo-nextest-${NEXTEST_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
     | tar zvxf - -C /usr/local/bin cargo-nextest
 
+FROM docker.io/golang:${GO_VERSION}-bullseye as actionlint
+COPY bin/scurl /usr/local/bin/scurl
+RUN scurl -v https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash \
+  | bash -s -- latest /usr/local/bin
+
 FROM docker.io/rust:${RUST_TOOLCHAIN}-bullseye as protoc
 ARG PROTOC_VERSION=v3.20.1
 WORKDIR /tmp
@@ -119,6 +124,7 @@ COPY --from=kubectl /usr/local/bin/kubectl /usr/local/bin/kubectl
 COPY --from=yq /usr/local/bin/yq /usr/local/bin/yq
 COPY --from=just /usr/local/bin/just /usr/local/bin/just
 COPY --from=nextest /usr/local/bin/cargo-nextest /usr/local/bin/cargo-nextest
+COPY --from=actionlint /usr/local/bin/actionlint /usr/local/bin/actionlint
 
 COPY --from=protoc /tmp/bin/protoc /usr/local/bin/protoc
 ENV PROTOC_NO_VENDOR=1
