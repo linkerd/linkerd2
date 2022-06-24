@@ -1,0 +1,38 @@
+name: Lint Workflows
+
+on:
+  pull_request:
+    paths:
+      - .github/**
+
+permissions:
+  contents: read
+
+jobs:
+  lint-workflows:
+    runs-on: ubuntu-20.04
+    name: Lint GitHub Actions
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - name: Install actionlint
+        shell: bash
+        run: |
+          # Install latest version of actionlint and save binary in bin/ directory
+          bin/scurl -v https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash \
+          | bash -s -- latest /usr/local/bin
+          chmod 755 /usr/local/bin/actionlint
+      - name: Run actionlint
+        shell: bash
+        run: |
+          # Run actionlint and format errors to fit GitHub Action's style
+          # To print multiline text in annotations toolkit, we replace '\n'
+          # with '%0A' (urlencoded newline, see https://github.com/actions/toolkit/issues/193)
+          # Shellcheck 2016 is supressed so template args can be passed in
+          # Shellcheck 1090 is supressed to avoid using location directives when sourcing scripts
+          actionlint -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A```%0A{{replace $err.Snippet "\\n" "%0A"}}%0A```\n{{end}}' -ignore 'SC2016:' -ignore 'SC1090:'
+
+          
+
+

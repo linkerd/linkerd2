@@ -75,7 +75,7 @@ jobs:
           do
             d=$(dirname "$toml")
             echo "# $d"
-            (cd $d ; cargo check --all-targets --frozen --message-format=json | cargo-action-fmt)
+            (cd "$d" ; cargo check --all-targets --frozen --message-format=json | cargo-action-fmt)
           done
 
   test:
