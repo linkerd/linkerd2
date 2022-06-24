@@ -11,7 +11,7 @@ use crate::{
     pod, server, server_authorization, ClusterInfo,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer,
     IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
@@ -1101,24 +1101,24 @@ impl PolicyIndex {
                 } => {
                     let namespace = namespace.as_deref().unwrap_or(&self.namespace);
                     tracing::trace!(ns = %namespace, %name, "Finding NetworkAuthentication");
-                    if let Some(ns) = all_authentications.by_ns.get(namespace) {
-                        if let Some(authn) = ns.network.get(name).as_ref() {
-                            tracing::trace!(ns = %namespace, %name, nets = ?authn.matches, "Found NetworkAuthentication");
-                            // There can only be a single required NetworkAuthentication. This is
-                            // enforced by the admission controller.
-                            if networks.is_some() {
-                                bail!("policy must not include multiple NetworkAuthentications");
-                            }
-                            let nets = authn.matches.clone();
-                            networks = Some(nets);
-                            continue;
-                        }
+                    let authn = all_authentications
+                        .by_ns
+                        .get(namespace)
+                        .and_then(|ns| ns.network.get(name))
+                        .ok_or_else(|| {
+                            anyhow!(
+                                "could not find NetworkAuthentication {} in namespace {}",
+                                name,
+                                namespace
+                            )
+                        })?;
+                    tracing::trace!(ns = %namespace, %name, nets = ?authn.matches, "Found NetworkAuthentication");
+                    if networks.is_some() {
+                        bail!("policy must not include multiple NetworkAuthentications");
                     }
-                    bail!(
-                        "could not find NetworkAuthentication {} in namespace {}",
-                        name,
-                        namespace
-                    );
+                    let nets = authn.matches.clone();
+                    networks = Some(nets);
+                    continue;
                 }
                 AuthenticationTarget::MeshTLS {
                     ref namespace,
@@ -1126,24 +1126,24 @@ impl PolicyIndex {
                 } => {
                     let namespace = namespace.as_deref().unwrap_or(&self.namespace);
                     tracing::trace!(ns = %namespace, %name, "Finding MeshTLSAuthentication");
-                    if let Some(ns) = all_authentications.by_ns.get(namespace) {
-                        if let Some(authn) = ns.meshtls.get(name) {
-                            tracing::trace!(ns = %namespace, %name, ids = ?authn.matches, "Found MeshTLSAuthentication");
-                            // There can only be a single required MeshTLSAuthentication. This is
-                            // enforced by the admission controller.
-                            if identities.is_some() {
-                                bail!("policy must not include multiple MeshTLSAuthentications");
-                            }
-                            let ids = authn.matches.clone();
-                            identities = Some(ids);
-                            continue;
-                        }
+                    let authn = all_authentications
+                        .by_ns
+                        .get(namespace)
+                        .and_then(|ns| ns.meshtls.get(name))
+                        .ok_or_else(|| {
+                            anyhow!(
+                                "could not find MeshTLSAuthentication {} in namespace {}",
+                                name,
+                                namespace
+                            )
+                        })?;
+                    tracing::trace!(ns = %namespace, %name, ids = ?authn.matches, "Found MeshTLSAuthentication");
+                    if identities.is_some() {
+                        bail!("policy must not include multiple MeshTLSAuthentications");
                     }
-                    bail!(
-                        "could not find MeshTLSAuthentication {} in namespace {}",
-                        name,
-                        namespace
-                    );
+                    let ids = authn.matches.clone();
+                    identities = Some(ids);
+                    continue;
                 }
                 AuthenticationTarget::ServiceAccount {
                     ref namespace,
