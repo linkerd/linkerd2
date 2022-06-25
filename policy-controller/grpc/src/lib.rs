@@ -2,12 +2,17 @@
 #![forbid(unsafe_code)]
 
 use futures::prelude::*;
-use linkerd2_proxy_api::inbound::{
-    self as proto,
-    inbound_server_policies_server::{InboundServerPolicies, InboundServerPoliciesServer},
+use linkerd2_proxy_api::{
+    inbound::{
+        self as proto,
+        inbound_server_policies_server::{InboundServerPolicies, InboundServerPoliciesServer},
+    },
+    meta::{metadata, Metadata},
 };
 use linkerd_policy_controller_core::{
-    AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer,
+    http_route::Hostname,
+    http_route::{HttpMethod, Value},
+    AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer, HttpRoute,
     IdentityMatch, InboundServer, InboundServerStream, IpNet, NetworkMatch, ProxyProtocol,
     ServerRef,
 };
@@ -173,13 +178,30 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
             ProxyProtocol::Detect { timeout } => Some(proto::proxy_protocol::Kind::Detect(
                 proto::proxy_protocol::Detect {
                     timeout: Some(timeout.into()),
+                    http_routes: srv
+                        .http_routes
+                        .iter()
+                        .map(|(name, route)| to_http_route(name, route, srv, cluster_networks))
+                        .collect(),
                 },
             )),
             ProxyProtocol::Http1 => Some(proto::proxy_protocol::Kind::Http1(
-                proto::proxy_protocol::Http1::default(),
+                proto::proxy_protocol::Http1 {
+                    routes: srv
+                        .http_routes
+                        .iter()
+                        .map(|(name, route)| to_http_route(name, route, srv, cluster_networks))
+                        .collect(),
+                },
             )),
             ProxyProtocol::Http2 => Some(proto::proxy_protocol::Kind::Http2(
-                proto::proxy_protocol::Http2::default(),
+                proto::proxy_protocol::Http2 {
+                    routes: srv
+                        .http_routes
+                        .iter()
+                        .map(|(name, route)| to_http_route(name, route, srv, cluster_networks))
+                        .collect(),
+                },
             )),
             ProxyProtocol::Grpc => Some(proto::proxy_protocol::Kind::Grpc(
                 proto::proxy_protocol::Grpc::default(),
@@ -320,5 +342,198 @@ fn to_authz(
         networks,
         labels,
         authentication: Some(authn),
+        metadata: None, // TODO fill
+    }
+}
+
+fn to_http_route(
+    name: &String,
+    route: &HttpRoute,
+    srv: &InboundServer,
+    cluster_networks: &[IpNet],
+) -> proto::HttpRoute {
+    let metadata = Metadata {
+        kind: Some(metadata::Kind::Resource(metadata::Resource {
+            group: "gateway.networking.k8s.io".to_string(),
+            kind: "HTTPRoute".to_string(),
+            name: name.to_owned(),
+        })),
+    };
+
+    let hosts = route
+        .hostnames
+        .iter()
+        .map(|hostname| match hostname {
+            Hostname::Exact(host) => linkerd2_proxy_api::http_route::HostMatch {
+                r#match: Some(linkerd2_proxy_api::http_route::host_match::Match::Exact(
+                    host.to_owned(),
+                )),
+            },
+            Hostname::Suffix { reverse_labels } => linkerd2_proxy_api::http_route::HostMatch {
+                r#match: Some(linkerd2_proxy_api::http_route::host_match::Match::Suffix(
+                    linkerd2_proxy_api::http_route::host_match::Suffix {
+                        reverse_labels: reverse_labels.to_vec(),
+                    },
+                )),
+            },
+        })
+        .collect();
+
+    let authorizations = srv
+        .authorizations
+        .iter()
+        .map(|(n, c)| to_authz(n, c, cluster_networks))
+        .collect();
+    trace!(?authorizations);
+
+    let matches = route
+        .matches
+        .iter()
+        .map(|route_match| {
+            let headers = route_match
+                .headers
+                .iter()
+                .map(|header_match| {
+                    let value = match &header_match.value {
+                        Value::Exact(value) => {
+                            linkerd2_proxy_api::http_route::header_match::Value::Exact(
+                                value.to_owned(),
+                            )
+                        }
+                        Value::Regex(value) => {
+                            linkerd2_proxy_api::http_route::header_match::Value::Regex(
+                                value.to_owned(),
+                            )
+                        }
+                    };
+                    linkerd2_proxy_api::http_route::HeaderMatch {
+                        name: header_match.name.to_owned(),
+                        value: Some(value),
+                    }
+                })
+                .collect();
+
+            let path = route_match.path.as_ref().map(|path| match path {
+                linkerd_policy_controller_core::http_route::PathMatch::Exact(path) => {
+                    linkerd2_proxy_api::http_route::PathMatch {
+                        kind: Some(linkerd2_proxy_api::http_route::path_match::Kind::Exact(
+                            path.to_owned(),
+                        )),
+                    }
+                }
+                linkerd_policy_controller_core::http_route::PathMatch::Prefix(prefix) => {
+                    linkerd2_proxy_api::http_route::PathMatch {
+                        kind: Some(linkerd2_proxy_api::http_route::path_match::Kind::Prefix(
+                            prefix.to_owned(),
+                        )),
+                    }
+                }
+                linkerd_policy_controller_core::http_route::PathMatch::Regex(regex) => {
+                    linkerd2_proxy_api::http_route::PathMatch {
+                        kind: Some(linkerd2_proxy_api::http_route::path_match::Kind::Regex(
+                            regex.to_owned(),
+                        )),
+                    }
+                }
+            });
+
+            let query_params = route_match
+                .query_params
+                .iter()
+                .map(|query_param| {
+                    let value = match &query_param.value {
+                        Value::Exact(value) => {
+                            linkerd2_proxy_api::http_route::query_param_match::Value::Exact(
+                                value.to_owned(),
+                            )
+                        }
+                        Value::Regex(value) => {
+                            linkerd2_proxy_api::http_route::query_param_match::Value::Regex(
+                                value.to_owned(),
+                            )
+                        }
+                    };
+                    linkerd2_proxy_api::http_route::QueryParamMatch {
+                        name: query_param.name.to_owned(),
+                        value: Some(value),
+                    }
+                })
+                .collect();
+
+            let method = route_match.method.as_ref().map(|method| {
+                let typ = match method {
+                    HttpMethod::CONNECT => {
+                        linkerd2_proxy_api::http_types::http_method::Type::Registered(
+                            linkerd2_proxy_api::http_types::http_method::Registered::Connect.into(),
+                        )
+                    }
+                    HttpMethod::GET => {
+                        linkerd2_proxy_api::http_types::http_method::Type::Registered(
+                            linkerd2_proxy_api::http_types::http_method::Registered::Get.into(),
+                        )
+                    }
+                    HttpMethod::POST => {
+                        linkerd2_proxy_api::http_types::http_method::Type::Registered(
+                            linkerd2_proxy_api::http_types::http_method::Registered::Post.into(),
+                        )
+                    }
+                    HttpMethod::PUT => {
+                        linkerd2_proxy_api::http_types::http_method::Type::Registered(
+                            linkerd2_proxy_api::http_types::http_method::Registered::Put.into(),
+                        )
+                    }
+                    HttpMethod::DELETE => {
+                        linkerd2_proxy_api::http_types::http_method::Type::Registered(
+                            linkerd2_proxy_api::http_types::http_method::Registered::Delete.into(),
+                        )
+                    }
+                    HttpMethod::PATCH => {
+                        linkerd2_proxy_api::http_types::http_method::Type::Registered(
+                            linkerd2_proxy_api::http_types::http_method::Registered::Patch.into(),
+                        )
+                    }
+                    HttpMethod::HEAD => {
+                        linkerd2_proxy_api::http_types::http_method::Type::Registered(
+                            linkerd2_proxy_api::http_types::http_method::Registered::Head.into(),
+                        )
+                    }
+                    HttpMethod::OPTIONS => {
+                        linkerd2_proxy_api::http_types::http_method::Type::Registered(
+                            linkerd2_proxy_api::http_types::http_method::Registered::Options.into(),
+                        )
+                    }
+                    HttpMethod::TRACE => {
+                        linkerd2_proxy_api::http_types::http_method::Type::Registered(
+                            linkerd2_proxy_api::http_types::http_method::Registered::Trace.into(),
+                        )
+                    }
+                    HttpMethod::Unregistered(method) => {
+                        linkerd2_proxy_api::http_types::http_method::Type::Unregistered(
+                            method.to_owned(),
+                        )
+                    }
+                };
+                linkerd2_proxy_api::http_types::HttpMethod { r#type: Some(typ) }
+            });
+
+            linkerd2_proxy_api::http_route::HttpRouteMatch {
+                headers,
+                path,
+                query_params,
+                method,
+            }
+        })
+        .collect();
+
+    let rules = vec![proto::http_route::Rule {
+        matches,
+        filters: Vec::new(),
+    }];
+
+    proto::HttpRoute {
+        metadata: Some(metadata),
+        hosts,
+        authorizations,
+        rules,
     }
 }

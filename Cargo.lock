@@ -742,6 +742,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "k8s-gateway-api"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db00a9af48ec155cb29354d8ad64752f006a65a675ab35aeed646bc53ed92aae"
+dependencies = [
+ "k8s-openapi",
+ "kube",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "k8s-openapi"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -752,6 +765,7 @@ dependencies = [
  "chrono",
  "http",
  "percent-encoding",
+ "schemars",
  "serde",
  "serde-value",
  "serde_json",
@@ -1001,6 +1015,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "futures",
+ "k8s-gateway-api",
  "kubert",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
@@ -1041,7 +1056,7 @@ dependencies = [
 [[package]]
 name = "linkerd2-proxy-api"
 version = "0.5.0"
-source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=ver/rautz#c84c32e79dd37529c499d714acc67815a6db93dd"
+source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=ver/rautz#09a3f0fa411af839b3330eb3ddc53545c742ebc0"
 dependencies = [
  "http",
  "ipnet",

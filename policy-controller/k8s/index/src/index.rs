@@ -13,8 +13,8 @@ use crate::{
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{bail, Result};
 use linkerd_policy_controller_core::{
-    AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer,
-    IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
+    AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRoute, IdentityMatch,
+    InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
@@ -32,6 +32,7 @@ pub struct Index {
     cluster_info: Arc<ClusterInfo>,
     namespaces: NamespaceIndex,
     authentications: AuthenticationNsIndex,
+    http_routes: HttpRouteNsIndex,
 }
 
 /// Holds all `Pod`, `Server`, and `ServerAuthorization` indices by-namespace.
@@ -48,6 +49,11 @@ struct NamespaceIndex {
 #[derive(Debug, Default)]
 struct AuthenticationNsIndex {
     by_ns: HashMap<String, AuthenticationIndex>,
+}
+
+#[derive(Debug, Default)]
+struct HttpRouteNsIndex {
+    by_ns: HashMap<String, HttpRouteIndex>,
 }
 
 /// Holds `Pod`, `Server`, and `ServerAuthorization` indices for a single namespace.
@@ -118,6 +124,11 @@ struct AuthenticationIndex {
     network: HashMap<String, network_authentication::Spec>,
 }
 
+#[derive(Debug, Default)]
+struct HttpRouteIndex {
+    routes: HashMap<String, HttpRoute>,
+}
+
 struct NsUpdate<T> {
     added: Vec<(String, T)>,
     removed: HashSet<String>,
@@ -135,6 +146,7 @@ impl Index {
                 by_ns: HashMap::default(),
             },
             authentications: AuthenticationNsIndex::default(),
+            http_routes: HttpRouteNsIndex::default(),
         }))
     }
 
@@ -609,6 +621,84 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
     }
 }
 
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
+    fn apply(&mut self, route: k8s_gateway_api::HttpRoute) {
+        let ns = route.namespace().expect("HttpRoute must have a namespace");
+        let name = route.name();
+        let _span = info_span!("apply", %ns, %name).entered();
+
+        let spec = match meshtls_authentication::Spec::try_from_resource(authn, &self.cluster_info)
+        {
+            Ok(spec) => spec,
+            Err(error) => {
+                tracing::warn!(%error, "Invalid MeshTLSAuthentication");
+                return;
+            }
+        };
+
+        if self.authentications.update_meshtls(ns, name, spec) {
+            self.reindex_all();
+        }
+    }
+
+    fn delete(&mut self, ns: String, name: String) {
+        let _span = info_span!("delete", %ns, %name).entered();
+
+        if let Entry::Occupied(mut ns) = self.authentications.by_ns.entry(ns) {
+            tracing::debug!("Deleting MeshTLSAuthentication");
+            ns.get_mut().network.remove(&name);
+            if ns.get().is_empty() {
+                ns.remove();
+            }
+            self.reindex_all();
+        } else {
+            tracing::warn!("Namespace already deleted!");
+        }
+    }
+
+    fn reset(
+        &mut self,
+        authns: Vec<k8s::policy::MeshTLSAuthentication>,
+        deleted: HashMap<String, HashSet<String>>,
+    ) {
+        let _span = info_span!("reset");
+
+        let mut changed = false;
+
+        for authn in authns.into_iter() {
+            let namespace = authn
+                .namespace()
+                .expect("meshtlsauthentication must be namespaced");
+            let name = authn.name();
+            let spec = match meshtls_authentication::Spec::try_from_resource(
+                authn,
+                &self.cluster_info,
+            ) {
+                Ok(spec) => spec,
+                Err(error) => {
+                    tracing::warn!(ns = %namespace, %name, %error, "Invalid MeshTLSAuthentication");
+                    return;
+                }
+            };
+            changed = self.authentications.update_meshtls(namespace, name, spec) || changed;
+        }
+        for (namespace, names) in deleted.into_iter() {
+            if let Entry::Occupied(mut ns) = self.authentications.by_ns.entry(namespace) {
+                for name in names.into_iter() {
+                    ns.get_mut().meshtls.remove(&name);
+                }
+                if ns.get().is_empty() {
+                    ns.remove();
+                }
+            }
+        }
+
+        if changed {
+            self.reindex_all();
+        }
+    }
+}
+
 // === impl NemspaceIndex ===
 
 impl NamespaceIndex {
@@ -941,6 +1031,7 @@ impl Pod {
             reference: ServerRef::Default(policy.to_string()),
             protocol,
             authorizations,
+            http_routes: HashMap::new(), // TODO fill
         }
     }
 }
@@ -1019,6 +1110,7 @@ impl PolicyIndex {
             reference: ServerRef::Server(name),
             authorizations,
             protocol: server.protocol.clone(),
+            http_routes: HashMap::new(), // TODO: fill
         }
     }
 

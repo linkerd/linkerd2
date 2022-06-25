@@ -9,6 +9,7 @@ publish = false
 ahash = "0.7"
 anyhow = "1"
 futures = { version = "0.3", default-features = false }
+k8s-gateway-api = "0.5.0"
 kubert = { version = "0.8", default-features = false, features = ["index"] }
 linkerd-policy-controller-core = { path = "../../core" }
 linkerd-policy-controller-k8s-api = { path = "../api" }
