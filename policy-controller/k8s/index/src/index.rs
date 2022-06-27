@@ -1092,35 +1092,8 @@ impl PolicyIndex {
         use authorization_policy::AuthenticationTarget;
 
         let mut identities = None;
-        let mut networks = None;
         for tgt in spec.authentications.iter() {
             match tgt {
-                AuthenticationTarget::Network {
-                    ref namespace,
-                    ref name,
-                } => {
-                    let namespace = namespace.as_deref().unwrap_or(&self.namespace);
-                    let _span = tracing::trace_span!("network", ns = %namespace, %name).entered();
-                    tracing::trace!("Finding NetworkAuthentication...");
-                    let authn = all_authentications
-                        .by_ns
-                        .get(namespace)
-                        .and_then(|ns| ns.network.get(name))
-                        .ok_or_else(|| {
-                            anyhow!(
-                                "could not find NetworkAuthentication {} in namespace {}",
-                                name,
-                                namespace
-                            )
-                        })?;
-                    tracing::trace!(nets = ?authn.matches, "Found NetworkAuthentication");
-                    if networks.is_some() {
-                        bail!("policy must not include multiple NetworkAuthentications");
-                    }
-                    let nets = authn.matches.clone();
-                    networks = Some(nets);
-                    continue;
-                }
                 AuthenticationTarget::MeshTLS {
                     ref namespace,
                     ref name,
@@ -1160,8 +1133,40 @@ impl PolicyIndex {
                     let id = self.cluster_info.service_account_identity(namespace, name);
                     identities = Some(vec![IdentityMatch::Exact(id)])
                 }
+                _network => {}
             }
         }
+
+        let mut networks = None;
+        for tgt in spec.authentications.iter() {
+            if let AuthenticationTarget::Network {
+                ref namespace,
+                ref name,
+            } = tgt
+            {
+                let namespace = namespace.as_deref().unwrap_or(&self.namespace);
+                tracing::trace!(ns = %namespace, %name, "Finding NetworkAuthentication");
+                if let Some(ns) = all_authentications.by_ns.get(namespace) {
+                    if let Some(authn) = ns.network.get(name).as_ref() {
+                        tracing::trace!(ns = %namespace, %name, nets = ?authn.matches, "Found NetworkAuthentication");
+                        // There can only be a single required NetworkAuthentication. This is
+                        // enforced by the admission controller.
+                        if networks.is_some() {
+                            bail!("policy must not include multiple NetworkAuthentications");
+                        }
+                        let nets = authn.matches.clone();
+                        networks = Some(nets);
+                        continue;
+                    }
+                }
+                bail!(
+                    "could not find NetworkAuthentication {} in namespace {}",
+                    name,
+                    namespace
+                );
+            }
+        }
+
         Ok(ClientAuthorization {
             // If MTLS identities are configured, use them. Otherwise, do not require
             // authentication.
