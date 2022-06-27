@@ -15,6 +15,7 @@ func NewFakeAPI(configs ...string) (*API, error) {
 		clientSet,
 		nil,
 		spClientSet,
+		"",
 		CJ,
 		CM,
 		Deploy,

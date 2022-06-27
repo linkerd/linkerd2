@@ -2316,7 +2316,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	// This is used instead of `hc.kubeAPI` to limit multiple k8s API requests
 	// and use the caching logic in the shared informers
 	// TODO: move the shared informer code out of `controller/`, and into `pkg` to simplify the dependency tree.
-	kubeAPI := controllerK8s.NewAPI(hc.kubeAPI, nil, nil, controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
+	kubeAPI := controllerK8s.NewAPI(hc.kubeAPI, nil, nil, "", controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
 	kubeAPI.Sync(ctx.Done())
 
 	services, err := kubeAPI.Svc().Lister().Services(hc.DataPlaneNamespace).List(labels.Everything())

@@ -160,7 +160,7 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 		break
 	}
 
-	api := NewAPI(k8sClient, dynamicClient, l5dCrdClient, resources...)
+	api := NewAPI(k8sClient, dynamicClient, l5dCrdClient, "", resources...)
 	for _, gauge := range api.gauges {
 		if err := prometheus.Register(gauge); err != nil {
 			log.Warnf("failed to register Prometheus gauge %s: %s", gauge.Desc().String(), err)
@@ -170,13 +170,21 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 }
 
 // NewAPI takes a Kubernetes client and returns an initialized API.
+// If `namespace` is empty, returns a cluster-wide API. Otherwise returns an
+// API scoped to that namespace
 func NewAPI(
 	k8sClient kubernetes.Interface,
 	dynamicClient dynamic.Interface,
 	l5dCrdClient l5dcrdclient.Interface,
+	namespace string,
 	resources ...APIResource,
 ) *API {
-	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
+	var sharedInformers informers.SharedInformerFactory
+	if namespace == "" {
+		sharedInformers = informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
+	} else {
+		sharedInformers = informers.NewSharedInformerFactoryWithOptions(k8sClient, 10*time.Minute, informers.WithNamespace(namespace))
+	}
 
 	var l5dCrdSharedInformers l5dcrdinformer.SharedInformerFactory
 	if l5dCrdClient != nil {
