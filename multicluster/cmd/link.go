@@ -52,6 +52,7 @@ type (
 func newLinkCommand() *cobra.Command {
 	opts, err := newLinkOptionsWithDefault()
 	var valuesOptions valuespkg.Options
+	var ha bool
 
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -305,6 +306,13 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				return err
 			}
 
+			if ha {
+				valuesOverrides, err = charts.OverrideFromFile(valuesOverrides, static.Templates, helmMulticlusterLinkDefaultChartName, "values-ha.yaml")
+				if err != nil {
+					return err
+				}
+			}
+
 			vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
 			if err != nil {
 				return err
@@ -359,6 +367,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().StringVarP(&opts.selector, "selector", "l", opts.selector, "Selector (label query) to filter which services in the target cluster to mirror")
 	cmd.Flags().StringVar(&opts.gatewayAddresses, "gateway-addresses", opts.gatewayAddresses, "If specified, overwrites gateway addresses when gateway service is not type LoadBalancer (comma separated list)")
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
+	cmd.Flags().BoolVar(&ha, "ha", false, "Link cluster in High Availability mode")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"namespace", "gateway-namespace"},

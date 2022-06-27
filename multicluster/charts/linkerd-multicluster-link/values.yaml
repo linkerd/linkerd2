@@ -5,14 +5,22 @@ controllerImage: cr.l5d.io/linkerd/controller
 controllerImageVersion: linkerdVersionValue
 # -- Toggle support for mirroring headless services
 enableHeadlessServices: false
+# -- Enables Pod Anti Affinity logic to balance the placement of replicas
+# across hosts and zones for High Availability.
+# Enable this only when you have multiple replicas of components.
+enablePodAntiAffinity: false
+
 gateway:
   probe:
     # -- The port used for liveliness probing
     port: 4191
+
 # -- Log level for the Multicluster components
 logLevel: info
 # -- Node selectors for the Service mirror pod
 nodeSelector: {}
+# --- Number of service mirror replicas
+replicas: 1
 # -- Resources for the Service mirror container
 resources: {}
 # -- Number of times update from the remote cluster is allowed to be requeued

@@ -29,9 +29,11 @@ Kubernetes: `>=1.21.0-0`
 | controllerImageVersion | string | `"linkerdVersionValue"` | Tag for the Service Mirror container Docker image |
 | enableHeadlessServices | bool | `false` | Toggle support for mirroring headless services |
 | enablePSP | bool | `false` | Create RoleBindings to associate ServiceAccount of target cluster Service Mirror to the control plane PSP resource. This requires that `enabledPSP` is set to true on the extension and control plane install. Note PSP has been deprecated since k8s v1.21 |
+| enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
 | gateway.probe.port | int | `4191` | The port used for liveliness probing |
 | logLevel | string | `"info"` | Log level for the Multicluster components |
 | nodeSelector | object | `{}` | Node selectors for the Service mirror pod |
+| replicas | int | `1` |  |
 | resources | object | `{}` | Resources for the Service mirror container |
 | serviceMirrorRetryLimit | int | `3` | Number of times update from the remote cluster is allowed to be requeued (retried) |
 | serviceMirrorUID | int | `2103` | User id under which the Service Mirror shall be ran |
