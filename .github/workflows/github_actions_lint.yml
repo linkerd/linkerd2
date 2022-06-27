@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 env:
-  # Pin 'actionlint' to v1.6.14
-  ACTION_LINT_VERSION: 1.6.14
+  # Pin 'actionlint' to v1.6.13
+  ACTION_LINT_VERSION: 1.6.13
 jobs:
   lint-workflows:
     runs-on: ubuntu-20.04
