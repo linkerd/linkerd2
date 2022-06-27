@@ -853,7 +853,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 					return
 				}
 
-				if !rcsw.isExported(epOld.Labels) && !rcsw.isExported(epNew.Labels) {
+				if !rcsw.isExported(epNew.Labels) {
 					rcsw.log.Debugf("skipped processing endpoints object %s/%s: missing %s label", epNew.Namespace, epNew.Name, consts.DefaultExportedServiceSelector)
 					return
 				}
