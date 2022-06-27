@@ -52,9 +52,10 @@ RUN curl --proto '=https' --tlsv1.3 -vsSfL "https://github.com/nextest-rs/nextes
     | tar zvxf - -C /usr/local/bin cargo-nextest
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as actionlint
+ARG ACTION_LINT_VERSION=1.6.14
 COPY bin/scurl /usr/local/bin/scurl
 RUN scurl -v https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash \
-  | bash -s -- latest /usr/local/bin
+  | bash -s -- "${ACTION_LINT_VERSION}" /usr/local/bin
 
 FROM docker.io/rust:${RUST_TOOLCHAIN}-bullseye as protoc
 ARG PROTOC_VERSION=v3.20.1
