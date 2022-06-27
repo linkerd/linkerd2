@@ -65,7 +65,7 @@ func newAllowCommand() *cobra.Command {
 				Files:     files,
 				Fs:        static.Templates,
 			}
-			buf, err := chart.RenderNoPartials()
+			buf, err := chart.Render()
 			if err != nil {
 				return err
 			}
