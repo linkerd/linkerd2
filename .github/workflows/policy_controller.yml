@@ -165,7 +165,7 @@ jobs:
           tag="$(CI_FORCE_CLEAN=1 bin/root-tag)"
           docker load <image-archives/cli-bin.tar
           container_id=$(docker create "ghcr.io/linkerd/cli-bin:$tag")
-          docker cp "$container_id:/out/linkerd-linux-amd64 /usr/local/bin/linkerd"
+          docker cp "$container_id:/out/linkerd-linux-amd64" /usr/local/bin/linkerd
           docker rm "$container_id"
       - run: linkerd check --pre --wait=1m
       - run: linkerd install --crds | kubectl apply -f -
