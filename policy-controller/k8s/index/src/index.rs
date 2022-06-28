@@ -1118,7 +1118,6 @@ impl PolicyIndex {
                     }
                     let ids = authn.matches.clone();
                     identities = Some(ids);
-                    continue;
                 }
                 AuthenticationTarget::ServiceAccount {
                     ref namespace,
