@@ -202,7 +202,7 @@ func chartCrds(t *testing.T) *chart.Chart {
 		t.Fatal(err)
 	}
 	var defaultValues map[string]interface{}
-	err := yaml.Unmarshal(charts.InsertVersion(valuesFile.Data), &defaultValues)
+	err := yaml.Unmarshal(valuesFile.Data, &defaultValues)
 	if err != nil {
 		t.Fatal(err)
 	}
