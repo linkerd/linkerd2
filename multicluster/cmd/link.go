@@ -252,6 +252,9 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 			}
 
 			values, err := buildServiceMirrorValues(opts)
+			if err != nil {
+				return err
+			}
 
 			// Create values override
 			valuesOverrides, err := valuesOptions.MergeValues(nil)
@@ -260,6 +263,9 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 			}
 
 			serviceMirrorOut, err := renderServiceMirror(values, valuesOverrides, opts.namespace)
+			if err != nil {
+				return err
+			}
 
 			stdout.Write(credsOut)
 			stdout.Write([]byte("---\n"))
