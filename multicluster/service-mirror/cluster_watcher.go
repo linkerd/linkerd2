@@ -836,28 +836,19 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 				rcsw.eventsQueue.Add(&OnAddEndpointsCalled{obj.(*corev1.Endpoints)})
 			},
 			// AddFunc relevant for all kind of exported endpoints
-			UpdateFunc: func(old, new interface{}) {
+			UpdateFunc: func(_, new interface{}) {
 				if new.(metav1.Object).GetNamespace() == kubeSystem {
 					return
 				}
-
-				epOld, ok := old.(*corev1.Endpoints)
-				if !ok {
-					rcsw.log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", epOld)
-					return
-				}
-
 				epNew, ok := new.(*corev1.Endpoints)
 				if !ok {
 					rcsw.log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", epNew)
 					return
 				}
-
-				if !rcsw.isExported(epOld.Labels) && !rcsw.isExported(epNew.Labels) {
+				if !rcsw.isExported(epNew.Labels) {
 					rcsw.log.Debugf("skipped processing endpoints object %s/%s: missing %s label", epNew.Namespace, epNew.Name, consts.DefaultExportedServiceSelector)
 					return
 				}
-
 				rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{epNew})
 			},
 		},
