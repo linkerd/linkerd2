@@ -148,9 +148,9 @@ jobs:
           tag="$(CI_FORCE_CLEAN=1 bin/root-tag)"
           # Image loading is flakey in CI, so retry!
           until k3d image import \
-                  docker.io/bitnami/kubectl:latest \
-                  docker.io/curlimages/curl:latest \
-                  docker.io/library/nginx:latest \
+                  bitnami/kubectl:latest \
+                  curlimages/curl:latest \
+                  nginx:latest \
                   ghcr.io/linkerd/controller:$tag \
                   ghcr.io/linkerd/policy-controller:$tag \
                   ghcr.io/linkerd/proxy:$tag \
