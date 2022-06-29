@@ -52,6 +52,9 @@ spec:
                 description: Kubernetes Label Selector
                 type: object
                 properties:
+                  matchLabels:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   matchExpressions:
                     description: List of selector requirements
                     type: array
@@ -68,6 +71,11 @@ spec:
                         operator:
                           description: Evaluation of a label in relation to set
                           type: string
+                          enum: [In, NotIn, Exists, DoesNotExist]
+                        values:
+                          type: array
+                          items:
+                            type: string
               targetClusterName:
                 description: Name of target cluster to link to
                 type: string
