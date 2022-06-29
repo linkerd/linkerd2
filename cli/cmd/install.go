@@ -44,11 +44,12 @@ You can use the --ignore-cluster flag if you just want to generate the installat
 
 var (
 	templatesCrdFiles = []string{
+		"templates/gateway.networking.k8s.io/httproute.yaml",
 		"templates/policy/authorization-policy.yaml",
 		"templates/policy/meshtls-authentication.yaml",
 		"templates/policy/network-authentication.yaml",
-		"templates/policy/server.yaml",
 		"templates/policy/server-authorization.yaml",
+		"templates/policy/server.yaml",
 		"templates/serviceprofile.yaml",
 	}
 
@@ -122,7 +123,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 
 				if !crds {
 					crds := bytes.Buffer{}
-					err := renderCRDs(&crds)
+					err := renderCRDs(&crds, options)
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "%q", err)
 						os.Exit(1)
@@ -138,7 +139,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 			if crds {
 				// The CRD chart is not configurable.
 				// TODO(ver): Error if values have been configured?
-				if err = installCRDs(cmd.Context(), k8sAPI, os.Stdout); err != nil {
+				if err = installCRDs(cmd.Context(), k8sAPI, os.Stdout, options); err != nil {
 					return err
 				}
 
@@ -183,12 +184,12 @@ func checkNoConfig(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
 	return nil
 }
 
-func installCRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer) error {
+func installCRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, options valuespkg.Options) error {
 	if err := checkNoConfig(ctx, k8sAPI); err != nil {
 		return err
 	}
 
-	return renderCRDs(w)
+	return renderCRDs(w, options)
 }
 
 func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, options valuespkg.Options) error {
@@ -254,7 +255,7 @@ func isRunAsRoot(values map[string]interface{}) bool {
 // renderChartToBuffer takes a slice of loaded template files and configuration values and renders
 // them into a buffer. The coalesced values are also returned so that they may be rendered via
 // `renderOverrides` if appropriate.
-func renderChartToBuffer(files []*loader.BufferedFile, values *l5dcharts.Values, valuesOverrides map[string]interface{}) (*bytes.Buffer, chartutil.Values, error) {
+func renderChartToBuffer(files []*loader.BufferedFile, values map[string]interface{}, valuesOverrides map[string]interface{}) (*bytes.Buffer, chartutil.Values, error) {
 	// Load the partials in addition to the main chart.
 	var partials []*loader.BufferedFile
 	for _, template := range charts.L5dPartials {
@@ -269,10 +270,7 @@ func renderChartToBuffer(files []*loader.BufferedFile, values *l5dcharts.Values,
 	}
 
 	// Store final Values generated from values.yaml and CLI flags
-	chart.Values, err = values.ToMap()
-	if err != nil {
-		return nil, nil, err
-	}
+	chart.Values = values
 
 	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
 	if err != nil {
@@ -305,7 +303,7 @@ func renderChartToBuffer(files []*loader.BufferedFile, values *l5dcharts.Values,
 	return &buf, vals, nil
 }
 
-func renderCRDs(w io.Writer) error {
+func renderCRDs(w io.Writer, options valuespkg.Options) error {
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
@@ -316,12 +314,25 @@ func renderCRDs(w io.Writer) error {
 		return err
 	}
 
-	// The CRD chart does not take any value configuration.
-	values, err := l5dcharts.NewValues()
+	// Load defaults from values.yaml
+	valuesFile := &loader.BufferedFile{Name: l5dcharts.HelmChartDirCrds + "/values.yaml"}
+	if err := charts.ReadFile(static.Templates, "/", valuesFile); err != nil {
+		return err
+	}
+	var defaultValues map[string]interface{}
+	err := yaml.Unmarshal(valuesFile.Data, &defaultValues)
 	if err != nil {
 		return err
 	}
-	buf, _, err := renderChartToBuffer(files, values, map[string]interface{}{})
+	defaultValues["cliVersion"] = k8s.CreatedByAnnotationValue()
+
+	// Create values override
+	valuesOverrides, err := options.MergeValues(nil)
+	if err != nil {
+		return err
+	}
+
+	buf, _, err := renderChartToBuffer(files, defaultValues, valuesOverrides)
 	if err != nil {
 		return err
 	}
@@ -341,7 +352,11 @@ func renderControlPlane(w io.Writer, values *l5dcharts.Values, valuesOverrides m
 		return err
 	}
 
-	buf, vals, err := renderChartToBuffer(files, values, valuesOverrides)
+	valuesMap, err := values.ToMap()
+	if err != nil {
+		return err
+	}
+	buf, vals, err := renderChartToBuffer(files, valuesMap, valuesOverrides)
 	if err != nil {
 		return err
 	}
