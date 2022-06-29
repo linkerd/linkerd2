@@ -17,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	valuespkg "helm.sh/helm/v3/pkg/cli/values"
 )
 
 type checkOptions struct {
@@ -140,7 +141,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 	}
 
 	crdManifest := bytes.Buffer{}
-	err = renderCRDs(&crdManifest)
+	err = renderCRDs(&crdManifest, valuespkg.Options{})
 	if err != nil {
 		return err
 	}
