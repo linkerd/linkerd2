@@ -2811,8 +2811,7 @@ func CheckPodsRunning(pods []corev1.Pod, namespace string) error {
 
 		// Skip validating pods that have a status which indicates there would
 		// be no running proxy container.
-		switch status {
-		case "Completed", "NodeShutdown", "Shutdown":
+		if status == "Completed" || status == "Shutdown" || status == "NodeShutdown" {
 			continue
 		} else if status != string(corev1.PodRunning) && status != "Evicted" {
 			return fmt.Errorf("pod \"%s\" status is %s", pod.Name, pod.Status.Phase)
