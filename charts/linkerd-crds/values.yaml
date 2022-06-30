@@ -1,0 +1,2 @@
+# -- If set, installs the Gateway API CRDs.
+installGatewayApi: true

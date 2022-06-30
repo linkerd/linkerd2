@@ -94,7 +94,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 			if crds {
 				// The CRD chart is not configurable.
 				// TODO(ver): Error if values have been configured?
-				if _, err := upgradeCRDs().WriteTo(os.Stdout); err != nil {
+				if _, err := upgradeCRDs(options).WriteTo(os.Stdout); err != nil {
 					fmt.Fprintln(os.Stderr, err.Error())
 					os.Exit(1)
 				}
@@ -166,7 +166,7 @@ func makeUpgradeFlags() *pflag.FlagSet {
 func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, options valuespkg.Options) error {
 
 	crds := bytes.Buffer{}
-	err := renderCRDs(&crds)
+	err := renderCRDs(&crds, options)
 	if err != nil {
 		return err
 	}
@@ -191,9 +191,9 @@ func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []
 	return err
 }
 
-func upgradeCRDs() *bytes.Buffer {
+func upgradeCRDs(options valuespkg.Options) *bytes.Buffer {
 	var buf bytes.Buffer
-	if err := renderCRDs(&buf); err != nil {
+	if err := renderCRDs(&buf, options); err != nil {
 		upgradeErrorf("Could not render upgrade configuration: %s", err)
 	}
 	return &buf
