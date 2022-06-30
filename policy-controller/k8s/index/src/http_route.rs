@@ -6,7 +6,7 @@ use linkerd_policy_controller_core::http_route::{
 #[derive(Clone, Debug, PartialEq)]
 pub struct RouteBinding {
     pub route: HttpRoute,
-    pub parent_ref: Vec<ParentReference>,
+    pub parent_refs: Vec<ParentReference>,
 }
 
 impl RouteBinding {
@@ -116,24 +116,16 @@ impl RouteBinding {
             })
             .collect();
 
-        let mut parent_refs = route.spec.inner.parent_refs.unwrap_or_default();
-        for parent_ref in parent_refs.iter_mut() {
-            if parent_ref.namespace.is_none() {
-                parent_ref.namespace = route.metadata.namespace.clone();
-            }
-        }
-
         RouteBinding {
             route: HttpRoute { hostnames, matches },
-            parent_ref: parent_refs,
+            parent_refs: route.spec.inner.parent_refs.unwrap_or_default(),
         }
     }
 
-    pub fn selects_server(&self, name: &str, namespace: &str) -> bool {
-        for parent_ref in self.parent_ref.iter() {
+    pub fn selects_server(&self, name: &str) -> bool {
+        for parent_ref in self.parent_refs.iter() {
             if parent_ref.group.as_deref() == Some("policy.linkerd.io")
                 && parent_ref.kind.as_deref() == Some("Server")
-                && parent_ref.namespace.as_deref() == Some(namespace)
                 && parent_ref.name == name
             {
                 return true;
