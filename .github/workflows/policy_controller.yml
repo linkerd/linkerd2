@@ -99,7 +99,7 @@ jobs:
       matrix:
         k8s:
           - v1.21
-          - latest # v1.24 isn't yet its own channel https://github.com/k3s-io/k3s/issues/5746
+          - v1.24
     name: Policy controller integration (k8s ${{ matrix.k8s }})
 
     needs: [docker-build, integration-build]
