@@ -9,6 +9,7 @@ pub use self::{http_route::HttpRoute, identity_match::IdentityMatch, network_mat
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use futures::prelude::*;
+use http_route::HttpRouteRef;
 pub use ipnet::{IpNet, Ipv4Net, Ipv6Net};
 use std::{hash::Hash, pin::Pin, time::Duration};
 
@@ -29,7 +30,7 @@ pub struct InboundServer {
 
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
-    pub http_routes: HashMap<String, HttpRoute>,
+    pub http_routes: HashMap<HttpRouteRef, HttpRoute>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

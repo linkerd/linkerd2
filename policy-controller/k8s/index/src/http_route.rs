@@ -1,104 +1,144 @@
+use k8s_gateway_api::ParentReference;
 use linkerd_policy_controller_core::http_route::{
     HeaderMatch, Hostname, HttpMethod, HttpRoute, HttpRouteMatch, PathMatch, QueryParamMatch, Value,
 };
 
-fn try_http_route_from_resource(route: k8s_gateway_api::HttpRouteSpec) -> HttpRoute {
-    let hostnames = route
-        .hostnames
-        .iter()
-        .flatten()
-        .map(|hostname| {
-            if hostname.starts_with("*.") {
-                let mut reverse_labels = hostname
-                    .split(".")
-                    .skip(1)
-                    .map(|label| label.to_owned())
-                    .collect::<Vec<String>>();
-                reverse_labels.reverse();
-                Hostname::Suffix { reverse_labels }
-            } else {
-                Hostname::Exact(hostname.to_owned())
-            }
-        })
-        .collect();
+#[derive(Clone, Debug, PartialEq)]
+pub struct RouteBinding {
+    pub route: HttpRoute,
+    pub parent_ref: Vec<ParentReference>,
+}
 
-    let matches = route
-        .rules
-        .iter()
-        .flatten()
-        .map(|rule| rule.matches)
-        .flatten()
-        .flatten()
-        .map(|route_match| {
-            let path = route_match.path.map(|path_match| match path_match {
-                k8s_gateway_api::HttpPathMatch::Exact { value } => PathMatch::Exact(value),
-                k8s_gateway_api::HttpPathMatch::PathPrefix { value } => PathMatch::Prefix(value),
-                k8s_gateway_api::HttpPathMatch::RegularExpression { value } => {
-                    PathMatch::Regex(value)
+impl RouteBinding {
+    pub fn from_resource(route: k8s_gateway_api::HttpRoute) -> Self {
+        let hostnames = route
+            .spec
+            .hostnames
+            .iter()
+            .flatten()
+            .map(|hostname| {
+                if hostname.starts_with("*.") {
+                    let mut reverse_labels = hostname
+                        .split('.')
+                        .skip(1)
+                        .map(|label| label.to_owned())
+                        .collect::<Vec<String>>();
+                    reverse_labels.reverse();
+                    Hostname::Suffix { reverse_labels }
+                } else {
+                    Hostname::Exact(hostname.to_owned())
                 }
-            });
+            })
+            .collect();
 
-            let headers = route_match
-                .headers
-                .iter()
-                .flatten()
-                .map(|header_match| match header_match {
-                    k8s_gateway_api::HttpHeaderMatch::Exact { name, value } => HeaderMatch {
-                        name: name.to_owned(),
-                        value: Value::Exact(value.to_owned()),
-                    },
-                    k8s_gateway_api::HttpHeaderMatch::RegularExpression { name, value } => {
-                        HeaderMatch {
-                            name: name.to_owned(),
-                            value: Value::Regex(value.to_owned()),
+        let matches = route
+            .spec
+            .rules
+            .iter()
+            .flatten()
+            .filter_map(|rule| rule.matches.as_ref())
+            .flatten()
+            .map(|route_match| {
+                let path = route_match
+                    .path
+                    .as_ref()
+                    .map(|path_match| match path_match {
+                        k8s_gateway_api::HttpPathMatch::Exact { value } => {
+                            PathMatch::Exact(value.to_owned())
                         }
-                    }
-                })
-                .collect();
+                        k8s_gateway_api::HttpPathMatch::PathPrefix { value } => {
+                            PathMatch::Prefix(value.to_owned())
+                        }
+                        k8s_gateway_api::HttpPathMatch::RegularExpression { value } => {
+                            PathMatch::Regex(value.to_owned())
+                        }
+                    });
 
-            let query_params = route_match
-                .query_params
-                .iter()
-                .flatten()
-                .map(|query_param| match query_param {
-                    k8s_gateway_api::HttpQueryParamMatch::Exact { name, value } => {
-                        QueryParamMatch {
+                let headers = route_match
+                    .headers
+                    .iter()
+                    .flatten()
+                    .map(|header_match| match header_match {
+                        k8s_gateway_api::HttpHeaderMatch::Exact { name, value } => HeaderMatch {
                             name: name.to_owned(),
                             value: Value::Exact(value.to_owned()),
+                        },
+                        k8s_gateway_api::HttpHeaderMatch::RegularExpression { name, value } => {
+                            HeaderMatch {
+                                name: name.to_owned(),
+                                value: Value::Regex(value.to_owned()),
+                            }
                         }
-                    }
-                    k8s_gateway_api::HttpQueryParamMatch::RegularExpression { name, value } => {
-                        QueryParamMatch {
-                            name: name.to_owned(),
-                            value: Value::Regex(value.to_owned()),
-                        }
-                    }
-                })
-                .collect();
+                    })
+                    .collect();
 
-            let method = route_match
-                .method
-                .map(|method| match method.to_lowercase().as_str() {
-                    "connect" => HttpMethod::CONNECT,
-                    "get" => HttpMethod::GET,
-                    "post" => HttpMethod::POST,
-                    "put" => HttpMethod::PUT,
-                    "delete" => HttpMethod::DELETE,
-                    "patch" => HttpMethod::PATCH,
-                    "head" => HttpMethod::HEAD,
-                    "options" => HttpMethod::OPTIONS,
-                    "connect" => HttpMethod::CONNECT,
-                    "trace" => HttpMethod::TRACE,
+                let query_params = route_match
+                    .query_params
+                    .iter()
+                    .flatten()
+                    .map(|query_param| match query_param {
+                        k8s_gateway_api::HttpQueryParamMatch::Exact { name, value } => {
+                            QueryParamMatch {
+                                name: name.to_owned(),
+                                value: Value::Exact(value.to_owned()),
+                            }
+                        }
+                        k8s_gateway_api::HttpQueryParamMatch::RegularExpression { name, value } => {
+                            QueryParamMatch {
+                                name: name.to_owned(),
+                                value: Value::Regex(value.to_owned()),
+                            }
+                        }
+                    })
+                    .collect();
+
+                let method = route_match.method.as_ref().and_then(|method| {
+                    match method.to_lowercase().as_str() {
+                        "connect" => Some(HttpMethod::CONNECT),
+                        "get" => Some(HttpMethod::GET),
+                        "post" => Some(HttpMethod::POST),
+                        "put" => Some(HttpMethod::PUT),
+                        "delete" => Some(HttpMethod::DELETE),
+                        "patch" => Some(HttpMethod::PATCH),
+                        "head" => Some(HttpMethod::HEAD),
+                        "options" => Some(HttpMethod::OPTIONS),
+                        "trace" => Some(HttpMethod::TRACE),
+                        _ => None,
+                    }
                 });
 
-            HttpRouteMatch {
-                path,
-                headers,
-                query_params,
-                method,
-            }
-        })
-        .collect();
+                HttpRouteMatch {
+                    path,
+                    headers,
+                    query_params,
+                    method,
+                }
+            })
+            .collect();
 
-    HttpRoute { hostnames, matches }
+        let mut parent_refs = route.spec.inner.parent_refs.unwrap_or_default();
+        for parent_ref in parent_refs.iter_mut() {
+            if parent_ref.namespace.is_none() {
+                parent_ref.namespace = route.metadata.namespace.clone();
+            }
+        }
+
+        RouteBinding {
+            route: HttpRoute { hostnames, matches },
+            parent_ref: parent_refs,
+        }
+    }
+
+    pub fn selects_server(&self, name: &str, namespace: &str) -> bool {
+        for parent_ref in self.parent_ref.iter() {
+            if parent_ref.group.as_deref() == Some("policy.linkerd.io")
+                && parent_ref.kind.as_deref() == Some("Server")
+                && parent_ref.namespace.as_deref() == Some(namespace)
+                && parent_ref.name == name
+            {
+                return true;
+            }
+        }
+        false
+    }
 }

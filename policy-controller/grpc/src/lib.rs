@@ -181,7 +181,9 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                     http_routes: srv
                         .http_routes
                         .iter()
-                        .map(|(name, route)| to_http_route(name, route, srv, cluster_networks))
+                        .map(|(route_ref, route)| {
+                            to_http_route(&route_ref.name, route, srv, cluster_networks)
+                        })
                         .collect(),
                 },
             )),
@@ -190,7 +192,9 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                     routes: srv
                         .http_routes
                         .iter()
-                        .map(|(name, route)| to_http_route(name, route, srv, cluster_networks))
+                        .map(|(route_ref, route)| {
+                            to_http_route(&route_ref.name, route, srv, cluster_networks)
+                        })
                         .collect(),
                 },
             )),
@@ -199,7 +203,9 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                     routes: srv
                         .http_routes
                         .iter()
-                        .map(|(name, route)| to_http_route(name, route, srv, cluster_networks))
+                        .map(|(route_ref, route)| {
+                            to_http_route(&route_ref.name, route, srv, cluster_networks)
+                        })
                         .collect(),
                 },
             )),

@@ -56,3 +56,9 @@ pub enum HttpMethod {
     TRACE,
     Unregistered(String),
 }
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct HttpRouteRef {
+    pub namespace: String,
+    pub name: String,
+}
