@@ -30,13 +30,13 @@ RUN scurl -vo /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/downlo
     && chmod +x /usr/local/bin/yq
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as kubectl
-ARG KUBECTL_VERSION=v1.23.6
+ARG KUBECTL_VERSION=v1.24.2
 COPY bin/scurl /usr/local/bin/scurl
 RUN scurl -vo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" \
     && chmod 755 /usr/local/bin/kubectl
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as k3d
-ARG K3D_VERSION=v5.4.1
+ARG K3D_VERSION=v5.4.3
 COPY bin/scurl /usr/local/bin/scurl
 RUN scurl -v https://raw.githubusercontent.com/rancher/k3d/$K3D_VERSION/install.sh \
     | USE_SUDO=false K3D_INSTALL_DIR=/usr/local/bin bash

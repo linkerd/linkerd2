@@ -7,11 +7,11 @@ description: |
 home: https://linkerd.io
 keywords:
 - service-mesh
-kubeVersion: ">=1.20.0-0"
+kubeVersion: ">=1.21.0-0"
 name: "linkerd-viz"
 sources:
 - https://github.com/linkerd/linkerd2/
-version: 30.2.4-edge
+version: 30.2.5-edge
 icon: https://linkerd.io/images/logo-only-200h.png
 maintainers:
   - name: Linkerd authors

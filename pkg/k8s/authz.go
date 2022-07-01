@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	authV1 "k8s.io/api/authorization/v1"
-	discovery "k8s.io/api/discovery/v1beta1"
+	discovery "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
@@ -149,7 +149,7 @@ func EndpointSliceAccess(ctx context.Context, k8sClient kubernetes.Interface) er
 }
 
 func checkEndpointSlicesExist(ctx context.Context, k8sClient kubernetes.Interface) error {
-	sliceList, err := k8sClient.DiscoveryV1beta1().EndpointSlices("").List(ctx, metav1.ListOptions{})
+	sliceList, err := k8sClient.DiscoveryV1().EndpointSlices("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}

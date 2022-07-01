@@ -3,7 +3,7 @@
 The Linkerd-Jaeger extension adds distributed tracing to Linkerd using
 OpenCensus and Jaeger.
 
-![Version: 30.3.4-edge](https://img.shields.io/badge/Version-30.3.4--edge-informational?style=flat-square)
+![Version: 30.3.5-edge](https://img.shields.io/badge/Version-30.3.5--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -11,7 +11,7 @@ OpenCensus and Jaeger.
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.20+ cluster in a matter of seconds. See
+You can run Linkerd on any Kubernetes 1.21+ cluster in a matter of seconds. See
 the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
@@ -63,7 +63,7 @@ helm install linkerd-jaeger -n linkerd-jaeger --create-namespace linkerd/linkerd
 
 ## Requirements
 
-Kubernetes: `>=1.20.0-0`
+Kubernetes: `>=1.21.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
