@@ -356,7 +356,7 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 		dockerRegistry:          defaultDockerRegistry,
 		serviceMirrorRetryLimit: defaults.ServiceMirrorRetryLimit,
 		logLevel:                defaults.LogLevel,
-		selector:                k8s.DefaultExportedServiceSelector,
+		selector:                fmt.Sprintf("%s=%s", k8s.DefaultExportedServiceSelector, "true"),
 		gatewayAddresses:        "",
 		gatewayPort:             0,
 	}, nil
