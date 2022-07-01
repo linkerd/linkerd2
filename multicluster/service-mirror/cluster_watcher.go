@@ -836,12 +836,12 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 				rcsw.eventsQueue.Add(&OnAddEndpointsCalled{obj.(*corev1.Endpoints)})
 			},
 			// AddFunc relevant for all kind of exported endpoints
-			UpdateFunc: func(old, new interface{}) {
+			UpdateFunc: func(_, new interface{}) {
 				if new.(metav1.Object).GetNamespace() == kubeSystem {
 					return
 				}
 
-				if !isExportedEndpoints(old, rcsw.log) {
+				if !isExportedEndpoints(new, rcsw.log) {
 					return
 				}
 
