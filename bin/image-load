@@ -149,5 +149,5 @@ fi
 
 if [ "$k3d" ]; then
   printf 'Importing %s...\n' "${images[@]}"
-  "$bin" "${image_sub_cmd[@]}" "${images[@]}" -m tools-node
+  "$bin" "${image_sub_cmd[@]}" "${images[@]}" -m auto
 fi
