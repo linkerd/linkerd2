@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/cli/flag"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -142,7 +141,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 	}
 
 	crdManifest := bytes.Buffer{}
-	err = renderCRDs(&crdManifest)
+	err = renderCRDs(&crdManifest, valuespkg.Options{})
 	if err != nil {
 		return err
 	}
@@ -268,20 +267,25 @@ func getExtensionCheckFlags(lf *pflag.FlagSet) []string {
 }
 
 func renderInstallManifest(ctx context.Context) (*charts.Values, string, error) {
+	// Create the default values.
+	k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 30*time.Second)
+	if err != nil {
+		return nil, "", err
+	}
 	values, err := charts.NewValues()
 	if err != nil {
 		return nil, "", err
 	}
-
-	k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 30*time.Second)
+	err = initializeIssuerCredentials(ctx, k8sAPI, values)
 	if err != nil {
-		return values, "", err
+		return nil, "", err
 	}
 
+	// Use empty valuesOverrides because there are no option values to merge.
 	var b strings.Builder
-	err = installControlPlane(ctx, k8sAPI, &b, values, []flag.Flag{}, valuespkg.Options{})
+	err = renderControlPlane(&b, values, map[string]interface{}{})
 	if err != nil {
-		return values, "", err
+		return nil, "", err
 	}
 	return values, b.String(), nil
 }

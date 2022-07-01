@@ -7,7 +7,7 @@ require (
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
 	github.com/clarketm/json v1.15.7
 	github.com/containernetworking/cni v1.1.1
-	github.com/emicklei/proto v1.10.0
+	github.com/emicklei/proto v1.11.0
 	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/fatih/color v1.13.0
 	github.com/fsnotify/fsnotify v1.5.4
@@ -33,7 +33,7 @@ require (
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd
 	github.com/sirupsen/logrus v1.8.1
-	github.com/spf13/cobra v1.4.0
+	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
 	go.opencensus.io v0.23.0
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
@@ -47,7 +47,7 @@ require (
 	k8s.io/apimachinery v0.24.2
 	k8s.io/client-go v0.24.2
 	k8s.io/code-generator v0.24.2
-	k8s.io/klog/v2 v2.60.1
+	k8s.io/klog/v2 v2.70.0
 	k8s.io/kube-aggregator v0.23.5
 	sigs.k8s.io/gateway-api v0.4.3
 	sigs.k8s.io/yaml v1.3.0
@@ -77,7 +77,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/containerd/containerd v1.6.3 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.10.1 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/cli v20.10.12+incompatible // indirect

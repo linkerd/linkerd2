@@ -12,6 +12,7 @@ import (
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"helm.sh/helm/v3/pkg/cli/values"
+	valuespkg "helm.sh/helm/v3/pkg/cli/values"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -269,7 +270,7 @@ func TestRenderCRDs(t *testing.T) {
 	addFakeTLSSecrets(defaultValues)
 
 	var buf bytes.Buffer
-	if err := renderCRDs(&buf); err != nil {
+	if err := renderCRDs(&buf, valuespkg.Options{}); err != nil {
 		t.Fatalf("Failed to render templates: %v", err)
 	}
 	if err := testDataDiffer.DiffTestYAML("install_crds.golden", buf.String()); err != nil {
