@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,7 +31,7 @@ var ServerGVR = serverv1beta1.SchemeGroupVersion.WithResource("servers")
 
 // ServerAuthorizationsForResource returns a list of Server-ServerAuthorization
 // pairs which select pods belonging to the given resource.
-func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, namespace string, resource string) ([]ServerAndAuthorization, error) {
+func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, serverAuthorizations []*serverauthorizationv1beta1.ServerAuthorization, servers []*serverv1beta1.Server, namespace string, resource string) ([]ServerAndAuthorization, error) {
 	pods, err := getPodsForResourceOrKind(ctx, k8sAPI, namespace, resource, "")
 	if err != nil {
 		return nil, err
@@ -41,52 +43,40 @@ func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI,
 
 	results := make([]ServerAndAuthorization, 0)
 
-	sazs, err := k8sAPI.L5dCrdClient.ServerauthorizationV1beta1().ServerAuthorizations(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get serverauthorization resources: %s\n", err)
-		os.Exit(1)
-	}
+	for _, saz := range serverAuthorizations {
+		var selectedServers []serverv1beta1.Server
 
-	for _, saz := range sazs.Items {
-		var servers []serverv1beta1.Server
-
-		if saz.Spec.Server.Name != "" {
-			server, err := k8sAPI.L5dCrdClient.ServerV1beta1().Servers(saz.GetNamespace()).Get(ctx, saz.Spec.Server.Name, metav1.GetOptions{})
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get server %s: %s\n", saz.Spec.Server.Name, err)
-				os.Exit(1)
-			}
-			servers = []serverv1beta1.Server{*server}
-		} else if saz.Spec.Server.Selector != nil {
+		for _, srv := range servers {
 			selector, err := metav1.LabelSelectorAsSelector(saz.Spec.Server.Selector)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
+				fmt.Fprintf(os.Stderr, "Failed to create selector: %s\n", err)
 				os.Exit(1)
 			}
-			serverList, err := k8sAPI.L5dCrdClient.ServerV1beta1().Servers(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
-				os.Exit(1)
+
+			if selector.Matches(labels.Set(srv.GetLabels())) || saz.Spec.Server.Name == srv.GetName() {
+				selectedServers = append(selectedServers, *srv)
 			}
-			servers = serverList.Items
 		}
 
-		for _, server := range servers {
+		for _, server := range selectedServers {
 			if server.Spec.PodSelector == nil {
 				continue
 			}
 
 			selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
+				fmt.Fprintf(os.Stderr, "Failed to create selector: %s\n", err)
 				os.Exit(1)
 			}
-			selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
-				os.Exit(1)
+
+			var selectedPods []corev1.Pod
+			for _, pod := range pods {
+				if selector.Matches(labels.Set(pod.Labels)) {
+					selectedPods = append(selectedPods, pod)
+				}
 			}
-			if serverIncludesPod(server, selectedPods.Items, podSet) {
+
+			if serverIncludesPod(server, selectedPods, podSet) {
 				results = append(results, ServerAndAuthorization{server.GetName(), saz.GetName()})
 			}
 		}

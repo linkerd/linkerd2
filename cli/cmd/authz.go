@@ -59,7 +59,12 @@ func newCmdAuthz() *cobra.Command {
 
 			rows := make([]table.Row, 0)
 
-			authzs, err := k8s.ServerAuthorizationsForResource(cmd.Context(), k8sAPI, namespace, resource)
+			prefetched, err := FetchK8sResources(cmd.Context(), namespace)
+			if err != nil {
+				return err
+			}
+
+			authzs, err := k8s.ServerAuthorizationsForResource(cmd.Context(), k8sAPI, prefetched.ServerAuthorizations, prefetched.Servers, namespace, resource)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get serverauthorization resources: %s\n", err)
 				os.Exit(1)
