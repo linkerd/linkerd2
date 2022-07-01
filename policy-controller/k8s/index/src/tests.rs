@@ -1,5 +1,6 @@
 mod annotation;
 mod authorization_policy;
+mod http_routes;
 mod server_authorization;
 
 use crate::{defaults::DefaultPolicy, index::*, server_authorization::ServerSelector, ClusterInfo};
@@ -195,6 +196,7 @@ impl TestConfig {
             protocol: ProxyProtocol::Detect {
                 timeout: self.detect_timeout,
             },
+            http_routes: HashMap::default(),
         }
     }
 

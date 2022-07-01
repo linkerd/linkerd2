@@ -1036,6 +1036,7 @@ dependencies = [
  "futures",
  "hyper",
  "ipnet",
+ "k8s-gateway-api",
  "k8s-openapi",
  "kube",
  "linkerd-policy-controller-core",

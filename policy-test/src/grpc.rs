@@ -37,6 +37,7 @@ macro_rules! assert_protocol_detect {
                 kind: Some(inbound::proxy_protocol::Kind::Detect(
                     inbound::proxy_protocol::Detect {
                         timeout: Some(time::Duration::from_secs(10).into()),
+                        http_routes: Vec::default(),
                     }
                 )),
             }),

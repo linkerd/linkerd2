@@ -43,6 +43,7 @@ fn link_server_authz(selector: ServerSelector) {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
         },
     );
     test.index.write().apply(mk_server_authz(

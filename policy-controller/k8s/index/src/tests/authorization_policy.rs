@@ -31,6 +31,7 @@ fn links_authorization_policy_with_mtls_name() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
         },
     );
 
@@ -84,6 +85,7 @@ fn links_authorization_policy_with_mtls_name() {
             .into_iter()
             .collect(),
             protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
         },
     );
 }
@@ -119,6 +121,7 @@ fn authorization_targets_namespace() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
         },
     );
 
@@ -172,6 +175,7 @@ fn authorization_targets_namespace() {
             .into_iter()
             .collect(),
             protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
         },
     );
 }
