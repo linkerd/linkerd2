@@ -480,6 +480,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
   labels:
+    helm.sh/chart: linkerd2-
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
