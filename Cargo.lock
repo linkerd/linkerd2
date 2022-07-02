@@ -948,6 +948,7 @@ dependencies = [
  "hyper",
  "ipnet",
  "jemallocator",
+ "k8s-gateway-api",
  "k8s-openapi",
  "kube",
  "kubert",
