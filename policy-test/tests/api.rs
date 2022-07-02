@@ -401,7 +401,7 @@ async fn server_with_http_route() {
                 kind: Some(grpc::meta::metadata::Kind::Resource(
                     grpc::meta::metadata::Resource {
                         group: "gateway.networking.k8s.io".to_string(),
-                        kind: "HttpRoute".to_string(),
+                        kind: "HTTPRoute".to_string(),
                         name: "metrics-route".to_string(),
                     }
                 ))
