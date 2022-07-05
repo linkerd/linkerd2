@@ -9,8 +9,9 @@ standing panic has been fixed in the proxy.
 
 * Fixed an error in `linkerd multicluster allow` which resulted in broken YAML
   output
-* Fixed a panic in the proxy in cases where the destination service sends a very
-  large number of discovery updates
+* Fixed a potential panic in the proxy's outbound load balancer that could be
+  triggered when the balancer processes many service discovery updates in a
+  short period of time.
 * Fixed a class of DNS errors by ensuring the proxy falls back to A records when
   SRV resolution fails
 * Fixed an issue where the proxy would pass along illegal headers from `CONNECT`
@@ -23,7 +24,7 @@ standing panic has been fixed in the proxy.
   install` rather than `linkerd check`
 * Fixed a class of fail fast errors that were occurring with
   linkerd-multicluster due to delayed gateway liveness probes
-* Fixed linkerd-multicluster Endpoints not being deleted with their remote
+* Fixed linkerd-multicluster Endpoints not being deleted when their remote
   Service was no longer mirrored
 * Fixed linkerd-multicluster's label selector to properly match the value of
   `mirror.linkerd.io/exported` rather than just its presence
