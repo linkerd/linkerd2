@@ -147,7 +147,7 @@ jobs:
           docker image ls | grep -F -e bitnami/kubectl -e curlimages/curl -e nginx -e ghcr.io/linkerd
           tag="$(CI_FORCE_CLEAN=1 bin/root-tag)"
           # Image loading is flakey in CI, so retry!
-          until k3d image import -m direct \
+          until k3d image import \
                   bitnami/kubectl:latest \
                   curlimages/curl:latest \
                   nginx:latest \
