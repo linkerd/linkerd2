@@ -135,7 +135,7 @@ jobs:
         - external
         - helm-upgrade
         - uninstall
-        - upgrade-edge
+          #- upgrade-edge
         - upgrade-stable
     needs: [docker_build, policy_controller_manifest]
     name: Integration tests (${{ matrix.integration_test }})
