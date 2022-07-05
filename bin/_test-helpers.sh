@@ -393,6 +393,7 @@ install_version() {
         # once stable-2.10 is out
         edge_regex='(edge)-([0-9]+\.[0-9]+\.[0-9]+)'
         if [[ "$version" =~ $edge_regex ]]; then
+          "$linkerd_path" install --crds | kubectl --context="$context" apply -f - 2>&1
           "$linkerd_path" install --set proxyInit.ignoreInboundPorts="1234\,5678" --controller-log-level debug | kubectl --context="$context" apply -f - 2>&1
         else
           "$linkerd_path" install --skip-inbound-ports '1234,5678' --controller-log-level debug | kubectl --context="$context" apply -f - 2>&1
