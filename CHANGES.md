@@ -1,5 +1,33 @@
 # Changes
 
+## stable-2.11.3
+
+This release pulls in several control plane and proxy fixes from the main
+development branch. The linkerd-multicluster extension has several fixes
+regarding incorrect label matching and resource cleanup. Additionally, a long
+standing panic has been fixed in the proxy.
+
+* Fixed an error in `linkerd multicluster allow` which resulted in broken YAML
+  output
+* Fixed a panic in the proxy in cases where the destination service sends a very
+  large number of discovery updates
+* Fixed a class of DNS errors by ensuring the proxy falls back to A records when
+  SRV resolution fails
+* Fixed an issue where the proxy would pass along illegal headers from `CONNECT`
+  responses
+* Fixed several Helm labels to follow the Helm standards recommendation which
+  were sometimes resulting chart generation errors
+* Fixed an issue where `linkerd check` did not skip Pods with a `NodeShutdown`
+  status resulting in incorrect errors
+* Fixed the Docker container runtime check to only occur during `linkerd
+  install` rather than `linkerd check`
+* Fixed a class of fail fast errors that were occurring with
+  linkerd-multicluster due to delayed gateway liveness probes
+* Fixed linkerd-multicluster Endpoints not being deleted with their remote
+  Service was no longer mirrored
+* Fixed linkerd-multicluster's label selector to properly match the value of
+  `mirror.linkerd.io/exported` rather than just its presence
+
 ## stable-2.11.2
 
 This release pulls in many small fixes and improvements from the main
