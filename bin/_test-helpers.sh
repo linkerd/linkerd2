@@ -323,6 +323,7 @@ external_image_load() {
   if [[ "$test_name" = deep ]]; then
     images_load+=("buoyantio/booksapp:v0.0.5" "buoyantio/booksapp-traffic:v0.0.3" "cr.l5d.io/linkerd/debug:edge-20.9.2" "nginx:alpine" "buoyantio/slow_cooker:1.3.0" )
   fi
+  echo "Preloading images ${images_load[@]} to cluster $cluster_name"
   "$bindir"/image-load --k3d --cluster "$cluster_name" --preload "${images_load[@]}"
   exit_on_err "error calling '$bindir/image-load'"
   esac
