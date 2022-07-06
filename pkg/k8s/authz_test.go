@@ -96,3 +96,58 @@ resources:
 		t.Errorf("%+v", diff)
 	}
 }
+
+func TestServersAccess(t *testing.T) {
+	api, err := NewFakeAPI(`
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: servers.policy.linkerd.io
+spec:
+  conversion:
+    strategy: None
+  group: policy.linkerd.io
+  names:
+    kind: Server
+    listKind: ServerList
+    plural: servers
+    shortNames:
+    - srv
+    singular: server
+  scope: Namespaced
+`, `
+kind: APIResourceList
+apiVersion: v1beta1
+groupVersion: policy.linkerd.io/v1beta1
+resources:
+- name: servers
+  singularName: server
+  namespaced: true
+  kind: Server
+  verbs:
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - create
+  - update
+  - watch
+  shortNames:
+  - srv
+`)
+	if err != nil {
+		t.Error(err)
+	}
+
+	testError := errors.New("not authorized to access servers.policy.linkerd.io")
+
+	err = ServersAccess(context.Background(), api.Interface)
+
+	if err == nil {
+		t.Fatal("Expected error, but got success")
+	}
+	if err.Error() != testError.Error() {
+		t.Fatalf("Unexpected error (Expected: %s, Got: %s)", testError, err)
+	}
+}
