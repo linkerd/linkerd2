@@ -120,7 +120,7 @@ func ServersAccess(ctx context.Context, k8sClient kubernetes.Interface) error {
 	}
 	if res.GroupVersion == groupVersion {
 		for _, apiRes := range res.APIResources {
-			if apiRes.Kind == Server {
+			if apiRes.Kind == ServerKind {
 				return ResourceAuthz(ctx, k8sClient, "", "list", PolicyAPIGroup, "", "servers", "")
 			}
 		}
