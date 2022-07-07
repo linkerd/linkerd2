@@ -29,6 +29,7 @@ with:
     wait && \
     bin/image-load --k3d policy-controller controller proxy && \
     rm -rf target/cli && \
+    bin/linkerd install --crds | kubectl apply -f - && \
     bin/linkerd install --set 'policyController.logLevel=info\,linkerd=trace\,kubert=trace' \
         | kubectl apply -f -
 ```
