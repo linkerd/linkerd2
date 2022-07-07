@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 env:
-  # Pin 'actionlint' to v1.6.13
-  ACTION_LINT_VERSION: 1.6.13
+  # Pin 'actionlint' to v1.6.15
+  ACTION_LINT_VERSION: 1.6.15
 jobs:
   lint-workflows:
     runs-on: ubuntu-20.04
@@ -22,8 +22,8 @@ jobs:
       - name: Install actionlint
         shell: bash
         run: |
-          # Install latest version of actionlint and save binary in bin/ directory
-          bin/scurl -v https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash \
+          # Install pinned version of actionlint and save binary in bin/ directory
+          bin/scurl -v "https://raw.githubusercontent.com/rhysd/actionlint/${ACTION_LINT_VERSION}/scripts/download-actionlint.bash" \
           | bash -s -- "${ACTION_LINT_VERSION}" /usr/local/bin
           chmod 755 /usr/local/bin/actionlint
       - name: Run actionlint
