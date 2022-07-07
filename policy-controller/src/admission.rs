@@ -393,17 +393,13 @@ impl Validate<ServerAuthorizationSpec> for Admission {
 #[async_trait::async_trait]
 impl Validate<HttpRouteSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
-        if let Some(parent_refs) = spec.inner.parent_refs {
-            // Only validate HttpRoutes which have a Server as a parent_ref.
-            if parent_refs.iter().any(|parent_ref| {
-                parent_ref.kind.as_deref() == Some("Server")
-                    && parent_ref.group.as_deref() == Some("policy.linkerd.io")
-            }) {
-                if let Some(rules) = spec.rules {
-                    for rule in rules.iter() {
-                        validate_http_route_rule(rule)?;
-                    }
-                }
+        // Only validate HttpRoutes which have a Server as a parent_ref.
+        if spec.inner.parent_refs.iter().flatten().any(|parent_ref| {
+            parent_ref.kind.as_deref() == Some("Server")
+                && parent_ref.group.as_deref() == Some("policy.linkerd.io")
+        }) {
+            for rule in spec.rules.iter().flatten() {
+                validate_http_route_rule(rule)?;
             }
         }
 
@@ -415,11 +411,10 @@ fn validate_http_route_rule(rule: &HttpRouteRule) -> Result<()> {
     if let Some(filters) = &rule.filters {
         validate_http_route_filters(filters)?;
     }
-    if let Some(backend_refs) = &rule.backend_refs {
-        for backend_ref in backend_refs.iter() {
-            if let Some(filters) = &backend_ref.filters {
-                validate_http_route_filters(filters)?;
-            }
+
+    for backend_ref in rule.backend_refs.iter().flatten() {
+        if let Some(filters) = &backend_ref.filters {
+            validate_http_route_filters(filters)?;
         }
     }
     Ok(())
