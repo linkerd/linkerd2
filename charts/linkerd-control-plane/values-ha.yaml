@@ -11,8 +11,8 @@ deploymentStrategy:
     maxUnavailable: 1
     maxSurge: 25%
 
-# -- add PodAntiAffinity to each control plane workload
-enablePodAntiAffinity: true
+# -- add TopologySpreadConstraints to each control plane workload
+enableTopologySpreadConstraints: true
 
 # nodeAffinity: 
 

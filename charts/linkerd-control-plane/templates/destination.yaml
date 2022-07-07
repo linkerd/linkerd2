@@ -168,6 +168,7 @@ spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- $_ := set $tree "component" "destination" -}}
       {{- include "linkerd.affinity" $tree | nindent 6 }}
+      {{- include "linkerd.topologySpreadConstraints" $tree | nindent 6 }}
       containers:
       {{- if not (empty .Values.destinationProxyResources) }}
       {{- $r := merge .Values.destinationProxyResources .Values.proxy.resources }}

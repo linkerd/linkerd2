@@ -49,10 +49,10 @@ identityTrustDomain: cluster.local
 # deprecated since k8s v1.21
 enablePSP: false
 
-# -- Enables Pod Anti Affinity logic to balance the placement of replicas
+# -- Enables Topology Spread Constraints logic to balance the placement of replicas
 # across hosts and zones for High Availability.
 # Enable this only when you have multiple replicas of components.
-enablePodAntiAffinity: false
+enableTopologySpreadConstraints: false
 
 # -- NodeAffinity section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)

@@ -81,6 +81,7 @@ spec:
       {{- $_ := set $tree "component" "tap" -}}
       {{- $_ := set $tree "label" "component" -}}
       {{- include "linkerd.affinity" $tree | nindent 6 }}
+      {{- include "linkerd.topologySpreadConstraints" $tree | nindent 6 }}
       containers:
       - args:
         - api

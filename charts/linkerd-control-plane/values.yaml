@@ -32,8 +32,8 @@ deploymentStrategy:
 # enableEndpointSlices should be set to true only if EndpointSlice K8s feature
 # gate is on
 enableEndpointSlices: true
-# -- enables pod anti affinity creation on deployments for high availability
-enablePodAntiAffinity: false
+# -- enables TopologySpreadConstraints creation on deployments for high availability
+enableTopologySpreadConstraints: false
 # -- enables the use of pprof endpoints on control plane component's admin
 # servers
 enablePprof: false

@@ -151,9 +151,9 @@ Kubernetes: `>=1.21.0-0`
 | enableEndpointSlices | bool | `true` | enables the use of EndpointSlice informers for the destination service; enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on |
 | enableH2Upgrade | bool | `true` | Allow proxies to perform transparent HTTP/2 upgrading |
 | enablePSP | bool | `false` | Add a PSP resource and bind it to the control plane ServiceAccounts. Note PSP has been deprecated since k8s v1.21 |
-| enablePodAntiAffinity | bool | `false` | enables pod anti affinity creation on deployments for high availability |
 | enablePodDisruptionBudget | bool | `false` | enables the creation of pod disruption budgets for control plane components |
 | enablePprof | bool | `false` | enables the use of pprof endpoints on control plane component's admin servers |
+| enableTopologySpreadConstraints | bool | `false` | enables TopologySpreadConstraints creation on deployments for high availability |
 | identity.externalCA | bool | `false` | If the linkerd-identity-trust-roots ConfigMap has already been created |
 | identity.issuer.clockSkewAllowance | string | `"20s"` | Amount of time to allow for clock skew within a Linkerd cluster |
 | identity.issuer.issuanceLifetime | string | `"24h0m0s"` | Amount of time for which the Identity issuer should certify identity |

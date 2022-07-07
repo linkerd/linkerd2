@@ -2,7 +2,7 @@
 # Usage:
 #   helm install -f values.yaml -f values-ha.yaml
 
-enablePodAntiAffinity: true
+enableTopologySpreadConstraints: true
 
 # nodeAffinity:
 
