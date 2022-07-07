@@ -54,7 +54,7 @@ RUN curl --proto '=https' --tlsv1.3 -vsSfL "https://github.com/nextest-rs/nextes
 FROM docker.io/golang:${GO_VERSION}-bullseye as actionlint
 ARG ACTION_LINT_VERSION=1.6.15
 COPY bin/scurl /usr/local/bin/scurl
-RUN scurl -v "https://raw.githubusercontent.com/rhysd/actionlint/${ACTION_LINT_VERSION}/scripts/download-actionlint.bash" \
+RUN scurl -v "https://raw.githubusercontent.com/rhysd/actionlint/v${ACTION_LINT_VERSION}/scripts/download-actionlint.bash" \
   | bash -s -- "${ACTION_LINT_VERSION}" /usr/local/bin
 
 FROM docker.io/rust:${RUST_TOOLCHAIN}-bullseye as protoc

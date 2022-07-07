@@ -23,7 +23,7 @@ jobs:
         shell: bash
         run: |
           # Install pinned version of actionlint and save binary in bin/ directory
-          bin/scurl -v "https://raw.githubusercontent.com/rhysd/actionlint/${ACTION_LINT_VERSION}/scripts/download-actionlint.bash" \
+          bin/scurl -v "https://raw.githubusercontent.com/rhysd/actionlint/v${ACTION_LINT_VERSION}/scripts/download-actionlint.bash" \
           | bash -s -- "${ACTION_LINT_VERSION}" /usr/local/bin
           chmod 755 /usr/local/bin/actionlint
       - name: Run actionlint
