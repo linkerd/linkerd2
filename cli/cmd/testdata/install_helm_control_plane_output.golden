@@ -421,8 +421,8 @@ data:
     disableHeartBeat: false
     enableEndpointSlices: true
     enableH2Upgrade: true
-    enablePodAntiAffinity: false
     enablePodDisruptionBudget: false
+    enableTopologySpreadConstraints: false
     heartbeatResources: null
     heartbeatSchedule: 1 2 3 4 5
     highAvailability: false

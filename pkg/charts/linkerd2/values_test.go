@@ -41,31 +41,31 @@ func TestNewValues(t *testing.T) {
 		},
 	}
 	expected := &Values{
-		ControllerImage:              "cr.l5d.io/linkerd/controller",
-		ControllerReplicas:           1,
-		ControllerUID:                2103,
-		EnableH2Upgrade:              true,
-		EnablePodAntiAffinity:        false,
-		WebhookFailurePolicy:         "Ignore",
-		DisableHeartBeat:             false,
-		DeploymentStrategy:           defaultDeploymentStrategy,
-		HeartbeatSchedule:            "",
-		ClusterDomain:                "cluster.local",
-		ClusterNetworks:              "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16",
-		ImagePullPolicy:              "IfNotPresent",
-		CliVersion:                   "linkerd/cli dev-undefined",
-		ControllerLogLevel:           "info",
-		ControllerLogFormat:          "plain",
-		LinkerdVersion:               version.Version,
-		ProxyContainerName:           "linkerd-proxy",
-		CNIEnabled:                   false,
-		ControlPlaneTracing:          false,
-		ControlPlaneTracingNamespace: "linkerd-jaeger",
-		HighAvailability:             false,
-		PodAnnotations:               map[string]string{},
-		PodLabels:                    map[string]string{},
-		EnableEndpointSlices:         true,
-		EnablePodDisruptionBudget:    false,
+		ControllerImage:                 "cr.l5d.io/linkerd/controller",
+		ControllerReplicas:              1,
+		ControllerUID:                   2103,
+		EnableH2Upgrade:                 true,
+		EnableTopologySpreadConstraints: false,
+		WebhookFailurePolicy:            "Ignore",
+		DisableHeartBeat:                false,
+		DeploymentStrategy:              defaultDeploymentStrategy,
+		HeartbeatSchedule:               "",
+		ClusterDomain:                   "cluster.local",
+		ClusterNetworks:                 "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16",
+		ImagePullPolicy:                 "IfNotPresent",
+		CliVersion:                      "linkerd/cli dev-undefined",
+		ControllerLogLevel:              "info",
+		ControllerLogFormat:             "plain",
+		LinkerdVersion:                  version.Version,
+		ProxyContainerName:              "linkerd-proxy",
+		CNIEnabled:                      false,
+		ControlPlaneTracing:             false,
+		ControlPlaneTracingNamespace:    "linkerd-jaeger",
+		HighAvailability:                false,
+		PodAnnotations:                  map[string]string{},
+		PodLabels:                       map[string]string{},
+		EnableEndpointSlices:            true,
+		EnablePodDisruptionBudget:       false,
 		PolicyController: &PolicyController{
 			Image: &Image{
 				Name: "cr.l5d.io/linkerd/policy-controller",
@@ -190,7 +190,7 @@ func TestNewValues(t *testing.T) {
 		}
 
 		expected.ControllerReplicas = 3
-		expected.EnablePodAntiAffinity = true
+		expected.EnableTopologySpreadConstraints = true
 		expected.EnablePodDisruptionBudget = true
 		expected.DeploymentStrategy = haDeploymentStrategy
 		expected.WebhookFailurePolicy = "Fail"

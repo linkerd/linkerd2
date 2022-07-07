@@ -18,22 +18,22 @@ const (
 
 // Values contains the top-level elements in the Helm charts
 type Values struct {
-	CliVersion                     string   `json:"cliVersion"`
-	ControllerImage                string   `json:"controllerImage"`
-	ControllerImageVersion         string   `json:"controllerImageVersion"`
-	Gateway                        *Gateway `json:"gateway"`
-	IdentityTrustDomain            string   `json:"identityTrustDomain"`
-	LinkerdNamespace               string   `json:"linkerdNamespace"`
-	LinkerdVersion                 string   `json:"linkerdVersion"`
-	ProxyOutboundPort              uint32   `json:"proxyOutboundPort"`
-	ServiceMirror                  bool     `json:"serviceMirror"`
-	LogLevel                       string   `json:"logLevel"`
-	ServiceMirrorRetryLimit        uint32   `json:"serviceMirrorRetryLimit"`
-	ServiceMirrorUID               int64    `json:"serviceMirrorUID"`
-	RemoteMirrorServiceAccount     bool     `json:"remoteMirrorServiceAccount"`
-	RemoteMirrorServiceAccountName string   `json:"remoteMirrorServiceAccountName"`
-	TargetClusterName              string   `json:"targetClusterName"`
-	EnablePodAntiAffinity          bool     `json:"enablePodAntiAffinity"`
+	CliVersion                      string   `json:"cliVersion"`
+	ControllerImage                 string   `json:"controllerImage"`
+	ControllerImageVersion          string   `json:"controllerImageVersion"`
+	Gateway                         *Gateway `json:"gateway"`
+	IdentityTrustDomain             string   `json:"identityTrustDomain"`
+	LinkerdNamespace                string   `json:"linkerdNamespace"`
+	LinkerdVersion                  string   `json:"linkerdVersion"`
+	ProxyOutboundPort               uint32   `json:"proxyOutboundPort"`
+	ServiceMirror                   bool     `json:"serviceMirror"`
+	LogLevel                        string   `json:"logLevel"`
+	ServiceMirrorRetryLimit         uint32   `json:"serviceMirrorRetryLimit"`
+	ServiceMirrorUID                int64    `json:"serviceMirrorUID"`
+	RemoteMirrorServiceAccount      bool     `json:"remoteMirrorServiceAccount"`
+	RemoteMirrorServiceAccountName  string   `json:"remoteMirrorServiceAccountName"`
+	TargetClusterName               string   `json:"targetClusterName"`
+	EnableTopologySpreadConstraints bool     `json:"enableTopologySpreadConstraints"`
 }
 
 // Gateway contains all options related to the Gateway Service

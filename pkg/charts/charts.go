@@ -36,6 +36,7 @@ var (
 		"charts/partials/templates/_affinity.tpl",
 		"charts/partials/templates/_validate.tpl",
 		"charts/partials/templates/_pull-secrets.tpl",
+		"charts/partials/templates/_topologyspreadconstraints.tpl",
 	}
 )
 

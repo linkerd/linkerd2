@@ -20,7 +20,7 @@ spec:
   selector:
     matchLabels:
       app: {{.Values.gateway.name}}
-  {{- if .Values.enablePodAntiAffinity }}
+  {{- if .Values.enableTopologySpreadConstraints }}
   strategy:
     rollingUpdate:
       maxUnavailable: 1
@@ -45,7 +45,7 @@ spec:
           securityContext:
             runAsUser: {{.Values.gateway.UID}}
       serviceAccountName: {{.Values.gateway.name}}
-{{- if .Values.enablePodAntiAffinity }}
+{{- if .Values.enableTopologySpreadConstraints }}
 ---
 kind: PodDisruptionBudget
 apiVersion: policy/v1

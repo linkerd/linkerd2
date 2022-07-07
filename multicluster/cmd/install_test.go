@@ -36,7 +36,7 @@ func TestRender(t *testing.T) {
 				"gateway": map[string]interface{}{
 					"replicas": 3,
 				},
-				"enablePodAntiAffinity": true,
+				"enableTopologySpreadConstraints": true,
 			},
 			nil,
 			"install_ha.golden",

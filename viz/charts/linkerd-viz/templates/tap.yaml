@@ -51,7 +51,7 @@ spec:
       linkerd.io/extension: viz
       component: tap
       namespace: {{.Release.Namespace}}
-  {{- if .Values.enablePodAntiAffinity }}
+  {{- if .Values.enableTopologySpreadConstraints }}
   strategy:
     rollingUpdate:
       maxUnavailable: 1

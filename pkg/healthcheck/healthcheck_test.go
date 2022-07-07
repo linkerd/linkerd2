@@ -1758,7 +1758,7 @@ data:
     destinationResources: null
     disableHeartBeat: false
     enableH2Upgrade: true
-    enablePodAntiAffinity: false
+    enableTopologySpreadConstraints: false
     nodeAffinity: null
     cliVersion: CliVersion
     clusterDomain: cluster.local
@@ -1911,7 +1911,7 @@ data:
     destinationResources: null
     disableHeartBeat: false
     enableH2Upgrade: true
-    enablePodAntiAffinity: false
+    enableTopologySpreadConstraints: false
     global:
       cliVersion: CliVersion
       clusterDomain: cluster.local
