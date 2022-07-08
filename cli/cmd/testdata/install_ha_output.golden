@@ -526,7 +526,6 @@ data:
       externalSecret: true
       injectCaFrom: ""
       injectCaFromSecret: ""
-      keyPEM: ""
       namespaceSelector:
         matchExpressions:
         - key: config.linkerd.io/admission-webhooks

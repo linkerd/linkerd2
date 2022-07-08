@@ -26,6 +26,9 @@ data:
   {{- if kindIs "map" $values.proxyInjector -}}
     {{- $_ := unset $values.proxyInjector "keyPEM"}}
   {{- end -}}
+  {{- if kindIs "map" $values.policyValidator -}}
+    {{- $_ := unset $values.policyValidator "keyPEM"}}
+  {{- end -}}
   {{- if (empty $values.identityTrustDomain) -}}
   {{- $_ := set $values "identityTrustDomain" $values.clusterDomain}}
   {{- end -}}
