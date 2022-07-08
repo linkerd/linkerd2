@@ -197,7 +197,7 @@ spec:
         kubernetes.io/os: linux
       {{- if .Values.nodeAffinity }}
       affinity:
-      {{- include "linkerd.node-affinity" . | nindent 8 }}
+      {{- include "linkerd.affinity" . | nindent 8 }}
       {{- end }}
       hostNetwork: true
       serviceAccountName: linkerd-cni
