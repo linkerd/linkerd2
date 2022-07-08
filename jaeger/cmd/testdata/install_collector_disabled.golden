@@ -65,6 +65,7 @@ spec:
         checksum/config: c7e6fd0e7aad8fbcdf4f47b4d05c8e6b7e0e489cf9afc2026d4b6accd590ea71
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         linkerd.io/extension: jaeger
         component: jaeger-injector
@@ -297,6 +298,7 @@ spec:
         prometheus.io/path: /metrics
         prometheus.io/port: "14269"
         prometheus.io/scrape: "true"
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         linkerd.io/extension: jaeger
         component: jaeger

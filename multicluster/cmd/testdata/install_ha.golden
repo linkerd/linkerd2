@@ -34,6 +34,7 @@ spec:
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-require-identity-inbound-ports: "4143"
         config.linkerd.io/enable-gateway: "true"
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         app: linkerd-gateway
     spec:
