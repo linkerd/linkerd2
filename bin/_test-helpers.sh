@@ -319,16 +319,30 @@ image_load() {
 
 external_image_load() {
   test_name=$1
-  images_load=("buoyantio/bb:v0.0.6")
+  images_pull=("docker.io/buoyantio/bb:v0.0.6")
+  images_import=("buoyantio/bb:v0.0.6")
   if [[ "$test_name" = deep ]]; then
-    images_load+=("buoyantio/booksapp:v0.0.5" "buoyantio/booksapp-traffic:v0.0.3" "cr.l5d.io/linkerd/debug:edge-20.9.2" "nginx:alpine" "buoyantio/slow_cooker:1.3.0" )
+    images_pull+=("docker.io/buoyantio/booksapp:v0.0.5")
+    images_import+=("buoyantio/booksapp:v0.0.5")
+
+    images_pull+=("docker.io/buoyantio/booksapp-traffic:v0.0.3")
+    images_import+=("buoyantio/booksapp-traffic:v0.0.3")
+
+    images_pull+=("cr.l5d.io/linkerd/debug:edge-20.9.2")
+    images_import+=("cr.l5d.io/linkerd/debug:edge-20.9.2")
+
+    images_pull+=("docker.io/library/nginx:alpine")
+    images_import+=("nginx:alpine")
+
+    images_pull+=("docker.io/buoyantio/slow_cooker:1.3.0")
+    images_import+=("buoyantio/slow_cooker:1.3.0")
   fi
-  for i in "${!images[@]}"; do
-    "$bindir"/docker pull -q "${images[$i]}"
+  for i in "${!images_pull[@]}"; do
+    "$bindir"/docker pull -q "${images_pull[$i]}"
   done
-  echo "Preloading images ${images_load[*]} into cluster $cluster_name"
-  "$bindir"/k3d --cluster "$cluster_name" image import "${images_load[@]}"
-  exit_on_err "error calling '$bindir/image-load'"
+  echo "Preloading images ${images_import[*]} into cluster $cluster_name"
+  "$bindir"/k3d --cluster "$cluster_name" image import "${images_import[@]}"
+  exit_on_err "error calling 'k3d image import'"
 }
 
 start_test() {
