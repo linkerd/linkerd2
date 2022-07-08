@@ -14,9 +14,9 @@
 set -e
 
 if [ $# -ne 1 ]; then
-  echo "Error: accepts 1 argument"
-  echo "Usage:"
-  echo "  ${0##*/} /path/to/linkerd"
+  echo "Error: accepts 1 argument
+Usage:
+  ${0##*/} /path/to/linkerd"
   exit 1
 fi
 

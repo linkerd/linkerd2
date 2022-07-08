@@ -11,7 +11,8 @@ import (
 
 	spscheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	corev1 "k8s.io/api/core/v1"
-	discovery "k8s.io/api/discovery/v1beta1"
+	discovery "k8s.io/api/discovery/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apiextensionsfake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
@@ -27,6 +28,7 @@ import (
 	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	apiregistrationclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	apiregistrationfake "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/fake"
+
 	"sigs.k8s.io/yaml"
 )
 
@@ -95,7 +97,7 @@ func NewFakeClientSets(configs ...string) (
 		}
 	}
 
-	endpointslice, err := ToRuntimeObject(`apiVersion: discovery.k8s.io/v1beta1
+	endpointslice, err := ToRuntimeObject(`apiVersion: discovery.k8s.io/v1
 kind: EndpointSlice
 metadata:
   name: kubernetes
@@ -191,6 +193,7 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (
 // ToRuntimeObject deserializes Kubernetes YAML into a Runtime Object
 func ToRuntimeObject(config string) (runtime.Object, error) {
 	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
+	apiextensionsv1.AddToScheme(scheme.Scheme)
 	apiregistrationv1.AddToScheme(scheme.Scheme)
 	spscheme.AddToScheme(scheme.Scheme)
 	decode := scheme.Codecs.UniversalDeserializer().Decode
@@ -204,6 +207,7 @@ func ToRuntimeObject(config string) (runtime.Object, error) {
 // unregistered.
 func ObjectKinds(obj runtime.Object) ([]schema.GroupVersionKind, bool, error) {
 	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
+	apiextensionsv1.AddToScheme(scheme.Scheme)
 	apiregistrationv1.AddToScheme(scheme.Scheme)
 	spscheme.AddToScheme(scheme.Scheme)
 	return scheme.Scheme.ObjectKinds(obj)

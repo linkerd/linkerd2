@@ -60,6 +60,8 @@ spec:
           httpGet:
             path: /ready
             port: 9995
+        securityContext:
+          runAsUser: {{.Values.webhook.UID | default .Values.defaultUID}}
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls

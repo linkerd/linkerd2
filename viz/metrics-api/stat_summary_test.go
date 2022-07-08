@@ -1382,13 +1382,13 @@ status:
 		}
 
 		for _, exp := range expectations {
-			fakeGrpcServer := newGrpcServer(
-				&prometheus.MockProm{Res: exp.mockPromResponse},
-				k8sAPI,
-				"linkerd",
-				"mycluster.local",
-				[]string{},
-			)
+			fakeGrpcServer := grpcServer{
+				prometheusAPI:       &prometheus.MockProm{Res: exp.mockPromResponse},
+				k8sAPI:              k8sAPI,
+				controllerNamespace: "linkerd",
+				clusterDomain:       "mycluster.local",
+				ignoredNamespaces:   []string{},
+			}
 
 			_, err := fakeGrpcServer.StatSummary(context.TODO(), exp.req)
 			if err != nil || exp.err != nil {
@@ -1406,13 +1406,13 @@ status:
 		if err != nil {
 			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
-		fakeGrpcServer := newGrpcServer(
-			&prometheus.MockProm{Res: model.Vector{}},
-			k8sAPI,
-			"linkerd",
-			"mycluster.local",
-			[]string{},
-		)
+		fakeGrpcServer := grpcServer{
+			prometheusAPI:       &prometheus.MockProm{Res: model.Vector{}},
+			k8sAPI:              k8sAPI,
+			controllerNamespace: "linkerd",
+			clusterDomain:       "mycluster.local",
+			ignoredNamespaces:   []string{},
+		}
 
 		invalidRequests := []statSumExpected{
 			{

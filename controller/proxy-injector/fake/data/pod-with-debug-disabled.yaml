@@ -15,3 +15,13 @@ spec:
     ports:
     - name: http
       containerPort: 80
+    - name: metrics
+      containerPort: 9090
+    livenessProbe:
+      httpGet:
+        path: /metrics
+        port: metrics
+    readinessProbe:
+      httpGet:
+        path: /metrics
+        port: metrics

@@ -98,6 +98,8 @@ spec:
           httpGet:
             path: /ready
             port: 9995
+        securityContext:
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
@@ -402,6 +404,8 @@ spec:
             path: /
             port: 13133
         resources:
+        securityContext:
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /conf
           name: collector-config-val
@@ -483,6 +487,8 @@ spec:
         - containerPort: 16686
           name: ui
         resources:
+        securityContext:
+          runAsUser: 2103
       dnsPolicy: ClusterFirst
       serviceAccountName: jaeger
 ---

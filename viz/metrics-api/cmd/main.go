@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"net"
 	"os"
 	"os/signal"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/trace"
 	api "github.com/linkerd/linkerd2/viz/metrics-api"
 	promApi "github.com/prometheus/client_golang/api"
+	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -64,9 +66,13 @@ func main() {
 		}
 	}
 
-	server := api.NewServer(
-		*addr,
-		prometheusClient,
+	var promAPI promv1.API
+	if prometheusClient != nil {
+		promAPI = promv1.NewAPI(prometheusClient)
+	}
+
+	server := api.NewGrpcServer(
+		promAPI,
 		k8sAPI,
 		*controllerNamespace,
 		*clusterDomain,
@@ -75,9 +81,14 @@ func main() {
 
 	k8sAPI.Sync(nil) // blocks until caches are synced
 
+	lis, err := net.Listen("tcp", *addr)
+	if err != nil {
+		log.Fatalf("Failed to listen on %s: %s", *addr, err)
+	}
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)
-		if err := server.ListenAndServe(); err != nil {
+
+		if err := server.Serve(lis); err != nil {
 			log.Errorf("failed to start metrics API HTTP server: %s", err)
 		}
 	}()
@@ -94,6 +105,6 @@ func main() {
 	<-stop
 
 	log.Infof("shutting down HTTP server on %+v", *addr)
-	server.Shutdown(ctx)
+	server.GracefulStop()
 	adminServer.Shutdown(ctx)
 }

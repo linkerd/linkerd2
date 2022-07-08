@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
+	"github.com/linkerd/linkerd2/testutil/prommatch"
 )
 
 var TestHelper *testutil.TestHelper
@@ -19,6 +20,42 @@ func TestMain(m *testing.M) {
 	TestHelper.WaitUntilDeployReady(testutil.LinkerdDeployReplicasEdge)
 	os.Exit(m.Run())
 }
+
+var (
+	nginxPodRE  = regexp.MustCompile(`nginx.*`)
+	nginxLabels = prommatch.Labels{
+		"direction":             prommatch.Equals("outbound"),
+		"authority":             prommatch.Equals("nginx.linkerd-localhost-test.svc.cluster.local:8080"),
+		"dst_deployment":        prommatch.Equals("nginx"),
+		"dst_namespace":         prommatch.Equals("linkerd-localhost-test"),
+		"dst_pod":               prommatch.Like(nginxPodRE),
+		"dst_pod_template_hash": prommatch.Any(),
+		"dst_service":           prommatch.Equals("nginx"),
+		"dst_serviceaccount":    prommatch.Equals("default"),
+	}
+	requestsToNGINXMatcher = prommatch.NewMatcher("request_total",
+		nginxLabels,
+		prommatch.HasPositiveValue(),
+	)
+	failedResponsesFromNGINXMatcher = prommatch.NewMatcher("response_total",
+		nginxLabels,
+		prommatch.Labels{
+			"classification": prommatch.Equals("failure"),
+		},
+		prommatch.HasPositiveValue(),
+	)
+	successResponsesMatcher = prommatch.NewMatcher("response_total",
+		prommatch.Labels{
+			"direction":      prommatch.Equals("outbound"),
+			"classification": prommatch.Equals("success"),
+		},
+		prommatch.HasPositiveValue(),
+	)
+	tcpOpenMatcher = prommatch.NewMatcher("tcp_open_connections",
+		nginxLabels,
+		prommatch.HasValueOf(0),
+	)
+)
 
 // TestLocalhostServer creates an nginx deployment which listens on localhost
 // and a slow-cooker which attempts to send traffic to the nginx.  Since
@@ -67,27 +104,14 @@ func TestLocalhostServer(t *testing.T) {
 					"unexpected diagnostics error: %s\n%s", err, out)
 			}
 
-			rpsRE := regexp.MustCompile(
-				`request_total\{direction="outbound",authority="nginx\.linkerd-localhost-test\.svc\.cluster\.local:8080",.*,dst_deployment="nginx",dst_namespace="linkerd-localhost-test",dst_pod="nginx.*",dst_pod_template_hash=".*",dst_service="nginx",dst_serviceaccount="default"\} [1-9]\d*`,
-			)
-			if !rpsRE.MatchString(metrics) {
-				return fmt.Errorf("expected non-zero RPS from slowcooker to nginx\nexpected: %s, got: %s", rpsRE, metrics)
-			}
+			m := prommatch.Suite{}.
+				MustContain("requests from slowcooker to nginx", requestsToNGINXMatcher).
+				MustContain("failed responses returned to slowcooker from nginx", failedResponsesFromNGINXMatcher).
+				MustNotContain("success responses returned to slowcooker from nginx", successResponsesMatcher).
+				MustContain("zero open tcp connections to nginx", tcpOpenMatcher)
 
-			// Requests sent to a port which is only bound to localhost should
-			// fail.
-			successRE := regexp.MustCompile(
-				`response_total\{direction="outbound",authority="nginx\.linkerd-localhost-test\.svc\.cluster\.local:8080",.*,classification="success"\} [1-9]\d*`,
-			)
-			if successRE.MatchString(metrics) {
-				return fmt.Errorf("expected zero success-rate from slowcooker to nginx\nexpected: %s, got: %s", successRE, metrics)
-			}
-
-			tcpConnRE := regexp.MustCompile(
-				`tcp_open_connections\{direction="outbound",peer="dst",authority="nginx\.linkerd-localhost-test\.svc\.cluster\.local:8080",.*\} 0`,
-			)
-			if !tcpConnRE.MatchString(metrics) {
-				return fmt.Errorf("expected no tcp connections from slowcooker to nginx\nexpected: %s, got: %s", tcpConnRE, metrics)
+			if err := m.CheckString(metrics); err != nil {
+				return fmt.Errorf("metrics check failed: %w", err)
 			}
 
 			return nil

@@ -12,7 +12,7 @@ setValues() {
 
 showErr() {
   printf "Error on exit:\n  Exit code: %d\n  Failed command: \"%s\"\n" $? "$BASH_COMMAND"
-  setValues "$fullVersion" "linkerdVersionValue"
+  setValues "$fullVersion" 'linkerdVersionValue'
 }
 
 # trap the last failed command
@@ -64,7 +64,7 @@ if [ "$1" = package ]; then
     version=${BASH_REMATCH[2]}
 
     # set version in Values files
-    setValues "linkerdVersionValue" "$fullVersion"
+    setValues 'linkerdVersionValue' "$fullVersion"
 
     "$bindir"/helm -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd-crds
     "$bindir"/helm --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd-control-plane
@@ -77,5 +77,5 @@ if [ "$1" = package ]; then
     "$bindir"/helm repo index --url "https://helm.linkerd.io/$repo/" --merge "$rootdir"/target/helm/index-pre-"$version".yaml "$rootdir"/target/helm
 
     # restore version in Values files
-    setValues "$fullVersion" "linkerdVersionValue"
+    setValues "$fullVersion" 'linkerdVersionValue'
 fi

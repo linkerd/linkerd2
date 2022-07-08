@@ -2,6 +2,7 @@ use anyhow::{bail, Result};
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
     policy::{LocalTargetRef, NamespacedTargetRef},
+    ServiceAccount,
 };
 
 #[derive(Debug, PartialEq)]
@@ -23,6 +24,10 @@ pub(crate) enum AuthenticationTarget {
         name: String,
     },
     Network {
+        namespace: Option<String>,
+        name: String,
+    },
+    ServiceAccount {
         namespace: Option<String>,
         name: String,
     },
@@ -72,6 +77,11 @@ fn authentication_ref(t: NamespacedTargetRef) -> Result<AuthenticationTarget> {
         })
     } else if t.targets_kind::<k8s::policy::NetworkAuthentication>() {
         Ok(AuthenticationTarget::Network {
+            namespace: t.namespace.map(Into::into),
+            name: t.name,
+        })
+    } else if t.targets_kind::<ServiceAccount>() {
+        Ok(AuthenticationTarget::ServiceAccount {
             namespace: t.namespace.map(Into::into),
             name: t.name,
         })

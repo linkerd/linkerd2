@@ -9,6 +9,7 @@ use crate::k8s::{
 use anyhow::{anyhow, bail, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
+use k8s_gateway_api::{HttpRoute, HttpRouteFilter, HttpRouteRule, HttpRouteSpec};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_k8s_api::policy::NamespacedTargetRef;
@@ -117,6 +118,10 @@ impl Admission {
             return self.admit_spec::<ServerAuthorizationSpec>(req).await;
         };
 
+        if is_kind::<HttpRoute>(&req) {
+            return self.admit_spec::<HttpRouteSpec>(req).await;
+        }
+
         AdmissionResponse::invalid(format_args!(
             "unsupported resource type: {}.{}.{}",
             req.kind.group, req.kind.version, req.kind.kind
@@ -218,6 +223,19 @@ impl Validate<AuthorizationPolicySpec> for Admission {
             bail!("only a single MeshTLSAuthentication may be set");
         }
 
+        let sa_authns_count = spec
+            .required_authentication_refs
+            .iter()
+            .filter(|authn| authn.targets_kind::<ServiceAccount>())
+            .count();
+        if sa_authns_count > 1 {
+            bail!("only a single ServiceAccount may be set");
+        }
+
+        if mtls_authns_count + sa_authns_count > 1 {
+            bail!("a MeshTLSAuthentication and ServiceAccount may not be set together");
+        }
+
         let net_authns_count = spec
             .required_authentication_refs
             .iter()
@@ -227,13 +245,16 @@ impl Validate<AuthorizationPolicySpec> for Admission {
             bail!("only a single NetworkAuthentication may be set");
         }
 
-        if mtls_authns_count + net_authns_count < spec.required_authentication_refs.len() {
+        if mtls_authns_count + sa_authns_count + net_authns_count
+            < spec.required_authentication_refs.len()
+        {
             let kinds = spec
                 .required_authentication_refs
                 .iter()
                 .filter(|authn| {
                     !authn.targets_kind::<MeshTLSAuthentication>()
                         && !authn.targets_kind::<NetworkAuthentication>()
+                        && !authn.targets_kind::<ServiceAccount>()
                 })
                 .map(|authn| authn.canonical_kind())
                 .collect::<Vec<_>>();
@@ -383,4 +404,65 @@ impl Validate<ServerAuthorizationSpec> for Admission {
 
         Ok(())
     }
+}
+
+#[async_trait::async_trait]
+impl Validate<HttpRouteSpec> for Admission {
+    async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
+        // Only validate HttpRoutes which have a Server as a parent_ref.
+        if spec.inner.parent_refs.iter().flatten().any(|parent_ref| {
+            parent_ref.kind.as_deref() == Some("Server")
+                && parent_ref.group.as_deref() == Some("policy.linkerd.io")
+        }) {
+            for rule in spec.rules.iter().flatten() {
+                validate_http_route_rule(rule)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+fn validate_http_route_rule(rule: &HttpRouteRule) -> Result<()> {
+    if let Some(filters) = &rule.filters {
+        validate_http_route_filters(filters)?;
+    }
+
+    for backend_ref in rule.backend_refs.iter().flatten() {
+        if let Some(filters) = &backend_ref.filters {
+            validate_http_route_filters(filters)?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_http_route_filters(filters: &[HttpRouteFilter]) -> Result<()> {
+    // for filter in filters.iter() {
+    //     match filter {
+    //         HttpRouteFilter::ExtensionRef{ .. } => bail!("ExtensionRef filters are not supported"),
+    //         HttpRouteFilter::RequestHeaderModifier { .. } => bail!("RequestHeaderModifier filters are not supported"),
+    //         HttpRouteFilter::RequestMirror { .. } => bail!("RequestMirror filters are not supported"),
+    //         HttpRouteFilter::RequestRedirect { .. } => bail!("RequestRedirect filters are not supported"),
+    //         HttpRouteFilter::URLRewrite { .. } => bail!("URLRewrite filters are not supported"),
+    //     }
+    // }
+    // Since we don't support any filter types yet, we will always fail on the
+    // first filter. Once it becomes possible for this validation to pass, we
+    // should iterate through all filters, as in the commented-out code above.
+    if let Some(filter) = filters.iter().next() {
+        match filter {
+            HttpRouteFilter::ExtensionRef { .. } => bail!("ExtensionRef filters are not supported"),
+            HttpRouteFilter::RequestHeaderModifier { .. } => {
+                bail!("RequestHeaderModifier filters are not supported")
+            }
+            HttpRouteFilter::RequestMirror { .. } => {
+                bail!("RequestMirror filters are not supported")
+            }
+            HttpRouteFilter::RequestRedirect { .. } => {
+                bail!("RequestRedirect filters are not supported")
+            }
+            HttpRouteFilter::URLRewrite { .. } => bail!("URLRewrite filters are not supported"),
+        }
+    }
+    Ok(())
 }

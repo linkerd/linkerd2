@@ -39,7 +39,7 @@ check_linkerd_binary(){
         printf '\nFailed to run linkerd version command\n'
         exit $exit_code
     fi
-    printf '[ok]\n'
+    echo '[ok]'
 }
 
 check_if_k8s_reachable(){
@@ -47,7 +47,8 @@ check_if_k8s_reachable(){
     exit_code=0
     kubectl --request-timeout=5s get ns > /dev/null 2>&1 || exit_code=$?
     if [ $exit_code -ne 0 ]; then
-        printf '\nFailed to connect to Kubernetes cluster\n'
+        echo '
+Failed to connect to Kubernetes cluster'
         exit $exit_code
     fi
     printf '[ok]\n'

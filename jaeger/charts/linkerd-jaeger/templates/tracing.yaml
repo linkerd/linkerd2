@@ -117,6 +117,8 @@ spec:
         {{- if .Values.collector.resources -}}
         {{- include "partials.resources" .Values.collector.resources | nindent 8 }}
         {{- end }}
+        securityContext:
+          runAsUser: {{.Values.collector.UID | default .Values.defaultUID}}
         volumeMounts:
         - mountPath: /conf
           name: collector-config-val
@@ -206,6 +208,8 @@ spec:
         {{- if .Values.jaeger.resources -}}
         {{- include "partials.resources" .Values.jaeger.resources | nindent 8 }}
         {{- end }}
+        securityContext:
+          runAsUser: {{.Values.jaeger.UID | default .Values.defaultUID}}
       dnsPolicy: ClusterFirst
       serviceAccountName: jaeger
 {{ end -}}
