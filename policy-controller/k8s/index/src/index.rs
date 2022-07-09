@@ -618,7 +618,13 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         let name = route.name();
         let _span = info_span!("apply", %ns, %name).entered();
 
-        let route_binding = http_route::RouteBinding::from_resource(route);
+        let route_binding = match http_route::RouteBinding::try_from_resource(route) {
+            Ok(binding) => binding,
+            Err(error) => {
+                tracing::warn!(%ns, %name, %error, "Invalid HttpRoute");
+                return;
+            }
+        };
 
         self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_http_route(name, route_binding))
     }
@@ -642,7 +648,13 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         for route in routes.into_iter() {
             let namespace = route.namespace().expect("HttpRoute must be namespaced");
             let name = route.name();
-            let route_binding = http_route::RouteBinding::from_resource(route);
+            let route_binding = match http_route::RouteBinding::try_from_resource(route) {
+                Ok(binding) => binding,
+                Err(error) => {
+                    tracing::warn!(ns = %namespace, %name, %error, "Invalid HttpRoute");
+                    return;
+                }
+            };
             updates_by_ns
                 .entry(namespace)
                 .or_default()
