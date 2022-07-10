@@ -5148,13 +5148,13 @@ jest-pnp-resolver@^1.2.2:
   resolved "https://registry.yarnpkg.com/jest-pnp-resolver/-/jest-pnp-resolver-1.2.2.tgz#b704ac0ae028a89108a4d040b3f919dfddc8e33c"
   integrity sha512-olV41bKSMm8BdnuMsewT4jqlZ8+3TCARAXjZGT9jcoSnrfUnRCqnMoF9XEeoWjbzObpqF9dRhHQj0Xb9QdF6/w==
 
-jest-progress-bar-reporter@^1.0.24:
-  version "1.0.24"
-  resolved "https://registry.yarnpkg.com/jest-progress-bar-reporter/-/jest-progress-bar-reporter-1.0.24.tgz#0d9464ea938110fa61560faaa7d465e5360753a0"
-  integrity sha512-7FBWU01SUlD6O9ZtQqMNA9Tn9TFOj51qDdxnAPJUfW0mB1PDCuRVDCrKI5DTB9q0M861fGMGdlL0AKFHMYyd4Q==
+jest-progress-bar-reporter@^1.0.25:
+  version "1.0.25"
+  resolved "https://registry.yarnpkg.com/jest-progress-bar-reporter/-/jest-progress-bar-reporter-1.0.25.tgz#c292431023bd86947ead8cceba9e8f665f21a092"
+  integrity sha512-iFWtsl0j+OeHeMCu5fXL8pSN3h06NQlG/UPpcuO2PP2C+hr81K397+Mh34rU3GgA9kQga6ctu7gfOEOgUlKFug==
   dependencies:
     chalk "4.1.1"
-    moment "2.29.2"
+    moment "^2.29.4"
     progress "2.0.3"
 
 jest-regex-util@^28.0.2:
@@ -5851,7 +5851,7 @@ mkdirp@^1.0.4:
   resolved "https://registry.yarnpkg.com/mkdirp/-/mkdirp-1.0.4.tgz#3eb5ed62622756d79a5f0e2a221dfebad75c2f7e"
   integrity sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==
 
-moment@2.29.2, moment@2.29.3:
+moment@2.29.3, moment@^2.29.4:
   version "2.29.3"
   resolved "https://registry.yarnpkg.com/moment/-/moment-2.29.3.tgz#edd47411c322413999f7a5940d526de183c031f3"
   integrity sha512-c6YRvhEo//6T2Jz/vVtYzqBzwvPT95JBQ+smCytzf7c50oMZRsR/a4w88aD34I+/QVSfnoAnSBFPJHItlOMJVw==
