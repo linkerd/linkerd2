@@ -21,7 +21,7 @@ async fn server_with_server_authorization() {
         let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
         tracing::trace!(?pod);
 
-        let mut rx = retry_watch_server(&client, &ns, &pod.name()).await;
+        let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
         let config = rx
             .next()
             .await
@@ -123,14 +123,17 @@ async fn server_with_server_authorization() {
             convert_args!(hashmap!(
                 "group" => "policy.linkerd.io",
                 "kind" => "server",
-                "name" => server.name()
+                "name" => server.name_unchecked()
             ))
         );
 
         // Delete the `Server` and ensure that the update reverts to the
         // default.
         kube::Api::<k8s::policy::Server>::namespaced(client.clone(), &ns)
-            .delete(&server.name(), &kube::api::DeleteParams::default())
+            .delete(
+                &server.name_unchecked(),
+                &kube::api::DeleteParams::default(),
+            )
             .await
             .expect("Server must be deleted");
         let config = rx
@@ -155,7 +158,7 @@ async fn server_with_authorization_policy() {
         let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
         tracing::trace!(?pod);
 
-        let mut rx = retry_watch_server(&client, &ns, &pod.name()).await;
+        let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
         let config = rx
             .next()
             .await
@@ -188,7 +191,7 @@ async fn server_with_authorization_policy() {
             convert_args!(hashmap!(
                 "group" => "policy.linkerd.io",
                 "kind" => "server",
-                "name" => server.name()
+                "name" => server.name_unchecked()
             ))
         );
 
@@ -254,7 +257,7 @@ async fn server_with_authorization_policy() {
             convert_args!(hashmap!(
                 "group" => "policy.linkerd.io",
                 "kind" => "authorizationpolicy",
-                "name" => authz_policy.name(),
+                "name" => authz_policy.name_unchecked(),
             ))
         );
         assert_eq!(
@@ -276,7 +279,7 @@ async fn server_with_authorization_policy() {
             convert_args!(hashmap!(
                 "group" => "policy.linkerd.io",
                 "kind" => "server",
-                "name" => server.name()
+                "name" => server.name_unchecked()
             ))
         );
     })

@@ -179,7 +179,7 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
     let ns = obj
         .namespace()
         .ok_or_else(|| anyhow!("admission request missing 'namespace'"))?;
-    let name = obj.name();
+    let name = obj.name_any();
 
     let spec = {
         let data = obj
@@ -306,7 +306,7 @@ impl Validate<ServerSpec> for Admission {
             .list(&kube::api::ListParams::default())
             .await?;
         for server in servers.items.into_iter() {
-            if server.name() != name
+            if server.name_unchecked() != name
                 && server.spec.port == spec.port
                 && Self::overlaps(&server.spec.pod_selector, &spec.pod_selector)
             {

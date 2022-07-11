@@ -341,7 +341,7 @@ fn server_authz(
         },
         spec: k8s::policy::ServerAuthorizationSpec {
             server: k8s::policy::server_authorization::Server {
-                name: Some(target.name()),
+                name: Some(target.name_unchecked()),
                 selector: None,
             },
             client,
