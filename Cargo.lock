@@ -748,7 +748,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db00a9af48ec155cb29354d8ad64752f006a65a675ab35aeed646bc53ed92aae"
 dependencies = [
  "k8s-openapi",
- "kube",
+ "kube 0.73.1",
  "schemars",
  "serde",
  "serde_json",
@@ -779,10 +779,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f68b954ea9ad888de953fb1488bd8f377c4c78d82d4642efa5925189210b50b7"
 dependencies = [
  "k8s-openapi",
- "kube-client",
- "kube-core",
- "kube-derive",
- "kube-runtime",
+ "kube-core 0.73.1",
+ "kube-derive 0.73.1",
+]
+
+[[package]]
+name = "kube"
+version = "0.74.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a527a8001a61d8d470dab27ac650889938760c243903e7cd90faaf7c60a34bdd"
+dependencies = [
+ "k8s-openapi",
+ "kube-client 0.74.0",
+ "kube-core 0.74.0",
+ "kube-derive 0.74.0",
+ "kube-runtime 0.74.0",
 ]
 
 [[package]]
@@ -800,13 +811,46 @@ dependencies = [
  "http",
  "http-body",
  "hyper",
+ "hyper-timeout",
+ "jsonpath_lib",
+ "k8s-openapi",
+ "kube-core 0.73.1",
+ "pem",
+ "pin-project",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror",
+ "tokio",
+ "tokio-util 0.7.0",
+ "tower",
+ "tower-http",
+ "tracing",
+]
+
+[[package]]
+name = "kube-client"
+version = "0.74.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0d48f42df4e8342e9f488c4b97e3759d0042c4e7ab1a853cc285adb44409480"
+dependencies = [
+ "base64",
+ "bytes",
+ "chrono",
+ "dirs-next",
+ "either",
+ "futures",
+ "http",
+ "http-body",
+ "hyper",
  "hyper-openssl",
  "hyper-rustls",
  "hyper-timeout",
  "hyper-tls",
  "jsonpath_lib",
  "k8s-openapi",
- "kube-core",
+ "kube-core 0.74.0",
  "openssl",
  "pem",
  "pin-project",
@@ -846,10 +890,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "kube-core"
+version = "0.74.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91f56027f862fdcad265d2e9616af416a355e28a1c620bb709083494753e070d"
+dependencies = [
+ "chrono",
+ "form_urlencoded",
+ "http",
+ "json-patch",
+ "k8s-openapi",
+ "once_cell",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "kube-derive"
 version = "0.73.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfb405f0d39181acbfdc7c79e3fc095330c9b6465ab50aeb662d762e53b662f1"
+dependencies = [
+ "darling",
+ "proc-macro2",
+ "quote",
+ "serde_json",
+ "syn",
+]
+
+[[package]]
+name = "kube-derive"
+version = "0.74.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66d74121eb41af4480052901f31142d8d9bbdf1b7c6b856da43bcb02f5b1b177"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -870,7 +945,31 @@ dependencies = [
  "futures",
  "json-patch",
  "k8s-openapi",
- "kube-client",
+ "kube-client 0.73.1",
+ "parking_lot",
+ "pin-project",
+ "serde",
+ "serde_json",
+ "smallvec",
+ "thiserror",
+ "tokio",
+ "tokio-util 0.7.0",
+ "tracing",
+]
+
+[[package]]
+name = "kube-runtime"
+version = "0.74.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8fdcf5a20f968768e342ef1a457491bb5661fccd81119666d626c57500b16d99"
+dependencies = [
+ "ahash",
+ "backoff",
+ "derivative",
+ "futures",
+ "json-patch",
+ "k8s-openapi",
+ "kube-client 0.74.0",
  "parking_lot",
  "pin-project",
  "serde",
@@ -894,9 +993,9 @@ dependencies = [
  "futures-core",
  "futures-util",
  "hyper",
- "kube-client",
- "kube-core",
- "kube-runtime",
+ "kube-client 0.73.1",
+ "kube-core 0.73.1",
+ "kube-runtime 0.73.1",
  "parking_lot",
  "pin-project-lite",
  "rustls-pemfile",
@@ -950,7 +1049,7 @@ dependencies = [
  "jemallocator",
  "k8s-gateway-api",
  "k8s-openapi",
- "kube",
+ "kube 0.74.0",
  "kubert",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-grpc",
@@ -999,7 +1098,7 @@ version = "0.1.0"
 dependencies = [
  "ipnet",
  "k8s-openapi",
- "kube",
+ "kube 0.74.0",
  "schemars",
  "serde",
  "serde_json",
@@ -1038,7 +1137,7 @@ dependencies = [
  "ipnet",
  "k8s-gateway-api",
  "k8s-openapi",
- "kube",
+ "kube 0.74.0",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
  "linkerd2-proxy-api",
