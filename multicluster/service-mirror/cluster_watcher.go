@@ -28,7 +28,6 @@ import (
 
 const (
 	eventTypeSkipped = "ServiceMirroringSkipped"
-	kubeSystem       = "kube-system"
 )
 
 type (
@@ -814,10 +813,6 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 		cache.ResourceEventHandlerFuncs{
 			// AddFunc only relevant for exported headless endpoints
 			AddFunc: func(obj interface{}) {
-				if obj.(metav1.Object).GetNamespace() == kubeSystem {
-					return
-				}
-
 				ep, ok := obj.(*corev1.Endpoints)
 				if !ok {
 					rcsw.log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", ep)
@@ -837,9 +832,6 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 			},
 			// AddFunc relevant for all kind of exported endpoints
 			UpdateFunc: func(_, new interface{}) {
-				if new.(metav1.Object).GetNamespace() == kubeSystem {
-					return
-				}
 				epNew, ok := new.(*corev1.Endpoints)
 				if !ok {
 					rcsw.log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", epNew)
@@ -857,10 +849,6 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 	rcsw.localAPIClient.NS().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				if obj.(metav1.Object).GetName() == kubeSystem {
-					return
-				}
-
 				rcsw.eventsQueue.Add(&OnLocalNamespaceAdded{obj.(*corev1.Namespace)})
 			},
 		},
