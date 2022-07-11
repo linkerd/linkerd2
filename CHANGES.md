@@ -1,6 +1,6 @@
 # Changes
 
-## edge-22.6.3
+## edge-22.7.1
 
 This release includes a security improvement. When a user manually specified the
 `policyValidator.keyPEM` setting, the value was incorrectly included in the
