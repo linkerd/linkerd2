@@ -139,19 +139,19 @@ where
     .expect("Timed out waiting for a serviceaccount");
 
     tracing::trace!("Spawning");
-    let test = test(client.clone(), ns.name_unchecked());
-    let res = tokio::spawn(test.instrument(tracing::info_span!("test", ns = %ns.name_any()))).await;
+    let ns_name = ns.name_unchecked();
+    let test = test(client.clone(), ns_name.clone());
+    let res = tokio::spawn(test.instrument(tracing::info_span!("test", ns = %ns_name))).await;
     if res.is_err() {
         // If the test failed, list the state of all pods/containers in the namespace.
-        let pods = kube::Api::<k8s::Pod>::namespaced(client.clone(), &ns.name_unchecked())
+        let pods = kube::Api::<k8s::Pod>::namespaced(client.clone(), &ns_name)
             .list(&Default::default())
             .await
             .expect("Failed to get pod status");
         for p in pods.items {
             let pod = p.name_unchecked();
             if let Some(status) = p.status {
-                let _span =
-                    tracing::info_span!("pod", ns = %ns.name_unchecked(), name = %pod).entered();
+                let _span = tracing::info_span!("pod", ns = %ns_name, name = %pod).entered();
                 tracing::trace!(reason = ?status.reason, message = ?status.message);
                 for c in status.init_container_statuses.into_iter().flatten() {
                     tracing::trace!(init_container = %c.name, ready = %c.ready, state = ?c.state);
