@@ -11,7 +11,7 @@ use crate::{
     meshtls_authentication, network_authentication, pod, server, server_authorization, ClusterInfo,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRoute, IdentityMatch,
     InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
@@ -190,7 +190,7 @@ impl Index {
 impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
     fn apply(&mut self, pod: k8s::Pod) {
         let namespace = pod.namespace().unwrap();
-        let name = pod.name();
+        let name = pod.name_unchecked();
         let _span = info_span!("apply", ns = %namespace, %name).entered();
 
         let port_names = pod::tcp_port_names(pod.spec);
@@ -228,7 +228,7 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
 impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     fn apply(&mut self, srv: k8s::policy::Server) {
         let ns = srv.namespace().expect("server must be namespaced");
-        let name = srv.name();
+        let name = srv.name_unchecked();
         let _span = info_span!("apply", %ns, %name).entered();
 
         let server = server::Server::from_resource(srv, &self.cluster_info);
@@ -249,7 +249,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
         let mut updates_by_ns = HashMap::<String, Ns>::default();
         for srv in srvs.into_iter() {
             let namespace = srv.namespace().expect("server must be namespaced");
-            let name = srv.name();
+            let name = srv.name_unchecked();
             let server = server::Server::from_resource(srv, &self.cluster_info);
             updates_by_ns
                 .entry(namespace)
@@ -293,7 +293,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
 impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> for Index {
     fn apply(&mut self, saz: k8s::policy::ServerAuthorization) {
         let ns = saz.namespace().unwrap();
-        let name = saz.name();
+        let name = saz.name_unchecked();
         let _span = info_span!("apply", %ns, %name).entered();
 
         match server_authorization::ServerAuthz::from_resource(saz, &self.cluster_info) {
@@ -326,7 +326,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
             let namespace = saz
                 .namespace()
                 .expect("serverauthorization must be namespaced");
-            let name = saz.name();
+            let name = saz.name_unchecked();
             match server_authorization::ServerAuthz::from_resource(saz, &self.cluster_info) {
                 Ok(saz) => updates_by_ns
                     .entry(namespace)
@@ -374,7 +374,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
 impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> for Index {
     fn apply(&mut self, policy: k8s::policy::AuthorizationPolicy) {
         let ns = policy.namespace().unwrap();
-        let name = policy.name();
+        let name = policy.name_unchecked();
         let _span = info_span!("apply", %ns, saz = %name).entered();
 
         let spec = match authorization_policy::Spec::try_from(policy.spec) {
@@ -410,7 +410,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> fo
             let namespace = policy
                 .namespace()
                 .expect("authorizationpolicy must be namespaced");
-            let name = policy.name();
+            let name = policy.name_unchecked();
             match authorization_policy::Spec::try_from(policy.spec) {
                 Ok(spec) => updates_by_ns
                     .entry(namespace)
@@ -460,7 +460,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::MeshTLSAuthentication> 
         let ns = authn
             .namespace()
             .expect("MeshTLSAuthentication must have a namespace");
-        let name = authn.name();
+        let name = authn.name_unchecked();
         let _span = info_span!("apply", %ns, %name).entered();
 
         let spec = match meshtls_authentication::Spec::try_from_resource(authn, &self.cluster_info)
@@ -505,7 +505,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::MeshTLSAuthentication> 
             let namespace = authn
                 .namespace()
                 .expect("meshtlsauthentication must be namespaced");
-            let name = authn.name();
+            let name = authn.name_unchecked();
             let spec = match meshtls_authentication::Spec::try_from_resource(
                 authn,
                 &self.cluster_info,
@@ -538,7 +538,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::MeshTLSAuthentication> 
 impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> for Index {
     fn apply(&mut self, authn: k8s::policy::NetworkAuthentication) {
         let ns = authn.namespace().unwrap();
-        let name = authn.name();
+        let name = authn.name_unchecked();
         let _span = info_span!("apply", %ns, %name).entered();
 
         let spec = match network_authentication::Spec::try_from(authn.spec) {
@@ -583,7 +583,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
             let namespace = authn
                 .namespace()
                 .expect("meshtlsauthentication must be namespaced");
-            let name = authn.name();
+            let name = authn.name_unchecked();
             let spec = match network_authentication::Spec::try_from(authn.spec) {
                 Ok(spec) => spec,
                 Err(error) => {
@@ -613,7 +613,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
 impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
     fn apply(&mut self, route: k8s_gateway_api::HttpRoute) {
         let ns = route.namespace().expect("HttpRoute must have a namespace");
-        let name = route.name();
+        let name = route.name_unchecked();
         let _span = info_span!("apply", %ns, %name).entered();
 
         let route_binding = match route.try_into() {
@@ -645,7 +645,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         let mut updates_by_ns = HashMap::<String, Ns>::default();
         for route in routes.into_iter() {
             let namespace = route.namespace().expect("HttpRoute must be namespaced");
-            let name = route.name();
+            let name = route.name_unchecked();
             let route_binding = match route.try_into() {
                 Ok(binding) => binding,
                 Err(error) => {
@@ -1189,31 +1189,46 @@ impl PolicyIndex {
 
         let mut identities = None;
         for tgt in spec.authentications.iter() {
-            if let AuthenticationTarget::MeshTLS {
-                ref namespace,
-                ref name,
-            } = tgt
-            {
-                let namespace = namespace.as_deref().unwrap_or(&self.namespace);
-                tracing::trace!(ns = %namespace, %name, "Finding MeshTLSAuthentication");
-                if let Some(ns) = all_authentications.by_ns.get(namespace) {
-                    if let Some(authn) = ns.meshtls.get(name) {
-                        tracing::trace!(ns = %namespace, %name, ids = ?authn.matches, "Found MeshTLSAuthentication");
-                        // There can only be a single required MeshTLSAuthentication. This is
-                        // enforced by the admission controller.
-                        if identities.is_some() {
-                            bail!("policy must not include multiple MeshTLSAuthentications");
-                        }
-                        let ids = authn.matches.clone();
-                        identities = Some(ids);
-                        continue;
+            match tgt {
+                AuthenticationTarget::MeshTLS {
+                    ref namespace,
+                    ref name,
+                } => {
+                    let namespace = namespace.as_deref().unwrap_or(&self.namespace);
+                    let _span = tracing::trace_span!("mesh_tls", ns = %namespace, %name).entered();
+                    tracing::trace!("Finding MeshTLSAuthentication...");
+                    let authn = all_authentications
+                        .by_ns
+                        .get(namespace)
+                        .and_then(|ns| ns.meshtls.get(name))
+                        .ok_or_else(|| {
+                            anyhow!(
+                                "could not find MeshTLSAuthentication {} in namespace {}",
+                                name,
+                                namespace
+                            )
+                        })?;
+                    tracing::trace!(ids = ?authn.matches, "Found MeshTLSAuthentication");
+                    if identities.is_some() {
+                        bail!("policy must not include multiple MeshTLSAuthentications");
                     }
+                    let ids = authn.matches.clone();
+                    identities = Some(ids);
                 }
-                bail!(
-                    "could not find MeshTLSAuthentication {} in namespace {}",
-                    name,
-                    namespace
-                );
+                AuthenticationTarget::ServiceAccount {
+                    ref namespace,
+                    ref name,
+                } => {
+                    // There can only be a single required ServiceAccount. This is
+                    // enforced by the admission controller.
+                    if identities.is_some() {
+                        bail!("policy must not include multiple ServiceAccounts");
+                    }
+                    let namespace = namespace.as_deref().unwrap_or(&self.namespace);
+                    let id = self.cluster_info.service_account_identity(namespace, name);
+                    identities = Some(vec![IdentityMatch::Exact(id)])
+                }
+                _network => {}
             }
         }
 

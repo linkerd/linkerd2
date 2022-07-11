@@ -2108,7 +2108,7 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 // installed on the cluster.
 func CheckCustomResourceDefinitions(ctx context.Context, k8sAPI *k8s.KubernetesAPI, expectedCRDManifests string) error {
 
-	crdYamls := strings.Split(expectedCRDManifests, "---")
+	crdYamls := strings.Split(expectedCRDManifests, "---\n")
 	crdVersions := []struct{ name, version string }{}
 	for _, crdYaml := range crdYamls {
 		var crd apiextv1.CustomResourceDefinition

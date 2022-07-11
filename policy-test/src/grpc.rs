@@ -115,7 +115,7 @@ impl PolicyClient {
             .items
             .pop()
             .ok_or_else(|| anyhow::anyhow!("no destination controller pods found"))?;
-        Ok(pod.name())
+        Ok(pod.name_unchecked())
     }
 
     async fn connect_port_forward(

@@ -1,5 +1,53 @@
 # Changes
 
+## edge-22.7.1
+
+This release includes a security improvement. When a user manually specified the
+`policyValidator.keyPEM` setting, the value was incorrectly included in the
+`linkerd-config` configmap. This means that this private key was erroneously
+exposed to service accounts with read access to this configmap. Practically,
+this means that the Linkerd `proxy-injector`, `identity`, and `heartbeat` pods
+could read this value. This should **not** have exposed this private key to
+other unauthorized users unless additional role bindings were added outside of
+Linkerd. Nevertheless, we recommend that users who manually set control plane
+certificates update the credentials for the policy validator after upgrading
+Linkerd.
+
+Additionally, the linkerd-multicluster extensions has several fixes related to
+fail fast errors during link watch restarts, improper label matching for
+mirrored services, and properly cleaning up mirrored endpoints in certain
+situations.
+
+Lastly, the proxy can now retry gRPC requests that have responses with a
+TRAILERS frame. A fix to reduce redundant load balancer updates should also
+result in less connection churn.
+
+* Changed unit tests to use newly introduced `prommatch` package for asserting
+  expected metrics (thanks @krzysztofdrys!)
+* Fixed Docker container runtime check to only during `linkerd install` rather
+  than `linkerd check --pre`
+* Changed linkerd-multicluster's remote cluster watcher to assume the gateway is
+  alive when starting—fixing fail fast errors from occurring during restarts
+  (thanks @chenaoxd!)
+* Added `matchLabels` and `matchExpressions` to linkerd-multicluster's Link CRD
+* Fixed linkerd-multicluster's label selector to properly select resources that
+  match the expected label value, rather than just the presence of the label
+* Fixed linkerd-multicluster's cluster watcher to properly clean up endpoints
+  belonging to remote headless services that are no longer mirrored
+* Added the HttpRoute CRD which will be used by future policy features
+* Fixed CNI plugin event processing where file updates could sometimes be
+  skipped leading to the update not being acknowledged
+* Fixed redundant load balancer updates in the proxy that could cause
+  unnecessary connection churn
+* Fixed gRPC request retries for responses that contain a TRAILERS frame
+* Fixed the dashboard's `linkerd check` due to missing RBAC for listing pods in
+  the cluster
+* Fixed API check that ensures access to the Server CRD (thanks @aatarasoff!)
+* Changed `linkerd authz` to match the labels of pre-fetched Pods rather than
+  the multiple API calls it was doing—resulting in significant speed-up (thanks
+  @aatarasoff!)
+* Unset `policyValidtor.keyPEM` in `linkerd-config` ConfigMap
+
 ## edge-22.6.2
 
 This edge release bumps the minimum supported Kubernetes version from `v1.20`

@@ -308,7 +308,7 @@ monitor() {
         sync "$filename" "$action" "$cni_conf_sha"
         # When file exists (i.e we didn't deal with a DELETE ev)
         # then calculate its sha to be used the next turn.
-        if [ -e "$directory/$filename" ]; then
+        if [[ -e "$directory/$filename" && "$action" != 'DELETE' ]]; then
           cni_conf_sha="$(sha256sum "$directory/$filename" | while read -r s _; do echo "$s"; done)"
         fi
       fi

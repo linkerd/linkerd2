@@ -71,7 +71,13 @@ pub async fn create_ready_pod(client: &kube::Client, pod: k8s::Pod) -> k8s::Pod 
     };
 
     let pod = create(client, pod).await;
-    await_condition(client, &pod.namespace().unwrap(), &pod.name(), pod_ready).await;
+    await_condition(
+        client,
+        &pod.namespace().unwrap(),
+        &pod.name_unchecked(),
+        pod_ready,
+    )
+    .await;
     pod
 }
 
@@ -127,24 +133,25 @@ where
     tracing::trace!(?ns);
     tokio::time::timeout(
         tokio::time::Duration::from_secs(60),
-        await_service_account(&client, &ns.name(), "default"),
+        await_service_account(&client, &ns.name_unchecked(), "default"),
     )
     .await
     .expect("Timed out waiting for a serviceaccount");
 
     tracing::trace!("Spawning");
-    let test = test(client.clone(), ns.name());
-    let res = tokio::spawn(test.instrument(tracing::info_span!("test", ns = %ns.name()))).await;
+    let ns_name = ns.name_unchecked();
+    let test = test(client.clone(), ns_name.clone());
+    let res = tokio::spawn(test.instrument(tracing::info_span!("test", ns = %ns_name))).await;
     if res.is_err() {
         // If the test failed, list the state of all pods/containers in the namespace.
-        let pods = kube::Api::<k8s::Pod>::namespaced(client.clone(), &ns.name())
+        let pods = kube::Api::<k8s::Pod>::namespaced(client.clone(), &ns_name)
             .list(&Default::default())
             .await
             .expect("Failed to get pod status");
         for p in pods.items {
-            let pod = p.name();
+            let pod = p.name_unchecked();
             if let Some(status) = p.status {
-                let _span = tracing::info_span!("pod", ns = %ns.name(), name = %pod).entered();
+                let _span = tracing::info_span!("pod", ns = %ns_name, name = %pod).entered();
                 tracing::trace!(reason = ?status.reason, message = ?status.message);
                 for c in status.init_container_statuses.into_iter().flatten() {
                     tracing::trace!(init_container = %c.name, ready = %c.ready, state = ?c.state);
@@ -160,8 +167,8 @@ where
         drop(_tracing);
     }
 
-    tracing::debug!(ns = %ns.name(), "Deleting");
-    api.delete(&ns.name(), &kube::api::DeleteParams::background())
+    tracing::debug!(ns = %ns.name_unchecked(), "Deleting");
+    api.delete(&ns.name_unchecked(), &kube::api::DeleteParams::background())
         .await
         .expect("failed to delete Namespace");
     if let Err(err) = res {
@@ -188,12 +195,12 @@ async fn await_service_account(client: &kube::Client, ns: &str, name: &str) {
         tracing::info!(?ev);
         match ev {
             kube::runtime::watcher::Event::Restarted(sas) => {
-                if sas.iter().any(|sa| sa.name() == name) {
+                if sas.iter().any(|sa| sa.name_unchecked() == name) {
                     return;
                 }
             }
             kube::runtime::watcher::Event::Applied(sa) => {
-                if sa.name() == name {
+                if sa.name_unchecked() == name {
                     return;
                 }
             }
