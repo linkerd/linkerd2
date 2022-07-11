@@ -12,3 +12,4 @@ async-trait = "0.1"
 futures = { version = "0.3", default-features = false, features = ["std"] }
 hyper = { version = "0.14" }
 ipnet = "2"
+regex = "1"

@@ -3,6 +3,7 @@
 
 use futures::prelude::*;
 use linkerd2_proxy_api::{
+    http_route, http_types,
     inbound::{
         self as proto,
         inbound_server_policies_server::{InboundServerPolicies, InboundServerPoliciesServer},
@@ -347,7 +348,7 @@ fn to_authz(
 }
 
 fn to_http_route(
-    name: &String,
+    name: impl ToString,
     route: &HttpRoute,
     srv: &InboundServer,
     cluster_networks: &[IpNet],
@@ -357,7 +358,7 @@ fn to_http_route(
             linkerd2_proxy_api::meta::Resource {
                 group: "gateway.networking.k8s.io".to_string(),
                 kind: "HTTPRoute".to_string(),
-                name: name.to_owned(),
+                name: name.to_string(),
             },
         )),
     };
@@ -366,16 +367,14 @@ fn to_http_route(
 
     let hosts = route
         .hostnames
-        .iter()
+        .into_iter()
         .map(|hostname| match hostname {
-            Hostname::Exact(host) => linkerd2_proxy_api::http_route::HostMatch {
-                r#match: Some(linkerd2_proxy_api::http_route::host_match::Match::Exact(
-                    host.to_owned(),
-                )),
+            Hostname::Exact(host) => http_route::HostMatch {
+                r#match: Some(http_route::host_match::Match::Exact(host)),
             },
-            Hostname::Suffix { reverse_labels } => linkerd2_proxy_api::http_route::HostMatch {
-                r#match: Some(linkerd2_proxy_api::http_route::host_match::Match::Suffix(
-                    linkerd2_proxy_api::http_route::host_match::Suffix {
+            Hostname::Suffix { reverse_labels } => http_route::HostMatch {
+                r#match: Some(http_route::host_match::Match::Suffix(
+                    http_route::host_match::Suffix {
                         reverse_labels: reverse_labels.to_vec(),
                     },
                 )),
@@ -408,80 +407,62 @@ fn to_http_route(
     }
 }
 
-fn to_match(route_match: HttpRouteMatch) -> linkerd2_proxy_api::http_route::HttpRouteMatch {
+fn to_match(route_match: HttpRouteMatch) -> http_route::HttpRouteMatch {
     let headers = route_match
         .headers
-        .iter()
+        .into_iter()
         .map(|header_match| {
-            let value = match &header_match.value {
-                Value::Exact(value) => {
-                    linkerd2_proxy_api::http_route::header_match::Value::Exact(value.to_owned())
-                }
-                Value::Regex(value) => {
-                    linkerd2_proxy_api::http_route::header_match::Value::Regex(value.to_owned())
-                }
+            let value = match header_match.value {
+                Value::Exact(value) => http_route::header_match::Value::Exact(value),
+                Value::Regex(value) => http_route::header_match::Value::Regex(value.to_string()),
             };
-            linkerd2_proxy_api::http_route::HeaderMatch {
-                name: header_match.name.to_owned(),
+            http_route::HeaderMatch {
+                name: header_match.name,
                 value: Some(value),
             }
         })
         .collect();
 
-    let path = route_match.path.as_ref().map(|path| match path {
+    let path = route_match.path.map(|path| match path {
         linkerd_policy_controller_core::http_route::PathMatch::Exact(path) => {
-            linkerd2_proxy_api::http_route::PathMatch {
-                kind: Some(linkerd2_proxy_api::http_route::path_match::Kind::Exact(
-                    path.to_owned(),
-                )),
+            http_route::PathMatch {
+                kind: Some(http_route::path_match::Kind::Exact(path)),
             }
         }
         linkerd_policy_controller_core::http_route::PathMatch::Prefix(prefix) => {
-            linkerd2_proxy_api::http_route::PathMatch {
-                kind: Some(linkerd2_proxy_api::http_route::path_match::Kind::Prefix(
-                    prefix.to_owned(),
-                )),
+            http_route::PathMatch {
+                kind: Some(http_route::path_match::Kind::Prefix(prefix)),
             }
         }
         linkerd_policy_controller_core::http_route::PathMatch::Regex(regex) => {
-            linkerd2_proxy_api::http_route::PathMatch {
-                kind: Some(linkerd2_proxy_api::http_route::path_match::Kind::Regex(
-                    regex.to_owned(),
-                )),
+            http_route::PathMatch {
+                kind: Some(http_route::path_match::Kind::Regex(regex.to_string())),
             }
         }
     });
 
     let query_params = route_match
         .query_params
-        .iter()
+        .into_iter()
         .map(|query_param| {
-            let value = match &query_param.value {
-                Value::Exact(value) => {
-                    linkerd2_proxy_api::http_route::query_param_match::Value::Exact(
-                        value.to_owned(),
-                    )
-                }
+            let value = match query_param.value {
+                Value::Exact(value) => http_route::query_param_match::Value::Exact(value),
                 Value::Regex(value) => {
-                    linkerd2_proxy_api::http_route::query_param_match::Value::Regex(
-                        value.to_owned(),
-                    )
+                    http_route::query_param_match::Value::Regex(value.to_string())
                 }
             };
-            linkerd2_proxy_api::http_route::QueryParamMatch {
-                name: query_param.name.to_owned(),
+            http_route::QueryParamMatch {
+                name: query_param.name,
                 value: Some(value),
             }
         })
         .collect();
 
-    let method = route_match
-        .method
-        .map(|method| linkerd2_proxy_api::http_types::HttpMethod {
-            r#type: Some(method.into()),
-        });
+    let method = route_match.method.map(|method| http_types::HttpMethod {
+        r#type: Some(method.into()),
+    });
 
-    linkerd2_proxy_api::http_route::HttpRouteMatch {
+    http_route::HttpRouteMatch {
         headers,
         path,
         query_params,
@@ -495,37 +476,35 @@ fn to_filter(filter: HttpFilter) -> proto::http_route::Filter {
             status,
             message,
             ratio,
-        } => proto::http_route::filter::Kind::FailureInjector(
-            linkerd2_proxy_api::http_route::HttpFailureInjector {
-                status: u32::from(status.as_u16()),
-                message,
-                ratio: Some(linkerd2_proxy_api::http_route::Ratio {
-                    numerator: ratio.numerator,
-                    denominator: ratio.denominator,
-                }),
-            },
-        ),
+        } => proto::http_route::filter::Kind::FailureInjector(http_route::HttpFailureInjector {
+            status: u32::from(status.as_u16()),
+            message,
+            ratio: Some(http_route::Ratio {
+                numerator: ratio.numerator,
+                denominator: ratio.denominator,
+            }),
+        }),
         HttpFilter::RequestHeaderModifier { add, set, remove } => {
             let add_headers = add
                 .into_iter()
-                .map(|(k, v)| linkerd2_proxy_api::http_types::headers::Header {
+                .map(|(k, v)| http_types::headers::Header {
                     name: k,
                     value: v.into(),
                 })
                 .collect();
             let set_headers = set
                 .into_iter()
-                .map(|(k, v)| linkerd2_proxy_api::http_types::headers::Header {
+                .map(|(k, v)| http_types::headers::Header {
                     name: k,
                     value: v.into(),
                 })
                 .collect();
             proto::http_route::filter::Kind::RequestHeaderModifier(
-                linkerd2_proxy_api::http_route::RequestHeaderModifier {
-                    add: Some(linkerd2_proxy_api::http_types::Headers {
+                http_route::RequestHeaderModifier {
+                    add: Some(http_types::Headers {
                         headers: add_headers,
                     }),
-                    set: Some(linkerd2_proxy_api::http_types::Headers {
+                    set: Some(http_types::Headers {
                         headers: set_headers,
                     }),
                     remove,
@@ -538,27 +517,21 @@ fn to_filter(filter: HttpFilter) -> proto::http_route::Filter {
             path,
             port,
             status,
-        } => proto::http_route::filter::Kind::Redirect(
-            linkerd2_proxy_api::http_route::RequestRedirect {
-                scheme: scheme.map(|ref s| s.into()),
-                host: host.unwrap_or_default(),
-                path: path.map(|pm| {
-                    let replace = match pm {
-                        PathModifier::Full(p) => {
-                            linkerd2_proxy_api::http_route::path_modifier::Replace::Full(p)
-                        }
-                        PathModifier::Prefix(p) => {
-                            linkerd2_proxy_api::http_route::path_modifier::Replace::Prefix(p)
-                        }
-                    };
-                    linkerd2_proxy_api::http_route::PathModifier {
-                        replace: Some(replace),
-                    }
-                }),
-                port: port.unwrap_or_default(),
-                status: u32::from(status.unwrap_or_default().as_u16()),
-            },
-        ),
+        } => proto::http_route::filter::Kind::Redirect(http_route::RequestRedirect {
+            scheme: scheme.map(|ref s| s.into()),
+            host: host.unwrap_or_default(),
+            path: path.map(|pm| {
+                let replace = match pm {
+                    PathModifier::Full(p) => http_route::path_modifier::Replace::Full(p),
+                    PathModifier::Prefix(p) => http_route::path_modifier::Replace::Prefix(p),
+                };
+                http_route::PathModifier {
+                    replace: Some(replace),
+                }
+            }),
+            port: port.unwrap_or_default(),
+            status: u32::from(status.unwrap_or_default().as_u16()),
+        }),
     };
     proto::http_route::Filter { kind: Some(kind) }
 }

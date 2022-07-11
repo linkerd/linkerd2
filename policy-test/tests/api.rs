@@ -398,13 +398,11 @@ async fn server_with_http_route() {
         assert_eq!(
             route.metadata.to_owned().expect("route must have metadata"),
             grpc::meta::Metadata {
-                kind: Some(grpc::meta::metadata::Kind::Resource(
-                    grpc::meta::metadata::Resource {
-                        group: "gateway.networking.k8s.io".to_string(),
-                        kind: "HTTPRoute".to_string(),
-                        name: "metrics-route".to_string(),
-                    }
-                ))
+                kind: Some(grpc::meta::metadata::Kind::Resource(grpc::meta::Resource {
+                    group: "gateway.networking.k8s.io".to_string(),
+                    kind: "HTTPRoute".to_string(),
+                    name: "metrics-route".to_string(),
+                }))
             }
         );
         // Route has path match.

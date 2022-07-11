@@ -7,9 +7,7 @@
 //! kubernetes resources.
 
 use crate::{
-    authorization_policy,
-    defaults::DefaultPolicy,
-    http_route::{self, RouteBinding},
+    authorization_policy, defaults::DefaultPolicy, http_route::RouteBinding,
     meshtls_authentication, network_authentication, pod, server, server_authorization, ClusterInfo,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
@@ -618,7 +616,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         let name = route.name();
         let _span = info_span!("apply", %ns, %name).entered();
 
-        let route_binding = match http_route::RouteBinding::try_from_resource(route) {
+        let route_binding = match route.try_into() {
             Ok(binding) => binding,
             Err(error) => {
                 tracing::warn!(%ns, %name, %error, "Invalid HttpRoute");
@@ -648,7 +646,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         for route in routes.into_iter() {
             let namespace = route.namespace().expect("HttpRoute must be namespaced");
             let name = route.name();
-            let route_binding = match http_route::RouteBinding::try_from_resource(route) {
+            let route_binding = match route.try_into() {
                 Ok(binding) => binding,
                 Err(error) => {
                     tracing::warn!(ns = %namespace, %name, %error, "Invalid HttpRoute");
@@ -1175,13 +1173,11 @@ impl PolicyIndex {
     }
 
     fn http_routes(&self, server_name: &str) -> HashMap<String, HttpRoute> {
-        let mut routes = HashMap::default();
-        for (name, route) in self.http_routes.iter() {
-            if route.selects_server(server_name) {
-                routes.insert(name.clone(), route.route.clone());
-            }
-        }
-        routes
+        self.http_routes
+            .iter()
+            .filter(|(_, route)| route.selects_server(server_name))
+            .map(|(name, route)| (name.clone(), route.route.clone()))
+            .collect()
     }
 
     fn policy_client_authz(

@@ -1,5 +1,7 @@
 use ahash::AHashMap as HashMap;
+use anyhow::Result;
 pub use hyper::http::{uri::Scheme, Method, StatusCode};
+use regex::Regex;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HttpRoute {
@@ -52,7 +54,7 @@ pub struct Ratio {
     pub denominator: u32,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HttpRouteMatch {
     pub path: Option<PathMatch>,
     pub headers: Vec<HeaderMatch>,
@@ -60,27 +62,64 @@ pub struct HttpRouteMatch {
     pub method: Option<Method>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug)]
 pub enum PathMatch {
     Exact(String),
     Prefix(String),
-    Regex(String),
+    Regex(Regex),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HeaderMatch {
     pub name: String,
     pub value: Value,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug)]
 pub enum Value {
     Exact(String),
-    Regex(String),
+    Regex(Regex),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct QueryParamMatch {
     pub name: String,
     pub value: Value,
+}
+
+impl PartialEq for PathMatch {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Exact(l0), Self::Exact(r0)) => l0 == r0,
+            (Self::Prefix(l0), Self::Prefix(r0)) => l0 == r0,
+            (Self::Regex(l0), Self::Regex(r0)) => l0.as_str() == r0.as_str(),
+            _ => false,
+        }
+    }
+}
+
+impl Eq for PathMatch {}
+
+impl PathMatch {
+    pub fn regex(s: &str) -> Result<Self> {
+        Ok(Self::Regex(Regex::new(s)?))
+    }
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Exact(l0), Self::Exact(r0)) => l0 == r0,
+            (Self::Regex(l0), Self::Regex(r0)) => l0.as_str() == r0.as_str(),
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Value {}
+
+impl Value {
+    pub fn regex(s: &str) -> Result<Self> {
+        Ok(Self::Regex(Regex::new(s)?))
+    }
 }
