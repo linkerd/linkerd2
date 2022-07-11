@@ -189,7 +189,7 @@ impl Index {
 impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
     fn apply(&mut self, pod: k8s::Pod) {
         let namespace = pod.namespace().unwrap();
-        let name = pod.name();
+        let name = pod.name_unchecked();
         let _span = info_span!("apply", ns = %namespace, %name).entered();
 
         let port_names = pod::tcp_port_names(pod.spec);
@@ -227,7 +227,7 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
 impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     fn apply(&mut self, srv: k8s::policy::Server) {
         let ns = srv.namespace().expect("server must be namespaced");
-        let name = srv.name();
+        let name = srv.name_unchecked();
         let _span = info_span!("apply", %ns, %name).entered();
 
         let server = server::Server::from_resource(srv, &self.cluster_info);
@@ -248,7 +248,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
         let mut updates_by_ns = HashMap::<String, Ns>::default();
         for srv in srvs.into_iter() {
             let namespace = srv.namespace().expect("server must be namespaced");
-            let name = srv.name();
+            let name = srv.name_unchecked();
             let server = server::Server::from_resource(srv, &self.cluster_info);
             updates_by_ns
                 .entry(namespace)
@@ -292,7 +292,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
 impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> for Index {
     fn apply(&mut self, saz: k8s::policy::ServerAuthorization) {
         let ns = saz.namespace().unwrap();
-        let name = saz.name();
+        let name = saz.name_unchecked();
         let _span = info_span!("apply", %ns, %name).entered();
 
         match server_authorization::ServerAuthz::from_resource(saz, &self.cluster_info) {
@@ -325,7 +325,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
             let namespace = saz
                 .namespace()
                 .expect("serverauthorization must be namespaced");
-            let name = saz.name();
+            let name = saz.name_unchecked();
             match server_authorization::ServerAuthz::from_resource(saz, &self.cluster_info) {
                 Ok(saz) => updates_by_ns
                     .entry(namespace)
@@ -373,7 +373,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
 impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> for Index {
     fn apply(&mut self, policy: k8s::policy::AuthorizationPolicy) {
         let ns = policy.namespace().unwrap();
-        let name = policy.name();
+        let name = policy.name_unchecked();
         let _span = info_span!("apply", %ns, saz = %name).entered();
 
         let spec = match authorization_policy::Spec::try_from(policy.spec) {
@@ -409,7 +409,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> fo
             let namespace = policy
                 .namespace()
                 .expect("authorizationpolicy must be namespaced");
-            let name = policy.name();
+            let name = policy.name_unchecked();
             match authorization_policy::Spec::try_from(policy.spec) {
                 Ok(spec) => updates_by_ns
                     .entry(namespace)
@@ -459,7 +459,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::MeshTLSAuthentication> 
         let ns = authn
             .namespace()
             .expect("MeshTLSAuthentication must have a namespace");
-        let name = authn.name();
+        let name = authn.name_unchecked();
         let _span = info_span!("apply", %ns, %name).entered();
 
         let spec = match meshtls_authentication::Spec::try_from_resource(authn, &self.cluster_info)
@@ -504,7 +504,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::MeshTLSAuthentication> 
             let namespace = authn
                 .namespace()
                 .expect("meshtlsauthentication must be namespaced");
-            let name = authn.name();
+            let name = authn.name_unchecked();
             let spec = match meshtls_authentication::Spec::try_from_resource(
                 authn,
                 &self.cluster_info,
@@ -537,7 +537,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::MeshTLSAuthentication> 
 impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> for Index {
     fn apply(&mut self, authn: k8s::policy::NetworkAuthentication) {
         let ns = authn.namespace().unwrap();
-        let name = authn.name();
+        let name = authn.name_unchecked();
         let _span = info_span!("apply", %ns, %name).entered();
 
         let spec = match network_authentication::Spec::try_from(authn.spec) {
@@ -582,7 +582,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
             let namespace = authn
                 .namespace()
                 .expect("meshtlsauthentication must be namespaced");
-            let name = authn.name();
+            let name = authn.name_unchecked();
             let spec = match network_authentication::Spec::try_from(authn.spec) {
                 Ok(spec) => spec,
                 Err(error) => {
