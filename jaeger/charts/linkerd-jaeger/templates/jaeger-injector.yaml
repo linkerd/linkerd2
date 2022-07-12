@@ -25,6 +25,7 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/rbac.yaml") . | sha256sum }}
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         linkerd.io/extension: jaeger
         component: jaeger-injector
