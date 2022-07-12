@@ -294,7 +294,7 @@ async fn server_with_http_route() {
         let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
         tracing::trace!(?pod);
 
-        let mut rx = retry_watch_server(&client, &ns, &pod.name()).await;
+        let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
         let config = rx
             .next()
             .await
