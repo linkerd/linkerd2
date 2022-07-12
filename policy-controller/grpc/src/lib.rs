@@ -182,7 +182,7 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                     http_routes: srv
                         .http_routes
                         .iter()
-                        .map(|(name, route)| to_http_route(name, route, srv, cluster_networks))
+                        .map(|(name, route)| to_http_route(name, route))
                         .collect(),
                 },
             )),
@@ -191,7 +191,7 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                     routes: srv
                         .http_routes
                         .iter()
-                        .map(|(name, route)| to_http_route(name, route, srv, cluster_networks))
+                        .map(|(name, route)| to_http_route(name, route))
                         .collect(),
                 },
             )),
@@ -200,7 +200,7 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                     routes: srv
                         .http_routes
                         .iter()
-                        .map(|(name, route)| to_http_route(name, route, srv, cluster_networks))
+                        .map(|(name, route)| to_http_route(name, route))
                         .collect(),
                 },
             )),
@@ -347,12 +347,7 @@ fn to_authz(
     }
 }
 
-fn to_http_route(
-    name: impl ToString,
-    route: &HttpRoute,
-    srv: &InboundServer,
-    cluster_networks: &[IpNet],
-) -> proto::HttpRoute {
+fn to_http_route(name: impl ToString, route: &HttpRoute) -> proto::HttpRoute {
     let metadata = Metadata {
         kind: Some(metadata::Kind::Resource(
             linkerd2_proxy_api::meta::Resource {
@@ -382,13 +377,6 @@ fn to_http_route(
         })
         .collect();
 
-    let authorizations = srv
-        .authorizations
-        .iter()
-        .map(|(n, c)| to_authz(n, c, cluster_networks))
-        .collect();
-    trace!(?authorizations);
-
     let rules = route
         .rules
         .into_iter()
@@ -402,7 +390,7 @@ fn to_http_route(
     proto::HttpRoute {
         metadata: Some(metadata),
         hosts,
-        authorizations,
+        authorizations: Vec::default(),
         rules,
     }
 }
