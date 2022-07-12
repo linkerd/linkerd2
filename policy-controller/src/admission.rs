@@ -445,7 +445,7 @@ fn validate_http_route_filters(filters: &[HttpRouteFilter]) -> Result<()> {
                 bail!("RequestMirror filters are not supported")
             }
             HttpRouteFilter::RequestRedirect { .. } => {}
-            HttpRouteFilter::URLRewrite { .. } => {}
+            HttpRouteFilter::URLRewrite { .. } => bail!("URLRewrite filters are not supported"),
         }
     }
     Ok(())
