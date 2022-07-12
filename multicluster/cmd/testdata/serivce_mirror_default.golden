@@ -97,6 +97,7 @@ spec:
     metadata:
       annotations:
         linkerd.io/inject: enabled
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         component: linkerd-service-mirror
         mirror.linkerd.io/cluster-name: test-cluster

@@ -495,6 +495,7 @@ spec:
         checksum/config: ae930acf3edba3cbf32c43dacfa4808bf679c5c932870cb2a2a46de1023f01c8
         linkerd.io/created-by: linkerd/helm dev-undefined
         linkerd.io/inject: enabled
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         linkerd.io/extension: viz
         component: metrics-api
@@ -884,6 +885,7 @@ spec:
         checksum/config: d6f2ea38c4004667c96eb4fb0135fe0d9d9a87f5c19aaee30e6ccb6ef7219324
         linkerd.io/created-by: linkerd/helm dev-undefined
         linkerd.io/inject: enabled
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         linkerd.io/extension: viz
         component: tap
@@ -1081,6 +1083,7 @@ spec:
         checksum/config: 390143015ec83a86ded6630634da5834c8ac7700b93d486a7dc101a15cb87f15
         linkerd.io/created-by: linkerd/helm dev-undefined
         linkerd.io/inject: enabled
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         linkerd.io/extension: viz
         component: tap-injector
@@ -1236,6 +1239,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/helm dev-undefined
         linkerd.io/inject: enabled
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         linkerd.io/extension: viz
         component: web
