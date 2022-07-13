@@ -101,7 +101,7 @@ Kubernetes: `>=1.21.0-0`
 | grafana.url | string | `nil` | url of an in-cluster Grafana instance with reverse proxy configured, used by the Linkerd viz web dashboard to provide direct links to specific Grafana dashboards. Cannot be set if grafana.externalUrl is set. See the [Linkerd documentation](https://linkerd.io/2/tasks/grafana) for more information |
 | identityTrustDomain | string | clusterDomain | Trust domain used for identity |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
-| jaegerUrl | string | `""` | url of external jaeger instance Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension |
+| jaegerUrl | string | `""` | url of external jaeger instance Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>:16686` if you plan to use jaeger extension |
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
 | metricsAPI.UID | string | `nil` | UID for the metrics-api resource |
