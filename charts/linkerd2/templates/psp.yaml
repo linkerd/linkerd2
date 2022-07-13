@@ -10,7 +10,11 @@ metadata:
   labels:
     linkerd.io/control-plane-ns: {{.Values.namespace}}
 spec:
+  {{- if or .Values.proxyInit.closeWaitTimeoutSecs .Values.proxyInit.runAsRoot }}
+  allowPrivilegeEscalation: true
+  {{- else }}
   allowPrivilegeEscalation: false
+  {{- end }}
   readOnlyRootFilesystem: true
   {{- if empty .Values.cniEnabled }}
   allowedCapabilities:
