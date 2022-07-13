@@ -2,8 +2,9 @@ use crate::k8s::{
     labels,
     policy::{
         AuthorizationPolicy, AuthorizationPolicySpec, LocalTargetRef, MeshTLSAuthentication,
-        MeshTLSAuthenticationSpec, NetworkAuthentication, NetworkAuthenticationSpec, Server,
-        ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
+        MeshTLSAuthenticationSpec, NamespacedTargetRef, NetworkAuthentication,
+        NetworkAuthenticationSpec, Server, ServerAuthorization, ServerAuthorizationSpec,
+        ServerSpec,
     },
 };
 use anyhow::{anyhow, bail, Result};
@@ -12,7 +13,7 @@ use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_gateway_api::{HttpRoute, HttpRouteFilter, HttpRouteRule, HttpRouteSpec};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
-use linkerd_policy_controller_k8s_api::policy::NamespacedTargetRef;
+use linkerd_policy_controller_k8s_index as index;
 use serde::de::DeserializeOwned;
 use std::task;
 use thiserror::Error;
@@ -260,6 +261,9 @@ impl Validate<AuthorizationPolicySpec> for Admission {
                 .collect::<Vec<_>>();
             bail!("unsupported authentication kind(s): {}", kinds.join(", "));
         }
+
+        // Confirm that the index will be able to read this spec.
+        index::authorization_policy::validate(spec)?;
 
         Ok(())
     }
