@@ -1,20 +1,79 @@
 use anyhow::{bail, Error, Result};
-use k8s_gateway_api::ParentReference;
-use linkerd_policy_controller_core::http_route::{
-    HeaderMatch, Hostname, HttpFilter, HttpRoute, HttpRouteMatch, HttpRouteRule, PathMatch,
-    PathModifier, QueryParamMatch, Value,
-};
+use k8s_gateway_api as api;
+use linkerd_policy_controller_core::http_route;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct RouteBinding {
-    pub route: HttpRoute,
-    pub parent_refs: Vec<ParentReference>,
+pub struct InboundRouteBinding {
+    pub parents: Vec<InboundParentRef>,
+    pub route: http_route::InboundHttpRoute,
 }
 
-impl TryFrom<k8s_gateway_api::HttpRoute> for RouteBinding {
+#[derive(Clone, Debug, PartialEq)]
+pub enum InboundParentRef {
+    Server(String),
+}
+
+#[derive(Clone, Debug, thiserror::Error)]
+pub enum InvalidParentRef {
+    #[error("HTTPRoute resource does not reference a Server resource")]
+    DoesNotSelectServer,
+
+    #[error("HTTPRoute resource may not reference a parent Server in an other namespace")]
+    ServerInAnotherNamespace,
+
+    #[error("HTTPRoute resource may not reference a parent by port")]
+    SpecifiesPort,
+
+    #[error("HTTPRoute resource may not reference a parent by section name")]
+    SpecifiesSection,
+}
+
+impl TryFrom<api::HttpRoute> for InboundRouteBinding {
     type Error = Error;
 
-    fn try_from(route: k8s_gateway_api::HttpRoute) -> Result<Self, Self::Error> {
+    fn try_from(route: api::HttpRoute) -> Result<Self, Self::Error> {
+        let parents = route
+            .spec
+            .inner
+            .parent_refs
+            .into_iter()
+            .flatten()
+            .filter_map(
+                |api::ParentReference {
+                     group,
+                     kind,
+                     namespace,
+                     name,
+                     section_name,
+                     port,
+                 }| {
+                    // Ignore parents that are not a Server.
+                    if group.as_deref() != Some("policy.linkerd.io")
+                        || kind.as_deref() != Some("Server")
+                        || name.is_empty()
+                    {
+                        return None;
+                    }
+
+                    if namespace.is_some() && namespace != route.metadata.namespace {
+                        return Some(Err(InvalidParentRef::ServerInAnotherNamespace));
+                    }
+                    if port.is_some() {
+                        return Some(Err(InvalidParentRef::SpecifiesPort));
+                    }
+                    if section_name.is_some() {
+                        return Some(Err(InvalidParentRef::SpecifiesSection));
+                    }
+
+                    Some(Ok(InboundParentRef::Server(name)))
+                },
+            )
+            .collect::<Result<Vec<_>, InvalidParentRef>>()?;
+        // If there are no valid parents, then the route is invalid.
+        if parents.is_empty() {
+            return Err(InvalidParentRef::DoesNotSelectServer.into());
+        }
+
         let hostnames = route
             .spec
             .hostnames
@@ -28,9 +87,9 @@ impl TryFrom<k8s_gateway_api::HttpRoute> for RouteBinding {
                         .map(|label| label.to_string())
                         .collect::<Vec<String>>();
                     reverse_labels.reverse();
-                    Hostname::Suffix { reverse_labels }
+                    http_route::HostMatch::Suffix { reverse_labels }
                 } else {
-                    Hostname::Exact(hostname)
+                    http_route::HostMatch::Exact(hostname)
                 }
             })
             .collect();
@@ -43,41 +102,37 @@ impl TryFrom<k8s_gateway_api::HttpRoute> for RouteBinding {
             .map(Self::try_rule)
             .collect::<Result<_>>()?;
 
-        Ok(RouteBinding {
-            route: HttpRoute { hostnames, rules },
-            parent_refs: route.spec.inner.parent_refs.unwrap_or_default(),
+        Ok(InboundRouteBinding {
+            parents,
+            route: http_route::InboundHttpRoute { hostnames, rules },
         })
     }
 }
 
-impl RouteBinding {
+impl InboundRouteBinding {
+    #[inline]
     pub fn selects_server(&self, name: &str) -> bool {
-        for parent_ref in self.parent_refs.iter() {
-            if parent_ref.group.as_deref() == Some("policy.linkerd.io")
-                && parent_ref.kind.as_deref() == Some("Server")
-                && parent_ref.name == name
-            {
-                return true;
-            }
-        }
-        false
+        self.parents
+            .iter()
+            .any(|p| matches!(p, InboundParentRef::Server(n) if n == name))
     }
 
-    fn try_match(route_match: k8s_gateway_api::HttpRouteMatch) -> Result<HttpRouteMatch> {
-        let k8s_gateway_api::HttpRouteMatch {
+    fn try_match(
+        api::HttpRouteMatch {
             path,
             headers,
             query_params,
             method,
-        } = route_match;
+        }: api::HttpRouteMatch,
+    ) -> Result<http_route::HttpRouteMatch> {
         let path = path
-            .map(|path_match| match path_match {
-                k8s_gateway_api::HttpPathMatch::Exact { value } => Ok(PathMatch::Exact(value)),
-                k8s_gateway_api::HttpPathMatch::PathPrefix { value } => {
-                    Ok(PathMatch::Prefix(value))
+            .map(|pm| match pm {
+                api::HttpPathMatch::Exact { value } => Ok(http_route::PathMatch::Exact(value)),
+                api::HttpPathMatch::PathPrefix { value } => {
+                    Ok(http_route::PathMatch::Prefix(value))
                 }
-                k8s_gateway_api::HttpPathMatch::RegularExpression { value } => {
-                    PathMatch::regex(&value)
+                api::HttpPathMatch::RegularExpression { value } => {
+                    value.parse().map(http_route::PathMatch::Regex)
                 }
             })
             .transpose()?;
@@ -85,17 +140,14 @@ impl RouteBinding {
         let headers = headers
             .into_iter()
             .flatten()
-            .map(|header_match| match header_match {
-                k8s_gateway_api::HttpHeaderMatch::Exact { name, value } => Ok(HeaderMatch {
-                    name,
-                    value: Value::Exact(value),
-                }),
-                k8s_gateway_api::HttpHeaderMatch::RegularExpression { name, value } => {
-                    Ok(HeaderMatch {
-                        name,
-                        value: Value::regex(&value)?,
-                    })
-                }
+            .map(|hm| match hm {
+                api::HttpHeaderMatch::Exact { name, value } => Ok(http_route::HeaderMatch::Exact(
+                    name.parse()?,
+                    value.parse()?,
+                )),
+                api::HttpHeaderMatch::RegularExpression { name, value } => Ok(
+                    http_route::HeaderMatch::Regex(name.parse()?, value.parse()?),
+                ),
             })
             .collect::<Result<_>>()?;
 
@@ -103,24 +155,21 @@ impl RouteBinding {
             .into_iter()
             .flatten()
             .map(|query_param| match query_param {
-                k8s_gateway_api::HttpQueryParamMatch::Exact { name, value } => {
-                    Ok(QueryParamMatch {
-                        name,
-                        value: Value::Exact(value),
-                    })
+                api::HttpQueryParamMatch::Exact { name, value } => {
+                    Ok(http_route::QueryParamMatch::Exact(name, value))
                 }
-                k8s_gateway_api::HttpQueryParamMatch::RegularExpression { name, value } => {
-                    Ok(QueryParamMatch {
-                        name,
-                        value: Value::regex(&value)?,
-                    })
+                api::HttpQueryParamMatch::RegularExpression { name, value } => {
+                    Ok(http_route::QueryParamMatch::Exact(name, value.parse()?))
                 }
             })
             .collect::<Result<_>>()?;
 
-        let method = method.as_deref().map(TryInto::try_into).transpose()?;
+        let method = method
+            .as_deref()
+            .map(http_route::Method::try_from)
+            .transpose()?;
 
-        Ok(HttpRouteMatch {
+        Ok(http_route::HttpRouteMatch {
             path,
             headers,
             query_params,
@@ -128,7 +177,7 @@ impl RouteBinding {
         })
     }
 
-    fn try_rule(rule: k8s_gateway_api::HttpRouteRule) -> Result<HttpRouteRule> {
+    fn try_rule(rule: api::HttpRouteRule) -> Result<http_route::InboundHttpRouteRule> {
         let matches = rule
             .matches
             .into_iter()
@@ -143,55 +192,62 @@ impl RouteBinding {
             .map(Self::try_filter)
             .collect::<Result<_>>()?;
 
-        Ok(HttpRouteRule { matches, filters })
+        Ok(http_route::InboundHttpRouteRule { matches, filters })
     }
 
-    fn try_filter(filter: k8s_gateway_api::HttpRouteFilter) -> Result<HttpFilter> {
+    fn try_filter(filter: api::HttpRouteFilter) -> Result<http_route::InboundFilter> {
         let filter = match filter {
-            k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
-                request_header_modifier:
-                    k8s_gateway_api::HttpRequestHeaderFilter { set, add, remove },
-            } => HttpFilter::RequestHeaderModifier {
-                add: add
-                    .into_iter()
-                    .flatten()
-                    .map(|header| (header.name, header.value))
-                    .collect(),
-                set: set
-                    .into_iter()
-                    .flatten()
-                    .map(|header| (header.name, header.value))
-                    .collect(),
-                remove: remove.unwrap_or_default(),
-            },
-            k8s_gateway_api::HttpRouteFilter::RequestMirror { .. } => {
-                bail!("RequestMirror filter is not supported")
-            }
-            k8s_gateway_api::HttpRouteFilter::RequestRedirect {
+            api::HttpRouteFilter::RequestHeaderModifier {
+                request_header_modifier: api::HttpRequestHeaderFilter { set, add, remove },
+            } => http_route::InboundFilter::RequestHeaderModifier(
+                http_route::RequestHeaderModifierFilter {
+                    add: add
+                        .into_iter()
+                        .flatten()
+                        .map(|api::HttpHeader { name, value }| Ok((name.parse()?, value.parse()?)))
+                        .collect::<Result<Vec<_>>>()?,
+                    set: set
+                        .into_iter()
+                        .flatten()
+                        .map(|api::HttpHeader { name, value }| Ok((name.parse()?, value.parse()?)))
+                        .collect::<Result<Vec<_>>>()?,
+                    remove: remove
+                        .into_iter()
+                        .flatten()
+                        .map(http_route::HeaderName::try_from)
+                        .collect::<Result<_, _>>()?,
+                },
+            ),
+
+            api::HttpRouteFilter::RequestRedirect {
                 request_redirect:
-                    k8s_gateway_api::HttpRequestRedirectFilter {
+                    api::HttpRequestRedirectFilter {
                         scheme,
                         hostname,
                         path,
                         port,
                         status_code,
                     },
-            } => HttpFilter::RequestRedirect {
+            } => http_route::InboundFilter::RequestRedirect(http_route::RequestRedirectFilter {
                 scheme: scheme.as_deref().map(TryInto::try_into).transpose()?,
                 host: hostname,
                 path: path.map(|path_mod| match path_mod {
-                    k8s_gateway_api::HttpPathModifier::ReplaceFullPath(s) => PathModifier::Full(s),
-                    k8s_gateway_api::HttpPathModifier::ReplacePrefixMatch(s) => {
-                        PathModifier::Prefix(s)
+                    api::HttpPathModifier::ReplaceFullPath(s) => http_route::PathModifier::Full(s),
+                    api::HttpPathModifier::ReplacePrefixMatch(s) => {
+                        http_route::PathModifier::Prefix(s)
                     }
                 }),
                 port: port.map(Into::into),
                 status: status_code.map(TryFrom::try_from).transpose()?,
-            },
-            k8s_gateway_api::HttpRouteFilter::URLRewrite { .. } => {
+            }),
+
+            api::HttpRouteFilter::RequestMirror { .. } => {
+                bail!("RequestMirror filter is not supported")
+            }
+            api::HttpRouteFilter::URLRewrite { .. } => {
                 bail!("URLRewrite filter is not supported")
             }
-            k8s_gateway_api::HttpRouteFilter::ExtensionRef { .. } => {
+            api::HttpRouteFilter::ExtensionRef { .. } => {
                 bail!("ExtensionRef filter is not supported")
             }
         };

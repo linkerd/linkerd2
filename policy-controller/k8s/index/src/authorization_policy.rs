@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
     policy::{LocalTargetRef, NamespacedTargetRef},
@@ -33,6 +33,12 @@ pub(crate) enum AuthenticationTarget {
     },
 }
 
+#[inline]
+pub fn validate(ap: k8s::policy::AuthorizationPolicySpec) -> Result<()> {
+    Spec::try_from(ap)?;
+    Ok(())
+}
+
 impl TryFrom<k8s::policy::AuthorizationPolicySpec> for Spec {
     type Error = anyhow::Error;
 
@@ -44,9 +50,6 @@ impl TryFrom<k8s::policy::AuthorizationPolicySpec> for Spec {
             .into_iter()
             .map(authentication_ref)
             .collect::<Result<Vec<_>>>()?;
-        if authentications.is_empty() {
-            bail!("No authentication targets");
-        }
 
         Ok(Self {
             target,

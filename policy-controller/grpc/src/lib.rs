@@ -1,9 +1,11 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
+mod http_route;
+
 use futures::prelude::*;
 use linkerd2_proxy_api::{
-    http_route, http_types,
+    self as api,
     inbound::{
         self as proto,
         inbound_server_policies_server::{InboundServerPolicies, InboundServerPoliciesServer},
@@ -11,9 +13,8 @@ use linkerd2_proxy_api::{
     meta::{metadata, Metadata},
 };
 use linkerd_policy_controller_core::{
-    http_route::Hostname,
-    http_route::{HttpFilter, HttpRouteMatch, PathModifier, Value},
-    AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer, HttpRoute,
+    http_route::{InboundFilter, InboundHttpRoute, InboundHttpRouteRule},
+    AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer,
     IdentityMatch, InboundServer, InboundServerStream, IpNet, NetworkMatch, ProxyProtocol,
     ServerRef,
 };
@@ -182,7 +183,7 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                     http_routes: srv
                         .http_routes
                         .iter()
-                        .map(|(name, route)| to_http_route(name, route))
+                        .map(|(name, route)| to_http_route(name, route.clone()))
                         .collect(),
                 },
             )),
@@ -191,7 +192,7 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                     routes: srv
                         .http_routes
                         .iter()
-                        .map(|(name, route)| to_http_route(name, route))
+                        .map(|(name, route)| to_http_route(name, route.clone()))
                         .collect(),
                 },
             )),
@@ -200,7 +201,7 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                     routes: srv
                         .http_routes
                         .iter()
-                        .map(|(name, route)| to_http_route(name, route))
+                        .map(|(name, route)| to_http_route(name, route.clone()))
                         .collect(),
                 },
             )),
@@ -347,179 +348,55 @@ fn to_authz(
     }
 }
 
-fn to_http_route(name: impl ToString, route: &HttpRoute) -> proto::HttpRoute {
+fn to_http_route(
+    name: impl ToString,
+    InboundHttpRoute { hostnames, rules }: InboundHttpRoute,
+) -> proto::HttpRoute {
     let metadata = Metadata {
-        kind: Some(metadata::Kind::Resource(
-            linkerd2_proxy_api::meta::Resource {
-                group: "gateway.networking.k8s.io".to_string(),
-                kind: "HTTPRoute".to_string(),
-                name: name.to_string(),
-            },
-        )),
+        kind: Some(metadata::Kind::Resource(api::meta::Resource {
+            group: "gateway.networking.k8s.io".to_string(),
+            kind: "HTTPRoute".to_string(),
+            name: name.to_string(),
+        })),
     };
 
-    let route = route.clone();
-
-    let hosts = route
-        .hostnames
+    let hosts = hostnames
         .into_iter()
-        .map(|hostname| match hostname {
-            Hostname::Exact(host) => http_route::HostMatch {
-                r#match: Some(http_route::host_match::Match::Exact(host)),
-            },
-            Hostname::Suffix { reverse_labels } => http_route::HostMatch {
-                r#match: Some(http_route::host_match::Match::Suffix(
-                    http_route::host_match::Suffix {
-                        reverse_labels: reverse_labels.to_vec(),
-                    },
-                )),
-            },
-        })
+        .map(http_route::convert_host_match)
         .collect();
 
-    let rules = route
-        .rules
+    let rules = rules
         .into_iter()
-        .map(|rule| {
-            let matches = rule.matches.into_iter().map(to_match).collect();
-            let filters = rule.filters.into_iter().map(to_filter).collect();
-            proto::http_route::Rule { matches, filters }
-        })
+        .map(
+            |InboundHttpRouteRule { matches, filters }| proto::http_route::Rule {
+                matches: matches.into_iter().map(http_route::convert_match).collect(),
+                filters: filters.into_iter().map(convert_filter).collect(),
+            },
+        )
         .collect();
 
     proto::HttpRoute {
         metadata: Some(metadata),
         hosts,
-        authorizations: Vec::default(),
         rules,
+        authorizations: Vec::default(), // TODO populate per-route authorizations
     }
 }
 
-fn to_match(route_match: HttpRouteMatch) -> http_route::HttpRouteMatch {
-    let headers = route_match
-        .headers
-        .into_iter()
-        .map(|header_match| {
-            let value = match header_match.value {
-                Value::Exact(value) => http_route::header_match::Value::Exact(value),
-                Value::Regex(value) => http_route::header_match::Value::Regex(value.to_string()),
-            };
-            http_route::HeaderMatch {
-                name: header_match.name,
-                value: Some(value),
-            }
-        })
-        .collect();
+fn convert_filter(filter: InboundFilter) -> proto::http_route::Filter {
+    use proto::http_route::filter::Kind;
 
-    let path = route_match.path.map(|path| match path {
-        linkerd_policy_controller_core::http_route::PathMatch::Exact(path) => {
-            http_route::PathMatch {
-                kind: Some(http_route::path_match::Kind::Exact(path)),
+    proto::http_route::Filter {
+        kind: Some(match filter {
+            InboundFilter::FailureInjector(f) => {
+                Kind::FailureInjector(http_route::convert_failure_injector_filter(f))
             }
-        }
-        linkerd_policy_controller_core::http_route::PathMatch::Prefix(prefix) => {
-            http_route::PathMatch {
-                kind: Some(http_route::path_match::Kind::Prefix(prefix)),
+            InboundFilter::RequestHeaderModifier(f) => {
+                Kind::RequestHeaderModifier(http_route::convert_header_modifier_filter(f))
             }
-        }
-        linkerd_policy_controller_core::http_route::PathMatch::Regex(regex) => {
-            http_route::PathMatch {
-                kind: Some(http_route::path_match::Kind::Regex(regex.to_string())),
+            InboundFilter::RequestRedirect(f) => {
+                Kind::Redirect(http_route::convert_redirect_filter(f))
             }
-        }
-    });
-
-    let query_params = route_match
-        .query_params
-        .into_iter()
-        .map(|query_param| {
-            let value = match query_param.value {
-                Value::Exact(value) => http_route::query_param_match::Value::Exact(value),
-                Value::Regex(value) => {
-                    http_route::query_param_match::Value::Regex(value.to_string())
-                }
-            };
-            http_route::QueryParamMatch {
-                name: query_param.name,
-                value: Some(value),
-            }
-        })
-        .collect();
-
-    let method = route_match.method.map(|method| http_types::HttpMethod {
-        r#type: Some(method.into()),
-    });
-
-    http_route::HttpRouteMatch {
-        headers,
-        path,
-        query_params,
-        method,
+        }),
     }
-}
-
-fn to_filter(filter: HttpFilter) -> proto::http_route::Filter {
-    let kind = match filter {
-        HttpFilter::HttpFailureInjector {
-            status,
-            message,
-            ratio,
-        } => proto::http_route::filter::Kind::FailureInjector(http_route::HttpFailureInjector {
-            status: u32::from(status.as_u16()),
-            message,
-            ratio: Some(http_route::Ratio {
-                numerator: ratio.numerator,
-                denominator: ratio.denominator,
-            }),
-        }),
-        HttpFilter::RequestHeaderModifier { add, set, remove } => {
-            let add_headers = add
-                .into_iter()
-                .map(|(k, v)| http_types::headers::Header {
-                    name: k,
-                    value: v.into(),
-                })
-                .collect();
-            let set_headers = set
-                .into_iter()
-                .map(|(k, v)| http_types::headers::Header {
-                    name: k,
-                    value: v.into(),
-                })
-                .collect();
-            proto::http_route::filter::Kind::RequestHeaderModifier(
-                http_route::RequestHeaderModifier {
-                    add: Some(http_types::Headers {
-                        headers: add_headers,
-                    }),
-                    set: Some(http_types::Headers {
-                        headers: set_headers,
-                    }),
-                    remove,
-                },
-            )
-        }
-        HttpFilter::RequestRedirect {
-            scheme,
-            host,
-            path,
-            port,
-            status,
-        } => proto::http_route::filter::Kind::Redirect(http_route::RequestRedirect {
-            scheme: scheme.map(|ref s| s.into()),
-            host: host.unwrap_or_default(),
-            path: path.map(|pm| {
-                let replace = match pm {
-                    PathModifier::Full(p) => http_route::path_modifier::Replace::Full(p),
-                    PathModifier::Prefix(p) => http_route::path_modifier::Replace::Prefix(p),
-                };
-                http_route::PathModifier {
-                    replace: Some(replace),
-                }
-            }),
-            port: port.unwrap_or_default(),
-            status: u32::from(status.unwrap_or_default().as_u16()),
-        }),
-    };
-    proto::http_route::Filter { kind: Some(kind) }
 }
