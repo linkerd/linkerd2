@@ -410,6 +410,37 @@ async fn either() {
     .await;
 }
 
+#[tokio::test(flavor = "current_thread")]
+async fn empty_authentications() {
+    with_temp_ns(|client, ns| async move {
+        // Create a policy that does not require any authentications.
+        let srv = create(&client, nginx::server(&ns)).await;
+        create(
+            &client,
+            authz_policy(&ns, "nginx", LocalTargetRef::from_resource(&srv), None),
+        )
+        .await;
+
+        // Create the nginx pod and wait for it to be ready.
+        tokio::join!(
+            create(&client, nginx::service(&ns)),
+            create_ready_pod(&client, nginx::pod(&ns))
+        );
+
+        // All requests should work.
+        let curl = curl::Runner::init(&client, &ns).await;
+        let (injected, uninjected) = tokio::join!(
+            curl.run("curl-injected", "http://nginx", LinkerdInject::Enabled),
+            curl.run("curl-uninjected", "http://nginx", LinkerdInject::Disabled),
+        );
+        let (injected_status, uninjected_status) =
+            tokio::join!(injected.exit_code(), uninjected.exit_code());
+        assert_eq!(injected_status, 0, "injected curl must contact nginx");
+        assert_eq!(uninjected_status, 0, "uninjected curl must contact nginx");
+    })
+    .await;
+}
+
 // === helpers ===
 
 fn authz_policy(

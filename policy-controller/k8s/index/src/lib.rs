@@ -23,7 +23,7 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-mod authorization_policy;
+pub mod authorization_policy;
 mod defaults;
 mod index;
 mod meshtls_authentication;
