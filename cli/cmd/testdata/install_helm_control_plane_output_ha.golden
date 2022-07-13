@@ -750,20 +750,14 @@ spec:
         topologyKey: topology.kubernetes.io/zone
         whenUnsatisfiable: ScheduleAnyway
         labelSelector:
-          matchExpressions:
-          - key: linkerd.io/control-plane-component
-            operator: In
-            values:
-            - identity
+          matchLabels:
+          - linkerd.io/control-plane-component: identity
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
         whenUnsatisfiable: DoNotSchedule
         labelSelector:
-          matchExpressions:
-          - key: linkerd.io/control-plane-component
-            operator: In
-            values:
-            - identity
+          matchLabels:
+          - linkerd.io/control-plane-component: identity
       containers:
       - args:
         - identity
@@ -1144,20 +1138,14 @@ spec:
         topologyKey: topology.kubernetes.io/zone
         whenUnsatisfiable: ScheduleAnyway
         labelSelector:
-          matchExpressions:
-          - key: linkerd.io/control-plane-component
-            operator: In
-            values:
-            - destination
+          matchLabels:
+          - linkerd.io/control-plane-component: destination
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
         whenUnsatisfiable: DoNotSchedule
         labelSelector:
-          matchExpressions:
-          - key: linkerd.io/control-plane-component
-            operator: In
-            values:
-            - destination
+          matchLabels:
+          - linkerd.io/control-plane-component: destination
       containers:
       - env:
         - name: _pod_name
@@ -1553,20 +1541,14 @@ spec:
         topologyKey: topology.kubernetes.io/zone
         whenUnsatisfiable: ScheduleAnyway
         labelSelector:
-          matchExpressions:
-          - key: linkerd.io/control-plane-component
-            operator: In
-            values:
-            - proxy-injector
+          matchLabels:
+          - linkerd.io/control-plane-component: proxy-injector
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
         whenUnsatisfiable: DoNotSchedule
         labelSelector:
-          matchExpressions:
-          - key: linkerd.io/control-plane-component
-            operator: In
-            values:
-            - proxy-injector
+          matchLabels:
+          - linkerd.io/control-plane-component: proxy-injector
       containers:
       - env:
         - name: _pod_name

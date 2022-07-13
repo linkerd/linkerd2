@@ -42,20 +42,14 @@ spec:
         topologyKey: topology.kubernetes.io/zone
         whenUnsatisfiable: ScheduleAnyway
         labelSelector:
-          matchExpressions:
-          - key: app
-            operator: In
-            values:
-            - linkerd-gateway
+          matchLabels:
+          - app: linkerd-gateway
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
         whenUnsatisfiable: DoNotSchedule
         labelSelector:
-          matchExpressions:
-          - key: app
-            operator: In
-            values:
-            - linkerd-gateway
+          matchLabels:
+          - app: linkerd-gateway
       containers:
         - name: pause
           image: gcr.io/google_containers/pause:3.2
