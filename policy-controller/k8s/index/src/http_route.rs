@@ -38,7 +38,7 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
             .parent_refs
             .into_iter()
             .flatten()
-            .map(
+            .filter_map(
                 |api::ParentReference {
                      group,
                      kind,
@@ -47,27 +47,32 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
                      section_name,
                      port,
                  }| {
-                    if port.is_some() {
-                        return Err(InvalidParentRef::SpecifiesPort);
-                    }
-                    if section_name.is_some() {
-                        return Err(InvalidParentRef::SpecifiesSection);
-                    }
-
+                    // Ignore parents that are not a Server.
                     if group.as_deref() != Some("policy.linkerd.io")
                         || kind.as_deref() != Some("Server")
                         || name.is_empty()
                     {
-                        return Err(InvalidParentRef::DoesNotSelectServer);
-                    }
-                    if namespace.is_some() && namespace != route.metadata.namespace {
-                        return Err(InvalidParentRef::ServerInAnotherNamespace);
+                        return None;
                     }
 
-                    Ok(InboundParentRef::Server(name))
+                    if namespace.is_some() && namespace != route.metadata.namespace {
+                        return Some(Err(InvalidParentRef::ServerInAnotherNamespace));
+                    }
+                    if port.is_some() {
+                        return Some(Err(InvalidParentRef::SpecifiesPort));
+                    }
+                    if section_name.is_some() {
+                        return Some(Err(InvalidParentRef::SpecifiesSection));
+                    }
+
+                    Some(Ok(InboundParentRef::Server(name)))
                 },
             )
             .collect::<Result<Vec<_>, InvalidParentRef>>()?;
+        // If there are no valid parents, then the route is invalid.
+        if parents.is_empty() {
+            return Err(InvalidParentRef::DoesNotSelectServer.into());
+        }
 
         let hostnames = route
             .spec
