@@ -1295,7 +1295,6 @@ data:
       caBundle: test-profile-validator-ca-bundle
       crtPEM: test-profile-validator-crt-pem
       externalSecret: false
-      keyPEM: test-profile-validator-key-pem
       namespaceSelector:
         matchExpressions:
         - key: config.linkerd.io/admission-webhooks

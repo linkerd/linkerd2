@@ -1317,7 +1317,6 @@ data:
       caBundle: policy validator CA bundle
       crtPEM: policy validator crt
       externalSecret: false
-      keyPEM: policy validator key
       namespaceSelector:
         matchExpressions:
         - key: config.linkerd.io/admission-webhooks
