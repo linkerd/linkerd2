@@ -14,6 +14,7 @@ kubert = { version = "0.9", default-features = false, features = ["index"] }
 linkerd-policy-controller-core = { path = "../../core" }
 linkerd-policy-controller-k8s-api = { path = "../api" }
 parking_lot = "0.12"
+thiserror = "1"
 tokio = { version = "1", features = ["macros", "rt", "sync"] }
 tracing = "0.1"
 

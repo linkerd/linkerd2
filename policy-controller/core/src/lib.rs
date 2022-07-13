@@ -5,7 +5,9 @@ pub mod http_route;
 mod identity_match;
 mod network_match;
 
-pub use self::{http_route::HttpRoute, identity_match::IdentityMatch, network_match::NetworkMatch};
+pub use self::{
+    http_route::InboundHttpRoute, identity_match::IdentityMatch, network_match::NetworkMatch,
+};
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use futures::prelude::*;
@@ -29,7 +31,7 @@ pub struct InboundServer {
 
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
-    pub http_routes: HashMap<String, HttpRoute>,
+    pub http_routes: HashMap<String, InboundHttpRoute>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -460,20 +460,8 @@ async fn server_with_http_route() {
         } else {
             panic!("proxy protocol must be HTTP1")
         };
-        let route = http1.routes.first().expect("must have route");
-        // Authorizations are copied onto the route.
-        assert_eq!(
-            route
-                .authorizations
-                .first()
-                .expect("route must have authorizations")
-                .labels,
-            convert_args!(hashmap!(
-                "group" => "policy.linkerd.io",
-                "kind" => "serverauthorization",
-                "name" => "all-admin",
-            )),
-        );
+
+        assert_eq!(http1.routes.len(), 1, "must have routes");
 
         // Delete the `HttpRoute` and ensure that the update reverts to the
         // default.

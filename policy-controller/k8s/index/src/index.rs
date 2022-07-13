@@ -7,13 +7,13 @@
 //! kubernetes resources.
 
 use crate::{
-    authorization_policy, defaults::DefaultPolicy, http_route::RouteBinding,
+    authorization_policy, defaults::DefaultPolicy, http_route::InboundRouteBinding,
     meshtls_authentication, network_authentication, pod, server, server_authorization, ClusterInfo,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
-    AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRoute, IdentityMatch,
+    AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundHttpRoute,
     InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
@@ -110,7 +110,7 @@ struct PolicyIndex {
     server_authorizations: HashMap<String, server_authorization::ServerAuthz>,
 
     authorization_policies: HashMap<String, authorization_policy::Spec>,
-    http_routes: HashMap<String, RouteBinding>,
+    http_routes: HashMap<String, InboundRouteBinding>,
 }
 
 #[derive(Debug, Default)]
@@ -619,7 +619,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         let route_binding = match route.try_into() {
             Ok(binding) => binding,
             Err(error) => {
-                tracing::warn!(%ns, %name, %error, "Invalid HttpRoute");
+                tracing::info!(%ns, %name, %error, "Ignoring HTTPRoute");
                 return;
             }
         };
@@ -641,7 +641,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
 
         // Aggregate all of the updates by namespace so that we only reindex
         // once per namespace.
-        type Ns = NsUpdate<RouteBinding>;
+        type Ns = NsUpdate<InboundRouteBinding>;
         let mut updates_by_ns = HashMap::<String, Ns>::default();
         for route in routes.into_iter() {
             let namespace = route.namespace().expect("HttpRoute must be namespaced");
@@ -649,8 +649,8 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
             let route_binding = match route.try_into() {
                 Ok(binding) => binding,
                 Err(error) => {
-                    tracing::warn!(ns = %namespace, %name, %error, "Invalid HttpRoute");
-                    return;
+                    tracing::info!(ns = %namespace, %name, %error, "Ignoring HTTPRoute");
+                    continue;
                 }
             };
             updates_by_ns
@@ -1172,7 +1172,7 @@ impl PolicyIndex {
         authzs
     }
 
-    fn http_routes(&self, server_name: &str) -> HashMap<String, HttpRoute> {
+    fn http_routes(&self, server_name: &str) -> HashMap<String, InboundHttpRoute> {
         self.http_routes
             .iter()
             .filter(|(_, route)| route.selects_server(server_name))
@@ -1285,7 +1285,7 @@ impl PolicyIndex {
         })
     }
 
-    fn update_http_route(&mut self, name: String, route: RouteBinding) -> bool {
+    fn update_http_route(&mut self, name: String, route: InboundRouteBinding) -> bool {
         match self.http_routes.entry(name) {
             Entry::Vacant(entry) => {
                 entry.insert(route);

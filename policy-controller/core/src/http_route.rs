@@ -1,45 +1,57 @@
-use ahash::AHashMap as HashMap;
 use anyhow::Result;
-pub use hyper::http::{uri::Scheme, Method, StatusCode};
+pub use http::{
+    header::{HeaderName, HeaderValue},
+    uri::Scheme,
+    Method, StatusCode,
+};
 use regex::Regex;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HttpRoute {
-    pub hostnames: Vec<Hostname>,
-    pub rules: Vec<HttpRouteRule>,
+pub struct InboundHttpRoute {
+    pub hostnames: Vec<HostMatch>,
+    pub rules: Vec<InboundHttpRouteRule>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Hostname {
+pub enum HostMatch {
     Exact(String),
     Suffix { reverse_labels: Vec<String> },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HttpRouteRule {
+pub struct InboundHttpRouteRule {
     pub matches: Vec<HttpRouteMatch>,
-    pub filters: Vec<HttpFilter>,
+    pub filters: Vec<InboundFilter>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum HttpFilter {
-    RequestHeaderModifier {
-        add: HashMap<String, String>,
-        set: HashMap<String, String>,
-        remove: Vec<String>,
-    },
-    RequestRedirect {
-        scheme: Option<Scheme>,
-        host: Option<String>,
-        path: Option<PathModifier>,
-        port: Option<u32>,
-        status: Option<StatusCode>,
-    },
-    HttpFailureInjector {
-        status: StatusCode,
-        message: String,
-        ratio: Ratio,
-    },
+pub enum InboundFilter {
+    RequestHeaderModifier(RequestHeaderModifierFilter),
+    RequestRedirect(RequestRedirectFilter),
+    FailureInjector(FailureInjectorFilter),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RequestHeaderModifierFilter {
+    pub add: Vec<(HeaderName, HeaderValue)>,
+    pub set: Vec<(HeaderName, HeaderValue)>,
+    pub remove: Vec<HeaderName>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RequestRedirectFilter {
+    pub scheme: Option<Scheme>,
+    pub host: Option<String>,
+    pub path: Option<PathModifier>,
+    pub port: Option<u32>,
+    pub status: Option<StatusCode>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FailureInjectorFilter {
+    pub status: StatusCode,
+    pub message: String,
+    pub ratio: Ratio,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -69,23 +81,19 @@ pub enum PathMatch {
     Regex(Regex),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HeaderMatch {
-    pub name: String,
-    pub value: Value,
+#[derive(Clone, Debug)]
+pub enum HeaderMatch {
+    Exact(HeaderName, HeaderValue),
+    Regex(HeaderName, Regex),
 }
 
 #[derive(Clone, Debug)]
-pub enum Value {
-    Exact(String),
-    Regex(Regex),
+pub enum QueryParamMatch {
+    Exact(String, String),
+    Regex(String, Regex),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct QueryParamMatch {
-    pub name: String,
-    pub value: Value,
-}
+// === impl PathMatch ===
 
 impl PartialEq for PathMatch {
     fn eq(&self, other: &Self) -> bool {
@@ -106,20 +114,30 @@ impl PathMatch {
     }
 }
 
-impl PartialEq for Value {
+// === impl HeaderMatch ===
+
+impl PartialEq for HeaderMatch {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::Exact(l0), Self::Exact(r0)) => l0 == r0,
-            (Self::Regex(l0), Self::Regex(r0)) => l0.as_str() == r0.as_str(),
+            (Self::Exact(n0, v0), Self::Exact(n1, v1)) => n0 == n1 && v0 == v1,
+            (Self::Regex(n0, r0), Self::Regex(n1, r1)) => n0 == n1 && r0.as_str() == r1.as_str(),
             _ => false,
         }
     }
 }
 
-impl Eq for Value {}
+impl Eq for HeaderMatch {}
 
-impl Value {
-    pub fn regex(s: &str) -> Result<Self> {
-        Ok(Self::Regex(Regex::new(s)?))
+// === impl QueryParamMatch ===
+
+impl PartialEq for QueryParamMatch {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Exact(n0, v0), Self::Exact(n1, v1)) => n0 == n1 && v0 == v1,
+            (Self::Regex(n0, r0), Self::Regex(n1, r1)) => n0 == n1 && r0.as_str() == r1.as_str(),
+            _ => false,
+        }
     }
 }
+
+impl Eq for QueryParamMatch {}

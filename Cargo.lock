@@ -982,7 +982,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "futures",
- "hyper",
+ "http",
  "ipnet",
  "regex",
 ]
@@ -1033,6 +1033,7 @@ dependencies = [
  "linkerd-policy-controller-k8s-api",
  "maplit",
  "parking_lot",
+ "thiserror",
  "tokio",
  "tokio-stream",
  "tokio-test",
@@ -1069,7 +1070,7 @@ dependencies = [
 [[package]]
 name = "linkerd2-proxy-api"
 version = "0.5.0"
-source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=ver/rautz#c8d0904fc73ab1f4279878b2b7e5113d7b1a1169"
+source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=ver/rautz#6e97a203d8245fc258cf14ae4304738aa555aa90"
 dependencies = [
  "http",
  "ipnet",
