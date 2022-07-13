@@ -1,5 +1,21 @@
 # Changes
 
+## stable-2.11.4
+
+This release includes a security improvement. When a user manually specified the
+`policyValidator.keyPEM` setting, the value was incorrectly included in the
+`linkerd-config` ConfigMap. This means that this private key was erroneously
+exposed to ServiceAccounts with read access to this ConfigMap. Practically, this
+means that the Linkerd `proxy-injector`, `identity`, and `heartbeat` Pods could
+read this value. This should not have exposed this private key to other
+unauthorized users unless additional RoleBindings were added outside of Linkerd.
+Nevertheless, we recommend that users who manually set control plane
+certificates update the credentials for the policy validator after upgrading
+Linkerd.
+
+Additionally, a PodSecurityPolicy fix is included which fixes installations
+where PSP is enabled and `proxyInit.runAsRoot: true`.
+
 ## stable-2.11.3
 
 This release pulls in several control plane and proxy fixes from the main
