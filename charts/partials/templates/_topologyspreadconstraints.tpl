@@ -2,7 +2,7 @@
 {{- if .Values.enableTopologySpreadConstraints }}
 topologySpreadConstraints:
 - maxSkew: 1
-  topologyKey: failure-domain.beta.kubernetes.io/zone
+  topologyKey: topology.kubernetes.io/zone
   whenUnsatisfiable: ScheduleAnyway
   labelSelector:
     matchExpressions:

@@ -777,7 +777,7 @@ spec:
         kubernetes.io/os: linux
       topologySpreadConstraints:
       - maxSkew: 1
-        topologyKey: failure-domain.beta.kubernetes.io/zone
+        topologyKey: topology.kubernetes.io/zone
         whenUnsatisfiable: ScheduleAnyway
         labelSelector:
           matchExpressions:
@@ -1168,7 +1168,7 @@ spec:
         kubernetes.io/os: linux
       topologySpreadConstraints:
       - maxSkew: 1
-        topologyKey: failure-domain.beta.kubernetes.io/zone
+        topologyKey: topology.kubernetes.io/zone
         whenUnsatisfiable: ScheduleAnyway
         labelSelector:
           matchExpressions:
@@ -1572,7 +1572,7 @@ spec:
         kubernetes.io/os: linux
       topologySpreadConstraints:
       - maxSkew: 1
-        topologyKey: failure-domain.beta.kubernetes.io/zone
+        topologyKey: topology.kubernetes.io/zone
         whenUnsatisfiable: ScheduleAnyway
         labelSelector:
           matchExpressions:
