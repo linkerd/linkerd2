@@ -222,6 +222,7 @@ Kubernetes: `>=1.21.0-0`
 | proxy.uid | int | `2102` | User id under which the proxy runs |
 | proxy.waitBeforeExitSeconds | int | `0` | If set the proxy sidecar will stay alive for at least the given period before receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. See [Lifecycle hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks) for more info on container lifecycle hooks. |
 | proxyInit.closeWaitTimeoutSecs | int | `0` |  |
+| proxyInit.enableNft | bool | `false` | Enable nft mode for proxy-init; when running in nft mode, proxy-init will use iptables-nft instead of iptables-legacy. |
 | proxyInit.ignoreInboundPorts | string | `"4567,4568"` | Default set of inbound ports to skip via iptables - Galera (4567,4568) |
 | proxyInit.ignoreOutboundPorts | string | `"4567,4568"` | Default set of outbound ports to skip via iptables - Galera (4567,4568) |
 | proxyInit.image.name | string | `"cr.l5d.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
