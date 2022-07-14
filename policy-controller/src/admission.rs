@@ -413,22 +413,14 @@ impl Validate<ServerAuthorizationSpec> for Admission {
 #[async_trait::async_trait]
 impl Validate<HttpRouteSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
-        let targets_server = spec.inner.parent_refs.iter().flatten().any(|parent_ref| {
-            if let Some(p) = parent_ref.group.as_deref() {
-                if let Some(k) = parent_ref.kind.as_deref() {
-                    return p.eq_ignore_ascii_case("policy.linkerd.io")
-                        && k.eq_ignore_ascii_case("server");
-                }
-            }
-            false
-        });
         // Only validate HttpRoutes which have a Server as a parent_ref.
-        if !targets_server {
-            return Ok(());
-        }
-
-        for rule in spec.rules.iter().flatten() {
-            validate_http_route_rule(rule)?;
+        if spec.inner.parent_refs.iter().flatten().any(|parent_ref| {
+            parent_ref.kind.as_deref() == Some("Server")
+                && parent_ref.group.as_deref() == Some("policy.linkerd.io")
+        }) {
+            for rule in spec.rules.iter().flatten() {
+                validate_http_route_rule(rule)?;
+            }
         }
 
         Ok(())
