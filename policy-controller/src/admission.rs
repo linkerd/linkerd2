@@ -450,30 +450,14 @@ fn validate_http_route_rule(rule: &HttpRouteRule) -> Result<()> {
 }
 
 fn validate_http_route_filters(filters: &[HttpRouteFilter]) -> Result<()> {
-    // for filter in filters.iter() {
-    //     match filter {
-    //         HttpRouteFilter::ExtensionRef{ .. } => bail!("ExtensionRef filters are not supported"),
-    //         HttpRouteFilter::RequestHeaderModifier { .. } => bail!("RequestHeaderModifier filters are not supported"),
-    //         HttpRouteFilter::RequestMirror { .. } => bail!("RequestMirror filters are not supported"),
-    //         HttpRouteFilter::RequestRedirect { .. } => bail!("RequestRedirect filters are not supported"),
-    //         HttpRouteFilter::URLRewrite { .. } => bail!("URLRewrite filters are not supported"),
-    //     }
-    // }
-    // Since we don't support any filter types yet, we will always fail on the
-    // first filter. Once it becomes possible for this validation to pass, we
-    // should iterate through all filters, as in the commented-out code above.
-    if let Some(filter) = filters.iter().next() {
+    for filter in filters.iter() {
         match filter {
             HttpRouteFilter::ExtensionRef { .. } => bail!("ExtensionRef filters are not supported"),
-            HttpRouteFilter::RequestHeaderModifier { .. } => {
-                bail!("RequestHeaderModifier filters are not supported")
-            }
+            HttpRouteFilter::RequestHeaderModifier { .. } => {}
             HttpRouteFilter::RequestMirror { .. } => {
                 bail!("RequestMirror filters are not supported")
             }
-            HttpRouteFilter::RequestRedirect { .. } => {
-                bail!("RequestRedirect filters are not supported")
-            }
+            HttpRouteFilter::RequestRedirect { .. } => {}
             HttpRouteFilter::URLRewrite { .. } => bail!("URLRewrite filters are not supported"),
         }
     }

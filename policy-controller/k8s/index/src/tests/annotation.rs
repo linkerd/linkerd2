@@ -119,6 +119,7 @@ fn authenticated_annotated() {
                 protocol: ProxyProtocol::Detect {
                     timeout: test.detect_timeout,
                 },
+                http_routes: HashMap::default(),
             }
         };
 

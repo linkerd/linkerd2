@@ -1,6 +1,8 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
+mod http_route;
+
 use futures::prelude::*;
 use linkerd2_proxy_api::{
     self as api,
@@ -11,6 +13,7 @@ use linkerd2_proxy_api::{
     meta::{metadata, Metadata},
 };
 use linkerd_policy_controller_core::{
+    http_route::{InboundFilter, InboundHttpRoute, InboundHttpRouteRule},
     AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer,
     IdentityMatch, InboundServer, InboundServerStream, IpNet, NetworkMatch, ProxyProtocol,
     ServerRef,
@@ -177,14 +180,30 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
             ProxyProtocol::Detect { timeout } => Some(proto::proxy_protocol::Kind::Detect(
                 proto::proxy_protocol::Detect {
                     timeout: Some(timeout.into()),
-                    http_routes: Default::default(),
+                    http_routes: srv
+                        .http_routes
+                        .iter()
+                        .map(|(name, route)| to_http_route(name, route.clone()))
+                        .collect(),
                 },
             )),
             ProxyProtocol::Http1 => Some(proto::proxy_protocol::Kind::Http1(
-                proto::proxy_protocol::Http1::default(),
+                proto::proxy_protocol::Http1 {
+                    routes: srv
+                        .http_routes
+                        .iter()
+                        .map(|(name, route)| to_http_route(name, route.clone()))
+                        .collect(),
+                },
             )),
             ProxyProtocol::Http2 => Some(proto::proxy_protocol::Kind::Http2(
-                proto::proxy_protocol::Http2::default(),
+                proto::proxy_protocol::Http2 {
+                    routes: srv
+                        .http_routes
+                        .iter()
+                        .map(|(name, route)| to_http_route(name, route.clone()))
+                        .collect(),
+                },
             )),
             ProxyProtocol::Grpc => Some(proto::proxy_protocol::Kind::Grpc(
                 proto::proxy_protocol::Grpc::default(),
@@ -344,9 +363,62 @@ fn to_authz(
     };
 
     proto::Authz {
-        networks,
-        labels,
-        authentication: Some(authn),
         metadata: Some(meta),
+        labels,
+        networks,
+        authentication: Some(authn),
+    }
+}
+
+fn to_http_route(
+    name: impl ToString,
+    InboundHttpRoute { hostnames, rules }: InboundHttpRoute,
+) -> proto::HttpRoute {
+    let metadata = Metadata {
+        kind: Some(metadata::Kind::Resource(api::meta::Resource {
+            group: "gateway.networking.k8s.io".to_string(),
+            kind: "HTTPRoute".to_string(),
+            name: name.to_string(),
+        })),
+    };
+
+    let hosts = hostnames
+        .into_iter()
+        .map(http_route::convert_host_match)
+        .collect();
+
+    let rules = rules
+        .into_iter()
+        .map(
+            |InboundHttpRouteRule { matches, filters }| proto::http_route::Rule {
+                matches: matches.into_iter().map(http_route::convert_match).collect(),
+                filters: filters.into_iter().map(convert_filter).collect(),
+            },
+        )
+        .collect();
+
+    proto::HttpRoute {
+        metadata: Some(metadata),
+        hosts,
+        rules,
+        authorizations: Vec::default(), // TODO populate per-route authorizations
+    }
+}
+
+fn convert_filter(filter: InboundFilter) -> proto::http_route::Filter {
+    use proto::http_route::filter::Kind;
+
+    proto::http_route::Filter {
+        kind: Some(match filter {
+            InboundFilter::FailureInjector(f) => {
+                Kind::FailureInjector(http_route::convert_failure_injector_filter(f))
+            }
+            InboundFilter::RequestHeaderModifier(f) => {
+                Kind::RequestHeaderModifier(http_route::convert_header_modifier_filter(f))
+            }
+            InboundFilter::RequestRedirect(f) => {
+                Kind::Redirect(http_route::convert_redirect_filter(f))
+            }
+        }),
     }
 }

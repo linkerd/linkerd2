@@ -146,6 +146,11 @@ async fn main() -> Result<()> {
             .instrument(info_span!("networkauthentications")),
     );
 
+    let http_routes = runtime.watch_all::<k8s_gateway_api::HttpRoute>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(index.clone(), http_routes).instrument(info_span!("httproutes")),
+    );
+
     // Run the gRPC server, serving results by looking up against the index handle.
     tokio::spawn(grpc(
         grpc_addr,
