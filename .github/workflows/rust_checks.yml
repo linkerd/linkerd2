@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     container:
-      image: docker://rust:1.60.0
+      image: docker://rust:1.62.0
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: rustup component add rustfmt
@@ -51,7 +51,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     container:
-      image: docker://rust:1.60.0
+      image: docker://rust:1.62.0
     steps:
       - run: rustup component add clippy
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
@@ -64,7 +64,7 @@ jobs:
     timeout-minutes: 20
     runs-on: ubuntu-latest
     container:
-      image: docker://rust:1.60.0
+      image: docker://rust:1.62.0
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
@@ -83,7 +83,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     container:
-      image: docker://rust:1.60.0
+      image: docker://rust:1.62.0
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: cargo fetch --locked

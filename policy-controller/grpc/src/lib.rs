@@ -255,24 +255,28 @@ fn to_authz(
     }: &ClientAuthorization,
     cluster_networks: &[IpNet],
 ) -> proto::Authz {
-    let networks = if networks.is_empty() {
-        cluster_networks
-            .iter()
-            .map(|n| proto::Network {
-                net: Some((*n).into()),
-                except: vec![],
-            })
-            .collect::<Vec<_>>()
-    } else {
-        networks
-            .iter()
-            .map(|NetworkMatch { net, except }| proto::Network {
-                net: Some((*net).into()),
-                except: except.iter().cloned().map(Into::into).collect(),
-            })
-            .collect()
+    let meta = Metadata {
+        kind: Some(match reference {
+            AuthorizationRef::Default(name) => metadata::Kind::Default(name.clone()),
+            AuthorizationRef::AuthorizationPolicy(name) => {
+                metadata::Kind::Resource(api::meta::Resource {
+                    group: "policy.linkerd.io".to_string(),
+                    kind: "authorizationpolicy".to_string(),
+                    name: name.clone(),
+                })
+            }
+            AuthorizationRef::ServerAuthorization(name) => {
+                metadata::Kind::Resource(api::meta::Resource {
+                    group: "policy.linkerd.io".to_string(),
+                    kind: "serverauthorization".to_string(),
+                    name: name.clone(),
+                })
+            }
+        }),
     };
 
+    // TODO labels are deprecated, but we want to continue to support them for older proxies. This
+    // can be removed in 2.13.
     let labels = match reference {
         AuthorizationRef::Default(name) => convert_args!(hashmap!(
             "group" => "",
@@ -289,6 +293,24 @@ fn to_authz(
             "kind" => "authorizationpolicy",
             "name" => name,
         )),
+    };
+
+    let networks = if networks.is_empty() {
+        cluster_networks
+            .iter()
+            .map(|n| proto::Network {
+                net: Some((*n).into()),
+                except: vec![],
+            })
+            .collect::<Vec<_>>()
+    } else {
+        networks
+            .iter()
+            .map(|NetworkMatch { net, except }| proto::Network {
+                net: Some((*net).into()),
+                except: except.iter().cloned().map(Into::into).collect(),
+            })
+            .collect()
     };
 
     let authn = match authentication {
@@ -341,10 +363,10 @@ fn to_authz(
     };
 
     proto::Authz {
-        networks,
+        metadata: Some(meta),
         labels,
+        networks,
         authentication: Some(authn),
-        metadata: None, // TODO fill
     }
 }
 
