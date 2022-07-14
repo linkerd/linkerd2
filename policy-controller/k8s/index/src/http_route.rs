@@ -48,11 +48,15 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
                      port,
                  }| {
                     // Ignore parents that are not a Server.
-                    if group.as_deref() != Some("policy.linkerd.io")
-                        || kind.as_deref() != Some("Server")
-                        || name.is_empty()
-                    {
-                        return None;
+                    if let Some(g) = group {
+                        if let Some(k) = kind {
+                            if !g.eq_ignore_ascii_case("policy.linkerd.io")
+                                || !k.eq_ignore_ascii_case("server")
+                                || name.is_empty()
+                            {
+                                return None;
+                            }
+                        }
                     }
 
                     if namespace.is_some() && namespace != route.metadata.namespace {
