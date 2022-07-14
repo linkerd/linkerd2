@@ -43,13 +43,13 @@ require (
 	google.golang.org/protobuf v1.28.0
 	helm.sh/helm/v3 v3.9.0
 	k8s.io/api v0.24.3
-	k8s.io/apiextensions-apiserver v0.24.0
+	k8s.io/apiextensions-apiserver v0.24.1
 	k8s.io/apimachinery v0.24.3
 	k8s.io/client-go v0.24.3
 	k8s.io/code-generator v0.24.3
 	k8s.io/klog/v2 v2.70.1
 	k8s.io/kube-aggregator v0.23.5
-	sigs.k8s.io/gateway-api v0.4.3
+	sigs.k8s.io/gateway-api v0.5.0
 	sigs.k8s.io/yaml v1.3.0
 )
 
