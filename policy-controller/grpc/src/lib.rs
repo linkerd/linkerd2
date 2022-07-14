@@ -2,9 +2,13 @@
 #![forbid(unsafe_code)]
 
 use futures::prelude::*;
-use linkerd2_proxy_api::inbound::{
-    self as proto,
-    inbound_server_policies_server::{InboundServerPolicies, InboundServerPoliciesServer},
+use linkerd2_proxy_api::{
+    self as api,
+    inbound::{
+        self as proto,
+        inbound_server_policies_server::{InboundServerPolicies, InboundServerPoliciesServer},
+    },
+    meta::{metadata, Metadata},
 };
 use linkerd_policy_controller_core::{
     AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer,
@@ -173,6 +177,7 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
             ProxyProtocol::Detect { timeout } => Some(proto::proxy_protocol::Kind::Detect(
                 proto::proxy_protocol::Detect {
                     timeout: Some(timeout.into()),
+                    http_routes: Default::default(),
                 },
             )),
             ProxyProtocol::Http1 => Some(proto::proxy_protocol::Kind::Http1(
@@ -231,24 +236,28 @@ fn to_authz(
     }: &ClientAuthorization,
     cluster_networks: &[IpNet],
 ) -> proto::Authz {
-    let networks = if networks.is_empty() {
-        cluster_networks
-            .iter()
-            .map(|n| proto::Network {
-                net: Some((*n).into()),
-                except: vec![],
-            })
-            .collect::<Vec<_>>()
-    } else {
-        networks
-            .iter()
-            .map(|NetworkMatch { net, except }| proto::Network {
-                net: Some((*net).into()),
-                except: except.iter().cloned().map(Into::into).collect(),
-            })
-            .collect()
+    let meta = Metadata {
+        kind: Some(match reference {
+            AuthorizationRef::Default(name) => metadata::Kind::Default(name.clone()),
+            AuthorizationRef::AuthorizationPolicy(name) => {
+                metadata::Kind::Resource(api::meta::Resource {
+                    group: "policy.linkerd.io".to_string(),
+                    kind: "authorizationpolicy".to_string(),
+                    name: name.clone(),
+                })
+            }
+            AuthorizationRef::ServerAuthorization(name) => {
+                metadata::Kind::Resource(api::meta::Resource {
+                    group: "policy.linkerd.io".to_string(),
+                    kind: "serverauthorization".to_string(),
+                    name: name.clone(),
+                })
+            }
+        }),
     };
 
+    // TODO labels are deprecated, but we want to continue to support them for older proxies. This
+    // can be removed in 2.13.
     let labels = match reference {
         AuthorizationRef::Default(name) => convert_args!(hashmap!(
             "group" => "",
@@ -265,6 +274,24 @@ fn to_authz(
             "kind" => "authorizationpolicy",
             "name" => name,
         )),
+    };
+
+    let networks = if networks.is_empty() {
+        cluster_networks
+            .iter()
+            .map(|n| proto::Network {
+                net: Some((*n).into()),
+                except: vec![],
+            })
+            .collect::<Vec<_>>()
+    } else {
+        networks
+            .iter()
+            .map(|NetworkMatch { net, except }| proto::Network {
+                net: Some((*net).into()),
+                except: except.iter().cloned().map(Into::into).collect(),
+            })
+            .collect()
     };
 
     let authn = match authentication {
@@ -320,5 +347,6 @@ fn to_authz(
         networks,
         labels,
         authentication: Some(authn),
+        metadata: Some(meta),
     }
 }
