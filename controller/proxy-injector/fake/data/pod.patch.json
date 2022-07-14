@@ -53,7 +53,7 @@
         "--outbound-ports-to-ignore",
         "4567,4568"
       ],
-      "image": "cr.l5d.io/linkerd/proxy-init:v1.5.3",
+      "image": "cr.l5d.io/linkerd/proxy-init:v1.6.0",
       "imagePullPolicy": "IfNotPresent",
       "name": "linkerd-init",
       "resources": {
