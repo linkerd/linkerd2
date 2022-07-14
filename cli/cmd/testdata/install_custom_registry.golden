@@ -565,7 +565,7 @@ data:
       image:
         name: my.custom.registry/linkerd-io/proxy-init
         pullPolicy: ""
-        version: v1.5.3
+        version: v1.6.0
       logFormat: ""
       logLevel: ""
       resources:
@@ -892,7 +892,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443"
-        image: my.custom.registry/linkerd-io/proxy-init:v1.5.3
+        image: my.custom.registry/linkerd-io/proxy-init:v1.6.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1306,7 +1306,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443"
-        image: my.custom.registry/linkerd-io/proxy-init:v1.5.3
+        image: my.custom.registry/linkerd-io/proxy-init:v1.6.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1607,7 +1607,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "4567,4568"
-        image: my.custom.registry/linkerd-io/proxy-init:v1.5.3
+        image: my.custom.registry/linkerd-io/proxy-init:v1.6.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
