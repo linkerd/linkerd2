@@ -20,7 +20,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/imdario/mergo v0.3.13
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/linkerd/linkerd2-proxy-api v0.5.0
+	github.com/linkerd/linkerd2-proxy-api v0.6.0
 	github.com/linkerd/linkerd2-proxy-init v1.5.3
 	github.com/mattn/go-isatty v0.0.14
 	github.com/mattn/go-runewidth v0.0.13
@@ -42,10 +42,10 @@ require (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.28.0
 	helm.sh/helm/v3 v3.9.0
-	k8s.io/api v0.24.2
+	k8s.io/api v0.24.3
 	k8s.io/apiextensions-apiserver v0.24.0
-	k8s.io/apimachinery v0.24.2
-	k8s.io/client-go v0.24.2
+	k8s.io/apimachinery v0.24.3
+	k8s.io/client-go v0.24.3
 	k8s.io/code-generator v0.24.2
 	k8s.io/klog/v2 v2.70.1
 	k8s.io/kube-aggregator v0.23.5
