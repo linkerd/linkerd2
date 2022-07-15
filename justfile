@@ -1,8 +1,12 @@
 # See https://just.systems/man/en
 
-test-id := `tr -dc 'a-z0-9' </dev/urandom | fold -w 5 | head -n 1`
+# If DOCKER_REGISTRY is not already set, use a bogus registry with a unique
+# domain name so that it's virtually impossible to use the wrong image tag.
+_test-id := `tr -dc 'a-z0-9' </dev/urandom | fold -w 5 | head -n 1`
+export DOCKER_REGISTRY := env_var_or_default("DOCKER_REGISTRY", "test-" + _test-id + ".local/linkerd")
 
-export DOCKER_REGISTRY := env_var_or_default("DOCKER_REGISTRY", "test-" + test-id + ".local/linkerd")
+root-tag := `bin/root-tagtest-cluster-create
+proxy-init-version := `yq .proxyInit.image.version <charts/linkerd-control-plane/values.yaml`
 
 # The Kubernetes version to use for the test cluster. E.g. 'v1.24', 'latest', etc
 test-cluster-k8s := env_var_or_default("LINKERD_TEST_CLUSTER_K8S", "latest")
@@ -10,8 +14,6 @@ test-cluster-k8s := env_var_or_default("LINKERD_TEST_CLUSTER_K8S", "latest")
 # The name of the k3d cluster to use.
 test-cluster-name := env_var_or_default("LINKERD_TEST_CLUSTER_NAME", 'l5d-test')
 _ctx := "--context=k3d-" + test-cluster-name
-
-proxy-init-version := `yq .proxyInit.image.version <charts/linkerd-control-plane/values.yaml`
 
 # By default we compile in development mode mode because it's faster.
 build_type := if env_var_or_default("RELEASE", "") == "" { "debug" } else { "release" }
@@ -46,15 +48,29 @@ _test := ```
         fi
     ```
 
-clippy:
-    {{ cargo }} clippy --workspace --all-targets --no-deps {{ _features }} {{ _fmt }}
+# Fetch Rust dependencies.
+rs-fetch:
+    {{ cargo }} fetch --locked
 
-deny:
+# Format Rust code.
+rs-fmt:
+    {{ cargo }} fmt --all
+
+# Check that the Rust code is formatted correctly.
+rs-check-fmt:
+    {{ cargo }} fmt --all -- --check
+
+# Lint Rust code.
+rs-clippy:
+    {{ cargo }} clippy --frozen --workspace --all-targets --no-deps {{ _features }} {{ _fmt }}
+
+# Audit Rust dependencies.
+rs-audit-deps:
     {{ cargo }} deny {{ _features }} check
 
-# Run Rust unit tests
+# Generate Rust documentation.
 rs-doc *flags:
-    {{ cargo }} doc --frozen --no-deps \
+    {{ cargo }} doc --frozen \
         {{ if build_type == "release" { "--release" } else { "" } }} \
         {{ _features }} \
         {{ flags }}
@@ -73,6 +89,23 @@ rs-test *flags:
         {{ _features }} \
         {{ flags }}
 
+# Check each crate independently to ensure its Cargo.toml is sufficient.
+rs-check-dirs:
+    #!/usr/bin/env bash
+    for toml in $(find . -mindepth 2 -name Cargo.toml | sort -r); do
+        d=${toml%/*}
+        echo "cd $d && {{ cargo }} check"
+        (cd $d && {{ cargo }} check --frozen \
+            {{ if build_type == "release" { "--release" } else { "" } }} \
+            {{ _features }} \
+            {{ _fmt }})
+        echo "cd $d && {{ cargo }} check --tests"
+        (cd $d && {{ cargo }} check --frozen --tests \
+            {{ if build_type == "release" { "--release" } else { "" } }} \
+            {{ _features }} \
+            {{ _fmt }})
+    done
+
 ##
 ## Integration tests (that are not controlled by bin/tests)
 ##
@@ -85,25 +118,39 @@ policy-test: _policy-test-install && _policy-test-uninstall
 policy-test-cleanup: && _policy-test-uninstall
     kubectl delete {{ _ctx }} ns -l linkerd-policy-test
 
-# Build/fetch the Linkerd containers and load them onto the test cluster.
-_policy-test-images: _test-cluster-exists
-    #!/usr/bin/env bash
-    bin/docker-build-controller
-    bin/docker-build-proxy
-    docker build . \
-        --progress=plain \
+# Build the policy controller docker image for testing.
+docker-build-policy-controller:
+    docker build . --file=policy-controller/amd64.dockerfile \
         --build-arg=RELEASE={{ if build_type == "release" { "1" } else { "0" } }} \
-        --file=policy-controller/amd64.dockerfile \
-        --tag="$DOCKER_REGISTRY/policy-controller:test"
-    docker pull 'ghcr.io/linkerd/proxy-init:{{ proxy-init-version }}'
-    k3d image import --mode=direct --cluster="{{ test-cluster-name }}" \
+        --tag='{{ _policy-controller-image }}' \
+        --progress=plain
+
+_controller-image := DOCKER_REGISTRY + "/controller"
+_proxy-image := DOCKER_REGISTRY + "/proxy"
+_proxy-init-image := "ghcr.io/linkerd/proxy-init"
+_policy-controller-image := DOCKER_REGISTRY + "/policy-controller"
+
+docker-pull-policy-test-deps:
+    docker pull -q docker.io/bitnami/kubectl:latest
+    docker pull -q docker.io/curlimages/curl:latest
+    docker pull -q docker.io/library/nginx:latest
+    docker pull -q '{{ _proxy-init-image }}:{{ proxy-init-version }}'
+
+policy-test-load-images:
+    k3d image import --mode=direct --cluster '{{ test-cluster-name }}' \
         bitnami/kubectl:latest \
         curlimages/curl:latest \
         nginx:latest \
-        'ghcr.io/linkerd/proxy-init:{{ proxy-init-version }}' \
-        "$DOCKER_REGISTRY/controller:$(bin/root-tag)" \
-        "$DOCKER_REGISTRY/proxy:$(bin/root-tag)" \
-        "$DOCKER_REGISTRY/policy-controller:test"
+        '{{ _proxy-init-image }}:{{ proxy-init-version }}' \
+        '{{ _controller-image }}:{{ root-tag }}' \
+        '{{ _proxy-image }}:{{ root-tag }}' \
+        '{{ _policy-controller-image }}:{{ root-tag }}'
+
+# Build/fetch the Linkerd containers and load them onto the test cluster.
+_policy-test-images: _test-cluster-exists docker-pull-policy-test-deps docker-build-policy-controller policy-test-load-images
+    #!/usr/bin/env bash
+    bin/docker-build-controller
+    bin/docker-build-proxy
 
 # Install Linkerd on the test cluster.
 _policy-test-install: _policy-test-images
@@ -112,12 +159,11 @@ _policy-test-install: _policy-test-images
     bin/linkerd {{ _ctx }} install --crds | kubectl apply {{ _ctx }} -f -
     bin/linkerd {{ _ctx }} install \
         --set 'imagePullPolicy=Never' \
-        --set "controllerImage=${DOCKER_REGISTRY}/controller" \
-        --set "proxy.image.name=${DOCKER_REGISTRY}/proxy" \
-        --set 'proxyInit.image.name=ghcr.io/linkerd/proxy-init' \
+        --set 'controllerImage={{ _controller-image }}' \
+        --set "proxy.image.name={{ _proxy-image }}" \
+        --set 'proxyInit.image.name={{ _proxy-init-image }}' \
         --set 'proxyInit.image.version={{ proxy-init-version }}' \
-        --set "policyController.image.name=${DOCKER_REGISTRY}/policy-controller" \
-        --set 'policyController.image.version=test' \
+        --set 'policyController.image.name={{ _policy-controller-image }}' \
         --set 'policyController.logLevel=info\,linkerd=trace\,kubert=trace' \
       | kubectl apply {{ _ctx }} -f -
     bin/linkerd {{ _ctx }} check -o short

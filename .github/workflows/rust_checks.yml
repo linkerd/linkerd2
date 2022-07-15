@@ -27,9 +27,10 @@ jobs:
     container:
       image: docker://rust:1.62.0
     steps:
+      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: rustup component add rustfmt
-      - run: cargo fmt --all -- --check
+      - run: just rs-check-fmt
 
   audit:
     timeout-minutes: 10
@@ -54,11 +55,12 @@ jobs:
       image: docker://rust:1.62.0
     steps:
       - run: rustup component add clippy
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
       - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
-      - run: cargo fetch --locked
-      - name: Run cargo clippy
-        run: cargo clippy --frozen --workspace --all-targets --message-format=json | cargo-action-fmt
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - run: just rs-fetch
+      - run: just rs-clippy
+      - run: just rs-doc --no-deps
 
   check:
     timeout-minutes: 20
@@ -66,17 +68,11 @@ jobs:
     container:
       image: docker://rust:1.62.0
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
       - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
-      - run: cargo fetch --locked
-      # Check each crate independently to ensure its Cargo.toml is sufficient.
-      - run: |
-          for toml in $(find . -mindepth 2 -name Cargo.toml | sort -r)
-          do
-            d=$(dirname "$toml")
-            echo "# $d"
-            (cd "$d" ; cargo check --all-targets --frozen --message-format=json | cargo-action-fmt)
-          done
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - run: just rs-fetch
+      - run: just rs-check-dirs
 
   test:
     name: test
@@ -85,12 +81,12 @@ jobs:
     container:
       image: docker://rust:1.62.0
     steps:
+      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
+      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - run: cargo fetch --locked
-      - name: Build tests
-        run: cargo test --workspace --exclude=linkerd-policy-test --frozen --no-run
-      - name: Run cargo test
-        run: cargo test --workspace --exclude=linkerd-policy-test --frozen
+      - run: just rs-fetch
+      - run: just rs-test-build
+      - run: just rs-test
 
   rust-toolchain:
     name: rust toolchain

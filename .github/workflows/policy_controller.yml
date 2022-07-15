@@ -25,7 +25,6 @@ env:
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
 
-
 jobs:
   docker-build:
     runs-on: ubuntu-20.04
@@ -64,8 +63,8 @@ jobs:
     name: Integration build
     timeout-minutes: 30
     steps:
-      - name: Checkout code
-        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
 
       - name: Install rust
         run: |
@@ -79,7 +78,7 @@ jobs:
       - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
 
       - run: mkdir target
-      - run: cargo fetch --locked
+      - run: just rs-fetch
       - run: cargo metadata --format-version 1 >target/metadata.json
       - run: cargo nextest list --frozen --package=linkerd-policy-test --list-type=binaries-only --message-format=json >target/nextest.json
       - name: Create tarball
@@ -108,8 +107,8 @@ jobs:
     env:
       LINKERD_DOCKER_REGISTRY: ghcr.io/linkerd
     steps:
-      - name: Checkout code
-        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
 
       - name: Install rust
         run: |
@@ -124,7 +123,7 @@ jobs:
 
       - run: bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
       - run: k3d --version
-      - run: k3d cluster create --no-lb --k3s-arg "--no-deploy=local-storage,traefik,servicelb,metrics-server@server:*" --image +${{ matrix.k8s }}
+      - run: just test-cluster-k8s=${{ matrix.k8s }} test-cluster-create
       - run: kubectl version
 
       - name: Download image archives
@@ -136,25 +135,14 @@ jobs:
         run: tar -xzvf image-archives/nextest.tar.gz
       - name: Load images
         run: |
-          docker pull -q docker.io/bitnami/kubectl:latest &
-          docker pull -q docker.io/curlimages/curl:latest &
-          docker pull -q docker.io/library/nginx:latest &
-          docker pull -q "ghcr.io/linkerd/proxy-init:$PROXY_INIT_VERSION" &
+          just docker-pull-deps
           wait # Wait for pulls to complete
           docker load <image-archives/controller.tar
           docker load <image-archives/policy-controller.tar
           docker load <image-archives/proxy.tar
           docker image ls | grep -F -e bitnami/kubectl -e curlimages/curl -e nginx -e ghcr.io/linkerd
-          tag="$(CI_FORCE_CLEAN=1 bin/root-tag)"
           # Image loading is flakey in CI, so retry!
-          until k3d image import \
-                  bitnami/kubectl:latest \
-                  curlimages/curl:latest \
-                  nginx:latest \
-                  "ghcr.io/linkerd/controller:$tag" \
-                  "ghcr.io/linkerd/policy-controller:$tag" \
-                  "ghcr.io/linkerd/proxy:$tag" \
-                  "ghcr.io/linkerd/proxy-init:$PROXY_INIT_VERSION" ; do
+          until just policy-test-load-images ; do
             sleep 2
             echo retrying...
           done
