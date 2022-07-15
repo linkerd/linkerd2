@@ -7,7 +7,6 @@ on:
     paths:
       - rust-toolchain
       - .devcontainer/**
-      - .github/workflows/*
 
 permissions:
   contents: read
@@ -51,22 +50,3 @@ jobs:
             echo "::error file=.devcontainer/devcontainer.json::Unable to pull image: $image"
             exit 1
           fi
-
-  workflows:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/linkerd/dev:v18
-      options: --user root
-    steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - run: |
-          # Strip jsonc comments because `jq` doesn't support them.
-          image=$(sed -E '/^\s*\/\/.*/d' .devcontainer/devcontainer.json |jq -Mr .image)
-          for f in .github/workflows/* ; do
-            for i in $(yq '.jobs.*.container | .image // "" | match("ghcr.io/linkerd/dev:.*").string' < $f) ; do
-              if [ "$i" != "$image" ]; then
-                echo "::error file=$f::Workflow '$f' uses incorrect Devcontainer image '$i'"
-                exit 1
-              fi
-            done
-          done
