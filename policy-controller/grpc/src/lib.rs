@@ -82,9 +82,8 @@ where
 
         // Ensure that the port is in the valid range.
         let port = u16::try_from(port)
-            .ok()
-            .and_then(|p| NonZeroU16::try_from(p).ok())
-            .ok_or_else(|| tonic::Status::invalid_argument(format!("Invalid port: {}", port)))?;
+            .and_then(NonZeroU16::try_from)
+            .map_err(|_| tonic::Status::invalid_argument(format!("Invalid port: {port}")))?;
 
         Ok((ns.to_string(), name.to_string(), port))
     }

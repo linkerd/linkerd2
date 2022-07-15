@@ -1,6 +1,7 @@
 use anyhow::{bail, Error, Result};
 use k8s_gateway_api as api;
 use linkerd_policy_controller_core::http_route;
+use std::num::NonZeroU16;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct InboundRouteBinding {
@@ -241,8 +242,10 @@ impl InboundRouteBinding {
                         http_route::PathModifier::Prefix(s)
                     }
                 }),
-                port: port.and_then(|p| p.try_into().ok()),
-                status: status_code.map(TryFrom::try_from).transpose()?,
+                port: port.and_then(|p| NonZeroU16::try_from(p).ok()),
+                status: status_code
+                    .map(http_route::StatusCode::try_from)
+                    .transpose()?,
             }),
 
             api::HttpRouteFilter::RequestMirror { .. } => {
