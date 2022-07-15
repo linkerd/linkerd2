@@ -1,3 +1,4 @@
+use ahash::AHashMap as HashMap;
 use anyhow::{bail, Error, Result};
 use k8s_gateway_api as api;
 use linkerd_policy_controller_core::http_route;
@@ -108,7 +109,11 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
 
         Ok(InboundRouteBinding {
             parents,
-            route: http_route::InboundHttpRoute { hostnames, rules },
+            route: http_route::InboundHttpRoute {
+                hostnames,
+                rules,
+                authorizations: HashMap::default(),
+            },
         })
     }
 }

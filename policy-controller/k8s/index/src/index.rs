@@ -1100,7 +1100,7 @@ impl PolicyIndex {
     ) -> InboundServer {
         tracing::trace!(%name, ?server, "Creating inbound server");
         let authorizations = self.client_authzs(&name, server, authentications);
-        let routes = self.http_routes(&name);
+        let routes = self.http_routes(&name, authentications);
 
         InboundServer {
             reference: ServerRef::Server(name),
@@ -1142,6 +1142,10 @@ impl PolicyIndex {
                     }
                 }
                 authorization_policy::Target::Namespace => {}
+                authorization_policy::Target::HttpRoute(_) => {
+                    // Skip the policy if it targets an HttpRoute.
+                    continue;
+                }
             }
 
             tracing::trace!(
@@ -1172,11 +1176,71 @@ impl PolicyIndex {
         authzs
     }
 
-    fn http_routes(&self, server_name: &str) -> HashMap<String, InboundHttpRoute> {
+    fn route_client_authzs(
+        &self,
+        route_name: &str,
+        authentications: &AuthenticationNsIndex,
+    ) -> HashMap<AuthorizationRef, ClientAuthorization> {
+        let mut authzs = HashMap::default();
+
+        for (name, spec) in self.authorization_policies.iter() {
+            // Skip the policy if it doesn't apply to the route.
+            if let authorization_policy::Target::HttpRoute(name) = &spec.target {
+                if name != route_name {
+                    tracing::trace!(
+                        ns = %self.namespace,
+                        authorizationpolicy = %name,
+                        route = %route_name,
+                        target = %name,
+                        "AuthorizationPolicy does not target HttpRoute",
+                    );
+                    continue;
+                }
+            } else {
+                continue;
+            }
+
+            tracing::trace!(
+                ns = %self.namespace,
+                authorizationpolicy = %name,
+                route = %route_name,
+                "AuthorizationPolicy targets HttpRoute",
+            );
+            tracing::trace!(authns = ?spec.authentications);
+
+            let authz = match self.policy_client_authz(spec, authentications) {
+                Ok(authz) => authz,
+                Err(error) => {
+                    tracing::info!(
+                        route = %route_name,
+                        authorizationpolicy = %name,
+                        %error,
+                        "Illegal AuthorizationPolicy; ignoring",
+                    );
+                    continue;
+                }
+            };
+
+            let reference = AuthorizationRef::AuthorizationPolicy(name.to_string());
+            authzs.insert(reference, authz);
+        }
+
+        authzs
+    }
+
+    fn http_routes(
+        &self,
+        server_name: &str,
+        authentications: &AuthenticationNsIndex,
+    ) -> HashMap<String, InboundHttpRoute> {
         self.http_routes
             .iter()
             .filter(|(_, route)| route.selects_server(server_name))
-            .map(|(name, route)| (name.clone(), route.route.clone()))
+            .map(|(name, route)| {
+                let mut route = route.route.clone();
+                route.authorizations = self.route_client_authzs(name, authentications);
+                (name.clone(), route)
+            })
             .collect()
     }
 

@@ -13,6 +13,7 @@ pub(crate) struct Spec {
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Target {
+    HttpRoute(String),
     Server(String),
     Namespace,
 }
@@ -64,6 +65,9 @@ fn target(t: LocalTargetRef) -> Result<Target> {
     }
     if t.targets_kind::<k8s::Namespace>() {
         return Ok(Target::Namespace);
+    }
+    if t.targets_kind::<k8s_gateway_api::HttpRoute>() {
+        return Ok(Target::HttpRoute(t.name));
     }
 
     anyhow::bail!(
