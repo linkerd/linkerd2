@@ -51,3 +51,26 @@ jobs:
             echo "::error file=.devcontainer/devcontainer.json::Unable to pull image: $image"
             exit 1
           fi
+
+  workflows:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/linkerd/dev:v18
+      options: --user root
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - run: |
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install jq
+      - run: |
+          # Strip jsonc comments because `jq` doesn't support them.
+          image=$(sed -E '/^\s*\/\/.*/d' .devcontainer/devcontainer.json |jq -Mr .image)
+          if [ "$image" == "null" ]; then
+            echo "::error file=.devcontainer/devcontainer.json::Missing image"
+            exit 1
+          fi
+          if ! docker pull "$image" ; then
+            echo "::error file=.devcontainer/devcontainer.json::Unable to pull image: $image"
+            exit 1
+          fi

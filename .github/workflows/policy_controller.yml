@@ -64,7 +64,6 @@ jobs:
       options: --user root
     timeout-minutes: 30
     steps:
-      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
       - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: mkdir target
@@ -99,7 +98,6 @@ jobs:
     env:
       LINKERD_DOCKER_REGISTRY: ghcr.io/linkerd
     steps:
-      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
       - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: just test-cluster-k8s=${{ matrix.k8s }} test-cluster-create
