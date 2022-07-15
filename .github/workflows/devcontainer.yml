@@ -7,7 +7,7 @@ on:
     paths:
       - rust-toolchain
       - .devcontainer/**
-      - .github/workflows/devcontainer.yml
+      - .github/workflows/*
 
 permissions:
   contents: read
@@ -55,22 +55,18 @@ jobs:
   workflows:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/linkerd/dev:v18
+      image: ghcr.io/linkerd/dev:v17
       options: --user root
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: |
-          export DEBIAN_FRONTEND=noninteractive
-          sudo apt-get update
-          sudo apt-get -y --no-install-recommends install jq
-      - run: |
           # Strip jsonc comments because `jq` doesn't support them.
           image=$(sed -E '/^\s*\/\/.*/d' .devcontainer/devcontainer.json |jq -Mr .image)
-          if [ "$image" == "null" ]; then
-            echo "::error file=.devcontainer/devcontainer.json::Missing image"
-            exit 1
-          fi
-          if ! docker pull "$image" ; then
-            echo "::error file=.devcontainer/devcontainer.json::Unable to pull image: $image"
-            exit 1
-          fi
+          for f in .github/workflows/* ; do
+            for i in $(yq '.jobs.*.container | .image // "" | match("ghcr.io/linkerd/dev:.*").string' < $f) ; do
+              if [ "$i" != "$image" ]; then
+                echo "::error file=$f::Workflow uses incorrect Devcontainer image: $i"
+                exit 1
+              fi
+            done
+          done
