@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     container:
-      image: ghcr.io/linkerd/dev:v7
+      image: ghcr.io/linkerd/dev:v18
       options: --user root
     steps:
     - name: Checkout code

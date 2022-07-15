@@ -19,9 +19,7 @@ permissions:
 env:
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
-  K3D_VERSION: v5.4.3
   PROTOC_NO_VENDOR: 1
-  PROXY_INIT_VERSION: v1.5.3
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
 
@@ -59,24 +57,16 @@ jobs:
           path: /home/runner/archives
 
   integration-build:
-    runs-on: ubuntu-20.04
     name: Integration build
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/linkerd/dev:v18
+      options: --user root
     timeout-minutes: 30
     steps:
       - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-
-      - name: Install rust
-        run: |
-          rm -rf "$HOME/.cargo"
-          bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(cat rust-toolchain)"
-          source "$HOME/.cargo/env"
-          echo "PATH=$PATH" >> "$GITHUB_ENV"
-          bin/scurl -L https://get.nexte.st/latest/linux | tar xzf - -C /usr/local/bin
-          cargo version
-          cargo nextest --version
       - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
-
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: mkdir target
       - run: just rs-fetch
       - run: cargo metadata --format-version 1 >target/metadata.json
@@ -92,7 +82,6 @@ jobs:
           name: image-archives
           path: /home/runner/archives
 
-
   integration:
     strategy:
       matrix:
@@ -103,26 +92,16 @@ jobs:
 
     needs: [docker-build, integration-build]
     runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/linkerd/dev:v18
+      options: --user root
     timeout-minutes: 20
     env:
       LINKERD_DOCKER_REGISTRY: ghcr.io/linkerd
     steps:
       - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-
-      - name: Install rust
-        run: |
-          rm -rf "$HOME/.cargo"
-          bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(cat rust-toolchain)"
-          source "$HOME/.cargo/env"
-          echo "PATH=$PATH" >> "$GITHUB_ENV"
-          bin/scurl -L https://get.nexte.st/latest/linux | tar xzf - -C /usr/local/bin
-          cargo version
-          cargo nextest --version
       - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
-
-      - run: bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
-      - run: k3d --version
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: just test-cluster-k8s=${{ matrix.k8s }} test-cluster-create
       - run: kubectl version
 
