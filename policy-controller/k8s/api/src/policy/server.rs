@@ -2,6 +2,7 @@ use super::super::labels;
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::num::NonZeroU16;
 
 /// Describes a server interface exposed by a set of pods.
 #[derive(Clone, Debug, PartialEq, Eq, CustomResource, Deserialize, Serialize, JsonSchema)]
@@ -22,7 +23,7 @@ pub struct ServerSpec {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize, Serialize, JsonSchema)]
 #[serde(untagged)]
 pub enum Port {
-    Number(u16),
+    Number(NonZeroU16),
     Name(String),
 }
 

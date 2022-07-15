@@ -241,7 +241,7 @@ impl InboundRouteBinding {
                         http_route::PathModifier::Prefix(s)
                     }
                 }),
-                port: port.map(Into::into),
+                port: port.and_then(|p| p.try_into().ok()),
                 status: status_code.map(TryFrom::try_from).transpose()?,
             }),
 

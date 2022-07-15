@@ -18,7 +18,7 @@ use linkerd_policy_controller_core::{
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
-use std::{collections::hash_map::Entry, sync::Arc};
+use std::{collections::hash_map::Entry, num::NonZeroU16, sync::Arc};
 use tokio::sync::watch;
 use tracing::info_span;
 
@@ -147,7 +147,7 @@ impl Index {
         &mut self,
         namespace: &str,
         pod: &str,
-        port: u16,
+        port: NonZeroU16,
     ) -> Result<watch::Receiver<InboundServer>> {
         let ns = self
             .namespaces
@@ -876,7 +876,7 @@ impl Pod {
     ///
     /// The name is used explicity (and not derived from the `server` itself) to
     /// ensure that we're not handling a default server.
-    fn update_server(&mut self, port: u16, name: &str, server: InboundServer) {
+    fn update_server(&mut self, port: NonZeroU16, name: &str, server: InboundServer) {
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
                 tracing::trace!(port = %port, server = %name, "Creating server");
@@ -914,7 +914,7 @@ impl Pod {
     }
 
     /// Updates a pod-port to use the given named server.
-    fn set_default_server(&mut self, port: u16, config: &ClusterInfo) {
+    fn set_default_server(&mut self, port: NonZeroU16, config: &ClusterInfo) {
         let server = Self::default_inbound_server(port, &self.meta.settings, config);
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
@@ -942,7 +942,7 @@ impl Pod {
     /// Enumerates ports.
     ///
     /// A named port may refer to an arbitrary number of port numbers.
-    fn select_ports(&mut self, port_ref: &Port) -> Vec<u16> {
+    fn select_ports(&mut self, port_ref: &Port) -> Vec<NonZeroU16> {
         match port_ref {
             Port::Number(p) => Some(*p).into_iter().collect(),
             Port::Name(name) => self
@@ -955,7 +955,11 @@ impl Pod {
         }
     }
 
-    fn port_server_or_default(&mut self, port: u16, config: &ClusterInfo) -> &mut PodPortServer {
+    fn port_server_or_default(
+        &mut self,
+        port: NonZeroU16,
+        config: &ClusterInfo,
+    ) -> &mut PodPortServer {
         match self.port_servers.entry(port) {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => {
@@ -970,7 +974,7 @@ impl Pod {
     }
 
     fn default_inbound_server(
-        port: u16,
+        port: NonZeroU16,
         settings: &pod::Settings,
         config: &ClusterInfo,
     ) -> InboundServer {

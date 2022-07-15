@@ -130,7 +130,7 @@ pub(crate) fn convert_redirect_filter(
                 PathModifier::Prefix(p) => proto::path_modifier::Replace::Prefix(p),
             }),
         }),
-        port: port.unwrap_or_default(),
+        port: port.map(u16::from).map(u32::from).unwrap_or_default(),
         status: u32::from(status.unwrap_or_default().as_u16()),
     }
 }
