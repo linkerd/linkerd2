@@ -2,6 +2,7 @@ use crate::DefaultPolicy;
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Context, Result};
 use linkerd_policy_controller_k8s_api as k8s;
+use std::num::NonZeroU16;
 
 /// Holds pod metadata/config that can change.
 #[derive(Debug, PartialEq)]
@@ -25,22 +26,23 @@ pub(crate) struct Settings {
 ///
 /// Because ports are `u16` values, this type avoids the overhead of actually
 /// hashing ports.
-pub(crate) type PortSet = std::collections::HashSet<u16, std::hash::BuildHasherDefault<PortHasher>>;
+pub(crate) type PortSet =
+    std::collections::HashSet<NonZeroU16, std::hash::BuildHasherDefault<PortHasher>>;
 
 /// A `HashMap` specialized for ports.
 ///
-/// Because ports are `u16` values, this type avoids the overhead of actually
-/// hashing ports.
+/// Because ports are `NonZeroU16` values, this type avoids the overhead of
+/// actually hashing ports.
 pub(crate) type PortMap<V> =
-    std::collections::HashMap<u16, V, std::hash::BuildHasherDefault<PortHasher>>;
+    std::collections::HashMap<NonZeroU16, V, std::hash::BuildHasherDefault<PortHasher>>;
 
 /// A hasher for ports.
 ///
-/// Because ports are single `u16` values, we don't have to hash them; we can just use
+/// Because ports are single `NonZeroU16` values, we don't have to hash them; we can just use
 /// the integer values as hashes directly.
 ///
 /// Borrowed from the proxy.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub(crate) struct PortHasher(u16);
 
 /// Gets the set of named TCP ports from a pod spec.
@@ -51,11 +53,13 @@ pub(crate) fn tcp_port_names(spec: Option<k8s::PodSpec>) -> HashMap<String, Port
             if let Some(ports) = container.ports {
                 for port in ports.into_iter() {
                     if let None | Some("TCP") = port.protocol.as_deref() {
-                        if let Some(name) = port.name {
-                            port_names
-                                .entry(name)
-                                .or_default()
-                                .insert(port.container_port as u16);
+                        if let Some(cp) = u16::try_from(port.container_port)
+                            .ok()
+                            .and_then(|p| NonZeroU16::try_from(p).ok())
+                        {
+                            if let Some(name) = port.name {
+                                port_names.entry(name).or_default().insert(cp);
+                            }
                         }
                     }
                 }
@@ -145,22 +149,18 @@ fn parse_portset(s: &str) -> Result<PortSet> {
             None => {
                 if !spec.trim().is_empty() {
                     let port = spec.trim().parse().context("parsing port")?;
-                    if port == 0 {
-                        bail!("port must not be 0")
-                    }
                     ports.insert(port);
                 }
             }
             Some((floor, ceil)) => {
-                let floor = floor.trim().parse::<u16>().context("parsing port")?;
-                let ceil = ceil.trim().parse::<u16>().context("parsing port")?;
-                if floor == 0 {
-                    bail!("port must not be 0")
-                }
+                let floor = floor.trim().parse::<NonZeroU16>().context("parsing port")?;
+                let ceil = ceil.trim().parse::<NonZeroU16>().context("parsing port")?;
                 if floor > ceil {
                     bail!("Port range must be increasing");
                 }
-                ports.extend(floor..=ceil);
+                ports.extend(
+                    (u16::from(floor)..=u16::from(ceil)).map(|p| NonZeroU16::try_from(p).unwrap()),
+                );
             }
         }
     }
@@ -188,27 +188,26 @@ impl std::hash::Hasher for PortHasher {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    macro_rules! ports {
+        ($($x:expr),+ $(,)?) => (
+            vec![$($x),+]
+                .into_iter()
+                .map(|p| NonZeroU16::try_from(p).unwrap())
+                .collect::<PortSet>()
+        );
+    }
+
     #[test]
     fn parse_portset() {
         use super::parse_portset;
 
         assert!(parse_portset("").unwrap().is_empty(), "empty");
         assert!(parse_portset("0").is_err(), "0");
-        assert_eq!(
-            parse_portset("1").unwrap(),
-            vec![1].into_iter().collect(),
-            "1"
-        );
-        assert_eq!(
-            parse_portset("1-2").unwrap(),
-            vec![1, 2].into_iter().collect(),
-            "1-2"
-        );
-        assert_eq!(
-            parse_portset("4,1-2").unwrap(),
-            vec![1, 2, 4].into_iter().collect(),
-            "4,1-2"
-        );
+        assert_eq!(parse_portset("1").unwrap(), ports![1], "1");
+        assert_eq!(parse_portset("1-3").unwrap(), ports![1, 2, 3], "1-2");
+        assert_eq!(parse_portset("4,1-2").unwrap(), ports![1, 2, 4], "4,1-2");
         assert!(parse_portset("2-1").is_err(), "2-1");
         assert!(parse_portset("2-").is_err(), "2-");
         assert!(parse_portset("65537").is_err(), "65537");

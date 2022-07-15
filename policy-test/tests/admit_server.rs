@@ -14,7 +14,7 @@ async fn accepts_valid() {
         },
         spec: ServerSpec {
             pod_selector: api::labels::Selector::default(),
-            port: Port::Number(80),
+            port: Port::Number(80.try_into().unwrap()),
             proxy_protocol: None,
         },
     })
@@ -32,7 +32,7 @@ async fn accepts_server_updates() {
             },
             spec: ServerSpec {
                 pod_selector: api::labels::Selector::from_iter(Some(("app", "test"))),
-                port: Port::Number(80),
+                port: Port::Number(80.try_into().unwrap()),
                 proxy_protocol: None,
             },
         };
@@ -58,7 +58,7 @@ async fn rejects_identitical_pod_selector() {
     with_temp_ns(|client, ns| async move {
         let spec = ServerSpec {
             pod_selector: api::labels::Selector::from_iter(Some(("app", "test"))),
-            port: Port::Number(80),
+            port: Port::Number(80.try_into().unwrap()),
             proxy_protocol: None,
         };
 
@@ -104,7 +104,7 @@ async fn rejects_all_pods_selected() {
             },
             spec: ServerSpec {
                 pod_selector: api::labels::Selector::from_iter(Some(("app", "test"))),
-                port: Port::Number(80),
+                port: Port::Number(80.try_into().unwrap()),
                 proxy_protocol: Some(ProxyProtocol::Http2),
             },
         };
@@ -120,7 +120,7 @@ async fn rejects_all_pods_selected() {
             },
             spec: ServerSpec {
                 pod_selector: api::labels::Selector::default(),
-                port: Port::Number(80),
+                port: Port::Number(80.try_into().unwrap()),
                 // proxy protocol doesn't factor into the selection
                 proxy_protocol: Some(ProxyProtocol::Http1),
             },
@@ -172,7 +172,7 @@ async fn rejects_invalid_proxy_protocol() {
         },
         spec: ServerSpec {
             pod_selector: api::labels::Selector::default(),
-            port: Port::Number(80),
+            port: Port::Number(80.try_into().unwrap()),
             proxy_protocol: "garbanzo".to_string(),
         },
     })

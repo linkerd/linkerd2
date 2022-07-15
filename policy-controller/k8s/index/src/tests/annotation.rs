@@ -27,7 +27,7 @@ fn default_policy_annotated() {
         let mut rx = test
             .index
             .write()
-            .pod_server_rx("ns-0", "pod-0", 2222)
+            .pod_server_rx("ns-0", "pod-0", 2222.try_into().unwrap())
             .expect("pod-0.ns-0 should exist");
         assert_eq!(
             rx.borrow_and_update().reference,
@@ -66,7 +66,7 @@ async fn default_policy_annotated_invalid() {
     let rx = test
         .index
         .write()
-        .pod_server_rx("ns-0", "pod-0", 2222)
+        .pod_server_rx("ns-0", "pod-0", 2222.try_into().unwrap())
         .expect("pod must exist in lookups");
     assert_eq!(*rx.borrow(), test.default_server());
 }
@@ -87,7 +87,7 @@ fn opaque_annotated() {
         let rx = test
             .index
             .write()
-            .pod_server_rx("ns-0", "pod-0", 2222)
+            .pod_server_rx("ns-0", "pod-0", 2222.try_into().unwrap())
             .expect("pod-0.ns-0 should exist");
         assert_eq!(*rx.borrow(), server);
     }
@@ -126,7 +126,7 @@ fn authenticated_annotated() {
         let rx = test
             .index
             .write()
-            .pod_server_rx("ns-0", "pod-0", 2222)
+            .pod_server_rx("ns-0", "pod-0", 2222.try_into().unwrap())
             .expect("pod-0.ns-0 should exist");
         assert_eq!(*rx.borrow(), config);
     }
