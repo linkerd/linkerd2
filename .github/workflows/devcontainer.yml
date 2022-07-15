@@ -55,7 +55,7 @@ jobs:
   workflows:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/linkerd/dev:v17
+      image: ghcr.io/linkerd/dev:v18
       options: --user root
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
@@ -65,7 +65,7 @@ jobs:
           for f in .github/workflows/* ; do
             for i in $(yq '.jobs.*.container | .image // "" | match("ghcr.io/linkerd/dev:.*").string' < $f) ; do
               if [ "$i" != "$image" ]; then
-                echo "::error file=$f::Workflow uses incorrect Devcontainer image: $i"
+                echo "::error file=$f::Workflow '$f' uses incorrect Devcontainer image '$i'"
                 exit 1
               fi
             done
