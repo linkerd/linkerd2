@@ -542,6 +542,7 @@ data:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
         version: test-proxy-init-version
+      iptablesMode: nft
       logFormat: ""
       logLevel: ""
       resources:
@@ -852,6 +853,10 @@ spec:
           name: linkerd-identity-token
       initContainers:
       - args:
+        - --firewall-bin-path
+        - "iptables-nft"
+        - --firewall-save-bin-path
+        - "iptables-nft-save"
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
@@ -1269,6 +1274,10 @@ spec:
           readOnly: true
       initContainers:
       - args:
+        - --firewall-bin-path
+        - "iptables-nft"
+        - --firewall-save-bin-path
+        - "iptables-nft-save"
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
@@ -1575,6 +1584,10 @@ spec:
           readOnly: true
       initContainers:
       - args:
+        - --firewall-bin-path
+        - "iptables-nft"
+        - --firewall-save-bin-path
+        - "iptables-nft-save"
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port

@@ -566,6 +566,7 @@ data:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
         version: v1.5.3
+      iptablesMode: nft
       logFormat: ""
       logLevel: ""
       resources:
