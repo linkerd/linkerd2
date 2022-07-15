@@ -1,10 +1,10 @@
 {{- define "partials.proxy-init" -}}
 args:
-{{- if .Values.proxyInit.enableNft }}
+{{- if not (eq .Values.proxyInit.iptablesMode "legacy") }}
 - --firewall-bin-path
-- "iptables-nft"
+- {{"iptables-nft" | quote}}
 - --firewall-save-bin-path
-- "iptables-nft-save"
+- {{"iptables-nft-save" | quote}}
 {{- end }}
 - --incoming-proxy-port
 - {{.Values.proxy.ports.inbound | quote}}

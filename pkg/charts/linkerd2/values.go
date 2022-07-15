@@ -128,6 +128,7 @@ type (
 		Resources            *Resources       `json:"resources"`
 		CloseWaitTimeoutSecs int64            `json:"closeWaitTimeoutSecs"`
 		RunAsRoot            bool             `json:"runAsRoot"`
+		IptablesMode         string           `json:"iptablesMode"`
 	}
 
 	// DebugContainer contains the fields to set the debugging sidecar

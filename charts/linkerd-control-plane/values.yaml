@@ -173,9 +173,11 @@ proxy:
 
 # proxy-init configuration
 proxyInit:
-  # -- Enable nft mode for proxy-init; when running in nft mode, proxy-init
-  # will use iptables-nft instead of iptables-legacy.
-  enableNft: false
+  # -- Variant of iptables that will be used to configure routing. Currently,
+  # proxy-init can be run either in 'nft' or in 'legacy' mode. The mode will
+  # control which utility binary will be called. The host must support
+  # whichever mode will be used
+  iptablesMode: "nft"
   # -- Default set of inbound ports to skip via iptables
   # - Galera (4567,4568)
   ignoreInboundPorts: "4567,4568"
