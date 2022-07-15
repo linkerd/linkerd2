@@ -182,6 +182,7 @@ test-cluster-create: && _test-cluster-dns-ready
     k3d cluster create {{ test-cluster-name }} \
         --image=+{{ test-cluster-k8s }} \
         --no-lb --k3s-arg "--no-deploy=local-storage,traefik,servicelb,metrics-server@server:*"
+    while ! kubectl {{ _ctx }} cluster-info >/dev/null ; do sleep 1 ; done
 
 # Deletes the test cluster.
 test-cluster-delete:
