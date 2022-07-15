@@ -42,7 +42,7 @@ jobs:
           # Strip jsonc comments because `jq` doesn't support them.
           image=$(sed -E '/^\s*\/\/.*/d' .devcontainer/devcontainer.json |jq -Mr .image)
           for f in .github/workflows/* ; do
-            for i in $(yq '.jobs.*.container | .image // "" | match("ghcr.io/linkerd/dev:.*").string' < $f) ; do
+            for i in $(yq '.jobs.*.container | .image // "" | match("ghcr.io/linkerd/dev:.*").string' < "$f") ; do
               if [ "$i" != "$image" ]; then
                 echo "::error file=$f::Workflow '$f' uses incorrect Devcontainer image '$i'"
                 exit 1
