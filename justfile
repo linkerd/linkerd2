@@ -5,7 +5,7 @@
 _test-id := `tr -dc 'a-z0-9' </dev/urandom | fold -w 5 | head -n 1`
 export DOCKER_REGISTRY := env_var_or_default("DOCKER_REGISTRY", "test-" + _test-id + ".local/linkerd")
 
-root-tag := `bin/root-tagtest-cluster-create
+root-tag := `bin/root-tag`
 proxy-init-version := `yq .proxyInit.image.version <charts/linkerd-control-plane/values.yaml`
 
 # The Kubernetes version to use for the test cluster. E.g. 'v1.24', 'latest', etc
