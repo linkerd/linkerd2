@@ -53,9 +53,8 @@ pub(crate) fn tcp_port_names(spec: Option<k8s::PodSpec>) -> HashMap<String, Port
             if let Some(ports) = container.ports {
                 for port in ports.into_iter() {
                     if let None | Some("TCP") = port.protocol.as_deref() {
-                        if let Some(cp) = u16::try_from(port.container_port)
-                            .ok()
-                            .and_then(|p| NonZeroU16::try_from(p).ok())
+                        if let Ok(cp) =
+                            u16::try_from(port.container_port).and_then(NonZeroU16::try_from)
                         {
                             if let Some(name) = port.name {
                                 port_names.entry(name).or_default().insert(cp);
@@ -194,8 +193,9 @@ mod tests {
         ($($x:expr),+ $(,)?) => (
             vec![$($x),+]
                 .into_iter()
-                .map(|p| NonZeroU16::try_from(p).unwrap())
-                .collect::<PortSet>()
+                .map(NonZeroU16::try_from)
+                .collect::<Result<PortSet, _>>()
+                .unwrap()
         );
     }
 
