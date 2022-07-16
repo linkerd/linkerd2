@@ -138,9 +138,10 @@ test-cluster-install-linkerd: test-cluster-install-crds _policy-test-images
             --set 'policyController.image.name={{ _policy-controller-image }}' \
             --set 'policyController.logLevel=info\,linkerd=trace\,kubert=trace' \
         | {{ _kubectl }} apply -f -
-    {{ _linkerd }} check -o short
+    {{ _linkerd }} check -o short --wait=1m
 
 test-cluster-install-crds:
+    {{ _linkerd }} check --pre -o short --wait=1m
     {{ _linkerd }} install --crds | {{ _kubectl }} apply -f -
     {{ _kubectl }} wait --for condition=established --timeout=60s crd \
         authorizationpolicies.policy.linkerd.io \
