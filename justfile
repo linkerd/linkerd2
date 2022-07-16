@@ -207,11 +207,12 @@ _test-cluster-api-ready:
         | yq '.clusters[] | .cluster.server' \
         | head -n 1 \
         | sed 's|0\.0\.0\.0|localhost|')
-    for i in {1..60} ; do
+    for i in {1..6} ; do
         if {{ _kubectl }} cluster-info >/dev/null ; then exit 0 ; fi
+        docker ps
         just test-cluster-name={{ test-cluster-name }} test-cluster-info
         curl -kv "$url"
-        sleep 1
+        sleep 10
     done
     exit 1
 
