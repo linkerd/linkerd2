@@ -76,7 +76,6 @@ FROM docker.io/rust:${RUST_TOOLCHAIN}-slim-bullseye as rust
 RUN rustup component add rustfmt clippy rls
 COPY --from=cargo-action-fmt /usr/local/bin/cargo-action-fmt /usr/local/cargo/bin/cargo-action-fmt
 COPY --from=cargo-deny /usr/local/bin/cargo-deny /usr/local/cargo/bin/cargo-deny
-COPY --from=just /usr/local/bin/just /usr/local/bin/just
 COPY --from=nextest /usr/local/bin/cargo-nextest /usr/local/cargo/bin/cargo-nextest
 
 FROM base as yq

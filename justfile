@@ -222,7 +222,7 @@ devcontainer-build-mode := "load"
 
 devcontainer-build tag:
     #!/usr/bin/env  bash
-    for tgt in "" go rust tools ; do
+    for tgt in "" tools ; do
         just devcontainer-build-mode={{ devcontainer-build-mode }} \
             _devcontainer-build {{ tag }} "${tgt}"
     done

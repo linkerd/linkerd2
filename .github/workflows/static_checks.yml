@@ -12,7 +12,7 @@ jobs:
     name: Go lint
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container: ghcr.io/linkerd/dev:v19-go
+    container: ghcr.io/linkerd/dev:v19-tools
     steps:
     - name: Checkout code
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
@@ -23,7 +23,7 @@ jobs:
     name: Go format
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container: ghcr.io/linkerd/dev:v19-go
+    container: ghcr.io/linkerd/dev:v19-tools
     steps:
     - name: Checkout code
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
@@ -34,7 +34,7 @@ jobs:
     name: Proto diff
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container: ghcr.io/linkerd/dev:v19-go
+    container: ghcr.io/linkerd/dev:v19-tools
     steps:
       - name: Prerequisites
         run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install unzip
