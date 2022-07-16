@@ -87,11 +87,11 @@ jobs:
 
     needs: [docker-build, integration-build]
     runs-on: ubuntu-20.04
-    container: ghcr.io/linkerd/dev:v19-tools
     timeout-minutes: 20
     env:
       LINKERD_DOCKER_REGISTRY: ghcr.io/linkerd
     steps:
+      - uses: ghcr.io/linkerd/dev:v19-tools
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: just test-cluster-k8s=${{ matrix.k8s }} test-cluster-create
       - run: kubectl version
