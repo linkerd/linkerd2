@@ -124,7 +124,18 @@ RUN chmod 777 $CARGO_HOME $RUSTUP_HOME
 
 COPY --from=yq /usr/local/bin/yq /usr/local/bin/yq
 
+##
+## CI: A container image that augments `tools` with docker that is run as root.
+##
+
+FROM tools as ci
+ENV DOCKER_BUILDKIT=1
+RUN scurl https://raw.githubusercontent.com/microsoft/vscode-dev-containers/main/script-library/docker-debian.sh \
+    | bash -s --  false /var/run/docker-host.sock /var/run/docker.sock none false latest && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 ENV PATH=/usr/local/cargo/bin:/usr/local/go/bin:/go/bin:$PATH
+ENTRYPOINT ["/usr/local/share/docker-init.sh"]
+CMD ["sleep", "infinity"]
 
 ##
 ## Runtime: For interactive development in a devcontainer.

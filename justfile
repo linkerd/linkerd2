@@ -190,6 +190,8 @@ _policy-test-uninstall:
 
 # Creates a k3d cluster that can be used for testing.
 test-cluster-create: && _test-cluster-api-ready _test-cluster-dns-ready
+    docker version
+    k3d version
     k3d cluster create {{ test-cluster-name }} \
         --image=+{{ test-cluster-k8s }} \
         --no-lb --k3s-arg "--no-deploy=local-storage,traefik,servicelb,metrics-server@server:*"
@@ -207,7 +209,6 @@ _test-cluster-api-ready:
         | sed 's|0\.0\.0\.0|localhost|')
     for i in {1..60} ; do
         if {{ _kubectl }} cluster-info >/dev/null ; then exit 0 ; fi
-        docker version
         just test-cluster-name={{ test-cluster-name }} test-cluster-info
         curl -kv "$url"
         sleep 1
@@ -239,7 +240,7 @@ devcontainer-build-mode := "load"
 
 devcontainer-build tag:
     #!/usr/bin/env  bash
-    for tgt in "" tools ; do
+    for tgt in "" ci tools ; do
         just devcontainer-build-mode={{ devcontainer-build-mode }} \
             _devcontainer-build {{ tag }} "${tgt}"
     done
