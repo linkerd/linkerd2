@@ -20,7 +20,8 @@ RUN scurl "https://raw.githubusercontent.com/rhysd/actionlint/v${ACTION_LINT_VER
 FROM base as cargo-action-fmt
 ARG CARGO_ACTION_FMT_VERSION=1.0.1
 RUN url="https://github.com/olix0r/cargo-action-fmt/releases/download/release%2Fv${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu" ; \
-    scurl -o /usr/local/bin/cargo-action-fmt "$url"
+    scurl -o /usr/local/bin/cargo-action-fmt "$url" && \
+    chmod 755 /usr/local/bin/cargo-action-fmt
 
 FROM base as cargo-deny
 ARG CARGO_DENY_VERSION=0.12.1
