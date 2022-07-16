@@ -2,11 +2,12 @@ name: Devcontainer
 
 # When a pull request is opened that changes the Devcontainer configuration,
 # ensure that the container continues to build properly.
-on:
-  pull_request:
-    paths:
-      - rust-toolchain
-      - .devcontainer/**
+on: [] # FIXME
+  # pull_request:
+  #   paths:
+  #     - rust-toolchain
+  #     - .devcontainer/**
+  #     - .github/workflows/devcontainer.yml
 
 permissions:
   contents: read
