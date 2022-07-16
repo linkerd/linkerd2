@@ -210,6 +210,7 @@ _test-cluster-api-ready:
     for i in {1..6} ; do
         if {{ _kubectl }} cluster-info >/dev/null ; then exit 0 ; fi
         docker ps
+        ss -lnt
         just test-cluster-name={{ test-cluster-name }} test-cluster-info
         curl -kv "$url"
         sleep 10

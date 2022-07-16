@@ -89,16 +89,17 @@ RUN scurl -o /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/downloa
 ##
 
 FROM base as tools
-RUN apt update && \
-    apt upgrade -y --autoremove && \
-    apt install -y \
+RUN apt update \
+    && apt upgrade -y --autoremove \
+    && apt install -y \
         clang \
         cmake \
+        iproute2 \
         libssl-dev \
         npm \
         pkg-config \
-        shellcheck  && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+        shellcheck \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN npm install markdownlint-cli2@0.4.0 --global
 
 COPY --from=actionlint /usr/local/bin/actionlint /usr/local/bin/actionlint
