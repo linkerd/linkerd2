@@ -20,16 +20,14 @@ env:
   PROTOC_NO_VENDOR: 1
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
+
 jobs:
   fmt:
     timeout-minutes: 5
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/linkerd/dev:v18
-      options: --user root
+    container: ghcr.io/linkerd/dev:v19-rust
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - run: rustup component add rustfmt
       - run: just rs-check-fmt
 
   audit:
@@ -51,12 +49,8 @@ jobs:
   clippy:
     timeout-minutes: 10
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/linkerd/dev:v18
-      options: --user root
+    container: ghcr.io/linkerd/dev:v19-rust
     steps:
-      - run: rustup component add clippy
-      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: just rs-fetch
       - run: just rs-clippy
@@ -65,11 +59,8 @@ jobs:
   check:
     timeout-minutes: 20
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/linkerd/dev:v18
-      options: --user root
+    container: ghcr.io/linkerd/dev:v19-rust
     steps:
-      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: just rs-fetch
       - run: just rs-check-dirs
@@ -78,11 +69,8 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    container:
-      image: ghcr.io/linkerd/dev:v18
-      options: --user root
+    container: ghcr.io/linkerd/dev:v19-rust
     steps:
-      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: just rs-fetch
       - run: just rs-test-build

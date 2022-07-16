@@ -36,8 +36,7 @@ jobs:
     name: Docker build (${{ matrix.component }})
     timeout-minutes: 30
     steps:
-      - name: Checkout code
-        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - uses: ./.github/actions/docker-build
         with:
           docker-registry: ghcr.io/linkerd
@@ -59,9 +58,7 @@ jobs:
   integration-build:
     name: Integration build
     runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/linkerd/dev:v18
-      options: --user root
+    container: ghcr.io/linkerd/dev:v19-rust
     timeout-minutes: 30
     steps:
       - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
@@ -91,14 +88,11 @@ jobs:
 
     needs: [docker-build, integration-build]
     runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/linkerd/dev:v18
-      options: --user root
+    container: ghcr.io/linkerd/dev:v19-tools
     timeout-minutes: 20
     env:
       LINKERD_DOCKER_REGISTRY: ghcr.io/linkerd
     steps:
-      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: just test-cluster-k8s=${{ matrix.k8s }} test-cluster-create
       - run: kubectl version
@@ -134,13 +128,12 @@ jobs:
           docker rm "$container_id"
       - run: linkerd check --pre --wait=1m
       - run: linkerd install --crds | kubectl apply -f -
-      - run: |
-          kubectl wait --for condition=established --timeout=60s crd \
-            authorizationpolicies.policy.linkerd.io \
-            meshtlsauthentications.policy.linkerd.io \
-            networkauthentications.policy.linkerd.io \
-            servers.policy.linkerd.io \
-            serverauthorizations.policy.linkerd.io
+      - run: kubectl wait --for condition=established --timeout=60s crd \
+                authorizationpolicies.policy.linkerd.io \
+                meshtlsauthentications.policy.linkerd.io \
+                networkauthentications.policy.linkerd.io \
+                servers.policy.linkerd.io \
+                serverauthorizations.policy.linkerd.io
       - run: linkerd install | kubectl apply -f -
       - run: linkerd check --wait=1m
 

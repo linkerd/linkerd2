@@ -14,9 +14,7 @@ jobs:
     runs-on: ubuntu-20.04
     name: Lint GitHub Actions
     timeout-minutes: 30
-    container
-      image: ghcr.io/linkerd/dev:v18
-      options: --user root
+    container: ghcr.io/linkerd/dev:v19-tools
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - name: Run actionlint
@@ -32,9 +30,7 @@ jobs:
   devcontainer-versions:
     runs-on: ubuntu-latest
     name: Check devcontainer versions
-    container:
-      image: ghcr.io/linkerd/dev:v18
-      options: --user root
+    container: ghcr.io/linkerd/dev:v19-tools
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - name: Scan workflows for other Devcontainer image versions
@@ -42,7 +38,7 @@ jobs:
           # Strip jsonc comments because `jq` doesn't support them.
           image=$(sed -E '/^\s*\/\/.*/d' .devcontainer/devcontainer.json |jq -Mr .image)
           for f in .github/workflows/* ; do
-            for i in $(yq '.jobs.*.container | .image // "" | match("ghcr.io/linkerd/dev:.*").string' < "$f") ; do
+            for i in $(yq '.jobs.* | .container.image // .container // "" | match("ghcr.io/linkerd/dev:v[0-9]+").string' < "$f") ; do
               if [ "$i" != "$image" ]; then
                 echo "::error file=$f::Workflow '$f' uses incorrect Devcontainer image '$i'"
                 exit 1
