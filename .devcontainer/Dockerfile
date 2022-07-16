@@ -124,6 +124,8 @@ RUN chmod 777 $CARGO_HOME $RUSTUP_HOME
 
 COPY --from=yq /usr/local/bin/yq /usr/local/bin/yq
 
+ENV PATH=/usr/local/cargo/bin:/usr/local/go/bin:/go/bin:$PATH
+
 ##
 ## CI: A container image that augments `tools` with docker that is run as root.
 ##
