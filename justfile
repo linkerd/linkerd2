@@ -211,6 +211,13 @@ _test-cluster-api-ready:
         if {{ _kubectl }} cluster-info >/dev/null ; then exit 0 ; fi
         docker ps
         ss -lnt
+        ports=$(ss -Htnl | awk '$4 ~ /^127.0.0.1:/ {gsub(/^127.0.0.1:/, "", $4); print $4 }')
+        for port in $ports ; do
+            echo "http://localhost:$port/version"
+            curl -kv http://localhost:$port/version ; done
+            echo "https://localhost:$port/version"
+            curl -kv https://localhost:$port/version ; done
+        done
         just test-cluster-name={{ test-cluster-name }} test-cluster-info
         curl -kv "$url"
         sleep 10
