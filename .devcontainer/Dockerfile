@@ -84,6 +84,10 @@ ARG YQ_VERSION=v4.25.1
 RUN scurl -o /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
     && chmod +x /usr/local/bin/yq
 
+##
+## Tools: Packages needed to build/test/lint the project.
+##
+
 FROM base as tools
 RUN apt update && \
     apt upgrade -y --autoremove && \
@@ -92,6 +96,7 @@ RUN apt update && \
         cmake \
         libssl-dev \
         npm \
+        pkg-config \
         shellcheck  && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN npm install markdownlint-cli2@0.4.0 --global
@@ -119,10 +124,10 @@ RUN chmod 777 $CARGO_HOME $RUSTUP_HOME
 
 COPY --from=yq /usr/local/bin/yq /usr/local/bin/yq
 
-ENV PATH=/usr/local/cargo/bin:/usr/local/go/bin:/go/bin::$PATH
+ENV PATH=/usr/local/cargo/bin:/usr/local/go/bin:/go/bin:$PATH
 
 ##
-## Runtime
+## Runtime: For interactive development in a devcontainer.
 ##
 
 FROM tools as runtime
@@ -156,7 +161,7 @@ RUN scurl https://raw.githubusercontent.com/microsoft/vscode-dev-containers/main
 USER $USER
 ENV USER=$USER
 ENV HOME=/home/$USER
-ENV PATH=/usr/local/cargo/bin:/usr/local/go/bin:/go/bin::$PATH
+ENV PATH=/usr/local/cargo/bin:/usr/local/go/bin:/go/bin:$PATH
 
 ENTRYPOINT ["/usr/local/share/docker-init.sh"]
 CMD ["sleep", "infinity"]
