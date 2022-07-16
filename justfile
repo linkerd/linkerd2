@@ -189,19 +189,36 @@ _policy-test-uninstall:
 ##
 
 # Creates a k3d cluster that can be used for testing.
-test-cluster-create: && _test-cluster-dns-ready
+test-cluster-create: && _test-cluster-api-ready _test-cluster-dns-ready
     k3d cluster create {{ test-cluster-name }} \
         --image=+{{ test-cluster-k8s }} \
         --no-lb --k3s-arg "--no-deploy=local-storage,traefik,servicelb,metrics-server@server:*"
-    while ! {{ _kubectl }} cluster-info >/dev/null ; do sleep 1 ; done
 
 # Deletes the test cluster.
 test-cluster-delete:
     k3d cluster delete {{ test-cluster-name }}
 
+# Wait for the cluster's API server to be accessible
+_test-cluster-api-ready:
+    #!/usr/bin/env bash
+    url=$(k3d kubeconfig get {{ test-cluster-name }} \
+        | yq '.clusters[] | .cluster.server' \
+        | head -n 1 \
+        | sed 's|0\.0\.0\.0|localhost|')
+    for i in {1..60} ; do
+        if {{ _kubectl }} cluster-info >/dev/null ; then exit 0 ; fi
+        docker version
+        just test-cluster-name={{ test-cluster-name }} test-cluster-info
+        curl -kv "$url"
+        sleep 1
+    done
+    exit 1
+
+test-cluster-info:
+    k3d cluster list {{ test-cluster-name }} -o json | jq .
+
 # Wait for the cluster's DNS pods to be ready.
 _test-cluster-dns-ready:
-    # Wait for the DNS pods to be ready.
     while [ $({{ _kubectl }} get po -n kube-system -l k8s-app=kube-dns -o json |jq '.items | length') = "0" ]; do sleep 1 ; done
     {{ _kubectl }} wait -n kube-system po -l k8s-app=kube-dns --for=condition=ready
 
