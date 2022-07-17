@@ -24,7 +24,27 @@ env:
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
+
+  debug-cluster-container:
+    runs-on: ubuntu-20.04
+    container: ghcr.io/linkerd/dev:v19-tools
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - run: just test-cluster-create
+
+  debug-cluster-raw:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: apt update && apt install -y cmake iproute2 libssl-dev pkg-config
+      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - run: bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/v5.4.4/install.sh" | bash
+      - run: just test-cluster-create
+
+  ## ######################################################################## ##
+
   docker-build:
+    needs: [debug-cluster-container, debug-cluster-raw]
     runs-on: ubuntu-20.04
     strategy:
       matrix:
@@ -56,6 +76,7 @@ jobs:
           path: /home/runner/archives
 
   integration-build:
+    needs: [debug-cluster-container, debug-cluster-raw]
     name: Integration build
     runs-on: ubuntu-20.04
     container: ghcr.io/linkerd/dev:v19-tools
@@ -78,6 +99,7 @@ jobs:
           path: /home/runner/archives
 
   integration:
+    needs: [docker-build, integration-build]
     strategy:
       matrix:
         k8s:
@@ -85,7 +107,6 @@ jobs:
           - v1.24
     name: Policy controller integration (k8s ${{ matrix.k8s }})
 
-    needs: [docker-build, integration-build]
     runs-on: ubuntu-20.04
     timeout-minutes: 20
     env:
