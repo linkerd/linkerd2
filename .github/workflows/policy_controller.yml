@@ -35,7 +35,7 @@ jobs:
   debug-cluster-raw:
     runs-on: ubuntu-20.04
     steps:
-      - run: apt update && apt install -y cmake iproute2 libssl-dev pkg-config
+      - run: sudo apt update && sudo apt install -y cmake iproute2 libssl-dev pkg-config
       - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/v5.4.4/install.sh" | bash
