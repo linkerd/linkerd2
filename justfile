@@ -205,6 +205,7 @@ _test-cluster-api-ready:
     #!/usr/bin/env bash
     docker ps
     ss -ltn
+    ip address show
     just test-cluster-name={{ test-cluster-name }} test-cluster-info
     url=$(k3d kubeconfig get {{ test-cluster-name }} \
         | yq '.clusters[] | .cluster.server' \
