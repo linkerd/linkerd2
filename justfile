@@ -203,15 +203,15 @@ test-cluster-delete:
 # Wait for the cluster's API server to be accessible
 _test-cluster-api-ready:
     #!/usr/bin/env bash
+    docker ps
+    ss -ltn
+    just test-cluster-name={{ test-cluster-name }} test-cluster-info
     url=$(k3d kubeconfig get {{ test-cluster-name }} \
         | yq '.clusters[] | .cluster.server' \
         | head -n 1 \
         | sed 's|0\.0\.0\.0|localhost|')
     for i in {1..6} ; do
         if {{ _kubectl }} cluster-info >/dev/null ; then exit 0 ; fi
-        docker ps
-        ss -lnt
-        just test-cluster-name={{ test-cluster-name }} test-cluster-info
         curl -kv "$url"
         for addr in $(ss -Htnl | awk '{ print $4; }') ; do
             curl -v http://$addr/version
