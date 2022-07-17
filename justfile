@@ -204,7 +204,7 @@ test-cluster-delete:
 _test-cluster-api-ready:
     #!/usr/bin/env bash
     docker ps
-    docker networks ls
+    docker network ls
     docker inspect k3d-{{ test-cluster-name }}
     ss -ltn
     ip address show
