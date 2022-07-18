@@ -107,7 +107,7 @@ async fn rejects_targets_other_namespace() {
 async fn accepts_targets_route() {
     admission::accepts(|ns| AuthorizationPolicy {
         metadata: api::ObjectMeta {
-            namespace: Some(ns.clone()),
+            namespace: Some(ns),
             name: Some("test".to_string()),
             ..Default::default()
         },

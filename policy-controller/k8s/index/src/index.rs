@@ -1143,7 +1143,9 @@ impl PolicyIndex {
                 }
                 authorization_policy::Target::Namespace => {}
                 authorization_policy::Target::HttpRoute(_) => {
-                    // Skip the policy if it targets an HttpRoute.
+                    // Policies which target HttpRoutes will be attached to
+                    // the route authorizations and should not be included in
+                    // the server authorizations.
                     continue;
                 }
             }
@@ -1183,21 +1185,20 @@ impl PolicyIndex {
     ) -> HashMap<AuthorizationRef, ClientAuthorization> {
         let mut authzs = HashMap::default();
 
-        for (name, spec) in self.authorization_policies.iter() {
+        for (name, spec) in &self.authorization_policies {
             // Skip the policy if it doesn't apply to the route.
-            if let authorization_policy::Target::HttpRoute(name) = &spec.target {
-                if name != route_name {
+            match &spec.target {
+                authorization_policy::Target::HttpRoute(n) if n == route_name => {}
+                _ => {
                     tracing::trace!(
                         ns = %self.namespace,
                         authorizationpolicy = %name,
                         route = %route_name,
-                        target = %name,
+                        target = ?spec.target,
                         "AuthorizationPolicy does not target HttpRoute",
                     );
                     continue;
                 }
-            } else {
-                continue;
             }
 
             tracing::trace!(
