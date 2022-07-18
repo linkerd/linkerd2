@@ -22,16 +22,29 @@ allow-osi-fsf-free = "neither"
 default = "deny"
 confidence-threshold = 0.8
 exceptions = [
-    { allow = ["ISC", "MIT", "OpenSSL"], name = "ring", version = "*" },
+    { allow = [
+        "ISC",
+        "MIT",
+        "OpenSSL",
+    ], name = "ring", version = "*" },
+
+    # The Unicode-DFS--2016 license is necessary for unicode-ident because they
+    # use data from the unicode tables to generate the tables which are
+    # included in the application. We do not distribute those data files so
+    # this is not a problem for us. See https://github.com/dtolnay/unicode-ident/pull/9/files
+    # for more details.
+    { allow = [
+        "MIT",
+        "Apache-2.0",
+        "Unicode-DFS-2016",
+    ], name = "unicode-ident" },
 ]
 
 [[licenses.clarify]]
 name = "ring"
 version = "*"
 expression = "MIT AND ISC AND OpenSSL"
-license-files = [
-    { path = "LICENSE", hash = 0xbd0eed23 },
-]
+license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
 
 [bans]
 multiple-versions = "deny"
@@ -52,4 +65,3 @@ allow-git = []
 
 [sources.allow-org]
 github = []
-
