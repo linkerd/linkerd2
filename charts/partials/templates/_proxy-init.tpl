@@ -1,10 +1,12 @@
 {{- define "partials.proxy-init" -}}
 args:
-{{- if not (eq .Values.proxyInit.iptablesMode "legacy") }}
+{{- if (eq .Values.proxyInit.iptablesMode "nft") }}
 - --firewall-bin-path
 - {{"iptables-nft" | quote}}
 - --firewall-save-bin-path
 - {{"iptables-nft-save" | quote}}
+{{- else if not (eq .Values.proxyInit.iptablesMode "legacy") }}
+{{ fail (printf "Unsupported value \"%s\" for proxyInit.iptablesMode\nValid values: [\"nft\", \"legacy\"]" .Values.proxyInit.iptablesMode) }}
 {{- end }}
 - --incoming-proxy-port
 - {{.Values.proxy.ports.inbound | quote}}
