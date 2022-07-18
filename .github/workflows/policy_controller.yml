@@ -1,5 +1,8 @@
 name: Policy Controller
 
+# TODO(ver) We should try to re-use the `just` tooling and, ideally,
+# the devcontainer image.
+
 on:
   pull_request:
     paths:
