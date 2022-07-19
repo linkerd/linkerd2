@@ -1,5 +1,6 @@
 mod annotation;
 mod authorization_policy;
+mod http_routes;
 mod server_authorization;
 
 use crate::{defaults::DefaultPolicy, index::*, server_authorization::ServerSelector, ClusterInfo};
@@ -23,7 +24,7 @@ fn pod_must_exist_for_lookup() {
     let test = TestConfig::default();
     test.index
         .write()
-        .pod_server_rx("ns-0", "pod-0", 8080)
+        .pod_server_rx("ns-0", "pod-0", 8080.try_into().unwrap())
         .expect_err("pod-0.ns-0 must not exist");
 }
 
@@ -195,6 +196,7 @@ impl TestConfig {
             protocol: ProxyProtocol::Detect {
                 timeout: self.detect_timeout,
             },
+            http_routes: HashMap::default(),
         }
     }
 

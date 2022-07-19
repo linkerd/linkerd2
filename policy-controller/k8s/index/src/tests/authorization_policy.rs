@@ -12,14 +12,14 @@ fn links_authorization_policy_with_mtls_name() {
     let mut rx = test
         .index
         .write()
-        .pod_server_rx("ns-0", "pod-0", 8080)
+        .pod_server_rx("ns-0", "pod-0", 8080.try_into().unwrap())
         .expect("pod-0.ns-0 should exist");
     assert_eq!(*rx.borrow_and_update(), test.default_server());
 
     test.index.write().apply(mk_server(
         "ns-0",
         "srv-8080",
-        Port::Number(8080),
+        Port::Number(8080.try_into().unwrap()),
         None,
         Some(("app", "app-0")),
         Some(k8s::policy::server::ProxyProtocol::Http1),
@@ -31,6 +31,7 @@ fn links_authorization_policy_with_mtls_name() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
         },
     );
 
@@ -84,6 +85,7 @@ fn links_authorization_policy_with_mtls_name() {
             .into_iter()
             .collect(),
             protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
         },
     );
 }
@@ -100,14 +102,14 @@ fn authorization_targets_namespace() {
     let mut rx = test
         .index
         .write()
-        .pod_server_rx("ns-0", "pod-0", 8080)
+        .pod_server_rx("ns-0", "pod-0", 8080.try_into().unwrap())
         .expect("pod-0.ns-0 should exist");
     assert_eq!(*rx.borrow_and_update(), test.default_server());
 
     test.index.write().apply(mk_server(
         "ns-0",
         "srv-8080",
-        Port::Number(8080),
+        Port::Number(8080.try_into().unwrap()),
         None,
         Some(("app", "app-0")),
         Some(k8s::policy::server::ProxyProtocol::Http1),
@@ -119,6 +121,7 @@ fn authorization_targets_namespace() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
         },
     );
 
@@ -172,6 +175,7 @@ fn authorization_targets_namespace() {
             .into_iter()
             .collect(),
             protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
         },
     );
 }
@@ -188,14 +192,14 @@ fn links_authorization_policy_with_service_account() {
     let mut rx = test
         .index
         .write()
-        .pod_server_rx("ns-0", "pod-0", 8080)
+        .pod_server_rx("ns-0", "pod-0", 8080.try_into().unwrap())
         .expect("pod-0.ns-0 should exist");
     assert_eq!(*rx.borrow_and_update(), test.default_server());
 
     test.index.write().apply(mk_server(
         "ns-0",
         "srv-8080",
-        Port::Number(8080),
+        Port::Number(8080.try_into().unwrap()),
         None,
         Some(("app", "app-0")),
         Some(k8s::policy::server::ProxyProtocol::Http1),
@@ -207,6 +211,7 @@ fn links_authorization_policy_with_service_account() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
         },
     );
 
@@ -254,6 +259,7 @@ fn links_authorization_policy_with_service_account() {
             .into_iter()
             .collect(),
             protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
         },
     );
 }

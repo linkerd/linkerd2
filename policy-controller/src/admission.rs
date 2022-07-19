@@ -160,7 +160,8 @@ where
     T::DynamicType: Default,
 {
     let dt = Default::default();
-    *req.kind.group == *T::group(&dt) && *req.kind.kind == *T::kind(&dt)
+    req.kind.group.eq_ignore_ascii_case(&*T::group(&dt))
+        && req.kind.kind.eq_ignore_ascii_case(&*T::kind(&dt))
 }
 
 fn json_response(rsp: AdmissionReview) -> Result<Response<Body>, Error> {
@@ -413,14 +414,22 @@ impl Validate<ServerAuthorizationSpec> for Admission {
 #[async_trait::async_trait]
 impl Validate<HttpRouteSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
-        // Only validate HttpRoutes which have a Server as a parent_ref.
-        if spec.inner.parent_refs.iter().flatten().any(|parent_ref| {
-            parent_ref.kind.as_deref() == Some("Server")
-                && parent_ref.group.as_deref() == Some("policy.linkerd.io")
-        }) {
-            for rule in spec.rules.iter().flatten() {
-                validate_http_route_rule(rule)?;
+        let targets_server = spec.inner.parent_refs.iter().flatten().any(|parent_ref| {
+            if let Some(p) = parent_ref.group.as_deref() {
+                if let Some(k) = parent_ref.kind.as_deref() {
+                    return p.eq_ignore_ascii_case("policy.linkerd.io")
+                        && k.eq_ignore_ascii_case("server");
+                }
             }
+            false
+        });
+        // Only validate HttpRoutes which have a Server as a parent_ref.
+        if !targets_server {
+            return Ok(());
+        }
+
+        for rule in spec.rules.iter().flatten() {
+            validate_http_route_rule(rule)?;
         }
 
         Ok(())
@@ -441,30 +450,14 @@ fn validate_http_route_rule(rule: &HttpRouteRule) -> Result<()> {
 }
 
 fn validate_http_route_filters(filters: &[HttpRouteFilter]) -> Result<()> {
-    // for filter in filters.iter() {
-    //     match filter {
-    //         HttpRouteFilter::ExtensionRef{ .. } => bail!("ExtensionRef filters are not supported"),
-    //         HttpRouteFilter::RequestHeaderModifier { .. } => bail!("RequestHeaderModifier filters are not supported"),
-    //         HttpRouteFilter::RequestMirror { .. } => bail!("RequestMirror filters are not supported"),
-    //         HttpRouteFilter::RequestRedirect { .. } => bail!("RequestRedirect filters are not supported"),
-    //         HttpRouteFilter::URLRewrite { .. } => bail!("URLRewrite filters are not supported"),
-    //     }
-    // }
-    // Since we don't support any filter types yet, we will always fail on the
-    // first filter. Once it becomes possible for this validation to pass, we
-    // should iterate through all filters, as in the commented-out code above.
-    if let Some(filter) = filters.iter().next() {
+    for filter in filters.iter() {
         match filter {
             HttpRouteFilter::ExtensionRef { .. } => bail!("ExtensionRef filters are not supported"),
-            HttpRouteFilter::RequestHeaderModifier { .. } => {
-                bail!("RequestHeaderModifier filters are not supported")
-            }
+            HttpRouteFilter::RequestHeaderModifier { .. } => {}
             HttpRouteFilter::RequestMirror { .. } => {
                 bail!("RequestMirror filters are not supported")
             }
-            HttpRouteFilter::RequestRedirect { .. } => {
-                bail!("RequestRedirect filters are not supported")
-            }
+            HttpRouteFilter::RequestRedirect { .. } => {}
             HttpRouteFilter::URLRewrite { .. } => bail!("URLRewrite filters are not supported"),
         }
     }

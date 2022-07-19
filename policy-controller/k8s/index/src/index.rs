@@ -7,18 +7,18 @@
 //! kubernetes resources.
 
 use crate::{
-    authorization_policy, defaults::DefaultPolicy, meshtls_authentication, network_authentication,
-    pod, server, server_authorization, ClusterInfo,
+    authorization_policy, defaults::DefaultPolicy, http_route::InboundRouteBinding,
+    meshtls_authentication, network_authentication, pod, server, server_authorization, ClusterInfo,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
-    AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer,
-    IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
+    AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundHttpRoute,
+    InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
-use std::{collections::hash_map::Entry, sync::Arc};
+use std::{collections::hash_map::Entry, num::NonZeroU16, sync::Arc};
 use tokio::sync::watch;
 use tracing::info_span;
 
@@ -110,6 +110,7 @@ struct PolicyIndex {
     server_authorizations: HashMap<String, server_authorization::ServerAuthz>,
 
     authorization_policies: HashMap<String, authorization_policy::Spec>,
+    http_routes: HashMap<String, InboundRouteBinding>,
 }
 
 #[derive(Debug, Default)]
@@ -146,7 +147,7 @@ impl Index {
         &mut self,
         namespace: &str,
         pod: &str,
-        port: u16,
+        port: NonZeroU16,
     ) -> Result<watch::Receiver<InboundServer>> {
         let ns = self
             .namespaces
@@ -609,6 +610,88 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
     }
 }
 
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
+    fn apply(&mut self, route: k8s_gateway_api::HttpRoute) {
+        let ns = route.namespace().expect("HttpRoute must have a namespace");
+        let name = route.name_unchecked();
+        let _span = info_span!("apply", %ns, %name).entered();
+
+        let route_binding = match route.try_into() {
+            Ok(binding) => binding,
+            Err(error) => {
+                tracing::info!(%ns, %name, %error, "Ignoring HTTPRoute");
+                return;
+            }
+        };
+
+        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_http_route(name, route_binding))
+    }
+
+    fn delete(&mut self, ns: String, name: String) {
+        let _span = info_span!("delete", %ns, %name).entered();
+        self.ns_with_reindex(ns, |ns| ns.policy.http_routes.remove(&name).is_some())
+    }
+
+    fn reset(
+        &mut self,
+        routes: Vec<k8s_gateway_api::HttpRoute>,
+        deleted: HashMap<String, HashSet<String>>,
+    ) {
+        let _span = info_span!("reset").entered();
+
+        // Aggregate all of the updates by namespace so that we only reindex
+        // once per namespace.
+        type Ns = NsUpdate<InboundRouteBinding>;
+        let mut updates_by_ns = HashMap::<String, Ns>::default();
+        for route in routes.into_iter() {
+            let namespace = route.namespace().expect("HttpRoute must be namespaced");
+            let name = route.name_unchecked();
+            let route_binding = match route.try_into() {
+                Ok(binding) => binding,
+                Err(error) => {
+                    tracing::info!(ns = %namespace, %name, %error, "Ignoring HTTPRoute");
+                    continue;
+                }
+            };
+            updates_by_ns
+                .entry(namespace)
+                .or_default()
+                .added
+                .push((name, route_binding));
+        }
+        for (ns, names) in deleted.into_iter() {
+            updates_by_ns.entry(ns).or_default().removed = names;
+        }
+
+        for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
+            if added.is_empty() {
+                // If there are no live resources in the namespace, we do not
+                // want to create a default namespace instance, we just want to
+                // clear out all resources for the namespace (and then drop the
+                // whole namespace, if necessary).
+                self.ns_with_reindex(namespace, |ns| {
+                    ns.policy.http_routes.clear();
+                    true
+                });
+            } else {
+                // Otherwise, we take greater care to reindex only when the
+                // state actually changed. The vast majority of resets will see
+                // no actual data change.
+                self.ns_or_default_with_reindex(namespace, |ns| {
+                    let mut changed = !removed.is_empty();
+                    for name in removed.into_iter() {
+                        ns.policy.http_routes.remove(&name);
+                    }
+                    for (name, route_binding) in added.into_iter() {
+                        changed = ns.policy.update_http_route(name, route_binding) || changed;
+                    }
+                    changed
+                });
+            }
+        }
+    }
+}
+
 // === impl NemspaceIndex ===
 
 impl NamespaceIndex {
@@ -670,6 +753,7 @@ impl Namespace {
                 servers: HashMap::default(),
                 server_authorizations: HashMap::default(),
                 authorization_policies: HashMap::default(),
+                http_routes: HashMap::default(),
             },
         }
     }
@@ -792,7 +876,7 @@ impl Pod {
     ///
     /// The name is used explicity (and not derived from the `server` itself) to
     /// ensure that we're not handling a default server.
-    fn update_server(&mut self, port: u16, name: &str, server: InboundServer) {
+    fn update_server(&mut self, port: NonZeroU16, name: &str, server: InboundServer) {
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
                 tracing::trace!(port = %port, server = %name, "Creating server");
@@ -830,7 +914,7 @@ impl Pod {
     }
 
     /// Updates a pod-port to use the given named server.
-    fn set_default_server(&mut self, port: u16, config: &ClusterInfo) {
+    fn set_default_server(&mut self, port: NonZeroU16, config: &ClusterInfo) {
         let server = Self::default_inbound_server(port, &self.meta.settings, config);
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
@@ -858,7 +942,7 @@ impl Pod {
     /// Enumerates ports.
     ///
     /// A named port may refer to an arbitrary number of port numbers.
-    fn select_ports(&mut self, port_ref: &Port) -> Vec<u16> {
+    fn select_ports(&mut self, port_ref: &Port) -> Vec<NonZeroU16> {
         match port_ref {
             Port::Number(p) => Some(*p).into_iter().collect(),
             Port::Name(name) => self
@@ -871,7 +955,11 @@ impl Pod {
         }
     }
 
-    fn port_server_or_default(&mut self, port: u16, config: &ClusterInfo) -> &mut PodPortServer {
+    fn port_server_or_default(
+        &mut self,
+        port: NonZeroU16,
+        config: &ClusterInfo,
+    ) -> &mut PodPortServer {
         match self.port_servers.entry(port) {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => {
@@ -886,7 +974,7 @@ impl Pod {
     }
 
     fn default_inbound_server(
-        port: u16,
+        port: NonZeroU16,
         settings: &pod::Settings,
         config: &ClusterInfo,
     ) -> InboundServer {
@@ -941,6 +1029,7 @@ impl Pod {
             reference: ServerRef::Default(policy.to_string()),
             protocol,
             authorizations,
+            http_routes: HashMap::default(),
         }
     }
 }
@@ -1015,10 +1104,13 @@ impl PolicyIndex {
     ) -> InboundServer {
         tracing::trace!(%name, ?server, "Creating inbound server");
         let authorizations = self.client_authzs(&name, server, authentications);
+        let routes = self.http_routes(&name);
+
         InboundServer {
             reference: ServerRef::Server(name),
             authorizations,
             protocol: server.protocol.clone(),
+            http_routes: routes,
         }
     }
 
@@ -1082,6 +1174,14 @@ impl PolicyIndex {
         }
 
         authzs
+    }
+
+    fn http_routes(&self, server_name: &str) -> HashMap<String, InboundHttpRoute> {
+        self.http_routes
+            .iter()
+            .filter(|(_, route)| route.selects_server(server_name))
+            .map(|(name, route)| (name.clone(), route.route.clone()))
+            .collect()
     }
 
     fn policy_client_authz(
@@ -1187,6 +1287,21 @@ impl PolicyIndex {
                 ]
             }),
         })
+    }
+
+    fn update_http_route(&mut self, name: String, route: InboundRouteBinding) -> bool {
+        match self.http_routes.entry(name) {
+            Entry::Vacant(entry) => {
+                entry.insert(route);
+            }
+            Entry::Occupied(mut entry) => {
+                if *entry.get() == route {
+                    return false;
+                }
+                entry.insert(route);
+            }
+        }
+        true
     }
 }
 

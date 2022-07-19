@@ -1,8 +1,8 @@
 ARG GO_VERSION=1.17
-ARG RUST_TOOLCHAIN=1.60.0
+ARG RUST_TOOLCHAIN=1.62.0
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as go
-ARG GOLANGCI_LINT_VERSION=v1.44.2
+ARG GOLANGCI_LINT_VERSION=v1.46.2
 RUN for p in \
     github.com/uudashr/gopkgs/v2/cmd/gopkgs@latest \
     github.com/ramya-rao-a/go-outline@latest \
@@ -36,18 +36,18 @@ RUN scurl -vo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSIO
     && chmod 755 /usr/local/bin/kubectl
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as k3d
-ARG K3D_VERSION=v5.4.3
+ARG K3D_VERSION=v5.4.4
 COPY bin/scurl /usr/local/bin/scurl
 RUN scurl -v https://raw.githubusercontent.com/rancher/k3d/$K3D_VERSION/install.sh \
     | USE_SUDO=false K3D_INSTALL_DIR=/usr/local/bin bash
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as just
-ARG JUST_VERSION=1.1.3
+ARG JUST_VERSION=1.2.0
 RUN curl --proto '=https' --tlsv1.3 -vsSfL "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
     | tar zvxf - -C /usr/local/bin just
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as nextest
-ARG NEXTEST_VERSION=0.9.14
+ARG NEXTEST_VERSION=0.9.24
 RUN curl --proto '=https' --tlsv1.3 -vsSfL "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${NEXTEST_VERSION}/cargo-nextest-${NEXTEST_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
     | tar zvxf - -C /usr/local/bin cargo-nextest
 

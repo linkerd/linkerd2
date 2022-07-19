@@ -25,6 +25,7 @@
 
 pub mod authorization_policy;
 mod defaults;
+mod http_route;
 mod index;
 mod meshtls_authentication;
 mod network_authentication;
