@@ -112,6 +112,7 @@ type (
 		Await                         bool             `json:"await"`
 		DefaultInboundPolicy          string           `json:"defaultInboundPolicy"`
 		AccessLog                     string           `json:"accessLog"`
+		ShutdownGracePeriod           string           `json:"shutdownGracePeriod"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container

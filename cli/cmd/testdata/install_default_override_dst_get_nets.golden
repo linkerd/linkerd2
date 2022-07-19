@@ -562,6 +562,7 @@ data:
           limit: ""
           request: ""
       saMountPath: null
+      shutdownGracePeriod: ""
       uid: 2102
       waitBeforeExitSeconds: 0
     proxyContainerName: linkerd-proxy
@@ -735,7 +736,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - identity
@@ -1081,7 +1082,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - env:
         - name: _pod_name
@@ -1450,7 +1451,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - env:
         - name: _pod_name

@@ -47,6 +47,7 @@ type InjectValidator struct {
 	InboundConnectTimeout   string
 	WaitBeforeExitSeconds   int
 	SkipSubnets             string
+	ShutdownGracePeriod     string
 }
 
 func (iv *InjectValidator) getContainer(pod *v1.PodSpec, name string, isInit bool) *v1.Container {
@@ -296,6 +297,12 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 		actual := strings.Join(proxyContainer.Lifecycle.PreStop.Exec.Command, ",")
 		if expectedCmd != strings.Join(proxyContainer.Lifecycle.PreStop.Exec.Command, ",") {
 			return fmt.Errorf("preStopHook: expected %s, actual %s", expectedCmd, actual)
+		}
+	}
+
+	if iv.ShutdownGracePeriod != "" {
+		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_SHUTDOWN_GRACE_PERIOD", iv.ShutdownGracePeriod); err != nil {
+			return err
 		}
 	}
 
@@ -555,6 +562,11 @@ func (iv *InjectValidator) GetFlagsAndAnnotations() ([]string, map[string]string
 	if iv.SkipSubnets != "" {
 		annotations[k8s.ProxySkipSubnetsAnnotation] = iv.SkipSubnets
 		flags = append(flags, fmt.Sprintf("--skip-subnets=%s", iv.SkipSubnets))
+	}
+
+	if iv.ShutdownGracePeriod != "" {
+		annotations[k8s.ProxyShutdownGracePeriodAnnotation] = iv.ShutdownGracePeriod
+		flags = append(flags, fmt.Sprintf("--shutdown-grace-period=%s", iv.ShutdownGracePeriod))
 	}
 
 	return flags, annotations

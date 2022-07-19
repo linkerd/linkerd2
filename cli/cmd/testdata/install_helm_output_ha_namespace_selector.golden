@@ -44,7 +44,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  
+
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -98,7 +98,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-destination
-  
+
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -237,7 +237,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-heartbeat
-  
+
   labels:
     linkerd.io/control-plane-ns: linkerd-dev
 rules:
@@ -250,7 +250,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-heartbeat
-  
+
   labels:
     linkerd.io/control-plane-ns: linkerd-dev
 roleRef:
@@ -295,7 +295,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-heartbeat
-  
+
   labels:
     linkerd.io/control-plane-component: heartbeat
     linkerd.io/control-plane-ns: linkerd-dev
@@ -350,7 +350,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  
+
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd-dev
@@ -395,7 +395,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-config
-  
+
   labels:
     linkerd.io/control-plane-component: controller
     linkerd.io/control-plane-ns: linkerd-dev
@@ -560,6 +560,7 @@ data:
           limit: 250Mi
           request: 20Mi
       saMountPath: null
+      shutdownGracePeriod: ""
       uid: 2102
       waitBeforeExitSeconds: 0
     proxyContainerName: linkerd-proxy
@@ -630,7 +631,7 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-identity-issuer
-  
+
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -644,7 +645,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-identity-trust-roots
-  
+
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -658,7 +659,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  
+
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -677,7 +678,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-identity-headless
-  
+
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -696,7 +697,7 @@ kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
 metadata:
   name: linkerd-identity
-  
+
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -720,7 +721,7 @@ metadata:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
   name: linkerd-identity
-  
+
 spec:
   replicas: 3
   selector:
@@ -995,7 +996,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst
-  
+
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -1014,7 +1015,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst-headless
-  
+
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -1033,7 +1034,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator
-  
+
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -1052,7 +1053,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-policy
-  
+
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -1071,7 +1072,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-policy-validator
-  
+
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -1090,7 +1091,7 @@ kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
 metadata:
   name: linkerd-dst
-  
+
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -1114,7 +1115,7 @@ metadata:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
   name: linkerd-destination
-  
+
 spec:
   replicas: 3
   selector:
@@ -1458,7 +1459,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: linkerd-heartbeat
-  
+
   labels:
     app.kubernetes.io/name: heartbeat
     app.kubernetes.io/part-of: Linkerd
@@ -1525,7 +1526,7 @@ metadata:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd-dev
   name: linkerd-proxy-injector
-  
+
 spec:
   replicas: 3
   selector:
@@ -1798,7 +1799,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  
+
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd-dev
@@ -1818,7 +1819,7 @@ kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
 metadata:
   name: linkerd-proxy-injector
-  
+
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd-dev
