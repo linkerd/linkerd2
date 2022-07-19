@@ -219,6 +219,7 @@ Kubernetes: `>=1.21.0-0`
 | proxy.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the proxy requests |
 | proxy.resources.memory.limit | string | `""` | Maximum amount of memory that the proxy can use |
 | proxy.resources.memory.request | string | `""` | Maximum amount of memory that the proxy requests |
+| proxy.shutdownGracePeriod | string | `""` | Grace period for graceful proxy shutdowns. If this timeout elapses before all open connections have completed, the proxy will terminate forcefully, closing any remaining connections. |
 | proxy.uid | int | `2102` | User id under which the proxy runs |
 | proxy.waitBeforeExitSeconds | int | `0` | If set the proxy sidecar will stay alive for at least the given period before receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. See [Lifecycle hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks) for more info on container lifecycle hooks. |
 | proxyInit.closeWaitTimeoutSecs | int | `0` |  |
