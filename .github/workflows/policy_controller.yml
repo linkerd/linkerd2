@@ -79,7 +79,7 @@ jobs:
           bin/scurl -L https://get.nexte.st/latest/linux | tar xzf - -C /usr/local/bin
           cargo version
           cargo nextest --version
-      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
+      - uses: olix0r/cargo-action-fmt@ed3530f0739c46ffa0dd983f8746b8c4a3d0a01c
 
       - run: mkdir target
       - run: cargo fetch --locked
@@ -123,7 +123,7 @@ jobs:
           bin/scurl -L https://get.nexte.st/latest/linux | tar xzf - -C /usr/local/bin
           cargo version
           cargo nextest --version
-      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
+      - uses: olix0r/cargo-action-fmt@ed3530f0739c46ffa0dd983f8746b8c4a3d0a01c
 
       - run: bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
       - run: k3d --version
