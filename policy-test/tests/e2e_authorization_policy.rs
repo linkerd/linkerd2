@@ -86,15 +86,21 @@ async fn targets_route() {
         );
 
         let curl = curl::Runner::init(&client, &ns).await;
-        let (allowed, denied) = tokio::join!(
+        let (allowed, denied, unauth) = tokio::join!(
             curl.run(
                 "curl-allowed",
                 "http://nginx/allowed",
                 LinkerdInject::Enabled
             ),
             curl.run("curl-denied", "http://nginx/denied", LinkerdInject::Enabled),
+            curl.run(
+                "curl-unauth",
+                "http://nginx/allowed",
+                LinkerdInject::Disabled
+            )
         );
-        let (allowed_status, denied_status) = tokio::join!(allowed.exit_code(), denied.exit_code());
+        let (allowed_status, denied_status, unauth_status) =
+            tokio::join!(allowed.exit_code(), denied.exit_code(), unauth.exit_code());
         assert_eq!(
             allowed_status, 0,
             "curling allowed route must contact nginx"
@@ -102,6 +108,10 @@ async fn targets_route() {
         assert_ne!(
             denied_status, 0,
             "curl which does not match route must not contact nginx"
+        );
+        assert_ne!(
+            unauth_status, 0,
+            "curl which is not authenticated must not contact nginx"
         );
     })
     .await;
