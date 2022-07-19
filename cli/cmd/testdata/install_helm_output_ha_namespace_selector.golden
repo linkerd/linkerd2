@@ -560,6 +560,7 @@ data:
           limit: 250Mi
           request: 20Mi
       saMountPath: null
+      shutdownGracePeriod: ""
       uid: 2102
       waitBeforeExitSeconds: 0
     proxyContainerName: linkerd-proxy
