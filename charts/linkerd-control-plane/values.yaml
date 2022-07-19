@@ -170,6 +170,8 @@ proxy:
   # - ElasticSearch (9300) server-first
   # - Memcached (11211) clients do not issue any preamble, which breaks detection
   opaquePorts: "25,587,3306,4444,5432,6379,9300,11211"
+  # -- Grace period for graceful proxy shutdowns. If this timeout elapses before all open connections have completed, the proxy will terminate forcefully, closing any remaining connections.
+  shutdownGracePeriod: ""
 
 # proxy-init configuration
 proxyInit:
