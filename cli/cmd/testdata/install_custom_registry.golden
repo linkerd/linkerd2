@@ -573,12 +573,8 @@ data:
       image:
         name: my.custom.registry/linkerd-io/proxy-init
         pullPolicy: ""
-<<<<<<< HEAD
-        version: v1.5.3
-      iptablesMode: nft
-=======
         version: v1.6.1
->>>>>>> e8ee25e50508963e06734b9cc797fdae0cd834f2
+      iptablesMode: nft
       logFormat: ""
       logLevel: ""
       resources:
