@@ -13,7 +13,7 @@ image-tag := `bin/root-tag`
 linkerd := "bin/linkerd"
 
 _ctx := "--context=k3d-" + test-cluster-name
-_linkerd :=  linkerd + " " + _ctx
+_linkerd := linkerd + " " + _ctx
 _kubectl := "kubectl " + _ctx
 
 # The Kubernetes version to use for the test cluster. E.g. 'v1.24', 'latest', etc
