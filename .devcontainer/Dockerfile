@@ -55,21 +55,31 @@ ARG NEXTEST_VERSION=0.9.24
 RUN url="https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${NEXTEST_VERSION}/cargo-nextest-${NEXTEST_VERSION}-x86_64-unknown-linux-gnu.tar.gz" ; \
     scurl "$url" | tar zvxf - -C /usr/local/bin cargo-nextest
 
+FROM base as cargo-tarpaulin
+ARG CARGO_TARPAULIN_VERSION=0.20.1
+RUN url="https://github.com/xd009642/tarpaulin/releases/download/${CARGO_TARPAULIN_VERSION}/cargo-tarpaulin-${CARGO_TARPAULIN_VERSION}-travis.tar.gz" ; \
+    scurl "$url" | tar xzvf - -C /usr/local/bin cargo-tarpaulin
+
 FROM docker.io/rust:${RUST_TOOLCHAIN}-slim-bullseye as rust
 RUN rustup component add clippy rls rustfmt
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
         clang \
         cmake \
+        curl \
         git \
+        jo \
+        jq \
         libssl-dev \
         pkg-config \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 COPY --from=cargo-action-fmt /usr/local/bin/cargo-action-fmt /usr/local/cargo/bin/cargo-action-fmt
 COPY --from=cargo-deny /usr/local/bin/cargo-deny /usr/local/cargo/bin/cargo-deny
 COPY --from=cargo-nextest /usr/local/bin/cargo-nextest /usr/local/cargo/bin/cargo-nextest
+COPY --from=cargo-tarpaulin /usr/local/bin/cargo-tarpaulin /usr/local/cargo/bin/cargo-tarpaulin
 COPY --from=just /usr/local/bin/just /usr/local/bin/just
 COPY --from=yq /usr/local/bin/yq /usr/local/bin/yq
+COPY bin/scurl /usr/local/bin/scurl
 ENV USER=root
 
 ##
@@ -91,6 +101,7 @@ RUN for p in \
     ; do go install "$p" ; done
 ARG GOLANGCI_LINT_VERSION=v1.46.2
 RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}
+COPY bin/scurl /usr/local/bin/scurl
 
 ENV PROTOC_NO_VENDOR=1
 ENV PROTOC=/usr/local/bin/protoc
