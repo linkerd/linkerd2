@@ -41,7 +41,7 @@ RUN url="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linu
 ##
 
 FROM base as cargo-action-fmt
-ARG CARGO_ACTION_FMT_VERSION=1.0.1
+ARG CARGO_ACTION_FMT_VERSION=1.0.2
 RUN url="https://github.com/olix0r/cargo-action-fmt/releases/download/release%2Fv${CARGO_ACTION_FMT_VERSION}/cargo-action-fmt-x86_64-unknown-linux-gnu" ; \
     scurl -o /usr/local/bin/cargo-action-fmt "$url" && chmod +x /usr/local/bin/cargo-action-fmt
 
@@ -101,15 +101,19 @@ COPY --from=protoc /usr/local/bin/protoc $PROTOC
 ##
 
 FROM base as k8s
+
 ARG KUBECTL_VERSION=v1.24.2
 RUN url="https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" ; \
     scurl -o /usr/local/bin/kubectl "$url" && chmod +x /usr/local/bin/kubectl
+
 ARG K3D_VERSION=v5.4.4
 RUN url="https://raw.githubusercontent.com/rancher/k3d/$K3D_VERSION/install.sh" ; \
     scurl "$url" | USE_SUDO=false K3D_INSTALL_DIR=/usr/local/bin bash
+
 ARG HELM_VERSION=v3.9.1
 RUN url="https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" ; \
     scurl "$url" | tar xzvf - --strip-components=1 -C /usr/local/bin linux-amd64/helm
+
 ARG HELM_DOCS_VERSION=v1.11.0
 RUN url="https://github.com/norwoodj/helm-docs/releases/download/$HELM_DOCS_VERSION/helm-docs_${HELM_DOCS_VERSION#v}_Linux_x86_64.tar.gz" ; \
     scurl "$url" | tar xzvf - -C /usr/local/bin helm-docs
@@ -163,14 +167,6 @@ RUN sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && locale-gen
 RUN (echo "LC_ALL=en_US.UTF-8" \
     && echo "LANGUAGE=en_US.UTF-8") >/etc/default/locale
 
-ENV DOCKER_BUILDKIT=1
-RUN groupadd --gid=1000 code \
-    && useradd --create-home --uid=1000 --gid=1000 code \
-    && echo "code ALL=(root) NOPASSWD:ALL" >/etc/sudoers.d/code \
-    && chmod 0440 /etc/sudoers.d/code \
-    && scurl https://raw.githubusercontent.com/microsoft/vscode-dev-containers/main/script-library/docker-debian.sh | bash -s \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
-
 ARG MARKDOWNLINT_VERSION=0.4.0
 RUN npm install "markdownlint-cli2@${MARKDOWNLINT_VERSION}" --global
 
@@ -185,7 +181,6 @@ COPY --from=rust $CARGO_HOME $CARGO_HOME
 COPY --from=rust $RUSTUP_HOME $RUSTUP_HOME
 ENV PATH=$CARGO_HOME/bin:$PATH
 RUN rustup component add rust-analysis rust-std
-RUN chmod 777 $CARGO_HOME $RUSTUP_HOME
 
 ENV PROTOC_NO_VENDOR=1
 ENV PROTOC=/usr/local/bin/protoc
@@ -206,6 +201,16 @@ COPY --from=yq /usr/local/bin/yq /usr/local/bin/yq
 ##
 
 FROM tools as runtime
+
+ENV DOCKER_BUILDKIT=1
+RUN groupadd --gid=1000 code \
+    && useradd --create-home --uid=1000 --gid=1000 code \
+    && echo "code ALL=(root) NOPASSWD:ALL" >/etc/sudoers.d/code \
+    && chmod 0440 /etc/sudoers.d/code \
+    && scurl https://raw.githubusercontent.com/microsoft/vscode-dev-containers/main/script-library/docker-debian.sh | bash -s \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN chmod 777 $CARGO_HOME $RUSTUP_HOME
 ENV USER=code
 ENV HOME=/home/code
 USER code
