@@ -185,5 +185,3 @@ jobs:
       # Run the tests. We disable parallelism to avoid spurious timeouts caused
       # by resource contention.
       - run: cargo nextest run --cargo-metadata=target/metadata.json --binaries-metadata=target/nextest.json --test-threads=1
-        env:
-          NEXTEST_EXPERIMENTAL_REUSE_BUILD: 1

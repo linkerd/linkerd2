@@ -21,16 +21,14 @@ env:
   PROTOC_NO_VENDOR: 1
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
+
 jobs:
   fmt:
     timeout-minutes: 5
     runs-on: ubuntu-latest
-    container:
-      image: docker://rust:1.62.0
+    container: ghcr.io/linkerd/dev:v19-rust
     steps:
-      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - run: rustup component add rustfmt
       - run: just rs-check-fmt
 
   audit:
@@ -52,24 +50,18 @@ jobs:
   clippy:
     timeout-minutes: 10
     runs-on: ubuntu-latest
-    container:
-      image: docker://rust:1.62.0
+    container: ghcr.io/linkerd/dev:v19-rust
     steps:
-      - run: rustup component add clippy
-      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
-      - uses: olix0r/cargo-action-fmt@ed3530f0739c46ffa0dd983f8746b8c4a3d0a01c
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: just rs-fetch
       - run: just rs-clippy
+      - run: just rs-doc --no-deps
 
   check:
     timeout-minutes: 20
     runs-on: ubuntu-latest
-    container:
-      image: docker://rust:1.62.0
+    container: ghcr.io/linkerd/dev:v19-rust
     steps:
-      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
-      - uses: olix0r/cargo-action-fmt@ed3530f0739c46ffa0dd983f8746b8c4a3d0a01c
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: just rs-fetch
       - run: just rs-check-dirs
@@ -78,11 +70,8 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    container:
-      image: docker://rust:1.62.0
+    container: ghcr.io/linkerd/dev:v19-rust
     steps:
-      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
-      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: just rs-fetch
       - run: just rs-test-build

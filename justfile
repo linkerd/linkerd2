@@ -100,6 +100,7 @@ rs-test *flags:
 # Check each crate independently to ensure its Cargo.toml is sufficient.
 rs-check-dirs:
     #!/usr/bin/env bash
+    set -euo pipefail
     for toml in $(find . -mindepth 2 -name Cargo.toml | sort -r); do
         d=${toml%/*}
         echo "cd $d && {{ _cargo }} check"
@@ -211,6 +212,7 @@ test-cluster-delete:
 # Wait for the cluster's API server to be accessible
 _test-cluster-api-ready:
     #!/usr/bin/env bash
+    set -euo pipefail
     for i in {1..6} ; do
         if {{ _kubectl }} cluster-info >/dev/null ; then exit 0 ; fi
         sleep 10
@@ -229,6 +231,7 @@ _test-cluster-dns-ready:
 # Ensures the test cluster already exists
 _test-cluster-exists: && _test-cluster-dns-ready
     #!/usr/bin/env bash
+    set -euo pipefail
     if ! k3d cluster list {{ test-cluster-name }} >/dev/null 2>/dev/null; then
         just test-cluster-name={{ test-cluster-name }} \
             test-cluster-k8s={{ test-cluster-k8s }} \
@@ -237,6 +240,28 @@ _test-cluster-exists: && _test-cluster-dns-ready
     k3d kubeconfig merge l5d-test \
         --kubeconfig-merge-default \
         --kubeconfig-switch-context=false
+
+##
+## Devcontaine
+##
+
+devcontainer-build-mode := "load"
+
+devcontainer-build tag:
+    #!/usr/bin/env  bash
+    set -euo pipefail
+    for tgt in "" actionlint go rust shellcheck yq ; do
+        just devcontainer-build-mode={{ devcontainer-build-mode }} \
+            _devcontainer-build {{ tag }} "${tgt}"
+    done
+
+_devcontainer-build tag target='':
+    docker buildx build . \
+        --file=.devcontainer/Dockerfile \
+        --tag="ghcr.io/linkerd/dev:{{ tag }}{{ if target != "" { "-" + target }  else { "" } }}" \
+        --progress=plain \
+        {{ if target != "" { "--target=" + target } else { "" } }} \
+        {{ if devcontainer-build-mode == "push" { "--push" } else { "--load" } }}
 
 ##
 ## Git

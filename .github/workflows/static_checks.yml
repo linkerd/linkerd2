@@ -12,9 +12,7 @@ jobs:
     name: Go lint
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/linkerd/dev:v7
-      options: --user root
+    container: ghcr.io/linkerd/dev:v19-go
     steps:
     - name: Checkout code
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
@@ -25,8 +23,7 @@ jobs:
     name: Go format
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container:
-      image: golang:1.17
+    container: ghcr.io/linkerd/dev:v19-go
     steps:
     - name: Checkout code
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
@@ -37,8 +34,7 @@ jobs:
     name: Proto diff
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container:
-      image: golang:1.17
+    container: ghcr.io/linkerd/dev:v19-go
     steps:
       - name: Prerequisites
         run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install unzip
@@ -51,14 +47,12 @@ jobs:
     name: shellcheck
     timeout-minutes: 10
     runs-on: ubuntu-20.04
+    container: ghcr.io/linkerd/dev:v19-shellcheck
     steps:
-    - name: Checkout code
-      uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-    - name: shellcheck
-      # For more information on shellcheck failures:
-      # https://github.com/koalaman/shellcheck/wiki/Checks
-      run: |
-        bin/shellcheck-all
+    - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+    # For more information on shellcheck failures:
+    # https://github.com/koalaman/shellcheck/wiki/Checks
+    - run: bin/shellcheck-all
 
   psscript-analyzer:
     name: PSScriptAnalyzer
