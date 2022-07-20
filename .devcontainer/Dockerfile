@@ -118,6 +118,11 @@ RUN url="https://github.com/norwoodj/helm-docs/releases/download/$HELM_DOCS_VERS
 ## Other tools
 ##
 
+FROM base as checksec
+ARG CHECKSEC_VERSION=2.5.0
+RUN url="https://raw.githubusercontent.com/slimm609/checksec.sh/${CHECKSEC_VERSION}/checksec" ; \
+    scurl -o /usr/local/bin/checksec "$url" && chmod 755 /usr/local/bin/checksec
+
 FROM base as shellcheck
 ARG SHELLCHECK_VERSION=v0.8.0
 RUN url="https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" ; \
@@ -129,10 +134,10 @@ RUN url="https://github.com/rhysd/actionlint/releases/download/${ACTIONLINT_VERS
     scurl "$url" | tar xzvf - -C /usr/local/bin actionlint
 
 ##
-## Runtime: For interactive development in a devcontainer.
+## Tools: Everything needed for a development environment, minus non-root settings.
 ##
 
-FROM docker.io/debian:bullseye as runtime
+FROM docker.io/debian:bullseye as tools
 
 COPY bin/scurl /usr/local/bin/scurl
 RUN apt update && apt upgrade -y --autoremove \
@@ -142,6 +147,7 @@ RUN apt update && apt upgrade -y --autoremove \
         cmake \
         file \
         iproute2 \
+        jo \
         jq \
         libssl-dev \
         locales \
@@ -157,14 +163,11 @@ RUN sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && locale-gen
 RUN (echo "LC_ALL=en_US.UTF-8" \
     && echo "LANGUAGE=en_US.UTF-8") >/etc/default/locale
 
-ARG USER=code
-ARG USER_UID=1000
-ARG USER_GID=1000
 ENV DOCKER_BUILDKIT=1
-RUN groupadd --gid=$USER_GID $USER \
-    && useradd --create-home --uid="$USER_UID" --gid="$USER_GID" "$USER" \
-    && echo "$USER ALL=(root) NOPASSWD:ALL" >/etc/sudoers.d/$USER \
-    && chmod 0440 /etc/sudoers.d/$USER \
+RUN groupadd --gid=1000 code \
+    && useradd --create-home --uid=1000 --gid=1000 code \
+    && echo "code ALL=(root) NOPASSWD:ALL" >/etc/sudoers.d/code \
+    && chmod 0440 /etc/sudoers.d/code \
     && scurl https://raw.githubusercontent.com/microsoft/vscode-dev-containers/main/script-library/docker-debian.sh | bash -s \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -180,14 +183,16 @@ ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup
 COPY --from=rust $CARGO_HOME $CARGO_HOME
 COPY --from=rust $RUSTUP_HOME $RUSTUP_HOME
-RUN chmod 777 $CARGO_HOME $RUSTUP_HOME
 ENV PATH=$CARGO_HOME/bin:$PATH
+RUN rustup component add rust-analysis rust-std
+RUN chmod 777 $CARGO_HOME $RUSTUP_HOME
 
 ENV PROTOC_NO_VENDOR=1
 ENV PROTOC=/usr/local/bin/protoc
 COPY --from=protoc /usr/local/bin/protoc $PROTOC
 
 COPY --from=actionlint /usr/local/bin/actionlint /usr/local/bin/actionlint
+COPY --from=checksec /usr/local/bin/checksec /usr/local/bin/checksec
 COPY --from=just /usr/local/bin/just /usr/local/bin/just
 COPY --from=k8s /usr/local/bin/helm /usr/local/bin/helm
 COPY --from=k8s /usr/local/bin/helm-docs /usr/local/bin/helm-docs
@@ -196,9 +201,14 @@ COPY --from=k8s /usr/local/bin/kubectl /usr/local/bin/kubectl
 COPY --from=shellcheck /usr/local/bin/shellcheck /usr/local/bin/shellcheck
 COPY --from=yq /usr/local/bin/yq /usr/local/bin/yq
 
-ENV USER=$USER
-ENV HOME=/home/$USER
-USER $USER
+##
+## Runtime
+##
+
+FROM tools as runtime
+ENV USER=code
+ENV HOME=/home/code
+USER code
 
 ENTRYPOINT ["/usr/local/share/docker-init.sh"]
 CMD ["sleep", "infinity"]

@@ -248,19 +248,19 @@ _test-cluster-exists: && _test-cluster-dns-ready
 devcontainer-build-mode := "load"
 
 devcontainer-build tag:
-    #!/usr/bin/env  bash
+    #!/usr/bin/env bash
     set -euo pipefail
-    for tgt in "" actionlint go rust shellcheck yq ; do
+    for tgt in actionlint tools go rust shellcheck yq runtime ; do
         just devcontainer-build-mode={{ devcontainer-build-mode }} \
             _devcontainer-build {{ tag }} "${tgt}"
     done
 
 _devcontainer-build tag target='':
     docker buildx build . \
-        --file=.devcontainer/Dockerfile \
-        --tag="ghcr.io/linkerd/dev:{{ tag }}{{ if target != "" { "-" + target }  else { "" } }}" \
         --progress=plain \
-        {{ if target != "" { "--target=" + target } else { "" } }} \
+        --file=.devcontainer/Dockerfile \
+        --tag='ghcr.io/linkerd/dev:{{ tag }}{{ if target != "runtime" { "-" + target }  else { "" } }}' \
+        --target='{{ target }}' \
         {{ if devcontainer-build-mode == "push" { "--push" } else { "--load" } }}
 
 ##
