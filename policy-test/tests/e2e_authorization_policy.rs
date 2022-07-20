@@ -1,10 +1,8 @@
-use kube::ResourceExt;
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
     policy::{LocalTargetRef, NamespacedTargetRef},
 };
 use linkerd_policy_test::{create, create_ready_pod, curl, nginx, with_temp_ns, LinkerdInject};
-use std::num::NonZeroU16;
 
 #[tokio::test(flavor = "current_thread")]
 async fn meshtls() {
@@ -46,73 +44,6 @@ async fn meshtls() {
             "uninjected curl must fail to contact nginx"
         );
         assert_ne!(uninjected_status, 0, "injected curl must contact nginx");
-    })
-    .await;
-}
-
-#[tokio::test(flavor = "current_thread")]
-async fn targets_route() {
-    with_temp_ns(|client, ns| async move {
-        // First create all of the policies we'll need so that the nginx pod
-        // starts up with the correct policy (to prevent races).
-        //
-        // The policy requires that all connections are authenticated with MeshTLS.
-        let (srv, all_mtls) = tokio::join!(
-            create(&client, nginx::server(&ns)),
-            create(&client, all_authenticated(&ns)),
-        );
-        // Create a route which matches the /allowed path.
-        let route = create(
-            &client,
-            http_route(&ns, &srv.name_unchecked(), NonZeroU16::new(80).unwrap()),
-        )
-        .await;
-        // Create a policy which allows all authenticated clients
-        create(
-            &client,
-            authz_policy(
-                &ns,
-                "nginx",
-                LocalTargetRef::from_resource(&route),
-                Some(NamespacedTargetRef::from_resource(&all_mtls)),
-            ),
-        )
-        .await;
-
-        // Create the nginx pod and wait for it to be ready.
-        tokio::join!(
-            create(&client, nginx::service(&ns)),
-            create_ready_pod(&client, nginx::pod(&ns))
-        );
-
-        let curl = curl::Runner::init(&client, &ns).await;
-        let (allowed, denied, unauth) = tokio::join!(
-            curl.run(
-                "curl-allowed",
-                "http://nginx/allowed",
-                LinkerdInject::Enabled
-            ),
-            curl.run("curl-denied", "http://nginx/denied", LinkerdInject::Enabled),
-            curl.run(
-                "curl-unauth",
-                "http://nginx/allowed",
-                LinkerdInject::Disabled
-            )
-        );
-        let (allowed_status, denied_status, unauth_status) =
-            tokio::join!(allowed.exit_code(), denied.exit_code(), unauth.exit_code());
-        assert_eq!(
-            allowed_status, 0,
-            "curling allowed route must contact nginx"
-        );
-        assert_ne!(
-            denied_status, 0,
-            "curl which does not match route must not contact nginx"
-        );
-        assert_ne!(
-            unauth_status, 0,
-            "curl which is not authenticated must not contact nginx"
-        );
     })
     .await;
 }
@@ -583,39 +514,5 @@ fn allow_ips(
                 })
                 .collect(),
         },
-    }
-}
-
-fn http_route(ns: &str, server_name: &str, port: NonZeroU16) -> k8s_gateway_api::HttpRoute {
-    k8s_gateway_api::HttpRoute {
-        metadata: k8s::ObjectMeta {
-            namespace: Some(ns.to_string()),
-            name: Some("allowed-route".to_string()),
-            ..Default::default()
-        },
-        spec: k8s_gateway_api::HttpRouteSpec {
-            inner: k8s_gateway_api::CommonRouteSpec {
-                parent_refs: Some(vec![k8s_gateway_api::ParentReference {
-                    group: Some("policy.linkerd.io".to_string()),
-                    kind: Some("Server".to_string()),
-                    namespace: Some(ns.to_string()),
-                    name: server_name.to_string(),
-                    section_name: None,
-                    port: Some(port.into()),
-                }]),
-            },
-            hostnames: None,
-            rules: Some(vec![k8s_gateway_api::HttpRouteRule {
-                matches: Some(vec![k8s_gateway_api::HttpRouteMatch {
-                    path: Some(k8s_gateway_api::HttpPathMatch::Exact {
-                        value: "/allowed".to_string(),
-                    }),
-                    ..Default::default()
-                }]),
-                filters: None,
-                backend_refs: None,
-            }]),
-        },
-        status: None,
     }
 }
