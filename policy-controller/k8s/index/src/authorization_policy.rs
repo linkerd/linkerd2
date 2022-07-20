@@ -13,6 +13,7 @@ pub(crate) struct Spec {
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Target {
+    HttpRoute(String),
     Server(String),
     Namespace,
 }
@@ -60,16 +61,17 @@ impl TryFrom<k8s::policy::AuthorizationPolicySpec> for Spec {
 
 fn target(t: LocalTargetRef) -> Result<Target> {
     if t.targets_kind::<k8s::policy::Server>() {
-        return Ok(Target::Server(t.name));
+        Ok(Target::Server(t.name))
+    } else if t.targets_kind::<k8s::Namespace>() {
+        Ok(Target::Namespace)
+    } else if t.targets_kind::<k8s_gateway_api::HttpRoute>() {
+        Ok(Target::HttpRoute(t.name))
+    } else {
+        anyhow::bail!(
+            "unsupported authorization target type: {}",
+            t.canonical_kind()
+        )
     }
-    if t.targets_kind::<k8s::Namespace>() {
-        return Ok(Target::Namespace);
-    }
-
-    anyhow::bail!(
-        "unsupported authorization target type: {}",
-        t.canonical_kind()
-    );
 }
 
 fn authentication_ref(t: NamespacedTargetRef) -> Result<AuthenticationTarget> {

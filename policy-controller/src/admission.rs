@@ -201,6 +201,10 @@ fn validate_policy_target(ns: &str, tgt: &LocalTargetRef) -> Result<()> {
         return Ok(());
     }
 
+    if tgt.targets_kind::<HttpRoute>() {
+        return Ok(());
+    }
+
     if tgt.targets_kind::<Namespace>() {
         if tgt.name != ns {
             bail!("cannot target another namespace: {}", tgt.name);
