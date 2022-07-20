@@ -40,7 +40,7 @@ pub fn server(ns: &str) -> k8s::policy::Server {
         },
         spec: k8s::policy::ServerSpec {
             pod_selector: k8s::labels::Selector::from_iter(Some(("app", "nginx"))),
-            port: k8s::policy::server::Port::Number(80),
+            port: k8s::policy::server::Port::Number(80.try_into().unwrap()),
             proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
         },
     }

@@ -19,7 +19,7 @@ use linkerd_policy_controller_core::{
     ServerRef,
 };
 use maplit::*;
-use std::sync::Arc;
+use std::{num::NonZeroU16, sync::Arc};
 use tracing::trace;
 
 #[derive(Clone, Debug)]
@@ -33,7 +33,7 @@ pub struct Server<T> {
 
 impl<T> Server<T>
 where
-    T: DiscoverInboundServer<(String, String, u16)> + Send + Sync + 'static,
+    T: DiscoverInboundServer<(String, String, NonZeroU16)> + Send + Sync + 'static,
 {
     pub fn new(discover: T, cluster_networks: Vec<IpNet>, drain: drain::Watch) -> Self {
         Self {
@@ -62,7 +62,7 @@ where
     fn check_target(
         &self,
         proto::PortSpec { workload, port }: proto::PortSpec,
-    ) -> Result<(String, String, u16), tonic::Status> {
+    ) -> Result<(String, String, NonZeroU16), tonic::Status> {
         // Parse a workload name in the form namespace:name.
         let (ns, name) = match workload.split_once(':') {
             None => {
@@ -81,15 +81,9 @@ where
         };
 
         // Ensure that the port is in the valid range.
-        let port = {
-            if port == 0 || port > std::u16::MAX as u32 {
-                return Err(tonic::Status::invalid_argument(format!(
-                    "Invalid port: {}",
-                    port
-                )));
-            }
-            port as u16
-        };
+        let port = u16::try_from(port)
+            .and_then(NonZeroU16::try_from)
+            .map_err(|_| tonic::Status::invalid_argument(format!("Invalid port: {port}")))?;
 
         Ok((ns.to_string(), name.to_string(), port))
     }
@@ -98,7 +92,7 @@ where
 #[async_trait::async_trait]
 impl<T> InboundServerPolicies for Server<T>
 where
-    T: DiscoverInboundServer<(String, String, u16)> + Send + Sync + 'static,
+    T: DiscoverInboundServer<(String, String, NonZeroU16)> + Send + Sync + 'static,
 {
     async fn get_port(
         &self,

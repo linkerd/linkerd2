@@ -555,6 +555,7 @@ data:
           limit: memory-limit
           request: memory-request
       saMountPath: null
+      shutdownGracePeriod: ""
       uid: 2102
       waitBeforeExitSeconds: 0
     proxyContainerName: ProxyContainerName

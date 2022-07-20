@@ -24,7 +24,7 @@ fn pod_must_exist_for_lookup() {
     let test = TestConfig::default();
     test.index
         .write()
-        .pod_server_rx("ns-0", "pod-0", 8080)
+        .pod_server_rx("ns-0", "pod-0", 8080.try_into().unwrap())
         .expect_err("pod-0.ns-0 must not exist");
 }
 

@@ -708,10 +708,13 @@ func (hc *HealthChecker) allCategories() []*Category {
 					fatal:               true,
 					check: func(ctx context.Context) error {
 						var err error
-						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
+						podList, err := hc.kubeAPI.CoreV1().Pods(hc.ControlPlaneNamespace).List(ctx, metav1.ListOptions{
+							LabelSelector: k8s.ControllerComponentLabel,
+						})
 						if err != nil {
 							return err
 						}
+						hc.controlPlanePods = podList.Items
 						return validateControlPlanePods(hc.controlPlanePods)
 					},
 				},
@@ -2802,10 +2805,14 @@ func CheckForPods(pods []corev1.Pod, deployNames []string) error {
 	exists := make(map[string]bool)
 
 	for _, pod := range pods {
-		// Strip randomized suffix and take the deployment name
-		parts := strings.Split(pod.Name, "-")
-		deployName := strings.Join(parts[:len(parts)-2], "-")
-		exists[deployName] = true
+		for label, value := range pod.Labels {
+			// When the label value is `linkerd.io/control-plane-component` or
+			// `component`, we'll take its value as the name of the deployment
+			// that the pod is part of
+			if label == k8s.ControllerComponentLabel || label == "component" {
+				exists[value] = true
+			}
+		}
 	}
 
 	for _, expected := range deployNames {

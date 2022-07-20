@@ -7,6 +7,7 @@ pub use http::{
     Method, StatusCode,
 };
 use regex::Regex;
+use std::num::NonZeroU16;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InboundHttpRoute {
@@ -46,7 +47,7 @@ pub struct RequestRedirectFilter {
     pub scheme: Option<Scheme>,
     pub host: Option<String>,
     pub path: Option<PathModifier>,
-    pub port: Option<u32>,
+    pub port: Option<NonZeroU16>,
     pub status: Option<StatusCode>,
 }
 

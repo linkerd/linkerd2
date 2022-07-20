@@ -1,11 +1,12 @@
-name: Rust Static checks
+name: Rust
 
 on:
   pull_request:
     paths:
-      - .github/workflows/rust_checks.yml
+      - .github/workflows/rust.yml
       - Cargo.lock
       - '**/Cargo.toml'
+      - justfile
       - deny.toml
       - '**/*.rs'
       - policy-*/*.dockerfile
@@ -27,9 +28,10 @@ jobs:
     container:
       image: docker://rust:1.62.0
     steps:
+      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: rustup component add rustfmt
-      - run: cargo fmt --all -- --check
+      - run: just rs-check-fmt
 
   audit:
     timeout-minutes: 10
@@ -43,7 +45,7 @@ jobs:
     continue-on-error: ${{ matrix.checks == 'advisories' }}
     steps:
     - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-    - uses: EmbarkStudios/cargo-deny-action@30ecad1d5873c1cc2cad10a33637371ca094768b
+    - uses: EmbarkStudios/cargo-deny-action@7257a18a9c2fe3f92b85d41ae473520dff953c97
       with:
         command: check ${{ matrix.checks }}
 
@@ -54,11 +56,11 @@ jobs:
       image: docker://rust:1.62.0
     steps:
       - run: rustup component add clippy
+      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
+      - uses: olix0r/cargo-action-fmt@ed3530f0739c46ffa0dd983f8746b8c4a3d0a01c
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
-      - run: cargo fetch --locked
-      - name: Run cargo clippy
-        run: cargo clippy --frozen --workspace --all-targets --message-format=json | cargo-action-fmt
+      - run: just rs-fetch
+      - run: just rs-clippy
 
   check:
     timeout-minutes: 20
@@ -66,17 +68,11 @@ jobs:
     container:
       image: docker://rust:1.62.0
     steps:
+      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
+      - uses: olix0r/cargo-action-fmt@ed3530f0739c46ffa0dd983f8746b8c4a3d0a01c
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
-      - run: cargo fetch --locked
-      # Check each crate independently to ensure its Cargo.toml is sufficient.
-      - run: |
-          for toml in $(find . -mindepth 2 -name Cargo.toml | sort -r)
-          do
-            d=$(dirname "$toml")
-            echo "# $d"
-            (cd "$d" ; cargo check --all-targets --frozen --message-format=json | cargo-action-fmt)
-          done
+      - run: just rs-fetch
+      - run: just rs-check-dirs
 
   test:
     name: test
@@ -85,12 +81,12 @@ jobs:
     container:
       image: docker://rust:1.62.0
     steps:
+      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
+      - uses: olix0r/cargo-action-fmt@ee1ef42932e44794821dab57ef1bf7a73df8b21f
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - run: cargo fetch --locked
-      - name: Build tests
-        run: cargo test --workspace --exclude=linkerd-policy-test --frozen --no-run
-      - name: Run cargo test
-        run: cargo test --workspace --exclude=linkerd-policy-test --frozen
+      - run: just rs-fetch
+      - run: just rs-test-build
+      - run: just rs-test
 
   rust-toolchain:
     name: rust toolchain
@@ -104,7 +100,7 @@ jobs:
           # Check this workflow against the version in rust-toolchain.
           versions=$(sed -nE 's|.*docker://(.*/)?rust:([^ #]+).*|\2|p' .github/workflows/*)
           for mismatch in $(echo "$versions" | grep -vF "$(cat rust-toolchain)" || true) ; do
-            echo "::error file=.github/workflows/rust_checks.yml::Workflow uses incorrect rust version(s): $mismatch"
+            echo "::error file=.github/workflows/rust.yml::Workflow uses incorrect rust version(s): $mismatch"
             ex=$((ex + 1))
           done
 

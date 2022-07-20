@@ -236,5 +236,9 @@ func generateAnnotationsDocs() []annotationDoc {
 			Name:        k8s.ProxySkipSubnetsAnnotation,
 			Description: "Comma-separated list of subnets in valid CIDR format that should be skipped by the proxy",
 		},
+		{
+			Name:        k8s.ProxyShutdownGracePeriodAnnotation,
+			Description: "Grace period for graceful proxy shutdowns. If this timeout elapses before all open connections have completed, the proxy will terminate forcefully, closing any remaining connections.",
+		},
 	}
 }
