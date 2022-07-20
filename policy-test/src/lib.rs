@@ -108,11 +108,17 @@ where
 {
     let _tracing = init_tracing();
 
+    let preserve_ns = std::env::var("LINKERD_POLICY_TEST_PRESERVE_NS")
+        .ok()
+        .map(|v| !matches!(&*v, "" | "0" | "false" | "no"))
+        .unwrap_or(false);
+    tracing::trace!(?preserve_ns);
+
     tracing::trace!("Initializing client");
     let client = kube::Client::try_default()
         .await
         .expect("failed to initialize k8s client");
-    let _api = kube::Api::<k8s::Namespace>::all(client.clone());
+    let api = kube::Api::<k8s::Namespace>::all(client.clone());
 
     let name = format!("linkerd-policy-test-{}", random_suffix(6));
     tracing::debug!(namespace = %name, "Creating");
@@ -167,13 +173,15 @@ where
         drop(_tracing);
     }
 
-    // tracing::debug!(ns = %ns.name_unchecked(), "Deleting");
-    // api.delete(&ns.name_unchecked(), &kube::api::DeleteParams::background())
-    //     .await
-    //     .expect("failed to delete Namespace");
-    // if let Err(err) = res {
-    //     std::panic::resume_unwind(err.into_panic());
-    // }
+    tracing::debug!(ns = %ns.name_unchecked(), "Deleting");
+    if !preserve_ns {
+        api.delete(&ns.name_unchecked(), &kube::api::DeleteParams::background())
+            .await
+            .expect("failed to delete Namespace");
+    }
+    if let Err(err) = res {
+        std::panic::resume_unwind(err.into_panic());
+    }
 }
 
 async fn await_service_account(client: &kube::Client, ns: &str, name: &str) {
