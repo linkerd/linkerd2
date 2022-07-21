@@ -1,8 +1,7 @@
-use k8s_gateway_api::CommonRouteSpec;
 pub use k8s_gateway_api::{
-    Hostname, HttpHeaderMatch, HttpHeaderName, HttpMethod, HttpPathMatch, HttpQueryParamMatch,
-    HttpRequestHeaderFilter, HttpRequestRedirectFilter, HttpRouteMatch, LocalObjectReference,
-    RouteStatus,
+    CommonRouteSpec, Hostname, HttpHeaderMatch, HttpHeaderName, HttpMethod, HttpPathMatch,
+    HttpQueryParamMatch, HttpRequestHeaderFilter, HttpRequestRedirectFilter, HttpRouteMatch,
+    LocalObjectReference, ParentReference, RouteStatus,
 };
 
 /// HTTPRoute provides a way to route HTTP requests. This includes the
