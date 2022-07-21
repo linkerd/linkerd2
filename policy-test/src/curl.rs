@@ -1,4 +1,5 @@
 use super::{create, LinkerdInject};
+use kube::api::LogParams;
 use linkerd_policy_controller_k8s_api::{self as k8s};
 use maplit::{btreemap, convert_args};
 use tokio::time;
@@ -229,7 +230,22 @@ impl Running {
             |obj: Option<&k8s::Pod>| -> bool { obj.and_then(get_exit_code).is_some() },
         );
         let code = match time::timeout(time::Duration::from_secs(30), finished).await {
-            Ok(Ok(Some(pod))) => get_exit_code(&pod).expect("curl pod must have an exit code"),
+            Ok(Ok(Some(pod))) => {
+                let log = api
+                    .logs(
+                        &self.name,
+                        &LogParams {
+                            container: Some("linkerd-proxy".to_string()),
+                            ..LogParams::default()
+                        },
+                    )
+                    .await
+                    .expect("must fetch logs");
+                for log in log.lines() {
+                    tracing::trace!(ns = %self.namespace, pod = %self.name, %log);
+                }
+                get_exit_code(&pod).expect("curl pod must have an exit code")
+            }
             Ok(Ok(None)) => unreachable!("Condition must wait for pod"),
             Ok(Err(error)) => panic!("Failed to wait for exit code: {}: {}", self.name, error),
             Err(_timeout) => {

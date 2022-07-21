@@ -1,4 +1,4 @@
-use kube::ResourceExt;
+use kube::{api::LogParams, ResourceExt};
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
     policy::{LocalTargetRef, NamespacedTargetRef},
@@ -111,6 +111,22 @@ async fn targets_route() {
             // no_route.exit_code(),
             // unauth.exit_code()
         );
+
+        for log in kube::Api::<k8s::Pod>::namespaced(client, &ns)
+            .logs(
+                "nginx",
+                &LogParams {
+                    container: Some("linkerd-proxy".to_string()),
+                    ..LogParams::default()
+                },
+            )
+            .await
+            .expect("must fetch logs")
+            .lines()
+        {
+            tracing::trace!(%ns, pod = "nginx", %log);
+        }
+
         assert_eq!(
             allowed_status, 0,
             "curling allowed route must contact nginx"
