@@ -203,6 +203,7 @@ rules:
       - networkauthentications
       - servers
       - serverauthorizations
+      - httproutes
     verbs:
       - get
       - list
