@@ -157,7 +157,7 @@ _test-cluster-crds-ready:
         networkauthentications.policy.linkerd.io \
         serverauthorizations.policy.linkerd.io \
         servers.policy.linkerd.io \
-        httproute.policy.linkerd.io
+        httproutes.policy.linkerd.io
 
 # Build/fetch the Linkerd containers and load them onto the test cluster.
 _policy-test-images: docker-pull-policy-test-deps docker-build-policy-controller && policy-test-load-images
