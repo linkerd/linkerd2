@@ -3,7 +3,7 @@ name: Extension integration tests
 on:
   pull_request:
     paths:
-      - .github/workflows/integration-viz.yml
+      - .github/workflows/integration-ext.yml
       - .proxy-version
       - go.sum
       - multicluster/
