@@ -37,11 +37,8 @@ async fn accepts_valid() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn skips_validation_for_external_parent_ref() {
-    // XXX(eliza): is this actually the desired behavior? if we get a
-    // `policy.linkerd.io` version of an HTTPRoute, there's no reason for it to
-    // exist unless it's targeting our `Server` type, right?
-    admission::accepts(|ns| HttpRoute {
+async fn rejects_non_server_parent_ref() {
+    admission::rejects(|ns| HttpRoute {
         metadata: api::ObjectMeta {
             namespace: Some(ns.clone()),
             name: Some("test".to_string()),
