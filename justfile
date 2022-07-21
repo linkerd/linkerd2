@@ -123,16 +123,19 @@ _proxy-image := DOCKER_REGISTRY + "/proxy"
 _proxy-init-image := "ghcr.io/linkerd/proxy-init"
 _policy-controller-image := DOCKER_REGISTRY + "/policy-controller"
 
+policy-test-build: _policy-test-images
+    cd policy-test && {{ _cargo }} test --no-run --frozen
+
 # Run the policy controller integration tests in a k3d cluster
-policy-test: test-cluster-install-linkerd && _policy-test-uninstall
-    cd policy-test && {{ _cargo }} {{ _cargo-test }}
+policy-test *flags: test-cluster-install-linkerd && _policy-test-uninstall
+    cd policy-test && {{ _cargo }} {{ _cargo-test }} --frozen {{ flags }}
 
 # Delete all test namespaces and remove Linkerd from the cluster.
 policy-test-cleanup: && _policy-test-uninstall
     {{ _kubectl }} delete ns -l linkerd-policy-test
 
 # Install Linkerd on the test cluster using test images.
-test-cluster-install-linkerd: test-cluster-install-crds _policy-test-images
+test-cluster-install-linkerd: test-cluster-install-crds policy-test-load-images
     {{ _linkerd }} install \
             --set 'imagePullPolicy=Never' \
             --set 'controllerImage={{ _controller-image }}' \
@@ -159,7 +162,7 @@ _test-cluster-crds-ready:
         servers.policy.linkerd.io
 
 # Build/fetch the Linkerd containers and load them onto the test cluster.
-_policy-test-images: docker-pull-policy-test-deps docker-build-policy-controller && policy-test-load-images
+_policy-test-images: docker-pull-policy-test-deps docker-build-policy-controller
     bin/docker-build-controller
     bin/docker-build-proxy
 
@@ -177,7 +180,7 @@ docker-build-policy-controller:
         --progress=plain
 
 # Load all images into the test cluster.
-policy-test-load-images:
+policy-test-load-images: _policy-test-images
     k3d image import --cluster='{{ test-cluster-name }}' --mode=direct \
         bitnami/kubectl:latest \
         curlimages/curl:latest \
@@ -199,7 +202,7 @@ _policy-test-uninstall:
 # Creates a k3d cluster that can be used for testing.
 test-cluster-create: && _test-cluster-api-ready _test-cluster-dns-ready
     k3d cluster create {{ test-cluster-name }} \
-        --kubeconfig-merge-default \
+        --kubeconfig-update-default \
         --kubeconfig-switch-context=false \
         --image=+{{ test-cluster-k8s }} \
         --no-lb --k3s-arg "--no-deploy=local-storage,traefik,servicelb,metrics-server@server:*"
