@@ -1,6 +1,12 @@
-name: Integration tests
+name: Viz integration tests
 
-on: [pull_request]
+on:
+  pull_request:
+    paths:
+      - .github/workflows/integration-viz.yml
+      - .proxy-version
+      - go.sum
+      - viz/**
 
 permissions:
   contents: read
@@ -17,9 +23,7 @@ jobs:
       matrix:
         component:
         - cli-bin
-        - cni-plugin
         - controller
-        - debug
         - jaeger-webhook
         - metrics-api
         - policy-controller
@@ -56,24 +60,9 @@ jobs:
     strategy:
       matrix:
         integration_test:
-        - cluster-domain
-        - cni-calico-deep
-        - deep
         - viz
-        - default-policy-deny
-        - external
-        # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
-        #- helm-upgrade
-        - multicluster
-        - uninstall
-        - upgrade-edge
-        - upgrade-stable
-    name: Integration tests (${{ matrix.integration_test }})
+    name: Integration tests (viz)
 
-    # If a single test fails, allow other tests to run. This is mostly to
-    # account for the fact that CI is flakey and failed workflows may need to be
-    # rerun.
-    continue-on-error: true
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     steps:
