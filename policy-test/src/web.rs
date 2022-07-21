@@ -18,7 +18,7 @@ pub fn pod(ns: &str) -> k8s::Pod {
         },
         spec: Some(k8s::PodSpec {
             containers: vec![k8s::api::core::v1::Container {
-                name: "web".to_string(),
+                name: "hokay".to_string(),
                 image: Some("ghcr.io/olix0r/hokay:latest".to_string()),
                 ports: Some(vec![k8s::api::core::v1::ContainerPort {
                     name: Some("http".to_string()),
