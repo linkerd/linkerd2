@@ -124,7 +124,7 @@ async fn targets_route() {
             .expect("must fetch logs")
             .lines()
         {
-            tracing::trace!(%ns, pod = "nginx", %log);
+            tracing::trace!(%ns, pod = %"nginx", container = %"linkerd2-proxy", %log);
         }
 
         assert_eq!(

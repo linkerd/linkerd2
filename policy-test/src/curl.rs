@@ -231,18 +231,20 @@ impl Running {
         );
         let code = match time::timeout(time::Duration::from_secs(30), finished).await {
             Ok(Ok(Some(pod))) => {
-                let log = api
-                    .logs(
-                        &self.name,
-                        &LogParams {
-                            container: Some("linkerd-proxy".to_string()),
-                            ..LogParams::default()
-                        },
-                    )
-                    .await
-                    .expect("must fetch logs");
-                for log in log.lines() {
-                    tracing::trace!(ns = %self.namespace, pod = %self.name, %log);
+                for container in ["curl", "linkerd-proxy"] {
+                    let log = api
+                        .logs(
+                            &self.name,
+                            &LogParams {
+                                container: Some(container.to_string()),
+                                ..LogParams::default()
+                            },
+                        )
+                        .await
+                        .expect("must fetch logs");
+                    for log in log.lines() {
+                        tracing::trace!(ns = %self.namespace, pod = %self.name, %container, %log);
+                    }
                 }
                 get_exit_code(&pod).expect("curl pod must have an exit code")
             }
