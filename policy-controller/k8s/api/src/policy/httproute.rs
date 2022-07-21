@@ -166,24 +166,6 @@ pub struct HttpRouteRule {
 /// - Core: Filter types and their corresponding configuration defined by
 ///   "Support: Core" in this package, e.g. "RequestHeaderModifier". All
 ///   implementations must support core filters.
-///
-/// - Extended: Filter types and their corresponding configuration defined by
-///   "Support: Extended" in this package, e.g. "RequestMirror". Implementers
-///   are encouraged to support extended filters.
-///
-/// - Custom: Filters that are defined and supported by specific vendors.
-///   In the future, filters showing convergence in behavior across multiple
-///   implementations will be considered for inclusion in extended or core
-///   conformance levels. Filter-specific configuration for such filters
-///   is specified using the ExtensionRef field. `Type` should be set to
-///   "ExtensionRef" for custom filters.
-///
-/// Implementers are encouraged to define custom implementation types to
-/// extend the core API with implementation-specific behavior.
-///
-/// If a reference to a custom filter type cannot be resolved, the filter
-/// MUST NOT be skipped. Instead, requests that would have been processed by
-/// that filter MUST receive a HTTP error response.
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 #[serde(tag = "type", rename_all = "PascalCase")]
 pub enum HttpRouteFilter {
@@ -204,15 +186,6 @@ pub enum HttpRouteFilter {
     RequestRedirect {
         request_redirect: HttpRequestRedirectFilter,
     },
-
-    /// ExtensionRef is an optional, implementation-specific extension to the
-    /// "filter" behavior.  For example, resource "myroutefilter" in group
-    /// "networking.example.net"). ExtensionRef MUST NOT be used for core and
-    /// extended filters.
-    ///
-    /// Support: Implementation-specific
-    #[serde(rename_all = "camelCase")]
-    ExtensionRef { extension_ref: LocalObjectReference },
 }
 
 /// HTTPRouteStatus defines the observed state of HTTPRoute.
