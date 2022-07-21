@@ -1,16 +1,16 @@
 use crate::k8s::{
     labels,
     policy::{
-        AuthorizationPolicy, AuthorizationPolicySpec, LocalTargetRef, MeshTLSAuthentication,
-        MeshTLSAuthenticationSpec, NamespacedTargetRef, NetworkAuthentication,
-        NetworkAuthenticationSpec, Server, ServerAuthorization, ServerAuthorizationSpec,
-        ServerSpec,
+        httproute, AuthorizationPolicy, AuthorizationPolicySpec, HttpRoute, HttpRouteSpec,
+        LocalTargetRef, MeshTLSAuthentication, MeshTLSAuthenticationSpec, NamespacedTargetRef,
+        NetworkAuthentication, NetworkAuthenticationSpec, Server, ServerAuthorization,
+        ServerAuthorizationSpec, ServerSpec,
     },
 };
 use anyhow::{anyhow, bail, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
-use k8s_gateway_api::{HttpRoute, HttpRouteFilter, HttpRouteRule, HttpRouteSpec};
+use k8s_gateway_api as gateway;
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_k8s_index as index;
@@ -123,6 +123,10 @@ impl Admission {
             return self.admit_spec::<HttpRouteSpec>(req).await;
         }
 
+        if is_kind::<gateway::HttpRoute>(&req) {
+            return self.admit_spec::<gateway::HttpRouteSpec>(req).await;
+        }
+
         AdmissionResponse::invalid(format_args!(
             "unsupported resource type: {}.{}.{}",
             req.kind.group, req.kind.version, req.kind.kind
@@ -202,6 +206,10 @@ fn validate_policy_target(ns: &str, tgt: &LocalTargetRef) -> Result<()> {
     }
 
     if tgt.targets_kind::<HttpRoute>() {
+        return Ok(());
+    }
+
+    if tgt.targets_kind::<gateway::HttpRoute>() {
         return Ok(());
     }
 
@@ -418,51 +426,76 @@ impl Validate<ServerAuthorizationSpec> for Admission {
 #[async_trait::async_trait]
 impl Validate<HttpRouteSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
-        let targets_server = spec.inner.parent_refs.iter().flatten().any(|parent_ref| {
-            if let Some(p) = parent_ref.group.as_deref() {
-                if let Some(k) = parent_ref.kind.as_deref() {
-                    return p.eq_ignore_ascii_case("policy.linkerd.io")
-                        && k.eq_ignore_ascii_case("server");
-                }
-            }
-            false
-        });
-        // Only validate HttpRoutes which have a Server as a parent_ref.
-        if !targets_server {
-            return Ok(());
-        }
-
-        for rule in spec.rules.iter().flatten() {
-            validate_http_route_rule(rule)?;
+        // The validation for the policy.linkerd.io HTTPRoute type is much
+        // simpler than for the Gateway API version: the route must target a
+        // `Server` resource.
+        //
+        // We don't have to do any validation that unsupported filters aren't
+        // present, because Linkerd's HTTPRoute CRD doesn't include those
+        // filters at all.
+        if !parent_refs_target_server(&spec.inner) {
+            bail!("policy.linkerd.io HTTPRoutes must target a Server resource")
         }
 
         Ok(())
     }
 }
 
-fn validate_http_route_rule(rule: &HttpRouteRule) -> Result<()> {
+#[async_trait::async_trait]
+impl Validate<gateway::HttpRouteSpec> for Admission {
+    async fn validate(self, _ns: &str, _name: &str, spec: gateway::HttpRouteSpec) -> Result<()> {
+        // Only validate HttpRoutes which have a Server as a parent_ref.
+        if !parent_refs_target_server(&spec.inner) {
+            return Ok(());
+        }
+
+        for rule in spec.rules.iter().flatten() {
+            validate_gateway_http_route_rule(rule)?;
+        }
+
+        Ok(())
+    }
+}
+
+fn parent_refs_target_server(spec: &httproute::CommonRouteSpec) -> bool {
+    spec.parent_refs.iter().flatten().any(|parent_ref| {
+        if let Some(p) = parent_ref.group.as_deref() {
+            if let Some(k) = parent_ref.kind.as_deref() {
+                return p.eq_ignore_ascii_case("policy.linkerd.io")
+                    && k.eq_ignore_ascii_case("server");
+            }
+        }
+        false
+    })
+}
+
+fn validate_gateway_http_route_rule(rule: &gateway::HttpRouteRule) -> Result<()> {
     if let Some(filters) = &rule.filters {
-        validate_http_route_filters(filters)?;
+        validate_gateway_http_route_filters(filters)?;
     }
 
     for backend_ref in rule.backend_refs.iter().flatten() {
         if let Some(filters) = &backend_ref.filters {
-            validate_http_route_filters(filters)?;
+            validate_gateway_http_route_filters(filters)?;
         }
     }
     Ok(())
 }
 
-fn validate_http_route_filters(filters: &[HttpRouteFilter]) -> Result<()> {
+fn validate_gateway_http_route_filters(filters: &[gateway::HttpRouteFilter]) -> Result<()> {
     for filter in filters.iter() {
         match filter {
-            HttpRouteFilter::ExtensionRef { .. } => bail!("ExtensionRef filters are not supported"),
-            HttpRouteFilter::RequestHeaderModifier { .. } => {}
-            HttpRouteFilter::RequestMirror { .. } => {
+            gateway::HttpRouteFilter::ExtensionRef { .. } => {
+                bail!("ExtensionRef filters are not supported")
+            }
+            gateway::HttpRouteFilter::RequestHeaderModifier { .. } => {}
+            gateway::HttpRouteFilter::RequestMirror { .. } => {
                 bail!("RequestMirror filters are not supported")
             }
-            HttpRouteFilter::RequestRedirect { .. } => {}
-            HttpRouteFilter::URLRewrite { .. } => bail!("URLRewrite filters are not supported"),
+            gateway::HttpRouteFilter::RequestRedirect { .. } => {}
+            gateway::HttpRouteFilter::URLRewrite { .. } => {
+                bail!("URLRewrite filters are not supported")
+            }
         }
     }
     Ok(())
