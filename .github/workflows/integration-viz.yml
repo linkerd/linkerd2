@@ -55,13 +55,13 @@ jobs:
         name: image-archives
         path: /home/runner/archives
 
-  integration_tests:
+  test:
     needs: [docker_build]
     strategy:
       matrix:
-        integration_test:
+        test:
         - viz
-    name: Integration tests (viz)
+    name: Integration tests
 
     runs-on: ubuntu-20.04
     timeout-minutes: 60
@@ -93,4 +93,4 @@ jobs:
       env:
         LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
       run: |
-        bin/tests --images archive --cleanup-docker --name ${{ matrix.integration_test }} "$HOME/.linkerd"
+        bin/tests --images archive --cleanup-docker --name ${{ matrix.test }} "$HOME/.linkerd"

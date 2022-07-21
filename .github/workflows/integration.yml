@@ -46,11 +46,11 @@ jobs:
         name: image-archives
         path: /home/runner/archives
 
-  integration_tests:
+  test:
     needs: [docker_build]
     strategy:
       matrix:
-        integration_test:
+        test:
         - cluster-domain
         - cni-calico-deep
         - deep
@@ -62,7 +62,7 @@ jobs:
         - uninstall
         - upgrade-edge
         - upgrade-stable
-    name: Integration tests (${{ matrix.integration_test }})
+    name: Integration tests (${{ matrix.test }})
 
     # If a single test fails, allow other tests to run. This is mostly to
     # account for the fact that CI is flakey and failed workflows may need to be
@@ -98,4 +98,4 @@ jobs:
       env:
         LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
       run: |
-        bin/tests --images archive --cleanup-docker --name ${{ matrix.integration_test }} "$HOME/.linkerd"
+        bin/tests --images archive --cleanup-docker --name ${{ matrix.test }} "$HOME/.linkerd"
