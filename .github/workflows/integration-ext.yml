@@ -6,7 +6,9 @@ on:
       - .github/workflows/integration-ext.yml
       - .proxy-version
       - go.sum
-      - multicluster/
+      - jaeger/**
+      - multicluster/**
+      - test/integration/**
       - viz/**
 
 permissions:
