@@ -1,6 +1,13 @@
-name: Integration tests
+name: Extension integration tests
 
-on: [pull_request]
+on:
+  pull_request:
+    paths:
+      - .github/workflows/integration-viz.yml
+      - .proxy-version
+      - go.sum
+      - multicluster/
+      - viz/**
 
 permissions:
   contents: read
@@ -8,7 +15,6 @@ permissions:
 env:
   GH_ANNOTATION: true
   DOCKER_REGISTRY: ghcr.io/linkerd
-  LINKERD_DOCKER_REGISTRY: ghcr.io/linkerd
 
 jobs:
   build:
@@ -16,10 +22,13 @@ jobs:
       matrix:
         component:
           - cli-bin
-          - cni-plugin
           - controller
+          - jaeger-webhook
+          - metrics-api
           - policy-controller
           - proxy
+          - tap
+          - web
 
     runs-on: ubuntu-20.04
     timeout-minutes: 30
@@ -46,9 +55,15 @@ jobs:
     strategy:
       matrix:
         test:
-          - cni-calico-deep
-          - deep
-          - uninstall
+          - cluster-domain
+          - default-policy-deny
+          # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
+          #- helm-upgrade
+          - external
+          - multicluster
+          - upgrade-edge
+          - upgrade-stable
+          - viz
 
     continue-on-error: true
     runs-on: ubuntu-20.04
