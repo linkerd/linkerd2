@@ -7,7 +7,7 @@ metadata:
     gateway.networking.k8s.io/bundle-version: v0.5.0-rc1
     gateway.networking.k8s.io/channel: standard
   labels:
-    helm.sh/chart: linkerd-crds-1.1.1-edge
+    helm.sh/chart: linkerd-crds-1.2.0-edge
     linkerd.io/control-plane-ns: linkerd
   creationTimestamp: null
   name: httproutes.gateway.networking.k8s.io
@@ -2610,7 +2610,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.1.1-edge
+    helm.sh/chart: linkerd-crds-1.2.0-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -2709,7 +2709,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.1.1-edge
+    helm.sh/chart: linkerd-crds-1.2.0-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -2795,7 +2795,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.1.1-edge
+    helm.sh/chart: linkerd-crds-1.2.0-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -2848,7 +2848,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.1.1-edge
+    helm.sh/chart: linkerd-crds-1.2.0-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -3114,7 +3114,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.1.1-edge
+    helm.sh/chart: linkerd-crds-1.2.0-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -3249,7 +3249,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.1.1-edge
+    helm.sh/chart: linkerd-crds-1.2.0-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: linkerd.io
