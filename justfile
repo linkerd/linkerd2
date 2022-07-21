@@ -124,8 +124,8 @@ _proxy-init-image := "ghcr.io/linkerd/proxy-init"
 _policy-controller-image := DOCKER_REGISTRY + "/policy-controller"
 
 # Run the policy controller integration tests in a k3d cluster
-policy-test: test-cluster-install-linkerd && _policy-test-uninstall
-    cd policy-test && {{ _cargo }} {{ _cargo-test }}
+policy-test *flags: test-cluster-install-linkerd && _policy-test-uninstall
+    cd policy-test && {{ _cargo }} {{ _cargo-test }} {{ flags }}
 
 # Delete all test namespaces and remove Linkerd from the cluster.
 policy-test-cleanup: && _policy-test-uninstall
@@ -199,7 +199,7 @@ _policy-test-uninstall:
 # Creates a k3d cluster that can be used for testing.
 test-cluster-create: && _test-cluster-api-ready _test-cluster-dns-ready
     k3d cluster create {{ test-cluster-name }} \
-        --kubeconfig-merge-default \
+        --kubeconfig-update-default \
         --kubeconfig-switch-context=false \
         --image=+{{ test-cluster-k8s }} \
         --no-lb --k3s-arg "--no-deploy=local-storage,traefik,servicelb,metrics-server@server:*"
