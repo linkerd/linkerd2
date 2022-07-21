@@ -356,8 +356,8 @@ async fn server_with_http_route() {
                     hostnames: None,
                     rules: Some(vec![k8s_gateway_api::HttpRouteRule {
                         matches: Some(vec![k8s_gateway_api::HttpRouteMatch {
-                            path: Some(k8s_gateway_api::HttpPathMatch::Exact {
-                                value: "/metrics".to_string(),
+                            path: Some(k8s_gateway_api::HttpPathMatch::RegularExpression {
+                                value: "/(live|ready)".to_string(),
                             }),
                             headers: None,
                             query_params: None,
@@ -419,7 +419,7 @@ async fn server_with_http_route() {
                 .expect("must have path match")
                 .kind
                 .expect("must have kind"),
-            grpc::http_route::path_match::Kind::Exact("/metrics".to_string()),
+            grpc::http_route::path_match::Kind::Regex("/(live|ready)".to_string()),
         );
 
         // Create a network authentication and an authorization policy that

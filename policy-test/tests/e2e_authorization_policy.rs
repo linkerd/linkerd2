@@ -90,21 +90,13 @@ async fn targets_route() {
         // TODO: Add a test case for when there is an authorization on the server
         // but not on the matching route.
         let (allowed, no_route, unauth) = tokio::join!(
-            curl.run(
-                "curl-allowed",
-                "http://nginx/allowed",
-                LinkerdInject::Enabled
-            ),
+            curl.run("curl-allowed", "http://nginx/", LinkerdInject::Enabled),
             curl.run(
                 "curl-no-route",
                 "http://nginx/noroute",
                 LinkerdInject::Enabled
             ),
-            curl.run(
-                "curl-unauth",
-                "http://nginx/allowed",
-                LinkerdInject::Disabled
-            )
+            curl.run("curl-unauth", "http://nginx/", LinkerdInject::Disabled)
         );
         let (allowed_status, no_route_status, unauth_status) = tokio::join!(
             allowed.exit_code(),
@@ -618,7 +610,7 @@ fn http_route(ns: &str, server_name: &str, port: NonZeroU16) -> k8s_gateway_api:
             rules: Some(vec![k8s_gateway_api::HttpRouteRule {
                 matches: Some(vec![k8s_gateway_api::HttpRouteMatch {
                     path: Some(k8s_gateway_api::HttpPathMatch::Exact {
-                        value: "/allowed".to_string(),
+                        value: "/".to_string(),
                     }),
                     ..Default::default()
                 }]),
