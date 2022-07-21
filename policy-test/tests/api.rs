@@ -535,7 +535,7 @@ where
 
     // Delete the `HttpRoute` and ensure that the update reverts to the
     // default.
-    kube::Api::<k8s_gateway_api::HttpRoute>::namespaced(client.clone(), &ns)
+    kube::Api::<R>::namespaced(client.clone(), &ns)
         .delete("metrics-route", &kube::api::DeleteParams::default())
         .await
         .expect("HttpRoute must be deleted");
