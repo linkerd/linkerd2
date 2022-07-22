@@ -3,9 +3,9 @@ name: Go
 on:
   pull_request:
     paths:
+      - .github/workflows/go.yml
       - go.sum
       - '**/*.go'
-      - .github/workflows/go.yml
 
 permissions:
   contents: read
@@ -31,7 +31,7 @@ jobs:
     - run: bin/fmt
 
   go-test:
-    timeout-minutes: 30
+    timeout-minutes: 10
     runs-on: ubuntu-20.04
     container:
       image: golang:1.17

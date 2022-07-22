@@ -1,0 +1,34 @@
+name: Actions
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/**
+
+permissions:
+  contents: read
+
+env:
+  ACTIONLINT_VERSION: 1.6.15
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - name: Install actionlint
+        run: https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_1.6.15_linux_amd64.tar.gz | tar tzvf - -C /usr/local/bin actionlint
+      - name: Run actionlint
+        run: |
+          # Run actionlint and format errors to fit GitHub Action's style
+          # To print multiline text in annotations toolkit, we replace '\n'
+          # with '%0A' (urlencoded newline, see https://github.com/actions/toolkit/issues/193)
+          #
+          # - SC1090: avoid location directives
+          # - SC2016: for template args
+          actionlint \
+            -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A```%0A{{replace $err.Snippet "\\n" "%0A"}}%0A```\n{{end}}' \
+            -ignore 'SC2016:' \
+            -ignore 'SC1090:' \
+            .github/workflows/*

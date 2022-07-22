@@ -3,8 +3,8 @@ name: Shell
 on:
   pull_request:
     paths:
-      - '**/*.sh'
       - .github/workflows/shell.yml
+      - '**/*.sh'
 
 permissions:
   contents: read
@@ -17,6 +17,5 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-    - name: shellcheck
-      run: bin/shellcheck-all
+    - run: bin/shellcheck-all
 
