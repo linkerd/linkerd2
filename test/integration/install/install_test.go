@@ -331,7 +331,6 @@ func TestInstallHelm(t *testing.T) {
 	var crdsChartToInstall string
 	var controlPlaneChartToInstall string
 	var args []string
-	var vizArgs []string
 
 	if TestHelper.UpgradeHelmFromVersion() != "" {
 		crdsChartToInstall = TestHelper.GetHelmStableChart()
