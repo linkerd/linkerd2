@@ -146,9 +146,17 @@ async fn main() -> Result<()> {
             .instrument(info_span!("networkauthentications")),
     );
 
-    let http_routes = runtime.watch_all::<k8s_gateway_api::HttpRoute>(ListParams::default());
+    let gateway_http_routes =
+        runtime.watch_all::<k8s_gateway_api::HttpRoute>(ListParams::default());
     tokio::spawn(
-        kubert::index::namespaced(index.clone(), http_routes).instrument(info_span!("httproutes")),
+        kubert::index::namespaced(index.clone(), gateway_http_routes)
+            .instrument(info_span!("httproutes", group = "networking.k8s.io")),
+    );
+
+    let linkerd_http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(index.clone(), linkerd_http_routes)
+            .instrument(info_span!("httproutes", group = "policy.linkerd.io")),
     );
 
     // Run the gRPC server, serving results by looking up against the index handle.

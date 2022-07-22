@@ -2,6 +2,7 @@ use ahash::AHashMap as HashMap;
 use anyhow::{bail, Error, Result};
 use k8s_gateway_api as api;
 use linkerd_policy_controller_core::http_route;
+use linkerd_policy_controller_k8s_api::policy::httproute as policy;
 use std::num::NonZeroU16;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -34,70 +35,14 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
     type Error = Error;
 
     fn try_from(route: api::HttpRoute) -> Result<Self, Self::Error> {
-        let parents = route
-            .spec
-            .inner
-            .parent_refs
-            .into_iter()
-            .flatten()
-            .filter_map(
-                |api::ParentReference {
-                     group,
-                     kind,
-                     namespace,
-                     name,
-                     section_name,
-                     port,
-                 }| {
-                    // Ignore parents that are not a Server.
-                    if let Some(g) = group {
-                        if let Some(k) = kind {
-                            if !g.eq_ignore_ascii_case("policy.linkerd.io")
-                                || !k.eq_ignore_ascii_case("server")
-                                || name.is_empty()
-                            {
-                                return None;
-                            }
-                        }
-                    }
-
-                    if namespace.is_some() && namespace != route.metadata.namespace {
-                        return Some(Err(InvalidParentRef::ServerInAnotherNamespace));
-                    }
-                    if port.is_some() {
-                        return Some(Err(InvalidParentRef::SpecifiesPort));
-                    }
-                    if section_name.is_some() {
-                        return Some(Err(InvalidParentRef::SpecifiesSection));
-                    }
-
-                    Some(Ok(InboundParentRef::Server(name)))
-                },
-            )
-            .collect::<Result<Vec<_>, InvalidParentRef>>()?;
-        // If there are no valid parents, then the route is invalid.
-        if parents.is_empty() {
-            return Err(InvalidParentRef::DoesNotSelectServer.into());
-        }
-
+        let route_ns = route.metadata.namespace.as_deref();
+        let parents = InboundParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
         let hostnames = route
             .spec
             .hostnames
             .into_iter()
             .flatten()
-            .map(|hostname| {
-                if hostname.starts_with("*.") {
-                    let mut reverse_labels = hostname
-                        .split('.')
-                        .skip(1)
-                        .map(|label| label.to_string())
-                        .collect::<Vec<String>>();
-                    reverse_labels.reverse();
-                    http_route::HostMatch::Suffix { reverse_labels }
-                } else {
-                    http_route::HostMatch::Exact(hostname)
-                }
-            })
+            .map(convert::http_match)
             .collect();
 
         let rules = route
@@ -105,7 +50,48 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
             .rules
             .into_iter()
             .flatten()
-            .map(Self::try_rule)
+            .map(
+                |api::HttpRouteRule {
+                     matches,
+                     filters,
+                     backend_refs: _,
+                 }| Self::try_rule(matches, filters, Self::try_gateway_filter),
+            )
+            .collect::<Result<_>>()?;
+
+        Ok(InboundRouteBinding {
+            parents,
+            route: http_route::InboundHttpRoute {
+                hostnames,
+                rules,
+                authorizations: HashMap::default(),
+            },
+        })
+    }
+}
+
+impl TryFrom<policy::HttpRoute> for InboundRouteBinding {
+    type Error = Error;
+
+    fn try_from(route: policy::HttpRoute) -> Result<Self, Self::Error> {
+        let route_ns = route.metadata.namespace.as_deref();
+        let parents = InboundParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
+        let hostnames = route
+            .spec
+            .hostnames
+            .into_iter()
+            .flatten()
+            .map(convert::http_match)
+            .collect();
+
+        let rules = route
+            .spec
+            .rules
+            .into_iter()
+            .flatten()
+            .map(|policy::HttpRouteRule { matches, filters }| {
+                Self::try_rule(matches, filters, Self::try_policy_filter)
+            })
             .collect::<Result<_>>()?;
 
         Ok(InboundRouteBinding {
@@ -187,71 +173,39 @@ impl InboundRouteBinding {
         })
     }
 
-    fn try_rule(rule: api::HttpRouteRule) -> Result<http_route::InboundHttpRouteRule> {
-        let matches = rule
-            .matches
+    fn try_rule<F>(
+        matches: Option<Vec<api::HttpRouteMatch>>,
+        filters: Option<Vec<F>>,
+        try_filter: impl Fn(F) -> Result<http_route::InboundFilter>,
+    ) -> Result<http_route::InboundHttpRouteRule> {
+        let matches = matches
             .into_iter()
             .flatten()
             .map(Self::try_match)
             .collect::<Result<_>>()?;
 
-        let filters = rule
-            .filters
+        let filters = filters
             .into_iter()
             .flatten()
-            .map(Self::try_filter)
+            .map(try_filter)
             .collect::<Result<_>>()?;
 
         Ok(http_route::InboundHttpRouteRule { matches, filters })
     }
 
-    fn try_filter(filter: api::HttpRouteFilter) -> Result<http_route::InboundFilter> {
+    fn try_gateway_filter(filter: api::HttpRouteFilter) -> Result<http_route::InboundFilter> {
         let filter = match filter {
             api::HttpRouteFilter::RequestHeaderModifier {
-                request_header_modifier: api::HttpRequestHeaderFilter { set, add, remove },
-            } => http_route::InboundFilter::RequestHeaderModifier(
-                http_route::RequestHeaderModifierFilter {
-                    add: add
-                        .into_iter()
-                        .flatten()
-                        .map(|api::HttpHeader { name, value }| Ok((name.parse()?, value.parse()?)))
-                        .collect::<Result<Vec<_>>>()?,
-                    set: set
-                        .into_iter()
-                        .flatten()
-                        .map(|api::HttpHeader { name, value }| Ok((name.parse()?, value.parse()?)))
-                        .collect::<Result<Vec<_>>>()?,
-                    remove: remove
-                        .into_iter()
-                        .flatten()
-                        .map(http_route::HeaderName::try_from)
-                        .collect::<Result<_, _>>()?,
-                },
-            ),
+                request_header_modifier,
+            } => {
+                let filter = convert::req_header_modifier(request_header_modifier)?;
+                http_route::InboundFilter::RequestHeaderModifier(filter)
+            }
 
-            api::HttpRouteFilter::RequestRedirect {
-                request_redirect:
-                    api::HttpRequestRedirectFilter {
-                        scheme,
-                        hostname,
-                        path,
-                        port,
-                        status_code,
-                    },
-            } => http_route::InboundFilter::RequestRedirect(http_route::RequestRedirectFilter {
-                scheme: scheme.as_deref().map(TryInto::try_into).transpose()?,
-                host: hostname,
-                path: path.map(|path_mod| match path_mod {
-                    api::HttpPathModifier::ReplaceFullPath(s) => http_route::PathModifier::Full(s),
-                    api::HttpPathModifier::ReplacePrefixMatch(s) => {
-                        http_route::PathModifier::Prefix(s)
-                    }
-                }),
-                port: port.and_then(|p| NonZeroU16::try_from(p).ok()),
-                status: status_code
-                    .map(http_route::StatusCode::try_from)
-                    .transpose()?,
-            }),
+            api::HttpRouteFilter::RequestRedirect { request_redirect } => {
+                let filter = convert::req_redirect(request_redirect)?;
+                http_route::InboundFilter::RequestRedirect(filter)
+            }
 
             api::HttpRouteFilter::RequestMirror { .. } => {
                 bail!("RequestMirror filter is not supported")
@@ -264,5 +218,139 @@ impl InboundRouteBinding {
             }
         };
         Ok(filter)
+    }
+
+    fn try_policy_filter(filter: policy::HttpRouteFilter) -> Result<http_route::InboundFilter> {
+        let filter = match filter {
+            policy::HttpRouteFilter::RequestHeaderModifier {
+                request_header_modifier,
+            } => {
+                let filter = convert::req_header_modifier(request_header_modifier)?;
+                http_route::InboundFilter::RequestHeaderModifier(filter)
+            }
+
+            policy::HttpRouteFilter::RequestRedirect { request_redirect } => {
+                let filter = convert::req_redirect(request_redirect)?;
+                http_route::InboundFilter::RequestRedirect(filter)
+            }
+        };
+        Ok(filter)
+    }
+}
+
+impl InboundParentRef {
+    fn collect_from(
+        route_ns: Option<&str>,
+        parent_refs: Option<Vec<api::ParentReference>>,
+    ) -> Result<Vec<Self>, InvalidParentRef> {
+        let parents = parent_refs
+            .into_iter()
+            .flatten()
+            .filter_map(|parent_ref| Self::from_parent_ref(route_ns, parent_ref))
+            .collect::<Result<Vec<_>, InvalidParentRef>>()?;
+
+        // If there are no valid parents, then the route is invalid.
+        if parents.is_empty() {
+            return Err(InvalidParentRef::DoesNotSelectServer);
+        }
+
+        Ok(parents)
+    }
+
+    fn from_parent_ref(
+        route_ns: Option<&str>,
+        api::ParentReference {
+            group,
+            kind,
+            namespace,
+            name,
+            section_name,
+            port,
+        }: api::ParentReference,
+    ) -> Option<Result<Self, InvalidParentRef>> {
+        // Ignore parents that are not a Server.
+        if let Some(g) = group {
+            if let Some(k) = kind {
+                if !g.eq_ignore_ascii_case("policy.linkerd.io")
+                    || !k.eq_ignore_ascii_case("server")
+                    || name.is_empty()
+                {
+                    return None;
+                }
+            }
+        }
+
+        if namespace.is_some() && namespace.as_deref() != route_ns {
+            return Some(Err(InvalidParentRef::ServerInAnotherNamespace));
+        }
+        if port.is_some() {
+            return Some(Err(InvalidParentRef::SpecifiesPort));
+        }
+        if section_name.is_some() {
+            return Some(Err(InvalidParentRef::SpecifiesSection));
+        }
+
+        Some(Ok(InboundParentRef::Server(name)))
+    }
+}
+
+mod convert {
+    use super::*;
+    pub(super) fn http_match(hostname: api::Hostname) -> http_route::HostMatch {
+        if hostname.starts_with("*.") {
+            let mut reverse_labels = hostname
+                .split('.')
+                .skip(1)
+                .map(|label| label.to_string())
+                .collect::<Vec<String>>();
+            reverse_labels.reverse();
+            http_route::HostMatch::Suffix { reverse_labels }
+        } else {
+            http_route::HostMatch::Exact(hostname)
+        }
+    }
+    pub(super) fn req_header_modifier(
+        api::HttpRequestHeaderFilter { set, add, remove }: api::HttpRequestHeaderFilter,
+    ) -> Result<http_route::RequestHeaderModifierFilter> {
+        Ok(http_route::RequestHeaderModifierFilter {
+            add: add
+                .into_iter()
+                .flatten()
+                .map(|api::HttpHeader { name, value }| Ok((name.parse()?, value.parse()?)))
+                .collect::<Result<Vec<_>>>()?,
+            set: set
+                .into_iter()
+                .flatten()
+                .map(|api::HttpHeader { name, value }| Ok((name.parse()?, value.parse()?)))
+                .collect::<Result<Vec<_>>>()?,
+            remove: remove
+                .into_iter()
+                .flatten()
+                .map(http_route::HeaderName::try_from)
+                .collect::<Result<_, _>>()?,
+        })
+    }
+
+    pub(super) fn req_redirect(
+        api::HttpRequestRedirectFilter {
+            scheme,
+            hostname,
+            path,
+            port,
+            status_code,
+        }: api::HttpRequestRedirectFilter,
+    ) -> Result<http_route::RequestRedirectFilter> {
+        Ok(http_route::RequestRedirectFilter {
+            scheme: scheme.as_deref().map(TryInto::try_into).transpose()?,
+            host: hostname,
+            path: path.map(|path_mod| match path_mod {
+                api::HttpPathModifier::ReplaceFullPath(s) => http_route::PathModifier::Full(s),
+                api::HttpPathModifier::ReplacePrefixMatch(s) => http_route::PathModifier::Prefix(s),
+            }),
+            port: port.and_then(|p| NonZeroU16::try_from(p).ok()),
+            status: status_code
+                .map(http_route::StatusCode::try_from)
+                .transpose()?,
+        })
     }
 }
