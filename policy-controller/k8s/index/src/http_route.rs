@@ -36,7 +36,7 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
 
     fn try_from(route: api::HttpRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
-        let parents = InboundParentRef::convert_all(route_ns, route.spec.inner.parent_refs)?;
+        let parents = InboundParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
         let hostnames = route
             .spec
             .hostnames
@@ -75,7 +75,7 @@ impl TryFrom<policy::HttpRoute> for InboundRouteBinding {
 
     fn try_from(route: policy::HttpRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
-        let parents = InboundParentRef::convert_all(route_ns, route.spec.inner.parent_refs)?;
+        let parents = InboundParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
         let hostnames = route
             .spec
             .hostnames
