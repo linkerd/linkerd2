@@ -499,7 +499,7 @@ data:
         name: cr.l5d.io/linkerd/policy-controller
         pullPolicy: ""
         version: ""
-      logLevel: linkerd=info,warn
+      logLevel: info
       resources:
         cpu:
           limit: ""
@@ -1388,7 +1388,7 @@ spec:
         - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         - --identity-domain=test.trust.domain
         - --default-policy=all-unauthenticated
-        - --log-level=linkerd=info,warn
+        - --log-level=info
         - --log-format=plain
         image: cr.l5d.io/linkerd/policy-controller:linkerd-version
         imagePullPolicy: IfNotPresent

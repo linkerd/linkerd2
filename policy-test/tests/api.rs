@@ -19,7 +19,6 @@ async fn server_with_server_authorization() {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
         let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
-        tracing::trace!(?pod);
 
         let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
         let config = rx
@@ -156,7 +155,6 @@ async fn server_with_authorization_policy() {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
         let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
-        tracing::trace!(?pod);
 
         let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
         let config = rx
@@ -289,6 +287,8 @@ async fn server_with_authorization_policy() {
 #[tokio::test(flavor = "current_thread")]
 async fn server_with_gateway_http_route() {
     with_temp_ns(|client, ns| async move {
+        // Create an http route that refers to the `linkerd-admin` server (by
+        // name).
         let route = k8s_gateway_api::HttpRoute {
             metadata: kube::api::ObjectMeta {
                 namespace: Some(ns.clone()),
@@ -332,6 +332,8 @@ async fn server_with_linkerd_http_route() {
     use k8s::policy::httproute as api;
 
     with_temp_ns(|client, ns| async move {
+        // Create an http route that refers to the `linkerd-admin` server (by
+        // name).
         let route = api::HttpRoute {
             metadata: kube::api::ObjectMeta {
                 namespace: Some(ns.clone()),
@@ -377,7 +379,6 @@ where
     // Create a pod that does nothing. It's injected with a proxy, so we can
     // attach policies to its admin server.
     let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
-    tracing::trace!(?pod);
 
     let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
     let config = rx
