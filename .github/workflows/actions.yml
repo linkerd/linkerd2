@@ -18,7 +18,9 @@ jobs:
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - name: Install actionlint
-        run: https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_1.6.15_linux_amd64.tar.gz | tar tzvf - -C /usr/local/bin actionlint
+        run: |
+          url="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_1.6.15_linux_amd64.tar.gz"
+          bin/scurl "url" | tar xzvf - -C /usr/local/bin actionlint
       - name: Run actionlint
         run: |
           # Run actionlint and format errors to fit GitHub Action's style
