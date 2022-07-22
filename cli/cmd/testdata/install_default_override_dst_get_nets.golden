@@ -490,7 +490,7 @@ data:
         name: cr.l5d.io/linkerd/policy-controller
         pullPolicy: ""
         version: ""
-      logLevel: linkerd=info,warn
+      logLevel: info
       resources:
         cpu:
           limit: ""
@@ -1273,7 +1273,7 @@ spec:
         - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.0.0.0/8
         - --identity-domain=cluster.local
         - --default-policy=all-unauthenticated
-        - --log-level=linkerd=info,warn
+        - --log-level=info
         - --log-format=plain
         image: cr.l5d.io/linkerd/policy-controller:install-control-plane-version
         imagePullPolicy: IfNotPresent

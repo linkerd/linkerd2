@@ -4,7 +4,7 @@
 pub mod admission;
 pub mod curl;
 pub mod grpc;
-pub mod nginx;
+pub mod web;
 
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
 use maplit::{btreemap, convert_args};
@@ -71,13 +71,27 @@ pub async fn create_ready_pod(client: &kube::Client, pod: k8s::Pod) -> k8s::Pod 
     };
 
     let pod = create(client, pod).await;
-    await_condition(
+    let pod = await_condition(
         client,
         &pod.namespace().unwrap(),
         &pod.name_unchecked(),
         pod_ready,
     )
-    .await;
+    .await
+    .unwrap();
+
+    tracing::trace!(
+        pod = %pod.name_any(),
+        ip = %pod
+            .status.as_ref().expect("pod must have a status")
+            .pod_ips.as_ref().unwrap()[0]
+            .ip.as_deref().expect("pod ip must be set"),
+        containers = ?pod
+            .spec.as_ref().expect("pod must have a spec")
+            .containers.iter().map(|c| &*c.name).collect::<Vec<_>>(),
+        "Ready",
+    );
+
     pod
 }
 
@@ -98,6 +112,21 @@ pub async fn await_pod_ip(client: &kube::Client, ns: &str, name: &str) -> std::n
         .expect("pod must have an IP")
         .parse()
         .expect("pod IP must be valid")
+}
+
+#[tracing::instrument(skip_all, fields(%pod, %container))]
+pub async fn logs(client: &kube::Client, ns: &str, pod: &str, container: &str) {
+    let params = kube::api::LogParams {
+        container: Some(container.to_string()),
+        ..kube::api::LogParams::default()
+    };
+    let log = kube::Api::<k8s::Pod>::namespaced(client.clone(), ns)
+        .logs(pod, &params)
+        .await
+        .expect("must fetch logs");
+    for message in log.lines() {
+        tracing::trace!(%message);
+    }
 }
 
 /// Runs a test with a random namespace that is deleted on test completion
@@ -227,6 +256,8 @@ fn init_tracing() -> tracing::subscriber::DefaultGuard {
     tracing::subscriber::set_default(
         tracing_subscriber::fmt()
             .with_test_writer()
+            .with_thread_names(true)
+            .without_time()
             .with_env_filter(
                 tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
                     "trace,tower=info,hyper=info,kube=info,h2=info"

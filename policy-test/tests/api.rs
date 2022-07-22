@@ -19,7 +19,6 @@ async fn server_with_server_authorization() {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
         let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
-        tracing::trace!(?pod);
 
         let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
         let config = rx
@@ -156,7 +155,6 @@ async fn server_with_authorization_policy() {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
         let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
-        tracing::trace!(?pod);
 
         let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
         let config = rx
@@ -292,7 +290,6 @@ async fn server_with_http_route() {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
         let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
-        tracing::trace!(?pod);
 
         let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
         let config = rx
