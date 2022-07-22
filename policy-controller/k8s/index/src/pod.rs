@@ -1,7 +1,6 @@
 use crate::DefaultPolicy;
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{bail, Context, Result};
-use k8s_openapi::{api::core::v1 as corev1, apimachinery::pkg::util::intstr::IntOrString};
 use linkerd_policy_controller_k8s_api as k8s;
 use std::num::NonZeroU16;
 
@@ -96,20 +95,20 @@ pub(crate) fn get_container_probes(
 }
 
 fn set_probe_ports(
-    probe: corev1::Probe,
+    probe: k8s::Probe,
     probes: &mut PortMap<HashSet<String>>,
     port_names: &HashMap<String, PortSet>,
 ) {
     if let Some(http) = probe.http_get {
         if let Some(path) = http.path {
             match http.port {
-                IntOrString::Int(port) => {
+                k8s::IntOrString::Int(port) => {
                     if let Ok(p) = u16::try_from(port).and_then(NonZeroU16::try_from) {
                         let paths = probes.entry(p).or_default();
                         paths.insert(path);
                     }
                 }
-                IntOrString::String(port) => {
+                k8s::IntOrString::String(port) => {
                     if let Some(named) = port_names.get(&port) {
                         for p in named {
                             let paths = probes.entry(*p).or_default();
@@ -121,13 +120,13 @@ fn set_probe_ports(
         }
     } else if let Some(tcp) = probe.tcp_socket {
         match tcp.port {
-            IntOrString::Int(port) => {
+            k8s::IntOrString::Int(port) => {
                 if let Ok(p) = u16::try_from(port).and_then(NonZeroU16::try_from) {
                     let paths = probes.entry(p).or_default();
                     paths.insert("/".to_string());
                 }
             }
-            IntOrString::String(port) => {
+            k8s::IntOrString::String(port) => {
                 if let Some(named) = port_names.get(&port) {
                     for p in named {
                         let paths = probes.entry(*p).or_default();
@@ -293,67 +292,67 @@ mod tests {
                 name: Some("pod".to_string()),
                 ..Default::default()
             },
-            spec: Some(corev1::PodSpec {
+            spec: Some(k8s::PodSpec {
                 containers: vec![
-                    corev1::Container {
-                        liveness_probe: Some(corev1::Probe {
-                            http_get: Some(corev1::HTTPGetAction {
+                    k8s::Container {
+                        liveness_probe: Some(k8s::Probe {
+                            http_get: Some(k8s::HTTPGetAction {
                                 path: Some("/liveness-container-1".to_string()),
-                                port: IntOrString::Int(5432),
+                                port: k8s::IntOrString::Int(5432),
                                 ..Default::default()
                             }),
                             ..Default::default()
                         }),
-                        readiness_probe: Some(corev1::Probe {
-                            http_get: Some(corev1::HTTPGetAction {
+                        readiness_probe: Some(k8s::Probe {
+                            http_get: Some(k8s::HTTPGetAction {
                                 path: Some("/ready-container-1".to_string()),
-                                port: IntOrString::Int(5432),
+                                port: k8s::IntOrString::Int(5432),
                                 ..Default::default()
                             }),
                             ..Default::default()
                         }),
                         ..Default::default()
                     },
-                    corev1::Container {
-                        ports: Some(vec![corev1::ContainerPort {
+                    k8s::Container {
+                        ports: Some(vec![k8s::ContainerPort {
                             name: Some("named-port-1".to_string()),
                             container_port: 6543,
                             ..Default::default()
                         }]),
-                        liveness_probe: Some(corev1::Probe {
-                            http_get: Some(corev1::HTTPGetAction {
+                        liveness_probe: Some(k8s::Probe {
+                            http_get: Some(k8s::HTTPGetAction {
                                 path: Some("/liveness-container-2".to_string()),
-                                port: IntOrString::String("named-port-1".to_string()),
+                                port: k8s::IntOrString::String("named-port-1".to_string()),
                                 ..Default::default()
                             }),
                             ..Default::default()
                         }),
-                        readiness_probe: Some(corev1::Probe {
-                            http_get: Some(corev1::HTTPGetAction {
+                        readiness_probe: Some(k8s::Probe {
+                            http_get: Some(k8s::HTTPGetAction {
                                 path: Some("/ready-container-2".to_string()),
-                                port: IntOrString::Int(6543),
+                                port: k8s::IntOrString::Int(6543),
                                 ..Default::default()
                             }),
                             ..Default::default()
                         }),
                         ..Default::default()
                     },
-                    corev1::Container {
-                        ports: Some(vec![corev1::ContainerPort {
+                    k8s::Container {
+                        ports: Some(vec![k8s::ContainerPort {
                             name: Some("named-port-2".to_string()),
                             container_port: 7654,
                             ..Default::default()
                         }]),
-                        liveness_probe: Some(corev1::Probe {
-                            tcp_socket: Some(corev1::TCPSocketAction {
-                                port: IntOrString::String("named-port-2".to_string()),
+                        liveness_probe: Some(k8s::Probe {
+                            tcp_socket: Some(k8s::TCPSocketAction {
+                                port: k8s::IntOrString::String("named-port-2".to_string()),
                                 ..Default::default()
                             }),
                             ..Default::default()
                         }),
-                        readiness_probe: Some(corev1::Probe {
-                            tcp_socket: Some(corev1::TCPSocketAction {
-                                port: IntOrString::Int(7654),
+                        readiness_probe: Some(k8s::Probe {
+                            tcp_socket: Some(k8s::TCPSocketAction {
+                                port: k8s::IntOrString::Int(7654),
                                 ..Default::default()
                             }),
                             ..Default::default()

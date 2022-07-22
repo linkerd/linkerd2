@@ -1028,7 +1028,6 @@ dependencies = [
  "anyhow",
  "futures",
  "k8s-gateway-api",
- "k8s-openapi",
  "kubert",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
