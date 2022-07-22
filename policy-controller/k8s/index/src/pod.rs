@@ -49,15 +49,15 @@ pub(crate) struct PortHasher(u16);
 pub(crate) fn tcp_port_names(spec: &Option<k8s::PodSpec>) -> HashMap<String, PortSet> {
     let mut port_names = HashMap::<String, PortSet>::default();
     if let Some(spec) = spec {
-        for container in spec.containers.clone().into_iter() {
-            if let Some(ports) = container.ports {
+        for container in spec.containers.iter() {
+            if let Some(ports) = &container.ports {
                 for port in ports.into_iter() {
                     if let None | Some("TCP") = port.protocol.as_deref() {
                         if let Ok(cp) =
                             u16::try_from(port.container_port).and_then(NonZeroU16::try_from)
                         {
-                            if let Some(name) = port.name {
-                                port_names.entry(name).or_default().insert(cp);
+                            if let Some(name) = &port.name {
+                                port_names.entry(name.clone()).or_default().insert(cp);
                             }
                         }
                     }
@@ -79,14 +79,14 @@ pub(crate) fn get_container_probes(
 ) -> PortMap<HashSet<String>> {
     let mut probes = PortMap::<HashSet<String>>::default();
     if let Some(spec) = spec {
-        for container in spec.containers.clone().into_iter() {
-            if let Some(probe) = container.liveness_probe {
+        for container in spec.containers.iter() {
+            if let Some(probe) = &container.liveness_probe {
                 set_probe_ports(probe, &mut probes, port_names);
             }
-            if let Some(probe) = container.readiness_probe {
+            if let Some(probe) = &container.readiness_probe {
                 set_probe_ports(probe, &mut probes, port_names);
             }
-            if let Some(probe) = container.startup_probe {
+            if let Some(probe) = &container.startup_probe {
                 set_probe_ports(probe, &mut probes, port_names);
             }
         }
@@ -95,43 +95,39 @@ pub(crate) fn get_container_probes(
 }
 
 fn set_probe_ports(
-    probe: k8s::Probe,
+    probe: &k8s::Probe,
     probes: &mut PortMap<HashSet<String>>,
     port_names: &HashMap<String, PortSet>,
 ) {
-    if let Some(http) = probe.http_get {
-        if let Some(path) = http.path {
-            match http.port {
+    if let Some(http) = &probe.http_get {
+        if let Some(path) = &http.path {
+            match &http.port {
                 k8s::IntOrString::Int(port) => {
-                    if let Ok(p) = u16::try_from(port).and_then(NonZeroU16::try_from) {
+                    if let Ok(p) = u16::try_from(*port).and_then(NonZeroU16::try_from) {
                         let paths = probes.entry(p).or_default();
-                        paths.insert(path);
+                        paths.insert(path.clone());
                     }
                 }
                 k8s::IntOrString::String(port) => {
-                    if let Some(named) = port_names.get(&port) {
-                        for p in named {
-                            let paths = probes.entry(*p).or_default();
-                            paths.insert(path.clone());
-                        }
+                    for p in port_names.get(port).into_iter().flatten() {
+                        let paths = probes.entry(*p).or_default();
+                        paths.insert(path.clone());
                     }
                 }
             }
         }
-    } else if let Some(tcp) = probe.tcp_socket {
-        match tcp.port {
+    } else if let Some(tcp) = &probe.tcp_socket {
+        match &tcp.port {
             k8s::IntOrString::Int(port) => {
-                if let Ok(p) = u16::try_from(port).and_then(NonZeroU16::try_from) {
+                if let Ok(p) = u16::try_from(*port).and_then(NonZeroU16::try_from) {
                     let paths = probes.entry(p).or_default();
                     paths.insert("/".to_string());
                 }
             }
             k8s::IntOrString::String(port) => {
-                if let Some(named) = port_names.get(&port) {
-                    for p in named {
-                        let paths = probes.entry(*p).or_default();
-                        paths.insert("/".to_string());
-                    }
+                for p in port_names.get(port).into_iter().flatten() {
+                    let paths = probes.entry(*p).or_default();
+                    paths.insert("/".to_string());
                 }
             }
         }
