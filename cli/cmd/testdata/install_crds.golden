@@ -2708,7 +2708,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.1.1-edge
+    helm.sh/chart: linkerd-crds-1.2.0-edge
     linkerd.io/control-plane-ns: linkerd
   creationTimestamp: null
   name: httproutes.policy.linkerd.io
