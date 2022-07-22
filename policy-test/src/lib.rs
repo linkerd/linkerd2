@@ -4,7 +4,7 @@
 pub mod admission;
 pub mod curl;
 pub mod grpc;
-pub mod nginx;
+pub mod web;
 
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
 use maplit::{btreemap, convert_args};
