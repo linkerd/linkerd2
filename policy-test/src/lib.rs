@@ -124,8 +124,8 @@ pub async fn logs(client: &kube::Client, ns: &str, pod: &str, container: &str) {
         .logs(pod, &params)
         .await
         .expect("must fetch logs");
-    for msg in log.lines() {
-        tracing::trace!(%msg);
+    for message in log.lines() {
+        tracing::trace!(%message);
     }
 }
 
