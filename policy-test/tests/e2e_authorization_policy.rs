@@ -58,22 +58,39 @@ async fn targets_route() {
         //
         // The policy requires that all connections are authenticated with MeshTLS.
         let (srv, all_mtls) = tokio::join!(
-            create(&client, nginx::server(&ns)),
+            create(&client, web::server(&ns)),
             create(&client, all_authenticated(&ns)),
         );
         // Create a route which matches the /allowed path.
-        let route = create(
-            &client,
-            http_route(&ns, &srv.name_unchecked(), NonZeroU16::new(80).unwrap()),
-        )
-        .await;
+        let (root_route, _roux_route) = tokio::join!(
+            create(
+                &client,
+                http_route(
+                    "root",
+                    &ns,
+                    &srv.name_unchecked(),
+                    "/",
+                    NonZeroU16::new(80).unwrap(),
+                ),
+            ),
+            create(
+                &client,
+                http_route(
+                    "roux",
+                    &ns,
+                    &srv.name_unchecked(),
+                    "/roux",
+                    NonZeroU16::new(80).unwrap(),
+                )
+            )
+        );
         // Create a policy which allows all authenticated clients
         create(
             &client,
             authz_policy(
                 &ns,
-                "nginx",
-                LocalTargetRef::from_resource(&route),
+                "root-authz",
+                LocalTargetRef::from_resource(&root_route),
                 Some(NamespacedTargetRef::from_resource(&all_mtls)),
             ),
         )
@@ -81,39 +98,76 @@ async fn targets_route() {
 
         // Create the nginx pod and wait for it to be ready.
         tokio::join!(
-            create(&client, nginx::service(&ns)),
-            create_ready_pod(&client, nginx::pod(&ns))
+            create(&client, web::service(&ns)),
+            create_ready_pod(&client, web::pod(&ns))
         );
 
         let curl = curl::Runner::init(&client, &ns).await;
-        // TODO: Add a test case for a route which has no authorizations.
-        // TODO: Add a test case for when there is an authorization on the server
-        // but not on the matching route.
-        let (allowed, no_route, unauth) = tokio::join!(
-            curl.run("curl-allowed", "http://nginx/", LinkerdInject::Enabled),
+
+        let (allowed, no_route, unauth, no_authz) = tokio::join!(
+            curl.run("curl-allowed", "http://web/", LinkerdInject::Enabled),
             curl.run(
                 "curl-no-route",
-                "http://nginx/noroute",
+                "http://web/noroute",
                 LinkerdInject::Enabled
             ),
-            curl.run("curl-unauth", "http://nginx/", LinkerdInject::Disabled)
+            curl.run("curl-unauth", "http://web/", LinkerdInject::Disabled),
+            curl.run(
+                "curl-route-without-authz",
+                "http://web/roux",
+                LinkerdInject::Enabled
+            ),
         );
-        let (allowed_status, no_route_status, unauth_status) = tokio::join!(
-            allowed.exit_code(),
-            no_route.exit_code(),
-            unauth.exit_code()
+        let (allowed_status, no_route_status, unauth_status, no_authz_status) = tokio::join!(
+            allowed.http_status_code(),
+            no_route.http_status_code(),
+            unauth.http_status_code(),
+            no_authz.http_status_code(),
         );
         assert_eq!(
-            allowed_status, 0,
-            "curling allowed route must contact nginx"
+            allowed_status, "204",
+            "curling allowed route must contact web"
         );
-        assert_ne!(
-            no_route_status, 0,
-            "curl which does not match route must not contact nginx"
+        assert_eq!(
+            no_route_status, "404",
+            "curl which does not match route must not contact web"
         );
-        assert_ne!(
-            unauth_status, 0,
-            "curl which is not authenticated must not contact nginx"
+        assert_eq!(
+            unauth_status, "403",
+            "curl which is not authenticated must not contact web"
+        );
+        assert_eq!(
+            no_authz_status, "403",
+            "curl to route with no authorizations must not contact web"
+        );
+
+        // Create a policy which allows all authenticated clients to access the server.
+        create(
+            &client,
+            authz_policy(
+                &ns,
+                "server-authz",
+                LocalTargetRef::from_resource(&srv),
+                Some(NamespacedTargetRef::from_resource(&all_mtls)),
+            ),
+        )
+        .await;
+
+        // Curl a route which doesn't have any authz, but its server does have
+        // an authz.
+        let route_with_server_authz_status = curl
+            .run(
+                "curl-route-with-server-authz",
+                "http://web/roux",
+                LinkerdInject::Enabled,
+            )
+            .await
+            .http_status_code()
+            .await;
+
+        assert_eq!(
+            route_with_server_authz_status, "204",
+            "curl to route with no authorizations on server with authorizations must contact web"
         );
     })
     .await;
@@ -580,11 +634,17 @@ fn allow_ips(
     }
 }
 
-fn http_route(ns: &str, server_name: &str, port: NonZeroU16) -> k8s_gateway_api::HttpRoute {
+fn http_route(
+    name: &str,
+    ns: &str,
+    server_name: &str,
+    path: &str,
+    port: NonZeroU16,
+) -> k8s_gateway_api::HttpRoute {
     k8s_gateway_api::HttpRoute {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
-            name: Some("allowed-route".to_string()),
+            name: Some(name.to_string()),
             ..Default::default()
         },
         spec: k8s_gateway_api::HttpRouteSpec {
@@ -602,7 +662,7 @@ fn http_route(ns: &str, server_name: &str, port: NonZeroU16) -> k8s_gateway_api:
             rules: Some(vec![k8s_gateway_api::HttpRouteRule {
                 matches: Some(vec![k8s_gateway_api::HttpRouteMatch {
                     path: Some(k8s_gateway_api::HttpPathMatch::Exact {
-                        value: "/".to_string(),
+                        value: path.to_string(),
                     }),
                     ..Default::default()
                 }]),
