@@ -405,7 +405,7 @@ async fn server_with_http_route() {
                 .expect("route must have metadata"),
             grpc::meta::Metadata {
                 kind: Some(grpc::meta::metadata::Kind::Resource(grpc::meta::Resource {
-                    group: "gateway.networking.k8s.io".to_string(),
+                    group: "policy.linkerd.io".to_string(),
                     kind: "HTTPRoute".to_string(),
                     name: "metrics-route".to_string(),
                 }))
