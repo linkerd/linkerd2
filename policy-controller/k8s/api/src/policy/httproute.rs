@@ -37,32 +37,6 @@ pub struct HttpRouteSpec {
     /// 1. IPs are not allowed.
     /// 2. A hostname may be prefixed with a wildcard label (`*.`). The wildcard
     ///    label must appear by itself as the first label.
-    ///
-    /// If a hostname is specified by both the Listener and HTTPRoute, there
-    /// must be at least one intersecting hostname for the HTTPRoute to be
-    /// attached to the Listener. For example:
-    ///
-    /// * A Listener with `test.example.com` as the hostname matches HTTPRoutes
-    ///   that have either not specified any hostnames, or have specified at
-    ///   least one of `test.example.com` or `*.example.com`.
-    /// * A Listener with `*.example.com` as the hostname matches HTTPRoutes
-    ///   that have either not specified any hostnames or have specified at least
-    ///   one hostname that matches the Listener hostname. For example,
-    ///   `test.example.com` and `*.example.com` would both match. On the other
-    ///   hand, `example.com` and `test.example.net` would not match.
-    ///
-    /// If both the Listener and HTTPRoute have specified hostnames, any
-    /// HTTPRoute hostnames that do not match the Listener hostname MUST be
-    /// ignored. For example, if a Listener specified `*.example.com`, and the
-    /// HTTPRoute specified `test.example.com` and `test.example.net`,
-    /// `test.example.net` must not be considered for a match.
-    ///
-    /// If both the Listener and HTTPRoute have specified hostnames, and none
-    /// match with the criteria above, then the HTTPRoute is not accepted. The
-    /// implementation must raise an 'Accepted' Condition with a status of
-    /// `False` in the corresponding RouteParentStatus.
-    ///
-    /// Support: Core
     pub hostnames: Option<Vec<Hostname>>,
 
     /// Rules are a list of HTTP matchers, filters and actions.
@@ -158,13 +132,6 @@ pub struct HttpRouteRule {
 /// Some examples include request or response modification, implementing
 /// authentication strategies, rate-limiting, and traffic shaping. API
 /// guarantee/conformance is defined based on the type of the filter.
-///
-/// Type identifies the type of filter to apply. As with other API fields,
-/// types are classified into three conformance levels:
-///
-/// - Core: Filter types and their corresponding configuration defined by
-///   "Support: Core" in this package, e.g. "RequestHeaderModifier". All
-///   implementations must support core filters.
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 #[serde(tag = "type", rename_all = "PascalCase")]
 pub enum HttpRouteFilter {

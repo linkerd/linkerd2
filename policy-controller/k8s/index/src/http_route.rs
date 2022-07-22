@@ -239,7 +239,7 @@ impl InboundRouteBinding {
 }
 
 impl InboundParentRef {
-    fn convert_all(
+    fn collect_from(
         route_ns: Option<&str>,
         parent_refs: Option<Vec<api::ParentReference>>,
     ) -> Result<Vec<Self>, InvalidParentRef> {
