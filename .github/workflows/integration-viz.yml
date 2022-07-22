@@ -1,14 +1,13 @@
-name: Extension integration tests
+name: Viz integration tests
 
 on:
   pull_request:
     paths:
-      - .github/workflows/integration-ext.yml
+      - .github/workflows/integration-viz.yml
       - .proxy-version
       - go.sum
       - jaeger/**
-      - multicluster/**
-      - test/integration/**
+      - test/integration/viz/**
       - viz/**
 
 permissions:

@@ -9,7 +9,9 @@ fi
 
 bindir=$( cd "${0%/*}" && pwd )
 
-"$bindir"/docker-build-proxy
-"$bindir"/docker-build-controller
-"$bindir"/docker-build-policy-controller
-"$bindir"/docker-build-cni-plugin
+"$bindir"/docker-build
+
+"$bindir"/docker-build-web
+"$bindir"/docker-build-jaeger-webhook
+"$bindir"/docker-build-metrics-api
+"$bindir"/docker-build-tap
