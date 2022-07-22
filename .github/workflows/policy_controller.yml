@@ -74,7 +74,8 @@ jobs:
         run: |
           rm -rf "$HOME/.cargo"
           bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(cat rust-toolchain)"
-          source "$HOME/.cargo/env"
+          # shellcheck disable=SC1090
+          source ~/.cargo/env
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           bin/scurl -L https://get.nexte.st/latest/linux | tar xzf - -C /usr/local/bin
           cargo version
@@ -118,7 +119,8 @@ jobs:
         run: |
           rm -rf "$HOME/.cargo"
           bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(cat rust-toolchain)"
-          source "$HOME/.cargo/env"
+          # shellcheck disable=SC1090
+          source ~/.cargo/env
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           bin/scurl -L https://get.nexte.st/latest/linux | tar xzf - -C /usr/local/bin
           cargo version

@@ -23,14 +23,7 @@ jobs:
           bin/scurl "$url" | tar xzvf - -C /usr/local/bin actionlint
       - name: Run actionlint
         run: |
-          # Run actionlint and format errors to fit GitHub Action's style
-          # To print multiline text in annotations toolkit, we replace '\n'
-          # with '%0A' (urlencoded newline, see https://github.com/actions/toolkit/issues/193)
-          #
-          # - SC1090: avoid location directives
-          # - SC2016: for template args
+          # shellcheck disable=SC2016
           actionlint \
             -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A```%0A{{replace $err.Snippet "\\n" "%0A"}}%0A```\n{{end}}' \
-            -ignore 'SC2016:' \
-            -ignore 'SC1090:' \
             .github/workflows/*
