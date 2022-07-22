@@ -171,6 +171,7 @@ webhooks:
     - meshtlsauthentications
     - serverauthorizations
     - servers
+    - httproutes
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["gateway.networking.k8s.io"]
     apiVersions: ["v1alpha2"]
