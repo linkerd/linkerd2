@@ -167,11 +167,11 @@ webhooks:
     apiVersions: ["v1alpha1", "v1beta1"]
     resources:
     - authorizationpolicies
+    - httproutes
     - networkauthentications
     - meshtlsauthentications
     - serverauthorizations
     - servers
-    - httproutes
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["gateway.networking.k8s.io"]
     apiVersions: ["v1alpha2"]
@@ -200,11 +200,11 @@ rules:
       - policy.linkerd.io
     resources:
       - authorizationpolicies
+      - httproutes
       - meshtlsauthentications
       - networkauthentications
       - servers
       - serverauthorizations
-      - httproutes
     verbs:
       - get
       - list

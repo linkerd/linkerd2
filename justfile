@@ -153,11 +153,11 @@ test-cluster-install-crds: _test-cluster-exists && _test-cluster-crds-ready
 _test-cluster-crds-ready:
     {{ _kubectl }} wait --for condition=established --timeout=60s crd \
         authorizationpolicies.policy.linkerd.io \
+        httproutes.policy.linkerd.io \
         meshtlsauthentications.policy.linkerd.io \
         networkauthentications.policy.linkerd.io \
         serverauthorizations.policy.linkerd.io \
-        servers.policy.linkerd.io \
-        httproutes.policy.linkerd.io
+        servers.policy.linkerd.io
 
 # Build/fetch the Linkerd containers and load them onto the test cluster.
 _policy-test-images: docker-pull-policy-test-deps docker-build-policy-controller && policy-test-load-images
