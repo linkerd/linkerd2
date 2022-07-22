@@ -52,7 +52,9 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
             .flatten()
             .map(
                 |api::HttpRouteRule {
-                     matches, filters, ..
+                     matches,
+                     filters,
+                     backend_refs: _,
                  }| Self::try_rule(matches, filters, Self::try_gateway_filter),
             )
             .collect::<Result<_>>()?;
