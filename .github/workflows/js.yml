@@ -1,6 +1,11 @@
 name: JS
 
-on: [pull_request]
+on:
+  pull_request:
+    paths:
+      - .github/workflows/js.yml
+      - bin/web*
+      - web/app/**
 
 permissions:
   contents: read
