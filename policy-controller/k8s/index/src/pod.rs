@@ -105,14 +105,14 @@ fn set_probe_ports(
             match http.port {
                 IntOrString::Int(port) => {
                     if let Ok(p) = u16::try_from(port).and_then(NonZeroU16::try_from) {
-                        let paths = probes.entry(p).or_insert_with(Default::default);
+                        let paths = probes.entry(p).or_default();
                         paths.insert(path);
                     }
                 }
                 IntOrString::String(port) => {
                     if let Some(named) = port_names.get(&port) {
-                        for p in named.iter() {
-                            let paths = probes.entry(*p).or_insert_with(Default::default);
+                        for p in named {
+                            let paths = probes.entry(*p).or_default();
                             paths.insert(path.clone());
                         }
                     }
@@ -123,14 +123,14 @@ fn set_probe_ports(
         match tcp.port {
             IntOrString::Int(port) => {
                 if let Ok(p) = u16::try_from(port).and_then(NonZeroU16::try_from) {
-                    let paths = probes.entry(p).or_insert_with(Default::default);
+                    let paths = probes.entry(p).or_default();
                     paths.insert("/".to_string());
                 }
             }
             IntOrString::String(port) => {
                 if let Some(named) = port_names.get(&port) {
-                    for p in named.iter() {
-                        let paths = probes.entry(*p).or_insert_with(Default::default);
+                    for p in named {
+                        let paths = probes.entry(*p).or_default();
                         paths.insert("/".to_string());
                     }
                 }
