@@ -427,16 +427,22 @@ impl Validate<ServerAuthorizationSpec> for Admission {
 impl Validate<HttpRouteSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
         // The validation for the policy.linkerd.io HTTPRoute type is much
-        // simpler than for the Gateway API version: the route must target a
-        // `Server` resource.
+        // simpler than for the Gateway API version: the route must only target
+        // `Server` resources.
         //
         // We don't have to do any validation that unsupported filters aren't
         // present, because Linkerd's HTTPRoute CRD doesn't include those
         // filters at all.
-        if !parent_refs_target_server(&spec.inner) {
-            bail!("policy.linkerd.io HTTPRoutes must target a Server resource")
-        }
-
+        let all_target_servers = spec
+            .inner
+            .parent_refs
+            .iter()
+            .flatten()
+            .all(parent_ref_targets_server);
+        anyhow::ensure!(
+            all_target_servers,
+            "policy.linkerd.io HTTPRoutes must target only Server resources"
+        );
         Ok(())
     }
 }
@@ -445,7 +451,13 @@ impl Validate<HttpRouteSpec> for Admission {
 impl Validate<gateway::HttpRouteSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: gateway::HttpRouteSpec) -> Result<()> {
         // Only validate HttpRoutes which have a Server as a parent_ref.
-        if !parent_refs_target_server(&spec.inner) {
+        let targets_server = spec
+            .inner
+            .parent_refs
+            .iter()
+            .flatten()
+            .any(parent_ref_targets_server);
+        if !targets_server {
             return Ok(());
         }
 
@@ -457,16 +469,13 @@ impl Validate<gateway::HttpRouteSpec> for Admission {
     }
 }
 
-fn parent_refs_target_server(spec: &httproute::CommonRouteSpec) -> bool {
-    spec.parent_refs.iter().flatten().any(|parent_ref| {
-        if let Some(p) = parent_ref.group.as_deref() {
-            if let Some(k) = parent_ref.kind.as_deref() {
-                return p.eq_ignore_ascii_case("policy.linkerd.io")
-                    && k.eq_ignore_ascii_case("server");
-            }
+fn parent_ref_targets_server(p: &httproute::ParentReference) -> bool {
+    match (p.group.as_deref(), p.kind.as_deref()) {
+        (Some(group), Some(kind)) => {
+            group.eq_ignore_ascii_case("policy.linkerd.io") && kind.eq_ignore_ascii_case("server")
         }
-        false
-    })
+        _ => false,
+    }
 }
 
 fn validate_gateway_http_route_rule(rule: &gateway::HttpRouteRule) -> Result<()> {
