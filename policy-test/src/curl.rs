@@ -238,7 +238,7 @@ impl Running {
         };
         let code = get_exit_code(&pod).expect("curl pod must have an exit code");
         tracing::debug!(pod = %self.name, %code, "Curl exited");
-        for c in pod.spec.unwrap().containers.iter() {
+        for c in pod.spec.unwrap().containers {
             super::logs(&self.client, &self.namespace, &self.name, &c.name).await;
         }
 
