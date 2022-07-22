@@ -7,7 +7,7 @@ use crate::k8s::{
         ServerAuthorizationSpec, ServerSpec,
     },
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
@@ -417,13 +417,71 @@ impl Validate<ServerAuthorizationSpec> for Admission {
 #[async_trait::async_trait]
 impl Validate<HttpRouteSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
-        // The validation for the policy.linkerd.io HTTPRoute type is much
-        // simpler than for the Gateway API version: the route must only target
-        // `Server` resources.
-        //
-        // We don't have to do any validation that unsupported filters aren't
-        // present, because Linkerd's HTTPRoute CRD doesn't include those
-        // filters at all.
+        use httproute::{HttpRouteFilter, HttpRouteMatch, HttpRouteRule};
+
+        fn parent_ref_targets_server(p: &httproute::ParentReference) -> bool {
+            match (p.group.as_deref(), p.kind.as_deref()) {
+                (Some(group), Some(kind)) => {
+                    group.eq_ignore_ascii_case("policy.linkerd.io")
+                        && kind.eq_ignore_ascii_case("server")
+                }
+                _ => false,
+            }
+        }
+
+        fn validate_matches<'matches>(
+            matches: impl IntoIterator<Item = &'matches HttpRouteMatch>,
+        ) -> Result<()> {
+            use httproute::HttpPathMatch;
+
+            for m in matches {
+                match m.path {
+                    Some(HttpPathMatch::Exact { ref value }) => ensure!(
+                        value.starts_with('/'),
+                        "invalid Exact path match {value:?}: path matches must begin with '/'"
+                    ),
+                    Some(HttpPathMatch::PathPrefix { ref value }) => ensure!(
+                        value.starts_with('/'),
+                        "invalid PathPrefix path match {value:?}: path matches must begin with '/'"
+                    ),
+                    _ => {}
+                }
+            }
+
+            Ok(())
+        }
+
+        fn validate_filters<'filters>(
+            filters: impl IntoIterator<Item = &'filters HttpRouteFilter>,
+        ) -> Result<()> {
+            use httproute::{HttpPathModifier, HttpRequestRedirectFilter};
+
+            for f in filters {
+                if let HttpRouteFilter::RequestRedirect {
+                    request_redirect:
+                        HttpRequestRedirectFilter {
+                            path: Some(ref path),
+                            ..
+                        },
+                } = f
+                {
+                    match path {
+                        HttpPathModifier::ReplaceFullPath(ref path) => ensure!(
+                            path.starts_with('/'),
+                            "invalid ReplaceFullPath path {path:?}: paths must be absolute (begin with '/')"
+                        ),
+                        HttpPathModifier::ReplacePrefixMatch(ref path) => ensure!(
+                            path.starts_with('/'),
+                            "invalid ReplacePrefixMatch path prefix {path:?}: path prefixes must be absolute (begin with '/')"
+                        ),
+                    }
+                }
+            }
+
+            Ok(())
+        }
+
+        // Ensure that the `HTTPRoute` targets a `Server` as its parent ref
         let all_target_servers = spec
             .inner
             .parent_refs
@@ -434,15 +492,13 @@ impl Validate<HttpRouteSpec> for Admission {
             all_target_servers,
             "policy.linkerd.io HTTPRoutes must target only Server resources"
         );
-        Ok(())
-    }
-}
 
-fn parent_ref_targets_server(p: &httproute::ParentReference) -> bool {
-    match (p.group.as_deref(), p.kind.as_deref()) {
-        (Some(group), Some(kind)) => {
-            group.eq_ignore_ascii_case("policy.linkerd.io") && kind.eq_ignore_ascii_case("server")
+        // Validate the rules in this spec.
+        for HttpRouteRule { matches, filters } in spec.rules.iter().flatten() {
+            validate_matches(matches.iter().flatten())?;
+            validate_filters(filters.iter().flatten())?
         }
-        _ => false,
+
+        Ok(())
     }
 }
