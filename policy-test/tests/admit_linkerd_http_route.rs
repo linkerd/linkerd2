@@ -54,8 +54,8 @@ async fn rejects_mixed_parent_ref() {
         spec: HttpRouteSpec {
             inner: CommonRouteSpec {
                 parent_refs: Some(vec![
-                    server_parent_ref(ns),
-                    non_server_parent_ref(ns.clone()),
+                    server_parent_ref(ns.clone()),
+                    non_server_parent_ref(ns),
                 ]),
             },
             hostnames: None,
