@@ -50,7 +50,7 @@ pub(crate) fn tcp_port_names(spec: &Option<k8s::PodSpec>) -> HashMap<String, Por
     let mut port_names = HashMap::<String, PortSet>::default();
     if let Some(spec) = spec {
         for container in spec.containers.iter() {
-            if let Some(ports) = &container.ports {
+            if let Some(ref ports) = container.ports {
                 for port in ports.into_iter() {
                     if let None | Some("TCP") = port.protocol.as_deref() {
                         if let Ok(cp) =
@@ -78,27 +78,23 @@ pub(crate) fn get_container_probes(
     port_names: &HashMap<String, PortSet>,
 ) -> PortMap<HashSet<String>> {
     let mut probes = PortMap::<HashSet<String>>::default();
-    if let Some(spec) = spec {
-        for container in spec.containers.iter() {
-            if let Some(probe) = &container.liveness_probe {
-                set_probe_ports(probe, &mut probes, port_names);
-            }
-            if let Some(probe) = &container.readiness_probe {
-                set_probe_ports(probe, &mut probes, port_names);
-            }
-            if let Some(probe) = &container.startup_probe {
-                set_probe_ports(probe, &mut probes, port_names);
-            }
-        }
+    for container in spec.iter().flat_map(|s| s.containers.iter()) {
+        set_probe_ports(&container.liveness_probe, &mut probes, port_names);
+        set_probe_ports(&container.readiness_probe, &mut probes, port_names);
+        set_probe_ports(&container.startup_probe, &mut probes, port_names);
     }
     probes
 }
 
 fn set_probe_ports(
-    probe: &k8s::Probe,
+    probe: &Option<k8s::Probe>,
     probes: &mut PortMap<HashSet<String>>,
     port_names: &HashMap<String, PortSet>,
 ) {
+    let probe = match probe {
+        Some(probe) => probe,
+        None => return,
+    };
     if let Some(http) = &probe.http_get {
         if let Some(path) = &http.path {
             match &http.port {
