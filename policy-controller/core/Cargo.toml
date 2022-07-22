@@ -13,3 +13,4 @@ futures = { version = "0.3", default-features = false, features = ["std"] }
 http = "0.2"
 ipnet = "2"
 regex = "1"
+chrono = { version = "0.4.19", default_features = false }

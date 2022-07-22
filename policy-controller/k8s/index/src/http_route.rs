@@ -1,5 +1,5 @@
 use ahash::AHashMap as HashMap;
-use anyhow::{bail, ensure, Error, Result};
+use anyhow::{anyhow, bail, ensure, Error, Result};
 use k8s_gateway_api as api;
 use linkerd_policy_controller_core::http_route;
 use linkerd_policy_controller_k8s_api::policy::{httproute as policy, Server};
@@ -36,6 +36,11 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
 
     fn try_from(route: api::HttpRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
+        let creation_timestamp = route
+            .metadata
+            .creation_timestamp
+            .ok_or_else(|| anyhow!("HTTPRoute resource did not have a creation timestamp!"))?
+            .0;
         let parents = InboundParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
         let hostnames = route
             .spec
@@ -65,6 +70,7 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
                 hostnames,
                 rules,
                 authorizations: HashMap::default(),
+                creation_timestamp,
             },
         })
     }
@@ -75,6 +81,11 @@ impl TryFrom<policy::HttpRoute> for InboundRouteBinding {
 
     fn try_from(route: policy::HttpRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
+        let creation_timestamp = route
+            .metadata
+            .creation_timestamp
+            .ok_or_else(|| anyhow!("HTTPRoute resource did not have a creation timestamp!"))?
+            .0;
         let parents = InboundParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
         let hostnames = route
             .spec
@@ -100,6 +111,7 @@ impl TryFrom<policy::HttpRoute> for InboundRouteBinding {
                 hostnames,
                 rules,
                 authorizations: HashMap::default(),
+                creation_timestamp,
             },
         })
     }
