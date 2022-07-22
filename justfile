@@ -22,6 +22,9 @@ test-cluster-k8s := env_var_or_default("LINKERD_TEST_CLUSTER_K8S", "latest")
 # The name of the k3d cluster to use.
 test-cluster-name := env_var_or_default("LINKERD_TEST_CLUSTER_NAME", 'l5d-test')
 
+test-cluster-agents := "0"
+test-cluster-servers := "1"
+
 # By default we compile in development mode mode because it's faster.
 build-type := if env_var_or_default("RELEASE", "") == "" { "debug" } else { "release" }
 
@@ -166,7 +169,7 @@ _policy-test-images: docker-pull-policy-test-deps docker-build-policy-controller
 docker-pull-policy-test-deps:
     docker pull -q docker.io/bitnami/kubectl:latest
     docker pull -q docker.io/curlimages/curl:latest
-    docker pull -q docker.io/library/nginx:latest
+    docker pull -q ghcr.io/olix0r/hokay:latest
     docker pull -q "{{ _proxy-init-image }}:$(yq .proxyInit.image.version <charts/linkerd-control-plane/values.yaml)"
 
 # Build the policy controller docker image for testing (on amd64).
@@ -181,7 +184,7 @@ policy-test-load-images:
     k3d image import --cluster='{{ test-cluster-name }}' --mode=direct \
         bitnami/kubectl:latest \
         curlimages/curl:latest \
-        nginx:latest \
+        ghcr.io/olix0r/hokay:latest \
         '{{ _controller-image }}:{{ image-tag }}' \
         '{{ _policy-controller-image }}:{{ image-tag }}' \
         '{{ _proxy-image }}:{{ image-tag }}' \
@@ -202,6 +205,8 @@ test-cluster-create: && _test-cluster-api-ready _test-cluster-dns-ready
         --kubeconfig-update-default \
         --kubeconfig-switch-context=false \
         --image=+{{ test-cluster-k8s }} \
+        --agents={{ test-cluster-agents }} \
+        --servers={{ test-cluster-servers }} \
         --no-lb --k3s-arg "--no-deploy=local-storage,traefik,servicelb,metrics-server@server:*"
 
 # Deletes the test cluster.
