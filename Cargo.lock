@@ -1009,6 +1009,7 @@ name = "linkerd-policy-controller-k8s-api"
 version = "0.1.0"
 dependencies = [
  "ipnet",
+ "k8s-gateway-api",
  "k8s-openapi",
  "kube",
  "schemars",

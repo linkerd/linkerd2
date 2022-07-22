@@ -156,6 +156,7 @@ test-cluster-install-crds: _test-cluster-exists && _test-cluster-crds-ready
 _test-cluster-crds-ready:
     {{ _kubectl }} wait --for condition=established --timeout=60s crd \
         authorizationpolicies.policy.linkerd.io \
+        httproutes.policy.linkerd.io \
         meshtlsauthentications.policy.linkerd.io \
         networkauthentications.policy.linkerd.io \
         serverauthorizations.policy.linkerd.io \
