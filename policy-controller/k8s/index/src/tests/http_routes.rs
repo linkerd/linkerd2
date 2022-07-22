@@ -1,7 +1,9 @@
 use super::*;
 
+const POLICY_API_GROUP: &str = "policy.linkerd.io";
+
 #[test]
-fn lroute_attaches_to_server() {
+fn route_attaches_to_server() {
     let test = TestConfig::default();
     // Create pod.
     let mut pod = mk_pod("ns-0", "pod-0", Some(("container-0", None)));
@@ -84,7 +86,7 @@ fn mk_route(
         spec: HttpRouteSpec {
             inner: CommonRouteSpec {
                 parent_refs: Some(vec![ParentReference {
-                    group: Some("policy.linkerd.io".to_string()),
+                    group: Some(POLICY_API_GROUP.to_string()),
                     kind: Some("Server".to_string()),
                     namespace: None,
                     name: server.to_string(),
@@ -122,7 +124,7 @@ fn mk_authorization_policy(
         },
         spec: k8s::policy::AuthorizationPolicySpec {
             target_ref: LocalTargetRef {
-                group: Some("gateway.networking.k8s.io".to_string()),
+                group: Some(POLICY_API_GROUP.to_string()),
                 kind: "HttpRoute".to_string(),
                 name: route.to_string(),
             },
