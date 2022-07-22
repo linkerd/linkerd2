@@ -1,7 +1,6 @@
 package edgeupgradetest
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,15 +8,11 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"text/template"
-	"time"
 
 	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/pkg/flags"
-	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tree"
-	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -112,25 +107,6 @@ func TestInstallResourcesPreUpgrade(t *testing.T) {
 		}
 
 		TestHelper.WaitRollout(t, testutil.LinkerdDeployReplicasEdge)
-	})
-
-	// TestInstallViz will install the viz extension to be used by the rest of the
-	// tests in the viz suite
-	t.Run(fmt.Sprintf("installing Linkerd %s viz extension", linkerdBaseEdgeVersion), func(t *testing.T) {
-		out, err := TestHelper.CmdRun(cliPath, "viz", "install", "--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()))
-		if err != nil {
-			testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
-		}
-
-		out, err = TestHelper.KubectlApplyWithArgs(out)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-				"'kubectl apply' command failed\n%s", out)
-		}
-
-		TestHelper.WaitRollout(t, testutil.LinkerdVizDeployReplicas)
-		TestHelper.AddInstalledExtension("viz")
-
 	})
 
 	// Check client and server versions are what we expect them to be
@@ -234,49 +210,11 @@ func TestUpgradeCli(t *testing.T) {
 	}
 
 	TestHelper.WaitRollout(t, testutil.LinkerdDeployReplicasEdge)
-
-	// It is necessary to clone LinkerdVizDeployReplicas so that we do not
-	// mutate its original value.
-	expectedDeployments := make(map[string]testutil.DeploySpec)
-	for k, v := range testutil.LinkerdVizDeployReplicas {
-		expectedDeployments[k] = v
-	}
-
-	// Install Linkerd Viz Extension
-	vizCmd := []string{
-		"viz",
-		"install",
-		"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()),
-	}
-	out, err = TestHelper.LinkerdRun(vizCmd...)
-	if err != nil {
-		testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
-	}
-
-	out, err = TestHelper.KubectlApplyWithArgs(out, []string{
-		"--prune",
-		"-l", "linkerd.io/extension=viz",
-	}...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"'kubectl apply' command failed\n%s", out)
-	}
-
-	TestHelper.WaitRollout(t, expectedDeployments)
-
 }
 
 func TestControlPlaneResourcesPostInstall(t *testing.T) {
 	expectedDeployments := testutil.LinkerdDeployReplicasEdge
 	expectedServices := linkerdSvcEdge
-	vizServices := []testutil.Service{
-		{Namespace: "linkerd-viz", Name: "web"},
-		{Namespace: "linkerd-viz", Name: "tap"},
-		{Namespace: "linkerd-viz", Name: "prometheus"},
-	}
-	expectedServices = append(expectedServices, vizServices...)
-	expectedDeployments["prometheus"] = testutil.DeploySpec{Namespace: "linkerd-viz", Replicas: 1}
-
 	testutil.TestResourcesPostInstall(TestHelper.GetLinkerdNamespace(), expectedServices, expectedDeployments, TestHelper, t)
 }
 
@@ -412,36 +350,6 @@ func TestVersionPostInstall(t *testing.T) {
 	}
 }
 
-func TestCheckProxyPostUpgrade(t *testing.T) {
-	cmd := []string{
-		"check", "--proxy", "-n", TestHelper.GetLinkerdNamespace(),
-		"--expected-version", TestHelper.GetVersion(),
-		"--wait=60m",
-	}
-
-	expected := getCheckOutput(t, "check.upgrade.golden", TestHelper.GetVizNamespace())
-	// Check output is non-deterministic for proxies that are not running the
-	// current version. This tends to cause a mismatch between the expected
-	// output (which is templated) and the actual output. We add a retry to "eventually"
-	// get a match
-	err := TestHelper.RetryFor(5*time.Minute, func() error {
-		out, err := TestHelper.LinkerdRun(cmd...)
-		if err != nil {
-			return fmt.Errorf("%w\n%s", err, out)
-		}
-
-		if !strings.Contains(out, expected) {
-			return fmt.Errorf("expected: %s\nactual: %s", expected, out)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd check' command timed-out", "'linkerd check' command timed-out\n%v", err)
-	}
-}
-
 func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 	testAppNamespace := "upgrade-test"
 
@@ -468,33 +376,4 @@ func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "error exercising test app endpoint after upgrade",
 			"error exercising test app endpoint after upgrade %s", err)
 	}
-}
-
-func getCheckOutput(t *testing.T, goldenFile string, namespace string) string {
-	pods, err := TestHelper.KubernetesHelper.GetPods(context.Background(), namespace, nil)
-	if err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to retrieve pods: %s", err), err)
-	}
-
-	proxyVersionErr := ""
-	err = healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{})
-	if err != nil {
-		proxyVersionErr = err.Error()
-	}
-
-	tpl := template.Must(template.ParseFiles("testdata" + "/" + goldenFile))
-	vars := struct {
-		ProxyVersionErr string
-		HintURL         string
-	}{
-		proxyVersionErr,
-		healthcheck.HintBaseURL(TestHelper.GetVersion()),
-	}
-
-	var expected bytes.Buffer
-	if err := tpl.Execute(&expected, vars); err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse %s template: %s", goldenFile, err), err)
-	}
-
-	return expected.String()
 }
