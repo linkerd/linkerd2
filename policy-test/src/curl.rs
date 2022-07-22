@@ -228,15 +228,19 @@ impl Running {
             &self.name,
             |obj: Option<&k8s::Pod>| -> bool { obj.and_then(get_exit_code).is_some() },
         );
-        let code = match time::timeout(time::Duration::from_secs(30), finished).await {
-            Ok(Ok(Some(pod))) => get_exit_code(&pod).expect("curl pod must have an exit code"),
+        let pod = match time::timeout(time::Duration::from_secs(30), finished).await {
+            Ok(Ok(Some(pod))) => pod,
             Ok(Ok(None)) => unreachable!("Condition must wait for pod"),
             Ok(Err(error)) => panic!("Failed to wait for exit code: {}: {}", self.name, error),
             Err(_timeout) => {
                 panic!("Timeout waiting for exit code: {}", self.name);
             }
         };
+        let code = get_exit_code(&pod).expect("curl pod must have an exit code");
         tracing::debug!(pod = %self.name, %code, "Curl exited");
+        for c in pod.spec.unwrap().containers {
+            super::logs(&self.client, &self.namespace, &self.name, &c.name).await;
+        }
 
         if let Err(error) = api
             .delete(&self.name, &kube::api::DeleteParams::foreground())
