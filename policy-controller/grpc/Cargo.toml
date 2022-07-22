@@ -6,6 +6,7 @@ license = "Apache-2.0"
 publish = false
 
 [dependencies]
+ahash = "0.7"
 async-stream = "0.3"
 async-trait = "0.1"
 drain = "0.1"

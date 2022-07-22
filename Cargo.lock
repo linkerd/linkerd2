@@ -992,6 +992,7 @@ dependencies = [
 name = "linkerd-policy-controller-grpc"
 version = "0.1.0"
 dependencies = [
+ "ahash",
  "async-stream",
  "async-trait",
  "drain",
