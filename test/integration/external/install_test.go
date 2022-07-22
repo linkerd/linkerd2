@@ -1,18 +1,13 @@
 package externaltest
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"testing"
-	"text/template"
-	"time"
 
-	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
-	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -123,90 +118,4 @@ func TestInstallLinkerd(t *testing.T) {
 	}
 
 	TestHelper.WaitRollout(t, testutil.LinkerdDeployReplicasEdge)
-}
-
-// TestInstallViz will install the viz extension to be used by the rest of the
-// tests in the viz suite
-func TestInstallViz(t *testing.T) {
-	// Install external prometheus
-	out, err := TestHelper.LinkerdRun("inject", "testdata/external_prometheus.yaml", "--manual")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "'linkerd inject' command failed: %s", err)
-	}
-
-	out, err = TestHelper.KubectlApply(out, "")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"kubectl apply command failed\n%s", out)
-	}
-
-	cmd := []string{
-		"viz",
-		"install",
-		"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()),
-		"--set", "prometheusUrl=http://prometheus.external-prometheus.svc.cluster.local:9090",
-		"--set", "prometheus.enabled=false",
-	}
-
-	out, err = TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
-	}
-
-	out, err = TestHelper.KubectlApplyWithArgs(out)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"'kubectl apply' command failed\n%s", out)
-	}
-
-	expectedDeployments := make(map[string]testutil.DeploySpec, len(testutil.LinkerdVizDeployReplicas))
-	for k, v := range testutil.LinkerdVizDeployReplicas {
-		if k == "prometheus" {
-			v = testutil.DeploySpec{Namespace: "external-prometheus", Replicas: 1}
-		}
-
-		expectedDeployments[k] = v
-	}
-	TestHelper.WaitRollout(t, expectedDeployments)
-
-}
-
-func TestCheckVizWithExternalPrometheus(t *testing.T) {
-	cmd := []string{"viz", "check", "--wait=60m"}
-	golden := "check.viz.external-prometheus.golden"
-	pods, err := TestHelper.KubernetesHelper.GetPods(context.Background(), TestHelper.GetVizNamespace(), nil)
-	if err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to retrieve pods: %s", err), err)
-	}
-
-	tpl := template.Must(template.ParseFiles("testdata" + "/" + golden))
-	vars := struct {
-		ProxyVersionErr string
-		HintURL         string
-	}{
-		healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{}).Error(),
-		healthcheck.HintBaseURL(TestHelper.GetVersion()),
-	}
-
-	var expected bytes.Buffer
-	if err := tpl.Execute(&expected, vars); err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse %s template: %s", golden, err), err)
-	}
-
-	timeout := 5 * time.Minute
-	err = TestHelper.RetryFor(timeout, func() error {
-		out, err := TestHelper.LinkerdRun(cmd...)
-		if err != nil {
-			return fmt.Errorf("'linkerd viz check' command failed\n%w", err)
-		}
-
-		if out != expected.String() {
-			return fmt.Errorf(
-				"Expected:\n%s\nActual:\n%s", expected.String(), out)
-		}
-		return nil
-	})
-	if err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd viz check' command timed-out (%s)", timeout), err)
-	}
 }

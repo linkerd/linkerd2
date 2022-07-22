@@ -46,9 +46,17 @@ jobs:
     strategy:
       matrix:
         test:
+          - cluster-domain
+          - default-policy-deny
           - cni-calico-deep
+          # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
+          #- helm-upgrade
           - deep
+          - external
+          - multicluster
           - uninstall
+          - upgrade-edge
+          - upgrade-stable
 
     continue-on-error: true
     runs-on: ubuntu-20.04
