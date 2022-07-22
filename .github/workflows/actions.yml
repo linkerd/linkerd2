@@ -20,7 +20,7 @@ jobs:
       - name: Install actionlint
         run: |
           url="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_1.6.15_linux_amd64.tar.gz"
-          bin/scurl "url" | tar xzvf - -C /usr/local/bin actionlint
+          bin/scurl "$url" | tar xzvf - -C /usr/local/bin actionlint
       - name: Run actionlint
         run: |
           # Run actionlint and format errors to fit GitHub Action's style
