@@ -28,8 +28,16 @@ env:
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
 
-
 jobs:
+  cleanup-stale:
+    runs-on: ubuntu-20.04
+    permissions:
+      actions: write
+    steps:
+      - uses: styfle/cancel-workflow-action@bb6001c4ea612bf59c3abfc4756fbceee4f870c7
+        with:
+          access_token: ${{ github.token }}
+
   docker-build:
     runs-on: ubuntu-20.04
     strategy:

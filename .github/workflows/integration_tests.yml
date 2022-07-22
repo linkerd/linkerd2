@@ -10,6 +10,14 @@ env:
   DOCKER_REGISTRY: ghcr.io/linkerd
 
 jobs:
+  cleanup-stale:
+    runs-on: ubuntu-20.04
+    permissions:
+      actions: write
+    steps:
+      - uses: styfle/cancel-workflow-action@bb6001c4ea612bf59c3abfc4756fbceee4f870c7
+        with:
+          access_token: ${{ github.token }}
 
   docker_build:
     runs-on: ubuntu-20.04
