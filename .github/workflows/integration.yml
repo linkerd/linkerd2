@@ -42,7 +42,7 @@ jobs:
           path: /home/runner/archives
 
   test-core:
-    needs: [build]
+    needs: [build-core]
     strategy:
       matrix:
         test:
