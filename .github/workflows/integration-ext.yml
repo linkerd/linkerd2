@@ -1,0 +1,93 @@
+name: Viz integration tests
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/integration-viz.yml
+      - .proxy-version
+      - go.sum
+      - jaeger/**
+      - test/integration/viz/**
+      - web/Dockerfile
+      - viz/**
+
+permissions:
+  contents: read
+
+env:
+  GH_ANNOTATION: true
+  DOCKER_REGISTRY: ghcr.io/linkerd
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        component:
+          - cli-bin
+          - controller
+          - jaeger-webhook
+          - metrics-api
+          - policy-controller
+          - proxy
+          - tap
+          - web
+
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: ./.github/actions/docker-build
+        with:
+          docker-registry: ${{ env.DOCKER_REGISTRY }}
+          docker-target: linux-amd64
+          component: ${{ matrix.component }}
+      - name: Cache image archives
+        env:
+          ARCHIVES: /home/runner/archives
+        run: |
+          mkdir -p "$ARCHIVES"
+          docker save "$DOCKER_REGISTRY/${{ matrix.component }}:$TAG" > "$ARCHIVES/${{ matrix.component }}.tar"
+      - uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
+        with:
+          name: image-archives
+          path: /home/runner/archives
+
+  test:
+    needs: [build]
+    strategy:
+      matrix:
+        test:
+          - viz
+
+    continue-on-error: true
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
+        with:
+          go-version: '1.17'
+
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - name: Update environment
+        run: |
+          (
+            echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)"
+            echo "LINKERD_DOCKER_REGISTRY=$DOCKER_REGISTRY"
+          ) >> "$GITHUB_ENV"
+
+      - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
+        with:
+          name: image-archives
+          path: image-archives
+
+      - name: Install CLI
+        run: |
+          docker load < image-archives/cli-bin.tar
+          # Copy the CLI out of the local cli-bin container.
+          container_id=$(docker create "$DOCKER_REGISTRY/cli-bin:$TAG")
+          docker cp "$container_id:/out/linkerd-linux-amd64" "$HOME/.linkerd"
+          # Validate the CLI version matches the current build tag.
+          [[ "$TAG" == "$("$HOME/.linkerd" version --short --client)" ]]
+
+      - name: Run integration tests
+        run: bin/tests --images archive --cleanup-docker --name ${{ matrix.test }} "$HOME/.linkerd"
