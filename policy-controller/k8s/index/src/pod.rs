@@ -81,18 +81,18 @@ pub(crate) fn get_container_probes(
     let mut probes = PortMap::<HashSet<String>>::default();
     if let Some(spec) = spec {
         for container in spec.containers.clone().into_iter() {
-            container
-                .liveness_probe
-                .map(|probe| set_probe_ports(probe, &mut probes, port_names));
-            container
-                .readiness_probe
-                .map(|probe| set_probe_ports(probe, &mut probes, port_names));
-            container
-                .startup_probe
-                .map(|probe| set_probe_ports(probe, &mut probes, port_names));
+            if let Some(probe) = container.liveness_probe {
+                set_probe_ports(probe, &mut probes, port_names);
+            }
+            if let Some(probe) = container.readiness_probe {
+                set_probe_ports(probe, &mut probes, port_names);
+            }
+            if let Some(probe) = container.startup_probe {
+                set_probe_ports(probe, &mut probes, port_names);
+            }
         }
     }
-    return probes;
+    probes
 }
 
 fn set_probe_ports(
@@ -105,14 +105,14 @@ fn set_probe_ports(
             match http.port {
                 IntOrString::Int(port) => {
                     if let Ok(p) = u16::try_from(port).and_then(NonZeroU16::try_from) {
-                        let paths = probes.entry(p).or_insert(Default::default());
+                        let paths = probes.entry(p).or_insert_with(Default::default);
                         paths.insert(path);
                     }
                 }
                 IntOrString::String(port) => {
                     if let Some(named) = port_names.get(&port) {
-                        for p in named.into_iter() {
-                            let paths = probes.entry(*p).or_insert(Default::default());
+                        for p in named.iter() {
+                            let paths = probes.entry(*p).or_insert_with(Default::default);
                             paths.insert(path.clone());
                         }
                     }
@@ -123,14 +123,14 @@ fn set_probe_ports(
         match tcp.port {
             IntOrString::Int(port) => {
                 if let Ok(p) = u16::try_from(port).and_then(NonZeroU16::try_from) {
-                    let paths = probes.entry(p).or_insert(Default::default());
+                    let paths = probes.entry(p).or_insert_with(Default::default);
                     paths.insert("/".to_string());
                 }
             }
             IntOrString::String(port) => {
                 if let Some(named) = port_names.get(&port) {
-                    for p in named.into_iter() {
-                        let paths = probes.entry(*p).or_insert(Default::default());
+                    for p in named.iter() {
+                        let paths = probes.entry(*p).or_insert_with(Default::default);
                         paths.insert("/".to_string());
                     }
                 }
