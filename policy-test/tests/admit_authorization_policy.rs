@@ -113,7 +113,7 @@ async fn accepts_targets_route() {
         },
         spec: AuthorizationPolicySpec {
             target_ref: LocalTargetRef {
-                group: Some("gateway.networking.k8s.io".to_string()),
+                group: Some("policy.linkerd.io".to_string()),
                 kind: "HttpRoute".to_string(),
                 name: "route-foo".to_string(),
             },

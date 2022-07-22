@@ -44,7 +44,6 @@ You can use the --ignore-cluster flag if you just want to generate the installat
 
 var (
 	templatesCrdFiles = []string{
-		"templates/gateway.networking.k8s.io/httproute.yaml",
 		"templates/policy/authorization-policy.yaml",
 		"templates/policy/httproute.yaml",
 		"templates/policy/meshtls-authentication.yaml",
