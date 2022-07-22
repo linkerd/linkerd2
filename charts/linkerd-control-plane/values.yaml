@@ -76,7 +76,7 @@ policyController:
   defaultAllowPolicy: "all-unauthenticated"
 
   # -- Log level for the policy controller
-  logLevel: linkerd=info,warn
+  logLevel: info
 
   # -- policy controller resource requests & limits
   # @default -- destinationResources
