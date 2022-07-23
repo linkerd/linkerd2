@@ -461,7 +461,16 @@ data:
         tls:
           crtPEM: test-crt-pem
       serviceAccountTokenProjection: true
-    identityProxyResources: null
+    identityProxyResources:
+      cpu:
+        limit: ""
+        request: 100m
+      ephemeral-storage:
+        limit: ""
+        request: ""
+      memory:
+        limit: 250Mi
+        request: 20Mi
     identityResources:
       cpu:
         limit: ""
@@ -604,7 +613,16 @@ data:
           operator: In
           values:
           - enabled
-    proxyInjectorProxyResources: null
+    proxyInjectorProxyResources:
+      cpu:
+        limit: ""
+        request: 100m
+      ephemeral-storage:
+        limit: ""
+        request: ""
+      memory:
+        limit: 250Mi
+        request: 20Mi
     proxyInjectorResources:
       cpu:
         limit: ""
