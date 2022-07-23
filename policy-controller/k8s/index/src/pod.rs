@@ -79,27 +79,22 @@ pub(crate) fn get_container_probes(
 ) -> PortMap<HashSet<String>> {
     let mut probes = PortMap::<HashSet<String>>::default();
     for container in spec.iter().flat_map(|s| s.containers.iter()) {
-        container
-            .liveness_probe
-            .as_ref()
-            .map(|probe| set_probe_ports(probe, &mut probes, port_names));
-        container
-            .readiness_probe
-            .as_ref()
-            .map(|probe| set_probe_ports(probe, &mut probes, port_names));
-        container
-            .startup_probe
-            .as_ref()
-            .map(|probe| set_probe_ports(probe, &mut probes, port_names));
+        set_probe_ports(&container.liveness_probe, &mut probes, port_names);
+        set_probe_ports(&container.readiness_probe, &mut probes, port_names);
+        set_probe_ports(&container.startup_probe, &mut probes, port_names);
     }
     probes
 }
 
 fn set_probe_ports(
-    probe: &k8s::Probe,
+    probe: &Option<k8s::Probe>,
     probes: &mut PortMap<HashSet<String>>,
     port_names: &HashMap<String, PortSet>,
 ) {
+    let probe = match probe {
+        Some(probe) => probe,
+        None => return,
+    };
     if let Some(http) = &probe.http_get {
         if let Some(path) = &http.path {
             match &http.port {
