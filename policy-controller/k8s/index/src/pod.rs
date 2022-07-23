@@ -51,7 +51,7 @@ pub(crate) fn tcp_port_names(spec: &Option<k8s::PodSpec>) -> HashMap<String, Por
     if let Some(spec) = spec {
         for container in spec.containers.iter() {
             if let Some(ref ports) = container.ports {
-                for port in ports.into_iter() {
+                for port in ports {
                     if let None | Some("TCP") = port.protocol.as_deref() {
                         if let Ok(cp) =
                             u16::try_from(port.container_port).and_then(NonZeroU16::try_from)
