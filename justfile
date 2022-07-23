@@ -127,15 +127,22 @@ _proxy-init-image := "ghcr.io/linkerd/proxy-init"
 _policy-controller-image := DOCKER_REGISTRY + "/policy-controller"
 
 # Run the policy controller integration tests in a k3d cluster
-policy-test *flags: test-cluster-install-linkerd && _policy-test-uninstall
+policy-test: test-cluster-linkerd-install policy-test-run test-cluster-linkerd-uninstall
+
+# Run the policy controller integration tests in a k3d cluster
+policy-test-run *flags:
     cd policy-test && {{ _cargo }} {{ _cargo-test }} {{ flags }}
 
+# Build the policy controller integration tests
+policy-test-build:
+    cd policy-test && {{ _cargo }} test --no-run {{ _fmt }}
+
 # Delete all test namespaces and remove Linkerd from the cluster.
-policy-test-cleanup: && _policy-test-uninstall
+policy-test-cleanup: && test-cluster-linkerd-uninstall
     {{ _kubectl }} delete ns -l linkerd-policy-test
 
 # Install Linkerd on the test cluster using test images.
-test-cluster-install-linkerd: test-cluster-install-crds _policy-test-images
+test-cluster-linkerd-install: test-cluster-linkerd-crds-install _policy-test-images
     {{ _linkerd }} install \
             --set 'imagePullPolicy=Never' \
             --set 'controllerImage={{ _controller-image }}' \
@@ -149,8 +156,13 @@ test-cluster-install-linkerd: test-cluster-install-crds _policy-test-images
         | {{ _kubectl }} apply -f -
     {{ _linkerd }} check -o short --wait=1m
 
+# Wait for all test namespaces to be removed before uninstalling Linkerd from the cluster.
+test-cluster-linkerd-uninstall:
+    while [ $({{ _kubectl }} get ns -l linkerd-policy-test -o json |jq '.items | length') != "0" ]; do sleep 1 ; done
+    {{ _linkerd }} uninstall | {{ _kubectl }} delete -f -
+
 # Install CRDs on the test cluster.
-test-cluster-install-crds: _test-cluster-exists && _test-cluster-crds-ready
+test-cluster-linkerd-crds-install: _test-cluster-exists && _test-cluster-crds-ready
     {{ _linkerd }} install --crds | {{ _kubectl }} apply -f -
 
 _test-cluster-crds-ready:
@@ -163,8 +175,25 @@ _test-cluster-crds-ready:
         servers.policy.linkerd.io
 
 # Build/fetch the Linkerd containers and load them onto the test cluster.
-_policy-test-images: docker-pull-policy-test-deps docker-build-policy-controller && policy-test-load-images
+_policy-test-images: docker-pull-policy-test-deps && policy-test-load-images
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -z $(docker image ls -q '{{ _controller-image }}:{{ image-tag }}') ]; then
+        just _policy-test-build-controller
+    fi
+    if [ -z $(docker image ls -q '{{ _proxy-image }}:{{ image-tag }}') ]; then
+        just _policy-test-build-proxy
+    fi
+    if [ -z $(docker image ls -q '{{ _policy-controller-image }}:{{ image-tag }}') ]; then
+        just build-type='{{ build-type }}' \
+            image-tag='{{ image-tag }}' \
+            docker-build-policy-controller
+    fi
+
+_policy-test-build-controller:
     bin/docker-build-controller
+
+_policy-test-build-proxy:
     bin/docker-build-proxy
 
 docker-pull-policy-test-deps:
@@ -190,11 +219,6 @@ policy-test-load-images:
         '{{ _policy-controller-image }}:{{ image-tag }}' \
         '{{ _proxy-image }}:{{ image-tag }}' \
         "{{ _proxy-init-image }}:$(yq .proxyInit.image.version <charts/linkerd-control-plane/values.yaml)"
-
-# Wait for all test namespaces to be removed before uninstalling Linkerd from the cluster.
-_policy-test-uninstall:
-    while [ $({{ _kubectl }} get ns -l linkerd-policy-test -o json |jq '.items | length') != "0" ]; do sleep 1 ; done
-    {{ _linkerd }} uninstall | {{ _kubectl }} delete -f -
 
 ##
 ## Test cluster
