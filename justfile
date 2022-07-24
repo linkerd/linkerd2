@@ -59,19 +59,26 @@ rs-test *flags:
 rs-check-dirs:
     #!/usr/bin/env bash
     set -euo pipefail
-    for toml in $(find . -mindepth 2 -name Cargo.toml | sort -r); do
-        d=${toml%/*}
-        echo "cd $d && {{ _cargo }} check"
-        (cd $d && {{ _cargo }} check --frozen \
-            {{ if rs-build-type == "release" { "--release" } else { "" } }} \
-            {{ _features }} \
-            {{ _fmt }})
-        echo "cd $d && {{ _cargo }} check --tests"
-        (cd $d && {{ _cargo }} check --frozen --tests \
-            {{ if rs-build-type == "release" { "--release" } else { "" } }} \
-            {{ _features }} \
-            {{ _fmt }})
-    done
+    while IFS= read -r toml ; do
+        {{ just_executable() }} \
+            rs-build-type='{{ rs-build-type }}' \
+            rs-features='{{ rs-features }}' \
+            rs-toolchain='{{ rs-toolchain }}' \
+            _rs-check-dir "${toml%/*}"
+        {{ just_executable() }} \
+            rs-build-type='{{ rs-build-type }}' \
+            rs-features='{{ rs-features }}' \
+            rs-toolchain='{{ rs-toolchain }}' \
+            _rs-check-dir "${toml%/*}" --tests
+    done < <(find . -mindepth 2 -name Cargo.toml | sort -r)
+
+_rs-check-dir dir *flags:
+    cd {{ dir }} \
+        && {{ _cargo }} check --frozen \
+                {{ if rs-build-type == "release" { "--release" } else { "" } }} \
+                {{ _features }} \
+                {{ flags }} \
+                {{ _fmt }}
 
 # If we're running in Github Actions and cargo-action-fmt is installed, then add
 # a command suffix that formats errors.
@@ -132,10 +139,9 @@ policy-test-deps-load: _k3d-init policy-test-deps-pull
 ##
 
 # If DOCKER_REGISTRY is not already set, use a bogus registry with a unique
-# domain name so that it's virtually impossible to accidentally use an older
-# cached image.
+# name so that it's virtually impossible to accidentally use an incorrect image.
+export DOCKER_REGISTRY := env_var_or_default("DOCKER_REGISTRY", "test.l5d.io/" + _test-id )
 _test-id := `tr -dc 'a-z0-9' </dev/urandom | fold -w 5 | head -n 1`
-export DOCKER_REGISTRY := env_var_or_default("DOCKER_REGISTRY", "test-" + _test-id + ".local/linkerd")
 
 # The docker image tag.
 image-tag := `bin/root-tag`
@@ -159,6 +165,13 @@ _docker-build-policy-controller:
         --build-arg='BUILD_TYPE={{ rs-build-type }}' \
         --tag='{{ _policy-controller-image }}:{{ image-tag }}' \
         --progress=plain
+
+docker-build-linkerd-viz:
+    docker pull -q $(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
+        viz/charts/linkerd-viz/values.yaml)
+    bin/docker-build-metrics-api
+    bin/docker-build-tap
+    bin/docker-build-web
 
 ##
 ## Test cluster
@@ -185,12 +198,13 @@ k *flags:
 # Creates a k3d cluster that can be used for testing.
 k3d-create: && _k3d-ready
     k3d cluster create {{ k3d-name }} \
+        --image='+{{ k3d-k8s }}' \
+        --agents='{{ k3d-agents }}' \
+        --servers='{{ k3d-servers }}' \
+        --no-lb \
+        --k3s-arg '--no-deploy=local-storage,traefik,servicelb,metrics-server@server:*' \
         --kubeconfig-update-default \
-        --kubeconfig-switch-context=false \
-        --image=+{{ k3d-k8s }} \
-        --agents={{ k3d-agents }} \
-        --servers={{ k3d-servers }} \
-        --no-lb --k3s-arg "--no-deploy=local-storage,traefik,servicelb,metrics-server@server:*"
+        --kubeconfig-switch-context=false
 
 # Deletes the test cluster.
 k3d-delete:
@@ -205,13 +219,15 @@ _k3d-init: && _k3d-ready
     #!/usr/bin/env bash
     set -euo pipefail
     if ! k3d cluster list {{ k3d-name }} >/dev/null 2>/dev/null; then
-        just k3d-name={{ k3d-name }} \
-            k3d-k8s={{ k3d-k8s }} \
+        {{ just_executable() }} \
+                k3d-name={{ k3d-name }} \
+                k3d-k8s={{ k3d-k8s }} \
             k3d-create
     fi
     k3d kubeconfig merge l5d-test \
         --kubeconfig-merge-default \
-        --kubeconfig-switch-context=false >/dev/null
+        --kubeconfig-switch-context=false \
+        >/dev/null
 
 _k3d-ready: _k3d-api-ready _k3d-dns-ready
 
@@ -228,42 +244,42 @@ _k3d-api-ready:
 # Wait for the cluster's DNS pods to be ready.
 _k3d-dns-ready:
     while [ $({{ _kubectl }} get po -n kube-system -l k8s-app=kube-dns -o json |jq '.items | length') = "0" ]; do sleep 1 ; done
-    {{ _kubectl }} wait -n kube-system po -l k8s-app=kube-dns --for=condition=ready
+    {{ _kubectl }} wait pod --for=condition=ready \
+        --namespace=kube-system --selector=k8s-app=kube-dns \
+        --timeout=1m
 
 ##
 ## Linkerd CLI
 ##
 
 # The Linkerd CLI binary.
-linkerd-path := "bin/linkerd"
-
-_linkerd := linkerd-path + " " + _context
+linkerd-exec := "bin/linkerd"
+_linkerd := linkerd-exec + " " + _context
 
 linkerd *flags: _k3d-init
     {{ _linkerd }} {{ flags }}
 
 # Install CRDs on the test cluster.
 linkerd-crds-install: _k3d-init
-    {{ _linkerd }} install --crds | {{ _kubectl }} apply -f -
-    {{ _kubectl }} wait crd \
-        --for condition=established \
+    {{ _linkerd }} install --crds \
+        | {{ _kubectl }} apply -f -
+    {{ _kubectl }} wait crd --for condition=established \
         --selector='linkerd.io/control-plane-ns' \
-        --timeout=1m \
-        >/dev/null
+        --timeout=1m
 
 # Install Linkerd on the test cluster using test images.
 linkerd-install: linkerd-load linkerd-crds-install && _linkerd-ready
     {{ _linkerd }} install \
-            --set 'imagePullPolicy=Never' \
-            --set 'controllerImage={{ _controller-image }}' \
-            --set 'linkerdVersion={{ image-tag }}' \
-            --set 'policyController.image.name={{ _policy-controller-image }}' \
-            --set 'policyController.image.version={{ image-tag }}' \
-            --set 'policyController.logLevel=info\,linkerd=trace\,kubert=trace' \
-            --set 'proxy.image.name={{ _proxy-image }}' \
-            --set 'proxy.image.version={{ image-tag }}' \
-            --set 'proxyInit.image.name={{ _proxy-init-image }}' \
-            --set "proxyInit.image.version=$(yq .proxyInit.image.version <charts/linkerd-control-plane/values.yaml)" \
+            --set='imagePullPolicy=Never' \
+            --set='controllerImage={{ _controller-image }}' \
+            --set='linkerdVersion={{ image-tag }}' \
+            --set='policyController.image.name={{ _policy-controller-image }}' \
+            --set='policyController.image.version={{ image-tag }}' \
+            --set='policyController.logLevel=info\,linkerd=trace\,kubert=trace' \
+            --set='proxy.image.name={{ _proxy-image }}' \
+            --set='proxy.image.version={{ image-tag }}' \
+            --set='proxyInit.image.name={{ _proxy-init-image }}' \
+            --set="proxyInit.image.version=$(yq .proxyInit.image.version <charts/linkerd-control-plane/values.yaml)" \
         | {{ _kubectl }} apply -f -
 
 # Wait for all test namespaces to be removed before uninstalling Linkerd from the cluster.
@@ -278,11 +294,43 @@ linkerd-load: docker-build-linkerd _k3d-init
         "{{ _proxy-init-image }}:$(yq .proxyInit.image.version <charts/linkerd-control-plane/values.yaml)"
 
 _linkerd-ready:
-    {{ _kubectl }} wait pod --for=condition=Ready \
-        --namespace=linkerd \
-        --selector='linkerd.io/control-plane-component' \
-        --timeout=1m \
-        >/dev/null
+    {{ _kubectl }} wait pod --for=condition=ready \
+        --namespace=linkerd --selector='linkerd.io/control-plane-component' \
+        --timeout=1m
+
+##
+## Linkerd Viz
+##
+
+linkerd-viz *flags: _k3d-init
+    {{ _linkerd }} viz {{ flags }}
+
+linkerd-viz-install: _linkerd-ready linkerd-viz-load && _linkerd-viz-ready
+    {{ _linkerd }} viz install \
+            --set='defaultRegistry={{ DOCKER_REGISTRY }}' \
+            --set='defaultImagePullPolicy=Never' \
+            --set='linkerdVersion={{ image-tag }}' \
+        | {{ _kubectl }} apply -f -
+
+# Wait for all test namespaces to be removed before uninstalling Linkerd from the cluster.
+linkerd-viz-uninstall:
+    {{ _linkerd }} viz uninstall | {{ _kubectl }} delete -f -
+
+linkerd-viz-load: docker-build-linkerd-viz _k3d-init
+    {{ _k3d-load }} \
+        {{ DOCKER_REGISTRY }}/metrics-api:{{ image-tag }} \
+        {{ DOCKER_REGISTRY }}/tap:{{ image-tag }} \
+        {{ DOCKER_REGISTRY }}/web:{{ image-tag }} \
+        "$(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
+                viz/charts/linkerd-viz/values.yaml)"
+
+_linkerd-viz-ready:
+    {{ _kubectl }} wait pod --for=condition=ready \
+        --namespace=linkerd-viz --selector='linkerd.io/extension=viz' \
+        --timeout=1m
+
+# TODO linkerd-jaeger-install
+# TODO linkerd-multicluster-install
 
 ##
 ## Git
