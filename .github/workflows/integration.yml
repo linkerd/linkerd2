@@ -65,15 +65,15 @@ jobs:
           tag: ${{ needs.tag.outputs.tag }}
       - name: Extract CLI binary
         run: |
-          mkdir -p /home/runner/image-archives
+          mkdir -p /home/runner/archives
           id=$(docker create '${{ steps.build.outputs.image }}')
-          docker cp "$id:/out/linkerd-linux-amd64" /home/runner/image-archives/linkerd
-          v=$(/home/runner/image-archives/linkerd version --short --client)
+          docker cp "$id:/out/linkerd-linux-amd64" /home/runner/archives/linkerd
+          v=$(/home/runner/archives/linkerd version --short --client)
           [[ "$v" == '${{ needs.tag.outputs.tag }}' ]] || exit 1
       - uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
         with:
           name: image-archives
-          path: /home/runner/image-archives
+          path: /home/runner/archives
 
   ##
   ## Core: Test the core control plane
@@ -127,6 +127,7 @@ jobs:
           name: image-archives
           path: image-archives
       - run: chmod 755 image-archives/linkerd
+      - run: find image-archives -ls
       - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
         with:
           go-version: '1.17'
@@ -173,6 +174,7 @@ jobs:
           name: image-archives
           path: image-archives
       - run: chmod 755 image-archives/linkerd
+      - run: find image-archives -ls
       - name: Setup deps
         run: |
           rm -rf "$HOME/.cargo"
