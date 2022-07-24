@@ -137,10 +137,26 @@ where
 {
     let _tracing = init_tracing();
 
-    tracing::trace!("Initializing client");
-    let client = kube::Client::try_default()
-        .await
-        .expect("failed to initialize k8s client");
+    let context = std::env::var("POLICY_TEST_CONTEXT").ok();
+    tracing::trace!(?context, "Initializing client");
+    let client = match context {
+        None => kube::Client::try_default()
+            .await
+            .expect("must initialize kubernetes client"),
+        Some(context) => {
+            let opts = kube::config::KubeConfigOptions {
+                context: Some(context),
+                cluster: None,
+                user: None,
+            };
+            kube::Config::from_kubeconfig(&opts)
+                .await
+                .expect("must initialize kubernetes client config")
+                .try_into()
+                .expect("must initialize kubernetes client")
+        }
+    };
+
     let api = kube::Api::<k8s::Namespace>::all(client.clone());
 
     let name = format!("linkerd-policy-test-{}", random_suffix(6));
