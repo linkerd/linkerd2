@@ -222,7 +222,7 @@ func NewTestHelper() *TestHelper {
 
 	_, err := os.Stat(*linkerd)
 	if err != nil {
-		exit(1, "-linkerd binary does not exist")
+		exit(1, "linkerd binary does not exist")
 	}
 
 	if *verbose {

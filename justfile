@@ -295,7 +295,7 @@ _linkerd-images:
     for img in \
         '{{ controller-image }}:{{ linkerd-tag }} }}' \
         '{{ policy-controller-image }}:{{ linkerd-tag }} }}' \
-        '{{ proxy-image }}:{{ linkerd-tag }} }}' \
+        '{{ proxy-image }}:{{ linkerd-tag }} }}'
     do
         if [ -z $(docker image ls -q "$img") ]; then
             exec {{ just_executable() }} \
@@ -307,7 +307,6 @@ _linkerd-images:
                 linkerd-build
         fi
     done
-
 
 # Build the policy controller docker image for testing (on amd64).
 _policy-controller-build:
