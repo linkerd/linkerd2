@@ -131,6 +131,7 @@ jobs:
       - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
         with:
           go-version: '1.17'
+      - run: ls -l "$PWD/image-archives/linkerd"
       - run: bin/tests --images archive --cleanup-docker --name ${{ matrix.test }} "$PWD/image-archives/linkerd"
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
@@ -266,6 +267,7 @@ jobs:
       - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
         with:
           go-version: '1.17'
+      - run: ls -l "$PWD/image-archives/linkerd"
       - run: bin/tests --images archive --cleanup-docker --name ${{ matrix.integration_test }} "$PWD/image-archives/linkerd"
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
