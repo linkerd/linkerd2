@@ -222,7 +222,7 @@ export DOCKER_REGISTRY := env_var_or_default("DOCKER_REGISTRY", "test.l5d.io/" +
 _test-id := `tr -dc 'a-z0-9' </dev/urandom | fold -w 5 | head -n 1`
 
 # The docker image tag.
-image-tag := `bin/root-tag`
+linkerd-tag := `bin/root-tag`
 
 docker-arch := ''
 
@@ -262,12 +262,12 @@ linkerd-install: linkerd-load linkerd-crds-install && _linkerd-ready
     {{ _linkerd }} install \
             --set='imagePullPolicy=Never' \
             --set='controllerImage={{ controller-image }}' \
-            --set='linkerdVersion={{ image-tag }}' \
+            --set='linkerdVersion={{ linkerd-tag }}' \
             --set='policyController.image.name={{ policy-controller-image }}' \
-            --set='policyController.image.version={{ image-tag }}' \
+            --set='policyController.image.version={{ linkerd-tag }}' \
             --set='policyController.loglevel=info\,linkerd=trace\,kubert=trace' \
             --set='proxy.image.name={{ proxy-image }}' \
-            --set='proxy.image.version={{ image-tag }}' \
+            --set='proxy.image.version={{ linkerd-tag }}' \
             --set='proxyInit.image.name={{ proxy-init-image }}' \
             --set="proxyInit.image.version=$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" \
         | {{ _kubectl }} apply -f -
@@ -279,30 +279,32 @@ linkerd-uninstall: _linkerd-viz-uninit
 
 linkerd-load: _linkerd-images _k3d-init
     {{ _k3d-load }} \
-        '{{ controller-image }}:{{ image-tag }}' \
-        '{{ policy-controller-image }}:{{ image-tag }}' \
-        '{{ proxy-image }}:{{ image-tag }}' \
+        '{{ controller-image }}:{{ linkerd-tag }}' \
+        '{{ policy-controller-image }}:{{ linkerd-tag }}' \
+        '{{ proxy-image }}:{{ linkerd-tag }}' \
         "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
 
 linkerd-build: _policy-controller-build
     docker pull -q "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
-    TAG={{ image-tag }} bin/docker-build-controller
-    TAG={{ image-tag }} bin/docker-build-proxy
+    TAG={{ linkerd-tag }} bin/docker-build-controller
+    TAG={{ linkerd-tag }} bin/docker-build-proxy
 
 _linkerd-images:
     #!/usr/bin/env bash
     set -euo pipefail
     for img in \
-        '{{ controller-image }}:{{ image-tag }} }}' \
-        '{{ proxy-image }}:{{ image-tag }} }}' \
+        '{{ controller-image }}:{{ linkerd-tag }} }}' \
+        '{{ policy-controller-image }}:{{ linkerd-tag }} }}' \
+        '{{ proxy-image }}:{{ linkerd-tag }} }}' \
         "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
     do
         if [ -z $(docker image ls -q "$img") ]; then
             exec {{ just_executable() }} \
                 controller-image='{{ controller-image }}' \
+                policy-controller-image='{{ policy-controller-image }}' \
                 proxy-image='{{ proxy-image }}' \
                 proxy-init-image='{{ proxy-init-image }}' \
-                image-tag='{{ image-tag }}' \
+                linkerd-tag='{{ linkerd-tag }}' \
                 linkerd-build
         fi
     done
@@ -313,7 +315,7 @@ _policy-controller-build:
     docker buildx build . \
         --file='policy-controller/{{ if docker-arch == '' { "amd64" } else { docker-arch } }}.dockerfile' \
         --build-arg='build_type={{ rs-build-type }}' \
-        --tag='{{ policy-controller-image }}:{{ image-tag }}' \
+        --tag='{{ policy-controller-image }}:{{ linkerd-tag }}' \
         --progress=plain
 
 _linkerd-ready:
@@ -331,7 +333,7 @@ _linkerd-init: && _linkerd-ready
             k3d-k8s='{{ k3d-k8s }}' \
             k3d-agents='{{ k3d-agents }}' \
             k3d-servers='{{ k3d-servers }}' \
-            image-tag='{{ image-tag }}' \
+            linkerd-tag='{{ linkerd-tag }}' \
             controller-image='{{ controller-image }}' \
             proxy-image='{{ proxy-image }}' \
             proxy-init-image='{{ proxy-init-image }}' \
@@ -349,7 +351,7 @@ linkerd-viz *flags: _k3d-init
 linkerd-viz-install: _linkerd-init linkerd-viz-load && _linkerd-viz-ready
     {{ _linkerd }} viz install \
             --set='defaultRegistry={{ DOCKER_REGISTRY }}' \
-            --set='linkerdVersion={{ image-tag }}' \
+            --set='linkerdVersion={{ linkerd-tag }}' \
             --set='defaultImagePullPolicy=Never' \
         | {{ _kubectl }} apply -f -
 
@@ -362,33 +364,33 @@ _linkerd-viz-images:
     #!/usr/bin/env bash
     set -euo pipefail
     for img in \
-        '{{ DOCKER_REGISTRY }}/metrics-api:{{ image-tag }}' \
-        '{{ DOCKER_REGISTRY }}/tap:{{ image-tag }}' \
-        '{{ DOCKER_REGISTRY }}/web:{{ image-tag }}' \
+        '{{ DOCKER_REGISTRY }}/metrics-api:{{ linkerd-tag }}' \
+        '{{ DOCKER_REGISTRY }}/tap:{{ linkerd-tag }}' \
+        '{{ DOCKER_REGISTRY }}/web:{{ linkerd-tag }}' \
         "$(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
             viz/charts/linkerd-viz/values.yaml)"
     do
         if [ -z $(docker image ls -q "$img") ]; then
             exec {{ just_executable() }} \
-                image-tag='{{ image-tag }}' \
+                linkerd-tag='{{ linkerd-tag }}' \
                 linkerd-viz-build
         fi
     done
 
 linkerd-viz-load: _linkerd-viz-images _k3d-init
     {{ _k3d-load }} \
-        {{ DOCKER_REGISTRY }}/metrics-api:{{ image-tag }} \
-        {{ DOCKER_REGISTRY }}/tap:{{ image-tag }} \
-        {{ DOCKER_REGISTRY }}/web:{{ image-tag }} \
+        {{ DOCKER_REGISTRY }}/metrics-api:{{ linkerd-tag }} \
+        {{ DOCKER_REGISTRY }}/tap:{{ linkerd-tag }} \
+        {{ DOCKER_REGISTRY }}/web:{{ linkerd-tag }} \
         "$(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
                 viz/charts/linkerd-viz/values.yaml)"
 
 linkerd-viz-build:
     docker pull -q $(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
         viz/charts/linkerd-viz/values.yaml)
-    TAG={{ image-tag }} bin/docker-build-metrics-api
-    TAG={{ image-tag }} bin/docker-build-tap
-    TAG={{ image-tag }} bin/docker-build-web
+    TAG={{ linkerd-tag }} bin/docker-build-metrics-api
+    TAG={{ linkerd-tag }} bin/docker-build-tap
+    TAG={{ linkerd-tag }} bin/docker-build-web
 
 _linkerd-viz-ready:
     {{ _kubectl }} wait pod --for=condition=ready \

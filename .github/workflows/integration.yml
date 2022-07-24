@@ -182,7 +182,6 @@ jobs:
         with:
           name: image-archives
           path: image-archives
-      - run: find cli-bin image-archives -ls
       - name: Setup deps
         run: |
           rm -rf "$HOME/.cargo"
@@ -197,12 +196,13 @@ jobs:
       - run: docker load <image-archives/controller.tar
       - run: docker load <image-archives/policy-controller.tar
       - run: docker load <image-archives/proxy.tar
-      - run: just image-tag='${{ needs.tag.outputs.tag }}' linkerd-exec=cli-bin/linkerd linkerd-install
+      - run: docker image ls
+      - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' linkerd-exec=cli-bin/linkerd linkerd-install
       - name: Load images
         run: |
           # Image loading is flakey in CI, so retry!
           for _ in {1..6} ; do
-            if just image-tag='${{ needs.tag.outputs.tag }}' policy-test-load-images ; then exit 0 ; fi
+            if just linkerd-tag='${{ needs.tag.outputs.tag }}' policy-test-load-images ; then exit 0 ; fi
             sleep 10
             echo retrying...
           done
