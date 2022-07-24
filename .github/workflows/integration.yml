@@ -201,7 +201,7 @@ jobs:
       - name: Load images
         run: |
           # Image loading is flakey in CI, so retry!
-          for i in {1..6} ; do
+          for _ in {1..6} ; do
             if just image-tag='${{ needs.tag.outputs.tag }}' policy-test-load-images ; then exit 0 ; fi
             sleep 10
             echo retrying...
