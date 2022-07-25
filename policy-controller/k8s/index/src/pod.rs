@@ -74,46 +74,45 @@ pub(crate) fn port_names(spec: &Option<k8s::PodSpec>) -> HashMap<String, PortSet
 /// Pod and the paths for which probes are expected.
 pub(crate) fn get_http_probes(
     spec: &k8s::PodSpec,
-    port_names: &HashMap<String, PortSet>,
+    _port_names: &HashMap<String, PortSet>,
 ) -> PortMap<HashSet<String>> {
-    let mut probes = PortMap::<HashSet<String>>::default();
+    let mut http_probes = PortMap::<HashSet<String>>::default();
     for container in spec.containers.iter() {
-        set_probe_ports(&container.liveness_probe, &mut probes, port_names);
-        set_probe_ports(&container.readiness_probe, &mut probes, port_names);
-        set_probe_ports(&container.startup_probe, &mut probes, port_names);
-    }
-    probes
-}
-
-fn set_probe_ports(
-    probe: &Option<k8s::Probe>,
-    probes: &mut PortMap<HashSet<String>>,
-    port_names: &HashMap<String, PortSet>,
-) {
-    let probe = match probe {
-        Some(probe) => probe,
-        None => return,
-    };
-    if let Some(http) = &probe.http_get {
-        let path = http
-            .path
-            .as_ref()
-            .expect("probe with httpGet should have a path field");
-        match &http.port {
-            k8s::IntOrString::Int(port) => {
-                if let Ok(port) = u16::try_from(*port).and_then(NonZeroU16::try_from) {
-                    let paths = probes.entry(port).or_default();
-                    paths.insert(path.clone());
-                }
-            }
-            k8s::IntOrString::String(name) => {
-                for port in port_names.get(name).into_iter().flatten() {
-                    let paths = probes.entry(*port).or_default();
-                    paths.insert(path.clone());
+        let probes = (container.liveness_probe.iter())
+            .chain(container.readiness_probe.iter())
+            .chain(container.startup_probe.iter());
+        for probe in probes {
+            if let Some(ref http) = probe.http_get {
+                let path = http
+                    .path
+                    .as_ref()
+                    .expect("probe with httpGet should have a path field");
+                match http.port {
+                    k8s::IntOrString::Int(port) => {
+                        if let Ok(port) = u16::try_from(port).and_then(NonZeroU16::try_from) {
+                            let paths = http_probes.entry(port).or_default();
+                            paths.insert(path.clone());
+                        }
+                    }
+                    k8s::IntOrString::String(ref name) => {
+                        for port in container.ports.iter().flatten() {
+                            port.name.as_ref().map(|n| {
+                                if n == name {
+                                    if let Ok(port) = u16::try_from(port.container_port)
+                                        .and_then(NonZeroU16::try_from)
+                                    {
+                                        let paths = http_probes.entry(port).or_default();
+                                        paths.insert(path.clone());
+                                    }
+                                }
+                            });
+                        }
+                    }
                 }
             }
         }
     }
+    http_probes
 }
 
 impl Meta {
