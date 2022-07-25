@@ -215,12 +215,13 @@ func NewTestHelper() *TestHelper {
 	if *linkerdExec == "" {
 		exit(1, "-linkerd flag is required")
 	}
+
 	linkerd, err := filepath.Abs(*linkerdExec)
 	if err != nil {
-		exit(1, fmt.Sprintf("-linkerd is invalid: %s: %s", *linkerdExec, err))
+		exit(1, fmt.Sprintf("abs: %s", err))
 	}
 	if _, err := os.Stat(linkerd); err != nil {
-		exit(1, fmt.Sprintf("stat failed: %s: %s", linkerd, err))
+		exit(1, fmt.Sprintf("stat: %s", err))
 	}
 
 	if *verbose {
