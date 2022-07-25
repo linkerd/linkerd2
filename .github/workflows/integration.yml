@@ -165,6 +165,11 @@ jobs:
     if: needs.changed-policy.outputs.modified == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 20
+    strategy:
+      matrix:
+        k8s:
+          - v1.21
+          - v1.24
     steps:
       - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
       - uses: olix0r/cargo-action-fmt@ed3530f0739c46ffa0dd983f8746b8c4a3d0a01c
@@ -173,8 +178,8 @@ jobs:
         with:
           name: image-archives
           path: image-archives
-      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: find image-archives -ls
+      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - name: Setup deps
         run: |
           rm -rf "$HOME/.cargo"
@@ -185,7 +190,7 @@ jobs:
           bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
           bin/scurl -vo /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" && chmod +x /usr/local/bin/yq
       - run: just policy-test-build
-      - run: just k3d-create
+      - run: just k3d-k8s='${{ matrix.k8s }}' k3d-create
       - run: docker load <image-archives/controller.tar
       - run: docker load <image-archives/policy-controller.tar
       - run: docker load <image-archives/proxy.tar
