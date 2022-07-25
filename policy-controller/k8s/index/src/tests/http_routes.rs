@@ -1,9 +1,10 @@
 use super::*;
 
+const POLICY_API_GROUP: &str = "policy.linkerd.io";
+
 #[test]
 fn route_attaches_to_server() {
     let test = TestConfig::default();
-
     // Create pod.
     let mut pod = mk_pod("ns-0", "pod-0", Some(("container-0", None)));
     pod.labels_mut()
@@ -40,7 +41,7 @@ fn route_attaches_to_server() {
     // Create route.
     test.index
         .write()
-        .apply(mk_http_route("ns-0", "route-foo", "srv-8080"));
+        .apply(mk_route("ns-0", "route-foo", "srv-8080"));
     assert!(rx.has_changed().unwrap());
     assert_eq!(
         rx.borrow().reference,
@@ -69,21 +70,23 @@ fn route_attaches_to_server() {
         )));
 }
 
-fn mk_http_route(
+fn mk_route(
     ns: impl ToString,
     name: impl ToString,
     server: impl ToString,
-) -> k8s_gateway_api::HttpRoute {
-    k8s_gateway_api::HttpRoute {
+) -> k8s::policy::HttpRoute {
+    use k8s::policy::httproute::*;
+
+    HttpRoute {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
             ..Default::default()
         },
-        spec: k8s_gateway_api::HttpRouteSpec {
-            inner: k8s_gateway_api::CommonRouteSpec {
-                parent_refs: Some(vec![k8s_gateway_api::ParentReference {
-                    group: Some("policy.linkerd.io".to_string()),
+        spec: HttpRouteSpec {
+            inner: CommonRouteSpec {
+                parent_refs: Some(vec![ParentReference {
+                    group: Some(POLICY_API_GROUP.to_string()),
                     kind: Some("Server".to_string()),
                     namespace: None,
                     name: server.to_string(),
@@ -92,9 +95,9 @@ fn mk_http_route(
                 }]),
             },
             hostnames: None,
-            rules: Some(vec![k8s_gateway_api::HttpRouteRule {
-                matches: Some(vec![k8s_gateway_api::HttpRouteMatch {
-                    path: Some(k8s_gateway_api::HttpPathMatch::PathPrefix {
+            rules: Some(vec![HttpRouteRule {
+                matches: Some(vec![HttpRouteMatch {
+                    path: Some(HttpPathMatch::PathPrefix {
                         value: "/foo/bar".to_string(),
                     }),
                     headers: None,
@@ -102,13 +105,11 @@ fn mk_http_route(
                     method: Some("GET".to_string()),
                 }]),
                 filters: None,
-                backend_refs: None,
             }]),
         },
         status: None,
     }
 }
-
 fn mk_authorization_policy(
     ns: impl ToString,
     name: impl ToString,
@@ -123,7 +124,7 @@ fn mk_authorization_policy(
         },
         spec: k8s::policy::AuthorizationPolicySpec {
             target_ref: LocalTargetRef {
-                group: Some("gateway.networking.k8s.io".to_string()),
+                group: Some(POLICY_API_GROUP.to_string()),
                 kind: "HttpRoute".to_string(),
                 name: route.to_string(),
             },

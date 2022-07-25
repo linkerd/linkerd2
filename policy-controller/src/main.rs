@@ -146,7 +146,7 @@ async fn main() -> Result<()> {
             .instrument(info_span!("networkauthentications")),
     );
 
-    let http_routes = runtime.watch_all::<k8s_gateway_api::HttpRoute>(ListParams::default());
+    let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
     tokio::spawn(
         kubert::index::namespaced(index.clone(), http_routes).instrument(info_span!("httproutes")),
     );

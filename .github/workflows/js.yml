@@ -1,0 +1,28 @@
+name: JS
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/js.yml
+      - bin/web*
+      - web/app/**
+
+permissions:
+  contents: read
+
+jobs:
+  js-web-test:
+    timeout-minutes: 30
+    runs-on: ubuntu-20.04
+    container:
+      image: node:14-stretch
+    env:
+      NODE_ENV: test
+    steps:
+    - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+    - name: Yarn setup
+      run: |
+        bin/scurl --retry=2 https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
+        echo PATH="$HOME/.yarn/bin:$PATH" >> "$GITHUB_ENV"
+    - run: bin/web --frozen-lockfile
+    - run: bin/web test --reporters="jest-progress-bar-reporter" --reporters="./gh_ann_reporter.js"

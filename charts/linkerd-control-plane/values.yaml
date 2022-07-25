@@ -76,7 +76,7 @@ policyController:
   defaultAllowPolicy: "all-unauthenticated"
 
   # -- Log level for the policy controller
-  logLevel: linkerd=info,warn
+  logLevel: info
 
   # -- policy controller resource requests & limits
   # @default -- destinationResources
@@ -196,7 +196,7 @@ proxyInit:
     # @default -- imagePullPolicy
     pullPolicy: ""
     # -- Tag for the proxy-init container Docker image
-    version: v1.6.1
+    version: v1.6.2
   resources:
     cpu:
       # -- Maximum amount of CPU units that the proxy-init container can use

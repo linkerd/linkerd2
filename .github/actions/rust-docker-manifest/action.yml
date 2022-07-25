@@ -33,3 +33,8 @@ runs:
         done
     - run: docker manifest push ghcr.io/${{ github.repository_owner }}/${{ inputs.component }}:${{ inputs.tag }}
       shell: bash
+
+outputs:
+  image:
+    description: The image that was built
+    value: ghcr.io/${{ github.repository_owner }}/${{ inputs.component }}:${{ inputs.tag }}
