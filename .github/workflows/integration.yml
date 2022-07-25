@@ -129,10 +129,9 @@ jobs:
         with:
           name: image-archives
           path: image-archives
-      - run: chmod 755 image-archives/linkerd
+      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: find image-archives -ls
-      - run: ls -l image-archives/linkerd "$PWD/image-archives/linkerd" /home/runner/work/linkerd2/linkerd2/image-archives/linkerd
-      - run: bin/tests --images archive --cleanup-docker --name ${{ matrix.test }} image-archives/linkerd
+      - run: bin/tests --images archive --cleanup-docker --name ${{ matrix.test }} "$HOME/linkerd"
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           TAG: ${{ needs.tag.outputs.tag }}
@@ -174,7 +173,7 @@ jobs:
         with:
           name: image-archives
           path: image-archives
-      - run: chmod 755 image-archives/linkerd
+      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: find image-archives -ls
       - name: Setup deps
         run: |
@@ -191,7 +190,7 @@ jobs:
       - run: docker load <image-archives/policy-controller.tar
       - run: docker load <image-archives/proxy.tar
       - run: docker image ls
-      - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' linkerd-exec=image-archives/linkerd linkerd-install
+      - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' linkerd-exec="$HOME/linkerd" linkerd-install
       - name: Load images
         run: |
           # Image loading is flakey in CI, so retry!
@@ -266,9 +265,9 @@ jobs:
         with:
           name: image-archives
           path: image-archives
-      - run: chmod 755 image-archives/linkerd
+      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: ls -l image-archives/linkerd
-      - run: bin/tests --images archive --cleanup-docker --name '${{ matrix.integration_test }}' image-archives/linkerd
+      - run: bin/tests --images archive --cleanup-docker --name '${{ matrix.integration_test }}' "$HOME/linkerd"
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
 
