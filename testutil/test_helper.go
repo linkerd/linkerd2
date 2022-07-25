@@ -219,6 +219,9 @@ func NewTestHelper() *TestHelper {
 	if err != nil {
 		exit(1, fmt.Sprintf("-linkerd is invalid: %s: %s", *linkerdExec, err))
 	}
+	if _, err := os.Stat(linkerd); err != nil {
+		exit(1, fmt.Sprintf("-linkerd is invalid: %s: %s", *linkerdExec, err))
+	}
 
 	if *verbose {
 		log.SetLevel(log.DebugLevel)
@@ -227,7 +230,7 @@ func NewTestHelper() *TestHelper {
 	}
 
 	testHelper := &TestHelper{
-		linkerd,
+		linkerd:            linkerd,
 		namespace:          *namespace,
 		vizNamespace:       *vizNamespace,
 		upgradeFromVersion: *upgradeFromVersion,
