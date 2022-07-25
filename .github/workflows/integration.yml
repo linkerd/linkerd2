@@ -195,10 +195,11 @@ jobs:
         run: |
           # Image loading is flakey in CI, so retry!
           for _ in {1..6} ; do
-            if just linkerd-tag='${{ needs.tag.outputs.tag }}' policy-test-load-images ; then exit 0 ; fi
+            if just linkerd-tag='${{ needs.tag.outputs.tag }}' policy-test-deps-load ; then exit 0 ; fi
             sleep 10
             echo retrying...
           done
+          exit 1
       - run: just policy-test-run --jobs=1
 
   ##
