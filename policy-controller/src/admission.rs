@@ -439,32 +439,6 @@ impl Validate<HttpRouteSpec> for Admission {
     }
 }
 
-// NOTE: This implementation is currently unused, as the policy controller only
-// supports indexing the `policy.linkerd.io` version of the `HTTPRoute` CRD.
-// This implementation will be used if support for the
-// `gateway.networking.k8s.io` CRD is added again in the future.
-#[async_trait::async_trait]
-impl Validate<gateway::HttpRouteSpec> for Admission {
-    async fn validate(self, _ns: &str, _name: &str, spec: gateway::HttpRouteSpec) -> Result<()> {
-        // Only validate HttpRoutes which have a Server as a parent_ref.
-        let targets_server = spec
-            .inner
-            .parent_refs
-            .iter()
-            .flatten()
-            .any(parent_ref_targets_server);
-        if !targets_server {
-            return Ok(());
-        }
-
-        for rule in spec.rules.iter().flatten() {
-            validate_gateway_http_route_rule(rule)?;
-        }
-
-        Ok(())
-    }
-}
-
 fn parent_ref_targets_server(p: &httproute::ParentReference) -> bool {
     match (p.group.as_deref(), p.kind.as_deref()) {
         (Some(group), Some(kind)) => {
@@ -472,36 +446,4 @@ fn parent_ref_targets_server(p: &httproute::ParentReference) -> bool {
         }
         _ => false,
     }
-}
-
-fn validate_gateway_http_route_rule(rule: &gateway::HttpRouteRule) -> Result<()> {
-    if let Some(filters) = &rule.filters {
-        validate_gateway_http_route_filters(filters)?;
-    }
-
-    for backend_ref in rule.backend_refs.iter().flatten() {
-        if let Some(filters) = &backend_ref.filters {
-            validate_gateway_http_route_filters(filters)?;
-        }
-    }
-    Ok(())
-}
-
-fn validate_gateway_http_route_filters(filters: &[gateway::HttpRouteFilter]) -> Result<()> {
-    for filter in filters.iter() {
-        match filter {
-            gateway::HttpRouteFilter::ExtensionRef { .. } => {
-                bail!("ExtensionRef filters are not supported")
-            }
-            gateway::HttpRouteFilter::RequestHeaderModifier { .. } => {}
-            gateway::HttpRouteFilter::RequestMirror { .. } => {
-                bail!("RequestMirror filters are not supported")
-            }
-            gateway::HttpRouteFilter::RequestRedirect { .. } => {}
-            gateway::HttpRouteFilter::URLRewrite { .. } => {
-                bail!("URLRewrite filters are not supported")
-            }
-        }
-    }
-    Ok(())
 }
