@@ -71,8 +71,7 @@ pub(crate) fn tcp_port_names(spec: &Option<k8s::PodSpec>) -> HashMap<String, Por
 /// Gets the container probe ports for a Pod.
 ///
 /// The result is a mapping for each probe port exposed by a container in the
-/// Pod and the paths for which probes are expected. When a TCP probe is
-/// configured there is no path, so we use '/'.
+/// Pod and the paths for which probes are expected.
 pub(crate) fn get_container_probes(
     spec: &Option<k8s::PodSpec>,
     port_names: &HashMap<String, PortSet>,
@@ -109,21 +108,6 @@ fn set_probe_ports(
                         let paths = probes.entry(*p).or_default();
                         paths.insert(path.clone());
                     }
-                }
-            }
-        }
-    } else if let Some(tcp) = &probe.tcp_socket {
-        match &tcp.port {
-            k8s::IntOrString::Int(port) => {
-                if let Ok(p) = u16::try_from(*port).and_then(NonZeroU16::try_from) {
-                    let paths = probes.entry(p).or_default();
-                    paths.insert("/".to_string());
-                }
-            }
-            k8s::IntOrString::String(port) => {
-                for p in port_names.get(port).into_iter().flatten() {
-                    let paths = probes.entry(*p).or_default();
-                    paths.insert("/".to_string());
                 }
             }
         }
@@ -329,28 +313,6 @@ mod tests {
                         }),
                         ..Default::default()
                     },
-                    k8s::Container {
-                        ports: Some(vec![k8s::ContainerPort {
-                            name: Some("named-port-2".to_string()),
-                            container_port: 7654,
-                            ..Default::default()
-                        }]),
-                        liveness_probe: Some(k8s::Probe {
-                            tcp_socket: Some(k8s::TCPSocketAction {
-                                port: k8s::IntOrString::String("named-port-2".to_string()),
-                                ..Default::default()
-                            }),
-                            ..Default::default()
-                        }),
-                        readiness_probe: Some(k8s::Probe {
-                            tcp_socket: Some(k8s::TCPSocketAction {
-                                port: k8s::IntOrString::Int(7654),
-                                ..Default::default()
-                            }),
-                            ..Default::default()
-                        }),
-                        ..Default::default()
-                    },
                 ],
                 ..Default::default()
             }),
@@ -372,11 +334,5 @@ mod tests {
         expected_6543.insert("/ready-container-2".to_string());
         assert!(probes.get(&port_6543).is_some());
         assert_eq!(*probes.get(&port_6543).unwrap(), expected_6543);
-
-        let port_7654 = u16::try_from(7654).and_then(NonZeroU16::try_from).unwrap();
-        let mut expected_7654 = HashSet::new();
-        expected_7654.insert("/".to_string());
-        assert!(probes.get(&port_7654).is_some());
-        assert_eq!(*probes.get(&port_7654).unwrap(), expected_7654);
     }
 }
