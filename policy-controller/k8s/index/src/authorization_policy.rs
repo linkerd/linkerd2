@@ -63,11 +63,7 @@ fn target(t: LocalTargetRef) -> Result<Target> {
     match t {
         t if t.targets_kind::<k8s::policy::Server>() => Ok(Target::Server(t.name)),
         t if t.targets_kind::<k8s::Namespace>() => Ok(Target::Namespace),
-        t if t.targets_kind::<k8s_gateway_api::HttpRoute>()
-            || t.targets_kind::<k8s::policy::HttpRoute>() =>
-        {
-            Ok(Target::HttpRoute(t.name))
-        }
+        t if t.targets_kind::<k8s::policy::HttpRoute>() => Ok(Target::HttpRoute(t.name)),
         _ => anyhow::bail!(
             "unsupported authorization target type: {}",
             t.canonical_kind()

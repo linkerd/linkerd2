@@ -696,24 +696,6 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
     }
 }
 
-impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
-    fn apply(&mut self, route: k8s_gateway_api::HttpRoute) {
-        self.apply_route(route)
-    }
-
-    fn delete(&mut self, ns: String, name: String) {
-        self.delete_route(ns, name)
-    }
-
-    fn reset(
-        &mut self,
-        routes: Vec<k8s_gateway_api::HttpRoute>,
-        deleted: HashMap<String, HashSet<String>>,
-    ) {
-        self.reset_route(routes, deleted)
-    }
-}
-
 impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
     fn apply(&mut self, route: k8s::policy::HttpRoute) {
         self.apply_route(route)
