@@ -126,7 +126,7 @@ handle_tests_input() {
           tests_usage "$0" >&2
           exit 64
         fi
-        linkerd_path=$1
+        linkerd_path=$(realpath "$1")
         shift
         ;;
     esac
@@ -197,10 +197,6 @@ test_setup() {
 
 check_linkerd_binary() {
   printf 'Checking the linkerd binary...'
-  if [[ "$linkerd_path" != /* ]]; then
-    printf '\n[%s] is not an absolute path\n' "$linkerd_path"
-    exit 1
-  fi
   if [ ! -x "$linkerd_path" ]; then
     printf '\n[%s] does not exist or is not executable\n' "$linkerd_path"
     exit 1
