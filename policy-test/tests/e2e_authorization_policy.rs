@@ -124,20 +124,23 @@ async fn targets_route() {
             unauth.http_status_code(),
             no_authz.http_status_code(),
         );
-        assert_eq!(
-            allowed_status, "204",
+        assert!(
+            allowed_status.is_success(),
             "curling allowed route must contact web"
         );
         assert_eq!(
-            no_route_status, "404",
+            no_route_status,
+            hyper::StatusCode::NOT_FOUND,
             "curl which does not match route must not contact web"
         );
         assert_eq!(
-            unauth_status, "403",
+            unauth_status,
+            hyper::StatusCode::FORBIDDEN,
             "curl which is not authenticated must not contact web"
         );
         assert_eq!(
-            no_authz_status, "403",
+            no_authz_status,
+            hyper::StatusCode::FORBIDDEN,
             "curl to route with no authorizations must not contact web"
         );
 
@@ -165,8 +168,8 @@ async fn targets_route() {
             .http_status_code()
             .await;
 
-        assert_eq!(
-            route_with_server_authz_status, "204",
+        assert!(
+            route_with_server_authz_status.is_success(),
             "curl to route with no authorizations on server with authorizations must contact web"
         );
     })

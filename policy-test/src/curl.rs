@@ -252,12 +252,12 @@ impl Running {
 
     /// Waits for the curl container to complete and returns the http status
     /// code.
-    pub async fn http_status_code(self) -> String {
+    pub async fn http_status_code(self) -> hyper::StatusCode {
         self.inits_complete().await;
         let api = kube::Api::namespaced(self.client.clone(), &self.namespace);
 
         let pod = self.finished(&api).await;
-        let status_code = api
+        let log = api
             .logs(
                 &pod.name_unchecked(),
                 &LogParams {
@@ -266,11 +266,7 @@ impl Running {
                 },
             )
             .await
-            .expect("must be able to get curl logs")
-            .lines()
-            .last()
-            .expect("curl logs are empty")
-            .to_owned();
+            .expect("must be able to get curl logs");
 
         if let Err(error) = api
             .delete(&self.name, &kube::api::DeleteParams::foreground())
@@ -279,7 +275,8 @@ impl Running {
             tracing::trace!(%error, name = %self.name, "Failed to delete pod");
         }
 
-        status_code
+        let status_code = log.lines().last().expect("curl must emit a status code");
+        hyper::StatusCode::try_from(status_code).expect("curl must emit a valid status code")
     }
 
     async fn inits_complete(&self) {
