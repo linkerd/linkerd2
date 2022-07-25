@@ -439,6 +439,10 @@ impl Validate<HttpRouteSpec> for Admission {
     }
 }
 
+// NOTE: This implementation is currently unused, as the policy controller only
+// supports indexing the `policy.linkerd.io` version of the `HTTPRoute` CRD.
+// This implementation will be used if support for the
+// `gateway.networking.k8s.io` CRD is added again in the future.
 #[async_trait::async_trait]
 impl Validate<gateway::HttpRouteSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: gateway::HttpRouteSpec) -> Result<()> {

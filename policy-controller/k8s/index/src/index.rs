@@ -714,6 +714,28 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
     }
 }
 
+// NOTE: This implementation is currently unused, as the policy controller only
+// supports indexing the `policy.linkerd.io` version of the `HTTPRoute` CRD.
+// This implementation will be used if support for the
+// `gateway.networking.k8s.io` CRD is added again in the future.
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
+    fn apply(&mut self, route: k8s_gateway_api::HttpRoute) {
+        self.apply_route(route)
+    }
+
+    fn delete(&mut self, ns: String, name: String) {
+        self.delete_route(ns, name)
+    }
+
+    fn reset(
+        &mut self,
+        routes: Vec<k8s_gateway_api::HttpRoute>,
+        deleted: HashMap<String, HashSet<String>>,
+    ) {
+        self.reset_route(routes, deleted)
+    }
+}
+
 // === impl NemspaceIndex ===
 
 impl NamespaceIndex {
