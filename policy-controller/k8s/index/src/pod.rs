@@ -96,7 +96,7 @@ pub(crate) fn get_http_probes(
                     }
                     k8s::IntOrString::String(ref name) => {
                         for port in container.ports.iter().flatten() {
-                            port.name.as_ref().map(|n| {
+                            if let Some(ref n) = port.name {
                                 if n == name {
                                     if let Ok(port) = u16::try_from(port.container_port)
                                         .and_then(NonZeroU16::try_from)
@@ -104,8 +104,9 @@ pub(crate) fn get_http_probes(
                                         let paths = http_probes.entry(port).or_default();
                                         paths.insert(path.clone());
                                     }
+                                    break;
                                 }
-                            });
+                            }
                         }
                     }
                 }
