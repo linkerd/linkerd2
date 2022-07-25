@@ -204,7 +204,7 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
         let name = pod.name_unchecked();
         let _span = info_span!("apply", ns = %namespace, %name).entered();
 
-        let port_names = pod::tcp_port_names(&pod.spec);
+        let port_names = pod::port_names(&pod.spec);
         let meta = pod::Meta::from_metadata(pod.metadata);
         let probes = pod::get_container_probes(&pod.spec, &port_names);
 
