@@ -45,7 +45,7 @@ pub(crate) type PortMap<V> =
 #[derive(Debug, Default)]
 pub(crate) struct PortHasher(u16);
 
-/// Gets the set of named non-UDP ports from a pod spec.
+/// Gets the set of named ports with `protocol: TCP` from a pod spec.
 pub(crate) fn port_names(spec: &Option<k8s::PodSpec>) -> HashMap<String, PortSet> {
     let mut port_names = HashMap::<String, PortSet>::default();
     if let Some(spec) = spec {
@@ -72,7 +72,7 @@ pub(crate) fn port_names(spec: &Option<k8s::PodSpec>) -> HashMap<String, PortSet
 ///
 /// The result is a mapping for each probe port exposed by a container in the
 /// Pod and the paths for which probes are expected.
-pub(crate) fn get_container_probes(
+pub(crate) fn get_http_probes(
     spec: &Option<k8s::PodSpec>,
     port_names: &HashMap<String, PortSet>,
 ) -> PortMap<HashSet<String>> {
@@ -319,7 +319,7 @@ mod tests {
             ..k8s::Pod::default()
         };
         let port_names = port_names(&pod.spec);
-        let probes = get_container_probes(&pod.spec, &port_names);
+        let probes = get_http_probes(&pod.spec, &port_names);
 
         let port_5432 = u16::try_from(5432).and_then(NonZeroU16::try_from).unwrap();
         let mut expected_5432 = HashSet::new();

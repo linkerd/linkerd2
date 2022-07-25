@@ -206,7 +206,7 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
 
         let port_names = pod::port_names(&pod.spec);
         let meta = pod::Meta::from_metadata(pod.metadata);
-        let probes = pod::get_container_probes(&pod.spec, &port_names);
+        let probes = pod::get_http_probes(&pod.spec, &port_names);
 
         // Add or update the pod. If the pod was not already present in the
         // index with the same metadata, index it against the policy resources,
