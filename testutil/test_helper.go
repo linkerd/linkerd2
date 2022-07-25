@@ -220,7 +220,7 @@ func NewTestHelper() *TestHelper {
 		exit(1, fmt.Sprintf("-linkerd is invalid: %s: %s", *linkerdExec, err))
 	}
 	if _, err := os.Stat(linkerd); err != nil {
-		exit(1, fmt.Sprintf("-linkerd is invalid: %s: %s", *linkerdExec, err))
+		exit(1, fmt.Sprintf("stat failed: %s: %s", linkerd, err))
 	}
 
 	if *verbose {
