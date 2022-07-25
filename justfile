@@ -285,17 +285,18 @@ linkerd-load: _linkerd-images _k3d-init
         "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
 
 linkerd-build: _policy-controller-build
+    docker pull -q "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
     TAG={{ linkerd-tag }} bin/docker-build-controller
     TAG={{ linkerd-tag }} bin/docker-build-proxy
 
 _linkerd-images:
     #!/usr/bin/env bash
-    set -euo pipefail
+    set -xeuo pipefail
     docker pull -q "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
     for img in \
-        '{{ controller-image }}:{{ linkerd-tag }} }}' \
-        '{{ policy-controller-image }}:{{ linkerd-tag }} }}' \
-        '{{ proxy-image }}:{{ linkerd-tag }} }}'
+        '{{ controller-image }}:{{ linkerd-tag }}' \
+        '{{ policy-controller-image }}:{{ linkerd-tag }}' \
+        '{{ proxy-image }}:{{ linkerd-tag }}'
     do
         if [ -z $(docker image ls -q "$img") ]; then
             exec {{ just_executable() }} \
