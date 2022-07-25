@@ -490,6 +490,10 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 		overrideAnnotations[k8s.ProxyAccessLogAnnotation] = proxy.AccessLog
 	}
 
+	if proxy.ShutdownGracePeriod != baseProxy.ShutdownGracePeriod {
+		overrideAnnotations[k8s.ProxyShutdownGracePeriodAnnotation] = proxy.ShutdownGracePeriod
+	}
+
 	return overrideAnnotations
 }
 

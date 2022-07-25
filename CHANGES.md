@@ -1,5 +1,25 @@
 # Changes
 
+## edge-22.7.2
+
+This release adds support for per-route authorization policy using the
+AuthorizationPolicy and HttpRoute resources. It also adds a configurable
+shutdown grace period to the proxy which can be used to ensure that proxy
+graceful shutdown completes within a certain time, even if there are outstanding
+open connections.
+
+* Removed kube-system exclusions from watchers to fix service discovery for
+  workloads in the kube-system namespace (thanks @JacobHenner)
+* Added annotations to allow Linkerd extension deployments to be evicted by the
+  autoscaler when necessary
+* Added missing port in the Linkerd viz chart documentation (thanks @haswalt)
+* Added support for per-route policy by supporting AuthorizationPolicy resources
+  which target HttpRoute resources
+* Fixed the `linkerd check` command crashing when unexpected pods are found in
+  a Linkerd namespace
+* Added a `config.linkerd.io/shutdown-grace-period` annotation to configure the
+  proxy's maximum grace period for graceful shutdown
+
 ## edge-22.7.1
 
 This release includes a security improvement. When a user manually specified the

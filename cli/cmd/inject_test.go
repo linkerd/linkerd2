@@ -678,6 +678,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	values.Proxy.WaitBeforeExitSeconds = 10
 	values.Proxy.Await = false
 	values.Proxy.AccessLog = "apache"
+	values.Proxy.ShutdownGracePeriod = "60s"
 
 	expectedOverrides := map[string]string{
 		k8s.ProxyIgnoreInboundPortsAnnotation:  "8500-8505",
@@ -698,6 +699,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 		k8s.ProxyWaitBeforeExitSecondsAnnotation:  "10",
 		k8s.ProxyAwait:                            "disabled",
 		k8s.ProxyAccessLogAnnotation:              "apache",
+		k8s.ProxyShutdownGracePeriodAnnotation:    "60s",
 	}
 
 	overrides := getOverrideAnnotations(values, baseValues)

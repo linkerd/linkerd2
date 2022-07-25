@@ -70,7 +70,7 @@ func TestNewValues(t *testing.T) {
 			Image: &Image{
 				Name: "cr.l5d.io/linkerd/policy-controller",
 			},
-			LogLevel:           "linkerd=info,warn",
+			LogLevel:           "info",
 			DefaultAllowPolicy: "all-unauthenticated",
 			Resources: &Resources{
 				CPU: Constraints{

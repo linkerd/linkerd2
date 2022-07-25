@@ -126,6 +126,10 @@ be used in other contexts.
 - name: LINKERD2_PROXY_ACCESS_LOG
   value: {{.Values.proxy.accessLog | quote}}
 {{ end -}}
+{{ if .Values.proxy.shutdownGracePeriod -}}
+- name: LINKERD2_PROXY_SHUTDOWN_GRACE_PERIOD
+  value: {{.Values.proxy.shutdownGracePeriod | quote}}
+{{ end -}}
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion}}
 imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}
 livenessProbe:

@@ -170,6 +170,7 @@ webhooks:
     apiVersions: ["v1alpha1", "v1beta1"]
     resources:
     - authorizationpolicies
+    - httproutes
     - networkauthentications
     - meshtlsauthentications
     - serverauthorizations
@@ -202,6 +203,7 @@ rules:
       - policy.linkerd.io
     resources:
       - authorizationpolicies
+      - httproutes
       - meshtlsauthentications
       - networkauthentications
       - servers
@@ -490,7 +492,7 @@ data:
         name: my.custom.registry/linkerd-io/policy-controller
         pullPolicy: ""
         version: ""
-      logLevel: linkerd=info,warn
+      logLevel: info
       resources:
         cpu:
           limit: ""
@@ -562,6 +564,7 @@ data:
           limit: ""
           request: ""
       saMountPath: null
+      shutdownGracePeriod: ""
       uid: 2102
       waitBeforeExitSeconds: 0
     proxyContainerName: linkerd-proxy
@@ -573,7 +576,7 @@ data:
       image:
         name: my.custom.registry/linkerd-io/proxy-init
         pullPolicy: ""
-        version: v1.6.1
+        version: v1.6.2
       iptablesMode: nft
       logFormat: ""
       logLevel: ""
@@ -905,7 +908,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443"
-        image: my.custom.registry/linkerd-io/proxy-init:v1.6.1
+        image: my.custom.registry/linkerd-io/proxy-init:v1.6.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1277,7 +1280,7 @@ spec:
         - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         - --identity-domain=cluster.local
         - --default-policy=all-unauthenticated
-        - --log-level=linkerd=info,warn
+        - --log-level=info
         - --log-format=plain
         image: my.custom.registry/linkerd-io/policy-controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
@@ -1323,7 +1326,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443"
-        image: my.custom.registry/linkerd-io/proxy-init:v1.6.1
+        image: my.custom.registry/linkerd-io/proxy-init:v1.6.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1628,7 +1631,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "4567,4568"
-        image: my.custom.registry/linkerd-io/proxy-init:v1.6.1
+        image: my.custom.registry/linkerd-io/proxy-init:v1.6.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

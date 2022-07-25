@@ -1,3 +1,5 @@
+use crate::{AuthorizationRef, ClientAuthorization};
+use ahash::AHashMap as HashMap;
 use anyhow::Result;
 pub use http::{
     header::{HeaderName, HeaderValue},
@@ -11,6 +13,7 @@ use std::num::NonZeroU16;
 pub struct InboundHttpRoute {
     pub hostnames: Vec<HostMatch>,
     pub rules: Vec<InboundHttpRouteRule>,
+    pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

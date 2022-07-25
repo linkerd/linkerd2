@@ -1,0 +1,23 @@
+name: Choco
+
+on:
+  pull_request:
+    paths:
+      - bin/win/**
+
+permissions:
+  contents: read
+
+jobs:
+  choco-psscript-lint:
+    timeout-minutes: 10
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+    - uses: devblackops/github-action-psscriptanalyzer@854038567344559afaaa8ccb7a014452b99d86ee
+      env:
+        # https://github.com/devblackops/github-action-psscriptanalyzer/pull/3/files
+        INPUT_FAILONWARNING: 1
+      with:
+        rootPath: bin/win/tools
+        failOnInfos: true
