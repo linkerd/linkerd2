@@ -181,7 +181,7 @@ func NewTestHelper() *TestHelper {
 
 	// TODO (matei): clean-up flags
 	k8sContext := flag.String("k8s-context", "", "kubernetes context associated with the test cluster")
-	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
+	linkerdExec := flag.String("linkerd", "", "path to the linkerd binary to test")
 	namespace := flag.String("linkerd-namespace", "linkerd", "the namespace where linkerd is installed")
 	vizNamespace := flag.String("viz-namespace", "linkerd-viz", "the namespace where linkerd viz extension is installed")
 	multicluster := flag.Bool("multicluster", false, "when specified the multicluster install functionality is tested")
@@ -212,17 +212,12 @@ func NewTestHelper() *TestHelper {
 		exit(0, "integration tests not enabled: enable with -integration-tests")
 	}
 
-	if *linkerd == "" {
+	if *linkerdExec == "" {
 		exit(1, "-linkerd flag is required")
 	}
-
-	if !filepath.IsAbs(*linkerd) {
-		exit(1, fmt.Sprintf("-linkerd path must be absolute: %s", *linkerd))
-	}
-
-	_, err := os.Stat(*linkerd)
+	linkerd, err := filepath.Abs(*linkerdExec)
 	if err != nil {
-		exit(1, fmt.Sprintf("-linkerd binary does not exist: %s", *linkerd))
+		exit(1, fmt.Sprintf("-linkerd is invalid: %s: %s", *linkerdExec, err))
 	}
 
 	if *verbose {
@@ -232,7 +227,7 @@ func NewTestHelper() *TestHelper {
 	}
 
 	testHelper := &TestHelper{
-		linkerd:            *linkerd,
+		linkerd,
 		namespace:          *namespace,
 		vizNamespace:       *vizNamespace,
 		upgradeFromVersion: *upgradeFromVersion,
