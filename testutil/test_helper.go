@@ -220,9 +220,6 @@ func NewTestHelper() *TestHelper {
 	if err != nil {
 		exit(1, fmt.Sprintf("abs: %s", err))
 	}
-	if _, err := os.Stat(linkerd); err != nil {
-		exit(1, fmt.Sprintf("stat: %s", err))
-	}
 
 	if *verbose {
 		log.SetLevel(log.DebugLevel)
