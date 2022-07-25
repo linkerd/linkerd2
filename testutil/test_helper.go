@@ -217,12 +217,12 @@ func NewTestHelper() *TestHelper {
 	}
 
 	if !filepath.IsAbs(*linkerd) {
-		exit(1, "-linkerd path must be absolute")
+		exit(1, fmt.Sprintf("-linkerd path must be absolute: %s", *linkerd))
 	}
 
 	_, err := os.Stat(*linkerd)
 	if err != nil {
-		exit(1, "linkerd binary does not exist")
+		exit(1, fmt.Sprintf("-linkerd binary does not exist: %s", *linkerd))
 	}
 
 	if *verbose {
