@@ -286,8 +286,6 @@ async fn server_with_authorization_policy() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn server_with_http_route() {
-    use k8s::policy::httproute as api;
-
     with_temp_ns(|client, ns| async move {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
@@ -333,44 +331,7 @@ async fn server_with_http_route() {
 
         // Create an http route that refers to the `linkerd-admin` server (by
         // name) and ensure that the update now reflects this route.
-        // Create an http route that refers to the `linkerd-admin` server (by
-        // name) and ensure that the update now reflects this route.
-        let route = create(
-            &client,
-            api::HttpRoute {
-                metadata: kube::api::ObjectMeta {
-                    namespace: Some(ns.clone()),
-                    name: Some("metrics-route".to_string()),
-                    ..Default::default()
-                },
-                spec: api::HttpRouteSpec {
-                    inner: api::CommonRouteSpec {
-                        parent_refs: Some(vec![api::ParentReference {
-                            group: Some("policy.linkerd.io".to_string()),
-                            kind: Some("Server".to_string()),
-                            namespace: None,
-                            name: "linkerd-admin".to_string(),
-                            section_name: None,
-                            port: None,
-                        }]),
-                    },
-                    hostnames: None,
-                    rules: Some(vec![api::HttpRouteRule {
-                        matches: Some(vec![api::HttpRouteMatch {
-                            path: Some(api::HttpPathMatch::Exact {
-                                value: "/metrics".to_string(),
-                            }),
-                            headers: None,
-                            query_params: None,
-                            method: Some("GET".to_string()),
-                        }]),
-                        filters: None,
-                    }]),
-                },
-                status: None,
-            },
-        )
-        .await;
+        let route = create(&client, mk_metrics_route(ns.as_ref(), "metrics-route")).await;
         let config = rx
             .next()
             .await
@@ -486,7 +447,7 @@ async fn server_with_http_route() {
 
         // Delete the `HttpRoute` and ensure that the update reverts to the
         // default.
-        kube::Api::<api::HttpRoute>::namespaced(client.clone(), &ns)
+        kube::Api::<k8s::policy::HttpRoute>::namespaced(client.clone(), &ns)
             .delete("metrics-route", &kube::api::DeleteParams::default())
             .await
             .expect("HttpRoute must be deleted");
@@ -506,6 +467,42 @@ async fn server_with_http_route() {
         );
     })
     .await
+}
+
+fn mk_metrics_route(ns: impl ToString, name: impl ToString) -> k8s::policy::HttpRoute {
+    use k8s::policy::httproute as api;
+    api::HttpRoute {
+        metadata: kube::api::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: api::HttpRouteSpec {
+            inner: api::CommonRouteSpec {
+                parent_refs: Some(vec![api::ParentReference {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("Server".to_string()),
+                    namespace: None,
+                    name: "linkerd-admin".to_string(),
+                    section_name: None,
+                    port: None,
+                }]),
+            },
+            hostnames: None,
+            rules: Some(vec![api::HttpRouteRule {
+                matches: Some(vec![api::HttpRouteMatch {
+                    path: Some(api::HttpPathMatch::Exact {
+                        value: "/metrics".to_string(),
+                    }),
+                    headers: None,
+                    query_params: None,
+                    method: Some("GET".to_string()),
+                }]),
+                filters: None,
+            }]),
+        },
+        status: None,
+    }
 }
 
 fn mk_pause(ns: &str, name: &str) -> k8s::Pod {
