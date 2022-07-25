@@ -73,11 +73,11 @@ pub(crate) fn port_names(spec: &Option<k8s::PodSpec>) -> HashMap<String, PortSet
 /// The result is a mapping for each probe port exposed by a container in the
 /// Pod and the paths for which probes are expected.
 pub(crate) fn get_http_probes(
-    spec: &Option<k8s::PodSpec>,
+    spec: &k8s::PodSpec,
     port_names: &HashMap<String, PortSet>,
 ) -> PortMap<HashSet<String>> {
     let mut probes = PortMap::<HashSet<String>>::default();
-    for container in spec.iter().flat_map(|s| s.containers.iter()) {
+    for container in spec.containers.iter() {
         set_probe_ports(&container.liveness_probe, &mut probes, port_names);
         set_probe_ports(&container.readiness_probe, &mut probes, port_names);
         set_probe_ports(&container.startup_probe, &mut probes, port_names);
@@ -319,7 +319,7 @@ mod tests {
             ..k8s::Pod::default()
         };
         let port_names = port_names(&pod.spec);
-        let probes = get_http_probes(&pod.spec, &port_names);
+        let probes = get_http_probes(&pod.spec.unwrap(), &port_names);
 
         let port_5432 = u16::try_from(5432).and_then(NonZeroU16::try_from).unwrap();
         let mut expected_5432 = HashSet::new();
