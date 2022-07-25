@@ -97,14 +97,14 @@ fn set_probe_ports(
     if let Some(http) = &probe.http_get {
         if let Some(path) = &http.path {
             match &http.port {
-                k8s::IntOrString::Int(int_port) => {
-                    if let Ok(port) = u16::try_from(*int_port).and_then(NonZeroU16::try_from) {
+                k8s::IntOrString::Int(port) => {
+                    if let Ok(port) = u16::try_from(*port).and_then(NonZeroU16::try_from) {
                         let paths = probes.entry(port).or_default();
                         paths.insert(path.clone());
                     }
                 }
-                k8s::IntOrString::String(string_port) => {
-                    for port in port_names.get(string_port).into_iter().flatten() {
+                k8s::IntOrString::String(name) => {
+                    for port in port_names.get(name).into_iter().flatten() {
                         let paths = probes.entry(*port).or_default();
                         paths.insert(path.clone());
                     }
