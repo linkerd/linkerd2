@@ -161,3 +161,60 @@ pub struct HttpRouteStatus {
     #[serde(flatten)]
     pub inner: RouteStatus,
 }
+
+impl HttpRouteRule {
+    pub fn has_relative_paths(&self) -> bool {
+        matches_have_relative_paths(&self.matches)
+            || self
+                .filters
+                .iter()
+                .flatten()
+                .any(HttpRouteFilter::has_relative_paths)
+    }
+}
+
+impl HttpRouteFilter {
+    pub fn has_relative_paths(&self) -> bool {
+        match self {
+            HttpRouteFilter::RequestRedirect {
+                ref request_redirect,
+            } => request_redirect_has_relative_paths(request_redirect),
+            _ => false,
+        }
+    }
+}
+
+pub fn parent_ref_targets_server(p: &ParentReference) -> bool {
+    match (p.group.as_deref(), p.kind.as_deref()) {
+        (Some(group), Some(kind)) => {
+            group.eq_ignore_ascii_case("policy.linkerd.io") && kind.eq_ignore_ascii_case("server")
+        }
+        _ => false,
+    }
+}
+pub fn matches_have_relative_paths(matches: &Option<Vec<HttpRouteMatch>>) -> bool {
+    matches.iter().flatten().any(|m| {
+        m.path
+            .as_ref()
+            .map(path_match_has_relative_paths)
+            .unwrap_or(false)
+    })
+}
+
+pub fn request_redirect_has_relative_paths(
+    HttpRequestRedirectFilter { path, .. }: &HttpRequestRedirectFilter,
+) -> bool {
+    match path {
+        Some(HttpPathModifier::ReplaceFullPath(ref path)) => !path.starts_with('/'),
+        Some(HttpPathModifier::ReplacePrefixMatch(ref path)) => !path.starts_with('/'),
+        None => false,
+    }
+}
+
+pub fn path_match_has_relative_paths(m: &HttpPathMatch) -> bool {
+    match m {
+        HttpPathMatch::Exact { ref value } => !value.starts_with('/'),
+        HttpPathMatch::PathPrefix { ref value } => !value.starts_with('/'),
+        _ => false,
+    }
+}
