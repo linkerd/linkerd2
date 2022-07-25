@@ -126,7 +126,7 @@ handle_tests_input() {
           tests_usage "$0" >&2
           exit 64
         fi
-        linkerd_path=$1
+        linkerd_path=$(realpath "$1")
         shift
         ;;
     esac
