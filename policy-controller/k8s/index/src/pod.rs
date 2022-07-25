@@ -318,7 +318,7 @@ mod tests {
             }),
             ..k8s::Pod::default()
         };
-        let port_names = tcp_port_names(&pod.spec);
+        let port_names = port_names(&pod.spec);
         let probes = get_container_probes(&pod.spec, &port_names);
 
         let port_5432 = u16::try_from(5432).and_then(NonZeroU16::try_from).unwrap();
