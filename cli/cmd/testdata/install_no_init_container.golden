@@ -576,7 +576,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v1.6.1
+        version: v1.6.2
       logFormat: ""
       logLevel: ""
       resources:

@@ -24,12 +24,20 @@ env:
   CARGO_NET_RETRY: 10
   K3D_VERSION: v5.4.3
   PROTOC_NO_VENDOR: 1
-  PROXY_INIT_VERSION: v1.6.1
+  PROXY_INIT_VERSION: v1.6.2
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
 
-
 jobs:
+  cleanup-stale:
+    runs-on: ubuntu-20.04
+    permissions:
+      actions: write
+    steps:
+      - uses: styfle/cancel-workflow-action@bb6001c4ea612bf59c3abfc4756fbceee4f870c7
+        with:
+          access_token: ${{ github.token }}
+
   docker-build:
     runs-on: ubuntu-20.04
     strategy:
@@ -74,7 +82,8 @@ jobs:
         run: |
           rm -rf "$HOME/.cargo"
           bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(cat rust-toolchain)"
-          source "$HOME/.cargo/env"
+          # shellcheck disable=SC1090
+          source ~/.cargo/env
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           bin/scurl -L https://get.nexte.st/latest/linux | tar xzf - -C /usr/local/bin
           cargo version
@@ -118,7 +127,8 @@ jobs:
         run: |
           rm -rf "$HOME/.cargo"
           bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(cat rust-toolchain)"
-          source "$HOME/.cargo/env"
+          # shellcheck disable=SC1090
+          source ~/.cargo/env
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           bin/scurl -L https://get.nexte.st/latest/linux | tar xzf - -C /usr/local/bin
           cargo version

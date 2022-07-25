@@ -156,7 +156,7 @@ spec:
     - 4190,4191,22,8100-8102
     - --outbound-ports-to-ignore
     - "5432"
-    image: cr.l5d.io/linkerd/proxy-init:v1.6.1
+    image: cr.l5d.io/linkerd/proxy-init:v1.6.2
     imagePullPolicy: IfNotPresent
     name: linkerd-init
     resources:
