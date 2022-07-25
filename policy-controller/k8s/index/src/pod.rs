@@ -96,22 +96,16 @@ fn set_probe_ports(
     };
     if let Some(http) = &probe.http_get {
         if let Some(path) = &http.path {
-            // let ports = match &http.port {
-            //     k8s::IntOrString::Int(port) => u16::try_from(*port)
-            //         .and_then(NonZeroU16::try_from)
-            //         .into_iter(),
-            //     k8s::IntOrString::String(port) => port_names.get(port).into_iter().flatten(),
-            // };
             match &http.port {
-                k8s::IntOrString::Int(port) => {
-                    if let Ok(p) = u16::try_from(*port).and_then(NonZeroU16::try_from) {
-                        let paths = probes.entry(p).or_default();
+                k8s::IntOrString::Int(int_port) => {
+                    if let Ok(port) = u16::try_from(*int_port).and_then(NonZeroU16::try_from) {
+                        let paths = probes.entry(port).or_default();
                         paths.insert(path.clone());
                     }
                 }
-                k8s::IntOrString::String(port) => {
-                    for p in port_names.get(port).into_iter().flatten() {
-                        let paths = probes.entry(*p).or_default();
+                k8s::IntOrString::String(string_port) => {
+                    for port in port_names.get(string_port).into_iter().flatten() {
+                        let paths = probes.entry(*port).or_default();
                         paths.insert(path.clone());
                     }
                 }
