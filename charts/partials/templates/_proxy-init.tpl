@@ -2,9 +2,9 @@
 args:
 {{- if (eq .Values.proxyInit.iptablesMode "nft") }}
 - --firewall-bin-path
-- {{"iptables-nft" | quote}}
+- "iptables-nft"
 - --firewall-save-bin-path
-- {{"iptables-nft-save" | quote}}
+- "iptables-nft-save"
 {{- else if not (eq .Values.proxyInit.iptablesMode "legacy") }}
 {{ fail (printf "Unsupported value \"%s\" for proxyInit.iptablesMode\nValid values: [\"nft\", \"legacy\"]" .Values.proxyInit.iptablesMode) }}
 {{- end }}
