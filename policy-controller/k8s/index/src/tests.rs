@@ -175,12 +175,12 @@ fn mk_default_policy(
 
 impl TestConfig {
     fn from_default_policy(default_policy: DefaultPolicy) -> Self {
-        Self::from_default_policy_with_probes(default_policy, None)
+        Self::from_default_policy_with_probes(default_policy, vec![])
     }
 
     fn from_default_policy_with_probes(
         default_policy: DefaultPolicy,
-        probe_networks: Option<Vec<IpNet>>,
+        probe_networks: Vec<IpNet>,
     ) -> Self {
         let _tracing = Self::init_tracing();
         let cluster_net = "192.0.2.0/24".parse().unwrap();

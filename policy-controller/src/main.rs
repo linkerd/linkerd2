@@ -101,11 +101,7 @@ async fn main() -> Result<()> {
         .build()
         .await?;
 
-    let probe_networks = if let Some(IpNets(networks)) = probe_networks {
-        Some(networks)
-    } else {
-        None
-    };
+    let probe_networks = probe_networks.map(|IpNets(nets)| nets).unwrap_or_default();
 
     // Build the index data structure, which will be used to process events from all watches
     // The lookup handle is used by the gRPC server.
