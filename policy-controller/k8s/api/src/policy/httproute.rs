@@ -184,14 +184,19 @@ impl HttpRouteFilter {
     }
 }
 
-pub fn parent_ref_targets_server(p: &ParentReference) -> bool {
-    match (p.group.as_deref(), p.kind.as_deref()) {
-        (Some(group), Some(kind)) => {
-            group.eq_ignore_ascii_case("policy.linkerd.io") && kind.eq_ignore_ascii_case("server")
-        }
-        _ => false,
-    }
+pub fn parent_ref_targets_kind<T>(parent_ref: &ParentReference) -> bool
+where
+    T: kube::Resource,
+    T::DynamicType: Default,
+{
+    let kind = match parent_ref.kind {
+        Some(ref kind) => kind,
+        None => return false,
+    };
+
+    super::targets_kind::<T>(parent_ref.group.as_deref(), kind)
 }
+
 pub fn matches_have_relative_paths(matches: &Option<Vec<HttpRouteMatch>>) -> bool {
     matches.iter().flatten().any(|m| {
         m.path

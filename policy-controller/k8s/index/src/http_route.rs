@@ -2,7 +2,7 @@ use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Error, Result};
 use k8s_gateway_api as api;
 use linkerd_policy_controller_core::http_route;
-use linkerd_policy_controller_k8s_api::policy::httproute as policy;
+use linkerd_policy_controller_k8s_api::policy::{httproute as policy, Server};
 use std::num::NonZeroU16;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -269,7 +269,7 @@ impl InboundParentRef {
         parent_ref: api::ParentReference,
     ) -> Option<Result<Self, InvalidParentRef>> {
         // Skip parent refs that don't target a `Server` resource.
-        if !policy::parent_ref_targets_server(&parent_ref) || parent_ref.name.is_empty() {
+        if !policy::parent_ref_targets_kind::<Server>(&parent_ref) || parent_ref.name.is_empty() {
             return None;
         }
 

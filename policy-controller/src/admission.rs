@@ -423,7 +423,7 @@ impl Validate<HttpRouteSpec> for Admission {
             .parent_refs
             .iter()
             .flatten()
-            .all(httproute::parent_ref_targets_server);
+            .all(httproute::parent_ref_targets_kind::<Server>);
         ensure!(
             all_target_servers,
             "policy.linkerd.io HTTPRoutes must target only Server resources"
