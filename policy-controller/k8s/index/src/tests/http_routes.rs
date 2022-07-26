@@ -76,8 +76,7 @@ fn mk_route(
     server: impl ToString,
 ) -> k8s::policy::HttpRoute {
     use chrono::Utc;
-    use k8s::policy::httproute::*;
-    use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
+    use k8s::{policy::httproute::*, Time};
 
     HttpRoute {
         metadata: k8s::ObjectMeta {
