@@ -310,17 +310,7 @@ async fn server_with_http_route() {
         // name) and ensure that the update now reflects this route.
         let route = create(&client, mk_admin_route(ns.as_ref(), "metrics-route")).await;
         let config = next_config(&mut rx).await;
-        let http1 = if let grpc::inbound::proxy_protocol::Kind::Http1(http1) = config
-            .protocol
-            .expect("must have proxy protocol")
-            .kind
-            .expect("must have kind")
-        {
-            http1
-        } else {
-            panic!("proxy protocol must be HTTP1")
-        };
-        let h1_route = http1.routes.first().expect("must have route");
+        let h1_route = http1_routes(&config).first().expect("must have route");
         let rule_match = h1_route
             .rules
             .first()
@@ -433,6 +423,24 @@ async fn server_with_http_route() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn http_routes_ordered_by_creation() {
+    fn route_path(routes: &[grpc::inbound::HttpRoute], idx: usize) -> Option<&str> {
+        use grpc::http_route::path_match;
+        match routes
+            .get(idx)?
+            .rules
+            .get(0)?
+            .matches
+            .get(0)?
+            .path
+            .as_ref()?
+            .kind
+            .as_ref()?
+        {
+            path_match::Kind::Exact(ref path) => Some(path.as_ref()),
+            x => panic!("unexpected route match {x:?}",),
+        }
+    }
+
     with_temp_ns(|client, ns| async move {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
@@ -475,75 +483,59 @@ async fn http_routes_ordered_by_creation() {
         // name. These should be ordered by creation time. A different path
         // match is used for each route so that they can be distinguished to
         // ensure ordering.
-        let route_d = create(
+        create(
             &client,
             mk_admin_route_with_path(ns.as_ref(), "d", "/metrics"),
         )
         .await;
-        let _ = next_config(&mut rx).await;
+        next_config(&mut rx).await;
 
         // Creation timestamps in Kubernetes only have second precision, so we
         // must wait a whole second between creating each of these routes in
         // order for them to have different creation timestamps.
         tokio::time::sleep(Duration::from_secs(1)).await;
-        let route_a = create(
+        create(
             &client,
             mk_admin_route_with_path(ns.as_ref(), "a", "/ready"),
         )
         .await;
-        let _ = next_config(&mut rx).await;
+        next_config(&mut rx).await;
 
         tokio::time::sleep(Duration::from_secs(1)).await;
-        let route_c = create(
+        create(
             &client,
             mk_admin_route_with_path(ns.as_ref(), "c", "/shutdown"),
         )
         .await;
+        next_config(&mut rx).await;
 
-        let _ = next_config(&mut rx).await;
         tokio::time::sleep(Duration::from_secs(1)).await;
-        let route_b = create(
+        create(
             &client,
             mk_admin_route_with_path(ns.as_ref(), "b", "/proxy-log-level"),
         )
         .await;
-
         let config = next_config(&mut rx).await;
-        let http1 = if let grpc::inbound::proxy_protocol::Kind::Http1(http1) = config
-            .protocol
-            .expect("must have proxy protocol")
-            .kind
-            .expect("must have kind")
-        {
-            http1
-        } else {
-            panic!("proxy protocol must be HTTP1")
-        };
-        let routes = http1.routes;
-
-        let route_path = |idx: usize| {
-            use grpc::http_route::path_match;
-            match routes
-                .get(idx)?
-                .rules
-                .get(0)?
-                .matches
-                .get(0)?
-                .path
-                .as_ref()?
-                .kind
-                .as_ref()?
-            {
-                path_match::Kind::Exact(ref path) => Some(path.as_ref()),
-                x => panic!("unexpected route match {x:?}",),
-            }
-        };
+        let routes = http1_routes(&config);
 
         assert_eq!(routes.len(), 4);
-        assert_eq!(route_path(0), Some("/metrics"));
-        assert_eq!(route_path(1), Some("/ready"));
-        assert_eq!(route_path(2), Some("/shutdown"));
-        assert_eq!(route_path(3), Some("/proxy-log-level"));
+        assert_eq!(route_path(routes, 0), Some("/metrics"));
+        assert_eq!(route_path(routes, 1), Some("/ready"));
+        assert_eq!(route_path(routes, 2), Some("/shutdown"));
+        assert_eq!(route_path(routes, 3), Some("/proxy-log-level"));
+
+        // Delete one of the routes and ensure that the update maintains the
+        // same ordering.
+        kube::Api::<k8s::policy::HttpRoute>::namespaced(client.clone(), &ns)
+            .delete("c", &kube::api::DeleteParams::default())
+            .await
+            .expect("HttpRoute must be deleted");
+        let config = next_config(&mut rx).await;
+        let routes = http1_routes(&config);
+        assert_eq!(routes.len(), 3);
+        assert_eq!(route_path(routes, 0), Some("/metrics"));
+        assert_eq!(route_path(routes, 1), Some("/ready"));
+        assert_eq!(route_path(routes, 2), Some("/proxy-log-level"));
     })
     .await
 }
@@ -692,4 +684,20 @@ async fn next_config(rx: &mut tonic::Streaming<grpc::inbound::Server>) -> grpc::
         .expect("watch must return an updated config");
     tracing::trace!(config = ?format_args!("{:#?}", config));
     config
+}
+
+fn http1_routes(config: &grpc::inbound::Server) -> &[grpc::inbound::HttpRoute] {
+    let http1 = if let grpc::inbound::proxy_protocol::Kind::Http1(ref http1) = config
+        .protocol
+        .as_ref()
+        .expect("must have proxy protocol")
+        .kind
+        .as_ref()
+        .expect("must have kind")
+    {
+        http1
+    } else {
+        panic!("proxy protocol must be HTTP1")
+    };
+    &http1.routes[..]
 }
