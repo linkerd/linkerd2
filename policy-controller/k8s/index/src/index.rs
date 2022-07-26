@@ -907,8 +907,11 @@ impl Pod {
                         srvname.clone(),
                         server,
                         authentications,
-                        &self.probes,
-                        port,
+                        self.probes
+                            .get(&port)
+                            .into_iter()
+                            .flatten()
+                            .map(|p| p.as_str()),
                     );
                     self.update_server(port, srvname, s);
 
@@ -1079,13 +1082,12 @@ impl Pod {
             );
         };
 
-        let mut http_routes = HashMap::default();
-
         // No Server is configured, so requests on the Pod's probe paths are
         // authorized.
-        if let Some(ref probe_networks) = config.probe_networks {
-            http_routes = Self::http_probe_routes(probes, port, probe_networks.clone());
-        }
+        let http_routes = {
+            let probe_paths = probes.get(&port).into_iter().flatten().map(|p| p.as_str());
+            Self::http_probe_routes(probe_paths, &*config.probe_networks)
+        };
 
         InboundServer {
             reference: ServerRef::Default(policy.to_string()),
@@ -1095,36 +1097,36 @@ impl Pod {
         }
     }
 
-    fn http_probe_routes(
-        probes: &PortMap<HashSet<String>>,
-        port: NonZeroU16,
-        networks: Vec<IpNet>,
+    fn http_probe_routes<'p>(
+        paths: impl Iterator<Item = &'p str>,
+        networks: &[IpNet],
     ) -> HashMap<String, InboundHttpRoute> {
-        let mut routes = HashMap::default();
-        for path in probes.get(&port).into_iter().flatten() {
-            let matches = vec![HttpRouteMatch {
-                path: Some(PathMatch::Exact(path.to_string())),
-                method: Some(Method::GET),
-                ..Default::default()
-            }];
-            let rules = vec![InboundHttpRouteRule {
-                matches,
-                ..Default::default()
-            }];
-            let client_authz = ClientAuthorization {
-                networks: networks.clone().into_iter().map(Into::into).collect(),
-                authentication: ClientAuthentication::Unauthenticated,
-            };
-            let mut authorizations = HashMap::default();
-            authorizations.insert(AuthorizationRef::Default("probe".to_string()), client_authz);
-            let route = InboundHttpRoute {
-                rules,
-                authorizations,
-                ..Default::default()
-            };
-            routes.insert(path.to_string(), route);
-        }
-        routes
+        paths
+            .map(|path| {
+                let authz = Some((
+                    AuthorizationRef::Default("probe".to_string()),
+                    ClientAuthorization {
+                        networks: networks.iter().copied().map(Into::into).collect(),
+                        authentication: ClientAuthentication::Unauthenticated,
+                    },
+                ));
+
+                let route = InboundHttpRoute {
+                    rules: vec![InboundHttpRouteRule {
+                        matches: vec![HttpRouteMatch {
+                            path: Some(PathMatch::Exact(path.to_string())),
+                            method: Some(Method::GET),
+                            ..Default::default()
+                        }],
+                        ..Default::default()
+                    }],
+                    authorizations: authz.into_iter().collect(),
+                    ..Default::default()
+                };
+
+                (path.to_string(), route)
+            })
+            .collect()
     }
 }
 
@@ -1190,25 +1192,22 @@ impl PolicyIndex {
         true
     }
 
-    fn inbound_server(
+    fn inbound_server<'p>(
         &self,
         name: String,
         server: &server::Server,
         authentications: &AuthenticationNsIndex,
-        probes: &PortMap<HashSet<String>>,
-        port: NonZeroU16,
+        probe_paths: impl Iterator<Item = &'p str>,
     ) -> InboundServer {
         tracing::trace!(%name, ?server, "Creating inbound server");
         let authorizations = self.client_authzs(&name, server, authentications);
-        let mut routes = self.http_routes(&name, authentications);
 
-        // No routes are configured for the Server, so requests on the Pod's
-        // probe paths are authorized.
-        if routes.is_empty() {
-            if let Some(ref probe_networks) = self.cluster_info.probe_networks {
-                routes = Pod::http_probe_routes(probes, port, probe_networks.clone());
-            }
-        }
+        let routes = match self.http_routes(&name, authentications) {
+            routes if !routes.is_empty() => routes,
+            // No routes are configured for the Server, so requests on the Pod's
+            // probe paths are authorized.
+            _ => Pod::http_probe_routes(probe_paths, &*self.cluster_info.probe_networks),
+        };
 
         InboundServer {
             reference: ServerRef::Server(name),

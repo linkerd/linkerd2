@@ -65,7 +65,7 @@ pub struct ClusterInfo {
     pub default_detect_timeout: time::Duration,
 
     /// The networks that probes are expected to be from.
-    pub probe_networks: Option<Vec<IpNet>>,
+    pub probe_networks: Vec<IpNet>,
 }
 
 impl ClusterInfo {

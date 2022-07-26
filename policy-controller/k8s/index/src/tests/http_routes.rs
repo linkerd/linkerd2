@@ -82,7 +82,7 @@ fn routes_created_for_probes() {
         cluster_only: true,
     };
     let probe_networks = vec!["10.0.0.1/24".parse().unwrap()];
-    let test = TestConfig::from_default_policy_with_probes(policy, Some(probe_networks));
+    let test = TestConfig::from_default_policy_with_probes(policy, probe_networks);
 
     // Create a pod.
     let container = k8s::Container {
