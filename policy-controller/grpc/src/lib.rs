@@ -395,8 +395,6 @@ fn to_http_route_list(
         // namespace.
         creation_timestamp(a_name)
             .cmp(&creation_timestamp(b_name))
-            // Oldest first!
-            .reverse()
             .then_with(|| a_name.cmp(b_name))
     });
 
