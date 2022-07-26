@@ -87,20 +87,30 @@ ENV USER=root
 ##
 
 FROM docker.io/golang:${GO_VERSION}-bullseye as go
+RUN apt update && apt upgrade -y --autoremove \
+    && apt install -y \
+        curl \
+        file \
+        jq \
+        time \
+        unzip \
+        xz-utils \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN for p in \
-    github.com/uudashr/gopkgs/v2/cmd/gopkgs@latest \
-    github.com/ramya-rao-a/go-outline@latest \
     github.com/cweill/gotests/gotests@latest \
-    github.com/fatih/gomodifytags@latest \
-    github.com/josharian/impl@latest \
-    github.com/haya14busa/goplay/cmd/goplay@latest \
     github.com/go-delve/delve/cmd/dlv@latest \
+    github.com/golangci/golangci-lint/cmd/golangci-lint@v1.46.2 \
+    github.com/fatih/gomodifytags@latest \
+    github.com/haya14busa/goplay/cmd/goplay@latest \
+    github.com/josharian/impl@latest \
+    github.com/ramya-rao-a/go-outline@latest \
+    github.com/uudashr/gopkgs/v2/cmd/gopkgs@latest \
     golang.org/x/tools/gopls@latest \
     google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2 \
     google.golang.org/protobuf/cmd/protoc-gen-go@v1.28 \
-    ; do go install "$p" ; done
-ARG GOLANGCI_LINT_VERSION=v1.46.2
-RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}
+    ; do go install "$p" ; done \
+    && mv /go/bin/* /usr/local/bin/ \
+    && rm -rf /go/bin/* /go/pkg/* /go/src/*
 COPY bin/scurl /usr/local/bin/scurl
 
 ENV PROTOC_NO_VENDOR=1
