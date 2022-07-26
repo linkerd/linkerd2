@@ -127,31 +127,33 @@ fn routes_created_for_probes() {
     expected_routes.insert(
         "/liveness-container-1".to_string(),
         InboundHttpRoute {
+            hostnames: vec![],
             rules: vec![InboundHttpRouteRule {
                 matches: vec![HttpRouteMatch {
                     path: Some(PathMatch::Exact("/liveness-container-1".to_string())),
+                    headers: vec![],
+                    query_params: vec![],
                     method: Some(Method::GET),
-                    ..Default::default()
                 }],
-                ..Default::default()
+                filters: vec![],
             }],
             authorizations: expected_authorizations.clone(),
-            ..Default::default()
         },
     );
     expected_routes.insert(
         "/ready-container-1".to_string(),
         InboundHttpRoute {
+            hostnames: vec![],
             rules: vec![InboundHttpRouteRule {
                 matches: vec![HttpRouteMatch {
                     path: Some(PathMatch::Exact("/ready-container-1".to_string())),
+                    headers: vec![],
+                    query_params: vec![],
                     method: Some(Method::GET),
-                    ..Default::default()
                 }],
-                ..Default::default()
+                filters: vec![],
             }],
             authorizations: expected_authorizations,
-            ..Default::default()
         },
     );
 

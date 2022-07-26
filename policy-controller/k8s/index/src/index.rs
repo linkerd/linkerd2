@@ -1112,16 +1112,17 @@ impl Pod {
                 ));
 
                 let route = InboundHttpRoute {
+                    hostnames: vec![],
                     rules: vec![InboundHttpRouteRule {
                         matches: vec![HttpRouteMatch {
                             path: Some(PathMatch::Exact(path.to_string())),
+                            headers: vec![],
+                            query_params: vec![],
                             method: Some(Method::GET),
-                            ..Default::default()
                         }],
-                        ..Default::default()
+                        filters: vec![],
                     }],
                     authorizations: authz.into_iter().collect(),
-                    ..Default::default()
                 };
 
                 (path.to_string(), route)
