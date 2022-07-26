@@ -643,15 +643,15 @@ fn http_route(
     server_name: &str,
     path: &str,
     port: NonZeroU16,
-) -> k8s_gateway_api::HttpRoute {
-    k8s_gateway_api::HttpRoute {
+) -> k8s::policy::HttpRoute {
+    k8s::policy::HttpRoute {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
             ..Default::default()
         },
-        spec: k8s_gateway_api::HttpRouteSpec {
-            inner: k8s_gateway_api::CommonRouteSpec {
+        spec: k8s::policy::HttpRouteSpec {
+            inner: k8s::policy::httproute::CommonRouteSpec {
                 parent_refs: Some(vec![k8s_gateway_api::ParentReference {
                     group: Some("policy.linkerd.io".to_string()),
                     kind: Some("Server".to_string()),
@@ -662,15 +662,14 @@ fn http_route(
                 }]),
             },
             hostnames: None,
-            rules: Some(vec![k8s_gateway_api::HttpRouteRule {
-                matches: Some(vec![k8s_gateway_api::HttpRouteMatch {
-                    path: Some(k8s_gateway_api::HttpPathMatch::Exact {
+            rules: Some(vec![k8s::policy::httproute::HttpRouteRule {
+                matches: Some(vec![k8s::policy::httproute::HttpRouteMatch {
+                    path: Some(k8s::policy::httproute::HttpPathMatch::Exact {
                         value: path.to_string(),
                     }),
                     ..Default::default()
                 }]),
                 filters: None,
-                backend_refs: None,
             }]),
         },
         status: None,

@@ -254,7 +254,9 @@ linkerd *flags: _k3d-init
 linkerd-crds-install: _k3d-init
     {{ _linkerd }} install --crds \
         | {{ _kubectl }} apply -f -
-    {{ _linkerd }} check --crds --wait=1m
+    {{ _kubectl }} wait crd --for condition=established \
+        --selector='linkerd.io/control-plane-ns' \
+        --timeout=1m
 
 # Install linkerd on the test cluster using test images.
 linkerd-install: linkerd-load linkerd-crds-install && _linkerd-ready
