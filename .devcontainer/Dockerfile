@@ -108,9 +108,9 @@ RUN for p in \
     golang.org/x/tools/gopls@latest \
     google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2 \
     google.golang.org/protobuf/cmd/protoc-gen-go@v1.28 \
+    gotest.tools/gotestsum@v0.4.2 \
     ; do go install "$p" ; done \
-    && mv /go/bin/* /usr/local/bin/ \
-    && rm -rf /go/bin/* /go/pkg/* /go/src/*
+    && rm -rf /go/pkg/* /go/src/*
 COPY bin/scurl /usr/local/bin/scurl
 
 ENV PROTOC_NO_VENDOR=1
