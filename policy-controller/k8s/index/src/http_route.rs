@@ -1,8 +1,8 @@
 use ahash::AHashMap as HashMap;
-use anyhow::{bail, Error, Result};
+use anyhow::{bail, ensure, Error, Result};
 use k8s_gateway_api as api;
 use linkerd_policy_controller_core::http_route;
-use linkerd_policy_controller_k8s_api::policy::httproute as policy;
+use linkerd_policy_controller_k8s_api::policy::{httproute as policy, Server};
 use std::num::NonZeroU16;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -122,13 +122,20 @@ impl InboundRouteBinding {
         }: api::HttpRouteMatch,
     ) -> Result<http_route::HttpRouteMatch> {
         let path = path
-            .map(|pm| match pm {
-                api::HttpPathMatch::Exact { value } => Ok(http_route::PathMatch::Exact(value)),
-                api::HttpPathMatch::PathPrefix { value } => {
-                    Ok(http_route::PathMatch::Prefix(value))
-                }
-                api::HttpPathMatch::RegularExpression { value } => {
-                    value.parse().map(http_route::PathMatch::Regex)
+            .map(|pm| {
+                ensure!(
+                    !policy::path_match_has_relative_paths(&pm),
+                    "HttpPathMatch paths must be absolute (begin with `/`)"
+                );
+                match pm {
+                    api::HttpPathMatch::Exact { value } => Ok(http_route::PathMatch::Exact(value)),
+                    api::HttpPathMatch::PathPrefix { value } => {
+                        Ok(http_route::PathMatch::Prefix(value))
+                    }
+                    api::HttpPathMatch::RegularExpression { value } => value
+                        .parse()
+                        .map(http_route::PathMatch::Regex)
+                        .map_err(Into::into),
                 }
             })
             .transpose()?;
@@ -259,26 +266,21 @@ impl InboundParentRef {
 
     fn from_parent_ref(
         route_ns: Option<&str>,
-        api::ParentReference {
-            group,
-            kind,
+        parent_ref: api::ParentReference,
+    ) -> Option<Result<Self, InvalidParentRef>> {
+        // Skip parent refs that don't target a `Server` resource.
+        if !policy::parent_ref_targets_kind::<Server>(&parent_ref) || parent_ref.name.is_empty() {
+            return None;
+        }
+
+        let api::ParentReference {
+            group: _,
+            kind: _,
             namespace,
             name,
             section_name,
             port,
-        }: api::ParentReference,
-    ) -> Option<Result<Self, InvalidParentRef>> {
-        // Ignore parents that are not a Server.
-        if let Some(g) = group {
-            if let Some(k) = kind {
-                if !g.eq_ignore_ascii_case("policy.linkerd.io")
-                    || !k.eq_ignore_ascii_case("server")
-                    || name.is_empty()
-                {
-                    return None;
-                }
-            }
-        }
+        } = parent_ref;
 
         if namespace.is_some() && namespace.as_deref() != route_ns {
             return Some(Err(InvalidParentRef::ServerInAnotherNamespace));
@@ -295,6 +297,8 @@ impl InboundParentRef {
 }
 
 mod convert {
+    use api::HttpRequestRedirectFilter;
+
     use super::*;
     pub(super) fn http_match(hostname: api::Hostname) -> http_route::HostMatch {
         if hostname.starts_with("*.") {
@@ -332,14 +336,19 @@ mod convert {
     }
 
     pub(super) fn req_redirect(
-        api::HttpRequestRedirectFilter {
+        filter: HttpRequestRedirectFilter,
+    ) -> Result<http_route::RequestRedirectFilter> {
+        ensure!(
+            !policy::request_redirect_has_relative_paths(&filter),
+            "RequestRedirect filters may only contain absolute paths (starting with '/')"
+        );
+        let api::HttpRequestRedirectFilter {
             scheme,
             hostname,
             path,
             port,
             status_code,
-        }: api::HttpRequestRedirectFilter,
-    ) -> Result<http_route::RequestRedirectFilter> {
+        } = filter;
         Ok(http_route::RequestRedirectFilter {
             scheme: scheme.as_deref().map(TryInto::try_into).transpose()?,
             host: hostname,
