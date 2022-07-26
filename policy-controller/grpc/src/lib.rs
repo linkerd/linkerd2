@@ -3,7 +3,6 @@
 
 mod http_route;
 
-use ahash::AHashMap as HashMap;
 use futures::prelude::*;
 use linkerd2_proxy_api::{
     self as api,
@@ -353,52 +352,38 @@ fn to_authz(
     }
 }
 
-fn to_http_route_list(
-    routes: &HashMap<String, InboundHttpRoute>,
+fn to_http_route_list<'r>(
+    routes: impl IntoIterator<Item = (&'r String, &'r InboundHttpRoute)>,
     cluster_networks: &[IpNet],
 ) -> Vec<proto::HttpRoute> {
     let mut route_list = routes
-        .iter()
-        .map(|(name, route)| to_http_route(name, route.clone(), cluster_networks))
+        .into_iter()
+        .map(|(name, route)| {
+            let proto = to_http_route(name, route.clone(), cluster_networks);
+            (name, route.creation_timestamp, proto)
+        })
         .collect::<Vec<_>>();
 
-    fn name(route: &proto::HttpRoute) -> &str {
-        let meta = route
-            .metadata
-            .as_ref()
-            .expect("routes converted to protobuf by `to_http_route` will always have metadata");
-        match meta.kind {
-            Some(metadata::Kind::Resource (api::meta::Resource { ref name, .. })) => name,
-            _ => unreachable!("routes converted to protobuf by `to_http_route` will always have the Resource metadata kind"),
-        }
-    }
-    let creation_timestamp = |route: &str| {
-        routes
-            .get(route)
-            .expect("route should exist in the map, since we got it by iterating over the map")
-            .creation_timestamp
-    };
-    (&mut route_list[..]).sort_by(|a, b| {
-        let a_name = name(a);
-        let b_name = name(b);
-        // Per the Gateway API spec:
-        //
-        // > If ties still exist across multiple Routes, matching precedence MUST be
-        // > determined in order of the following criteria, continuing on ties:
-        // >
-        // >    The oldest Route based on creation timestamp.
-        // >    The Route appearing first in alphabetical order by
-        // >   "{namespace}/{name}".
-        //
-        // Note that we don't need to include the route's namespace in this
-        // comparison, because all these routes will exist in the same
-        // namespace.
-        creation_timestamp(a_name)
-            .cmp(&creation_timestamp(b_name))
-            .then_with(|| a_name.cmp(b_name))
+    // Per the Gateway API spec:
+    //
+    // > If ties still exist across multiple Routes, matching precedence MUST be
+    // > determined in order of the following criteria, continuing on ties:
+    // >
+    // >    The oldest Route based on creation timestamp.
+    // >    The Route appearing first in alphabetical order by
+    // >   "{namespace}/{name}".
+    //
+    // Note that we don't need to include the route's namespace in this
+    // comparison, because all these routes will exist in the same
+    // namespace.
+    (&mut route_list[..]).sort_by(|(a_name, a_ts, _), (b_name, b_ts, _)| {
+        a_ts.cmp(b_ts).then_with(|| a_name.cmp(b_name))
     });
 
     route_list
+        .into_iter()
+        .map(|(_, _, r)| r)
+        .collect()
 }
 
 fn to_http_route(
