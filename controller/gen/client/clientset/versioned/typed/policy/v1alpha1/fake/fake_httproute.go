@@ -36,9 +36,9 @@ type FakeHTTPRoutes struct {
 	ns   string
 }
 
-var httproutesResource = schema.GroupVersionResource{Group: "policy", Version: "v1alpha1", Resource: "httproutes"}
+var httproutesResource = schema.GroupVersionResource{Group: "policy.linkerd.io", Version: "v1alpha1", Resource: "httproutes"}
 
-var httproutesKind = schema.GroupVersionKind{Group: "policy", Version: "v1alpha1", Kind: "HTTPRoute"}
+var httproutesKind = schema.GroupVersionKind{Group: "policy.linkerd.io", Version: "v1alpha1", Kind: "HTTPRoute"}
 
 // Get takes name of the hTTPRoute, and returns the corresponding hTTPRoute object, and an error if there is any.
 func (c *FakeHTTPRoutes) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.HTTPRoute, err error) {

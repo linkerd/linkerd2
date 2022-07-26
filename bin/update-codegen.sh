@@ -42,3 +42,4 @@ sed -i 's/Group: \"link\"/Group: \"multicluster.linkerd.io\"/g' "${rootdir}/cont
 sed -i 's/Group: \"policy\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/policy/v1alpha1/fake/fake_authorizationpolicy.go"
 sed -i 's/Group: \"policy\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/policy/v1alpha1/fake/fake_meshtlsauthentication.go"
 sed -i 's/Group: \"policy\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/policy/v1alpha1/fake/fake_networkauthentication.go"
+sed -i 's/Group: \"policy\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/policy/v1alpha1/fake/fake_httproute.go"
