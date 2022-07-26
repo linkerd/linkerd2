@@ -72,48 +72,44 @@ pub(crate) fn port_names(spec: &Option<k8s::PodSpec>) -> HashMap<String, PortSet
 ///
 /// The result is a mapping for each probe port exposed by a container in the
 /// Pod and the paths for which probes are expected.
-pub(crate) fn get_http_probes(
-    spec: &k8s::PodSpec,
-    _port_names: &HashMap<String, PortSet>,
-) -> PortMap<HashSet<String>> {
-    let mut http_probes = PortMap::<HashSet<String>>::default();
-    for container in spec.containers.iter() {
-        let probes = (container.liveness_probe.iter())
-            .chain(container.readiness_probe.iter())
-            .chain(container.startup_probe.iter());
-        for probe in probes {
-            if let Some(ref http) = probe.http_get {
-                let path = http
-                    .path
-                    .as_ref()
-                    .expect("probe with httpGet should have a path field");
-                match http.port {
-                    k8s::IntOrString::Int(port) => {
-                        if let Ok(port) = u16::try_from(port).and_then(NonZeroU16::try_from) {
-                            let paths = http_probes.entry(port).or_default();
-                            paths.insert(path.clone());
-                        }
-                    }
-                    k8s::IntOrString::String(ref name) => {
-                        for port in container.ports.iter().flatten() {
-                            if let Some(ref n) = port.name {
-                                if n == name {
-                                    if let Ok(port) = u16::try_from(port.container_port)
-                                        .and_then(NonZeroU16::try_from)
-                                    {
-                                        let paths = http_probes.entry(port).or_default();
-                                        paths.insert(path.clone());
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    }
+pub(crate) fn pod_http_probes(pod: &k8s::PodSpec) -> PortMap<HashSet<String>> {
+    let mut probes = PortMap::<HashSet<String>>::default();
+    for (port, path) in pod.containers.iter().flat_map(container_http_probe_paths) {
+        probes.entry(port).or_default().insert(path);
+    }
+    probes
+}
+
+fn container_http_probe_paths(container: &k8s::Container) -> Vec<(NonZeroU16, String)> {
+    fn find_by_name(name: &str, ports: &[k8s::ContainerPort]) -> Option<NonZeroU16> {
+        for port in ports {
+            if let Some(ref n) = port.name {
+                if n.eq_ignore_ascii_case(name) {
+                    let p = u16::try_from(port.container_port).ok()?;
+                    return p.try_into().ok();
                 }
             }
         }
+        None
     }
-    http_probes
+
+    fn get_port(port: &k8s::IntOrString, container: &k8s::Container) -> Option<NonZeroU16> {
+        match port {
+            k8s::IntOrString::Int(p) => u16::try_from(*p).ok()?.try_into().ok(),
+            k8s::IntOrString::String(n) => find_by_name(n, &*container.ports.as_ref()?),
+        }
+    }
+
+    (container.liveness_probe.iter())
+        .chain(container.readiness_probe.iter())
+        .chain(container.startup_probe.iter())
+        .filter_map(|p| {
+            let probe = p.http_get.as_ref()?;
+            let port = get_port(&probe.port, container)?;
+            let path = probe.path.clone().unwrap_or_else(|| "/".to_string());
+            Some((port, path))
+        })
+        .collect()
 }
 
 impl Meta {
@@ -320,8 +316,7 @@ mod tests {
             }),
             ..k8s::Pod::default()
         };
-        let port_names = port_names(&pod.spec);
-        let probes = get_http_probes(&pod.spec.unwrap(), &port_names);
+        let probes = pod_http_probes(&pod.spec.unwrap());
 
         let port_5432 = u16::try_from(5432).and_then(NonZeroU16::try_from).unwrap();
         let mut expected_5432 = HashSet::new();
