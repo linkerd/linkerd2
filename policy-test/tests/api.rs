@@ -33,12 +33,7 @@ async fn server_with_server_authorization() {
         // Create a server that selects the pod's proxy admin server and ensure
         // that the update now uses this server, which has no authorizations
         let server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
-        let config = rx
-            .next()
-            .await
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
-        tracing::trace!(?config);
+        let config = next_config(&mut rx).await;
         assert_eq!(
             config.protocol,
             Some(grpc::inbound::ProxyProtocol {
@@ -135,12 +130,7 @@ async fn server_with_server_authorization() {
             )
             .await
             .expect("Server must be deleted");
-        let config = rx
-            .next()
-            .await
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
-        tracing::trace!(?config);
+        let config = next_config(&mut rx).await;
         assert_is_default_all_unauthenticated!(config);
         assert_protocol_detect!(config);
     })
@@ -169,12 +159,7 @@ async fn server_with_authorization_policy() {
         // Create a server that selects the pod's proxy admin server and ensure
         // that the update now uses this server, which has no authorizations
         let server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
-        let config = rx
-            .next()
-            .await
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
-        tracing::trace!(?config);
+        let config = next_config(&mut rx).await;
         assert_eq!(
             config.protocol,
             Some(grpc::inbound::ProxyProtocol {
@@ -235,12 +220,9 @@ async fn server_with_authorization_policy() {
         )
         .await;
 
-        let config = time::timeout(time::Duration::from_secs(10), rx.next())
+        let config = time::timeout(time::Duration::from_secs(10), next_config(&mut rx))
             .await
-            .expect("watch must update within 10s")
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
-        tracing::trace!(?config);
+            .expect("watch must update within 10s");
         assert_eq!(
             config.protocol,
             Some(grpc::inbound::ProxyProtocol {
@@ -305,12 +287,7 @@ async fn server_with_http_route() {
         // that the update now uses this server, which has no authorizations
         // and no routes.
         let _server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
-        let config = rx
-            .next()
-            .await
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
-        tracing::trace!(?config);
+        let config = next_config(&mut rx).await;
         assert_eq!(
             config.protocol,
             Some(grpc::inbound::ProxyProtocol {
@@ -331,12 +308,8 @@ async fn server_with_http_route() {
 
         // Create an http route that refers to the `linkerd-admin` server (by
         // name) and ensure that the update now reflects this route.
-        let route = create(&client, mk_metrics_route(ns.as_ref(), "metrics-route")).await;
-        let config = rx
-            .next()
-            .await
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
+        let route = create(&client, mk_admin_route(ns.as_ref(), "metrics-route")).await;
+        let config = next_config(&mut rx).await;
         tracing::trace!(?config);
         let http1 = if let grpc::inbound::proxy_protocol::Kind::Http1(http1) = config
             .protocol
@@ -426,12 +399,7 @@ async fn server_with_http_route() {
         )
         .await;
 
-        let config = rx
-            .next()
-            .await
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
-        tracing::trace!(?config);
+        let config = next_config(&mut rx).await;
         let http1 = if let grpc::inbound::proxy_protocol::Kind::Http1(http1) = config
             .protocol
             .expect("must have proxy protocol")
@@ -451,12 +419,7 @@ async fn server_with_http_route() {
             .delete("metrics-route", &kube::api::DeleteParams::default())
             .await
             .expect("HttpRoute must be deleted");
-        let config = rx
-            .next()
-            .await
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
-        tracing::trace!(?config);
+        let config = next_config(&mut rx).await;
         assert_eq!(
             config.protocol,
             Some(grpc::inbound::ProxyProtocol {
@@ -469,7 +432,10 @@ async fn server_with_http_route() {
     .await
 }
 
-fn mk_metrics_route(ns: impl ToString, name: impl ToString) -> k8s::policy::HttpRoute {
+/// Returns an `HttpRoute` resource in the provdied namespace and with the
+/// provided name, which attaches to the `linkerd-admin` `Server` resource and
+/// matches `GET` requests with the path `/metrics`.
+fn mk_admin_route(ns: &str, name: &str) -> k8s::policy::HttpRoute {
     use k8s::policy::httproute as api;
     api::HttpRoute {
         metadata: kube::api::ObjectMeta {
@@ -560,4 +526,15 @@ async fn retry_watch_server(
             }
         }
     }
+}
+
+#[track_caller]
+async fn next_config(rx: &mut tonic::Streaming<grpc::inbound::Server>) -> grpc::inbound::Server {
+    let config = rx
+        .next()
+        .await
+        .expect("watch must not fail")
+        .expect("watch must return an updated config");
+    tracing::trace!(?config);
+    config
 }
