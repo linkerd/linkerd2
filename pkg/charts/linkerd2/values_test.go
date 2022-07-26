@@ -245,8 +245,6 @@ func TestNewValues(t *testing.T) {
 // TestHAValuesParsing tests whether values commonly used in HA deployments have
 // appropriate types and can be successfully parsed.
 func TestHAValuesParsing(t *testing.T) {
-	// come up with some values that cover most of the fields we have in there.
-	// test string/file can be parsed correctly.
 	yml := `
 enablePodDisruptionBudget: true
 deploymentStrategy:
