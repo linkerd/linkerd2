@@ -543,7 +543,7 @@ async fn http_routes_ordered_by_creation() {
         assert_eq!(route_path(0), Some("/metrics"));
         assert_eq!(route_path(1), Some("/ready"));
         assert_eq!(route_path(2), Some("/shutdown"));
-        assert_eq!(route_path(4), Some("/proxy-log-level"));
+        assert_eq!(route_path(3), Some("/proxy-log-level"));
     })
     .await
 }
