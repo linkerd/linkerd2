@@ -1,8 +1,11 @@
 use ahash::AHashMap as HashMap;
-use anyhow::{anyhow, bail, ensure, Error, Result};
+use anyhow::{bail, ensure, Error, Result};
 use k8s_gateway_api as api;
 use linkerd_policy_controller_core::http_route;
-use linkerd_policy_controller_k8s_api::policy::{httproute as policy, Server};
+use linkerd_policy_controller_k8s_api::{
+    self as k8s,
+    policy::{httproute as policy, Server},
+};
 use std::num::NonZeroU16;
 
 #[derive(Clone, Debug, PartialEq)]
