@@ -369,7 +369,7 @@ fn to_http_route_list<'r>(
     // comparison, because all these routes will exist in the same
     // namespace.
     let mut route_list = routes.into_iter().collect::<Vec<_>>();
-    (&mut route_list[..]).sort_by(|(a_name, a), (b_name, b)| {
+    route_list.sort_by(|(a_name, a), (b_name, b)| {
         a.creation_timestamp
             .cmp(&b.creation_timestamp)
             .then_with(|| a_name.cmp(b_name))
