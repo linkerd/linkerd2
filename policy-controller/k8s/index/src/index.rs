@@ -1086,7 +1086,7 @@ impl Pod {
         // authorized.
         let http_routes = {
             let probe_paths = probes.get(&port).into_iter().flatten().map(|p| p.as_str());
-            Self::http_probe_routes(probe_paths, &*config.probe_networks)
+            Self::http_probe_routes(probe_paths, &config.probe_networks)
         };
 
         InboundServer {
