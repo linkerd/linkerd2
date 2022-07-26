@@ -455,16 +455,7 @@ data:
         tls:
           crtPEM: test-crt-pem
       serviceAccountTokenProjection: true
-    identityProxyResources:
-      cpu:
-        limit: ""
-        request: 100m
-      ephemeral-storage:
-        limit: ""
-        request: ""
-      memory:
-        limit: 250Mi
-        request: 20Mi
+    identityProxyResources: null
     identityResources:
       cpu:
         limit: ""
@@ -616,16 +607,7 @@ data:
           values:
           - kube-system
           - cert-manager
-    proxyInjectorProxyResources:
-      cpu:
-        limit: ""
-        request: 100m
-      ephemeral-storage:
-        limit: ""
-        request: ""
-      memory:
-        limit: 250Mi
-        request: 20Mi
+    proxyInjectorProxyResources: null
     proxyInjectorResources:
       cpu:
         limit: ""
