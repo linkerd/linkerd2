@@ -36,7 +36,7 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
 
     fn try_from(route: api::HttpRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
-       let creation_timestamp = route
+        let creation_timestamp = route
             .metadata
             .creation_timestamp
             .map(|k8s::Time(t)| t)
@@ -86,7 +86,7 @@ impl TryFrom<policy::HttpRoute> for InboundRouteBinding {
 
     fn try_from(route: policy::HttpRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
-       let creation_timestamp = route
+        let creation_timestamp = route
             .metadata
             .creation_timestamp
             .map(|k8s::Time(t)| t)
