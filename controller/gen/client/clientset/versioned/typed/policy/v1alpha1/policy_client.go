@@ -29,6 +29,7 @@ import (
 type PolicyV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	AuthorizationPoliciesGetter
+	HTTPRoutesGetter
 	MeshTLSAuthenticationsGetter
 	NetworkAuthenticationsGetter
 }
@@ -40,6 +41,10 @@ type PolicyV1alpha1Client struct {
 
 func (c *PolicyV1alpha1Client) AuthorizationPolicies(namespace string) AuthorizationPolicyInterface {
 	return newAuthorizationPolicies(c, namespace)
+}
+
+func (c *PolicyV1alpha1Client) HTTPRoutes(namespace string) HTTPRouteInterface {
+	return newHTTPRoutes(c, namespace)
 }
 
 func (c *PolicyV1alpha1Client) MeshTLSAuthentications(namespace string) MeshTLSAuthenticationInterface {
