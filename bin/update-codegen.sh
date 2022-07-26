@@ -40,6 +40,6 @@ sed -i 's/Group: \"server\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controll
 sed -i 's/Group: \"serverauthorization\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/serverauthorization/v1beta1/fake/fake_serverauthorization.go"
 sed -i 's/Group: \"link\"/Group: \"multicluster.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/link/v1alpha1/fake/fake_link.go"
 sed -i 's/Group: \"policy\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/policy/v1alpha1/fake/fake_authorizationpolicy.go"
+sed -i 's/Group: \"policy\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/policy/v1alpha1/fake/fake_httproute.go"
 sed -i 's/Group: \"policy\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/policy/v1alpha1/fake/fake_meshtlsauthentication.go"
 sed -i 's/Group: \"policy\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/policy/v1alpha1/fake/fake_networkauthentication.go"
-sed -i 's/Group: \"policy\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/policy/v1alpha1/fake/fake_httproute.go"
