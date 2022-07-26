@@ -1,0 +1,29 @@
+name: Actions
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/**
+
+permissions:
+  contents: read
+
+env:
+  ACTIONLINT_VERSION: 1.6.15
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - name: Install actionlint
+        run: |
+          url="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_1.6.15_linux_amd64.tar.gz"
+          bin/scurl "$url" | tar xzvf - -C /usr/local/bin actionlint
+      - name: Run actionlint
+        run: |
+          # shellcheck disable=SC2016
+          actionlint \
+            -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A```%0A{{replace $err.Snippet "\\n" "%0A"}}%0A```\n{{end}}' \
+            .github/workflows/*

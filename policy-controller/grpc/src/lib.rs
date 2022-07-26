@@ -177,7 +177,7 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                     http_routes: srv
                         .http_routes
                         .iter()
-                        .map(|(name, route)| to_http_route(name, route.clone()))
+                        .map(|(name, route)| to_http_route(name, route.clone(), cluster_networks))
                         .collect(),
                 },
             )),
@@ -186,7 +186,7 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                     routes: srv
                         .http_routes
                         .iter()
-                        .map(|(name, route)| to_http_route(name, route.clone()))
+                        .map(|(name, route)| to_http_route(name, route.clone(), cluster_networks))
                         .collect(),
                 },
             )),
@@ -195,7 +195,7 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                     routes: srv
                         .http_routes
                         .iter()
-                        .map(|(name, route)| to_http_route(name, route.clone()))
+                        .map(|(name, route)| to_http_route(name, route.clone(), cluster_networks))
                         .collect(),
                 },
             )),
@@ -366,11 +366,16 @@ fn to_authz(
 
 fn to_http_route(
     name: impl ToString,
-    InboundHttpRoute { hostnames, rules }: InboundHttpRoute,
+    InboundHttpRoute {
+        hostnames,
+        rules,
+        authorizations,
+    }: InboundHttpRoute,
+    cluster_networks: &[IpNet],
 ) -> proto::HttpRoute {
     let metadata = Metadata {
         kind: Some(metadata::Kind::Resource(api::meta::Resource {
-            group: "gateway.networking.k8s.io".to_string(),
+            group: "policy.linkerd.io".to_string(),
             kind: "HTTPRoute".to_string(),
             name: name.to_string(),
         })),
@@ -391,11 +396,16 @@ fn to_http_route(
         )
         .collect();
 
+    let authorizations = authorizations
+        .iter()
+        .map(|(n, c)| to_authz(n, c, cluster_networks))
+        .collect();
+
     proto::HttpRoute {
         metadata: Some(metadata),
         hosts,
         rules,
-        authorizations: Vec::default(), // TODO populate per-route authorizations
+        authorizations,
     }
 }
 

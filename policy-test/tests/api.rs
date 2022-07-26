@@ -19,7 +19,6 @@ async fn server_with_server_authorization() {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
         let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
-        tracing::trace!(?pod);
 
         let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
         let config = rx
@@ -156,7 +155,6 @@ async fn server_with_authorization_policy() {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
         let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
-        tracing::trace!(?pod);
 
         let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
         let config = rx
@@ -288,11 +286,12 @@ async fn server_with_authorization_policy() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn server_with_http_route() {
+    use k8s::policy::httproute as api;
+
     with_temp_ns(|client, ns| async move {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
         let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
-        tracing::trace!(?pod);
 
         let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
         let config = rx
@@ -334,17 +333,19 @@ async fn server_with_http_route() {
 
         // Create an http route that refers to the `linkerd-admin` server (by
         // name) and ensure that the update now reflects this route.
-        create(
+        // Create an http route that refers to the `linkerd-admin` server (by
+        // name) and ensure that the update now reflects this route.
+        let route = create(
             &client,
-            k8s_gateway_api::HttpRoute {
+            api::HttpRoute {
                 metadata: kube::api::ObjectMeta {
                     namespace: Some(ns.clone()),
                     name: Some("metrics-route".to_string()),
                     ..Default::default()
                 },
-                spec: k8s_gateway_api::HttpRouteSpec {
-                    inner: k8s_gateway_api::CommonRouteSpec {
-                        parent_refs: Some(vec![k8s_gateway_api::ParentReference {
+                spec: api::HttpRouteSpec {
+                    inner: api::CommonRouteSpec {
+                        parent_refs: Some(vec![api::ParentReference {
                             group: Some("policy.linkerd.io".to_string()),
                             kind: Some("Server".to_string()),
                             namespace: None,
@@ -354,9 +355,9 @@ async fn server_with_http_route() {
                         }]),
                     },
                     hostnames: None,
-                    rules: Some(vec![k8s_gateway_api::HttpRouteRule {
-                        matches: Some(vec![k8s_gateway_api::HttpRouteMatch {
-                            path: Some(k8s_gateway_api::HttpPathMatch::Exact {
+                    rules: Some(vec![api::HttpRouteRule {
+                        matches: Some(vec![api::HttpRouteMatch {
+                            path: Some(api::HttpPathMatch::Exact {
                                 value: "/metrics".to_string(),
                             }),
                             headers: None,
@@ -364,7 +365,6 @@ async fn server_with_http_route() {
                             method: Some("GET".to_string()),
                         }]),
                         filters: None,
-                        backend_refs: None,
                     }]),
                 },
                 status: None,
@@ -387,8 +387,8 @@ async fn server_with_http_route() {
         } else {
             panic!("proxy protocol must be HTTP1")
         };
-        let route = http1.routes.first().expect("must have route");
-        let rule_match = route
+        let h1_route = http1.routes.first().expect("must have route");
+        let rule_match = h1_route
             .rules
             .first()
             .expect("must have rule")
@@ -396,13 +396,16 @@ async fn server_with_http_route() {
             .first()
             .expect("must have match");
         // Route has no authorizations by default.
-        assert_eq!(route.authorizations, Vec::default());
+        assert_eq!(h1_route.authorizations, Vec::default());
         // Route has appropriate metadata.
         assert_eq!(
-            route.metadata.to_owned().expect("route must have metadata"),
+            h1_route
+                .metadata
+                .to_owned()
+                .expect("route must have metadata"),
             grpc::meta::Metadata {
                 kind: Some(grpc::meta::metadata::Kind::Resource(grpc::meta::Resource {
-                    group: "gateway.networking.k8s.io".to_string(),
+                    group: "policy.linkerd.io".to_string(),
                     kind: "HTTPRoute".to_string(),
                     name: "metrics-route".to_string(),
                 }))
@@ -419,26 +422,44 @@ async fn server_with_http_route() {
             grpc::http_route::path_match::Kind::Exact("/metrics".to_string()),
         );
 
-        // Create a server authorization that refers to the `linkerd-admin`
-        // server (by name) and ensure that the authorization is copied onto
-        // the route.
-        create(
+        // Create a network authentication and an authorization policy that
+        // refers to the `metrics-route` route (by name).
+        let all_nets = create(
             &client,
-            k8s::policy::ServerAuthorization {
+            k8s::policy::NetworkAuthentication {
                 metadata: kube::api::ObjectMeta {
                     namespace: Some(ns.clone()),
                     name: Some("all-admin".to_string()),
                     ..Default::default()
                 },
-                spec: k8s::policy::ServerAuthorizationSpec {
-                    server: k8s::policy::server_authorization::Server {
-                        name: Some("linkerd-admin".to_string()),
-                        selector: None,
-                    },
-                    client: k8s::policy::server_authorization::Client {
-                        unauthenticated: true,
-                        ..k8s::policy::server_authorization::Client::default()
-                    },
+                spec: k8s::policy::NetworkAuthenticationSpec {
+                    networks: vec![
+                        k8s::policy::network_authentication::Network {
+                            cidr: Ipv4Net::default().into(),
+                            except: None,
+                        },
+                        k8s::policy::network_authentication::Network {
+                            cidr: Ipv6Net::default().into(),
+                            except: None,
+                        },
+                    ],
+                },
+            },
+        )
+        .await;
+        create(
+            &client,
+            k8s::policy::AuthorizationPolicy {
+                metadata: kube::api::ObjectMeta {
+                    namespace: Some(ns.clone()),
+                    name: Some("all-admin".to_string()),
+                    ..Default::default()
+                },
+                spec: k8s::policy::AuthorizationPolicySpec {
+                    target_ref: k8s::policy::LocalTargetRef::from_resource(&route),
+                    required_authentication_refs: vec![
+                        k8s::policy::NamespacedTargetRef::from_resource(&all_nets),
+                    ],
                 },
             },
         )
@@ -460,12 +481,12 @@ async fn server_with_http_route() {
         } else {
             panic!("proxy protocol must be HTTP1")
         };
-
-        assert_eq!(http1.routes.len(), 1, "must have routes");
+        let h1_route = http1.routes.first().expect("must have route");
+        assert_eq!(h1_route.authorizations.len(), 1, "must have authorizations");
 
         // Delete the `HttpRoute` and ensure that the update reverts to the
         // default.
-        kube::Api::<k8s_gateway_api::HttpRoute>::namespaced(client.clone(), &ns)
+        kube::Api::<api::HttpRoute>::namespaced(client.clone(), &ns)
             .delete("metrics-route", &kube::api::DeleteParams::default())
             .await
             .expect("HttpRoute must be deleted");
@@ -484,7 +505,7 @@ async fn server_with_http_route() {
             }),
         );
     })
-    .await;
+    .await
 }
 
 fn mk_pause(ns: &str, name: &str) -> k8s::Pod {

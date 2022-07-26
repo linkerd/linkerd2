@@ -170,15 +170,11 @@ webhooks:
     apiVersions: ["v1alpha1", "v1beta1"]
     resources:
     - authorizationpolicies
+    - httproutes
     - networkauthentications
     - meshtlsauthentications
     - serverauthorizations
     - servers
-  - operations: ["CREATE", "UPDATE"]
-    apiGroups: ["gateway.networking.k8s.io"]
-    apiVersions: ["v1alpha2"]
-    resources:
-    - httproutes
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -202,6 +198,7 @@ rules:
       - policy.linkerd.io
     resources:
       - authorizationpolicies
+      - httproutes
       - meshtlsauthentications
       - networkauthentications
       - servers
@@ -209,14 +206,6 @@ rules:
     verbs:
       - get
       - list
-      - watch
-  - apiGroups:
-      - gateway.networking.k8s.io
-    resources:
-      - httproutes
-    verbs:
-      - list
-      - get
       - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -460,8 +449,26 @@ data:
             51tdrmkHEZRr0qlLSJdHYgEfMzk=
             -----END CERTIFICATE-----
       serviceAccountTokenProjection: true
-    identityProxyResources: null
-    identityResources: null
+    identityProxyResources:
+      cpu:
+        limit: ""
+        request: ""
+      ephemeral-storage:
+        limit: ""
+        request: ""
+      memory:
+        limit: ""
+        request: ""
+    identityResources:
+      cpu:
+        limit: ""
+        request: ""
+      ephemeral-storage:
+        limit: ""
+        request: ""
+      memory:
+        limit: ""
+        request: ""
     identityTrustAnchorsPEM: |
       -----BEGIN CERTIFICATE-----
       MIIBwTCCAWagAwIBAgIQeDZp5lDaIygQ5UfMKZrFATAKBggqhkjOPQQDAjApMScw
@@ -490,7 +497,7 @@ data:
         name: cr.l5d.io/linkerd/policy-controller
         pullPolicy: ""
         version: ""
-      logLevel: linkerd=info,warn
+      logLevel: info
       resources:
         cpu:
           limit: ""
@@ -574,7 +581,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v1.6.1
+        version: v1.6.2
       logFormat: ""
       logLevel: ""
       resources:
@@ -611,8 +618,26 @@ data:
           values:
           - kube-system
           - cert-manager
-    proxyInjectorProxyResources: null
-    proxyInjectorResources: null
+    proxyInjectorProxyResources:
+      cpu:
+        limit: ""
+        request: ""
+      ephemeral-storage:
+        limit: ""
+        request: ""
+      memory:
+        limit: ""
+        request: ""
+    proxyInjectorResources:
+      cpu:
+        limit: ""
+        request: ""
+      ephemeral-storage:
+        limit: ""
+        request: ""
+      memory:
+        limit: ""
+        request: ""
     tolerations: null
     webhookFailurePolicy: Ignore
 ---
@@ -769,6 +794,7 @@ spec:
           httpGet:
             path: /ready
             port: 9990
+        resources:
         securityContext:
           runAsUser: 2103
           allowPrivilegeEscalation: false
@@ -901,7 +927,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443"
-        image: cr.l5d.io/linkerd/proxy-init:v1.6.1
+        image: cr.l5d.io/linkerd/proxy-init:v1.6.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1273,7 +1299,7 @@ spec:
         - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         - --identity-domain=cluster.local
         - --default-policy=all-unauthenticated
-        - --log-level=linkerd=info,warn
+        - --log-level=info
         - --log-format=plain
         image: cr.l5d.io/linkerd/policy-controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
@@ -1315,7 +1341,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443"
-        image: cr.l5d.io/linkerd/proxy-init:v1.6.1
+        image: cr.l5d.io/linkerd/proxy-init:v1.6.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1593,6 +1619,7 @@ spec:
           httpGet:
             path: /ready
             port: 9995
+        resources:
         securityContext:
           runAsUser: 2103
           allowPrivilegeEscalation: false
@@ -1616,7 +1643,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "4567,4568"
-        image: cr.l5d.io/linkerd/proxy-init:v1.6.1
+        image: cr.l5d.io/linkerd/proxy-init:v1.6.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

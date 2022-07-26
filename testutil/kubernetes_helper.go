@@ -368,12 +368,14 @@ func (h *KubernetesHelper) WaitRollout(t *testing.T, deploys map[string]DeploySp
 // k8s context have been completely rolled out (and their pods are ready)
 func (h *KubernetesHelper) WaitRolloutWithContext(t *testing.T, deploys map[string]DeploySpec, context string) {
 	for deploy, deploySpec := range deploys {
-		o, err := h.KubectlWithContext("", context, "--namespace="+deploySpec.Namespace, "rollout", "status", "--timeout=60m", "deploy/"+deploy)
+		stat, err := h.KubectlWithContext("", context, "--namespace="+deploySpec.Namespace,
+			"rollout", "status", "--timeout=5m", "deploy/"+deploy)
 		if err != nil {
-			oEvt, _ := h.KubectlWithContext("", context, "--namespace="+deploySpec.Namespace, "get", "event", "--field-selector", "involvedObject.name="+deploy)
+			desc, _ := h.KubectlWithContext("", context, "--namespace="+deploySpec.Namespace,
+				"describe", "po")
 			AnnotatedFatalf(t,
 				fmt.Sprintf("failed to wait rollout of deploy/%s", deploy),
-				"failed to wait for rollout of deploy/%s: %s: %s\nEvents:\n%s", deploy, err, o, oEvt)
+				"failed to wait for rollout of deploy/%s: %s: %s\n---\n%s", deploy, err, stat, desc)
 		}
 	}
 }

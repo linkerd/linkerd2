@@ -185,6 +185,92 @@ impl Index {
             ns.reindex(&self.authentications);
         }
     }
+
+    fn apply_route<R>(&mut self, route: R)
+    where
+        R: ResourceExt,
+        InboundRouteBinding: TryFrom<R>,
+        <InboundRouteBinding as TryFrom<R>>::Error: std::fmt::Display,
+    {
+        let ns = route.namespace().expect("HttpRoute must have a namespace");
+        let name = route.name_unchecked();
+        let _span = info_span!("apply", %ns, %name).entered();
+
+        let route_binding = match route.try_into() {
+            Ok(binding) => binding,
+            Err(error) => {
+                tracing::info!(%ns, %name, %error, "Ignoring HTTPRoute");
+                return;
+            }
+        };
+
+        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_http_route(name, route_binding))
+    }
+
+    fn reset_route<R>(&mut self, routes: Vec<R>, deleted: HashMap<String, HashSet<String>>)
+    where
+        R: ResourceExt,
+        InboundRouteBinding: TryFrom<R>,
+        <InboundRouteBinding as TryFrom<R>>::Error: std::fmt::Display,
+    {
+        let _span = info_span!("reset").entered();
+
+        // Aggregate all of the updates by namespace so that we only reindex
+        // once per namespace.
+        type Ns = NsUpdate<InboundRouteBinding>;
+        let mut updates_by_ns = HashMap::<String, Ns>::default();
+        for route in routes.into_iter() {
+            let namespace = route.namespace().expect("HttpRoute must be namespaced");
+            let name = route.name_unchecked();
+            let route_binding = match route.try_into() {
+                Ok(binding) => binding,
+                Err(error) => {
+                    tracing::info!(ns = %namespace, %name, %error, "Ignoring HTTPRoute");
+                    continue;
+                }
+            };
+            updates_by_ns
+                .entry(namespace)
+                .or_default()
+                .added
+                .push((name, route_binding));
+        }
+        for (ns, names) in deleted.into_iter() {
+            updates_by_ns.entry(ns).or_default().removed = names;
+        }
+
+        for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
+            if added.is_empty() {
+                // If there are no live resources in the namespace, we do not
+                // want to create a default namespace instance, we just want to
+                // clear out all resources for the namespace (and then drop the
+                // whole namespace, if necessary).
+                self.ns_with_reindex(namespace, |ns| {
+                    ns.policy.http_routes.clear();
+                    true
+                });
+            } else {
+                // Otherwise, we take greater care to reindex only when the
+                // state actually changed. The vast majority of resets will see
+                // no actual data change.
+                self.ns_or_default_with_reindex(namespace, |ns| {
+                    let mut changed = !removed.is_empty();
+                    for name in removed.into_iter() {
+                        ns.policy.http_routes.remove(&name);
+                    }
+                    for (name, route_binding) in added.into_iter() {
+                        changed = ns.policy.update_http_route(name, route_binding) || changed;
+                    }
+                    changed
+                });
+            }
+        }
+    }
+
+    fn delete_route(&mut self, ns: String, name: String) {
+        let _span = info_span!("delete", %ns, %name).entered();
+        self.ns_with_reindex(ns, |ns| ns.policy.http_routes.remove(&name).is_some())
+    }
 }
 
 impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
@@ -610,85 +696,21 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
     }
 }
 
-impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
-    fn apply(&mut self, route: k8s_gateway_api::HttpRoute) {
-        let ns = route.namespace().expect("HttpRoute must have a namespace");
-        let name = route.name_unchecked();
-        let _span = info_span!("apply", %ns, %name).entered();
-
-        let route_binding = match route.try_into() {
-            Ok(binding) => binding,
-            Err(error) => {
-                tracing::info!(%ns, %name, %error, "Ignoring HTTPRoute");
-                return;
-            }
-        };
-
-        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_http_route(name, route_binding))
+impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
+    fn apply(&mut self, route: k8s::policy::HttpRoute) {
+        self.apply_route(route)
     }
 
     fn delete(&mut self, ns: String, name: String) {
-        let _span = info_span!("delete", %ns, %name).entered();
-        self.ns_with_reindex(ns, |ns| ns.policy.http_routes.remove(&name).is_some())
+        self.delete_route(ns, name)
     }
 
     fn reset(
         &mut self,
-        routes: Vec<k8s_gateway_api::HttpRoute>,
+        routes: Vec<k8s::policy::HttpRoute>,
         deleted: HashMap<String, HashSet<String>>,
     ) {
-        let _span = info_span!("reset").entered();
-
-        // Aggregate all of the updates by namespace so that we only reindex
-        // once per namespace.
-        type Ns = NsUpdate<InboundRouteBinding>;
-        let mut updates_by_ns = HashMap::<String, Ns>::default();
-        for route in routes.into_iter() {
-            let namespace = route.namespace().expect("HttpRoute must be namespaced");
-            let name = route.name_unchecked();
-            let route_binding = match route.try_into() {
-                Ok(binding) => binding,
-                Err(error) => {
-                    tracing::info!(ns = %namespace, %name, %error, "Ignoring HTTPRoute");
-                    continue;
-                }
-            };
-            updates_by_ns
-                .entry(namespace)
-                .or_default()
-                .added
-                .push((name, route_binding));
-        }
-        for (ns, names) in deleted.into_iter() {
-            updates_by_ns.entry(ns).or_default().removed = names;
-        }
-
-        for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
-            if added.is_empty() {
-                // If there are no live resources in the namespace, we do not
-                // want to create a default namespace instance, we just want to
-                // clear out all resources for the namespace (and then drop the
-                // whole namespace, if necessary).
-                self.ns_with_reindex(namespace, |ns| {
-                    ns.policy.http_routes.clear();
-                    true
-                });
-            } else {
-                // Otherwise, we take greater care to reindex only when the
-                // state actually changed. The vast majority of resets will see
-                // no actual data change.
-                self.ns_or_default_with_reindex(namespace, |ns| {
-                    let mut changed = !removed.is_empty();
-                    for name in removed.into_iter() {
-                        ns.policy.http_routes.remove(&name);
-                    }
-                    for (name, route_binding) in added.into_iter() {
-                        changed = ns.policy.update_http_route(name, route_binding) || changed;
-                    }
-                    changed
-                });
-            }
-        }
+        self.reset_route(routes, deleted)
     }
 }
 
@@ -1104,7 +1126,7 @@ impl PolicyIndex {
     ) -> InboundServer {
         tracing::trace!(%name, ?server, "Creating inbound server");
         let authorizations = self.client_authzs(&name, server, authentications);
-        let routes = self.http_routes(&name);
+        let routes = self.http_routes(&name, authentications);
 
         InboundServer {
             reference: ServerRef::Server(name),
@@ -1146,6 +1168,12 @@ impl PolicyIndex {
                     }
                 }
                 authorization_policy::Target::Namespace => {}
+                authorization_policy::Target::HttpRoute(_) => {
+                    // Policies which target HttpRoutes will be attached to
+                    // the route authorizations and should not be included in
+                    // the server authorizations.
+                    continue;
+                }
             }
 
             tracing::trace!(
@@ -1176,11 +1204,70 @@ impl PolicyIndex {
         authzs
     }
 
-    fn http_routes(&self, server_name: &str) -> HashMap<String, InboundHttpRoute> {
+    fn route_client_authzs(
+        &self,
+        route_name: &str,
+        authentications: &AuthenticationNsIndex,
+    ) -> HashMap<AuthorizationRef, ClientAuthorization> {
+        let mut authzs = HashMap::default();
+
+        for (name, spec) in &self.authorization_policies {
+            // Skip the policy if it doesn't apply to the route.
+            match &spec.target {
+                authorization_policy::Target::HttpRoute(n) if n == route_name => {}
+                _ => {
+                    tracing::trace!(
+                        ns = %self.namespace,
+                        authorizationpolicy = %name,
+                        route = %route_name,
+                        target = ?spec.target,
+                        "AuthorizationPolicy does not target HttpRoute",
+                    );
+                    continue;
+                }
+            }
+
+            tracing::trace!(
+                ns = %self.namespace,
+                authorizationpolicy = %name,
+                route = %route_name,
+                "AuthorizationPolicy targets HttpRoute",
+            );
+            tracing::trace!(authns = ?spec.authentications);
+
+            let authz = match self.policy_client_authz(spec, authentications) {
+                Ok(authz) => authz,
+                Err(error) => {
+                    tracing::info!(
+                        route = %route_name,
+                        authorizationpolicy = %name,
+                        %error,
+                        "Illegal AuthorizationPolicy; ignoring",
+                    );
+                    continue;
+                }
+            };
+
+            let reference = AuthorizationRef::AuthorizationPolicy(name.to_string());
+            authzs.insert(reference, authz);
+        }
+
+        authzs
+    }
+
+    fn http_routes(
+        &self,
+        server_name: &str,
+        authentications: &AuthenticationNsIndex,
+    ) -> HashMap<String, InboundHttpRoute> {
         self.http_routes
             .iter()
             .filter(|(_, route)| route.selects_server(server_name))
-            .map(|(name, route)| (name.clone(), route.route.clone()))
+            .map(|(name, route)| {
+                let mut route = route.route.clone();
+                route.authorizations = self.route_client_authzs(name, authentications);
+                (name.clone(), route)
+            })
             .collect()
     }
 
