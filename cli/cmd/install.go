@@ -44,7 +44,6 @@ You can use the --ignore-cluster flag if you just want to generate the installat
 
 var (
 	templatesCrdFiles = []string{
-		"templates/gateway.networking.k8s.io/httproute.yaml",
 		"templates/policy/authorization-policy.yaml",
 		"templates/policy/httproute.yaml",
 		"templates/policy/meshtls-authentication.yaml",
@@ -320,7 +319,11 @@ func renderCRDs(w io.Writer, options valuespkg.Options) error {
 	if err := charts.ReadFile(static.Templates, "/", valuesFile); err != nil {
 		return err
 	}
-	var defaultValues map[string]interface{}
+	// Ensure the map is not nil, even if the default `values.yaml` is empty ---
+	// if there are no values in the YAML file, `yaml.Unmarshal` will not
+	// allocate the map, and the subsequent assignment to `cliVersion` will
+	// panic because the map is nil.
+	defaultValues := make(map[string]interface{})
 	err := yaml.Unmarshal(valuesFile.Data, &defaultValues)
 	if err != nil {
 		return err

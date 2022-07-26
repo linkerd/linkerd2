@@ -162,6 +162,18 @@ Kubernetes: `>=1.21.0-0`
 | identity.issuer.tls.crtPEM | string | `""` | Issuer certificate (ECDSA). It must be provided during install. |
 | identity.issuer.tls.keyPEM | string | `""` | Key for the issuer certificate (ECDSA). It must be provided during install |
 | identity.serviceAccountTokenProjection | bool | `true` | Use [Service Account token Volume projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection) for pod validation instead of the default token |
+| identityProxyResources.cpu.limit | string | `""` | Maximum amount of CPU units that the proxies injected into identity pod can use |
+| identityProxyResources.cpu.request | string | `""` | Amount of CPU units that the proxies injected into identity pod request |
+| identityProxyResources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the proxies injected into identity pod can use |
+| identityProxyResources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the proxies injected into identity pod request |
+| identityProxyResources.memory.limit | string | `""` | Maximum amount of memory that the proxies injected into identity pod can use |
+| identityProxyResources.memory.request | string | `""` | Amount of memory that the proxies injected into identity pod request |
+| identityResources.cpu.limit | string | `""` | Maximum amount of CPU units that the identity controller can use |
+| identityResources.cpu.request | string | `""` | Amount of CPU units that the identity controller requests |
+| identityResources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the identity controller can use |
+| identityResources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the identity controller requests |
+| identityResources.memory.limit | string | `""` | Maximum amount of memory that the identity controller can use |
+| identityResources.memory.request | string | `""` | Amount of memory that the identity controller requests |
 | identityTrustAnchorsPEM | string | `""` | Trust root certificate (ECDSA). It must be provided during install. |
 | identityTrustDomain | string | clusterDomain | Trust domain used for identity |
 | imagePullPolicy | string | `"IfNotPresent"` | Docker image pull policy |
@@ -249,6 +261,18 @@ Kubernetes: `>=1.21.0-0`
 | proxyInjector.keyPEM | string | `""` | Certificate key for the proxy injector. If not provided and not using an external secret then Helm will generate one. |
 | proxyInjector.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]},{"key":"kubernetes.io/metadata.name","operator":"NotIn","values":["kube-system","cert-manager"]}]}` | Namespace selector used by admission webhook. |
 | proxyInjector.objectSelector | object | `{"matchExpressions":[{"key":"linkerd.io/control-plane-component","operator":"DoesNotExist"},{"key":"linkerd.io/cni-resource","operator":"DoesNotExist"}]}` | Object selector used by admission webhook. |
+| proxyInjectorProxyResources.cpu.limit | string | `""` | Maximum amount of CPU units that the proxy injected into the proxy injector can use |
+| proxyInjectorProxyResources.cpu.request | string | `""` | Amount of CPU units that the proxy injected into the proxy injector requests |
+| proxyInjectorProxyResources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the proxy injected into the proxy injector can use |
+| proxyInjectorProxyResources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the proxy injected into the proxy injector requests |
+| proxyInjectorProxyResources.memory.limit | string | `""` | Maximum amount of memory that the proxy injected into the proxy injector can use |
+| proxyInjectorProxyResources.memory.request | string | `""` | Amount of memory that the proxy injected into the proxy injector requests |
+| proxyInjectorResources.cpu.limit | string | `""` | Maximum amount of CPU units that the proxy injector can use |
+| proxyInjectorResources.cpu.request | string | `""` | Amount of CPU units that the proxy injector requests |
+| proxyInjectorResources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the proxy injector can use |
+| proxyInjectorResources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the proxy injector requests |
+| proxyInjectorResources.memory.limit | string | `""` | Maximum amount of memory that the proxy injector can use |
+| proxyInjectorResources.memory.request | string | `""` | Amount of memory that the proxy injector requests |
 | runtimeClassName | string | `""` | Runtime Class Name for all the pods |
 | webhookFailurePolicy | string | `"Ignore"` | Failure policy for the proxy injector |
 

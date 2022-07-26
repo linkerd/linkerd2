@@ -175,11 +175,6 @@ webhooks:
     - meshtlsauthentications
     - serverauthorizations
     - servers
-  - operations: ["CREATE", "UPDATE"]
-    apiGroups: ["gateway.networking.k8s.io"]
-    apiVersions: ["v1alpha2"]
-    resources:
-    - httproutes
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -211,14 +206,6 @@ rules:
     verbs:
       - get
       - list
-      - watch
-  - apiGroups:
-      - gateway.networking.k8s.io
-    resources:
-      - httproutes
-    verbs:
-      - list
-      - get
       - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -462,8 +449,26 @@ data:
             51tdrmkHEZRr0qlLSJdHYgEfMzk=
             -----END CERTIFICATE-----
       serviceAccountTokenProjection: true
-    identityProxyResources: null
-    identityResources: null
+    identityProxyResources:
+      cpu:
+        limit: ""
+        request: ""
+      ephemeral-storage:
+        limit: ""
+        request: ""
+      memory:
+        limit: ""
+        request: ""
+    identityResources:
+      cpu:
+        limit: ""
+        request: ""
+      ephemeral-storage:
+        limit: ""
+        request: ""
+      memory:
+        limit: ""
+        request: ""
     identityTrustAnchorsPEM: |
       -----BEGIN CERTIFICATE-----
       MIIBwTCCAWagAwIBAgIQeDZp5lDaIygQ5UfMKZrFATAKBggqhkjOPQQDAjApMScw
@@ -614,8 +619,26 @@ data:
           values:
           - kube-system
           - cert-manager
-    proxyInjectorProxyResources: null
-    proxyInjectorResources: null
+    proxyInjectorProxyResources:
+      cpu:
+        limit: ""
+        request: ""
+      ephemeral-storage:
+        limit: ""
+        request: ""
+      memory:
+        limit: ""
+        request: ""
+    proxyInjectorResources:
+      cpu:
+        limit: ""
+        request: ""
+      ephemeral-storage:
+        limit: ""
+        request: ""
+      memory:
+        limit: ""
+        request: ""
     tolerations: null
     webhookFailurePolicy: Ignore
 ---
@@ -772,6 +795,7 @@ spec:
           httpGet:
             path: /ready
             port: 9990
+        resources:
         securityContext:
           runAsUser: 2103
           allowPrivilegeEscalation: false
@@ -1522,6 +1546,7 @@ spec:
           httpGet:
             path: /ready
             port: 9995
+        resources:
         securityContext:
           runAsUser: 2103
           allowPrivilegeEscalation: false
