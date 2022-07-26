@@ -53,7 +53,7 @@ async fn meshtls() {
 #[tokio::test(flavor = "current_thread")]
 async fn targets_route() {
     with_temp_ns(|client, ns| async move {
-        // First create all of the policies we'll need so that the nginx pod
+        // First create all of the policies we'll need so that the web pod
         // starts up with the correct policy (to prevent races).
         //
         // The policy requires that all connections are authenticated with MeshTLS.
@@ -96,7 +96,7 @@ async fn targets_route() {
         )
         .await;
 
-        // Create the nginx pod and wait for it to be ready.
+        // Create the web pod and wait for it to be ready.
         tokio::join!(
             create(&client, web::service(&ns)),
             create_ready_pod(&client, web::pod(&ns))
