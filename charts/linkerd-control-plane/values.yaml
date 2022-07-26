@@ -293,40 +293,10 @@ identity:
       keyPEM: |
 
 
-# -|- CPU, Memory and Ephemeral Storage resources required by the identity controller
-identityResources:
-  cpu:
-    # -- Maximum amount of CPU units that the identity controller can use
-    limit: ""
-    # -- Amount of CPU units that the identity controller requests
-    request: ""
-  memory:
-    # -- Maximum amount of memory that the identity controller can use
-    limit: ""
-    # -- Amount of memory that the identity controller requests
-    request: ""
-  ephemeral-storage:
-      # -- Maximum amount of ephemeral storage that the identity controller can use
-      limit: ""
-      # -- Amount of ephemeral storage that the identity controller requests
-      request: ""
-# -|- CPU, Memory and Ephemeral Storage resources required by proxy injected into identity pod
-identityProxyResources:
-  cpu:
-    # -- Maximum amount of CPU units that the proxies injected into identity pod can use
-    limit: ""
-    # -- Amount of CPU units that the proxies injected into identity pod request
-    request: ""
-  memory:
-    # -- Maximum amount of memory that the proxies injected into identity pod can use
-    limit: ""
-    # -- Amount of memory that the proxies injected into identity pod request
-    request: ""
-  ephemeral-storage:
-      # -- Maximum amount of ephemeral storage that the proxies injected into identity pod can use
-      limit: ""
-      # -- Amount of ephemeral storage that the proxies injected into identity pod request
-      request: ""
+# -|- CPU, Memory and Ephemeral Storage resources required by the identity controller (see `proxy.resources` for sub-fields)
+#identityResources:
+# -|- CPU, Memory and Ephemeral Storage resources required by proxy injected into identity pod (see `proxy.resources` for sub-fields)
+#identityProxyResources:
 
 # heartbeat configuration
 # disableHeartBeat -- Set to true to not start the heartbeat cronjob
@@ -394,40 +364,10 @@ proxyInjector:
 
 # -|- CPU, Memory and Ephemeral Storage resources required by the proxy injector (see
 #`proxy.resources` for sub-fields)
-proxyInjectorResources:
-  cpu:
-    # -- Maximum amount of CPU units that the proxy injector can use
-    limit: ""
-    # -- Amount of CPU units that the proxy injector requests
-    request: ""
-  memory:
-    # -- Maximum amount of memory that the proxy injector can use
-    limit: ""
-    # -- Amount of memory that the proxy injector requests
-    request: ""
-  ephemeral-storage:
-      # -- Maximum amount of ephemeral storage that the proxy injector can use
-      limit: ""
-      # -- Amount of ephemeral storage that the proxy injector requests
-      request: ""
+#proxyInjectorResources:
 #-|- CPU, Memory and Ephemeral Storage resources required by proxy injected into the proxy injector
 #pod (see `proxy.resources` for sub-fields)
-proxyInjectorProxyResources:
-  cpu:
-    # -- Maximum amount of CPU units that the proxy injected into the proxy injector can use
-    limit: ""
-    # -- Amount of CPU units that the proxy injected into the proxy injector requests
-    request: ""
-  memory:
-    # -- Maximum amount of memory that the proxy injected into the proxy injector can use
-    limit: ""
-    # -- Amount of memory that the proxy injected into the proxy injector requests
-    request: ""
-  ephemeral-storage:
-      # -- Maximum amount of ephemeral storage that the proxy injected into the proxy injector can use
-      limit: ""
-      # -- Amount of ephemeral storage that the proxy injected into the proxy injector requests
-      request: ""
+#proxyInjectorProxyResources:
 
 # service profile validator configuration
 profileValidator:

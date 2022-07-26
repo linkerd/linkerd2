@@ -437,26 +437,8 @@ data:
         tls:
           crtPEM: test-crt-pem
       serviceAccountTokenProjection: true
-    identityProxyResources:
-      cpu:
-        limit: ""
-        request: ""
-      ephemeral-storage:
-        limit: ""
-        request: ""
-      memory:
-        limit: ""
-        request: ""
-    identityResources:
-      cpu:
-        limit: ""
-        request: ""
-      ephemeral-storage:
-        limit: ""
-        request: ""
-      memory:
-        limit: ""
-        request: ""
+    identityProxyResources: null
+    identityResources: null
     identityTrustAnchorsPEM: test-trust-anchor
     identityTrustDomain: test.trust.domain
     imagePullPolicy: IfNotPresent
@@ -595,26 +577,8 @@ data:
           values:
           - kube-system
           - cert-manager
-    proxyInjectorProxyResources:
-      cpu:
-        limit: ""
-        request: ""
-      ephemeral-storage:
-        limit: ""
-        request: ""
-      memory:
-        limit: ""
-        request: ""
-    proxyInjectorResources:
-      cpu:
-        limit: ""
-        request: ""
-      ephemeral-storage:
-        limit: ""
-        request: ""
-      memory:
-        limit: ""
-        request: ""
+    proxyInjectorProxyResources: null
+    proxyInjectorResources: null
     tap:
       caBundle: test-tap-ca-bundle
       externalSecret: true
@@ -765,7 +729,6 @@ spec:
           httpGet:
             path: /ready
             port: 9990
-        resources:
         securityContext:
           runAsUser: 2103
           allowPrivilegeEscalation: false
@@ -1606,7 +1569,6 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        resources:
         securityContext:
           runAsUser: 2103
           allowPrivilegeEscalation: false
