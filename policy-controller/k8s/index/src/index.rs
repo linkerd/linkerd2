@@ -290,13 +290,18 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
         let name = pod.name_unchecked();
         let _span = info_span!("apply", ns = %namespace, %name).entered();
 
-        let port_names = pod::port_names(&pod.spec);
-        let meta = pod::Meta::from_metadata(pod.metadata);
+        let port_names = pod
+            .spec
+            .as_ref()
+            .map(pod::tcp_ports_by_name)
+            .unwrap_or_default();
         let probes = pod
             .spec
             .as_ref()
             .map(pod::pod_http_probes)
             .unwrap_or_default();
+
+        let meta = pod::Meta::from_metadata(pod.metadata);
 
         // Add or update the pod. If the pod was not already present in the
         // index with the same metadata, index it against the policy resources,
