@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/yaml"
 
 	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -239,4 +240,38 @@ func TestNewValues(t *testing.T) {
 			t.Errorf("HA Helm values\n%+v", diff)
 		}
 	})
+}
+
+// TestHAValuesParsing tests whether values commonly used in HA deployments have
+// appropriate types and can be successfully parsed.
+func TestHAValuesParsing(t *testing.T) {
+	// come up with some values that cover most of the fields we have in there.
+	// test string/file can be parsed correctly.
+	yml := `
+enablePodDisruptionBudget: true
+deploymentStrategy:
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 25%
+enablePodAntiAffinity: true
+nodeAffinity:
+  requiredDuringSchedulingIgnoredDuringExecution:
+    nodeSelectorTerms:
+    - matchExpressions:
+      - key: cloud.google.com/gke-preemptible
+        operator: DoesNotExist
+nodeSelector:
+  kubernetes.io/os: linux
+proxy:
+  resources:
+    cpu:
+      request: 100m
+    memory:
+      limit: 250Mi
+      request: 20Mi`
+
+	err := yaml.Unmarshal([]byte(yml), &Values{})
+	if err != nil {
+		t.Errorf("Failed to unamarshal HA values from yaml: %v\nValues: %v", err, yml)
+	}
 }
