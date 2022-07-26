@@ -7,8 +7,12 @@
 //! kubernetes resources.
 
 use crate::{
-    authorization_policy, defaults::DefaultPolicy, http_route::InboundRouteBinding,
-    meshtls_authentication, network_authentication, pod, server, server_authorization, ClusterInfo,
+    authorization_policy,
+    defaults::DefaultPolicy,
+    http_route::InboundRouteBinding,
+    meshtls_authentication, network_authentication,
+    pod::{self, PortMap},
+    server, server_authorization, ClusterInfo,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
@@ -83,6 +87,13 @@ struct Pod {
     /// `Namespace::get_pod_server` when a client discovers a port that has no
     /// configured server (and i.e. uses the default policy).
     port_servers: pod::PortMap<PodPortServer>,
+
+    /// The pod's probe ports and their respective paths.
+    ///
+    /// In order for the policy controller to authorize probes, it must be
+    /// aware of the probe ports and the expected paths on which probes are
+    /// expected.
+    _probes: pod::PortMap<HashSet<String>>,
 }
 
 /// Holds the state of a single port on a pod.
@@ -279,14 +290,24 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
         let name = pod.name_unchecked();
         let _span = info_span!("apply", ns = %namespace, %name).entered();
 
-        let port_names = pod::tcp_port_names(pod.spec);
+        let port_names = pod
+            .spec
+            .as_ref()
+            .map(pod::tcp_ports_by_name)
+            .unwrap_or_default();
+        let probes = pod
+            .spec
+            .as_ref()
+            .map(pod::pod_http_probes)
+            .unwrap_or_default();
+
         let meta = pod::Meta::from_metadata(pod.metadata);
 
         // Add or update the pod. If the pod was not already present in the
         // index with the same metadata, index it against the policy resources,
         // updating its watches.
         let ns = self.namespaces.get_or_default(namespace);
-        match ns.pods.update(name, meta, port_names) {
+        match ns.pods.update(name, meta, port_names, probes) {
             Ok(None) => {}
             Ok(Some(pod)) => pod.reindex_servers(&ns.policy, &self.authentications),
             Err(error) => {
@@ -696,24 +717,6 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
     }
 }
 
-impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
-    fn apply(&mut self, route: k8s_gateway_api::HttpRoute) {
-        self.apply_route(route)
-    }
-
-    fn delete(&mut self, ns: String, name: String) {
-        self.delete_route(ns, name)
-    }
-
-    fn reset(
-        &mut self,
-        routes: Vec<k8s_gateway_api::HttpRoute>,
-        deleted: HashMap<String, HashSet<String>>,
-    ) {
-        self.reset_route(routes, deleted)
-    }
-}
-
 impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
     fn apply(&mut self, route: k8s::policy::HttpRoute) {
         self.apply_route(route)
@@ -823,12 +826,14 @@ impl PodIndex {
         name: String,
         meta: pod::Meta,
         port_names: HashMap<String, pod::PortSet>,
+        probes: PortMap<HashSet<String>>,
     ) -> Result<Option<&mut Pod>> {
         let pod = match self.by_name.entry(name.clone()) {
             Entry::Vacant(entry) => entry.insert(Pod {
                 meta,
                 port_names,
                 port_servers: pod::PortMap::default(),
+                _probes: probes,
             }),
 
             Entry::Occupied(entry) => {

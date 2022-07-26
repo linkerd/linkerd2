@@ -375,7 +375,7 @@ fn to_http_route(
 ) -> proto::HttpRoute {
     let metadata = Metadata {
         kind: Some(metadata::Kind::Resource(api::meta::Resource {
-            group: "gateway.networking.k8s.io".to_string(),
+            group: "policy.linkerd.io".to_string(),
             kind: "HTTPRoute".to_string(),
             name: name.to_string(),
         })),

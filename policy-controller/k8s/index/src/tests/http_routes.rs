@@ -1,18 +1,10 @@
 use super::*;
 
-#[test]
-fn gateway_route_attaches_to_server() {
-    let test = TestConfig::default();
-    test_route_attaches_to_server(test, |index, route| index.apply(route.gateway_api()))
-}
+const POLICY_API_GROUP: &str = "policy.linkerd.io";
 
 #[test]
-fn linkerd_route_attaches_to_server() {
+fn route_attaches_to_server() {
     let test = TestConfig::default();
-    test_route_attaches_to_server(test, |index, route| index.apply(route.linkerd()))
-}
-
-fn test_route_attaches_to_server(test: TestConfig, apply_route: impl FnOnce(&mut Index, MkRoute)) {
     // Create pod.
     let mut pod = mk_pod("ns-0", "pod-0", Some(("container-0", None)));
     pod.labels_mut()
@@ -47,14 +39,9 @@ fn test_route_attaches_to_server(test: TestConfig, apply_route: impl FnOnce(&mut
     );
 
     // Create route.
-    apply_route(
-        &mut test.index.write(),
-        MkRoute {
-            ns: "ns-0".to_string(),
-            name: "route-foo".to_string(),
-            server: "srv-8080".to_string(),
-        },
-    );
+    test.index
+        .write()
+        .apply(mk_route("ns-0", "route-foo", "srv-8080"));
     assert!(rx.has_changed().unwrap());
     assert_eq!(
         rx.borrow().reference,
@@ -83,92 +70,46 @@ fn test_route_attaches_to_server(test: TestConfig, apply_route: impl FnOnce(&mut
         )));
 }
 
-struct MkRoute {
-    ns: String,
-    name: String,
-    server: String,
-}
+fn mk_route(
+    ns: impl ToString,
+    name: impl ToString,
+    server: impl ToString,
+) -> k8s::policy::HttpRoute {
+    use k8s::policy::httproute::*;
 
-impl MkRoute {
-    /// Returns the `gateway.networking.k8s.io` version of a `HTTPRoute` with
-    /// the provided namespace, name, and server.
-    fn gateway_api(self) -> k8s_gateway_api::HttpRoute {
-        let Self { ns, name, server } = self;
-        k8s_gateway_api::HttpRoute {
-            metadata: k8s::ObjectMeta {
-                namespace: Some(ns),
-                name: Some(name),
-                ..Default::default()
-            },
-            spec: k8s_gateway_api::HttpRouteSpec {
-                inner: k8s_gateway_api::CommonRouteSpec {
-                    parent_refs: Some(vec![k8s_gateway_api::ParentReference {
-                        group: Some("policy.linkerd.io".to_string()),
-                        kind: Some("Server".to_string()),
-                        namespace: None,
-                        name: server,
-                        section_name: None,
-                        port: None,
-                    }]),
-                },
-                hostnames: None,
-                rules: Some(vec![k8s_gateway_api::HttpRouteRule {
-                    matches: Some(vec![k8s_gateway_api::HttpRouteMatch {
-                        path: Some(k8s_gateway_api::HttpPathMatch::PathPrefix {
-                            value: "/foo/bar".to_string(),
-                        }),
-                        headers: None,
-                        query_params: None,
-                        method: Some("GET".to_string()),
-                    }]),
-                    filters: None,
-                    backend_refs: None,
+    HttpRoute {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: HttpRouteSpec {
+            inner: CommonRouteSpec {
+                parent_refs: Some(vec![ParentReference {
+                    group: Some(POLICY_API_GROUP.to_string()),
+                    kind: Some("Server".to_string()),
+                    namespace: None,
+                    name: server.to_string(),
+                    section_name: None,
+                    port: None,
                 }]),
             },
-            status: None,
-        }
-    }
-
-    /// Returns the `policy.linkerd.io` version of a `HTTPRoute`  with
-    /// the provided namespace, name, and server.
-    fn linkerd(self) -> k8s::policy::HttpRoute {
-        use k8s::policy::httproute::*;
-        let Self { ns, name, server } = self;
-        HttpRoute {
-            metadata: k8s::ObjectMeta {
-                namespace: Some(ns),
-                name: Some(name),
-                ..Default::default()
-            },
-            spec: HttpRouteSpec {
-                inner: k8s_gateway_api::CommonRouteSpec {
-                    parent_refs: Some(vec![k8s_gateway_api::ParentReference {
-                        group: Some("policy.linkerd.io".to_string()),
-                        kind: Some("Server".to_string()),
-                        namespace: None,
-                        name: server,
-                        section_name: None,
-                        port: None,
-                    }]),
-                },
-                hostnames: None,
-                rules: Some(vec![HttpRouteRule {
-                    matches: Some(vec![HttpRouteMatch {
-                        path: Some(HttpPathMatch::PathPrefix {
-                            value: "/foo/bar".to_string(),
-                        }),
-                        headers: None,
-                        query_params: None,
-                        method: Some("GET".to_string()),
-                    }]),
-                    filters: None,
+            hostnames: None,
+            rules: Some(vec![HttpRouteRule {
+                matches: Some(vec![HttpRouteMatch {
+                    path: Some(HttpPathMatch::PathPrefix {
+                        value: "/foo/bar".to_string(),
+                    }),
+                    headers: None,
+                    query_params: None,
+                    method: Some("GET".to_string()),
                 }]),
-            },
-            status: None,
-        }
+                filters: None,
+            }]),
+        },
+        status: None,
     }
 }
-
 fn mk_authorization_policy(
     ns: impl ToString,
     name: impl ToString,
@@ -183,7 +124,7 @@ fn mk_authorization_policy(
         },
         spec: k8s::policy::AuthorizationPolicySpec {
             target_ref: LocalTargetRef {
-                group: Some("gateway.networking.k8s.io".to_string()),
+                group: Some(POLICY_API_GROUP.to_string()),
                 kind: "HttpRoute".to_string(),
                 name: route.to_string(),
             },
