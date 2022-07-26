@@ -356,14 +356,6 @@ fn to_http_route_list<'r>(
     routes: impl IntoIterator<Item = (&'r String, &'r InboundHttpRoute)>,
     cluster_networks: &[IpNet],
 ) -> Vec<proto::HttpRoute> {
-    let mut route_list = routes
-        .into_iter()
-        .map(|(name, route)| {
-            let proto = to_http_route(name, route.clone(), cluster_networks);
-            (name, route.creation_timestamp, proto)
-        })
-        .collect::<Vec<_>>();
-
     // Per the Gateway API spec:
     //
     // > If ties still exist across multiple Routes, matching precedence MUST be
@@ -376,13 +368,16 @@ fn to_http_route_list<'r>(
     // Note that we don't need to include the route's namespace in this
     // comparison, because all these routes will exist in the same
     // namespace.
-    (&mut route_list[..]).sort_by(|(a_name, a_ts, _), (b_name, b_ts, _)| {
-        a_ts.cmp(b_ts).then_with(|| a_name.cmp(b_name))
+    let mut route_list = routes.into_iter().collect::<Vec<_>>();
+    (&mut route_list[..]).sort_by(|(a_name, a), (b_name, b)| {
+        a.creation_timestamp
+            .cmp(&b.creation_timestamp)
+            .then_with(|| a_name.cmp(b_name))
     });
 
     route_list
         .into_iter()
-        .map(|(_, _, r)| r)
+        .map(|(name, route)| to_http_route(name, route.clone(), cluster_networks))
         .collect()
 }
 
