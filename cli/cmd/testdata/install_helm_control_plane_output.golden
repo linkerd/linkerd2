@@ -444,7 +444,7 @@ data:
     imagePullPolicy: IfNotPresent
     imagePullSecrets: []
     linkerdVersion: linkerd-version
-    nodeAffinity: null
+    nodeAffinity: {}
     nodeSelector:
       kubernetes.io/os: linux
     podAnnotations: {}

@@ -461,7 +461,7 @@ data:
     imagePullPolicy: ImagePullPolicy
     imagePullSecrets: null
     linkerdVersion: LinkerdVersion
-    nodeAffinity: null
+    nodeAffinity: {}
     nodeSelector:
       kubernetes.io/os: linux
     podAnnotations: {}

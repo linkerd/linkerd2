@@ -495,7 +495,7 @@ data:
     imagePullPolicy: IfNotPresent
     imagePullSecrets: null
     linkerdVersion: install-control-plane-version
-    nodeAffinity: null
+    nodeAffinity: {}
     nodeSelector:
       kubernetes.io/os: linux
     podAnnotations: {}
