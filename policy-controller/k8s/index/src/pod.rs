@@ -71,7 +71,9 @@ pub(crate) fn pod_http_probes(pod: &k8s::PodSpec) -> PortMap<HashSet<String>> {
     probes
 }
 
-fn container_http_probe_paths(container: &k8s::Container) -> Vec<(NonZeroU16, String)> {
+fn container_http_probe_paths(
+    container: &k8s::Container,
+) -> impl Iterator<Item = (NonZeroU16, String)> + '_ {
     fn find_by_name(name: &str, ports: &[k8s::ContainerPort]) -> Option<NonZeroU16> {
         for (p, n) in ports.iter().filter_map(named_tcp_port) {
             if n.eq_ignore_ascii_case(name) {
@@ -97,7 +99,6 @@ fn container_http_probe_paths(container: &k8s::Container) -> Vec<(NonZeroU16, St
             let path = probe.path.clone().unwrap_or_else(|| "/".to_string());
             Some((port, path))
         })
-        .collect()
 }
 
 fn named_tcp_port(port: &k8s::ContainerPort) -> Option<(NonZeroU16, &str)> {
