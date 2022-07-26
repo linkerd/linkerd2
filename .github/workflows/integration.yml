@@ -208,14 +208,10 @@ jobs:
       - run: just policy-test-run --jobs=1
 
   ##
-  ## Viz: Run tests that require viz tests separately
-  ##
-  ## TODO(ver) we should only run viz tests when the viz extension
-  ## or proxy changes, but to do this # we really need extract viz
-  ## from tests that exercise core functionality.
+  ## Ext: Run tests that require non-core components.
   ##
 
-  build-viz:
+  build-ext:
     needs: [tag]
     runs-on: ubuntu-20.04
     strategy:
@@ -244,13 +240,13 @@ jobs:
           name: image-archives
           path: /home/runner/archives
 
-  test-viz:
-    needs: [tag, build-cli, build-core, build-viz]
+  # These tests exercise core functionality, but need the viz extension.
+  test-ext:
+    needs: [tag, build-cli, build-core, build-ext]
     strategy:
       matrix:
         integration_test:
           - cluster-domain
-          - viz
           - default-policy-deny
           - external
           # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
@@ -274,6 +270,47 @@ jobs:
       - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: ls -l image-archives/linkerd
       - run: bin/tests --images archive --cleanup-docker --name '${{ matrix.integration_test }}' "$HOME/linkerd"
+        env:
+          LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+
+  ##
+  ## Viz: Run the (flakey) `viz` suite only when the `viz` extension is updated.
+  ##
+
+  changed-viz:
+    needs: [cleanup]
+    runs-on: ubuntu-20.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: tj-actions/changed-files@6c44eb8294bb9c93d6118427f4ff8404b695e1d7
+        id: changed
+        with:
+          files: |
+            .github/workflows/integration.yml
+            .proxy-version
+            viz/**
+    outputs:
+      modified: ${{ steps.changed.outputs.any_modified }}
+
+  test-viz:
+    needs: [tag, changed-viz, build-cli, build-core, build-ext]
+    if: needs.changed-viz.outputs.modified == 'true'
+    continue-on-error: true
+    runs-on: ubuntu-20.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
+        with:
+          go-version: '1.17'
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
+        with:
+          name: image-archives
+          path: image-archives
+      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
+      - run: ls -l image-archives/linkerd
+      - run: bin/tests --images archive --cleanup-docker --name viz "$HOME/linkerd"
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
 
