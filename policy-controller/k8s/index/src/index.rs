@@ -294,7 +294,8 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
         let meta = pod::Meta::from_metadata(pod.metadata);
         let probes = pod
             .spec
-            .map(|ref spec| pod::get_http_probes(spec, &port_names))
+            .as_ref()
+            .map(pod::pod_http_probes)
             .unwrap_or_default();
 
         // Add or update the pod. If the pod was not already present in the
