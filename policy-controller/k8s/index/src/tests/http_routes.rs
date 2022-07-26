@@ -1,3 +1,8 @@
+use linkerd_policy_controller_core::{
+    http_route::{HttpRouteMatch, InboundHttpRouteRule, Method, PathMatch},
+    InboundHttpRoute,
+};
+
 use super::*;
 
 const POLICY_API_GROUP: &str = "policy.linkerd.io";
@@ -68,6 +73,123 @@ fn route_attaches_to_server() {
         .contains_key(&AuthorizationRef::AuthorizationPolicy(
             "authz-foo".to_string()
         )));
+}
+
+#[test]
+fn routes_created_for_probes() {
+    let policy = DefaultPolicy::Allow {
+        authenticated_only: false,
+        cluster_only: true,
+    };
+    let probe_networks = vec!["10.0.0.1/24".parse().unwrap()];
+    let test = TestConfig::from_default_policy_with_probes(policy, Some(probe_networks));
+
+    // Create a pod.
+    let container = k8s::Container {
+        liveness_probe: Some(k8s::Probe {
+            http_get: Some(k8s::HTTPGetAction {
+                path: Some("/liveness-container-1".to_string()),
+                port: k8s::IntOrString::Int(5432),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }),
+        readiness_probe: Some(k8s::Probe {
+            http_get: Some(k8s::HTTPGetAction {
+                path: Some("/ready-container-1".to_string()),
+                port: k8s::IntOrString::Int(5432),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    let mut pod = mk_pod_with_containers("ns-0", "pod-0", Some(container));
+    pod.labels_mut()
+        .insert("app".to_string(), "app-0".to_string());
+    test.index.write().apply(pod);
+
+    let mut rx = test
+        .index
+        .write()
+        .pod_server_rx("ns-0", "pod-0", 5432.try_into().unwrap())
+        .expect("pod-0.ns-0 should exist");
+
+    let mut expected_authorizations = HashMap::default();
+    expected_authorizations.insert(
+        AuthorizationRef::Default("probe".to_string()),
+        ClientAuthorization {
+            networks: vec!["10.0.0.1/24".parse::<IpNet>().unwrap().into()],
+            authentication: ClientAuthentication::Unauthenticated,
+        },
+    );
+    let mut expected_routes = HashMap::default();
+    expected_routes.insert(
+        "/liveness-container-1".to_string(),
+        InboundHttpRoute {
+            rules: vec![InboundHttpRouteRule {
+                matches: vec![HttpRouteMatch {
+                    path: Some(PathMatch::Exact("/liveness-container-1".to_string())),
+                    method: Some(Method::GET),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            authorizations: expected_authorizations.clone(),
+            ..Default::default()
+        },
+    );
+    expected_routes.insert(
+        "/ready-container-1".to_string(),
+        InboundHttpRoute {
+            rules: vec![InboundHttpRouteRule {
+                matches: vec![HttpRouteMatch {
+                    path: Some(PathMatch::Exact("/ready-container-1".to_string())),
+                    method: Some(Method::GET),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            authorizations: expected_authorizations,
+            ..Default::default()
+        },
+    );
+
+    // No Server is configured for the port, so expect the probe paths to be
+    // authorized.
+    assert_eq!(rx.borrow_and_update().http_routes, expected_routes);
+
+    // Create server.
+    test.index.write().apply(mk_server(
+        "ns-0",
+        "srv-5432",
+        Port::Number(5432.try_into().unwrap()),
+        Some(("app", "app-0")),
+        Some(("app", "app-0")),
+        Some(k8s::policy::server::ProxyProtocol::Http1),
+    ));
+    assert!(rx.has_changed().unwrap());
+
+    // No routes are configured for the Server, so we should still expect the
+    // Pod's probe paths to be authorized.
+    assert_eq!(rx.borrow_and_update().http_routes, expected_routes);
+
+    // Create route.
+    test.index
+        .write()
+        .apply(mk_route("ns-0", "route-foo", "srv-5432"));
+    assert!(rx.has_changed().unwrap());
+
+    // A route is now configured for the Server, so the Pod's probe paths
+    // should not be automatically authorized.
+    assert!(!rx
+        .borrow()
+        .http_routes
+        .contains_key("/liveness-container-1"));
+    assert!(!rx
+        .borrow_and_update()
+        .http_routes
+        .contains_key("/ready-container-1"));
 }
 
 fn mk_route(

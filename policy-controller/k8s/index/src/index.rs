@@ -17,6 +17,7 @@ use crate::{
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
+    http_route::{HttpRouteMatch, InboundHttpRouteRule, Method, PathMatch},
     AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundHttpRoute,
     InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
 };
@@ -93,7 +94,7 @@ struct Pod {
     /// In order for the policy controller to authorize probes, it must be
     /// aware of the probe ports and the expected paths on which probes are
     /// expected.
-    _probes: pod::PortMap<HashSet<String>>,
+    probes: pod::PortMap<HashSet<String>>,
 }
 
 /// Holds the state of a single port on a pod.
@@ -833,7 +834,7 @@ impl PodIndex {
                 meta,
                 port_names,
                 port_servers: pod::PortMap::default(),
-                _probes: probes,
+                probes,
             }),
 
             Entry::Occupied(entry) => {
@@ -902,7 +903,13 @@ impl Pod {
                         continue;
                     }
 
-                    let s = policy.inbound_server(srvname.clone(), server, authentications);
+                    let s = policy.inbound_server(
+                        srvname.clone(),
+                        server,
+                        authentications,
+                        &self.probes,
+                        port,
+                    );
                     self.update_server(port, srvname, s);
 
                     matched_ports.insert(port, srvname.clone());
@@ -960,7 +967,7 @@ impl Pod {
 
     /// Updates a pod-port to use the given named server.
     fn set_default_server(&mut self, port: NonZeroU16, config: &ClusterInfo) {
-        let server = Self::default_inbound_server(port, &self.meta.settings, config);
+        let server = Self::default_inbound_server(port, &self.meta.settings, &self.probes, config);
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
                 tracing::debug!(%port, server = %config.default_policy, "Creating default server");
@@ -1011,6 +1018,7 @@ impl Pod {
                 let (tx, rx) = watch::channel(Self::default_inbound_server(
                     port,
                     &self.meta.settings,
+                    &self.probes,
                     config,
                 ));
                 entry.insert(PodPortServer { name: None, tx, rx })
@@ -1021,6 +1029,7 @@ impl Pod {
     fn default_inbound_server(
         port: NonZeroU16,
         settings: &pod::Settings,
+        probes: &PortMap<HashSet<String>>,
         config: &ClusterInfo,
     ) -> InboundServer {
         let protocol = if settings.opaque_ports.contains(&port) {
@@ -1070,12 +1079,52 @@ impl Pod {
             );
         };
 
+        let mut http_routes = HashMap::default();
+
+        // No Server is configured, so requests on the Pod's probe paths are
+        // authorized.
+        if let Some(ref probe_networks) = config.probe_networks {
+            http_routes = Self::http_probe_routes(probes, port, probe_networks.clone());
+        }
+
         InboundServer {
             reference: ServerRef::Default(policy.to_string()),
             protocol,
             authorizations,
-            http_routes: HashMap::default(),
+            http_routes,
         }
+    }
+
+    fn http_probe_routes(
+        probes: &PortMap<HashSet<String>>,
+        port: NonZeroU16,
+        networks: Vec<IpNet>,
+    ) -> HashMap<String, InboundHttpRoute> {
+        let mut routes = HashMap::default();
+        for path in probes.get(&port).into_iter().flatten() {
+            let matches = vec![HttpRouteMatch {
+                path: Some(PathMatch::Exact(path.to_string())),
+                method: Some(Method::GET),
+                ..Default::default()
+            }];
+            let rules = vec![InboundHttpRouteRule {
+                matches,
+                ..Default::default()
+            }];
+            let client_authz = ClientAuthorization {
+                networks: networks.clone().into_iter().map(Into::into).collect(),
+                authentication: ClientAuthentication::Unauthenticated,
+            };
+            let mut authorizations = HashMap::default();
+            authorizations.insert(AuthorizationRef::Default("probe".to_string()), client_authz);
+            let route = InboundHttpRoute {
+                rules,
+                authorizations,
+                ..Default::default()
+            };
+            routes.insert(path.to_string(), route);
+        }
+        routes
     }
 }
 
@@ -1146,10 +1195,20 @@ impl PolicyIndex {
         name: String,
         server: &server::Server,
         authentications: &AuthenticationNsIndex,
+        probes: &PortMap<HashSet<String>>,
+        port: NonZeroU16,
     ) -> InboundServer {
         tracing::trace!(%name, ?server, "Creating inbound server");
         let authorizations = self.client_authzs(&name, server, authentications);
-        let routes = self.http_routes(&name, authentications);
+        let mut routes = self.http_routes(&name, authentications);
+
+        // No routes are configured for the Server, so requests on the Pod's
+        // probe paths are authorized.
+        if routes.is_empty() {
+            if let Some(ref probe_networks) = self.cluster_info.probe_networks {
+                routes = Pod::http_probe_routes(probes, port, probe_networks.clone());
+            }
+        }
 
         InboundServer {
             reference: ServerRef::Server(name),

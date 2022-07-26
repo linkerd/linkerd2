@@ -65,6 +65,9 @@ struct Args {
 
     #[clap(long, default_value = "linkerd")]
     control_plane_namespace: String,
+
+    #[clap(long)]
+    probe_networks: Option<IpNets>,
 }
 
 #[tokio::main]
@@ -81,6 +84,7 @@ async fn main() -> Result<()> {
         cluster_networks: IpNets(cluster_networks),
         default_policy,
         control_plane_namespace,
+        probe_networks,
     } = Args::parse();
 
     let server = if admission_controller_disabled {
@@ -97,6 +101,12 @@ async fn main() -> Result<()> {
         .build()
         .await?;
 
+    let probe_networks = if let Some(IpNets(networks)) = probe_networks {
+        Some(networks)
+    } else {
+        None
+    };
+
     // Build the index data structure, which will be used to process events from all watches
     // The lookup handle is used by the gRPC server.
     let index = Index::shared(ClusterInfo {
@@ -105,6 +115,7 @@ async fn main() -> Result<()> {
         control_plane_ns: control_plane_namespace,
         default_policy,
         default_detect_timeout: DETECT_TIMEOUT,
+        probe_networks,
     });
 
     // Spawn resource indexers that update the index and publish lookups for the gRPC server.

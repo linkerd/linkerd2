@@ -9,7 +9,7 @@ pub use http::{
 use regex::Regex;
 use std::num::NonZeroU16;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct InboundHttpRoute {
     pub hostnames: Vec<HostMatch>,
     pub rules: Vec<InboundHttpRouteRule>,
@@ -22,7 +22,7 @@ pub enum HostMatch {
     Suffix { reverse_labels: Vec<String> },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct InboundHttpRouteRule {
     pub matches: Vec<HttpRouteMatch>,
     pub filters: Vec<InboundFilter>,
@@ -70,7 +70,7 @@ pub struct Ratio {
     pub denominator: u32,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct HttpRouteMatch {
     pub path: Option<PathMatch>,
     pub headers: Vec<HeaderMatch>,
