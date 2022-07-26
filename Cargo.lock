@@ -992,7 +992,6 @@ dependencies = [
 name = "linkerd-policy-controller-grpc"
 version = "0.1.0"
 dependencies = [
- "ahash",
  "async-stream",
  "async-trait",
  "drain",
@@ -1032,7 +1031,6 @@ dependencies = [
  "chrono",
  "futures",
  "k8s-gateway-api",
- "k8s-openapi",
  "kubert",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",

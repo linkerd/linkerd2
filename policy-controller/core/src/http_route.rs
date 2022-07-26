@@ -15,6 +15,7 @@ pub struct InboundHttpRoute {
     pub hostnames: Vec<HostMatch>,
     pub rules: Vec<InboundHttpRouteRule>,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
+
     /// This is required for ordering returned `HttpRoute`s by their creation
     /// timestamp.
     pub creation_timestamp: DateTime<Utc>,
