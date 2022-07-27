@@ -10,6 +10,7 @@ RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
         curl \
         file \
+        git \
         jo \
         jq \
         time \
