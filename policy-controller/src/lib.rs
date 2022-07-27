@@ -12,7 +12,9 @@ pub use linkerd_policy_controller_core::{
 };
 pub use linkerd_policy_controller_grpc as grpc;
 pub use linkerd_policy_controller_k8s_api as k8s;
-pub use linkerd_policy_controller_k8s_index::{ClusterInfo, DefaultPolicy, Index, SharedIndex};
+pub use linkerd_policy_controller_k8s_index::{
+    self as index, ClusterInfo, DefaultPolicy, Index, SharedIndex,
+};
 
 #[derive(Clone, Debug)]
 pub struct IndexDiscover(SharedIndex);

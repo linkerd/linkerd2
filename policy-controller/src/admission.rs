@@ -7,7 +7,7 @@ use crate::k8s::{
         ServerAuthorizationSpec, ServerSpec,
     },
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
@@ -417,32 +417,26 @@ impl Validate<ServerAuthorizationSpec> for Admission {
 #[async_trait::async_trait]
 impl Validate<HttpRouteSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
-        // The validation for the policy.linkerd.io HTTPRoute type is much
-        // simpler than for the Gateway API version: the route must only target
-        // `Server` resources.
-        //
-        // We don't have to do any validation that unsupported filters aren't
-        // present, because Linkerd's HTTPRoute CRD doesn't include those
-        // filters at all.
+        // Ensure that the `HTTPRoute` targets a `Server` as its parent ref
         let all_target_servers = spec
             .inner
             .parent_refs
             .iter()
             .flatten()
-            .all(parent_ref_targets_server);
-        anyhow::ensure!(
+            .all(httproute::parent_ref_targets_kind::<Server>);
+        ensure!(
             all_target_servers,
             "policy.linkerd.io HTTPRoutes must target only Server resources"
         );
-        Ok(())
-    }
-}
 
-fn parent_ref_targets_server(p: &httproute::ParentReference) -> bool {
-    match (p.group.as_deref(), p.kind.as_deref()) {
-        (Some(group), Some(kind)) => {
-            group.eq_ignore_ascii_case("policy.linkerd.io") && kind.eq_ignore_ascii_case("server")
+        // Validate the rules in this spec.
+        for rule in spec.rules.iter().flatten() {
+            ensure!(
+                !rule.has_relative_paths(),
+                "HttpRouteRules may only contain absolute paths (beginning with '/')"
+            );
         }
-        _ => false,
+
+        Ok(())
     }
 }
