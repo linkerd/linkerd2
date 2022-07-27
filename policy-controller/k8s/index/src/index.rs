@@ -1085,8 +1085,12 @@ impl Pod {
         // No Server is configured, so requests on the Pod's probe paths are
         // authorized.
         let http_routes = {
-            let probe_paths = probes.get(&port).into_iter().flatten().map(|p| p.as_str());
-            Self::http_probe_routes(probe_paths, &config.probe_networks)
+            if config.probe_networks.is_empty() {
+                HashMap::default()
+            } else {
+                let probe_paths = probes.get(&port).into_iter().flatten().map(|p| p.as_str());
+                Self::http_probe_routes(probe_paths, &config.probe_networks)
+            }
         };
 
         InboundServer {
@@ -1208,7 +1212,13 @@ impl PolicyIndex {
             routes if !routes.is_empty() => routes,
             // No routes are configured for the Server, so requests on the Pod's
             // probe paths are authorized.
-            _ => Pod::http_probe_routes(probe_paths, &*self.cluster_info.probe_networks),
+            _ => {
+                if self.cluster_info.probe_networks.is_empty() {
+                    HashMap::default()
+                } else {
+                    Pod::http_probe_routes(probe_paths, &*self.cluster_info.probe_networks)
+                }
+            }
         };
 
         InboundServer {
