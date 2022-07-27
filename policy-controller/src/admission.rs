@@ -420,16 +420,39 @@ impl Validate<HttpRouteSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
         use index::http_route::convert;
 
-        /// Takes a validation function for a single `T-`typed item, and returns
-        /// a closure that applies that function to every element in an iterator.
-        fn all_ok<T, U, I: IntoIterator<Item = T>>(
-            validate: impl Fn(T) -> Result<U>,
-        ) -> impl Fn(I) -> Result<()> {
-            move |i| {
-                for item in i.into_iter() {
-                    validate(item)?;
+        fn validate_match(
+            httproute::HttpRouteMatch {
+                path,
+                headers,
+                query_params,
+                method,
+            }: httproute::HttpRouteMatch,
+        ) -> Result<()> {
+            let _ = path.map(convert::path_match).transpose()?;
+            let _ = method
+                .as_deref()
+                .map(core::http_route::Method::try_from)
+                .transpose()?;
+
+            for q in query_params.into_iter().flatten() {
+                convert::query_param_match(q)?;
+            }
+
+            for h in headers.into_iter().flatten() {
+                convert::header_match(h)?;
+            }
+
+            Ok(())
+        }
+
+        fn validate_filter(filter: httproute::HttpRouteFilter) -> Result<()> {
+            match filter {
+                httproute::HttpRouteFilter::RequestHeaderModifier {
+                    request_header_modifier,
+                } => convert::req_header_modifier(request_header_modifier).map(|_| ()),
+                httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
+                    convert::req_redirect(request_redirect).map(|_| ())
                 }
-                Ok(())
             }
         }
 
@@ -445,42 +468,20 @@ impl Validate<HttpRouteSpec> for Admission {
             "policy.linkerd.io HTTPRoutes must target only Server resources"
         );
 
-        let validate_matches = all_ok(
-            |httproute::HttpRouteMatch {
-                 path,
-                 headers,
-                 query_params,
-                 method,
-             }| {
-                let validate_header_matches = all_ok(convert::header_match);
-                let validate_query_param_matches = all_ok(convert::query_param_match);
-                let _ = path.map(convert::path_match).transpose()?;
-                let _ = method
-                    .as_deref()
-                    .map(core::http_route::Method::try_from)
-                    .transpose()?;
-                validate_header_matches(headers.into_iter().flatten())?;
-                validate_query_param_matches(query_params.into_iter().flatten())?;
-                Ok(())
-            },
-        );
-        let validate_filters = all_ok(|filter| match filter {
-            httproute::HttpRouteFilter::RequestHeaderModifier {
-                request_header_modifier,
-            } => convert::req_header_modifier(request_header_modifier).map(|_| ()),
-            httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
-                convert::req_redirect(request_redirect).map(|_| ())
-            }
-        });
-        let validate_rules = all_ok(|httproute::HttpRouteRule { matches, filters }| {
-            validate_matches(matches.into_iter().flatten())?;
-            validate_filters(filters.into_iter().flatten())
-        });
-
         // Validate the rules in this spec.
         // This is essentially equivalent to the indexer's conversion function
         // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
         // actually allocate stuff in order to return an `InboundRouteBinding`.
-        validate_rules(spec.rules.into_iter().flatten())
+        for httproute::HttpRouteRule { filters, matches } in spec.rules.into_iter().flatten() {
+            for m in matches.into_iter().flatten() {
+                validate_match(m)?;
+            }
+
+            for f in filters.into_iter().flatten() {
+                validate_filter(f)?;
+            }
+        }
+
+        Ok(())
     }
 }
