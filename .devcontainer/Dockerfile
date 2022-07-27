@@ -5,11 +5,12 @@ ARG RUST_TOOLCHAIN=1.62.1
 ## Base
 ##
 
-FROM docker.io/debian:bullseye-slim as base
+FROM docker.io/debian:stable-slim as base
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
         curl \
         file \
+        jo \
         jq \
         time \
         unzip \
@@ -60,8 +61,8 @@ ARG CARGO_TARPAULIN_VERSION=0.20.1
 RUN url="https://github.com/xd009642/tarpaulin/releases/download/${CARGO_TARPAULIN_VERSION}/cargo-tarpaulin-${CARGO_TARPAULIN_VERSION}-travis.tar.gz" ; \
     scurl "$url" | tar xzvf - -C /usr/local/bin cargo-tarpaulin
 
-FROM docker.io/rust:${RUST_TOOLCHAIN}-slim-bullseye as rust
-RUN rustup component add clippy rls rustfmt
+FROM docker.io/rust:${RUST_TOOLCHAIN}-slim as rust
+RUN rustup component add clippy rustfmt
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
         clang \
@@ -86,7 +87,7 @@ ENV USER=root
 ## Go image
 ##
 
-FROM docker.io/golang:${GO_VERSION}-bullseye as go
+FROM docker.io/golang:${GO_VERSION} as go
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
         curl \
@@ -123,7 +124,7 @@ COPY --from=protoc /usr/local/bin/protoc $PROTOC
 
 FROM base as k8s
 
-ARG KUBECTL_VERSION=v1.24.2
+ARG KUBECTL_VERSION=v1.24.3
 RUN url="https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" ; \
     scurl -o /usr/local/bin/kubectl "$url" && chmod +x /usr/local/bin/kubectl
 
@@ -131,7 +132,7 @@ ARG K3D_VERSION=v5.4.4
 RUN url="https://raw.githubusercontent.com/rancher/k3d/$K3D_VERSION/install.sh" ; \
     scurl "$url" | USE_SUDO=false K3D_INSTALL_DIR=/usr/local/bin bash
 
-ARG HELM_VERSION=v3.9.1
+ARG HELM_VERSION=v3.9.2
 RUN url="https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" ; \
     scurl "$url" | tar xzvf - --strip-components=1 -C /usr/local/bin linux-amd64/helm
 
@@ -162,16 +163,30 @@ RUN url="https://github.com/rhysd/actionlint/releases/download/${ACTIONLINT_VERS
 ## Tools: Everything needed for a development environment, minus non-root settings.
 ##
 
-FROM docker.io/debian:bullseye as tools
+FROM base as tools
+COPY --from=actionlint /usr/local/bin/actionlint /usr/local/bin/
+COPY --from=checksec /usr/local/bin/checksec /usr/local/bin/che
+COPY --from=just /usr/local/bin/just /usr/local/bin/
+COPY --from=k8s /usr/local/bin/helm /usr/local/bin/
+COPY --from=k8s /usr/local/bin/helm-docs /usr/local/bin/
+COPY --from=k8s /usr/local/bin/k3d /usr/local/bin/
+COPY --from=k8s /usr/local/bin/kubectl /usr/local/bin/
+COPY --from=protoc /usr/local/bin/protoc /usr/local/bin/
+COPY --from=shellcheck /usr/local/bin/shellcheck /usr/local/bin/
+COPY --from=yq /usr/local/bin/yq /usr/local/bin/
+ENV PROTOC_NO_VENDOR=1
+ENV PROTOC=/usr/local/bin/protoc
 
-COPY bin/scurl /usr/local/bin/scurl
+##
+## Runtime
+##
+
+FROM docker.io/debian:stable as runtime
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
-        curl \
-        clang \
+        clang curl \
         cmake \
         file \
-        iproute2 \
         jo \
         jq \
         libssl-dev \
@@ -203,25 +218,10 @@ COPY --from=rust $RUSTUP_HOME $RUSTUP_HOME
 ENV PATH=$CARGO_HOME/bin:$PATH
 RUN rustup component add rust-analysis rust-std
 
+COPY --from=tools /usr/local/bin/* /usr/local/bin/
+
 ENV PROTOC_NO_VENDOR=1
 ENV PROTOC=/usr/local/bin/protoc
-COPY --from=protoc /usr/local/bin/protoc $PROTOC
-
-COPY --from=actionlint /usr/local/bin/actionlint /usr/local/bin/actionlint
-COPY --from=checksec /usr/local/bin/checksec /usr/local/bin/checksec
-COPY --from=just /usr/local/bin/just /usr/local/bin/just
-COPY --from=k8s /usr/local/bin/helm /usr/local/bin/helm
-COPY --from=k8s /usr/local/bin/helm-docs /usr/local/bin/helm-docs
-COPY --from=k8s /usr/local/bin/k3d /usr/local/bin/k3d
-COPY --from=k8s /usr/local/bin/kubectl /usr/local/bin/kubectl
-COPY --from=shellcheck /usr/local/bin/shellcheck /usr/local/bin/shellcheck
-COPY --from=yq /usr/local/bin/yq /usr/local/bin/yq
-
-##
-## Runtime
-##
-
-FROM tools as runtime
 
 ENV DOCKER_BUILDKIT=1
 RUN groupadd --gid=1000 code \
