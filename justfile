@@ -412,7 +412,7 @@ _linkerd-viz-uninit:
 # TODO linkerd-multicluster-install
 
 ##
-## Devcontaine
+## Devcontainer
 ##
 
 devcontainer-build-mode := "load"
