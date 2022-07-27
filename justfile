@@ -412,6 +412,29 @@ _linkerd-viz-uninit:
 # TODO linkerd-multicluster-install
 
 ##
+## Devcontainer
+##
+
+devcontainer-build-mode := "load"
+devcontainer-image := "ghcr.io/linkerd/dev"
+
+devcontainer-build tag:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for tgt in tools go rust runtime ; do
+        just devcontainer-build-mode={{ devcontainer-build-mode }} \
+            _devcontainer-build {{ tag }} "${tgt}"
+    done
+
+_devcontainer-build tag target='':
+    docker buildx build . \
+        --progress=plain \
+        --file=.devcontainer/Dockerfile \
+        --tag='{{ devcontainer-image }}:{{ tag }}{{ if target != "runtime" { "-" + target }  else { "" } }}' \
+        --target='{{ target }}' \
+        --{{ if devcontainer-build-mode == "push" { "push" } else { "load" } }}
+
+##
 ## Git
 ##
 
