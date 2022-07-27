@@ -1,5 +1,5 @@
 use ahash::AHashMap as HashMap;
-use anyhow::{bail, ensure, Error, Result};
+use anyhow::{anyhow, bail, Error, Result};
 use k8s_gateway_api as api;
 use linkerd_policy_controller_core::http_route;
 use linkerd_policy_controller_k8s_api::policy::{httproute as policy, Server};
@@ -42,7 +42,7 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
             .hostnames
             .into_iter()
             .flatten()
-            .map(convert::http_match)
+            .map(convert::host_match)
             .collect();
 
         let rules = route
@@ -81,7 +81,7 @@ impl TryFrom<policy::HttpRoute> for InboundRouteBinding {
             .hostnames
             .into_iter()
             .flatten()
-            .map(convert::http_match)
+            .map(convert::host_match)
             .collect();
 
         let rules = route
@@ -121,50 +121,18 @@ impl InboundRouteBinding {
             method,
         }: api::HttpRouteMatch,
     ) -> Result<http_route::HttpRouteMatch> {
-        let path = path
-            .map(|pm| {
-                ensure!(
-                    !policy::path_match_has_relative_paths(&pm),
-                    "HttpPathMatch paths must be absolute (begin with `/`)"
-                );
-                match pm {
-                    api::HttpPathMatch::Exact { value } => Ok(http_route::PathMatch::Exact(value)),
-                    api::HttpPathMatch::PathPrefix { value } => {
-                        Ok(http_route::PathMatch::Prefix(value))
-                    }
-                    api::HttpPathMatch::RegularExpression { value } => value
-                        .parse()
-                        .map(http_route::PathMatch::Regex)
-                        .map_err(Into::into),
-                }
-            })
-            .transpose()?;
+        let path = path.map(convert::path_match).transpose()?;
 
         let headers = headers
             .into_iter()
             .flatten()
-            .map(|hm| match hm {
-                api::HttpHeaderMatch::Exact { name, value } => Ok(http_route::HeaderMatch::Exact(
-                    name.parse()?,
-                    value.parse()?,
-                )),
-                api::HttpHeaderMatch::RegularExpression { name, value } => Ok(
-                    http_route::HeaderMatch::Regex(name.parse()?, value.parse()?),
-                ),
-            })
+            .map(convert::header_match)
             .collect::<Result<_>>()?;
 
         let query_params = query_params
             .into_iter()
             .flatten()
-            .map(|query_param| match query_param {
-                api::HttpQueryParamMatch::Exact { name, value } => {
-                    Ok(http_route::QueryParamMatch::Exact(name, value))
-                }
-                api::HttpQueryParamMatch::RegularExpression { name, value } => {
-                    Ok(http_route::QueryParamMatch::Exact(name, value.parse()?))
-                }
-            })
+            .map(convert::query_param_match)
             .collect::<Result<_>>()?;
 
         let method = method
@@ -296,11 +264,26 @@ impl InboundParentRef {
     }
 }
 
-mod convert {
-    use api::HttpRequestRedirectFilter;
-
+pub mod convert {
     use super::*;
-    pub(super) fn http_match(hostname: api::Hostname) -> http_route::HostMatch {
+
+    pub fn path_match(path_match: api::HttpPathMatch) -> Result<http_route::PathMatch> {
+        match path_match {
+            api::HttpPathMatch::Exact { value } | api::HttpPathMatch::PathPrefix { value }
+                if !value.starts_with('/') =>
+            {
+                Err(anyhow!("HttpPathMatch paths must be absolute (begin with `/`); {value:?} is not an absolute path"))
+            }
+            api::HttpPathMatch::Exact { value } => Ok(http_route::PathMatch::Exact(value)),
+            api::HttpPathMatch::PathPrefix { value } => Ok(http_route::PathMatch::Prefix(value)),
+            api::HttpPathMatch::RegularExpression { value } => value
+                .parse()
+                .map(http_route::PathMatch::Regex)
+                .map_err(Into::into),
+        }
+    }
+
+    pub fn host_match(hostname: api::Hostname) -> http_route::HostMatch {
         if hostname.starts_with("*.") {
             let mut reverse_labels = hostname
                 .split('.')
@@ -313,7 +296,33 @@ mod convert {
             http_route::HostMatch::Exact(hostname)
         }
     }
-    pub(super) fn req_header_modifier(
+
+    pub fn header_match(header_match: api::HttpHeaderMatch) -> Result<http_route::HeaderMatch> {
+        match header_match {
+            api::HttpHeaderMatch::Exact { name, value } => Ok(http_route::HeaderMatch::Exact(
+                name.parse()?,
+                value.parse()?,
+            )),
+            api::HttpHeaderMatch::RegularExpression { name, value } => Ok(
+                http_route::HeaderMatch::Regex(name.parse()?, value.parse()?),
+            ),
+        }
+    }
+
+    pub fn query_param_match(
+        query_match: api::HttpQueryParamMatch,
+    ) -> Result<http_route::QueryParamMatch> {
+        match query_match {
+            api::HttpQueryParamMatch::Exact { name, value } => {
+                Ok(http_route::QueryParamMatch::Exact(name, value))
+            }
+            api::HttpQueryParamMatch::RegularExpression { name, value } => {
+                Ok(http_route::QueryParamMatch::Exact(name, value.parse()?))
+            }
+        }
+    }
+
+    pub fn req_header_modifier(
         api::HttpRequestHeaderFilter { set, add, remove }: api::HttpRequestHeaderFilter,
     ) -> Result<http_route::RequestHeaderModifierFilter> {
         Ok(http_route::RequestHeaderModifierFilter {
@@ -335,31 +344,37 @@ mod convert {
         })
     }
 
-    pub(super) fn req_redirect(
-        filter: HttpRequestRedirectFilter,
-    ) -> Result<http_route::RequestRedirectFilter> {
-        ensure!(
-            !policy::request_redirect_has_relative_paths(&filter),
-            "RequestRedirect filters may only contain absolute paths (starting with '/')"
-        );
-        let api::HttpRequestRedirectFilter {
+    pub fn req_redirect(
+        api::HttpRequestRedirectFilter {
             scheme,
             hostname,
             path,
             port,
             status_code,
-        } = filter;
+        }: api::HttpRequestRedirectFilter,
+    ) -> Result<http_route::RequestRedirectFilter> {
         Ok(http_route::RequestRedirectFilter {
             scheme: scheme.as_deref().map(TryInto::try_into).transpose()?,
             host: hostname,
-            path: path.map(|path_mod| match path_mod {
-                api::HttpPathModifier::ReplaceFullPath(s) => http_route::PathModifier::Full(s),
-                api::HttpPathModifier::ReplacePrefixMatch(s) => http_route::PathModifier::Prefix(s),
-            }),
+            path: path.map(path_modifier).transpose()?,
             port: port.and_then(|p| NonZeroU16::try_from(p).ok()),
             status: status_code
                 .map(http_route::StatusCode::try_from)
                 .transpose()?,
         })
+    }
+
+    fn path_modifier(path_modifier: api::HttpPathModifier) -> Result<http_route::PathModifier> {
+        use api::HttpPathModifier::*;
+        match path_modifier {
+            ReplaceFullPath(ref path) | ReplacePrefixMatch(ref path) if !path.starts_with('/') => {
+                bail!(
+                    "RequestRedirect filters may only contain absolute paths \
+                    (starting with '/'); {path:?} is not an absolute path"
+                )
+            }
+            ReplaceFullPath(s) => Ok(http_route::PathModifier::Full(s)),
+            ReplacePrefixMatch(s) => Ok(http_route::PathModifier::Prefix(s)),
+        }
     }
 }

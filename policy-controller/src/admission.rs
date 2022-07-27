@@ -12,6 +12,7 @@ use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
+use linkerd_policy_controller_core as core;
 use linkerd_policy_controller_k8s_index as index;
 use serde::de::DeserializeOwned;
 use std::task;
@@ -417,6 +418,21 @@ impl Validate<ServerAuthorizationSpec> for Admission {
 #[async_trait::async_trait]
 impl Validate<HttpRouteSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
+        use index::http_route::convert;
+
+        /// Takes a validation function for a single `T-`typed item, and returns
+        /// a closure that applies that function to every element in an iterator.
+        fn all_ok<T, U, I: IntoIterator<Item = T>>(
+            validate: impl Fn(T) -> Result<U>,
+        ) -> impl Fn(I) -> Result<()> {
+            move |i| {
+                for item in i.into_iter() {
+                    validate(item)?;
+                }
+                Ok(())
+            }
+        }
+
         // Ensure that the `HTTPRoute` targets a `Server` as its parent ref
         let all_target_servers = spec
             .inner
@@ -429,14 +445,42 @@ impl Validate<HttpRouteSpec> for Admission {
             "policy.linkerd.io HTTPRoutes must target only Server resources"
         );
 
-        // Validate the rules in this spec.
-        for rule in spec.rules.iter().flatten() {
-            ensure!(
-                !rule.has_relative_paths(),
-                "HttpRouteRules may only contain absolute paths (beginning with '/')"
-            );
-        }
+        let validate_matches = all_ok(
+            |httproute::HttpRouteMatch {
+                 path,
+                 headers,
+                 query_params,
+                 method,
+             }| {
+                let validate_header_matches = all_ok(convert::header_match);
+                let validate_query_param_matches = all_ok(convert::query_param_match);
+                let _ = path.map(convert::path_match).transpose()?;
+                let _ = method
+                    .as_deref()
+                    .map(core::http_route::Method::try_from)
+                    .transpose()?;
+                validate_header_matches(headers.into_iter().flatten())?;
+                validate_query_param_matches(query_params.into_iter().flatten())?;
+                Ok(())
+            },
+        );
+        let validate_filters = all_ok(|filter| match filter {
+            httproute::HttpRouteFilter::RequestHeaderModifier {
+                request_header_modifier,
+            } => convert::req_header_modifier(request_header_modifier).map(|_| ()),
+            httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
+                convert::req_redirect(request_redirect).map(|_| ())
+            }
+        });
+        let validate_rules = all_ok(|httproute::HttpRouteRule { matches, filters }| {
+            validate_matches(matches.into_iter().flatten())?;
+            validate_filters(filters.into_iter().flatten())
+        });
 
-        Ok(())
+        // Validate the rules in this spec.
+        // This is essentially equivalent to the indexer's conversion function
+        // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
+        // actually allocate stuff in order to return an `InboundRouteBinding`.
+        validate_rules(spec.rules.into_iter().flatten())
     }
 }
