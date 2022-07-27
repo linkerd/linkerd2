@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.17
+ARG GO_VERSION=1.18
 ARG RUST_TOOLCHAIN=1.62.1
 
 ##
@@ -210,6 +210,7 @@ RUN npm install "markdownlint-cli2@${MARKDOWNLINT_VERSION}" --global
 ENV GOPATH=/go
 COPY --from=go /go/bin $GOPATH/bin
 COPY --from=go /usr/local/go /usr/local/go
+RUN chmod 777 /go
 ENV PATH=/usr/local/go/bin:$GOPATH/bin:$PATH
 
 ENV CARGO_HOME=/usr/local/cargo
