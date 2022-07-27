@@ -1,9 +1,8 @@
+use super::*;
 use linkerd_policy_controller_core::{
     http_route::{HttpRouteMatch, InboundHttpRouteRule, Method, PathMatch},
     InboundHttpRoute,
 };
-
-use super::*;
 
 const POLICY_API_GROUP: &str = "policy.linkerd.io";
 
