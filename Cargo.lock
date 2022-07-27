@@ -981,6 +981,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "async-trait",
+ "chrono",
  "futures",
  "http",
  "ipnet",
@@ -1027,6 +1028,7 @@ version = "0.1.0"
 dependencies = [
  "ahash",
  "anyhow",
+ "chrono",
  "futures",
  "k8s-gateway-api",
  "kubert",

@@ -1,4 +1,5 @@
 use super::{create, LinkerdInject};
+use kube::{api::LogParams, ResourceExt};
 use linkerd_policy_controller_k8s_api::{self as k8s};
 use maplit::{btreemap, convert_args};
 use tokio::time;
@@ -180,7 +181,7 @@ impl Runner {
                     name: "curl".to_string(),
                     image: Some("docker.io/curlimages/curl:latest".to_string()),
                     args: Some(
-                        vec!["curl", "-sSfv", "--max-time", "10", "--retry", "12", target_url]
+                        vec!["curl", "-sf", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "10", "--retry", "12", target_url]
                             .into_iter()
                             .map(Into::into)
                             .collect(),
@@ -205,24 +206,9 @@ impl Running {
         super::await_pod_ip(&self.client, &self.namespace, &self.name).await
     }
 
-    /// Waits for the curl container to complete and returns its exit code.
-    pub async fn exit_code(self) -> i32 {
-        self.inits_complete().await;
-
-        fn get_exit_code(pod: &k8s::Pod) -> Option<i32> {
-            let c = pod
-                .status
-                .as_ref()?
-                .container_statuses
-                .as_ref()?
-                .iter()
-                .find(|c| c.name == "curl")?;
-            let code = c.state.as_ref()?.terminated.as_ref()?.exit_code;
-            Some(code)
-        }
-
+    async fn finished(&self, api: &kube::Api<k8s::Pod>) -> k8s::Pod {
         tracing::debug!(ns = %self.namespace, pod = %self.name, "Waiting for exit code");
-        let api = kube::Api::namespaced(self.client.clone(), &self.namespace);
+
         let finished = kube::runtime::wait::await_condition(
             api.clone(),
             &self.name,
@@ -236,11 +222,23 @@ impl Running {
                 panic!("Timeout waiting for exit code: {}", self.name);
             }
         };
+
         let code = get_exit_code(&pod).expect("curl pod must have an exit code");
         tracing::debug!(pod = %self.name, %code, "Curl exited");
-        for c in pod.spec.unwrap().containers {
+        for c in &pod.spec.as_ref().unwrap().containers {
             super::logs(&self.client, &self.namespace, &self.name, &c.name).await;
         }
+
+        pod
+    }
+
+    /// Waits for the curl container to complete and returns its exit code.
+    pub async fn exit_code(self) -> i32 {
+        self.inits_complete().await;
+        let api = kube::Api::namespaced(self.client.clone(), &self.namespace);
+
+        let pod = self.finished(&api).await;
+        let code = get_exit_code(&pod).expect("curl pod must have an exit code");
 
         if let Err(error) = api
             .delete(&self.name, &kube::api::DeleteParams::foreground())
@@ -250,6 +248,35 @@ impl Running {
         }
 
         code
+    }
+
+    /// Waits for the curl container to complete and returns the http status
+    /// code.
+    pub async fn http_status_code(self) -> hyper::StatusCode {
+        self.inits_complete().await;
+        let api = kube::Api::namespaced(self.client.clone(), &self.namespace);
+
+        let pod = self.finished(&api).await;
+        let log = api
+            .logs(
+                &pod.name_unchecked(),
+                &LogParams {
+                    container: Some("curl".to_string()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .expect("must be able to get curl logs");
+
+        if let Err(error) = api
+            .delete(&self.name, &kube::api::DeleteParams::foreground())
+            .await
+        {
+            tracing::trace!(%error, name = %self.name, "Failed to delete pod");
+        }
+
+        let status_code = log.lines().last().expect("curl must emit a status code");
+        hyper::StatusCode::try_from(status_code).expect("curl must emit a valid status code")
     }
 
     async fn inits_complete(&self) {
@@ -283,4 +310,16 @@ impl Running {
             }
         };
     }
+}
+
+fn get_exit_code(pod: &k8s::Pod) -> Option<i32> {
+    let c = pod
+        .status
+        .as_ref()?
+        .container_statuses
+        .as_ref()?
+        .iter()
+        .find(|c| c.name == "curl")?;
+    let code = c.state.as_ref()?.terminated.as_ref()?.exit_code;
+    Some(code)
 }

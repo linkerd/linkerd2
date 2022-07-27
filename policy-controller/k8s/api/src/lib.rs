@@ -13,7 +13,10 @@ pub use k8s_openapi::{
             PodStatus, Probe, ServiceAccount,
         },
     },
-    apimachinery::pkg::util::intstr::IntOrString,
+    apimachinery::{
+        self,
+        pkg::{apis::meta::v1::Time, util::intstr::IntOrString},
+    },
 };
 pub use kube::{
     api::{ObjectMeta, Resource, ResourceExt},
