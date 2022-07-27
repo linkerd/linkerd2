@@ -1123,6 +1123,7 @@ impl Pod {
                         filters: vec![],
                     }],
                     authorizations: authz.into_iter().collect(),
+                    creation_timestamp: std::time::SystemTime::now().into(),
                 };
 
                 (path.to_string(), route)

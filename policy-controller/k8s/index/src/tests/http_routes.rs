@@ -1,7 +1,6 @@
 use super::*;
-use linkerd_policy_controller_core::{
-    http_route::{HttpRouteMatch, InboundHttpRouteRule, Method, PathMatch},
-    InboundHttpRoute,
+use linkerd_policy_controller_core::http_route::{
+    HttpRouteMatch, InboundHttpRouteRule, Method, PathMatch,
 };
 
 const POLICY_API_GROUP: &str = "policy.linkerd.io";
@@ -122,43 +121,34 @@ fn routes_created_for_probes() {
             authentication: ClientAuthentication::Unauthenticated,
         },
     );
-    let mut expected_routes = HashMap::default();
-    expected_routes.insert(
-        "/liveness-container-1".to_string(),
-        InboundHttpRoute {
-            hostnames: vec![],
-            rules: vec![InboundHttpRouteRule {
-                matches: vec![HttpRouteMatch {
-                    path: Some(PathMatch::Exact("/liveness-container-1".to_string())),
-                    headers: vec![],
-                    query_params: vec![],
-                    method: Some(Method::GET),
-                }],
-                filters: vec![],
+    let expected_rules = |path: String| {
+        vec![InboundHttpRouteRule {
+            matches: vec![HttpRouteMatch {
+                path: Some(PathMatch::Exact(path)),
+                headers: vec![],
+                query_params: vec![],
+                method: Some(Method::GET),
             }],
-            authorizations: expected_authorizations.clone(),
-        },
-    );
-    expected_routes.insert(
-        "/ready-container-1".to_string(),
-        InboundHttpRoute {
-            hostnames: vec![],
-            rules: vec![InboundHttpRouteRule {
-                matches: vec![HttpRouteMatch {
-                    path: Some(PathMatch::Exact("/ready-container-1".to_string())),
-                    headers: vec![],
-                    query_params: vec![],
-                    method: Some(Method::GET),
-                }],
-                filters: vec![],
-            }],
-            authorizations: expected_authorizations,
-        },
-    );
+            filters: vec![],
+        }]
+    };
 
     // No Server is configured for the port, so expect the probe paths to be
     // authorized.
-    assert_eq!(rx.borrow_and_update().http_routes, expected_routes);
+    let update = rx.borrow_and_update();
+    let liveness = update.http_routes.get("/liveness-container-1").unwrap();
+    assert_eq!(
+        liveness.rules,
+        expected_rules("/liveness-container-1".to_string())
+    );
+    assert_eq!(liveness.authorizations, expected_authorizations);
+    let readiness = update.http_routes.get("/ready-container-1").unwrap();
+    assert_eq!(
+        readiness.rules,
+        expected_rules("/ready-container-1".to_string())
+    );
+    assert_eq!(readiness.authorizations, expected_authorizations);
+    drop(update);
 
     // Create server.
     test.index.write().apply(mk_server(
@@ -173,7 +163,20 @@ fn routes_created_for_probes() {
 
     // No routes are configured for the Server, so we should still expect the
     // Pod's probe paths to be authorized.
-    assert_eq!(rx.borrow_and_update().http_routes, expected_routes);
+    let update = rx.borrow_and_update();
+    let liveness = update.http_routes.get("/liveness-container-1").unwrap();
+    assert_eq!(
+        liveness.rules,
+        expected_rules("/liveness-container-1".to_string())
+    );
+    assert_eq!(liveness.authorizations, expected_authorizations);
+    let readiness = update.http_routes.get("/ready-container-1").unwrap();
+    assert_eq!(
+        readiness.rules,
+        expected_rules("/ready-container-1".to_string())
+    );
+    assert_eq!(readiness.authorizations, expected_authorizations);
+    drop(update);
 
     // Create route.
     test.index
