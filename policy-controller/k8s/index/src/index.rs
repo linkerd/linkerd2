@@ -18,8 +18,7 @@ use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRouteRef, IdentityMatch,
-    InboundHttpRoute, InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol,
-    ServerRef,
+    InboundHttpRoute, InboundServer, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
@@ -1048,33 +1047,7 @@ impl Pod {
             }
         }
 
-        let mut authorizations = HashMap::default();
-        if let DefaultPolicy::Allow {
-            authenticated_only,
-            cluster_only,
-        } = policy
-        {
-            let authentication = if authenticated_only {
-                ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Suffix(vec![])])
-            } else {
-                ClientAuthentication::Unauthenticated
-            };
-            let networks = if cluster_only {
-                config.networks.iter().copied().map(Into::into).collect()
-            } else {
-                vec![
-                    "0.0.0.0/0".parse::<IpNet>().unwrap().into(),
-                    "::/0".parse::<IpNet>().unwrap().into(),
-                ]
-            };
-            authorizations.insert(
-                AuthorizationRef::Default(policy.as_str()),
-                ClientAuthorization {
-                    authentication,
-                    networks,
-                },
-            );
-        };
+        let authorizations = policy.default_authzs(config);
 
         InboundServer {
             reference: ServerRef::Default(policy.as_str()),
@@ -1291,7 +1264,7 @@ impl PolicyIndex {
         authentications: &AuthenticationNsIndex,
         pod: &pod::Settings,
     ) -> HashMap<HttpRouteRef, InboundHttpRoute> {
-        let routes = self
+        let mut routes = self
             .http_routes
             .iter()
             .filter(|(_, route)| route.selects_server(server_name))
@@ -1306,7 +1279,17 @@ impl PolicyIndex {
         }
 
         let _ = pod;
-        todo!("Provide a default route that uses the pod's default policy.")
+        let default_policy = pod
+            .default_policy
+            .unwrap_or(self.cluster_info.default_policy);
+        let route = InboundHttpRoute {
+            hostnames: Vec::new(),
+            rules: Vec::new(),
+            authorizations: default_policy.default_authzs(&self.cluster_info),
+            creation_timestamp: std::time::SystemTime::UNIX_EPOCH.into(),
+        };
+        routes.insert(HttpRouteRef::Default(default_policy.as_str()), route);
+        routes
     }
 
     fn policy_client_authz(
