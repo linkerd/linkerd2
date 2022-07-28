@@ -75,14 +75,17 @@ RUN apt update && apt upgrade -y --autoremove \
         libssl-dev \
         pkg-config \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
-COPY --from=cargo-action-fmt /usr/local/bin/cargo-action-fmt /usr/local/cargo/bin/cargo-action-fmt
-COPY --from=cargo-deny /usr/local/bin/cargo-deny /usr/local/cargo/bin/cargo-deny
-COPY --from=cargo-nextest /usr/local/bin/cargo-nextest /usr/local/cargo/bin/cargo-nextest
-COPY --from=cargo-tarpaulin /usr/local/bin/cargo-tarpaulin /usr/local/cargo/bin/cargo-tarpaulin
-COPY --from=just /usr/local/bin/just /usr/local/bin/just
-COPY --from=yq /usr/local/bin/yq /usr/local/bin/yq
+COPY --from=cargo-action-fmt /usr/local/bin/cargo-action-fmt /usr/local/cargo/bin/
+COPY --from=cargo-deny /usr/local/bin/cargo-deny /usr/local/cargo/bin/
+COPY --from=cargo-nextest /usr/local/bin/cargo-nextest /usr/local/cargo/bin/
+COPY --from=cargo-tarpaulin /usr/local/bin/cargo-tarpaulin /usr/local/cargo/bin/
+COPY --from=just /usr/local/bin/just /usr/local/bin/
+COPY --from=protoc /usr/local/bin/protoc /usr/local/bin/
+COPY --from=yq /usr/local/bin/yq /usr/local/bin/
 COPY bin/scurl /usr/local/bin/scurl
 ENV USER=root
+ENV PROTOC_NO_VENDOR=1
+ENV PROTOC=/usr/local/bin/protoc
 
 ##
 ## Go image
