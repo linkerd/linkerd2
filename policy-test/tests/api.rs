@@ -540,6 +540,40 @@ async fn http_routes_ordered_by_creation() {
     .await
 }
 
+#[tokio::test(flavor = "current_thread")]
+async fn default_http_routes() {
+    with_temp_ns(|client, ns| async move {
+        // Create a pod that does nothing. It's injected with a proxy, so we can
+        // attach policies to its admin server.
+        let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
+
+        let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+        assert_is_default_all_unauthenticated!(config);
+        assert_protocol_detect!(config);
+
+        let routes = http1_routes(&config);
+        assert_eq!(routes.len(), 1);
+        let route_authzs = routes[0].authorizations;
+        assert_eq!(route_authzs.len(), 1);
+        let authz = route_authzs[0];
+
+        assert_is_default_all_unauthenticated!(authz);
+        assert!(matches!(
+            authz.authentication,
+            Some(grpc::inbound::Authn {
+                permit: Some(grpc::inbound::authn::Permit::Unauthenticated(_))
+            })
+        ))
+    })
+    .await
+}
+
 /// Returns an `HttpRoute` resource in the provdied namespace and with the
 /// provided name, which attaches to the `linkerd-admin` `Server` resource and
 /// matches `GET` requests with the path `/metrics`.
