@@ -19,7 +19,7 @@ use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     http_route::{HttpRouteMatch, InboundHttpRouteRule, Method, PathMatch},
     AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundHttpRoute,
-    InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
+    InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, RouteRef, ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
@@ -1104,7 +1104,7 @@ impl Pod {
     fn http_probe_routes<'p>(
         paths: impl Iterator<Item = &'p str>,
         networks: &[IpNet],
-    ) -> HashMap<String, InboundHttpRoute> {
+    ) -> HashMap<RouteRef, InboundHttpRoute> {
         paths
             .map(|path| {
                 let authz = Some((
@@ -1130,7 +1130,7 @@ impl Pod {
                     creation_timestamp: std::time::SystemTime::now().into(),
                 };
 
-                (path.to_string(), route)
+                (RouteRef::Probe(path.to_string()), route)
             })
             .collect()
     }
@@ -1352,14 +1352,14 @@ impl PolicyIndex {
         &self,
         server_name: &str,
         authentications: &AuthenticationNsIndex,
-    ) -> HashMap<String, InboundHttpRoute> {
+    ) -> HashMap<RouteRef, InboundHttpRoute> {
         self.http_routes
             .iter()
             .filter(|(_, route)| route.selects_server(server_name))
             .map(|(name, route)| {
                 let mut route = route.route.clone();
                 route.authorizations = self.route_client_authzs(name, authentications);
-                (name.clone(), route)
+                (RouteRef::HttpRoute(name.to_string()), route)
             })
             .collect()
     }

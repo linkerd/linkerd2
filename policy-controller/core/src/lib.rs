@@ -31,7 +31,7 @@ pub struct InboundServer {
 
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
-    pub http_routes: HashMap<String, InboundHttpRoute>,
+    pub http_routes: HashMap<RouteRef, InboundHttpRoute>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -45,6 +45,12 @@ pub enum AuthorizationRef {
     Default(String),
     ServerAuthorization(String),
     AuthorizationPolicy(String),
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+pub enum RouteRef {
+    HttpRoute(String),
+    Probe(String),
 }
 
 /// Describes how a proxy should handle inbound connections.

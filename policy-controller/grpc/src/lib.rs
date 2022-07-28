@@ -16,7 +16,7 @@ use linkerd_policy_controller_core::{
     http_route::{InboundFilter, InboundHttpRoute, InboundHttpRouteRule},
     AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer,
     IdentityMatch, InboundServer, InboundServerStream, IpNet, NetworkMatch, ProxyProtocol,
-    ServerRef,
+    RouteRef, ServerRef,
 };
 use maplit::*;
 use std::{num::NonZeroU16, sync::Arc};
@@ -353,7 +353,7 @@ fn to_authz(
 }
 
 fn to_http_route_list<'r>(
-    routes: impl IntoIterator<Item = (&'r String, &'r InboundHttpRoute)>,
+    routes: impl IntoIterator<Item = (&'r RouteRef, &'r InboundHttpRoute)>,
     cluster_networks: &[IpNet],
 ) -> Vec<proto::HttpRoute> {
     // Per the Gateway API spec:
@@ -369,20 +369,20 @@ fn to_http_route_list<'r>(
     // comparison, because all these routes will exist in the same
     // namespace.
     let mut route_list = routes.into_iter().collect::<Vec<_>>();
-    route_list.sort_by(|(a_name, a), (b_name, b)| {
+    route_list.sort_by(|(a_ref, a), (b_ref, b)| {
         a.creation_timestamp
             .cmp(&b.creation_timestamp)
-            .then_with(|| a_name.cmp(b_name))
+            .then_with(|| a_ref.cmp(b_ref))
     });
 
     route_list
         .into_iter()
-        .map(|(name, route)| to_http_route(name, route.clone(), cluster_networks))
+        .map(|(reference, route)| to_http_route(reference, route.clone(), cluster_networks))
         .collect()
 }
 
 fn to_http_route(
-    name: impl ToString,
+    reference: &RouteRef,
     InboundHttpRoute {
         hostnames,
         rules,
@@ -392,11 +392,14 @@ fn to_http_route(
     cluster_networks: &[IpNet],
 ) -> proto::HttpRoute {
     let metadata = Metadata {
-        kind: Some(metadata::Kind::Resource(api::meta::Resource {
-            group: "policy.linkerd.io".to_string(),
-            kind: "HTTPRoute".to_string(),
-            name: name.to_string(),
-        })),
+        kind: Some(match reference {
+            RouteRef::HttpRoute(name) => metadata::Kind::Resource(api::meta::Resource {
+                group: "policy.linkerd.io".to_string(),
+                kind: "HTTPRoute".to_string(),
+                name: name.to_string(),
+            }),
+            RouteRef::Probe(name) => metadata::Kind::Default(name.clone()),
+        }),
     };
 
     let hosts = hostnames

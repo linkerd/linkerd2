@@ -1,6 +1,7 @@
 use super::*;
-use linkerd_policy_controller_core::http_route::{
-    HttpRouteMatch, InboundHttpRouteRule, Method, PathMatch,
+use linkerd_policy_controller_core::{
+    http_route::{HttpRouteMatch, InboundHttpRouteRule, Method, PathMatch},
+    RouteRef,
 };
 
 const POLICY_API_GROUP: &str = "policy.linkerd.io";
@@ -50,7 +51,10 @@ fn route_attaches_to_server() {
         rx.borrow().reference,
         ServerRef::Server("srv-8080".to_string())
     );
-    assert!(rx.borrow_and_update().http_routes.contains_key("route-foo"));
+    assert!(rx
+        .borrow_and_update()
+        .http_routes
+        .contains_key(&RouteRef::HttpRoute("route-foo".to_string())));
 
     // Create authz policy.
     test.index.write().apply(mk_authorization_policy(
@@ -66,11 +70,13 @@ fn route_attaches_to_server() {
     ));
 
     assert!(rx.has_changed().unwrap());
-    assert!(rx.borrow().http_routes["route-foo"]
-        .authorizations
-        .contains_key(&AuthorizationRef::AuthorizationPolicy(
-            "authz-foo".to_string()
-        )));
+    assert!(
+        rx.borrow().http_routes[&RouteRef::HttpRoute("route-foo".to_string())]
+            .authorizations
+            .contains_key(&AuthorizationRef::AuthorizationPolicy(
+                "authz-foo".to_string()
+            ))
+    );
 }
 
 #[test]
@@ -136,13 +142,19 @@ fn routes_created_for_probes() {
     // No Server is configured for the port, so expect the probe paths to be
     // authorized.
     let update = rx.borrow_and_update();
-    let liveness = update.http_routes.get("/liveness-container-1").unwrap();
+    let liveness = update
+        .http_routes
+        .get(&RouteRef::Probe("/liveness-container-1".to_string()))
+        .unwrap();
     assert_eq!(
         liveness.rules,
         expected_rules("/liveness-container-1".to_string())
     );
     assert_eq!(liveness.authorizations, expected_authorizations);
-    let readiness = update.http_routes.get("/ready-container-1").unwrap();
+    let readiness = update
+        .http_routes
+        .get(&RouteRef::Probe("/ready-container-1".to_string()))
+        .unwrap();
     assert_eq!(
         readiness.rules,
         expected_rules("/ready-container-1".to_string())
@@ -164,13 +176,19 @@ fn routes_created_for_probes() {
     // No routes are configured for the Server, so we should still expect the
     // Pod's probe paths to be authorized.
     let update = rx.borrow_and_update();
-    let liveness = update.http_routes.get("/liveness-container-1").unwrap();
+    let liveness = update
+        .http_routes
+        .get(&RouteRef::Probe("/liveness-container-1".to_string()))
+        .unwrap();
     assert_eq!(
         liveness.rules,
         expected_rules("/liveness-container-1".to_string())
     );
     assert_eq!(liveness.authorizations, expected_authorizations);
-    let readiness = update.http_routes.get("/ready-container-1").unwrap();
+    let readiness = update
+        .http_routes
+        .get(&RouteRef::Probe("/ready-container-1".to_string()))
+        .unwrap();
     assert_eq!(
         readiness.rules,
         expected_rules("/ready-container-1".to_string())
@@ -189,11 +207,11 @@ fn routes_created_for_probes() {
     assert!(!rx
         .borrow()
         .http_routes
-        .contains_key("/liveness-container-1"));
+        .contains_key(&RouteRef::Probe("/liveness-container-1".to_string())));
     assert!(!rx
         .borrow_and_update()
         .http_routes
-        .contains_key("/ready-container-1"));
+        .contains_key(&RouteRef::Probe("/ready-container-1".to_string())));
 }
 
 fn mk_route(
