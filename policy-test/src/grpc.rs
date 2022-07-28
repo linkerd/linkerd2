@@ -12,6 +12,14 @@ use tokio::io;
 #[macro_export]
 macro_rules! assert_is_default_all_unauthenticated {
     ($config:expr) => {
+        assert_default_all_unauthenticated_labels!($config);
+        assert_eq!($config.authorizations.len(), 1);
+    };
+}
+
+#[macro_export]
+macro_rules! assert_default_all_unauthenticated_labels {
+    ($config:expr) => {
         assert_eq!(
             $config.labels,
             vec![
@@ -22,7 +30,6 @@ macro_rules! assert_is_default_all_unauthenticated {
             .into_iter()
             .collect()
         );
-        assert_eq!($config.authorizations.len(), 1);
     };
 }
 
