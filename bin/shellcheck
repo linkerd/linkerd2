@@ -2,12 +2,15 @@
 
 set -eu
 
-scversion=v0.7.1
+if command -v shellcheck >/dev/null ; then
+    exec shellcheck "$@"
+fi
+
+scversion=v0.8.0
 
 bindir=$( cd "${0%/*}" && pwd )
 targetbin=$( cd "$bindir"/.. && pwd )/target/bin
 scbin=$targetbin/.shellcheck-$scversion
-
 if [ ! -f "$scbin" ]; then
   if [ "$(uname -s)" = Darwin ]; then
     file=darwin.x86_64.tar.xz

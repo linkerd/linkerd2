@@ -2,7 +2,10 @@ use ahash::AHashMap as HashMap;
 use anyhow::{anyhow, bail, Error, Result};
 use k8s_gateway_api as api;
 use linkerd_policy_controller_core::http_route;
-use linkerd_policy_controller_k8s_api::policy::{httproute as policy, Server};
+use linkerd_policy_controller_k8s_api::{
+    self as k8s,
+    policy::{httproute as policy, Server},
+};
 use std::num::NonZeroU16;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -36,6 +39,16 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
 
     fn try_from(route: api::HttpRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
+        let creation_timestamp = route
+            .metadata
+            .creation_timestamp
+            .map(|k8s::Time(t)| t)
+            .unwrap_or_else(|| {
+                tracing::warn!("HTTPRoute resource did not have a creation timestamp!");
+                // If the resource is missing a creation timestamp, we'll use the current time so
+                // that existing resources have precedence over newly added ones.
+                std::time::SystemTime::now().into()
+            });
         let parents = InboundParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
         let hostnames = route
             .spec
@@ -65,6 +78,7 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
                 hostnames,
                 rules,
                 authorizations: HashMap::default(),
+                creation_timestamp,
             },
         })
     }
@@ -75,6 +89,16 @@ impl TryFrom<policy::HttpRoute> for InboundRouteBinding {
 
     fn try_from(route: policy::HttpRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
+        let creation_timestamp = route
+            .metadata
+            .creation_timestamp
+            .map(|k8s::Time(t)| t)
+            .unwrap_or_else(|| {
+                tracing::warn!("HTTPRoute resource did not have a creation timestamp!");
+                // If the resource is missing a creation timestamp, we'll use the current time so
+                // that existing resources have precedence over newly added ones.
+                std::time::SystemTime::now().into()
+            });
         let parents = InboundParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
         let hostnames = route
             .spec
@@ -100,6 +124,7 @@ impl TryFrom<policy::HttpRoute> for InboundRouteBinding {
                 hostnames,
                 rules,
                 authorizations: HashMap::default(),
+                creation_timestamp,
             },
         })
     }

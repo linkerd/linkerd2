@@ -15,10 +15,8 @@ jobs:
   proto-diff:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container:
-      image: golang:1.17
+    container: ghcr.io/linkerd/dev:v20-go
     steps:
-      - run: apt-get update && apt-get -y --no-install-recommends install unzip
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: bin/protoc-diff
 
