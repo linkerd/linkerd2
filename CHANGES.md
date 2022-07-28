@@ -1,5 +1,7 @@
 # Changes
 
+## edge-22.7.3
+
 This release adds a new `nft` iptables mode, used by default in proxy-init.
 When used, firewall configuration will be set-up through the `iptables-nft`
 binary; this should allow hosts that do not support `iptables-legacy` (such as
