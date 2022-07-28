@@ -26,6 +26,8 @@ import (
 type Interface interface {
 	// AuthorizationPolicies returns a AuthorizationPolicyInformer.
 	AuthorizationPolicies() AuthorizationPolicyInformer
+	// HTTPRoutes returns a HTTPRouteInformer.
+	HTTPRoutes() HTTPRouteInformer
 	// MeshTLSAuthentications returns a MeshTLSAuthenticationInformer.
 	MeshTLSAuthentications() MeshTLSAuthenticationInformer
 	// NetworkAuthentications returns a NetworkAuthenticationInformer.
@@ -46,6 +48,11 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // AuthorizationPolicies returns a AuthorizationPolicyInformer.
 func (v *version) AuthorizationPolicies() AuthorizationPolicyInformer {
 	return &authorizationPolicyInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// HTTPRoutes returns a HTTPRouteInformer.
+func (v *version) HTTPRoutes() HTTPRouteInformer {
+	return &hTTPRouteInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // MeshTLSAuthentications returns a MeshTLSAuthenticationInformer.
