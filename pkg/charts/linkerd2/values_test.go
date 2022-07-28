@@ -116,6 +116,7 @@ func TestNewValues(t *testing.T) {
 			Await:                  true,
 		},
 		ProxyInit: &ProxyInit{
+			IptablesMode:        "nft",
 			IgnoreInboundPorts:  "4567,4568",
 			IgnoreOutboundPorts: "4567,4568",
 			LogLevel:            "",
