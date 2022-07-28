@@ -76,7 +76,7 @@ policyController:
   defaultAllowPolicy: "all-unauthenticated"
 
   # -- Log level for the policy controller
-  logLevel: linkerd=info,warn
+  logLevel: info
 
   # -- policy controller resource requests & limits
   # @default -- destinationResources
@@ -157,7 +157,7 @@ proxy:
   # hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks)
   # for more info on container lifecycle hooks.
   waitBeforeExitSeconds: 0
-  #  -- If set, the application container will not start until the proxy is
+  # -- If set, the application container will not start until the proxy is
   # ready
   await: true
   requireIdentityOnInboundPorts: ""
@@ -170,9 +170,16 @@ proxy:
   # - ElasticSearch (9300) server-first
   # - Memcached (11211) clients do not issue any preamble, which breaks detection
   opaquePorts: "25,587,3306,4444,5432,6379,9300,11211"
+  # -- Grace period for graceful proxy shutdowns. If this timeout elapses before all open connections have completed, the proxy will terminate forcefully, closing any remaining connections.
+  shutdownGracePeriod: ""
 
 # proxy-init configuration
 proxyInit:
+  # -- Variant of iptables that will be used to configure routing. Currently,
+  # proxy-init can be run either in 'nft' or in 'legacy' mode. The mode will
+  # control which utility binary will be called. The host must support
+  # whichever mode will be used
+  iptablesMode: "nft"
   # -- Default set of inbound ports to skip via iptables
   # - Galera (4567,4568)
   ignoreInboundPorts: "4567,4568"
@@ -194,7 +201,7 @@ proxyInit:
     # @default -- imagePullPolicy
     pullPolicy: ""
     # -- Tag for the proxy-init container Docker image
-    version: v1.5.3
+    version: v1.6.2
   resources:
     cpu:
       # -- Maximum amount of CPU units that the proxy-init container can use

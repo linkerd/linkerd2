@@ -201,7 +201,7 @@ func chartCrds(t *testing.T) *chart.Chart {
 	if err := charts.ReadFile(static.Templates, "/", valuesFile); err != nil {
 		t.Fatal(err)
 	}
-	var defaultValues map[string]interface{}
+	defaultValues := make(map[string]interface{})
 	err := yaml.Unmarshal(valuesFile.Data, &defaultValues)
 	if err != nil {
 		t.Fatal(err)

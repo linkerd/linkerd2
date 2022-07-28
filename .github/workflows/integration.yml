@@ -1,0 +1,316 @@
+name: Integration tests
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/integration.yml
+      - .proxy-version
+      - '**/*.go'
+      - '**/Dockerfile*'
+      - Cargo.lock
+      - charts/**
+      - go.sum
+      - multicluser/**
+      - policy-controller/**
+      - policy-test/**
+      - viz/**
+      - '!.devcontainer/**'
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  DOCKER_REGISTRY: ghcr.io/linkerd
+  GH_ANNOTATION: true
+  K3D_VERSION: v5.4.4
+  RUST_BACKTRACE: short
+  RUSTUP_MAX_RETRIES: 10
+  YQ_VERSION: v4.25.1
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-20.04
+    permissions:
+      actions: write
+    steps:
+      - uses: styfle/cancel-workflow-action@bb6001c4ea612bf59c3abfc4756fbceee4f870c7
+        with:
+          all_but_latest: true
+          access_token: ${{ github.token }}
+
+  tag:
+    needs: [cleanup]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - run: echo "::set-output name=tag::$(CI_FORCE_CLEAN=1 bin/root-tag)"
+        id: tag
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+
+  build-cli:
+    needs: [tag]
+    runs-on: ubuntu-20.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: ./.github/actions/docker-build
+        id: build
+        with:
+          docker-registry: ${{ env.DOCKER_REGISTRY }}
+          docker-target: linux-amd64
+          component: cli-bin
+          tag: ${{ needs.tag.outputs.tag }}
+      - name: Extract CLI binary
+        run: |
+          mkdir -p /home/runner/archives
+          id=$(docker create '${{ steps.build.outputs.image }}')
+          docker cp "$id:/out/linkerd-linux-amd64" /home/runner/archives/linkerd
+          v=$(/home/runner/archives/linkerd version --short --client)
+          [[ "$v" == '${{ needs.tag.outputs.tag }}' ]] || exit 1
+      - uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
+        with:
+          name: image-archives
+          path: /home/runner/archives
+
+  ##
+  ## Core: Test the core control plane
+  ##
+  ## TODO(ver) CNI configurations should be tested separately.
+  ##
+
+  build-core:
+    needs: [tag]
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        component:
+          - cni-plugin
+          - controller
+          - policy-controller
+          - proxy
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: ./.github/actions/docker-build
+        id: build
+        with:
+          docker-registry: ${{ env.DOCKER_REGISTRY }}
+          docker-target: linux-amd64
+          component: ${{ matrix.component }}
+          tag: ${{ needs.tag.outputs.tag }}
+      - name: Run docker save
+        run: |
+          mkdir -p /home/runner/archives
+          docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
+      - uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
+        with:
+          name: image-archives
+          path: /home/runner/archives
+
+  test-core:
+    needs: [tag, build-cli, build-core]
+    strategy:
+      matrix:
+        test:
+          - cni-calico-deep
+          - deep
+    continue-on-error: true
+    runs-on: ubuntu-20.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
+        with:
+          go-version: '1.17'
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
+        with:
+          name: image-archives
+          path: image-archives
+      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
+      - run: find image-archives -ls
+      - run: bin/tests --images archive --cleanup-docker --name ${{ matrix.test }} "$HOME/linkerd"
+        env:
+          LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+          TAG: ${{ needs.tag.outputs.tag }}
+
+  ##
+  ## Policy: Only run policy tests when the policy controller or proxy changes
+  ##
+
+  changed-policy:
+    needs: [cleanup]
+    runs-on: ubuntu-20.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: tj-actions/changed-files@6c44eb8294bb9c93d6118427f4ff8404b695e1d7
+        id: changed
+        with:
+          files: |
+            .github/workflows/integration.yml
+            .proxy-version
+            Cargo.lock
+            charts/linkerd-control-plane/**
+            charts/linkerd-crds/templates/policy/**
+            policy-controller/**
+            policy-test/**
+    outputs:
+      modified: ${{ steps.changed.outputs.any_modified }}
+
+  test-policy:
+    needs: [tag, changed-policy, build-cli, build-core]
+    if: needs.changed-policy.outputs.modified == 'true'
+    runs-on: ubuntu-20.04
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        k8s:
+          - v1.21
+          - v1.24
+    steps:
+      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
+      - uses: olix0r/cargo-action-fmt@ed3530f0739c46ffa0dd983f8746b8c4a3d0a01c
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
+        with:
+          name: image-archives
+          path: image-archives
+      - run: find image-archives -ls
+      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
+      - name: Setup deps
+        run: |
+          rm -rf "$HOME/.cargo"
+          bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(cat rust-toolchain)"
+          # shellcheck disable=SC1090
+          source ~/.cargo/env
+          echo "PATH=$PATH" >> "$GITHUB_ENV"
+          bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
+          bin/scurl -vo /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" && chmod +x /usr/local/bin/yq
+      - run: just policy-test-build
+      - run: just k3d-k8s='${{ matrix.k8s }}' k3d-create
+      - run: docker load <image-archives/controller.tar
+      - run: docker load <image-archives/policy-controller.tar
+      - run: docker load <image-archives/proxy.tar
+      - run: docker image ls
+      - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' linkerd-exec="$HOME/linkerd" linkerd-install
+      - name: Load images
+        run: |
+          # Image loading is flakey in CI, so retry!
+          for _ in {1..6} ; do
+            if just linkerd-tag='${{ needs.tag.outputs.tag }}' policy-test-deps-load ; then exit 0 ; fi
+            sleep 10
+            echo retrying...
+          done
+          exit 1
+      - run: just policy-test-run --jobs=1
+
+  ##
+  ## Ext: Run tests that require non-core components.
+  ##
+
+  build-ext:
+    needs: [tag]
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        component:
+          - jaeger-webhook
+          - metrics-api
+          - tap
+          - web
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: ./.github/actions/docker-build
+        id: build
+        with:
+          docker-registry: ${{ env.DOCKER_REGISTRY }}
+          docker-target: linux-amd64
+          component: ${{ matrix.component }}
+          tag: ${{ needs.tag.outputs.tag }}
+      - name: Run docker save
+        run: |
+          mkdir -p /home/runner/archives
+          docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
+      - uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
+        with:
+          name: image-archives
+          path: /home/runner/archives
+
+  # These tests exercise core functionality, but need the viz extension.
+  test-ext:
+    needs: [tag, build-cli, build-core, build-ext]
+    strategy:
+      matrix:
+        integration_test:
+          - cluster-domain
+          - default-policy-deny
+          - external
+          # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
+          #- helm-upgrade
+          - multicluster
+          - uninstall
+          - upgrade-edge
+          - upgrade-stable
+    continue-on-error: true
+    runs-on: ubuntu-20.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
+        with:
+          go-version: '1.17'
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
+        with:
+          name: image-archives
+          path: image-archives
+      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
+      - run: ls -l image-archives/linkerd
+      - run: bin/tests --images archive --cleanup-docker --name '${{ matrix.integration_test }}' "$HOME/linkerd"
+        env:
+          LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+
+  ##
+  ## Viz: Run the (flakey) `viz` suite only when the `viz` extension is updated.
+  ##
+
+  changed-viz:
+    needs: [cleanup]
+    runs-on: ubuntu-20.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: tj-actions/changed-files@6c44eb8294bb9c93d6118427f4ff8404b695e1d7
+        id: changed
+        with:
+          files: |
+            .github/workflows/integration.yml
+            .proxy-version
+            viz/**
+    outputs:
+      modified: ${{ steps.changed.outputs.any_modified }}
+
+  test-viz:
+    needs: [tag, changed-viz, build-cli, build-core, build-ext]
+    if: needs.changed-viz.outputs.modified == 'true'
+    continue-on-error: true
+    runs-on: ubuntu-20.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
+        with:
+          go-version: '1.17'
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
+        with:
+          name: image-archives
+          path: image-archives
+      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
+      - run: ls -l image-archives/linkerd
+      - run: bin/tests --images archive --cleanup-docker --name viz "$HOME/linkerd"
+        env:
+          LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+

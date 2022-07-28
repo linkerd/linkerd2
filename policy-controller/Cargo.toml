@@ -13,7 +13,11 @@ rustls-tls = ["kube/rustls-tls"]
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
-clap = { version = "3", default-features = false, features = ["derive", "env", "std"] }
+clap = { version = "3", default-features = false, features = [
+    "derive",
+    "env",
+    "std",
+] }
 drain = "0.1"
 futures = { version = "0.3", default-features = false }
 k8s-gateway-api = "0.6"
@@ -34,30 +38,16 @@ tracing = "0.1"
 [dependencies.kube]
 version = "0.74"
 default-features = false
-features = [
-    "admission",
-    "derive",
-]
+features = ["admission", "derive"]
 
 [dependencies.kubert]
 version = "0.9"
 default-features = false
-features = [
-    "clap",
-    "index",
-    "runtime",
-    "server",
-]
+features = ["clap", "index", "runtime", "server"]
 
 [dependencies.tokio]
 version = "1"
-features = [
-    "macros",
-    "parking_lot",
-    "rt",
-    "rt-multi-thread",
-    "signal",
-]
+features = ["macros", "parking_lot", "rt", "rt-multi-thread", "signal"]
 
 [target.x86_64-unknown-linux-gnu.dependencies]
 jemallocator = "0.5"

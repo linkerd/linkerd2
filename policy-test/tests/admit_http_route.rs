@@ -1,9 +1,4 @@
-use k8s_gateway_api::{
-    BackendObjectReference, BackendRef, CommonRouteSpec, HttpBackendRef, HttpPathMatch,
-    HttpRequestMirrorFilter, HttpRoute, HttpRouteFilter, HttpRouteMatch, HttpRouteRule,
-    HttpRouteSpec, ParentReference,
-};
-use linkerd_policy_controller_k8s_api::{self as api};
+use linkerd_policy_controller_k8s_api::{self as api, policy::httproute::*};
 use linkerd_policy_test::admission;
 
 #[tokio::test(flavor = "current_thread")]
@@ -16,32 +11,67 @@ async fn accepts_valid() {
         },
         spec: HttpRouteSpec {
             inner: CommonRouteSpec {
-                parent_refs: Some(vec![ParentReference {
-                    group: Some("policy.linkerd.io".to_string()),
-                    kind: Some("Server".to_string()),
-                    namespace: Some(ns),
-                    name: "my-server".to_string(),
-                    section_name: None,
-                    port: None,
-                }]),
+                parent_refs: Some(vec![server_parent_ref(ns)]),
+            },
+            hostnames: None,
+            rules: Some(rules()),
+        },
+        status: None,
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn rejects_non_server_parent_ref() {
+    admission::rejects(|ns| HttpRoute {
+        metadata: meta(&ns),
+        spec: HttpRouteSpec {
+            inner: CommonRouteSpec {
+                parent_refs: Some(vec![non_server_parent_ref(ns)]),
+            },
+            hostnames: None,
+            rules: Some(rules()),
+        },
+        status: None,
+    })
+    .await;
+}
+
+/// Tests that an `HTTPRoute` is rejected if it contains *any* parent refs that
+/// target non-`Server` resources, even if it also targets a `Server` resource.
+#[tokio::test(flavor = "current_thread")]
+async fn rejects_mixed_parent_ref() {
+    admission::rejects(|ns| HttpRoute {
+        metadata: meta(&ns),
+        spec: HttpRouteSpec {
+            inner: CommonRouteSpec {
+                parent_refs: Some(vec![server_parent_ref(&ns), non_server_parent_ref(ns)]),
+            },
+            hostnames: None,
+            rules: Some(rules()),
+        },
+        status: None,
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn rejects_relative_path_match() {
+    admission::rejects(|ns| HttpRoute {
+        metadata: meta(&ns),
+        spec: HttpRouteSpec {
+            inner: CommonRouteSpec {
+                parent_refs: Some(vec![server_parent_ref(ns)]),
             },
             hostnames: None,
             rules: Some(vec![HttpRouteRule {
                 matches: Some(vec![HttpRouteMatch {
                     path: Some(HttpPathMatch::Exact {
-                        value: "/foo".to_string(),
+                        value: "foo/bar".to_string(),
                     }),
                     ..HttpRouteMatch::default()
                 }]),
                 filters: None,
-                backend_refs: Some(vec![HttpBackendRef {
-                    backend_ref: Some(BackendRef {
-                        weight: None,
-                        name: "my-svc".to_string(),
-                        port: 8888,
-                    }),
-                    filters: None,
-                }]),
             }]),
         },
         status: None,
@@ -50,26 +80,12 @@ async fn accepts_valid() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn skips_validation_for_external_parent_ref() {
-    // We test that HttpRoutes which do not have a Server as a parent_ref are
-    // not validated by creating an HttpRoute with an unsupported filter
-    // (RequestMirror) and ensuring that it is accepted anyway.
-    admission::accepts(|ns| HttpRoute {
-        metadata: api::ObjectMeta {
-            namespace: Some(ns.clone()),
-            name: Some("test".to_string()),
-            ..Default::default()
-        },
+async fn rejects_relative_redirect_path() {
+    admission::rejects(|ns| HttpRoute {
+        metadata: meta(&ns),
         spec: HttpRouteSpec {
             inner: CommonRouteSpec {
-                parent_refs: Some(vec![ParentReference {
-                    group: Some("foo.bar.bas".to_string()),
-                    kind: Some("Gateway".to_string()),
-                    namespace: Some(ns),
-                    name: "my-gateway".to_string(),
-                    section_name: None,
-                    port: None,
-                }]),
+                parent_refs: Some(vec![server_parent_ref(ns)]),
             },
             hostnames: None,
             rules: Some(vec![HttpRouteRule {
@@ -79,18 +95,15 @@ async fn skips_validation_for_external_parent_ref() {
                     }),
                     ..HttpRouteMatch::default()
                 }]),
-                filters: Some(vec![HttpRouteFilter::RequestMirror {
-                    request_mirror: HttpRequestMirrorFilter {
-                        backend_ref: BackendObjectReference {
-                            group: None,
-                            kind: Some("Service".to_string()),
-                            name: "my-backend".to_string(),
-                            namespace: None,
-                            port: Some(8888),
-                        },
+                filters: Some(vec![HttpRouteFilter::RequestRedirect {
+                    request_redirect: HttpRequestRedirectFilter {
+                        scheme: None,
+                        hostname: None,
+                        path: Some(HttpPathModifier::ReplaceFullPath("foo/bar".to_string())),
+                        port: None,
+                        status_code: None,
                     },
                 }]),
-                backend_refs: None,
             }]),
         },
         status: None,
@@ -98,101 +111,44 @@ async fn skips_validation_for_external_parent_ref() {
     .await;
 }
 
-#[tokio::test(flavor = "current_thread")]
-async fn rejects_unsupported_filter() {
-    admission::rejects(|ns| HttpRoute {
-        metadata: api::ObjectMeta {
-            namespace: Some(ns.clone()),
-            name: Some("test".to_string()),
-            ..Default::default()
-        },
-        spec: HttpRouteSpec {
-            inner: CommonRouteSpec {
-                parent_refs: Some(vec![ParentReference {
-                    group: Some("policy.linkerd.io".to_string()),
-                    kind: Some("Server".to_string()),
-                    namespace: Some(ns),
-                    name: "my-server".to_string(),
-                    section_name: None,
-                    port: None,
-                }]),
-            },
-            hostnames: None,
-            rules: Some(vec![HttpRouteRule {
-                matches: Some(vec![HttpRouteMatch {
-                    path: Some(HttpPathMatch::Exact {
-                        value: "/foo".to_string(),
-                    }),
-                    ..HttpRouteMatch::default()
-                }]),
-                filters: Some(vec![HttpRouteFilter::RequestMirror {
-                    request_mirror: HttpRequestMirrorFilter {
-                        backend_ref: BackendObjectReference {
-                            group: None,
-                            kind: Some("Service".to_string()),
-                            name: "my-backend".to_string(),
-                            namespace: None,
-                            port: Some(8888),
-                        },
-                    },
-                }]),
-                backend_refs: None,
-            }]),
-        },
-        status: None,
-    })
-    .await;
+fn server_parent_ref(ns: impl ToString) -> ParentReference {
+    ParentReference {
+        group: Some("policy.linkerd.io".to_string()),
+        kind: Some("Server".to_string()),
+        namespace: Some(ns.to_string()),
+        name: "my-server".to_string(),
+        section_name: None,
+        port: None,
+    }
 }
 
-#[tokio::test(flavor = "current_thread")]
-async fn rejects_unsupported_backend_filter() {
-    admission::rejects(|ns| HttpRoute {
-        metadata: api::ObjectMeta {
-            namespace: Some(ns.clone()),
-            name: Some("test".to_string()),
-            ..Default::default()
-        },
-        spec: HttpRouteSpec {
-            inner: CommonRouteSpec {
-                parent_refs: Some(vec![ParentReference {
-                    group: Some("policy.linkerd.io".to_string()),
-                    kind: Some("Server".to_string()),
-                    namespace: Some(ns),
-                    name: "my-server".to_string(),
-                    section_name: None,
-                    port: None,
-                }]),
-            },
-            hostnames: None,
-            rules: Some(vec![HttpRouteRule {
-                matches: Some(vec![HttpRouteMatch {
-                    path: Some(HttpPathMatch::Exact {
-                        value: "/foo".to_string(),
-                    }),
-                    ..HttpRouteMatch::default()
-                }]),
-                filters: None,
-                backend_refs: Some(vec![HttpBackendRef {
-                    backend_ref: Some(BackendRef {
-                        weight: None,
-                        name: "my-backend".to_string(),
-                        port: 8888,
-                    }),
-                    filters: Some(vec![HttpRouteFilter::RequestMirror {
-                        request_mirror: HttpRequestMirrorFilter {
-                            backend_ref: BackendObjectReference {
-                                group: None,
-                                kind: Some("Service".to_string()),
-                                name: "my-backend".to_string(),
-                                namespace: None,
-                                port: Some(8888),
-                            },
-                        },
-                    }]),
-                }]),
-            }]),
-        },
-        status: None,
-    })
-    .await;
+fn non_server_parent_ref(ns: impl ToString) -> ParentReference {
+    ParentReference {
+        group: Some("foo.bar.bas".to_string()),
+        kind: Some("Gateway".to_string()),
+        namespace: Some(ns.to_string()),
+        name: "my-gateway".to_string(),
+        section_name: None,
+        port: None,
+    }
+}
+
+fn meta(ns: impl ToString) -> api::ObjectMeta {
+    api::ObjectMeta {
+        namespace: Some(ns.to_string()),
+        name: Some("test".to_string()),
+        ..Default::default()
+    }
+}
+
+fn rules() -> Vec<HttpRouteRule> {
+    vec![HttpRouteRule {
+        matches: Some(vec![HttpRouteMatch {
+            path: Some(HttpPathMatch::Exact {
+                value: "/foo".to_string(),
+            }),
+            ..HttpRouteMatch::default()
+        }]),
+        filters: None,
+    }]
 }

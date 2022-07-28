@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 use anyhow::Result;
+use std::num::NonZeroU16;
 
 mod admission;
 
@@ -11,7 +12,9 @@ pub use linkerd_policy_controller_core::{
 };
 pub use linkerd_policy_controller_grpc as grpc;
 pub use linkerd_policy_controller_k8s_api as k8s;
-pub use linkerd_policy_controller_k8s_index::{ClusterInfo, DefaultPolicy, Index, SharedIndex};
+pub use linkerd_policy_controller_k8s_index::{
+    self as index, ClusterInfo, DefaultPolicy, Index, SharedIndex,
+};
 
 #[derive(Clone, Debug)]
 pub struct IndexDiscover(SharedIndex);
@@ -23,10 +26,10 @@ impl IndexDiscover {
 }
 
 #[async_trait::async_trait]
-impl DiscoverInboundServer<(String, String, u16)> for IndexDiscover {
+impl DiscoverInboundServer<(String, String, NonZeroU16)> for IndexDiscover {
     async fn get_inbound_server(
         &self,
-        (namespace, pod, port): (String, String, u16),
+        (namespace, pod, port): (String, String, NonZeroU16),
     ) -> Result<Option<InboundServer>> {
         let rx = match self.0.write().pod_server_rx(&namespace, &pod, port) {
             Ok(rx) => rx,
@@ -38,7 +41,7 @@ impl DiscoverInboundServer<(String, String, u16)> for IndexDiscover {
 
     async fn watch_inbound_server(
         &self,
-        (namespace, pod, port): (String, String, u16),
+        (namespace, pod, port): (String, String, NonZeroU16),
     ) -> Result<Option<InboundServerStream>> {
         match self.0.write().pod_server_rx(&namespace, &pod, port) {
             Ok(rx) => Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx)))),

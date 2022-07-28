@@ -70,6 +70,7 @@ var (
 		k8s.ProxyDefaultInboundPolicyAnnotation,
 		k8s.ProxySkipSubnetsAnnotation,
 		k8s.ProxyAccessLogAnnotation,
+		k8s.ProxyShutdownGracePeriodAnnotation,
 	}
 	// ProxyAlphaConfigAnnotations is the list of all alpha configuration
 	// (config.alpha prefix) that can be applied to a pod or namespace.
@@ -922,6 +923,15 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 			log.Warnf("unrecognized proxy-inbound-connect-timeout duration value found on pod annotation: %s", err.Error())
 		} else {
 			values.Proxy.InboundConnectTimeout = fmt.Sprintf("%dms", int(duration.Seconds()*1000))
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyShutdownGracePeriodAnnotation]; ok {
+		duration, err := time.ParseDuration(override)
+		if err != nil {
+			log.Warnf("unrecognized proxy-shutdown-grace-period duration value found on pod annotation: %s", err.Error())
+		} else {
+			values.Proxy.ShutdownGracePeriod = fmt.Sprintf("%dms", int(duration.Seconds()*1000))
 		}
 	}
 

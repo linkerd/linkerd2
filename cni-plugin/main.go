@@ -202,6 +202,8 @@ func cmdAdd(args *skel.CmdArgs) error {
 				SimulateOnly:          conf.ProxyInit.Simulate,
 				NetNs:                 args.Netns,
 				UseWaitFlag:           conf.ProxyInit.UseWaitFlag,
+				FirewallBinPath:       "iptables",
+				FirewallSaveBinPath:   "iptables-save",
 			}
 
 			// Check if there are any overridden ports to be skipped

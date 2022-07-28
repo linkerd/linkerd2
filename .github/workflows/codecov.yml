@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-20.04
     container:
-      image: golang:1.17
+      image: golang:1.18
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: go install gotest.tools/gotestsum@v0.4.2
@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     container:
-      image: docker://rust:1.60.0
+      image: docker://rust:1.62.1
       options: --security-opt seccomp=unconfined
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b

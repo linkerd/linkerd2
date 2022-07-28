@@ -1,7 +1,8 @@
 use crate::DefaultPolicy;
-use ahash::AHashMap as HashMap;
+use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{bail, Context, Result};
 use linkerd_policy_controller_k8s_api as k8s;
+use std::num::NonZeroU16;
 
 /// Holds pod metadata/config that can change.
 #[derive(Debug, PartialEq)]
@@ -25,45 +26,95 @@ pub(crate) struct Settings {
 ///
 /// Because ports are `u16` values, this type avoids the overhead of actually
 /// hashing ports.
-pub(crate) type PortSet = std::collections::HashSet<u16, std::hash::BuildHasherDefault<PortHasher>>;
+pub(crate) type PortSet =
+    std::collections::HashSet<NonZeroU16, std::hash::BuildHasherDefault<PortHasher>>;
 
 /// A `HashMap` specialized for ports.
 ///
-/// Because ports are `u16` values, this type avoids the overhead of actually
-/// hashing ports.
+/// Because ports are `NonZeroU16` values, this type avoids the overhead of
+/// actually hashing ports.
 pub(crate) type PortMap<V> =
-    std::collections::HashMap<u16, V, std::hash::BuildHasherDefault<PortHasher>>;
+    std::collections::HashMap<NonZeroU16, V, std::hash::BuildHasherDefault<PortHasher>>;
 
 /// A hasher for ports.
 ///
-/// Because ports are single `u16` values, we don't have to hash them; we can just use
+/// Because ports are single `NonZeroU16` values, we don't have to hash them; we can just use
 /// the integer values as hashes directly.
 ///
 /// Borrowed from the proxy.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub(crate) struct PortHasher(u16);
 
-/// Gets the set of named TCP ports from a pod spec.
-pub(crate) fn tcp_port_names(spec: Option<k8s::PodSpec>) -> HashMap<String, PortSet> {
-    let mut port_names = HashMap::<String, PortSet>::default();
-    if let Some(spec) = spec {
-        for container in spec.containers.into_iter() {
-            if let Some(ports) = container.ports {
-                for port in ports.into_iter() {
-                    if let None | Some("TCP") = port.protocol.as_deref() {
-                        if let Some(name) = port.name {
-                            port_names
-                                .entry(name)
-                                .or_default()
-                                .insert(port.container_port as u16);
-                        }
-                    }
-                }
+/// Gets the set of named ports with `protocol: TCP` from a pod spec.
+pub(crate) fn tcp_ports_by_name(spec: &k8s::PodSpec) -> HashMap<String, PortSet> {
+    let mut ports = HashMap::<String, PortSet>::default();
+    for (port, name) in spec
+        .containers
+        .iter()
+        .flat_map(|c| c.ports.iter().flatten())
+        .filter_map(named_tcp_port)
+    {
+        ports.entry(name.to_string()).or_default().insert(port);
+    }
+    ports
+}
+
+/// Gets the container probe ports for a Pod.
+///
+/// The result is a mapping for each probe port exposed by a container in the
+/// Pod and the paths for which probes are expected.
+pub(crate) fn pod_http_probes(pod: &k8s::PodSpec) -> PortMap<HashSet<String>> {
+    let mut probes = PortMap::<HashSet<String>>::default();
+    for (port, path) in pod.containers.iter().flat_map(container_http_probe_paths) {
+        probes.entry(port).or_default().insert(path);
+    }
+    probes
+}
+
+fn container_http_probe_paths(
+    container: &k8s::Container,
+) -> impl Iterator<Item = (NonZeroU16, String)> + '_ {
+    fn find_by_name(name: &str, ports: &[k8s::ContainerPort]) -> Option<NonZeroU16> {
+        for (p, n) in ports.iter().filter_map(named_tcp_port) {
+            if n.eq_ignore_ascii_case(name) {
+                return Some(p);
             }
         }
+        None
     }
-    port_names
+
+    fn get_port(port: &k8s::IntOrString, container: &k8s::Container) -> Option<NonZeroU16> {
+        match port {
+            k8s::IntOrString::Int(p) => u16::try_from(*p).ok()?.try_into().ok(),
+            k8s::IntOrString::String(n) => find_by_name(n, &*container.ports.as_ref()?),
+        }
+    }
+
+    (container.liveness_probe.iter())
+        .chain(container.readiness_probe.iter())
+        .chain(container.startup_probe.iter())
+        .filter_map(|p| {
+            let probe = p.http_get.as_ref()?;
+            let port = get_port(&probe.port, container)?;
+            let path = probe.path.clone().unwrap_or_else(|| "/".to_string());
+            Some((port, path))
+        })
 }
+
+fn named_tcp_port(port: &k8s::ContainerPort) -> Option<(NonZeroU16, &str)> {
+    if let Some(ref proto) = port.protocol {
+        if !proto.eq_ignore_ascii_case("TCP") {
+            return None;
+        }
+    }
+    let p = u16::try_from(port.container_port)
+        .and_then(NonZeroU16::try_from)
+        .ok()?;
+    let n = port.name.as_deref()?;
+    Some((p, n))
+}
+
+// === impl Meta ===
 
 impl Meta {
     pub(crate) fn from_metadata(meta: k8s::ObjectMeta) -> Self {
@@ -75,6 +126,8 @@ impl Meta {
         }
     }
 }
+
+// === impl Settings ===
 
 impl Settings {
     /// Reads pod settings from the pod metadata including:
@@ -145,22 +198,18 @@ fn parse_portset(s: &str) -> Result<PortSet> {
             None => {
                 if !spec.trim().is_empty() {
                     let port = spec.trim().parse().context("parsing port")?;
-                    if port == 0 {
-                        bail!("port must not be 0")
-                    }
                     ports.insert(port);
                 }
             }
             Some((floor, ceil)) => {
-                let floor = floor.trim().parse::<u16>().context("parsing port")?;
-                let ceil = ceil.trim().parse::<u16>().context("parsing port")?;
-                if floor == 0 {
-                    bail!("port must not be 0")
-                }
+                let floor = floor.trim().parse::<NonZeroU16>().context("parsing port")?;
+                let ceil = ceil.trim().parse::<NonZeroU16>().context("parsing port")?;
                 if floor > ceil {
                     bail!("Port range must be increasing");
                 }
-                ports.extend(floor..=ceil);
+                ports.extend(
+                    (u16::from(floor)..=u16::from(ceil)).map(|p| NonZeroU16::try_from(p).unwrap()),
+                );
             }
         }
     }
@@ -188,29 +237,173 @@ impl std::hash::Hasher for PortHasher {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use linkerd_policy_controller_k8s_api as k8s;
+
+    macro_rules! ports {
+        ($($x:expr),+ $(,)?) => (
+            vec![$($x),+]
+                .into_iter()
+                .map(NonZeroU16::try_from)
+                .collect::<Result<PortSet, _>>()
+                .unwrap()
+        );
+    }
+
     #[test]
     fn parse_portset() {
         use super::parse_portset;
 
         assert!(parse_portset("").unwrap().is_empty(), "empty");
         assert!(parse_portset("0").is_err(), "0");
-        assert_eq!(
-            parse_portset("1").unwrap(),
-            vec![1].into_iter().collect(),
-            "1"
-        );
-        assert_eq!(
-            parse_portset("1-2").unwrap(),
-            vec![1, 2].into_iter().collect(),
-            "1-2"
-        );
-        assert_eq!(
-            parse_portset("4,1-2").unwrap(),
-            vec![1, 2, 4].into_iter().collect(),
-            "4,1-2"
-        );
+        assert_eq!(parse_portset("1").unwrap(), ports![1], "1");
+        assert_eq!(parse_portset("1-3").unwrap(), ports![1, 2, 3], "1-2");
+        assert_eq!(parse_portset("4,1-2").unwrap(), ports![1, 2, 4], "4,1-2");
         assert!(parse_portset("2-1").is_err(), "2-1");
         assert!(parse_portset("2-").is_err(), "2-");
         assert!(parse_portset("65537").is_err(), "65537");
+    }
+
+    #[test]
+    fn probe_multiple_paths() {
+        let probes = pod_http_probes(&k8s::PodSpec {
+            containers: vec![
+                k8s::Container {
+                    liveness_probe: Some(k8s::Probe {
+                        http_get: Some(k8s::HTTPGetAction {
+                            path: Some("/liveness-container-1".to_string()),
+                            port: k8s::IntOrString::Int(5432),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }),
+                    readiness_probe: Some(k8s::Probe {
+                        http_get: Some(k8s::HTTPGetAction {
+                            path: Some("/ready-container-1".to_string()),
+                            port: k8s::IntOrString::Int(5432),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                k8s::Container {
+                    ports: Some(vec![k8s::ContainerPort {
+                        name: Some("named-1".to_string()),
+                        container_port: 6543,
+                        ..Default::default()
+                    }]),
+                    liveness_probe: Some(k8s::Probe {
+                        http_get: Some(k8s::HTTPGetAction {
+                            path: Some("/liveness-container-2".to_string()),
+                            port: k8s::IntOrString::String("named-1".to_string()),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }),
+                    readiness_probe: Some(k8s::Probe {
+                        http_get: Some(k8s::HTTPGetAction {
+                            path: Some("/ready-container-2".to_string()),
+                            port: k8s::IntOrString::Int(6543),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        });
+
+        let port_5432 = u16::try_from(5432).and_then(NonZeroU16::try_from).unwrap();
+        let mut expected_5432 = HashSet::new();
+        expected_5432.insert("/liveness-container-1".to_string());
+        expected_5432.insert("/ready-container-1".to_string());
+        assert!(probes.get(&port_5432).is_some());
+        assert_eq!(*probes.get(&port_5432).unwrap(), expected_5432);
+
+        let port_6543 = u16::try_from(6543).and_then(NonZeroU16::try_from).unwrap();
+        let mut expected_6543 = HashSet::new();
+        expected_6543.insert("/liveness-container-2".to_string());
+        expected_6543.insert("/ready-container-2".to_string());
+        assert!(probes.get(&port_6543).is_some());
+        assert_eq!(*probes.get(&port_6543).unwrap(), expected_6543);
+    }
+
+    #[test]
+    fn probe_ignores_udp() {
+        let probes = pod_http_probes(&k8s::PodSpec {
+            containers: vec![k8s::Container {
+                ports: Some(vec![k8s::ContainerPort {
+                    container_port: 6543,
+                    name: Some("named".to_string()),
+                    protocol: Some("UDP".to_string()),
+                    ..Default::default()
+                }]),
+                liveness_probe: Some(k8s::Probe {
+                    http_get: Some(k8s::HTTPGetAction {
+                        port: k8s::IntOrString::String("named".to_string()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }],
+            ..Default::default()
+        });
+
+        assert!(probes.is_empty());
+    }
+
+    #[test]
+    fn probe_only_references_within_container() {
+        let probes = pod_http_probes(&k8s::PodSpec {
+            containers: vec![
+                k8s::Container {
+                    liveness_probe: Some(k8s::Probe {
+                        http_get: Some(k8s::HTTPGetAction {
+                            port: k8s::IntOrString::String("named".to_string()),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                k8s::Container {
+                    ports: Some(vec![k8s::ContainerPort {
+                        container_port: 6543,
+                        name: Some("named".to_string()),
+                        protocol: Some("TCP".to_string()),
+                        ..Default::default()
+                    }]),
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        });
+
+        assert!(probes.is_empty());
+    }
+
+    #[test]
+    fn probe_ports_optional() {
+        let probes = pod_http_probes(&k8s::PodSpec {
+            containers: vec![k8s::Container {
+                liveness_probe: Some(k8s::Probe {
+                    http_get: Some(k8s::HTTPGetAction {
+                        port: k8s::IntOrString::Int(8080),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }],
+            ..Default::default()
+        });
+
+        assert_eq!(probes.len(), 1);
+        let paths = probes.get(&8080.try_into().unwrap()).unwrap();
+        assert_eq!(paths.len(), 1);
+        assert_eq!(paths.iter().next().unwrap(), "/");
     }
 }

@@ -271,6 +271,10 @@ const (
 	// Deny denies all connections.
 	Deny = "deny"
 
+	// ProxyShutdownGracePeriodAnnotation configures the grace period for
+	// graceful shutdowns in the proxy.
+	ProxyShutdownGracePeriodAnnotation = ProxyConfigAnnotationsPrefix + "/shutdown-grace-period"
+
 	/*
 	 * Component Names
 	 */

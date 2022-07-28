@@ -69,7 +69,7 @@ func (hc *HealthChecker) RunChecks(observer healthcheck.CheckObserver) (bool, bo
 // VizCategory returns a healthcheck.Category containing checkers
 // to verify the health of viz components
 func (hc *HealthChecker) VizCategory() *healthcheck.Category {
-
+	vizSelector := fmt.Sprintf("%s=%s", k8s.LinkerdExtensionLabel, VizExtensionName)
 	return healthcheck.NewCategory(LinkerdVizExtensionCheck, []healthcheck.Checker{
 		*healthcheck.NewChecker("linkerd-viz Namespace exists").
 			WithHintAnchor("l5d-viz-ns-exists").
@@ -153,18 +153,20 @@ func (hc *HealthChecker) VizCategory() *healthcheck.Category {
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
-				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.vizNamespace)
+				podList, err := hc.KubeAPIClient().CoreV1().Pods(hc.vizNamespace).List(ctx, metav1.ListOptions{
+					LabelSelector: vizSelector,
+				})
 				if err != nil {
 					return err
 				}
 
 				// Check for relevant pods to be present
-				err = healthcheck.CheckForPods(pods, []string{"web", "tap", "metrics-api", "tap-injector"})
+				err = healthcheck.CheckForPods(podList.Items, []string{"web", "tap", "metrics-api", "tap-injector"})
 				if err != nil {
 					return err
 				}
 
-				return healthcheck.CheckPodsRunning(pods, hc.vizNamespace)
+				return healthcheck.CheckPodsRunning(podList.Items, hc.vizNamespace)
 			}),
 		*healthcheck.NewChecker("viz extension proxies are healthy").
 			WithHintAnchor("l5d-viz-proxy-healthy").
@@ -235,12 +237,14 @@ func (hc *HealthChecker) VizCategory() *healthcheck.Category {
 				}
 
 				// Check for relevant pods to be present
-				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, hc.vizNamespace)
+				podList, err := hc.KubeAPIClient().CoreV1().Pods(hc.vizNamespace).List(ctx, metav1.ListOptions{
+					LabelSelector: vizSelector,
+				})
 				if err != nil {
 					return err
 				}
 
-				return healthcheck.CheckForPods(pods, []string{"prometheus"})
+				return healthcheck.CheckForPods(podList.Items, []string{"prometheus"})
 			}),
 		*healthcheck.NewChecker("can initialize the client").
 			WithHintAnchor("l5d-viz-existence-client").
