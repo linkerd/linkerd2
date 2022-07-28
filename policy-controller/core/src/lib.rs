@@ -31,20 +31,26 @@ pub struct InboundServer {
 
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
-    pub http_routes: HashMap<String, InboundHttpRoute>,
+    pub http_routes: HashMap<HttpRouteRef, InboundHttpRoute>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ServerRef {
-    Default(String),
+    Default(&'static str),
     Server(String),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum AuthorizationRef {
-    Default(String),
+    Default(&'static str),
     ServerAuthorization(String),
     AuthorizationPolicy(String),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum HttpRouteRef {
+    Default(&'static str),
+    Linkerd(String),
 }
 
 /// Describes how a proxy should handle inbound connections.
@@ -86,4 +92,25 @@ pub enum ClientAuthentication {
 
     /// Indicates that clients must use mutually-authenticated TLS.
     TlsAuthenticated(Vec<IdentityMatch>),
+}
+
+// === impl HttpRouteRef ===
+
+impl Ord for HttpRouteRef {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (Self::Default(a), Self::Default(b)) => a.cmp(b),
+            (Self::Linkerd(a), Self::Linkerd(b)) => a.cmp(b),
+            // Route resources are always preferred over default resources, so they should sort
+            // first in a list.
+            (Self::Linkerd(_), Self::Default(_)) => std::cmp::Ordering::Less,
+            (Self::Default(_), Self::Linkerd(_)) => std::cmp::Ordering::Greater,
+        }
+    }
+}
+
+impl PartialOrd for HttpRouteRef {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }

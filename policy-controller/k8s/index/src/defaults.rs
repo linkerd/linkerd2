@@ -45,27 +45,33 @@ impl std::str::FromStr for DefaultPolicy {
     }
 }
 
-impl std::fmt::Display for DefaultPolicy {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl DefaultPolicy {
+    pub(crate) fn as_str(&self) -> &'static str {
         match self {
             Self::Allow {
                 authenticated_only: true,
                 cluster_only: false,
-            } => "all-authenticated".fmt(f),
+            } => "all-authenticated",
             Self::Allow {
                 authenticated_only: false,
                 cluster_only: false,
-            } => "all-unauthenticated".fmt(f),
+            } => "all-unauthenticated",
             Self::Allow {
                 authenticated_only: true,
                 cluster_only: true,
-            } => "cluster-authenticated".fmt(f),
+            } => "cluster-authenticated",
             Self::Allow {
                 authenticated_only: false,
                 cluster_only: true,
-            } => "cluster-unauthenticated".fmt(f),
-            Self::Deny => "deny".fmt(f),
+            } => "cluster-unauthenticated",
+            Self::Deny => "deny",
         }
+    }
+}
+
+impl std::fmt::Display for DefaultPolicy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_str().fmt(f)
     }
 }
 

@@ -15,8 +15,8 @@ use linkerd2_proxy_api::{
 use linkerd_policy_controller_core::{
     http_route::{InboundFilter, InboundHttpRoute, InboundHttpRouteRule},
     AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer,
-    IdentityMatch, InboundServer, InboundServerStream, IpNet, NetworkMatch, ProxyProtocol,
-    ServerRef,
+    HttpRouteRef, IdentityMatch, InboundServer, InboundServerStream, IpNet, NetworkMatch,
+    ProxyProtocol, ServerRef,
 };
 use maplit::*;
 use std::{num::NonZeroU16, sync::Arc};
@@ -211,7 +211,7 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
         ServerRef::Default(name) => convert_args!(hashmap!(
             "group" => "",
             "kind" => "default",
-            "name" => name,
+            "name" => *name,
         )),
         ServerRef::Server(name) => convert_args!(hashmap!(
             "group" => "policy.linkerd.io",
@@ -239,12 +239,12 @@ fn to_authz(
 ) -> proto::Authz {
     let meta = Metadata {
         kind: Some(match reference {
-            AuthorizationRef::Default(name) => metadata::Kind::Default(name.clone()),
+            AuthorizationRef::Default(name) => metadata::Kind::Default(name.to_string()),
             AuthorizationRef::AuthorizationPolicy(name) => {
                 metadata::Kind::Resource(api::meta::Resource {
                     group: "policy.linkerd.io".to_string(),
                     kind: "authorizationpolicy".to_string(),
-                    name: name.clone(),
+                    name: name.to_string(),
                 })
             }
             AuthorizationRef::ServerAuthorization(name) => {
@@ -263,7 +263,7 @@ fn to_authz(
         AuthorizationRef::Default(name) => convert_args!(hashmap!(
             "group" => "",
             "kind" => "default",
-            "name" => name,
+            "name" => *name,
         )),
         AuthorizationRef::ServerAuthorization(name) => convert_args!(hashmap!(
             "group" => "policy.linkerd.io",
@@ -353,7 +353,7 @@ fn to_authz(
 }
 
 fn to_http_route_list<'r>(
-    routes: impl IntoIterator<Item = (&'r String, &'r InboundHttpRoute)>,
+    routes: impl IntoIterator<Item = (&'r HttpRouteRef, &'r InboundHttpRoute)>,
     cluster_networks: &[IpNet],
 ) -> Vec<proto::HttpRoute> {
     // Per the Gateway API spec:
@@ -382,7 +382,7 @@ fn to_http_route_list<'r>(
 }
 
 fn to_http_route(
-    name: impl ToString,
+    name: &HttpRouteRef,
     InboundHttpRoute {
         hostnames,
         rules,
@@ -392,11 +392,14 @@ fn to_http_route(
     cluster_networks: &[IpNet],
 ) -> proto::HttpRoute {
     let metadata = Metadata {
-        kind: Some(metadata::Kind::Resource(api::meta::Resource {
-            group: "policy.linkerd.io".to_string(),
-            kind: "HTTPRoute".to_string(),
-            name: name.to_string(),
-        })),
+        kind: Some(match name {
+            HttpRouteRef::Default(name) => metadata::Kind::Default(name.to_string()),
+            HttpRouteRef::Linkerd(name) => metadata::Kind::Resource(api::meta::Resource {
+                group: "policy.linkerd.io".to_string(),
+                kind: "HTTPRoute".to_string(),
+                name: name.to_string(),
+            }),
+        }),
     };
 
     let hosts = hostnames

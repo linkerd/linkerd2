@@ -17,8 +17,9 @@ use crate::{
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
-    AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundHttpRoute,
-    InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
+    AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRouteRef, IdentityMatch,
+    InboundHttpRoute, InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol,
+    ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
@@ -902,7 +903,12 @@ impl Pod {
                         continue;
                     }
 
-                    let s = policy.inbound_server(srvname.clone(), server, authentications);
+                    let s = policy.inbound_server(
+                        srvname.clone(),
+                        server,
+                        authentications,
+                        &self.meta.settings,
+                    );
                     self.update_server(port, srvname, s);
 
                     matched_ports.insert(port, srvname.clone());
@@ -1062,7 +1068,7 @@ impl Pod {
                 ]
             };
             authorizations.insert(
-                AuthorizationRef::Default(policy.to_string()),
+                AuthorizationRef::Default(policy.as_str()),
                 ClientAuthorization {
                     authentication,
                     networks,
@@ -1071,7 +1077,7 @@ impl Pod {
         };
 
         InboundServer {
-            reference: ServerRef::Default(policy.to_string()),
+            reference: ServerRef::Default(policy.as_str()),
             protocol,
             authorizations,
             http_routes: HashMap::default(),
@@ -1146,10 +1152,11 @@ impl PolicyIndex {
         name: String,
         server: &server::Server,
         authentications: &AuthenticationNsIndex,
+        pod: &pod::Settings,
     ) -> InboundServer {
         tracing::trace!(%name, ?server, "Creating inbound server");
         let authorizations = self.client_authzs(&name, server, authentications);
-        let routes = self.http_routes(&name, authentications);
+        let routes = self.http_routes(&name, authentications, pod);
 
         InboundServer {
             reference: ServerRef::Server(name),
@@ -1282,16 +1289,24 @@ impl PolicyIndex {
         &self,
         server_name: &str,
         authentications: &AuthenticationNsIndex,
-    ) -> HashMap<String, InboundHttpRoute> {
-        self.http_routes
+        pod: &pod::Settings,
+    ) -> HashMap<HttpRouteRef, InboundHttpRoute> {
+        let routes = self
+            .http_routes
             .iter()
             .filter(|(_, route)| route.selects_server(server_name))
             .map(|(name, route)| {
                 let mut route = route.route.clone();
                 route.authorizations = self.route_client_authzs(name, authentications);
-                (name.clone(), route)
+                (HttpRouteRef::Linkerd(name.clone()), route)
             })
-            .collect()
+            .collect::<HashMap<_, _>>();
+        if !routes.is_empty() {
+            return routes;
+        }
+
+        let _ = pod;
+        todo!("Provide a default route that uses the pod's default policy.")
     }
 
     fn policy_client_authz(
