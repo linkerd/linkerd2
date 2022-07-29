@@ -196,7 +196,6 @@ pub mod defaults {
     pub fn http_route() -> inbound::HttpRoute {
         use http_route::{path_match, HttpRouteMatch, PathMatch};
         use inbound::{http_route::Rule, HttpRoute};
-        use linkerd2_proxy_api::http_route::{path_match, HttpRouteMatch, PathMatch};
         use meta::{metadata, Metadata};
 
         HttpRoute {
