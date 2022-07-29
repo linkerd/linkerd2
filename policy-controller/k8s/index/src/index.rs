@@ -17,8 +17,9 @@ use crate::{
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
-    AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRouteRef, IdentityMatch,
-    InboundHttpRoute, InboundServer, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
+    http_route, AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRouteRef,
+    IdentityMatch, InboundHttpRoute, InboundServer, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol,
+    ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
@@ -1051,7 +1052,10 @@ impl Pod {
 
         let default_route = InboundHttpRoute {
             hostnames: Vec::new(),
-            rules: Vec::new(),
+            rules: vec![http_route::InboundHttpRouteRule {
+                matches: Vec::new(),
+                filters: Vec::new(),
+            }],
             authorizations: authorizations.clone(),
             creation_timestamp: None,
         };
@@ -1290,7 +1294,10 @@ impl PolicyIndex {
                 .unwrap_or(self.cluster_info.default_policy);
             let route = InboundHttpRoute {
                 hostnames: Vec::new(),
-                rules: Vec::new(),
+                rules: vec![http_route::InboundHttpRouteRule {
+                    matches: Vec::new(),
+                    filters: Vec::new(),
+                }],
                 authorizations: default_policy.default_authzs(&self.cluster_info),
                 creation_timestamp: None,
             };
