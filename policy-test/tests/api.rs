@@ -510,7 +510,7 @@ async fn default_http_routes() {
         assert_is_default_all_unauthenticated!(config);
         assert_protocol_detect!(config);
 
-        let routes = http1_routes(&config);
+        let routes = detect_routes(&config);
         assert_eq!(routes.len(), 1);
         let route_authzs = &routes[0].authorizations;
         assert_eq!(route_authzs.len(), 1);
@@ -671,6 +671,22 @@ async fn next_config(rx: &mut tonic::Streaming<grpc::inbound::Server>) -> grpc::
         .expect("watch must return an updated config");
     tracing::trace!(config = ?format_args!("{:#?}", config));
     config
+}
+
+fn detect_routes(config: &grpc::inbound::Server) -> &[grpc::inbound::HttpRoute] {
+    let kind = config
+        .protocol
+        .as_ref()
+        .expect("must have proxy protocol")
+        .kind
+        .as_ref()
+        .expect("must have kind");
+    let detect = if let grpc::inbound::proxy_protocol::Kind::Detect(ref detect) = kind {
+        detect
+    } else {
+        panic!("proxy protocol must be Detect; actually got:\n{kind:#?}")
+    };
+    &detect.http_routes[..]
 }
 
 fn http1_routes(config: &grpc::inbound::Server) -> &[grpc::inbound::HttpRoute] {
