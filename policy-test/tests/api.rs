@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use futures::prelude::*;
+use ipnet::IpNet;
 use kube::ResourceExt;
 use linkerd_policy_controller_core::{Ipv4Net, Ipv6Net};
 use linkerd_policy_controller_k8s_api as k8s;
@@ -34,12 +35,7 @@ async fn server_with_server_authorization() {
         // that the update now uses this server, which has no authorizations
         let server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
         let config = next_config(&mut rx).await;
-        assert!(matches!(
-            config.protocol,
-            Some(grpc::inbound::ProxyProtocol {
-                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(_))
-            }),
-        ));
+        assert_eq!(config.protocol, Some(default_proxy_protocol()));
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,
@@ -80,12 +76,7 @@ async fn server_with_server_authorization() {
             .expect("watch must not fail")
             .expect("watch must return an updated config");
         tracing::trace!(?config);
-        assert!(matches!(
-            config.protocol,
-            Some(grpc::inbound::ProxyProtocol {
-                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(_))
-            }),
-        ));
+        assert_eq!(config.protocol, Some(default_proxy_protocol()));
         assert_eq!(
             config.authorizations.first().unwrap().labels,
             convert_args!(hashmap!(
@@ -707,51 +698,70 @@ async fn next_config(rx: &mut tonic::Streaming<grpc::inbound::Server>) -> grpc::
 }
 
 fn http1_routes(config: &grpc::inbound::Server) -> &[grpc::inbound::HttpRoute] {
-    let http1 = if let grpc::inbound::proxy_protocol::Kind::Http1(ref http1) = config
+    let kind = config
         .protocol
         .as_ref()
         .expect("must have proxy protocol")
         .kind
         .as_ref()
-        .expect("must have kind")
-    {
+        .expect("must have kind");
+    let http1 = if let grpc::inbound::proxy_protocol::Kind::Http1(ref http1) = kind {
         http1
     } else {
-        panic!("proxy protocol must be HTTP1")
+        panic!("proxy protocol must be HTTP1; actually got:\n{kind:#?}")
     };
     &http1.routes[..]
 }
 
-// fn default_proxy_protocol() -> grpc::inbound::ProxyProtocol {
-//     use grpc::inbound::proxy_protocol::{Http1, Kind};
-//     grpc::inbound::ProxyProtocol {
-//         kind: Some(Kind::Http1(Http1 {
-//             routes: vec![default_route()],
-//         })),
-//     }
-// }
+fn default_proxy_protocol() -> grpc::inbound::ProxyProtocol {
+    use grpc::inbound::proxy_protocol::{Http1, Kind};
+    grpc::inbound::ProxyProtocol {
+        kind: Some(Kind::Http1(Http1 {
+            routes: vec![default_route()],
+        })),
+    }
+}
 
-// fn default_route() -> grpc::inbound::HttpRoute {
-//     use grpc::{
-//         inbound::{Authz, HttpRoute},
-//         meta::{metadata, Metadata},
-//     };
-//     HttpRoute {
-//         metadata: Some(Metadata {
-//             kind: Some(metadata::Kind::Default("all-unauthenticated".to_owned())),
-//         }),
-//         hosts: Vec::new(),
-//         authorizations: vec![],
-//         rules: Vec::new(),
-//     }
-// }
+fn default_route() -> grpc::inbound::HttpRoute {
+    use grpc::{
+        inbound::HttpRoute,
+        meta::{metadata, Metadata},
+    };
+    HttpRoute {
+        metadata: Some(Metadata {
+            kind: Some(metadata::Kind::Default("all-unauthenticated".to_owned())),
+        }),
+        hosts: Vec::new(),
+        authorizations: vec![default_authz()],
+        rules: Vec::new(),
+    }
+}
 
-// fn default_authz() -> grpc::inbound::Authz {
-//     use grpc::inbound::{Authz, Network};
-//     Authz {
-//         networks: vec![Network {}],
-//         authentication: (),
-//         labels: (),
-//         metadata: (),
-//     }
-// }
+fn default_authz() -> grpc::inbound::Authz {
+    use grpc::{
+        inbound::{Authz, Network},
+        meta::{metadata, Metadata},
+    };
+
+    Authz {
+        networks: vec![
+            Network {
+                net: Some("0.0.0.0/0".parse::<IpNet>().unwrap().into()),
+                except: Vec::new(),
+            },
+            Network {
+                net: Some("::/0".parse::<IpNet>().unwrap().into()),
+                except: Vec::new(),
+            },
+        ],
+        authentication: None,
+        labels: hashmap![
+            "name".to_string() => "all-unauthenticated".to_string(),
+            "kind".to_string() => "default".to_string(),
+            "group".to_string() => "".to_string()
+        ],
+        metadata: Some(Metadata {
+            kind: Some(metadata::Kind::Default("all-unauthenticated".to_owned())),
+        }),
+    }
+}
