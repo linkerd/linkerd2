@@ -29,6 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - name: Scan workflows for other Devcontainer image versions
+        shell: bash
         run: |
           set -euo pipefail
           # Strip jsonc comments because `jq` doesn't support them.
