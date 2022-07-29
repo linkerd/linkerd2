@@ -112,7 +112,7 @@ RUN for p in \
     github.com/uudashr/gopkgs/v2/cmd/gopkgs@latest \
     golang.org/x/tools/gopls@latest \
     google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2 \
-    google.golang.org/protobuf/cmd/protoc-gen-go@v1.28 \
+    google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.1 \
     gotest.tools/gotestsum@v0.4.2 \
     ; do go install -mod=readonly "$p" ; done \
     && rm -rf /go/pkg/* /go/src/*
