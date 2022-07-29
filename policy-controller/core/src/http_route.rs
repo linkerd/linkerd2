@@ -109,13 +109,18 @@ pub enum QueryParamMatch {
 impl Default for InboundHttpRoute {
     fn default() -> Self {
         Self {
-            hostnames: Vec::new(),
+            hostnames: vec![],
             // A route with an empty `rules` vec will match *no* requests, while a
             // route with an `InboundHttpRouteRule` that is itself empty will
             // match *all* requests.
             rules: vec![InboundHttpRouteRule {
-                matches: Vec::new(),
-                filters: Vec::new(),
+                matches: vec![HttpRouteMatch {
+                    path: Some(PathMatch::Prefix("/".to_string())),
+                    headers: vec![],
+                    query_params: vec![],
+                    method: None,
+                }],
+                filters: vec![],
             }],
             // Default routes do not have authorizations; the default policy's
             // authzs will be configured by the default `InboundServer`, not by
