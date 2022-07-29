@@ -512,16 +512,7 @@ async fn default_http_routes() {
         let routes = detect_routes(&config);
         assert_eq!(routes.len(), 1);
         let route_authzs = &routes[0].authorizations;
-        assert_eq!(route_authzs.len(), 1);
-        let authz = &route_authzs[0];
-
-        assert_default_all_unauthenticated_labels!(authz);
-        assert!(matches!(
-            authz.authentication,
-            Some(grpc::inbound::Authn {
-                permit: Some(grpc::inbound::authn::Permit::Unauthenticated(_))
-            })
-        ))
+        assert_eq!(route_authzs.len(), 0);
     })
     .await
 }

@@ -1056,7 +1056,7 @@ impl Pod {
                 matches: Vec::new(),
                 filters: Vec::new(),
             }],
-            authorizations: authorizations.clone(),
+            authorizations: Default::default(),
             creation_timestamp: None,
         };
         let mut http_routes = HashMap::new();
@@ -1298,7 +1298,7 @@ impl PolicyIndex {
                     matches: Vec::new(),
                     filters: Vec::new(),
                 }],
-                authorizations: default_policy.default_authzs(&self.cluster_info),
+                authorizations: Default::default(),
                 creation_timestamp: None,
             };
             routes.insert(HttpRouteRef::Default(default_policy.as_str()), route);

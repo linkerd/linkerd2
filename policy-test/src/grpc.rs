@@ -183,7 +183,6 @@ impl hyper::service::Service<hyper::Request<tonic::body::BoxBody>> for GrpcHttp 
 
 pub mod defaults {
     use super::*;
-    use ipnet::IpNet;
 
     pub fn proxy_protocol() -> inbound::ProxyProtocol {
         use inbound::proxy_protocol::{Http1, Kind};
@@ -203,48 +202,11 @@ pub mod defaults {
                 kind: Some(metadata::Kind::Default("all-unauthenticated".to_owned())),
             }),
             hosts: Vec::new(),
-            authorizations: vec![authz_all_unauthenticated()],
+            authorizations: Vec::new(),
             rules: vec![Rule {
                 matches: Vec::default(),
                 filters: Vec::default(),
             }],
-        }
-    }
-
-    pub fn authz_all_unauthenticated() -> inbound::Authz {
-        use inbound::{Authz, Network};
-        use meta::{metadata, Metadata};
-
-        Authz {
-            networks: vec![
-                Network {
-                    net: Some("0.0.0.0/0".parse::<IpNet>().unwrap().into()),
-                    except: Vec::new(),
-                },
-                Network {
-                    net: Some("::/0".parse::<IpNet>().unwrap().into()),
-                    except: Vec::new(),
-                },
-            ],
-            authentication: Some(authn_all_unauthenticated()),
-            labels: maplit::hashmap![
-                "name".to_string() => "all-unauthenticated".to_string(),
-                "kind".to_string() => "default".to_string(),
-                "group".to_string() => "".to_string()
-            ],
-            metadata: Some(Metadata {
-                kind: Some(metadata::Kind::Default("all-unauthenticated".to_owned())),
-            }),
-        }
-    }
-
-    pub fn authn_all_unauthenticated() -> inbound::Authn {
-        use inbound::{
-            authn::{Permit, PermitUnauthenticated},
-            Authn,
-        };
-        Authn {
-            permit: Some(Permit::Unauthenticated(PermitUnauthenticated {})),
         }
     }
 }
