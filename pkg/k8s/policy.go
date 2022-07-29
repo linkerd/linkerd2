@@ -59,7 +59,7 @@ func AuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, names
 		} else if saz.Spec.Server.Selector != nil {
 			selector, err := metav1.LabelSelectorAsSelector(saz.Spec.Server.Selector)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed parse Server selector for ServerAuthorization/%s: %s\n", saz.Name, err)
+				fmt.Fprintf(os.Stderr, "Failed to parse Server selector for ServerAuthorization/%s: %s\n", saz.Name, err)
 				continue
 			}
 			serverList, err := k8sAPI.L5dCrdClient.ServerV1beta1().Servers(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
@@ -104,9 +104,7 @@ func AuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, names
 					AuthorizationPolicy: p.GetName(),
 				})
 			}
-		}
-
-		if target.Kind == HTTPRouteKind && target.Group == PolicyAPIGroup {
+		} else if target.Kind == HTTPRouteKind && target.Group == PolicyAPIGroup {
 			route, err := k8sAPI.L5dCrdClient.PolicyV1alpha1().HTTPRoutes(p.Namespace).Get(ctx, string(target.Name), metav1.GetOptions{})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "AuthorizationPolicy/%s targets HTTPRoute/%s but we failed get it: %s\n", p.Name, target.Name, err)
