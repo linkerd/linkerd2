@@ -17,9 +17,8 @@ use crate::{
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
-    http_route, AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRouteRef,
-    IdentityMatch, InboundHttpRoute, InboundServer, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol,
-    ServerRef,
+    AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRouteRef, IdentityMatch,
+    InboundHttpRoute, InboundServer, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
