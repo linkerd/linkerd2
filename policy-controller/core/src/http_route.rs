@@ -110,9 +110,6 @@ impl Default for InboundHttpRoute {
     fn default() -> Self {
         Self {
             hostnames: vec![],
-            // A route with an empty `rules` vec will match *no* requests, while a
-            // route with an `InboundHttpRouteRule` that is itself empty will
-            // match *all* requests.
             rules: vec![InboundHttpRouteRule {
                 matches: vec![HttpRouteMatch {
                     path: Some(PathMatch::Prefix("/".to_string())),
