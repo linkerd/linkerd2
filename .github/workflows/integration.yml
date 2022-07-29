@@ -10,6 +10,7 @@ on:
       - Cargo.lock
       - charts/**
       - go.sum
+      - justfile
       - multicluser/**
       - policy-controller/**
       - policy-test/**
