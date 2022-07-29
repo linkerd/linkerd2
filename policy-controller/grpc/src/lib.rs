@@ -369,7 +369,7 @@ fn to_http_route_list<'r>(
     // comparison, because all these routes will exist in the same
     // namespace.
     let mut route_list = routes.into_iter().collect::<Vec<_>>();
-    route_list.sort_by(|(a_name, a), (b_name, b)| {
+    route_list.sort_by(|(a_ref, a), (b_ref, b)| {
         let by_ts = match (&a.creation_timestamp, &b.creation_timestamp) {
             (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
             (None, None) => std::cmp::Ordering::Equal,
@@ -377,12 +377,12 @@ fn to_http_route_list<'r>(
             (Some(_), None) => return std::cmp::Ordering::Less,
             (None, Some(_)) => return std::cmp::Ordering::Greater,
         };
-        by_ts.then_with(|| a_name.cmp(b_name))
+        by_ts.then_with(|| a_ref.cmp(b_ref))
     });
 
     route_list
         .into_iter()
-        .map(|(name, route)| to_http_route(name, route.clone(), cluster_networks))
+        .map(|(route_ref, route)| to_http_route(route_ref, route.clone(), cluster_networks))
         .collect()
 }
 
