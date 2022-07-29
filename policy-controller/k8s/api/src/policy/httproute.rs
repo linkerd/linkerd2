@@ -161,3 +161,16 @@ pub struct HttpRouteStatus {
     #[serde(flatten)]
     pub inner: RouteStatus,
 }
+
+pub fn parent_ref_targets_kind<T>(parent_ref: &ParentReference) -> bool
+where
+    T: kube::Resource,
+    T::DynamicType: Default,
+{
+    let kind = match parent_ref.kind {
+        Some(ref kind) => kind,
+        None => return false,
+    };
+
+    super::targets_kind::<T>(parent_ref.group.as_deref(), kind)
+}

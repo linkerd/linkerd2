@@ -6,6 +6,7 @@ on:
       - .github/workflows/go.yml
       - go.sum
       - '**/*.go'
+      - '**/charts/*'
 
 permissions:
   contents: read
@@ -14,9 +15,7 @@ jobs:
   go-lint:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container:
-      image: ghcr.io/linkerd/dev:v18
-      options: --user root
+    container: ghcr.io/linkerd/dev:v20-go
     steps:
     - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - run: golangci-lint run --verbose --timeout=10m
@@ -24,8 +23,7 @@ jobs:
   go-format:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container:
-      image: golang:1.17
+    container: ghcr.io/linkerd/dev:v20-go
     steps:
     - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - run: bin/fmt
@@ -33,14 +31,10 @@ jobs:
   go-test:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container:
-      image: golang:1.17
+    container: ghcr.io/linkerd/dev:v20-go
     steps:
     - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - run: go mod download
-    - run: go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
-    - run: go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
-    - run: go install gotest.tools/gotestsum@v0.4.2
     - run: gotestsum -- -race -v -mod=readonly ./...
       env:
         LINKERD_TEST_PRETTY_DIFF: 1

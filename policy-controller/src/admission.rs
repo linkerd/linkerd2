@@ -7,11 +7,12 @@ use crate::k8s::{
         ServerAuthorizationSpec, ServerSpec,
     },
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
+use linkerd_policy_controller_core as core;
 use linkerd_policy_controller_k8s_index as index;
 use serde::de::DeserializeOwned;
 use std::task;
@@ -417,32 +418,70 @@ impl Validate<ServerAuthorizationSpec> for Admission {
 #[async_trait::async_trait]
 impl Validate<HttpRouteSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
-        // The validation for the policy.linkerd.io HTTPRoute type is much
-        // simpler than for the Gateway API version: the route must only target
-        // `Server` resources.
-        //
-        // We don't have to do any validation that unsupported filters aren't
-        // present, because Linkerd's HTTPRoute CRD doesn't include those
-        // filters at all.
+        use index::http_route::convert;
+
+        fn validate_match(
+            httproute::HttpRouteMatch {
+                path,
+                headers,
+                query_params,
+                method,
+            }: httproute::HttpRouteMatch,
+        ) -> Result<()> {
+            let _ = path.map(convert::path_match).transpose()?;
+            let _ = method
+                .as_deref()
+                .map(core::http_route::Method::try_from)
+                .transpose()?;
+
+            for q in query_params.into_iter().flatten() {
+                convert::query_param_match(q)?;
+            }
+
+            for h in headers.into_iter().flatten() {
+                convert::header_match(h)?;
+            }
+
+            Ok(())
+        }
+
+        fn validate_filter(filter: httproute::HttpRouteFilter) -> Result<()> {
+            match filter {
+                httproute::HttpRouteFilter::RequestHeaderModifier {
+                    request_header_modifier,
+                } => convert::req_header_modifier(request_header_modifier).map(|_| ()),
+                httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
+                    convert::req_redirect(request_redirect).map(|_| ())
+                }
+            }
+        }
+
+        // Ensure that the `HTTPRoute` targets a `Server` as its parent ref
         let all_target_servers = spec
             .inner
             .parent_refs
             .iter()
             .flatten()
-            .all(parent_ref_targets_server);
-        anyhow::ensure!(
+            .all(httproute::parent_ref_targets_kind::<Server>);
+        ensure!(
             all_target_servers,
             "policy.linkerd.io HTTPRoutes must target only Server resources"
         );
-        Ok(())
-    }
-}
 
-fn parent_ref_targets_server(p: &httproute::ParentReference) -> bool {
-    match (p.group.as_deref(), p.kind.as_deref()) {
-        (Some(group), Some(kind)) => {
-            group.eq_ignore_ascii_case("policy.linkerd.io") && kind.eq_ignore_ascii_case("server")
+        // Validate the rules in this spec.
+        // This is essentially equivalent to the indexer's conversion function
+        // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
+        // actually allocate stuff in order to return an `InboundRouteBinding`.
+        for httproute::HttpRouteRule { filters, matches } in spec.rules.into_iter().flatten() {
+            for m in matches.into_iter().flatten() {
+                validate_match(m)?;
+            }
+
+            for f in filters.into_iter().flatten() {
+                validate_filter(f)?;
+            }
         }
-        _ => false,
+
+        Ok(())
     }
 }

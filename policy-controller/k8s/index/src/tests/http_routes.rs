@@ -75,12 +75,14 @@ fn mk_route(
     name: impl ToString,
     server: impl ToString,
 ) -> k8s::policy::HttpRoute {
-    use k8s::policy::httproute::*;
+    use chrono::Utc;
+    use k8s::{policy::httproute::*, Time};
 
     HttpRoute {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
+            creation_timestamp: Some(Time(Utc::now())),
             ..Default::default()
         },
         spec: HttpRouteSpec {

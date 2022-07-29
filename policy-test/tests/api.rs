@@ -33,12 +33,7 @@ async fn server_with_server_authorization() {
         // Create a server that selects the pod's proxy admin server and ensure
         // that the update now uses this server, which has no authorizations
         let server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
-        let config = rx
-            .next()
-            .await
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
-        tracing::trace!(?config);
+        let config = next_config(&mut rx).await;
         assert_eq!(
             config.protocol,
             Some(grpc::inbound::ProxyProtocol {
@@ -135,12 +130,7 @@ async fn server_with_server_authorization() {
             )
             .await
             .expect("Server must be deleted");
-        let config = rx
-            .next()
-            .await
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
-        tracing::trace!(?config);
+        let config = next_config(&mut rx).await;
         assert_is_default_all_unauthenticated!(config);
         assert_protocol_detect!(config);
     })
@@ -169,12 +159,7 @@ async fn server_with_authorization_policy() {
         // Create a server that selects the pod's proxy admin server and ensure
         // that the update now uses this server, which has no authorizations
         let server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
-        let config = rx
-            .next()
-            .await
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
-        tracing::trace!(?config);
+        let config = next_config(&mut rx).await;
         assert_eq!(
             config.protocol,
             Some(grpc::inbound::ProxyProtocol {
@@ -235,12 +220,9 @@ async fn server_with_authorization_policy() {
         )
         .await;
 
-        let config = time::timeout(time::Duration::from_secs(10), rx.next())
+        let config = time::timeout(time::Duration::from_secs(10), next_config(&mut rx))
             .await
-            .expect("watch must update within 10s")
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
-        tracing::trace!(?config);
+            .expect("watch must update within 10s");
         assert_eq!(
             config.protocol,
             Some(grpc::inbound::ProxyProtocol {
@@ -286,8 +268,6 @@ async fn server_with_authorization_policy() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn server_with_http_route() {
-    use k8s::policy::httproute as api;
-
     with_temp_ns(|client, ns| async move {
         // Create a pod that does nothing. It's injected with a proxy, so we can
         // attach policies to its admin server.
@@ -307,12 +287,7 @@ async fn server_with_http_route() {
         // that the update now uses this server, which has no authorizations
         // and no routes.
         let _server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
-        let config = rx
-            .next()
-            .await
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
-        tracing::trace!(?config);
+        let config = next_config(&mut rx).await;
         assert_eq!(
             config.protocol,
             Some(grpc::inbound::ProxyProtocol {
@@ -333,61 +308,9 @@ async fn server_with_http_route() {
 
         // Create an http route that refers to the `linkerd-admin` server (by
         // name) and ensure that the update now reflects this route.
-        // Create an http route that refers to the `linkerd-admin` server (by
-        // name) and ensure that the update now reflects this route.
-        let route = create(
-            &client,
-            api::HttpRoute {
-                metadata: kube::api::ObjectMeta {
-                    namespace: Some(ns.clone()),
-                    name: Some("metrics-route".to_string()),
-                    ..Default::default()
-                },
-                spec: api::HttpRouteSpec {
-                    inner: api::CommonRouteSpec {
-                        parent_refs: Some(vec![api::ParentReference {
-                            group: Some("policy.linkerd.io".to_string()),
-                            kind: Some("Server".to_string()),
-                            namespace: None,
-                            name: "linkerd-admin".to_string(),
-                            section_name: None,
-                            port: None,
-                        }]),
-                    },
-                    hostnames: None,
-                    rules: Some(vec![api::HttpRouteRule {
-                        matches: Some(vec![api::HttpRouteMatch {
-                            path: Some(api::HttpPathMatch::Exact {
-                                value: "/metrics".to_string(),
-                            }),
-                            headers: None,
-                            query_params: None,
-                            method: Some("GET".to_string()),
-                        }]),
-                        filters: None,
-                    }]),
-                },
-                status: None,
-            },
-        )
-        .await;
-        let config = rx
-            .next()
-            .await
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
-        tracing::trace!(?config);
-        let http1 = if let grpc::inbound::proxy_protocol::Kind::Http1(http1) = config
-            .protocol
-            .expect("must have proxy protocol")
-            .kind
-            .expect("must have kind")
-        {
-            http1
-        } else {
-            panic!("proxy protocol must be HTTP1")
-        };
-        let h1_route = http1.routes.first().expect("must have route");
+        let route = create(&client, mk_admin_route(ns.as_ref(), "metrics-route")).await;
+        let config = next_config(&mut rx).await;
+        let h1_route = http1_routes(&config).first().expect("must have route");
         let rule_match = h1_route
             .rules
             .first()
@@ -465,12 +388,7 @@ async fn server_with_http_route() {
         )
         .await;
 
-        let config = rx
-            .next()
-            .await
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
-        tracing::trace!(?config);
+        let config = next_config(&mut rx).await;
         let http1 = if let grpc::inbound::proxy_protocol::Kind::Http1(http1) = config
             .protocol
             .expect("must have proxy protocol")
@@ -486,16 +404,11 @@ async fn server_with_http_route() {
 
         // Delete the `HttpRoute` and ensure that the update reverts to the
         // default.
-        kube::Api::<api::HttpRoute>::namespaced(client.clone(), &ns)
+        kube::Api::<k8s::policy::HttpRoute>::namespaced(client.clone(), &ns)
             .delete("metrics-route", &kube::api::DeleteParams::default())
             .await
             .expect("HttpRoute must be deleted");
-        let config = rx
-            .next()
-            .await
-            .expect("watch must not fail")
-            .expect("watch must return an updated config");
-        tracing::trace!(?config);
+        let config = next_config(&mut rx).await;
         assert_eq!(
             config.protocol,
             Some(grpc::inbound::ProxyProtocol {
@@ -506,6 +419,203 @@ async fn server_with_http_route() {
         );
     })
     .await
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn http_routes_ordered_by_creation() {
+    fn route_path(routes: &[grpc::inbound::HttpRoute], idx: usize) -> Option<&str> {
+        use grpc::http_route::path_match;
+        match routes
+            .get(idx)?
+            .rules
+            .get(0)?
+            .matches
+            .get(0)?
+            .path
+            .as_ref()?
+            .kind
+            .as_ref()?
+        {
+            path_match::Kind::Exact(ref path) => Some(path.as_ref()),
+            x => panic!("unexpected route match {x:?}",),
+        }
+    }
+
+    with_temp_ns(|client, ns| async move {
+        // Create a pod that does nothing. It's injected with a proxy, so we can
+        // attach policies to its admin server.
+        let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
+
+        let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+        assert_is_default_all_unauthenticated!(config);
+        assert_protocol_detect!(config);
+
+        // Create a server that selects the pod's proxy admin server and ensure
+        // that the update now uses this server, which has no authorizations
+        // and no routes.
+        let _server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
+        let config = next_config(&mut rx).await;
+        assert_eq!(
+            config.protocol,
+            Some(grpc::inbound::ProxyProtocol {
+                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(
+                    grpc::inbound::proxy_protocol::Http1::default()
+                )),
+            }),
+        );
+        assert_eq!(config.authorizations, vec![]);
+        assert_eq!(
+            config.labels,
+            convert_args!(hashmap!(
+                "group" => "policy.linkerd.io",
+                "kind" => "server",
+                "name" => "linkerd-admin"
+            )),
+        );
+
+        // Create several HTTPRoute resources referencing the admin server by
+        // name. These should be ordered by creation time. A different path
+        // match is used for each route so that they can be distinguished to
+        // ensure ordering.
+        create(
+            &client,
+            mk_admin_route_with_path(ns.as_ref(), "d", "/metrics"),
+        )
+        .await;
+        next_config(&mut rx).await;
+
+        // Creation timestamps in Kubernetes only have second precision, so we
+        // must wait a whole second between creating each of these routes in
+        // order for them to have different creation timestamps.
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        create(
+            &client,
+            mk_admin_route_with_path(ns.as_ref(), "a", "/ready"),
+        )
+        .await;
+        next_config(&mut rx).await;
+
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        create(
+            &client,
+            mk_admin_route_with_path(ns.as_ref(), "c", "/shutdown"),
+        )
+        .await;
+        next_config(&mut rx).await;
+
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        create(
+            &client,
+            mk_admin_route_with_path(ns.as_ref(), "b", "/proxy-log-level"),
+        )
+        .await;
+        let config = next_config(&mut rx).await;
+        let routes = http1_routes(&config);
+
+        assert_eq!(routes.len(), 4);
+        assert_eq!(route_path(routes, 0), Some("/metrics"));
+        assert_eq!(route_path(routes, 1), Some("/ready"));
+        assert_eq!(route_path(routes, 2), Some("/shutdown"));
+        assert_eq!(route_path(routes, 3), Some("/proxy-log-level"));
+
+        // Delete one of the routes and ensure that the update maintains the
+        // same ordering.
+        kube::Api::<k8s::policy::HttpRoute>::namespaced(client.clone(), &ns)
+            .delete("c", &kube::api::DeleteParams::default())
+            .await
+            .expect("HttpRoute must be deleted");
+        let config = next_config(&mut rx).await;
+        let routes = http1_routes(&config);
+        assert_eq!(routes.len(), 3);
+        assert_eq!(route_path(routes, 0), Some("/metrics"));
+        assert_eq!(route_path(routes, 1), Some("/ready"));
+        assert_eq!(route_path(routes, 2), Some("/proxy-log-level"));
+    })
+    .await
+}
+
+/// Returns an `HttpRoute` resource in the provdied namespace and with the
+/// provided name, which attaches to the `linkerd-admin` `Server` resource and
+/// matches `GET` requests with the path `/metrics`.
+fn mk_admin_route(ns: &str, name: &str) -> k8s::policy::HttpRoute {
+    use k8s::policy::httproute as api;
+    api::HttpRoute {
+        metadata: kube::api::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: api::HttpRouteSpec {
+            inner: api::CommonRouteSpec {
+                parent_refs: Some(vec![api::ParentReference {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("Server".to_string()),
+                    namespace: None,
+                    name: "linkerd-admin".to_string(),
+                    section_name: None,
+                    port: None,
+                }]),
+            },
+            hostnames: None,
+            rules: Some(vec![api::HttpRouteRule {
+                matches: Some(vec![api::HttpRouteMatch {
+                    path: Some(api::HttpPathMatch::Exact {
+                        value: "/metrics".to_string(),
+                    }),
+                    headers: None,
+                    query_params: None,
+                    method: Some("GET".to_string()),
+                }]),
+                filters: None,
+            }]),
+        },
+        status: None,
+    }
+}
+
+/// Returns an `HttpRoute` resource in the provdied namespace and with the
+/// provided name, which attaches to the `linkerd-admin` `Server` resource and
+/// matches `GET` requests with the provided path.
+fn mk_admin_route_with_path(ns: &str, name: &str, path: &str) -> k8s::policy::HttpRoute {
+    use k8s::policy::httproute as api;
+    api::HttpRoute {
+        metadata: kube::api::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: api::HttpRouteSpec {
+            inner: api::CommonRouteSpec {
+                parent_refs: Some(vec![api::ParentReference {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("Server".to_string()),
+                    namespace: None,
+                    name: "linkerd-admin".to_string(),
+                    section_name: None,
+                    port: None,
+                }]),
+            },
+            hostnames: None,
+            rules: Some(vec![api::HttpRouteRule {
+                matches: Some(vec![api::HttpRouteMatch {
+                    path: Some(api::HttpPathMatch::Exact {
+                        value: path.to_string(),
+                    }),
+                    headers: None,
+                    query_params: None,
+                    method: Some("GET".to_string()),
+                }]),
+                filters: None,
+            }]),
+        },
+        status: None,
+    }
 }
 
 fn mk_pause(ns: &str, name: &str) -> k8s::Pod {
@@ -563,4 +673,31 @@ async fn retry_watch_server(
             }
         }
     }
+}
+
+#[track_caller]
+async fn next_config(rx: &mut tonic::Streaming<grpc::inbound::Server>) -> grpc::inbound::Server {
+    let config = rx
+        .next()
+        .await
+        .expect("watch must not fail")
+        .expect("watch must return an updated config");
+    tracing::trace!(config = ?format_args!("{:#?}", config));
+    config
+}
+
+fn http1_routes(config: &grpc::inbound::Server) -> &[grpc::inbound::HttpRoute] {
+    let http1 = if let grpc::inbound::proxy_protocol::Kind::Http1(ref http1) = config
+        .protocol
+        .as_ref()
+        .expect("must have proxy protocol")
+        .kind
+        .as_ref()
+        .expect("must have kind")
+    {
+        http1
+    } else {
+        panic!("proxy protocol must be HTTP1")
+    };
+    &http1.routes[..]
 }

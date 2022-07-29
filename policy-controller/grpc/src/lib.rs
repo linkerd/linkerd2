@@ -174,29 +174,17 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
             ProxyProtocol::Detect { timeout } => Some(proto::proxy_protocol::Kind::Detect(
                 proto::proxy_protocol::Detect {
                     timeout: Some(timeout.into()),
-                    http_routes: srv
-                        .http_routes
-                        .iter()
-                        .map(|(name, route)| to_http_route(name, route.clone(), cluster_networks))
-                        .collect(),
+                    http_routes: to_http_route_list(&srv.http_routes, cluster_networks),
                 },
             )),
             ProxyProtocol::Http1 => Some(proto::proxy_protocol::Kind::Http1(
                 proto::proxy_protocol::Http1 {
-                    routes: srv
-                        .http_routes
-                        .iter()
-                        .map(|(name, route)| to_http_route(name, route.clone(), cluster_networks))
-                        .collect(),
+                    routes: to_http_route_list(&srv.http_routes, cluster_networks),
                 },
             )),
             ProxyProtocol::Http2 => Some(proto::proxy_protocol::Kind::Http2(
                 proto::proxy_protocol::Http2 {
-                    routes: srv
-                        .http_routes
-                        .iter()
-                        .map(|(name, route)| to_http_route(name, route.clone(), cluster_networks))
-                        .collect(),
+                    routes: to_http_route_list(&srv.http_routes, cluster_networks),
                 },
             )),
             ProxyProtocol::Grpc => Some(proto::proxy_protocol::Kind::Grpc(
@@ -364,12 +352,42 @@ fn to_authz(
     }
 }
 
+fn to_http_route_list<'r>(
+    routes: impl IntoIterator<Item = (&'r String, &'r InboundHttpRoute)>,
+    cluster_networks: &[IpNet],
+) -> Vec<proto::HttpRoute> {
+    // Per the Gateway API spec:
+    //
+    // > If ties still exist across multiple Routes, matching precedence MUST be
+    // > determined in order of the following criteria, continuing on ties:
+    // >
+    // >    The oldest Route based on creation timestamp.
+    // >    The Route appearing first in alphabetical order by
+    // >   "{namespace}/{name}".
+    //
+    // Note that we don't need to include the route's namespace in this
+    // comparison, because all these routes will exist in the same
+    // namespace.
+    let mut route_list = routes.into_iter().collect::<Vec<_>>();
+    route_list.sort_by(|(a_name, a), (b_name, b)| {
+        a.creation_timestamp
+            .cmp(&b.creation_timestamp)
+            .then_with(|| a_name.cmp(b_name))
+    });
+
+    route_list
+        .into_iter()
+        .map(|(name, route)| to_http_route(name, route.clone(), cluster_networks))
+        .collect()
+}
+
 fn to_http_route(
     name: impl ToString,
     InboundHttpRoute {
         hostnames,
         rules,
         authorizations,
+        creation_timestamp: _,
     }: InboundHttpRoute,
     cluster_networks: &[IpNet],
 ) -> proto::HttpRoute {

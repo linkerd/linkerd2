@@ -1,3 +1,5 @@
+use super::targets_kind;
+
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct ClusterTargetRef {
     pub group: Option<String>,
@@ -187,22 +189,6 @@ fn canonical_kind(group: Option<&str>, kind: &str) -> String {
     } else {
         kind.to_string()
     }
-}
-
-fn targets_kind<T>(group: Option<&str>, kind: &str) -> bool
-where
-    T: kube::Resource,
-    T::DynamicType: Default,
-{
-    let dt = Default::default();
-
-    let mut t_group = &*T::group(&dt);
-    if t_group.is_empty() {
-        t_group = "core";
-    }
-
-    group.unwrap_or("core").eq_ignore_ascii_case(t_group)
-        && kind.eq_ignore_ascii_case(&*T::kind(&dt))
 }
 
 fn group_kind_name<T>(resource: &T) -> (Option<String>, String, String)
