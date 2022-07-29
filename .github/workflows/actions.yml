@@ -31,7 +31,7 @@ jobs:
       - name: Scan workflows for other Devcontainer image versions
         run: |
           # Strip jsonc comments because `jq` doesn't support them.
-          version=$(json5-to-json <.devcontainer/devcontainer.json |jq -r '.image')
+          image=$(json5-to-json <.devcontainer/devcontainer.json |jq -r '.image')
           for f in .github/workflows/* ; do
             for i in $(yq '.jobs.* | .container.image // .container // "" | match("ghcr.io/linkerd/dev:v[0-9]+").string' < "$f") ; do
               if [ "$i" != "$image" ]; then
