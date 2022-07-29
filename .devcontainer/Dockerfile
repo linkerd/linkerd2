@@ -112,15 +112,15 @@ RUN for p in \
     github.com/uudashr/gopkgs/v2/cmd/gopkgs@latest \
     golang.org/x/tools/gopls@latest \
     google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2 \
-    google.golang.org/protobuf/cmd/protoc-gen-go@v1.28 \
+    google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.1 \
     gotest.tools/gotestsum@v0.4.2 \
-    ; do go install "$p" ; done \
+    ; do go install -mod=readonly "$p" ; done \
     && rm -rf /go/pkg/* /go/src/*
 COPY bin/scurl /usr/local/bin/scurl
-
+COPY --from=protoc /usr/local/bin/protoc /usr/local/bin/
+COPY --from=just /usr/local/bin/just /usr/local/bin/
 ENV PROTOC_NO_VENDOR=1
 ENV PROTOC=/usr/local/bin/protoc
-COPY --from=protoc /usr/local/bin/protoc $PROTOC
 
 ##
 ## Kubernetes tools
@@ -163,6 +163,9 @@ ARG ACTIONLINT_VERSION=v1.6.15
 RUN url="https://github.com/rhysd/actionlint/releases/download/${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION#v}_linux_amd64.tar.gz" ; \
     scurl "$url" | tar xzvf - -C /usr/local/bin actionlint
 
+FROM docker.io/rust:${RUST_TOOLCHAIN}-slim as json5-to-json
+RUN cargo install json5-to-json
+
 ##
 ## Tools: Everything needed for a development environment, minus non-root settings.
 ##
@@ -170,6 +173,7 @@ RUN url="https://github.com/rhysd/actionlint/releases/download/${ACTIONLINT_VERS
 FROM base as tools
 COPY --from=actionlint /usr/local/bin/actionlint /usr/local/bin/
 COPY --from=checksec /usr/local/bin/checksec /usr/local/bin/che
+COPY --from=json5-to-json /usr/local/cargo/bin/json5-to-json /usr/local/bin/
 COPY --from=just /usr/local/bin/just /usr/local/bin/
 COPY --from=k8s /usr/local/bin/helm /usr/local/bin/
 COPY --from=k8s /usr/local/bin/helm-docs /usr/local/bin/
