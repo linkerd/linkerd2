@@ -1500,6 +1500,7 @@ impl ClusterInfo {
         // No Server is configured, so requests on the Pod's probe paths are
         // authorized.
         if !self.probe_networks.is_empty() {
+            // Probes are authorized on the configured probe networks only.
             let authorizations = Some((
                 AuthorizationRef::Default("probe"),
                 ClientAuthorization {
@@ -1515,6 +1516,8 @@ impl ClusterInfo {
             .into_iter()
             .collect();
 
+            // Generate an `Exact` path match for each probe path defined on the
+            // pod.
             let matches = probe_paths
                 .map(|path| HttpRouteMatch {
                     path: Some(PathMatch::Exact(path.to_string())),
