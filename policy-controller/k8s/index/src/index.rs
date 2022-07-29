@@ -1274,21 +1274,20 @@ impl PolicyIndex {
                 (HttpRouteRef::Linkerd(name.clone()), route)
             })
             .collect::<HashMap<_, _>>();
-        if !routes.is_empty() {
-            return routes;
+
+        if routes.is_empty() {
+            let default_policy = pod
+                .default_policy
+                .unwrap_or(self.cluster_info.default_policy);
+            let route = InboundHttpRoute {
+                hostnames: Vec::new(),
+                rules: Vec::new(),
+                authorizations: default_policy.default_authzs(&self.cluster_info),
+                creation_timestamp: std::time::SystemTime::UNIX_EPOCH.into(),
+            };
+            routes.insert(HttpRouteRef::Default(default_policy.as_str()), route);
         }
 
-        let _ = pod;
-        let default_policy = pod
-            .default_policy
-            .unwrap_or(self.cluster_info.default_policy);
-        let route = InboundHttpRoute {
-            hostnames: Vec::new(),
-            rules: Vec::new(),
-            authorizations: default_policy.default_authzs(&self.cluster_info),
-            creation_timestamp: std::time::SystemTime::UNIX_EPOCH.into(),
-        };
-        routes.insert(HttpRouteRef::Default(default_policy.as_str()), route);
         routes
     }
 
