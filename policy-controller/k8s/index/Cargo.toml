@@ -9,14 +9,17 @@ publish = false
 ahash = "0.7"
 anyhow = "1"
 futures = { version = "0.3", default-features = false }
-kubert = { version = "0.8", default-features = false, features = ["index"] }
+k8s-gateway-api = "0.6"
+kubert = { version = "0.9", default-features = false, features = ["index"] }
 linkerd-policy-controller-core = { path = "../../core" }
 linkerd-policy-controller-k8s-api = { path = "../api" }
 parking_lot = "0.12"
+thiserror = "1"
 tokio = { version = "1", features = ["macros", "rt", "sync"] }
 tracing = "0.1"
 
 [dev-dependencies]
+chrono = { version = "0.4", default-features = false }
 maplit = "1"
 tokio-stream = "0.1"
 tokio-test = "0.4"

@@ -1,18 +1,18 @@
 use linkerd_policy_controller_k8s_api::{
     self as k8s, policy::server_authorization::Client as ClientAuthz, ResourceExt,
 };
-use linkerd_policy_test::{create, create_ready_pod, curl, nginx, with_temp_ns, LinkerdInject};
+use linkerd_policy_test::{create, create_ready_pod, curl, web, with_temp_ns, LinkerdInject};
 
 #[tokio::test(flavor = "current_thread")]
 async fn meshtls() {
     with_temp_ns(|client, ns| async move {
-        let srv = create(&client, nginx::server(&ns)).await;
+        let srv = create(&client, web::server(&ns)).await;
 
         create(
             &client,
             server_authz(
                 &ns,
-                "nginx",
+                "web",
                 &srv,
                 ClientAuthz {
                     mesh_tls: Some(k8s::policy::server_authorization::MeshTls {
@@ -25,16 +25,16 @@ async fn meshtls() {
         )
         .await;
 
-        // Create the nginx pod and wait for it to be ready.
+        // Create the web pod and wait for it to be ready.
         tokio::join!(
-            create(&client, nginx::service(&ns)),
-            create_ready_pod(&client, nginx::pod(&ns))
+            create(&client, web::service(&ns)),
+            create_ready_pod(&client, web::pod(&ns))
         );
 
         let curl = curl::Runner::init(&client, &ns).await;
         let (injected, uninjected) = tokio::join!(
-            curl.run("curl-injected", "http://nginx", LinkerdInject::Enabled),
-            curl.run("curl-uninjected", "http://nginx", LinkerdInject::Disabled),
+            curl.run("curl-injected", "http://web", LinkerdInject::Enabled),
+            curl.run("curl-uninjected", "http://web", LinkerdInject::Disabled),
         );
         let (injected_status, uninjected_status) =
             tokio::join!(injected.exit_code(), uninjected.exit_code());
@@ -56,19 +56,19 @@ async fn network() {
 
         // Create a curl pod and wait for it to get an IP.
         let blessed = curl
-            .run("curl-blessed", "http://nginx", LinkerdInject::Disabled)
+            .run("curl-blessed", "http://web", LinkerdInject::Disabled)
             .await;
         let blessed_ip = blessed.ip().await;
         tracing::debug!(curl.blessed.ip = %blessed_ip);
 
-        // Once we know the IP of the (blocked) pod, create an nginx
+        // Once we know the IP of the (blocked) pod, create an web
         // authorization policy that permits connections from this pod.
-        let srv = create(&client, nginx::server(&ns)).await;
+        let srv = create(&client, web::server(&ns)).await;
         create(
             &client,
             server_authz(
                 &ns,
-                "nginx",
+                "web",
                 &srv,
                 ClientAuthz {
                     networks: Some(vec![k8s::policy::Network {
@@ -82,23 +82,23 @@ async fn network() {
         )
         .await;
 
-        // Start nginx with the policy.
+        // Start web with the policy.
         tokio::join!(
-            create(&client, nginx::service(&ns)),
-            create_ready_pod(&client, nginx::pod(&ns))
+            create(&client, web::service(&ns)),
+            create_ready_pod(&client, web::pod(&ns))
         );
 
         tracing::info!("Unblocking curl");
         curl.delete_lock().await;
 
-        // The blessed pod should be able to connect to the nginx pod.
+        // The blessed pod should be able to connect to the web pod.
         let status = blessed.exit_code().await;
         assert_eq!(status, 0, "blessed curl must succeed");
 
         // Create another curl pod that is not included in the authorization. It
-        // should fail to connect to the nginx pod.
+        // should fail to connect to the web pod.
         let status = curl
-            .run("curl-cursed", "http://nginx", LinkerdInject::Disabled)
+            .run("curl-cursed", "http://web", LinkerdInject::Disabled)
             .await
             .exit_code()
             .await;
@@ -120,12 +120,12 @@ async fn both() {
         let (blessed_injected, blessed_uninjected) = tokio::join!(
             curl.run(
                 "curl-blessed-injected",
-                "http://nginx",
+                "http://web",
                 LinkerdInject::Enabled,
             ),
             curl.run(
                 "curl-blessed-uninjected",
-                "http://nginx",
+                "http://web",
                 LinkerdInject::Disabled,
             )
         );
@@ -134,14 +134,14 @@ async fn both() {
         tracing::debug!(curl.blessed.injected.ip = ?blessed_injected_ip);
         tracing::debug!(curl.blessed.uninjected.ip = ?blessed_uninjected_ip);
 
-        // Once we know the IP of the (blocked) pod, create an nginx
+        // Once we know the IP of the (blocked) pod, create an web
         // authorization policy that permits connections from this pod.
-        let srv = create(&client, nginx::server(&ns)).await;
+        let srv = create(&client, web::server(&ns)).await;
         create(
             &client,
             server_authz(
                 &ns,
-                "nginx",
+                "web",
                 &srv,
                 ClientAuthz {
                     networks: Some(vec![
@@ -164,39 +164,35 @@ async fn both() {
         )
         .await;
 
-        // Start nginx with the policy.
+        // Start web with the policy.
         tokio::join!(
-            create(&client, nginx::service(&ns)),
-            create_ready_pod(&client, nginx::pod(&ns))
+            create(&client, web::service(&ns)),
+            create_ready_pod(&client, web::pod(&ns))
         );
 
-        // Once the nginx pod is ready, delete the `curl-lock` configmap to
+        // Once the web pod is ready, delete the `curl-lock` configmap to
         // unblock curl from running.
         tracing::info!("Unblocking curl");
         curl.delete_lock().await;
 
         let (blessed_injected_status, blessed_uninjected_status) =
             tokio::join!(blessed_injected.exit_code(), blessed_uninjected.exit_code());
-        // The blessed and injected pod should be able to connect to the nginx pod.
+        // The blessed and injected pod should be able to connect to the web pod.
         assert_eq!(
             blessed_injected_status, 0,
             "blessed injected curl must succeed"
         );
-        // The blessed and uninjected pod should NOT be able to connect to the nginx pod.
+        // The blessed and uninjected pod should NOT be able to connect to the web pod.
         assert_eq!(
             blessed_uninjected_status, 22,
             "blessed uninjected curl must fail"
         );
 
         let (cursed_injected, cursed_uninjected) = tokio::join!(
-            curl.run(
-                "curl-cursed-injected",
-                "http://nginx",
-                LinkerdInject::Enabled,
-            ),
+            curl.run("curl-cursed-injected", "http://web", LinkerdInject::Enabled,),
             curl.run(
                 "curl-cursed-uninjected",
-                "http://nginx",
+                "http://web",
                 LinkerdInject::Disabled,
             )
         );
@@ -222,12 +218,12 @@ async fn either() {
         let (blessed_injected, blessed_uninjected) = tokio::join!(
             curl.run(
                 "curl-blessed-injected",
-                "http://nginx",
+                "http://web",
                 LinkerdInject::Enabled,
             ),
             curl.run(
                 "curl-blessed-uninjected",
-                "http://nginx",
+                "http://web",
                 LinkerdInject::Disabled,
             )
         );
@@ -236,15 +232,15 @@ async fn either() {
         tracing::debug!(curl.blessed.injected.ip = ?blessed_injected_ip);
         tracing::debug!(curl.blessed.uninjected.ip = ?blessed_uninjected_ip);
 
-        // Once we know the IP of the (blocked) pod, create an nginx
+        // Once we know the IP of the (blocked) pod, create an web
         // authorization policy that permits connections from this pod.
-        let srv = create(&client, nginx::server(&ns)).await;
+        let srv = create(&client, web::server(&ns)).await;
         tokio::join!(
             create(
                 &client,
                 server_authz(
                     &ns,
-                    "nginx-from-ip",
+                    "web-from-ip",
                     &srv,
                     ClientAuthz {
                         unauthenticated: true,
@@ -266,7 +262,7 @@ async fn either() {
                 &client,
                 server_authz(
                     &ns,
-                    "nginx-from-id",
+                    "web-from-id",
                     &srv,
                     ClientAuthz {
                         mesh_tls: Some(k8s::policy::server_authorization::MeshTls {
@@ -279,10 +275,10 @@ async fn either() {
             ),
         );
 
-        // Start nginx with the policy.
+        // Start web with the policy.
         tokio::join!(
-            create(&client, nginx::service(&ns)),
-            create_ready_pod(&client, nginx::pod(&ns)),
+            create(&client, web::service(&ns)),
+            create_ready_pod(&client, web::pod(&ns)),
         );
 
         tracing::info!("Unblocking curl");
@@ -300,14 +296,10 @@ async fn either() {
         );
 
         let (cursed_injected, cursed_uninjected) = tokio::join!(
-            curl.run(
-                "curl-cursed-injected",
-                "http://nginx",
-                LinkerdInject::Enabled,
-            ),
+            curl.run("curl-cursed-injected", "http://web", LinkerdInject::Enabled,),
             curl.run(
                 "curl-cursed-uninjected",
-                "http://nginx",
+                "http://web",
                 LinkerdInject::Disabled,
             ),
         );
@@ -341,7 +333,7 @@ fn server_authz(
         },
         spec: k8s::policy::ServerAuthorizationSpec {
             server: k8s::policy::server_authorization::Server {
-                name: Some(target.name()),
+                name: Some(target.name_unchecked()),
                 selector: None,
             },
             client,

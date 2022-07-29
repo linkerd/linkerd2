@@ -4,7 +4,7 @@
 pub mod admission;
 pub mod curl;
 pub mod grpc;
-pub mod nginx;
+pub mod web;
 
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
 use maplit::{btreemap, convert_args};
@@ -71,7 +71,27 @@ pub async fn create_ready_pod(client: &kube::Client, pod: k8s::Pod) -> k8s::Pod 
     };
 
     let pod = create(client, pod).await;
-    await_condition(client, &pod.namespace().unwrap(), &pod.name(), pod_ready).await;
+    let pod = await_condition(
+        client,
+        &pod.namespace().unwrap(),
+        &pod.name_unchecked(),
+        pod_ready,
+    )
+    .await
+    .unwrap();
+
+    tracing::trace!(
+        pod = %pod.name_any(),
+        ip = %pod
+            .status.as_ref().expect("pod must have a status")
+            .pod_ips.as_ref().unwrap()[0]
+            .ip.as_deref().expect("pod ip must be set"),
+        containers = ?pod
+            .spec.as_ref().expect("pod must have a spec")
+            .containers.iter().map(|c| &*c.name).collect::<Vec<_>>(),
+        "Ready",
+    );
+
     pod
 }
 
@@ -94,6 +114,21 @@ pub async fn await_pod_ip(client: &kube::Client, ns: &str, name: &str) -> std::n
         .expect("pod IP must be valid")
 }
 
+#[tracing::instrument(skip_all, fields(%pod, %container))]
+pub async fn logs(client: &kube::Client, ns: &str, pod: &str, container: &str) {
+    let params = kube::api::LogParams {
+        container: Some(container.to_string()),
+        ..kube::api::LogParams::default()
+    };
+    let log = kube::Api::<k8s::Pod>::namespaced(client.clone(), ns)
+        .logs(pod, &params)
+        .await
+        .expect("must fetch logs");
+    for message in log.lines() {
+        tracing::trace!(%message);
+    }
+}
+
 /// Runs a test with a random namespace that is deleted on test completion
 pub async fn with_temp_ns<F, Fut>(test: F)
 where
@@ -102,10 +137,26 @@ where
 {
     let _tracing = init_tracing();
 
-    tracing::trace!("Initializing client");
-    let client = kube::Client::try_default()
-        .await
-        .expect("failed to initialize k8s client");
+    let context = std::env::var("POLICY_TEST_CONTEXT").ok();
+    tracing::trace!(?context, "Initializing client");
+    let client = match context {
+        None => kube::Client::try_default()
+            .await
+            .expect("must initialize kubernetes client"),
+        Some(context) => {
+            let opts = kube::config::KubeConfigOptions {
+                context: Some(context),
+                cluster: None,
+                user: None,
+            };
+            kube::Config::from_kubeconfig(&opts)
+                .await
+                .expect("must initialize kubernetes client config")
+                .try_into()
+                .expect("must initialize kubernetes client")
+        }
+    };
+
     let api = kube::Api::<k8s::Namespace>::all(client.clone());
 
     let name = format!("linkerd-policy-test-{}", random_suffix(6));
@@ -127,24 +178,25 @@ where
     tracing::trace!(?ns);
     tokio::time::timeout(
         tokio::time::Duration::from_secs(60),
-        await_service_account(&client, &ns.name(), "default"),
+        await_service_account(&client, &ns.name_unchecked(), "default"),
     )
     .await
     .expect("Timed out waiting for a serviceaccount");
 
     tracing::trace!("Spawning");
-    let test = test(client.clone(), ns.name());
-    let res = tokio::spawn(test.instrument(tracing::info_span!("test", ns = %ns.name()))).await;
+    let ns_name = ns.name_unchecked();
+    let test = test(client.clone(), ns_name.clone());
+    let res = tokio::spawn(test.instrument(tracing::info_span!("test", ns = %ns_name))).await;
     if res.is_err() {
         // If the test failed, list the state of all pods/containers in the namespace.
-        let pods = kube::Api::<k8s::Pod>::namespaced(client.clone(), &ns.name())
+        let pods = kube::Api::<k8s::Pod>::namespaced(client.clone(), &ns_name)
             .list(&Default::default())
             .await
             .expect("Failed to get pod status");
         for p in pods.items {
-            let pod = p.name();
+            let pod = p.name_unchecked();
             if let Some(status) = p.status {
-                let _span = tracing::info_span!("pod", ns = %ns.name(), name = %pod).entered();
+                let _span = tracing::info_span!("pod", ns = %ns_name, name = %pod).entered();
                 tracing::trace!(reason = ?status.reason, message = ?status.message);
                 for c in status.init_container_statuses.into_iter().flatten() {
                     tracing::trace!(init_container = %c.name, ready = %c.ready, state = ?c.state);
@@ -160,8 +212,8 @@ where
         drop(_tracing);
     }
 
-    tracing::debug!(ns = %ns.name(), "Deleting");
-    api.delete(&ns.name(), &kube::api::DeleteParams::background())
+    tracing::debug!(ns = %ns.name_unchecked(), "Deleting");
+    api.delete(&ns.name_unchecked(), &kube::api::DeleteParams::background())
         .await
         .expect("failed to delete Namespace");
     if let Err(err) = res {
@@ -188,12 +240,12 @@ async fn await_service_account(client: &kube::Client, ns: &str, name: &str) {
         tracing::info!(?ev);
         match ev {
             kube::runtime::watcher::Event::Restarted(sas) => {
-                if sas.iter().any(|sa| sa.name() == name) {
+                if sas.iter().any(|sa| sa.name_unchecked() == name) {
                     return;
                 }
             }
             kube::runtime::watcher::Event::Applied(sa) => {
-                if sa.name() == name {
+                if sa.name_unchecked() == name {
                     return;
                 }
             }
@@ -220,6 +272,8 @@ fn init_tracing() -> tracing::subscriber::DefaultGuard {
     tracing::subscriber::set_default(
         tracing_subscriber::fmt()
             .with_test_writer()
+            .with_thread_names(true)
+            .without_time()
             .with_env_filter(
                 tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
                     "trace,tower=info,hyper=info,kube=info,h2=info"

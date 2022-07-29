@@ -162,6 +162,7 @@ webhooks:
     apiVersions: ["v1alpha1", "v1beta1"]
     resources:
     - authorizationpolicies
+    - httproutes
     - networkauthentications
     - meshtlsauthentications
     - serverauthorizations
@@ -189,6 +190,7 @@ rules:
       - policy.linkerd.io
     resources:
       - authorizationpolicies
+      - httproutes
       - meshtlsauthentications
       - networkauthentications
       - servers
@@ -453,7 +455,7 @@ data:
         name: cr.l5d.io/linkerd/policy-controller
         pullPolicy: ""
         version: ""
-      logLevel: linkerd=info,warn
+      logLevel: info
       resources:
         cpu:
           limit: ""
@@ -470,7 +472,6 @@ data:
       externalSecret: true
       injectCaFrom: ""
       injectCaFromSecret: ""
-      keyPEM: ""
       namespaceSelector:
         matchExpressions:
         - key: config.linkerd.io/admission-webhooks
@@ -526,6 +527,7 @@ data:
           limit: ""
           request: ""
       saMountPath: null
+      shutdownGracePeriod: ""
       uid: 2102
       waitBeforeExitSeconds: 0
     proxyContainerName: linkerd-proxy
@@ -538,6 +540,7 @@ data:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
         version: test-proxy-init-version
+      iptablesMode: nft
       logFormat: ""
       logLevel: ""
       resources:
@@ -848,6 +851,10 @@ spec:
           name: linkerd-identity-token
       initContainers:
       - args:
+        - --firewall-bin-path
+        - "iptables-nft"
+        - --firewall-save-bin-path
+        - "iptables-nft-save"
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
@@ -1233,7 +1240,7 @@ spec:
         - --cluster-networks=10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         - --identity-domain=test.trust.domain
         - --default-policy=all-unauthenticated
-        - --log-level=linkerd=info,warn
+        - --log-level=info
         - --log-format=plain
         image: cr.l5d.io/linkerd/policy-controller:linkerd-version
         imagePullPolicy: IfNotPresent
@@ -1265,6 +1272,10 @@ spec:
           readOnly: true
       initContainers:
       - args:
+        - --firewall-bin-path
+        - "iptables-nft"
+        - --firewall-save-bin-path
+        - "iptables-nft-save"
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
@@ -1571,6 +1582,10 @@ spec:
           readOnly: true
       initContainers:
       - args:
+        - --firewall-bin-path
+        - "iptables-nft"
+        - --firewall-save-bin-path
+        - "iptables-nft-save"
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port

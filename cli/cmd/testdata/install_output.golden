@@ -167,6 +167,7 @@ webhooks:
     apiVersions: ["v1alpha1", "v1beta1"]
     resources:
     - authorizationpolicies
+    - httproutes
     - networkauthentications
     - meshtlsauthentications
     - serverauthorizations
@@ -194,6 +195,7 @@ rules:
       - policy.linkerd.io
     resources:
       - authorizationpolicies
+      - httproutes
       - meshtlsauthentications
       - networkauthentications
       - servers
@@ -487,7 +489,6 @@ data:
       externalSecret: true
       injectCaFrom: ""
       injectCaFromSecret: ""
-      keyPEM: ""
       namespaceSelector:
         matchExpressions:
         - key: config.linkerd.io/admission-webhooks
@@ -543,6 +544,7 @@ data:
           limit: memory-limit
           request: memory-request
       saMountPath: null
+      shutdownGracePeriod: ""
       uid: 2102
       waitBeforeExitSeconds: 0
     proxyContainerName: ProxyContainerName
@@ -555,6 +557,7 @@ data:
         name: ProxyInitImageName
         pullPolicy: ImagePullPolicy
         version: ProxyInitVersion
+      iptablesMode: nft
       logFormat: ""
       logLevel: ""
       resources:
@@ -869,6 +872,10 @@ spec:
           name: linkerd-identity-token
       initContainers:
       - args:
+        - --firewall-bin-path
+        - "iptables-nft"
+        - --firewall-save-bin-path
+        - "iptables-nft-save"
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
@@ -1288,6 +1295,10 @@ spec:
           readOnly: true
       initContainers:
       - args:
+        - --firewall-bin-path
+        - "iptables-nft"
+        - --firewall-save-bin-path
+        - "iptables-nft-save"
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
@@ -1589,6 +1600,10 @@ spec:
           readOnly: true
       initContainers:
       - args:
+        - --firewall-bin-path
+        - "iptables-nft"
+        - --firewall-save-bin-path
+        - "iptables-nft-save"
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port

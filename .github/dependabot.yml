@@ -38,6 +38,11 @@ updates:
       - dependency-name: "tracing-attributes"
       - dependency-name: "tracing-core"
       - dependency-name: "tracing-serde"
+      # These dependencies are for platforms that we don't support:
+      - dependency-name: "redox_syscall"
+      - dependency-name: "js-sys"
+      - dependency-name: "wasm-bindgen"
+      - dependency-name: "web-sys"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -58,3 +63,66 @@ updates:
       # see https://reactrouter.com/docs/en/v6/upgrading/v5
       - dependency-name: "react-router-dom"
         update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: daily
+      time: "05:00"
+      timezone: "UTC"
+
+  - package-ecosystem: "docker"
+    directory: "/.devcontainer"
+    schedule:
+      interval: daily
+      time: "05:00"
+      timezone: "UTC"
+
+  - package-ecosystem: "docker"
+    directory: "/cli"
+    schedule:
+      interval: daily
+      time: "05:00"
+      timezone: "UTC"
+
+  - package-ecosystem: "docker"
+    directory: "/cni-plugin"
+    schedule:
+      interval: daily
+      time: "05:00"
+      timezone: "UTC"
+
+  - package-ecosystem: "docker"
+    directory: "/controller"
+    schedule:
+      interval: daily
+      time: "05:00"
+      timezone: "UTC"
+
+  - package-ecosystem: "docker"
+    directory: "/policy-controller"
+    schedule:
+      interval: daily
+      time: "05:00"
+      timezone: "UTC"
+
+  - package-ecosystem: "docker"
+    directory: "/viz/metrics-api"
+    schedule:
+      interval: daily
+      time: "05:00"
+      timezone: "UTC"
+
+  - package-ecosystem: "docker"
+    directory: "/viz/tap"
+    schedule:
+      interval: daily
+      time: "05:00"
+      timezone: "UTC"
+
+  - package-ecosystem: "docker"
+    directory: "/web"
+    schedule:
+      interval: daily
+      time: "05:00"
+      timezone: "UTC"

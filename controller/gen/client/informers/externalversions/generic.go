@@ -67,6 +67,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		// Group=policy, Version=v1alpha1
 	case policyv1alpha1.SchemeGroupVersion.WithResource("authorizationpolicies"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Policy().V1alpha1().AuthorizationPolicies().Informer()}, nil
+	case policyv1alpha1.SchemeGroupVersion.WithResource("httproutes"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Policy().V1alpha1().HTTPRoutes().Informer()}, nil
 	case policyv1alpha1.SchemeGroupVersion.WithResource("meshtlsauthentications"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Policy().V1alpha1().MeshTLSAuthentications().Informer()}, nil
 	case policyv1alpha1.SchemeGroupVersion.WithResource("networkauthentications"):

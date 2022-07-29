@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -78,15 +80,18 @@ func ServerAuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI,
 
 			selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
+				fmt.Fprintf(os.Stderr, "Failed to create selector: %s\n", err)
 				os.Exit(1)
 			}
-			selectedPods, err := k8sAPI.CoreV1().Pods(server.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to get pods: %s\n", err)
-				os.Exit(1)
+
+			var selectedPods []corev1.Pod
+			for _, pod := range pods {
+				if selector.Matches(labels.Set(pod.Labels)) {
+					selectedPods = append(selectedPods, pod)
+				}
 			}
-			if serverIncludesPod(server, selectedPods.Items, podSet) {
+
+			if serverIncludesPod(server, selectedPods, podSet) {
 				results = append(results, ServerAndAuthorization{server.GetName(), saz.GetName()})
 			}
 		}

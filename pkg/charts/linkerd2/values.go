@@ -31,7 +31,7 @@ type (
 		ControllerUID                int64                  `json:"controllerUID"`
 		EnableH2Upgrade              bool                   `json:"enableH2Upgrade"`
 		EnablePodAntiAffinity        bool                   `json:"enablePodAntiAffinity"`
-		NodeAffinity                 map[string]string      `json:"nodeAffinity"`
+		NodeAffinity                 map[string]interface{} `json:"nodeAffinity"`
 		EnablePodDisruptionBudget    bool                   `json:"enablePodDisruptionBudget"`
 		WebhookFailurePolicy         string                 `json:"webhookFailurePolicy"`
 		DeploymentStrategy           map[string]interface{} `json:"deploymentStrategy,omitempty"`
@@ -112,6 +112,7 @@ type (
 		Await                         bool             `json:"await"`
 		DefaultInboundPolicy          string           `json:"defaultInboundPolicy"`
 		AccessLog                     string           `json:"accessLog"`
+		ShutdownGracePeriod           string           `json:"shutdownGracePeriod"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
@@ -128,6 +129,7 @@ type (
 		Resources            *Resources       `json:"resources"`
 		CloseWaitTimeoutSecs int64            `json:"closeWaitTimeoutSecs"`
 		RunAsRoot            bool             `json:"runAsRoot"`
+		IptablesMode         string           `json:"iptablesMode"`
 	}
 
 	// DebugContainer contains the fields to set the debugging sidecar

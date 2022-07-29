@@ -1,0 +1,44 @@
+name: Actions
+
+on:
+  pull_request:
+    paths:
+      - .devcontainer/devcontainer.json
+      - .github/workflows/**
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    container: ghcr.io/linkerd/dev:v22-tools
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - name: Run actionlint
+        run: |
+          # shellcheck disable=SC2016
+          actionlint \
+            -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A```%0A{{replace $err.Snippet "\\n" "%0A"}}%0A```\n{{end}}' \
+            .github/workflows/*
+
+  devcontainer-versions:
+    runs-on: ubuntu-latest
+    container: ghcr.io/linkerd/dev:v22-tools
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - name: Scan workflows for other Devcontainer image versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Strip jsonc comments because `jq` doesn't support them.
+          image=$(json5-to-json <.devcontainer/devcontainer.json |jq -r '.image')
+          for f in .github/workflows/* ; do
+            for i in $(yq '.jobs.* | .container.image // .container // "" | match("ghcr.io/linkerd/dev:v[0-9]+").string' < "$f") ; do
+              if [ "$i" != "$image" ]; then
+                echo "::error file=$f::Workflow '$f' uses incorrect Devcontainer image '$i'"
+                exit 1
+              fi
+            done
+          done

@@ -20,6 +20,8 @@ package v1alpha1
 
 type AuthorizationPolicyExpansion interface{}
 
+type HTTPRouteExpansion interface{}
+
 type MeshTLSAuthenticationExpansion interface{}
 
 type NetworkAuthenticationExpansion interface{}

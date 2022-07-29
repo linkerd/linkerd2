@@ -23,8 +23,6 @@ import (
 )
 
 const (
-	kubeSystem = "kube-system"
-
 	// metrics labels
 	service                = "service"
 	namespace              = "namespace"
@@ -219,9 +217,6 @@ func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, hostname string
 
 func (ew *EndpointsWatcher) addService(obj interface{}) {
 	service := obj.(*corev1.Service)
-	if service.Namespace == kubeSystem {
-		return
-	}
 	id := ServiceID{
 		Namespace: service.Namespace,
 		Name:      service.Name,
@@ -247,9 +242,6 @@ func (ew *EndpointsWatcher) deleteService(obj interface{}) {
 		}
 	}
 
-	if service.Namespace == kubeSystem {
-		return
-	}
 	id := ServiceID{
 		Namespace: service.Namespace,
 		Name:      service.Name,
@@ -268,9 +260,6 @@ func (ew *EndpointsWatcher) addEndpoints(obj interface{}) {
 		return
 	}
 
-	if endpoints.Namespace == kubeSystem {
-		return
-	}
 	id := ServiceID{endpoints.Namespace, endpoints.Name}
 	sp := ew.getOrNewServicePublisher(id)
 	sp.updateEndpoints(endpoints)
@@ -291,9 +280,6 @@ func (ew *EndpointsWatcher) deleteEndpoints(obj interface{}) {
 		}
 	}
 
-	if endpoints.Namespace == kubeSystem {
-		return
-	}
 	id := ServiceID{
 		Namespace: endpoints.Namespace,
 		Name:      endpoints.Name,
@@ -309,10 +295,6 @@ func (ew *EndpointsWatcher) addEndpointSlice(obj interface{}) {
 	newSlice, ok := obj.(*discovery.EndpointSlice)
 	if !ok {
 		ew.log.Errorf("error processing EndpointSlice resource, got %#v expected *discovery.EndpointSlice", obj)
-		return
-	}
-
-	if newSlice.Namespace == kubeSystem {
 		return
 	}
 
@@ -335,10 +317,6 @@ func (ew *EndpointsWatcher) updateEndpointSlice(oldObj interface{}, newObj inter
 	newSlice, ok := newObj.(*discovery.EndpointSlice)
 	if !ok {
 		ew.log.Errorf("error processing EndpointSlice resource, got %#v expected *discovery.EndpointSlice", newObj)
-		return
-	}
-
-	if newSlice.Namespace == kubeSystem {
 		return
 	}
 
@@ -366,10 +344,6 @@ func (ew *EndpointsWatcher) deleteEndpointSlice(obj interface{}) {
 			ew.log.Errorf("DeletedFinalStateUnknown contained object that is not an EndpointSlice %#v", obj)
 			return
 		}
-	}
-
-	if es.Namespace == kubeSystem {
-		return
 	}
 
 	id, err := getEndpointSliceServiceID(es)

@@ -160,6 +160,10 @@ spec:
           name: http
       initContainers:
       - args:
+        - --firewall-bin-path
+        - iptables-nft
+        - --firewall-save-bin-path
+        - iptables-nft-save
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
@@ -170,7 +174,7 @@ spec:
         - 4190,4191,4567,4568
         - --outbound-ports-to-ignore
         - 4567,4568
-        image: cr.l5d.io/linkerd/proxy-init:v1.5.3
+        image: cr.l5d.io/linkerd/proxy-init:v1.6.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -369,6 +373,10 @@ spec:
           name: http
       initContainers:
       - args:
+        - --firewall-bin-path
+        - iptables-nft
+        - --firewall-save-bin-path
+        - iptables-nft-save
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
@@ -379,7 +387,7 @@ spec:
         - 4190,4191,4567,4568
         - --outbound-ports-to-ignore
         - 4567,4568
-        image: cr.l5d.io/linkerd/proxy-init:v1.5.3
+        image: cr.l5d.io/linkerd/proxy-init:v1.6.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

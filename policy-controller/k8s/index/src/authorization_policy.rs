@@ -1,7 +1,8 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
     policy::{LocalTargetRef, NamespacedTargetRef},
+    ServiceAccount,
 };
 
 #[derive(Debug, PartialEq)]
@@ -12,6 +13,7 @@ pub(crate) struct Spec {
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Target {
+    HttpRoute(String),
     Server(String),
     Namespace,
 }
@@ -26,6 +28,16 @@ pub(crate) enum AuthenticationTarget {
         namespace: Option<String>,
         name: String,
     },
+    ServiceAccount {
+        namespace: Option<String>,
+        name: String,
+    },
+}
+
+#[inline]
+pub fn validate(ap: k8s::policy::AuthorizationPolicySpec) -> Result<()> {
+    Spec::try_from(ap)?;
+    Ok(())
 }
 
 impl TryFrom<k8s::policy::AuthorizationPolicySpec> for Spec {
@@ -39,9 +51,6 @@ impl TryFrom<k8s::policy::AuthorizationPolicySpec> for Spec {
             .into_iter()
             .map(authentication_ref)
             .collect::<Result<Vec<_>>>()?;
-        if authentications.is_empty() {
-            bail!("No authentication targets");
-        }
 
         Ok(Self {
             target,
@@ -51,17 +60,15 @@ impl TryFrom<k8s::policy::AuthorizationPolicySpec> for Spec {
 }
 
 fn target(t: LocalTargetRef) -> Result<Target> {
-    if t.targets_kind::<k8s::policy::Server>() {
-        return Ok(Target::Server(t.name));
+    match t {
+        t if t.targets_kind::<k8s::policy::Server>() => Ok(Target::Server(t.name)),
+        t if t.targets_kind::<k8s::Namespace>() => Ok(Target::Namespace),
+        t if t.targets_kind::<k8s::policy::HttpRoute>() => Ok(Target::HttpRoute(t.name)),
+        _ => anyhow::bail!(
+            "unsupported authorization target type: {}",
+            t.canonical_kind()
+        ),
     }
-    if t.targets_kind::<k8s::Namespace>() {
-        return Ok(Target::Namespace);
-    }
-
-    anyhow::bail!(
-        "unsupported authorization target type: {}",
-        t.canonical_kind()
-    );
 }
 
 fn authentication_ref(t: NamespacedTargetRef) -> Result<AuthenticationTarget> {
@@ -72,6 +79,11 @@ fn authentication_ref(t: NamespacedTargetRef) -> Result<AuthenticationTarget> {
         })
     } else if t.targets_kind::<k8s::policy::NetworkAuthentication>() {
         Ok(AuthenticationTarget::Network {
+            namespace: t.namespace.map(Into::into),
+            name: t.name,
+        })
+    } else if t.targets_kind::<ServiceAccount>() {
+        Ok(AuthenticationTarget::ServiceAccount {
             namespace: t.namespace.map(Into::into),
             name: t.name,
         })

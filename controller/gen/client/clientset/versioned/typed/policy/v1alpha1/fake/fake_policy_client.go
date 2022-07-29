@@ -32,6 +32,10 @@ func (c *FakePolicyV1alpha1) AuthorizationPolicies(namespace string) v1alpha1.Au
 	return &FakeAuthorizationPolicies{c, namespace}
 }
 
+func (c *FakePolicyV1alpha1) HTTPRoutes(namespace string) v1alpha1.HTTPRouteInterface {
+	return &FakeHTTPRoutes{c, namespace}
+}
+
 func (c *FakePolicyV1alpha1) MeshTLSAuthentications(namespace string) v1alpha1.MeshTLSAuthenticationInterface {
 	return &FakeMeshTLSAuthentications{c, namespace}
 }

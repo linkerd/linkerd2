@@ -1,18 +1,25 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
+mod http_route;
+
 use futures::prelude::*;
-use linkerd2_proxy_api::inbound::{
-    self as proto,
-    inbound_server_policies_server::{InboundServerPolicies, InboundServerPoliciesServer},
+use linkerd2_proxy_api::{
+    self as api,
+    inbound::{
+        self as proto,
+        inbound_server_policies_server::{InboundServerPolicies, InboundServerPoliciesServer},
+    },
+    meta::{metadata, Metadata},
 };
 use linkerd_policy_controller_core::{
+    http_route::{InboundFilter, InboundHttpRoute, InboundHttpRouteRule},
     AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer,
     IdentityMatch, InboundServer, InboundServerStream, IpNet, NetworkMatch, ProxyProtocol,
     ServerRef,
 };
 use maplit::*;
-use std::sync::Arc;
+use std::{num::NonZeroU16, sync::Arc};
 use tracing::trace;
 
 #[derive(Clone, Debug)]
@@ -26,7 +33,7 @@ pub struct Server<T> {
 
 impl<T> Server<T>
 where
-    T: DiscoverInboundServer<(String, String, u16)> + Send + Sync + 'static,
+    T: DiscoverInboundServer<(String, String, NonZeroU16)> + Send + Sync + 'static,
 {
     pub fn new(discover: T, cluster_networks: Vec<IpNet>, drain: drain::Watch) -> Self {
         Self {
@@ -55,7 +62,7 @@ where
     fn check_target(
         &self,
         proto::PortSpec { workload, port }: proto::PortSpec,
-    ) -> Result<(String, String, u16), tonic::Status> {
+    ) -> Result<(String, String, NonZeroU16), tonic::Status> {
         // Parse a workload name in the form namespace:name.
         let (ns, name) = match workload.split_once(':') {
             None => {
@@ -74,15 +81,9 @@ where
         };
 
         // Ensure that the port is in the valid range.
-        let port = {
-            if port == 0 || port > std::u16::MAX as u32 {
-                return Err(tonic::Status::invalid_argument(format!(
-                    "Invalid port: {}",
-                    port
-                )));
-            }
-            port as u16
-        };
+        let port = u16::try_from(port)
+            .and_then(NonZeroU16::try_from)
+            .map_err(|_| tonic::Status::invalid_argument(format!("Invalid port: {port}")))?;
 
         Ok((ns.to_string(), name.to_string(), port))
     }
@@ -91,7 +92,7 @@ where
 #[async_trait::async_trait]
 impl<T> InboundServerPolicies for Server<T>
 where
-    T: DiscoverInboundServer<(String, String, u16)> + Send + Sync + 'static,
+    T: DiscoverInboundServer<(String, String, NonZeroU16)> + Send + Sync + 'static,
 {
     async fn get_port(
         &self,
@@ -173,13 +174,18 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
             ProxyProtocol::Detect { timeout } => Some(proto::proxy_protocol::Kind::Detect(
                 proto::proxy_protocol::Detect {
                     timeout: Some(timeout.into()),
+                    http_routes: to_http_route_list(&srv.http_routes, cluster_networks),
                 },
             )),
             ProxyProtocol::Http1 => Some(proto::proxy_protocol::Kind::Http1(
-                proto::proxy_protocol::Http1::default(),
+                proto::proxy_protocol::Http1 {
+                    routes: to_http_route_list(&srv.http_routes, cluster_networks),
+                },
             )),
             ProxyProtocol::Http2 => Some(proto::proxy_protocol::Kind::Http2(
-                proto::proxy_protocol::Http2::default(),
+                proto::proxy_protocol::Http2 {
+                    routes: to_http_route_list(&srv.http_routes, cluster_networks),
+                },
             )),
             ProxyProtocol::Grpc => Some(proto::proxy_protocol::Kind::Grpc(
                 proto::proxy_protocol::Grpc::default(),
@@ -231,24 +237,28 @@ fn to_authz(
     }: &ClientAuthorization,
     cluster_networks: &[IpNet],
 ) -> proto::Authz {
-    let networks = if networks.is_empty() {
-        cluster_networks
-            .iter()
-            .map(|n| proto::Network {
-                net: Some((*n).into()),
-                except: vec![],
-            })
-            .collect::<Vec<_>>()
-    } else {
-        networks
-            .iter()
-            .map(|NetworkMatch { net, except }| proto::Network {
-                net: Some((*net).into()),
-                except: except.iter().cloned().map(Into::into).collect(),
-            })
-            .collect()
+    let meta = Metadata {
+        kind: Some(match reference {
+            AuthorizationRef::Default(name) => metadata::Kind::Default(name.clone()),
+            AuthorizationRef::AuthorizationPolicy(name) => {
+                metadata::Kind::Resource(api::meta::Resource {
+                    group: "policy.linkerd.io".to_string(),
+                    kind: "authorizationpolicy".to_string(),
+                    name: name.clone(),
+                })
+            }
+            AuthorizationRef::ServerAuthorization(name) => {
+                metadata::Kind::Resource(api::meta::Resource {
+                    group: "policy.linkerd.io".to_string(),
+                    kind: "serverauthorization".to_string(),
+                    name: name.clone(),
+                })
+            }
+        }),
     };
 
+    // TODO labels are deprecated, but we want to continue to support them for older proxies. This
+    // can be removed in 2.13.
     let labels = match reference {
         AuthorizationRef::Default(name) => convert_args!(hashmap!(
             "group" => "",
@@ -265,6 +275,24 @@ fn to_authz(
             "kind" => "authorizationpolicy",
             "name" => name,
         )),
+    };
+
+    let networks = if networks.is_empty() {
+        cluster_networks
+            .iter()
+            .map(|n| proto::Network {
+                net: Some((*n).into()),
+                except: vec![],
+            })
+            .collect::<Vec<_>>()
+    } else {
+        networks
+            .iter()
+            .map(|NetworkMatch { net, except }| proto::Network {
+                net: Some((*net).into()),
+                except: except.iter().cloned().map(Into::into).collect(),
+            })
+            .collect()
     };
 
     let authn = match authentication {
@@ -317,8 +345,102 @@ fn to_authz(
     };
 
     proto::Authz {
-        networks,
+        metadata: Some(meta),
         labels,
+        networks,
         authentication: Some(authn),
+    }
+}
+
+fn to_http_route_list<'r>(
+    routes: impl IntoIterator<Item = (&'r String, &'r InboundHttpRoute)>,
+    cluster_networks: &[IpNet],
+) -> Vec<proto::HttpRoute> {
+    // Per the Gateway API spec:
+    //
+    // > If ties still exist across multiple Routes, matching precedence MUST be
+    // > determined in order of the following criteria, continuing on ties:
+    // >
+    // >    The oldest Route based on creation timestamp.
+    // >    The Route appearing first in alphabetical order by
+    // >   "{namespace}/{name}".
+    //
+    // Note that we don't need to include the route's namespace in this
+    // comparison, because all these routes will exist in the same
+    // namespace.
+    let mut route_list = routes.into_iter().collect::<Vec<_>>();
+    route_list.sort_by(|(a_name, a), (b_name, b)| {
+        a.creation_timestamp
+            .cmp(&b.creation_timestamp)
+            .then_with(|| a_name.cmp(b_name))
+    });
+
+    route_list
+        .into_iter()
+        .map(|(name, route)| to_http_route(name, route.clone(), cluster_networks))
+        .collect()
+}
+
+fn to_http_route(
+    name: impl ToString,
+    InboundHttpRoute {
+        hostnames,
+        rules,
+        authorizations,
+        creation_timestamp: _,
+    }: InboundHttpRoute,
+    cluster_networks: &[IpNet],
+) -> proto::HttpRoute {
+    let metadata = Metadata {
+        kind: Some(metadata::Kind::Resource(api::meta::Resource {
+            group: "policy.linkerd.io".to_string(),
+            kind: "HTTPRoute".to_string(),
+            name: name.to_string(),
+        })),
+    };
+
+    let hosts = hostnames
+        .into_iter()
+        .map(http_route::convert_host_match)
+        .collect();
+
+    let rules = rules
+        .into_iter()
+        .map(
+            |InboundHttpRouteRule { matches, filters }| proto::http_route::Rule {
+                matches: matches.into_iter().map(http_route::convert_match).collect(),
+                filters: filters.into_iter().map(convert_filter).collect(),
+            },
+        )
+        .collect();
+
+    let authorizations = authorizations
+        .iter()
+        .map(|(n, c)| to_authz(n, c, cluster_networks))
+        .collect();
+
+    proto::HttpRoute {
+        metadata: Some(metadata),
+        hosts,
+        rules,
+        authorizations,
+    }
+}
+
+fn convert_filter(filter: InboundFilter) -> proto::http_route::Filter {
+    use proto::http_route::filter::Kind;
+
+    proto::http_route::Filter {
+        kind: Some(match filter {
+            InboundFilter::FailureInjector(f) => {
+                Kind::FailureInjector(http_route::convert_failure_injector_filter(f))
+            }
+            InboundFilter::RequestHeaderModifier(f) => {
+                Kind::RequestHeaderModifier(http_route::convert_header_modifier_filter(f))
+            }
+            InboundFilter::RequestRedirect(f) => {
+                Kind::Redirect(http_route::convert_redirect_filter(f))
+            }
+        }),
     }
 }

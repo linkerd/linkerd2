@@ -1,5 +1,101 @@
 # Changes
 
+## edge-22.7.3
+
+This release adds a new `nft` iptables mode, used by default in proxy-init.
+When used, firewall configuration will be set-up through the `iptables-nft`
+binary; this should allow hosts that do not support `iptables-legacy` (such as
+RHEL based environments) to make use of the init container. The older
+`iptables-legacy` mode is still supported, but it must be explictly turned on.
+Moreover, this release also replaces the `HTTPRoute` CRD with Linkerd's own
+version, and includes a number of fixes and improvements.
+
+* Added a new `iptables-nft` mode for proxy-init. When running in this mode,
+  the firewall will be configured with `nft` kernel API; this should allow
+  users to run the init container on RHEL-family hosts
+* Fixed an issue where the proxy-injector would break when using `nodeAffinity`
+  values for the control plane
+* Updated healthcheck to ignore `Terminated` state for pods (thanks
+  @AgrimPrasad!)
+* Replaced `HTTRoute` CRD version from `gateway.networking.k8s.io` with a
+  similar version from the `policy.linkerd.io` API group. While the CRD is
+  similar, it does not support the `Gateway` type, does not contain the
+  `backendRefs` fields, and does not support `RequestMirror` and `ExtensionRef`
+  filter types.
+* Updated the default policy controller log level to `info`; the controller
+  will now emit INFO level logs for some of its dependencies
+* Added validation to ensure `HTTPRoute` paths are absolute; relative paths are
+  not supported by the proxy and the policy controller admission server will
+  reject any routes that use paths which do not start with `/`
+
+## edge-22.7.2
+
+This release adds support for per-route authorization policy using the
+AuthorizationPolicy and HttpRoute resources. It also adds a configurable
+shutdown grace period to the proxy which can be used to ensure that proxy
+graceful shutdown completes within a certain time, even if there are outstanding
+open connections.
+
+* Removed kube-system exclusions from watchers to fix service discovery for
+  workloads in the kube-system namespace (thanks @JacobHenner)
+* Added annotations to allow Linkerd extension deployments to be evicted by the
+  autoscaler when necessary
+* Added missing port in the Linkerd viz chart documentation (thanks @haswalt)
+* Added support for per-route policy by supporting AuthorizationPolicy resources
+  which target HttpRoute resources
+* Fixed the `linkerd check` command crashing when unexpected pods are found in
+  a Linkerd namespace
+* Added a `config.linkerd.io/shutdown-grace-period` annotation to configure the
+  proxy's maximum grace period for graceful shutdown
+
+## edge-22.7.1
+
+This release includes a security improvement. When a user manually specified the
+`policyValidator.keyPEM` setting, the value was incorrectly included in the
+`linkerd-config` configmap. This means that this private key was erroneously
+exposed to service accounts with read access to this configmap. Practically,
+this means that the Linkerd `proxy-injector`, `identity`, and `heartbeat` pods
+could read this value. This should **not** have exposed this private key to
+other unauthorized users unless additional role bindings were added outside of
+Linkerd. Nevertheless, we recommend that users who manually set control plane
+certificates update the credentials for the policy validator after upgrading
+Linkerd.
+
+Additionally, the linkerd-multicluster extensions has several fixes related to
+fail fast errors during link watch restarts, improper label matching for
+mirrored services, and properly cleaning up mirrored endpoints in certain
+situations.
+
+Lastly, the proxy can now retry gRPC requests that have responses with a
+TRAILERS frame. A fix to reduce redundant load balancer updates should also
+result in less connection churn.
+
+* Changed unit tests to use newly introduced `prommatch` package for asserting
+  expected metrics (thanks @krzysztofdrys!)
+* Fixed Docker container runtime check to only during `linkerd install` rather
+  than `linkerd check --pre`
+* Changed linkerd-multicluster's remote cluster watcher to assume the gateway is
+  alive when starting—fixing fail fast errors from occurring during restarts
+  (thanks @chenaoxd!)
+* Added `matchLabels` and `matchExpressions` to linkerd-multicluster's Link CRD
+* Fixed linkerd-multicluster's label selector to properly select resources that
+  match the expected label value, rather than just the presence of the label
+* Fixed linkerd-multicluster's cluster watcher to properly clean up endpoints
+  belonging to remote headless services that are no longer mirrored
+* Added the HttpRoute CRD which will be used by future policy features
+* Fixed CNI plugin event processing where file updates could sometimes be
+  skipped leading to the update not being acknowledged
+* Fixed redundant load balancer updates in the proxy that could cause
+  unnecessary connection churn
+* Fixed gRPC request retries for responses that contain a TRAILERS frame
+* Fixed the dashboard's `linkerd check` due to missing RBAC for listing pods in
+  the cluster
+* Fixed API check that ensures access to the Server CRD (thanks @aatarasoff!)
+* Changed `linkerd authz` to match the labels of pre-fetched Pods rather than
+  the multiple API calls it was doing—resulting in significant speed-up (thanks
+  @aatarasoff!)
+* Unset `policyValidtor.keyPEM` in `linkerd-config` ConfigMap
+
 ## edge-22.6.2
 
 This edge release bumps the minimum supported Kubernetes version from `v1.20`

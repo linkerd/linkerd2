@@ -106,9 +106,6 @@ func (opw *OpaquePortsWatcher) addService(obj interface{}) {
 	opw.Lock()
 	defer opw.Unlock()
 	svc := obj.(*corev1.Service)
-	if svc.Namespace == kubeSystem {
-		return
-	}
 	id := ServiceID{
 		Namespace: svc.Namespace,
 		Name:      svc.Name,
@@ -159,9 +156,6 @@ func (opw *OpaquePortsWatcher) deleteService(obj interface{}) {
 			opw.log.Errorf("DeletedFinalStateUnknown contained object that is not a Service %#v", obj)
 			return
 		}
-	}
-	if service.Namespace == kubeSystem {
-		return
 	}
 	id := ServiceID{
 		Namespace: service.Namespace,

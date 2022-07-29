@@ -12,14 +12,14 @@ fn links_authorization_policy_with_mtls_name() {
     let mut rx = test
         .index
         .write()
-        .pod_server_rx("ns-0", "pod-0", 8080)
+        .pod_server_rx("ns-0", "pod-0", 8080.try_into().unwrap())
         .expect("pod-0.ns-0 should exist");
     assert_eq!(*rx.borrow_and_update(), test.default_server());
 
     test.index.write().apply(mk_server(
         "ns-0",
         "srv-8080",
-        Port::Number(8080),
+        Port::Number(8080.try_into().unwrap()),
         None,
         Some(("app", "app-0")),
         Some(k8s::policy::server::ProxyProtocol::Http1),
@@ -31,6 +31,7 @@ fn links_authorization_policy_with_mtls_name() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
         },
     );
 
@@ -84,6 +85,7 @@ fn links_authorization_policy_with_mtls_name() {
             .into_iter()
             .collect(),
             protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
         },
     );
 }
@@ -100,14 +102,14 @@ fn authorization_targets_namespace() {
     let mut rx = test
         .index
         .write()
-        .pod_server_rx("ns-0", "pod-0", 8080)
+        .pod_server_rx("ns-0", "pod-0", 8080.try_into().unwrap())
         .expect("pod-0.ns-0 should exist");
     assert_eq!(*rx.borrow_and_update(), test.default_server());
 
     test.index.write().apply(mk_server(
         "ns-0",
         "srv-8080",
-        Port::Number(8080),
+        Port::Number(8080.try_into().unwrap()),
         None,
         Some(("app", "app-0")),
         Some(k8s::policy::server::ProxyProtocol::Http1),
@@ -119,6 +121,7 @@ fn authorization_targets_namespace() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
         },
     );
 
@@ -172,6 +175,91 @@ fn authorization_targets_namespace() {
             .into_iter()
             .collect(),
             protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
+        },
+    );
+}
+
+#[test]
+fn links_authorization_policy_with_service_account() {
+    let test = TestConfig::default();
+
+    let mut pod = mk_pod("ns-0", "pod-0", Some(("container-0", None)));
+    pod.labels_mut()
+        .insert("app".to_string(), "app-0".to_string());
+    test.index.write().apply(pod);
+
+    let mut rx = test
+        .index
+        .write()
+        .pod_server_rx("ns-0", "pod-0", 8080.try_into().unwrap())
+        .expect("pod-0.ns-0 should exist");
+    assert_eq!(*rx.borrow_and_update(), test.default_server());
+
+    test.index.write().apply(mk_server(
+        "ns-0",
+        "srv-8080",
+        Port::Number(8080.try_into().unwrap()),
+        None,
+        Some(("app", "app-0")),
+        Some(k8s::policy::server::ProxyProtocol::Http1),
+    ));
+    assert!(rx.has_changed().unwrap());
+    assert_eq!(
+        *rx.borrow_and_update(),
+        InboundServer {
+            reference: ServerRef::Server("srv-8080".to_string()),
+            authorizations: Default::default(),
+            protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
+        },
+    );
+
+    let authz = ClientAuthorization {
+        networks: vec!["10.0.0.0/8".parse::<IpNet>().unwrap().into()],
+        authentication: ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Exact(
+            "foo.ns-0.serviceaccount.identity.linkerd.cluster.example.com".to_string(),
+        )]),
+    };
+    test.index.write().apply(mk_authorization_policy(
+        "ns-0",
+        "authz-foo",
+        Some("srv-8080"),
+        vec![
+            NamespacedTargetRef {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: "NetworkAuthentication".to_string(),
+                name: "net-foo".to_string(),
+                namespace: None,
+            },
+            NamespacedTargetRef {
+                group: None,
+                kind: "ServiceAccount".to_string(),
+                namespace: Some("ns-0".to_string()),
+                name: "foo".to_string(),
+            },
+        ],
+    ));
+    test.index.write().apply(mk_network_authentication(
+        "ns-0".to_string(),
+        "net-foo".to_string(),
+        vec![k8s::policy::network_authentication::Network {
+            cidr: "10.0.0.0/8".parse().unwrap(),
+            except: None,
+        }],
+    ));
+    assert!(rx.has_changed().unwrap());
+    assert_eq!(
+        *rx.borrow(),
+        InboundServer {
+            reference: ServerRef::Server("srv-8080".to_string()),
+            authorizations: hashmap!(
+                AuthorizationRef::AuthorizationPolicy("authz-foo".to_string()) => authz
+            )
+            .into_iter()
+            .collect(),
+            protocol: ProxyProtocol::Http1,
+            http_routes: HashMap::default(),
         },
     );
 }

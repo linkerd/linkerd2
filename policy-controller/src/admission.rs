@@ -1,17 +1,19 @@
 use crate::k8s::{
     labels,
     policy::{
-        AuthorizationPolicy, AuthorizationPolicySpec, LocalTargetRef, MeshTLSAuthentication,
-        MeshTLSAuthenticationSpec, NetworkAuthentication, NetworkAuthenticationSpec, Server,
-        ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
+        httproute, AuthorizationPolicy, AuthorizationPolicySpec, HttpRoute, HttpRouteSpec,
+        LocalTargetRef, MeshTLSAuthentication, MeshTLSAuthenticationSpec, NamespacedTargetRef,
+        NetworkAuthentication, NetworkAuthenticationSpec, Server, ServerAuthorization,
+        ServerAuthorizationSpec, ServerSpec,
     },
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
-use linkerd_policy_controller_k8s_api::policy::NamespacedTargetRef;
+use linkerd_policy_controller_core as core;
+use linkerd_policy_controller_k8s_index as index;
 use serde::de::DeserializeOwned;
 use std::task;
 use thiserror::Error;
@@ -117,6 +119,10 @@ impl Admission {
             return self.admit_spec::<ServerAuthorizationSpec>(req).await;
         };
 
+        if is_kind::<HttpRoute>(&req) {
+            return self.admit_spec::<HttpRouteSpec>(req).await;
+        }
+
         AdmissionResponse::invalid(format_args!(
             "unsupported resource type: {}.{}.{}",
             req.kind.group, req.kind.version, req.kind.kind
@@ -154,7 +160,8 @@ where
     T::DynamicType: Default,
 {
     let dt = Default::default();
-    *req.kind.group == *T::group(&dt) && *req.kind.kind == *T::kind(&dt)
+    req.kind.group.eq_ignore_ascii_case(&*T::group(&dt))
+        && req.kind.kind.eq_ignore_ascii_case(&*T::kind(&dt))
 }
 
 fn json_response(rsp: AdmissionReview) -> Result<Response<Body>, Error> {
@@ -174,7 +181,7 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
     let ns = obj
         .namespace()
         .ok_or_else(|| anyhow!("admission request missing 'namespace'"))?;
-    let name = obj.name();
+    let name = obj.name_any();
 
     let spec = {
         let data = obj
@@ -191,6 +198,10 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
 /// Validates the target of an `AuthorizationPolicy`.
 fn validate_policy_target(ns: &str, tgt: &LocalTargetRef) -> Result<()> {
     if tgt.targets_kind::<Server>() {
+        return Ok(());
+    }
+
+    if tgt.targets_kind::<HttpRoute>() {
         return Ok(());
     }
 
@@ -218,6 +229,19 @@ impl Validate<AuthorizationPolicySpec> for Admission {
             bail!("only a single MeshTLSAuthentication may be set");
         }
 
+        let sa_authns_count = spec
+            .required_authentication_refs
+            .iter()
+            .filter(|authn| authn.targets_kind::<ServiceAccount>())
+            .count();
+        if sa_authns_count > 1 {
+            bail!("only a single ServiceAccount may be set");
+        }
+
+        if mtls_authns_count + sa_authns_count > 1 {
+            bail!("a MeshTLSAuthentication and ServiceAccount may not be set together");
+        }
+
         let net_authns_count = spec
             .required_authentication_refs
             .iter()
@@ -227,18 +251,24 @@ impl Validate<AuthorizationPolicySpec> for Admission {
             bail!("only a single NetworkAuthentication may be set");
         }
 
-        if mtls_authns_count + net_authns_count < spec.required_authentication_refs.len() {
+        if mtls_authns_count + sa_authns_count + net_authns_count
+            < spec.required_authentication_refs.len()
+        {
             let kinds = spec
                 .required_authentication_refs
                 .iter()
                 .filter(|authn| {
                     !authn.targets_kind::<MeshTLSAuthentication>()
                         && !authn.targets_kind::<NetworkAuthentication>()
+                        && !authn.targets_kind::<ServiceAccount>()
                 })
                 .map(|authn| authn.canonical_kind())
                 .collect::<Vec<_>>();
             bail!("unsupported authentication kind(s): {}", kinds.join(", "));
         }
+
+        // Confirm that the index will be able to read this spec.
+        index::authorization_policy::validate(spec)?;
 
         Ok(())
     }
@@ -285,7 +315,7 @@ impl Validate<ServerSpec> for Admission {
             .list(&kube::api::ListParams::default())
             .await?;
         for server in servers.items.into_iter() {
-            if server.name() != name
+            if server.name_unchecked() != name
                 && server.spec.port == spec.port
                 && Self::overlaps(&server.spec.pod_selector, &spec.pod_selector)
             {
@@ -378,6 +408,77 @@ impl Validate<ServerAuthorizationSpec> for Admission {
                         except
                     );
                 }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Validate<HttpRouteSpec> for Admission {
+    async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
+        use index::http_route::convert;
+
+        fn validate_match(
+            httproute::HttpRouteMatch {
+                path,
+                headers,
+                query_params,
+                method,
+            }: httproute::HttpRouteMatch,
+        ) -> Result<()> {
+            let _ = path.map(convert::path_match).transpose()?;
+            let _ = method
+                .as_deref()
+                .map(core::http_route::Method::try_from)
+                .transpose()?;
+
+            for q in query_params.into_iter().flatten() {
+                convert::query_param_match(q)?;
+            }
+
+            for h in headers.into_iter().flatten() {
+                convert::header_match(h)?;
+            }
+
+            Ok(())
+        }
+
+        fn validate_filter(filter: httproute::HttpRouteFilter) -> Result<()> {
+            match filter {
+                httproute::HttpRouteFilter::RequestHeaderModifier {
+                    request_header_modifier,
+                } => convert::req_header_modifier(request_header_modifier).map(|_| ()),
+                httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
+                    convert::req_redirect(request_redirect).map(|_| ())
+                }
+            }
+        }
+
+        // Ensure that the `HTTPRoute` targets a `Server` as its parent ref
+        let all_target_servers = spec
+            .inner
+            .parent_refs
+            .iter()
+            .flatten()
+            .all(httproute::parent_ref_targets_kind::<Server>);
+        ensure!(
+            all_target_servers,
+            "policy.linkerd.io HTTPRoutes must target only Server resources"
+        );
+
+        // Validate the rules in this spec.
+        // This is essentially equivalent to the indexer's conversion function
+        // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
+        // actually allocate stuff in order to return an `InboundRouteBinding`.
+        for httproute::HttpRouteRule { filters, matches } in spec.rules.into_iter().flatten() {
+            for m in matches.into_iter().flatten() {
+                validate_match(m)?;
+            }
+
+            for f in filters.into_iter().flatten() {
+                validate_filter(f)?;
             }
         }
 

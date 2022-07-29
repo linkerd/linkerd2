@@ -9,8 +9,10 @@ import (
 
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -75,18 +77,20 @@ func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
 			WithRetryDeadline(hc.RetryDeadline).
 			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
-				pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, jaegerNamespace)
+				podList, err := hc.KubeAPIClient().CoreV1().Pods(jaegerNamespace).List(ctx, metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("%s=%s", k8s.LinkerdExtensionLabel, JaegerExtensionName),
+				})
 				if err != nil {
 					return err
 				}
 
 				// Check for relevant pods to be present
-				err = healthcheck.CheckForPods(pods, []string{"jaeger-injector"})
+				err = healthcheck.CheckForPods(podList.Items, []string{"jaeger-injector"})
 				if err != nil {
 					return err
 				}
 
-				return healthcheck.CheckPodsRunning(pods, jaegerNamespace)
+				return healthcheck.CheckPodsRunning(podList.Items, jaegerNamespace)
 			}))
 
 	checkers = append(checkers,
