@@ -147,12 +147,7 @@ async fn server_with_authorization_policy() {
         // that the update now uses this server, which has no authorizations
         let server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
         let config = next_config(&mut rx).await;
-        assert!(matches!(
-            config.protocol,
-            Some(grpc::inbound::ProxyProtocol {
-                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(_))
-            }),
-        ));
+        assert_eq!(config.protocol, Some(default_proxy_protocol()));
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,
@@ -208,12 +203,8 @@ async fn server_with_authorization_policy() {
         let config = time::timeout(time::Duration::from_secs(10), next_config(&mut rx))
             .await
             .expect("watch must update within 10s");
-        assert!(matches!(
-            config.protocol,
-            Some(grpc::inbound::ProxyProtocol {
-                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(_))
-            }),
-        ));
+
+        assert_eq!(config.protocol, Some(default_proxy_protocol()));
         assert_eq!(config.authorizations.len(), 1);
         assert_eq!(
             config.authorizations.first().unwrap().labels,
@@ -271,12 +262,7 @@ async fn server_with_http_route() {
         // and no routes.
         let _server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
         let config = next_config(&mut rx).await;
-        assert!(matches!(
-            config.protocol,
-            Some(grpc::inbound::ProxyProtocol {
-                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(_))
-            }),
-        ));
+        assert_eq!(config.protocol, Some(default_proxy_protocol()));
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,
@@ -390,12 +376,7 @@ async fn server_with_http_route() {
             .await
             .expect("HttpRoute must be deleted");
         let config = next_config(&mut rx).await;
-        assert!(matches!(
-            config.protocol,
-            Some(grpc::inbound::ProxyProtocol {
-                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(_))
-            }),
-        ));
+        assert_eq!(config.protocol, Some(default_proxy_protocol()));
     })
     .await
 }
@@ -440,12 +421,7 @@ async fn http_routes_ordered_by_creation() {
         // and no routes.
         let _server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
         let config = next_config(&mut rx).await;
-        assert!(matches!(
-            config.protocol,
-            Some(grpc::inbound::ProxyProtocol {
-                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(_))
-            }),
-        ));
+        assert_eq!(config.protocol, Some(default_proxy_protocol()));
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,
