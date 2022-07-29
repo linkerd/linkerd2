@@ -26,6 +26,14 @@ type AuthorizationPolicyListerExpansion interface{}
 // AuthorizationPolicyNamespaceLister.
 type AuthorizationPolicyNamespaceListerExpansion interface{}
 
+// HTTPRouteListerExpansion allows custom methods to be added to
+// HTTPRouteLister.
+type HTTPRouteListerExpansion interface{}
+
+// HTTPRouteNamespaceListerExpansion allows custom methods to be added to
+// HTTPRouteNamespaceLister.
+type HTTPRouteNamespaceListerExpansion interface{}
+
 // MeshTLSAuthenticationListerExpansion allows custom methods to be added to
 // MeshTLSAuthenticationLister.
 type MeshTLSAuthenticationListerExpansion interface{}
