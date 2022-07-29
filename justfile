@@ -315,7 +315,8 @@ _policy-controller-build:
         --file='policy-controller/{{ if docker-arch == '' { "amd64" } else { docker-arch } }}.dockerfile' \
         --build-arg='build_type={{ rs-build-type }}' \
         --tag='{{ policy-controller-image }}:{{ linkerd-tag }}' \
-        --progress=plain
+        --progress=plain \
+        --load
 
 _linkerd-ready:
     {{ _kubectl }} wait pod --for=condition=ready \
