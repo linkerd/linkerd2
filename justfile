@@ -315,7 +315,8 @@ _policy-controller-build:
         --file='policy-controller/{{ if docker-arch == '' { "amd64" } else { docker-arch } }}.dockerfile' \
         --build-arg='build_type={{ rs-build-type }}' \
         --tag='{{ policy-controller-image }}:{{ linkerd-tag }}' \
-        --progress=plain
+        --progress=plain \
+        --load
 
 _linkerd-ready:
     {{ _kubectl }} wait pod --for=condition=ready \
@@ -410,6 +411,29 @@ _linkerd-viz-uninit:
 
 # TODO linkerd-jaeger-install
 # TODO linkerd-multicluster-install
+
+##
+## Devcontainer
+##
+
+devcontainer-build-mode := "load"
+devcontainer-image := "ghcr.io/linkerd/dev"
+
+devcontainer-build tag:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for tgt in tools go rust runtime ; do
+        just devcontainer-build-mode={{ devcontainer-build-mode }} \
+            _devcontainer-build {{ tag }} "${tgt}"
+    done
+
+_devcontainer-build tag target='':
+    docker buildx build . \
+        --progress=plain \
+        --file=.devcontainer/Dockerfile \
+        --tag='{{ devcontainer-image }}:{{ tag }}{{ if target != "runtime" { "-" + target }  else { "" } }}' \
+        --target='{{ target }}' \
+        --{{ if devcontainer-build-mode == "push" { "push" } else { "load" } }}
 
 ##
 ## Git

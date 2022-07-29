@@ -12,6 +12,7 @@ use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
+use linkerd_policy_controller_core as core;
 use linkerd_policy_controller_k8s_index as index;
 use serde::de::DeserializeOwned;
 use std::task;
@@ -417,6 +418,44 @@ impl Validate<ServerAuthorizationSpec> for Admission {
 #[async_trait::async_trait]
 impl Validate<HttpRouteSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
+        use index::http_route::convert;
+
+        fn validate_match(
+            httproute::HttpRouteMatch {
+                path,
+                headers,
+                query_params,
+                method,
+            }: httproute::HttpRouteMatch,
+        ) -> Result<()> {
+            let _ = path.map(convert::path_match).transpose()?;
+            let _ = method
+                .as_deref()
+                .map(core::http_route::Method::try_from)
+                .transpose()?;
+
+            for q in query_params.into_iter().flatten() {
+                convert::query_param_match(q)?;
+            }
+
+            for h in headers.into_iter().flatten() {
+                convert::header_match(h)?;
+            }
+
+            Ok(())
+        }
+
+        fn validate_filter(filter: httproute::HttpRouteFilter) -> Result<()> {
+            match filter {
+                httproute::HttpRouteFilter::RequestHeaderModifier {
+                    request_header_modifier,
+                } => convert::req_header_modifier(request_header_modifier).map(|_| ()),
+                httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
+                    convert::req_redirect(request_redirect).map(|_| ())
+                }
+            }
+        }
+
         // Ensure that the `HTTPRoute` targets a `Server` as its parent ref
         let all_target_servers = spec
             .inner
@@ -430,11 +469,17 @@ impl Validate<HttpRouteSpec> for Admission {
         );
 
         // Validate the rules in this spec.
-        for rule in spec.rules.iter().flatten() {
-            ensure!(
-                !rule.has_relative_paths(),
-                "HttpRouteRules may only contain absolute paths (beginning with '/')"
-            );
+        // This is essentially equivalent to the indexer's conversion function
+        // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
+        // actually allocate stuff in order to return an `InboundRouteBinding`.
+        for httproute::HttpRouteRule { filters, matches } in spec.rules.into_iter().flatten() {
+            for m in matches.into_iter().flatten() {
+                validate_match(m)?;
+            }
+
+            for f in filters.into_iter().flatten() {
+                validate_filter(f)?;
+            }
         }
 
         Ok(())

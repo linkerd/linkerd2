@@ -19,7 +19,7 @@ use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     http_route::{HttpRouteMatch, InboundHttpRouteRule, Method, PathMatch},
     AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundHttpRoute,
-    InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, RouteRef, ServerRef,
+    InboundHttpRouteRef, InboundServer, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
@@ -1054,33 +1054,14 @@ impl Pod {
             }
         }
 
-        let mut authorizations = HashMap::default();
-        if let DefaultPolicy::Allow {
-            authenticated_only,
-            cluster_only,
-        } = policy
-        {
-            let authentication = if authenticated_only {
-                ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Suffix(vec![])])
-            } else {
-                ClientAuthentication::Unauthenticated
-            };
-            let networks = if cluster_only {
-                config.networks.iter().copied().map(Into::into).collect()
-            } else {
-                vec![
-                    "0.0.0.0/0".parse::<IpNet>().unwrap().into(),
-                    "::/0".parse::<IpNet>().unwrap().into(),
-                ]
-            };
-            authorizations.insert(
-                AuthorizationRef::Default(policy.to_string()),
-                ClientAuthorization {
-                    authentication,
-                    networks,
-                },
-            );
-        };
+        let authorizations = policy.default_authzs(config);
+
+        let http_routes = Some((
+            InboundHttpRouteRef::Default("default"),
+            InboundHttpRoute::default(),
+        ))
+        .into_iter()
+        .collect();
 
         // No Server is configured, so requests on the Pod's probe paths are
         // authorized.
@@ -1090,7 +1071,7 @@ impl Pod {
         };
 
         InboundServer {
-            reference: ServerRef::Default(policy.to_string()),
+            reference: ServerRef::Default(policy.as_str()),
             protocol,
             authorizations,
             http_routes,
@@ -1345,16 +1326,29 @@ impl PolicyIndex {
         &self,
         server_name: &str,
         authentications: &AuthenticationNsIndex,
-    ) -> HashMap<RouteRef, InboundHttpRoute> {
-        self.http_routes
+    ) -> HashMap<InboundHttpRouteRef, InboundHttpRoute> {
+        let mut routes = self
+            .http_routes
             .iter()
             .filter(|(_, route)| route.selects_server(server_name))
             .map(|(name, route)| {
                 let mut route = route.route.clone();
                 route.authorizations = self.route_client_authzs(name, authentications);
-                (RouteRef::HttpRoute(name.to_string()), route)
+                (InboundHttpRouteRef::Linkerd(name.clone()), route)
             })
-            .collect()
+            .collect::<HashMap<_, _>>();
+
+        if routes.is_empty() {
+            // If no routes are defined for the server, use a default route that
+            // matches all requests. Default authorizations are instrumented on
+            // the server.
+            routes.insert(
+                InboundHttpRouteRef::Default("default"),
+                InboundHttpRoute::default(),
+            );
+        }
+
+        routes
     }
 
     fn policy_client_authz(
