@@ -59,19 +59,24 @@ func newCmdAuthz() *cobra.Command {
 
 			rows := make([]table.Row, 0)
 
-			authzs, err := k8s.ServerAuthorizationsForResource(cmd.Context(), k8sAPI, namespace, resource)
+			authzs, err := k8s.AuthorizationsForResource(cmd.Context(), k8sAPI, namespace, resource)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get serverauthorization resources: %s\n", err)
 				os.Exit(1)
 			}
 
 			for _, authz := range authzs {
-				rows = append(rows, table.Row{authz.Server, authz.ServerAuthorization})
+				if authz.Route == "" {
+					authz.Route = "*"
+				}
+				rows = append(rows, table.Row{authz.Route, authz.Server, authz.AuthorizationPolicy, authz.ServerAuthorization})
 			}
 
 			cols := []table.Column{
-				{Header: "SERVER", Width: 6, Flexible: true},
-				{Header: "AUTHORIZATION", Width: 13, Flexible: true},
+				{Header: "ROUTE", Width: 6, Flexible: true, LeftAlign: true},
+				{Header: "SERVER", Width: 6, Flexible: true, LeftAlign: true},
+				{Header: "AUTHORIZATION_POLICY", Width: 21, Flexible: true, LeftAlign: true},
+				{Header: "SERVER_AUTHORIZATION", Width: 21, Flexible: true, LeftAlign: true},
 			}
 
 			table := table.NewTable(cols, rows)
