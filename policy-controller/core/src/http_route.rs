@@ -18,7 +18,7 @@ pub struct InboundHttpRoute {
 
     /// This is required for ordering returned `HttpRoute`s by their creation
     /// timestamp.
-    pub creation_timestamp: DateTime<Utc>,
+    pub creation_timestamp: Option<DateTime<Utc>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -100,6 +100,32 @@ pub enum HeaderMatch {
 pub enum QueryParamMatch {
     Exact(String, String),
     Regex(String, Regex),
+}
+
+// === impl InboundHttpRoute ===
+
+/// The default `InboundHttpRoute` used for any `InboundServer` that
+/// does not have routes.
+impl Default for InboundHttpRoute {
+    fn default() -> Self {
+        Self {
+            hostnames: vec![],
+            rules: vec![InboundHttpRouteRule {
+                matches: vec![HttpRouteMatch {
+                    path: Some(PathMatch::Prefix("/".to_string())),
+                    headers: vec![],
+                    query_params: vec![],
+                    method: None,
+                }],
+                filters: vec![],
+            }],
+            // Default routes do not have authorizations; the default policy's
+            // authzs will be configured by the default `InboundServer`, not by
+            // the route.
+            authorizations: HashMap::new(),
+            creation_timestamp: None,
+        }
+    }
 }
 
 // === impl PathMatch ===
