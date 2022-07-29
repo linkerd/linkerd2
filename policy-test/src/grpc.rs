@@ -44,7 +44,7 @@ macro_rules! assert_protocol_detect {
                 kind: Some(inbound::proxy_protocol::Kind::Detect(
                     inbound::proxy_protocol::Detect {
                         timeout: Some(time::Duration::from_secs(10).into()),
-                        http_routes: Default::default(),
+                        http_routes: vec![$crate::grpc::defaults::http_route()],
                     }
                 )),
             }),
@@ -178,5 +178,73 @@ impl hyper::service::Service<hyper::Request<tonic::body::BoxBody>> for GrpcHttp 
         parts.uri = hyper::Uri::from_parts(uri).unwrap();
 
         self.tx.call(hyper::Request::from_parts(parts, body))
+    }
+}
+
+pub mod defaults {
+    use super::*;
+    use ipnet::IpNet;
+
+    pub fn proxy_protocol() -> inbound::ProxyProtocol {
+        use inbound::proxy_protocol::{Http1, Kind};
+        inbound::ProxyProtocol {
+            kind: Some(Kind::Http1(Http1 {
+                routes: vec![http_route()],
+            })),
+        }
+    }
+
+    pub fn http_route() -> inbound::HttpRoute {
+        use inbound::{http_route::Rule, HttpRoute};
+        use meta::{metadata, Metadata};
+
+        HttpRoute {
+            metadata: Some(Metadata {
+                kind: Some(metadata::Kind::Default("all-unauthenticated".to_owned())),
+            }),
+            hosts: Vec::new(),
+            authorizations: vec![authz_all_unauthenticated()],
+            rules: vec![Rule {
+                matches: Vec::default(),
+                filters: Vec::default(),
+            }],
+        }
+    }
+
+    pub fn authz_all_unauthenticated() -> inbound::Authz {
+        use inbound::{Authz, Network};
+        use meta::{metadata, Metadata};
+
+        Authz {
+            networks: vec![
+                Network {
+                    net: Some("0.0.0.0/0".parse::<IpNet>().unwrap().into()),
+                    except: Vec::new(),
+                },
+                Network {
+                    net: Some("::/0".parse::<IpNet>().unwrap().into()),
+                    except: Vec::new(),
+                },
+            ],
+            authentication: Some(authn_all_unauthenticated()),
+            labels: maplit::hashmap![
+                "name".to_string() => "all-unauthenticated".to_string(),
+                "kind".to_string() => "default".to_string(),
+                "group".to_string() => "".to_string()
+            ],
+            metadata: Some(Metadata {
+                kind: Some(metadata::Kind::Default("all-unauthenticated".to_owned())),
+            }),
+        }
+    }
+
+    pub fn authn_all_unauthenticated() -> inbound::Authn {
+        use inbound::{
+            authn::{Permit, PermitUnauthenticated},
+            Authn,
+        };
+        Authn {
+            permit: Some(Permit::Unauthenticated(PermitUnauthenticated {})),
+        }
     }
 }
