@@ -17,8 +17,8 @@ use crate::{
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
-    AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRouteRef, IdentityMatch,
-    InboundHttpRoute, InboundServer, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
+    AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundHttpRoute,
+    InboundHttpRouteRef, InboundServer, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
@@ -1051,7 +1051,7 @@ impl Pod {
 
         let mut http_routes = HashMap::new();
         http_routes.insert(
-            HttpRouteRef::Default(policy.as_str()),
+            InboundHttpRouteRef::Default(policy.as_str()),
             InboundHttpRoute::default(),
         );
 
@@ -1269,7 +1269,7 @@ impl PolicyIndex {
         server_name: &str,
         authentications: &AuthenticationNsIndex,
         pod: &pod::Settings,
-    ) -> HashMap<HttpRouteRef, InboundHttpRoute> {
+    ) -> HashMap<InboundHttpRouteRef, InboundHttpRoute> {
         let mut routes = self
             .http_routes
             .iter()
@@ -1277,7 +1277,7 @@ impl PolicyIndex {
             .map(|(name, route)| {
                 let mut route = route.route.clone();
                 route.authorizations = self.route_client_authzs(name, authentications);
-                (HttpRouteRef::Linkerd(name.clone()), route)
+                (InboundHttpRouteRef::Linkerd(name.clone()), route)
             })
             .collect::<HashMap<_, _>>();
 
@@ -1286,7 +1286,7 @@ impl PolicyIndex {
                 .default_policy
                 .unwrap_or(self.cluster_info.default_policy);
             routes.insert(
-                HttpRouteRef::Default(default_policy.as_str()),
+                InboundHttpRouteRef::Default(default_policy.as_str()),
                 InboundHttpRoute::default(),
             );
         }

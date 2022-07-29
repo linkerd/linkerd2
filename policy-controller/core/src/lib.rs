@@ -31,7 +31,7 @@ pub struct InboundServer {
 
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
-    pub http_routes: HashMap<HttpRouteRef, InboundHttpRoute>,
+    pub http_routes: HashMap<InboundHttpRouteRef, InboundHttpRoute>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -48,7 +48,7 @@ pub enum AuthorizationRef {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum HttpRouteRef {
+pub enum InboundHttpRouteRef {
     Default(&'static str),
     Linkerd(String),
 }
@@ -94,9 +94,9 @@ pub enum ClientAuthentication {
     TlsAuthenticated(Vec<IdentityMatch>),
 }
 
-// === impl HttpRouteRef ===
+// === impl InboundHttpRouteRef ===
 
-impl Ord for HttpRouteRef {
+impl Ord for InboundHttpRouteRef {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
             (Self::Default(a), Self::Default(b)) => a.cmp(b),
@@ -109,7 +109,7 @@ impl Ord for HttpRouteRef {
     }
 }
 
-impl PartialOrd for HttpRouteRef {
+impl PartialOrd for InboundHttpRouteRef {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }

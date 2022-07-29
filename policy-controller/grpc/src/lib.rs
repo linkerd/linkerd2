@@ -15,7 +15,7 @@ use linkerd2_proxy_api::{
 use linkerd_policy_controller_core::{
     http_route::{InboundFilter, InboundHttpRoute, InboundHttpRouteRule},
     AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer,
-    HttpRouteRef, IdentityMatch, InboundServer, InboundServerStream, IpNet, NetworkMatch,
+    IdentityMatch, InboundHttpRouteRef, InboundServer, InboundServerStream, IpNet, NetworkMatch,
     ProxyProtocol, ServerRef,
 };
 use maplit::*;
@@ -353,7 +353,7 @@ fn to_authz(
 }
 
 fn to_http_route_list<'r>(
-    routes: impl IntoIterator<Item = (&'r HttpRouteRef, &'r InboundHttpRoute)>,
+    routes: impl IntoIterator<Item = (&'r InboundHttpRouteRef, &'r InboundHttpRoute)>,
     cluster_networks: &[IpNet],
 ) -> Vec<proto::HttpRoute> {
     // Per the Gateway API spec:
@@ -387,7 +387,7 @@ fn to_http_route_list<'r>(
 }
 
 fn to_http_route(
-    name: &HttpRouteRef,
+    name: &InboundHttpRouteRef,
     InboundHttpRoute {
         hostnames,
         rules,
@@ -398,8 +398,8 @@ fn to_http_route(
 ) -> proto::HttpRoute {
     let metadata = Metadata {
         kind: Some(match name {
-            HttpRouteRef::Default(name) => metadata::Kind::Default(name.to_string()),
-            HttpRouteRef::Linkerd(name) => metadata::Kind::Resource(api::meta::Resource {
+            InboundHttpRouteRef::Default(name) => metadata::Kind::Default(name.to_string()),
+            InboundHttpRouteRef::Linkerd(name) => metadata::Kind::Resource(api::meta::Resource {
                 group: "policy.linkerd.io".to_string(),
                 kind: "HTTPRoute".to_string(),
                 name: name.to_string(),

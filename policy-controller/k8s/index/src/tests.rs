@@ -7,8 +7,8 @@ use crate::{defaults::DefaultPolicy, index::*, server_authorization::ServerSelec
 use ahash::AHashMap as HashMap;
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{
-    AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRouteRef, IdentityMatch,
-    InboundHttpRoute, InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol,
+    AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundHttpRoute,
+    InboundHttpRouteRef, InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol,
     ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{
@@ -168,10 +168,10 @@ fn mk_default_policy(
     .collect()
 }
 
-fn mk_default_routes(policy: DefaultPolicy) -> HashMap<HttpRouteRef, InboundHttpRoute> {
+fn mk_default_routes(policy: DefaultPolicy) -> HashMap<InboundHttpRouteRef, InboundHttpRoute> {
     let mut routes = HashMap::new();
     routes.insert(
-        HttpRouteRef::Default(policy.as_str()),
+        InboundHttpRouteRef::Default(policy.as_str()),
         InboundHttpRoute::default(),
     );
     routes
