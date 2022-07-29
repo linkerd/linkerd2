@@ -11,11 +11,10 @@ func NewFakeAPI(configs ...string) (*API, error) {
 		return nil, err
 	}
 
-	return NewAPI(
+	return NewClusterScopedAPI(
 		clientSet,
 		nil,
 		spClientSet,
-		"",
 		CJ,
 		CM,
 		Deploy,
