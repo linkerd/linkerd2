@@ -6,7 +6,8 @@ on:
       - .github/workflows/go.yml
       - go.sum
       - '**/*.go'
-      - '**/charts/*'
+      - '**/*.golden'
+      - '**/charts/**'
 
 permissions:
   contents: read
