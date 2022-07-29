@@ -1049,11 +1049,20 @@ impl Pod {
 
         let authorizations = policy.default_authzs(config);
 
+        let default_route = InboundHttpRoute {
+            hostnames: Vec::new(),
+            rules: Vec::new(),
+            authorizations: authorizations.clone(),
+            creation_timestamp: None,
+        };
+        let mut http_routes = HashMap::new();
+        http_routes.insert(HttpRouteRef::Default(policy.as_str()), default_route);
+
         InboundServer {
             reference: ServerRef::Default(policy.as_str()),
             protocol,
             authorizations,
-            http_routes: HashMap::default(),
+            http_routes,
         }
     }
 }
