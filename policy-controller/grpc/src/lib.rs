@@ -370,9 +370,14 @@ fn to_http_route_list<'r>(
     // namespace.
     let mut route_list = routes.into_iter().collect::<Vec<_>>();
     route_list.sort_by(|(a_name, a), (b_name, b)| {
-        a.creation_timestamp
-            .cmp(&b.creation_timestamp)
-            .then_with(|| a_name.cmp(b_name))
+        let by_ts = match (&a.creation_timestamp, &b.creation_timestamp) {
+            (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
+            (None, None) => std::cmp::Ordering::Equal,
+            // Routes with timestamps are preferred over routes without.
+            (Some(_), None) => return std::cmp::Ordering::Less,
+            (None, Some(_)) => return std::cmp::Ordering::Greater,
+        };
+        by_ts.then_with(|| a_name.cmp(b_name))
     });
 
     route_list

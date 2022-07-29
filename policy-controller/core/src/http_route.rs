@@ -18,7 +18,7 @@ pub struct InboundHttpRoute {
 
     /// This is required for ordering returned `HttpRoute`s by their creation
     /// timestamp.
-    pub creation_timestamp: DateTime<Utc>,
+    pub creation_timestamp: Option<DateTime<Utc>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

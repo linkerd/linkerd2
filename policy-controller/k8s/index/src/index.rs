@@ -1283,7 +1283,7 @@ impl PolicyIndex {
                 hostnames: Vec::new(),
                 rules: Vec::new(),
                 authorizations: default_policy.default_authzs(&self.cluster_info),
-                creation_timestamp: std::time::SystemTime::UNIX_EPOCH.into(),
+                creation_timestamp: None,
             };
             routes.insert(HttpRouteRef::Default(default_policy.as_str()), route);
         }
