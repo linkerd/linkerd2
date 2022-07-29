@@ -1050,17 +1050,11 @@ impl Pod {
 
         let authorizations = policy.default_authzs(config);
 
-        let default_route = InboundHttpRoute {
-            hostnames: Vec::new(),
-            rules: vec![http_route::InboundHttpRouteRule {
-                matches: Vec::new(),
-                filters: Vec::new(),
-            }],
-            authorizations: Default::default(),
-            creation_timestamp: None,
-        };
         let mut http_routes = HashMap::new();
-        http_routes.insert(HttpRouteRef::Default(policy.as_str()), default_route);
+        http_routes.insert(
+            HttpRouteRef::Default(policy.as_str()),
+            InboundHttpRoute::default(),
+        );
 
         InboundServer {
             reference: ServerRef::Default(policy.as_str()),
@@ -1292,16 +1286,10 @@ impl PolicyIndex {
             let default_policy = pod
                 .default_policy
                 .unwrap_or(self.cluster_info.default_policy);
-            let route = InboundHttpRoute {
-                hostnames: Vec::new(),
-                rules: vec![http_route::InboundHttpRouteRule {
-                    matches: Vec::new(),
-                    filters: Vec::new(),
-                }],
-                authorizations: Default::default(),
-                creation_timestamp: None,
-            };
-            routes.insert(HttpRouteRef::Default(default_policy.as_str()), route);
+            routes.insert(
+                HttpRouteRef::Default(default_policy.as_str()),
+                InboundHttpRoute::default(),
+            );
         }
 
         routes
