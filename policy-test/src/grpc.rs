@@ -194,6 +194,7 @@ pub mod defaults {
     }
 
     pub fn http_route() -> inbound::HttpRoute {
+        use http_route::{path_match, HttpRouteMatch, PathMatch};
         use inbound::{http_route::Rule, HttpRoute};
         use meta::{metadata, Metadata};
 
@@ -204,7 +205,12 @@ pub mod defaults {
             hosts: Vec::new(),
             authorizations: Vec::new(),
             rules: vec![Rule {
-                matches: Vec::default(),
+                matches: vec![HttpRouteMatch {
+                    path: Some(PathMatch {
+                        kind: Some(path_match::Kind::Prefix("/".to_string())),
+                    }),
+                    ..Default::default()
+                }],
                 filters: Vec::default(),
             }],
         }
