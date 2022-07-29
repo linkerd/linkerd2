@@ -902,12 +902,7 @@ impl Pod {
                         continue;
                     }
 
-                    let s = policy.inbound_server(
-                        srvname.clone(),
-                        server,
-                        authentications,
-                        &self.meta.settings,
-                    );
+                    let s = policy.inbound_server(srvname.clone(), server, authentications);
                     self.update_server(port, srvname, s);
 
                     matched_ports.insert(port, srvname.clone());
@@ -1049,11 +1044,12 @@ impl Pod {
 
         let authorizations = policy.default_authzs(config);
 
-        let mut http_routes = HashMap::new();
-        http_routes.insert(
-            InboundHttpRouteRef::Default(policy.as_str()),
+        let http_routes = Some((
+            InboundHttpRouteRef::Default("default"),
             InboundHttpRoute::default(),
-        );
+        ))
+        .into_iter()
+        .collect();
 
         InboundServer {
             reference: ServerRef::Default(policy.as_str()),
@@ -1131,11 +1127,10 @@ impl PolicyIndex {
         name: String,
         server: &server::Server,
         authentications: &AuthenticationNsIndex,
-        pod: &pod::Settings,
     ) -> InboundServer {
         tracing::trace!(%name, ?server, "Creating inbound server");
         let authorizations = self.client_authzs(&name, server, authentications);
-        let routes = self.http_routes(&name, authentications, pod);
+        let routes = self.http_routes(&name, authentications);
 
         InboundServer {
             reference: ServerRef::Server(name),
@@ -1268,7 +1263,6 @@ impl PolicyIndex {
         &self,
         server_name: &str,
         authentications: &AuthenticationNsIndex,
-        pod: &pod::Settings,
     ) -> HashMap<InboundHttpRouteRef, InboundHttpRoute> {
         let mut routes = self
             .http_routes
@@ -1282,11 +1276,11 @@ impl PolicyIndex {
             .collect::<HashMap<_, _>>();
 
         if routes.is_empty() {
-            let default_policy = pod
-                .default_policy
-                .unwrap_or(self.cluster_info.default_policy);
+            // If no routes are defined for the server, use a default route that
+            // matches all requests. Default authorizations are instrumented on
+            // the server.
             routes.insert(
-                InboundHttpRouteRef::Default(default_policy.as_str()),
+                InboundHttpRouteRef::Default("default"),
                 InboundHttpRoute::default(),
             );
         }

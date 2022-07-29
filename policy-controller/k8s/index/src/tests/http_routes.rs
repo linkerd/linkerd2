@@ -35,7 +35,7 @@ fn route_attaches_to_server() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(test.default_policy),
+            http_routes: mk_default_routes(),
         },
     );
 

@@ -116,7 +116,7 @@ fn authenticated_annotated() {
                 protocol: ProxyProtocol::Detect {
                     timeout: test.detect_timeout,
                 },
-                http_routes: mk_default_routes(policy),
+                http_routes: mk_default_routes(),
             }
         };
 

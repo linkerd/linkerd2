@@ -168,13 +168,13 @@ fn mk_default_policy(
     .collect()
 }
 
-fn mk_default_routes(policy: DefaultPolicy) -> HashMap<InboundHttpRouteRef, InboundHttpRoute> {
-    let mut routes = HashMap::new();
-    routes.insert(
-        InboundHttpRouteRef::Default(policy.as_str()),
+fn mk_default_routes() -> HashMap<InboundHttpRouteRef, InboundHttpRoute> {
+    Some((
+        InboundHttpRouteRef::Default("default"),
         InboundHttpRoute::default(),
-    );
-    routes
+    ))
+    .into_iter()
+    .collect()
 }
 
 impl TestConfig {
@@ -206,7 +206,7 @@ impl TestConfig {
             protocol: ProxyProtocol::Detect {
                 timeout: self.detect_timeout,
             },
-            http_routes: mk_default_routes(self.default_policy),
+            http_routes: mk_default_routes(),
         }
     }
 

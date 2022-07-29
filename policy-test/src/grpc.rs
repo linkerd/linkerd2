@@ -196,23 +196,23 @@ pub mod defaults {
     pub fn http_route() -> inbound::HttpRoute {
         use http_route::{path_match, HttpRouteMatch, PathMatch};
         use inbound::{http_route::Rule, HttpRoute};
+        use linkerd2_proxy_api::http_route::{path_match, HttpRouteMatch, PathMatch};
         use meta::{metadata, Metadata};
 
         HttpRoute {
             metadata: Some(Metadata {
-                kind: Some(metadata::Kind::Default("all-unauthenticated".to_owned())),
+                kind: Some(metadata::Kind::Default("default".to_owned())),
             }),
-            hosts: Vec::new(),
-            authorizations: Vec::new(),
             rules: vec![Rule {
                 matches: vec![HttpRouteMatch {
                     path: Some(PathMatch {
-                        kind: Some(path_match::Kind::Prefix("/".to_string())),
+                        kind: Some(path_match::Kind::Prefix("/".to_owned())),
                     }),
-                    ..Default::default()
+                    ..HttpRouteMatch::default()
                 }],
-                filters: Vec::default(),
+                ..Rule::default()
             }],
+            ..HttpRoute::default()
         }
     }
 }
