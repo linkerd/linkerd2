@@ -101,6 +101,7 @@ func TestRender(t *testing.T) {
 			OpaquePorts: "25,443,587,3306,5432,11211",
 		},
 		ProxyInit: &charts.ProxyInit{
+			IptablesMode: "nft",
 			Image: &charts.Image{
 				Name:       "ProxyInitImageName",
 				PullPolicy: "ImagePullPolicy",

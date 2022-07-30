@@ -5,7 +5,7 @@ set -eu
 bindir=$( cd "${0%/*}" && pwd )
 "$bindir"/protoc-go.sh
 
-dir_dirty=$(git diff HEAD)
+dir_dirty=$(git diff HEAD -- **/gen/**)
 if [ -z "$dir_dirty" ]; then
   echo 'Protobuf definitions match generated code'
   exit 0

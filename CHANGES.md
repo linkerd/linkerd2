@@ -1,5 +1,33 @@
 # Changes
 
+## edge-22.7.3
+
+This release adds a new `nft` iptables mode, used by default in proxy-init.
+When used, firewall configuration will be set-up through the `iptables-nft`
+binary; this should allow hosts that do not support `iptables-legacy` (such as
+RHEL based environments) to make use of the init container. The older
+`iptables-legacy` mode is still supported, but it must be explictly turned on.
+Moreover, this release also replaces the `HTTPRoute` CRD with Linkerd's own
+version, and includes a number of fixes and improvements.
+
+* Added a new `iptables-nft` mode for proxy-init. When running in this mode,
+  the firewall will be configured with `nft` kernel API; this should allow
+  users to run the init container on RHEL-family hosts
+* Fixed an issue where the proxy-injector would break when using `nodeAffinity`
+  values for the control plane
+* Updated healthcheck to ignore `Terminated` state for pods (thanks
+  @AgrimPrasad!)
+* Replaced `HTTRoute` CRD version from `gateway.networking.k8s.io` with a
+  similar version from the `policy.linkerd.io` API group. While the CRD is
+  similar, it does not support the `Gateway` type, does not contain the
+  `backendRefs` fields, and does not support `RequestMirror` and `ExtensionRef`
+  filter types.
+* Updated the default policy controller log level to `info`; the controller
+  will now emit INFO level logs for some of its dependencies
+* Added validation to ensure `HTTPRoute` paths are absolute; relative paths are
+  not supported by the proxy and the policy controller admission server will
+  reject any routes that use paths which do not start with `/`
+
 ## edge-22.7.2
 
 This release adds support for per-route authorization policy using the
