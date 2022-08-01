@@ -464,6 +464,10 @@ run_cni-calico-deep_test() {
   run_test "$test_directory/deep/..." --cni
 }
 
+run_rsa-ca_test() {
+  run_test "$test_directory/rsa-ca/..."
+}
+
 run_external_test() {
   run_test "$test_directory/external/..."
 }
