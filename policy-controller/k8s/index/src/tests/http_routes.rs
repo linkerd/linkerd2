@@ -1,6 +1,6 @@
 use super::*;
 use linkerd_policy_controller_core::{
-    http_route::{HttpRouteMatch, InboundHttpRouteRule, Method, PathMatch},
+    http_route::{HttpRouteMatch, Method, PathMatch},
     InboundHttpRouteRef,
 };
 
@@ -127,42 +127,33 @@ fn routes_created_for_probes() {
             authentication: ClientAuthentication::Unauthenticated,
         },
     );
-    let expected_rules = |path: String| {
-        vec![InboundHttpRouteRule {
-            matches: vec![HttpRouteMatch {
-                path: Some(PathMatch::Exact(path)),
-                headers: vec![],
-                query_params: vec![],
-                method: Some(Method::GET),
-            }],
-            filters: vec![],
-        }]
+    let liveness_match = HttpRouteMatch {
+        path: Some(PathMatch::Exact("/liveness-container-1".to_string())),
+        headers: vec![],
+        query_params: vec![],
+        method: Some(Method::GET),
+    };
+    let ready_match = HttpRouteMatch {
+        path: Some(PathMatch::Exact("/ready-container-1".to_string())),
+        headers: vec![],
+        query_params: vec![],
+        method: Some(Method::GET),
     };
 
     // No Server is configured for the port, so expect the probe paths to be
     // authorized.
     let update = rx.borrow_and_update();
-    let liveness = update
+    let probes = update
         .http_routes
-        .get(&InboundHttpRouteRef::Default("/liveness"))
+        .get(&InboundHttpRouteRef::Default("probe"))
         .unwrap();
-    assert_eq!(
-        liveness.rules,
-        expected_rules("/liveness-container-1".to_string())
-    );
-    assert_eq!(liveness.authorizations, expected_authorizations);
-    let readiness = update
-        .http_routes
-        .get(&InboundHttpRouteRef::Default("/ready"))
-        .unwrap();
-    assert_eq!(
-        readiness.rules,
-        expected_rules("/ready-container-1".to_string())
-    );
-    assert_eq!(readiness.authorizations, expected_authorizations);
+    let probes_rules = probes.rules.get(0).unwrap();
+    assert!(probes_rules.matches.contains(&liveness_match));
+    assert!(probes_rules.matches.contains(&ready_match));
+    assert_eq!(probes.authorizations, expected_authorizations);
     drop(update);
 
-    // Create server.
+    // // Create server.
     test.index.write().apply(mk_server(
         "ns-0",
         "srv-5432",
@@ -173,21 +164,17 @@ fn routes_created_for_probes() {
     ));
     assert!(rx.has_changed().unwrap());
 
-    // No routes are configured for the Server, so we should still expect the
-    // Pod's probe paths to be authorized.
+    // // No routes are configured for the Server, so we should still expect the
+    // // Pod's probe paths to be authorized.
     let update = rx.borrow_and_update();
-    let liveness = update
+    let probes = update
         .http_routes
-        .get(&InboundHttpRouteRef::Default("/liveness"))
+        .get(&InboundHttpRouteRef::Default("probe"))
         .unwrap();
-    assert_eq!(liveness.rules, expected_rules("/liveness".to_string()));
-    assert_eq!(liveness.authorizations, expected_authorizations);
-    let readiness = update
-        .http_routes
-        .get(&InboundHttpRouteRef::Default("/ready"))
-        .unwrap();
-    assert_eq!(readiness.rules, expected_rules("/ready".to_string()));
-    assert_eq!(readiness.authorizations, expected_authorizations);
+    let probes_rules = probes.rules.get(0).unwrap();
+    assert!(probes_rules.matches.contains(&liveness_match));
+    assert!(probes_rules.matches.contains(&ready_match));
+    assert_eq!(probes.authorizations, expected_authorizations);
     drop(update);
 
     // Create route.
@@ -199,13 +186,9 @@ fn routes_created_for_probes() {
     // A route is now configured for the Server, so the Pod's probe paths
     // should not be automatically authorized.
     assert!(!rx
-        .borrow()
-        .http_routes
-        .contains_key(&InboundHttpRouteRef::Default("/liveness")));
-    assert!(!rx
         .borrow_and_update()
         .http_routes
-        .contains_key(&InboundHttpRouteRef::Default("/ready")));
+        .contains_key(&InboundHttpRouteRef::Default("probes")));
 }
 
 fn mk_route(
