@@ -19,7 +19,7 @@ use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     http_route::{HttpRouteMatch, InboundHttpRouteRule, Method, PathMatch},
     AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundHttpRoute,
-    InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, RouteRef, ServerRef,
+    InboundHttpRouteRef, InboundServer, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
@@ -1054,84 +1054,19 @@ impl Pod {
             }
         }
 
-        let mut authorizations = HashMap::default();
-        if let DefaultPolicy::Allow {
-            authenticated_only,
-            cluster_only,
-        } = policy
-        {
-            let authentication = if authenticated_only {
-                ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Suffix(vec![])])
-            } else {
-                ClientAuthentication::Unauthenticated
-            };
-            let networks = if cluster_only {
-                config.networks.iter().copied().map(Into::into).collect()
-            } else {
-                vec![
-                    "0.0.0.0/0".parse::<IpNet>().unwrap().into(),
-                    "::/0".parse::<IpNet>().unwrap().into(),
-                ]
-            };
-            authorizations.insert(
-                AuthorizationRef::Default(policy.to_string()),
-                ClientAuthorization {
-                    authentication,
-                    networks,
-                },
-            );
-        };
+        let authorizations = policy.default_authzs(config);
 
-        // No Server is configured, so requests on the Pod's probe paths are
-        // authorized.
         let http_routes = {
             let probe_paths = probes.get(&port).into_iter().flatten().map(|p| p.as_str());
-            Self::http_probe_routes(probe_paths, &config.probe_networks)
+            config.default_inbound_http_routes(probe_paths)
         };
 
         InboundServer {
-            reference: ServerRef::Default(policy.to_string()),
+            reference: ServerRef::Default(policy.as_str()),
             protocol,
             authorizations,
             http_routes,
         }
-    }
-
-    fn http_probe_routes<'p>(
-        paths: impl Iterator<Item = &'p str>,
-        networks: &[IpNet],
-    ) -> HashMap<RouteRef, InboundHttpRoute> {
-        if networks.is_empty() {
-            return HashMap::default();
-        }
-        paths
-            .map(|path| {
-                let authz = Some((
-                    AuthorizationRef::Default("probe".to_string()),
-                    ClientAuthorization {
-                        networks: networks.iter().copied().map(Into::into).collect(),
-                        authentication: ClientAuthentication::Unauthenticated,
-                    },
-                ));
-
-                let route = InboundHttpRoute {
-                    hostnames: vec![],
-                    rules: vec![InboundHttpRouteRule {
-                        matches: vec![HttpRouteMatch {
-                            path: Some(PathMatch::Exact(path.to_string())),
-                            headers: vec![],
-                            query_params: vec![],
-                            method: Some(Method::GET),
-                        }],
-                        filters: vec![],
-                    }],
-                    authorizations: authz.into_iter().collect(),
-                    creation_timestamp: std::time::SystemTime::now().into(),
-                };
-
-                (RouteRef::Probe(path.to_string()), route)
-            })
-            .collect()
     }
 }
 
@@ -1206,19 +1141,13 @@ impl PolicyIndex {
     ) -> InboundServer {
         tracing::trace!(%name, ?server, "Creating inbound server");
         let authorizations = self.client_authzs(&name, server, authentications);
-
-        let routes = match self.http_routes(&name, authentications) {
-            routes if !routes.is_empty() => routes,
-            // No routes are configured for the Server, so requests on the Pod's
-            // probe paths are authorized.
-            _ => Pod::http_probe_routes(probe_paths, &*self.cluster_info.probe_networks),
-        };
+        let http_routes = self.http_routes(&name, authentications, probe_paths);
 
         InboundServer {
             reference: ServerRef::Server(name),
             authorizations,
             protocol: server.protocol.clone(),
-            http_routes: routes,
+            http_routes,
         }
     }
 
@@ -1341,20 +1270,28 @@ impl PolicyIndex {
         authzs
     }
 
-    fn http_routes(
+    fn http_routes<'p>(
         &self,
         server_name: &str,
         authentications: &AuthenticationNsIndex,
-    ) -> HashMap<RouteRef, InboundHttpRoute> {
-        self.http_routes
+        probe_paths: impl Iterator<Item = &'p str>,
+    ) -> HashMap<InboundHttpRouteRef, InboundHttpRoute> {
+        let mut routes = self
+            .http_routes
             .iter()
             .filter(|(_, route)| route.selects_server(server_name))
             .map(|(name, route)| {
                 let mut route = route.route.clone();
                 route.authorizations = self.route_client_authzs(name, authentications);
-                (RouteRef::HttpRoute(name.to_string()), route)
+                (InboundHttpRouteRef::Linkerd(name.clone()), route)
             })
-            .collect()
+            .collect::<HashMap<_, _>>();
+
+        if routes.is_empty() {
+            routes = self.cluster_info.default_inbound_http_routes(probe_paths);
+        }
+
+        routes
     }
 
     fn policy_client_authz(
@@ -1541,5 +1478,67 @@ impl<T> Default for NsUpdate<T> {
             added: vec![],
             removed: Default::default(),
         }
+    }
+}
+
+// === impl ClusterInfo ===
+
+impl ClusterInfo {
+    fn default_inbound_http_routes<'p>(
+        &self,
+        probe_paths: impl Iterator<Item = &'p str>,
+    ) -> HashMap<InboundHttpRouteRef, InboundHttpRoute> {
+        let mut routes = HashMap::with_capacity(2);
+        // If no routes are defined for the server, use a default route that
+        // matches all requests. Default authorizations are instrumented on
+        // the server.
+        routes.insert(
+            InboundHttpRouteRef::Default("default"),
+            InboundHttpRoute::default(),
+        );
+
+        // No Server is configured, so requests on the Pod's probe paths are
+        // authorized.
+        if !self.probe_networks.is_empty() {
+            // Probes are authorized on the configured probe networks only.
+            let authorizations = Some((
+                AuthorizationRef::Default("probe"),
+                ClientAuthorization {
+                    networks: self
+                        .probe_networks
+                        .iter()
+                        .copied()
+                        .map(Into::into)
+                        .collect(),
+                    authentication: ClientAuthentication::Unauthenticated,
+                },
+            ))
+            .into_iter()
+            .collect();
+
+            // Generate an `Exact` path match for each probe path defined on the
+            // pod.
+            let matches = probe_paths
+                .map(|path| HttpRouteMatch {
+                    path: Some(PathMatch::Exact(path.to_string())),
+                    headers: vec![],
+                    query_params: vec![],
+                    method: Some(Method::GET),
+                })
+                .collect();
+
+            let probe_route = InboundHttpRoute {
+                hostnames: Vec::new(),
+                rules: vec![InboundHttpRouteRule {
+                    matches,
+                    filters: Vec::new(),
+                }],
+                authorizations,
+                creation_timestamp: None,
+            };
+            routes.insert(InboundHttpRouteRef::Default("probe"), probe_route);
+        }
+
+        routes
     }
 }

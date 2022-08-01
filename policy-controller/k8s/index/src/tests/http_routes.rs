@@ -1,7 +1,7 @@
 use super::*;
 use linkerd_policy_controller_core::{
     http_route::{HttpRouteMatch, InboundHttpRouteRule, Method, PathMatch},
-    RouteRef,
+    InboundHttpRouteRef,
 };
 
 const POLICY_API_GROUP: &str = "policy.linkerd.io";
@@ -38,7 +38,7 @@ fn route_attaches_to_server() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
-            http_routes: HashMap::default(),
+            http_routes: mk_default_routes(),
         },
     );
 
@@ -54,7 +54,7 @@ fn route_attaches_to_server() {
     assert!(rx
         .borrow_and_update()
         .http_routes
-        .contains_key(&RouteRef::HttpRoute("route-foo".to_string())));
+        .contains_key(&InboundHttpRouteRef::Linkerd("route-foo".to_string())));
 
     // Create authz policy.
     test.index.write().apply(mk_authorization_policy(
@@ -71,7 +71,7 @@ fn route_attaches_to_server() {
 
     assert!(rx.has_changed().unwrap());
     assert!(
-        rx.borrow().http_routes[&RouteRef::HttpRoute("route-foo".to_string())]
+        rx.borrow().http_routes[&InboundHttpRouteRef::Linkerd("route-foo".to_string())]
             .authorizations
             .contains_key(&AuthorizationRef::AuthorizationPolicy(
                 "authz-foo".to_string()
@@ -121,7 +121,7 @@ fn routes_created_for_probes() {
 
     let mut expected_authorizations = HashMap::default();
     expected_authorizations.insert(
-        AuthorizationRef::Default("probe".to_string()),
+        AuthorizationRef::Default("probe"),
         ClientAuthorization {
             networks: vec!["10.0.0.1/24".parse::<IpNet>().unwrap().into()],
             authentication: ClientAuthentication::Unauthenticated,
@@ -144,7 +144,7 @@ fn routes_created_for_probes() {
     let update = rx.borrow_and_update();
     let liveness = update
         .http_routes
-        .get(&RouteRef::Probe("/liveness-container-1".to_string()))
+        .get(&InboundHttpRouteRef::Default("/liveness"))
         .unwrap();
     assert_eq!(
         liveness.rules,
@@ -153,7 +153,7 @@ fn routes_created_for_probes() {
     assert_eq!(liveness.authorizations, expected_authorizations);
     let readiness = update
         .http_routes
-        .get(&RouteRef::Probe("/ready-container-1".to_string()))
+        .get(&InboundHttpRouteRef::Default("/ready"))
         .unwrap();
     assert_eq!(
         readiness.rules,
@@ -178,21 +178,15 @@ fn routes_created_for_probes() {
     let update = rx.borrow_and_update();
     let liveness = update
         .http_routes
-        .get(&RouteRef::Probe("/liveness-container-1".to_string()))
+        .get(&InboundHttpRouteRef::Default("/liveness"))
         .unwrap();
-    assert_eq!(
-        liveness.rules,
-        expected_rules("/liveness-container-1".to_string())
-    );
+    assert_eq!(liveness.rules, expected_rules("/liveness".to_string()));
     assert_eq!(liveness.authorizations, expected_authorizations);
     let readiness = update
         .http_routes
-        .get(&RouteRef::Probe("/ready-container-1".to_string()))
+        .get(&InboundHttpRouteRef::Default("/ready"))
         .unwrap();
-    assert_eq!(
-        readiness.rules,
-        expected_rules("/ready-container-1".to_string())
-    );
+    assert_eq!(readiness.rules, expected_rules("/ready".to_string()));
     assert_eq!(readiness.authorizations, expected_authorizations);
     drop(update);
 
@@ -207,11 +201,11 @@ fn routes_created_for_probes() {
     assert!(!rx
         .borrow()
         .http_routes
-        .contains_key(&RouteRef::Probe("/liveness-container-1".to_string())));
+        .contains_key(&InboundHttpRouteRef::Default("/liveness")));
     assert!(!rx
         .borrow_and_update()
         .http_routes
-        .contains_key(&RouteRef::Probe("/ready-container-1".to_string())));
+        .contains_key(&InboundHttpRouteRef::Default("/ready")));
 }
 
 fn mk_route(
