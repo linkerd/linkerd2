@@ -1056,14 +1056,10 @@ impl Pod {
 
         let authorizations = policy.default_authzs(config);
 
-        let mut http_routes = {
+        let http_routes = {
             let probe_paths = probes.get(&port).into_iter().flatten().map(|p| p.as_str());
             config.default_inbound_http_routes(probe_paths)
         };
-        http_routes.insert(
-            InboundHttpRouteRef::Default("default"),
-            InboundHttpRoute::default(),
-        );
 
         InboundServer {
             reference: ServerRef::Default(policy.as_str()),
@@ -1293,14 +1289,6 @@ impl PolicyIndex {
 
         if routes.is_empty() {
             routes = self.cluster_info.default_inbound_http_routes(probe_paths);
-
-            // If no routes are defined for the server, use a default route that
-            // matches all requests. Default authorizations are instrumented on
-            // the server.
-            routes.insert(
-                InboundHttpRouteRef::Default("default"),
-                InboundHttpRoute::default(),
-            );
         }
 
         routes
