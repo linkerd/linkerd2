@@ -15,5 +15,5 @@ linkerd2-proxy-api = { version = "0.6", features = ["inbound"] }
 linkerd-policy-controller-core = { path = "../core" }
 maplit = "1"
 tokio = { version = "1", features = ["macros"] }
-tonic = { version = "0.7", default-features = false }
+tonic = { version = "0.8", default-features = false }
 tracing = "0.1"

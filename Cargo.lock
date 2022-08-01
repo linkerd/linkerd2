@@ -1001,7 +1001,7 @@ dependencies = [
  "linkerd2-proxy-api",
  "maplit",
  "tokio",
- "tonic",
+ "tonic 0.8.0",
  "tracing",
 ]
 
@@ -1065,7 +1065,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-test",
- "tonic",
+ "tonic 0.8.0",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1081,7 +1081,7 @@ dependencies = [
  "prost",
  "prost-types",
  "thiserror",
- "tonic",
+ "tonic 0.7.2",
 ]
 
 [[package]]
@@ -1999,6 +1999,28 @@ dependencies = [
  "pin-project",
  "prost",
  "prost-derive",
+ "tokio-stream",
+ "tokio-util 0.7.0",
+ "tower-layer",
+ "tower-service",
+ "tracing",
+]
+
+[[package]]
+name = "tonic"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "498f271adc46acce75d66f639e4d35b31b2394c295c82496727dafa16d465dd2"
+dependencies = [
+ "async-stream",
+ "base64",
+ "bytes",
+ "futures-core",
+ "futures-util",
+ "http",
+ "http-body",
+ "percent-encoding",
+ "pin-project",
  "tokio-stream",
  "tokio-util 0.7.0",
  "tower-layer",
