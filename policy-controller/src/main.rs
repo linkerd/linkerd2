@@ -66,6 +66,7 @@ struct Args {
     #[clap(long, default_value = "linkerd")]
     control_plane_namespace: String,
 
+    /// Network CIDRs of all expected probes.
     #[clap(long)]
     probe_networks: Option<IpNets>,
 }
