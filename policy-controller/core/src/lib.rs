@@ -47,7 +47,7 @@ pub enum AuthorizationRef {
     AuthorizationPolicy(String),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum InboundHttpRouteRef {
     Default(&'static str),
     Linkerd(String),
@@ -106,5 +106,11 @@ impl Ord for InboundHttpRouteRef {
             (Self::Linkerd(_), Self::Default(_)) => std::cmp::Ordering::Less,
             (Self::Default(_), Self::Linkerd(_)) => std::cmp::Ordering::Greater,
         }
+    }
+}
+
+impl PartialOrd for InboundHttpRouteRef {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
