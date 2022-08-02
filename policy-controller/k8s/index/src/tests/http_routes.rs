@@ -148,8 +148,16 @@ fn routes_created_for_probes() {
         .get(&InboundHttpRouteRef::Default("probe"))
         .unwrap();
     let probes_rules = probes.rules.get(0).unwrap();
-    assert!(probes_rules.matches.contains(&liveness_match));
-    assert!(probes_rules.matches.contains(&ready_match));
+    assert!(
+        probes_rules.matches.contains(&liveness_match),
+        "matches: {:#?}",
+        probes_rules.matches
+    );
+    assert!(
+        probes_rules.matches.contains(&ready_match),
+        "matches: {:#?}",
+        probes_rules.matches
+    );
     assert_eq!(probes.authorizations, expected_authorizations);
     drop(update);
 
@@ -172,8 +180,16 @@ fn routes_created_for_probes() {
         .get(&InboundHttpRouteRef::Default("probe"))
         .unwrap();
     let probes_rules = probes.rules.get(0).unwrap();
-    assert!(probes_rules.matches.contains(&liveness_match));
-    assert!(probes_rules.matches.contains(&ready_match));
+    assert!(
+        probes_rules.matches.contains(&liveness_match),
+        "matches: {:#?}",
+        probes_rules.matches
+    );
+    assert!(
+        probes_rules.matches.contains(&ready_match),
+        "matches: {:#?}",
+        probes_rules.matches
+    );
     assert_eq!(probes.authorizations, expected_authorizations);
     drop(update);
 

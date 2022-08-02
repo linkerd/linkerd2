@@ -1501,7 +1501,7 @@ impl ClusterInfo {
         // authorized.
         if !self.probe_networks.is_empty() {
             // Probes are authorized on the configured probe networks only.
-            let authorizations = Some((
+            let authorizations = std::iter::once((
                 AuthorizationRef::Default("probe"),
                 ClientAuthorization {
                     networks: self
@@ -1513,7 +1513,6 @@ impl ClusterInfo {
                     authentication: ClientAuthentication::Unauthenticated,
                 },
             ))
-            .into_iter()
             .collect();
 
             // Generate an `Exact` path match for each probe path defined on the
