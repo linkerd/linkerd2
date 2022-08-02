@@ -145,7 +145,7 @@ fn routes_created_for_probes() {
     let update = rx.borrow_and_update();
     let probes = update
         .http_routes
-        .get(&InboundHttpRouteRef::Default("probe"))
+        .get(&InboundHttpRouteRef::Probe)
         .unwrap();
     let probes_rules = probes.rules.get(0).unwrap();
     assert!(
@@ -177,7 +177,7 @@ fn routes_created_for_probes() {
     let update = rx.borrow_and_update();
     let probes = update
         .http_routes
-        .get(&InboundHttpRouteRef::Default("probe"))
+        .get(&InboundHttpRouteRef::Probe)
         .unwrap();
     let probes_rules = probes.rules.get(0).unwrap();
     assert!(
@@ -204,7 +204,7 @@ fn routes_created_for_probes() {
     assert!(!rx
         .borrow_and_update()
         .http_routes
-        .contains_key(&InboundHttpRouteRef::Default("probes")));
+        .contains_key(&InboundHttpRouteRef::Probe));
 }
 
 fn mk_route(

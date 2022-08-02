@@ -1535,7 +1535,7 @@ impl ClusterInfo {
                 authorizations,
                 creation_timestamp: None,
             };
-            routes.insert(InboundHttpRouteRef::Default("probe"), probe_route);
+            routes.insert(InboundHttpRouteRef::Probe, probe_route);
         }
 
         routes
