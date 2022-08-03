@@ -97,27 +97,22 @@ pub enum ClientAuthentication {
 
 // === impl InboundHttpRouteRef ===
 
-impl InboundHttpRouteRef {
-    /// The sorting priority for an InboundHttpRouteRef variant.
-    ///
-    /// Route resources should always be most preferred and default resources
-    /// should always be least.
-    fn priority(&self) -> u8 {
-        match self {
-            InboundHttpRouteRef::Linkerd(_) => 1,
-            InboundHttpRouteRef::Probe => 2,
-            InboundHttpRouteRef::Default(_) => 3,
-        }
-    }
-}
-
 impl Ord for InboundHttpRouteRef {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
             (Self::Default(a), Self::Default(b)) => a.cmp(b),
             (Self::Linkerd(a), Self::Linkerd(b)) => a.cmp(b),
             (Self::Probe, Self::Probe) => std::cmp::Ordering::Equal,
-            _ => self.priority().cmp(&other.priority()),
+            // Route resources are always preferred over default and probe
+            // resources, so they should sort first in a list.
+            (Self::Linkerd(_), Self::Default(_)) => std::cmp::Ordering::Less,
+            (Self::Default(_), Self::Linkerd(_)) => std::cmp::Ordering::Greater,
+            (Self::Linkerd(_), Self::Probe) => std::cmp::Ordering::Less,
+            (Self::Probe, Self::Linkerd(_)) => std::cmp::Ordering::Less,
+            // Probe resources are always preferred over default resources, so
+            // they should sort first in a list.
+            (Self::Probe, Self::Default(_)) => std::cmp::Ordering::Less,
+            (Self::Default(_), Self::Probe) => std::cmp::Ordering::Greater,
         }
     }
 }
