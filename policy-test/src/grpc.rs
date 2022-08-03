@@ -12,6 +12,14 @@ use tokio::io;
 #[macro_export]
 macro_rules! assert_is_default_all_unauthenticated {
     ($config:expr) => {
+        assert_default_all_unauthenticated_labels!($config);
+        assert_eq!($config.authorizations.len(), 1);
+    };
+}
+
+#[macro_export]
+macro_rules! assert_default_all_unauthenticated_labels {
+    ($config:expr) => {
         assert_eq!(
             $config.labels,
             vec![
@@ -22,7 +30,6 @@ macro_rules! assert_is_default_all_unauthenticated {
             .into_iter()
             .collect()
         );
-        assert_eq!($config.authorizations.len(), 1);
     };
 }
 
@@ -37,7 +44,7 @@ macro_rules! assert_protocol_detect {
                 kind: Some(inbound::proxy_protocol::Kind::Detect(
                     inbound::proxy_protocol::Detect {
                         timeout: Some(time::Duration::from_secs(10).into()),
-                        http_routes: Default::default(),
+                        http_routes: vec![$crate::grpc::defaults::http_route()],
                     }
                 )),
             }),
@@ -171,5 +178,40 @@ impl hyper::service::Service<hyper::Request<tonic::body::BoxBody>> for GrpcHttp 
         parts.uri = hyper::Uri::from_parts(uri).unwrap();
 
         self.tx.call(hyper::Request::from_parts(parts, body))
+    }
+}
+
+pub mod defaults {
+    use super::*;
+
+    pub fn proxy_protocol() -> inbound::ProxyProtocol {
+        use inbound::proxy_protocol::{Http1, Kind};
+        inbound::ProxyProtocol {
+            kind: Some(Kind::Http1(Http1 {
+                routes: vec![http_route()],
+            })),
+        }
+    }
+
+    pub fn http_route() -> inbound::HttpRoute {
+        use http_route::{path_match, HttpRouteMatch, PathMatch};
+        use inbound::{http_route::Rule, HttpRoute};
+        use meta::{metadata, Metadata};
+
+        HttpRoute {
+            metadata: Some(Metadata {
+                kind: Some(metadata::Kind::Default("default".to_owned())),
+            }),
+            rules: vec![Rule {
+                matches: vec![HttpRouteMatch {
+                    path: Some(PathMatch {
+                        kind: Some(path_match::Kind::Prefix("/".to_owned())),
+                    }),
+                    ..HttpRouteMatch::default()
+                }],
+                ..Rule::default()
+            }],
+            ..HttpRoute::default()
+        }
     }
 }

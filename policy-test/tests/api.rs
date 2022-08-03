@@ -5,8 +5,8 @@ use kube::ResourceExt;
 use linkerd_policy_controller_core::{Ipv4Net, Ipv6Net};
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
-    assert_is_default_all_unauthenticated, assert_protocol_detect, create, create_ready_pod, grpc,
-    with_temp_ns,
+    assert_default_all_unauthenticated_labels, assert_is_default_all_unauthenticated,
+    assert_protocol_detect, create, create_ready_pod, grpc, with_temp_ns,
 };
 use maplit::{btreemap, convert_args, hashmap};
 use tokio::time;
@@ -34,14 +34,7 @@ async fn server_with_server_authorization() {
         // that the update now uses this server, which has no authorizations
         let server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
         let config = next_config(&mut rx).await;
-        assert_eq!(
-            config.protocol,
-            Some(grpc::inbound::ProxyProtocol {
-                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(
-                    grpc::inbound::proxy_protocol::Http1::default()
-                )),
-            }),
-        );
+        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,
@@ -82,14 +75,7 @@ async fn server_with_server_authorization() {
             .expect("watch must not fail")
             .expect("watch must return an updated config");
         tracing::trace!(?config);
-        assert_eq!(
-            config.protocol,
-            Some(grpc::inbound::ProxyProtocol {
-                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(
-                    grpc::inbound::proxy_protocol::Http1::default()
-                )),
-            }),
-        );
+        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
         assert_eq!(
             config.authorizations.first().unwrap().labels,
             convert_args!(hashmap!(
@@ -160,14 +146,7 @@ async fn server_with_authorization_policy() {
         // that the update now uses this server, which has no authorizations
         let server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
         let config = next_config(&mut rx).await;
-        assert_eq!(
-            config.protocol,
-            Some(grpc::inbound::ProxyProtocol {
-                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(
-                    grpc::inbound::proxy_protocol::Http1::default()
-                )),
-            }),
-        );
+        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,
@@ -223,14 +202,8 @@ async fn server_with_authorization_policy() {
         let config = time::timeout(time::Duration::from_secs(10), next_config(&mut rx))
             .await
             .expect("watch must update within 10s");
-        assert_eq!(
-            config.protocol,
-            Some(grpc::inbound::ProxyProtocol {
-                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(
-                    grpc::inbound::proxy_protocol::Http1::default()
-                )),
-            }),
-        );
+
+        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
         assert_eq!(config.authorizations.len(), 1);
         assert_eq!(
             config.authorizations.first().unwrap().labels,
@@ -288,14 +261,7 @@ async fn server_with_http_route() {
         // and no routes.
         let _server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
         let config = next_config(&mut rx).await;
-        assert_eq!(
-            config.protocol,
-            Some(grpc::inbound::ProxyProtocol {
-                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(
-                    grpc::inbound::proxy_protocol::Http1::default()
-                )),
-            }),
-        );
+        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,
@@ -409,14 +375,7 @@ async fn server_with_http_route() {
             .await
             .expect("HttpRoute must be deleted");
         let config = next_config(&mut rx).await;
-        assert_eq!(
-            config.protocol,
-            Some(grpc::inbound::ProxyProtocol {
-                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(
-                    grpc::inbound::proxy_protocol::Http1::default()
-                )),
-            }),
-        );
+        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
     })
     .await
 }
@@ -461,14 +420,7 @@ async fn http_routes_ordered_by_creation() {
         // and no routes.
         let _server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
         let config = next_config(&mut rx).await;
-        assert_eq!(
-            config.protocol,
-            Some(grpc::inbound::ProxyProtocol {
-                kind: Some(grpc::inbound::proxy_protocol::Kind::Http1(
-                    grpc::inbound::proxy_protocol::Http1::default()
-                )),
-            }),
-        );
+        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,
@@ -536,6 +488,31 @@ async fn http_routes_ordered_by_creation() {
         assert_eq!(route_path(routes, 0), Some("/metrics"));
         assert_eq!(route_path(routes, 1), Some("/ready"));
         assert_eq!(route_path(routes, 2), Some("/proxy-log-level"));
+    })
+    .await
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn default_http_routes() {
+    with_temp_ns(|client, ns| async move {
+        // Create a pod that does nothing. It's injected with a proxy, so we can
+        // attach policies to its admin server.
+        let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
+
+        let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+        assert_is_default_all_unauthenticated!(config);
+        assert_protocol_detect!(config);
+
+        let routes = detect_routes(&config);
+        assert_eq!(routes.len(), 1);
+        let route_authzs = &routes[0].authorizations;
+        assert_eq!(route_authzs.len(), 0);
     })
     .await
 }
@@ -686,18 +663,34 @@ async fn next_config(rx: &mut tonic::Streaming<grpc::inbound::Server>) -> grpc::
     config
 }
 
-fn http1_routes(config: &grpc::inbound::Server) -> &[grpc::inbound::HttpRoute] {
-    let http1 = if let grpc::inbound::proxy_protocol::Kind::Http1(ref http1) = config
+fn detect_routes(config: &grpc::inbound::Server) -> &[grpc::inbound::HttpRoute] {
+    let kind = config
         .protocol
         .as_ref()
         .expect("must have proxy protocol")
         .kind
         .as_ref()
-        .expect("must have kind")
-    {
+        .expect("must have kind");
+    let detect = if let grpc::inbound::proxy_protocol::Kind::Detect(ref detect) = kind {
+        detect
+    } else {
+        panic!("proxy protocol must be Detect; actually got:\n{kind:#?}")
+    };
+    &detect.http_routes[..]
+}
+
+fn http1_routes(config: &grpc::inbound::Server) -> &[grpc::inbound::HttpRoute] {
+    let kind = config
+        .protocol
+        .as_ref()
+        .expect("must have proxy protocol")
+        .kind
+        .as_ref()
+        .expect("must have kind");
+    let http1 = if let grpc::inbound::proxy_protocol::Kind::Http1(ref http1) = kind {
         http1
     } else {
-        panic!("proxy protocol must be HTTP1")
+        panic!("proxy protocol must be HTTP1; actually got:\n{kind:#?}")
     };
     &http1.routes[..]
 }

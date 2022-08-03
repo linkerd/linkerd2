@@ -1,4 +1,5 @@
 use super::*;
+use linkerd_policy_controller_core::InboundHttpRouteRef;
 
 const POLICY_API_GROUP: &str = "policy.linkerd.io";
 
@@ -34,7 +35,7 @@ fn route_attaches_to_server() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
-            http_routes: HashMap::default(),
+            http_routes: mk_default_routes(),
         },
     );
 
@@ -47,7 +48,10 @@ fn route_attaches_to_server() {
         rx.borrow().reference,
         ServerRef::Server("srv-8080".to_string())
     );
-    assert!(rx.borrow_and_update().http_routes.contains_key("route-foo"));
+    assert!(rx
+        .borrow_and_update()
+        .http_routes
+        .contains_key(&InboundHttpRouteRef::Linkerd("route-foo".to_string())));
 
     // Create authz policy.
     test.index.write().apply(mk_authorization_policy(
@@ -63,11 +67,13 @@ fn route_attaches_to_server() {
     ));
 
     assert!(rx.has_changed().unwrap());
-    assert!(rx.borrow().http_routes["route-foo"]
-        .authorizations
-        .contains_key(&AuthorizationRef::AuthorizationPolicy(
-            "authz-foo".to_string()
-        )));
+    assert!(
+        rx.borrow().http_routes[&InboundHttpRouteRef::Linkerd("route-foo".to_string())]
+            .authorizations
+            .contains_key(&AuthorizationRef::AuthorizationPolicy(
+                "authz-foo".to_string()
+            ))
+    );
 }
 
 fn mk_route(

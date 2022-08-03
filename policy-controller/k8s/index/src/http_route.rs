@@ -39,16 +39,7 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
 
     fn try_from(route: api::HttpRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
-        let creation_timestamp = route
-            .metadata
-            .creation_timestamp
-            .map(|k8s::Time(t)| t)
-            .unwrap_or_else(|| {
-                tracing::warn!("HTTPRoute resource did not have a creation timestamp!");
-                // If the resource is missing a creation timestamp, we'll use the current time so
-                // that existing resources have precedence over newly added ones.
-                std::time::SystemTime::now().into()
-            });
+        let creation_timestamp = route.metadata.creation_timestamp.map(|k8s::Time(t)| t);
         let parents = InboundParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
         let hostnames = route
             .spec
@@ -89,16 +80,7 @@ impl TryFrom<policy::HttpRoute> for InboundRouteBinding {
 
     fn try_from(route: policy::HttpRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
-        let creation_timestamp = route
-            .metadata
-            .creation_timestamp
-            .map(|k8s::Time(t)| t)
-            .unwrap_or_else(|| {
-                tracing::warn!("HTTPRoute resource did not have a creation timestamp!");
-                // If the resource is missing a creation timestamp, we'll use the current time so
-                // that existing resources have precedence over newly added ones.
-                std::time::SystemTime::now().into()
-            });
+        let creation_timestamp = route.metadata.creation_timestamp.map(|k8s::Time(t)| t);
         let parents = InboundParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
         let hostnames = route
             .spec

@@ -7,8 +7,9 @@ use crate::{defaults::DefaultPolicy, index::*, server_authorization::ServerSelec
 use ahash::AHashMap as HashMap;
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{
-    AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundServer,
-    IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
+    AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundHttpRoute,
+    InboundHttpRouteRef, InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol,
+    ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
@@ -126,7 +127,7 @@ fn mk_default_policy(
             authenticated_only: true,
             cluster_only: false,
         } => Some((
-            AuthorizationRef::Default("all-authenticated".to_string()),
+            AuthorizationRef::Default("all-authenticated"),
             ClientAuthorization {
                 authentication: authed,
                 networks: all_nets,
@@ -136,7 +137,7 @@ fn mk_default_policy(
             authenticated_only: false,
             cluster_only: false,
         } => Some((
-            AuthorizationRef::Default("all-unauthenticated".to_string()),
+            AuthorizationRef::Default("all-unauthenticated"),
             ClientAuthorization {
                 authentication: ClientAuthentication::Unauthenticated,
                 networks: all_nets,
@@ -146,7 +147,7 @@ fn mk_default_policy(
             authenticated_only: true,
             cluster_only: true,
         } => Some((
-            AuthorizationRef::Default("cluster-authenticated".to_string()),
+            AuthorizationRef::Default("cluster-authenticated"),
             ClientAuthorization {
                 authentication: authed,
                 networks: cluster_nets,
@@ -156,13 +157,22 @@ fn mk_default_policy(
             authenticated_only: false,
             cluster_only: true,
         } => Some((
-            AuthorizationRef::Default("cluster-unauthenticated".to_string()),
+            AuthorizationRef::Default("cluster-unauthenticated"),
             ClientAuthorization {
                 authentication: ClientAuthentication::Unauthenticated,
                 networks: cluster_nets,
             },
         )),
     }
+    .into_iter()
+    .collect()
+}
+
+fn mk_default_routes() -> HashMap<InboundHttpRouteRef, InboundHttpRoute> {
+    Some((
+        InboundHttpRouteRef::Default("default"),
+        InboundHttpRoute::default(),
+    ))
     .into_iter()
     .collect()
 }
@@ -191,12 +201,12 @@ impl TestConfig {
 
     fn default_server(&self) -> InboundServer {
         InboundServer {
-            reference: ServerRef::Default(self.default_policy.to_string()),
+            reference: ServerRef::Default(self.default_policy.as_str()),
             authorizations: mk_default_policy(self.default_policy, self.cluster.networks.clone()),
             protocol: ProxyProtocol::Detect {
                 timeout: self.detect_timeout,
             },
-            http_routes: HashMap::default(),
+            http_routes: mk_default_routes(),
         }
     }
 

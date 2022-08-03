@@ -52,7 +52,7 @@ func AuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, names
 		if saz.Spec.Server.Name != "" {
 			server, err := k8sAPI.L5dCrdClient.ServerV1beta1().Servers(saz.GetNamespace()).Get(ctx, saz.Spec.Server.Name, metav1.GetOptions{})
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "ServerAuthorization/%s targets Server/%s but we failed get it: %s\n", saz.Name, saz.Spec.Server.Name, err)
+				fmt.Fprintf(os.Stderr, "ServerAuthorization/%s targets Server/%s but we failed to get it: %s\n", saz.Name, saz.Spec.Server.Name, err)
 				continue
 			}
 			servers = []serverv1beta1.Server{*server}
@@ -93,7 +93,7 @@ func AuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, names
 		if target.Kind == ServerKind && target.Group == PolicyAPIGroup {
 			server, err := k8sAPI.L5dCrdClient.ServerV1beta1().Servers(p.Namespace).Get(ctx, string(target.Name), metav1.GetOptions{})
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "AuthorizationPolicy/%s targets Server/%s but we failed get it: %s\n", p.Name, target.Name, err)
+				fmt.Fprintf(os.Stderr, "AuthorizationPolicy/%s targets Server/%s but we failed to get it: %s\n", p.Name, target.Name, err)
 				continue
 			}
 			if serverIncludesPod(*server, pods) {
@@ -107,7 +107,7 @@ func AuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, names
 		} else if target.Kind == HTTPRouteKind && target.Group == PolicyAPIGroup {
 			route, err := k8sAPI.L5dCrdClient.PolicyV1alpha1().HTTPRoutes(p.Namespace).Get(ctx, string(target.Name), metav1.GetOptions{})
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "AuthorizationPolicy/%s targets HTTPRoute/%s but we failed get it: %s\n", p.Name, target.Name, err)
+				fmt.Fprintf(os.Stderr, "AuthorizationPolicy/%s targets HTTPRoute/%s but we failed to get it: %s\n", p.Name, target.Name, err)
 				continue
 			}
 			for _, parent := range route.Spec.ParentRefs {
@@ -115,7 +115,7 @@ func AuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, names
 					parent.Group != nil && *parent.Group == PolicyAPIGroup {
 					server, err := k8sAPI.L5dCrdClient.ServerV1beta1().Servers(p.Namespace).Get(ctx, string(parent.Name), metav1.GetOptions{})
 					if err != nil {
-						fmt.Fprintf(os.Stderr, "HTTPRoute/%s belongs to Server/%s but we failed get it: %s\n", target.Name, parent.Name, err)
+						fmt.Fprintf(os.Stderr, "HTTPRoute/%s belongs to Server/%s but we failed to get it: %s\n", target.Name, parent.Name, err)
 						continue
 					}
 					if serverIncludesPod(*server, pods) {
@@ -210,8 +210,8 @@ func serverIncludesPod(server serverv1beta1.Server, pods []corev1.Pod) bool {
 
 	selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create selector: %s\n", err)
-		os.Exit(1)
+		fmt.Fprintf(os.Stderr, "Failed to parse PodSelector of Server/%s: %s\n", server.Name, err)
+		return false
 	}
 
 	for _, pod := range pods {
