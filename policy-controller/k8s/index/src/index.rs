@@ -970,7 +970,16 @@ impl Pod {
 
     /// Updates a pod-port to use the given named server.
     fn set_default_server(&mut self, port: NonZeroU16, config: &ClusterInfo) {
-        let server = Self::default_inbound_server(port, &self.meta.settings, &self.probes, config);
+        let server = Self::default_inbound_server(
+            port,
+            &self.meta.settings,
+            self.probes
+                .get(&port)
+                .into_iter()
+                .flatten()
+                .map(|p| p.as_str()),
+            config,
+        );
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
                 tracing::debug!(%port, server = %config.default_policy, "Creating default server");
@@ -1021,7 +1030,11 @@ impl Pod {
                 let (tx, rx) = watch::channel(Self::default_inbound_server(
                     port,
                     &self.meta.settings,
-                    &self.probes,
+                    self.probes
+                        .get(&port)
+                        .into_iter()
+                        .flatten()
+                        .map(|p| p.as_str()),
                     config,
                 ));
                 entry.insert(PodPortServer { name: None, tx, rx })
@@ -1029,10 +1042,10 @@ impl Pod {
         }
     }
 
-    fn default_inbound_server(
+    fn default_inbound_server<'p>(
         port: NonZeroU16,
         settings: &pod::Settings,
-        probes: &PortMap<HashSet<String>>,
+        probe_paths: impl Iterator<Item = &'p str>,
         config: &ClusterInfo,
     ) -> InboundServer {
         let protocol = if settings.opaque_ports.contains(&port) {
@@ -1056,10 +1069,7 @@ impl Pod {
 
         let authorizations = policy.default_authzs(config);
 
-        let http_routes = {
-            let probe_paths = probes.get(&port).into_iter().flatten().map(|p| p.as_str());
-            config.default_inbound_http_routes(probe_paths)
-        };
+        let http_routes = config.default_inbound_http_routes(probe_paths);
 
         InboundServer {
             reference: ServerRef::Default(policy.as_str()),
