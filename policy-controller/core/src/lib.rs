@@ -50,7 +50,6 @@ pub enum AuthorizationRef {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum InboundHttpRouteRef {
     Default(&'static str),
-    Probe,
     Linkerd(String),
 }
 
@@ -102,17 +101,10 @@ impl Ord for InboundHttpRouteRef {
         match (self, other) {
             (Self::Default(a), Self::Default(b)) => a.cmp(b),
             (Self::Linkerd(a), Self::Linkerd(b)) => a.cmp(b),
-            (Self::Probe, Self::Probe) => std::cmp::Ordering::Equal,
-            // Route resources are always preferred over default and probe
-            // resources, so they should sort first in a list.
+            // Route resources are always preferred over default resources, so they should sort
+            // first in a list.
             (Self::Linkerd(_), Self::Default(_)) => std::cmp::Ordering::Less,
             (Self::Default(_), Self::Linkerd(_)) => std::cmp::Ordering::Greater,
-            (Self::Linkerd(_), Self::Probe) => std::cmp::Ordering::Less,
-            (Self::Probe, Self::Linkerd(_)) => std::cmp::Ordering::Less,
-            // Probe resources are always preferred over default resources, so
-            // they should sort first in a list.
-            (Self::Probe, Self::Default(_)) => std::cmp::Ordering::Less,
-            (Self::Default(_), Self::Probe) => std::cmp::Ordering::Greater,
         }
     }
 }

@@ -404,7 +404,6 @@ fn to_http_route(
                 kind: "HTTPRoute".to_string(),
                 name: name.to_string(),
             }),
-            InboundHttpRouteRef::Probe => metadata::Kind::Default("probe".to_string()),
         }),
     };
 
