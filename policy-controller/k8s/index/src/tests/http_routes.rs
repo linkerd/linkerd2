@@ -143,7 +143,10 @@ fn routes_created_for_probes() {
     // No Server is configured for the port, so expect the probe paths to be
     // authorized.
     let update = rx.borrow_and_update();
-    let probes = update.http_routes.get(&InboundHttpRouteRef::Probe).unwrap();
+    let probes = update
+        .http_routes
+        .get(&InboundHttpRouteRef::Probe)
+        .unwrap();
     let probes_rules = probes.rules.get(0).unwrap();
     assert!(
         probes_rules.matches.contains(&liveness_match),
@@ -172,7 +175,10 @@ fn routes_created_for_probes() {
     // // No routes are configured for the Server, so we should still expect the
     // // Pod's probe paths to be authorized.
     let update = rx.borrow_and_update();
-    let probes = update.http_routes.get(&InboundHttpRouteRef::Probe).unwrap();
+    let probes = update
+        .http_routes
+        .get(&InboundHttpRouteRef::Probe)
+        .unwrap();
     let probes_rules = probes.rules.get(0).unwrap();
     assert!(
         probes_rules.matches.contains(&liveness_match),
