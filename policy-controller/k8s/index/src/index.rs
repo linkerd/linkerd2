@@ -1276,7 +1276,7 @@ impl PolicyIndex {
         authentications: &AuthenticationNsIndex,
         probe_paths: impl Iterator<Item = &'p str>,
     ) -> HashMap<InboundHttpRouteRef, InboundHttpRoute> {
-        let mut routes = self
+        let routes = self
             .http_routes
             .iter()
             .filter(|(_, route)| route.selects_server(server_name))
@@ -1286,12 +1286,10 @@ impl PolicyIndex {
                 (InboundHttpRouteRef::Linkerd(name.clone()), route)
             })
             .collect::<HashMap<_, _>>();
-
-        if routes.is_empty() {
-            routes = self.cluster_info.default_inbound_http_routes(probe_paths);
+        if !routes.is_empty() {
+            return routes;
         }
-
-        routes
+        self.cluster_info.default_inbound_http_routes(probe_paths)
     }
 
     fn policy_client_authz(
@@ -1489,6 +1487,7 @@ impl ClusterInfo {
         probe_paths: impl Iterator<Item = &'p str>,
     ) -> HashMap<InboundHttpRouteRef, InboundHttpRoute> {
         let mut routes = HashMap::with_capacity(2);
+
         // If no routes are defined for the server, use a default route that
         // matches all requests. Default authorizations are instrumented on
         // the server.
@@ -1497,46 +1496,53 @@ impl ClusterInfo {
             InboundHttpRoute::default(),
         );
 
-        // No Server is configured, so requests on the Pod's probe paths are
-        // authorized.
-        if !self.probe_networks.is_empty() {
-            // Probes are authorized on the configured probe networks only.
-            let authorizations = std::iter::once((
-                AuthorizationRef::Default("probe"),
-                ClientAuthorization {
-                    networks: self
-                        .probe_networks
-                        .iter()
-                        .copied()
-                        .map(Into::into)
-                        .collect(),
-                    authentication: ClientAuthentication::Unauthenticated,
-                },
-            ))
+        // If there are no probe networks, there are no probe routes to
+        // authorize.
+        if self.probe_networks.is_empty() {
+            return routes;
+        }
+
+        // Generate an `Exact` path match for each probe path defined on the
+        // pod.
+        let matches: Vec<HttpRouteMatch> = probe_paths
+            .map(|path| HttpRouteMatch {
+                path: Some(PathMatch::Exact(path.to_string())),
+                headers: vec![],
+                query_params: vec![],
+                method: Some(Method::GET),
+            })
             .collect();
 
-            // Generate an `Exact` path match for each probe path defined on the
-            // pod.
-            let matches = probe_paths
-                .map(|path| HttpRouteMatch {
-                    path: Some(PathMatch::Exact(path.to_string())),
-                    headers: vec![],
-                    query_params: vec![],
-                    method: Some(Method::GET),
-                })
-                .collect();
-
-            let probe_route = InboundHttpRoute {
-                hostnames: Vec::new(),
-                rules: vec![InboundHttpRouteRule {
-                    matches,
-                    filters: Vec::new(),
-                }],
-                authorizations,
-                creation_timestamp: None,
-            };
-            routes.insert(InboundHttpRouteRef::Default("probe"), probe_route);
+        // If there are no matches, then are no probe routes to authorize.
+        if matches.is_empty() {
+            return routes;
         }
+
+        // Probes are authorized on the configured probe networks only.
+        let authorizations = std::iter::once((
+            AuthorizationRef::Default("probe"),
+            ClientAuthorization {
+                networks: self
+                    .probe_networks
+                    .iter()
+                    .copied()
+                    .map(Into::into)
+                    .collect(),
+                authentication: ClientAuthentication::Unauthenticated,
+            },
+        ))
+        .collect();
+
+        let probe_route = InboundHttpRoute {
+            hostnames: Vec::new(),
+            rules: vec![InboundHttpRouteRule {
+                matches,
+                filters: Vec::new(),
+            }],
+            authorizations,
+            creation_timestamp: None,
+        };
+        routes.insert(InboundHttpRouteRef::Default("probe"), probe_route);
 
         routes
     }
