@@ -59,7 +59,7 @@ spec:
       {{- $r := merge .Values.proxyInjectorProxyResources .Values.proxy.resources }}
       {{- $_ := set $tree.Values.proxy "resources" $r }}
       {{- end }}
-      {{- $_ := set $tree.Values.proxy "await" true }}
+      {{- $_ := set $tree.Values.proxy "await" $tree.Values.proxy.await }}
       {{- $_ := set $tree.Values.proxy "loadTrustBundleFromConfigMap" true }}
       {{- $_ := set $tree.Values.proxy "podInboundPorts" "8443,9995" }}
       {{- /*

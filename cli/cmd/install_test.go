@@ -99,6 +99,7 @@ func TestRender(t *testing.T) {
 			},
 			UID:         2102,
 			OpaquePorts: "25,443,587,3306,5432,11211",
+			Await:       true,
 		},
 		ProxyInit: &charts.ProxyInit{
 			IptablesMode: "nft",
