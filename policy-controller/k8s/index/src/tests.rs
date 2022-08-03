@@ -13,7 +13,7 @@ use linkerd_policy_controller_core::{
 };
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
-    api::core::v1::ContainerPort,
+    api::core::v1::{Container, ContainerPort},
     policy::{server::Port, LocalTargetRef, NamespacedTargetRef},
     ResourceExt,
 };
@@ -57,10 +57,10 @@ const DEFAULTS: [DefaultPolicy; 5] = [
     },
 ];
 
-fn mk_pod(
+pub fn mk_pod_with_containers(
     ns: impl ToString,
     name: impl ToString,
-    containers: impl IntoIterator<Item = (impl ToString, impl IntoIterator<Item = ContainerPort>)>,
+    containers: impl IntoIterator<Item = Container>,
 ) -> k8s::Pod {
     k8s::Pod {
         metadata: k8s::ObjectMeta {
@@ -69,18 +69,24 @@ fn mk_pod(
             ..Default::default()
         },
         spec: Some(k8s::api::core::v1::PodSpec {
-            containers: containers
-                .into_iter()
-                .map(|(name, ports)| k8s::api::core::v1::Container {
-                    name: name.to_string(),
-                    ports: Some(ports.into_iter().collect()),
-                    ..Default::default()
-                })
-                .collect(),
+            containers: containers.into_iter().collect(),
             ..Default::default()
         }),
         ..k8s::Pod::default()
     }
+}
+
+fn mk_pod(
+    ns: impl ToString,
+    name: impl ToString,
+    containers: impl IntoIterator<Item = (impl ToString, impl IntoIterator<Item = ContainerPort>)>,
+) -> k8s::Pod {
+    let containers = containers.into_iter().map(|(name, ports)| Container {
+        name: name.to_string(),
+        ports: Some(ports.into_iter().collect()),
+        ..Default::default()
+    });
+    mk_pod_with_containers(ns, name, containers)
 }
 
 fn mk_server(
@@ -179,6 +185,13 @@ fn mk_default_routes() -> HashMap<InboundHttpRouteRef, InboundHttpRoute> {
 
 impl TestConfig {
     fn from_default_policy(default_policy: DefaultPolicy) -> Self {
+        Self::from_default_policy_with_probes(default_policy, vec![])
+    }
+
+    fn from_default_policy_with_probes(
+        default_policy: DefaultPolicy,
+        probe_networks: Vec<IpNet>,
+    ) -> Self {
         let _tracing = Self::init_tracing();
         let cluster_net = "192.0.2.0/24".parse().unwrap();
         let detect_timeout = time::Duration::from_secs(1);
@@ -188,6 +201,7 @@ impl TestConfig {
             identity_domain: "cluster.example.com".into(),
             default_policy,
             default_detect_timeout: detect_timeout,
+            probe_networks,
         };
         let index = Index::shared(cluster.clone());
         Self {

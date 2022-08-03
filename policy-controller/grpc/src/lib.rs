@@ -387,7 +387,7 @@ fn to_http_route_list<'r>(
 }
 
 fn to_http_route(
-    name: &InboundHttpRouteRef,
+    reference: &InboundHttpRouteRef,
     InboundHttpRoute {
         hostnames,
         rules,
@@ -397,7 +397,7 @@ fn to_http_route(
     cluster_networks: &[IpNet],
 ) -> proto::HttpRoute {
     let metadata = Metadata {
-        kind: Some(match name {
+        kind: Some(match reference {
             InboundHttpRouteRef::Default(name) => metadata::Kind::Default(name.to_string()),
             InboundHttpRouteRef::Linkerd(name) => metadata::Kind::Resource(api::meta::Resource {
                 group: "policy.linkerd.io".to_string(),
