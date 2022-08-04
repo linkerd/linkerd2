@@ -83,6 +83,7 @@ func TestNewValues(t *testing.T) {
 					Request: "",
 				},
 			},
+			ProbeNetworks: []string{"0.0.0.0/0"},
 		},
 		Proxy: &Proxy{
 			EnableExternalProfiles: false,
