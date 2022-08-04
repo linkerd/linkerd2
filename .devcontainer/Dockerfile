@@ -190,7 +190,6 @@ COPY --from=shellcheck /usr/local/bin/shellcheck /usr/local/bin/
 COPY --from=yq /usr/local/bin/yq /usr/local/bin/
 ENV PROTOC_NO_VENDOR=1
 ENV PROTOC=/usr/local/bin/protoc
-ENV PROTOC_INCLUDE=/usr/local/bin/protoc/include
 ENV PROTOC_INCLUDE=/usr/local/include
 
 ##
