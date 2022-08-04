@@ -18,11 +18,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// newAPI constructs a mock controller/k8s.API object for testing
+// newMockAPI constructs a mock controller/k8s.API object for testing
 // retry: forces informer indexing, enabling informer lookups
 // resourceConfigs: resources available via the API, and returned as runtime.Objects
 // extraConfigs:    resources returned as runtime.Objects
-func newAPI(retry bool, resourceConfigs []string, extraConfigs ...string) (*API, []runtime.Object, error) {
+func newMockAPI(retry bool, resourceConfigs []string, extraConfigs ...string) (*API, []runtime.Object, error) {
 	k8sConfigs := []string{}
 	k8sResults := []runtime.Object{}
 
@@ -263,9 +263,9 @@ metadata:
 		}
 
 		for _, exp := range expectations {
-			api, k8sResults, err := newAPI(true, exp.k8sResResults, exp.k8sResMisc...)
+			api, k8sResults, err := newMockAPI(true, exp.k8sResResults, exp.k8sResMisc...)
 			if err != nil {
-				t.Fatalf("newAPI error: %s", err)
+				t.Fatalf("newMockAPI error: %s", err)
 			}
 
 			pods, err := api.GetObjects(exp.namespace, exp.resType, exp.name, labels.Everything())
@@ -325,9 +325,9 @@ status:
 			}
 
 			for _, exp := range expectations {
-				api, k8sResults, err := newAPI(true, exp.k8sResResults)
+				api, k8sResults, err := newMockAPI(true, exp.k8sResResults)
 				if err != nil {
-					t.Fatalf("newAPI error: %s", err)
+					t.Fatalf("newMockAPI error: %s", err)
 				}
 
 				pods, err := api.GetObjects(exp.namespace, exp.resType, exp.name, labels.Everything())
@@ -382,9 +382,9 @@ status:
 			}
 
 			for _, exp := range expectations {
-				api, _, err := newAPI(true, exp.k8sResResults)
+				api, _, err := newMockAPI(true, exp.k8sResResults)
 				if err != nil {
-					t.Fatalf("newAPI error: %s", err)
+					t.Fatalf("newMockAPI error: %s", err)
 				}
 
 				pods, err := api.GetObjects(exp.namespace, exp.resType, exp.name, labels.Everything())
@@ -927,9 +927,9 @@ status:
 				t.Fatalf("could not decode yml: %s", err)
 			}
 
-			api, k8sResults, err := newAPI(true, exp.k8sResResults, exp.k8sResMisc...)
+			api, k8sResults, err := newMockAPI(true, exp.k8sResResults, exp.k8sResMisc...)
 			if err != nil {
-				t.Fatalf("newAPI error: %s", err)
+				t.Fatalf("newMockAPI error: %s", err)
 			}
 
 			k8sResultPods := []*corev1.Pod{}
@@ -1104,9 +1104,9 @@ metadata:
 		} {
 			retry := retry // pin
 			t.Run(fmt.Sprintf("%d/retry:%t", i, retry), func(t *testing.T) {
-				api, objs, err := newAPI(retry, []string{tt.podConfig}, tt.extraConfigs...)
+				api, objs, err := newMockAPI(retry, []string{tt.podConfig}, tt.extraConfigs...)
 				if err != nil {
-					t.Fatalf("newAPI error: %s", err)
+					t.Fatalf("newMockAPI error: %s", err)
 				}
 
 				pod := objs[0].(*corev1.Pod)
@@ -1210,9 +1210,9 @@ spec:
 			},
 		},
 	} {
-		api, _, err := newAPI(true, tt.profileConfigs)
+		api, _, err := newMockAPI(true, tt.profileConfigs)
 		if err != nil {
-			t.Fatalf("newAPI error: %s", err)
+			t.Fatalf("newMockAPI error: %s", err)
 		}
 
 		svc := corev1.Service{
@@ -1283,9 +1283,9 @@ spec:
 				t.Fatalf("could not decode yml: %s", err)
 			}
 
-			api, k8sResults, err := newAPI(true, exp.k8sResResults, append(exp.k8sResMisc, exp.k8sResInput)...)
+			api, k8sResults, err := newMockAPI(true, exp.k8sResResults, append(exp.k8sResMisc, exp.k8sResInput)...)
 			if err != nil {
-				t.Fatalf("newAPI error: %s", err)
+				t.Fatalf("newMockAPI error: %s", err)
 			}
 
 			k8sResultServices := []*corev1.Service{}
