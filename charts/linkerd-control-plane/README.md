@@ -175,6 +175,7 @@ Kubernetes: `>=1.21.0-0`
 | policyController.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy container Docker image |
 | policyController.image.version | string | linkerdVersion | Tag for the proxy container Docker image |
 | policyController.logLevel | string | `"info"` | Log level for the policy controller |
+| policyController.probeNetworks | list | `["0.0.0.0/0"]` | The networks from which probes are performed.  By default, all networks are allowed so that all probes are authorized. |
 | policyController.resources | object | destinationResources | policy controller resource requests & limits |
 | policyController.resources.cpu.limit | string | `""` | Maximum amount of CPU units that the policy controller can use |
 | policyController.resources.cpu.request | string | `""` | Amount of CPU units that the policy controller requests |

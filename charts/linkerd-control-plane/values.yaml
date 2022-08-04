@@ -78,6 +78,12 @@ policyController:
   # -- Log level for the policy controller
   logLevel: info
 
+  # -- The networks from which probes are performed.
+  #
+  # By default, all networks are allowed so that all probes are authorized.
+  probeNetworks:
+    - 0.0.0.0/0
+
   # -- policy controller resource requests & limits
   # @default -- destinationResources
   resources:
