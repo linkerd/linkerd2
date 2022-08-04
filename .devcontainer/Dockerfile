@@ -8,14 +8,14 @@ ARG RUST_TOOLCHAIN=1.62.1
 FROM docker.io/debian:stable-slim as base
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
-        curl \
-        file \
-        git \
-        jo \
-        jq \
-        time \
-        unzip \
-        xz-utils \
+    curl \
+    file \
+    git \
+    jo \
+    jq \
+    time \
+    unzip \
+    xz-utils \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 COPY bin/scurl /usr/local/bin/scurl
 
@@ -29,9 +29,10 @@ ARG PROTOC_VERSION=v3.20.1
 RUN url="https://github.com/google/protobuf/releases/download/$PROTOC_VERSION/protoc-${PROTOC_VERSION#v}-linux-$(uname -m).zip" ; \
     cd $(mktemp -d) && \
     scurl -o protoc.zip  "$url" && \
-    unzip protoc.zip bin/protoc && \
+    unzip protoc.zip bin/protoc include/google && \
     mv bin/protoc /usr/local/bin/protoc && \
-    chmod +x /usr/local/bin/protoc
+    chmod +x /usr/local/bin/protoc && \
+    mv include/google /usr/local/include
 
 FROM base as yq
 ARG YQ_VERSION=v4.25.1
@@ -66,14 +67,14 @@ FROM docker.io/rust:${RUST_TOOLCHAIN}-slim as rust
 RUN rustup component add clippy rustfmt
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
-        clang \
-        cmake \
-        curl \
-        git \
-        jo \
-        jq \
-        libssl-dev \
-        pkg-config \
+    clang \
+    cmake \
+    curl \
+    git \
+    jo \
+    jq \
+    libssl-dev \
+    pkg-config \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 COPY --from=cargo-action-fmt /usr/local/bin/cargo-action-fmt /usr/local/cargo/bin/
 COPY --from=cargo-deny /usr/local/bin/cargo-deny /usr/local/cargo/bin/
@@ -81,11 +82,13 @@ COPY --from=cargo-nextest /usr/local/bin/cargo-nextest /usr/local/cargo/bin/
 COPY --from=cargo-tarpaulin /usr/local/bin/cargo-tarpaulin /usr/local/cargo/bin/
 COPY --from=just /usr/local/bin/just /usr/local/bin/
 COPY --from=protoc /usr/local/bin/protoc /usr/local/bin/
+COPY --from=protoc /usr/local/include/google /usr/local/include/
 COPY --from=yq /usr/local/bin/yq /usr/local/bin/
 COPY bin/scurl /usr/local/bin/scurl
 ENV USER=root
 ENV PROTOC_NO_VENDOR=1
 ENV PROTOC=/usr/local/bin/protoc
+ENV PROTOC_INCLUDE=/usr/local/include
 
 ##
 ## Go image
@@ -94,12 +97,12 @@ ENV PROTOC=/usr/local/bin/protoc
 FROM docker.io/golang:${GO_VERSION} as go
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
-        curl \
-        file \
-        jq \
-        time \
-        unzip \
-        xz-utils \
+    curl \
+    file \
+    jq \
+    time \
+    unzip \
+    xz-utils \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN for p in \
     github.com/cweill/gotests/gotests@latest \
@@ -118,9 +121,11 @@ RUN for p in \
     && rm -rf /go/pkg/* /go/src/*
 COPY bin/scurl /usr/local/bin/scurl
 COPY --from=protoc /usr/local/bin/protoc /usr/local/bin/
+COPY --from=protoc /usr/local/include/google /usr/local/include/
 COPY --from=just /usr/local/bin/just /usr/local/bin/
 ENV PROTOC_NO_VENDOR=1
 ENV PROTOC=/usr/local/bin/protoc
+ENV PROTOC_INCLUDE=/usr/local/include
 
 ##
 ## Kubernetes tools
@@ -180,10 +185,13 @@ COPY --from=k8s /usr/local/bin/helm-docs /usr/local/bin/
 COPY --from=k8s /usr/local/bin/k3d /usr/local/bin/
 COPY --from=k8s /usr/local/bin/kubectl /usr/local/bin/
 COPY --from=protoc /usr/local/bin/protoc /usr/local/bin/
+COPY --from=protoc /usr/local/include/google /usr/local/include/
 COPY --from=shellcheck /usr/local/bin/shellcheck /usr/local/bin/
 COPY --from=yq /usr/local/bin/yq /usr/local/bin/
 ENV PROTOC_NO_VENDOR=1
 ENV PROTOC=/usr/local/bin/protoc
+ENV PROTOC_INCLUDE=/usr/local/bin/protoc/include
+ENV PROTOC_INCLUDE=/usr/local/include
 
 ##
 ## Runtime
@@ -192,19 +200,19 @@ ENV PROTOC=/usr/local/bin/protoc
 FROM docker.io/debian:stable as runtime
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
-        clang curl \
-        cmake \
-        file \
-        jo \
-        jq \
-        libssl-dev \
-        locales \
-        lsb-release \
-        npm \
-        pkg-config \
-        sudo \
-        time \
-        unzip \
+    clang curl \
+    cmake \
+    file \
+    jo \
+    jq \
+    libssl-dev \
+    locales \
+    lsb-release \
+    npm \
+    pkg-config \
+    sudo \
+    time \
+    unzip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && locale-gen
@@ -228,9 +236,11 @@ ENV PATH=$CARGO_HOME/bin:$PATH
 RUN rustup component add rust-analysis rust-std
 
 COPY --from=tools /usr/local/bin/* /usr/local/bin/
+COPY --from=tools /usr/local/include/google /usr/local/include/
 
 ENV PROTOC_NO_VENDOR=1
 ENV PROTOC=/usr/local/bin/protoc
+ENV PROTOC_INCLUDE=/usr/local/include
 
 ENV DOCKER_BUILDKIT=1
 RUN groupadd --gid=1000 code \
