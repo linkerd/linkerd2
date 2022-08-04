@@ -43,7 +43,7 @@ macro_rules! assert_protocol_detect {
             Some(inbound::ProxyProtocol {
                 kind: Some(inbound::proxy_protocol::Kind::Detect(
                     inbound::proxy_protocol::Detect {
-                        timeout: Some(time::Duration::from_secs(10).into()),
+                        timeout: Some(time::Duration::from_secs(10).try_into().unwrap()),
                         http_routes: vec![$crate::grpc::defaults::http_route()],
                     }
                 )),
