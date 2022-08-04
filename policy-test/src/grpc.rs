@@ -44,7 +44,10 @@ macro_rules! assert_protocol_detect {
                 kind: Some(inbound::proxy_protocol::Kind::Detect(
                     inbound::proxy_protocol::Detect {
                         timeout: Some(time::Duration::from_secs(10).into()),
-                        http_routes: vec![$crate::grpc::defaults::http_route()],
+                        http_routes: vec![
+                            $crate::grpc::defaults::http_route(),
+                            $crate::grpc::defaults::probe_route(),
+                        ],
                     }
                 )),
             }),
@@ -183,6 +186,7 @@ impl hyper::service::Service<hyper::Request<tonic::body::BoxBody>> for GrpcHttp 
 
 pub mod defaults {
     use super::*;
+    use std::collections::HashMap;
 
     pub fn proxy_protocol() -> inbound::ProxyProtocol {
         use inbound::proxy_protocol::{Http1, Kind};
@@ -209,6 +213,71 @@ pub mod defaults {
                     }),
                     ..HttpRouteMatch::default()
                 }],
+                ..Rule::default()
+            }],
+            ..HttpRoute::default()
+        }
+    }
+
+    pub fn probe_route() -> inbound::HttpRoute {
+        use http_route::{path_match, HttpRouteMatch, PathMatch};
+        use http_types::{http_method, HttpMethod};
+        use inbound::{
+            authn::{Permit, PermitUnauthenticated},
+            http_route::Rule,
+            Authn, Authz, HttpRoute, Network,
+        };
+        use meta::{metadata, Metadata};
+        use net::{ip_address, IpAddress, IpNetwork};
+
+        let mut labels = HashMap::default();
+        labels.insert("kind".to_string(), "default".to_string());
+        labels.insert("name".to_string(), "probe".to_string());
+        labels.insert("group".to_string(), "".to_string());
+
+        HttpRoute {
+            metadata: Some(Metadata {
+                kind: Some(metadata::Kind::Default("probe".to_string())),
+            }),
+            authorizations: vec![Authz {
+                networks: vec![Network {
+                    net: Some(IpNetwork {
+                        ip: Some(IpAddress {
+                            ip: Some(ip_address::Ip::Ipv4(0)),
+                        }),
+                        prefix_len: 0,
+                    }),
+                    ..Network::default()
+                }],
+                authentication: Some(Authn {
+                    permit: Some(Permit::Unauthenticated(PermitUnauthenticated {})),
+                }),
+                labels,
+                metadata: Some(Metadata {
+                    kind: Some(metadata::Kind::Default("probe".to_string())),
+                }),
+            }],
+            rules: vec![Rule {
+                matches: vec![
+                    HttpRouteMatch {
+                        path: Some(PathMatch {
+                            kind: Some(path_match::Kind::Exact("/live".to_string())),
+                        }),
+                        method: Some(HttpMethod {
+                            r#type: Some(http_method::Type::Registered(0)),
+                        }),
+                        ..HttpRouteMatch::default()
+                    },
+                    HttpRouteMatch {
+                        path: Some(PathMatch {
+                            kind: Some(path_match::Kind::Exact("/ready".to_string())),
+                        }),
+                        method: Some(HttpMethod {
+                            r#type: Some(http_method::Type::Registered(0)),
+                        }),
+                        ..HttpRouteMatch::default()
+                    },
+                ],
                 ..Rule::default()
             }],
             ..HttpRoute::default()
