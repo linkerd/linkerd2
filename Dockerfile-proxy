@@ -2,7 +2,7 @@ ARG RUNTIME_IMAGE=gcr.io/distroless/cc
 ARG BUILDPLATFORM=linux/amd64
 
 # Precompile key slow-to-build dependencies
-FROM --platform=$BUILDPLATFORM golang:1.18-alpine as go-deps
+FROM --platform=$BUILDPLATFORM golang:1.19.0-alpine as go-deps
 WORKDIR /linkerd-build
 COPY go.mod go.sum ./
 COPY bin/install-deps bin/
