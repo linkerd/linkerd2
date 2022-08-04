@@ -29,7 +29,7 @@ ARG PROTOC_VERSION=v3.20.1
 RUN url="https://github.com/google/protobuf/releases/download/$PROTOC_VERSION/protoc-${PROTOC_VERSION#v}-linux-$(uname -m).zip" ; \
     cd $(mktemp -d) && \
     scurl -o protoc.zip  "$url" && \
-    unzip protoc.zip bin/protoc include/google && \
+    unzip protoc.zip bin/protoc include/** && \
     mv bin/protoc /usr/local/bin/protoc && \
     chmod +x /usr/local/bin/protoc && \
     mv include/google /usr/local/include
