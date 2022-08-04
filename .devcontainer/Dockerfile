@@ -236,7 +236,7 @@ ENV PATH=$CARGO_HOME/bin:$PATH
 RUN rustup component add rust-analysis rust-std
 
 COPY --from=tools /usr/local/bin/* /usr/local/bin/
-COPY --from=tools /usr/local/include/google /usr/local/include/
+COPY --from=protoc /usr/local/include/google /usr/local/include/
 
 ENV PROTOC_NO_VENDOR=1
 ENV PROTOC=/usr/local/bin/protoc
