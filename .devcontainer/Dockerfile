@@ -8,14 +8,14 @@ ARG RUST_TOOLCHAIN=1.62.1
 FROM docker.io/debian:stable-slim as base
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
-    curl \
-    file \
-    git \
-    jo \
-    jq \
-    time \
-    unzip \
-    xz-utils \
+        curl \
+        file \
+        git \
+        jo \
+        jq \
+        time \
+        unzip \
+        xz-utils \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 COPY bin/scurl /usr/local/bin/scurl
 
@@ -67,14 +67,14 @@ FROM docker.io/rust:${RUST_TOOLCHAIN}-slim as rust
 RUN rustup component add clippy rustfmt
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
-    clang \
-    cmake \
-    curl \
-    git \
-    jo \
-    jq \
-    libssl-dev \
-    pkg-config \
+        clang \
+        cmake \
+        curl \
+        git \
+        jo \
+        jq \
+        libssl-dev \
+        pkg-config \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 COPY --from=cargo-action-fmt /usr/local/bin/cargo-action-fmt /usr/local/cargo/bin/
 COPY --from=cargo-deny /usr/local/bin/cargo-deny /usr/local/cargo/bin/
@@ -97,12 +97,12 @@ ENV PROTOC_INCLUDE=/usr/local/include
 FROM docker.io/golang:${GO_VERSION} as go
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
-    curl \
-    file \
-    jq \
-    time \
-    unzip \
-    xz-utils \
+        curl \
+        file \
+        jq \
+        time \
+        unzip \
+        xz-utils \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN for p in \
     github.com/cweill/gotests/gotests@latest \
@@ -200,19 +200,19 @@ ENV PROTOC_INCLUDE=/usr/local/include
 FROM docker.io/debian:stable as runtime
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
-    clang curl \
-    cmake \
-    file \
-    jo \
-    jq \
-    libssl-dev \
-    locales \
-    lsb-release \
-    npm \
-    pkg-config \
-    sudo \
-    time \
-    unzip \
+        clang curl \
+        cmake \
+        file \
+        jo \
+        jq \
+        libssl-dev \
+        locales \
+        lsb-release \
+        npm \
+        pkg-config \
+        sudo \
+        time \
+        unzip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && locale-gen
