@@ -23,7 +23,11 @@ use linkerd_policy_controller_core::{
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
-use std::{collections::hash_map::Entry, num::NonZeroU16, sync::Arc};
+use std::{
+    collections::{hash_map::Entry, BTreeSet},
+    num::NonZeroU16,
+    sync::Arc,
+};
 use tokio::sync::watch;
 use tracing::info_span;
 
@@ -94,7 +98,7 @@ struct Pod {
     /// In order for the policy controller to authorize probes, it must be
     /// aware of the probe ports and the expected paths on which probes are
     /// expected.
-    probes: pod::PortMap<HashSet<String>>,
+    probes: pod::PortMap<BTreeSet<String>>,
 }
 
 /// Holds the state of a single port on a pod.
@@ -827,7 +831,7 @@ impl PodIndex {
         name: String,
         meta: pod::Meta,
         port_names: HashMap<String, pod::PortSet>,
-        probes: PortMap<HashSet<String>>,
+        probes: PortMap<BTreeSet<String>>,
     ) -> Result<Option<&mut Pod>> {
         let pod = match self.by_name.entry(name.clone()) {
             Entry::Vacant(entry) => entry.insert(Pod {

@@ -473,6 +473,9 @@ data:
         pullPolicy: ImagePullPolicy
         version: PolicyControllerVersion
       logLevel: log-level
+      probeNetworks:
+      - 1.0.0.0/0
+      - 2.0.0.0/0
       resources:
         cpu:
           limit: cpu-limit
@@ -1259,6 +1262,7 @@ spec:
         - --default-policy=default-allow-policy
         - --log-level=log-level
         - --log-format=ControllerLogFormat
+        - --probe-networks=1.0.0.0/0,2.0.0.0/0
         image: PolicyControllerImageName:PolicyControllerVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:

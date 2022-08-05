@@ -143,6 +143,7 @@ type (
 		Resources          *Resources `json:"resources"`
 		LogLevel           string     `json:"logLevel"`
 		DefaultAllowPolicy string     `json:"defaultAllowPolicy"`
+		ProbeNetworks      []string   `json:"probeNetworks"`
 	}
 
 	// Image contains the details to define a container image

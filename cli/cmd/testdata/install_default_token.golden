@@ -480,6 +480,8 @@ data:
         pullPolicy: ""
         version: ""
       logLevel: info
+      probeNetworks:
+      - 0.0.0.0/0
       resources:
         cpu:
           limit: ""
@@ -1258,6 +1260,7 @@ spec:
         - --default-policy=all-unauthenticated
         - --log-level=info
         - --log-format=plain
+        - --probe-networks=0.0.0.0/0
         image: cr.l5d.io/linkerd/policy-controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

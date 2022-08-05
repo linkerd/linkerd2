@@ -72,6 +72,7 @@ func TestRender(t *testing.T) {
 					Request: "memory-request",
 				},
 			},
+			ProbeNetworks: []string{"1.0.0.0/0", "2.0.0.0/0"},
 		},
 		Proxy: &charts.Proxy{
 			Image: &charts.Image{
