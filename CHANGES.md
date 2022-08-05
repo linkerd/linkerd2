@@ -5,8 +5,8 @@
 This releases introduces default probe authorization. This means that on
 clusters that use a default `deny` policy, probes do not have to be explicitly
 authorized using policy resources. Additionally, the
-`policyController.probeNetworks` value has been added which allows users to
-configure the networks that probes are expected to be performed from.
+`policyController.probeNetworks` Helm value has been added, which allows users
+to configure the networks that probes are expected to be performed from.
 
 Additionally, the `linkerd authz` command has been updated to support the policy
 resources AuthorizationPolicy and HttpRoute.
@@ -18,14 +18,14 @@ environments by default.
 
 * Updated the `linkerd authz` command to support AuthorizationPolicy and
   HttpRoute resources
-* Changed the `proxy.await` configuration value to allow disabling
+* Changed the `proxy.await` Helm value so that users can now disable
   `linkerd-await` on control plane components
 * Added probe authorization by default allowing clusters that use a default
   `deny` policy to not explicitly need to authorize probes
 * Added ability to run the Linkerd CNI plugin in non-chained (stand-alone) mode
-* Added the `policyController.probeNetworks` value for configuring the networks
-  that probes are expected to be performed from
-* Changed the default value of iptables mode to `legacy`
+* Added the `policyController.probeNetworks` Helm value for configuring the
+  networks that probes are expected to be performed from
+* Changed the default iptables mode to `legacy`
 
 ## edge-22.7.3
 
