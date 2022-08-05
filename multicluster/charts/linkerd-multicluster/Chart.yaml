@@ -11,7 +11,7 @@ kubeVersion: ">=1.21.0-0"
 name: "linkerd-multicluster"
 sources:
 - https://github.com/linkerd/linkerd2/
-version: 30.1.8-edge
+version: 30.1.9-edge
 icon: https://linkerd.io/images/logo-only-200h.png
 maintainers:
   - name: Linkerd authors
