@@ -510,7 +510,7 @@ async fn default_http_routes() {
         assert_protocol_detect!(config);
 
         let routes = detect_routes(&config);
-        assert_eq!(routes.len(), 1);
+        assert_eq!(routes.len(), 2);
         let route_authzs = &routes[0].authorizations;
         assert_eq!(route_authzs.len(), 0);
     })
