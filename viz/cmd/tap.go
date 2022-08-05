@@ -361,78 +361,73 @@ func renderTapEvent(event *tapPb.TapEvent, wide bool) string {
 		tls,
 	)
 
-	resources := ""
-	if wide {
-		resources = fmt.Sprintf(
-			" %s %s %s",
-			src.formatResource(),
-			dst.formatResource(),
-			routeLabels(event),
-		)
-	}
-
+	var formattedEvent string
 	switch ev := event.GetHttp().GetEvent().(type) {
 	case *tapPb.TapEvent_Http_RequestInit_:
-		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s%s",
+		formattedEvent = fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s",
 			ev.RequestInit.GetId().GetBase(),
 			ev.RequestInit.GetId().GetStream(),
 			flow,
 			vizutil.HTTPMethodToString(ev.RequestInit.GetMethod()),
 			ev.RequestInit.GetAuthority(),
 			ev.RequestInit.GetPath(),
-			resources,
 		)
 
 	case *tapPb.TapEvent_Http_ResponseInit_:
-		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs%s",
+		formattedEvent = fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs",
 			ev.ResponseInit.GetId().GetBase(),
 			ev.ResponseInit.GetId().GetStream(),
 			flow,
 			ev.ResponseInit.GetHttpStatus(),
 			ev.ResponseInit.GetSinceRequestInit().GetNanos()/1000,
-			resources,
 		)
 
 	case *tapPb.TapEvent_Http_ResponseEnd_:
 		switch eos := ev.ResponseEnd.GetEos().GetEnd().(type) {
 		case *metricsPb.Eos_GrpcStatusCode:
-			return fmt.Sprintf(
-				"end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB%s",
+			formattedEvent = fmt.Sprintf(
+				"end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				codes.Code(eos.GrpcStatusCode),
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
-				resources,
 			)
 
 		case *metricsPb.Eos_ResetErrorCode:
-			return fmt.Sprintf(
-				"end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB%s",
+			formattedEvent = fmt.Sprintf(
+				"end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				eos.ResetErrorCode,
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
-				resources,
 			)
 
 		default:
-			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB%s",
+			formattedEvent = fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
 				ev.ResponseEnd.GetResponseBytes(),
-				resources,
 			)
 		}
 
 	default:
-		return fmt.Sprintf("unknown %s", flow)
+		formattedEvent = fmt.Sprintf("unknown %s", flow)
 	}
+
+	if wide {
+		out := []string{formattedEvent}
+		out = append(out, src.formatResource()...)
+		out = append(out, dst.formatResource()...)
+		out = append(out, routeLabels(event)...)
+		return strings.Join(out, " ")
+	}
+	return formattedEvent
 }
 
 // renderTapEventJSON renders a Public API TapEvent to a string in JSON format.
@@ -604,26 +599,24 @@ func (p *peer) formatAddr() string {
 	)
 }
 
-// formatResource returns the peer's labels, sorted, and formatted as a single
-// string.
-func (p *peer) formatResource() string {
+// formatResource returns the peer's labels formatted and sorted.
+func (p *peer) formatResource() []string {
 	labels := []string{}
 	for k, v := range p.labels {
 		labels = append(labels, fmt.Sprintf("%s_%s=%s", p.direction, k, v))
 	}
 	sort.Strings(labels)
-	return strings.Join(labels, " ")
+	return labels
 }
 
 func (p *peer) tlsStatus() string {
 	return p.labels["tls"]
 }
 
-func routeLabels(event *tapPb.TapEvent) string {
-	out := ""
+func routeLabels(event *tapPb.TapEvent) []string {
+	out := []string{}
 	for key, val := range event.GetRouteMeta().GetLabels() {
-		out = fmt.Sprintf("%s rt_%s=%s", out, key, val)
+		out = append(out, fmt.Sprintf("rt_%s=%s", key, val))
 	}
-
 	return out
 }
