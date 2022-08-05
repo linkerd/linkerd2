@@ -1,6 +1,6 @@
 {{- define "partials.proxy-init" -}}
 args:
-{{- if (.Values.proxyInit.iptablesMode | default "nft" | eq "nft") }}
+{{- if (.Values.proxyInit.iptablesMode | default "legacy" | eq "nft") }}
 - --firewall-bin-path
 - "iptables-nft"
 - --firewall-save-bin-path

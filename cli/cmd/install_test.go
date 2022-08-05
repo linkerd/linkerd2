@@ -103,7 +103,7 @@ func TestRender(t *testing.T) {
 			Await:       true,
 		},
 		ProxyInit: &charts.ProxyInit{
-			IptablesMode: "nft",
+			IptablesMode: "legacy",
 			Image: &charts.Image{
 				Name:       "ProxyInitImageName",
 				PullPolicy: "ImagePullPolicy",
