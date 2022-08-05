@@ -1,8 +1,8 @@
 use crate::DefaultPolicy;
-use ahash::{AHashMap as HashMap, AHashSet as HashSet};
+use ahash::AHashMap as HashMap;
 use anyhow::{bail, Context, Result};
 use linkerd_policy_controller_k8s_api as k8s;
-use std::num::NonZeroU16;
+use std::{collections::BTreeSet, num::NonZeroU16};
 
 /// Holds pod metadata/config that can change.
 #[derive(Debug, PartialEq)]
@@ -63,8 +63,8 @@ pub(crate) fn tcp_ports_by_name(spec: &k8s::PodSpec) -> HashMap<String, PortSet>
 ///
 /// The result is a mapping for each probe port exposed by a container in the
 /// Pod and the paths for which probes are expected.
-pub(crate) fn pod_http_probes(pod: &k8s::PodSpec) -> PortMap<HashSet<String>> {
-    let mut probes = PortMap::<HashSet<String>>::default();
+pub(crate) fn pod_http_probes(pod: &k8s::PodSpec) -> PortMap<BTreeSet<String>> {
+    let mut probes = PortMap::<BTreeSet<String>>::default();
     for (port, path) in pod.containers.iter().flat_map(container_http_probe_paths) {
         probes.entry(port).or_default().insert(path);
     }
@@ -316,14 +316,14 @@ mod tests {
         });
 
         let port_5432 = u16::try_from(5432).and_then(NonZeroU16::try_from).unwrap();
-        let mut expected_5432 = HashSet::new();
+        let mut expected_5432 = BTreeSet::new();
         expected_5432.insert("/liveness-container-1".to_string());
         expected_5432.insert("/ready-container-1".to_string());
         assert!(probes.get(&port_5432).is_some());
         assert_eq!(*probes.get(&port_5432).unwrap(), expected_5432);
 
         let port_6543 = u16::try_from(6543).and_then(NonZeroU16::try_from).unwrap();
-        let mut expected_6543 = HashSet::new();
+        let mut expected_6543 = BTreeSet::new();
         expected_6543.insert("/liveness-container-2".to_string());
         expected_6543.insert("/ready-container-2".to_string());
         assert!(probes.get(&port_6543).is_some());
