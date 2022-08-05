@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/duration"
@@ -27,7 +28,7 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-type renderTapEventFunc func(*tapPb.TapEvent, string) string
+type renderTapEventFunc func(*tapPb.TapEvent) string
 
 type tapOptions struct {
 	namespace     string
@@ -296,18 +297,17 @@ func requestTapByResourceFromAPI(ctx context.Context, w io.Writer, k8sAPI *k8s.K
 func writeTapEventsToBuffer(w io.Writer, tapByteStream *bufio.Reader, req *tapPb.TapByResourceRequest, options *tapOptions) error {
 	switch options.output {
 	case "":
-		return renderTapEvents(tapByteStream, w, renderTapEvent, "")
+		return renderTapEvents(tapByteStream, w, renderTapEventNarrow)
 	case wideOutput:
-		resource := req.GetTarget().GetResource().GetType()
-		return renderTapEvents(tapByteStream, w, renderTapEvent, resource)
+		return renderTapEvents(tapByteStream, w, renderTapEventWide)
 	case jsonOutput:
-		return renderTapEvents(tapByteStream, w, renderTapEventJSON, "")
+		return renderTapEvents(tapByteStream, w, renderTapEventJSON)
 	default:
 		return fmt.Errorf("unknown output format: %q", options.output)
 	}
 }
 
-func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapEventFunc, resource string) error {
+func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapEventFunc) error {
 	for {
 		log.Debug("Waiting for data...")
 		event := tapPb.TapEvent{}
@@ -319,7 +319,7 @@ func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapE
 			fmt.Fprintln(os.Stderr, err)
 			break
 		}
-		_, err = fmt.Fprintln(w, render(&event, resource))
+		_, err = fmt.Fprintln(w, render(&event))
 		if err != nil {
 			return err
 		}
@@ -328,8 +328,16 @@ func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapE
 	return nil
 }
 
+func renderTapEventWide(event *tapPb.TapEvent) string {
+	return renderTapEvent(event, true)
+}
+
+func renderTapEventNarrow(event *tapPb.TapEvent) string {
+	return renderTapEvent(event, false)
+}
+
 // renderTapEvent renders a Public API TapEvent to a string.
-func renderTapEvent(event *tapPb.TapEvent, resource string) string {
+func renderTapEvent(event *tapPb.TapEvent, wide bool) string {
 	dst := dst(event)
 	src := src(event)
 
@@ -353,13 +361,12 @@ func renderTapEvent(event *tapPb.TapEvent, resource string) string {
 		tls,
 	)
 
-	// If `resource` is non-empty, then
 	resources := ""
-	if resource != "" {
+	if wide {
 		resources = fmt.Sprintf(
-			"%s%s%s",
-			src.formatResource(resource),
-			dst.formatResource(resource),
+			" %s %s %s",
+			src.formatResource(),
+			dst.formatResource(),
 			routeLabels(event),
 		)
 	}
@@ -429,7 +436,7 @@ func renderTapEvent(event *tapPb.TapEvent, resource string) string {
 }
 
 // renderTapEventJSON renders a Public API TapEvent to a string in JSON format.
-func renderTapEventJSON(event *tapPb.TapEvent, _ string) string {
+func renderTapEventJSON(event *tapPb.TapEvent) string {
 	m := mapPublicToDisplayTapEvent(event)
 	e, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
@@ -597,33 +604,15 @@ func (p *peer) formatAddr() string {
 	)
 }
 
-// formatResource returns a label describing what Kubernetes resources the peer
-// belongs to. If the peer belongs to a resource of kind `resourceKind`, it will
-// return a label for that resource; otherwise, it will fall back to the peer's
-// pod name. Additionally, if the resource is not of type `namespace`, it will
-// also add a label describing the peer's resource.
-func (p *peer) formatResource(resourceKind string) string {
-	var s string
-	if resourceName, exists := p.labels[resourceKind]; exists {
-		kind := resourceKind
-		if short := k8s.ShortNameFromCanonicalResourceName(resourceKind); short != "" {
-			kind = short
-		}
-		s = fmt.Sprintf(
-			" %s_res=%s/%s",
-			p.direction,
-			kind,
-			resourceName,
-		)
-	} else if pod, hasPod := p.labels[k8s.Pod]; hasPod {
-		s = fmt.Sprintf(" %s_pod=%s", p.direction, pod)
+// formatResource returns the peer's labels, sorted, and formatted as a single
+// string.
+func (p *peer) formatResource() string {
+	labels := []string{}
+	for k, v := range p.labels {
+		labels = append(labels, fmt.Sprintf("%s_%s=%s", p.direction, k, v))
 	}
-	if resourceKind != k8s.Namespace {
-		if ns, hasNs := p.labels[k8s.Namespace]; hasNs {
-			s += fmt.Sprintf(" %s_ns=%s", p.direction, ns)
-		}
-	}
-	return s
+	sort.Strings(labels)
+	return strings.Join(labels, " ")
 }
 
 func (p *peer) tlsStatus() string {
