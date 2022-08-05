@@ -192,7 +192,7 @@ pub mod defaults {
         use inbound::proxy_protocol::{Http1, Kind};
         inbound::ProxyProtocol {
             kind: Some(Kind::Http1(Http1 {
-                routes: vec![http_route()],
+                routes: vec![http_route(), probe_route()],
             })),
         }
     }
