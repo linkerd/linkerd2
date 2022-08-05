@@ -13,7 +13,7 @@ jobs:
   actionlint:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
-    container: ghcr.io/linkerd/dev:v23-tools
+    container: ghcr.io/linkerd/dev:v24-tools
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - name: Run actionlint
@@ -25,7 +25,7 @@ jobs:
 
   devcontainer-versions:
     runs-on: ubuntu-latest
-    container: ghcr.io/linkerd/dev:v23-tools
+    container: ghcr.io/linkerd/dev:v24-tools
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - name: Scan workflows for other Devcontainer image versions

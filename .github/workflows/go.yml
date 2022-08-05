@@ -16,7 +16,7 @@ jobs:
   go-lint:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container: ghcr.io/linkerd/dev:v23-go
+    container: ghcr.io/linkerd/dev:v24-go
     steps:
     - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - run: golangci-lint run --verbose --timeout=10m
@@ -24,7 +24,7 @@ jobs:
   go-format:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container: ghcr.io/linkerd/dev:v23-go
+    container: ghcr.io/linkerd/dev:v24-go
     steps:
     - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - run: bin/fmt
@@ -32,7 +32,7 @@ jobs:
   go-test:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container: ghcr.io/linkerd/dev:v23-go
+    container: ghcr.io/linkerd/dev:v24-go
     steps:
     - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - run: go mod download
