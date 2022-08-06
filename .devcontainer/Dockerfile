@@ -32,7 +32,8 @@ RUN url="https://github.com/google/protobuf/releases/download/$PROTOC_VERSION/pr
     unzip protoc.zip bin/protoc include/** && \
     mv bin/protoc /usr/local/bin/protoc && \
     chmod +x /usr/local/bin/protoc && \
-    mv include/google /usr/local/include
+    mkdir -p /usr/local/include && \
+    mv include/google /usr/local/include/
 
 FROM base as yq
 ARG YQ_VERSION=v4.25.1
@@ -82,7 +83,7 @@ COPY --from=cargo-nextest /usr/local/bin/cargo-nextest /usr/local/cargo/bin/
 COPY --from=cargo-tarpaulin /usr/local/bin/cargo-tarpaulin /usr/local/cargo/bin/
 COPY --from=just /usr/local/bin/just /usr/local/bin/
 COPY --from=protoc /usr/local/bin/protoc /usr/local/bin/
-COPY --from=protoc /usr/local/include/google /usr/local/include/
+COPY --from=protoc /usr/local/include/google /usr/local/include/google
 COPY --from=yq /usr/local/bin/yq /usr/local/bin/
 COPY bin/scurl /usr/local/bin/scurl
 ENV USER=root
@@ -121,7 +122,7 @@ RUN for p in \
     && rm -rf /go/pkg/* /go/src/*
 COPY bin/scurl /usr/local/bin/scurl
 COPY --from=protoc /usr/local/bin/protoc /usr/local/bin/
-COPY --from=protoc /usr/local/include/google /usr/local/include/
+COPY --from=protoc /usr/local/include/google /usr/local/include/google
 COPY --from=just /usr/local/bin/just /usr/local/bin/
 ENV PROTOC_NO_VENDOR=1
 ENV PROTOC=/usr/local/bin/protoc
@@ -185,7 +186,7 @@ COPY --from=k8s /usr/local/bin/helm-docs /usr/local/bin/
 COPY --from=k8s /usr/local/bin/k3d /usr/local/bin/
 COPY --from=k8s /usr/local/bin/kubectl /usr/local/bin/
 COPY --from=protoc /usr/local/bin/protoc /usr/local/bin/
-COPY --from=protoc /usr/local/include/google /usr/local/include/
+COPY --from=protoc /usr/local/include/google /usr/local/include/google
 COPY --from=shellcheck /usr/local/bin/shellcheck /usr/local/bin/
 COPY --from=yq /usr/local/bin/yq /usr/local/bin/
 ENV PROTOC_NO_VENDOR=1
@@ -235,7 +236,7 @@ ENV PATH=$CARGO_HOME/bin:$PATH
 RUN rustup component add rust-analysis rust-std
 
 COPY --from=tools /usr/local/bin/* /usr/local/bin/
-COPY --from=protoc /usr/local/include/google /usr/local/include/
+COPY --from=protoc /usr/local/include/google /usr/local/include/google
 
 ENV PROTOC_NO_VENDOR=1
 ENV PROTOC=/usr/local/bin/protoc
