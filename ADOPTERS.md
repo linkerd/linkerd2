@@ -27,6 +27,7 @@
 - [Figure](https://www.figure.com)
 - [finleap connect](https://connect.finleap.com/)
 - [Giant Swarm](https://www.giantswarm.io)
+- [Gotin](https://www.gotin.online)
 - [HomeChoice](https://www.homechoice.co.za/)
 - [HP Inc](https://www8.hp.com/us/en/home.html)
 - [In Loco](https://inloco.com.br/en/)
