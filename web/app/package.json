@@ -4,7 +4,7 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "@babel/eslint-plugin": "7.17.7",
+    "@babel/eslint-plugin": "7.18.10",
     "@fortawesome/fontawesome-svg-core": "6.1.2",
     "@fortawesome/free-regular-svg-icons": "6.1.2",
     "@fortawesome/free-solid-svg-icons": "6.1.2",
