@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+# Print all (transitive) dependenents of the specified go package.
+
+set -euo pipefail
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <module>" >&2
+    exit 64
+fi
+declare -r MODULE="$1"
+
+GRAPH=$(go mod graph)
+declare -r GRAPH
+
+depends_on() {
+    local pkg=$1
+    echo "$GRAPH" | awk '$2 == "'"$pkg"'" { print $1 }' | sort | uniq
+}
+
+declare -A PKGS=()
+supertree() {
+    local pkg=$1
+    local namepfx=${2:-}
+    local pfx=${3:-}
+    if (( ${PKGS[$pkg]:-0} )); then
+        echo "$namepfx$pkg (*)"
+    else
+        PKGS[$pkg]=1
+        echo "$namepfx$pkg"
+        local parent=''
+        for p in $(depends_on "$pkg") ; do
+            if [ -n "$parent" ]; then supertree "$parent" "$pfx├── " "$pfx│   " ; fi
+            parent=$p
+        done
+        if [ -n "$parent" ]; then supertree "$parent" "$pfx└── " "$pfx    " ; fi
+    fi
+}
+
+if [[ "$MODULE" == *@* ]]; then
+    # The dependency specifies an exact version, so print the packages that
+    # depend on it.
+    supertree "$MODULE"
+else
+    # The dependency does not specify an exact version, find all versions of
+    # the package and print the packages that depend on each of them.
+    first=1
+    for pkg in $(echo "$GRAPH" | awk '{ print $1 }' | sort | uniq) ; do
+        if [ "${pkg%@*}" = "$MODULE" ]; then
+            if (( first )); then first=0; else echo; fi
+            supertree "$pkg"
+        fi
+    done
+fi

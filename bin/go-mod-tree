@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+# Print all (transitive) dependencies of the specified go package.
+
+set -euo pipefail
+
+if [ $# -gt 1 ]; then
+    echo "Usage: $0 [root]" >&2
+    exit 64
+fi
+declare -r MODULE="${1:-github.com/linkerd/linkerd2}"
+
+GRAPH=$(go mod graph)
+declare -r GRAPH
+
+deps_of() {
+    local pkg=$1
+    echo "$GRAPH" | awk '$1 == "'"$pkg"'" { print $2 }' | sort | uniq
+}
+
+declare -A PKGS=()
+subtree() {
+    local pkg=$1
+    local namepfx=${2:-}
+    local pfx=${3:-}
+    # If the package has already been printed, then print it with an
+    # asterisk and skip printing its dependencies
+    if (( ${PKGS[$pkg]:-0} )); then
+        echo "$namepfx$pkg (*)"
+    else
+        # Otherwise, print the package, mark it as printed, and the
+        # dependency tree for each of its depndencies
+        echo "$namepfx$pkg"
+        PKGS[$pkg]=1
+        local dep=''
+        for d in $(deps_of "$pkg") ; do
+            if [ -n "$dep" ]; then  subtree "$dep" "$pfx├── " "$pfx│   " ; fi
+            dep=$d
+        done
+        if [ -n "$dep" ]; then subtree "$dep" "$pfx└── " "$pfx    " ; fi
+    fi
+}
+
+if [[ "$MODULE" == *@* ]]; then
+    # The root specifies an exact version, so print its dependencies.
+    subtree "$MODULE"
+elif [ -n "$(echo "$GRAPH" | awk '$1 == "'"$MODULE"'" { print $0 }' | head -n 1)" ]; then
+    # The root does not specify an exact version, but that is how the
+    # package is listed in go.mod.
+    subtree "$MODULE"
+else
+    # The root does not specify an exact version, find all versions of the
+    # package and print their depdencies.
+    first=1
+    for pkg in $(echo "$GRAPH" | awk '{ print $1 }' | sort | uniq) ; do
+        if [ "${pkg%@*}" = "$MODULE" ]; then
+            if (( first )); then first=0; else echo; fi
+            subtree "$pkg"
+        fi
+    done
+fi
