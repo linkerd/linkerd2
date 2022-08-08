@@ -348,6 +348,36 @@ dashboard:
     # into the dashboard component
     # resources:
 
+  # Ingress configuration, See <https://linkerd.io/2.11/tasks/exposing-dashboard>
+  ingress:
+    # -- Toggle field to enable or disable ingress for the web dashboard
+    enabled: false
+    # -- For Kubernetes >= 1.18 you should specify the ingress-controller via the field ingressClassName
+    # See <https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/#specifying-the-class-of-an-ingress>
+    className: ""
+    # -- Ingress annotations, defaults are based on nginx controller
+    annotations:
+      nginx.ingress.kubernetes.io/service-upstream: "true"
+      nginx.ingress.kubernetes.io/upstream-vhost: "$service_name.$namespace.svc.cluster.local:8084"
+      nginx.ingress.kubernetes.io/configuration-snippet: |
+        proxy_set_header Origin "";
+        proxy_hide_header l5d-remote-ip;
+        proxy_hide_header l5d-server-id;
+    # -- Ingress additional annotations
+    extraAnnotations: {}
+    # -- Ingress hosts
+    # Must be provided when ingress is enabled
+    hosts: []
+    #  - host: chart-example.local
+    #    paths:
+    #      - path: /
+    #        pathType: Prefix
+    # -- Ingress TLS configuration
+    tls: []
+    #  - secretName: chart-example-tls
+    #    hosts:
+    #      - chart-example.local
+
 grafana:
   # -- url of an in-cluster Grafana instance with reverse proxy configured, used by the
   # Linkerd viz web dashboard to provide direct links to specific Grafana

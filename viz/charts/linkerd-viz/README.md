@@ -78,6 +78,12 @@ Kubernetes: `>=1.21.0-0`
 | dashboard.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the  web component |
 | dashboard.image.registry | string | defaultRegistry | Docker registry for the web instance |
 | dashboard.image.tag | string | linkerdVersion | Docker image tag for the web instance |
+| dashboard.ingress.annotations | object | `{"nginx.ingress.kubernetes.io/configuration-snippet":"proxy_set_header Origin \"\";\nproxy_hide_header l5d-remote-ip;\nproxy_hide_header l5d-server-id;\n","nginx.ingress.kubernetes.io/service-upstream":"true","nginx.ingress.kubernetes.io/upstream-vhost":"$service_name.$namespace.svc.cluster.local:8084"}` | Ingress annotations, defaults are based on nginx controller |
+| dashboard.ingress.className | string | `""` | For Kubernetes >= 1.18 you should specify the ingress-controller via the field ingressClassName See <https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/#specifying-the-class-of-an-ingress> |
+| dashboard.ingress.enabled | bool | `false` | Toggle field to enable or disable ingress for the web dashboard |
+| dashboard.ingress.extraAnnotations | object | `{}` | Ingress additional annotations |
+| dashboard.ingress.hosts | list | `[]` | Ingress hosts Must be provided when ingress is enabled |
+| dashboard.ingress.tls | list | `[]` | Ingress TLS configuration |
 | dashboard.logFormat | string | defaultLogFormat | log format of the dashboard component |
 | dashboard.logLevel | string | defaultLogLevel | log level of the dashboard component |
 | dashboard.proxy | string | `nil` |  |
