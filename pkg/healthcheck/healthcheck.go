@@ -944,7 +944,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					check: func(context.Context) error {
 						var invalidAnchors []string
 						for _, anchor := range hc.trustAnchors {
-							if err := issuercerts.CheckCertAlgoRequirements(anchor); err != nil {
+							if err := issuercerts.CheckTrustAnchorAlgoRequirements(anchor); err != nil {
 								invalidAnchors = append(invalidAnchors, fmt.Sprintf("* %v %s %s", anchor.SerialNumber, anchor.Subject.CommonName, err))
 							}
 						}
@@ -994,7 +994,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "l5d-identity-issuer-cert-uses-supported-crypto",
 					fatal:       true,
 					check: func(context.Context) error {
-						if err := issuercerts.CheckCertAlgoRequirements(hc.issuerCert.Certificate); err != nil {
+						if err := issuercerts.CheckIssuerCertAlgoRequirements(hc.issuerCert.Certificate); err != nil {
 							return fmt.Errorf("issuer certificate %w", err)
 						}
 						return nil
