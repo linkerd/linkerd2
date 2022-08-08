@@ -37,7 +37,8 @@ import (
 var (
 	rTrail = regexp.MustCompile(`\},\s*\]`)
 
-	// ProxyAnnotations is the list of possible annotations that can be applied on a pod or namespace
+	// ProxyAnnotations is the list of possible annotations that can be applied on a pod or namespace.
+	// All these annotations should be prefixed with "config.linkerd.io"
 	ProxyAnnotations = []string{
 		k8s.ProxyAdminPortAnnotation,
 		k8s.ProxyControlPortAnnotation,
@@ -202,16 +203,9 @@ func (conf *ResourceConfig) GetOwnerRef() *metav1.OwnerReference {
 // from the namespace they belong to. If the namespace has a valid config key
 // that the pod does not, then it is appended to the pod's template
 func (conf *ResourceConfig) AppendNamespaceAnnotations() {
-	for _, key := range ProxyAnnotations {
-		if _, found := conf.nsAnnotations[key]; !found {
-			continue
-		}
-		if val, ok := conf.GetConfigAnnotation(key); ok {
-			conf.AppendPodAnnotation(key, val)
-		}
-	}
+	annotations := append(ProxyAnnotations, ProxyAlphaConfigAnnotations...)
 
-	for _, key := range ProxyAlphaConfigAnnotations {
+	for _, key := range annotations {
 		if _, found := conf.nsAnnotations[key]; !found {
 			continue
 		}
