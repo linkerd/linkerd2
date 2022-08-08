@@ -204,6 +204,7 @@ func (conf *ResourceConfig) GetOwnerRef() *metav1.OwnerReference {
 // that the pod does not, then it is appended to the pod's template
 func (conf *ResourceConfig) AppendNamespaceAnnotations() {
 	annotations := append(ProxyAnnotations, ProxyAlphaConfigAnnotations...)
+	annotations = append(annotations, k8s.ProxyInjectAnnotation)
 
 	for _, key := range annotations {
 		if _, found := conf.nsAnnotations[key]; !found {
