@@ -199,7 +199,15 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 				if pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "env", "*", "value"}) && diff.b.(string) == issuerCerts.ca {
 					continue
 				}
+				if pathMatch(diff.path, []string{"spec", "template", "metadata", "annotations", "linkerd.io/trust-root-checksum"}) {
+					continue
+				}
 				t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+			}
+			if id == "Deployment/linkerd-destination" {
+				if pathMatch(diff.path, []string{"spec", "template", "metadata", "annotations", "linkerd.io/trust-root-checksum"}) {
+					continue
+				}
 			}
 
 			if id == "Secret/linkerd-identity-issuer" {
@@ -234,6 +242,7 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 				}
 				continue
 			}
+
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
