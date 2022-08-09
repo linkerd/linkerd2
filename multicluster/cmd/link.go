@@ -31,8 +31,6 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const SaNameAnnotationKey = "kubernetes.io/service-account.name"
-
 type (
 	linkOptions struct {
 		namespace               string
@@ -432,7 +430,7 @@ func extractGatewayPort(gateway *corev1.Service) (uint32, error) {
 
 func extractSAToken(secrets []corev1.Secret, saName string) (string, error) {
 	for _, secret := range secrets {
-		boundSA := secret.Annotations[SaNameAnnotationKey]
+		boundSA := secret.Annotations[saNameAnnotationKey]
 		if saName == boundSA {
 			token, ok := secret.Data[tokenKey]
 			if !ok {
