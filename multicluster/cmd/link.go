@@ -133,7 +133,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 			}
 			config.AuthInfos = map[string]*api.AuthInfo{
 				opts.serviceAccountName: {
-					Token: string(token),
+					Token: token,
 				},
 			}
 
