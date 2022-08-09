@@ -7,6 +7,7 @@
         "DavidAnson.vscode-markdownlint",
         "golang.go",
         "kokakiwi.vscode-just",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
         "NathanRidley.autotrim",
         "rust-lang.rust-analyzer",
         "samverschueren.final-newline",
