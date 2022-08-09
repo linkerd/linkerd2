@@ -731,7 +731,7 @@ spec:
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
-        linkerd.io/trust-root-checksum: f8ebf807fa1cf5bf3b40e94680a5fc91593782385f28c96eae7bb6672dba375e
+        linkerd.io/trust-root-sha256: f8ebf807fa1cf5bf3b40e94680a5fc91593782385f28c96eae7bb6672dba375e
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: identity
@@ -1127,7 +1127,7 @@ spec:
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
-        linkerd.io/trust-root-checksum: f8ebf807fa1cf5bf3b40e94680a5fc91593782385f28c96eae7bb6672dba375e
+        linkerd.io/trust-root-sha256: f8ebf807fa1cf5bf3b40e94680a5fc91593782385f28c96eae7bb6672dba375e
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
         linkerd.io/control-plane-component: destination
@@ -1538,7 +1538,7 @@ spec:
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
-        linkerd.io/trust-root-checksum: f8ebf807fa1cf5bf3b40e94680a5fc91593782385f28c96eae7bb6672dba375e
+        linkerd.io/trust-root-sha256: f8ebf807fa1cf5bf3b40e94680a5fc91593782385f28c96eae7bb6672dba375e
         config.linkerd.io/opaque-ports: "8443"
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
       labels:
