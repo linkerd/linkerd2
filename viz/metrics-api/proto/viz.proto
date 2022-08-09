@@ -231,6 +231,9 @@ message TrafficSplitStats {
 message ServerStats {
   uint64 allowed_count = 1;
   uint64 denied_count = 2;
+  Resource srv = 3;
+  Resource route = 4;
+  Resource authz = 5;
 }
 
 message StatTable {
