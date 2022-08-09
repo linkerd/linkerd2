@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/containernetworking/cni/pkg/skel"
@@ -228,6 +229,25 @@ func cmdAdd(args *skel.CmdArgs) error {
 				options.InboundPortsToIgnore = strings.Split(inboundSkipOverride, ",")
 			}
 
+			// Override ProxyUID from annotations.
+			proxyUIDOverride, err := getAnnotationOverride(ctx, client, pod, k8s.ProxyUIDAnnotation)
+			if err != nil {
+				logEntry.Errorf("linkerd-cni: could not retrieve overridden annotations: %s", err)
+				return err
+			}
+
+			if proxyUIDOverride != "" {
+				logEntry.Debugf("linkerd-cni: overriding ProxyUID to %s", proxyUIDOverride)
+
+				parsed, err := strconv.Atoi(proxyUIDOverride)
+				if err != nil {
+					logEntry.Errorf("linkerd-cni: could not parse ProxyUID to integer: %s", err)
+					return err
+				}
+
+				options.ProxyUserID = parsed
+			}
+
 			if pod.GetLabels()[k8s.ControllerComponentLabel] != "" {
 				// Skip 443 outbound port if its a control plane component
 				logEntry.Debug("linkerd-cni: adding 443 to OutboundPortsToIgnore as its a control plane component")
@@ -262,8 +282,9 @@ func cmdAdd(args *skel.CmdArgs) error {
 		return types.PrintResult(conf.PrevResult, conf.CNIVersion)
 	}
 
-	logrus.Debug("linkerd-cni: no previous result to pass through, emptying stdout")
-	return nil
+	logrus.Debug("linkerd-cni: no previous result to pass through, assume stand-alone run, send ok")
+
+	return types.PrintResult(&cniv1.Result{CNIVersion: cniv1.ImplementedSpecVersion}, conf.CNIVersion)
 }
 
 func cmdCheck(args *skel.CmdArgs) error {

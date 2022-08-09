@@ -480,6 +480,8 @@ data:
         pullPolicy: ""
         version: ""
       logLevel: info
+      probeNetworks:
+      - 0.0.0.0/0
       resources:
         cpu:
           limit: ""
@@ -564,7 +566,7 @@ data:
         name: my.custom.registry/linkerd-io/proxy-init
         pullPolicy: ""
         version: v1.6.2
-      iptablesMode: nft
+      iptablesMode: legacy
       logFormat: ""
       logLevel: ""
       resources:
@@ -881,10 +883,6 @@ spec:
           name: linkerd-identity-token
       initContainers:
       - args:
-        - --firewall-bin-path
-        - "iptables-nft"
-        - --firewall-save-bin-path
-        - "iptables-nft-save"
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
@@ -1269,6 +1267,7 @@ spec:
         - --default-policy=all-unauthenticated
         - --log-level=info
         - --log-format=plain
+        - --probe-networks=0.0.0.0/0
         image: my.custom.registry/linkerd-io/policy-controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1299,10 +1298,6 @@ spec:
           readOnly: true
       initContainers:
       - args:
-        - --firewall-bin-path
-        - "iptables-nft"
-        - --firewall-save-bin-path
-        - "iptables-nft-save"
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
@@ -1604,10 +1599,6 @@ spec:
           readOnly: true
       initContainers:
       - args:
-        - --firewall-bin-path
-        - "iptables-nft"
-        - --firewall-save-bin-path
-        - "iptables-nft-save"
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port

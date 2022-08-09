@@ -1,12 +1,13 @@
 {
     "name": "linkerd2",
-    "image": "ghcr.io/linkerd/dev:v22",
+    "image": "ghcr.io/linkerd/dev:v24",
     // "dockerFile": "./Dockerfile",
     // "context": "..",
     "extensions": [
         "DavidAnson.vscode-markdownlint",
         "golang.go",
         "kokakiwi.vscode-just",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
         "NathanRidley.autotrim",
         "rust-lang.rust-analyzer",
         "samverschueren.final-newline",

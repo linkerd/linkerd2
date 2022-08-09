@@ -6,7 +6,7 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep viz external helm-upgrade uninstall upgrade-edge upgrade-stable default-policy-deny)
+export default_test_names=(deep viz external helm-upgrade uninstall upgrade-edge upgrade-stable default-policy-deny rsa-ca)
 export external_resource_test_names=(external-resources)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
 images_load_default=(proxy controller policy-controller web metrics-api tap)
@@ -462,6 +462,10 @@ run_default-policy-deny_test() {
 
 run_cni-calico-deep_test() {
   run_test "$test_directory/deep/..." --cni
+}
+
+run_rsa-ca_test() {
+  run_test "$test_directory/rsa-ca/..."
 }
 
 run_external_test() {

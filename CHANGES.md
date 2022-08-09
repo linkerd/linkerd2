@@ -1,5 +1,32 @@
 # Changes
 
+## edge-22.8.1
+
+This releases introduces default probe authorization. This means that on
+clusters that use a default `deny` policy, probes do not have to be explicitly
+authorized using policy resources. Additionally, the
+`policyController.probeNetworks` Helm value has been added, which allows users
+to configure the networks that probes are expected to be performed from.
+
+Additionally, the `linkerd authz` command has been updated to support the policy
+resources AuthorizationPolicy and HttpRoute.
+
+Finally, some smaller changes include allowing to disable `linkerd-await` on
+control plane components (using the existing `proxy.await` configuration) and
+changing the default iptables mode back to `legacy` to support more cluster
+environments by default.
+
+* Updated the `linkerd authz` command to support AuthorizationPolicy and
+  HttpRoute resources
+* Changed the `proxy.await` Helm value so that users can now disable
+  `linkerd-await` on control plane components
+* Added probe authorization by default allowing clusters that use a default
+  `deny` policy to not explicitly need to authorize probes
+* Added ability to run the Linkerd CNI plugin in non-chained (stand-alone) mode
+* Added the `policyController.probeNetworks` Helm value for configuring the
+  networks that probes are expected to be performed from
+* Changed the default iptables mode to `legacy`
+
 ## edge-22.7.3
 
 This release adds a new `nft` iptables mode, used by default in proxy-init.
