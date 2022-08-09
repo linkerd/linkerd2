@@ -16,6 +16,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const unauthorized = "[UNAUTHORIZED]"
+
 // NewCmdAuthz creates a new cobra command `authz`
 func NewCmdAuthz() *cobra.Command {
 	options := newStatOptions()
@@ -113,11 +115,12 @@ func NewCmdAuthz() *cobra.Command {
 
 				for _, row := range respToRows(resp) {
 					var authzp, saz, route string
-					if row.GetSrvStats().GetAuthz() != nil {
-						if row.GetSrvStats().GetAuthz().Type == "authorizationpolicy" {
-							authzp = row.GetSrvStats().GetAuthz().Name
-						} else if row.GetSrvStats().GetAuthz().Type == "serverauthorization" {
-							saz = row.GetSrvStats().GetAuthz().Name
+					authz := row.GetSrvStats().GetAuthz()
+					if authz != nil {
+						if authz.Type == "authorizationpolicy" {
+							authzp = authz.Name
+						} else if authz.Type == "serverauthorization" {
+							saz = authz.Name
 						}
 					}
 					if row.GetSrvStats().GetRoute() != nil {
@@ -169,8 +172,8 @@ func NewCmdAuthz() *cobra.Command {
 						rows = append(rows, table.Row{
 							route,
 							server,
-							"[UNAUTHORIZED]",
-							"[UNAUTHORIZED]",
+							unauthorized,
+							unauthorized,
 							"-",
 							fmt.Sprintf("%.1frps", getRequestRate(row.SrvStats.DeniedCount, 0, row.TimeWindow)),
 							"-",

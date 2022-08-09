@@ -595,16 +595,16 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 
 			if authzStats[resource] == nil {
 				srv := pb.Resource{
-					Type: string(sample.Metric["srv_kind"]),
-					Name: string(sample.Metric["srv_name"]),
+					Type: string(sample.Metric[serverKindLabel]),
+					Name: string(sample.Metric[serverNameLabel]),
 				}
 				route := pb.Resource{
-					Type: string(sample.Metric["route_kind"]),
-					Name: string(sample.Metric["route_name"]),
+					Type: string(sample.Metric[routeKindLabel]),
+					Name: string(sample.Metric[routeNameLabel]),
 				}
 				authz := pb.Resource{
-					Type: string(sample.Metric["authz_kind"]),
-					Name: string(sample.Metric["authz_name"]),
+					Type: string(sample.Metric[authorizationKindLabel]),
+					Name: string(sample.Metric[authorizationNameLabel]),
 				}
 				authzStats[resource] = &pb.ServerStats{
 					Srv:   &srv,
