@@ -291,13 +291,13 @@ func requestTapByResourceFromAPI(ctx context.Context, w io.Writer, k8sAPI *k8s.K
 	}
 	defer body.Close()
 
-	return writeTapEventsToBuffer(w, reader, req, options)
+	return writeTapEventsToBuffer(w, reader, options)
 }
 
-func writeTapEventsToBuffer(w io.Writer, tapByteStream *bufio.Reader, req *tapPb.TapByResourceRequest, options *tapOptions) error {
+func writeTapEventsToBuffer(w io.Writer, tapByteStream *bufio.Reader, options *tapOptions) error {
 	switch options.output {
 	case "":
-		return renderTapEvents(tapByteStream, w, renderTapEventNarrow)
+		return renderTapEvents(tapByteStream, w, renderTapEvent)
 	case wideOutput:
 		return renderTapEvents(tapByteStream, w, renderTapEventWide)
 	case jsonOutput:
@@ -329,15 +329,18 @@ func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapE
 }
 
 func renderTapEventWide(event *tapPb.TapEvent) string {
-	return renderTapEvent(event, true)
-}
+	dst := dst(event)
+	src := src(event)
 
-func renderTapEventNarrow(event *tapPb.TapEvent) string {
-	return renderTapEvent(event, false)
+	out := []string{renderTapEvent(event)}
+	out = append(out, src.formatResource()...)
+	out = append(out, dst.formatResource()...)
+	out = append(out, routeLabels(event)...)
+	return strings.Join(out, " ")
 }
 
 // renderTapEvent renders a Public API TapEvent to a string.
-func renderTapEvent(event *tapPb.TapEvent, wide bool) string {
+func renderTapEvent(event *tapPb.TapEvent) string {
 	dst := dst(event)
 	src := src(event)
 
@@ -361,10 +364,9 @@ func renderTapEvent(event *tapPb.TapEvent, wide bool) string {
 		tls,
 	)
 
-	var formattedEvent string
 	switch ev := event.GetHttp().GetEvent().(type) {
 	case *tapPb.TapEvent_Http_RequestInit_:
-		formattedEvent = fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s",
+		return fmt.Sprintf("req id=%d:%d %s :method=%s :authority=%s :path=%s",
 			ev.RequestInit.GetId().GetBase(),
 			ev.RequestInit.GetId().GetStream(),
 			flow,
@@ -374,7 +376,7 @@ func renderTapEvent(event *tapPb.TapEvent, wide bool) string {
 		)
 
 	case *tapPb.TapEvent_Http_ResponseInit_:
-		formattedEvent = fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs",
+		return fmt.Sprintf("rsp id=%d:%d %s :status=%d latency=%dµs",
 			ev.ResponseInit.GetId().GetBase(),
 			ev.ResponseInit.GetId().GetStream(),
 			flow,
@@ -385,7 +387,7 @@ func renderTapEvent(event *tapPb.TapEvent, wide bool) string {
 	case *tapPb.TapEvent_Http_ResponseEnd_:
 		switch eos := ev.ResponseEnd.GetEos().GetEnd().(type) {
 		case *metricsPb.Eos_GrpcStatusCode:
-			formattedEvent = fmt.Sprintf(
+			return fmt.Sprintf(
 				"end id=%d:%d %s grpc-status=%s duration=%dµs response-length=%dB",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
@@ -396,7 +398,7 @@ func renderTapEvent(event *tapPb.TapEvent, wide bool) string {
 			)
 
 		case *metricsPb.Eos_ResetErrorCode:
-			formattedEvent = fmt.Sprintf(
+			return fmt.Sprintf(
 				"end id=%d:%d %s reset-error=%+v duration=%dµs response-length=%dB",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
@@ -407,7 +409,7 @@ func renderTapEvent(event *tapPb.TapEvent, wide bool) string {
 			)
 
 		default:
-			formattedEvent = fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB",
+			return fmt.Sprintf("end id=%d:%d %s duration=%dµs response-length=%dB",
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
@@ -417,17 +419,8 @@ func renderTapEvent(event *tapPb.TapEvent, wide bool) string {
 		}
 
 	default:
-		formattedEvent = fmt.Sprintf("unknown %s", flow)
+		return fmt.Sprintf("unknown %s", flow)
 	}
-
-	if wide {
-		out := []string{formattedEvent}
-		out = append(out, src.formatResource()...)
-		out = append(out, dst.formatResource()...)
-		out = append(out, routeLabels(event)...)
-		return strings.Join(out, " ")
-	}
-	return formattedEvent
 }
 
 // renderTapEventJSON renders a Public API TapEvent to a string in JSON format.
