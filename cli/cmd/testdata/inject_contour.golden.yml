@@ -189,10 +189,6 @@ spec:
         - mountPath: /config
           name: contour-config
       - args:
-        - --firewall-bin-path
-        - iptables-nft
-        - --firewall-save-bin-path
-        - iptables-nft-save
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port

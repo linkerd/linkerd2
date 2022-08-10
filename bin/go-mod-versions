@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+# Print all versions of the specified go package.
+
+set -euo pipefail
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <module>" >&2
+    exit 64
+fi
+declare -r MODULE="$1"
+
+if [[ "$MODULE" == *@* ]]; then
+    echo 'The dependency must not specify an exact version.' >&2
+    exit 1
+fi
+
+for pkg in $(go mod graph | awk '{ print $1; print $2 }' | sort | uniq) ; do
+    if [ "${pkg%@*}" = "$MODULE" ]; then
+        echo "$pkg"
+    fi
+done
+

@@ -46,6 +46,8 @@ const (
 	serverNameLabel        = model.LabelName("srv_name")
 	authorizationKindLabel = model.LabelName("authz_kind")
 	authorizationNameLabel = model.LabelName("authz_name")
+	routeKindLabel         = model.LabelName("route_kind")
+	routeNameLabel         = model.LabelName("route_name")
 )
 
 var (
@@ -124,6 +126,11 @@ func promQueryLabels(resource *pb.Resource) model.LabelSet {
 			} else if resource.GetType() == k8s.ServerAuthorization {
 				set[authorizationKindLabel] = model.LabelValue("serverauthorization")
 				set[authorizationNameLabel] = model.LabelValue(resource.GetName())
+			} else if resource.GetType() == k8s.AuthorizationPolicy {
+				set[authorizationKindLabel] = model.LabelValue("authorizationpolicy")
+				set[authorizationNameLabel] = model.LabelValue(resource.GetName())
+			} else if resource.GetType() == k8s.HTTPRoute {
+				set[routeNameLabel] = model.LabelValue(resource.GetName())
 			} else if resource.GetType() != k8s.Service {
 				set[promResourceType(resource)] = model.LabelValue(resource.Name)
 			}

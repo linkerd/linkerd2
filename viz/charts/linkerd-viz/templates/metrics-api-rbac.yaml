@@ -23,7 +23,7 @@ rules:
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["policy.linkerd.io"]
-  resources: ["servers", "serverauthorizations"]
+  resources: ["servers", "serverauthorizations", "authorizationpolicies", "httproutes"]
   verbs: ["list", "get"]
 ---
 kind: ClusterRoleBinding

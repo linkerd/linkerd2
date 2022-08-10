@@ -944,7 +944,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					check: func(context.Context) error {
 						var invalidAnchors []string
 						for _, anchor := range hc.trustAnchors {
-							if err := issuercerts.CheckCertAlgoRequirements(anchor); err != nil {
+							if err := issuercerts.CheckTrustAnchorAlgoRequirements(anchor); err != nil {
 								invalidAnchors = append(invalidAnchors, fmt.Sprintf("* %v %s %s", anchor.SerialNumber, anchor.Subject.CommonName, err))
 							}
 						}
@@ -994,7 +994,7 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "l5d-identity-issuer-cert-uses-supported-crypto",
 					fatal:       true,
 					check: func(context.Context) error {
-						if err := issuercerts.CheckCertAlgoRequirements(hc.issuerCert.Certificate); err != nil {
+						if err := issuercerts.CheckIssuerCertAlgoRequirements(hc.issuerCert.Certificate); err != nil {
 							return fmt.Errorf("issuer certificate %w", err)
 						}
 						return nil
@@ -2319,7 +2319,7 @@ func (hc *HealthChecker) checkMisconfiguredOpaquePortAnnotations(ctx context.Con
 	// This is used instead of `hc.kubeAPI` to limit multiple k8s API requests
 	// and use the caching logic in the shared informers
 	// TODO: move the shared informer code out of `controller/`, and into `pkg` to simplify the dependency tree.
-	kubeAPI := controllerK8s.NewAPI(hc.kubeAPI, nil, nil, controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
+	kubeAPI := controllerK8s.NewClusterScopedAPI(hc.kubeAPI, nil, nil, controllerK8s.Endpoint, controllerK8s.Pod, controllerK8s.Svc)
 	kubeAPI.Sync(ctx.Done())
 
 	services, err := kubeAPI.Svc().Lister().Services(hc.DataPlaneNamespace).List(labels.Everything())

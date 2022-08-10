@@ -63,6 +63,9 @@ pub struct ClusterInfo {
 
     /// The cluster-wide default protocol detection timeout.
     pub default_detect_timeout: time::Duration,
+
+    /// The networks that probes are expected to be from.
+    pub probe_networks: Vec<IpNet>,
 }
 
 impl ClusterInfo {

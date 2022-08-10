@@ -43,8 +43,11 @@ macro_rules! assert_protocol_detect {
             Some(inbound::ProxyProtocol {
                 kind: Some(inbound::proxy_protocol::Kind::Detect(
                     inbound::proxy_protocol::Detect {
-                        timeout: Some(time::Duration::from_secs(10).into()),
-                        http_routes: vec![$crate::grpc::defaults::http_route()],
+                        timeout: Some(time::Duration::from_secs(10).try_into().unwrap()),
+                        http_routes: vec![
+                            $crate::grpc::defaults::http_route(),
+                            $crate::grpc::defaults::probe_route(),
+                        ],
                     }
                 )),
             }),
@@ -188,7 +191,7 @@ pub mod defaults {
         use inbound::proxy_protocol::{Http1, Kind};
         inbound::ProxyProtocol {
             kind: Some(Kind::Http1(Http1 {
-                routes: vec![http_route()],
+                routes: vec![http_route(), probe_route()],
             })),
         }
     }
@@ -209,6 +212,61 @@ pub mod defaults {
                     }),
                     ..HttpRouteMatch::default()
                 }],
+                ..Rule::default()
+            }],
+            ..HttpRoute::default()
+        }
+    }
+
+    pub fn probe_route() -> inbound::HttpRoute {
+        use http_route::{path_match, HttpRouteMatch, PathMatch};
+        use inbound::{
+            authn::{Permit, PermitUnauthenticated},
+            http_route::Rule,
+            Authn, Authz, HttpRoute, Network,
+        };
+        use ipnet::IpNet;
+        use maplit::{convert_args, hashmap};
+        use meta::{metadata, Metadata};
+
+        HttpRoute {
+            metadata: Some(Metadata {
+                kind: Some(metadata::Kind::Default("probe".to_string())),
+            }),
+            authorizations: vec![Authz {
+                networks: vec![Network {
+                    net: Some("0.0.0.0/0".parse::<IpNet>().unwrap().into()),
+                    ..Network::default()
+                }],
+                authentication: Some(Authn {
+                    permit: Some(Permit::Unauthenticated(PermitUnauthenticated {})),
+                }),
+                labels: convert_args!(hashmap!(
+                    "kind" => "default",
+                    "name" => "probe",
+                    "group" => "",
+                )),
+                metadata: Some(Metadata {
+                    kind: Some(metadata::Kind::Default("probe".to_string())),
+                }),
+            }],
+            rules: vec![Rule {
+                matches: vec![
+                    HttpRouteMatch {
+                        path: Some(PathMatch {
+                            kind: Some(path_match::Kind::Exact("/live".to_string())),
+                        }),
+                        method: Some(hyper::Method::GET.into()),
+                        ..HttpRouteMatch::default()
+                    },
+                    HttpRouteMatch {
+                        path: Some(PathMatch {
+                            kind: Some(path_match::Kind::Exact("/ready".to_string())),
+                        }),
+                        method: Some(hyper::Method::GET.into()),
+                        ..HttpRouteMatch::default()
+                    },
+                ],
                 ..Rule::default()
             }],
             ..HttpRoute::default()

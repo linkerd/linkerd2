@@ -487,6 +487,8 @@ data:
         pullPolicy: ""
         version: ""
       logLevel: info
+      probeNetworks:
+      - 0.0.0.0/0
       resources:
         cpu:
           limit: ""
@@ -571,7 +573,7 @@ data:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
         version: test-proxy-init-version
-      iptablesMode: nft
+      iptablesMode: legacy
       logFormat: ""
       logLevel: ""
       resources:
@@ -743,6 +745,7 @@ spec:
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        linkerd.io/trust-root-sha256: f8ebf807fa1cf5bf3b40e94680a5fc91593782385f28c96eae7bb6672dba375e
         asda: fasda
         bingo: bongo
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
@@ -941,10 +944,6 @@ spec:
           name: linkerd-identity-token
       initContainers:
       - args:
-        - --firewall-bin-path
-        - "iptables-nft"
-        - --firewall-save-bin-path
-        - "iptables-nft-save"
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
@@ -1146,6 +1145,7 @@ spec:
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        linkerd.io/trust-root-sha256: f8ebf807fa1cf5bf3b40e94680a5fc91593782385f28c96eae7bb6672dba375e
         asda: fasda
         bingo: bongo
         config.linkerd.io/default-inbound-policy: "all-unauthenticated"
@@ -1382,6 +1382,7 @@ spec:
         - --default-policy=all-unauthenticated
         - --log-level=info
         - --log-format=plain
+        - --probe-networks=0.0.0.0/0
         image: cr.l5d.io/linkerd/policy-controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1412,10 +1413,6 @@ spec:
           readOnly: true
       initContainers:
       - args:
-        - --firewall-bin-path
-        - "iptables-nft"
-        - --firewall-save-bin-path
-        - "iptables-nft-save"
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
@@ -1567,6 +1564,7 @@ spec:
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        linkerd.io/trust-root-sha256: f8ebf807fa1cf5bf3b40e94680a5fc91593782385f28c96eae7bb6672dba375e
         asda: fasda
         bingo: bongo
         config.linkerd.io/opaque-ports: "8443"
@@ -1766,10 +1764,6 @@ spec:
           readOnly: true
       initContainers:
       - args:
-        - --firewall-bin-path
-        - "iptables-nft"
-        - --firewall-save-bin-path
-        - "iptables-nft-save"
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port

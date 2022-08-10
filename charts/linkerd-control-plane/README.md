@@ -3,7 +3,7 @@
 Linkerd gives you observability, reliability, and security
 for your microservices — with no code change required.
 
-![Version: 1.7.0-edge](https://img.shields.io/badge/Version-1.7.0--edge-informational?style=flat-square)
+![Version: 1.8.0-edge](https://img.shields.io/badge/Version-1.8.0--edge-informational?style=flat-square)
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -175,6 +175,7 @@ Kubernetes: `>=1.21.0-0`
 | policyController.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy container Docker image |
 | policyController.image.version | string | linkerdVersion | Tag for the proxy container Docker image |
 | policyController.logLevel | string | `"info"` | Log level for the policy controller |
+| policyController.probeNetworks | list | `["0.0.0.0/0"]` | The networks from which probes are performed.  By default, all networks are allowed so that all probes are authorized. |
 | policyController.resources | object | destinationResources | policy controller resource requests & limits |
 | policyController.resources.cpu.limit | string | `""` | Maximum amount of CPU units that the policy controller can use |
 | policyController.resources.cpu.request | string | `""` | Amount of CPU units that the policy controller requests |
@@ -228,7 +229,7 @@ Kubernetes: `>=1.21.0-0`
 | proxyInit.image.name | string | `"cr.l5d.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
 | proxyInit.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy-init container Docker image |
 | proxyInit.image.version | string | `"v1.6.2"` | Tag for the proxy-init container Docker image |
-| proxyInit.iptablesMode | string | `"nft"` | Variant of iptables that will be used to configure routing. Currently, proxy-init can be run either in 'nft' or in 'legacy' mode. The mode will control which utility binary will be called. The host must support whichever mode will be used |
+| proxyInit.iptablesMode | string | `"legacy"` | Variant of iptables that will be used to configure routing. Currently, proxy-init can be run either in 'nft' or in 'legacy' mode. The mode will control which utility binary will be called. The host must support whichever mode will be used |
 | proxyInit.logFormat | string | plain | Log format (`plain` or `json`) for the proxy-init |
 | proxyInit.logLevel | string | info | Log level for the proxy-init |
 | proxyInit.resources.cpu.limit | string | `"100m"` | Maximum amount of CPU units that the proxy-init container can use |
