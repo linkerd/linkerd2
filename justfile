@@ -144,6 +144,9 @@ policy-test-deps-load: _k3d-init policy-test-deps-pull
 # The name of the k3d cluster to use.
 k3d-name := "l5d-test"
 
+# The name of the docker network to use in multicluster testing.
+k3d-network := "l5d-test"
+
 # The kubernetes version to use for the test cluster. e.g. 'v1.24', 'latest', etc
 k3d-k8s := "latest"
 
@@ -170,6 +173,14 @@ k3d-create: && _k3d-ready
         --kubeconfig-update-default \
         --kubeconfig-switch-context=false
 
+# Creates two k3d clusters with a shared network, that can be used for multicluster testing.
+k3d-create-multicluster: && _k3d-ready
+	k3d cluster create {{ k3d-name }} \
+		--image='+{{ k3d-k8s }}' \
+		--agents='{{ k3d-agents }}' \
+		--servers='{{ k3d-servers }}' \
+		--network='{{ k3d-network }}'
+
 # Deletes the test cluster.
 k3d-delete:
     k3d cluster delete {{ k3d-name }}
@@ -188,7 +199,7 @@ _k3d-init: && _k3d-ready
             k3d-k8s={{ k3d-k8s }} \
             k3d-create
     fi
-    k3d kubeconfig merge l5d-test \
+    k3d kubeconfig merge {{ k3d-name }} \
         --kubeconfig-merge-default \
         --kubeconfig-switch-context=false \
         >/dev/null
@@ -410,7 +421,61 @@ _linkerd-viz-uninit:
 
 
 # TODO linkerd-jaeger-install
-# TODO linkerd-multicluster-install
+
+##
+## linkerd multicluster
+## 
+
+mc-gateway-image := "gcr.io/google_containers/pause:3.2"
+
+linkerd-mc *flags: _k3d-init
+    {{ _linkerd }} mc {{ flags }}
+
+linkerd-mc-install: _linkerd-init linkerd-mc-load && _linkerd-mc-ready
+    {{ _linkerd }} mc install \
+            --set='linkerdVersion={{ linkerd-tag }}' \
+        | {{ _kubectl }} apply -f -
+
+# Wait for all test namespaces to be removed before uninstalling linkerd-multicluster.
+linkerd-mc-uninstall:
+    {{ _linkerd }} mc  uninstall \
+        | {{ _kubectl }} delete -f -
+
+linkerd-mc-deps-build:
+	docker pull -q {{ mc-gateway-image }}
+
+linkerd-mc-build: linkerd-mc-deps-build
+	TAG={{ linkerd-tag }} bin/docker-build-controller
+
+linkerd-mc-load: _linkerd-mc-images _k3d-init
+	{{ _k3d-load }} \
+		{{ controller-image }}:{{ linkerd-tag }} \
+		{{mc-gateway-image }}
+
+_linkerd-mc-images:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	for img in \
+		'{{ mc-gateway-image }}' \
+		'{{ controller-image }}:{{ linkerd-tag }}'
+	do
+		if [ -z $(docker image ls -q "$img") ]; then
+			exec {{ just_executable() }} \
+				linkerd-tag='{{ linkerd-tag }}' \
+				linkerd-mc-build
+		fi
+	done
+
+_linkerd-mc-ready:
+	{{ _kubectl }} wait pod --for=condition=ready \
+		--namespace=linkerd-multicluster --selector='linkerd.io/extension=multicluster' \
+		timeout=1m
+
+multicluster-integration-tests: linkerd-mc-load
+	#!/usr/bin/env bash
+	GO111MODULE=on go test -test.timeout=60m --failfast --mod=readonly \
+				./test/integration/multicluster/... \
+				-integration-tests -linkerd="$(pwd)/bin/linkerd"
 
 ##
 ## Devcontainer

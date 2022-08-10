@@ -124,7 +124,7 @@ jobs:
     steps:
       - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
         with:
-          go-version: '1.17'
+          go-version: '1.18'
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
@@ -253,7 +253,6 @@ jobs:
           - rsa-ca
           # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
           #- helm-upgrade
-          - multicluster
           - uninstall
           - upgrade-edge
           - upgrade-stable
@@ -263,7 +262,7 @@ jobs:
     steps:
       - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
         with:
-          go-version: '1.17'
+          go-version: '1.18'
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
@@ -292,6 +291,7 @@ jobs:
             .github/workflows/integration.yml
             .proxy-version
             viz/**
+            test/integration/viz/**
     outputs:
       modified: ${{ steps.changed.outputs.any_modified }}
 
@@ -304,7 +304,7 @@ jobs:
     steps:
       - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
         with:
-          go-version: '1.17'
+          go-version: '1.18'
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
@@ -315,4 +315,74 @@ jobs:
       - run: bin/tests --images archive --cleanup-docker --name viz "$HOME/linkerd"
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+
+  ##
+  ## Multicluster: Run 'multicluster' suite only when the 'multicluster' extension is updated.
+  ##               Tests are run on min and max k8s versions
+  ##
+
+  changed-multicluster:
+    needs: [cleanup]
+    runs-on: ubuntu-20.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: tj-actions/changed-files@36e65a11651994e93d6f1ef3afa781c3dcbb9780
+        id: changed
+        with:
+          files: |
+            .github/workflows/integration.yml
+            .proxy-version
+            multicluster/**
+            test/integration/multicluster/**
+    outputs:
+      modified: ${{ steps.changed.outputs.any_modified }}
+
+  test-multicluster:
+    needs: [tag, changed-multicluster, build-cli, build-core, build-ext]
+    if: needs.changed-multicluster.outputs.modified == 'true'
+    runs-on: ubuntu-20.04
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        k8s:
+          - v1.21
+          - v1.24
+    steps:
+      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
+      - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
+        with:
+          go-version: '1.18'
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
+        with:
+          name: image-archives
+          path: image-archives
+      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
+      - run: ls -l image-archives/linkerd
+      - run: just linkerd-mc-deps-build
+      - run: |
+          set -euo pipefail
+          # Create source and target clusters
+          for ctx in source target; do
+            just k3d-k8s="${{ matrix.k8s }}" k3d-name="${{ matrix.k8s }}-${ctx}" k3d-create-multicluster
+          done
+        shell: bash
+      - run: docker load <image-archives/controller.tar
+      - run: docker load <image-archives/policy-controller.tar
+      - run: docker load <image-archives/proxy.tar
+      - run: docker image ls
+      - name: Load images
+        shell: bash
+        run: |
+          # Image loading is flakey in CI, so retry!
+          for _ in {1..6} ; do
+            if just linkerd-tag='${{ needs.tag.outputs.tag }}' linkerd-load ; then exit 0 ; fi
+            sleep 10
+            echo retrying...
+          done
+          exit 1
+      - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' multicluster-integration-tests
+        env:
+          LINKERD_DOCKER_REGISTRY: "${{ env.DOCKER_REGISTRY }}"
 
