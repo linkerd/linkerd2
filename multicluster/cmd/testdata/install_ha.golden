@@ -305,6 +305,8 @@ kind: Secret
 metadata:
   name: linkerd-service-mirror-remote-access-default-token
   namespace: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
   annotations:
     kubernetes.io/service-account.name: linkerd-service-mirror-remote-access-default
     linkerd.io/created-by: linkerd/helm linkerdVersionValue
