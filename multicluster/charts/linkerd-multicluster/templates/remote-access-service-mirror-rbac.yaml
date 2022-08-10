@@ -41,6 +41,8 @@ kind: Secret
 metadata:
   name: {{.}}-token
   {{ include "partials.namespace" $ }}
+  labels:
+    linkerd.io/extension: multicluster
   annotations:
     kubernetes.io/service-account.name: {{.}}
     {{ include "partials.annotations.created-by" $ }}
