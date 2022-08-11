@@ -360,29 +360,20 @@ jobs:
           path: image-archives
       - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: ls -l image-archives/linkerd
-      - run: just linkerd-mc-deps-build
       - name: Setup deps
         run: |
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
-          just linkerd-mc-deps-build
+      - run: docker load <image-archives/controller.tar
+      - run: docker load <image-archives/policy-controller.tar
+      - run: docker load <image-archives/proxy.tar
+      - run: docker image ls
       - run: |
           set -euo pipefail
           # Create source and target clusters
           for ctx in source target; do
             just k3d-k8s="${{ matrix.k8s }}" k3d-name="${{ matrix.k8s }}-${ctx}" k3d-create-multicluster
+            bin/image-load --k3d --cluster "${{ matrix.k8s }}-${ctx}"
           done
         shell: bash
-      - run: docker load <image-archives/controller.tar
-      - run: docker load <image-archives/policy-controller.tar
-      - run: docker load <image-archives/proxy.tar
-      - run: docker image ls
-      - name: Load images
-        shell: bash
-        run: |
-          for ctx in source target; do
-            just linkerd-tag="${{ needs.tag.outputs.tag }}" \
-            k3d-name="${{ matrix.k8s }}-$ctx" \
-            linkerd-load
-          done
       - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' k3d-k8s='${{ matrix.k8s }}' multicluster-integration-tests
