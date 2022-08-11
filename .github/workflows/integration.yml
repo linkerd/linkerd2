@@ -364,9 +364,11 @@ jobs:
         run: |
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
-      - run: docker load <image-archives/controller.tar
-      - run: docker load <image-archives/policy-controller.tar
-      - run: docker load <image-archives/proxy.tar
+      - name: Load docker images
+        run: |
+          for img in controller policy-controller proxy web metrics-api tap jaeger-webhook; do
+            docker load <"image-archives/${img}.tar"
+          done
       - run: docker image ls
       - name: Create k3d clusters
         run: |
