@@ -380,14 +380,12 @@ jobs:
       - name: Load images
         shell: bash
         run: |
-          # Image loading is flakey in CI, so retry!
-          for _ in {1..6} ; do
-            if just linkerd-tag='${{ needs.tag.outputs.tag }}' linkerd-load ; then exit 0 ; fi
-            sleep 10
-            echo retrying...
+          for ctx in source target; do
+            just linkerd-tag="${{ needs.tag.outputs.tag }}" \
+            k3d-name="${{ matrix.k8s }}-$ctx" \
+            linkerd-load
           done
-          exit 1
-      - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' multicluster-integration-tests
+      - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' k3d-k8s='${{ matrix.k8s }}' multicluster-integration-tests
         env:
           LINKERD_DOCKER_REGISTRY: "${{ env.DOCKER_REGISTRY }}"
 
