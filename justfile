@@ -472,9 +472,9 @@ _linkerd-mc-ready:
 		--namespace=linkerd-multicluster --selector='linkerd.io/extension=multicluster' \
 		timeout=1m
 
-mc-source-test-ctx := k3d-k8s + "-source"
-mc-target-test-ctx := k3d-k8s + "-target"
-multicluster-integration-tests: linkerd-mc-load
+mc-source-test-ctx := "k3d-"+ k3d-k8s + "-source"
+mc-target-test-ctx := "k3d-"+ k3d-k8s + "-target"
+multicluster-integration-tests:
 	#!/usr/bin/env bash
 	GO111MODULE=on go test -test.timeout=60m --failfast --mod=readonly \
 				./test/integration/multicluster/... \

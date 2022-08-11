@@ -386,6 +386,3 @@ jobs:
             linkerd-load
           done
       - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' k3d-k8s='${{ matrix.k8s }}' multicluster-integration-tests
-        env:
-          LINKERD_DOCKER_REGISTRY: "${{ env.DOCKER_REGISTRY }}"
-
