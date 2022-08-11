@@ -42,14 +42,14 @@ rs-doc *flags:
         {{ flags }}
 
 rs-test-build:
-    {{ _cargo }} test --no-run --frozen \
+    {{ _cargo }} nextest run --no-run --frozen \
         --workspace --exclude=linkerd-policy-test \
         {{ _features }} \
         {{ _fmt }}
 
 # Run Rust unit tests
 rs-test *flags:
-    {{ _cargo }} {{ _cargo-test }} --frozen \
+    {{ _cargo }} nextest run --frozen \
         --workspace --exclude=linkerd-policy-test \
         {{ if rs-build-type == "release" { "--release" } else { "" } }} \
         {{ _features }} \
@@ -97,12 +97,6 @@ _features := if rs-features == "all" {
         "--no-default-features --features=" + rs-features
     } else { "" }
 
-# Use nextest if it's available (i.e. when running locally).
-_cargo-test := ```
-    if command -v cargo-nextest >/dev/null 2>&1; then echo " nextest run"
-    else echo " test" ; fi
-    ```
-
 ##
 ## Policy integration tests
 ##
@@ -114,11 +108,11 @@ policy-test: linkerd-install policy-test-deps-load policy-test-run policy-test-c
 
 # Run the policy tests without installing linkerd.
 policy-test-run *flags:
-    cd policy-test && {{ _cargo }} {{ _cargo-test }} {{ flags }}
+    cd policy-test && {{ _cargo }} nextest run {{ flags }}
 
 # Build the policy tests without running them.
 policy-test-build:
-    cd policy-test && {{ _cargo }} test --no-run {{ _fmt }}
+    cd policy-test && {{ _cargo }} nextest run --no-run {{ _fmt }}
 
 # Delete all test namespaces and remove linkerd from the cluster.
 policy-test-cleanup:
@@ -178,6 +172,13 @@ k3d-delete:
 k3d-info:
     k3d cluster list {{ k3d-name }} -o json | jq .
 
+# Set the default kubectl context to the test cluster.
+k3d-use:
+    k3d kubeconfig merge {{ k3d-name }} \
+        --kubeconfig-merge-default \
+        --kubeconfig-switch-context=true \
+        >/dev/null
+
 # Ensures the test cluster has been initialized.
 _k3d-init: && _k3d-ready
     #!/usr/bin/env bash
@@ -188,7 +189,7 @@ _k3d-init: && _k3d-ready
             k3d-k8s={{ k3d-k8s }} \
             k3d-create
     fi
-    k3d kubeconfig merge l5d-test \
+    k3d kubeconfig merge {{ k3d-name }} \
         --kubeconfig-merge-default \
         --kubeconfig-switch-context=false \
         >/dev/null

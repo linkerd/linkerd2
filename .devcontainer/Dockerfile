@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.18
+ARG GO_VERSION=1.18.5
 ARG RUST_TOOLCHAIN=1.62.1
 
 ##
@@ -20,7 +20,7 @@ RUN apt update && apt upgrade -y --autoremove \
 COPY bin/scurl /usr/local/bin/scurl
 
 FROM base as just
-ARG JUST_VERSION=1.2.0
+ARG JUST_VERSION=1.4.0
 RUN url="https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz" ; \
     scurl "$url" | tar zvxf - -C /usr/local/bin just
 
@@ -55,7 +55,7 @@ RUN url="https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_D
     scurl "$url" | tar zvxf - --strip-components=1 -C /usr/local/bin "cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl/cargo-deny"
 
 FROM base as cargo-nextest
-ARG NEXTEST_VERSION=0.9.24
+ARG NEXTEST_VERSION=0.9.33
 RUN url="https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${NEXTEST_VERSION}/cargo-nextest-${NEXTEST_VERSION}-x86_64-unknown-linux-gnu.tar.gz" ; \
     scurl "$url" | tar zvxf - -C /usr/local/bin cargo-nextest
 
