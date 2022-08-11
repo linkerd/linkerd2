@@ -6,7 +6,7 @@ license = "Apache-2.0"
 publish = false
 
 [dependencies]
-ahash = "0.7"
+ahash = "0.8"
 anyhow = "1"
 futures = { version = "0.3", default-features = false }
 k8s-gateway-api = "0.6"

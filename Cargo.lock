@@ -14,6 +14,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ahash"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57e6e951cfbb2db8de1828d49073a113a29fd7117b1596caa781a258c7e38d72"
+dependencies = [
+ "cfg-if",
+ "getrandom",
+ "once_cell",
+ "version_check",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -897,7 +909,7 @@ version = "0.74.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fdcf5a20f968768e342ef1a457491bb5661fccd81119666d626c57500b16d99"
 dependencies = [
- "ahash",
+ "ahash 0.7.6",
  "backoff",
  "derivative",
  "futures",
@@ -921,7 +933,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "950ff2a1ad61768b9fe9b3a1eded194feba83c5b4f94252dcff9fa6dae51ce4d"
 dependencies = [
- "ahash",
+ "ahash 0.7.6",
  "clap",
  "drain",
  "futures-core",
@@ -1002,7 +1014,7 @@ dependencies = [
 name = "linkerd-policy-controller-core"
 version = "0.1.0"
 dependencies = [
- "ahash",
+ "ahash 0.8.0",
  "anyhow",
  "async-trait",
  "chrono",
@@ -1050,7 +1062,7 @@ dependencies = [
 name = "linkerd-policy-controller-k8s-index"
 version = "0.1.0"
 dependencies = [
- "ahash",
+ "ahash 0.8.0",
  "anyhow",
  "chrono",
  "futures",
