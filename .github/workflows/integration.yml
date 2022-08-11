@@ -361,6 +361,11 @@ jobs:
       - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: ls -l image-archives/linkerd
       - run: just linkerd-mc-deps-build
+      - name: Setup deps
+        run: |
+          echo "PATH=$PATH" >> "$GITHUB_ENV"
+          bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
+          just linkerd-mc-deps-build
       - run: |
           set -euo pipefail
           # Create source and target clusters

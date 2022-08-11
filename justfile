@@ -472,11 +472,15 @@ _linkerd-mc-ready:
 		--namespace=linkerd-multicluster --selector='linkerd.io/extension=multicluster' \
 		timeout=1m
 
+k3d-mc-src-ctx := k3d-k8s + "-source"
+k3d-mc-tgt-ctx := k3d-k8s + "-target"
 multicluster-integration-tests: linkerd-mc-load
 	#!/usr/bin/env bash
 	GO111MODULE=on go test -test.timeout=60m --failfast --mod=readonly \
 				./test/integration/multicluster/... \
-				-integration-tests -linkerd="$(pwd)/bin/linkerd"
+				-integration-tests -linkerd="$(pwd)/bin/linkerd" \
+				-multicluster-source-context="{{ k3d-mc-src-ctx }}" \
+				-multicluster-target-context="{{ k3d-mc-tgt-ctx }}"
 
 ##
 ## Devcontainer
