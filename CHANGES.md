@@ -14,7 +14,7 @@ support the new policy resources: ServerAuthorization and HTTPRoute.
 * Added support for policy metadata in linkerd tap
 * Fixed an issue where certain control plane components were not restarting as
   necessary after a trust root rotation
-* Added a ServerAccount token Secret to the multicluster extension to support
+* Added a ServiceAccount token Secret to the multicluster extension to support
   Kubernetes versions >= v1.24
 * Fixed an issuer where the --default-inbound-policy setting was not being
   respected
