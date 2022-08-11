@@ -36,6 +36,18 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" $ }}
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{.}}-token
+  {{ include "partials.namespace" $ }}
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    kubernetes.io/service-account.name: {{.}}
+    {{ include "partials.annotations.created-by" $ }}
+type: kubernetes.io/service-account-token
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:

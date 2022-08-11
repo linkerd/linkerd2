@@ -109,25 +109,17 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				return err
 			}
 
-			var secretName string
-			for _, s := range sa.Secrets {
-				if strings.HasPrefix(s.Name, fmt.Sprintf("%s-token", sa.Name)) {
-					secretName = s.Name
-					break
-				}
+			listOpts := metav1.ListOptions{
+				FieldSelector: fmt.Sprintf("type=%s", corev1.SecretTypeServiceAccountToken),
 			}
-			if secretName == "" {
-				return fmt.Errorf("could not find service account token secret for %s", sa.Name)
-			}
-
-			secret, err := k.CoreV1().Secrets(opts.namespace).Get(cmd.Context(), secretName, metav1.GetOptions{})
+			secrets, err := k.CoreV1().Secrets(opts.namespace).List(cmd.Context(), listOpts)
 			if err != nil {
 				return err
 			}
 
-			token, ok := secret.Data[tokenKey]
-			if !ok {
-				return fmt.Errorf("could not find the token data in the service account secret")
+			token, err := extractSAToken(secrets.Items, sa.Name)
+			if err != nil {
+				return err
 			}
 
 			context, ok := config.Contexts[config.CurrentContext]
@@ -141,7 +133,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 			}
 			config.AuthInfos = map[string]*api.AuthInfo{
 				opts.serviceAccountName: {
-					Token: string(token),
+					Token: token,
 				},
 			}
 
@@ -434,4 +426,20 @@ func extractGatewayPort(gateway *corev1.Service) (uint32, error) {
 		}
 	}
 	return 0, fmt.Errorf("gateway service %s has no gateway port named %s", gateway.Name, k8s.GatewayPortName)
+}
+
+func extractSAToken(secrets []corev1.Secret, saName string) (string, error) {
+	for _, secret := range secrets {
+		boundSA := secret.Annotations[saNameAnnotationKey]
+		if saName == boundSA {
+			token, ok := secret.Data[tokenKey]
+			if !ok {
+				return "", fmt.Errorf("could not find the token data in service account secret %s", secret.Name)
+			}
+
+			return string(token), nil
+		}
+	}
+
+	return "", fmt.Errorf("could not find service account token secret for %s", saName)
 }

@@ -22,6 +22,7 @@ const (
 	helmMulticlusterLinkDefaultChartName = "linkerd-multicluster-link"
 	tokenKey                             = "token"
 
+	saNameAnnotationKey       = "kubernetes.io/service-account.name"
 	defaultServiceAccountName = "linkerd-service-mirror-remote-access-default"
 )
 
