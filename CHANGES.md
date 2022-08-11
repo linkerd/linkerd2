@@ -1,5 +1,24 @@
 # Changes
 
+## edge-22.8.2
+
+This release is considered a release candidate for stable-2.12.0 and we
+encourage you to try it out! It includes an update to the multicluster extension
+which adds support for Kubernetes v1.24 and also updates many CLI commands to
+support the new policy resources: ServerAuthorization and HTTPRoute.
+
+* Updated linkerd check to allow RSA signed trust anchors (thanks @danibaeyens)
+* Fixed some invalid yaml in the viz extension's tap-injector template (thanks @wc-s)
+* Added support for AuthorizationPolicy and HttpRoute to viz authz command
+* Added support for AuthorizationPolicy and HttpRoute to viz stat
+* Added support for policy metadata in linkerd tap
+* Fixed an issue where certain control plane components were not restarting as
+  necessary after a trust root rotation
+* Added a ServiceAccount token Secret to the multicluster extension to support
+  Kubernetes versions >= v1.24
+* Fixed an issuer where the --default-inbound-policy setting was not being
+  respected
+
 ## edge-22.8.1
 
 This releases introduces default probe authorization. This means that on
