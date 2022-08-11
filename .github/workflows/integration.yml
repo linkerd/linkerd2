@@ -368,7 +368,8 @@ jobs:
       - run: docker load <image-archives/policy-controller.tar
       - run: docker load <image-archives/proxy.tar
       - run: docker image ls
-      - run: |
+      - name: Create k3d clusters
+        run: |
           set -euo pipefail
           # Create source and target clusters
           for ctx in source target; do
@@ -377,3 +378,6 @@ jobs:
           done
         shell: bash
       - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' k3d-k8s='${{ matrix.k8s }}' multicluster-integration-tests
+        env:
+          LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+

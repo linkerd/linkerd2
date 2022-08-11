@@ -442,10 +442,7 @@ linkerd-mc-uninstall:
     {{ _linkerd }} mc  uninstall \
         | {{ _kubectl }} delete -f -
 
-linkerd-mc-deps-build:
-	docker pull -q {{ mc-gateway-image }}
-
-linkerd-mc-build: linkerd-mc-deps-build
+linkerd-mc-build:
 	TAG={{ linkerd-tag }} bin/docker-build-controller
 
 linkerd-mc-load: _linkerd-mc-images _k3d-init
