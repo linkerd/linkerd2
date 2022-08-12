@@ -156,6 +156,7 @@ jobs:
             Cargo.lock
             charts/linkerd-control-plane/**
             charts/linkerd-crds/templates/policy/**
+            justfile
             policy-controller/**
             policy-test/**
     outputs:

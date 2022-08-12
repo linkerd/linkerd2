@@ -42,14 +42,14 @@ rs-doc *flags:
         {{ flags }}
 
 rs-test-build:
-    {{ _cargo }} nextest run --no-run --frozen \
+    {{ _cargo-test }} --no-run --frozen \
         --workspace --exclude=linkerd-policy-test \
         {{ _features }} \
         {{ _fmt }}
 
 # Run Rust unit tests
 rs-test *flags:
-    {{ _cargo }} nextest run --frozen \
+    {{ _cargo-test }} --frozen \
         --workspace --exclude=linkerd-policy-test \
         {{ if rs-build-type == "release" { "--release" } else { "" } }} \
         {{ _features }} \
@@ -97,6 +97,16 @@ _features := if rs-features == "all" {
         "--no-default-features --features=" + rs-features
     } else { "" }
 
+# Use cargo-nextest if it is available. It may not be available when running
+# outside of the devcontainer.
+_cargo-test := _cargo + ```
+    if command -v cargo-nextest >/dev/null 2>&1 ; then
+        echo " nextest run"
+    else
+        echo " test"
+    fi
+    ```
+
 ##
 ## Policy integration tests
 ##
@@ -108,11 +118,11 @@ policy-test: linkerd-install policy-test-deps-load policy-test-run policy-test-c
 
 # Run the policy tests without installing linkerd.
 policy-test-run *flags:
-    cd policy-test && {{ _cargo }} nextest run {{ flags }}
+    cd policy-test && {{ _cargo-test }} {{ flags }}
 
 # Build the policy tests without running them.
 policy-test-build:
-    cd policy-test && {{ _cargo }} nextest run --no-run {{ _fmt }}
+    cd policy-test && {{ _cargo-test }} --no-run {{ _fmt }}
 
 # Delete all test namespaces and remove linkerd from the cluster.
 policy-test-cleanup:

@@ -374,7 +374,7 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 
 		flag.NewStringFlag(proxyFlags, "default-inbound-policy", defaults.Proxy.DefaultInboundPolicy, "Inbound policy to use to control inbound access to the proxy",
 			func(values *l5dcharts.Values, value string) error {
-				values.Proxy.DefaultInboundPolicy = value
+				values.PolicyController.DefaultAllowPolicy = value
 				return nil
 			}),
 
