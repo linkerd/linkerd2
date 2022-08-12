@@ -206,16 +206,19 @@ jobs:
     - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
       with:
         go-version: '1.17'
-    - name: Install linkerd CLI
+    - name: Set environment variables from scripts
       run: |
         TAG='${{ needs.tag.outputs.tag }}'
         CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
+        echo "CMD=$CMD" >> "$GITHUB_ENV"
+        echo "TAG=$TAG" >> "$GITHUB_ENV"
+    - name: Install linkerd CLI
+      run: |
         bin/docker-pull-binaries "$TAG"
         "$CMD" version --client
         # validate CLI version matches the repo
         [[ "$TAG" == "$($CMD version --short --client)" ]]
         echo "Installed Linkerd CLI version: $TAG"
-        echo "CMD=$CMD" >> "$GITHUB_ENV"
     - name: Set KUBECONFIG environment variables
       run: |
         mkdir -p "$HOME"/.kube
