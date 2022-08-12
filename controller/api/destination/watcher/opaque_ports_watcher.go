@@ -4,7 +4,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/linkerd/linkerd2-proxy-init/ports"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/util"
@@ -202,7 +201,7 @@ func parseServiceOpaquePorts(annotation string, sps []corev1.ServicePort) []stri
 		if named {
 			values = append(values, strconv.Itoa(int(port)))
 		} else {
-			pr, err := ports.ParsePortRange(pr)
+			pr, err := util.ParsePortRange(pr)
 			if err != nil {
 				logging.Warnf("Invalid port range [%v]: %s", pr, err)
 				continue
