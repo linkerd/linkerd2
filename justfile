@@ -221,7 +221,8 @@ _k3d-dns-ready:
     while [ $({{ _kubectl }} get po -n kube-system -l k8s-app=kube-dns -o json |jq '.items | length') = "0" ]; do sleep 1 ; done
     {{ _kubectl }} wait pod --for=condition=ready \
         --namespace=kube-system --selector=k8s-app=kube-dns \
-        --timeout=1m
+        --timeout=1m \
+        1>&2
 
 ##
 ## Docker images
