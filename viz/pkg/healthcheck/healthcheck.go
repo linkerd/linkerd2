@@ -14,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/viz/metrics-api/client"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/pkg/labels"
+	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiregistrationv1client "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/typed/apiregistration/v1"
@@ -301,6 +302,12 @@ func (hc *HealthChecker) VizDataPlaneCategory() *healthcheck.Category {
 				}
 				return hc.CheckNamespace(ctx, hc.DataPlaneNamespace, true)
 			}),
+		*healthcheck.NewChecker("prometheus is authorized to scrape data plane pods").
+			WithHintAnchor("l5d-viz-data-plane-prom-authz").
+			Fatal().
+			WithCheck(func(ctx context.Context) error {
+				return hc.checkPromAuthorized(ctx)
+			}),
 		*healthcheck.NewChecker("data plane proxy metrics are present in Prometheus").
 			WithHintAnchor("l5d-data-plane-prom").
 			Warning().
@@ -380,4 +387,46 @@ func fetchTapCaBundle(ctx context.Context, kubeAPI *k8s.KubernetesAPI) ([]*x509.
 		return nil, err
 	}
 	return caBundle, nil
+}
+
+func (hc *HealthChecker) checkPromAuthorized(ctx context.Context) error {
+	nses, err := hc.getDataPlaneNamespaces(ctx)
+	if err != nil {
+		return err
+	}
+
+	notAuthorizedNses := make([]string, 0)
+	for _, ns := range nses {
+		defaultPolicy := ns.GetAnnotations()[k8s.ProxyDefaultInboundPolicyAnnotation]
+		if defaultPolicy == "" {
+			continue
+		}
+
+		if defaultPolicy == k8s.Deny {
+			// TODO(eliza): check if the allow-scrapes authz exists in the ns
+			notAuthorizedNses = append(notAuthorizedNses, ns.GetName())
+		}
+	}
+
+	if len(notAuthorizedNses) > 0 {
+		return fmt.Errorf("Prometheus is not authorized to scrape data plane pods in the following namespaces: %s", strings.Join(notAuthorizedNses, ", "))
+	}
+
+	return nil
+}
+
+func (hc *HealthChecker) getDataPlaneNamespaces(ctx context.Context) ([]corev1.Namespace, error) {
+	if hc.DataPlaneNamespace != "" {
+		ns, err := hc.KubeAPIClient().GetNamespace(ctx, hc.DataPlaneNamespace)
+		if err != nil {
+			return nil, err
+		}
+		return []corev1.Namespace{*ns}, nil
+	}
+
+	nses, err := hc.KubeAPIClient().CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return nses.Items, nil
 }
