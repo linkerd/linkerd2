@@ -164,10 +164,9 @@ func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet
 			namespaceLabel: model.LabelValue(req.GetSelector().GetResource().GetNamespace()),
 		})
 	}
-	var groupBy model.LabelNames
+	var resourceGrouping model.LabelName
 	if req.GetSelector().GetResource().GetType() == k8s.Server {
-		// note that metricToKey assumes the label ordering (..., namespace, name)
-		groupBy = model.LabelNames{authorizationNameLabel, authorizationKindLabel, routeNameLabel, routeKindLabel, serverKindLabel, namespaceLabel, serverNameLabel}
+		resourceGrouping = serverNameLabel
 		labels = labels.Merge(model.LabelSet{
 			serverKindLabel: model.LabelValue("server"),
 		})
@@ -177,8 +176,7 @@ func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet
 			})
 		}
 	} else if req.GetSelector().GetResource().GetType() == k8s.ServerAuthorization {
-		// note that metricToKey assumes the label ordering (..., namespace, name)
-		groupBy = model.LabelNames{serverNameLabel, serverKindLabel, routeNameLabel, routeKindLabel, authorizationKindLabel, namespaceLabel, authorizationNameLabel}
+		resourceGrouping = authorizationNameLabel
 		labels = labels.Merge(model.LabelSet{
 			authorizationKindLabel: model.LabelValue("serverauthorization"),
 		})
@@ -200,6 +198,8 @@ func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet
 	default:
 		// no extra labels needed
 	}
+
+	groupBy := model.LabelNames{namespaceLabel, resourceGrouping}
 
 	return labels, groupBy
 }

@@ -593,23 +593,9 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 				}
 			}
 
-			if authzStats[resource] == nil {
-				srv := pb.Resource{
-					Type: string(sample.Metric[serverKindLabel]),
-					Name: string(sample.Metric[serverNameLabel]),
-				}
-				route := pb.Resource{
-					Type: string(sample.Metric[routeKindLabel]),
-					Name: string(sample.Metric[routeNameLabel]),
-				}
-				authz := pb.Resource{
-					Type: string(sample.Metric[authorizationKindLabel]),
-					Name: string(sample.Metric[authorizationNameLabel]),
-				}
-				authzStats[resource] = &pb.ServerStats{
-					Srv:   &srv,
-					Route: &route,
-					Authz: &authz,
+			addAuthzStats := func() {
+				if authzStats[resource] == nil {
+					authzStats[resource] = &pb.ServerStats{}
 				}
 			}
 
@@ -643,8 +629,10 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 				addTCPStats()
 				tcpStats[resource].WriteBytesTotal = value
 			case promAllowedRequests:
+				addAuthzStats()
 				authzStats[resource].AllowedCount = value
 			case promDeniedRequests:
+				addAuthzStats()
 				authzStats[resource].DeniedCount = value
 			}
 		}
@@ -662,8 +650,8 @@ func metricToKey(req *pb.StatSummaryRequest, metric model.Metric, groupBy model.
 		Name: string(metric[groupBy[len(groupBy)-1]]),
 	}
 
-	if len(groupBy) >= 2 {
-		key.Namespace = string(metric[groupBy[len(groupBy)-2]])
+	if len(groupBy) == 2 {
+		key.Namespace = string(metric[groupBy[0]])
 	}
 
 	return key

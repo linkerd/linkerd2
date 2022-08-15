@@ -16,8 +16,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const unauthorized = "[UNAUTHORIZED]"
-
 // NewCmdAuthz creates a new cobra command `authz`
 func NewCmdAuthz() *cobra.Command {
 	options := newStatOptions()
@@ -75,10 +73,8 @@ func NewCmdAuthz() *cobra.Command {
 			}
 
 			cols := []table.Column{
-				table.NewColumn("ROUTE").WithLeftAlign(),
 				table.NewColumn("SERVER").WithLeftAlign(),
-				table.NewColumn("AUTHORIZATION_POLICY").WithLeftAlign(),
-				table.NewColumn("SERVER_AUTHORIZATION").WithLeftAlign(),
+				table.NewColumn("AUTHZ").WithLeftAlign(),
 				table.NewColumn("SUCCESS"),
 				table.NewColumn("RPS"),
 				table.NewColumn("LATENCY_P50"),
@@ -93,56 +89,62 @@ func NewCmdAuthz() *cobra.Command {
 				os.Exit(1)
 			}
 			for _, server := range servers {
-				requestParams := util.StatsSummaryRequestParams{
-					StatsBaseRequestParams: util.StatsBaseRequestParams{
-						TimeWindow:    options.timeWindow,
-						ResourceName:  server,
-						ResourceType:  k8s.Server,
-						Namespace:     options.namespace,
-						AllNamespaces: false,
-					},
-				}
-
-				req, err := util.BuildStatSummaryRequest(requestParams)
-				if err != nil {
-					return err
-				}
-				resp, err := requestStatsFromAPI(client, req)
+				sazs, err := k8s.ServerAuthorizationsForServer(cmd.Context(), k8sAPI, options.namespace, server)
 				if err != nil {
 					fmt.Fprint(os.Stderr, err.Error())
 					os.Exit(1)
 				}
+				for _, saz := range sazs {
+					requestParams := util.StatsSummaryRequestParams{
+						StatsBaseRequestParams: util.StatsBaseRequestParams{
+							TimeWindow:    options.timeWindow,
+							ResourceName:  saz,
+							ResourceType:  k8s.ServerAuthorization,
+							Namespace:     options.namespace,
+							AllNamespaces: false,
+						},
+						ToNamespace: options.namespace,
+					}
+					requestParams.ToName = server
+					requestParams.ToType = k8s.Server
 
-				for _, row := range respToRows(resp) {
-					var authzp, saz, route string
-					authz := row.GetSrvStats().GetAuthz()
-					if authz != nil {
-						if authz.Type == "authorizationpolicy" {
-							authzp = authz.Name
-						} else if authz.Type == "serverauthorization" {
-							saz = authz.Name
+					req, err := util.BuildStatSummaryRequest(requestParams)
+					if err != nil {
+						return err
+					}
+					resp, err := requestStatsFromAPI(client, req)
+					if err != nil {
+						fmt.Fprint(os.Stderr, err.Error())
+						os.Exit(1)
+					}
+
+					for _, row := range respToRows(resp) {
+						if row.Stats == nil {
+							rows = append(rows, table.Row{
+								server,
+								saz,
+								"-",
+								"-",
+								"-",
+								"-",
+								"-",
+							})
+						} else {
+							rows = append(rows, table.Row{
+								server,
+								saz,
+								fmt.Sprintf("%.2f%%", getSuccessRate(row.Stats.GetSuccessCount(), row.Stats.GetFailureCount())*100),
+								fmt.Sprintf("%.1frps", getRequestRate(row.Stats.GetSuccessCount(), row.Stats.GetFailureCount(), row.TimeWindow)),
+								fmt.Sprintf("%dms", row.Stats.LatencyMsP50),
+								fmt.Sprintf("%dms", row.Stats.LatencyMsP95),
+								fmt.Sprintf("%dms", row.Stats.LatencyMsP99),
+							})
 						}
-					}
-					if row.GetSrvStats().GetRoute() != nil {
-						route = row.GetSrvStats().GetRoute().Name
-					}
-					if row.Stats != nil {
-						rows = append(rows, table.Row{
-							route,
-							server,
-							authzp,
-							saz,
-							fmt.Sprintf("%.2f%%", getSuccessRate(row.Stats.GetSuccessCount(), row.Stats.GetFailureCount())*100),
-							fmt.Sprintf("%.1frps", getRequestRate(row.Stats.GetSuccessCount(), row.Stats.GetFailureCount(), row.TimeWindow)),
-							fmt.Sprintf("%dms", row.Stats.LatencyMsP50),
-							fmt.Sprintf("%dms", row.Stats.LatencyMsP95),
-							fmt.Sprintf("%dms", row.Stats.LatencyMsP99),
-						})
 					}
 				}
 
 				// Unauthorized
-				requestParams = util.StatsSummaryRequestParams{
+				requestParams := util.StatsSummaryRequestParams{
 					StatsBaseRequestParams: util.StatsBaseRequestParams{
 						TimeWindow:    options.timeWindow,
 						ResourceName:  server,
@@ -154,26 +156,20 @@ func NewCmdAuthz() *cobra.Command {
 					LabelSelector: options.labelSelector,
 				}
 
-				req, err = util.BuildStatSummaryRequest(requestParams)
+				req, err := util.BuildStatSummaryRequest(requestParams)
 				if err != nil {
 					return err
 				}
-				resp, err = requestStatsFromAPI(client, req)
+				resp, err := requestStatsFromAPI(client, req)
 				if err != nil {
 					fmt.Fprint(os.Stderr, err.Error())
 					os.Exit(1)
 				}
 				for _, row := range respToRows(resp) {
-					var route string
-					if row.GetSrvStats().GetRoute() != nil {
-						route = row.GetSrvStats().GetRoute().Name
-					}
 					if row.SrvStats != nil && row.SrvStats.DeniedCount > 0 {
 						rows = append(rows, table.Row{
-							route,
 							server,
-							unauthorized,
-							unauthorized,
+							"[UNAUTHORIZED]",
 							"-",
 							fmt.Sprintf("%.1frps", getRequestRate(row.SrvStats.DeniedCount, 0, row.TimeWindow)),
 							"-",

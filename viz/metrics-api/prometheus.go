@@ -46,8 +46,6 @@ const (
 	serverNameLabel        = model.LabelName("srv_name")
 	authorizationKindLabel = model.LabelName("authz_kind")
 	authorizationNameLabel = model.LabelName("authz_name")
-	routeKindLabel         = model.LabelName("route_kind")
-	routeNameLabel         = model.LabelName("route_name")
 )
 
 var (
