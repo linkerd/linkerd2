@@ -22,7 +22,7 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
     - [Formatting](#formatting)
     - [Building the CLI for development](#building-the-cli-for-development)
     - [Running the control plane for development](#running-the-control-plane-for-development)
-    - [Running the Tap APIService for development](#running-the-tap-apiservice-for-development)
+    - [Running the Tap APIService for development](#debugging-the-tap-apiservice-for-development)
     - [Generating CLI docs](#generating-cli-docs)
   - [Web](#web)
     - [First time setup](#first-time-setup)
@@ -41,7 +41,7 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
   - [Making changes to the chart templates](#making-changes-to-the-chart-templates)
   - [Generating Helm charts docs](#generating-helm-charts-docs)
   - [Using helm-docs](#using-helm-docs)
-  - [Annotating values.yml](#annotating-values.yml)
+  - [Annotating values.yml](#annotating-valuesyml)
   - [Markdown templates](#markdown-templates)
 
 ## Repo layout

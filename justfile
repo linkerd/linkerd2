@@ -1,5 +1,8 @@
 # See https://just.systems/man/en
 
+markdowlint:
+    markdownlint-cli2 '**/*.md' '#**/node_modules' '#target'
+
 ##
 ## Rust
 ##

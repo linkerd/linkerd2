@@ -51,7 +51,6 @@ helm install linkerd-jaeger -n linkerd-jaeger --create-namespace linkerd/linkerd
 * Follow [@linkerd][twitter] on Twitter.
 * Join the [Linkerd Slack][slack].
 
-[cncf]: https://www.cncf.io/
 [getting-started]: https://linkerd.io/2/getting-started/
 [linkerd2]: https://github.com/linkerd/linkerd2
 [linkerd-announce]: https://lists.cncf.io/g/cncf-linkerd-announce
