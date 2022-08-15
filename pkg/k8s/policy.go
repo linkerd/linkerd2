@@ -8,7 +8,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
-	policyv1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -23,12 +22,6 @@ type Authorization struct {
 	ServerAuthorization string
 	AuthorizationPolicy string
 }
-
-// AuthorizationPolicyGVR is the GroupVersionResource for the AuthorizationPolicy resource.
-var AuthorizationPolicyGVR = policyv1.SchemeGroupVersion.WithResource("authorizationpolicies")
-
-// HTTPRouteGVR is the GroupVersionResource for the HTTPRoute resource.
-var HTTPRouteGVR = policyv1.SchemeGroupVersion.WithResource("httproutes")
 
 // SazGVR is the GroupVersionResource for the ServerAuthorization resource.
 var SazGVR = serverauthorizationv1beta1.SchemeGroupVersion.WithResource("serverauthorizations")

@@ -323,7 +323,6 @@ type rowStats struct {
 
 type srvStats struct {
 	unauthorizedRate float64
-	server           string
 }
 
 type row struct {
@@ -359,7 +358,7 @@ func statHasRequestData(stat *pb.BasicStats) bool {
 }
 
 func isPodOwnerResource(typ string) bool {
-	return typ != k8s.Authority && typ != k8s.Service && typ != k8s.Server && typ != k8s.ServerAuthorization && typ != k8s.AuthorizationPolicy && typ != k8s.HTTPRoute
+	return typ != k8s.Authority && typ != k8s.Service && typ != k8s.Server && typ != k8s.ServerAuthorization
 }
 
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
@@ -445,7 +444,6 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 		if r.SrvStats != nil {
 			statTables[resourceKey][key].srvStats = &srvStats{
 				unauthorizedRate: getSuccessRate(r.SrvStats.GetDeniedCount(), r.SrvStats.GetAllowedCount()),
-				server:           r.GetSrvStats().Srv.Name,
 			}
 		}
 	}
@@ -490,7 +488,7 @@ func showTCPBytes(options *statOptions, resourceType string) bool {
 }
 
 func showTCPConns(resourceType string) bool {
-	return resourceType != k8s.Authority && resourceType != k8s.ServerAuthorization && resourceType != k8s.AuthorizationPolicy && resourceType != k8s.HTTPRoute
+	return resourceType != k8s.Authority && resourceType != k8s.ServerAuthorization
 }
 
 func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType string, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxDstLength, maxWeightLength int, options *statOptions) {
@@ -528,10 +526,6 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		headers = append(headers, "STATUS")
 	}
 
-	if resourceType == k8s.HTTPRoute {
-		headers = append(headers, "SERVER")
-	}
-
 	if hasDstStats {
 		headers = append(headers,
 			fmt.Sprintf(dstTemplate, dstHeader),
@@ -541,11 +535,11 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 			fmt.Sprintf(apexTemplate, apexHeader),
 			fmt.Sprintf(leafTemplate, leafHeader),
 			fmt.Sprintf(weightTemplate, weightHeader))
-	} else if resourceType != k8s.Server && resourceType != k8s.ServerAuthorization && resourceType != k8s.AuthorizationPolicy && resourceType != k8s.HTTPRoute {
+	} else if resourceType != k8s.Server && resourceType != k8s.ServerAuthorization {
 		headers = append(headers, "MESHED")
 	}
 
-	if resourceType == k8s.Server || resourceType == k8s.HTTPRoute {
+	if resourceType == k8s.Server {
 		headers = append(headers, "UNAUTHORIZED")
 	}
 
@@ -589,15 +583,12 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 		} else if hasDstStats {
 			templateString = "%s\t%s\t%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
 			templateStringEmpty = "%s\t%s\t%s\t-\t-\t-\t-\t-\t"
-		} else if resourceType == k8s.ServerAuthorization || resourceType == k8s.AuthorizationPolicy {
+		} else if resourceType == k8s.ServerAuthorization {
 			templateString = "%s\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
 			templateStringEmpty = "%s\t-\t-\t-\t-\t-\t"
 		} else if resourceType == k8s.Server {
 			templateString = "%s\t%.1frps\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
 			templateStringEmpty = "%s\t%.1frps\t-\t-\t-\t-\t-\t"
-		} else if resourceType == k8s.HTTPRoute {
-			templateString = "%s\t%s\t%.1frps\t%.2f%%\t%.1frps\t%dms\t%dms\t%dms\t"
-			templateStringEmpty = "%s\t%s\t%.1frps\t-\t-\t-\t-\t-\t"
 		}
 
 		if showTCPConns(resourceType) {
@@ -658,17 +649,13 @@ func printSingleStatTable(stats map[string]*row, resourceTypeLabel, resourceType
 				stats[key].dstStats.dst+strings.Repeat(" ", dstPadding),
 				stats[key].dstStats.weight,
 			)
-		} else if resourceType != k8s.ServerAuthorization && resourceType != k8s.Server && resourceType != k8s.AuthorizationPolicy && resourceType != k8s.HTTPRoute {
+		} else if resourceType != k8s.ServerAuthorization && resourceType != k8s.Server {
 			values = append(values, []interface{}{
 				stats[key].meshed,
 			}...)
 		}
 
-		if resourceType == k8s.HTTPRoute {
-			values = append(values, stats[key].srvStats.server)
-		}
-
-		if resourceType == k8s.Server || resourceType == k8s.HTTPRoute {
+		if resourceType == k8s.Server {
 			var unauthorizedRate float64
 			if stats[key].srvStats != nil {
 				unauthorizedRate = stats[key].srvStats.unauthorizedRate

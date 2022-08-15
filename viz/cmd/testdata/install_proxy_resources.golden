@@ -34,7 +34,7 @@ rules:
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["policy.linkerd.io"]
-  resources: ["servers", "serverauthorizations", "authorizationpolicies", "httproutes"]
+  resources: ["servers", "serverauthorizations"]
   verbs: ["list", "get"]
 ---
 kind: ClusterRoleBinding
@@ -492,7 +492,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: b73fb1bf343c4203fbab8ee108c5eba2e07d184177e204677dc83d4cad2cd12b
+        checksum/config: ae930acf3edba3cbf32c43dacfa4808bf679c5c932870cb2a2a46de1023f01c8
         linkerd.io/created-by: linkerd/helm dev-undefined
         linkerd.io/inject: enabled
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"

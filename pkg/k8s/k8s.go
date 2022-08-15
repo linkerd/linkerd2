@@ -27,8 +27,6 @@ const (
 	Node                  = "node"
 	Server                = "server"
 	ServerAuthorization   = "serverauthorization"
-	AuthorizationPolicy   = "authorizationpolicy"
-	HTTPRoute             = "httproute"
 
 	PolicyAPIGroup   = "policy.linkerd.io"
 	PolicyAPIVersion = "v1beta1"
@@ -57,20 +55,18 @@ type resourceName struct {
 // AllResources is a sorted list of all resources defined as constants above.
 var AllResources = []string{
 	Authority,
-	AuthorizationPolicy,
 	CronJob,
 	DaemonSet,
 	Deployment,
-	HTTPRoute,
 	Job,
 	Namespace,
 	Pod,
-	ReplicaSet,
 	ReplicationController,
-	Server,
-	ServerAuthorization,
+	ReplicaSet,
 	Service,
 	ServiceProfile,
+	Server,
+	ServerAuthorization,
 	StatefulSet,
 }
 
@@ -117,8 +113,6 @@ var resourceNames = []resourceName{
 	{"sp", "serviceprofile", "serviceprofiles"},
 	{"saz", "serverauthorization", "serverauthorizations"},
 	{"srv", "server", "servers"},
-	{"ap", "authorizationpolicy", "authorizationpolicies"},
-	{"route", "httproute", "httproutes"},
 	{"sts", "statefulset", "statefulsets"},
 	{"ln", "link", "links"},
 	{"all", "all", "all"},
