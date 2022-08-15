@@ -5,7 +5,7 @@ ARG RUST_TOOLCHAIN=1.62.1
 ## Base
 ##
 
-FROM docker.io/debian:stable-slim as base
+FROM docker.io/debian:bullseye-slim as base
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
         curl \
@@ -64,7 +64,7 @@ ARG CARGO_TARPAULIN_VERSION=0.20.1
 RUN url="https://github.com/xd009642/tarpaulin/releases/download/${CARGO_TARPAULIN_VERSION}/cargo-tarpaulin-${CARGO_TARPAULIN_VERSION}-travis.tar.gz" ; \
     scurl "$url" | tar xzvf - -C /usr/local/bin cargo-tarpaulin
 
-FROM docker.io/rust:${RUST_TOOLCHAIN}-slim as rust
+FROM docker.io/rust:${RUST_TOOLCHAIN}-slim-bullseye as rust
 RUN rustup component add clippy rustfmt
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
@@ -172,6 +172,10 @@ RUN url="https://github.com/rhysd/actionlint/releases/download/${ACTIONLINT_VERS
 FROM docker.io/rust:${RUST_TOOLCHAIN}-slim as json5-to-json
 RUN cargo install json5-to-json
 
+FROM docker.io/node:16-bullseye-slim as node
+ARG MARKDOWNLINT_VERSION=0.5.1
+RUN npm install "markdownlint-cli2@${MARKDOWNLINT_VERSION}" --global
+
 ##
 ## Tools: Everything needed for a development environment, minus non-root settings.
 ##
@@ -197,7 +201,7 @@ ENV PROTOC_INCLUDE=/usr/local/include
 ## Runtime
 ##
 
-FROM docker.io/debian:stable as runtime
+FROM docker.io/debian:bullseye as runtime
 RUN apt update && apt upgrade -y --autoremove \
     && apt install -y \
         clang curl \
@@ -208,7 +212,6 @@ RUN apt update && apt upgrade -y --autoremove \
         libssl-dev \
         locales \
         lsb-release \
-        npm \
         pkg-config \
         sudo \
         time \
@@ -219,8 +222,11 @@ RUN sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && locale-gen
 RUN (echo "LC_ALL=en_US.UTF-8" \
     && echo "LANGUAGE=en_US.UTF-8") >/etc/default/locale
 
-ARG MARKDOWNLINT_VERSION=0.4.0
-RUN npm install "markdownlint-cli2@${MARKDOWNLINT_VERSION}" --global
+# Copy node utilities first, because the bin directory include symlinks that we want to preserve.
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
+COPY --from=node /usr/local/include/node /usr/local/include/node
+COPY --from=node /usr/local/man/man1/node.1 /usr/local/man/man1/
+COPY --from=node /usr/local/bin/ /usr/local/bin/
 
 ENV GOPATH=/go
 COPY --from=go /go/bin $GOPATH/bin

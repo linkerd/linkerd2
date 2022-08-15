@@ -105,12 +105,14 @@ bin/shellcheck -x bin/*
 The `test/integration` directory contains a test suite that can be run to
 validate Linkerd functionality via a series of end-to-end tests.
 
-### Prerequisites for default behavior
+### Prerequisites
+
+#### Prerequisites for default behavior
 
 The integration tests will configure their own k3s clusters by default (using
 the k3d helper). There are no prerequisites for this test path.
 
-### Prerequisites for existing cluster
+#### Prerequisites for existing cluster
 
 If integration tests should run on an existing Kubernetes cluster, then the
 `--skip-cluster-create` flag should be passed. This will disable the tests from
