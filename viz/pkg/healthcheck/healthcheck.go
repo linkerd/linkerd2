@@ -304,7 +304,7 @@ func (hc *HealthChecker) VizDataPlaneCategory() *healthcheck.Category {
 			}),
 		*healthcheck.NewChecker("prometheus is authorized to scrape data plane pods").
 			WithHintAnchor("l5d-viz-data-plane-prom-authz").
-			Fatal().
+			Warning().
 			WithCheck(func(ctx context.Context) error {
 				return hc.checkPromAuthorized(ctx)
 			}),
@@ -409,7 +409,7 @@ func (hc *HealthChecker) checkPromAuthorized(ctx context.Context) error {
 	}
 
 	if len(notAuthorizedNses) > 0 {
-		return fmt.Errorf("Prometheus is not authorized to scrape data plane pods in the following namespaces: %s", strings.Join(notAuthorizedNses, ", "))
+		return fmt.Errorf("Prometheus may not be authorized to scrape data plane pods in the following namespaces: %s", strings.Join(notAuthorizedNses, ", "))
 	}
 
 	return nil
