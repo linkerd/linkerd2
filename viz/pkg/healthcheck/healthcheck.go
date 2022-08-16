@@ -390,15 +390,29 @@ func fetchTapCaBundle(ctx context.Context, kubeAPI *k8s.KubernetesAPI) ([]*x509.
 }
 
 func (hc *HealthChecker) checkPromAuthorized(ctx context.Context) error {
-	nses, err := hc.getDataPlaneNamespaces(ctx)
+	api := hc.KubeAPIClient()
+	nses, err := hc.getDataPlaneNamespaces(ctx, api)
 	if err != nil {
 		return err
 	}
 
 	unauthorizedPods := []string{}
 	for _, ns := range nses {
-		// TODO(eliza): check if this namespace has an allow-scrapes config once
-		// that's implemented; if it has one, skip checking its pods.
+		// first, let's see if this namespace has an `allow-scrapes` policy. if
+		// it does, skip checking its pods --- prometheus will be able to scrape
+		// them even if they are default-deny.
+		_, err := api.L5dCrdClient.PolicyV1alpha1().AuthorizationPolicies(ns.GetName()).Get(ctx, "prometheus-scrape", metav1.GetOptions{})
+		if kerrors.IsNotFound(err) {
+			// no prometheus-scrape policy exists in this namespace
+		} else if err != nil {
+			// something went wrong while talking to the kube API
+			return err
+		} else {
+			// allow-scrapes policy exists in this namespace, don't check the
+			// pods.
+			continue
+		}
+
 		pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, ns.GetName())
 		if err != nil {
 			return fmt.Errorf("could not list pods in the %s namespace: %w", ns.GetName(), err)
@@ -438,22 +452,24 @@ func (hc *HealthChecker) checkPromAuthorized(ctx context.Context) error {
 
 	if len(unauthorizedPods) > 0 {
 		podList := strings.Join(unauthorizedPods, "\n")
-		return fmt.Errorf("prometheus may not be authorized to scrape the following pods:\n%s", podList)
+		return fmt.Errorf("prometheus may not be authorized to scrape the following pods:\n%s\n"+
+			"    consider running `linkerd viz allow-scrapes` to authorize prometheus scrapes",
+			podList)
 	}
 
 	return nil
 }
 
-func (hc *HealthChecker) getDataPlaneNamespaces(ctx context.Context) ([]corev1.Namespace, error) {
+func (hc *HealthChecker) getDataPlaneNamespaces(ctx context.Context, api *k8s.KubernetesAPI) ([]corev1.Namespace, error) {
 	if hc.DataPlaneNamespace != "" {
-		ns, err := hc.KubeAPIClient().GetNamespace(ctx, hc.DataPlaneNamespace)
+		ns, err := api.GetNamespace(ctx, hc.DataPlaneNamespace)
 		if err != nil {
 			return nil, err
 		}
 		return []corev1.Namespace{*ns}, nil
 	}
 
-	nses, err := hc.KubeAPIClient().CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	nses, err := api.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
