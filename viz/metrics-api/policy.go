@@ -184,7 +184,8 @@ func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet
 			})
 		}
 	} else if req.GetSelector().GetResource().GetType() == k8s.ServerAuthorization {
-		groupBy = model.LabelNames{serverNameLabel, serverKindLabel, routeNameLabel, routeKindLabel, authorizationKindLabel, namespaceLabel, authorizationNameLabel}
+		// note that metricToKey assumes the label ordering (..., namespace, name)
+		groupBy = model.LabelNames{namespaceLabel, authorizationNameLabel}
 		labels = labels.Merge(model.LabelSet{
 			authorizationKindLabel: model.LabelValue("serverauthorization"),
 		})
@@ -195,7 +196,7 @@ func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet
 		}
 	} else if req.GetSelector().GetResource().GetType() == k8s.AuthorizationPolicy {
 		// note that metricToKey assumes the label ordering (..., namespace, name)
-		groupBy = model.LabelNames{serverNameLabel, serverKindLabel, routeNameLabel, routeKindLabel, authorizationKindLabel, namespaceLabel, authorizationNameLabel}
+		groupBy = model.LabelNames{namespaceLabel, authorizationNameLabel}
 		labels = labels.Merge(model.LabelSet{
 			authorizationKindLabel: model.LabelValue("authorizationpolicy"),
 		})
@@ -206,7 +207,7 @@ func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet
 		}
 	} else if req.GetSelector().GetResource().GetType() == k8s.HTTPRoute {
 		// note that metricToKey assumes the label ordering (..., namespace, name)
-		groupBy = model.LabelNames{serverNameLabel, serverKindLabel, routeNameLabel, routeKindLabel, authorizationNameLabel, authorizationKindLabel, namespaceLabel, routeNameLabel}
+		groupBy = model.LabelNames{serverNameLabel, serverKindLabel, routeNameLabel, routeKindLabel, namespaceLabel, routeNameLabel}
 		if req.GetSelector().GetResource().GetName() != "" {
 			labels = labels.Merge(model.LabelSet{
 				routeNameLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
