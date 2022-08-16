@@ -465,11 +465,26 @@ _devcontainer-build tag target='':
         --{{ if devcontainer-build-mode == "push" { "push" } else { "load" } }}
 
 ##
-## Other tools...
+## GitHub Actions
 ##
 
+
+# Format actionlint output for Github Actions if running in CI.
+_actionlint-fmt := if env_var_or_default("GITHUB_ACTIONS", "") != "true" { "" } else {
+  '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A```%0A{{replace $err.Snippet "\\n" "%0A"}}%0A```\n{{end}}'
+}
+
+# Lints all GitHub Actions workflows
 action-lint:
-    actionlint .github/workflows/*.yml
+    actionlint {{ if _actionlint-fmt != '' { "-format '" + _actionlint-fmt + "'" } else { "" } }} .github/workflows/*
+
+# Ensure all devcontainer versions are in sync
+action-dev-check:
+    bin/action-dev-check
+
+##
+## Other tools...
+##
 
 md-lint:
     markdownlint-cli2 '**/*.md' '!**/node_modules' '!target'
