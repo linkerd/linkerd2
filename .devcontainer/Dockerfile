@@ -108,7 +108,7 @@ RUN apt update && apt upgrade -y --autoremove \
 RUN for p in \
     github.com/cweill/gotests/gotests@latest \
     github.com/go-delve/delve/cmd/dlv@latest \
-    github.com/golangci/golangci-lint/cmd/golangci-lint@v1.46.2 \
+    github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
     github.com/fatih/gomodifytags@latest \
     github.com/haya14busa/goplay/cmd/goplay@latest \
     github.com/josharian/impl@latest \
@@ -217,49 +217,47 @@ RUN apt update && apt upgrade -y --autoremove \
         time \
         unzip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-RUN sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && locale-gen
-RUN (echo "LC_ALL=en_US.UTF-8" \
-    && echo "LANGUAGE=en_US.UTF-8") >/etc/default/locale
+RUN sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen \
+    && locale-gen \
+    && (echo "LC_ALL=en_US.UTF-8" && echo "LANGUAGE=en_US.UTF-8") >/etc/default/locale
+RUN groupadd --gid=1000 code \
+    && useradd --create-home --uid=1000 --gid=1000 code \
+    && echo "code ALL=(root) NOPASSWD:ALL" >/etc/sudoers.d/code \
+    && chmod 0440 /etc/sudoers.d/code
 
 # Copy node utilities first, because the bin directory include symlinks that we want to preserve.
-COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
-COPY --from=node /usr/local/include/node /usr/local/include/node
 COPY --from=node /usr/local/man/man1/node.1 /usr/local/man/man1/
+COPY --from=node /usr/local/include/node /usr/local/include/node
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 COPY --from=node /usr/local/bin/ /usr/local/bin/
 
 ENV GOPATH=/go
 COPY --from=go /go/bin $GOPATH/bin
 COPY --from=go /usr/local/go /usr/local/go
-RUN chmod 777 /go
+RUN find "$GOPATH" -type d -exec chmod 777 '{}' +
 ENV PATH=/usr/local/go/bin:$GOPATH/bin:$PATH
 
 ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup
 COPY --from=rust $CARGO_HOME $CARGO_HOME
 COPY --from=rust $RUSTUP_HOME $RUSTUP_HOME
+RUN find "$CARGO_HOME" "$RUSTUP_HOME" -type d -exec chmod 777 '{}' +
 ENV PATH=$CARGO_HOME/bin:$PATH
 RUN rustup component add rust-analysis rust-std
 
 COPY --from=tools /usr/local/bin/* /usr/local/bin/
-COPY --from=protoc /usr/local/include/google /usr/local/include/google
 
+COPY --from=protoc /usr/local/include/google /usr/local/include/google
 ENV PROTOC_NO_VENDOR=1
 ENV PROTOC=/usr/local/bin/protoc
 ENV PROTOC_INCLUDE=/usr/local/include
 
 ENV DOCKER_BUILDKIT=1
-RUN groupadd --gid=1000 code \
-    && useradd --create-home --uid=1000 --gid=1000 code \
-    && echo "code ALL=(root) NOPASSWD:ALL" >/etc/sudoers.d/code \
-    && chmod 0440 /etc/sudoers.d/code \
-    && scurl https://raw.githubusercontent.com/microsoft/vscode-dev-containers/main/script-library/docker-debian.sh | bash -s \
+RUN scurl https://raw.githubusercontent.com/microsoft/vscode-dev-containers/main/script-library/docker-debian.sh | bash -s \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN chmod 777 $CARGO_HOME $RUSTUP_HOME
-ENV USER=code
 ENV HOME=/home/code
+ENV USER=code
 USER code
-
 ENTRYPOINT ["/usr/local/share/docker-init.sh"]
 CMD ["sleep", "infinity"]

@@ -1,7 +1,22 @@
 # See https://just.systems/man/en
 
-markdownlint:
-    markdownlint-cli2 '**/*.md' '!**/node_modules' '!target'
+lint: action-lint md-lint sh-lint rs-fetch rs-clippy rs-check-fmt go-lint
+
+##
+## Go
+##
+
+go-fetch:
+    go mod download
+
+go-fmt *flags:
+    bin/fmt {{ flags }}
+
+go-lint *flags:
+    golangci-lint run {{ flags }}
+
+go-test:
+    LINKERD_TEST_PRETTY_DIFF=1 gotestsum -- -race -v -mod=readonly ./...
 
 ##
 ## Rust
@@ -448,6 +463,19 @@ _devcontainer-build tag target='':
         --tag='{{ devcontainer-image }}:{{ tag }}{{ if target != "runtime" { "-" + target }  else { "" } }}' \
         --target='{{ target }}' \
         --{{ if devcontainer-build-mode == "push" { "push" } else { "load" } }}
+
+##
+## Other tools...
+##
+
+action-lint:
+    actionlint .github/workflows/*.yml
+
+md-lint:
+    markdownlint-cli2 '**/*.md' '!**/node_modules' '!target'
+
+sh-lint:
+    bin/shellcheck-all
 
 ##
 ## Git
