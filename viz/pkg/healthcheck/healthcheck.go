@@ -432,8 +432,12 @@ func (hc *HealthChecker) checkPromAuthorizedPods(pods []struct {
 		if defaultPolicy == k8s.Deny {
 			var ns string
 			if pod.string == hc.DataPlaneNamespace {
+				// if we're only checking one namespace, don't bother appending the
+				// namespace name to the pod's name in the error output
 				ns = ""
 			} else {
+				// otherwise, include the namespace name as well as the pod's
+				// name, since we are checking all namespaces.
 				ns = pod.string + "/"
 			}
 			unauthorizedPods = append(unauthorizedPods, fmt.Sprintf("\t* %s%s", ns, pod.Name))
