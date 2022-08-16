@@ -105,7 +105,7 @@ control plane.`,
   linkerd install | kubectl apply -f -
 
 The installation can be configured by using the --set, --values, --set-string and --set-file flags.
-A full list of configurable values can be found at https://www.artifacthub.io/packages/helm/linkerd2/linkerd2#values`,
+A full list of configurable values can be found at https://artifacthub.io/packages/helm/linkerd2/linkerd-control-plane#values`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var k8sAPI *k8s.KubernetesAPI
 			if !ignoreCluster {
