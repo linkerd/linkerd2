@@ -443,9 +443,13 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 		}
 
 		if r.SrvStats != nil {
+			server := ""
+			if r.GetSrvStats().Srv != nil {
+				server = r.GetSrvStats().Srv.Name
+			}
 			statTables[resourceKey][key].srvStats = &srvStats{
 				unauthorizedRate: getSuccessRate(r.SrvStats.GetDeniedCount(), r.SrvStats.GetAllowedCount()),
-				server:           r.GetSrvStats().Srv.Name,
+				server:           server,
 			}
 		}
 	}
