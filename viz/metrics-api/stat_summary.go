@@ -592,6 +592,7 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 					tcpStats[resource] = &pb.TcpStats{}
 				}
 			}
+
 			if authzStats[resource] == nil {
 				srv := pb.Resource{
 					Type: string(sample.Metric[serverKindLabel]),
