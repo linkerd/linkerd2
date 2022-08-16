@@ -136,10 +136,11 @@ func NewServer(
 	}
 
 	httpServer := &http.Server{
-		Addr:         addr,
-		ReadTimeout:  timeout,
-		WriteTimeout: timeout,
-		Handler:      wrappedServer,
+		Addr:              addr,
+		ReadTimeout:       timeout,
+		ReadHeaderTimeout: timeout,
+		WriteTimeout:      timeout,
+		Handler:           wrappedServer,
 	}
 
 	// webapp routes

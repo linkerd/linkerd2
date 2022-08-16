@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync/atomic"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -61,7 +62,8 @@ func NewServer(
 	}()
 
 	server := &http.Server{
-		Addr: addr,
+		Addr:              addr,
+		ReadHeaderTimeout: 10 * time.Second,
 		TLSConfig: &tls.Config{
 			MinVersion: tls.VersionTLS12,
 		},
