@@ -1,7 +1,13 @@
 # See https://just.systems/man/en
 
-markdownlint:
-    markdownlint-cli2 '**/*.md' '!**/node_modules' '!target'
+default: markdownlint rs-clippy rs-check-fmt go-lint
+
+##
+## Go
+##
+
+go-lint:
+    golangci-lint run ./...
 
 ##
 ## Rust
@@ -448,6 +454,13 @@ _devcontainer-build tag target='':
         --tag='{{ devcontainer-image }}:{{ tag }}{{ if target != "runtime" { "-" + target }  else { "" } }}' \
         --target='{{ target }}' \
         --{{ if devcontainer-build-mode == "push" { "push" } else { "load" } }}
+
+##
+## tools
+##
+
+markdownlint:
+    markdownlint-cli2 '**/*.md' '!**/node_modules' '!target'
 
 ##
 ## Git

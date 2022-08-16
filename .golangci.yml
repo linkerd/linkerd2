@@ -28,7 +28,6 @@ linters:
   - nakedret
   - revive
   - staticcheck
-  - structcheck
   - typecheck
   - unconvert
   - unparam
@@ -44,6 +43,10 @@ linters:
   # - maligned
   # - prealloc
   # - stylecheck
+
+  # https://github.com/golangci/golangci-lint/issues/2649
+  disable:
+  - structcheck
 
 issues:
   exclude-use-default: false
