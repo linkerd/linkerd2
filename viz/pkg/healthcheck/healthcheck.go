@@ -395,23 +395,55 @@ func (hc *HealthChecker) checkPromAuthorized(ctx context.Context) error {
 		return err
 	}
 
-	notAuthorizedNses := make([]string, 0)
+	checkedPods := []struct {
+		string
+		corev1.Pod
+	}{}
 	for _, ns := range nses {
-		defaultPolicy := ns.GetAnnotations()[k8s.ProxyDefaultInboundPolicyAnnotation]
-		if defaultPolicy == "" {
-			continue
+		// TODO(eliza): check if this namespace has an allow-scrapes config once
+		// that's implemented; if it has one, skip checking its pods.
+		pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, ns.GetName())
+		if err != nil {
+			return fmt.Errorf("could not list pods in the %s namespace: %w", ns.GetName(), err)
 		}
+		for _, pod := range pods {
+			checkedPods = append(checkedPods, struct {
+				string
+				corev1.Pod
+			}{ns.GetName(), pod})
+		}
+	}
+
+	if len(checkedPods) > 0 {
+		return hc.checkPromAuthorizedPods(checkedPods)
+	}
+
+	return nil
+}
+
+func (hc *HealthChecker) checkPromAuthorizedPods(pods []struct {
+	string
+	corev1.Pod
+}) error {
+	unauthorizedPods := []string{}
+	for _, pod := range pods {
+		defaultPolicy := pod.GetAnnotations()[k8s.ProxyDefaultInboundPolicyAnnotation]
 
 		if defaultPolicy == k8s.Deny {
-			// TODO(eliza): check if the allow-scrapes authz exists in the ns
-			notAuthorizedNses = append(notAuthorizedNses, ns.GetName())
+			var ns string
+			if pod.string == hc.DataPlaneNamespace {
+				ns = ""
+			} else {
+				ns = pod.string + "/"
+			}
+			unauthorizedPods = append(unauthorizedPods, fmt.Sprintf("\t* %s%s", ns, pod.Name))
 		}
 	}
 
-	if len(notAuthorizedNses) > 0 {
-		return fmt.Errorf("Prometheus may not be authorized to scrape data plane pods in the following namespaces: %s", strings.Join(notAuthorizedNses, ", "))
+	if len(unauthorizedPods) > 0 {
+		podList := strings.Join(unauthorizedPods, "\n")
+		return fmt.Errorf("prometheus may not be authorized to scrape the following pods:\n%s", podList)
 	}
-
 	return nil
 }
 
