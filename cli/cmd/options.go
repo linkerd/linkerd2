@@ -545,6 +545,18 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 		}
 	}
 
+	validPolicies := []string{"all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny"}
+	validPolicy := false
+	for _, policy := range validPolicies {
+		if policy == values.PolicyController.DefaultAllowPolicy {
+			validPolicy = true
+			break
+		}
+	}
+	if !validPolicy {
+		return fmt.Errorf("--default-inbound-policy must be one of: %s", strings.Join(validPolicies, ","))
+	}
+
 	return nil
 }
 
