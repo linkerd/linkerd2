@@ -140,7 +140,7 @@ func (kubeAPI *KubernetesAPI) CheckVersion(versionInfo *version.Info) error {
 
 // NamespaceExists validates whether a given namespace exists.
 func (kubeAPI *KubernetesAPI) NamespaceExists(ctx context.Context, namespace string) (bool, error) {
-	ns, err := kubeAPI.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+	ns, err := kubeAPI.GetNamespace(ctx, namespace)
 	if kerrors.IsNotFound(err) {
 		return false, nil
 	}
@@ -149,6 +149,11 @@ func (kubeAPI *KubernetesAPI) NamespaceExists(ctx context.Context, namespace str
 	}
 
 	return ns != nil, nil
+}
+
+// GetNamespace returns the namespace with a given name, if one exists.
+func (kubeAPI *KubernetesAPI) GetNamespace(ctx context.Context, namespace string) (*corev1.Namespace, error) {
+	return kubeAPI.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
 }
 
 // GetNodes returs all the nodes in a cluster.
