@@ -416,10 +416,22 @@ func (hc *HealthChecker) checkPromAuthorized(ctx context.Context) error {
 		}
 
 		for _, pod := range pods {
-			defaultPolicy := pod.GetAnnotations()[k8s.ProxyDefaultInboundPolicyAnnotation]
-
-			if defaultPolicy == k8s.Deny {
-				unauthorizedPods = append(unauthorizedPods, fmt.Sprintf("\t* %s%s", nsPrefix, pod.Name))
+			// rather than checking the value of the pod's
+			// `config.linkerd.io/default-inbound-policy` annotation, check the
+			// proxy container's actual env variable. if the cluster-wide
+			// default inbound policy is `deny`, there won't be an override
+			// annotation, but the proxy-injector will have set the env variable
+			// directly.
+			for _, c := range pod.Spec.Containers {
+				if c.Name == k8s.ProxyContainerName {
+					for _, env := range c.Env {
+						if env.Name == "LINKERD2_PROXY_INBOUND_DEFAULT_POLICY" && env.Value == "deny" {
+							unauthorizedPods = append(unauthorizedPods, fmt.Sprintf("\t* %s%s", nsPrefix, pod.Name))
+							break
+						}
+					}
+					break
+				}
 			}
 		}
 	}
