@@ -565,7 +565,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v1.6.2
+        version: v2.0.0
       iptablesMode: legacy
       logFormat: ""
       logLevel: ""
