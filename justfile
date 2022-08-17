@@ -275,7 +275,7 @@ proxy-image := DOCKER_REGISTRY + "/proxy"
 proxy-init-image := "ghcr.io/linkerd/proxy-init"
 policy-controller-image := DOCKER_REGISTRY + "/policy-controller"
 
-linkerd *flags: _k3d-init
+linkerd *flags:
     {{ _linkerd }} {{ flags }}
 
 # Install crds on the test cluster.
