@@ -9,6 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/k8s/resource"
 	"github.com/spf13/cobra"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -45,50 +46,48 @@ func uninstallRunE(ctx context.Context) error {
 		return err
 	}
 
+	// / `Uninstall` deletes cluster-scoped resources created by the extension
+	// (including the extension's namespace).
 	if err := pkgCmd.Uninstall(ctx, k8sAPI, selector); err != nil {
 		return err
 	}
 
 	// delete any HTTPRoute, AuthorizationPolicy, and Server resources created
-	// by the viz extension in any namespace
-	nses, err := k8sAPI.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	// by the viz extension in any namespace.
+	//
+	// note that these are not deleted by the `Uninstall` call above, because
+	// they are namespaced resources.
+	policy := k8sAPI.L5dCrdClient.PolicyV1alpha1()
+	authzs, err := policy.AuthorizationPolicies(v1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		return err
 	}
 
-	policy := k8sAPI.L5dCrdClient.PolicyV1alpha1()
-	for _, ns := range nses.Items {
-		authzs, err := policy.AuthorizationPolicies(ns.GetName()).List(ctx, metav1.ListOptions{LabelSelector: selector})
-		if err != nil {
+	for _, authz := range authzs.Items {
+		if err := deleteResource(authz.TypeMeta, authz.ObjectMeta); err != nil {
 			return err
 		}
+	}
 
-		for _, authz := range authzs.Items {
-			if err := deleteResource(authz.TypeMeta, authz.ObjectMeta); err != nil {
-				return err
-			}
-		}
+	rts, err := policy.HTTPRoutes(v1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
+	if err != nil {
+		return err
+	}
 
-		rts, err := policy.HTTPRoutes(ns.GetName()).List(ctx, metav1.ListOptions{LabelSelector: selector})
-		if err != nil {
+	for _, rt := range rts.Items {
+		if err := deleteResource(rt.TypeMeta, rt.ObjectMeta); err != nil {
 			return err
 		}
+	}
 
-		for _, rt := range rts.Items {
-			if err := deleteResource(rt.TypeMeta, rt.ObjectMeta); err != nil {
-				return err
-			}
-		}
+	srvs, err := k8sAPI.L5dCrdClient.ServerV1beta1().Servers(v1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
+	if err != nil {
+		return err
+	}
 
-		srvs, err := k8sAPI.L5dCrdClient.ServerV1beta1().Servers(ns.GetName()).List(ctx, metav1.ListOptions{LabelSelector: selector})
-		if err != nil {
+	for _, srv := range srvs.Items {
+		if err := deleteResource(srv.TypeMeta, srv.ObjectMeta); err != nil {
 			return err
-		}
-
-		for _, srv := range srvs.Items {
-			if err := deleteResource(srv.TypeMeta, srv.ObjectMeta); err != nil {
-				return err
-			}
 		}
 	}
 
