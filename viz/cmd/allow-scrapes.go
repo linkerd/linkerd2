@@ -17,7 +17,7 @@ metadata:
 spec:
   podSelector:
     matchExpressions:
-    - key: linkerd.io/proxy-deployment
+    - key: linkerd.io/control-plane-ns
       operator: Exists
   port: linkerd-admin
   proxyProtocol: HTTP/1
