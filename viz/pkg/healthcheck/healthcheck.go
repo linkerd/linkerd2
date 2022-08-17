@@ -406,7 +406,7 @@ func (hc *HealthChecker) checkPromAuthorized(ctx context.Context) error {
 			// no prometheus-scrape policy exists in this namespace
 		} else if err != nil {
 			// something went wrong while talking to the kube API
-			return err
+			return fmt.Errorf("could not get AuthorizationPolicies in the %s namespace: %w", ns.GetName(), err)
 		} else {
 			// allow-scrapes policy exists in this namespace, don't check the
 			// pods.
