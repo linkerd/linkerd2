@@ -1,4 +1,6 @@
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+#[derive(
+    Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Network {
     pub cidr: Cidr,
@@ -6,7 +8,7 @@ pub struct Network {
 }
 
 #[derive(
-    Copy, Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
+    Copy, Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
 )]
 #[serde(untagged)]
 pub enum Cidr {

@@ -4,6 +4,7 @@ pub use super::Network;
     Clone,
     Debug,
     Default,
+    Eq,
     PartialEq,
     kube::CustomResource,
     serde::Deserialize,
