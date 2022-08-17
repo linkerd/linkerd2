@@ -634,7 +634,7 @@ func validatePolicy(policy string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("--default-inbound-policy must be one of: %s", strings.Join(validPolicies, ", "))
+	return fmt.Errorf("--default-inbound-policy must be one of: %s (got %s)", strings.Join(validPolicies, ", "), policy)
 }
 
 // initializeIssuerCredentials populates the identity issuer TLS credentials.
