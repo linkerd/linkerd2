@@ -395,10 +395,7 @@ func (hc *HealthChecker) checkPromAuthorized(ctx context.Context) error {
 		return err
 	}
 
-	checkedPods := []struct {
-		string
-		corev1.Pod
-	}{}
+	unauthorizedPods := []string{}
 	for _, ns := range nses {
 		// TODO(eliza): check if this namespace has an allow-scrapes config once
 		// that's implemented; if it has one, skip checking its pods.
@@ -406,41 +403,24 @@ func (hc *HealthChecker) checkPromAuthorized(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("could not list pods in the %s namespace: %w", ns.GetName(), err)
 		}
-		for _, pod := range pods {
-			checkedPods = append(checkedPods, struct {
-				string
-				corev1.Pod
-			}{ns.GetName(), pod})
+
+		var nsPrefix string
+		if ns.GetName() == hc.DataPlaneNamespace {
+			// if we're only checking one namespace, don't bother appending the
+			// namespace name to the pod's name in the error output
+			nsPrefix = ""
+		} else {
+			// otherwise, include the namespace name as well as the pod's
+			// name, since we are checking all namespaces.
+			nsPrefix = ns.GetName() + "/"
 		}
-	}
 
-	if len(checkedPods) > 0 {
-		return hc.checkPromAuthorizedPods(checkedPods)
-	}
+		for _, pod := range pods {
+			defaultPolicy := pod.GetAnnotations()[k8s.ProxyDefaultInboundPolicyAnnotation]
 
-	return nil
-}
-
-func (hc *HealthChecker) checkPromAuthorizedPods(pods []struct {
-	string
-	corev1.Pod
-}) error {
-	unauthorizedPods := []string{}
-	for _, pod := range pods {
-		defaultPolicy := pod.GetAnnotations()[k8s.ProxyDefaultInboundPolicyAnnotation]
-
-		if defaultPolicy == k8s.Deny {
-			var ns string
-			if pod.string == hc.DataPlaneNamespace {
-				// if we're only checking one namespace, don't bother appending the
-				// namespace name to the pod's name in the error output
-				ns = ""
-			} else {
-				// otherwise, include the namespace name as well as the pod's
-				// name, since we are checking all namespaces.
-				ns = pod.string + "/"
+			if defaultPolicy == k8s.Deny {
+				unauthorizedPods = append(unauthorizedPods, fmt.Sprintf("\t* %s%s", nsPrefix, pod.Name))
 			}
-			unauthorizedPods = append(unauthorizedPods, fmt.Sprintf("\t* %s%s", ns, pod.Name))
 		}
 	}
 
@@ -448,6 +428,7 @@ func (hc *HealthChecker) checkPromAuthorizedPods(pods []struct {
 		podList := strings.Join(unauthorizedPods, "\n")
 		return fmt.Errorf("prometheus may not be authorized to scrape the following pods:\n%s", podList)
 	}
+
 	return nil
 }
 
