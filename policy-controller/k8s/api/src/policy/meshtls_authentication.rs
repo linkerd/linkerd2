@@ -4,6 +4,7 @@ use super::NamespacedTargetRef;
     Clone,
     Debug,
     Default,
+    Eq,
     PartialEq,
     kube::CustomResource,
     serde::Deserialize,
