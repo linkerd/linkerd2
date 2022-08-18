@@ -307,7 +307,8 @@ jobs:
   website_publish:
     name: Linkerd website publish
     needs: [gh_release]
-    if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
+    #if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
+    if: ${{ false }}  # temporarily disabled
     timeout-minutes: 30
     runs-on: ubuntu-20.04
     permissions:
@@ -324,7 +325,8 @@ jobs:
     name: Linkerd website publish check
     needs: [tag, website_publish]
     timeout-minutes: 30
-    if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
+    #if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
+    if: ${{ false }}  # temporarily disabled
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
