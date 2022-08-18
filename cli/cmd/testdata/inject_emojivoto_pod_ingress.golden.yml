@@ -176,6 +176,7 @@ spec:
       privileged: false
       readOnlyRootFilesystem: true
       runAsNonRoot: true
+      runAsUser: 65534
     terminationMessagePolicy: FallbackToLogsOnError
     volumeMounts:
     - mountPath: /run

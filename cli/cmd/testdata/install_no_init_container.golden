@@ -580,6 +580,7 @@ data:
           limit: 20Mi
           request: 20Mi
       runAsRoot: false
+      runAsUser: 65534
       saMountPath: null
       skipSubnets: ""
       xtMountPath:

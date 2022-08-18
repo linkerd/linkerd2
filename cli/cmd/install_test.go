@@ -124,6 +124,8 @@ func TestRender(t *testing.T) {
 				MountPath: "/run",
 				Name:      "linkerd-proxy-init-xtables-lock",
 			},
+			RunAsRoot: false,
+			RunAsUser: 65534,
 		},
 		Configs: charts.ConfigJSONs{
 			Global:  "GlobalConfig",
