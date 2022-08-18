@@ -14,7 +14,8 @@ const (
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
-  name: proxy-admin{{ if .TargetNs }}\n  namespace: {{ .TargetNs }}{{end}}
+  name: proxy-admin
+  namespace: {{ .TargetNs }}
   annotations:
     linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
   labels:
@@ -30,7 +31,8 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: HTTPRoute
 metadata:
-  name: proxy-metrics{{ if .TargetNs }}\n  namespace: {{ .TargetNs }}{{end}}
+  name: proxy-metrics
+  namespace: {{ .TargetNs }}
   annotations:
     linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
   labels:
@@ -48,7 +50,8 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: HTTPRoute
 metadata:
-  name: proxy-probes{{ if .TargetNs }}\n  namespace: {{ .TargetNs }}{{end}}
+  name: proxy-probes
+  namespace: {{ .TargetNs }}
   annotations:
     linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
   labels:
@@ -68,7 +71,8 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  name: prometheus-scrape{{ if .TargetNs }}\n  namespace: {{ .TargetNs }}{{end}}
+  name: prometheus-scrape
+  namespace: {{ .TargetNs }}
   annotations:
     linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
   labels:
@@ -86,7 +90,8 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  name: proxy-probes{{ if .TargetNs }}\n  namespace: {{ .TargetNs }}{{end}}
+  name: proxy-probes
+  namespace: {{ .TargetNs }}
   annotations:
     linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
   labels:
@@ -120,21 +125,21 @@ func newCmdAllowScrapes() *cobra.Command {
 		VizNs:         defaultNamespace,
 	}
 	cmd := &cobra.Command{
-		Use:   "allow-scrapes [flags]",
+		Use:   "allow-scrapes {-n | --namespace } namespace",
 		Short: "Output Kubernetes resources to authorize Prometheus scrapes",
 		Long:  `Output Kubernetes resources to authorize Prometheus scrapes in a namespace or cluster with config.linkerd.io/default-inbound-policy: deny.`,
-		Example: `# Allow scrapes in the default namespace
-linkerd viz allow-scrapes | kubectl apply -f -
-
-# Allow scrapes in the 'emojivoto' namespace
+		Example: `# Allow scrapes in the 'emojivoto' namespace
 linkerd viz allow-scrapes --namespace emojivoto | kubectl apply -f -`,
 		Args: cobra.NoArgs,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.MarkFlagRequired("namespace")
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			t := template.Must(template.New("allow-scrapes").Parse(allowScrapePolicy))
 			return t.Execute(os.Stdout, options)
 		},
 	}
-	cmd.Flags().StringVarP(&options.TargetNs, "namespace", "n", options.TargetNs, "If set, the generated resources will target this namespace.")
+	cmd.Flags().StringVarP(&options.TargetNs, "namespace", "n", options.TargetNs, "The namespace in which to authorize Prometheus scrapes.")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"n", "namespace"},
