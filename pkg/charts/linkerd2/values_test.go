@@ -140,6 +140,8 @@ func TestNewValues(t *testing.T) {
 				Name:      "linkerd-proxy-init-xtables-lock",
 				MountPath: "/run",
 			},
+			RunAsRoot: false,
+			RunAsUser: 65534,
 		},
 		Identity: &Identity{
 			ServiceAccountTokenProjection: true,
