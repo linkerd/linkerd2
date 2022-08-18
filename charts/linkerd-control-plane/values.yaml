@@ -178,6 +178,7 @@ proxy:
   # @default -- "all-unauthenticated"
   defaultInboundPolicy: "all-unauthenticated"
 
+
 # proxy-init configuration
 proxyInit:
   # -- Variant of iptables that will be used to configure routing. Currently,
@@ -296,6 +297,7 @@ identity:
       # -- Key for the issuer certificate (ECDSA). It must be provided during
       # install
       keyPEM: |
+
 
 # -|- CPU, Memory and Ephemeral Storage resources required by the identity controller (see `proxy.resources` for sub-fields)
 #identityResources:
@@ -468,6 +470,7 @@ policyValidator:
 # for more information
 nodeSelector:
   kubernetes.io/os: linux
+
 # -|- CPU, Memory and Ephemeral Storage resources required by the SP validator (see
 #`proxy.resources` for sub-fields)
 #spValidatorResources:
