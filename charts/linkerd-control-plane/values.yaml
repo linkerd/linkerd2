@@ -178,7 +178,6 @@ proxy:
   # @default -- "all-unauthenticated"
   defaultInboundPolicy: "all-unauthenticated"
 
-
 # proxy-init configuration
 proxyInit:
   # -- Variant of iptables that will be used to configure routing. Currently,
