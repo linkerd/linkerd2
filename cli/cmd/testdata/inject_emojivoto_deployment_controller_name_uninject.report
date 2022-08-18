@@ -1,4 +1,2 @@
 
-deployment "controller" uninjected
-deployment "not-controller" uninjected
 

@@ -912,6 +912,7 @@ spec:
             - NET_RAW
           privileged: false
           runAsNonRoot: true
+          runAsUser: 
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1328,6 +1329,7 @@ spec:
             - NET_RAW
           privileged: false
           runAsNonRoot: true
+          runAsUser: 
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1630,6 +1632,7 @@ spec:
             - NET_RAW
           privileged: false
           runAsNonRoot: true
+          runAsUser: 
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:

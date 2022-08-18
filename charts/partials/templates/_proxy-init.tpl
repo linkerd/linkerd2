@@ -69,6 +69,7 @@ securityContext:
   {{- else }}
   privileged: false
   runAsNonRoot: true
+  runAsUser: {{.Values.proxyInit.runAsUser | quote}}
   {{- end }}
   readOnlyRootFilesystem: true
 terminationMessagePolicy: FallbackToLogsOnError
