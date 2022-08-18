@@ -545,6 +545,11 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 		}
 	}
 
+	err = validatePolicy(values.PolicyController.DefaultAllowPolicy)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -620,6 +625,16 @@ func validateProxyValues(values *l5dcharts.Values) error {
 	}
 
 	return nil
+}
+
+func validatePolicy(policy string) error {
+	validPolicies := []string{"all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny"}
+	for _, p := range validPolicies {
+		if p == policy {
+			return nil
+		}
+	}
+	return fmt.Errorf("--default-inbound-policy must be one of: %s (got %s)", strings.Join(validPolicies, ", "), policy)
 }
 
 // initializeIssuerCredentials populates the identity issuer TLS credentials.

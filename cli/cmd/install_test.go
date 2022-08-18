@@ -576,6 +576,23 @@ func TestValidate(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("Rejects invalid default-inbound-policy", func(t *testing.T) {
+		values, err := testInstallOptions()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v\n", err)
+		}
+		values.PolicyController.DefaultAllowPolicy = "everybody"
+		expected := "--default-inbound-policy must be one of: all-authenticated, all-unauthenticated, cluster-authenticated, cluster-unauthenticated, deny (got everybody)"
+
+		err = validateValues(context.Background(), nil, values)
+		if err == nil {
+			t.Fatal("Expected error, got nothing")
+		}
+		if err.Error() != expected {
+			t.Fatalf("Expected error string \"%s\", got \"%s\"", expected, err)
+		}
+	})
 }
 
 func fakeHeartbeatSchedule() string {
