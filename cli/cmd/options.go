@@ -623,9 +623,9 @@ func validateProxyValues(values *l5dcharts.Values) error {
 		}
 	}
 
-if err := validatePolicy(values.Proxy.DefaultInboundPolicy); err != nil {
-	return err
-}
+	if err := validatePolicy(values.Proxy.DefaultInboundPolicy); err != nil {
+		return err
+	}
 
 	return nil
 }
