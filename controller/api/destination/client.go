@@ -28,23 +28,29 @@ func NewClient(addr string) (pb.DestinationClient, *grpc.ClientConn, error) {
 
 // NewExternalClient creates a client for the control plane Destination API
 // to run from outside a Kubernetes cluster.
-func NewExternalClient(ctx context.Context, controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (pb.DestinationClient, *grpc.ClientConn, error) {
-	portforward, err := k8s.NewPortForward(
-		ctx,
-		kubeAPI,
-		controlPlaneNamespace,
-		destinationDeployment,
-		"localhost",
-		0,
-		destinationPort,
-		false,
-	)
+func NewExternalClient(ctx context.Context, controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI, pod string) (pb.DestinationClient, *grpc.ClientConn, error) {
+	var portForward *k8s.PortForward
+	var err error
+	if pod == "" {
+		portForward, err = k8s.NewPortForward(
+			ctx,
+			kubeAPI,
+			controlPlaneNamespace,
+			destinationDeployment,
+			"localhost",
+			0,
+			destinationPort,
+			false,
+		)
+	} else {
+		portForward, err = k8s.NewPodPortForward(kubeAPI, controlPlaneNamespace, pod, "localhost", 0, destinationPort, false)
+	}
 	if err != nil {
 		return nil, nil, err
 	}
 
-	destinationAddress := portforward.AddressAndPort()
-	if err = portforward.Init(); err != nil {
+	destinationAddress := portForward.AddressAndPort()
+	if err = portForward.Init(); err != nil {
 		return nil, nil, err
 	}
 
