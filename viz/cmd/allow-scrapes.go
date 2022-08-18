@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"os"
+	"text/template"
 
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 )
 
@@ -12,8 +14,10 @@ apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   name: proxy-admin
+  annotations:
+    linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
   labels:
-    linkerd.io/extension: viz
+    linkerd.io/extension: {{ .ExtensionName }}
 spec:
   podSelector:
     matchExpressions:
@@ -26,8 +30,10 @@ apiVersion: policy.linkerd.io/v1alpha1
 kind: HTTPRoute
 metadata:
   name: proxy-metrics
+  annotations:
+    linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
   labels:
-    linkerd.io/extension: viz
+    linkerd.io/extension: {{ .ExtensionName }}
 spec:
   parentRefs:
     - name: proxy-admin
@@ -42,8 +48,10 @@ apiVersion: policy.linkerd.io/v1alpha1
 kind: HTTPRoute
 metadata:
   name: proxy-probes
+  annotations:
+    linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
   labels:
-    linkerd.io/extension: viz
+    linkerd.io/extension: {{ .ExtensionName }}
 spec:
   parentRefs:
     - name: proxy-admin
@@ -60,8 +68,10 @@ apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
   name: prometheus-scrape
+  annotations:
+    linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
   labels:
-    linkerd.io/extension: viz
+    linkerd.io/extension: {{ .ExtensionName }}
 spec:
   targetRef:
     group: policy.linkerd.io
@@ -70,14 +80,16 @@ spec:
   requiredAuthenticationRefs:
     - kind: ServiceAccount
       name: prometheus
-      namespace: linkerd-viz
+      namespace: {{ .VizNs }}
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
   name: proxy-probes
+  annotations:
+    linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
   labels:
-    linkerd.io/extension: viz
+    linkerd.io/extension: {{ .ExtensionName }}
 spec:
   targetRef:
     group: policy.linkerd.io
@@ -87,8 +99,15 @@ spec:
     - kind: NetworkAuthentication
       group: policy.linkerd.io
       name: kubelet
-      namespace: linkerd-viz`
+      namespace: {{ .VizNs }}`
 )
+
+type templateArgs struct {
+	ChartName     string
+	Version       string
+	ExtensionName string
+	VizNs         string
+}
 
 // newCmdAllowScrapes creates a new cobra command `allow-scrapes`
 func newCmdAllowScrapes() *cobra.Command {
@@ -101,8 +120,13 @@ func newCmdAllowScrapes() *cobra.Command {
 	   	`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, err := os.Stdout.WriteString(allowScrapePolicy)
-			return err
+			t := template.Must(template.New("allow-scrapes").Parse(allowScrapePolicy))
+			return t.Execute(os.Stdout, templateArgs{
+				ExtensionName: ExtensionName,
+				ChartName:     vizChartName,
+				Version:       version.Version,
+				VizNs:         defaultNamespace,
+			})
 		},
 	}
 }
