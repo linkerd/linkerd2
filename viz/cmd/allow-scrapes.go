@@ -4,6 +4,7 @@ import (
 	"os"
 	"text/template"
 
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -13,7 +14,7 @@ const (
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
-  name: proxy-admin
+  name: proxy-admin{{ if .TargetNs }}\n  namespace: {{ .TargetNs }}{{end}}
   annotations:
     linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
   labels:
@@ -29,7 +30,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: HTTPRoute
 metadata:
-  name: proxy-metrics
+  name: proxy-metrics{{ if .TargetNs }}\n  namespace: {{ .TargetNs }}{{end}}
   annotations:
     linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
   labels:
@@ -47,7 +48,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: HTTPRoute
 metadata:
-  name: proxy-probes
+  name: proxy-probes{{ if .TargetNs }}\n  namespace: {{ .TargetNs }}{{end}}
   annotations:
     linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
   labels:
@@ -67,7 +68,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  name: prometheus-scrape
+  name: prometheus-scrape{{ if .TargetNs }}\n  namespace: {{ .TargetNs }}{{end}}
   annotations:
     linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
   labels:
@@ -85,7 +86,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  name: proxy-probes
+  name: proxy-probes{{ if .TargetNs }}\n  namespace: {{ .TargetNs }}{{end}}
   annotations:
     linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
   labels:
@@ -102,31 +103,41 @@ spec:
       namespace: {{ .VizNs }}`
 )
 
-type templateArgs struct {
+type templateOptions struct {
 	ChartName     string
 	Version       string
 	ExtensionName string
 	VizNs         string
+	TargetNs      string
 }
 
 // newCmdAllowScrapes creates a new cobra command `allow-scrapes`
 func newCmdAllowScrapes() *cobra.Command {
-	return &cobra.Command{
-		Use:   "allow-scrapes",
+	options := templateOptions{
+		ExtensionName: ExtensionName,
+		ChartName:     vizChartName,
+		Version:       version.Version,
+		VizNs:         defaultNamespace,
+	}
+	cmd := &cobra.Command{
+		Use:   "allow-scrapes [flags]",
 		Short: "Output Kubernetes resources to authorize Prometheus scrapes",
 		Long:  `Output Kubernetes resources to authorize Prometheus scrapes in a namespace or cluster with config.linkerd.io/default-inbound-policy: deny.`,
 		Example: `# Allow scrapes in the default namespace
-		linkerd viz allow-scrapes | kubectl apply -f -
-	   	`,
+linkerd viz allow-scrapes | kubectl apply -f -
+
+# Allow scrapes in the 'emojivoto' namespace
+linkerd viz allow-scrapes --namespace emojivoto | kubectl apply -f -`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			t := template.Must(template.New("allow-scrapes").Parse(allowScrapePolicy))
-			return t.Execute(os.Stdout, templateArgs{
-				ExtensionName: ExtensionName,
-				ChartName:     vizChartName,
-				Version:       version.Version,
-				VizNs:         defaultNamespace,
-			})
+			return t.Execute(os.Stdout, options)
 		},
 	}
+	cmd.Flags().StringVarP(&options.TargetNs, "namespace", "n", options.TargetNs, "If set, the generated resources will target this namespace.")
+
+	pkgcmd.ConfigureNamespaceFlagCompletion(
+		cmd, []string{"n", "namespace"},
+		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
+	return cmd
 }
