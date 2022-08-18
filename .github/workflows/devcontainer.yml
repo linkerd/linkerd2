@@ -15,20 +15,20 @@ permissions:
 jobs:
   rust-version:
     runs-on: ubuntu-latest
-    container: ghcr.io/linkerd/devcontainer:v29-rust
+    container: ghcr.io/linkerd/dev:v29-rust
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: |
           dev=$(cargo version | cut -d' ' -f2)
           tc=$(cat rust-toolchain)
           if [ "$dev" != "$tc" ]; then
-            echo "::error file=rust-toolchain,line=1::rust-toolchain ($tc) does not match devcontainer ($dev)""
+            echo "::error file=rust-toolchain,line=1::rust-toolchain ($tc) does not match devcontainer ($dev)"
             exit 1
-          done
+          fi
 
   devcontainer-image:
     runs-on: ubuntu-latest
-    container: ghcr.io/linkerd/devcontainer:v29-tools
+    container: ghcr.io/linkerd/dev:v29-tools
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: |
