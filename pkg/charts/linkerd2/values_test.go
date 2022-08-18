@@ -71,8 +71,7 @@ func TestNewValues(t *testing.T) {
 			Image: &Image{
 				Name: "cr.l5d.io/linkerd/policy-controller",
 			},
-			LogLevel:           "info",
-			DefaultAllowPolicy: "all-unauthenticated",
+			LogLevel: "info",
 			Resources: &Resources{
 				CPU: Constraints{
 					Limit:   "",
@@ -115,6 +114,7 @@ func TestNewValues(t *testing.T) {
 			InboundConnectTimeout:  "100ms",
 			OpaquePorts:            "25,587,3306,4444,5432,6379,9300,11211",
 			Await:                  true,
+			DefaultInboundPolicy:   "all-unauthenticated",
 		},
 		ProxyInit: &ProxyInit{
 			IptablesMode:        "legacy",

@@ -139,11 +139,10 @@ type (
 
 	// PolicyController contains the fields to configure the policy controller container
 	PolicyController struct {
-		Image              *Image     `json:"image"`
-		Resources          *Resources `json:"resources"`
-		LogLevel           string     `json:"logLevel"`
-		DefaultAllowPolicy string     `json:"defaultAllowPolicy"`
-		ProbeNetworks      []string   `json:"probeNetworks"`
+		Image         *Image     `json:"image"`
+		Resources     *Resources `json:"resources"`
+		LogLevel      string     `json:"logLevel"`
+		ProbeNetworks []string   `json:"probeNetworks"`
 	}
 
 	// Image contains the details to define a container image

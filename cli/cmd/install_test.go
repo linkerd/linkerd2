@@ -60,8 +60,7 @@ func TestRender(t *testing.T) {
 				PullPolicy: "ImagePullPolicy",
 				Version:    "PolicyControllerVersion",
 			},
-			LogLevel:           "log-level",
-			DefaultAllowPolicy: "default-allow-policy",
+			LogLevel: "log-level",
 			Resources: &charts.Resources{
 				CPU: charts.Constraints{
 					Limit:   "cpu-limit",
@@ -98,9 +97,10 @@ func TestRender(t *testing.T) {
 				Inbound:  4143,
 				Outbound: 4140,
 			},
-			UID:         2102,
-			OpaquePorts: "25,443,587,3306,5432,11211",
-			Await:       true,
+			UID:                  2102,
+			OpaquePorts:          "25,443,587,3306,5432,11211",
+			Await:                true,
+			DefaultInboundPolicy: "default-allow-policy",
 		},
 		ProxyInit: &charts.ProxyInit{
 			IptablesMode: "legacy",

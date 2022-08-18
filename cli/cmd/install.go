@@ -198,11 +198,6 @@ func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Wr
 		return err
 	}
 
-	// the `--default-inbound-policy` flag configures the proxy override
-	// annotation, but in `install`, we also want to configure the default for
-	// the policy controller.
-	values.PolicyController.DefaultAllowPolicy = values.Proxy.DefaultInboundPolicy
-
 	if err := checkNoConfig(ctx, k8sAPI); err != nil {
 		return err
 	}
