@@ -32,13 +32,18 @@ jobs:
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: |
-          image=$(json5-to-json <.devcontainer/devcontainer.json |jq -Mr .image)
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install jq
+      - run: |
+          # Strip jsonc comments because `jq` doesn't support them.
+          image=$(sed -E '/^\s*\/\/.*/d' .devcontainer/devcontainer.json |jq -Mr .image)
           line=$(grep -nF '"image"' .devcontainer/devcontainer.json |cut -d':' -f1 |head -n1)
           if [ "$image" == "null" ]; then
-            echo "::error file=.devcontainer/devcontainer.json,line=${line}::Missing image"
+            echo "::error file=.devcontainer/devcontainer.json,line=$line::Missing image"
             exit 1
           fi
           if ! docker pull "$image" ; then
-            echo "::error file=.devcontainer/devcontainer.json,line=${line}::Unable to pull image: $image"
+            echo "::error file=.devcontainer/devcontainer.json,line=$line::Unable to pull image: $image"
             exit 1
           fi
