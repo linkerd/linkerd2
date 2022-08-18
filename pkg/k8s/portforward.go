@@ -119,8 +119,7 @@ func getDeploymentForPod(ctx context.Context, k8sAPI *KubernetesAPI, pod corev1.
 }
 
 // NewPodPortForward returns an instance of the PortForward struct that can be
-// used to establish a port-forward connection to a specific Pod in a
-// Deployment.
+// used to establish a port-forward connection to a specific Pod.
 func NewPodPortForward(
 	k8sAPI *KubernetesAPI,
 	namespace, podName string,
