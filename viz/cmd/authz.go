@@ -128,7 +128,7 @@ func NewCmdAuthz() *cobra.Command {
 				if row.GetSrvStats().GetAuthz().GetType() == "" {
 					authz = ""
 				}
-				if row.GetStats().GetSuccessCount()+row.GetStats().GetSuccessCount()+row.GetSrvStats().GetDeniedCount() > 0 {
+				if row.GetStats().GetSuccessCount()+row.GetStats().GetFailureCount()+row.GetSrvStats().GetDeniedCount() > 0 {
 					rows = append(rows, table.Row{
 						row.GetSrvStats().GetRoute().GetName(),
 						server,
