@@ -7,7 +7,10 @@ import (
 
 	pkgCmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/k8s/resource"
 	"github.com/spf13/cobra"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func newCmdUninstall() *cobra.Command {
@@ -43,5 +46,58 @@ func uninstallRunE(ctx context.Context) error {
 		return err
 	}
 
-	return pkgCmd.Uninstall(ctx, k8sAPI, selector)
+	// / `Uninstall` deletes cluster-scoped resources created by the extension
+	// (including the extension's namespace).
+	if err := pkgCmd.Uninstall(ctx, k8sAPI, selector); err != nil {
+		return err
+	}
+
+	// delete any HTTPRoute, AuthorizationPolicy, and Server resources created
+	// by the viz extension in any namespace.
+	//
+	// note that these are not deleted by the `Uninstall` call above, because
+	// they are namespaced resources.
+	policy := k8sAPI.L5dCrdClient.PolicyV1alpha1()
+	authzs, err := policy.AuthorizationPolicies(v1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
+	if err != nil {
+		return err
+	}
+
+	for _, authz := range authzs.Items {
+		if err := deleteResource(authz.TypeMeta, authz.ObjectMeta); err != nil {
+			return err
+		}
+	}
+
+	rts, err := policy.HTTPRoutes(v1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
+	if err != nil {
+		return err
+	}
+
+	for _, rt := range rts.Items {
+		if err := deleteResource(rt.TypeMeta, rt.ObjectMeta); err != nil {
+			return err
+		}
+	}
+
+	srvs, err := k8sAPI.L5dCrdClient.ServerV1beta1().Servers(v1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
+	if err != nil {
+		return err
+	}
+
+	for _, srv := range srvs.Items {
+		if err := deleteResource(srv.TypeMeta, srv.ObjectMeta); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func deleteResource(ty metav1.TypeMeta, meta metav1.ObjectMeta) error {
+	r := resource.NewNamespaced(ty.APIVersion, ty.Kind, meta.Name, meta.Namespace)
+	if err := r.RenderResource(os.Stdout); err != nil {
+		return fmt.Errorf("error rendering Kubernetes resource: %w", err)
+	}
+	return nil
 }
