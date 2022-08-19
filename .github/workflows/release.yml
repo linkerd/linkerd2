@@ -268,6 +268,7 @@ jobs:
     name: Create GH release
     needs:
     - tag
+    - integration_tests
     #- choco_pack
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     timeout-minutes: 30
