@@ -129,6 +129,7 @@ type (
 		Resources            *Resources       `json:"resources"`
 		CloseWaitTimeoutSecs int64            `json:"closeWaitTimeoutSecs"`
 		RunAsRoot            bool             `json:"runAsRoot"`
+		RunAsUser            int64            `json:"runAsUser"`
 		IptablesMode         string           `json:"iptablesMode"`
 	}
 

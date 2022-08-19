@@ -76,6 +76,7 @@
         },
         "privileged": false,
         "runAsNonRoot": true,
+        "runAsUser": 65534,
         "readOnlyRootFilesystem": true
       },
       "terminationMessagePolicy": "FallbackToLogsOnError",

@@ -226,6 +226,8 @@ proxyInit:
   closeWaitTimeoutSecs: 0
   # -- Allow overriding the runAsNonRoot behaviour (<https://github.com/linkerd/linkerd2/issues/7308>)
   runAsRoot: false
+  # -- This value is used only if runAsRoot is false; otherwise runAsUser will be 0
+  runAsUser: 65534
   xtMountPath:
     mountPath: /run
     name: linkerd-proxy-init-xtables-lock

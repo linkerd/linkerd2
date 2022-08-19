@@ -191,6 +191,7 @@ items:
             privileged: false
             readOnlyRootFilesystem: true
             runAsNonRoot: true
+            runAsUser: 65534
           terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
           - mountPath: /run
@@ -394,6 +395,7 @@ items:
             privileged: false
             readOnlyRootFilesystem: true
             runAsNonRoot: true
+            runAsUser: 65534
           terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
           - mountPath: /run
