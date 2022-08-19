@@ -159,8 +159,8 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		vizArgs = append(vizArgs, "--set", fmt.Sprintf("clusterDomain=%s", TestHelper.GetClusterDomain()))
 	}
 
-	if policy := TestHelper.DefaultAllowPolicy(); policy != "" {
-		args = append(args, "--set", "policyController.defaultAllowPolicy="+policy)
+	if policy := TestHelper.DefaultInboundPolicy(); policy != "" {
+		args = append(args, "--set", "proxy.defaultInboundPolicy="+policy)
 	}
 
 	if TestHelper.UpgradeFromVersion() != "" {
@@ -656,11 +656,8 @@ func TestOverridesSecret(t *testing.T) {
 			knownKeys["cniEnabled"] = true
 		}
 
-		if policy := TestHelper.DefaultAllowPolicy(); policy != "" {
-			if _, ok := knownKeys["policyController"]; !ok {
-				knownKeys["policyController"] = tree.Tree{}
-			}
-			knownKeys["policyController"].(tree.Tree)["defaultAllowPolicy"] = policy
+		if policy := TestHelper.DefaultInboundPolicy(); policy != "" {
+			knownKeys["proxy"].(tree.Tree)["defaultInboundPolicy"] = policy
 		}
 
 		// Check if the keys in overridesTree match with knownKeys

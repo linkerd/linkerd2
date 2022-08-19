@@ -261,7 +261,7 @@ spec:
         - --server-tls-certs=/var/run/linkerd/tls/tls.crt
         - --cluster-networks={{.Values.clusterNetworks}}
         - --identity-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
-        - --default-policy={{.Values.policyController.defaultAllowPolicy}}
+        - --default-policy={{.Values.proxy.defaultInboundPolicy}}
         - --log-level={{.Values.policyController.logLevel | default "linkerd=info,warn"}}
         - --log-format={{.Values.controllerLogFormat}}
         {{- if .Values.policyController.probeNetworks }}

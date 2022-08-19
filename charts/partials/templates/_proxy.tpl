@@ -38,7 +38,7 @@ env:
 - name: LINKERD2_PROXY_POLICY_WORKLOAD
   value: "$(_pod_ns):$(_pod_name)"
 - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
-  value: {{.Values.proxy.defaultInboundPolicy | default .Values.policyController.defaultAllowPolicy}}
+  value: {{.Values.proxy.defaultInboundPolicy}}
 - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
   value: {{.Values.clusterNetworks | quote}}
 {{ if .Values.proxy.inboundConnectTimeout -}}

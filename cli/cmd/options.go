@@ -374,7 +374,7 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 
 		flag.NewStringFlag(proxyFlags, "default-inbound-policy", defaults.Proxy.DefaultInboundPolicy, "Inbound policy to use to control inbound access to the proxy",
 			func(values *l5dcharts.Values, value string) error {
-				values.PolicyController.DefaultAllowPolicy = value
+				values.Proxy.DefaultInboundPolicy = value
 				return nil
 			}),
 
@@ -545,7 +545,6 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 		}
 	}
 
-	err = validatePolicy(values.PolicyController.DefaultAllowPolicy)
 	if err != nil {
 		return err
 	}
@@ -622,6 +621,10 @@ func validateProxyValues(values *l5dcharts.Values) error {
 		if err := validateRangeSlice(strings.Split(values.ProxyInit.IgnoreOutboundPorts, ",")); err != nil {
 			return err
 		}
+	}
+
+	if err := validatePolicy(values.Proxy.DefaultInboundPolicy); err != nil {
+		return err
 	}
 
 	return nil
