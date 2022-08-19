@@ -203,6 +203,22 @@ message StatSummaryResponse {
   }
 }
 
+message AuthzRequest {
+  Resource resource = 1;
+  string time_window = 2;
+}
+
+message AuthzResponse {
+  oneof response {
+    Ok ok = 1;
+    ResourceError error = 2;
+  }
+
+  message Ok {
+    StatTable stat_table = 1;
+  }
+}
+
 message BasicStats {
   uint64 success_count = 1;
   uint64 failure_count = 2;
@@ -379,4 +395,5 @@ service Api {
 
   rpc SelfCheck(SelfCheckRequest) returns (SelfCheckResponse) {}
 
+  rpc Authz(AuthzRequest) returns (AuthzResponse) {}
 }

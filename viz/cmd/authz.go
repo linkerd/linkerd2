@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,12 +12,13 @@ import (
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/metrics-api/util"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	pkgUtil "github.com/linkerd/linkerd2/viz/pkg/util"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 )
-
-const unauthorized = "[UNAUTHORIZED]"
 
 // NewCmdAuthz creates a new cobra command `authz`
 func NewCmdAuthz() *cobra.Command {
@@ -52,10 +54,6 @@ func NewCmdAuthz() *cobra.Command {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 			}
 
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-			if err != nil {
-				return err
-			}
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
 			// https://github.com/grpc/grpc-go/issues/682
 			client := api.CheckClientOrExit(healthcheck.Options{
@@ -77,8 +75,8 @@ func NewCmdAuthz() *cobra.Command {
 			cols := []table.Column{
 				table.NewColumn("ROUTE").WithLeftAlign(),
 				table.NewColumn("SERVER").WithLeftAlign(),
-				table.NewColumn("AUTHORIZATION_POLICY").WithLeftAlign(),
-				table.NewColumn("SERVER_AUTHORIZATION").WithLeftAlign(),
+				table.NewColumn("AUTHORIZATION").WithLeftAlign(),
+				table.NewColumn("UNAUTHORIZED"),
 				table.NewColumn("SUCCESS"),
 				table.NewColumn("RPS"),
 				table.NewColumn("LATENCY_P50"),
@@ -87,104 +85,82 @@ func NewCmdAuthz() *cobra.Command {
 			}
 			rows := []table.Row{}
 
-			servers, err := k8s.ServersForResource(cmd.Context(), k8sAPI, options.namespace, resource, options.labelSelector)
+			req := pb.AuthzRequest{}
+			window, err := util.ValidateTimeWindow(options.timeWindow)
 			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
+				return err
+			}
+			req.TimeWindow = window
+
+			target, err := pkgUtil.BuildResource(options.namespace, resource)
+			if err != nil {
+				return err
+			}
+
+			if options.allNamespaces && target.Name != "" {
+				return errors.New("stats for a resource cannot be retrieved by name across all namespaces")
+			}
+
+			if options.allNamespaces {
+				target.Namespace = ""
+			} else if target.Namespace == "" {
+				target.Namespace = corev1.NamespaceDefault
+			}
+
+			req.Resource = target
+
+			resp, err := client.Authz(cmd.Context(), &req)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Authz API error: %s", err)
 				os.Exit(1)
 			}
-			for _, server := range servers {
-				requestParams := util.StatsSummaryRequestParams{
-					StatsBaseRequestParams: util.StatsBaseRequestParams{
-						TimeWindow:    options.timeWindow,
-						ResourceName:  server,
-						ResourceType:  k8s.Server,
-						Namespace:     options.namespace,
-						AllNamespaces: false,
-					},
-				}
+			if e := resp.GetError(); e != nil {
+				fmt.Fprintf(os.Stderr, "Authz API error: %s", e.Error)
+				os.Exit(1)
+			}
 
-				req, err := util.BuildStatSummaryRequest(requestParams)
-				if err != nil {
-					return err
+			for _, row := range resp.GetOk().GetStatTable().GetPodGroup().GetRows() {
+				server := row.GetSrvStats().GetSrv().GetName()
+				if row.GetSrvStats().GetSrv().GetType() == "default" {
+					server = fmt.Sprintf("%s:%s", row.GetSrvStats().GetSrv().GetType(), row.GetSrvStats().GetSrv().GetName())
 				}
-				resp, err := requestStatsFromAPI(client, req)
-				if err != nil {
-					fmt.Fprint(os.Stderr, err.Error())
-					os.Exit(1)
+				authz := fmt.Sprintf("%s/%s", row.GetSrvStats().GetAuthz().GetType(), row.GetSrvStats().GetAuthz().GetName())
+				if row.GetSrvStats().GetAuthz().GetType() == "" {
+					authz = ""
 				}
-
-				for _, row := range respToRows(resp) {
-					var authzp, saz, route string
-					authz := row.GetSrvStats().GetAuthz()
-					if authz != nil {
-						if authz.Type == "authorizationpolicy" {
-							authzp = authz.Name
-						} else if authz.Type == "serverauthorization" {
-							saz = authz.Name
-						}
+				if row.GetStats().GetSuccessCount()+row.GetStats().GetFailureCount()+row.GetSrvStats().GetDeniedCount() > 0 {
+					rows = append(rows, table.Row{
+						row.GetSrvStats().GetRoute().GetName(),
+						server,
+						authz,
+						fmt.Sprintf("%.1frps", getRequestRate(row.GetSrvStats().GetDeniedCount(), 0, window)),
+						fmt.Sprintf("%.2f%%", getSuccessRate(row.Stats.GetSuccessCount(), row.Stats.GetFailureCount())*100),
+						fmt.Sprintf("%.1frps", getRequestRate(row.Stats.GetSuccessCount(), row.Stats.GetFailureCount(), window)),
+						fmt.Sprintf("%dms", row.Stats.LatencyMsP50),
+						fmt.Sprintf("%dms", row.Stats.LatencyMsP95),
+						fmt.Sprintf("%dms", row.Stats.LatencyMsP99),
+					})
+				} else {
+					if row.GetSrvStats().GetAuthz().GetType() == "" || row.GetSrvStats().GetAuthz().GetType() == "default" {
+						// Skip showing the default or unauthorized entries if there are no requests for them.
+						continue
 					}
-					if row.GetSrvStats().GetRoute() != nil {
-						route = row.GetSrvStats().GetRoute().Name
-					}
-					if row.Stats != nil {
-						rows = append(rows, table.Row{
-							route,
-							server,
-							authzp,
-							saz,
-							fmt.Sprintf("%.2f%%", getSuccessRate(row.Stats.GetSuccessCount(), row.Stats.GetFailureCount())*100),
-							fmt.Sprintf("%.1frps", getRequestRate(row.Stats.GetSuccessCount(), row.Stats.GetFailureCount(), row.TimeWindow)),
-							fmt.Sprintf("%dms", row.Stats.LatencyMsP50),
-							fmt.Sprintf("%dms", row.Stats.LatencyMsP95),
-							fmt.Sprintf("%dms", row.Stats.LatencyMsP99),
-						})
-					}
-				}
-
-				// Unauthorized
-				requestParams = util.StatsSummaryRequestParams{
-					StatsBaseRequestParams: util.StatsBaseRequestParams{
-						TimeWindow:    options.timeWindow,
-						ResourceName:  server,
-						ResourceType:  k8s.Server,
-						Namespace:     options.namespace,
-						AllNamespaces: false,
-					},
-					ToNamespace:   options.namespace,
-					LabelSelector: options.labelSelector,
-				}
-
-				req, err = util.BuildStatSummaryRequest(requestParams)
-				if err != nil {
-					return err
-				}
-				resp, err = requestStatsFromAPI(client, req)
-				if err != nil {
-					fmt.Fprint(os.Stderr, err.Error())
-					os.Exit(1)
-				}
-				for _, row := range respToRows(resp) {
-					var route string
-					if row.GetSrvStats().GetRoute() != nil {
-						route = row.GetSrvStats().GetRoute().Name
-					}
-					if row.SrvStats != nil && row.SrvStats.DeniedCount > 0 {
-						rows = append(rows, table.Row{
-							route,
-							server,
-							unauthorized,
-							unauthorized,
-							"-",
-							fmt.Sprintf("%.1frps", getRequestRate(row.SrvStats.DeniedCount, 0, row.TimeWindow)),
-							"-",
-							"-",
-							"-",
-						})
-					}
+					rows = append(rows, table.Row{
+						row.GetSrvStats().GetRoute().GetName(),
+						server,
+						authz,
+						"-",
+						"-",
+						"-",
+						"-",
+						"-",
+						"-",
+					})
 				}
 			}
 
 			data := table.NewTable(cols, rows)
+			data.Sort = []int{1, 0, 2} // Sort by Server, then Route, then Authorization
 			if options.outputFormat == "json" {
 				err = renderJSON(data, os.Stdout)
 				if err != nil {
@@ -229,7 +205,7 @@ func renderJSON(t table.Table, w io.Writer) error {
 				} else {
 					rows[i]["latency_ms_"+percentile] = data[j]
 				}
-			} else if field == "rps" {
+			} else if field == "rps" || field == "unauthorized" {
 				var rps float32
 				if n, _ := fmt.Sscanf(data[j], "%frps", &rps); n == 1 {
 					rows[i][field] = rps

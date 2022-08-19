@@ -19,6 +19,7 @@ type MockAPIClient struct {
 	ListPodsResponseToReturn     *pb.ListPodsResponse
 	ListServicesResponseToReturn *pb.ListServicesResponse
 	StatSummaryResponseToReturn  *pb.StatSummaryResponse
+	AuthzResponseToReturn        *pb.AuthzResponse
 	GatewaysResponseToReturn     *pb.GatewaysResponse
 	TopRoutesResponseToReturn    *pb.TopRoutesResponse
 	EdgesResponseToReturn        *pb.EdgesResponse
@@ -28,6 +29,11 @@ type MockAPIClient struct {
 // StatSummary provides a mock of a metrics-api method.
 func (c *MockAPIClient) StatSummary(ctx context.Context, in *pb.StatSummaryRequest, opts ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
 	return c.StatSummaryResponseToReturn, c.ErrorToReturn
+}
+
+// Authz provides a mock of a metrics-api method.
+func (c *MockAPIClient) Authz(ctx context.Context, in *pb.AuthzRequest, opts ...grpc.CallOption) (*pb.AuthzResponse, error) {
+	return c.AuthzResponseToReturn, c.ErrorToReturn
 }
 
 // Gateways provides a mock of a metrics-api method.

@@ -30,6 +30,7 @@ type ApiClient interface {
 	ListPods(ctx context.Context, in *ListPodsRequest, opts ...grpc.CallOption) (*ListPodsResponse, error)
 	ListServices(ctx context.Context, in *ListServicesRequest, opts ...grpc.CallOption) (*ListServicesResponse, error)
 	SelfCheck(ctx context.Context, in *SelfCheckRequest, opts ...grpc.CallOption) (*SelfCheckResponse, error)
+	Authz(ctx context.Context, in *AuthzRequest, opts ...grpc.CallOption) (*AuthzResponse, error)
 }
 
 type apiClient struct {
@@ -104,6 +105,15 @@ func (c *apiClient) SelfCheck(ctx context.Context, in *SelfCheckRequest, opts ..
 	return out, nil
 }
 
+func (c *apiClient) Authz(ctx context.Context, in *AuthzRequest, opts ...grpc.CallOption) (*AuthzResponse, error) {
+	out := new(AuthzResponse)
+	err := c.cc.Invoke(ctx, "/linkerd2.viz.Api/Authz", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ApiServer is the server API for Api service.
 // All implementations must embed UnimplementedApiServer
 // for forward compatibility
@@ -116,6 +126,7 @@ type ApiServer interface {
 	ListPods(context.Context, *ListPodsRequest) (*ListPodsResponse, error)
 	ListServices(context.Context, *ListServicesRequest) (*ListServicesResponse, error)
 	SelfCheck(context.Context, *SelfCheckRequest) (*SelfCheckResponse, error)
+	Authz(context.Context, *AuthzRequest) (*AuthzResponse, error)
 	mustEmbedUnimplementedApiServer()
 }
 
@@ -143,6 +154,9 @@ func (UnimplementedApiServer) ListServices(context.Context, *ListServicesRequest
 }
 func (UnimplementedApiServer) SelfCheck(context.Context, *SelfCheckRequest) (*SelfCheckResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SelfCheck not implemented")
+}
+func (UnimplementedApiServer) Authz(context.Context, *AuthzRequest) (*AuthzResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Authz not implemented")
 }
 func (UnimplementedApiServer) mustEmbedUnimplementedApiServer() {}
 
@@ -283,6 +297,24 @@ func _Api_SelfCheck_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Api_Authz_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AuthzRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ApiServer).Authz(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/linkerd2.viz.Api/Authz",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ApiServer).Authz(ctx, req.(*AuthzRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Api_ServiceDesc is the grpc.ServiceDesc for Api service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -317,6 +349,10 @@ var Api_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SelfCheck",
 			Handler:    _Api_SelfCheck_Handler,
+		},
+		{
+			MethodName: "Authz",
+			Handler:    _Api_Authz_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
