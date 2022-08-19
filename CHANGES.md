@@ -1,5 +1,42 @@
 # Changes
 
+## stable-2.12.0-rc2
+
+This release is the second release candidate for stable-2.12.0.
+
+At this point the Helm charts can be retrieved from the stable repo:
+
+```sh
+helm repo add linkerd https://helm.linkerd.io/stable
+helm repo up
+helm install linkerd-crds -n linkerd --create-namespace linkerd/linkerd-crds
+helm install linkerd-control-plane \
+  -n linkerd \
+  --set-file identityTrustAnchorsPEM=ca.crt \
+  --set-file identity.issuer.tls.crtPEM=issuer.crt \
+  --set-file identity.issuer.tls.keyPEM=issuer.key \
+  linkerd/linkerd-control-plane
+```
+
+The following lists all the changes since edge-22.8.2:
+
+* Fixed inheritance of the `linkerd.io/inject` annotation from Namespace to
+  Workloads when its value is `ingress`
+* Added the `config.linkerd.io/default-inbound-policy: all-authenticated`
+  annotation to linkerd-multicluster’s Gateway deployment so that all clients
+  are required to be authenticated
+* Added a `ReadHeaderTimeout` of 10s to all the go `http.Server` instances, to
+  avoid being vulnerable to "slowrolis" attacks
+* Added check in `linkerd viz check --proxy` to warn in case namespace have the
+  `config.linkerd.io/default-inbound-policy: deny` annotation, which would not
+  authorize scrapes coming from the linkerd-viz Prometheus instance
+* Added validation for accepted values for the `--default-inbound-policy` flag
+* Fixed invalid URL in the `linkerd install --help` output
+* Added `--destination-pod` flag to `linkerd diagnostics endpoints` subcommand
+* Added `proxyInit.runAsUser` in `values.yaml` defaulting to non-zero, to
+  complement the new default `proxyInit.runAsRoot: false` that was rencently
+  changed
+
 ## edge-22.8.2
 
 This release is considered a release candidate for stable-2.12.0 and we
