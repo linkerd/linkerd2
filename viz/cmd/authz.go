@@ -62,7 +62,6 @@ func NewCmdAuthz() *cobra.Command {
 				Impersonate:           impersonate,
 				ImpersonateGroup:      impersonateGroup,
 				KubeContext:           kubeContext,
-				APIAddr:               apiAddr,
 			})
 
 			var resource string

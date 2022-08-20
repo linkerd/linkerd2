@@ -187,7 +187,6 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 		KubeContext:           kubeContext,
 		Impersonate:           impersonate,
 		ImpersonateGroup:      impersonateGroup,
-		APIAddr:               apiAddr,
 		VersionOverride:       options.versionOverride,
 		RetryDeadline:         time.Now().Add(options.wait),
 		CNIEnabled:            options.cniEnabled,
@@ -249,7 +248,7 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 
 func getExtensionCheckFlags(lf *pflag.FlagSet) []string {
 	extensionFlags := []string{
-		"api-addr", "context", "as", "as-group", "kubeconfig", "linkerd-namespace", "verbose",
+		"context", "as", "as-group", "kubeconfig", "linkerd-namespace", "verbose",
 		"namespace", "proxy", "wait",
 	}
 	cmdLineFlags := []string{}

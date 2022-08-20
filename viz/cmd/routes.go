@@ -81,7 +81,6 @@ This command will only display traffic which is sent to a service that has a Ser
 					Impersonate:           impersonate,
 					ImpersonateGroup:      impersonateGroup,
 					KubeContext:           kubeContext,
-					APIAddr:               apiAddr,
 				}),
 				req,
 				options,

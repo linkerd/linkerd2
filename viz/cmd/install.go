@@ -71,7 +71,6 @@ A full list of configurable values can be found at https://www.github.com/linker
 					KubeContext:           kubeContext,
 					Impersonate:           impersonate,
 					ImpersonateGroup:      impersonateGroup,
-					APIAddr:               apiAddr,
 					RetryDeadline:         time.Now().Add(wait),
 				})
 

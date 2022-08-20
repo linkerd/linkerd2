@@ -442,7 +442,6 @@ func errAfterRunningChecks(cniEnabled bool) error {
 		Impersonate:           impersonate,
 		ImpersonateGroup:      impersonateGroup,
 		KubeContext:           kubeContext,
-		APIAddr:               apiAddr,
 		CNIEnabled:            cniEnabled,
 	})
 

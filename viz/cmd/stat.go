@@ -226,7 +226,6 @@ If no resource name is specified, displays stats about all resources of the spec
 				Impersonate:           impersonate,
 				ImpersonateGroup:      impersonateGroup,
 				KubeContext:           kubeContext,
-				APIAddr:               apiAddr,
 			})
 
 			c := make(chan indexedResults, len(reqs))

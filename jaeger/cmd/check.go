@@ -205,7 +205,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		KubeContext:           kubeContext,
 		Impersonate:           impersonate,
 		ImpersonateGroup:      impersonateGroup,
-		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
 		DataPlaneNamespace:    options.namespace,
 	})

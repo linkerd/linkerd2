@@ -23,7 +23,6 @@ var (
 	stdout = color.Output
 	stderr = color.Error
 
-	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	controlPlaneNamespace string
 	kubeconfigPath        string
 	kubeContext           string
@@ -63,7 +62,6 @@ func NewCmdJaeger() *cobra.Command {
 	jaegerCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
 	jaegerCmd.PersistentFlags().StringVar(&impersonate, "as", "", "Username to impersonate for Kubernetes operations")
 	jaegerCmd.PersistentFlags().StringArrayVar(&impersonateGroup, "as-group", []string{}, "Group to impersonate for Kubernetes operations")
-	jaegerCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 	jaegerCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
 	jaegerCmd.AddCommand(NewCmdCheck())
 	jaegerCmd.AddCommand(newCmdDashboard())

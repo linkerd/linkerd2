@@ -133,7 +133,6 @@ func NewCmdEdges() *cobra.Command {
 				Impersonate:           impersonate,
 				ImpersonateGroup:      impersonateGroup,
 				KubeContext:           kubeContext,
-				APIAddr:               apiAddr,
 			})
 
 			c := make(chan indexedEdgeResults, len(reqs))

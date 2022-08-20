@@ -27,7 +27,6 @@ const (
 )
 
 var (
-	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	controlPlaneNamespace string
 	kubeconfigPath        string
 	kubeContext           string
@@ -78,7 +77,6 @@ components on a cluster, manage credentials and link clusters together.`,
 	multiclusterCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
 	multiclusterCmd.PersistentFlags().StringVar(&impersonate, "as", "", "Username to impersonate for Kubernetes operations")
 	multiclusterCmd.PersistentFlags().StringArrayVar(&impersonateGroup, "as-group", []string{}, "Group to impersonate for Kubernetes operations")
-	multiclusterCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 	multiclusterCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
 	multiclusterCmd.AddCommand(newLinkCommand())
 	multiclusterCmd.AddCommand(newUnlinkCommand())

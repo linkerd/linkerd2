@@ -358,7 +358,6 @@ func NewCmdTop() *cobra.Command {
 				Impersonate:           impersonate,
 				ImpersonateGroup:      impersonateGroup,
 				KubeContext:           kubeContext,
-				APIAddr:               apiAddr,
 			})
 
 			requestParams := pkg.TapRequestParams{

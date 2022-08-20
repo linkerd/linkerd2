@@ -26,8 +26,6 @@ The extension must accept the following flags and respect them any time that
 it communicates with the Kubernetes API.  All of these flags must be accepted
 but may be ignored if they are not applicable.
 
-* `--api-addr`: Override kubeconfig and communicate directly with the control
-  plane at host:port (mostly for testing)
 * `--context`: Name of the kubeconfig context to use
 * `--as`: Username to impersonate for Kubernetes operations
 * `--as-group`: Group to impersonate for Kubernetes operations

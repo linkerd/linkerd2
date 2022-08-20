@@ -363,7 +363,6 @@ func fetchConfigs(ctx context.Context) (*linkerd2.Values, error) {
 		Impersonate:           impersonate,
 		ImpersonateGroup:      impersonateGroup,
 		KubeContext:           kubeContext,
-		APIAddr:               apiAddr,
 		RetryDeadline:         time.Time{},
 	})
 

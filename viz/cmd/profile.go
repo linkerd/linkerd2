@@ -109,7 +109,6 @@ func newCmdProfile() *cobra.Command {
 				Impersonate:           impersonate,
 				ImpersonateGroup:      impersonateGroup,
 				KubeContext:           kubeContext,
-				APIAddr:               apiAddr,
 			})
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)

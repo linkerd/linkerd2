@@ -70,7 +70,6 @@ func newCmdDashboard() *cobra.Command {
 				Impersonate:           impersonate,
 				ImpersonateGroup:      impersonateGroup,
 				KubeContext:           kubeContext,
-				APIAddr:               apiAddr,
 				RetryDeadline:         time.Now().Add(options.wait),
 			})
 
