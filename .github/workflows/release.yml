@@ -282,8 +282,7 @@ jobs:
         . bin/_release.sh
         extract_release_notes NOTES.md
     - name: Download choco package
-      #if: startsWith(github.ref, 'refs/tags/stable')
-      if: ${{ false }}  # temporarily disabled
+      if: startsWith(github.ref, 'refs/tags/stable')
       uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
       with:
         name: choco
