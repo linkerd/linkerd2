@@ -59,9 +59,8 @@ runtimeClassName: ""
 
 # policy controller configuration
 policyController:
-  # image -- Docker image for the policy controller
   image:
-    # -- Docker image for the proxy
+    # -- Docker image for the policy controller
     name: cr.l5d.io/linkerd/policy-controller
     # -- Pull policy for the proxy container Docker image
     # @default -- imagePullPolicy
