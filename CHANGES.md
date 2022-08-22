@@ -1,5 +1,124 @@
 # Changes
 
+## stable-2.12.0
+
+This release introduces route-based policy to Linkerd, allowing users to define
+and enforce authorization policies based on HTTP routes in a fully zero-trust
+way. These policies are built on Linkerd's strong workload identities, secured
+by mutual TLS, and configured using types from Kubernetes's [Gateway API](https://gateway-api.sigs.k8s.io/).
+
+The 2.12 release also introduces access logging, a long-awaited feature that
+optionally allows Linkerd to produce Apache-style request logs, optional
+support for `iptables-nft`, and a host of other improvements and performance
+enhancements.
+
+**Upgrade notes**: Please see the [upgrade instructions](upgrade-2120). <!-- TODO fix link -->
+
+* Proxy
+  * Added a `config.linkerd.io/shutdown-grace-period` annotation to configure
+   the proxy's maximum grace period for graceful shutdown
+  * Added a new `iptables-nft` mode for `proxy-init`
+  * Fixed an issue where the proxy-injector would break when using
+    `nodeAffinity` values for the control plane
+
+* Control Plane
+  * Added support for per-route policy by supporting AuthorizationPolicy
+    resources which target HttpRoute resources
+  * Removed kube-system exclusions from watchers to fix service discovery
+    for workloads in the kube-system namespace (thanks @JacobHenner)
+  * Updated healthcheck to ignore `Terminated` state for pods (thanks
+    @AgrimPrasad!)
+  * Updated the default policy controller log level to `info`; the controller
+    will now emit INFO level logs for some of its dependencies
+  * Added probe authorization by default, allowing clusters that use a
+    default `deny` policy to not explicitly need to authorize probes
+  * Fixed an issue where certain control plane components were not restarting
+    as necessary after a trust root rotation
+  * Fixed an issuer where the `--default-inbound-policy` setting was not
+    being respected
+
+* CLI
+  * Fixed the `linkerd check` command crashing when unexpected pods are found
+    in a Linkerd namespace
+  * Updated the `linkerd authz` command to support AuthorizationPolicy and
+    HttpRoute resources
+  * Updated linkerd check to allow RSA signed trust anchors (thanks
+    @danibaeyens)
+  * Fixed some invalid yaml in the viz extension's tap-injector template
+    (thanks @wc-s)
+  * Added support for AuthorizationPolicy and HttpRoute to viz authz command
+  * Added support for AuthorizationPolicy and HttpRoute to viz stat
+  * Added support for policy metadata in linkerd tap
+
+* Helm
+  * Added missing port in the Linkerd viz chart documentation (thanks @haswalt)
+  * Changed the `proxy.await` Helm value so that users can now disable
+    `linkerd-await` on control plane components
+  * Added the `policyController.probeNetworks` Helm value for configuring
+    the networks that probes are expected to be performed from
+
+* Extensions
+  * Added annotations to allow Linkerd extension deployments to be evicted by
+    the autoscaler when necessary
+  * Added ability to run the Linkerd CNI plugin in non-chained (stand-alone) mode
+  * Added a ServiceAccount token Secret to the multicluster extension to support
+    Kubernetes versions >= v1.24
+
+This release includes changes from a massive list of contributors, including
+engineers from Adidas, Intel, Red Hat, Shopify, Sourcegraph, Timescale, and
+others. A special thank-you to everyone who helped make this release possible:
+
+Agrim Prasad [@AgrimPrasad](https://github.com/AgrimPrasad)
+Ahmed Al-Hulaibi [@ahmedalhulaibi](https://github.com/ahmedalhulaibi)
+Aleksandr Tarasov [@aatarasoff](https://github.com/aatarasoff)
+Alexander Berger [@alex-berger](https://github.com/alex-berger)
+Ao Chen [@chenaoxd](https://github.com/chenaoxd)
+Badis Merabet [@badis](https://github.com/badis)
+Bjørn [@Crevil](https://github.com/Crevil)
+Brian Dunnigan [@bdun1013](https://github.com/bdun1013)
+Christian Schlotter [@chrischdi](https://github.com/chrischdi)
+Dani Baeyens [@danibaeyens](https://github.com/danibaeyens)
+David Symons [@multimac](https://github.com/multimac)
+Dmitrii Ermakov [@ErmakovDmitriy](https://github.com/ErmakovDmitriy)
+Elvin Efendi [@ElvinEfendi](https://github.com/ElvinEfendi)
+Eng Zer Jun [@Juneezee](https://github.com/Juneezee)
+Gustavo Fernandes de Carvalho [@gusfcarvalho](https://github.com/gusfcarvalho)
+Harry Walter [@haswalt](https://github.com/haswalt)
+Israel Miller [@imiller31](https://github.com/imiller31)
+Jack Gill [@jackgill](https://github.com/jackgill)
+Jacob Henner [@JacobHenner](https://github.com/JacobHenner)
+Jacob Lorenzen [@Jaxwood](https://github.com/Jaxwood)
+Joakim Roubert [@joakimr-axis](https://github.com/joakimr-axis)
+Josh Ault [@jault-figure](https://github.com/jault-figure)
+João Soares [@jasoares](https://github.com/jasoares)
+Kim Christensen [@kichristensen](https://github.com/kichristensen)
+Krzysztof Dryś [@krzysztofdrys](https://github.com/krzysztofdrys)
+Lior Yantovski [@lioryantov](https://github.com/lioryantov)
+Martin Anker Have [@mahlunar](https://github.com/mahlunar)
+Michael Lin [@michaellzc](https://github.com/michaellzc)
+Michał Romanowski [@michalrom089](https://github.com/michalrom089)
+Naveen Nalam [@nnalam](https://github.com/nnalam)
+Nick Calibey [@ncalibey](https://github.com/ncalibey)
+Nikola Brdaroski [@nikolabrdaroski](https://github.com/nikolabrdaroski)
+Or Shachar [@or-shachar](https://github.com/or-shachar)
+Pål-Magnus Slåtto [@dev-slatto](https://github.com/dev-slatto)
+Raman Gupta [@rocketraman](https://github.com/rocketraman)
+Ricardo Gândara Pinto [@rmgpinto](https://github.com/rmgpinto)
+Roberth Strand [@roberthstrand](https://github.com/roberthstrand)
+Sankalp Rangare [@sankalp-r](https://github.com/sankalp-r)
+Sascha Grunert [@saschagrunert](https://github.com/saschagrunert)
+Steve Gray [@steve-gray](https://github.com/steve-gray)
+Steve Zhang [@zhlsunshine](https://github.com/zhlsunshine)
+Takumi Sue [@mikutas](https://github.com/mikutas)
+Tanmay Bhat [@tanmay-bhat](https://github.com/tanmay-bhat)
+Táskai Dominik [@dtaskai](https://github.com/dtaskai)
+Ujjwal Goyal [@importhuman](https://github.com/importhuman)
+Weichung Shaw [@wc-s](https://github.com/wc-s)
+Wim de Groot [@wim-de-groot](https://github.com/wim-de-groot)
+Yannick Utard [@utay](https://github.com/utay)
+Yurii Dzobak [@yuriydzobak](https://github.com/yuriydzobak)
+罗泽轩 [@spacewander](https://github.com/spacewander)
+
 ## stable-2.12.0-rc2
 
 This release is the second release candidate for stable-2.12.0.
