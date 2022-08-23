@@ -101,13 +101,13 @@ This release includes changes from a massive list of contributors, including
 engineers from Adidas, Intel, Red Hat, Shopify, Sourcegraph, Timescale, and
 others. A special thank-you to everyone who helped make this release possible:
 
-Agrim Prasad [@AgrimPrasad](https://github.com/AgrimPrasad) Ahmed Al-Hulaibi
+[@AgrimPrasad](https://github.com/AgrimPrasad) Ahmed Al-Hulaibi
 [@ahmedalhulaibi](https://github.com/ahmedalhulaibi) Aleksandr Tarasov
 [@aatarasoff](https://github.com/aatarasoff) Alexander Berger
 [@alex-berger](https://github.com/alex-berger) Ao Chen
 [@chenaoxd](https://github.com/chenaoxd) Badis Merabet
 [@badis](https://github.com/badis) Bjørn [@Crevil](https://github.com/Crevil)
-Brian Dunnigan [@bdun1013](https://github.com/bdun1013) Christian Schlotter
+[@bdun1013](https://github.com/bdun1013) Christian Schlotter
 [@chrischdi](https://github.com/chrischdi) Dani Baeyens
 [@danibaeyens](https://github.com/danibaeyens) David Symons
 [@multimac](https://github.com/multimac) Dmitrii Ermakov
