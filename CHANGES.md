@@ -5,22 +5,33 @@
 This release introduces route-based policy to Linkerd, allowing users to define
 and enforce authorization policies based on HTTP routes in a fully zero-trust
 way. These policies are built on Linkerd's strong workload identities, secured
-by mutual TLS, and configured using types from Kubernetes's [Gateway API](https://gateway-api.sigs.k8s.io/).
+by mutual TLS, and configured using types from the Kubernetes [Gateway API](https://gateway-api.sigs.k8s.io/).
 
-The 2.12 release also introduces access logging, a long-awaited feature that
-optionally allows Linkerd to produce Apache-style request logs, optional
-support for `iptables-nft`, and a host of other improvements and performance
+The 2.12 release also introduces access logging (an optional feature that
+enables Linkerd to produce Apache-style request logs), optional support for
+`iptables-nft`, and a host of other improvements and performance
 enhancements.
+
+Additionally, the installation process has been updated to separate management
+of the Linkerd CRDs from the main installation process. With the CLI, you'll
+need to `linkerd install --crds` before running `linkerd install`; with Helm,
+you'll install the new `linkerd-crds` chart, then the `linkerd-control-plane`
+chart. These charts are now versioned using [SemVer](https://semver.org)
+independently of Linkerd releases. For more information, see the
+[upgrade notes][upgrade-2120].
 
 **Upgrade notes**: Please see the [upgrade instructions][upgrade-2120].
 
 * Proxy
-  * Added a `config.linkerd.io/shutdown-grace-period` annotation to configure
-   the proxy's maximum grace period for graceful shutdown
-  * Added a new `iptables-nft` mode for `proxy-init`
-  * Added support for non-HTTP traffic forwarding within the mesh in `ingress mode`
+  * Added a `config.linkerd.io/shutdown-grace-period` annotation to limit
+    the duration that the proxy may wait for graceful shutdown
+  * Added a new `iptables-nft` mode for the `proxy-init` initContainer
+  * Added support for non-HTTP traffic forwarding within the mesh in `ingress` mode
   * Added the `/logs.json` log stream endpoint
   * Added a new `process_uptime_seconds_total` metric to track proxy uptime in seconds
+  * Added support for dynamically discovering policies for ports that are not documented
+    in a pod's `containerPorts`
+  * Added support for route-based inbound HTTP metrics (`route_group`/`route_kind`/`route_name`)
 
 * Control Plane
   * Added support for per-route policy by supporting AuthorizationPolicy
@@ -39,8 +50,6 @@ enhancements.
     `nodeAffinity` values for the control plane
   * Fixed an issue where certain control plane components were not restarting
     as necessary after a trust root rotation
-  * Fixed an issuer where the `--default-inbound-policy` setting was not
-    being respected
 
 * CLI
   * Fixed the `linkerd check` command crashing when unexpected pods are found
@@ -49,13 +58,20 @@ enhancements.
     HttpRoute resources
   * Updated `linkerd check` to allow RSA signed trust anchors (thanks
     @danibaeyens!)
+  * `linkerd install --crds` must be run before `linkerd install`
+  * `linkerd upgrade --crds` must be run before `linkerd upgrade`
   * Fixed invalid yaml syntax in the viz extension's tap-injector template
     (thanks @wc-s!)
-  * Added support for AuthorizationPolicy and HttpRoute to viz authz command
-  * Added support for AuthorizationPolicy and HttpRoute to viz stat
+  * Fixed an issue where the `--default-inbound-policy` setting was not
+    being respected
+  * Added support for AuthorizationPolicy and HttpRoute to `viz authz` command
+  * Added support for AuthorizationPolicy and HttpRoute to `viz stat` command
   * Added support for policy metadata in linkerd tap
 
 * Helm
+  * Split the `linkerd2` chart into `linkerd-crds` and `linkerd-control-plane`
+  * Charts are now versioned using [SemVer](https://semver.org) independently
+    of Linkerd releases
   * Added missing port in the Linkerd viz chart documentation (thanks @haswalt!)
   * Changed the `proxy.await` Helm value so that users can now disable
     `linkerd-await` on control plane components
