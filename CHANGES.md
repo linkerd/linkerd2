@@ -40,7 +40,7 @@ independently of Linkerd releases. For more information, see the
 
 * Control Plane
   * Added support for per-route policy by supporting AuthorizationPolicy
-    resources which can HttpRoute or Server resources
+    resources which can target HttpRoute or Server resources
   * Added support for bound service account token volumes for the control plane
     and injected workloads
   * Removed kube-system exclusions from watchers to fix service discovery
