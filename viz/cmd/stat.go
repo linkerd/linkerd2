@@ -112,6 +112,8 @@ func NewCmdStat() *cobra.Command {
   * ts/my-split
   * authority
   * au/my-authority
+  * httproute/my-route
+  * route/my-route
   * all
 
   Valid resource types include:
@@ -125,6 +127,8 @@ func NewCmdStat() *cobra.Command {
   * replicationcontrollers
   * statefulsets
   * authorities (not supported in --from)
+  * authorizationpolicies (not supported in --from)
+  * httproutes (not supported in --from)
   * services (not supported in --from)
   * servers (not supported in --from)
   * serverauthorizations (not supported in --from)
@@ -182,6 +186,12 @@ If no resource name is specified, displays stats about all resources of the spec
 
   # Get all inbound stats to the web-public server authorization resource
   linkerd viz stat serverauthorization/web-public
+
+  # Get all inbound stats to the web-get and web-delete HTTP route resources
+  linkerd viz stat route/web-get route/web-delete
+
+  # Get all inbound stats to the web-authz authorization policy resource
+  linkerd viz stat authorizationpolicy/web-authz
   `,
 		Args: cobra.MinimumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
