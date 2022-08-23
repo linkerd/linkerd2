@@ -7,14 +7,14 @@ and enforce authorization policies based on HTTP routes in a fully zero-trust
 way. These policies are built on Linkerd's strong workload identities, secured
 by mutual TLS, and configured using types from the Kubernetes [Gateway API](https://gateway-api.sigs.k8s.io/).
 
-The 2.12 release also introduces access logging (an optional feature that
-enables Linkerd to produce Apache-style request logs), optional support for
-`iptables-nft`, and a host of other improvements and performance
-enhancements.
+The 2.12 release also introduces optional request logging ("access logging"
+after its name in webservers), optional support for `iptables-nft`, and a
+host of other improvements and performance enhancements.
 
-Additionally, the installation process has been updated to separate management
-of the Linkerd CRDs from the main installation process. With the CLI, you'll
-need to `linkerd install --crds` before running `linkerd install`; with Helm,
+Additionally, the `linkerd-smi` extension is now required to use TrafficSplit,
+and the installation process has been updated to separate management of the
+Linkerd CRDs from the main installation process. With the CLI, you'll need
+to `linkerd install --crds` before running `linkerd install`; with Helm,
 you'll install the new `linkerd-crds` chart, then the `linkerd-control-plane`
 chart. These charts are now versioned using [SemVer](https://semver.org)
 independently of Linkerd releases. For more information, see the
@@ -25,17 +25,22 @@ independently of Linkerd releases. For more information, see the
 * Proxy
   * Added a `config.linkerd.io/shutdown-grace-period` annotation to limit
     the duration that the proxy may wait for graceful shutdown
+  * Added a `config.linkerd.io/access-log` annotation to enable logging of workload
+    requests
   * Added a new `iptables-nft` mode for the `proxy-init` initContainer
   * Added support for non-HTTP traffic forwarding within the mesh in `ingress` mode
-  * Added the `/logs.json` log stream endpoint
+  * Added the `/env.json` log diagnostic endpoint
   * Added a new `process_uptime_seconds_total` metric to track proxy uptime in seconds
   * Added support for dynamically discovering policies for ports that are not documented
     in a pod's `containerPorts`
   * Added support for route-based inbound HTTP metrics (`route_group`/`route_kind`/`route_name`)
+  * Added a new annotation to configure skipping subnets in the init container
+    (`config.linkerd.io/skip-subnets`), needed e.g. in Docker-in-Docker workloads
+    (thanks @michaellzc!)
 
 * Control Plane
   * Added support for per-route policy by supporting AuthorizationPolicy
-    resources which target HttpRoute resources
+    resources which can HttpRoute or Server resources
   * Added support for bound service account token volumes for the control plane
     and injected workloads
   * Removed kube-system exclusions from watchers to fix service discovery
@@ -50,6 +55,8 @@ independently of Linkerd releases. For more information, see the
     `nodeAffinity` values for the control plane
   * Fixed an issue where certain control plane components were not restarting
     as necessary after a trust root rotation
+  * Removed SMI functionality in the default Linkerd installation; this is now
+    part of the `linkerd-smi` extension  
 
 * CLI
   * Fixed the `linkerd check` command crashing when unexpected pods are found
@@ -66,7 +73,7 @@ independently of Linkerd releases. For more information, see the
     being respected
   * Added support for AuthorizationPolicy and HttpRoute to `viz authz` command
   * Added support for AuthorizationPolicy and HttpRoute to `viz stat` command
-  * Added support for policy metadata in linkerd tap
+  * Added support for policy metadata in `linkerd viz tap`
 
 * Helm
   * Split the `linkerd2` chart into `linkerd-crds` and `linkerd-control-plane`
@@ -81,9 +88,6 @@ independently of Linkerd releases. For more information, see the
 * Extensions
   * Added annotations to allow Linkerd extension deployments to be evicted by
     the autoscaler when necessary
-  * Added a new annotation to configure skipping subnets in the init container
-    (config.linkerd.io/skip-subnets), needed e.g. in Docker-in-Docker workloads
-    (thanks @michaellzc!)
   * Added ability to run the Linkerd CNI plugin in non-chained (stand-alone) mode
   * Added a ServiceAccount token Secret to the multicluster extension to support
     Kubernetes versions >= v1.24
