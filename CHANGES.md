@@ -12,26 +12,31 @@ optionally allows Linkerd to produce Apache-style request logs, optional
 support for `iptables-nft`, and a host of other improvements and performance
 enhancements.
 
-**Upgrade notes**: Please see the [upgrade instructions](upgrade-2120). <!-- TODO fix link -->
+**Upgrade notes**: Please see the [upgrade instructions][upgrade-2120].
 
 * Proxy
   * Added a `config.linkerd.io/shutdown-grace-period` annotation to configure
    the proxy's maximum grace period for graceful shutdown
   * Added a new `iptables-nft` mode for `proxy-init`
-  * Fixed an issue where the proxy-injector would break when using
-    `nodeAffinity` values for the control plane
+  * Added support for non-HTTP traffic forwarding within the mesh in `ingress mode`
+  * Added the `/logs.json` log stream endpoint
+  * Added a new `process_uptime_seconds_total` metric to track proxy uptime in seconds
 
 * Control Plane
   * Added support for per-route policy by supporting AuthorizationPolicy
     resources which target HttpRoute resources
+  * Added support for bound service account token volumes for the control plane
+    and injected workloads
   * Removed kube-system exclusions from watchers to fix service discovery
-    for workloads in the kube-system namespace (thanks @JacobHenner)
+    for workloads in the kube-system namespace (thanks @JacobHenner!)
   * Updated healthcheck to ignore `Terminated` state for pods (thanks
     @AgrimPrasad!)
   * Updated the default policy controller log level to `info`; the controller
     will now emit INFO level logs for some of its dependencies
   * Added probe authorization by default, allowing clusters that use a
     default `deny` policy to not explicitly need to authorize probes
+  * Fixed an issue where the proxy-injector would break when using
+    `nodeAffinity` values for the control plane
   * Fixed an issue where certain control plane components were not restarting
     as necessary after a trust root rotation
   * Fixed an issuer where the `--default-inbound-policy` setting was not
@@ -42,16 +47,16 @@ enhancements.
     in a Linkerd namespace
   * Updated the `linkerd authz` command to support AuthorizationPolicy and
     HttpRoute resources
-  * Updated linkerd check to allow RSA signed trust anchors (thanks
-    @danibaeyens)
-  * Fixed some invalid yaml in the viz extension's tap-injector template
-    (thanks @wc-s)
+  * Updated `linkerd check` to allow RSA signed trust anchors (thanks
+    @danibaeyens!)
+  * Fixed invalid yaml syntax in the viz extension's tap-injector template
+    (thanks @wc-s!)
   * Added support for AuthorizationPolicy and HttpRoute to viz authz command
   * Added support for AuthorizationPolicy and HttpRoute to viz stat
   * Added support for policy metadata in linkerd tap
 
 * Helm
-  * Added missing port in the Linkerd viz chart documentation (thanks @haswalt)
+  * Added missing port in the Linkerd viz chart documentation (thanks @haswalt!)
   * Changed the `proxy.await` Helm value so that users can now disable
     `linkerd-await` on control plane components
   * Added the `policyController.probeNetworks` Helm value for configuring
@@ -60,6 +65,9 @@ enhancements.
 * Extensions
   * Added annotations to allow Linkerd extension deployments to be evicted by
     the autoscaler when necessary
+  * Added a new annotation to configure skipping subnets in the init container
+    (config.linkerd.io/skip-subnets), needed e.g. in Docker-in-Docker workloads
+    (thanks @michaellzc!)
   * Added ability to run the Linkerd CNI plugin in non-chained (stand-alone) mode
   * Added a ServiceAccount token Secret to the multicluster extension to support
     Kubernetes versions >= v1.24
@@ -81,6 +89,7 @@ Dani Baeyens [@danibaeyens](https://github.com/danibaeyens)
 David Symons [@multimac](https://github.com/multimac)
 Dmitrii Ermakov [@ErmakovDmitriy](https://github.com/ErmakovDmitriy)
 Elvin Efendi [@ElvinEfendi](https://github.com/ElvinEfendi)
+Evan Hines [@evan-hines-firebolt](https://github.com/evan-hines-firebolt)
 Eng Zer Jun [@Juneezee](https://github.com/Juneezee)
 Gustavo Fernandes de Carvalho [@gusfcarvalho](https://github.com/gusfcarvalho)
 Harry Walter [@haswalt](https://github.com/haswalt)
@@ -91,6 +100,7 @@ Jacob Lorenzen [@Jaxwood](https://github.com/Jaxwood)
 Joakim Roubert [@joakimr-axis](https://github.com/joakimr-axis)
 Josh Ault [@jault-figure](https://github.com/jault-figure)
 João Soares [@jasoares](https://github.com/jasoares)
+jtcarnes [@jtcarnes](https://github.com/jtcarnes)
 Kim Christensen [@kichristensen](https://github.com/kichristensen)
 Krzysztof Dryś [@krzysztofdrys](https://github.com/krzysztofdrys)
 Lior Yantovski [@lioryantov](https://github.com/lioryantov)
@@ -118,6 +128,8 @@ Wim de Groot [@wim-de-groot](https://github.com/wim-de-groot)
 Yannick Utard [@utay](https://github.com/utay)
 Yurii Dzobak [@yuriydzobak](https://github.com/yuriydzobak)
 罗泽轩 [@spacewander](https://github.com/spacewander)
+
+[upgrade-2120]: https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2120
 
 ## stable-2.12.0-rc2
 
@@ -163,8 +175,8 @@ encourage you to try it out! It includes an update to the multicluster extension
 which adds support for Kubernetes v1.24 and also updates many CLI commands to
 support the new policy resources: ServerAuthorization and HTTPRoute.
 
-* Updated linkerd check to allow RSA signed trust anchors (thanks @danibaeyens)
-* Fixed some invalid yaml in the viz extension's tap-injector template (thanks @wc-s)
+* Updated linkerd check to allow RSA signed trust anchors (thanks @danibaeyens!)
+* Fixed some invalid yaml in the viz extension's tap-injector template (thanks @wc-s!)
 * Added support for AuthorizationPolicy and HttpRoute to viz authz command
 * Added support for AuthorizationPolicy and HttpRoute to viz stat
 * Added support for policy metadata in linkerd tap
@@ -172,7 +184,7 @@ support the new policy resources: ServerAuthorization and HTTPRoute.
   necessary after a trust root rotation
 * Added a ServiceAccount token Secret to the multicluster extension to support
   Kubernetes versions >= v1.24
-* Fixed an issuer where the --default-inbound-policy setting was not being
+* Fixed an issue where the --default-inbound-policy setting was not being
   respected
 
 ## edge-22.8.1
@@ -239,10 +251,10 @@ graceful shutdown completes within a certain time, even if there are outstanding
 open connections.
 
 * Removed kube-system exclusions from watchers to fix service discovery for
-  workloads in the kube-system namespace (thanks @JacobHenner)
+  workloads in the kube-system namespace (thanks @JacobHenner!)
 * Added annotations to allow Linkerd extension deployments to be evicted by the
   autoscaler when necessary
-* Added missing port in the Linkerd viz chart documentation (thanks @haswalt)
+* Added missing port in the Linkerd viz chart documentation (thanks @haswalt!)
 * Added support for per-route policy by supporting AuthorizationPolicy resources
   which target HttpRoute resources
 * Fixed the `linkerd check` command crashing when unexpected pods are found in
