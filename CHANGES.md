@@ -5,62 +5,66 @@
 This release introduces route-based policy to Linkerd, allowing users to define
 and enforce authorization policies based on HTTP routes in a fully zero-trust
 way. These policies are built on Linkerd's strong workload identities, secured
-by mutual TLS, and configured using types from the Kubernetes [Gateway API](https://gateway-api.sigs.k8s.io/).
+by mutual TLS, and configured using types from the Kubernetes [Gateway
+API](https://gateway-api.sigs.k8s.io/).
 
 The 2.12 release also introduces optional request logging ("access logging"
-after its name in webservers), optional support for `iptables-nft`, and a
-host of other improvements and performance enhancements.
+after its name in webservers), optional support for `iptables-nft`, and a host
+of other improvements and performance enhancements.
 
 Additionally, the `linkerd-smi` extension is now required to use TrafficSplit,
 and the installation process has been updated to separate management of the
-Linkerd CRDs from the main installation process. With the CLI, you'll need
-to `linkerd install --crds` before running `linkerd install`; with Helm,
-you'll install the new `linkerd-crds` chart, then the `linkerd-control-plane`
-chart. These charts are now versioned using [SemVer](https://semver.org)
-independently of Linkerd releases. For more information, see the
-[upgrade notes][upgrade-2120].
+Linkerd CRDs from the main installation process. With the CLI, you'll need to
+`linkerd install --crds` before running `linkerd install`; with Helm, you'll
+install the new `linkerd-crds` chart, then the `linkerd-control-plane` chart.
+These charts are now versioned using [SemVer](https://semver.org) independently
+of Linkerd releases. For more information, see the [upgrade
+notes][upgrade-2120].
 
 **Upgrade notes**: Please see the [upgrade instructions][upgrade-2120].
 
 * Proxy
-  * Added a `config.linkerd.io/shutdown-grace-period` annotation to limit
-    the duration that the proxy may wait for graceful shutdown
-  * Added a `config.linkerd.io/access-log` annotation to enable logging of workload
-    requests
+  * Added a `config.linkerd.io/shutdown-grace-period` annotation to limit the
+    duration that the proxy may wait for graceful shutdown
+  * Added a `config.linkerd.io/access-log` annotation to enable logging of
+    workload requests
   * Added a new `iptables-nft` mode for the `proxy-init` initContainer
-  * Added support for non-HTTP traffic forwarding within the mesh in `ingress` mode
+  * Added support for non-HTTP traffic forwarding within the mesh in `ingress`
+    mode
   * Added the `/env.json` log diagnostic endpoint
-  * Added a new `process_uptime_seconds_total` metric to track proxy uptime in seconds
-  * Added support for dynamically discovering policies for ports that are not documented
-    in a pod's `containerPorts`
-  * Added support for route-based inbound HTTP metrics (`route_group`/`route_kind`/`route_name`)
+  * Added a new `process_uptime_seconds_total` metric to track proxy uptime in
+    seconds
+  * Added support for dynamically discovering policies for ports that are not
+    documented in a pod's `containerPorts`
+  * Added support for route-based inbound HTTP metrics
+    (`route_group`/`route_kind`/`route_name`)
   * Added a new annotation to configure skipping subnets in the init container
-    (`config.linkerd.io/skip-subnets`), needed e.g. in Docker-in-Docker workloads
-    (thanks @michaellzc!)
+    (`config.linkerd.io/skip-subnets`), needed e.g. in Docker-in-Docker
+    workloads (thanks @michaellzc!)
 
 * Control Plane
   * Added support for per-route policy by supporting AuthorizationPolicy
     resources which can target HttpRoute or Server resources
   * Added support for bound service account token volumes for the control plane
     and injected workloads
-  * Removed kube-system exclusions from watchers to fix service discovery
-    for workloads in the kube-system namespace (thanks @JacobHenner!)
+  * Removed kube-system exclusions from watchers to fix service discovery for
+    workloads in the kube-system namespace (thanks @JacobHenner!)
   * Updated healthcheck to ignore `Terminated` state for pods (thanks
     @AgrimPrasad!)
   * Updated the default policy controller log level to `info`; the controller
     will now emit INFO level logs for some of its dependencies
-  * Added probe authorization by default, allowing clusters that use a
-    default `deny` policy to not explicitly need to authorize probes
+  * Added probe authorization by default, allowing clusters that use a default
+    `deny` policy to not explicitly need to authorize probes
   * Fixed an issue where the proxy-injector would break when using
     `nodeAffinity` values for the control plane
-  * Fixed an issue where certain control plane components were not restarting
-    as necessary after a trust root rotation
+  * Fixed an issue where certain control plane components were not restarting as
+    necessary after a trust root rotation
   * Removed SMI functionality in the default Linkerd installation; this is now
-    part of the `linkerd-smi` extension  
+    part of the `linkerd-smi` extension
 
 * CLI
-  * Fixed the `linkerd check` command crashing when unexpected pods are found
-    in a Linkerd namespace
+  * Fixed the `linkerd check` command crashing when unexpected pods are found in
+    a Linkerd namespace
   * Updated the `linkerd authz` command to support AuthorizationPolicy and
     HttpRoute resources
   * Updated `linkerd check` to allow RSA signed trust anchors (thanks
@@ -69,26 +73,27 @@ independently of Linkerd releases. For more information, see the
   * `linkerd upgrade --crds` must be run before `linkerd upgrade`
   * Fixed invalid yaml syntax in the viz extension's tap-injector template
     (thanks @wc-s!)
-  * Fixed an issue where the `--default-inbound-policy` setting was not
-    being respected
+  * Fixed an issue where the `--default-inbound-policy` setting was not being
+    respected
   * Added support for AuthorizationPolicy and HttpRoute to `viz authz` command
   * Added support for AuthorizationPolicy and HttpRoute to `viz stat` command
   * Added support for policy metadata in `linkerd viz tap`
 
 * Helm
   * Split the `linkerd2` chart into `linkerd-crds` and `linkerd-control-plane`
-  * Charts are now versioned using [SemVer](https://semver.org) independently
-    of Linkerd releases
+  * Charts are now versioned using [SemVer](https://semver.org) independently of
+    Linkerd releases
   * Added missing port in the Linkerd viz chart documentation (thanks @haswalt!)
   * Changed the `proxy.await` Helm value so that users can now disable
     `linkerd-await` on control plane components
-  * Added the `policyController.probeNetworks` Helm value for configuring
-    the networks that probes are expected to be performed from
+  * Added the `policyController.probeNetworks` Helm value for configuring the
+    networks that probes are expected to be performed from
 
 * Extensions
   * Added annotations to allow Linkerd extension deployments to be evicted by
     the autoscaler when necessary
-  * Added ability to run the Linkerd CNI plugin in non-chained (stand-alone) mode
+  * Added ability to run the Linkerd CNI plugin in non-chained (stand-alone)
+    mode
   * Added a ServiceAccount token Secret to the multicluster extension to support
     Kubernetes versions >= v1.24
 
@@ -96,58 +101,57 @@ This release includes changes from a massive list of contributors, including
 engineers from Adidas, Intel, Red Hat, Shopify, Sourcegraph, Timescale, and
 others. A special thank-you to everyone who helped make this release possible:
 
-Agrim Prasad [@AgrimPrasad](https://github.com/AgrimPrasad)
-Ahmed Al-Hulaibi [@ahmedalhulaibi](https://github.com/ahmedalhulaibi)
-Aleksandr Tarasov [@aatarasoff](https://github.com/aatarasoff)
-Alexander Berger [@alex-berger](https://github.com/alex-berger)
-Ao Chen [@chenaoxd](https://github.com/chenaoxd)
-Badis Merabet [@badis](https://github.com/badis)
-Bjørn [@Crevil](https://github.com/Crevil)
-Brian Dunnigan [@bdun1013](https://github.com/bdun1013)
-Christian Schlotter [@chrischdi](https://github.com/chrischdi)
-Dani Baeyens [@danibaeyens](https://github.com/danibaeyens)
-David Symons [@multimac](https://github.com/multimac)
-Dmitrii Ermakov [@ErmakovDmitriy](https://github.com/ErmakovDmitriy)
-Elvin Efendi [@ElvinEfendi](https://github.com/ElvinEfendi)
-Evan Hines [@evan-hines-firebolt](https://github.com/evan-hines-firebolt)
-Eng Zer Jun [@Juneezee](https://github.com/Juneezee)
-Gustavo Fernandes de Carvalho [@gusfcarvalho](https://github.com/gusfcarvalho)
-Harry Walter [@haswalt](https://github.com/haswalt)
-Israel Miller [@imiller31](https://github.com/imiller31)
-Jack Gill [@jackgill](https://github.com/jackgill)
-Jacob Henner [@JacobHenner](https://github.com/JacobHenner)
-Jacob Lorenzen [@Jaxwood](https://github.com/Jaxwood)
-Joakim Roubert [@joakimr-axis](https://github.com/joakimr-axis)
-Josh Ault [@jault-figure](https://github.com/jault-figure)
-João Soares [@jasoares](https://github.com/jasoares)
-jtcarnes [@jtcarnes](https://github.com/jtcarnes)
-Kim Christensen [@kichristensen](https://github.com/kichristensen)
-Krzysztof Dryś [@krzysztofdrys](https://github.com/krzysztofdrys)
-Lior Yantovski [@lioryantov](https://github.com/lioryantov)
-Martin Anker Have [@mahlunar](https://github.com/mahlunar)
-Michael Lin [@michaellzc](https://github.com/michaellzc)
-Michał Romanowski [@michalrom089](https://github.com/michalrom089)
-Naveen Nalam [@nnalam](https://github.com/nnalam)
-Nick Calibey [@ncalibey](https://github.com/ncalibey)
-Nikola Brdaroski [@nikolabrdaroski](https://github.com/nikolabrdaroski)
-Or Shachar [@or-shachar](https://github.com/or-shachar)
-Pål-Magnus Slåtto [@dev-slatto](https://github.com/dev-slatto)
-Raman Gupta [@rocketraman](https://github.com/rocketraman)
-Ricardo Gândara Pinto [@rmgpinto](https://github.com/rmgpinto)
-Roberth Strand [@roberthstrand](https://github.com/roberthstrand)
-Sankalp Rangare [@sankalp-r](https://github.com/sankalp-r)
-Sascha Grunert [@saschagrunert](https://github.com/saschagrunert)
-Steve Gray [@steve-gray](https://github.com/steve-gray)
-Steve Zhang [@zhlsunshine](https://github.com/zhlsunshine)
-Takumi Sue [@mikutas](https://github.com/mikutas)
-Tanmay Bhat [@tanmay-bhat](https://github.com/tanmay-bhat)
-Táskai Dominik [@dtaskai](https://github.com/dtaskai)
-Ujjwal Goyal [@importhuman](https://github.com/importhuman)
-Weichung Shaw [@wc-s](https://github.com/wc-s)
-Wim de Groot [@wim-de-groot](https://github.com/wim-de-groot)
-Yannick Utard [@utay](https://github.com/utay)
-Yurii Dzobak [@yuriydzobak](https://github.com/yuriydzobak)
-罗泽轩 [@spacewander](https://github.com/spacewander)
+Agrim Prasad [@AgrimPrasad](https://github.com/AgrimPrasad) Ahmed Al-Hulaibi
+[@ahmedalhulaibi](https://github.com/ahmedalhulaibi) Aleksandr Tarasov
+[@aatarasoff](https://github.com/aatarasoff) Alexander Berger
+[@alex-berger](https://github.com/alex-berger) Ao Chen
+[@chenaoxd](https://github.com/chenaoxd) Badis Merabet
+[@badis](https://github.com/badis) Bjørn [@Crevil](https://github.com/Crevil)
+Brian Dunnigan [@bdun1013](https://github.com/bdun1013) Christian Schlotter
+[@chrischdi](https://github.com/chrischdi) Dani Baeyens
+[@danibaeyens](https://github.com/danibaeyens) David Symons
+[@multimac](https://github.com/multimac) Dmitrii Ermakov
+[@ErmakovDmitriy](https://github.com/ErmakovDmitriy) Elvin Efendi
+[@ElvinEfendi](https://github.com/ElvinEfendi) Evan Hines
+[@evan-hines-firebolt](https://github.com/evan-hines-firebolt) Eng Zer Jun
+[@Juneezee](https://github.com/Juneezee) Gustavo Fernandes de Carvalho
+[@gusfcarvalho](https://github.com/gusfcarvalho) Harry Walter
+[@haswalt](https://github.com/haswalt) Israel Miller
+[@imiller31](https://github.com/imiller31) Jack Gill
+[@jackgill](https://github.com/jackgill) Jacob Henner
+[@JacobHenner](https://github.com/JacobHenner) Jacob Lorenzen
+[@Jaxwood](https://github.com/Jaxwood) Joakim Roubert
+[@joakimr-axis](https://github.com/joakimr-axis) Josh Ault
+[@jault-figure](https://github.com/jault-figure) João Soares
+[@jasoares](https://github.com/jasoares) jtcarnes
+[@jtcarnes](https://github.com/jtcarnes) Kim Christensen
+[@kichristensen](https://github.com/kichristensen) Krzysztof Dryś
+[@krzysztofdrys](https://github.com/krzysztofdrys) Lior Yantovski
+[@lioryantov](https://github.com/lioryantov) Martin Anker Have
+[@mahlunar](https://github.com/mahlunar) Michael Lin
+[@michaellzc](https://github.com/michaellzc) Michał Romanowski
+[@michalrom089](https://github.com/michalrom089) Naveen Nalam
+[@nnalam](https://github.com/nnalam) Nick Calibey
+[@ncalibey](https://github.com/ncalibey) Nikola Brdaroski
+[@nikolabrdaroski](https://github.com/nikolabrdaroski) Or Shachar
+[@or-shachar](https://github.com/or-shachar) Pål-Magnus Slåtto
+[@dev-slatto](https://github.com/dev-slatto) Raman Gupta
+[@rocketraman](https://github.com/rocketraman) Ricardo Gândara Pinto
+[@rmgpinto](https://github.com/rmgpinto) Roberth Strand
+[@roberthstrand](https://github.com/roberthstrand) Sankalp Rangare
+[@sankalp-r](https://github.com/sankalp-r) Sascha Grunert
+[@saschagrunert](https://github.com/saschagrunert) Steve Gray
+[@steve-gray](https://github.com/steve-gray) Steve Zhang
+[@zhlsunshine](https://github.com/zhlsunshine) Takumi Sue
+[@mikutas](https://github.com/mikutas) Tanmay Bhat
+[@tanmay-bhat](https://github.com/tanmay-bhat) Táskai Dominik
+[@dtaskai](https://github.com/dtaskai) Ujjwal Goyal
+[@importhuman](https://github.com/importhuman) Weichung Shaw
+[@wc-s](https://github.com/wc-s) Wim de Groot
+[@wim-de-groot](https://github.com/wim-de-groot) Yannick Utard
+[@utay](https://github.com/utay) Yurii Dzobak
+[@yuriydzobak](https://github.com/yuriydzobak)罗泽轩
+[@spacewander](https://github.com/spacewander)
 
 [upgrade-2120]: https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2120
 
