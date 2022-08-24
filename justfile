@@ -442,32 +442,8 @@ _linkerd-viz-uninit:
 # TODO linkerd-multicluster-install
 
 ##
-## Devcontainer
-##
-
-devcontainer-build-mode := "load"
-devcontainer-image := "ghcr.io/linkerd/dev"
-
-devcontainer-build tag:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    for tgt in tools go rust runtime ; do
-        just devcontainer-build-mode={{ devcontainer-build-mode }} \
-            _devcontainer-build {{ tag }} "${tgt}"
-    done
-
-_devcontainer-build tag target='':
-    docker buildx build . \
-        --progress=plain \
-        --file=.devcontainer/Dockerfile \
-        --tag='{{ devcontainer-image }}:{{ tag }}{{ if target != "runtime" { "-" + target }  else { "" } }}' \
-        --target='{{ target }}' \
-        --{{ if devcontainer-build-mode == "push" { "push" } else { "load" } }}
-
-##
 ## GitHub Actions
 ##
-
 
 # Format actionlint output for Github Actions if running in CI.
 _actionlint-fmt := if env_var_or_default("GITHUB_ACTIONS", "") != "true" { "" } else {
@@ -480,7 +456,7 @@ action-lint:
 
 # Ensure all devcontainer versions are in sync
 action-dev-check:
-    bin/action-dev-check
+    action-dev-check
 
 ##
 ## Other tools...
