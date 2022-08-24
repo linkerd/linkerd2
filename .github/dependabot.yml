@@ -72,13 +72,6 @@ updates:
       timezone: "UTC"
 
   - package-ecosystem: "docker"
-    directory: "/.devcontainer"
-    schedule:
-      interval: daily
-      time: "05:00"
-      timezone: "UTC"
-
-  - package-ecosystem: "docker"
     directory: "/cli"
     schedule:
       interval: daily
