@@ -1,6 +1,6 @@
 # See https://just.systems/man/en
 
-lint: action-lint md-lint sh-lint rs-fetch rs-clippy rs-check-fmt go-lint
+lint: action-lint action-dev-check md-lint sh-lint rs-fetch rs-clippy rs-check-fmt go-lint
 
 ##
 ## Go
