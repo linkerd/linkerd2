@@ -101,57 +101,58 @@ This release includes changes from a massive list of contributors, including
 engineers from Adidas, Intel, Red Hat, Shopify, Sourcegraph, Timescale, and
 others. A special thank-you to everyone who helped make this release possible:
 
-[@AgrimPrasad](https://github.com/AgrimPrasad) Ahmed Al-Hulaibi
-[@ahmedalhulaibi](https://github.com/ahmedalhulaibi) Aleksandr Tarasov
-[@aatarasoff](https://github.com/aatarasoff) Alexander Berger
-[@alex-berger](https://github.com/alex-berger) Ao Chen
-[@chenaoxd](https://github.com/chenaoxd) Badis Merabet
-[@badis](https://github.com/badis) Bjørn [@Crevil](https://github.com/Crevil)
-[@bdun1013](https://github.com/bdun1013) Christian Schlotter
-[@chrischdi](https://github.com/chrischdi) Dani Baeyens
-[@danibaeyens](https://github.com/danibaeyens) David Symons
-[@multimac](https://github.com/multimac) Dmitrii Ermakov
-[@ErmakovDmitriy](https://github.com/ErmakovDmitriy) Elvin Efendi
-[@ElvinEfendi](https://github.com/ElvinEfendi) Evan Hines
-[@evan-hines-firebolt](https://github.com/evan-hines-firebolt) Eng Zer Jun
-[@Juneezee](https://github.com/Juneezee) Gustavo Fernandes de Carvalho
-[@gusfcarvalho](https://github.com/gusfcarvalho) Harry Walter
-[@haswalt](https://github.com/haswalt) Israel Miller
-[@imiller31](https://github.com/imiller31) Jack Gill
-[@jackgill](https://github.com/jackgill) Jacob Henner
-[@JacobHenner](https://github.com/JacobHenner) Jacob Lorenzen
-[@Jaxwood](https://github.com/Jaxwood) Joakim Roubert
-[@joakimr-axis](https://github.com/joakimr-axis) Josh Ault
-[@jault-figure](https://github.com/jault-figure) João Soares
-[@jasoares](https://github.com/jasoares) jtcarnes
-[@jtcarnes](https://github.com/jtcarnes) Kim Christensen
-[@kichristensen](https://github.com/kichristensen) Krzysztof Dryś
-[@krzysztofdrys](https://github.com/krzysztofdrys) Lior Yantovski
-[@lioryantov](https://github.com/lioryantov) Martin Anker Have
-[@mahlunar](https://github.com/mahlunar) Michael Lin
-[@michaellzc](https://github.com/michaellzc) Michał Romanowski
-[@michalrom089](https://github.com/michalrom089) Naveen Nalam
-[@nnalam](https://github.com/nnalam) Nick Calibey
-[@ncalibey](https://github.com/ncalibey) Nikola Brdaroski
-[@nikolabrdaroski](https://github.com/nikolabrdaroski) Or Shachar
-[@or-shachar](https://github.com/or-shachar) Pål-Magnus Slåtto
-[@dev-slatto](https://github.com/dev-slatto) Raman Gupta
-[@rocketraman](https://github.com/rocketraman) Ricardo Gândara Pinto
-[@rmgpinto](https://github.com/rmgpinto) Roberth Strand
-[@roberthstrand](https://github.com/roberthstrand) Sankalp Rangare
-[@sankalp-r](https://github.com/sankalp-r) Sascha Grunert
-[@saschagrunert](https://github.com/saschagrunert) Steve Gray
-[@steve-gray](https://github.com/steve-gray) Steve Zhang
-[@zhlsunshine](https://github.com/zhlsunshine) Takumi Sue
-[@mikutas](https://github.com/mikutas) Tanmay Bhat
-[@tanmay-bhat](https://github.com/tanmay-bhat) Táskai Dominik
-[@dtaskai](https://github.com/dtaskai) Ujjwal Goyal
-[@importhuman](https://github.com/importhuman) Weichung Shaw
-[@wc-s](https://github.com/wc-s) Wim de Groot
-[@wim-de-groot](https://github.com/wim-de-groot) Yannick Utard
-[@utay](https://github.com/utay) Yurii Dzobak
-[@yuriydzobak](https://github.com/yuriydzobak)罗泽轩
-[@spacewander](https://github.com/spacewander)
+Agrim Prasad [@AgrimPrasad](https://github.com/AgrimPrasad)
+Ahmed Al-Hulaibi [@ahmedalhulaibi](https://github.com/ahmedalhulaibi)
+Aleksandr Tarasov [@aatarasoff](https://github.com/aatarasoff)
+Alexander Berger [@alex-berger](https://github.com/alex-berger)
+Ao Chen [@chenaoxd](https://github.com/chenaoxd)
+Badis Merabet [@badis](https://github.com/badis)
+Bjørn [@Crevil](https://github.com/Crevil)
+Brian Dunnigan [@bdun1013](https://github.com/bdun1013)
+Christian Schlotter [@chrischdi](https://github.com/chrischdi)
+Dani Baeyens [@danibaeyens](https://github.com/danibaeyens)
+David Symons [@multimac](https://github.com/multimac)
+Dmitrii Ermakov [@ErmakovDmitriy](https://github.com/ErmakovDmitriy)
+Elvin Efendi [@ElvinEfendi](https://github.com/ElvinEfendi)
+Evan Hines [@evan-hines-firebolt](https://github.com/evan-hines-firebolt)
+Eng Zer Jun [@Juneezee](https://github.com/Juneezee)
+Gustavo Fernandes de Carvalho [@gusfcarvalho](https://github.com/gusfcarvalho)
+Harry Walter [@haswalt](https://github.com/haswalt)
+Israel Miller [@imiller31](https://github.com/imiller31)
+Jack Gill [@jackgill](https://github.com/jackgill)
+Jacob Henner [@JacobHenner](https://github.com/JacobHenner)
+Jacob Lorenzen [@Jaxwood](https://github.com/Jaxwood)
+Joakim Roubert [@joakimr-axis](https://github.com/joakimr-axis)
+Josh Ault [@jault-figure](https://github.com/jault-figure)
+João Soares [@jasoares](https://github.com/jasoares)
+jtcarnes [@jtcarnes](https://github.com/jtcarnes)
+Kim Christensen [@kichristensen](https://github.com/kichristensen)
+Krzysztof Dryś [@krzysztofdrys](https://github.com/krzysztofdrys)
+Lior Yantovski [@lioryantov](https://github.com/lioryantov)
+Martin Anker Have [@mahlunar](https://github.com/mahlunar)
+Michael Lin [@michaellzc](https://github.com/michaellzc)
+Michał Romanowski [@michalrom089](https://github.com/michalrom089)
+Naveen Nalam [@nnalam](https://github.com/nnalam)
+Nick Calibey [@ncalibey](https://github.com/ncalibey)
+Nikola Brdaroski [@nikolabrdaroski](https://github.com/nikolabrdaroski)
+Or Shachar [@or-shachar](https://github.com/or-shachar)
+Pål-Magnus Slåtto [@dev-slatto](https://github.com/dev-slatto)
+Raman Gupta [@rocketraman](https://github.com/rocketraman)
+Ricardo Gândara Pinto [@rmgpinto](https://github.com/rmgpinto)
+Roberth Strand [@roberthstrand](https://github.com/roberthstrand)
+Sankalp Rangare [@sankalp-r](https://github.com/sankalp-r)
+Sascha Grunert [@saschagrunert](https://github.com/saschagrunert)
+Steve Gray [@steve-gray](https://github.com/steve-gray)
+Steve Zhang [@zhlsunshine](https://github.com/zhlsunshine)
+Takumi Sue [@mikutas](https://github.com/mikutas)
+Tanmay Bhat [@tanmay-bhat](https://github.com/tanmay-bhat)
+Táskai Dominik [@dtaskai](https://github.com/dtaskai)
+Ujjwal Goyal [@importhuman](https://github.com/importhuman)
+Weichung Shaw [@wc-s](https://github.com/wc-s)
+Wim de Groot [@wim-de-groot](https://github.com/wim-de-groot)
+Yannick Utard [@utay](https://github.com/utay)
+Yurii Dzobak [@yuriydzobak](https://github.com/yuriydzobak)
+罗泽轩 [@spacewander](https://github.com/spacewander)
 
 [upgrade-2120]: https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2120
 
