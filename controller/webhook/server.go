@@ -63,7 +63,7 @@ func NewServer(
 
 	server := &http.Server{
 		Addr:              addr,
-		ReadHeaderTimeout: 10 * time.Second,
+		ReadHeaderTimeout: 15 * time.Second,
 		TLSConfig: &tls.Config{
 			MinVersion: tls.VersionTLS12,
 		},

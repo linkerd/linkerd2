@@ -71,7 +71,7 @@ func NewServer(
 
 	httpServer := &http.Server{
 		Addr:              addr,
-		ReadHeaderTimeout: 10 * time.Second,
+		ReadHeaderTimeout: 15 * time.Second,
 		TLSConfig: &tls.Config{
 			ClientAuth: tls.VerifyClientCertIfGiven,
 			ClientCAs:  clientCertPool,
