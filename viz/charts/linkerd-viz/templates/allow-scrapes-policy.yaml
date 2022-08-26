@@ -1,0 +1,96 @@
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: proxy-admin
+  {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  podSelector:
+    matchExpressions:
+    - key: linkerd.io/control-plane-ns
+      operator: Exists
+  port: linkerd-admin
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: HTTPRoute
+metadata:
+  name: proxy-metrics
+  {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  parentRefs:
+    - name: proxy-admin
+      kind: Server
+      group: policy.linkerd.io
+  rules:
+    - matches:
+      - path:
+          value: "/metrics"
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: HTTPRoute
+metadata:
+  name: proxy-probes
+  {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  parentRefs:
+    - name: proxy-admin
+      kind: Server
+      group: policy.linkerd.io
+  rules:
+    - matches:
+      - path:
+          value: "/live"
+      - path:
+          value: "/ready"
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: prometheus-scrape
+  {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: HTTPRoute
+    name: proxy-metrics
+  requiredAuthenticationRefs:
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: {{ .Release.VizNamespace | default .Release.Namespace }}
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: proxy-probes
+  {{ include "partials.namespace" . }}
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: HTTPRoute
+    name: proxy-probes
+  requiredAuthenticationRefs:
+    - kind: NetworkAuthentication
+      group: policy.linkerd.io
+      name: kubelet
+      namespace: {{ .Release.VizNamespace | default .Release.Namespace }}

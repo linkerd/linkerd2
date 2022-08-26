@@ -23,6 +23,7 @@ import (
 var (
 	// this doesn't include the namespace-metadata.* templates, which are Helm-only
 	templatesViz = []string{
+		"templates/allow-scrapes-policy.yaml",
 		"templates/namespace.yaml",
 		"templates/metrics-api-rbac.yaml",
 		"templates/prometheus-rbac.yaml",
@@ -168,8 +169,9 @@ func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 	fullValues := map[string]interface{}{
 		"Values": vals,
 		"Release": map[string]interface{}{
-			"Namespace": defaultNamespace,
-			"Service":   "CLI",
+			"Namespace":    defaultNamespace,
+			"VizNamespace": defaultNamespace,
+			"Service":      "CLI",
 		},
 	}
 
