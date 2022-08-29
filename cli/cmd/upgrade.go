@@ -17,6 +17,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	valuespkg "helm.sh/helm/v3/pkg/cli/values"
@@ -171,7 +172,7 @@ func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []
 		return err
 	}
 
-	err = healthcheck.CheckCustomResourceDefinitions(ctx, k, crds.String())
+	err = healthcheck.CheckCustomResourceDefinitions(ctx, k, crds.String(), version.Version)
 	if err != nil {
 		return fmt.Errorf("Linkerd CRDs must be installed first. Run linkerd upgrade with the --crds flag:\n%w", err)
 	}

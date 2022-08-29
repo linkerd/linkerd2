@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -637,12 +638,21 @@ func (hc *HealthChecker) allCategories() []*Category {
 			LinkerdCRDChecks,
 			[]Checker{
 				{
+					description: "can retrieve the control plane version",
+					hintAnchor:  "l5d-version-control",
+					warning:     true,
+					check: func(ctx context.Context) (err error) {
+						hc.serverVersion, err = GetServerVersion(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
+						return
+					},
+				},
+				{
 					description:   "control plane CustomResourceDefinitions exist",
 					hintAnchor:    "l5d-existence-crd",
 					fatal:         true,
 					retryDeadline: hc.RetryDeadline,
 					check: func(ctx context.Context) error {
-						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, hc.CRDManifest)
+						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, hc.CRDManifest, hc.serverVersion)
 					},
 				},
 			},
@@ -777,11 +787,21 @@ func (hc *HealthChecker) allCategories() []*Category {
 					},
 				},
 				{
+					description:   "can retrieve the control plane version",
+					hintAnchor:    "l5d-version-control",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
+					check: func(ctx context.Context) (err error) {
+						hc.serverVersion, err = GetServerVersion(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
+						return
+					},
+				},
+				{
 					description: "control plane CustomResourceDefinitions exist",
 					hintAnchor:  "l5d-existence-crd",
 					fatal:       true,
 					check: func(ctx context.Context) error {
-						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, hc.CRDManifest)
+						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, hc.CRDManifest, hc.serverVersion)
 					},
 				},
 				{
@@ -1198,16 +1218,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 		NewCategory(
 			LinkerdControlPlaneVersionChecks,
 			[]Checker{
-				{
-					description:   "can retrieve the control plane version",
-					hintAnchor:    "l5d-version-control",
-					retryDeadline: hc.RetryDeadline,
-					fatal:         true,
-					check: func(ctx context.Context) (err error) {
-						hc.serverVersion, err = GetServerVersion(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
-						return
-					},
-				},
 				{
 					description: "control plane is up-to-date",
 					hintAnchor:  "l5d-version-control",
@@ -2109,7 +2119,38 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Contex
 
 // CheckCustomResourceDefinitions checks that all of the Linkerd CRDs are
 // installed on the cluster.
-func CheckCustomResourceDefinitions(ctx context.Context, k8sAPI *k8s.KubernetesAPI, expectedCRDManifests string) error {
+func CheckCustomResourceDefinitions(ctx context.Context, k8sAPI *k8s.KubernetesAPI, expectedCRDManifests string, version string) error {
+	// If we know the server version, we can check whether only ServiceProfile
+	// CRDs are expected, or if all the policy CRDs introduced in 2.12 are.
+	//
+	// If we're not dealing with a stable version, we skip this check and fall
+	// back to the expected CRDs in 2.12.
+	if version != "" {
+		stablePat := `stable-[0-9]+\.[0-9]+\.[0-9]+`
+		matched, _ := regexp.Match(stablePat, []byte(version))
+		if matched {
+			versions := strings.Split(version, ".")
+			majorStr := versions[len(versions)-2]
+			major, err := strconv.Atoi(majorStr)
+			if err != nil {
+				return err
+			}
+			if major < 12 {
+				// In 2.11, we only checked for the ServiceProfile CRD even
+				// though Servers and ServerAuthorziations had been
+				// introduced. Thereore we keep this check as it was and only
+				// error when ServiceProfiles are missing.
+				spCrdName := "serviceprofiles.linkerd.io"
+				_, err := k8sAPI.Apiextensions.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, spCrdName, metav1.GetOptions{})
+				if err != nil && kerrors.IsNotFound(err) {
+					return fmt.Errorf("missing %s", spCrdName)
+				} else if err != nil {
+					return err
+				}
+				return nil
+			}
+		}
+	}
 
 	crdYamls := strings.Split(expectedCRDManifests, "---\n")
 	crdVersions := []struct{ name, version string }{}
