@@ -287,7 +287,7 @@ linkerd-crds-install: _k3d-init
         --timeout=1m
 
 # Install linkerd on the test cluster using test images.
-linkerd-install: linkerd-load linkerd-crds-install && _linkerd-ready
+linkerd-install *args='': linkerd-load linkerd-crds-install && _linkerd-ready
     {{ _linkerd }} install \
             --set='imagePullPolicy=Never' \
             --set='controllerImage={{ controller-image }}' \
@@ -299,6 +299,7 @@ linkerd-install: linkerd-load linkerd-crds-install && _linkerd-ready
             --set='proxy.image.version={{ linkerd-tag }}' \
             --set='proxyInit.image.name={{ proxy-init-image }}' \
             --set="proxyInit.image.version=$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" \
+            {{ args }} \
         | {{ _kubectl }} apply -f -
 
 # Wait for all test namespaces to be removed before uninstalling linkerd from the cluster.
