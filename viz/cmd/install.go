@@ -30,7 +30,7 @@ var (
 		"templates/web-rbac.yaml",
 		"templates/psp.yaml",
 		"templates/admin-policy.yaml",
-		"templates/allow-scrapes-policy.yaml",
+		allowScrapesTemplatePath,
 		"templates/metrics-api.yaml",
 		"templates/metrics-api-policy.yaml",
 		"templates/prometheus.yaml",

@@ -1,129 +1,28 @@
 package cmd
 
 import (
+	"bytes"
+	"io"
 	"os"
-	"text/template"
+	"path"
 
+	"github.com/linkerd/linkerd2/pkg/charts"
+	partials "github.com/linkerd/linkerd2/pkg/charts/static"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
-	"github.com/linkerd/linkerd2/pkg/version"
+	"github.com/linkerd/linkerd2/viz/static"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/engine"
 )
 
 const (
-	allowScrapePolicy = `---
-apiVersion: policy.linkerd.io/v1beta1
-kind: Server
-metadata:
-  name: proxy-admin
-  namespace: {{ .TargetNs }}
-  annotations:
-    linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
-  labels:
-    linkerd.io/extension: {{ .ExtensionName }}
-spec:
-  podSelector:
-    matchExpressions:
-    - key: linkerd.io/control-plane-ns
-      operator: Exists
-  port: linkerd-admin
-  proxyProtocol: HTTP/1
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: HTTPRoute
-metadata:
-  name: proxy-metrics
-  namespace: {{ .TargetNs }}
-  annotations:
-    linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
-  labels:
-    linkerd.io/extension: {{ .ExtensionName }}
-spec:
-  parentRefs:
-    - name: proxy-admin
-      kind: Server
-      group: policy.linkerd.io
-  rules:
-    - matches:
-      - path:
-          value: "/metrics"
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: HTTPRoute
-metadata:
-  name: proxy-probes
-  namespace: {{ .TargetNs }}
-  annotations:
-    linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
-  labels:
-    linkerd.io/extension: {{ .ExtensionName }}
-spec:
-  parentRefs:
-    - name: proxy-admin
-      kind: Server
-      group: policy.linkerd.io
-  rules:
-    - matches:
-      - path:
-          value: "/live"
-      - path:
-          value: "/ready"
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: AuthorizationPolicy
-metadata:
-  name: prometheus-scrape
-  namespace: {{ .TargetNs }}
-  annotations:
-    linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
-  labels:
-    linkerd.io/extension: {{ .ExtensionName }}
-spec:
-  targetRef:
-    group: policy.linkerd.io
-    kind: HTTPRoute
-    name: proxy-metrics
-  requiredAuthenticationRefs:
-    - kind: ServiceAccount
-      name: prometheus
-      namespace: {{ .VizNs }}
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: AuthorizationPolicy
-metadata:
-  name: proxy-probes
-  namespace: {{ .TargetNs }}
-  annotations:
-    linkerd-io/created-by: {{ .ChartName }} {{ .Version }}
-  labels:
-    linkerd.io/extension: {{ .ExtensionName }}
-spec:
-  targetRef:
-    group: policy.linkerd.io
-    kind: HTTPRoute
-    name: proxy-probes
-  requiredAuthenticationRefs:
-    - kind: NetworkAuthentication
-      group: policy.linkerd.io
-      name: kubelet
-      namespace: {{ .VizNs }}`
+	allowScrapesTemplatePath string = "templates/allow-scrapes-policy.yaml"
 )
-
-type templateOptions struct {
-	ChartName     string
-	Version       string
-	ExtensionName string
-	VizNs         string
-	TargetNs      string
-}
 
 // newCmdAllowScrapes creates a new cobra command `allow-scrapes`
 func newCmdAllowScrapes() *cobra.Command {
-	options := templateOptions{
-		ExtensionName: ExtensionName,
-		ChartName:     vizChartName,
-		Version:       version.Version,
-		VizNs:         defaultNamespace,
-	}
+	var targetNs string
 	cmd := &cobra.Command{
 		Use:   "allow-scrapes {-n | --namespace } namespace",
 		Short: "Output Kubernetes resources to authorize Prometheus scrapes",
@@ -135,14 +34,81 @@ linkerd viz allow-scrapes --namespace emojivoto | kubectl apply -f -`,
 			return cmd.MarkFlagRequired("namespace")
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			t := template.Must(template.New("allow-scrapes").Parse(allowScrapePolicy))
-			return t.Execute(os.Stdout, options)
+			return renderAllowScrapes(os.Stdout, targetNs)
 		},
 	}
-	cmd.Flags().StringVarP(&options.TargetNs, "namespace", "n", options.TargetNs, "The namespace in which to authorize Prometheus scrapes.")
+	cmd.Flags().StringVarP(&targetNs, "namespace", "n", targetNs, "The namespace in which to authorize Prometheus scrapes.")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"n", "namespace"},
 		kubeconfigPath, impersonate, impersonateGroup, kubeContext)
 	return cmd
+}
+
+func renderAllowScrapes(w io.Writer, namespace string) error {
+	files := []*loader.BufferedFile{
+		{Name: chartutil.ChartfileName},
+		{Name: chartutil.ValuesfileName},
+		{Name: allowScrapesTemplatePath},
+	}
+
+	var partialFiles []*loader.BufferedFile
+	for _, template := range charts.L5dPartials {
+		partialFiles = append(partialFiles,
+			&loader.BufferedFile{Name: template},
+		)
+	}
+
+	if err := charts.FilesReader(static.Templates, vizChartName+"/", files); err != nil {
+		return err
+	}
+
+	if err := charts.FilesReader(partials.Templates, "", partialFiles); err != nil {
+		return err
+	}
+
+	// Create a Chart obj from the files
+	chart, err := loader.LoadFiles(append(files, partialFiles...))
+	if err != nil {
+		return err
+	}
+
+	vals, err := chartutil.CoalesceValues(chart, make(map[string]interface{}))
+	if err != nil {
+		return err
+	}
+
+	vals, err = charts.InsertVersionValues(vals)
+	if err != nil {
+		return err
+	}
+
+	fullValues := map[string]interface{}{
+		"Values": vals,
+		"Release": map[string]interface{}{
+			// set this to the namespace we want to create the resources in, *not*
+			// the linkerd-viz namespace.
+			"Namespace":    namespace,
+			"VizNamespace": defaultNamespace,
+			"Service":      "CLI",
+		},
+	}
+
+	// Attach the final values into the `Values` field for rendering to work
+	renderedTemplates, err := engine.Render(chart, fullValues)
+	if err != nil {
+		return err
+	}
+
+	// Merge templates and inject
+	var buf bytes.Buffer
+	for _, tmpl := range chart.Templates {
+		t := path.Join(chart.Metadata.Name, tmpl.Name)
+		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
+			return err
+		}
+	}
+
+	_, err = w.Write(buf.Bytes())
+	return err
 }
