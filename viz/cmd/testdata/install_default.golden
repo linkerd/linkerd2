@@ -412,24 +412,65 @@ spec:
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
-  namespace: linkerd-viz
   name: proxy-admin
+  namespace: linkerd-viz
   labels:
     linkerd.io/extension: viz
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
   podSelector:
-    matchLabels:
-      linkerd.io/extension: viz
+    matchExpressions:
+    - key: linkerd.io/control-plane-ns
+      operator: Exists
   port: linkerd-admin
   proxyProtocol: HTTP/1
 ---
 apiVersion: policy.linkerd.io/v1alpha1
+kind: HTTPRoute
+metadata:
+  name: proxy-metrics
+  namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  parentRefs:
+    - name: proxy-admin
+      kind: Server
+      group: policy.linkerd.io
+  rules:
+    - matches:
+      - path:
+          value: "/metrics"
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: HTTPRoute
+metadata:
+  name: proxy-probes
+  namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  parentRefs:
+    - name: proxy-admin
+      kind: Server
+      group: policy.linkerd.io
+  rules:
+    - matches:
+      - path:
+          value: "/live"
+      - path:
+          value: "/ready"
+---
+apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
+  name: prometheus-scrape
   namespace: linkerd-viz
-  name: proxy-admin
   labels:
     linkerd.io/extension: viz
   annotations:
@@ -437,12 +478,32 @@ metadata:
 spec:
   targetRef:
     group: policy.linkerd.io
-    kind: Server
-    name: proxy-admin
+    kind: HTTPRoute
+    name: proxy-metrics
   requiredAuthenticationRefs:
-  - group: policy.linkerd.io
-    kind: NetworkAuthentication
-    name: kubelet
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: linkerd-viz
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: proxy-probes
+  namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: HTTPRoute
+    name: proxy-probes
+  requiredAuthenticationRefs:
+    - kind: NetworkAuthentication
+      group: policy.linkerd.io
+      name: kubelet
+      namespace: linkerd-viz
 ---
 ###
 ### Metrics API
