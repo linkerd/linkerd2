@@ -42,12 +42,12 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&AuthorizationPolicy{},
 		&AuthorizationPolicyList{},
+		&HTTPRoute{},
+		&HTTPRouteList{},
 		&MeshTLSAuthentication{},
 		&MeshTLSAuthenticationList{},
 		&NetworkAuthentication{},
 		&NetworkAuthenticationList{},
-		&HTTPRoute{},
-		&HTTPRouteList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
