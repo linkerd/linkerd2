@@ -42,6 +42,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&AuthorizationPolicy{},
 		&AuthorizationPolicyList{},
+		&HTTPRoute{},
+		&HTTPRouteList{},
 		&MeshTLSAuthentication{},
 		&MeshTLSAuthenticationList{},
 		&NetworkAuthentication{},
