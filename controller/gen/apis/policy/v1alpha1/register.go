@@ -46,6 +46,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&MeshTLSAuthenticationList{},
 		&NetworkAuthentication{},
 		&NetworkAuthenticationList{},
+		&HTTPRoute{},
+		&HTTPRouteList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
