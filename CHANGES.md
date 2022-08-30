@@ -1,5 +1,11 @@
 # Changes
 
+## edge-22.8.3
+
+Increased control plane HTTP servers' read timeouts so that they no longer
+match the default probe intervals. This was leading to closed connections
+and decreased controller success rate.
+
 ## stable-2.12.0
 
 This release introduces route-based policy to Linkerd, allowing users to define
