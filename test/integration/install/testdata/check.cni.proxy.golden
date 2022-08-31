@@ -24,7 +24,6 @@ linkerd-existence
 linkerd-config
 --------------
 √ can retrieve the control plane version
-√ control plane Namespace exists
 √ control plane ClusterRoles exist
 √ control plane ClusterRoleBindings exist
 √ control plane ServiceAccounts exist

@@ -638,12 +638,18 @@ func (hc *HealthChecker) allCategories() []*Category {
 			LinkerdCRDChecks,
 			[]Checker{
 				{
-					description: "can retrieve the control plane version",
-					hintAnchor:  "l5d-version-control",
-					warning:     true,
+					description: "'linkerd-config' config map exists",
+					hintAnchor:  "l5d-existence-linkerd-config",
+					fatal:       false,
 					check: func(ctx context.Context) (err error) {
-						hc.serverVersion, err = GetServerVersion(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
-						return
+						err = hc.InitializeLinkerdGlobalConfig(ctx)
+						if err != nil {
+							if kerrors.IsNotFound(err) {
+								return SkipError{Reason: configMapDoesNotExistSkipReason}
+							}
+							return err
+						}
+						return nil
 					},
 				},
 				{
@@ -652,7 +658,11 @@ func (hc *HealthChecker) allCategories() []*Category {
 					fatal:         true,
 					retryDeadline: hc.RetryDeadline,
 					check: func(ctx context.Context) error {
-						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, hc.CRDManifest, hc.serverVersion)
+						var version string
+						if hc.linkerdConfig != nil {
+							version = hc.linkerdConfig.LinkerdVersion
+						}
+						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, hc.CRDManifest, version)
 					},
 				},
 			},
@@ -755,16 +765,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 			LinkerdConfigChecks,
 			[]Checker{
 				{
-					description:   "can retrieve the control plane version",
-					hintAnchor:    "l5d-version-control",
-					retryDeadline: hc.RetryDeadline,
-					fatal:         true,
-					check: func(ctx context.Context) (err error) {
-						hc.serverVersion, err = GetServerVersion(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
-						return
-					},
-				},
-				{
 					description: "control plane Namespace exists",
 					hintAnchor:  "l5d-existence-ns",
 					fatal:       true,
@@ -801,7 +801,11 @@ func (hc *HealthChecker) allCategories() []*Category {
 					hintAnchor:  "l5d-existence-crd",
 					fatal:       true,
 					check: func(ctx context.Context) error {
-						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, hc.CRDManifest, hc.serverVersion)
+						var version string
+						if hc.linkerdConfig != nil {
+							version = hc.linkerdConfig.LinkerdVersion
+						}
+						return CheckCustomResourceDefinitions(ctx, hc.kubeAPI, hc.CRDManifest, version)
 					},
 				},
 				{
