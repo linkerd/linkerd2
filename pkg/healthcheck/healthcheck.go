@@ -755,6 +755,16 @@ func (hc *HealthChecker) allCategories() []*Category {
 			LinkerdConfigChecks,
 			[]Checker{
 				{
+					description:   "can retrieve the control plane version",
+					hintAnchor:    "l5d-version-control",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
+					check: func(ctx context.Context) (err error) {
+						hc.serverVersion, err = GetServerVersion(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
+						return
+					},
+				},
+				{
 					description: "control plane Namespace exists",
 					hintAnchor:  "l5d-existence-ns",
 					fatal:       true,
@@ -784,16 +794,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						return hc.checkServiceAccounts(ctx, ExpectedServiceAccountNames, hc.ControlPlaneNamespace, controlPlaneComponentsSelector())
-					},
-				},
-				{
-					description:   "can retrieve the control plane version",
-					hintAnchor:    "l5d-version-control",
-					retryDeadline: hc.RetryDeadline,
-					fatal:         true,
-					check: func(ctx context.Context) (err error) {
-						hc.serverVersion, err = GetServerVersion(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
-						return
 					},
 				},
 				{
