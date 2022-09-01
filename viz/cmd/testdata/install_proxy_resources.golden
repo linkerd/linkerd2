@@ -469,25 +469,6 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  name: prometheus-scrape
-  namespace: linkerd-viz
-  labels:
-    linkerd.io/extension: viz
-  annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
-spec:
-  targetRef:
-    group: policy.linkerd.io
-    kind: HTTPRoute
-    name: proxy-metrics
-  requiredAuthenticationRefs:
-    - kind: ServiceAccount
-      name: prometheus
-      namespace: linkerd-viz
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: AuthorizationPolicy
-metadata:
   name: proxy-probes
   namespace: linkerd-viz
   labels:
@@ -499,6 +480,26 @@ spec:
     group: policy.linkerd.io
     kind: HTTPRoute
     name: proxy-probes
+  requiredAuthenticationRefs:
+    - kind: NetworkAuthentication
+      group: policy.linkerd.io
+      name: kubelet
+      namespace: linkerd-viz
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: proxy-admin
+  namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: HTTPRoute
+    name: proxy-metrics
   requiredAuthenticationRefs:
     - kind: NetworkAuthentication
       group: policy.linkerd.io
