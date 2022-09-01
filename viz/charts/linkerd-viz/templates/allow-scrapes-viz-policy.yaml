@@ -2,7 +2,7 @@
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  name: prometheus-scrape
+  name: proxy-admin
   {{ include "partials.namespace" . }}
   labels:
     linkerd.io/extension: viz
@@ -14,6 +14,7 @@ spec:
     kind: HTTPRoute
     name: proxy-metrics
   requiredAuthenticationRefs:
-    - kind: ServiceAccount
-      name: prometheus
-      namespace: {{ .Release.VizNamespace | default .Release.Namespace }}
+    - kind: NetworkAuthentication
+      group: policy.linkerd.io
+      name: kubelet
+      namespace: {{ .Release.Namespace }}

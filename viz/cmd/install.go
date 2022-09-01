@@ -30,7 +30,8 @@ var (
 		"templates/web-rbac.yaml",
 		"templates/psp.yaml",
 		"templates/admin-policy.yaml",
-		allowScrapesTemplatePath,
+		allowScrapesRoutesPath,
+		allowScrapesVizPolicyPath,
 		"templates/metrics-api.yaml",
 		"templates/metrics-api-policy.yaml",
 		"templates/prometheus.yaml",
@@ -168,9 +169,8 @@ func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 	fullValues := map[string]interface{}{
 		"Values": vals,
 		"Release": map[string]interface{}{
-			"Namespace":    defaultNamespace,
-			"VizNamespace": defaultNamespace,
-			"Service":      "CLI",
+			"Namespace": defaultNamespace,
+			"Service":   "CLI",
 		},
 	}
 

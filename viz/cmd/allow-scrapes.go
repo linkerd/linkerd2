@@ -17,7 +17,14 @@ import (
 )
 
 const (
-	allowScrapesTemplatePath string = "templates/allow-scrapes-policy.yaml"
+	allowScrapesRoutesPath string = "templates/allow-scrapes-routes.yaml"
+	// a different policy for proxy metrics endpoints is used when installing
+	// `linkerd-viz`, because the Prometheus instance must be allowed to scrape
+	// its own proxy, which will not be TLS'd. therefore, the policy in the
+	// `linkerd-viz` namespace currently allows anyone to scrape the metrics
+	// endpoint, while the policies installed in other namespaces do not.
+	allowScrapesVizPolicyPath string = "templates/allow-scrapes-viz-policy.yaml"
+	allowScrapesPolicyPath    string = "templates/allow-scrapes-policy.yml"
 )
 
 // newCmdAllowScrapes creates a new cobra command `allow-scrapes`
@@ -49,7 +56,8 @@ func renderAllowScrapes(w io.Writer, namespace string) error {
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 		{Name: chartutil.ValuesfileName},
-		{Name: allowScrapesTemplatePath},
+		{Name: allowScrapesRoutesPath},
+		{Name: allowScrapesPolicyPath},
 	}
 
 	var partialFiles []*loader.BufferedFile
