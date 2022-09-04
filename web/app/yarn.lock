@@ -8083,10 +8083,10 @@ url-loader@^4.1.1:
     mime-types "^2.1.27"
     schema-utils "^3.0.0"
 
-use-query-params@2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/use-query-params/-/use-query-params-2.0.0.tgz#ceccfb13cc21d28ce3f286399b631d63e6e846b8"
-  integrity sha512-7485Qjf2WKivnhylt6iB645Ba1+gMdNHIDwq3EpOZHPruj8V0HzlnnTNL3FKM+30VAmhzTKtaqL151W3yVl+Ag==
+use-query-params@2.1.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/use-query-params/-/use-query-params-2.1.0.tgz#ba1d759fa2727cf86cec4ebf885139bc9b23df83"
+  integrity sha512-CMxIQWoPeeQfvXy8FwO6IKBhgOQrtLTgR2oBDdExaayK9RIDEuMgMZmxUOmdi3AatBJb6GJz6NbDT4HJm5mSVw==
   dependencies:
     serialize-query-params "^2.0.0"
 
