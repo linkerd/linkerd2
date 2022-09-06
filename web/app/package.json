@@ -37,7 +37,7 @@
     "react-router-dom": "5.3.3",
     "react-router-prop-types": "1.0.5",
     "regenerator-runtime": "^0.13.9",
-    "use-query-params": "2.0.0",
+    "use-query-params": "2.1.0",
     "whatwg-fetch": "3.6.2"
   },
   "devDependencies": {
