@@ -17,7 +17,7 @@ metadata:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
   name: linkerd-proxy-injector
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: {{.Values.controllerReplicas}}
   selector:
@@ -136,7 +136,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -157,7 +157,7 @@ kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
 metadata:
   name: linkerd-proxy-injector
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: {{.Release.Namespace}}

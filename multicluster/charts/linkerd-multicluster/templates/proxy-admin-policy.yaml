@@ -2,7 +2,7 @@
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   name: gateway-proxy-admin
   labels:
     linkerd.io/extension: multicluster
@@ -18,7 +18,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   name: proxy-admin
   labels:
     linkerd.io/extension: multicluster
@@ -34,7 +34,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   name: service-mirror-proxy-admin
   labels:
     linkerd.io/extension: multicluster
@@ -48,7 +48,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   name: service-mirror-proxy-admin
   labels:
     linkerd.io/extension: multicluster

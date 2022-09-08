@@ -1,5 +1,5 @@
 {{- define "partials.namespace" -}}
-{{ if eq .Release.Service "CLI" }}namespace: {{.Release.Namespace}}{{ end }}
+namespace: {{.Release.Namespace}}
 {{- end -}}
 
 {{- define "partials.annotations.created-by" -}}

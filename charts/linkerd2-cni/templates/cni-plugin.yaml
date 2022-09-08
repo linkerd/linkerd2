@@ -31,7 +31,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: linkerd-cni
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/cni-resource: "true"
 {{- if .Values.imagePullSecrets }}
@@ -68,7 +68,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-cni
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/cni-resource: "true"
 rules:
@@ -82,7 +82,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-cni
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/cni-resource: "true"
 roleRef:
@@ -125,7 +125,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-cni-config
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/cni-resource: "true"
 data:
@@ -167,7 +167,7 @@ kind: DaemonSet
 apiVersion: apps/v1
 metadata:
   name: linkerd-cni
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     k8s-app: linkerd-cni
     linkerd.io/cni-resource: "true"
