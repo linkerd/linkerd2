@@ -9,7 +9,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: {{.}}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{$.Release.Namespace}}
   labels:
     linkerd.io/extension: multicluster
   annotations:
@@ -30,7 +30,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{.}}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{$.Release.Namespace}}
   labels:
     linkerd.io/extension: multicluster
   annotations:
@@ -40,7 +40,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: {{.}}-token
-  namespace: {{ .Release.Namespace }}
+  namespace: {{$.Release.Namespace}}
   labels:
     linkerd.io/extension: multicluster
   annotations:
@@ -52,7 +52,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: {{.}}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{$.Release.Namespace}}
   labels:
     linkerd.io/extension: multicluster
   annotations:
