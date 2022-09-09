@@ -795,7 +795,9 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
 // annotations.
 func (conf *ResourceConfig) injectObjectMeta(values *podPatch) {
 
-	values.Annotations[k8s.ProxyVersionAnnotation] = values.Proxy.Image.Version
+	if values.Proxy.Image.Version != "" {
+		values.Annotations[k8s.ProxyVersionAnnotation] = values.Proxy.Image.Version
+	}
 
 	// Add the cert bundle's checksum to the workload's annotations.
 	checksumBytes := sha256.Sum256([]byte(values.IdentityTrustAnchorsPEM))
