@@ -2,6 +2,8 @@ package inject
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -794,6 +796,11 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
 func (conf *ResourceConfig) injectObjectMeta(values *podPatch) {
 
 	values.Annotations[k8s.ProxyVersionAnnotation] = values.Proxy.Image.Version
+
+	// Add the cert bundle's checksum to the workload's annotations.
+	checksumBytes := sha256.Sum256([]byte(values.IdentityTrustAnchorsPEM))
+	checksum := hex.EncodeToString(checksumBytes[:])
+	values.Annotations[k8s.ProxyTrustRootSHA] = checksum
 
 	if len(conf.pod.labels) > 0 {
 		values.AddRootLabels = len(conf.pod.meta.Labels) == 0

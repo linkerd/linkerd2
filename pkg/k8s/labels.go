@@ -112,6 +112,10 @@ const (
 	// disable injection for a pod or namespace.
 	ProxyInjectDisabled = Disabled
 
+	// ProxyTrustRootSHA indicates the cert bundle configured on the injected
+	// workload.
+	ProxyTrustRootSHA = Prefix + "/trust-root-sha256"
+
 	/*
 	 * Proxy config annotations
 	 */

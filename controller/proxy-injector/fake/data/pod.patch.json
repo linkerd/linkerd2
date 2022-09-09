@@ -6,6 +6,11 @@
   },
   {
     "op": "add",
+    "path": "/metadata/annotations/linkerd.io~1trust-root-sha256",
+    "value": "5090806bcf2daff5d54739ba02a8e7b919f7e62b2a46757e11089c916ec97fc2"
+  },
+  {
+    "op": "add",
     "path": "/metadata/labels/linkerd.io~1control-plane-ns",
     "value": "linkerd"
   },
