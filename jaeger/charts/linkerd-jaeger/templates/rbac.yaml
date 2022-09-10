@@ -7,7 +7,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: collector
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{ end -}}
 ---
@@ -45,7 +45,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: jaeger-injector
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
 {{- $host := printf "jaeger-injector.%s.svc" .Release.Namespace }}
@@ -55,7 +55,7 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: jaeger-injector-k8s-tls
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
 type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.webhook.crtPEM)) (empty .Values.webhook.crtPEM) }}
@@ -114,6 +114,6 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: jaeger
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{ end -}}

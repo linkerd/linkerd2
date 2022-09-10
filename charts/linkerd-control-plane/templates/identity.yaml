@@ -9,7 +9,7 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-identity-issuer
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -25,7 +25,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-identity-trust-roots
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -39,7 +39,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -58,7 +58,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-identity-headless
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -78,7 +78,7 @@ kind: PodDisruptionBudget
 apiVersion: policy/v1beta1
 metadata:
   name: linkerd-identity
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -106,7 +106,7 @@ metadata:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
   name: linkerd-identity
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: {{.Values.controllerReplicas}}
   selector:

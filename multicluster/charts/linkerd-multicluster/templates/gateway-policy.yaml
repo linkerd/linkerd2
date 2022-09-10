@@ -3,7 +3,7 @@
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   name: linkerd-gateway
   labels:
     linkerd.io/extension: multicluster
@@ -20,7 +20,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   name: linkerd-gateway
   labels:
     linkerd.io/extension: multicluster
@@ -44,7 +44,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   name: linkerd-gateway-probe
   labels:
     linkerd.io/extension: multicluster

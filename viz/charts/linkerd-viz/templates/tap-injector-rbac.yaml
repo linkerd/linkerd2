@@ -32,7 +32,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: tap-injector
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: viz
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
@@ -44,7 +44,7 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: tap-injector-k8s-tls
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
   labels:
