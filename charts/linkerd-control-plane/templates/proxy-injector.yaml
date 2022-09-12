@@ -154,7 +154,7 @@ spec:
 {{- if .Values.enablePodDisruptionBudget }}
 ---
 kind: PodDisruptionBudget
-apiVersion: policy/v1beta1
+apiVersion: policy/v1
 metadata:
   name: linkerd-proxy-injector
   namespace: {{ .Release.Namespace }}

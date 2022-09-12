@@ -700,7 +700,7 @@ spec:
     targetPort: 8080
 ---
 kind: PodDisruptionBudget
-apiVersion: policy/v1beta1
+apiVersion: policy/v1
 metadata:
   name: linkerd-identity
   namespace: linkerd-dev
@@ -1100,7 +1100,7 @@ spec:
     targetPort: policy-https
 ---
 kind: PodDisruptionBudget
-apiVersion: policy/v1beta1
+apiVersion: policy/v1
 metadata:
   name: linkerd-dst
   namespace: linkerd-dev
@@ -1845,7 +1845,7 @@ spec:
     targetPort: proxy-injector
 ---
 kind: PodDisruptionBudget
-apiVersion: policy/v1beta1
+apiVersion: policy/v1
 metadata:
   name: linkerd-proxy-injector
   namespace: linkerd-dev
