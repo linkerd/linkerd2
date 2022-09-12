@@ -33,7 +33,7 @@ type AuthorizationPolicySpec struct {
 	TargetRef gatewayapiv1alpha2.PolicyTargetReference `json:"targetRef,omitempty"`
 
 	// RequiredAuthenticationRefs enumerates a set of required authentications
-	RequiredAuthenticationRefs []gatewayapiv1alpha2.PolicyTargetReference `json:"required_authentication_refs,omitempty"`
+	RequiredAuthenticationRefs []gatewayapiv1alpha2.PolicyTargetReference `json:"requiredAuthenticationRefs,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -72,7 +72,7 @@ type MeshTLSAuthentication struct {
 
 type MeshTLSAuthenticationSpec struct {
 	Identities   []string                                   `json:"identities,omitempty"`
-	IdentityRefs []gatewayapiv1alpha2.PolicyTargetReference `json:"identity_refs,omitempty"`
+	IdentityRefs []gatewayapiv1alpha2.PolicyTargetReference `json:"identityRefs,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
