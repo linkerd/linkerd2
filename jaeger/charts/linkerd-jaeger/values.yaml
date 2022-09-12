@@ -32,7 +32,7 @@ collector:
   enabled: true
   image:
     name: otel/opentelemetry-collector
-    version: 0.43.0
+    version: 0.59.0
     pullPolicy: Always
 
   resources:
