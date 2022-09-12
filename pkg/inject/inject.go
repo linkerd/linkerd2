@@ -797,6 +797,8 @@ func (conf *ResourceConfig) injectObjectMeta(values *podPatch) {
 
 	if values.Proxy.Image.Version != "" {
 		values.Annotations[k8s.ProxyVersionAnnotation] = values.Proxy.Image.Version
+	} else {
+		values.Annotations[k8s.ProxyVersionAnnotation] = values.LinkerdVersion
 	}
 
 	// Add the cert bundle's checksum to the workload's annotations.
