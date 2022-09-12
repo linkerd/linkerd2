@@ -1,5 +1,17 @@
 # Changes
 
+## edge-22.9.1
+
+This release adds the `linkerd.io/trust-root-sha256` annotation to all injected
+workloads; allowing predictable comparison of all workloads' trust anchors via
+the Kubernetes API.
+
+* Added `linkerd.io/trust-root-sha256` annotation on all injected workloads
+  to indicate certifcate bundle
+* Restored `namespace` field in Linkerd helm charts
+* Updated fields in `AuthorizationPolicy` and `MeshTLSAuthentication` to
+  conform to specification (thanks @aatarasoff!)
+
 ## edge-22.8.3
 
 Increased control plane HTTP servers' read timeouts so that they no longer
