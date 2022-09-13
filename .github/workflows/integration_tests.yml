@@ -54,11 +54,11 @@ jobs:
         - viz
         - default-policy-deny
         - external
-        - helm-upgrade
+        #- helm-upgrade
         - multicluster
         - uninstall
         - upgrade-edge
-        - upgrade-stable
+        #- upgrade-stable
         - cni-calico-deep
         - default-policy-deny
     needs: [docker_build]
