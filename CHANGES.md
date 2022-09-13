@@ -15,6 +15,8 @@ Additionally, this release lowers the inbound connection pool idle timeout to
 * Restored `namespace` field in Linkerd helm charts
 * Updated fields in `AuthorizationPolicy` and `MeshTLSAuthentication` to
   conform to specification (thanks @aatarasoff!)
+* Updated the identity controller to not require a `ClusterRoleBinding`
+  to read all deployment resources.
 
 ## edge-22.8.3
 
