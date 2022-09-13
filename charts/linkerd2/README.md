@@ -1,7 +1,6 @@
 # linkerd2
 
-Linkerd gives you observability, reliability, and security
-for your microservices — with no code change required.
+DEPRECATED: Use linkerd-crds and linkerd-control-plane instead - Linkerd gives you observability, reliability, and security for your microservices — with no code change required.
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square)
 
