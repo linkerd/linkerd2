@@ -17,9 +17,7 @@ rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
   verbs: ["create"]
-- apiGroups: ["apps"]
-  resources: ["deployments"]
-  verbs: ["get"]
+# XXX Can we use a RoleBinding to create events?
 - apiGroups: [""]
   resources: ["events"]
   verbs: ["create", "patch"]
