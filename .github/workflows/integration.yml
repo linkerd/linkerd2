@@ -147,7 +147,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - uses: tj-actions/changed-files@c41b7152594c4423f3787d26662239eb0ae027c0
+      - uses: tj-actions/changed-files@602081b5d9327a7770b4c447a4ee8984ae44e72e
         id: changed
         with:
           files: |
@@ -286,7 +286,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - uses: tj-actions/changed-files@c41b7152594c4423f3787d26662239eb0ae027c0
+      - uses: tj-actions/changed-files@602081b5d9327a7770b4c447a4ee8984ae44e72e
         id: changed
         with:
           files: |
