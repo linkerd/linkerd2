@@ -110,10 +110,7 @@ struct PodPortServer {
     name: Option<String>,
 
     /// A sender used to broadcast pod port server updates.
-    tx: watch::Sender<InboundServer>,
-
-    /// A receiver that is updated when the pod's server is updated.
-    rx: watch::Receiver<InboundServer>,
+    watch: watch::Sender<InboundServer>,
 }
 
 /// Holds the state of policy resources for a single namespace.
@@ -177,8 +174,8 @@ impl Index {
             .ok_or_else(|| anyhow::anyhow!("pod {}.{} not found", pod, namespace))?;
         Ok(pod
             .port_server_or_default(port, &self.cluster_info)
-            .rx
-            .clone())
+            .watch
+            .subscribe())
     }
 
     fn ns_with_reindex(&mut self, namespace: String, f: impl FnOnce(&mut Namespace) -> bool) {
@@ -939,33 +936,37 @@ impl Pod {
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
                 tracing::trace!(port = %port, server = %name, "Creating server");
-                let (tx, rx) = watch::channel(server);
+                let (watch, _) = watch::channel(server);
                 entry.insert(PodPortServer {
                     name: Some(name.to_string()),
-                    tx,
-                    rx,
+                    watch,
                 });
             }
 
             Entry::Occupied(mut entry) => {
                 let ps = entry.get_mut();
 
-                // Avoid sending redundant updates.
-                if ps.name.as_deref() == Some(name) && *ps.rx.borrow() == server {
-                    tracing::trace!(port = %port, server = %name, "Skipped redundant server update");
-                    tracing::trace!(?server);
-                    return;
-                }
+                ps.watch.send_if_modified(|current| {
+                    if ps.name.as_deref() == Some(name) && *current == server {
+                        tracing::trace!(port = %port, server = %name, "Skipped redundant server update");
+                        tracing::trace!(?server);
+                        return false;
+                    }
 
-                // If the port's server previously matched a different server,
-                // this can either mean that multiple servers currently match
-                // the pod:port, or that we're in the middle of an update. We
-                // make the opportunistic choice to assume the cluster is
-                // configured coherently so we take the update. The admission
-                // controller should prevent conflicts.
-                tracing::trace!(port = %port, server = %name, "Updating server");
-                ps.name = Some(name.to_string());
-                ps.tx.send(server).expect("a receiver is held by the index");
+                    // If the port's server previously matched a different server,
+                    // this can either mean that multiple servers currently match
+                    // the pod:port, or that we're in the middle of an update. We
+                    // make the opportunistic choice to assume the cluster is
+                    // configured coherently so we take the update. The admission
+                    // controller should prevent conflicts.
+                    tracing::trace!(port = %port, server = %name, "Updating server");
+                    if ps.name.as_deref() != Some(name) {
+                        ps.name = Some(name.to_string());
+                    }
+
+                    *current = server;
+                    true
+                });
             }
         }
 
@@ -987,22 +988,24 @@ impl Pod {
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
                 tracing::debug!(%port, server = %config.default_policy, "Creating default server");
-                let (tx, rx) = watch::channel(server);
-                entry.insert(PodPortServer { name: None, tx, rx });
+                let (watch, _) = watch::channel(server);
+                entry.insert(PodPortServer { name: None, watch });
             }
 
             Entry::Occupied(mut entry) => {
                 let ps = entry.get_mut();
+                ps.watch.send_if_modified(|current| {
+                    // Avoid sending redundant updates.
+                    if *current == server {
+                        tracing::trace!(%port, server = %config.default_policy, "Default server already set");
+                        return false;
+                    }
 
-                // Avoid sending redundant updates.
-                if *ps.rx.borrow() == server {
-                    tracing::trace!(%port, server = %config.default_policy, "Default server already set");
-                    return;
-                }
-
-                tracing::debug!(%port, server = %config.default_policy, "Setting default server");
-                ps.name = None;
-                ps.tx.send(server).expect("a receiver is held by the index");
+                    tracing::debug!(%port, server = %config.default_policy, "Setting default server");
+                    ps.name = None;
+                    *current = server;
+                    true
+                });
             }
         }
     }
@@ -1031,7 +1034,7 @@ impl Pod {
         match self.port_servers.entry(port) {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => {
-                let (tx, rx) = watch::channel(Self::default_inbound_server(
+                let (watch, _) = watch::channel(Self::default_inbound_server(
                     port,
                     &self.meta.settings,
                     self.probes
@@ -1041,7 +1044,7 @@ impl Pod {
                         .map(|p| p.as_str()),
                     config,
                 ));
-                entry.insert(PodPortServer { name: None, tx, rx })
+                entry.insert(PodPortServer { name: None, watch })
             }
         }
     }
