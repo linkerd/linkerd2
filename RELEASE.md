@@ -92,22 +92,65 @@ Each step might result in conflicts that you'll need to address.
 All the Helm charts (linkerd-crds, linkerd-control-plane, linkerd2-cni,
 linkerd-multicluster, linkerd-jaeger and linkerd-viz) have a `version` entry
 with a semver format `major.minor.patch[-edge]` that needs to be updated
-according to the following rules:
+according to the rules below.
 
-- patch bump for minor changes
-- minor bump for additions/removals
-- major bump for backwards-incompatible changes, most notably changes that
-  change the structure of `values.yaml`
-
-Note that edge releases require the `-edge` suffix, which should be removed when
-releasing stable releases.
-
-Also note that the `appVersion` entry (for those charts that have it) is handled
+Note that the `appVersion` entry (for those charts that have it) is handled
 automatically by CI.
 
-Finally, keep in mind chart version changes require updating the charts README
+Also keep in mind chart version changes require updating the charts README
 files (through `bin/helm-docs`) and golden files (through `go test ./...
 -update`).
+
+Example:
+
+```
+Stable release:
+1.9.0
+
+Subsequent edges:
+1.10.0-edge
+1.10.1-edge
+
+Stable maintenance release:
+1.9.1
+
+Subsequent edges:
+1.10.2-edge
+1.10.3-edge
+
+Stable release:
+1.11.0
+
+Subsequent edges:
+1.12.0-edge
+1.12.1-edge
+```
+
+### Edge releases
+
+When making the first edge release right after a stable one, bump the minor and
+reset the patch. This leaves room for eventual maintenance stable release
+versions.
+
+MOST COMMON CASE: If making an edge release after another edge release, just
+bump the minor.
+
+In any case remember to keep the `-edge` suffix.
+
+### Stable releases
+
+When making a new stable release off of `main` (new major `2.x.0` release):
+
+- reset patch
+- If there are breaking changes, most notably changes to the structure of
+  `values.yaml`: bump major and reset minor
+- If the changes are non-breaking: bump minor (with respect to previous edge)
+- remove the `-edge` suffix
+
+When making a stable maintenance release off of a `release/stable-2.x` branch
+(new `2.x.y` release), just bump the minor.
+
+In any case remember to remove the `-edge` suffix.
 
 ### linkerd-crds
 
