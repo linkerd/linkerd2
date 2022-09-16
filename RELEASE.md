@@ -103,7 +103,7 @@ files (through `bin/helm-docs`) and golden files (through `go test ./...
 
 Example:
 
-```
+```text
 Stable release:
 1.9.0
 
