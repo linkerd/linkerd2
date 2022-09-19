@@ -30,6 +30,7 @@ spec:
         imagePullPolicy: {{.Values.defaultImagePullPolicy}}
         command: ["/bin/sh"]
         securityContext:
+          readOnlyRootFilesystem: true
           runAsUser: {{.Values.defaultUID}}
         args:
         - -c
