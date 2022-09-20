@@ -225,6 +225,10 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Used to configure the outbound TCP connection timeout in the proxy",
 		},
 		{
+			Name:        k8s.ProxyInboundConnectTimeout,
+			Description: "Used to configure the inbound TCP connection timeout in the proxy",
+		},
+		{
 			Name:        k8s.ProxyWaitBeforeExitSecondsAnnotation,
 			Description: "The proxy sidecar will stay alive for at least the given period after receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. Defaults to `0`",
 		},
