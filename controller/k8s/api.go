@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
-	arinformers "k8s.io/client-go/informers/admissionregistration/v1beta1"
+	arinformers "k8s.io/client-go/informers/admissionregistration/v1"
 	appv1informers "k8s.io/client-go/informers/apps/v1"
 	batchv1informers "k8s.io/client-go/informers/batch/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
@@ -244,7 +244,7 @@ func newAPI(
 			api.syncChecks = append(api.syncChecks, api.job.Informer().HasSynced)
 			api.addInformerSizeGauge("job", api.job.Informer())
 		case MWC:
-			api.mwc = sharedInformers.Admissionregistration().V1beta1().MutatingWebhookConfigurations()
+			api.mwc = sharedInformers.Admissionregistration().V1().MutatingWebhookConfigurations()
 			api.syncChecks = append(api.syncChecks, api.mwc.Informer().HasSynced)
 			api.addInformerSizeGauge("mutating_webhook_configuration", api.mwc.Informer())
 		case NS:
