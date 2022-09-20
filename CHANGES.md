@@ -1,5 +1,13 @@
 # Changes
 
+## edge-22.9.2
+
+This release fixes an issue where the jaeger injector would put pods into an
+error state when upgrading from stable-2.11.x.
+
+* Updated AdmissionRegistration API version usage to v1
+* Fixed jaeger injector interfering with upgrades to 2.12.x
+
 ## edge-22.9.1
 
 This release adds the `linkerd.io/trust-root-sha256` annotation to all injected
