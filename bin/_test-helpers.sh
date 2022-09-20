@@ -382,6 +382,11 @@ install_version() {
     local install_url=$1
     local version=$2
 
+    stable_regex='(stable)-([0-9]+\.[0-9]+\.[0-9]+)'
+    if [[ "$version" =~ $stable_regex ]]; then
+      export LINKERD2_VERSION="stable-2.11.4"
+    fi
+
     curl -s "$install_url" | HOME=$tmp sh > /dev/null 2>&1
 
     local linkerd_path=$tmp/.linkerd2/bin/linkerd
@@ -524,9 +529,9 @@ run_multicluster_test() {
   kubectl --context="$context" create namespace multicluster-statefulset
   run_test "$test_directory/multicluster/install_test.go" --certs-path "$tmp"
   echo "$link" | kubectl --context="$context" apply -f -
-  run_test "$test_directory/multicluster/source" 
+  run_test "$test_directory/multicluster/source"
   export context="k3d-target"
-  run_test "$test_directory/multicluster/target2" 
+  run_test "$test_directory/multicluster/target2"
 }
 
 run_deep_test() {
@@ -535,7 +540,7 @@ run_deep_test() {
 
 run_default-policy-deny_test() {
   export default_allow_policy='deny'
-  run_test "$test_directory/install/install_test.go" 
+  run_test "$test_directory/install/install_test.go"
 }
 
 run_cni-calico-deep_test() {
@@ -547,7 +552,7 @@ run_external_test() {
 }
 
 run_cluster-domain_test() {
-  run_test "$test_directory/install/install_test.go" --cluster-domain='custom.domain' 
+  run_test "$test_directory/install/install_test.go" --cluster-domain='custom.domain'
 }
 
 # exit_on_err should be called right after a command to check the result status
