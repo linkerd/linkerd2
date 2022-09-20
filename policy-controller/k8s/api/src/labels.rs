@@ -176,7 +176,7 @@ impl Expression {
                 None => false,
             },
             (Operator::NotIn, key, Some(values)) => match labels.get(key) {
-                Some(v) => values.contains(v),
+                Some(v) => !values.contains(v),
                 None => true,
             },
             (Operator::Exists, key, None) => labels.contains_key(key),
