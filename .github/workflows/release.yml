@@ -133,10 +133,10 @@ jobs:
         - viz
         - default-policy-deny
         - external
-        - helm-upgrade
+        #- helm-upgrade
         - uninstall
         - upgrade-edge
-        - upgrade-stable
+        #- upgrade-stable
     needs: [docker_build, policy_controller_manifest]
     name: Integration tests (${{ matrix.integration_test }})
     timeout-minutes: 60
