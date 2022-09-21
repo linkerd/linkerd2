@@ -177,6 +177,10 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Proxy port to use for outbound traffic",
 		},
 		{
+			Name:        k8s.ProxyPodInboundPortsAnnotation,
+			Description: "Comma-separated list of (non-proxy) container ports exposed by the pod spec. Useful when other mutating webhooks inject sidecar containers after the proxy injector has run",
+		},
+		{
 			Name:        k8s.ProxyCPURequestAnnotation,
 			Description: "Amount of CPU units that the proxy sidecar requests",
 		},
@@ -185,12 +189,20 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Amount of Memory that the proxy sidecar requests",
 		},
 		{
+			Name:        k8s.ProxyEphemeralStorageRequestAnnotation,
+			Description: "Used to override the requestEphemeralStorage config",
+		},
+		{
 			Name:        k8s.ProxyCPULimitAnnotation,
 			Description: "Maximum amount of CPU units that the proxy sidecar can use",
 		},
 		{
 			Name:        k8s.ProxyMemoryLimitAnnotation,
 			Description: "Maximum amount of Memory that the proxy sidecar can use",
+		},
+		{
+			Name:        k8s.ProxyEphemeralStorageLimitAnnotation,
+			Description: "Used to override the limitEphemeralStorage config",
 		},
 		{
 			Name:        k8s.ProxyUIDAnnotation,
@@ -217,12 +229,20 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Tag to be used for the Linkerd proxy images",
 		},
 		{
+			Name:        k8s.ProxyDefaultInboundPolicyAnnotation,
+			Description: "Proxy's default inbound policy",
+		},
+		{
 			Name:        k8s.ProxyEnableDebugAnnotation,
 			Description: "Inject a debug sidecar for data plane debugging",
 		},
 		{
 			Name:        k8s.ProxyOutboundConnectTimeout,
 			Description: "Used to configure the outbound TCP connection timeout in the proxy",
+		},
+		{
+			Name:        k8s.ProxyInboundConnectTimeout,
+			Description: "Inbound TCP connection timeout in the proxy",
 		},
 		{
 			Name:        k8s.ProxyWaitBeforeExitSecondsAnnotation,
