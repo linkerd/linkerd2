@@ -1,5 +1,11 @@
 # Changes
 
+## stable-2.11.5
+
+This release lowers the inbound connection pool idle timeout to 3s. This should
+help avoid socket errors, especially for Kubernetes probes. Additionally, it
+upgrades the version of Go used by the control plane and CLI from 1.17 to 1.18.
+
 ## stable-2.11.4
 
 This release includes a security improvement. When a user manually specified the
