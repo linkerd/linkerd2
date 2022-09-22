@@ -12,8 +12,8 @@ To make sure everything works as expected, run the following:
 
   linkerd check
 
-Linkerd Viz extension can be installed by running:
+The viz extension can be installed by running:
 
-  linkerd viz install | kubectl apply -f -
+  helm install linkerd-viz linkerd/linkerd-viz
 
 Looking for more? Visit https://linkerd.io/2/getting-started/

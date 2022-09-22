@@ -25,22 +25,22 @@ import (
 
 // TestHelper provides helpers for running the linkerd integration tests.
 type TestHelper struct {
-	linkerd            string
-	version            string
-	namespace          string
-	vizNamespace       string
-	upgradeFromVersion string
-	clusterDomain      string
-	externalIssuer     bool
-	externalPrometheus bool
-	multicluster       bool
-	multiclusterSrcCtx string
-	multiclusterTgtCtx string
-	uninstall          bool
-	cni                bool
-	calico             bool
-	defaultAllowPolicy string
-	httpClient         http.Client
+	linkerd              string
+	version              string
+	namespace            string
+	vizNamespace         string
+	upgradeFromVersion   string
+	clusterDomain        string
+	externalIssuer       bool
+	externalPrometheus   bool
+	multicluster         bool
+	multiclusterSrcCtx   string
+	multiclusterTgtCtx   string
+	uninstall            bool
+	cni                  bool
+	calico               bool
+	defaultInboundPolicy string
+	httpClient           http.Client
 	KubernetesHelper
 	helm
 	installedExtensions []string
@@ -205,7 +205,7 @@ func NewTestHelper() *TestHelper {
 	uninstall := flag.Bool("uninstall", false, "whether to run the 'linkerd uninstall' integration test")
 	cni := flag.Bool("cni", false, "whether to install linkerd with CNI enabled")
 	calico := flag.Bool("calico", false, "whether to install calico CNI plugin")
-	defaultAllowPolicy := flag.String("default-allow-policy", "", "if non-empty, passed to --set policyController.defaultAllowPolicy at linkerd's install time")
+	defaultInboundPolicy := flag.String("default-inbound-policy", "", "if non-empty, passed to --set proxy.defaultInboundPolicy at linkerd's install time")
 	flag.Parse()
 
 	if !*runTests {
@@ -246,13 +246,13 @@ func NewTestHelper() *TestHelper {
 			multiclusterReleaseName: *multiclusterHelmReleaseName,
 			upgradeFromVersion:      *upgradeHelmFromVersion,
 		},
-		clusterDomain:      *clusterDomain,
-		externalIssuer:     *externalIssuer,
-		externalPrometheus: *externalPrometheus,
-		cni:                *cni,
-		calico:             *calico,
-		uninstall:          *uninstall,
-		defaultAllowPolicy: *defaultAllowPolicy,
+		clusterDomain:        *clusterDomain,
+		externalIssuer:       *externalIssuer,
+		externalPrometheus:   *externalPrometheus,
+		cni:                  *cni,
+		calico:               *calico,
+		uninstall:            *uninstall,
+		defaultInboundPolicy: *defaultInboundPolicy,
 	}
 
 	version, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -375,9 +375,9 @@ func (h *TestHelper) Uninstall() bool {
 	return h.uninstall
 }
 
-// DefaultAllowPolicy returns the override value for policyController.defaultAllowPolicy
-func (h *TestHelper) DefaultAllowPolicy() string {
-	return h.defaultAllowPolicy
+// DefaultInboundPolicy returns the override value for proxy.defaultInboundPolicy
+func (h *TestHelper) DefaultInboundPolicy() string {
+	return h.defaultInboundPolicy
 }
 
 // UpgradeFromVersion returns the base version of the upgrade test.

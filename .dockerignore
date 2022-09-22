@@ -6,6 +6,7 @@
 *.iml
 **/node_modules
 bin
+!bin/action-dev-check
 !bin/fetch-proxy
 !bin/install-deps
 !bin/scurl

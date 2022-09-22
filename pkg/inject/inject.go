@@ -2,6 +2,8 @@ package inject
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -37,7 +39,8 @@ import (
 var (
 	rTrail = regexp.MustCompile(`\},\s*\]`)
 
-	// ProxyAnnotations is the list of possible annotations that can be applied on a pod or namespace
+	// ProxyAnnotations is the list of possible annotations that can be applied on a pod or namespace.
+	// All these annotations should be prefixed with "config.linkerd.io"
 	ProxyAnnotations = []string{
 		k8s.ProxyAdminPortAnnotation,
 		k8s.ProxyControlPortAnnotation,
@@ -202,16 +205,10 @@ func (conf *ResourceConfig) GetOwnerRef() *metav1.OwnerReference {
 // from the namespace they belong to. If the namespace has a valid config key
 // that the pod does not, then it is appended to the pod's template
 func (conf *ResourceConfig) AppendNamespaceAnnotations() {
-	for _, key := range ProxyAnnotations {
-		if _, found := conf.nsAnnotations[key]; !found {
-			continue
-		}
-		if val, ok := conf.GetConfigAnnotation(key); ok {
-			conf.AppendPodAnnotation(key, val)
-		}
-	}
+	annotations := append(ProxyAnnotations, ProxyAlphaConfigAnnotations...)
+	annotations = append(annotations, k8s.ProxyInjectAnnotation)
 
-	for _, key := range ProxyAlphaConfigAnnotations {
+	for _, key := range annotations {
 		if _, found := conf.nsAnnotations[key]; !found {
 			continue
 		}
@@ -799,6 +796,11 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
 func (conf *ResourceConfig) injectObjectMeta(values *podPatch) {
 
 	values.Annotations[k8s.ProxyVersionAnnotation] = values.Proxy.Image.Version
+
+	// Add the cert bundle's checksum to the workload's annotations.
+	checksumBytes := sha256.Sum256([]byte(values.IdentityTrustAnchorsPEM))
+	checksum := hex.EncodeToString(checksumBytes[:])
+	values.Annotations[k8s.ProxyTrustRootSHA] = checksum
 
 	if len(conf.pod.labels) > 0 {
 		values.AddRootLabels = len(conf.pod.meta.Labels) == 0

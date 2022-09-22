@@ -4,7 +4,7 @@
 
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/4629/badge)](https://bestpractices.coreinfrastructure.org/projects/4629)
 [![GitHub Actions Status][github-actions-badge]][github-actions]
-[![GitHub license][license-badge]](LICENSE)
+[![GitHub license](https://img.shields.io/github/license/linkerd/linkerd2.svg)](LICENSE)
 [![Go Report Card][go-report-card-badge]][go-report-card]
 [![Go Reference][go-doc-badge]][go-doc]
 [![Slack Status][slack-badge]][slack]
@@ -112,25 +112,20 @@ specific language governing permissions and limitations under the License.
 [cncf]: https://www.cncf.io/
 [CoC]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 [getting-started]: https://linkerd.io/2/getting-started/
-[golang]: https://golang.org/
 [go-report-card]: https://goreportcard.com/report/github.com/linkerd/linkerd2
 [go-report-card-badge]: https://goreportcard.com/badge/github.com/linkerd/linkerd2
 [go-doc-badge]: https://pkg.go.dev/badge/github.com/linkerd/linkerd2.svg
 [go-doc]: https://pkg.go.dev/github.com/linkerd/linkerd2
-[license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg
 [linkerd1]: https://github.com/linkerd/linkerd
 [linkerd2]: https://github.com/linkerd/linkerd2
 [linkerd-announce]: https://lists.cncf.io/g/cncf-linkerd-announce
-[linkerd-demo]: https://linkerd.io/2/getting-started/#step-3-install-the-demo-app
 [linkerd-dev]: https://lists.cncf.io/g/cncf-linkerd-dev
 [linkerd-docs]: https://linkerd.io/2/overview/
-[linkerd-inject]: https://linkerd.io/2/adding-your-service/
 [linkerd-users]: https://lists.cncf.io/g/cncf-linkerd-users
 [linkerd-website]: https://github.com/linkerd/website
 [logo]: https://user-images.githubusercontent.com/9226/33582867-3e646e02-d90c-11e7-85a2-2e238737e859.png
 [proxy]: https://github.com/linkerd/linkerd2-proxy
 [proxy-api]: https://github.com/linkerd/linkerd2-proxy-api
-[rust]: https://www.rust-lang.org/
 [slack-badge]: http://slack.linkerd.io/badge.svg
 [slack]: http://slack.linkerd.io
 [twitter]: https://twitter.com/linkerd

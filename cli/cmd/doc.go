@@ -205,6 +205,10 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Log format (plain or json) for the proxy",
 		},
 		{
+			Name:        k8s.ProxyAccessLogAnnotation,
+			Description: "Enables HTTP access logging in the proxy. Accepted values are `apache`, to output the access log in the Appache Common Log Format, and `json`, to output the access log in JSON.",
+		},
+		{
 			Name:        k8s.ProxyEnableExternalProfilesAnnotation,
 			Description: "Enable service profiles for non-Kubernetes services",
 		},
@@ -222,7 +226,7 @@ func generateAnnotationsDocs() []annotationDoc {
 		},
 		{
 			Name:        k8s.ProxyWaitBeforeExitSecondsAnnotation,
-			Description: "The proxy sidecar will stay alive for at least the given period before receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. If not provided, it will be defaulted to `0`",
+			Description: "The proxy sidecar will stay alive for at least the given period after receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. Defaults to `0`",
 		},
 		{
 			Name:        k8s.ProxyAwait,

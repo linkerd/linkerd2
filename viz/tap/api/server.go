@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"sync/atomic"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -69,7 +70,8 @@ func NewServer(
 	clientCertPool.AppendCertsFromPEM([]byte(clientCAPem))
 
 	httpServer := &http.Server{
-		Addr: addr,
+		Addr:              addr,
+		ReadHeaderTimeout: 15 * time.Second,
 		TLSConfig: &tls.Config{
 			ClientAuth: tls.VerifyClientCertIfGiven,
 			ClientCAs:  clientCertPool,

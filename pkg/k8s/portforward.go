@@ -57,7 +57,7 @@ func NewContainerMetricsForward(
 		return nil, fmt.Errorf("no %s port found for container %s/%s", portName, pod.GetName(), container.Name)
 	}
 
-	return newPortForward(k8sAPI, pod.GetNamespace(), pod.GetName(), "localhost", 0, int(port.ContainerPort), emitLogs)
+	return NewPodPortForward(k8sAPI, pod.GetNamespace(), pod.GetName(), "localhost", 0, int(port.ContainerPort), emitLogs)
 }
 
 // NewPortForward returns an instance of the PortForward struct that can be used
@@ -99,7 +99,7 @@ func NewPortForward(
 		return nil, fmt.Errorf("no running pods found for %s", deployName)
 	}
 
-	return newPortForward(k8sAPI, namespace, podName, host, localPort, remotePort, emitLogs)
+	return NewPodPortForward(k8sAPI, namespace, podName, host, localPort, remotePort, emitLogs)
 }
 
 func getDeploymentForPod(ctx context.Context, k8sAPI *KubernetesAPI, pod corev1.Pod) (string, error) {
@@ -118,7 +118,9 @@ func getDeploymentForPod(ctx context.Context, k8sAPI *KubernetesAPI, pod corev1.
 	return grandparents[0].Name, nil
 }
 
-func newPortForward(
+// NewPodPortForward returns an instance of the PortForward struct that can be
+// used to establish a port-forward connection to a specific Pod.
+func NewPodPortForward(
 	k8sAPI *KubernetesAPI,
 	namespace, podName string,
 	host string, localPort, remotePort int,

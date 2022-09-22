@@ -86,7 +86,7 @@ fn container_http_probe_paths(
     fn get_port(port: &k8s::IntOrString, container: &k8s::Container) -> Option<NonZeroU16> {
         match port {
             k8s::IntOrString::Int(p) => u16::try_from(*p).ok()?.try_into().ok(),
-            k8s::IntOrString::String(n) => find_by_name(n, &*container.ports.as_ref()?),
+            k8s::IntOrString::String(n) => find_by_name(n, container.ports.as_ref()?),
         }
     }
 

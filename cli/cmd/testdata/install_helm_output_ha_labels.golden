@@ -17,9 +17,8 @@ rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
   verbs: ["create"]
-- apiGroups: ["apps"]
-  resources: ["deployments"]
-  verbs: ["get"]
+# TODO(ver) Restrict this to the Linkerd namespace. See
+# https://github.com/linkerd/linkerd2/issues/9367
 - apiGroups: [""]
   resources: ["events"]
   verbs: ["create", "patch"]
@@ -44,7 +43,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -98,7 +97,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-destination
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -226,7 +225,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-heartbeat
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-ns: linkerd-dev
 rules:
@@ -239,7 +238,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-heartbeat
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-ns: linkerd-dev
 roleRef:
@@ -284,7 +283,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-heartbeat
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: heartbeat
     linkerd.io/control-plane-ns: linkerd-dev
@@ -339,7 +338,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd-dev
@@ -389,7 +388,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-config
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: controller
     linkerd.io/control-plane-ns: linkerd-dev
@@ -481,7 +480,6 @@ data:
       fiz: buz
       foo: bar
     policyController:
-      defaultAllowPolicy: all-unauthenticated
       image:
         name: cr.l5d.io/linkerd/policy-controller
         pullPolicy: ""
@@ -529,7 +527,7 @@ data:
       accessLog: ""
       await: true
       capabilities: null
-      defaultInboundPolicy: ""
+      defaultInboundPolicy: all-unauthenticated
       enableExternalProfiles: false
       image:
         name: cr.l5d.io/linkerd/proxy
@@ -587,6 +585,7 @@ data:
           limit: 20Mi
           request: 20Mi
       runAsRoot: false
+      runAsUser: 65534
       saMountPath: null
       skipSubnets: ""
       xtMountPath:
@@ -637,7 +636,7 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-identity-issuer
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -651,7 +650,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-identity-trust-roots
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -665,7 +664,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -684,7 +683,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-identity-headless
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -700,10 +699,10 @@ spec:
     targetPort: 8080
 ---
 kind: PodDisruptionBudget
-apiVersion: policy/v1beta1
+apiVersion: policy/v1
 metadata:
   name: linkerd-identity
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -727,7 +726,7 @@ metadata:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
   name: linkerd-identity
-  
+  namespace: linkerd-dev
 spec:
   replicas: 3
   selector:
@@ -889,6 +888,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.serviceAccountName
+        - name: _l5d_ns
+          value: linkerd-dev
+        - name: _l5d_trustdomain
+          value: test.trust.domain
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -972,6 +975,7 @@ spec:
             - NET_RAW
           privileged: false
           runAsNonRoot: true
+          runAsUser: 65534
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1007,7 +1011,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -1026,7 +1030,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst-headless
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -1045,7 +1049,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -1064,7 +1068,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-policy
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -1083,7 +1087,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-policy-validator
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -1099,10 +1103,10 @@ spec:
     targetPort: policy-https
 ---
 kind: PodDisruptionBudget
-apiVersion: policy/v1beta1
+apiVersion: policy/v1
 metadata:
   name: linkerd-dst
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -1126,7 +1130,7 @@ metadata:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
   name: linkerd-destination
-  
+  namespace: linkerd-dev
 spec:
   replicas: 3
   selector:
@@ -1242,6 +1246,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.serviceAccountName
+        - name: _l5d_ns
+          value: linkerd-dev
+        - name: _l5d_trustdomain
+          value: test.trust.domain
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -1441,6 +1449,7 @@ spec:
             - NET_RAW
           privileged: false
           runAsNonRoot: true
+          runAsUser: 65534
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1476,7 +1485,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: linkerd-heartbeat
-  
+  namespace: linkerd-dev
   labels:
     app.kubernetes.io/name: heartbeat
     app.kubernetes.io/part-of: Linkerd
@@ -1547,7 +1556,7 @@ metadata:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd-dev
   name: linkerd-proxy-injector
-  
+  namespace: linkerd-dev
 spec:
   replicas: 3
   selector:
@@ -1662,6 +1671,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.serviceAccountName
+        - name: _l5d_ns
+          value: linkerd-dev
+        - name: _l5d_trustdomain
+          value: test.trust.domain
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -1792,6 +1805,7 @@ spec:
             - NET_RAW
           privileged: false
           runAsNonRoot: true
+          runAsUser: 65534
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1825,7 +1839,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd-dev
@@ -1842,10 +1856,10 @@ spec:
     targetPort: proxy-injector
 ---
 kind: PodDisruptionBudget
-apiVersion: policy/v1beta1
+apiVersion: policy/v1
 metadata:
   name: linkerd-proxy-injector
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd-dev

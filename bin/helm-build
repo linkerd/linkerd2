@@ -54,7 +54,7 @@ if [ "$1" = package ]; then
     tag=$(named_tag)
     clean_head || { echo 'There are uncommitted changes'; exit 1; }
 
-    regex='(edge|stable)-([0-9]+\.[0-9]+\.[0-9]+)'
+    regex='(edge|stable)-([0-9]+\.[0-9]+\.[0-9]+(-.*)?)'
     if [[ ! "$tag" =~ $regex ]]; then
         echo 'Version tag is malformed'
         exit 1

@@ -8,13 +8,13 @@ use linkerd_policy_controller_k8s_api::{
 };
 use std::num::NonZeroU16;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InboundRouteBinding {
     pub parents: Vec<InboundParentRef>,
     pub route: http_route::InboundHttpRoute,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InboundParentRef {
     Server(String),
 }

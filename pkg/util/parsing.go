@@ -4,7 +4,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/linkerd/linkerd2-proxy-init/ports"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -16,7 +15,7 @@ func ParsePorts(portsString string) (map[uint32]struct{}, error) {
 	if portsString != "" {
 		portRanges := GetPortRanges(portsString)
 		for _, pr := range portRanges {
-			portsRange, err := ports.ParsePortRange(pr)
+			portsRange, err := ParsePortRange(pr)
 			if err != nil {
 				log.Warnf("Invalid port range [%v]: %s", pr, err)
 				continue
@@ -41,7 +40,7 @@ func ParseContainerOpaquePorts(override string, containers []corev1.Container) [
 		if named {
 			values = append(values, strconv.Itoa(int(port)))
 		} else {
-			pr, err := ports.ParsePortRange(pr)
+			pr, err := ParsePortRange(pr)
 			if err != nil {
 				log.Warnf("Invalid port range [%v]: %s", pr, err)
 				continue

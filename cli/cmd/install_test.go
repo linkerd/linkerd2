@@ -60,8 +60,7 @@ func TestRender(t *testing.T) {
 				PullPolicy: "ImagePullPolicy",
 				Version:    "PolicyControllerVersion",
 			},
-			LogLevel:           "log-level",
-			DefaultAllowPolicy: "default-allow-policy",
+			LogLevel: "log-level",
 			Resources: &charts.Resources{
 				CPU: charts.Constraints{
 					Limit:   "cpu-limit",
@@ -98,9 +97,10 @@ func TestRender(t *testing.T) {
 				Inbound:  4143,
 				Outbound: 4140,
 			},
-			UID:         2102,
-			OpaquePorts: "25,443,587,3306,5432,11211",
-			Await:       true,
+			UID:                  2102,
+			OpaquePorts:          "25,443,587,3306,5432,11211",
+			Await:                true,
+			DefaultInboundPolicy: "default-allow-policy",
 		},
 		ProxyInit: &charts.ProxyInit{
 			IptablesMode: "legacy",
@@ -124,6 +124,8 @@ func TestRender(t *testing.T) {
 				MountPath: "/run",
 				Name:      "linkerd-proxy-init-xtables-lock",
 			},
+			RunAsRoot: false,
+			RunAsUser: 65534,
 		},
 		Configs: charts.ConfigJSONs{
 			Global:  "GlobalConfig",
@@ -574,6 +576,23 @@ func TestValidate(t *testing.T) {
 			} else if err != nil {
 				t.Fatalf("Expected no error but got \"%s\"", err)
 			}
+		}
+	})
+
+	t.Run("Rejects invalid default-inbound-policy", func(t *testing.T) {
+		values, err := testInstallOptions()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v\n", err)
+		}
+		values.Proxy.DefaultInboundPolicy = "everybody"
+		expected := "--default-inbound-policy must be one of: all-authenticated, all-unauthenticated, cluster-authenticated, cluster-unauthenticated, deny (got everybody)"
+
+		err = validateValues(context.Background(), nil, values)
+		if err == nil {
+			t.Fatal("Expected error, got nothing")
+		}
+		if err.Error() != expected {
+			t.Fatalf("Expected error string \"%s\", got \"%s\"", expected, err)
 		}
 	})
 }

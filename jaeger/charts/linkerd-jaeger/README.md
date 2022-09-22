@@ -3,7 +3,7 @@
 The Linkerd-Jaeger extension adds distributed tracing to Linkerd using
 OpenCensus and Jaeger.
 
-![Version: 30.3.10-edge](https://img.shields.io/badge/Version-30.3.10--edge-informational?style=flat-square)
+![Version: 30.4.3-edge](https://img.shields.io/badge/Version-30.4.3--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -51,7 +51,6 @@ helm install linkerd-jaeger -n linkerd-jaeger --create-namespace linkerd/linkerd
 * Follow [@linkerd][twitter] on Twitter.
 * Join the [Linkerd Slack][slack].
 
-[cncf]: https://www.cncf.io/
 [getting-started]: https://linkerd.io/2/getting-started/
 [linkerd2]: https://github.com/linkerd/linkerd2
 [linkerd-announce]: https://lists.cncf.io/g/cncf-linkerd-announce

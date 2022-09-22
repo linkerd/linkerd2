@@ -14,7 +14,7 @@ metadata:
     app: {{.Values.gateway.name}}
     linkerd.io/extension: multicluster
   name: {{.Values.gateway.name}}
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: {{.Values.gateway.replicas}}
   selector:
@@ -32,6 +32,7 @@ spec:
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-require-identity-inbound-ports: "{{.Values.gateway.port}}"
         config.linkerd.io/enable-gateway: "true"
+        config.linkerd.io/default-inbound-policy: all-authenticated
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         app: {{.Values.gateway.name}}
@@ -51,7 +52,7 @@ kind: PodDisruptionBudget
 apiVersion: policy/v1
 metadata:
   name: {{.Values.gateway.name}}
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app: {{.Values.gateway.name}}
   annotations:
@@ -67,7 +68,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{.Values.gateway.name}}
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: multicluster
   annotations:
@@ -104,7 +105,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: {{.Values.gateway.name}}
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: multicluster
 {{end -}}

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"strings"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -22,8 +23,9 @@ func NewServer(addr string, enablePprof bool) *http.Server {
 	}
 
 	return &http.Server{
-		Addr:    addr,
-		Handler: h,
+		Addr:              addr,
+		Handler:           h,
+		ReadHeaderTimeout: 15 * time.Second,
 	}
 }
 

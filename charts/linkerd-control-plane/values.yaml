@@ -59,9 +59,8 @@ runtimeClassName: ""
 
 # policy controller configuration
 policyController:
-  # image -- Docker image for the policy controller
   image:
-    # -- Docker image for the proxy
+    # -- Docker image for the policy controller
     name: cr.l5d.io/linkerd/policy-controller
     # -- Pull policy for the proxy container Docker image
     # @default -- imagePullPolicy
@@ -69,11 +68,6 @@ policyController:
     # -- Tag for the proxy container Docker image
     # @default -- linkerdVersion
     version: ""
-
-  # -- The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated",
-  # "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny"
-  # @default -- "all-unauthenticated"
-  defaultAllowPolicy: "all-unauthenticated"
 
   # -- Log level for the policy controller
   logLevel: info
@@ -178,6 +172,10 @@ proxy:
   opaquePorts: "25,587,3306,4444,5432,6379,9300,11211"
   # -- Grace period for graceful proxy shutdowns. If this timeout elapses before all open connections have completed, the proxy will terminate forcefully, closing any remaining connections.
   shutdownGracePeriod: ""
+  # -- The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated",
+  # "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny"
+  # @default -- "all-unauthenticated"
+  defaultInboundPolicy: "all-unauthenticated"
 
 # proxy-init configuration
 proxyInit:
@@ -207,7 +205,7 @@ proxyInit:
     # @default -- imagePullPolicy
     pullPolicy: ""
     # -- Tag for the proxy-init container Docker image
-    version: v1.6.2
+    version: v2.0.0
   resources:
     cpu:
       # -- Maximum amount of CPU units that the proxy-init container can use
@@ -227,6 +225,8 @@ proxyInit:
   closeWaitTimeoutSecs: 0
   # -- Allow overriding the runAsNonRoot behaviour (<https://github.com/linkerd/linkerd2/issues/7308>)
   runAsRoot: false
+  # -- This value is used only if runAsRoot is false; otherwise runAsUser will be 0
+  runAsUser: 65534
   xtMountPath:
     mountPath: /run
     name: linkerd-proxy-init-xtables-lock

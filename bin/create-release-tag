@@ -37,7 +37,7 @@ Usage:
     stable_tag=$2
 
     # Verify the stable tag format.
-    stable_tag_regex="^([0-9]+)\.([0-9]+)\.([0-9]+)$"
+    stable_tag_regex="^([0-9]+)\.([0-9]+)\.([0-9]+(-.*)?)$"
     if [[ ! $stable_tag =~ $stable_tag_regex ]]; then
         echo 'Error: version reference incorrect
 Usage:

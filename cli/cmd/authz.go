@@ -16,8 +16,8 @@ func newCmdAuthz() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "authz [flags] resource",
-		Short: "List server authorizations for a resource",
-		Long:  "List server authorizations for a resource.",
+		Short: "List authorizations for a resource",
+		Long:  "List authorizations for a resource.",
 		Args:  cobra.RangeArgs(1, 2),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 

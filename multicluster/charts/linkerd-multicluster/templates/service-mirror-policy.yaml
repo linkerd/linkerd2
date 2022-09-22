@@ -2,7 +2,7 @@
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   name: service-mirror
   labels:
     component: linkerd-service-mirror
@@ -16,7 +16,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
 metadata:
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   name: service-mirror
   labels:
     component: linkerd-service-mirror

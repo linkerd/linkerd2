@@ -25,7 +25,8 @@ import (
 )
 
 type endpointsOptions struct {
-	outputFormat string
+	outputFormat   string
+	destinationPod string
 }
 
 type (
@@ -95,7 +96,7 @@ destination.`,
 				return err
 			}
 
-			client, conn, err := destination.NewExternalClient(cmd.Context(), controlPlaneNamespace, k8sAPI)
+			client, conn, err := destination.NewExternalClient(cmd.Context(), controlPlaneNamespace, k8sAPI, options.destinationPod)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error creating destination client: %s\n", err)
 				os.Exit(1)
@@ -116,6 +117,7 @@ destination.`,
 	}
 
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, fmt.Sprintf("Output format; one of: \"%s\" or \"%s\"", tableOutput, jsonOutput))
+	cmd.PersistentFlags().StringVar(&options.destinationPod, "destination-pod", "", "Target a specific destination Pod when there are multiple running")
 
 	pkgcmd.ConfigureOutputFlagCompletion(cmd)
 

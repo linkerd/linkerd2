@@ -14,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/viz/metrics-api/client"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/pkg/labels"
+	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiregistrationv1client "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/typed/apiregistration/v1"
@@ -301,6 +302,12 @@ func (hc *HealthChecker) VizDataPlaneCategory() *healthcheck.Category {
 				}
 				return hc.CheckNamespace(ctx, hc.DataPlaneNamespace, true)
 			}),
+		*healthcheck.NewChecker("prometheus is authorized to scrape data plane pods").
+			WithHintAnchor("l5d-viz-data-plane-prom-authz").
+			Warning().
+			WithCheck(func(ctx context.Context) error {
+				return hc.checkPromAuthorized(ctx)
+			}),
 		*healthcheck.NewChecker("data plane proxy metrics are present in Prometheus").
 			WithHintAnchor("l5d-data-plane-prom").
 			Warning().
@@ -380,4 +387,91 @@ func fetchTapCaBundle(ctx context.Context, kubeAPI *k8s.KubernetesAPI) ([]*x509.
 		return nil, err
 	}
 	return caBundle, nil
+}
+
+func (hc *HealthChecker) checkPromAuthorized(ctx context.Context) error {
+	api := hc.KubeAPIClient()
+	nses, err := hc.getDataPlaneNamespaces(ctx, api)
+	if err != nil {
+		return err
+	}
+
+	unauthorizedPods := []string{}
+	for _, ns := range nses {
+		// first, let's see if this namespace has an `allow-scrapes` policy. if
+		// it does, skip checking its pods --- prometheus will be able to scrape
+		// them even if they are default-deny.
+		_, err := api.L5dCrdClient.PolicyV1alpha1().AuthorizationPolicies(ns.GetName()).Get(ctx, "prometheus-scrape", metav1.GetOptions{})
+		if kerrors.IsNotFound(err) {
+			// no prometheus-scrape policy exists in this namespace
+		} else if err != nil {
+			// something went wrong while talking to the kube API
+			return fmt.Errorf("could not get AuthorizationPolicies in the %s namespace: %w", ns.GetName(), err)
+		} else {
+			// allow-scrapes policy exists in this namespace, don't check the
+			// pods.
+			continue
+		}
+
+		pods, err := hc.KubeAPIClient().GetPodsByNamespace(ctx, ns.GetName())
+		if err != nil {
+			return fmt.Errorf("could not list pods in the %s namespace: %w", ns.GetName(), err)
+		}
+
+		var nsPrefix string
+		if ns.GetName() == hc.DataPlaneNamespace {
+			// if we're only checking one namespace, don't bother appending the
+			// namespace name to the pod's name in the error output
+			nsPrefix = ""
+		} else {
+			// otherwise, include the namespace name as well as the pod's
+			// name, since we are checking all namespaces.
+			nsPrefix = ns.GetName() + "/"
+		}
+
+		for _, pod := range pods {
+			// rather than checking the value of the pod's
+			// `config.linkerd.io/default-inbound-policy` annotation, check the
+			// proxy container's actual env variable. if the cluster-wide
+			// default inbound policy is `deny`, there won't be an override
+			// annotation, but the proxy-injector will have set the env variable
+			// directly.
+			for _, c := range pod.Spec.Containers {
+				if c.Name == k8s.ProxyContainerName {
+					for _, env := range c.Env {
+						if env.Name == "LINKERD2_PROXY_INBOUND_DEFAULT_POLICY" && env.Value == "deny" {
+							unauthorizedPods = append(unauthorizedPods, fmt.Sprintf("\t* %s%s", nsPrefix, pod.Name))
+							break
+						}
+					}
+					break
+				}
+			}
+		}
+	}
+
+	if len(unauthorizedPods) > 0 {
+		podList := strings.Join(unauthorizedPods, "\n")
+		return fmt.Errorf("prometheus may not be authorized to scrape the following pods:\n%s\n"+
+			"    consider running `linkerd viz allow-scrapes` to authorize prometheus scrapes",
+			podList)
+	}
+
+	return nil
+}
+
+func (hc *HealthChecker) getDataPlaneNamespaces(ctx context.Context, api *k8s.KubernetesAPI) ([]corev1.Namespace, error) {
+	if hc.DataPlaneNamespace != "" {
+		ns, err := api.GetNamespace(ctx, hc.DataPlaneNamespace)
+		if err != nil {
+			return nil, err
+		}
+		return []corev1.Namespace{*ns}, nil
+	}
+
+	nses, err := api.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return nses.Items, nil
 }

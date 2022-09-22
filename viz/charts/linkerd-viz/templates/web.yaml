@@ -6,7 +6,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: web
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: viz
     component: web
@@ -42,7 +42,7 @@ metadata:
     component: web
     namespace: {{.Release.Namespace}}
   name: web
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: {{.Values.dashboard.replicas}}
   selector:

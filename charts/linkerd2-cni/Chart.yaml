@@ -9,5 +9,4 @@ description: |
 kubeVersion: ">=1.21.0-0"
 icon: https://linkerd.io/images/logo-only-200h.png
 name: "linkerd2-cni"
-version: 30.2.1-edge
-
+version: 30.3.3-edge

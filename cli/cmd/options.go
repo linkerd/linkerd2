@@ -374,7 +374,7 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 
 		flag.NewStringFlag(proxyFlags, "default-inbound-policy", defaults.Proxy.DefaultInboundPolicy, "Inbound policy to use to control inbound access to the proxy",
 			func(values *l5dcharts.Values, value string) error {
-				values.PolicyController.DefaultAllowPolicy = value
+				values.Proxy.DefaultInboundPolicy = value
 				return nil
 			}),
 
@@ -545,6 +545,10 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 		}
 	}
 
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -619,7 +623,21 @@ func validateProxyValues(values *l5dcharts.Values) error {
 		}
 	}
 
+	if err := validatePolicy(values.Proxy.DefaultInboundPolicy); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func validatePolicy(policy string) error {
+	validPolicies := []string{"all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny"}
+	for _, p := range validPolicies {
+		if p == policy {
+			return nil
+		}
+	}
+	return fmt.Errorf("--default-inbound-policy must be one of: %s (got %s)", strings.Join(validPolicies, ", "), policy)
 }
 
 // initializeIssuerCredentials populates the identity issuer TLS credentials.
