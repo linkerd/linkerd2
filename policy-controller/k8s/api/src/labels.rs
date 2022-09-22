@@ -218,7 +218,27 @@ mod tests {
                 })),
                 Labels::from_iter(vec![("foo", "bar"), ("bah", "baz")]),
                 true,
-                "expression match",
+                "In expression match",
+            ),
+            (
+                Selector::from_iter(Some(Expression {
+                    key: "foo".into(),
+                    operator: Operator::NotIn,
+                    values: Some(Some("quux".to_string()).into_iter().collect()),
+                })),
+                Labels::from_iter(vec![("foo", "bar"), ("bah", "baz")]),
+                true,
+                "NotIn expression match",
+            ),
+            (
+                Selector::from_iter(Some(Expression {
+                    key: "foo".into(),
+                    operator: Operator::NotIn,
+                    values: Some(Some("bar".to_string()).into_iter().collect()),
+                })),
+                Labels::from_iter(vec![("foo", "bar"), ("bah", "baz")]),
+                false,
+                "NotIn expression non-match",
             ),
             (
                 Selector::new(
