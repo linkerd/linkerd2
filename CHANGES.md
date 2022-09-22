@@ -2,7 +2,16 @@
 
 ## stable-2.12.1
 
-This release blah blah blah
+This release includes several control plane and proxy fixes for `stable-2.12.0`.
+In particular, it fixes issues related to control plane HTTP servers' header
+read timeouts resulting in decreased controller success rates, lowers the
+inbound connection pool idle timeout in the proxy, and fixes an issue where the
+jaeger injector would put pods into an error state when upgrading from
+stable-2.11.x.
+
+Additionally, this release adds the `linkerd.io/trust-root-sha256` annotation to
+all injected workloads allowing predictable comparison of all workloads' trust
+anchors via the Kubernetes API.
 
 * Proxy
   * Lowered inbound connection pool idle timeout to 3s
@@ -22,8 +31,7 @@ This release blah blah blah
   * Restored `namespace` field in Linkerd helm charts
 
 * Extensions
-
-* Fixed jaeger injector interfering with upgrades to 2.12.x
+  * Fixed jaeger injector interfering with upgrades to 2.12.x
 
 ## edge-22.9.2
 
