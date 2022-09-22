@@ -1,5 +1,30 @@
 # Changes
 
+## stable-2.12.1
+
+This release blah blah blah
+
+* Proxy
+  * Lowered inbound connection pool idle timeout to 3s
+
+* Control Plane
+  * Updated AdmissionRegistration API version usage to v1
+  * Added `linkerd.io/trust-root-sha256` annotation on all injected workloads
+    to indicate certifcate bundle
+  * Updated fields in `AuthorizationPolicy` and `MeshTLSAuthentication` to
+    conform to specification (thanks @aatarasoff!)
+  * Updated the identity controller to not require a `ClusterRoleBinding`
+    to read all deployment resources.
+  * Increase servers' header read timeouts so they no longer match default probe
+    and Prometheus scrape intervals
+
+* Helm
+  * Restored `namespace` field in Linkerd helm charts
+
+* Extensions
+
+* Fixed jaeger injector interfering with upgrades to 2.12.x
+
 ## edge-22.9.2
 
 This release fixes an issue where the jaeger injector would put pods into an
