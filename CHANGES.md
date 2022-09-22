@@ -23,9 +23,9 @@ anchors via the Kubernetes API.
   * Updated fields in `AuthorizationPolicy` and `MeshTLSAuthentication` to
     conform to specification (thanks @aatarasoff!)
   * Updated the identity controller to not require a `ClusterRoleBinding`
-    to read all deployment resources.
-  * Increase servers' header read timeouts so they no longer match default probe
-    and Prometheus scrape intervals
+    to read all deployment resources
+  * Increased servers' header read timeouts so they no longer match default
+    probe and Prometheus scrape intervals
 
 * Helm
   * Restored `namespace` field in Linkerd helm charts
