@@ -57,6 +57,9 @@ priorityClassName: ""
 # -- Runtime Class Name for all the pods
 runtimeClassName: ""
 
+# -- Prometheus url
+prometheusUrl: ""
+
 # policy controller configuration
 policyController:
   image:
