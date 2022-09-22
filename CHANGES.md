@@ -13,6 +13,10 @@ Additionally, this release adds the `linkerd.io/trust-root-sha256` annotation to
 all injected workloads allowing predictable comparison of all workloads' trust
 anchors via the Kubernetes API.
 
+For Windows users, note that the Linkerd CLI's `nupkg` file for Chocolatey is
+once again included in the release assets (it was previously removed in
+stable-2.10.0).
+
 * Proxy
   * Lowered inbound connection pool idle timeout to 3s
 
@@ -29,6 +33,8 @@ anchors via the Kubernetes API.
 
 * Helm
   * Restored `namespace` field in Linkerd helm charts
+  * Updated `PodDisruptionBudget` `apiVersion` from `policy/v1beta1` to
+    `policy/v1` (thanks @Vrx555!)
 
 * Extensions
   * Fixed jaeger injector interfering with upgrades to 2.12.x
