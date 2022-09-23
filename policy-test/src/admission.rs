@@ -7,7 +7,7 @@ where
         + Send
         + Sync
         + std::fmt::Debug
-        + kube::Resource
+        + kube::Resource<Scope = kube::core::NamespaceResourceScope>
         + serde::de::DeserializeOwned
         + serde::Serialize,
     T::DynamicType: Default,
@@ -28,7 +28,7 @@ where
         + Send
         + Sync
         + std::fmt::Debug
-        + kube::Resource
+        + kube::Resource<Scope = kube::core::NamespaceResourceScope>
         + serde::de::DeserializeOwned
         + serde::Serialize,
     T::DynamicType: Default,

@@ -19,17 +19,15 @@ pub enum LinkerdInject {
 
 pub async fn create<T>(client: &kube::Client, obj: T) -> T
 where
-    T: kube::Resource + serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug,
+    T: kube::Resource,
+    T: serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug,
     T::DynamicType: Default,
 {
     let params = kube::api::PostParams {
         field_manager: Some("linkerd-policy-test".to_string()),
         ..Default::default()
     };
-    let api = match obj.namespace() {
-        Some(ns) => kube::Api::<T>::namespaced(client.clone(), &ns),
-        None => kube::Api::<T>::all(client.clone()),
-    };
+    let api = kube::Api::<T>::all(client.clone());
     tracing::trace!(?obj, "Creating");
     api.create(&params, &obj)
         .await
@@ -43,8 +41,8 @@ pub async fn await_condition<T>(
     cond: impl kube::runtime::wait::Condition<T>,
 ) -> Option<T>
 where
-    T: kube::Resource + serde::Serialize + serde::de::DeserializeOwned,
-    T: Clone + std::fmt::Debug + Send + 'static,
+    T: kube::Resource<Scope = kube::core::NamespaceResourceScope>,
+    T: serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug + Send + 'static,
     T::DynamicType: Default,
 {
     let api = kube::Api::namespaced(client.clone(), ns);
