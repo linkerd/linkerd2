@@ -251,7 +251,11 @@ func (hc *HealthChecker) VizCategory() *healthcheck.Category {
 			WithHintAnchor("l5d-viz-existence-client").
 			Fatal().
 			WithCheck(func(ctx context.Context) (err error) {
-				hc.vizAPIClient, err = client.NewExternalClient(ctx, hc.vizNamespace, hc.KubeAPIClient())
+				if hc.APIAddr != "" {
+					hc.vizAPIClient, err = client.NewInternalClient(hc.APIAddr)
+				} else {
+					hc.vizAPIClient, err = client.NewExternalClient(ctx, hc.vizNamespace, hc.KubeAPIClient())
+				}
 				return
 			}),
 		*healthcheck.NewChecker("viz extension self-check").
