@@ -56,10 +56,10 @@
     eslint-visitor-keys "^2.1.0"
     semver "^6.3.0"
 
-"@babel/eslint-plugin@7.18.10":
-  version "7.18.10"
-  resolved "https://registry.yarnpkg.com/@babel/eslint-plugin/-/eslint-plugin-7.18.10.tgz#11f454b5d1aa64c42fcfd64abe93071c15ebea3c"
-  integrity sha512-iV1OZj/7eg4wZIcsVEkXS3MUWdhmpLsu2h+9Zr2ppywKWdCRs6VfjxbRzmHHYeurTizrrnaJ9ZkbO8KOv4lauQ==
+"@babel/eslint-plugin@7.19.1":
+  version "7.19.1"
+  resolved "https://registry.yarnpkg.com/@babel/eslint-plugin/-/eslint-plugin-7.19.1.tgz#8bfde4b6e4380ea038e7947a765fe536c3057a4c"
+  integrity sha512-ElGPkQPapKMa3zVqXHkZYzuL7I5LbRw9UWBUArgWsdWDDb9XcACqOpBib5tRPA9XvbVZYrFUkoQPbiJ4BFvu4w==
   dependencies:
     eslint-rule-composer "^0.3.0"
 
