@@ -36,7 +36,7 @@ tokio-stream = { version = "0.1", features = ["sync"] }
 tracing = "0.1"
 
 [dependencies.kube]
-version = "0.74"
+version = "0.75"
 default-features = false
 features = ["admission", "derive"]
 
