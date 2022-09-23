@@ -23,7 +23,7 @@ require (
 	github.com/linkerd/linkerd2-proxy-api v0.7.0
 	github.com/linkerd/linkerd2-proxy-init v1.6.2
 	github.com/mattn/go-isatty v0.0.16
-	github.com/mattn/go-runewidth v0.0.13
+	github.com/mattn/go-runewidth v0.0.14
 	github.com/nsf/termbox-go v0.0.0-20180613055208-5c94acc5e6eb
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
