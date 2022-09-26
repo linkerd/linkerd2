@@ -95,9 +95,33 @@ func AuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, names
 		os.Exit(1)
 	}
 
+	allServersInNamespace := map[string]*serverv1beta1.ServerList{}
+
 	for _, p := range policies.Items {
 		target := p.Spec.TargetRef
-		if target.Kind == ServerKind && target.Group == PolicyAPIGroup {
+		if target.Kind == NamespaceKind && target.Group == K8sCoreAPIGroup {
+			serverList, ok := allServersInNamespace[p.Namespace]
+			if !ok {
+				serverList, err = k8sAPI.L5dCrdClient.ServerV1beta1().Servers(p.Namespace).List(ctx, metav1.ListOptions{})
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Failed to get Servers for Namespace/%s: %s\n", p.Namespace, err)
+					continue
+				}
+
+				allServersInNamespace[p.Namespace] = serverList
+			}
+
+			for _, server := range serverList.Items {
+				if serverIncludesPod(server, pods) {
+					results = append(results, Authorization{
+						Route:               "",
+						Server:              server.GetName(),
+						ServerAuthorization: "",
+						AuthorizationPolicy: p.GetName(),
+					})
+				}
+			}
+		} else if target.Kind == ServerKind && target.Group == PolicyAPIGroup {
 			server, err := k8sAPI.L5dCrdClient.ServerV1beta1().Servers(p.Namespace).Get(ctx, string(target.Name), metav1.GetOptions{})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "AuthorizationPolicy/%s targets Server/%s but we failed to get it: %s\n", p.Name, target.Name, err)

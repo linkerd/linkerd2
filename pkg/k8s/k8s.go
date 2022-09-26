@@ -41,6 +41,9 @@ const (
 	LinkAPIGroupVersion = "multicluster.linkerd.io/v1alpha1"
 	LinkKind            = "Link"
 
+	K8sCoreAPIGroup = "core"
+
+	NamespaceKind = "Namespace"
 	ServerKind    = "Server"
 	HTTPRouteKind = "HTTPRoute"
 
