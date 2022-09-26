@@ -188,7 +188,7 @@ k3d-create: && _k3d-ready
         --agents='{{ k3d-agents }}' \
         --servers='{{ k3d-servers }}' \
         --no-lb \
-        --k3s-arg '--no-deploy=local-storage,traefik,servicelb,metrics-server@server:*' \
+        --k3s-arg '--disable=local-storage,traefik,servicelb,metrics-server@server:*' \
         --kubeconfig-update-default \
         --kubeconfig-switch-context=false
 
