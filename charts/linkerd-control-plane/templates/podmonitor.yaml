@@ -1,5 +1,5 @@
 {{- $podMonitor := .Values.podMonitor -}}
-{{ if and $podMonitor.enabled .Values.podMonitor.controller.enabled -}}
+{{- if and $podMonitor.enabled $podMonitor.controller.enabled }}
 ---
 ###
 ### Prometheus Operator PodMonitor for Linkerd control-plane
@@ -10,7 +10,7 @@ metadata:
   name: "linkerd-controller"
   namespace: {{ .Release.Namespace }}
   labels:
-    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    linkerd.io/control-plane-ns: {{ .Release.Namespace }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -29,8 +29,8 @@ spec:
             - __meta_kubernetes_pod_container_name
           action: replace
           targetLabel: component
-{{ end -}}
-{{ if and $podMonitor.enabled .Values.podMonitor.serviceMirror.enabled -}}
+{{- end }}
+{{- if and $podMonitor.enabled $podMonitor.serviceMirror.enabled }}
 ---
 ###
 ### Prometheus Operator PodMonitor for Linkerd Service Mirror (multi-cluster)
@@ -41,7 +41,7 @@ metadata:
   name: "linkerd-service-mirror"
   namespace: {{ .Release.Namespace }}
   labels:
-    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    linkerd.io/control-plane-ns: {{ .Release.Namespace }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -50,8 +50,8 @@ spec:
   selector:
     matchLabels: {}
   podMetricsEndpoints:
-    - interval: {{ default $podMonitor.scrapeInterval }}
-      scrapeTimeout: {{ default $podMonitor.scrapeTimeout }}
+    - interval: {{ $podMonitor.scrapeInterval }}
+      scrapeTimeout: {{ $podMonitor.scrapeTimeout }}
       relabelings:
         - sourceLabels:
             - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
@@ -63,7 +63,7 @@ spec:
           action: replace
           targetLabel: component
 {{- end }}
-{{ if and $podMonitor.enabled .Values.podMonitor.proxy.enabled -}}
+{{- if and $podMonitor.enabled $podMonitor.proxy.enabled }}
 ---
 ###
 ### Prometheus Operator PodMonitor Linkerd data-plane
@@ -74,7 +74,7 @@ metadata:
   name: "linkerd-proxy"
   namespace: {{ .Release.Namespace }}
   labels:
-    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    linkerd.io/control-plane-ns: {{ .Release.Namespace }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -91,7 +91,7 @@ spec:
             - __meta_kubernetes_pod_container_port_name
             - __meta_kubernetes_pod_label_linkerd_io_control_plane_ns
           action: keep
-          regex: ^linkerd-proxy;linkerd-admin;{{.Release.Namespace}}$
+          regex: ^linkerd-proxy;linkerd-admin;{{ .Release.Namespace }}$
         - sourceLabels: [ __meta_kubernetes_namespace ]
           action: replace
           targetLabel: namespace
@@ -119,4 +119,4 @@ spec:
           regex: __tmp_pod_label_linkerd_io_(.+)
         - action: labelmap
           regex: __tmp_pod_label_(.+)
-{{ end -}}
+{{- end -}}
