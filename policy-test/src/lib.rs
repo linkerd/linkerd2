@@ -17,7 +17,8 @@ pub enum LinkerdInject {
     Disabled,
 }
 
-pub async fn create_global<T>(client: &kube::Client, obj: T) -> T
+/// Creates a cluster-scoped resource.
+async fn create_cluster_scoped<T>(client: &kube::Client, obj: T) -> T
 where
     T: kube::Resource<Scope = kube::core::ClusterResourceScope>,
     T: serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug,
@@ -34,6 +35,7 @@ where
         .expect("failed to create resource")
 }
 
+/// Creates a namespace-scoped resource.
 pub async fn create<T>(client: &kube::Client, obj: T) -> T
 where
     T: kube::Resource<Scope = kube::core::NamespaceResourceScope>,
@@ -179,7 +181,7 @@ where
 
     let name = format!("linkerd-policy-test-{}", random_suffix(6));
     tracing::debug!(namespace = %name, "Creating");
-    let ns = create_global(
+    let ns = create_cluster_scoped(
         &client,
         k8s::Namespace {
             metadata: k8s::ObjectMeta {
