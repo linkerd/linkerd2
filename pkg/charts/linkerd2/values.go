@@ -141,12 +141,12 @@ type (
 
 	// PodMonitor contains the fields to configure the Prometheus Operator `PodMonitor`
 	PodMonitor struct {
-		Enabled        bool                     `json:"enabled"`
-		ScrapeInterval string                   `json:"scrapeInterval"`
-		ScrapeTimeout  string                   `json:"scrapeTimeout"`
-		Controller     *PodMonitorController    `json:"controller"`
-		ServiceMirror  *PodMonitorServiceMirror `json:"serviceMirror"`
-		Proxy          *PodMonitorProxy         `json:"proxy"`
+		Enabled        bool                  `json:"enabled"`
+		ScrapeInterval string                `json:"scrapeInterval"`
+		ScrapeTimeout  string                `json:"scrapeTimeout"`
+		Controller     *PodMonitorController `json:"controller"`
+		ServiceMirror  *PodMonitorComponent  `json:"serviceMirror"`
+		Proxy          *PodMonitorComponent  `json:"proxy"`
 	}
 
 	// PodMonitorController contains the fields to configure the Prometheus Operator `PodMonitor` for the control-plane
@@ -155,13 +155,8 @@ type (
 		NamespaceSelector string `json:"namespaceSelector"`
 	}
 
-	// PodMonitorServiceMirror contains the fields to configure the Prometheus Operator `PodMonitor` for the Service Mirror component
-	PodMonitorServiceMirror struct {
-		Enabled bool `json:"enabled"`
-	}
-
-	// PodMonitorProxy contains the fields to configure the Prometheus Operator `PodMonitor` for the data-plane
-	PodMonitorProxy struct {
+	// PodMonitorComponent contains the fields to configure the Prometheus Operator `PodMonitor` for other components
+	PodMonitorComponent struct {
 		Enabled bool `json:"enabled"`
 	}
 
