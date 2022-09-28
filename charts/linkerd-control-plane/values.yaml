@@ -52,6 +52,8 @@ identityTrustDomain: ""
 podAnnotations: {}
 # -- Additional labels to add to all pods
 podLabels: {}
+# -- Additional labels to add to all resources except pods
+labels: {}
 # -- Kubernetes priorityClassName for the Linkerd Pods
 priorityClassName: ""
 # -- Runtime Class Name for all the pods
