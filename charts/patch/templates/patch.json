@@ -44,14 +44,14 @@
   },
   {{- end }}
   {{- end}}
-  {{- if and .Values.proxyInit (not .Values.cniEnabled) }}
   {{- if .Values.addRootInitContainers }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/initContainers",
     "value": []
   },
-  {{- end }}
+  {{- end}}
+  {{- if and .Values.proxyInit (not .Values.cniEnabled) }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/volumes/-",
@@ -65,6 +65,13 @@
     "path": "{{$prefix}}/spec/initContainers/-",
     "value":
       {{- include "partials.proxy-init" . | fromYaml | toPrettyJson | nindent 6 }}
+  },
+  {{- else if .Values.proxy }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/initContainers/-",
+    "value":
+      {{- include "partials.noop" . | fromYaml | toPrettyJson | nindent 6 }}
   },
   {{- end }}
   {{- if .Values.debugContainer }}
