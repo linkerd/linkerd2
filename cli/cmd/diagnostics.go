@@ -29,6 +29,7 @@ This command provides subcommands to diagnose the functionality of Linkerd.`,
 	diagnosticsCmd.AddCommand(newCmdControllerMetrics())
 	diagnosticsCmd.AddCommand(newCmdEndpoints())
 	diagnosticsCmd.AddCommand(newCmdMetrics())
+	diagnosticsCmd.AddCommand(newCmdPolicy())
 
 	return diagnosticsCmd
 }
