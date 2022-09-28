@@ -88,14 +88,12 @@ func (hc *HealthChecker) VizCategory() *healthcheck.Category {
 		*healthcheck.NewChecker("linkerd-viz ClusterRoles exist").
 			WithHintAnchor("l5d-viz-cr-exists").
 			Fatal().
-			Warning().
 			WithCheck(func(ctx context.Context) error {
 				return healthcheck.CheckClusterRoles(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-tap", hc.vizNamespace), fmt.Sprintf("linkerd-%s-metrics-api", hc.vizNamespace), fmt.Sprintf("linkerd-%s-tap-admin", hc.vizNamespace), "linkerd-tap-injector"}, "")
 			}),
 		*healthcheck.NewChecker("linkerd-viz ClusterRoleBindings exist").
 			WithHintAnchor("l5d-viz-crb-exists").
 			Fatal().
-			Warning().
 			WithCheck(func(ctx context.Context) error {
 				return healthcheck.CheckClusterRoleBindings(ctx, hc.KubeAPIClient(), true, []string{fmt.Sprintf("linkerd-%s-tap", hc.vizNamespace), fmt.Sprintf("linkerd-%s-metrics-api", hc.vizNamespace), fmt.Sprintf("linkerd-%s-tap-auth-delegator", hc.vizNamespace), "linkerd-tap-injector"}, "")
 			}),
