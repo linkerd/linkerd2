@@ -36,11 +36,7 @@ import { ReactRouter5Adapter } from 'use-query-params/adapters/react-router-5';
 const appMain = document.getElementById('main');
 const appData = !appMain ? {} : appMain.dataset;
 
-let pathPrefix = '';
-const proxyPathMatch = window.location.pathname.match(/\/api\/v1\/namespaces\/.*\/proxy/g);
-if (proxyPathMatch) {
-  pathPrefix = proxyPathMatch[0];
-}
+const pathPrefix = window.PATH_PREFIX ?? '';
 
 let defaultNamespace = 'default';
 const pathArray = window.location.pathname.split('/');

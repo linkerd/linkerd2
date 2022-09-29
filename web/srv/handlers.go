@@ -41,6 +41,13 @@ type (
 func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	// when running the dashboard via `linkerd dashboard`, serve the index bundle at the right path
 	pathPfx := proxyPathRegexp.FindString(req.URL.Path)
+
+	TODO_CONFIGURABLE_PREFIX := "/linkerd"
+
+	if TODO_CONFIGURABLE_PREFIX == "" {
+		pathPfx = TODO_CONFIGURABLE_PREFIX + pathPfx
+	}
+
 	if pathPfx == "" {
 		pathPfx = "/"
 	}
