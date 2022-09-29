@@ -119,4 +119,4 @@ spec:
           regex: __tmp_pod_label_linkerd_io_(.+)
         - action: labelmap
           regex: __tmp_pod_label_(.+)
-{{- end -}}
+{{- end }}
