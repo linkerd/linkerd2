@@ -49,7 +49,7 @@ server.`,
 				return err
 			}
 
-			port, err := strconv.Atoi(args[1])
+			port, err := strconv.ParseUint(args[1], 10, 32)
 			if err != nil {
 				return err
 			}
