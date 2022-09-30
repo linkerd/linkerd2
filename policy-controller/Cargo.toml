@@ -41,7 +41,7 @@ default-features = false
 features = ["admission", "derive"]
 
 [dependencies.kubert]
-version = "0.10"
+version = "0.11"
 default-features = false
 features = ["clap", "index", "runtime", "server"]
 
