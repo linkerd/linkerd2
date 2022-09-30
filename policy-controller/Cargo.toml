@@ -13,11 +13,6 @@ rustls-tls = ["kube/rustls-tls"]
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
-clap = { version = "3", default-features = false, features = [
-    "derive",
-    "env",
-    "std",
-] }
 drain = "0.1"
 futures = { version = "0.3", default-features = false }
 k8s-gateway-api = "0.7"
@@ -35,13 +30,18 @@ thiserror = "1"
 tokio-stream = { version = "0.1", features = ["sync"] }
 tracing = "0.1"
 
+[dependencies.clap]
+version = "4"
+default-features = false
+features = ["derive", "env", "std"]
+
 [dependencies.kube]
 version = "0.75"
 default-features = false
 features = ["admission", "derive"]
 
 [dependencies.kubert]
-version = "0.10"
+version = "0.11"
 default-features = false
 features = ["clap", "index", "runtime", "server"]
 
