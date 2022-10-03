@@ -115,6 +115,7 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.tap.UID | default .Values.defaultUID}}
+          readOnlyRootFilesystem: true
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
