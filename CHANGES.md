@@ -2,20 +2,20 @@
 
 ## edge-22.10.1
 
-This edge release fixes some sections of the Viz dashboard that were appearing
-blank, and adds an optional PodMonitor resource to the Helm chart which allows
-having an easier integration with the Prometheus Operator. It also includes many
-fixes submitted by our contributors.
+This edge release fixes some sections of the Viz dashboard appearing blank, and
+adds an optional PodMonitor resource to the Helm chart to enable easier
+integration with the Prometheus Operator. It also includes many fixes submitted
+by our contributors.
 
-* Fixed the dashboard sections Tap, Top, Routes that were appearing blank
-  (thanks @MoSattler!)
+* Fixed the dashboard sections Tap, Top, and Routes appearing blank (thanks
+  @MoSattler!)
 * Added an optional PodMonitor resource to the main Helm chart (thanks
   @jaygridley!)
-* Fixed the CLI's `--api-addr` flag (thanks @mikutas!)
+* Fixed the CLI's `--api-addr` flag, that was being ignored (thanks @mikutas!)
 * Expanded the `linkerd authz` command to display AuthorizationPolicy resources
   that target namespaces (thanks @aatarasoff!)
-* Fixed interpretation of the `NotIn` label selector operator in the policy
-  resources
+* Fixed the `NotIn` label selector operator in the policy resources, that was
+  erroneously treated as `In`.
 * Fixed warning logic around the "linkerd-viz ClusterRoles exist" and
   "linkerd-viz ClusterRoleBindings exist" checks in `linkerd viz check`
 * Fixed proxies emitting some duplicate inbound metrics
