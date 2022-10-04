@@ -11,10 +11,10 @@ by our contributors.
   @MoSattler!)
 * Added an optional PodMonitor resource to the main Helm chart (thanks
   @jaygridley!)
-* Fixed the CLI's `--api-addr` flag, that was being ignored (thanks @mikutas!)
+* Fixed the CLI ignoring the `--api-addr` flag (thanks @mikutas!)
 * Expanded the `linkerd authz` command to display AuthorizationPolicy resources
   that target namespaces (thanks @aatarasoff!)
-* Fixed the `NotIn` label selector operator in the policy resources, that was
+* Fixed the `NotIn` label selector operator in the policy resources, being
   erroneously treated as `In`.
 * Fixed warning logic around the "linkerd-viz ClusterRoles exist" and
   "linkerd-viz ClusterRoleBindings exist" checks in `linkerd viz check`
