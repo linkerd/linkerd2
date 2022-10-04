@@ -472,6 +472,21 @@ data:
       kubernetes.io/os: linux
     podAnnotations: {}
     podLabels: {}
+    podMonitor:
+      controller:
+        enabled: true
+        namespaceSelector: |
+          matchNames:
+            - {{ .Release.Namespace }}
+            - linkerd-viz
+            - linkerd-jaeger
+      enabled: false
+      proxy:
+        enabled: true
+      scrapeInterval: 10s
+      scrapeTimeout: 10s
+      serviceMirror:
+        enabled: true
     policyController:
       image:
         name: cr.l5d.io/linkerd/policy-controller
