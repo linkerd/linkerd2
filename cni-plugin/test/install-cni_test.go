@@ -112,23 +112,23 @@ func rm(dir string, t *testing.T) {
 // Checks that only a single configuration file that CNI will look for exists. CNI will look
 // for any filename ending in `.conf` or `.conflist` and pick the first in lexicographic order.
 func checkOnlyOneConfFileExists(t *testing.T, directory string) {
-       filenames := ls(directory, t)
-       possibleConfigFiles := []string{}
+	filenames := ls(directory, t)
+	possibleConfigFiles := []string{}
 
-       for _, filename := range filenames {
-               if strings.HasSuffix(filename, ".conf") || strings.HasSuffix(filename, ".conflist") {
-                       possibleConfigFiles = append(possibleConfigFiles, filename)
-               }
-       }
+	for _, filename := range filenames {
+		if strings.HasSuffix(filename, ".conf") || strings.HasSuffix(filename, ".conflist") {
+			possibleConfigFiles = append(possibleConfigFiles, filename)
+		}
+	}
 
-       if len(possibleConfigFiles) == 0 {
-	       t.Log("FAIL: no files found ending with .conf or .conflist in the CNI configuration directory")
-	       // TODO(stevej): testutil.AnnotatedFatal does not result in a Failed test
-	       t.Fail()
-       } else if len(possibleConfigFiles) > 1 {
-	       t.Logf("FAIL: CNI configuration conflict: multiple files found ending with .conf or .conflist %v", possibleConfigFiles)
-	       t.Fail()
-       }
+	if len(possibleConfigFiles) == 0 {
+		t.Log("FAIL: no files found ending with .conf or .conflist in the CNI configuration directory")
+		// TODO(stevej): testutil.AnnotatedFatal does not result in a Failed test
+		t.Fail()
+	} else if len(possibleConfigFiles) > 1 {
+		t.Logf("FAIL: CNI configuration conflict: multiple files found ending with .conf or .conflist %v", possibleConfigFiles)
+		t.Fail()
+	}
 }
 
 // populateTempDirs populates temporary test directories with golden files
