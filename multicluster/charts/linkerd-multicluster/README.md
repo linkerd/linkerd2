@@ -76,6 +76,7 @@ Kubernetes: `>=1.21.0-0`
 | gateway.enabled | bool | `true` | If the gateway component should be installed |
 | gateway.loadBalancerIP | string | `""` | Set loadBalancerIP on gateway service |
 | gateway.name | string | `"linkerd-gateway"` | The name of the gateway that will be installed |
+| gateway.pauseImage | string | `"gcr.io/google_containers/pause:3.2"` | The pause container to use |
 | gateway.port | int | `4143` | The port on which all the gateway will accept incoming traffic |
 | gateway.probe.path | string | `"/ready"` | The path that will be used by remote clusters for determining whether the gateway is alive |
 | gateway.probe.port | int | `4191` | The port used for liveliness probing |
