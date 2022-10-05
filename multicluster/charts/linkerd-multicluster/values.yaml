@@ -1,6 +1,16 @@
 gateway:
   # -- If the gateway component should be installed
   enabled: true
+  image:
+    # -- Docker registry for the gateway instance
+    registry: gcr.io
+    # -- Docker image name for the gateway instance
+    name: google_containers/pause
+    # -- Docker image tag for the gateway instance
+    tag: 3.2
+    # -- Pull policy for the gateway instance
+    # @default -- defaultImagePullPolicy
+    pullPolicy: ""
   # -- Number of replicas for the gateway pod
   replicas: 1
   # -- The name of the gateway that will be installed
@@ -31,6 +41,8 @@ gateway:
 
 # -- Control plane version
 linkerdVersion: linkerdVersionValue
+# -- Docker imagePullPolicy for all viz components
+defaultImagePullPolicy: IfNotPresent
 # -- The port on which the proxy accepts outbound traffic
 proxyOutboundPort: 4140
 # -- If the remote mirror service account should be installed
@@ -58,3 +70,15 @@ enablePodAntiAffinity: false
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
 # for more information
 # nodeAffinity:
+
+namespaceMetadata:
+  image:
+    # -- Docker registry for the namespace-metadata instance
+    registry: curlimages
+    # -- Docker image name for the namespace-metadata instance
+    name: curl
+    # -- Docker image tag for the namespace-metadata instance
+    tag: 7.78.0
+    # -- Pull policy for the namespace-metadata instance
+    # @default -- defaultImagePullPolicy
+    pullPolicy: ""

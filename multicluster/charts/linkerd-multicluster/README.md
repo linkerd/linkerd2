@@ -70,10 +70,19 @@ Kubernetes: `>=1.21.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| defaultImagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all multicluster components |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
+| namespaceMetadata.image.name | string | `"curl"` | Docker image name for the namespace-metadata instance |
+| namespaceMetadata.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the namespace-metadata instance |
+| namespaceMetadata.image.registry | string | `"curlimages"` | Docker registry for the namespace-metadata instance |
+| namespaceMetadata.image.tag | string | `"7.78.0"` | Docker image tag for the namespace-metadata instance |
 | gateway.UID | int | `2103` | User id under which the gateway shall be ran |
 | gateway.enabled | bool | `true` | If the gateway component should be installed |
+| gateway.image.name | string | `"curl"` | Docker image name for the gateway instance |
+| gateway.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the gateway instance |
+| gateway.image.registry | string | `"curlimages"` | Docker registry for the gateway instance |
+| gateway.image.tag | string | `"7.78.0"` | Docker image tag for the gateway instance |
 | gateway.loadBalancerIP | string | `""` | Set loadBalancerIP on gateway service |
 | gateway.name | string | `"linkerd-gateway"` | The name of the gateway that will be installed |
 | gateway.port | int | `4143` | The port on which all the gateway will accept incoming traffic |
