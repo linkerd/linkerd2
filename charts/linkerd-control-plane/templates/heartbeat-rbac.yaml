@@ -10,7 +10,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
-    {{- with .Values.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
 - apiGroups: [""]
   resources: ["configmaps"]
@@ -24,7 +24,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
-    {{- with .Values.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 roleRef:
   kind: Role
   name: linkerd-heartbeat
@@ -40,7 +40,7 @@ metadata:
   name: linkerd-heartbeat
   labels:
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
-    {{- with .Values.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -55,7 +55,7 @@ metadata:
   name: linkerd-heartbeat
   labels:
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
-    {{- with .Values.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 roleRef:
   kind: ClusterRole
   name: linkerd-heartbeat
@@ -73,6 +73,6 @@ metadata:
   labels:
     linkerd.io/control-plane-component: heartbeat
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
-    {{- with .Values.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{- end }}

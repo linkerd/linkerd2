@@ -10,7 +10,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
-    {{- with .Values.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -30,7 +30,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
-    {{- with .Values.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -50,7 +50,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
-    {{- with .Values.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -70,7 +70,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
-    {{- with .Values.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -90,7 +90,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
-    {{- with .Values.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -111,7 +111,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
-    {{- with .Values.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -135,7 +135,7 @@ metadata:
     app.kubernetes.io/version: {{.Values.linkerdVersion}}
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
-    {{- with .Values.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: linkerd-destination
   namespace: {{ .Release.Namespace }}
 spec:
