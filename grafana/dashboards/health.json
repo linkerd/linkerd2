@@ -221,7 +221,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(process_cpu_seconds_total{job=\"linkerd-proxy\"}[20s])) by (namespace, pod)",
+          "expr": "sum(irate(process_cpu_seconds_total{job=\"linkerd-proxy\"}[$__rate_interval])) by (namespace, pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}",
