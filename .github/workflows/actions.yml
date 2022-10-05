@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 10
     container: ghcr.io/linkerd/dev:v30-tools
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - name: Run actionlint
         run: just action-lint
 
@@ -23,5 +23,5 @@ jobs:
     runs-on: ubuntu-latest
     container: ghcr.io/linkerd/dev:v30-tools
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - run: just action-dev-check
