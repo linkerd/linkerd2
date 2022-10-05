@@ -3,7 +3,7 @@
 The Linkerd-Viz extension contains observability and visualization
 components for Linkerd.
 
-![Version: 30.3.3-edge](https://img.shields.io/badge/Version-30.3.3--edge-informational?style=flat-square)
+![Version: 30.4.0-edge](https://img.shields.io/badge/Version-30.4.0--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 

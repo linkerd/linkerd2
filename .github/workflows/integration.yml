@@ -36,7 +36,7 @@ jobs:
     permissions:
       actions: write
     steps:
-      - uses: styfle/cancel-workflow-action@bb6001c4ea612bf59c3abfc4756fbceee4f870c7
+      - uses: styfle/cancel-workflow-action@9f10b1b9fa56e99e4c5d12c2a085c8a0c37ab0ac
         with:
           all_but_latest: true
           access_token: ${{ github.token }}
@@ -147,7 +147,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - uses: tj-actions/changed-files@df4dacaa89cace34cd60d5e9580f041a041e5233
+      - uses: tj-actions/changed-files@dd7c81416dd9ddc14c594f751cd92c661e13daee
         id: changed
         with:
           files: |
@@ -285,7 +285,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - uses: tj-actions/changed-files@df4dacaa89cace34cd60d5e9580f041a041e5233
+      - uses: tj-actions/changed-files@dd7c81416dd9ddc14c594f751cd92c661e13daee
         id: changed
         with:
           files: |

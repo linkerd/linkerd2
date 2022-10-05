@@ -192,8 +192,8 @@ k3d-create: && _k3d-ready
         --image='+{{ k3d-k8s }}' \
         --agents='{{ k3d-agents }}' \
         --servers='{{ k3d-servers }}' \
-		--network='{{ k3d-network }}' \
-		{{ _k3d-flags }} \
+        --no-lb \
+        --k3s-arg '--disable=local-storage,traefik,servicelb,metrics-server@server:*' \
         --kubeconfig-update-default \
         --kubeconfig-switch-context=false
 

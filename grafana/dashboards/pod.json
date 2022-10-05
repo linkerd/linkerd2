@@ -153,7 +153,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[30s])) / sum(irate(response_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[30s]))",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[$__rate_interval])) / sum(irate(response_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[$__rate_interval]))",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -238,7 +238,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[30s]))",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[$__rate_interval]))",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -482,7 +482,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[30s])) by (pod) / sum(irate(response_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[30s])) by (pod)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[$__rate_interval])) by (pod) / sum(irate(response_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[$__rate_interval])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -569,14 +569,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\", tls=\"true\"}[30s])) by (pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\", tls=\"true\"}[$__rate_interval])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒po/{{pod}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\", tls!=\"true\"}[30s])) by (pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\", tls!=\"true\"}[$__rate_interval])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -663,14 +663,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[30s])) by (le, pod))",
+          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[$__rate_interval])) by (le, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p50 po/{{pod}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[30s])) by (le, pod))",
+          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[$__rate_interval])) by (le, pod))",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -678,7 +678,7 @@
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[30s])) by (le, pod))",
+          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"inbound\"}[$__rate_interval])) by (le, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p99 po/{{pod}}",
@@ -1042,7 +1042,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\"}[30s])) by (pod) / sum(irate(response_total{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\"}[30s])) by (pod)",
+          "expr": "sum(irate(response_total{classification=\"success\", dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\"}[$__rate_interval])) by (pod) / sum(irate(response_total{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\"}[$__rate_interval])) by (pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1130,14 +1130,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\", tls=\"true\"}[30s])) by (pod)",
+          "expr": "sum(irate(request_total{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒po/{{pod}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\", tls!=\"true\"}[30s])) by (pod)",
+          "expr": "sum(irate(request_total{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\", tls!=\"true\"}[$__rate_interval])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -1224,14 +1224,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\"}[30s])) by (le, pod))",
+          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\"}[$__rate_interval])) by (le, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p50 po/{{pod}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\"}[30s])) by (le, pod))",
+          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\"}[$__rate_interval])) by (le, pod))",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1239,7 +1239,7 @@
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\"}[30s])) by (le, pod))",
+          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{dst_namespace=\"$namespace\", dst_pod!=\"\", dst_pod=\"$pod\", direction=\"outbound\"}[$__rate_interval])) by (le, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p99 po/{{pod}}",
@@ -1342,7 +1342,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[30s])) by (pod) / sum(irate(response_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[30s])) by (pod)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[$__rate_interval])) by (pod) / sum(irate(response_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[$__rate_interval])) by (pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1430,14 +1430,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", tls=\"true\"}[30s])) by (pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒po/{{pod}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", tls!=\"true\"}[30s])) by (pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", tls!=\"true\"}[$__rate_interval])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -1524,14 +1524,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[30s])) by (le, pod))",
+          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[$__rate_interval])) by (le, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p50 po/{{pod}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[30s])) by (le, pod))",
+          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[$__rate_interval])) by (le, pod))",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1539,7 +1539,7 @@
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[30s])) by (le, pod))",
+          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[$__rate_interval])) by (le, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p99 po/{{pod}}",
@@ -1903,7 +1903,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[30s])) by (dst_pod) / sum(irate(response_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[30s])) by (dst_pod)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[$__rate_interval])) by (dst_pod) / sum(irate(response_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[$__rate_interval])) by (dst_pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1991,14 +1991,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (dst_pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒po/{{dst_pod}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_pod)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\", tls!=\"true\"}[$__rate_interval])) by (dst_pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{dst_pod}}",
@@ -2085,14 +2085,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[30s])) by (le, dst_pod))",
+          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p50 po/{{dst_pod}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[30s])) by (le, dst_pod))",
+          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_pod))",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -2100,7 +2100,7 @@
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[30s])) by (le, dst_pod))",
+          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", pod=\"$pod\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p99 po/{{dst_pod}}",

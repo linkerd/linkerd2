@@ -46,7 +46,9 @@ pub struct HttpRouteSpec {
 /// HTTPRouteRule defines semantics for matching an HTTP request based on
 /// conditions (matches), processing it (filters), and forwarding the request to
 /// an API object (backendRefs).
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct HttpRouteRule {
     /// Matches define conditions used for matching the rule against incoming
@@ -132,7 +134,9 @@ pub struct HttpRouteRule {
 /// Some examples include request or response modification, implementing
 /// authentication strategies, rate-limiting, and traffic shaping. API
 /// guarantee/conformance is defined based on the type of the filter.
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
+)]
 #[serde(tag = "type", rename_all = "PascalCase")]
 pub enum HttpRouteFilter {
     /// RequestHeaderModifier defines a schema for a filter that modifies request
