@@ -153,7 +153,7 @@
             "tableColumn": "",
             "targets": [
                 {
-                    "expr": "sum(irate(response_total{classification=\"success\", dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[30s])) / sum(irate(response_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[30s]))",
+                    "expr": "sum(irate(response_total{classification=\"success\", dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[$__rate_interval])) / sum(irate(response_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[$__rate_interval]))",
                     "format": "time_series",
                     "instant": false,
                     "intervalFactor": 1,
@@ -238,7 +238,7 @@
             "tableColumn": "",
             "targets": [
                 {
-                    "expr": "sum(irate(request_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[30s]))",
+                    "expr": "sum(irate(request_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[$__rate_interval]))",
                     "format": "time_series",
                     "instant": false,
                     "intervalFactor": 1,
@@ -323,7 +323,7 @@
             "tableColumn": "",
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[30s])) by (le))",
+                    "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[$__rate_interval])) by (le))",
                     "format": "time_series",
                     "instant": false,
                     "intervalFactor": 1,
@@ -399,7 +399,7 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "sum(irate(response_total{classification=\"success\",dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[30s])) / sum(irate(response_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[30s]))",
+                    "expr": "sum(irate(response_total{classification=\"success\",dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[$__rate_interval])) / sum(irate(response_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[$__rate_interval]))",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "",
@@ -486,14 +486,14 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "sum(irate(request_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\", tls=\"true\"}[30s]))",
+                    "expr": "sum(irate(request_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\", tls=\"true\"}[$__rate_interval]))",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A"
                 },
                 {
-                    "expr": "sum(irate(request_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", tls!=\"true\"}[30s]))",
+                    "expr": "sum(irate(request_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", tls!=\"true\"}[$__rate_interval]))",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "",
@@ -580,14 +580,14 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[30s])) by (le))",
+                    "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[$__rate_interval])) by (le))",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "p50 gateway",
                     "refId": "A"
                 },
                 {
-                    "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[30s])) by (le))",
+                    "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[$__rate_interval])) by (le))",
                     "format": "time_series",
                     "hide": false,
                     "intervalFactor": 1,
@@ -595,7 +595,7 @@
                     "refId": "B"
                 },
                 {
-                    "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[30s])) by (le))",
+                    "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[$__rate_interval])) by (le))",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "p99 gateway",
@@ -698,7 +698,7 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "sum(irate(response_total{classification=\"success\", dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[30s])) by (dst_target_service) / sum(irate(response_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[30s])) by (dst_target_service)",
+                    "expr": "sum(irate(response_total{classification=\"success\", dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[$__rate_interval])) by (dst_target_service) / sum(irate(response_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[$__rate_interval])) by (dst_target_service)",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "target-svc/{{dst_target_service}}",
@@ -785,14 +785,14 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "sum(irate(request_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", tls=\"true\"}[30s])) by (dst_target_service)",
+                    "expr": "sum(irate(request_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", tls=\"true\"}[$__rate_interval])) by (dst_target_service)",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "🔒target-svc/{{dst_target_service}}",
                     "refId": "A"
                 },
                 {
-                    "expr": "sum(irate(request_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", tls!=\"true\"}[30s])) by (dst_target_service)",
+                    "expr": "sum(irate(request_total{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", tls!=\"true\"}[$__rate_interval])) by (dst_target_service)",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "target-svc/{{dst_target_service}}",
@@ -878,7 +878,7 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[30s])) by (le, dst_target_service))",
+                    "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{dst_target_cluster=\"$cluster\", dst_target_cluster!=\"\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_target_service))",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "P95 target-svc/{{dst_target_service}}",

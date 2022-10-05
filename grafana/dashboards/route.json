@@ -153,7 +153,7 @@
         "tableColumn": "",
         "targets": [
           {
-            "expr": "sum(irate(route_response_total{classification=\"success\", namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s])) / sum(irate(route_response_total{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s]))",
+            "expr": "sum(irate(route_response_total{classification=\"success\", namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[$__rate_interval])) / sum(irate(route_response_total{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[$__rate_interval]))",
             "format": "time_series",
             "instant": false,
             "intervalFactor": 1,
@@ -238,7 +238,7 @@
         "tableColumn": "",
         "targets": [
           {
-            "expr": "sum(irate(route_request_total{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s]))",
+            "expr": "sum(irate(route_request_total{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[$__rate_interval]))",
             "format": "time_series",
             "instant": false,
             "intervalFactor": 1,
@@ -323,7 +323,7 @@
         "tableColumn": "",
         "targets": [
           {
-            "expr": "histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s])) by (le, rt_route))",
+            "expr": "histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[$__rate_interval])) by (le, rt_route))",
             "format": "time_series",
             "instant": false,
             "intervalFactor": 1,
@@ -399,7 +399,7 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(route_response_total{classification=\"success\", namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s])) by (rt_route) / sum(irate(route_response_total{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s])) by (rt_route)",
+            "expr": "sum(irate(route_response_total{classification=\"success\", namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[$__rate_interval])) by (rt_route) / sum(irate(route_response_total{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[$__rate_interval])) by (rt_route)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "route/{{rt_route}}",
@@ -486,14 +486,14 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(route_request_total{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\", tls=\"true\"}[30s])) by (rt_route)",
+            "expr": "sum(irate(route_request_total{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\", tls=\"true\"}[$__rate_interval])) by (rt_route)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "🔒route/{{rt_route}}",
             "refId": "A"
           },
           {
-            "expr": "sum(irate(route_request_total{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\", tls!=\"true\"}[30s])) by (rt_route)",
+            "expr": "sum(irate(route_request_total{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\", tls!=\"true\"}[$__rate_interval])) by (rt_route)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "route/{{rt_route}}",
@@ -580,14 +580,14 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s])) by (le, rt_route))",
+            "expr": "histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[$__rate_interval])) by (le, rt_route))",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "p50 route/{{rt_route}}",
             "refId": "A"
           },
           {
-            "expr": "histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s])) by (le, rt_route))",
+            "expr": "histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[$__rate_interval])) by (le, rt_route))",
             "format": "time_series",
             "hide": false,
             "intervalFactor": 1,
@@ -595,7 +595,7 @@
             "refId": "B"
           },
           {
-            "expr": "histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s])) by (le, rt_route))",
+            "expr": "histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\", rt_route=\"$rt_route\"}[$__rate_interval])) by (le, rt_route))",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "p99 route/{{rt_route}}",
@@ -698,7 +698,7 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(route_response_total{classification=\"success\", namespace=\"$namespace\", direction=\"outbound\", rt_route=\"$rt_route\"}[30s])) by (deployment, rt_route) / sum(irate(route_response_total{namespace=\"$namespace\", direction=\"outbound\", rt_route=\"$rt_route\"}[30s])) by (deployment, rt_route)",
+            "expr": "sum(irate(route_response_total{classification=\"success\", namespace=\"$namespace\", direction=\"outbound\", rt_route=\"$rt_route\"}[$__rate_interval])) by (deployment, rt_route) / sum(irate(route_response_total{namespace=\"$namespace\", direction=\"outbound\", rt_route=\"$rt_route\"}[$__rate_interval])) by (deployment, rt_route)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "deploy/{{deployment}}",
@@ -785,14 +785,14 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(route_request_total{namespace=\"$namespace\", direction=\"outbound\", tls=\"true\", rt_route=\"$rt_route\"}[30s])) by (deployment, rt_route)",
+            "expr": "sum(irate(route_request_total{namespace=\"$namespace\", direction=\"outbound\", tls=\"true\", rt_route=\"$rt_route\"}[$__rate_interval])) by (deployment, rt_route)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "🔒deploy/{{deployment}}",
             "refId": "A"
           },
           {
-            "expr": "sum(irate(route_request_total{namespace=\"$namespace\", direction=\"outbound\", tls!=\"true\", rt_route=\"$rt_route\"}[30s])) by (deployment, rt_route)",
+            "expr": "sum(irate(route_request_total{namespace=\"$namespace\", direction=\"outbound\", tls!=\"true\", rt_route=\"$rt_route\"}[$__rate_interval])) by (deployment, rt_route)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "deploy/{{deployment}}",
@@ -878,7 +878,7 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "histogram_quantile(0.95, sum(rate(route_response_latency_ms_bucket{namespace=\"$namespace\", direction=\"outbound\", rt_route=\"$rt_route\"}[30s])) by (le, deployment, rt_route))",
+            "expr": "histogram_quantile(0.95, sum(rate(route_response_latency_ms_bucket{namespace=\"$namespace\", direction=\"outbound\", rt_route=\"$rt_route\"}[$__rate_interval])) by (le, deployment, rt_route))",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "P95 deploy/{{deployment}}",
@@ -980,7 +980,7 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(route_response_total{classification=\"success\", namespace=\"$namespace\", direction=\"outbound\", rt_route=\"$rt_route\"}[30s])) by (pod, rt_route) / sum(irate(route_response_total{namespace=\"$namespace\", direction=\"outbound\", rt_route=\"$rt_route\"}[30s])) by (pod, rt_route)",
+            "expr": "sum(irate(route_response_total{classification=\"success\", namespace=\"$namespace\", direction=\"outbound\", rt_route=\"$rt_route\"}[$__rate_interval])) by (pod, rt_route) / sum(irate(route_response_total{namespace=\"$namespace\", direction=\"outbound\", rt_route=\"$rt_route\"}[$__rate_interval])) by (pod, rt_route)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "po/{{pod}}",
@@ -1067,14 +1067,14 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(route_request_total{namespace=\"$namespace\", direction=\"outbound\", tls=\"true\", rt_route=\"$rt_route\"}[30s])) by (pod, rt_route)",
+            "expr": "sum(irate(route_request_total{namespace=\"$namespace\", direction=\"outbound\", tls=\"true\", rt_route=\"$rt_route\"}[$__rate_interval])) by (pod, rt_route)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "🔒po/{{pod}}",
             "refId": "A"
           },
           {
-            "expr": "sum(irate(route_request_total{namespace=\"$namespace\", direction=\"outbound\", tls!=\"true\", rt_route=\"$rt_route\"}[30s])) by (pod, rt_route)",
+            "expr": "sum(irate(route_request_total{namespace=\"$namespace\", direction=\"outbound\", tls!=\"true\", rt_route=\"$rt_route\"}[$__rate_interval])) by (pod, rt_route)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "po/{{pod}}",
@@ -1160,7 +1160,7 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "histogram_quantile(0.95, sum(rate(route_response_latency_ms_bucket{namespace=\"$namespace\", direction=\"outbound\", rt_route=\"$rt_route\"}[30s])) by (le, pod))",
+            "expr": "histogram_quantile(0.95, sum(rate(route_response_latency_ms_bucket{namespace=\"$namespace\", direction=\"outbound\", rt_route=\"$rt_route\"}[$__rate_interval])) by (le, pod))",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "P95 po/{{pod, rt_route}}",
