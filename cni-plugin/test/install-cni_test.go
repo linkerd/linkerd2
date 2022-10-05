@@ -129,7 +129,6 @@ func checkOnlyOneConfFileExists(t *testing.T, directory string) {
 	       t.Logf("FAIL: CNI configuration conflict: multiple files found ending with .conf or .conflist %v", possibleConfigFiles)
 	       t.Fail()
        }
-       return
 }
 
 // populateTempDirs populates temporary test directories with golden files
