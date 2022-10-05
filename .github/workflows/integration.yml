@@ -371,16 +371,7 @@ jobs:
             docker load <"image-archives/${img}.tar"
           done
       - run: docker image ls
-      - name: Create k3d clusters
-        run: |
-          set -euo pipefail
-          # Create source and target clusters
-          for ctx in source target; do
-            just k3d-k8s="${{ matrix.k8s }}" k3d-name="${{ matrix.k8s }}-${ctx}" k3d-create-multicluster
-            bin/image-load --k3d --cluster "${{ matrix.k8s }}-${ctx}"
-          done
-        shell: bash
-      - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' k3d-k8s='${{ matrix.k8s }}' multicluster-integration-tests
+      - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' k3d-name='mc-${{ matrix.k8s }}' k3d-k8s='${{ matrix.k8s }}' mc-test
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
 
