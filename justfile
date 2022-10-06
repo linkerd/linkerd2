@@ -175,7 +175,7 @@ k3d-k8s := "latest"
 k3d-agents := "0"
 k3d-servers := "1"
 
-_k3d-flags="--no-lb --k3s-arg --disable='local-storage,traefik,servicelb,metrics-server@server:*'"
+_k3d-flags := "--no-lb --k3s-arg --disable='local-storage,traefik,servicelb,metrics-server@server:*'"
 
 _context := "--context=k3d-" + k3d-name
 _kubectl := "kubectl " + _context
@@ -197,14 +197,6 @@ k3d-create: && _k3d-ready
         --kubeconfig-update-default \
         --kubeconfig-switch-context=false
 
-# Creates two k3d clusters with a shared network, that can be used for multicluster testing.
-k3d-create-multicluster: && _k3d-ready
-	k3d cluster create {{ k3d-name }} \
-		--image='+{{ k3d-k8s }}' \
-		--agents='{{ k3d-agents }}' \
-		--servers='{{ k3d-servers }}' \
-		--network='{{ k3d-network }}'
-
 # Deletes the test cluster.
 k3d-delete:
     k3d cluster delete {{ k3d-name }}
@@ -224,12 +216,12 @@ k3d-use:
 _k3d-init: && _k3d-ready
     #!/usr/bin/env bash
     set -euo pipefail
-    if ! k3d cluster list {{ k3d-name }} >/dev/null 2>/dev/null; then
+    if ! k3d cluster list {{ k3d-name }} >/dev/null 2>/dev/null; then 
         {{ just_executable() }} \
             k3d-k8s={{ k3d-k8s }} \
             k3d-name={{ k3d-name }} \
-			k3d-network={{ k3d-network }} \
-			_k3d-flags={{ _k3d-flags }}
+            k3d-network={{ k3d-network }} \
+            _k3d-flags={{ _k3d-flags }} \
             k3d-create
     fi
     k3d kubeconfig merge {{ k3d-name }} \
@@ -378,8 +370,8 @@ _linkerd-init: && _linkerd-ready
             k3d-k8s='{{ k3d-k8s }}' \
             k3d-agents='{{ k3d-agents }}' \
             k3d-servers='{{ k3d-servers }}' \
-			k3d-network='{{ k3d-network }}' \
-			_k3d-flags='{{ _k3d-flags }}' \
+            k3d-network='{{ k3d-network }}' \
+            _k3d-flags='{{ _k3d-flags }}' \
             linkerd-tag='{{ linkerd-tag }}' \
             controller-image='{{ controller-image }}' \
             proxy-image='{{ proxy-image }}' \
@@ -468,66 +460,61 @@ _pause_image := "gcr.io/google_containers/pause:3.2"
 _mc-target-k3d-flags := "--k3s-arg --disable='local-storage,traefik,metrics-server@server:*'"
 
 linkerd-mc-install: _mc-init _linkerd-init
-	{{ just_executable() }} \
-		k3d-name='{{ k3d-name }}-target' \
-		k3d-k8s='{{ k3d-k8s }}' \
-		k3d-servers='{{ k3d-servers }}' \
-		k3d-agents='{{ k3d-agents }}' \
-		k3d-network='{{ k3d-network }}' \
-		_k3d-flags='{{ _mc-target-k3d-flags }}' \
-		linkerd-tag='{{ linkerd-tag }}' \
-		controller-image='{{ controller-image }}' \
-		proxy-image='{{ proxy-image }}' \
-		proxy-init-image='{{ proxy-init-image }}' \
-		linkerd-exec='{{ linkerd-exec }}' \
-		_linkerd-init
-    {{ _linkerd }} mc install \
-            --set='linkerdVersion={{ linkerd-tag }}' \
+    {{ just_executable() }} \
+        k3d-name='{{ k3d-name }}-target' \
+        k3d-k8s='{{ k3d-k8s }}' \
+        k3d-servers='{{ k3d-servers }}' \
+        k3d-agents='{{ k3d-agents }}' \
+        k3d-network='{{ k3d-network }}' \
+        _k3d-flags='{{ _mc-target-k3d-flags }}' \
+        linkerd-tag='{{ linkerd-tag }}' \
+        controller-image='{{ controller-image }}' \
+        proxy-image='{{ proxy-image }}' \
+        proxy-init-image='{{ proxy-init-image }}' \
+        linkerd-exec='{{ linkerd-exec }}' \
+        _linkerd-init
+    {{ _linkerd }} mc install --set='linkerdVersion={{ linkerd-tag }}' \
         | {{ _kubectl }} apply -f -
-	{{ linkerd-exec }} --context='k3d-{{ k3d-name }}-target' mc install \
-		--set='linkerdVersion={{ linkerd-tag }}' \
-		| kubectl --context='k3d-{{ k3d-name }}-target' apply -f -
+    {{ linkerd-exec }} --context='k3d-{{ k3d-name }}-target' mc install \
+        --set='linkerdVersion={{ linkerd-tag }}' \
+        | kubectl --context='k3d-{{ k3d-name }}-target' apply -f -
 
 # Wait for all test namespaces to be removed before uninstalling linkerd-multicluster.
 linkerd-mc-uninstall:
-    {{ _linkerd }} mc  uninstall \
-        | {{ _kubectl }} delete -f -
-	{{ linkerd-exec }} --context='k3d-{{ k3d-name }}-target' mc uninstall \
-		kubectl --context='k3d-{{ k3d-name }}-target' delete -f - 
+    {{ _linkerd }} mc  uninstall | {{ _kubectl }} delete -f -
+    {{ linkerd-exec }} --context='k3d-{{ k3d-name }}-target' mc uninstall \
+        kubectl --context='k3d-{{ k3d-name }}-target' delete -f - 
 
 # Ensure the default (source) cluster is initialized, and then ensure
 # that an additional (target) cluster is created with a loadbalancer in front of it.
 _mc-init: _k3d-init
-	{{ just_executable() }} \
-		k3d-k8s='{{ k3d-k8s }}' \
-		k3d-name='{{ k3d-name }}-target' \
-		k3d-network='{{ k3d-network }}' \
-		_k3d-flags='{{ _mc-target-k3d-flags }}' \
-		_k3d-init
+    {{ just_executable() }} \
+        k3d-k8s='{{ k3d-k8s }}' \
+        k3d-name='{{ k3d-name }}-target' \
+        k3d-network='{{ k3d-network }}' \
+        _k3d-flags='{{ _mc-target-k3d-flags }}' \
+        _k3d-init
 
 _mc-load: _mc-init linkerd-load
-	if [ -z "$(docker image ls -q '{{ _pause-image }}')" ]; then
-		docker pull -q '{{ _pause-image }}';
-	fi
-	k3d image import --mode=direct --cluster='{{ k3d-name }}-target' {{ _pause-image }}
+    if [ -z "$(docker image ls -q '{{ _pause_image }}')" ]; then docker pull -q '{{ _pause_image }}';fi
+    k3d image import --mode=direct --cluster='{{ k3d-name }}-target' {{ _pause_image }}
 
 _linkerd-mc-ready:
-	{{ _kubectl }} wait pod --for=condition=ready \
-		--namespace=linkerd-multicluster  \
-		--timeout=1m
-	kubectl --context='k3d-{{ k3d-name }}-target' wait pod --for=condition=ready \
-		--namespace=linkerd-multicluster \
-		--timeout=1m
+    {{ _kubectl }} wait pod --for=condition=ready \
+        --namespace=linkerd-multicluster  \
+        --timeout=1m
+    kubectl --context='k3d-{{ k3d-name }}-target' wait pod --for=condition=ready \
+        --namespace=linkerd-multicluster \
+        --timeout=1m
 
-export GO111MODULE := on
+export GO111MODULE := "on"
 
 mc-test: _mc-init
-	go test -test.timeout=60m --failfast --mod=readonly \
-		./test/integration/multicluster/... \
-		-integration-tests \
-		-linkerd='{{ justfile_directory() / "bin/linkerd"}}' \
-		-multicluster-source-context='k3d-{{ k3d-name }}' \
-		-multicluster-target-context='k3d-{{ k3d-name }}-target'
+    go test -test.timeout=60m --failfast --mod=readonly ./test/integration/multicluster/... \
+        -integration-tests \
+        -linkerd='{{ justfile_directory() }}/bin/linkerd' \
+        -multicluster-source-context='k3d-{{ k3d-name }}' \
+        -multicluster-target-context='k3d-{{ k3d-name }}-target'
 
 ##
 ## GitHub Actions
