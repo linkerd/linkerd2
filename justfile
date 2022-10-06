@@ -216,7 +216,7 @@ k3d-use:
 _k3d-init: && _k3d-ready
     #!/usr/bin/env bash
     set -euo pipefail
-    if ! k3d cluster list {{ k3d-name }} >/dev/null 2>/dev/null; then 
+    if ! k3d cluster list {{ k3d-name }} >/dev/null 2>/dev/null; then
         {{ just_executable() }} \
             k3d-k8s={{ k3d-k8s }} \
             k3d-name={{ k3d-name }} \
