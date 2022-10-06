@@ -33,6 +33,7 @@
 - [In Loco](https://inloco.com.br/en/)
 - [Info Support](https://infosupport.com/)
 - [Ingrid](https://ingrid.com/)
+- [Inscripta](https://inscripta.io)
 - [Jimdo](https://www.jimdo.com/)
 - [Just Football](https://justfootball.io)
 - [K3 Business Technologies](https://www.k3btg.com)
