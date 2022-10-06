@@ -39,6 +39,7 @@
 - [Kairos](https://kairos.com)
 - [Kurio](https://kurio.id)
 - [LeadIQ](https://leadiq.com)
+- [LeanNet](https://leannet.eu/)
 - [Lendico](https://www.lendico.de/)
 - [Livspace](https://www.livspace.com/)
 - [Lumoa](https://www.lumoa.me/)
