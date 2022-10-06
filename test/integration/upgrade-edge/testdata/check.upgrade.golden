@@ -19,7 +19,8 @@ linkerd-existence
 √ no unschedulable pods
 √ control plane pods are ready
 √ cluster networks contains all node podCIDRs
-√ cluster networks contains all pods
+√ cluster networks
+√ cluster networks contains all services
 
 linkerd-config
 --------------
