@@ -9,7 +9,7 @@ gateway:
     # -- Docker image tag for the gateway instance
     tag: 3.2
     # -- Pull policy for the gateway instance
-    # @default -- defaultImagePullPolicy
+    # @default -- imagePullPolicy
     pullPolicy: ""
   # -- Number of replicas for the gateway pod
   replicas: 1
@@ -41,8 +41,8 @@ gateway:
 
 # -- Control plane version
 linkerdVersion: linkerdVersionValue
-# -- Docker imagePullPolicy for all viz components
-defaultImagePullPolicy: IfNotPresent
+# -- Docker imagePullPolicy for all multicluster components
+imagePullPolicy: IfNotPresent
 # -- The port on which the proxy accepts outbound traffic
 proxyOutboundPort: 4140
 # -- If the remote mirror service account should be installed
@@ -80,5 +80,5 @@ namespaceMetadata:
     # -- Docker image tag for the namespace-metadata instance
     tag: 7.78.0
     # -- Pull policy for the namespace-metadata instance
-    # @default -- defaultImagePullPolicy
+    # @default -- imagePullPolicy
     pullPolicy: ""

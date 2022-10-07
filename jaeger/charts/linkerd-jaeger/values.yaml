@@ -2,7 +2,7 @@
 linkerdNamespace: linkerd
 
 # -- Docker imagePullPolicy for all jaeger components
-defaultImagePullPolicy: IfNotPresent
+imagePullPolicy: IfNotPresent
 
 # -- Default nodeSelector section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
@@ -152,7 +152,7 @@ namespaceMetadata:
     # -- Docker image tag for the namespace-metadata instance
     tag: 7.78.0
     # -- Pull policy for the namespace-metadata instance
-    # @default -- defaultImagePullPolicy
+    # @default -- imagePullPolicy
     pullPolicy: ""
 
 webhook:

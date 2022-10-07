@@ -70,17 +70,12 @@ Kubernetes: `>=1.21.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| defaultImagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all multicluster components |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
-| namespaceMetadata.image.name | string | `"curl"` | Docker image name for the namespace-metadata instance |
-| namespaceMetadata.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the namespace-metadata instance |
-| namespaceMetadata.image.registry | string | `"curlimages"` | Docker registry for the namespace-metadata instance |
-| namespaceMetadata.image.tag | string | `"7.78.0"` | Docker image tag for the namespace-metadata instance |
 | gateway.UID | int | `2103` | User id under which the gateway shall be ran |
 | gateway.enabled | bool | `true` | If the gateway component should be installed |
 | gateway.image.name | string | `"curl"` | Docker image name for the gateway instance |
-| gateway.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the gateway instance |
+| gateway.image.pullPolicy | string | imagePullPolicy | Pull policy for the gateway instance |
 | gateway.image.registry | string | `"curlimages"` | Docker registry for the gateway instance |
 | gateway.image.tag | string | `"7.78.0"` | Docker image tag for the gateway instance |
 | gateway.loadBalancerIP | string | `""` | Set loadBalancerIP on gateway service |
@@ -93,8 +88,13 @@ Kubernetes: `>=1.21.0-0`
 | gateway.serviceAnnotations | object | `{}` | Annotations to add to the gateway service |
 | gateway.serviceType | string | `"LoadBalancer"` | Service Type of gateway Service |
 | identityTrustDomain | string | `"cluster.local"` | Identity Trust Domain of the certificate authority |
+| imagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all multicluster components |
 | linkerdNamespace | string | `"linkerd"` | Namespace of linkerd installation |
 | linkerdVersion | string | `"linkerdVersionValue"` | Control plane version |
+| namespaceMetadata.image.name | string | `"curl"` | Docker image name for the namespace-metadata instance |
+| namespaceMetadata.image.pullPolicy | string | imagePullPolicy | Pull policy for the namespace-metadata instance |
+| namespaceMetadata.image.registry | string | `"curlimages"` | Docker registry for the namespace-metadata instance |
+| namespaceMetadata.image.tag | string | `"7.78.0"` | Docker image tag for the namespace-metadata instance |
 | proxyOutboundPort | int | `4140` | The port on which the proxy accepts outbound traffic |
 | remoteMirrorServiceAccount | bool | `true` | If the remote mirror service account should be installed |
 | remoteMirrorServiceAccountName | string | `"linkerd-service-mirror-remote-access-default"` | The name of the service account used to allow remote clusters to mirror local services |
