@@ -66,7 +66,7 @@
     "value":
       {{- include "partials.proxy-init" . | fromYaml | toPrettyJson | nindent 6 }}
   },
-  {{- else if .Values.proxy }}
+  {{- else if and .Values.proxy .Values.cniEnabled }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/initContainers/-",

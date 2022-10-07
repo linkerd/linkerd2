@@ -164,11 +164,9 @@ spec:
         - containerPort: 80
           name: http
       initContainers:
-      - command:
-        - /bin/sleep
-        - "0"
-        image: cr.l5d.io/linkerd/proxy:test-inject-proxy-version
-        imagePullPolicy: IfNotPresent
+      - args:
+        - -v
+        image: gcr.io/google_containers/pause:3.2
         name: noop
       volumes:
       - emptyDir:

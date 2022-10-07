@@ -885,6 +885,11 @@ spec:
           name: linkerd-identity-end-entity
         - mountPath: /var/run/secrets/tokens
           name: linkerd-identity-token
+      initContainers:
+      - args:
+          - -v
+        image: gcr.io/google_containers/pause:3.2
+        name: noop
       serviceAccountName: linkerd-identity
       volumes:
       - name: identity-issuer
@@ -1268,6 +1273,11 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: policy-tls
           readOnly: true
+      initContainers:
+      - args:
+          - -v
+        image: gcr.io/google_containers/pause:3.2
+        name: noop
       serviceAccountName: linkerd-destination
       volumes:
       - name: sp-tls
@@ -1537,6 +1547,11 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+      initContainers:
+      - args:
+          - -v
+        image: gcr.io/google_containers/pause:3.2
+        name: noop
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:
