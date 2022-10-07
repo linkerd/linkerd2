@@ -7,6 +7,7 @@ metadata:
   labels:
     mirror.linkerd.io/mirrored-gateway: "true"
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   ports:
   - name: mc-probe

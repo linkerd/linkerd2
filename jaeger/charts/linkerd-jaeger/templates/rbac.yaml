@@ -20,6 +20,7 @@ metadata:
   name: linkerd-jaeger-injector
   labels:
     linkerd.io/extension: jaeger
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -31,6 +32,7 @@ metadata:
   name: linkerd-jaeger-injector
   labels:
     linkerd.io/extension: jaeger
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 subjects:
 - kind: ServiceAccount
   name: jaeger-injector
@@ -78,6 +80,7 @@ metadata:
   {{- end }}
   labels:
     linkerd.io/extension: jaeger
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 webhooks:
 - name: jaeger-injector.linkerd.io
   {{- if .Values.webhook.namespaceSelector }}

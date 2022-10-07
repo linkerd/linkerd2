@@ -8,6 +8,7 @@ metadata:
   name: linkerd-tap-injector
   labels:
     linkerd.io/extension: viz
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -19,6 +20,7 @@ metadata:
   name: linkerd-tap-injector
   labels:
     linkerd.io/extension: viz
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 subjects:
 - kind: ServiceAccount
   name: tap-injector
@@ -35,6 +37,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: viz
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
 {{- $host := printf "tap-injector.%s.svc" .Release.Namespace }}
@@ -49,6 +52,7 @@ metadata:
     {{ include "partials.annotations.created-by" . }}
   labels:
     linkerd.io/extension: viz
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tapInjector.crtPEM)) (empty .Values.tapInjector.crtPEM) }}
@@ -71,6 +75,7 @@ metadata:
   {{- end }}
   labels:
     linkerd.io/extension: viz
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 webhooks:
 - name: tap-injector.linkerd.io
   {{- if .Values.tapInjector.namespaceSelector }}

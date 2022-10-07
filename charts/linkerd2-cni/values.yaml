@@ -14,6 +14,8 @@ proxyControlPort: 4190
 cniPluginImage:   "cr.l5d.io/linkerd/cni-plugin"
 # -- Tag for the CNI container Docker image
 cniPluginVersion: linkerdVersionValue
+# -- Labels to apply to all resources
+commonLabels: {}
 # -- Log level for the CNI plugin
 logLevel:         info
 # -- Ports to redirect to proxy

@@ -10,6 +10,7 @@ metadata:
     app.kubernetes.io/name: namespace-metadata
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: namespace-metadata
 spec:
   template:
@@ -21,6 +22,7 @@ spec:
         app.kubernetes.io/name: namespace-metadata
         app.kubernetes.io/part-of: Linkerd
         app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
+        {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       restartPolicy: Never
       serviceAccountName: namespace-metadata

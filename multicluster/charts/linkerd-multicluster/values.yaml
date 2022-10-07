@@ -31,6 +31,8 @@ gateway:
 
 # -- Control plane version
 linkerdVersion: linkerdVersionValue
+# -- Labels to apply to all resources
+commonLabels: {}
 # -- The port on which the proxy accepts outbound traffic
 proxyOutboundPort: 4140
 # -- If the remote mirror service account should be installed

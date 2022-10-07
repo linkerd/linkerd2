@@ -87,6 +87,7 @@ Kubernetes: `>=1.21.0-0`
 | collector.resources.memory.limit | string | `nil` | Maximum amount of memory that collector container can use |
 | collector.resources.memory.request | string | `nil` | Amount of memory that the collector container requests |
 | collector.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
+| commonLabels | object | `{}` | Labels to apply to all resources |
 | defaultUID | int | `2103` | Default UID for all the jaeger components |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |

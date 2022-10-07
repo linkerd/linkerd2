@@ -11,6 +11,7 @@ metadata:
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.webhook.image.version .Values.cliVersion}}
     component: jaeger-injector
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: jaeger-injector
   namespace: {{ .Release.Namespace }}
 spec:
@@ -29,6 +30,7 @@ spec:
       labels:
         linkerd.io/extension: jaeger
         component: jaeger-injector
+        {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.webhook.tolerations -}}
       {{- include "linkerd.tolerations" (dict "Values" .Values.webhook) | nindent 6 }}
@@ -83,6 +85,7 @@ metadata:
   labels:
     linkerd.io/extension: jaeger
     component: jaeger-injector
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   type: ClusterIP
   selector:

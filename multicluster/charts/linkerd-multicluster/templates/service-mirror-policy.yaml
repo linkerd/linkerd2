@@ -6,6 +6,7 @@ metadata:
   name: service-mirror
   labels:
     component: linkerd-service-mirror
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   podSelector:
     matchLabels:
@@ -20,6 +21,7 @@ metadata:
   name: service-mirror
   labels:
     component: linkerd-service-mirror
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   server:
     name: service-mirror
