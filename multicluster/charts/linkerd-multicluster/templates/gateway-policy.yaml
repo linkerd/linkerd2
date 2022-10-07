@@ -15,7 +15,7 @@ spec:
     matchLabels:
       app: {{.Values.gateway.name}}
   port: linkerd-proxy
-  proxyProtocol: HTTP/1
+  proxyProtocol: unknown 
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization
