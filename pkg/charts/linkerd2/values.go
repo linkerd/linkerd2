@@ -244,7 +244,6 @@ func NewValues() (*Values, error) {
 		return nil, err
 	}
 
-	v.Proxy.Image.Version = version.Version
 	v.DebugContainer.Image.Version = version.Version
 	v.CliVersion = k8s.CreatedByAnnotationValue()
 	v.ProfileValidator.TLS = &TLS{}
