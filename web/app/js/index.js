@@ -31,6 +31,7 @@ import _isEmpty from 'lodash/isEmpty';
 import catalogEn from './locales/en/messages.js';
 import catalogEs from './locales/es/messages.js';
 import { dashboardTheme } from './components/util/theme.js';
+import { ReactRouter5Adapter } from 'use-query-params/adapters/react-router-5';
 
 const appMain = document.getElementById('main');
 const appData = !appMain ? {} : appMain.dataset;
@@ -121,7 +122,7 @@ const AppHTML = function() {
       <CssBaseline />
       <MuiThemeProvider theme={theme}>
         <BrowserRouter>
-          <QueryParamProvider ReactRouterRoute={Route}>
+          <QueryParamProvider adapter={ReactRouter5Adapter}>
             <Switch>
               <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/namespaces`} />
               <Redirect exact from={`${pathPrefix}/overview`} to={`${pathPrefix}/namespaces`} />

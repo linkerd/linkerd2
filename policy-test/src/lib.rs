@@ -17,19 +17,39 @@ pub enum LinkerdInject {
     Disabled,
 }
 
-pub async fn create<T>(client: &kube::Client, obj: T) -> T
+/// Creates a cluster-scoped resource.
+async fn create_cluster_scoped<T>(client: &kube::Client, obj: T) -> T
 where
-    T: kube::Resource + serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug,
+    T: kube::Resource<Scope = kube::core::ClusterResourceScope>,
+    T: serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug,
     T::DynamicType: Default,
 {
     let params = kube::api::PostParams {
         field_manager: Some("linkerd-policy-test".to_string()),
         ..Default::default()
     };
-    let api = match obj.namespace() {
-        Some(ns) => kube::Api::<T>::namespaced(client.clone(), &ns),
-        None => kube::Api::<T>::all(client.clone()),
+    let api = kube::Api::<T>::all(client.clone());
+    tracing::trace!(?obj, "Creating");
+    api.create(&params, &obj)
+        .await
+        .expect("failed to create resource")
+}
+
+/// Creates a namespace-scoped resource.
+pub async fn create<T>(client: &kube::Client, obj: T) -> T
+where
+    T: kube::Resource<Scope = kube::core::NamespaceResourceScope>,
+    T: serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug,
+    T::DynamicType: Default,
+{
+    let params = kube::api::PostParams {
+        field_manager: Some("linkerd-policy-test".to_string()),
+        ..Default::default()
     };
+    let api = obj
+        .namespace()
+        .map(|ns| kube::Api::<T>::namespaced(client.clone(), &*ns))
+        .unwrap_or_else(|| kube::Api::<T>::default_namespaced(client.clone()));
     tracing::trace!(?obj, "Creating");
     api.create(&params, &obj)
         .await
@@ -43,8 +63,8 @@ pub async fn await_condition<T>(
     cond: impl kube::runtime::wait::Condition<T>,
 ) -> Option<T>
 where
-    T: kube::Resource + serde::Serialize + serde::de::DeserializeOwned,
-    T: Clone + std::fmt::Debug + Send + 'static,
+    T: kube::Resource<Scope = kube::core::NamespaceResourceScope>,
+    T: serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug + Send + 'static,
     T::DynamicType: Default,
 {
     let api = kube::Api::namespaced(client.clone(), ns);
@@ -161,7 +181,7 @@ where
 
     let name = format!("linkerd-policy-test-{}", random_suffix(6));
     tracing::debug!(namespace = %name, "Creating");
-    let ns = create(
+    let ns = create_cluster_scoped(
         &client,
         k8s::Namespace {
             metadata: k8s::ObjectMeta {
@@ -212,10 +232,12 @@ where
         drop(_tracing);
     }
 
-    tracing::debug!(ns = %ns.name_unchecked(), "Deleting");
-    api.delete(&ns.name_unchecked(), &kube::api::DeleteParams::background())
-        .await
-        .expect("failed to delete Namespace");
+    if std::env::var("POLICY_TEST_NO_CLEANUP").is_err() {
+        tracing::debug!(ns = %ns.name_unchecked(), "Deleting");
+        api.delete(&ns.name_unchecked(), &kube::api::DeleteParams::background())
+            .await
+            .expect("failed to delete Namespace");
+    }
     if let Err(err) = res {
         std::panic::resume_unwind(err.into_panic());
     }

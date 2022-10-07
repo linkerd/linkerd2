@@ -69,7 +69,7 @@ securityContext:
   {{- else }}
   privileged: false
   runAsNonRoot: true
-  runAsUser: {{.Values.proxyInit.runAsUser}}
+  runAsUser: {{ .Values.proxyInit.runAsUser | int | eq 0 | ternary 65534 .Values.proxyInit.runAsUser }}
   {{- end }}
   readOnlyRootFilesystem: true
 terminationMessagePolicy: FallbackToLogsOnError

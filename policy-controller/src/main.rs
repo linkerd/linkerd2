@@ -22,7 +22,6 @@ const DETECT_TIMEOUT: time::Duration = time::Duration::from_secs(10);
 #[clap(name = "policy", about = "A policy resource prototype")]
 struct Args {
     #[clap(
-        parse(try_from_str),
         long,
         default_value = "linkerd=info,warn",
         env = "LINKERD_POLICY_CONTROLLER_LOG"
@@ -179,7 +178,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct IpNets(Vec<IpNet>);
 
 impl std::str::FromStr for IpNets {
