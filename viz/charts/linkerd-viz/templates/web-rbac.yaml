@@ -21,7 +21,7 @@ rules:
   resources: ["namespaces", "configmaps"]
   verbs: ["get"]
 - apiGroups: [""]
-  resources: ["serviceaccounts", "pods"]
+  resources: ["serviceaccounts", "pods", "services"]
   verbs: ["list"]
 - apiGroups: ["apps"]
   resources: ["replicasets"]
