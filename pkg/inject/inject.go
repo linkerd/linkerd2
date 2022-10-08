@@ -795,6 +795,7 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
 // annotations.
 func (conf *ResourceConfig) injectObjectMeta(values *podPatch) {
 
+	// Default proxy version to linkerd version
 	if values.Proxy.Image.Version != "" {
 		values.Annotations[k8s.ProxyVersionAnnotation] = values.Proxy.Image.Version
 	} else {
