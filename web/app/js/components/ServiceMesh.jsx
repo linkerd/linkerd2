@@ -312,7 +312,7 @@ class ServiceMesh extends React.Component {
         .filter(pod => pod.meshedPercent.get() <= 0)
         .filter(pod => pod.totalPods > 0)
         .filter(pod => pod.namespace !== 'kube-system');
-      numUnadded = unmeshedNamespaces.length || 0;
+      numUnadded = unmeshedNamespaces.length ?? 0;
       message = numUnadded === 0 ? <Trans>All namespaces have a {productName} install.</Trans> : (
         <Plural
           value={numUnadded}
