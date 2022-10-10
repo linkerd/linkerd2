@@ -416,7 +416,12 @@ _linkerd-viz-images:
         fi
     done
 
-linkerd-viz-load: _linkerd-viz-images _k3d-init
+# TODO (matei): decouple viz-load from linkerd-load
+# At the moment, for multicluster, we need to load both viz and linkerd images.
+# we call the just executable to load images in mc, so we cannot call 2 separate recipes.
+# Because of this, viz-load includes linkerd-load as a dependency. Ideally, multicluster should
+# not depend on viz; when that is the case, remove the coupling here.
+linkerd-viz-load: _linkerd-viz-images _k3d-init linkerd-load
     {{ _k3d-load }} \
         {{ DOCKER_REGISTRY }}/metrics-api:{{ linkerd-tag }} \
         {{ DOCKER_REGISTRY }}/tap:{{ linkerd-tag }} \
@@ -495,12 +500,12 @@ _mc-init: _k3d-init
         _k3d-flags='{{ _mc-target-k3d-flags }}' \
         _k3d-init
 
-_mc-load: _mc-init linkerd-load
+_mc-load: _mc-init linkerd-viz-load
     if [ -z "$(docker image ls -q '{{ _pause_image }}')" ]; then docker pull -q '{{ _pause_image }}';fi
     k3d image import --mode=direct --cluster='{{ k3d-name }}-target' {{ _pause_image }}
     {{ just_executable() }} \
        k3d-name='{{ k3d-name }}-target' \
-       linkerd-load
+       linkerd-viz-load
 
 _linkerd-mc-ready:
     {{ _kubectl }} wait pod --for=condition=ready \
