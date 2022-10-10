@@ -60,6 +60,7 @@ type (
 		PodLabels         map[string]string `json:"podLabels"`
 		PriorityClassName string            `json:"priorityClassName"`
 
+		PodMonitor       *PodMonitor       `json:"podMonitor"`
 		PolicyController *PolicyController `json:"policyController"`
 		Proxy            *Proxy            `json:"proxy"`
 		ProxyInit        *ProxyInit        `json:"proxyInit"`
@@ -136,6 +137,27 @@ type (
 	// DebugContainer contains the fields to set the debugging sidecar
 	DebugContainer struct {
 		Image *Image `json:"image"`
+	}
+
+	// PodMonitor contains the fields to configure the Prometheus Operator `PodMonitor`
+	PodMonitor struct {
+		Enabled        bool                  `json:"enabled"`
+		ScrapeInterval string                `json:"scrapeInterval"`
+		ScrapeTimeout  string                `json:"scrapeTimeout"`
+		Controller     *PodMonitorController `json:"controller"`
+		ServiceMirror  *PodMonitorComponent  `json:"serviceMirror"`
+		Proxy          *PodMonitorComponent  `json:"proxy"`
+	}
+
+	// PodMonitorController contains the fields to configure the Prometheus Operator `PodMonitor` for the control-plane
+	PodMonitorController struct {
+		Enabled           bool   `json:"enabled"`
+		NamespaceSelector string `json:"namespaceSelector"`
+	}
+
+	// PodMonitorComponent contains the fields to configure the Prometheus Operator `PodMonitor` for other components
+	PodMonitorComponent struct {
+		Enabled bool `json:"enabled"`
 	}
 
 	// PolicyController contains the fields to configure the policy controller container

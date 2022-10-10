@@ -153,7 +153,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s])) / sum(irate(response_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s]))",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[$__rate_interval])) / sum(irate(response_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[$__rate_interval]))",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -238,7 +238,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s]))",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[$__rate_interval]))",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
@@ -481,7 +481,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s])) by (statefulset) / sum(irate(response_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s])) by (statefulset)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[$__rate_interval])) by (statefulset) / sum(irate(response_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[$__rate_interval])) by (statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "sts/{{statefulset}}",
@@ -568,14 +568,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\", tls=\"true\"}[30s])) by (statefulset)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\", tls=\"true\"}[$__rate_interval])) by (statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒sts/{{statefulset}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\", tls!=\"true\"}[30s])) by (statefulset)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\", tls!=\"true\"}[$__rate_interval])) by (statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "sts/{{statefulset}}",
@@ -662,14 +662,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s])) by (le, statefulset))",
+          "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[$__rate_interval])) by (le, statefulset))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p50 sts/{{statefulset}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s])) by (le, statefulset))",
+          "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[$__rate_interval])) by (le, statefulset))",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -677,7 +677,7 @@
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[30s])) by (le, statefulset))",
+          "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"inbound\"}[$__rate_interval])) by (le, statefulset))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "p99 sts/{{statefulset}}",
@@ -1068,7 +1068,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(response_total{classification=\"success\", statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (statefulset, pod) / sum(irate(response_total{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (statefulset, pod)",
+              "expr": "sum(irate(response_total{classification=\"success\", statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[$__rate_interval])) by (statefulset, pod) / sum(irate(response_total{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[$__rate_interval])) by (statefulset, pod)",
               "format": "time_series",
               "instant": false,
               "intervalFactor": 1,
@@ -1156,14 +1156,14 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\", tls=\"true\"}[30s])) by (statefulset, pod)",
+              "expr": "sum(irate(request_total{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (statefulset, pod)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "🔒po/{{pod}}",
               "refId": "A"
             },
             {
-              "expr": "sum(irate(request_total{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\", tls!=\"true\"}[30s])) by (statefulset, pod)",
+              "expr": "sum(irate(request_total{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\", tls!=\"true\"}[$__rate_interval])) by (statefulset, pod)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "po/{{pod}}",
@@ -1250,21 +1250,21 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (le, statefulset))",
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[$__rate_interval])) by (le, statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P50 sts/{{statefulset}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (le, statefulset))",
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[$__rate_interval])) by (le, statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P95 sts/{{statefulset}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (le, statefulset))",
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{statefulset!=\"\", statefulset=\"$inbound\", dst_namespace=\"$namespace\", dst_statefulset=\"$statefulset\", direction=\"outbound\"}[$__rate_interval])) by (le, statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P99 sts/{{statefulset}}",
@@ -1385,7 +1385,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (dst_statefulset) / sum(irate(response_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (dst_statefulset)",
+          "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\"}[$__rate_interval])) by (dst_statefulset) / sum(irate(response_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\"}[$__rate_interval])) by (dst_statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "sts/{{dst_statefulset}}",
@@ -1472,14 +1472,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_statefulset)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (dst_statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "🔒sts/{{dst_statefulset}}",
           "refId": "A"
         },
         {
-          "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_statefulset)",
+          "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\", tls!=\"true\"}[$__rate_interval])) by (dst_statefulset)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "sts/{{dst_statefulset}}",
@@ -1565,7 +1565,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\"}[30s])) by (le, dst_statefulset))",
+          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_statefulset))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P95 sts/{{dst_statefulset}}",
@@ -1955,7 +1955,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_statefulset) / sum(irate(response_total{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_statefulset)",
+              "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[$__rate_interval])) by (dst_statefulset) / sum(irate(response_total{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[$__rate_interval])) by (dst_statefulset)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "sts/{{dst_statefulset}}",
@@ -2042,14 +2042,14 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_statefulset)",
+              "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (dst_statefulset)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "🔒sts/{{dst_statefulset}}",
               "refId": "A"
             },
             {
-              "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_statefulset)",
+              "expr": "sum(irate(request_total{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\", tls!=\"true\"}[$__rate_interval])) by (dst_statefulset)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "sts/{{dst_statefulset}}",
@@ -2135,21 +2135,21 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_statefulset))",
+              "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P50 sts/{{dst_statefulset}}",
               "refId": "A"
             },
             {
-              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_statefulset))",
+              "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P95 sts/{{dst_statefulset}}",
               "refId": "B"
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_statefulset))",
+              "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", statefulset=\"$statefulset\", dst_statefulset=\"$outbound\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_statefulset))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "P99 sts/{{dst_statefulset}}",

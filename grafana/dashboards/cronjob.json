@@ -153,7 +153,7 @@
         "tableColumn": "",
         "targets": [
           {
-            "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[30s])) / sum(irate(response_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[30s]))",
+            "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[$__rate_interval])) / sum(irate(response_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[$__rate_interval]))",
             "format": "time_series",
             "instant": false,
             "intervalFactor": 1,
@@ -238,7 +238,7 @@
         "tableColumn": "",
         "targets": [
           {
-            "expr": "sum(irate(request_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[30s]))",
+            "expr": "sum(irate(request_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[$__rate_interval]))",
             "format": "time_series",
             "instant": false,
             "intervalFactor": 1,
@@ -481,7 +481,7 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[30s])) by (cronjob) / sum(irate(response_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[30s])) by (cronjob)",
+            "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[$__rate_interval])) by (cronjob) / sum(irate(response_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[$__rate_interval])) by (cronjob)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "cj/{{cronjob}}",
@@ -568,14 +568,14 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(request_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\", tls=\"true\"}[30s])) by (cronjob)",
+            "expr": "sum(irate(request_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\", tls=\"true\"}[$__rate_interval])) by (cronjob)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "🔒cj/{{cronjob}}",
             "refId": "A"
           },
           {
-            "expr": "sum(irate(request_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\", tls!=\"true\"}[30s])) by (cronjob)",
+            "expr": "sum(irate(request_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\", tls!=\"true\"}[$__rate_interval])) by (cronjob)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "cj/{{cronjob}}",
@@ -662,14 +662,14 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[30s])) by (le, cronjob))",
+            "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[$__rate_interval])) by (le, cronjob))",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "p50 cj/{{cronjob}}",
             "refId": "A"
           },
           {
-            "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[30s])) by (le, cronjob))",
+            "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[$__rate_interval])) by (le, cronjob))",
             "format": "time_series",
             "hide": false,
             "intervalFactor": 1,
@@ -677,7 +677,7 @@
             "refId": "B"
           },
           {
-            "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[30s])) by (le, cronjob))",
+            "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"inbound\"}[$__rate_interval])) by (le, cronjob))",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "p99 cj/{{cronjob}}",
@@ -1068,7 +1068,7 @@
             "steppedLine": false,
             "targets": [
               {
-                "expr": "sum(irate(response_total{classification=\"success\", cronjob!=\"\", cronjob=\"$inbound\", dst_namespace=\"$namespace\", dst_cronjob=\"$cronjob\", direction=\"outbound\"}[30s])) by (cronjob, pod) / sum(irate(response_total{cronjob!=\"\", cronjob=\"$inbound\", dst_namespace=\"$namespace\", dst_cronjob=\"$cronjob\", direction=\"outbound\"}[30s])) by (cronjob, pod)",
+                "expr": "sum(irate(response_total{classification=\"success\", cronjob!=\"\", cronjob=\"$inbound\", dst_namespace=\"$namespace\", dst_cronjob=\"$cronjob\", direction=\"outbound\"}[$__rate_interval])) by (cronjob, pod) / sum(irate(response_total{cronjob!=\"\", cronjob=\"$inbound\", dst_namespace=\"$namespace\", dst_cronjob=\"$cronjob\", direction=\"outbound\"}[$__rate_interval])) by (cronjob, pod)",
                 "format": "time_series",
                 "instant": false,
                 "intervalFactor": 1,
@@ -1156,14 +1156,14 @@
             "steppedLine": false,
             "targets": [
               {
-                "expr": "sum(irate(request_total{cronjob!=\"\", cronjob=\"$inbound\", dst_namespace=\"$namespace\", dst_cronjob=\"$cronjob\", direction=\"outbound\", tls=\"true\"}[30s])) by (cronjob, pod)",
+                "expr": "sum(irate(request_total{cronjob!=\"\", cronjob=\"$inbound\", dst_namespace=\"$namespace\", dst_cronjob=\"$cronjob\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (cronjob, pod)",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "🔒po/{{pod}}",
                 "refId": "A"
               },
               {
-                "expr": "sum(irate(request_total{cronjob!=\"\", cronjob=\"$inbound\", dst_namespace=\"$namespace\", dst_cronjob=\"$cronjob\", direction=\"outbound\", tls!=\"true\"}[30s])) by (cronjob, pod)",
+                "expr": "sum(irate(request_total{cronjob!=\"\", cronjob=\"$inbound\", dst_namespace=\"$namespace\", dst_cronjob=\"$cronjob\", direction=\"outbound\", tls!=\"true\"}[$__rate_interval])) by (cronjob, pod)",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "po/{{pod}}",
@@ -1250,21 +1250,21 @@
             "steppedLine": false,
             "targets": [
               {
-                "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{cronjob!=\"\", cronjob=\"$inbound\", dst_namespace=\"$namespace\", dst_cronjob=\"$cronjob\", direction=\"outbound\"}[30s])) by (le, cronjob))",
+                "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{cronjob!=\"\", cronjob=\"$inbound\", dst_namespace=\"$namespace\", dst_cronjob=\"$cronjob\", direction=\"outbound\"}[$__rate_interval])) by (le, cronjob))",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "P50 cj/{{cronjob}}",
                 "refId": "A"
               },
               {
-                "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{cronjob!=\"\", cronjob=\"$inbound\", dst_namespace=\"$namespace\", dst_cronjob=\"$cronjob\", direction=\"outbound\"}[30s])) by (le, cronjob))",
+                "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{cronjob!=\"\", cronjob=\"$inbound\", dst_namespace=\"$namespace\", dst_cronjob=\"$cronjob\", direction=\"outbound\"}[$__rate_interval])) by (le, cronjob))",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "P95 cj/{{cronjob}}",
                 "refId": "B"
               },
               {
-                "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{cronjob!=\"\", cronjob=\"$inbound\", dst_namespace=\"$namespace\", dst_cronjob=\"$cronjob\", direction=\"outbound\"}[30s])) by (le, cronjob))",
+                "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{cronjob!=\"\", cronjob=\"$inbound\", dst_namespace=\"$namespace\", dst_cronjob=\"$cronjob\", direction=\"outbound\"}[$__rate_interval])) by (le, cronjob))",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "P99 cj/{{cronjob}}",
@@ -1385,7 +1385,7 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"outbound\"}[30s])) by (dst_cronjob) / sum(irate(response_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"outbound\"}[30s])) by (dst_cronjob)",
+            "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"outbound\"}[$__rate_interval])) by (dst_cronjob) / sum(irate(response_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"outbound\"}[$__rate_interval])) by (dst_cronjob)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "cj/{{dst_cronjob}}",
@@ -1472,14 +1472,14 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(request_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_cronjob)",
+            "expr": "sum(irate(request_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (dst_cronjob)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "🔒cj/{{dst_cronjob}}",
             "refId": "A"
           },
           {
-            "expr": "sum(irate(request_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_cronjob)",
+            "expr": "sum(irate(request_total{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"outbound\", tls!=\"true\"}[$__rate_interval])) by (dst_cronjob)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "cj/{{dst_cronjob}}",
@@ -1565,7 +1565,7 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"outbound\"}[30s])) by (le, dst_cronjob))",
+            "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", cronjob=\"$cronjob\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_cronjob))",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "P95 cj/{{dst_cronjob}}",
@@ -1955,7 +1955,7 @@
             "steppedLine": false,
             "targets": [
               {
-                "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", cronjob=\"$cronjob\", dst_cronjob=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_cronjob) / sum(irate(response_total{namespace=\"$namespace\", cronjob=\"$cronjob\", dst_cronjob=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_cronjob)",
+                "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", cronjob=\"$cronjob\", dst_cronjob=\"$outbound\", direction=\"outbound\"}[$__rate_interval])) by (dst_cronjob) / sum(irate(response_total{namespace=\"$namespace\", cronjob=\"$cronjob\", dst_cronjob=\"$outbound\", direction=\"outbound\"}[$__rate_interval])) by (dst_cronjob)",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "cj/{{dst_cronjob}}",
@@ -2042,14 +2042,14 @@
             "steppedLine": false,
             "targets": [
               {
-                "expr": "sum(irate(request_total{namespace=\"$namespace\", cronjob=\"$cronjob\", dst_cronjob=\"$outbound\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_cronjob)",
+                "expr": "sum(irate(request_total{namespace=\"$namespace\", cronjob=\"$cronjob\", dst_cronjob=\"$outbound\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (dst_cronjob)",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "🔒cj/{{dst_cronjob}}",
                 "refId": "A"
               },
               {
-                "expr": "sum(irate(request_total{namespace=\"$namespace\", cronjob=\"$cronjob\", dst_cronjob=\"$outbound\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_cronjob)",
+                "expr": "sum(irate(request_total{namespace=\"$namespace\", cronjob=\"$cronjob\", dst_cronjob=\"$outbound\", direction=\"outbound\", tls!=\"true\"}[$__rate_interval])) by (dst_cronjob)",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "cj/{{dst_cronjob}}",
@@ -2135,21 +2135,21 @@
             "steppedLine": false,
             "targets": [
               {
-                "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", cronjob=\"$cronjob\", dst_cronjob=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_cronjob))",
+                "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", cronjob=\"$cronjob\", dst_cronjob=\"$outbound\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_cronjob))",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "P50 cj/{{dst_cronjob}}",
                 "refId": "A"
               },
               {
-                "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", cronjob=\"$cronjob\", dst_cronjob=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_cronjob))",
+                "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", cronjob=\"$cronjob\", dst_cronjob=\"$outbound\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_cronjob))",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "P95 cj/{{dst_cronjob}}",
                 "refId": "B"
               },
               {
-                "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", cronjob=\"$cronjob\", dst_cronjob=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_cronjob))",
+                "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", cronjob=\"$cronjob\", dst_cronjob=\"$outbound\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_cronjob))",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "P99 cj/{{dst_cronjob}}",

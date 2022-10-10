@@ -53,11 +53,11 @@ dashboards:
     # all these charts are hosted at https://grafana.com/grafana/dashboards/{id}
     top-line:
       gnetId: 15474
-      revision: 3
+      revision: 4
       datasource: prometheus
     health:
       gnetId: 15486
-      revision: 2
+      revision: 3
       datasource: prometheus
     kubernetes:
       gnetId: 15479
@@ -65,51 +65,51 @@ dashboards:
       datasource: prometheus
     namespace:
       gnetId: 15478
-      revision: 2
+      revision: 3
       datasource: prometheus
     deployment:
       gnetId: 15475
-      revision: 5
+      revision: 6
       datasource: prometheus
     pod:
       gnetId: 15477
-      revision: 2
+      revision: 3
       datasource: prometheus
     service:
       gnetId: 15480
-      revision: 2
+      revision: 3
       datasource: prometheus
     route:
       gnetId: 15481
-      revision: 2
+      revision: 3
       datasource: prometheus
     authority:
       gnetId: 15482
-      revision: 2
+      revision: 3
       datasource: prometheus
     cronjob:
       gnetId: 15483
-      revision: 2
+      revision: 3
       datasource: prometheus
     job:
       gnetId: 15487
-      revision: 2
+      revision: 3
       datasource: prometheus
     daemonset:
       gnetId: 15484
-      revision: 2
+      revision: 3
       datasource: prometheus
     replicaset:
       gnetId: 15491
-      revision: 2
+      revision: 3
       datasource: prometheus
     statefulset:
       gnetId: 15493
-      revision: 2
+      revision: 3
       datasource: prometheus
     replicationcontroller:
       gnetId: 15492
-      revision: 2
+      revision: 4
       datasource: prometheus
     prometheus:
       gnetId: 15489
@@ -121,5 +121,5 @@ dashboards:
       datasource: prometheus
     multicluster:
       gnetId: 15488
-      revision: 2
+      revision: 3
       datasource: prometheus
