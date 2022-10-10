@@ -171,7 +171,7 @@ jobs:
       matrix:
         k8s:
           - v1.21
-          - v1.24
+          - v1.25
     steps:
       - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
       - uses: olix0r/cargo-action-fmt@ed3530f0739c46ffa0dd983f8746b8c4a3d0a01c
@@ -348,7 +348,7 @@ jobs:
       matrix:
         k8s:
           - v1.21
-          - v1.24
+          - v1.25
     steps:
       - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
       - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
