@@ -322,9 +322,7 @@ dashboard:
   # -- dashboard service configuration
   service:
     # -- Additional annotations to add to dashboard service
-    annotations:
-      cloud.google.com/backend-config: '{"ports": {"8084":"linkerd-viz", "9994":"linkerd-viz"}}'
-      cloud.google.com/neg: '{"ingress": true}'
+    annotations: {}
 
   # -- UID for the dashboard resource
   UID:
