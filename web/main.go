@@ -41,6 +41,7 @@ func main() {
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
 	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
+	basePath := cmd.String("base-path", "", "Base path under which to serve the dashboard")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
@@ -96,7 +97,7 @@ func main() {
 		log.Fatalf("invalid --enforced-host parameter: %s", err)
 	}
 
-	server := srv.NewServer(*addr, *grafanaAddr, *grafanaExternalAddr, *grafanaPrefix, *jaegerAddr, *templateDir, *staticDir, uuid, version,
+	server := srv.NewServer(*addr, *grafanaAddr, *grafanaExternalAddr, *grafanaPrefix, *jaegerAddr, *templateDir, *staticDir, *basePath, uuid, version,
 		*controllerNamespace, *clusterDomain, *reload, reHost, client, k8sAPI, hc)
 
 	go func() {

@@ -295,6 +295,8 @@ tapInjector:
 
 # web dashboard configuration
 dashboard:
+  # -- Base path under which to serve the dashboard
+  basePath: ""
   # -- Number of replicas of dashboard
   replicas: 1
   # -- log level of the dashboard component
