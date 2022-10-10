@@ -457,7 +457,7 @@ _linkerd-viz-uninit:
 # TODO: read from multicluster values.yaml
 _pause_image := "gcr.io/google_containers/pause:3.2"
 
-_mc-target-k3d-flags := "--k3s-arg --disable='local-storage,traefik,metrics-server@server:*'"
+_mc-target-k3d-flags := "--k3s-arg --disable='local-storage,metrics-server@server:*'"
 
 linkerd-mc-install: _mc-init _linkerd-init
     {{ just_executable() }} \
@@ -498,6 +498,9 @@ _mc-init: _k3d-init
 _mc-load: _mc-init linkerd-load
     if [ -z "$(docker image ls -q '{{ _pause_image }}')" ]; then docker pull -q '{{ _pause_image }}';fi
     k3d image import --mode=direct --cluster='{{ k3d-name }}-target' {{ _pause_image }}
+    {{ just_executable() }} \
+       k3d-name='{{ k3d-name }}-target' \
+       linkerd-load
 
 _linkerd-mc-ready:
     {{ _kubectl }} wait pod --for=condition=ready \
@@ -510,7 +513,7 @@ _linkerd-mc-ready:
 export GO111MODULE := "on"
 
 mc-test: _mc-init _mc-load
-    go test -test.timeout=60m --failfast --mod=readonly ./test/integration/multicluster/... \
+    go test -test.timeout=20m --failfast --mod=readonly ./test/integration/multicluster/... \
         -integration-tests \
         -linkerd='{{ justfile_directory() }}/bin/linkerd' \
         -multicluster-source-context='k3d-{{ k3d-name }}' \
