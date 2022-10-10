@@ -108,7 +108,7 @@ Kubernetes: `>=1.21.0-0`
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` |  |
 | namespaceMetadata.image.name | string | `"curl"` | Docker image name for the namespace-metadata instance |
-| namespaceMetadata.image.pullPolicy | string | imagePullPolicy  | Pull policy for the namespace-metadata instance |
+| namespaceMetadata.image.pullPolicy | string | imagePullPolicy | Pull policy for the namespace-metadata instance |
 | namespaceMetadata.image.registry | string | `"curlimages"` | Docker registry for the namespace-metadata instance |
 | namespaceMetadata.image.tag | string | `"7.78.0"` | Docker image tag for the namespace-metadata instance |
 | nodeSelector | object | `{"kubernetes.io/os":"linux"}` | Default nodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |

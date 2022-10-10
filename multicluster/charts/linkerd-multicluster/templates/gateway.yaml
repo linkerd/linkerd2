@@ -42,8 +42,7 @@ spec:
       {{- include "linkerd.affinity" $tree | nindent 6 }}
       containers:
         - name: pause
-          image: {{.Values.gateway.image.registry}}/{{.Values.gateway.image.name}}:{{.Values.gateway.image.tag}}
-          imagePullPolicy: {{.Values.gateway.image.pullPolicy | default .Values.imagePullPolicy}}
+          image: gcr.io/google_containers/pause:3.2
           securityContext:
             runAsUser: {{.Values.gateway.UID}}
       serviceAccountName: {{.Values.gateway.name}}

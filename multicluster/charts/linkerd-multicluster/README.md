@@ -74,10 +74,6 @@ Kubernetes: `>=1.21.0-0`
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
 | gateway.UID | int | `2103` | User id under which the gateway shall be ran |
 | gateway.enabled | bool | `true` | If the gateway component should be installed |
-| gateway.image.name | string | `"curl"` | Docker image name for the gateway instance |
-| gateway.image.pullPolicy | string | imagePullPolicy | Pull policy for the gateway instance |
-| gateway.image.registry | string | `"curlimages"` | Docker registry for the gateway instance |
-| gateway.image.tag | string | `"7.78.0"` | Docker image tag for the gateway instance |
 | gateway.loadBalancerIP | string | `""` | Set loadBalancerIP on gateway service |
 | gateway.name | string | `"linkerd-gateway"` | The name of the gateway that will be installed |
 | gateway.port | int | `4143` | The port on which all the gateway will accept incoming traffic |
