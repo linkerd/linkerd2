@@ -234,7 +234,10 @@ install_cni_conf() {
   # If the old config filename ends with .conf, rename it to .conflist, because it has changed to be a list
   filename=${cni_conf_path##*/}
   extension=${filename##*.}
+  # When this variable has a file, we must delete it later.
+  old_file_path=
   if [ "${filename}" != '01-linkerd-cni.conf' ] && [ "${extension}" = 'conf' ]; then
+   old_file_path=${cni_conf_path}
    echo "Renaming ${cni_conf_path} extension to .conflist"
    cni_conf_path="${cni_conf_path}list"
   fi
@@ -246,6 +249,7 @@ install_cni_conf() {
 
   # Move the temporary CNI config into place.
   mv "${TMP_CONF}" "${cni_conf_path}" || exit_with_error 'Failed to mv files.'
+  [ -n "$old_file_path" ] && rm -f "${old_file_path}" && echo "Removing unwanted .conf file"
 
   echo "Created CNI config ${cni_conf_path}"
 }

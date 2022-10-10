@@ -45,7 +45,7 @@ jobs:
     needs: [cleanup]
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - run: echo "::set-output name=tag::$(CI_FORCE_CLEAN=1 bin/root-tag)"
         id: tag
     outputs:
@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -94,7 +94,7 @@ jobs:
           - proxy
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -125,7 +125,7 @@ jobs:
       - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
         with:
           go-version: '1.18'
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
           name: image-archives
@@ -146,8 +146,8 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - uses: tj-actions/changed-files@dd7c81416dd9ddc14c594f751cd92c661e13daee
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
+      - uses: tj-actions/changed-files@270645280afddc7e2cf3f4867089522c8f2f8f9a
         id: changed
         with:
           files: |
@@ -175,7 +175,7 @@ jobs:
     steps:
       - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
       - uses: olix0r/cargo-action-fmt@ed3530f0739c46ffa0dd983f8746b8c4a3d0a01c
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
           name: image-archives
@@ -225,7 +225,7 @@ jobs:
           - web
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -264,7 +264,7 @@ jobs:
       - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
         with:
           go-version: '1.18'
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
           name: image-archives
@@ -284,8 +284,8 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - uses: tj-actions/changed-files@dd7c81416dd9ddc14c594f751cd92c661e13daee
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
+      - uses: tj-actions/changed-files@270645280afddc7e2cf3f4867089522c8f2f8f9a
         id: changed
         with:
           files: |
@@ -306,7 +306,7 @@ jobs:
       - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
         with:
           go-version: '1.18'
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
           name: image-archives
