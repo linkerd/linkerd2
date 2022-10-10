@@ -509,7 +509,7 @@ _linkerd-mc-ready:
 
 export GO111MODULE := "on"
 
-mc-test: _mc-init
+mc-test: _mc-init _mc-load
     go test -test.timeout=60m --failfast --mod=readonly ./test/integration/multicluster/... \
         -integration-tests \
         -linkerd='{{ justfile_directory() }}/bin/linkerd' \
