@@ -192,8 +192,8 @@ k3d-create: && _k3d-ready
         --image='+{{ k3d-k8s }}' \
         --agents='{{ k3d-agents }}' \
         --servers='{{ k3d-servers }}' \
-        --no-lb \
-        --k3s-arg '--disable=local-storage,traefik,servicelb,metrics-server@server:*' \
+        --network='{{ k3d-network }}' \
+        {{ _k3d-flags }} \
         --kubeconfig-update-default \
         --kubeconfig-switch-context=false
 
@@ -218,10 +218,10 @@ _k3d-init: && _k3d-ready
     set -euo pipefail
     if ! k3d cluster list {{ k3d-name }} >/dev/null 2>/dev/null; then
         {{ just_executable() }} \
-            k3d-k8s={{ k3d-k8s }} \
-            k3d-name={{ k3d-name }} \
-            k3d-network={{ k3d-network }} \
-            _k3d-flags={{ _k3d-flags }} \
+            k3d-k8s='{{ k3d-k8s }}' \
+            k3d-name='{{ k3d-name }}' \
+            k3d-network='{{ k3d-network }}' \
+            _k3d-flags='{{ _k3d-flags }}' \
             k3d-create
     fi
     k3d kubeconfig merge {{ k3d-name }} \
