@@ -6,7 +6,6 @@ import (
 	"math"
 	"net/http"
 	"net/url"
-	"runtime"
 	"strconv"
 	"time"
 
@@ -29,7 +28,6 @@ type containerMeta struct {
 // K8sValues gathers relevant heartbeat information from Kubernetes
 func K8sValues(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string) url.Values {
 	v := url.Values{}
-	v.Set("arch", runtime.GOARCH)
 
 	cm, err := config.FetchLinkerdConfigMap(ctx, kubeAPI, controlPlaneNamespace)
 	if err != nil {
