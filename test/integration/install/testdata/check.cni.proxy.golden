@@ -20,6 +20,7 @@ linkerd-existence
 √ control plane pods are ready
 √ cluster networks contains all node podCIDRs
 √ cluster networks contains all pods
+√ cluster networks contains all services
 
 linkerd-config
 --------------

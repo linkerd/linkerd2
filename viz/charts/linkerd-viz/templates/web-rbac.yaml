@@ -68,7 +68,7 @@ rules:
   resources: ["serviceprofiles"]
   verbs: ["list"]
 - apiGroups: [""]
-  resources: ["nodes", "pods"]
+  resources: ["nodes", "pods", "services"]
   verbs: ["list"]
 - apiGroups: ["apiregistration.k8s.io"]
   resources: ["apiservices"]
