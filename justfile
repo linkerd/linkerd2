@@ -449,18 +449,6 @@ _linkerd-viz-ready:
         --namespace=linkerd-viz --selector='linkerd.io/extension=viz' \
         --timeout=1m
 
-# Ensures the test cluster has been initialized.
-_linkerd-viz-init: _k3d-ready
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if ! {{ _kubectl }} get ns linkerd-viz >/dev/null 2>&1 ; then
-        {{ just_executable() }} \
-            k3d-name='{{ k3d-name }}' \
-            linkerd-exec='{{ linkerd-exec }}' \
-            linkerd-tag='{{ linkerd-tag }}' \
-            linkerd-viz-install
-    fi
-
 # Ensure that a linkerd control plane is installed
 _linkerd-viz-uninit:
     #!/usr/bin/env bash
