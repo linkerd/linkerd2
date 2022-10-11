@@ -2,7 +2,7 @@
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   name: tap-api
   labels:
     linkerd.io/extension: viz
@@ -20,7 +20,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   name: tap
   labels:
     linkerd.io/extension: viz

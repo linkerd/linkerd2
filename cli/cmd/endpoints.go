@@ -21,6 +21,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 )
 
@@ -91,16 +92,27 @@ destination.`,
 				return err
 			}
 
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-			if err != nil {
-				return err
+			var client destinationPb.DestinationClient
+			var conn *grpc.ClientConn
+			if apiAddr != "" {
+				client, conn, err = destination.NewClient(apiAddr)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error creating destination client: %s\n", err)
+					os.Exit(1)
+				}
+			} else {
+				k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+				if err != nil {
+					return err
+				}
+
+				client, conn, err = destination.NewExternalClient(cmd.Context(), controlPlaneNamespace, k8sAPI, options.destinationPod)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error creating destination client: %s\n", err)
+					os.Exit(1)
+				}
 			}
 
-			client, conn, err := destination.NewExternalClient(cmd.Context(), controlPlaneNamespace, k8sAPI, options.destinationPod)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error creating destination client: %s\n", err)
-				os.Exit(1)
-			}
 			defer conn.Close()
 
 			endpoints, err := requestEndpointsFromAPI(client, args)

@@ -58,6 +58,7 @@ var (
 		"templates/identity-rbac.yaml",
 		"templates/destination-rbac.yaml",
 		"templates/heartbeat-rbac.yaml",
+		"templates/podmonitor.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/psp.yaml",
 		"templates/config.yaml",

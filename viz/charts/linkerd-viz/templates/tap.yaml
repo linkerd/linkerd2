@@ -6,7 +6,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: tap
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: viz
     component: tap
@@ -43,7 +43,7 @@ metadata:
     component: tap
     namespace: {{.Release.Namespace}}
   name: tap
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: {{.Values.tap.replicas}}
   selector:

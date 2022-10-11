@@ -67,6 +67,21 @@ func TestNewValues(t *testing.T) {
 		PodLabels:                    map[string]string{},
 		EnableEndpointSlices:         true,
 		EnablePodDisruptionBudget:    false,
+		PodMonitor: &PodMonitor{
+			Enabled:        false,
+			ScrapeInterval: "10s",
+			ScrapeTimeout:  "10s",
+			Controller: &PodMonitorController{
+				Enabled: true,
+				NamespaceSelector: `matchNames:
+  - {{ .Release.Namespace }}
+  - linkerd-viz
+  - linkerd-jaeger
+`,
+			},
+			ServiceMirror: &PodMonitorComponent{Enabled: true},
+			Proxy:         &PodMonitorComponent{Enabled: true},
+		},
 		PolicyController: &PolicyController{
 			Image: &Image{
 				Name: "cr.l5d.io/linkerd/policy-controller",

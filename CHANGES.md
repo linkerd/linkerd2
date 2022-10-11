@@ -1,5 +1,90 @@
 # Changes
 
+## edge-22.10.1
+
+This edge release fixes some sections of the Viz dashboard appearing blank, and
+adds an optional PodMonitor resource to the Helm chart to enable easier
+integration with the Prometheus Operator. It also includes many fixes submitted
+by our contributors.
+
+* Fixed the dashboard sections Tap, Top, and Routes appearing blank (thanks
+  @MoSattler!)
+* Added an optional PodMonitor resource to the main Helm chart (thanks
+  @jaygridley!)
+* Fixed the CLI ignoring the `--api-addr` flag (thanks @mikutas!)
+* Expanded the `linkerd authz` command to display AuthorizationPolicy resources
+  that target namespaces (thanks @aatarasoff!)
+* Fixed the `NotIn` label selector operator in the policy resources, being
+  erroneously treated as `In`.
+* Fixed warning logic around the "linkerd-viz ClusterRoles exist" and
+  "linkerd-viz ClusterRoleBindings exist" checks in `linkerd viz check`
+* Fixed proxies emitting some duplicate inbound metrics
+
+## stable-2.12.1
+
+This release includes several control plane and proxy fixes for `stable-2.12.0`.
+In particular, it fixes issues related to control plane HTTP servers' header
+read timeouts resulting in decreased controller success rates, lowers the
+inbound connection pool idle timeout in the proxy, and fixes an issue where the
+jaeger injector would put pods into an error state when upgrading from
+stable-2.11.x.
+
+Additionally, this release adds the `linkerd.io/trust-root-sha256` annotation to
+all injected workloads allowing predictable comparison of all workloads' trust
+anchors via the Kubernetes API.
+
+For Windows users, note that the Linkerd CLI's `nupkg` file for Chocolatey is
+once again included in the release assets (it was previously removed in
+stable-2.10.0).
+
+* Proxy
+  * Lowered inbound connection pool idle timeout to 3s
+
+* Control Plane
+  * Updated AdmissionRegistration API version usage to v1
+  * Added `linkerd.io/trust-root-sha256` annotation on all injected workloads
+    to indicate certifcate bundle
+  * Updated fields in `AuthorizationPolicy` and `MeshTLSAuthentication` to
+    conform to specification (thanks @aatarasoff!)
+  * Updated the identity controller to not require a `ClusterRoleBinding`
+    to read all deployment resources
+  * Increased servers' header read timeouts so they no longer match default
+    probe and Prometheus scrape intervals
+
+* Helm
+  * Restored `namespace` field in Linkerd helm charts
+  * Updated `PodDisruptionBudget` `apiVersion` from `policy/v1beta1` to
+    `policy/v1` (thanks @Vrx555!)
+
+* Extensions
+  * Fixed jaeger injector interfering with upgrades to 2.12.x
+
+## edge-22.9.2
+
+This release fixes an issue where the jaeger injector would put pods into an
+error state when upgrading from stable-2.11.x.
+
+* Updated AdmissionRegistration API version usage to v1
+* Fixed jaeger injector interfering with upgrades to 2.12.x
+
+## edge-22.9.1
+
+This release adds the `linkerd.io/trust-root-sha256` annotation to all injected
+workloads allowing predictable comparison of all workloads' trust anchors via
+the Kubernetes API.
+
+Additionally, this release lowers the inbound connection pool idle timeout to
+3s. This should help avoid socket errors, especially for Kubernetes probes.
+
+* Added `linkerd.io/trust-root-sha256` annotation on all injected workloads
+  to indicate certifcate bundle
+* Lowered inbound connection pool idle timeout to 3s
+* Restored `namespace` field in Linkerd helm charts
+* Updated fields in `AuthorizationPolicy` and `MeshTLSAuthentication` to
+  conform to specification (thanks @aatarasoff!)
+* Updated the identity controller to not require a `ClusterRoleBinding`
+  to read all deployment resources.
+
 ## edge-22.8.3
 
 Increased control plane HTTP servers' read timeouts so that they no longer

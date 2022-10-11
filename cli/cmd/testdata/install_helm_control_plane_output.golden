@@ -17,9 +17,8 @@ rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
   verbs: ["create"]
-- apiGroups: ["apps"]
-  resources: ["deployments"]
-  verbs: ["get"]
+# TODO(ver) Restrict this to the Linkerd namespace. See
+# https://github.com/linkerd/linkerd2/issues/9367
 - apiGroups: [""]
   resources: ["events"]
   verbs: ["create", "patch"]
@@ -44,7 +43,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -98,7 +97,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-destination
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -226,7 +225,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-heartbeat
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-ns: linkerd-dev
 rules:
@@ -239,7 +238,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-heartbeat
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-ns: linkerd-dev
 roleRef:
@@ -284,10 +283,12 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-heartbeat
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: heartbeat
     linkerd.io/control-plane-ns: linkerd-dev
+---
+# Source: linkerd-control-plane/templates/podmonitor.yaml
 ---
 # Source: linkerd-control-plane/templates/proxy-injector-rbac.yaml
 ---
@@ -339,7 +340,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd-dev
@@ -389,7 +390,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-config
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: controller
     linkerd.io/control-plane-ns: linkerd-dev
@@ -449,6 +450,21 @@ data:
       kubernetes.io/os: linux
     podAnnotations: {}
     podLabels: {}
+    podMonitor:
+      controller:
+        enabled: true
+        namespaceSelector: |
+          matchNames:
+            - {{ .Release.Namespace }}
+            - linkerd-viz
+            - linkerd-jaeger
+      enabled: false
+      proxy:
+        enabled: true
+      scrapeInterval: 10s
+      scrapeTimeout: 10s
+      serviceMirror:
+        enabled: true
     policyController:
       image:
         name: cr.l5d.io/linkerd/policy-controller
@@ -597,7 +613,7 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-identity-issuer
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -611,7 +627,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-identity-trust-roots
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -625,7 +641,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -644,7 +660,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-identity-headless
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
@@ -671,7 +687,7 @@ metadata:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd-dev
   name: linkerd-identity
-  
+  namespace: linkerd-dev
 spec:
   replicas: 1
   selector:
@@ -768,7 +784,7 @@ spec:
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
           value: "$(_pod_ns):$(_pod_name)"
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
-          value: "all-unauthenticated"
+          value: all-unauthenticated
         - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -804,6 +820,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.serviceAccountName
+        - name: _l5d_ns
+          value: linkerd-dev
+        - name: _l5d_trustdomain
+          value: test.trust.domain
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -918,7 +938,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -937,7 +957,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst-headless
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -956,7 +976,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -975,7 +995,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-policy
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -994,7 +1014,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-policy-validator
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
@@ -1021,7 +1041,7 @@ metadata:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd-dev
   name: linkerd-destination
-  
+  namespace: linkerd-dev
 spec:
   replicas: 1
   selector:
@@ -1078,7 +1098,7 @@ spec:
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
           value: "$(_pod_ns):$(_pod_name)"
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
-          value: "all-unauthenticated"
+          value: all-unauthenticated
         - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -1114,6 +1134,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.serviceAccountName
+        - name: _l5d_ns
+          value: linkerd-dev
+        - name: _l5d_trustdomain
+          value: test.trust.domain
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -1338,7 +1362,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: linkerd-heartbeat
-  
+  namespace: linkerd-dev
   labels:
     app.kubernetes.io/name: heartbeat
     app.kubernetes.io/part-of: Linkerd
@@ -1399,7 +1423,7 @@ metadata:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd-dev
   name: linkerd-proxy-injector
-  
+  namespace: linkerd-dev
 spec:
   replicas: 1
   selector:
@@ -1455,7 +1479,7 @@ spec:
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
           value: "$(_pod_ns):$(_pod_name)"
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
-          value: "all-unauthenticated"
+          value: all-unauthenticated
         - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -1491,6 +1515,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.serviceAccountName
+        - name: _l5d_ns
+          value: linkerd-dev
+        - name: _l5d_trustdomain
+          value: test.trust.domain
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -1644,7 +1672,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  
+  namespace: linkerd-dev
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd-dev

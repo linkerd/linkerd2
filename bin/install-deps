@@ -29,7 +29,7 @@ CGO_ENABLED=0 GOOS=linux GOARCH=$arch go install -mod=readonly \
     k8s.io/client-go/discovery \
     k8s.io/client-go/kubernetes \
     k8s.io/client-go/kubernetes/scheme \
-    k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1 \
+    k8s.io/client-go/kubernetes/typed/admissionregistration/v1 \
     k8s.io/client-go/kubernetes/typed/apps/v1 \
     k8s.io/client-go/kubernetes/typed/apps/v1beta1 \
     k8s.io/client-go/kubernetes/typed/apps/v1beta2 \

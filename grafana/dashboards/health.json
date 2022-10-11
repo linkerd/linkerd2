@@ -221,7 +221,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(process_cpu_seconds_total{job=\"linkerd-proxy\"}[20s])) by (namespace, pod)",
+          "expr": "sum(irate(process_cpu_seconds_total{job=\"linkerd-proxy\"}[$__rate_interval])) by (namespace, pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}",
@@ -414,7 +414,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(response_total{classification=\"success\", deployment!=\"\", namespace=~\"$namespace|$namespace-viz\", direction=\"inbound\"}[30s])) by (pod) / sum(irate(response_total{deployment!=\"\", namespace=~\"$namespace|$namespace-viz\", direction=\"inbound\"}[30s])) by (pod)",
+          "expr": "sum(irate(response_total{classification=\"success\", deployment!=\"\", namespace=~\"$namespace|$namespace-viz\", direction=\"inbound\"}[$__rate_interval])) by (pod) / sum(irate(response_total{deployment!=\"\", namespace=~\"$namespace|$namespace-viz\", direction=\"inbound\"}[$__rate_interval])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -505,7 +505,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(request_total{deployment!=\"\", namespace=~\"$namespace|$namespace-viz\", direction=\"inbound\"}[30s])) by (pod)",
+          "expr": "sum(irate(request_total{deployment!=\"\", namespace=~\"$namespace|$namespace-viz\", direction=\"inbound\"}[$__rate_interval])) by (pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -597,7 +597,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment!=\"\", namespace=~\"$namespace|$namespace-viz\", direction=\"inbound\"}[30s])) by (le, pod))",
+          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{deployment!=\"\", namespace=~\"$namespace|$namespace-viz\", direction=\"inbound\"}[$__rate_interval])) by (le, pod))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "po/{{pod}}",
@@ -1373,7 +1373,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(http_server_requests_total{job=\"linkerd-controller\"}[30s])) by (component, method, code)",
+          "expr": "sum(irate(http_server_requests_total{job=\"linkerd-controller\"}[$__rate_interval])) by (component, method, code)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{component}}/{{method}}/{{code}}",
@@ -1459,21 +1459,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(rate(http_server_request_latency_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, method, code))",
+          "expr": "histogram_quantile(0.5, sum(rate(http_server_request_latency_seconds_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P50 {{component}}/{{method}}/{{code}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_latency_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, method, code))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_latency_seconds_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P95 {{component}}/{{method}}/{{code}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_request_latency_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, method, code))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_request_latency_seconds_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P99 {{component}}/{{method}}/{{code}}",
@@ -1559,21 +1559,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(rate(http_server_response_size_bytes_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, method, code))",
+          "expr": "histogram_quantile(0.5, sum(rate(http_server_response_size_bytes_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P50 {{component}}/{{method}}/{{code}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_response_size_bytes_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, method, code))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_response_size_bytes_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P95 {{component}}/{{method}}/{{code}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_response_size_bytes_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, method, code))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_response_size_bytes_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P99 {{component}}/{{method}}/{{code}}",
@@ -1659,7 +1659,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(http_client_requests_total{job=\"linkerd-controller\"}[30s])) by (component, client, method, code)",
+          "expr": "sum(irate(http_client_requests_total{job=\"linkerd-controller\"}[$__rate_interval])) by (component, client, method, code)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{component}}/{{client}}/{{method}}/{{code}}",
@@ -1745,21 +1745,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(rate(http_client_request_latency_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, client, method, code))",
+          "expr": "histogram_quantile(0.5, sum(rate(http_client_request_latency_seconds_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, client, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P50 {{component}}/{{client}}/{{method}}/{{code}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_client_request_latency_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, client, method, code))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_client_request_latency_seconds_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, client, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P95 {{component}}/{{client}}/{{method}}/{{code}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_client_request_latency_seconds_bucket{job=\"linkerd-controller\"}[30s])) by (le, component, client, method, code))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_client_request_latency_seconds_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, client, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P99 {{component}}/{{client}}/{{method}}/{{code}}",
@@ -1983,7 +1983,7 @@
           "refId": "A"
         },
         {
-          "expr": "irate(go_memstats_alloc_bytes_total{job=\"linkerd-controller\", component=\"$component\"}[30s])",
+          "expr": "irate(go_memstats_alloc_bytes_total{job=\"linkerd-controller\", component=\"$component\"}[$__rate_interval])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "alloc rate/{{component}}",
@@ -2193,14 +2193,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "irate(grpc_server_msg_sent_total{job=\"linkerd-controller\", component=\"$component\"}[30s])",
+          "expr": "irate(grpc_server_msg_sent_total{job=\"linkerd-controller\", component=\"$component\"}[$__rate_interval])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "sent/{{component}}/{{grpc_method}}",
           "refId": "A"
         },
         {
-          "expr": "irate(grpc_server_msg_received_total{job=\"linkerd-controller\", component=\"$component\"}[30s])",
+          "expr": "irate(grpc_server_msg_received_total{job=\"linkerd-controller\", component=\"$component\"}[$__rate_interval])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "received/{{component}}/{{grpc_method}}",

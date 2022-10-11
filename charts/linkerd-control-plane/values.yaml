@@ -484,3 +484,27 @@ nodeSelector:
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
 # for more information
 #nodeAffinity:
+
+# Prometheus Operator PodMonitor configuration
+podMonitor:
+  # -- Enables the creation of Prometheus Operator [PodMonitor](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.PodMonitor)
+  enabled: false
+  # -- Interval at which metrics should be scraped
+  scrapeInterval: 10s
+  # -- Iimeout after which the scrape is ended
+  scrapeTimeout: 10s
+  controller:
+    # -- Enables the creation of PodMonitor for the control-plane
+    enabled: true
+    # -- Selector to select which namespaces the Endpoints objects are discovered from
+    namespaceSelector: |
+      matchNames:
+        - {{ .Release.Namespace }}
+        - linkerd-viz
+        - linkerd-jaeger
+  serviceMirror:
+    # -- Enables the creation of PodMonitor for the Service Mirror component
+    enabled: true
+  proxy:
+    # -- Enables the creation of PodMonitor for the data-plane
+    enabled: true

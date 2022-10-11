@@ -176,7 +176,7 @@ impl Expression {
                 None => false,
             },
             (Operator::NotIn, key, Some(values)) => match labels.get(key) {
-                Some(v) => values.contains(v),
+                Some(v) => !values.contains(v),
                 None => true,
             },
             (Operator::Exists, key, None) => labels.contains_key(key),
@@ -218,7 +218,27 @@ mod tests {
                 })),
                 Labels::from_iter(vec![("foo", "bar"), ("bah", "baz")]),
                 true,
-                "expression match",
+                "In expression match",
+            ),
+            (
+                Selector::from_iter(Some(Expression {
+                    key: "foo".into(),
+                    operator: Operator::NotIn,
+                    values: Some(Some("quux".to_string()).into_iter().collect()),
+                })),
+                Labels::from_iter(vec![("foo", "bar"), ("bah", "baz")]),
+                true,
+                "NotIn expression match",
+            ),
+            (
+                Selector::from_iter(Some(Expression {
+                    key: "foo".into(),
+                    operator: Operator::NotIn,
+                    values: Some(Some("bar".to_string()).into_iter().collect()),
+                })),
+                Labels::from_iter(vec![("foo", "bar"), ("bah", "baz")]),
+                false,
+                "NotIn expression non-match",
             ),
             (
                 Selector::new(

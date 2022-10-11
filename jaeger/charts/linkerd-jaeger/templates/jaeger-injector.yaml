@@ -12,7 +12,7 @@ metadata:
     app.kubernetes.io/version: {{default .Values.webhook.image.version .Values.cliVersion}}
     component: jaeger-injector
   name: jaeger-injector
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   selector:
@@ -79,7 +79,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: jaeger-injector
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: jaeger
     component: jaeger-injector

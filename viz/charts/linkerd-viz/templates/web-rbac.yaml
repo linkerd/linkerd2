@@ -68,7 +68,7 @@ rules:
   resources: ["serviceprofiles"]
   verbs: ["list"]
 - apiGroups: [""]
-  resources: ["nodes", "pods"]
+  resources: ["nodes", "pods", "services"]
   verbs: ["list"]
 - apiGroups: ["apiregistration.k8s.io"]
   resources: ["apiservices"]
@@ -139,7 +139,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: web
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: viz
     component: web

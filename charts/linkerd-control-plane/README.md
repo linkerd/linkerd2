@@ -3,7 +3,7 @@
 Linkerd gives you observability, reliability, and security
 for your microservices — with no code change required.
 
-![Version: 1.9.1-edge](https://img.shields.io/badge/Version-1.9.1--edge-informational?style=flat-square)
+![Version: 1.10.0-edge](https://img.shields.io/badge/Version-1.10.0--edge-informational?style=flat-square)
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -169,6 +169,13 @@ Kubernetes: `>=1.21.0-0`
 | nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | podAnnotations | object | `{}` | Additional annotations to add to all pods |
 | podLabels | object | `{}` | Additional labels to add to all pods |
+| podMonitor.controller.enabled | bool | `true` | Enables the creation of PodMonitor for the control-plane |
+| podMonitor.controller.namespaceSelector | string | `"matchNames:\n  - {{ .Release.Namespace }}\n  - linkerd-viz\n  - linkerd-jaeger\n"` | Selector to select which namespaces the Endpoints objects are discovered from |
+| podMonitor.enabled | bool | `false` | Enables the creation of Prometheus Operator [PodMonitor](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.PodMonitor) |
+| podMonitor.proxy.enabled | bool | `true` | Enables the creation of PodMonitor for the data-plane |
+| podMonitor.scrapeInterval | string | `"10s"` | Interval at which metrics should be scraped |
+| podMonitor.scrapeTimeout | string | `"10s"` | Iimeout after which the scrape is ended |
+| podMonitor.serviceMirror.enabled | bool | `true` | Enables the creation of PodMonitor for the Service Mirror component |
 | policyController.image.name | string | `"cr.l5d.io/linkerd/policy-controller"` | Docker image for the policy controller |
 | policyController.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy container Docker image |
 | policyController.image.version | string | linkerdVersion | Tag for the proxy container Docker image |

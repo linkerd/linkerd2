@@ -7,7 +7,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-heartbeat
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
 rules:
@@ -20,7 +20,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-heartbeat
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
 roleRef:
@@ -65,7 +65,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-heartbeat
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: heartbeat
     linkerd.io/control-plane-ns: {{.Release.Namespace}}

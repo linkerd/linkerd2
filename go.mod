@@ -23,7 +23,7 @@ require (
 	github.com/linkerd/linkerd2-proxy-api v0.7.0
 	github.com/linkerd/linkerd2-proxy-init v1.6.2
 	github.com/mattn/go-isatty v0.0.16
-	github.com/mattn/go-runewidth v0.0.13
+	github.com/mattn/go-runewidth v0.0.14
 	github.com/nsf/termbox-go v0.0.0-20180613055208-5c94acc5e6eb
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
@@ -38,7 +38,7 @@ require (
 	go.opencensus.io v0.23.0
 	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
 	golang.org/x/tools v0.1.12
-	google.golang.org/grpc v1.49.0
+	google.golang.org/grpc v1.50.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.28.1
 	helm.sh/helm/v3 v3.9.4
@@ -46,8 +46,8 @@ require (
 	k8s.io/apiextensions-apiserver v0.24.2
 	k8s.io/apimachinery v0.24.3
 	k8s.io/client-go v0.24.3
-	k8s.io/code-generator v0.24.3
-	k8s.io/klog/v2 v2.80.0
+	k8s.io/code-generator v0.25.2
+	k8s.io/klog/v2 v2.80.1
 	k8s.io/kube-aggregator v0.23.5
 	sigs.k8s.io/gateway-api v0.5.0
 	sigs.k8s.io/yaml v1.3.0
@@ -90,7 +90,7 @@ require (
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/emicklei/go-restful/v3 v3.8.0 // indirect
 	github.com/go-errors/errors v1.0.1 // indirect
-	github.com/go-logr/logr v1.2.2 // indirect
+	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
@@ -159,13 +159,13 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/cli-runtime v0.24.2 // indirect
 	k8s.io/gengo v0.0.0-20211129171323-c02415ce4185 // indirect
-	k8s.io/kube-openapi v0.0.0-20220627174259-011e075b9cb8 // indirect
+	k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1 // indirect
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
 	oras.land/oras-go v1.2.0 // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/kustomize/api v0.11.4 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.13.6 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
 // to avoid the `github.com/golang/protobuf/protoc-gen-go/generator` deprecation warning
