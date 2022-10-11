@@ -498,12 +498,6 @@ mc-target-k3d-delete:
             k3d-delete
     fi
 
-_mc-ready:
-    {{ _kubectl }} wait pod --for=condition=ready \
-        --namespace=linkerd-multicluster \
-        --selector='linkerd.io/control-plane-ns' \
-        --timeout=1m
-
 _mc-load: _k3d-init linkerd-load linkerd-viz-load
 
 _mc-target-load:
