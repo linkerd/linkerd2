@@ -267,7 +267,7 @@ docker-arch := ''
 # TODO: read from multicluster values.yaml
 _pause-image := "gcr.io/google_containers/pause:3.2"
 
-_load-pause: _k3d-init
+_pause-load: _k3d-init
     if [ -z "$(docker image ls -q '{{ _pause-image }}')" ]; then docker pull -q '{{ _pause-image }}'; fi
     k3d image import --mode=direct --cluster='{{ k3d-name }}' {{ _pause-image }}
 
@@ -513,7 +513,7 @@ _mc-target-load:
         proxy-init-image='{{ proxy-init-image }}' \
         linkerd-exec='{{ linkerd-exec }}' \
         linkerd-tag='{{ linkerd-tag }}' \
-        _load-pause \
+        _pause-load \
         _mc-load
 
 # Run the multicluster tests with cluster setup
