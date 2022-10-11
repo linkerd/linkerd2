@@ -380,8 +380,8 @@ _linkerd-init: && _linkerd-ready
         {{ just_executable() }} \
             k3d-name='{{ k3d-name }}' \
             k3d-k8s='{{ k3d-k8s }}' \
-            k3d-servers='{{ k3d-servers }}' \
             k3d-agents='{{ k3d-agents }}' \
+            k3d-servers='{{ k3d-servers }}' \
             k3d-network='{{ k3d-network }}' \
             _k3d-flags='{{ _k3d-flags }}' \
             linkerd-tag='{{ linkerd-tag }}' \
