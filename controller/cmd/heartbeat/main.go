@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"net/url"
+	"runtime"
 
 	"github.com/linkerd/linkerd2/controller/heartbeat"
 	"github.com/linkerd/linkerd2/pkg/flags"
@@ -36,6 +37,7 @@ func Main(args []string) {
 	// TODO:
 	// - k8s-env
 	v := url.Values{}
+	v.Set("arch", runtime.GOARCH)
 	v.Set("version", version.Version)
 	v.Set("source", "heartbeat")
 
