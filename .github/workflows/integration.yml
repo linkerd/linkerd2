@@ -371,7 +371,9 @@ jobs:
             docker load <"image-archives/${img}.tar"
           done
       - run: docker image ls
-      - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' k3d-name='mc-${{ matrix.k8s }}' k3d-k8s='${{ matrix.k8s }}' mc-test
-        env:
-          LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+      - name: Run just mc-test
+        run: |
+          just linkerd-tag='${{ needs.tag.outputs.tag }}' \
+              k3d-k8s='${{ matrix.k8s }}' \
+              mc-test
 
