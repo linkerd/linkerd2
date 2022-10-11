@@ -106,8 +106,10 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
-      {{ if not .Values.cniEnabled -}}
       initContainers:
+      {{ if .Values.cniEnabled -}}
+      - {{- include "partials.noop" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ else -}}
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       {{- if .Values.priorityClassName -}}
