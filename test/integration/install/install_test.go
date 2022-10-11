@@ -625,7 +625,8 @@ func TestOverridesSecret(t *testing.T) {
 			}
 			knownKeys["proxy"] = tree.Tree{
 				"image": tree.Tree{
-					"name": reg + "/proxy",
+					"name":    reg + "/proxy",
+					"version": TestHelper.GetVersion(),
 				},
 			}
 			knownKeys["proxyInit"].(tree.Tree)["image"] = tree.Tree{

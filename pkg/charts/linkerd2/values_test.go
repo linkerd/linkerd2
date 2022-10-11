@@ -103,7 +103,7 @@ func TestNewValues(t *testing.T) {
 			EnableExternalProfiles: false,
 			Image: &Image{
 				Name:    "cr.l5d.io/linkerd/proxy",
-				Version: "dev-undefined",
+				Version: "",
 			},
 			LogLevel:  "warn,linkerd=info",
 			LogFormat: "plain",

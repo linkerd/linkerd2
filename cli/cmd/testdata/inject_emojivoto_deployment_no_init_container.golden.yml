@@ -163,6 +163,11 @@ spec:
         ports:
         - containerPort: 80
           name: http
+      initContainers:
+      - args:
+        - -v
+        image: gcr.io/google_containers/pause:3.2
+        name: noop
       volumes:
       - emptyDir:
           medium: Memory
