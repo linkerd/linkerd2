@@ -11,10 +11,10 @@ includes several other fixes.
 * Fixed handling of .conf files in the CNI plugin so that the Linkerd CNI plugin
   can be used alongside other CNI plugins such as Cilium
 * Added a `linkerd diagnostics policy` command to inspect Linkerd policy state
-* Added a check that clusterip services are in the cluster networks
-* Added a noop init container to injected pods when the cni plugin is enabled
+* Added a check that ClusterIP services are in the cluster networks
+* Added a noop init container to injected pods when the CNI plugin is enabled
   to prevent certain scenarios where a pod can get stuck without an IP address
-* Fixed a bug where the proxy-version annotation could be empty
+* Fixed a bug where the`config.linkerd.io/proxy-version` annotation could be empty
 
 ## edge-22.10.1
 
