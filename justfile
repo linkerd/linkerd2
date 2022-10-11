@@ -392,8 +392,6 @@ _linkerd-init: && _linkerd-ready
             linkerd-install
     fi
 
-_linkerd-uninstall-all: _linkerd-viz-uninit linkerd-mc-uninstall linkerd-uninstall
-
 ##
 ## linkerd viz
 ##
