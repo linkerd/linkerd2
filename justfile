@@ -347,6 +347,7 @@ _linkerd-images:
         '{{ proxy-image }}:{{ linkerd-tag }}'
     do
         if [ -z $(docker image ls -q "$img") ]; then
+            # Build images if any one of the images is missing.
             exec {{ just_executable() }} \
                 controller-image='{{ controller-image }}' \
                 policy-controller-image='{{ policy-controller-image }}' \
