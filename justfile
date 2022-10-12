@@ -156,10 +156,10 @@ policy-test-deps-pull:
 
 # Load all images into the test cluster.
 policy-test-deps-load: _k3d-init policy-test-deps-pull
-    {{ _k3d-load }} \
+    for i in {1..3} ; do {{ _k3d-load }} \
         bitnami/kubectl:latest \
         curlimages/curl:latest \
-        ghcr.io/olix0r/hokay:latest
+        ghcr.io/olix0r/hokay:latest && exit ; sleep 1 ; done
 
 ##
 ## Test cluster
@@ -323,11 +323,11 @@ linkerd-uninstall:
         | {{ _kubectl }} delete -f -
 
 linkerd-load: _linkerd-images _k3d-init
-    {{ _k3d-load }} \
+    for i in {1..3} ; do {{ _k3d-load }} \
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ policy-controller-image }}:{{ linkerd-tag }}' \
         '{{ proxy-image }}:{{ linkerd-tag }}' \
-        "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
+        "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" && exit ; sleep 1 ; done
 
 linkerd-build: _policy-controller-build
     TAG={{ linkerd-tag }} bin/docker-build-controller
@@ -429,12 +429,12 @@ _linkerd-viz-images:
     done
 
 linkerd-viz-load: _linkerd-viz-images _k3d-init
-    {{ _k3d-load }} \
+    for i in {1..3} ; do {{ _k3d-load }} \
         {{ DOCKER_REGISTRY }}/metrics-api:{{ linkerd-tag }} \
         {{ DOCKER_REGISTRY }}/tap:{{ linkerd-tag }} \
         {{ DOCKER_REGISTRY }}/web:{{ linkerd-tag }} \
         "$(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
-                viz/charts/linkerd-viz/values.yaml)"
+                viz/charts/linkerd-viz/values.yaml)" && exit ; sleep 1 ; done
 
 linkerd-viz-build:
     TAG={{ linkerd-tag }} bin/docker-build-metrics-api
