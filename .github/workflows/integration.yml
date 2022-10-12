@@ -371,9 +371,15 @@ jobs:
             docker load <"image-archives/${img}.tar"
           done
       - run: docker image ls
-      - name: Run just mc-test
+      - run: just mc-test-build
+      - name: Run just mc-test-load
         run: |
           just linkerd-tag='${{ needs.tag.outputs.tag }}' \
               k3d-k8s='${{ matrix.k8s }}' \
-              mc-test
+              mc-test-load
+      - name: Run just mc-test-run
+        run: |
+          just linkerd-tag='${{ needs.tag.outputs.tag }}' \
+              k3d-k8s='${{ matrix.k8s }}' \
+              mc-test-run
 

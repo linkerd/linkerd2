@@ -413,14 +413,15 @@ linkerd-viz-uninstall:
 _linkerd-viz-images:
     #!/usr/bin/env bash
     set -euo pipefail
+    docker pull -q $(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
+        viz/charts/linkerd-viz/values.yaml)
     for img in \
         '{{ DOCKER_REGISTRY }}/metrics-api:{{ linkerd-tag }}' \
         '{{ DOCKER_REGISTRY }}/tap:{{ linkerd-tag }}' \
-        '{{ DOCKER_REGISTRY }}/web:{{ linkerd-tag }}' \
-        "$(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
-            viz/charts/linkerd-viz/values.yaml)"
+        '{{ DOCKER_REGISTRY }}/web:{{ linkerd-tag }}'
     do
         if [ -z $(docker image ls -q "$img") ]; then
+            echo "Missing image: $img" >&2
             exec {{ just_executable() }} \
                 linkerd-tag='{{ linkerd-tag }}' \
                 linkerd-viz-build
@@ -436,8 +437,6 @@ linkerd-viz-load: _linkerd-viz-images _k3d-init
                 viz/charts/linkerd-viz/values.yaml)"
 
 linkerd-viz-build:
-    docker pull -q $(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
-        viz/charts/linkerd-viz/values.yaml)
     TAG={{ linkerd-tag }} bin/docker-build-metrics-api
     TAG={{ linkerd-tag }} bin/docker-build-tap
     TAG={{ linkerd-tag }} bin/docker-build-web
@@ -507,7 +506,13 @@ _mc-target-load:
 # The multicluster test does its own installation of control planes/etc, so
 # we don't do any setup beyond ensuring the cluster is present with images
 # loaded.
-mc-test: _mc-load _mc-target-load mc-test-run
+mc-test: mc-test-load mc-test-run
+
+mc-test-build:
+    go build --mod=readonly \
+        ./test/integration/multicluster/...
+
+mc-test-load: _mc-load _mc-target-load
 
 # Run the multicluster tests without any setup
 mc-test-run:
@@ -518,7 +523,6 @@ mc-test-run:
                 -linkerd='{{ justfile_directory() }}/bin/linkerd' \
                 -multicluster-source-context='k3d-{{ k3d-name }}' \
                 -multicluster-target-context='k3d-{{ k3d-name }}-target'
-
 
 ##
 ## GitHub Actions
