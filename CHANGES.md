@@ -1,5 +1,21 @@
 # Changes
 
+## edge-22.10.2
+
+This edge release fixes an issue with CNI chaining that was preventing the
+Linkerd CNI plugin from working with other CNI plugins such as Cilium. It also
+includes several other fixes.
+
+* Updated Grafana dashboards to use variable duration parameter so that they can
+  be used when Prometheus has a longer scrape interval (thanks @TarekAS)
+* Fixed handling of .conf files in the CNI plugin so that the Linkerd CNI plugin
+  can be used alongside other CNI plugins such as Cilium
+* Added a `linkerd diagnostics policy` command to inspect Linkerd policy state
+* Added a check that ClusterIP services are in the cluster networks
+* Added a noop init container to injected pods when the CNI plugin is enabled
+  to prevent certain scenarios where a pod can get stuck without an IP address
+* Fixed a bug where the`config.linkerd.io/proxy-version` annotation could be empty
+
 ## edge-22.10.1
 
 This edge release fixes some sections of the Viz dashboard appearing blank, and
