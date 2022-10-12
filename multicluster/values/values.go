@@ -47,6 +47,7 @@ type Gateway struct {
 	Probe              *Probe            `json:"probe"`
 	ServiceAnnotations map[string]string `json:"serviceAnnotations"`
 	LoadBalancerIP     string            `json:"loadBalancerIP"`
+	PauseImage         string            `json:"pauseImage"`
 }
 
 // Probe contains all options for the Probe Service
