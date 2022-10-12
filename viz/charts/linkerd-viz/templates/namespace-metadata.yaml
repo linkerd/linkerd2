@@ -26,8 +26,8 @@ spec:
       serviceAccountName: namespace-metadata
       containers:
       - name: namespace-metadata
-        image: curlimages/curl:7.78.0
-        imagePullPolicy: {{.Values.defaultImagePullPolicy}}
+        image: {{.Values.namespaceMetadata.image.registry}}/{{.Values.namespaceMetadata.image.name}}:{{.Values.namespaceMetadata.image.tag}}
+        imagePullPolicy: {{.Values.namespaceMetadata.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         command: ["/bin/sh"]
         securityContext:
           runAsUser: {{.Values.defaultUID}}
