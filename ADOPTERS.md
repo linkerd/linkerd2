@@ -7,6 +7,7 @@
 - [ANNA Money](https://anna.money)
 - [Apester](https://apester.com)
 - [AppddictionStudio](https://appddicitonstudio.com)
+- [Applause](https://www.applause.com)
 - [AT&T](<https://il.att.com/>)
 - [Attest](https://www.askattest.com)
 - [Bede Gaming](https://bedegaming.com)
