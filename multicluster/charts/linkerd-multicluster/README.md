@@ -85,8 +85,13 @@ Kubernetes: `>=1.21.0-0`
 | gateway.serviceAnnotations | object | `{}` | Annotations to add to the gateway service |
 | gateway.serviceType | string | `"LoadBalancer"` | Service Type of gateway Service |
 | identityTrustDomain | string | `"cluster.local"` | Identity Trust Domain of the certificate authority |
+| imagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all multicluster components |
 | linkerdNamespace | string | `"linkerd"` | Namespace of linkerd installation |
 | linkerdVersion | string | `"linkerdVersionValue"` | Control plane version |
+| namespaceMetadata.image.name | string | `"curl"` | Docker image name for the namespace-metadata instance |
+| namespaceMetadata.image.pullPolicy | string | imagePullPolicy | Pull policy for the namespace-metadata instance |
+| namespaceMetadata.image.registry | string | `"curlimages"` | Docker registry for the namespace-metadata instance |
+| namespaceMetadata.image.tag | string | `"7.78.0"` | Docker image tag for the namespace-metadata instance |
 | proxyOutboundPort | int | `4140` | The port on which the proxy accepts outbound traffic |
 | remoteMirrorServiceAccount | bool | `true` | If the remote mirror service account should be installed |
 | remoteMirrorServiceAccountName | string | `"linkerd-service-mirror-remote-access-default"` | The name of the service account used to allow remote clusters to mirror local services |

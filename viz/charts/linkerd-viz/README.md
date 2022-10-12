@@ -120,6 +120,10 @@ Kubernetes: `>=1.21.0-0`
 | metricsAPI.resources.memory.limit | string | `nil` | Maximum amount of memory that metrics-api container can use |
 | metricsAPI.resources.memory.request | string | `nil` | Amount of memory that the metrics-api container requests |
 | metricsAPI.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
+| namespaceMetadata.image.name | string | `"curl"` | Docker image name for the namespace-metadata instance |
+| namespaceMetadata.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the namespace-metadata instance |
+| namespaceMetadata.image.registry | string | `"curlimages"` | Docker registry for the namespace-metadata instance |
+| namespaceMetadata.image.tag | string | `"7.78.0"` | Docker image tag for the namespace-metadata instance |
 | nodeSelector | object | `{"kubernetes.io/os":"linux"}` | Default nodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | prometheus.alertRelabelConfigs | string | `nil` | Alert relabeling is applied to alerts before they are sent to the Alertmanager. |
 | prometheus.alertmanagers | string | `nil` | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter. |

@@ -34,6 +34,8 @@ gateway:
 
 # -- Control plane version
 linkerdVersion: linkerdVersionValue
+# -- Docker imagePullPolicy for all multicluster components
+imagePullPolicy: IfNotPresent
 # -- The port on which the proxy accepts outbound traffic
 proxyOutboundPort: 4140
 # -- If the remote mirror service account should be installed
@@ -45,6 +47,18 @@ remoteMirrorServiceAccountName: linkerd-service-mirror-remote-access-default
 linkerdNamespace: linkerd
 # -- Identity Trust Domain of the certificate authority
 identityTrustDomain: cluster.local
+
+namespaceMetadata:
+  image:
+    # -- Docker registry for the namespace-metadata instance
+    registry: curlimages
+    # -- Docker image name for the namespace-metadata instance
+    name: curl
+    # -- Docker image tag for the namespace-metadata instance
+    tag: 7.78.0
+    # -- Pull policy for the namespace-metadata instance
+    # @default -- imagePullPolicy
+    pullPolicy: ""
 
 # -- Create Roles and RoleBindings to associate this extension's
 # ServiceAccounts to the control plane PSP resource. This requires that
