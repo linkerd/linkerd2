@@ -6,6 +6,8 @@ lint: action-lint action-dev-check md-lint sh-lint rs-fetch rs-clippy rs-check-f
 ## Go
 ##
 
+export GO111MODULE := "on"
+
 go-fetch:
     go mod download
 
@@ -132,7 +134,7 @@ _cargo-test := _cargo + ```
 export POLICY_TEST_CONTEXT := "k3d-" + k3d-name
 
 # Install linkerd in the test cluster and run the policy tests.
-policy-test: linkerd-install policy-test-deps-load policy-test-run policy-test-cleanup linkerd-uninstall
+policy-test: linkerd-install policy-test-deps-load policy-test-run && policy-test-cleanup linkerd-uninstall
 
 # Run the policy tests without installing linkerd.
 policy-test-run *flags:
@@ -154,10 +156,10 @@ policy-test-deps-pull:
 
 # Load all images into the test cluster.
 policy-test-deps-load: _k3d-init policy-test-deps-pull
-    {{ _k3d-load }} \
+    for i in {1..3} ; do {{ _k3d-load }} \
         bitnami/kubectl:latest \
         curlimages/curl:latest \
-        ghcr.io/olix0r/hokay:latest
+        ghcr.io/olix0r/hokay:latest && exit ; sleep 1 ; done
 
 ##
 ## Test cluster
@@ -166,11 +168,16 @@ policy-test-deps-load: _k3d-init policy-test-deps-pull
 # The name of the k3d cluster to use.
 k3d-name := "l5d-test"
 
+# The name of the docker network to use (i.e., for multicluster testing).
+k3d-network := "k3d-name"
+
 # The kubernetes version to use for the test cluster. e.g. 'v1.24', 'latest', etc
 k3d-k8s := "latest"
 
 k3d-agents := "0"
 k3d-servers := "1"
+
+_k3d-flags := "--no-lb --k3s-arg --disable='local-storage,traefik,servicelb,metrics-server@server:*'"
 
 _context := "--context=k3d-" + k3d-name
 _kubectl := "kubectl " + _context
@@ -187,8 +194,8 @@ k3d-create: && _k3d-ready
         --image='+{{ k3d-k8s }}' \
         --agents='{{ k3d-agents }}' \
         --servers='{{ k3d-servers }}' \
-        --no-lb \
-        --k3s-arg '--disable=local-storage,traefik,servicelb,metrics-server@server:*' \
+        --network='{{ k3d-network }}' \
+        {{ _k3d-flags }} \
         --kubeconfig-update-default \
         --kubeconfig-switch-context=false
 
@@ -213,8 +220,10 @@ _k3d-init: && _k3d-ready
     set -euo pipefail
     if ! k3d cluster list {{ k3d-name }} >/dev/null 2>/dev/null; then
         {{ just_executable() }} \
-            k3d-name={{ k3d-name }} \
-            k3d-k8s={{ k3d-k8s }} \
+            k3d-k8s='{{ k3d-k8s }}' \
+            k3d-name='{{ k3d-name }}' \
+            k3d-network='{{ k3d-network }}' \
+            _k3d-flags='{{ _k3d-flags }}' \
             k3d-create
     fi
     k3d kubeconfig merge {{ k3d-name }} \
@@ -255,6 +264,11 @@ linkerd-tag := `bin/root-tag`
 
 docker-arch := ''
 
+_pause-image := `yq .gateway.pauseImage multicluster/charts/linkerd-multicluster/values.yaml`
+
+_pause-load: _k3d-init
+    if [ -z "$(docker image ls -q '{{ _pause-image }}')" ]; then docker pull -q '{{ _pause-image }}'; fi
+    k3d image import --mode=direct --cluster='{{ k3d-name }}' {{ _pause-image }}
 
 ##
 ## Linkerd CLI
@@ -272,7 +286,8 @@ _linkerd := linkerd-exec + " " + _context
 
 controller-image := DOCKER_REGISTRY + "/controller"
 proxy-image := DOCKER_REGISTRY + "/proxy"
-proxy-init-image := "ghcr.io/linkerd/proxy-init"
+proxy-init-image := DOCKER_REGISTRY + "/proxy-init"
+orig-proxy-init-image := "ghcr.io/linkerd/proxy-init"
 policy-controller-image := DOCKER_REGISTRY + "/policy-controller"
 
 linkerd *flags:
@@ -303,32 +318,35 @@ linkerd-install *args='': linkerd-load linkerd-crds-install && _linkerd-ready
         | {{ _kubectl }} apply -f -
 
 # Wait for all test namespaces to be removed before uninstalling linkerd from the cluster.
-linkerd-uninstall: _linkerd-viz-uninit
+linkerd-uninstall:
     {{ _linkerd }} uninstall \
         | {{ _kubectl }} delete -f -
 
 linkerd-load: _linkerd-images _k3d-init
-    {{ _k3d-load }} \
+    for i in {1..3} ; do {{ _k3d-load }} \
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ policy-controller-image }}:{{ linkerd-tag }}' \
         '{{ proxy-image }}:{{ linkerd-tag }}' \
-        "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
+        "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" && exit ; sleep 1 ; done
 
 linkerd-build: _policy-controller-build
-    docker pull -q "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
     TAG={{ linkerd-tag }} bin/docker-build-controller
     TAG={{ linkerd-tag }} bin/docker-build-proxy
 
 _linkerd-images:
     #!/usr/bin/env bash
     set -xeuo pipefail
-    docker pull -q "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
+    docker pull -q "{{ orig-proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
+    docker tag \
+        "{{ orig-proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" \
+        "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
     for img in \
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ policy-controller-image }}:{{ linkerd-tag }}' \
         '{{ proxy-image }}:{{ linkerd-tag }}'
     do
         if [ -z $(docker image ls -q "$img") ]; then
+            # Build images if any one of the images is missing.
             exec {{ just_executable() }} \
                 controller-image='{{ controller-image }}' \
                 policy-controller-image='{{ policy-controller-image }}' \
@@ -363,6 +381,8 @@ _linkerd-init: && _linkerd-ready
             k3d-k8s='{{ k3d-k8s }}' \
             k3d-agents='{{ k3d-agents }}' \
             k3d-servers='{{ k3d-servers }}' \
+            k3d-network='{{ k3d-network }}' \
+            _k3d-flags='{{ _k3d-flags }}' \
             linkerd-tag='{{ linkerd-tag }}' \
             controller-image='{{ controller-image }}' \
             proxy-image='{{ proxy-image }}' \
@@ -393,14 +413,15 @@ linkerd-viz-uninstall:
 _linkerd-viz-images:
     #!/usr/bin/env bash
     set -euo pipefail
+    docker pull -q $(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
+        viz/charts/linkerd-viz/values.yaml)
     for img in \
         '{{ DOCKER_REGISTRY }}/metrics-api:{{ linkerd-tag }}' \
         '{{ DOCKER_REGISTRY }}/tap:{{ linkerd-tag }}' \
-        '{{ DOCKER_REGISTRY }}/web:{{ linkerd-tag }}' \
-        "$(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
-            viz/charts/linkerd-viz/values.yaml)"
+        '{{ DOCKER_REGISTRY }}/web:{{ linkerd-tag }}'
     do
         if [ -z $(docker image ls -q "$img") ]; then
+            echo "Missing image: $img" >&2
             exec {{ just_executable() }} \
                 linkerd-tag='{{ linkerd-tag }}' \
                 linkerd-viz-build
@@ -408,16 +429,14 @@ _linkerd-viz-images:
     done
 
 linkerd-viz-load: _linkerd-viz-images _k3d-init
-    {{ _k3d-load }} \
+    for i in {1..3} ; do {{ _k3d-load }} \
         {{ DOCKER_REGISTRY }}/metrics-api:{{ linkerd-tag }} \
         {{ DOCKER_REGISTRY }}/tap:{{ linkerd-tag }} \
         {{ DOCKER_REGISTRY }}/web:{{ linkerd-tag }} \
         "$(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
-                viz/charts/linkerd-viz/values.yaml)"
+                viz/charts/linkerd-viz/values.yaml)" && exit ; sleep 1 ; done
 
 linkerd-viz-build:
-    docker pull -q $(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
-        viz/charts/linkerd-viz/values.yaml)
     TAG={{ linkerd-tag }} bin/docker-build-metrics-api
     TAG={{ linkerd-tag }} bin/docker-build-tap
     TAG={{ linkerd-tag }} bin/docker-build-web
@@ -438,9 +457,72 @@ _linkerd-viz-uninit:
             linkerd-viz-uninstall
     fi
 
-
 # TODO linkerd-jaeger-install
-# TODO linkerd-multicluster-install
+
+##
+## linkerd multicluster
+## 
+
+_mc-target-k3d-flags := "--k3s-arg --disable='local-storage,metrics-server@server:*'"
+
+linkerd-mc-install: _linkerd-init
+    {{ _linkerd }} mc install --set='linkerdVersion={{ linkerd-tag }}' \
+        | {{ _kubectl }} apply -f -
+
+# Wait for all test namespaces to be removed before uninstalling linkerd-multicluster.
+linkerd-mc-uninstall:
+    {{ _linkerd }} mc uninstall \
+        | {{ _kubectl }} delete -f -
+
+mc-target-k3d-delete:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if k3d cluster list '{{ k3d-name }}-target' >/dev/null 2>/dev/null; then
+        {{ just_executable() }} \
+            k3d-name='{{ k3d-name }}-target' \
+            k3d-delete
+    fi
+
+_mc-load: _k3d-init linkerd-load linkerd-viz-load
+
+_mc-target-load:
+    @-{{ just_executable() }} \
+        k3d-name='{{ k3d-name }}-target' \
+        k3d-k8s='{{ k3d-k8s }}' \
+        k3d-agents='{{ k3d-agents }}' \
+        k3d-servers='{{ k3d-servers }}' \
+        k3d-network='{{ k3d-network }}' \
+        _k3d-flags='{{ _mc-target-k3d-flags }}' \
+        controller-image='{{ controller-image }}' \
+        proxy-image='{{ proxy-image }}' \
+        proxy-init-image='{{ proxy-init-image }}' \
+        linkerd-exec='{{ linkerd-exec }}' \
+        linkerd-tag='{{ linkerd-tag }}' \
+        _pause-load \
+        _mc-load
+
+# Run the multicluster tests with cluster setup
+#
+# The multicluster test does its own installation of control planes/etc, so
+# we don't do any setup beyond ensuring the cluster is present with images
+# loaded.
+mc-test: mc-test-load mc-test-run
+
+mc-test-build:
+    go build --mod=readonly \
+        ./test/integration/multicluster/...
+
+mc-test-load: _mc-load _mc-target-load
+
+# Run the multicluster tests without any setup
+mc-test-run:
+    LINKERD_DOCKER_REGISTRY='{{ DOCKER_REGISTRY }}' \
+        go test -test.timeout=20m --failfast --mod=readonly \
+            ./test/integration/multicluster/... \
+                -integration-tests \
+                -linkerd='{{ justfile_directory() }}/bin/linkerd' \
+                -multicluster-source-context='k3d-{{ k3d-name }}' \
+                -multicluster-target-context='k3d-{{ k3d-name }}-target'
 
 ##
 ## GitHub Actions
