@@ -264,8 +264,7 @@ linkerd-tag := `bin/root-tag`
 
 docker-arch := ''
 
-# TODO: read from multicluster values.yaml
-_pause-image := "gcr.io/google_containers/pause:3.2"
+_pause-image := `yq .gateway.pauseImage multicluster/charts/linkerd-multicluster/values.yaml`
 
 _pause-load: _k3d-init
     if [ -z "$(docker image ls -q '{{ _pause-image }}')" ]; then docker pull -q '{{ _pause-image }}'; fi
