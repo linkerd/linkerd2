@@ -291,6 +291,7 @@ jobs:
           files: |
             .github/workflows/integration.yml
             .proxy-version
+            justfile
             viz/**
             test/integration/viz/**
     outputs:
@@ -334,6 +335,7 @@ jobs:
           files: |
             .github/workflows/integration.yml
             .proxy-version
+            justfile
             multicluster/**
             test/integration/multicluster/**
     outputs:
