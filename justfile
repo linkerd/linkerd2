@@ -267,11 +267,11 @@ docker-arch := ''
 _pause-load: _k3d-init
     #!/usr/bin/env bash
     set -euo pipefail
-    pauseImage="$(yq .gateway.pauseImage multicluster/charts/linkerd-multicluster/values.yaml)"
-    if [ -z "$(docker image ls -q $pauseImage)" ]; then
-       docker pull -q "$pauseImage"
+    img="$(yq .gateway.pauseImage multicluster/charts/linkerd-multicluster/values.yaml)"
+    if [ -z "$(docker image ls -q "$img")" ]; then
+       docker pull -q "$img"
     fi
-    k3d image import --mode=direct --cluster='{{ k3d-name }}' "$pauseImage"
+    k3d image import --mode=direct --cluster='{{ k3d-name }}' "$img"
 
 ##
 ## Linkerd CLI
