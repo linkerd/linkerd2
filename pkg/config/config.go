@@ -3,7 +3,7 @@ package config
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -19,7 +19,7 @@ import (
 // Values returns the Value struct from the linkerd-config ConfigMap
 func Values(path string) (*l5dcharts.Values, error) {
 	p := filepath.Clean(path)
-	configYaml, err := ioutil.ReadFile(p)
+	configYaml, err := os.ReadFile(p)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}

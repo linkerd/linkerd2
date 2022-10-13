@@ -3,7 +3,6 @@ package profiles
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"path"
 	"sort"
@@ -29,7 +28,7 @@ func RenderOpenAPI(fileName, namespace, name, clusterDomain string, w io.Writer)
 		return err
 	}
 
-	bytes, err := ioutil.ReadAll(input)
+	bytes, err := io.ReadAll(input)
 	if err != nil {
 		return fmt.Errorf("Error reading file: %w", err)
 	}

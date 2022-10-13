@@ -3,7 +3,7 @@ package injector
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -45,7 +45,7 @@ func Inject(linkerdNamespace string) webhook.Handler {
 			return nil, err
 		}
 
-		caPEM, err := ioutil.ReadFile(pkgK8s.MountPathTrustRootsPEM)
+		caPEM, err := os.ReadFile(pkgK8s.MountPathTrustRootsPEM)
 		if err != nil {
 			return nil, err
 		}

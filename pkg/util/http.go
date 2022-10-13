@@ -3,7 +3,6 @@ package util
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
@@ -55,7 +54,7 @@ func ParseMethod(method string) *httpPb.HttpMethod {
 // reached, the full bytes are returned. If the limit is reached, an error is
 // returned.
 func ReadAllLimit(r io.Reader, limit int) ([]byte, error) {
-	bytes, err := ioutil.ReadAll(io.LimitReader(r, int64(limit)))
+	bytes, err := io.ReadAll(io.LimitReader(r, int64(limit)))
 	if err != nil {
 		return nil, err
 	}

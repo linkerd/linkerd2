@@ -3,9 +3,9 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/duration"
@@ -149,7 +149,7 @@ func busyTest(t *testing.T, output string) {
 		goldenFilePath = "testdata/tap_busy_output.golden"
 	}
 
-	goldenFileBytes, err := ioutil.ReadFile(goldenFilePath)
+	goldenFileBytes, err := os.ReadFile(goldenFilePath)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -207,7 +207,7 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		goldenFileBytes, err := ioutil.ReadFile("testdata/tap_empty_output.golden")
+		goldenFileBytes, err := os.ReadFile("testdata/tap_empty_output.golden")
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
