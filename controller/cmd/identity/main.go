@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/signal"
@@ -53,7 +52,7 @@ func Main(args []string) {
 
 	flags.ConfigureAndParse(cmd, args)
 
-	identityTrustAnchorPEM, err := ioutil.ReadFile(k8s.MountPathTrustRootsPEM)
+	identityTrustAnchorPEM, err := os.ReadFile(k8s.MountPathTrustRootsPEM)
 	if err != nil {
 		log.Fatalf("could not read identity trust anchors PEM: %s", err.Error())
 	}

@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -71,7 +72,7 @@ func TestHandleApiCheck(t *testing.T) {
 	h.handleAPICheck(w, req, httprouter.Params{})
 	resp := w.Result()
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatalf("not expecting error reading response body but got: %v", err)
 	}
@@ -83,7 +84,7 @@ func TestHandleApiCheck(t *testing.T) {
 	if diff := deep.Equal(resp.Header, expectedHeaders); diff != nil {
 		t.Errorf("Unexpected header: %v", diff)
 	}
-	apiCheckOutputGolden, err := ioutil.ReadFile("testdata/api_check_output.json")
+	apiCheckOutputGolden, err := os.ReadFile("testdata/api_check_output.json")
 	if err != nil {
 		t.Fatalf("not expecting error reading api check output golden file but got: %v", err)
 	}
@@ -129,7 +130,7 @@ func TestHandleApiGateway(t *testing.T) {
 		handler.handleAPIGateways(recorder, req, httprouter.Params{})
 		resp := recorder.Result()
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatalf("not expecting error reading response body but got: %v", err)
 		}
@@ -146,7 +147,7 @@ func TestHandleApiGateway(t *testing.T) {
 			t.Errorf("Unexpected header: %v", diff)
 		}
 
-		apiGatewayOutputGolden, err := ioutil.ReadFile("testdata/api_gateway_output.json")
+		apiGatewayOutputGolden, err := os.ReadFile("testdata/api_gateway_output.json")
 		if err != nil {
 			t.Fatalf("not expecting error reading api check output golden file but got: %v", err)
 		}
@@ -171,7 +172,7 @@ func TestHandleApiGateway(t *testing.T) {
 		handler.handleAPIGateways(recorder, req, httprouter.Params{})
 		resp := recorder.Result()
 		defer resp.Body.Close()
-		_, err := ioutil.ReadAll(resp.Body)
+		_, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatalf("not expecting error reading response body but got: %v", err)
 		}

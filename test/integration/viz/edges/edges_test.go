@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
@@ -108,7 +107,7 @@ func TestDirectEdges(t *testing.T) {
 		}
 		ip = strings.Trim(ip, "\"") // strip quotes
 
-		b, err := ioutil.ReadFile("testdata/slow-cooker.yaml")
+		b, err := os.ReadFile("testdata/slow-cooker.yaml")
 		if err != nil {
 			testutil.AnnotatedError(t, "error reading file slow-cooker.yaml", err)
 		}

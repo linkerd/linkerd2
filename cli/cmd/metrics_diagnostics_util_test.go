@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"testing"
 
@@ -84,7 +84,7 @@ func Test_obfuscateMetrics(t *testing.T) {
 				t.Errorf("error opening test input file: %v\n", err)
 			}
 
-			fileBytes, err := ioutil.ReadAll(file)
+			fileBytes, err := io.ReadAll(file)
 			if err != nil {
 				t.Errorf("error reading test input file: %v\n", err)
 			}
