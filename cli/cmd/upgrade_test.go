@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -462,15 +461,15 @@ func generateCerts(t *testing.T, name string, b64encode bool) issuerCerts {
 	keyPem := strings.TrimSpace(issuer.Cred.EncodePrivateKeyPEM())
 	crtPem := strings.TrimSpace(issuer.Cred.EncodeCertificatePEM())
 
-	caFile, err := ioutil.TempFile("", "ca.*.pem")
+	caFile, err := os.CreateTemp("", "ca.*.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
-	crtFile, err := ioutil.TempFile("", "crt.*.pem")
+	crtFile, err := os.CreateTemp("", "crt.*.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
-	keyFile, err := ioutil.TempFile("", "key.*.pem")
+	keyFile, err := os.CreateTemp("", "key.*.pem")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -153,7 +153,7 @@
         "tableColumn": "",
         "targets": [
           {
-            "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[30s])) / sum(irate(response_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[30s]))",
+            "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[$__rate_interval])) / sum(irate(response_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[$__rate_interval]))",
             "format": "time_series",
             "instant": false,
             "intervalFactor": 1,
@@ -238,7 +238,7 @@
         "tableColumn": "",
         "targets": [
           {
-            "expr": "sum(irate(request_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[30s]))",
+            "expr": "sum(irate(request_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[$__rate_interval]))",
             "format": "time_series",
             "instant": false,
             "intervalFactor": 1,
@@ -481,7 +481,7 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[30s])) by (replicaset) / sum(irate(response_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[30s])) by (replicaset)",
+            "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[$__rate_interval])) by (replicaset) / sum(irate(response_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[$__rate_interval])) by (replicaset)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "rs/{{replicaset}}",
@@ -568,14 +568,14 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(request_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\", tls=\"true\"}[30s])) by (replicaset)",
+            "expr": "sum(irate(request_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\", tls=\"true\"}[$__rate_interval])) by (replicaset)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "🔒rs/{{replicaset}}",
             "refId": "A"
           },
           {
-            "expr": "sum(irate(request_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\", tls!=\"true\"}[30s])) by (replicaset)",
+            "expr": "sum(irate(request_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\", tls!=\"true\"}[$__rate_interval])) by (replicaset)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "rs/{{replicaset}}",
@@ -662,14 +662,14 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[30s])) by (le, replicaset))",
+            "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[$__rate_interval])) by (le, replicaset))",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "p50 rs/{{replicaset}}",
             "refId": "A"
           },
           {
-            "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[30s])) by (le, replicaset))",
+            "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[$__rate_interval])) by (le, replicaset))",
             "format": "time_series",
             "hide": false,
             "intervalFactor": 1,
@@ -677,7 +677,7 @@
             "refId": "B"
           },
           {
-            "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[30s])) by (le, replicaset))",
+            "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"inbound\"}[$__rate_interval])) by (le, replicaset))",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "p99 rs/{{replicaset}}",
@@ -1093,7 +1093,7 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(response_total{classification=\"success\", replicaset!=\"\", replicaset=\"$inbound\", dst_namespace=\"$namespace\", dst_replicaset=\"$replicaset\", direction=\"outbound\"}[30s])) by (replicaset, pod) / sum(irate(response_total{replicaset!=\"\", replicaset=\"$inbound\", dst_namespace=\"$namespace\", dst_replicaset=\"$replicaset\", direction=\"outbound\"}[30s])) by (replicaset, pod)",
+            "expr": "sum(irate(response_total{classification=\"success\", replicaset!=\"\", replicaset=\"$inbound\", dst_namespace=\"$namespace\", dst_replicaset=\"$replicaset\", direction=\"outbound\"}[$__rate_interval])) by (replicaset, pod) / sum(irate(response_total{replicaset!=\"\", replicaset=\"$inbound\", dst_namespace=\"$namespace\", dst_replicaset=\"$replicaset\", direction=\"outbound\"}[$__rate_interval])) by (replicaset, pod)",
             "format": "time_series",
             "instant": false,
             "intervalFactor": 1,
@@ -1188,14 +1188,14 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(request_total{replicaset!=\"\", replicaset=\"$inbound\", dst_namespace=\"$namespace\", dst_replicaset=\"$replicaset\", direction=\"outbound\", tls=\"true\"}[30s])) by (replicaset, pod)",
+            "expr": "sum(irate(request_total{replicaset!=\"\", replicaset=\"$inbound\", dst_namespace=\"$namespace\", dst_replicaset=\"$replicaset\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (replicaset, pod)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "🔒po/{{pod}}",
             "refId": "A"
           },
           {
-            "expr": "sum(irate(request_total{replicaset!=\"\", replicaset=\"$inbound\", dst_namespace=\"$namespace\", dst_replicaset=\"$replicaset\", direction=\"outbound\", tls!=\"true\"}[30s])) by (replicaset, pod)",
+            "expr": "sum(irate(request_total{replicaset!=\"\", replicaset=\"$inbound\", dst_namespace=\"$namespace\", dst_replicaset=\"$replicaset\", direction=\"outbound\", tls!=\"true\"}[$__rate_interval])) by (replicaset, pod)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "po/{{pod}}",
@@ -1289,21 +1289,21 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{replicaset!=\"\", replicaset=\"$inbound\", dst_namespace=\"$namespace\", dst_replicaset=\"$replicaset\", direction=\"outbound\"}[30s])) by (le, replicaset))",
+            "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{replicaset!=\"\", replicaset=\"$inbound\", dst_namespace=\"$namespace\", dst_replicaset=\"$replicaset\", direction=\"outbound\"}[$__rate_interval])) by (le, replicaset))",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "P50 rs/{{replicaset}}",
             "refId": "A"
           },
           {
-            "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{replicaset!=\"\", replicaset=\"$inbound\", dst_namespace=\"$namespace\", dst_replicaset=\"$replicaset\", direction=\"outbound\"}[30s])) by (le, replicaset))",
+            "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{replicaset!=\"\", replicaset=\"$inbound\", dst_namespace=\"$namespace\", dst_replicaset=\"$replicaset\", direction=\"outbound\"}[$__rate_interval])) by (le, replicaset))",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "P95 rs/{{replicaset}}",
             "refId": "B"
           },
           {
-            "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{replicaset!=\"\", replicaset=\"$inbound\", dst_namespace=\"$namespace\", dst_replicaset=\"$replicaset\", direction=\"outbound\"}[30s])) by (le, replicaset))",
+            "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{replicaset!=\"\", replicaset=\"$inbound\", dst_namespace=\"$namespace\", dst_replicaset=\"$replicaset\", direction=\"outbound\"}[$__rate_interval])) by (le, replicaset))",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "P99 rs/{{replicaset}}",
@@ -1419,7 +1419,7 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"outbound\"}[30s])) by (dst_replicaset) / sum(irate(response_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"outbound\"}[30s])) by (dst_replicaset)",
+            "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"outbound\"}[$__rate_interval])) by (dst_replicaset) / sum(irate(response_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"outbound\"}[$__rate_interval])) by (dst_replicaset)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "rs/{{dst_replicaset}}",
@@ -1506,14 +1506,14 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "sum(irate(request_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_replicaset)",
+            "expr": "sum(irate(request_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (dst_replicaset)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "🔒rs/{{dst_replicaset}}",
             "refId": "A"
           },
           {
-            "expr": "sum(irate(request_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_replicaset)",
+            "expr": "sum(irate(request_total{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"outbound\", tls!=\"true\"}[$__rate_interval])) by (dst_replicaset)",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "rs/{{dst_replicaset}}",
@@ -1599,7 +1599,7 @@
         "steppedLine": false,
         "targets": [
           {
-            "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"outbound\"}[30s])) by (le, dst_replicaset))",
+            "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replicaset=\"$replicaset\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_replicaset))",
             "format": "time_series",
             "intervalFactor": 1,
             "legendFormat": "P95 rs/{{dst_replicaset}}",
@@ -1989,7 +1989,7 @@
             "steppedLine": false,
             "targets": [
               {
-                "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replicaset=\"$replicaset\", dst_replicaset=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_replicaset) / sum(irate(response_total{namespace=\"$namespace\", replicaset=\"$replicaset\", dst_replicaset=\"$outbound\", direction=\"outbound\"}[30s])) by (dst_replicaset)",
+                "expr": "sum(irate(response_total{classification=\"success\", namespace=\"$namespace\", replicaset=\"$replicaset\", dst_replicaset=\"$outbound\", direction=\"outbound\"}[$__rate_interval])) by (dst_replicaset) / sum(irate(response_total{namespace=\"$namespace\", replicaset=\"$replicaset\", dst_replicaset=\"$outbound\", direction=\"outbound\"}[$__rate_interval])) by (dst_replicaset)",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "rs/{{dst_replicaset}}",
@@ -2076,14 +2076,14 @@
             "steppedLine": false,
             "targets": [
               {
-                "expr": "sum(irate(request_total{namespace=\"$namespace\", replicaset=\"$replicaset\", dst_replicaset=\"$outbound\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_replicaset)",
+                "expr": "sum(irate(request_total{namespace=\"$namespace\", replicaset=\"$replicaset\", dst_replicaset=\"$outbound\", direction=\"outbound\", tls=\"true\"}[$__rate_interval])) by (dst_replicaset)",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "🔒rs/{{dst_replicaset}}",
                 "refId": "A"
               },
               {
-                "expr": "sum(irate(request_total{namespace=\"$namespace\", replicaset=\"$replicaset\", dst_replicaset=\"$outbound\", direction=\"outbound\", tls!=\"true\"}[30s])) by (dst_replicaset)",
+                "expr": "sum(irate(request_total{namespace=\"$namespace\", replicaset=\"$replicaset\", dst_replicaset=\"$outbound\", direction=\"outbound\", tls!=\"true\"}[$__rate_interval])) by (dst_replicaset)",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "rs/{{dst_replicaset}}",
@@ -2169,21 +2169,21 @@
             "steppedLine": false,
             "targets": [
               {
-                "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replicaset=\"$replicaset\", dst_replicaset=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_replicaset))",
+                "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replicaset=\"$replicaset\", dst_replicaset=\"$outbound\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_replicaset))",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "P50 rs/{{dst_replicaset}}",
                 "refId": "A"
               },
               {
-                "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replicaset=\"$replicaset\", dst_replicaset=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_replicaset))",
+                "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replicaset=\"$replicaset\", dst_replicaset=\"$outbound\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_replicaset))",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "P95 rs/{{dst_replicaset}}",
                 "refId": "B"
               },
               {
-                "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replicaset=\"$replicaset\", dst_replicaset=\"$outbound\", direction=\"outbound\"}[30s])) by (le, dst_replicaset))",
+                "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", replicaset=\"$replicaset\", dst_replicaset=\"$outbound\", direction=\"outbound\"}[$__rate_interval])) by (le, dst_replicaset))",
                 "format": "time_series",
                 "intervalFactor": 1,
                 "legendFormat": "P99 rs/{{dst_replicaset}}",

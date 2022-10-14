@@ -124,5 +124,6 @@ spec:
         {{- include "partials.resources" .Values.dashboard.resources | nindent 8 }}
         {{- end }}
         securityContext:
+          readOnlyRootFilesystem: true
           runAsUser: {{.Values.dashboard.UID | default .Values.defaultUID}}
       serviceAccountName: web

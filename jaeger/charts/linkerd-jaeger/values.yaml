@@ -4,6 +4,9 @@ linkerdNamespace: linkerd
 # -- Labels to apply to all resources
 commonLabels: {}
 
+# -- Docker imagePullPolicy for all jaeger components
+imagePullPolicy: IfNotPresent
+
 # -- Default nodeSelector section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
 nodeSelector: &default_node_selector
@@ -142,6 +145,18 @@ jaeger:
   UID:
 
 linkerdVersion: &linkerd_version linkerdVersionValue
+
+namespaceMetadata:
+  image:
+    # -- Docker registry for the namespace-metadata instance
+    registry: curlimages
+    # -- Docker image name for the namespace-metadata instance
+    name: curl
+    # -- Docker image tag for the namespace-metadata instance
+    tag: 7.78.0
+    # -- Pull policy for the namespace-metadata instance
+    # @default -- imagePullPolicy
+    pullPolicy: ""
 
 webhook:
   # -- Do not create a secret resource for the webhook.

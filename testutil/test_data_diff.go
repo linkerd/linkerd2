@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -83,7 +82,7 @@ func ReadTestdata(fileName string) string {
 		panic(fmt.Sprintf("Failed to open expected output file: %v", err))
 	}
 
-	fixture, err := ioutil.ReadAll(file)
+	fixture, err := io.ReadAll(file)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to read expected output file: %v", err))
 	}
@@ -110,14 +109,14 @@ func unmarshalYAML(data []byte) ([]interface{}, error) {
 
 func writeTestdata(fileName string, data []byte) {
 	p := filepath.Join("testdata", fileName)
-	if err := ioutil.WriteFile(p, data, 0600); err != nil {
+	if err := os.WriteFile(p, data, 0600); err != nil {
 		panic(err)
 	}
 }
 
 func writeRejects(origFileName string, data []byte, rejectPath string) {
 	p := filepath.Join(rejectPath, origFileName+".rej")
-	if err := ioutil.WriteFile(p, data, 0600); err != nil {
+	if err := os.WriteFile(p, data, 0600); err != nil {
 		panic(err)
 	}
 }

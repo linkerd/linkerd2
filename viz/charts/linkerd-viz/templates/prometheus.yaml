@@ -267,6 +267,7 @@ spec:
         {{- include "partials.resources" .Values.prometheus.resources | nindent 8 }}
         {{- end }}
         securityContext:
+          readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 65534
           runAsGroup: 65534

@@ -108,5 +108,6 @@ spec:
         {{- include "partials.resources" .Values.metricsAPI.resources | nindent 8 }}
         {{- end }}
         securityContext:
+          readOnlyRootFilesystem: true
           runAsUser: {{.Values.metricsAPI.UID | default .Values.defaultUID}}
       serviceAccountName: metrics-api

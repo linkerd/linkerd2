@@ -7,7 +7,6 @@ import (
 	"crypto/x509/pkix"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -116,7 +115,7 @@ func generateAndStoreKey(p string) (key *ecdsa.PrivateKey, err error) {
 	}
 
 	pemb := tls.EncodePrivateKeyP8(key)
-	err = ioutil.WriteFile(p, pemb, 0600)
+	err = os.WriteFile(p, pemb, 0600)
 	return
 }
 
@@ -138,7 +137,7 @@ func generateAndStoreCSR(p, id string, key *ecdsa.PrivateKey) ([]byte, error) {
 		return nil, fmt.Errorf("failed to create CSR: %w", err)
 	}
 
-	if err = ioutil.WriteFile(p, csrb, 0600); err != nil {
+	if err = os.WriteFile(p, csrb, 0600); err != nil {
 		return nil, fmt.Errorf("failed to write CSR: %w", err)
 	}
 

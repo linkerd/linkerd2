@@ -36,7 +36,7 @@ jobs:
     permissions:
       actions: write
     steps:
-      - uses: styfle/cancel-workflow-action@bb6001c4ea612bf59c3abfc4756fbceee4f870c7
+      - uses: styfle/cancel-workflow-action@b173b6ec0100793626c2d9e6b90435061f4fc3e5
         with:
           all_but_latest: true
           access_token: ${{ github.token }}
@@ -45,7 +45,7 @@ jobs:
     needs: [cleanup]
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - run: echo "::set-output name=tag::$(CI_FORCE_CLEAN=1 bin/root-tag)"
         id: tag
     outputs:
@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -94,7 +94,7 @@ jobs:
           - proxy
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -124,8 +124,8 @@ jobs:
     steps:
       - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
         with:
-          go-version: '1.17'
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+          go-version: '1.18'
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
           name: image-archives
@@ -146,8 +146,8 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - uses: tj-actions/changed-files@f7a56405a89ea095c6230f10e7f1c49daab13b35
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
+      - uses: tj-actions/changed-files@8de562e9316b23c4473ad852e5fd4f7f2bac7bc8
         id: changed
         with:
           files: |
@@ -171,11 +171,11 @@ jobs:
       matrix:
         k8s:
           - v1.21
-          - v1.24
+          - v1.25
     steps:
       - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
       - uses: olix0r/cargo-action-fmt@ed3530f0739c46ffa0dd983f8746b8c4a3d0a01c
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
           name: image-archives
@@ -225,7 +225,7 @@ jobs:
           - web
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -254,7 +254,6 @@ jobs:
           - rsa-ca
           # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
           #- helm-upgrade
-          - multicluster
           - uninstall
           - upgrade-edge
           - upgrade-stable
@@ -264,8 +263,8 @@ jobs:
     steps:
       - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
         with:
-          go-version: '1.17'
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+          go-version: '1.18'
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
           name: image-archives
@@ -285,14 +284,16 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - uses: tj-actions/changed-files@f7a56405a89ea095c6230f10e7f1c49daab13b35
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
+      - uses: tj-actions/changed-files@8de562e9316b23c4473ad852e5fd4f7f2bac7bc8
         id: changed
         with:
           files: |
             .github/workflows/integration.yml
             .proxy-version
+            justfile
             viz/**
+            test/integration/viz/**
     outputs:
       modified: ${{ steps.changed.outputs.any_modified }}
 
@@ -305,8 +306,8 @@ jobs:
     steps:
       - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
         with:
-          go-version: '1.17'
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+          go-version: '1.18'
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
           name: image-archives
@@ -316,4 +317,71 @@ jobs:
       - run: bin/tests --images archive --cleanup-docker --name viz "$HOME/linkerd"
         env:
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+
+  ##
+  ## Multicluster: Run 'multicluster' suite only when the 'multicluster' extension is updated.
+  ##               Tests are run on min and max k8s versions
+  ##
+
+  changed-multicluster:
+    needs: [cleanup]
+    runs-on: ubuntu-20.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: tj-actions/changed-files@8de562e9316b23c4473ad852e5fd4f7f2bac7bc8
+        id: changed
+        with:
+          files: |
+            .github/workflows/integration.yml
+            .proxy-version
+            justfile
+            multicluster/**
+            test/integration/multicluster/**
+    outputs:
+      modified: ${{ steps.changed.outputs.any_modified }}
+
+  test-multicluster:
+    needs: [tag, changed-multicluster, build-cli, build-core, build-ext]
+    if: needs.changed-multicluster.outputs.modified == 'true'
+    runs-on: ubuntu-20.04
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        k8s:
+          - v1.21
+          - v1.25
+    steps:
+      - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
+      - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
+        with:
+          go-version: '1.18'
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
+        with:
+          name: image-archives
+          path: image-archives
+      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
+      - run: ls -l image-archives/linkerd
+      - name: Setup deps
+        run: |
+          echo "PATH=$PATH" >> "$GITHUB_ENV"
+          bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
+      - name: Load docker images
+        run: |
+          for img in controller policy-controller proxy web metrics-api tap jaeger-webhook; do
+            docker load <"image-archives/${img}.tar"
+          done
+      - run: docker image ls
+      - run: just mc-test-build
+      - name: Run just mc-test-load
+        run: |
+          just linkerd-tag='${{ needs.tag.outputs.tag }}' \
+              k3d-k8s='${{ matrix.k8s }}' \
+              mc-test-load
+      - name: Run just mc-test-run
+        run: |
+          just linkerd-tag='${{ needs.tag.outputs.tag }}' \
+              k3d-k8s='${{ matrix.k8s }}' \
+              mc-test-run
 

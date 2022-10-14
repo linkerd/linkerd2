@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -33,7 +33,7 @@ func TestCheckStatus(t *testing.T) {
 		output := bytes.NewBufferString("")
 		healthcheck.RunChecks(output, stderr, hc, tableOutput)
 
-		goldenFileBytes, err := ioutil.ReadFile("testdata/check_output.golden")
+		goldenFileBytes, err := os.ReadFile("testdata/check_output.golden")
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -67,7 +67,7 @@ func TestCheckStatus(t *testing.T) {
 		output := bytes.NewBufferString("")
 		healthcheck.RunChecks(output, stderr, hc, jsonOutput)
 
-		goldenFileBytes, err := ioutil.ReadFile("testdata/check_output_json.golden")
+		goldenFileBytes, err := os.ReadFile("testdata/check_output_json.golden")
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}

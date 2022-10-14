@@ -9,7 +9,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -656,7 +655,7 @@ func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 		}
 
 		defer resp.Body.Close()
-		bytes, err := ioutil.ReadAll(resp.Body)
+		bytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return fmt.Errorf("Error reading response body: %w", err)
 		}
@@ -728,7 +727,7 @@ func (h *TestHelper) DownloadCLIBinary(filepath, version string) error {
 
 // ReadFile reads a file from disk and returns the contents as a string.
 func ReadFile(file string) (string, error) {
-	b, err := ioutil.ReadFile(file)
+	b, err := os.ReadFile(file)
 	if err != nil {
 		return "", err
 	}

@@ -1,7 +1,7 @@
 package fake
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -31,7 +31,7 @@ func NewFactory(rootDir string) *Factory {
 // bytes. If the file doesn't exist in the 'fake/data' folder, an error will be
 // returned.
 func (f *Factory) FileContents(filename string) ([]byte, error) {
-	return ioutil.ReadFile(filepath.Join(f.rootDir, filename))
+	return os.ReadFile(filepath.Join(f.rootDir, filename))
 }
 
 // AdmissionReview returns the content of the specified file as an
@@ -40,7 +40,7 @@ func (f *Factory) FileContents(filename string) ([]byte, error) {
 // ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into AdmissionReview type
 func (f *Factory) AdmissionReview(filename string) (*admissionv1beta1.AdmissionReview, error) {
-	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
+	b, err := os.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (f *Factory) AdmissionReview(filename string) (*admissionv1beta1.AdmissionR
 // ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into Deployment type
 func (f *Factory) Deployment(filename string) (*appsv1.Deployment, error) {
-	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
+	b, err := os.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (f *Factory) Deployment(filename string) (*appsv1.Deployment, error) {
 // ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into Container type
 func (f *Factory) Container(filename string) (*corev1.Container, error) {
-	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
+	b, err := os.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (f *Factory) Container(filename string) (*corev1.Container, error) {
 // ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into ConfigMap type
 func (f *Factory) ConfigMap(filename string) (*corev1.ConfigMap, error) {
-	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
+	b, err := os.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (f *Factory) ConfigMap(filename string) (*corev1.ConfigMap, error) {
 // ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into Namespace type
 func (f *Factory) Namespace(filename string) (*corev1.Namespace, error) {
-	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
+	b, err := os.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +134,7 @@ func (f *Factory) Namespace(filename string) (*corev1.Namespace, error) {
 // ii. the file content isn't a valid YAML structure that can be unmarshalled
 // into Volume type
 func (f *Factory) Volume(filename string) (*corev1.Volume, error) {
-	b, err := ioutil.ReadFile(filepath.Join(f.rootDir, filename))
+	b, err := os.ReadFile(filepath.Join(f.rootDir, filename))
 	if err != nil {
 		return nil, err
 	}

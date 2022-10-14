@@ -205,8 +205,10 @@ spec:
       {{- $_ := set $tree.Values.proxy "defaultInboundPolicy" "all-unauthenticated" }}
       {{- $_ := set $tree.Values.proxy "requireTLSOnInboundPorts" "8080" }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{ if not .Values.cniEnabled -}}
       initContainers:
+      {{ if .Values.cniEnabled -}}
+      - {{- include "partials.noop" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ else -}}
       {{- /*
         The identity controller needs to connect to the Kubernetes API before the proxy is able to
         proxy requests, so we always skip these connections. The identity controller makes no other

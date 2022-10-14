@@ -3,7 +3,7 @@
 The Linkerd-Multicluster extension contains resources to support multicluster
 linking to remote clusters
 
-![Version: 30.2.3](https://img.shields.io/badge/Version-30.2.3-informational?style=flat-square)
+![Version: 30.3.1-edge](https://img.shields.io/badge/Version-30.3.1--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -77,6 +77,7 @@ Kubernetes: `>=1.21.0-0`
 | gateway.enabled | bool | `true` | If the gateway component should be installed |
 | gateway.loadBalancerIP | string | `""` | Set loadBalancerIP on gateway service |
 | gateway.name | string | `"linkerd-gateway"` | The name of the gateway that will be installed |
+| gateway.pauseImage | string | `"gcr.io/google_containers/pause:3.2"` | The pause container to use |
 | gateway.port | int | `4143` | The port on which all the gateway will accept incoming traffic |
 | gateway.probe.path | string | `"/ready"` | The path that will be used by remote clusters for determining whether the gateway is alive |
 | gateway.probe.port | int | `4191` | The port used for liveliness probing |
@@ -85,8 +86,13 @@ Kubernetes: `>=1.21.0-0`
 | gateway.serviceAnnotations | object | `{}` | Annotations to add to the gateway service |
 | gateway.serviceType | string | `"LoadBalancer"` | Service Type of gateway Service |
 | identityTrustDomain | string | `"cluster.local"` | Identity Trust Domain of the certificate authority |
+| imagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all multicluster components |
 | linkerdNamespace | string | `"linkerd"` | Namespace of linkerd installation |
 | linkerdVersion | string | `"linkerdVersionValue"` | Control plane version |
+| namespaceMetadata.image.name | string | `"curl"` | Docker image name for the namespace-metadata instance |
+| namespaceMetadata.image.pullPolicy | string | imagePullPolicy | Pull policy for the namespace-metadata instance |
+| namespaceMetadata.image.registry | string | `"curlimages"` | Docker registry for the namespace-metadata instance |
+| namespaceMetadata.image.tag | string | `"7.78.0"` | Docker image tag for the namespace-metadata instance |
 | proxyOutboundPort | int | `4140` | The port on which the proxy accepts outbound traffic |
 | remoteMirrorServiceAccount | bool | `true` | If the remote mirror service account should be installed |
 | remoteMirrorServiceAccountName | string | `"linkerd-service-mirror-remote-access-default"` | The name of the service account used to allow remote clusters to mirror local services |

@@ -242,7 +242,7 @@ rules:
   resources: ["serviceprofiles"]
   verbs: ["list"]
 - apiGroups: [""]
-  resources: ["nodes", "pods"]
+  resources: ["nodes", "pods", "services"]
   verbs: ["list"]
 - apiGroups: ["apiregistration.k8s.io"]
   resources: ["apiservices"]
@@ -462,7 +462,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - -controller-namespace=linkerd
@@ -491,6 +491,7 @@ spec:
             port: 9995
         resources:
         securityContext:
+          readOnlyRootFilesystem: true
           runAsUser: 2103
       serviceAccountName: metrics-api
 ---
@@ -612,7 +613,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - api
@@ -643,6 +644,7 @@ spec:
             port: 9998
         resources:
         securityContext:
+          readOnlyRootFilesystem: true
           runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
@@ -809,7 +811,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - injector
@@ -837,6 +839,7 @@ spec:
             port: 9995
         resources:
         securityContext:
+          readOnlyRootFilesystem: true
           runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
@@ -995,6 +998,7 @@ spec:
             port: 9994
         resources:
         securityContext:
+          readOnlyRootFilesystem: true
           runAsUser: 2103
       serviceAccountName: web
 ---

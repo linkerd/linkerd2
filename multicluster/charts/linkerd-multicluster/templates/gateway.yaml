@@ -44,7 +44,7 @@ spec:
       {{- include "linkerd.affinity" $tree | nindent 6 }}
       containers:
         - name: pause
-          image: gcr.io/google_containers/pause:3.2
+          image: {{ .Values.gateway.pauseImage }}
           securityContext:
             runAsUser: {{.Values.gateway.UID}}
       serviceAccountName: {{.Values.gateway.name}}

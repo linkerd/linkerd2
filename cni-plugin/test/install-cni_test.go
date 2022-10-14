@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/user"
@@ -58,7 +57,7 @@ func setEnv(key, value string, t *testing.T) {
 }
 
 func mktemp(dir, prefix string, t *testing.T) string {
-	tempDir, err := ioutil.TempDir(dir, prefix)
+	tempDir, err := os.MkdirTemp(dir, prefix)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "couldn't get current working directory",
 			"couldn't get current working directory: %v", err)
@@ -77,7 +76,7 @@ func pwd(t *testing.T) string {
 }
 
 func ls(dir string, t *testing.T) []string {
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to list files",
 			"failed to list files: %v", err)
@@ -90,12 +89,12 @@ func ls(dir string, t *testing.T) []string {
 }
 
 func cp(src, dest string, t *testing.T) {
-	data, err := ioutil.ReadFile(src)
+	data, err := os.ReadFile(src)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to read file %v", src),
 			"failed to read file %v: %v", src, err)
 	}
-	if err = ioutil.WriteFile(dest, data, 0600); err != nil {
+	if err = os.WriteFile(dest, data, 0600); err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to write file %v", dest),
 			"failed to write file %v: %v", dest, err)
 	}
@@ -106,6 +105,28 @@ func rm(dir string, t *testing.T) {
 	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to remove dir %v", dir),
 			"failed to remove dir %v: %v", dir, err)
+	}
+}
+
+// Checks that only a single configuration file that CNI will look for exists. CNI will look
+// for any filename ending in `.conf` or `.conflist` and pick the first in lexicographic order.
+func checkOnlyOneConfFileExists(t *testing.T, directory string) {
+	filenames := ls(directory, t)
+	possibleConfigFiles := []string{}
+
+	for _, filename := range filenames {
+		if strings.HasSuffix(filename, ".conf") || strings.HasSuffix(filename, ".conflist") {
+			possibleConfigFiles = append(possibleConfigFiles, filename)
+		}
+	}
+
+	if len(possibleConfigFiles) == 0 {
+		t.Log("FAIL: no files found ending with .conf or .conflist in the CNI configuration directory")
+		// TODO(stevej): testutil.AnnotatedFatal does not result in a Failed test
+		t.Fail()
+	} else if len(possibleConfigFiles) > 1 {
+		t.Logf("FAIL: CNI configuration conflict: multiple files found ending with .conf or .conflist %v", possibleConfigFiles)
+		t.Fail()
 	}
 }
 
@@ -170,7 +191,7 @@ func startDocker(testNum int, wd string, testWorkRootDir string, tempCNINetDir s
 
 	containerID, err := cmd.Output()
 	if err != nil {
-		errFileContents, _ := ioutil.ReadFile(errFileName)
+		errFileContents, _ := os.ReadFile(errFileName)
 		t.Logf("%v contents:\n\n%v\n\n", errFileName, string(errFileContents))
 		testutil.Fatalf(t,
 			"test %v ERROR: failed to start docker container '%v', see %v", testNum, dockerImage, errFileName)
@@ -192,13 +213,13 @@ func docker(cmd, containerID string, t *testing.T) {
 // compareConfResult does a string compare of 2 test files.
 func compareConfResult(testWorkRootDir string, tempCNINetDir string, result string, expected string, t *testing.T) {
 	tempResult := tempCNINetDir + "/" + result
-	resultFile, err := ioutil.ReadFile(tempResult)
+	resultFile, err := os.ReadFile(tempResult)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to read file",
 			"failed to read file %v: %v", tempResult, err)
 	}
 
-	expectedFile, err := ioutil.ReadFile(expected)
+	expectedFile, err := os.ReadFile(expected)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to read file %v", expected),
 			"failed to read file %v, err: %v", expected, err)
@@ -243,7 +264,7 @@ func doTest(testNum int, wd string, initialNetConfFile string, finalNetConfFile 
 	if initialNetConfFile != "NONE" {
 		setEnv(cniConfName, initialNetConfFile, t)
 	}
-	defaultData, err := ioutil.ReadFile(wd + "../deployment/linkerd-cni.conf.default")
+	defaultData, err := os.ReadFile(wd + "../deployment/linkerd-cni.conf.default")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to read file linkerd-cni.conf.default",
 			"failed to read file %v, err: %v", wd+"../deployment/linkerd-cni.conf.default", err)
@@ -255,6 +276,7 @@ func doTest(testNum int, wd string, initialNetConfFile string, finalNetConfFile 
 
 	compareConfResult(testWorkRootDir, tempCNINetDir, finalNetConfFile, expectNetConfFile, t)
 	checkBinDir(t, tempCNIBinDir, "add", "linkerd-cni")
+	checkOnlyOneConfFileExists(t, tempCNINetDir)
 
 	docker("stop", containerID, t)
 	time.Sleep(5 * time.Second)
