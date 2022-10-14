@@ -5,8 +5,8 @@ on:
     paths:
       - .github/workflows/integration.yml
       - .proxy-version
-      - '**/*.go'
-      - '**/Dockerfile*'
+      - "**/*.go"
+      - "**/Dockerfile*"
       - Cargo.lock
       - charts/**
       - go.sum
@@ -15,7 +15,7 @@ on:
       - policy-controller/**
       - policy-test/**
       - viz/**
-      - '!.devcontainer/**'
+      - "!.devcontainer/**"
 
 permissions:
   contents: read
@@ -124,7 +124,7 @@ jobs:
     steps:
       - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
         with:
-          go-version: '1.18'
+          go-version: "1.18"
       - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
@@ -155,7 +155,7 @@ jobs:
             .proxy-version
             Cargo.lock
             charts/linkerd-control-plane/**
-            charts/linkerd-crds/templates/policy/**
+            charts/linkerd-crds/crds/*
             justfile
             policy-controller/**
             policy-test/**
@@ -263,7 +263,7 @@ jobs:
     steps:
       - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
         with:
-          go-version: '1.18'
+          go-version: "1.18"
       - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
@@ -306,7 +306,7 @@ jobs:
     steps:
       - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
         with:
-          go-version: '1.18'
+          go-version: "1.18"
       - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
@@ -355,7 +355,7 @@ jobs:
       - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
       - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
         with:
-          go-version: '1.18'
+          go-version: "1.18"
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
         with:
@@ -384,4 +384,3 @@ jobs:
           just linkerd-tag='${{ needs.tag.outputs.tag }}' \
               k3d-k8s='${{ matrix.k8s }}' \
               mc-test-run
-
