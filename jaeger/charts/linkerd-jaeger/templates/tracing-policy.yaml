@@ -33,7 +33,6 @@ spec:
       component: collector
   port: 4318
   proxyProtocol: htto
-
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
