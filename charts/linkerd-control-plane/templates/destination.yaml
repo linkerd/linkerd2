@@ -218,6 +218,7 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.controllerUID}}
+          readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
       - args:
         - sp-validator
@@ -247,6 +248,7 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.controllerUID}}
+          readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
@@ -297,6 +299,7 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.controllerUID}}
+          readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
