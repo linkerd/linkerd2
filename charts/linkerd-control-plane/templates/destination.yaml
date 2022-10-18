@@ -322,6 +322,9 @@ spec:
       */}}
       {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" "443" }}
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- else if .Values.postHookInitHack.enabled }}
+      initContainers:
+      - {{- include "post-hook-init-hack.container" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       {{- if .Values.priorityClassName -}}
       priorityClassName: {{ .Values.priorityClassName }}
