@@ -16,7 +16,6 @@ import (
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -31,7 +30,7 @@ const (
 func Inject(linkerdNamespace string) webhook.Handler {
 	return func(
 		ctx context.Context,
-		api *k8s.API,
+		api *k8s.MetadataAPI,
 		request *admissionv1beta1.AdmissionRequest,
 		recorder record.EventRecorder,
 	) (*admissionv1beta1.AdmissionResponse, error) {
@@ -51,14 +50,13 @@ func Inject(linkerdNamespace string) webhook.Handler {
 		}
 		valuesConfig.IdentityTrustAnchorsPEM = string(caPEM)
 
-		namespace, err := api.NS().Lister().Get(request.Namespace)
+		ns, err := api.GetCached(k8s.NS, request.Namespace)
 		if err != nil {
 			return nil, err
 		}
-		nsAnnotations := namespace.GetAnnotations()
 		resourceConfig := inject.NewResourceConfig(valuesConfig, inject.OriginWebhook, linkerdNamespace).
 			WithOwnerRetriever(ownerRetriever(ctx, api, request.Namespace)).
-			WithNsAnnotations(nsAnnotations).
+			WithNsAnnotations(ns.GetAnnotations()).
 			WithKind(request.Kind.Kind)
 
 		// Build the injection report.
@@ -70,17 +68,20 @@ func Inject(linkerdNamespace string) webhook.Handler {
 
 		// If the resource has an owner, then it should be retrieved for recording
 		// events.
-		var parent *runtime.Object
+		var parent *v1.ObjectReference
 		var ownerKind string
 		if ownerRef := resourceConfig.GetOwnerRef(); ownerRef != nil {
-			if api.KindSupported(ownerRef.Kind) {
-				objs, err := api.GetObjects(request.Namespace, ownerRef.Kind, ownerRef.Name, labels.Everything())
+			res, err := k8s.GetAPIResource(ownerRef.Kind)
+			if err != nil {
+				log.Warningf("skipping event for parent %s: %s", ownerRef.Kind, err)
+			} else {
+				objs, err := api.GetByNamespaceFilteredCached(res, request.Namespace, ownerRef.Name, labels.Everything())
 				if err != nil {
 					log.Warnf("couldn't retrieve parent object %s-%s-%s; error: %s", request.Namespace, ownerRef.Kind, ownerRef.Name, err)
 				} else if len(objs) == 0 {
 					log.Warnf("couldn't retrieve parent object %s-%s-%s", request.Namespace, ownerRef.Kind, ownerRef.Name)
 				} else {
-					parent = &objs[0]
+					parent = objs[0]
 				}
 				ownerKind = strings.ToLower(ownerRef.Kind)
 			}
@@ -119,7 +120,7 @@ func Inject(linkerdNamespace string) webhook.Handler {
 				return nil, err
 			}
 			if parent != nil {
-				recorder.Event(*parent, v1.EventTypeNormal, eventTypeInjected, "Linkerd sidecar proxy injected")
+				recorder.Event(parent, v1.EventTypeNormal, eventTypeInjected, "Linkerd sidecar proxy injected")
 			}
 			log.Infof("injection patch generated for: %s", report.ResName())
 			log.Debugf("injection patch: %s", patchJSON)
@@ -142,7 +143,7 @@ func Inject(linkerdNamespace string) webhook.Handler {
 		readableMsg := strings.Join(readableReasons, ", ")
 
 		if parent != nil {
-			recorder.Eventf(*parent, v1.EventTypeNormal, eventTypeSkipped, "Linkerd sidecar proxy injection skipped: %s", readableMsg)
+			recorder.Eventf(parent, v1.EventTypeNormal, eventTypeSkipped, "Linkerd sidecar proxy injection skipped: %s", readableMsg)
 		}
 
 		// Create a patch which adds the opaque ports annotation if the workload
@@ -186,9 +187,9 @@ func Inject(linkerdNamespace string) webhook.Handler {
 	}
 }
 
-func ownerRetriever(ctx context.Context, api *k8s.API, ns string) inject.OwnerRetrieverFunc {
-	return func(p *v1.Pod) (string, string) {
+func ownerRetriever(ctx context.Context, api *k8s.MetadataAPI, ns string) inject.OwnerRetrieverFunc {
+	return func(p *v1.Pod) (string, string, error) {
 		p.SetNamespace(ns)
-		return api.GetOwnerKindAndName(ctx, p, true)
+		return api.GetOwnerKindAndName(ctx, p)
 	}
 }

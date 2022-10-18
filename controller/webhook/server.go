@@ -29,7 +29,7 @@ import (
 // the admission request
 type Handler func(
 	context.Context,
-	*k8s.API,
+	*k8s.MetadataAPI,
 	*admissionv1beta1.AdmissionRequest,
 	record.EventRecorder,
 ) (*admissionv1beta1.AdmissionResponse, error)
@@ -37,7 +37,7 @@ type Handler func(
 // Server describes the https server implementing the webhook
 type Server struct {
 	*http.Server
-	api       *k8s.API
+	api       *k8s.MetadataAPI
 	handler   Handler
 	certValue *atomic.Value
 	recorder  record.EventRecorder
@@ -46,7 +46,7 @@ type Server struct {
 // NewServer returns a new instance of Server
 func NewServer(
 	ctx context.Context,
-	api *k8s.API,
+	api *k8s.MetadataAPI,
 	addr, certPath string,
 	handler Handler,
 	component string,
@@ -94,7 +94,7 @@ func NewServer(
 
 func getConfiguredServer(
 	httpServer *http.Server,
-	api *k8s.API,
+	api *k8s.MetadataAPI,
 	handler Handler,
 	recorder record.EventRecorder,
 ) *Server {

@@ -37,35 +37,10 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-// APIResource is an enum for Kubernetes API resource types, for use when
-// initializing a K8s API, to describe which resource types to interact with.
-type APIResource int
-
-// These constants enumerate Kubernetes resource types.
-const (
-	CJ APIResource = iota
-	CM
-	Deploy
-	DS
-	Endpoint
-	Job
-	MWC // mutating webhook configuration
-	NS
-	Pod
-	RC
-	RS
-	SP
-	SS
-	Svc
-	Node
-	Secret
-	ES // EndpointSlice resource
-	Srv
-	Saz
-)
-
 // API provides shared informers for all Kubernetes objects
 type API struct {
+	promGauges
+
 	Client        kubernetes.Interface
 	DynamicClient dynamic.Interface
 
@@ -91,8 +66,6 @@ type API struct {
 	syncChecks            []cache.InformerSynced
 	sharedInformers       informers.SharedInformerFactory
 	l5dCrdSharedInformers l5dcrdinformer.SharedInformerFactory
-
-	gauges []prometheus.GaugeFunc
 }
 
 // InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
@@ -218,81 +191,81 @@ func newAPI(
 		case CJ:
 			api.cj = sharedInformers.Batch().V1().CronJobs()
 			api.syncChecks = append(api.syncChecks, api.cj.Informer().HasSynced)
-			api.addInformerSizeGauge("cron_job", api.cj.Informer())
+			api.addInformerSize("cron_job", api.cj.Informer())
 		case CM:
 			api.cm = sharedInformers.Core().V1().ConfigMaps()
 			api.syncChecks = append(api.syncChecks, api.cm.Informer().HasSynced)
-			api.addInformerSizeGauge("config_map", api.cm.Informer())
+			api.addInformerSize("config_map", api.cm.Informer())
 		case Deploy:
 			api.deploy = sharedInformers.Apps().V1().Deployments()
 			api.syncChecks = append(api.syncChecks, api.deploy.Informer().HasSynced)
-			api.addInformerSizeGauge("deployment", api.deploy.Informer())
+			api.addInformerSize("deployment", api.deploy.Informer())
 		case DS:
 			api.ds = sharedInformers.Apps().V1().DaemonSets()
 			api.syncChecks = append(api.syncChecks, api.ds.Informer().HasSynced)
-			api.addInformerSizeGauge("daemon_set", api.ds.Informer())
+			api.addInformerSize("daemon_set", api.ds.Informer())
 		case Endpoint:
 			api.endpoint = sharedInformers.Core().V1().Endpoints()
 			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
-			api.addInformerSizeGauge("endpoint", api.endpoint.Informer())
+			api.addInformerSize("endpoint", api.endpoint.Informer())
 		case ES:
 			api.es = sharedInformers.Discovery().V1().EndpointSlices()
 			api.syncChecks = append(api.syncChecks, api.es.Informer().HasSynced)
-			api.addInformerSizeGauge("endpoint_slice", api.es.Informer())
+			api.addInformerSize("endpoint_slice", api.es.Informer())
 		case Job:
 			api.job = sharedInformers.Batch().V1().Jobs()
 			api.syncChecks = append(api.syncChecks, api.job.Informer().HasSynced)
-			api.addInformerSizeGauge("job", api.job.Informer())
+			api.addInformerSize("job", api.job.Informer())
 		case MWC:
 			api.mwc = sharedInformers.Admissionregistration().V1().MutatingWebhookConfigurations()
 			api.syncChecks = append(api.syncChecks, api.mwc.Informer().HasSynced)
-			api.addInformerSizeGauge("mutating_webhook_configuration", api.mwc.Informer())
+			api.addInformerSize("mutating_webhook_configuration", api.mwc.Informer())
 		case NS:
 			api.ns = sharedInformers.Core().V1().Namespaces()
 			api.syncChecks = append(api.syncChecks, api.ns.Informer().HasSynced)
-			api.addInformerSizeGauge("namespace", api.ns.Informer())
+			api.addInformerSize("namespace", api.ns.Informer())
 		case Pod:
 			api.pod = sharedInformers.Core().V1().Pods()
 			api.syncChecks = append(api.syncChecks, api.pod.Informer().HasSynced)
-			api.addInformerSizeGauge("pod", api.pod.Informer())
+			api.addInformerSize("pod", api.pod.Informer())
 		case RC:
 			api.rc = sharedInformers.Core().V1().ReplicationControllers()
 			api.syncChecks = append(api.syncChecks, api.rc.Informer().HasSynced)
-			api.addInformerSizeGauge("replication_controller", api.rc.Informer())
+			api.addInformerSize("replication_controller", api.rc.Informer())
 		case RS:
 			api.rs = sharedInformers.Apps().V1().ReplicaSets()
 			api.syncChecks = append(api.syncChecks, api.rs.Informer().HasSynced)
-			api.addInformerSizeGauge("replica_set", api.rs.Informer())
+			api.addInformerSize("replica_set", api.rs.Informer())
 		case SP:
 			if l5dCrdSharedInformers == nil {
 				panic("Linkerd CRD shared informer not configured")
 			}
 			api.sp = l5dCrdSharedInformers.Linkerd().V1alpha2().ServiceProfiles()
 			api.syncChecks = append(api.syncChecks, api.sp.Informer().HasSynced)
-			api.addInformerSizeGauge("service_profile", api.sp.Informer())
+			api.addInformerSize("service_profile", api.sp.Informer())
 		case Srv:
 			if l5dCrdSharedInformers == nil {
 				panic("Linkerd CRD shared informer not configured")
 			}
 			api.srv = l5dCrdSharedInformers.Server().V1beta1().Servers()
 			api.syncChecks = append(api.syncChecks, api.srv.Informer().HasSynced)
-			api.addInformerSizeGauge("server", api.srv.Informer())
+			api.addInformerSize("server", api.srv.Informer())
 		case SS:
 			api.ss = sharedInformers.Apps().V1().StatefulSets()
 			api.syncChecks = append(api.syncChecks, api.ss.Informer().HasSynced)
-			api.addInformerSizeGauge("stateful_set", api.ss.Informer())
+			api.addInformerSize("stateful_set", api.ss.Informer())
 		case Svc:
 			api.svc = sharedInformers.Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
-			api.addInformerSizeGauge("service", api.svc.Informer())
+			api.addInformerSize("service", api.svc.Informer())
 		case Node:
 			api.node = sharedInformers.Core().V1().Nodes()
 			api.syncChecks = append(api.syncChecks, api.node.Informer().HasSynced)
-			api.addInformerSizeGauge("node", api.node.Informer())
+			api.addInformerSize("node", api.node.Informer())
 		case Secret:
 			api.secret = sharedInformers.Core().V1().Secrets()
 			api.syncChecks = append(api.syncChecks, api.secret.Informer().HasSynced)
-			api.addInformerSizeGauge("secret", api.secret.Informer())
+			api.addInformerSize("secret", api.secret.Informer())
 		}
 	}
 	return api
@@ -306,15 +279,7 @@ func (api *API) Sync(stopCh <-chan struct{}) {
 		api.l5dCrdSharedInformers.Start(stopCh)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-
-	log.Infof("waiting for caches to sync")
-	if !cache.WaitForCacheSync(ctx.Done(), api.syncChecks...) {
-		//nolint:gocritic
-		log.Fatal("failed to sync caches")
-	}
-	log.Infof("caches synced")
+	waitForCacheSync(api.syncChecks)
 }
 
 // NS provides access to a shared informer and lister for Namespaces.
@@ -570,7 +535,7 @@ func (api *API) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod, retry 
 			}
 		}
 
-		if !isValidRSParent(rsObj) {
+		if rsObj == nil || !isValidRSParent(rsObj.GetObjectMeta()) {
 			return strings.ToLower(parent.Kind), parent.Name
 		}
 		parentObj = rsObj
@@ -1113,15 +1078,6 @@ func (api *API) GetServiceProfileFor(svc *corev1.Service, clientNs, clusterDomai
 	}
 }
 
-func (api *API) addInformerSizeGauge(kind string, inf cache.SharedIndexInformer) {
-	api.gauges = append(api.gauges, prometheus.NewGaugeFunc(prometheus.GaugeOpts{
-		Name: fmt.Sprintf("%s_cache_size", kind),
-		Help: fmt.Sprintf("Number of items in the client-go %s cache", kind),
-	}, func() float64 {
-		return float64(len(inf.GetStore().ListKeys()))
-	}))
-}
-
 func hasOverlap(as, bs []*corev1.Pod) bool {
 	for _, a := range as {
 		for _, b := range bs {
@@ -1142,26 +1098,4 @@ func isPendingOrRunning(pod *corev1.Pod) bool {
 
 func isFailed(pod *corev1.Pod) bool {
 	return pod.Status.Phase == corev1.PodFailed
-}
-
-func isValidRSParent(rs *appsv1.ReplicaSet) bool {
-	if rs == nil || len(rs.GetOwnerReferences()) != 1 {
-		return false
-	}
-
-	validParentKinds := []string{
-		k8s.Job,
-		k8s.StatefulSet,
-		k8s.DaemonSet,
-		k8s.Deployment,
-	}
-
-	rsOwner := rs.GetOwnerReferences()[0]
-	rsOwnerKind := strings.ToLower(rsOwner.Kind)
-	for _, kind := range validParentKinds {
-		if rsOwnerKind == kind {
-			return true
-		}
-	}
-	return false
 }

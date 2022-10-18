@@ -13,14 +13,19 @@ import (
 const (
 	All                   = "all"
 	Authority             = "authority"
+	ConfigMap             = "configmap"
 	CronJob               = "cronjob"
 	DaemonSet             = "daemonset"
 	Deployment            = "deployment"
+	Endpoints             = "endpoints"
+	EndpointSlices        = "endpointslices"
 	Job                   = "job"
+	MutatingWebhookConfig = "mutatingwebhookconfig"
 	Namespace             = "namespace"
 	Pod                   = "pod"
 	ReplicationController = "replicationcontroller"
 	ReplicaSet            = "replicaset"
+	Secret                = "secret"
 	Service               = "service"
 	ServiceProfile        = "serviceprofile"
 	StatefulSet           = "statefulset"
@@ -201,8 +206,9 @@ func ShortNameFromCanonicalResourceName(canonicalName string) string {
 
 // KindToL5DLabel converts a Kubernetes `kind` to a Linkerd label.
 // For example:
-//   `pod` -> `pod`
-//   `job` -> `k8s_job`
+//
+//	`pod` -> `pod`
+//	`job` -> `k8s_job`
 func KindToL5DLabel(k8sKind string) string {
 	if k8sKind == Job {
 		return l5dJob

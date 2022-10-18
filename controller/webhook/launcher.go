@@ -28,7 +28,7 @@ func Launch(
 	defer close(stop)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	k8sAPI, err := k8s.InitializeAPI(ctx, kubeconfig, false, apiresources...)
+	k8sAPI, err := k8s.InitializeMetadataAPI(kubeconfig, apiresources...)
 	if err != nil {
 		//nolint:gocritic
 		log.Fatalf("failed to initialize Kubernetes API: %s", err)

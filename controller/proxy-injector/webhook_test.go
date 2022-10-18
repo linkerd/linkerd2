@@ -415,8 +415,8 @@ func getFakeServiceReq(b []byte) *admissionv1beta1.AdmissionRequest {
 	}
 }
 
-func ownerRetrieverFake(p *v1.Pod) (string, string) {
-	return pkgK8s.Deployment, "owner-deployment"
+func ownerRetrieverFake(p *v1.Pod) (string, string, error) {
+	return pkgK8s.Deployment, "owner-deployment", nil
 }
 
 func unmarshalPatch(patchJSON []byte) (unmarshalledPatch, error) {

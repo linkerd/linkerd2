@@ -2738,8 +2738,9 @@ func CheckCanPerformAction(ctx context.Context, api *k8s.KubernetesAPI, verb, na
 
 // getPodStatuses returns a map of all Linkerd container statuses:
 // component =>
-//   pod name =>
-//     container statuses
+//
+//	pod name =>
+//	  container statuses
 func getPodStatuses(pods []corev1.Pod) map[string]map[string][]corev1.ContainerStatus {
 	statuses := make(map[string]map[string][]corev1.ContainerStatus)
 
