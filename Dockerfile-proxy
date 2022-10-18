@@ -20,6 +20,8 @@ RUN (proxy=$(bin/fetch-proxy $(cat proxy-version) $TARGETARCH) && \
     mv "$proxy" linkerd2-proxy)
 ARG LINKERD_AWAIT_VERSION=v0.2.6
 RUN bin/scurl -o linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-${TARGETARCH} && chmod +x linkerd-await
+ARG LINKERD_VALIDATOR_VERSION=v0.1.0
+RUN bin/scurl -o linkerd-network-validator https://github.com/linkerd/linkerd2-proxy-init/releases/download/validator%2F${LINKERD_VALIDATOR_VERSION}/linkerd-network-validator-${LINKERD_VALIDATOR_VERSION}-${TARGETARCH} && chmod +x linkerd-network-validator
 
 ## compile proxy-identity agent
 FROM go-deps as golang
@@ -38,6 +40,7 @@ COPY --from=fetch /build/target/proxy/LICENSE /usr/lib/linkerd/LICENSE
 COPY --from=fetch /build/proxy-version /usr/lib/linkerd/linkerd2-proxy-version.txt
 COPY --from=fetch /build/linkerd2-proxy /usr/lib/linkerd/linkerd2-proxy
 COPY --from=fetch /build/linkerd-await /usr/lib/linkerd/linkerd-await
+COPY --from=fetch /build/linkerd-network-validator /usr/lib/linkerd/linkerd2-network-validator
 COPY --from=golang /out/proxy-identity /usr/lib/linkerd/linkerd2-proxy-identity
 COPY --from=debian:bullseye-slim /bin/sleep /bin/sleep
 ARG LINKERD_VERSION

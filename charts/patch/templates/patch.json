@@ -1,57 +1,111 @@
-{{ $prefix := .Values.pathPrefix -}}
+{
+  { $prefix := .Values.pathPrefix -
+  }
+}
 [
-  {{- if .Values.addRootMetadata }}
+  {
+    {- if .Values.addRootMetadata
+    }
+  }
   {
     "op": "add",
     "path": "{{$prefix}}/metadata",
     "value": {}
   },
-  {{- end }}
-  {{- if .Values.addRootAnnotations }}
+  {
+    {- end
+    }
+  }
+  {
+    {- if .Values.addRootAnnotations
+    }
+  }
   {
     "op": "add",
     "path": "{{$prefix}}/metadata/annotations",
     "value": {}
   },
-  {{- end }}
-  {{- range $label, $value := .Values.annotations }}
+  {
+    {- end
+    }
+  }
+  {
+    {- range $label, $value := .Values.annotations
+    }
+  }
   {
     "op": "add",
     "path": "{{$prefix}}/metadata/annotations/{{$label | replace "/" "~1"}}",
     "value": "{{$value}}"
   },
-  {{- end }}
-  {{- if .Values.addRootLabels }}
+  {
+    {- end
+    }
+  }
+  {
+    {- if .Values.addRootLabels
+    }
+  }
   {
     "op": "add",
     "path": "{{$prefix}}/metadata/labels",
     "value": {}
   },
-  {{- end }}
-  {{- range $label, $value := .Values.labels }}
+  {
+    {- end
+    }
+  }
+  {
+    {- range $label, $value := .Values.labels
+    }
+  }
   {
     "op": "add",
     "path": "{{$prefix}}/metadata/labels/{{$label | replace "/" "~1"}}",
     "value": "{{$value}}"
   },
-  {{- end }}
-  {{- if or .Values.proxyInit .Values.proxy }}
-  {{- if .Values.addRootVolumes }}
+  {
+    {- end
+    }
+  }
+  {
+    {- if or .Values.proxyInit .Values.proxy
+    }
+  }
+  {
+    {- if .Values.addRootVolumes
+    }
+  }
   {
     "op": "add",
     "path": "{{$prefix}}/spec/volumes",
     "value": []
   },
-  {{- end }}
-  {{- end}}
-  {{- if .Values.addRootInitContainers }}
+  {
+    {- end
+    }
+  }
+  {
+    {- end
+    }
+  }
+  {
+    {- if .Values.addRootInitContainers
+    }
+  }
   {
     "op": "add",
     "path": "{{$prefix}}/spec/initContainers",
     "value": []
   },
-  {{- end}}
-  {{- if and .Values.proxyInit (not .Values.cniEnabled) }}
+  {
+    {- end
+    }
+  }
+  {
+    {- if and .Values.proxyInit (not .Values.cniEnabled)
+    }
+  }
   {
     "op": "add",
     "path": "{{$prefix}}/spec/volumes/-",
@@ -63,26 +117,47 @@
   {
     "op": "add",
     "path": "{{$prefix}}/spec/initContainers/-",
-    "value":
-      {{- include "partials.proxy-init" . | fromYaml | toPrettyJson | nindent 6 }}
+    "value": {
+      {- include "partials.proxy-init" . | fromYaml | toPrettyJson | nindent 6
+      }
+    }
   },
-  {{- else if and .Values.proxy .Values.cniEnabled }}
+  {
+    {- else if and .Values.proxy .Values.cniEnabled
+    }
+  }
   {
     "op": "add",
     "path": "{{$prefix}}/spec/initContainers/-",
-    "value":
-      {{- include "partials.noop" . | fromYaml | toPrettyJson | nindent 6 }}
+    "value": {
+      {- include "partials.network-validator" . | fromYaml | toPrettyJson | nindent 6
+      }
+    }
   },
-  {{- end }}
-  {{- if .Values.debugContainer }}
+  {
+    {- end
+    }
+  }
+  {
+    {- if .Values.debugContainer
+    }
+  }
   {
     "op": "add",
     "path": "{{$prefix}}/spec/containers/-",
-    "value":
-      {{- include "partials.debug" . | fromYaml | toPrettyJson | nindent 6 }}
+    "value": {
+      {- include "partials.debug" . | fromYaml | toPrettyJson | nindent 6
+      }
+    }
   },
-  {{- end }}
-  {{- if .Values.proxy }}
+  {
+    {- end
+    }
+  }
+  {
+    {- if .Values.proxy
+    }
+  }
   {
     "op": "add",
     "path": "{{$prefix}}/spec/volumes/-",
@@ -93,23 +168,45 @@
       }
     }
   },
-  {{- if .Values.identity.serviceAccountTokenProjection}}
+  {
+    {- if .Values.identity.serviceAccountTokenProjection
+    }
+  }
   {
     "op": "add",
     "path": "{{$prefix}}/spec/volumes/-",
-    "value":
-      {{- include "partials.proxy.volumes.service-account-token" . | fromYaml | toPrettyJson | nindent 6 }}
+    "value": {
+      {- include "partials.proxy.volumes.service-account-token" . | fromYaml | toPrettyJson | nindent 6
+      }
+    }
   },
-  {{- end }}
+  {
+    {- end
+    }
+  }
   {
     "op": "add",
-  {{- if .Values.proxy.await }}
+    {
+      {- if .Values.proxy.await
+      }
+    }
     "path": "{{$prefix}}/spec/containers/0",
-  {{- else }}
+    {
+      {- else
+      }
+    }
     "path": "{{$prefix}}/spec/containers/-",
-  {{- end }}
-    "value":
-      {{- include "partials.proxy" . | fromYaml | toPrettyJson | nindent 6 }}
+    {
+      {- end
+      }
+    }
+    "value": {
+      {- include "partials.proxy" . | fromYaml | toPrettyJson | nindent 6
+      }
+    }
   },
-  {{- end }}
+  {
+    {- end
+    }
+  }
 ]

@@ -231,6 +231,22 @@ proxyInit:
     mountPath: /run
     name: linkerd-proxy-init-xtables-lock
 
+# network validator configuration
+# This runs on a host that uses iptables to reroute network traffic. The validator
+# ensures that iptables is correctly routing requests before we start linkerd.
+networkValidator:
+  # -- Log level for the network-validator
+  # @default -- info
+  logLevel: ""
+  # -- Log format (`plain` or `json`) for the proxy-init
+  # @default -- plain
+  logFormat: ""
+  # Address to which the client will attempt to connect
+  connectAddr: "192.0.2.2:1404"
+  # Address to which are supposed to be redirected by the OS
+  listenAddr: "0.0.0.0:4140"
+  timeout: "10s"
+
 # -- For Private docker registries, authentication is needed.
 #  Registry secrets are applied to the respective service accounts
 imagePullSecrets: []
@@ -298,7 +314,6 @@ identity:
       # install
       keyPEM: |
 
-
 # -|- CPU, Memory and Ephemeral Storage resources required by the identity controller (see `proxy.resources` for sub-fields)
 #identityResources:
 # -|- CPU, Memory and Ephemeral Storage resources required by proxy injected into identity pod (see `proxy.resources` for sub-fields)
@@ -321,23 +336,23 @@ proxyInjector:
   # -- Namespace selector used by admission webhook.
   namespaceSelector:
     matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
-    - key: kubernetes.io/metadata.name
-      operator: NotIn
-      values:
-      - kube-system
-      - cert-manager
+      - key: config.linkerd.io/admission-webhooks
+        operator: NotIn
+        values:
+          - disabled
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values:
+          - kube-system
+          - cert-manager
 
   # -- Object selector used by admission webhook.
   objectSelector:
     matchExpressions:
-    - key: linkerd.io/control-plane-component
-      operator: DoesNotExist
-    - key: linkerd.io/cni-resource
-      operator: DoesNotExist
+      - key: linkerd.io/control-plane-component
+        operator: DoesNotExist
+      - key: linkerd.io/cni-resource
+        operator: DoesNotExist
 
   # -- Certificate for the proxy injector. If not provided and not using an external secret
   # then Helm will generate one.
@@ -386,10 +401,10 @@ profileValidator:
   # -- Namespace selector used by admission webhook
   namespaceSelector:
     matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
+      - key: config.linkerd.io/admission-webhooks
+        operator: NotIn
+        values:
+          - disabled
 
   # -- Certificate for the service profile validator. If not provided and not using an external secret
   # then Helm will generate one.
@@ -431,10 +446,10 @@ policyValidator:
   # -- Namespace selector used by admission webhook
   namespaceSelector:
     matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
+      - key: config.linkerd.io/admission-webhooks
+        operator: NotIn
+        values:
+          - disabled
 
   # -- Certificate for the policy validator. If not provided and not using an external secret
   # then Helm will generate one.
