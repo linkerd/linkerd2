@@ -7,6 +7,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: controller
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- include "linkerd.giantswarm-labels" . | nindent 4 }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 data:

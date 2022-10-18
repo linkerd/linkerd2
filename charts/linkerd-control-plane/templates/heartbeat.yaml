@@ -14,6 +14,7 @@ metadata:
     app.kubernetes.io/version: {{.Values.linkerdVersion}}
     linkerd.io/control-plane-component: heartbeat
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- include "linkerd.giantswarm-labels" . | nindent 4 }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -31,6 +32,7 @@ spec:
           labels:
             linkerd.io/control-plane-component: heartbeat
             linkerd.io/workload-ns: {{.Release.Namespace}}
+            {{- include "linkerd.giantswarm-labels" . | nindent 12 }}
             {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 12 }}{{- end }}
           annotations:
             {{ include "partials.annotations.created-by" . }}

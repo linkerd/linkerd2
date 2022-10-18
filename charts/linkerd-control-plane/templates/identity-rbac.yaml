@@ -9,6 +9,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- include "linkerd.giantswarm-labels" . | nindent 4 }}
 rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
@@ -26,6 +27,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- include "linkerd.giantswarm-labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -43,4 +45,5 @@ metadata:
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- include "linkerd.giantswarm-labels" . | nindent 4 }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
