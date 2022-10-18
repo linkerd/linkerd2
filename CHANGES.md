@@ -1,5 +1,45 @@
 # Changes
 
+## stable-2.12.2
+
+This stable release fixes an issue with CNI chaining that was preventing the
+Linkerd CNI plugin from working with other CNI plugins such as Cilium. It also
+fixes some sections of the Viz dashboard appearing blank, and adds an optional
+PodMonitor resource to the Helm chart to enable easier integration with the
+Prometheus Operator. Several other fixes are included.
+
+* Proxy
+  * Fixed proxies emitting some duplicate inbound metrics
+
+* Control Plane
+  * Fixed handling of .conf files in the CNI plugin so that the Linkerd CNI
+    plugin can be used alongside other CNI plugins such as Cilium
+  * Added a noop init container to injected pods when the CNI plugin is enabled
+    to prevent certain scenarios where a pod can get stuck without an IP address
+  * Fixed the `NotIn` label selector operator in the policy resources, being
+    erroneously treated as `In`.
+  * Fixed a bug where the`config.linkerd.io/proxy-version` annotation could be
+    empty
+
+* CLI
+  * Added a `linkerd diagnostics policy` command to inspect Linkerd policy state
+  * Added a check that ClusterIP services are in the cluster networks
+  * Expanded the `linkerd authz` command to display AuthorizationPolicy
+    resources that target namespaces (thanks @aatarasoff!)
+  * Fixed warning logic around the "linkerd-viz ClusterRoles exist" and
+    "linkerd-viz ClusterRoleBindings exist" checks in `linkerd viz check`
+  * Fixed the CLI ignoring the `--api-addr` flag (thanks @mikutas!)
+
+* Helm
+  * Added an optional PodMonitor resource to the main Helm chart (thanks
+    @jaygridley!)
+
+* Dashboard
+  * Fixed the dashboard sections Tap, Top, and Routes appearing blank (thanks
+    @MoSattler!)
+  * Updated Grafana dashboards to use variable duration parameter so that they
+    can be used when Prometheus has a longer scrape interval (thanks @TarekAS)
+
 ## edge-22.10.2
 
 This edge release fixes an issue with CNI chaining that was preventing the
