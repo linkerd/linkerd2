@@ -12,11 +12,11 @@ Prometheus Operator. Several other fixes are included.
   * Fixed proxies emitting some duplicate inbound metrics
 
 * Control Plane
-  * Fixed handling of .conf files in the CNI plugin so that the Linkerd CNI
+  * Fixed handling of `.conf` files in the CNI plugin so that the Linkerd CNI
     plugin can be used alongside other CNI plugins such as Cilium
   * Added a noop init container to injected pods when the CNI plugin is enabled
     to prevent certain scenarios where a pod can get stuck without an IP address
-  * Fixed the `NotIn` label selector operator in the policy resources, being
+  * Fixed the `NotIn` label selector operator in the policy resources being
     erroneously treated as `In`.
   * Fixed a bug where the`config.linkerd.io/proxy-version` annotation could be
     empty
@@ -26,8 +26,8 @@ Prometheus Operator. Several other fixes are included.
   * Added a check that ClusterIP services are in the cluster networks
   * Expanded the `linkerd authz` command to display AuthorizationPolicy
     resources that target namespaces (thanks @aatarasoff!)
-  * Fixed warning logic around the "linkerd-viz ClusterRoles exist" and
-    "linkerd-viz ClusterRoleBindings exist" checks in `linkerd viz check`
+  * Fixed warning logic in the "linkerd-viz ClusterRoles exist" and "linkerd-viz
+    ClusterRoleBindings exist" checks in `linkerd viz check`
   * Fixed the CLI ignoring the `--api-addr` flag (thanks @mikutas!)
 
 * Helm
