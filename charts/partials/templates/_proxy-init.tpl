@@ -36,7 +36,7 @@ args:
 - --subnets-to-ignore
 - {{ .Values.proxyInit.skipSubnets | quote }}
 {{- end }}
-image: {{.Values.proxyInit.image.name}}:{{.Values.proxyInit.image.version}}
+image: "{{.Values.image.registry}}/{{.Values.proxyInit.image.name}}:{{.Values.proxyInit.image.version}}"
 imagePullPolicy: {{.Values.proxyInit.image.pullPolicy | default .Values.imagePullPolicy}}
 name: linkerd-init
 {{ include "partials.resources" .Values.proxyInit.resources }}

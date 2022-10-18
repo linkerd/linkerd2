@@ -204,7 +204,7 @@ spec:
         - -default-opaque-ports={{.Values.proxy.opaquePorts}}
         - -enable-pprof={{.Values.enablePprof | default false}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
-        image: {{.Values.controllerImage}}:{{.Values.linkerdVersion}}
+        image: "{{.Values.image.registry}}/{{.Values.controllerImage}}:{{.Values.linkerdVersion}}"
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
@@ -234,7 +234,7 @@ spec:
         - -log-level={{.Values.controllerLogLevel}}
         - -log-format={{.Values.controllerLogFormat}}
         - -enable-pprof={{.Values.enablePprof | default false}}
-        image: {{.Values.controllerImage}}:{{.Values.linkerdVersion}}
+        image: "{{.Values.image.registry}}/{{.Values.controllerImage}}:{{.Values.linkerdVersion}}"
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
@@ -278,7 +278,7 @@ spec:
         {{- if .Values.policyController.probeNetworks }}
         - --probe-networks={{.Values.policyController.probeNetworks | join ","}}
         {{- end}}
-        image: {{.Values.policyController.image.name}}:{{.Values.policyController.image.version | default .Values.linkerdVersion}}
+        image: "{{.Values.image.registry}}/{{.Values.policyController.image.name}}:{{.Values.policyController.image.version | default .Values.linkerdVersion}}"
         imagePullPolicy: {{.Values.policyController.image.pullPolicy | default .Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
