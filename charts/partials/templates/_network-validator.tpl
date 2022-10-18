@@ -4,7 +4,7 @@ name: linkerd-network-validator
 image: {{.Values.proxyInit.image.name}}:{{.Values.proxyInit.image.version}}
 imagePullPolicy: {{.Values.proxyInit.image.pullPolicy | default .Values.imagePullPolicy}}
 env:
-  {{- if .Values.proxyInit.logLevel -}}
+  {{- if .Values.networkValidator.logLevel -}}
   - name: LINKERD_NETWORK_VALIDATOR_LOG_LEVEL
     value: {{ .Values.networkValidator.logLevel }}
   {{- end -}}

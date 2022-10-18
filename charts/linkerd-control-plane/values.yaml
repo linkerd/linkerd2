@@ -237,10 +237,10 @@ proxyInit:
 networkValidator:
   # -- Log level for the network-validator
   # @default -- info
-  logLevel: ""
+  logLevel: info
   # -- Log format (`plain` or `json`) for the proxy-init
   # @default -- plain
-  logFormat: ""
+  logFormat: plain
   # Address to which the client will attempt to connect
   connectAddr: "192.0.2.2:1404"
   # Address to which are supposed to be redirected by the OS
