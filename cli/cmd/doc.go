@@ -205,6 +205,10 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Log format (plain or json) for the proxy",
 		},
 		{
+			Name:        k8s.ProxyAccessLogAnnotation,
+			Description: "Enables HTTP access logging in the proxy. Accepted values are `apache`, to output the access log in the Appache Common Log Format, and `json`, to output the access log in JSON.",
+		},
+		{
 			Name:        k8s.ProxyEnableExternalProfilesAnnotation,
 			Description: "Enable service profiles for non-Kubernetes services",
 		},

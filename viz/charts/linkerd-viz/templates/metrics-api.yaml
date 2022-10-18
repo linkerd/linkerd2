@@ -6,7 +6,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: metrics-api
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: viz
     component: metrics-api
@@ -38,7 +38,7 @@ metadata:
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
     component: metrics-api
   name: metrics-api
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: {{.Values.metricsAPI.replicas}}
   selector:

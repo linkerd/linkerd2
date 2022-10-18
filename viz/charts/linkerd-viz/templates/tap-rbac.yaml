@@ -71,7 +71,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: tap
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: viz
     component: tap
@@ -103,7 +103,7 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: tap-k8s-tls
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: viz
     component: tap

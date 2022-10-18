@@ -7,7 +7,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: prometheus-config
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: viz
     component: prometheus
@@ -162,7 +162,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: prometheus
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: viz
     component: prometheus
@@ -195,7 +195,7 @@ metadata:
     component: prometheus
     namespace: {{.Release.Namespace}}
   name: prometheus
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   {{- if .Values.prometheus.persistence }}
@@ -309,7 +309,7 @@ metadata:
     app.kubernetes.io/version: {{default .Values.linkerdVersion}}
     component: prometheus
   name: prometheus
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
 spec:
   accessModes:
     - {{ .Values.prometheus.persistence.accessMode | quote }}

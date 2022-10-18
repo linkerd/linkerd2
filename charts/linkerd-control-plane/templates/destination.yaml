@@ -6,7 +6,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -25,7 +25,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst-headless
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -44,7 +44,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -63,7 +63,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-policy
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -82,7 +82,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-policy-validator
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -99,10 +99,10 @@ spec:
 {{- if .Values.enablePodDisruptionBudget }}
 ---
 kind: PodDisruptionBudget
-apiVersion: policy/v1beta1
+apiVersion: policy/v1
 metadata:
   name: linkerd-dst
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -130,7 +130,7 @@ metadata:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
   name: linkerd-destination
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: {{.Values.controllerReplicas}}
   selector:

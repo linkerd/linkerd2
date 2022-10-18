@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	timeout = 10 * time.Second
+	timeout = 15 * time.Second
 
 	// statExpiration indicates when items in the stat cache expire.
 	statExpiration = 1500 * time.Millisecond

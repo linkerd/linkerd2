@@ -13,6 +13,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: test-inject-proxy-version
+        linkerd.io/trust-root-sha256: 8dc603abd4e755c25c94da05abbf29b9b283a784733651020d72f97ca8ab98e4
       labels:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
@@ -82,6 +83,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.serviceAccountName
+        - name: _l5d_ns
+          value: linkerd
+        - name: _l5d_trustdomain
+          value: cluster.local
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -223,6 +228,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: test-inject-proxy-version
+        linkerd.io/trust-root-sha256: 8dc603abd4e755c25c94da05abbf29b9b283a784733651020d72f97ca8ab98e4
       labels:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
@@ -292,6 +298,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.serviceAccountName
+        - name: _l5d_ns
+          value: linkerd
+        - name: _l5d_trustdomain
+          value: cluster.local
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -433,6 +443,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: test-inject-proxy-version
+        linkerd.io/trust-root-sha256: 8dc603abd4e755c25c94da05abbf29b9b283a784733651020d72f97ca8ab98e4
       labels:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
@@ -502,6 +513,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.serviceAccountName
+        - name: _l5d_ns
+          value: linkerd
+        - name: _l5d_trustdomain
+          value: cluster.local
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -643,6 +658,7 @@ spec:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: test-inject-proxy-version
+        linkerd.io/trust-root-sha256: 8dc603abd4e755c25c94da05abbf29b9b283a784733651020d72f97ca8ab98e4
       labels:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
@@ -712,6 +728,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.serviceAccountName
+        - name: _l5d_ns
+          value: linkerd
+        - name: _l5d_trustdomain
+          value: cluster.local
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS

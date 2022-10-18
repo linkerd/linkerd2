@@ -5,32 +5,26 @@ name: Devcontainer
 on:
   pull_request:
     paths:
-      - rust-toolchain
-      - .devcontainer/**
+      - .devcontainer/devcontainer.json
       - .github/workflows/devcontainer.yml
+      - rust-toolchain
 
 permissions:
   contents: read
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-      - run: docker build . -f .devcontainer/Dockerfile
-
   rust-version:
     runs-on: ubuntu-latest
+    container: ghcr.io/linkerd/dev:v30-rust
     steps:
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - run: |
-          versions=$(sed -nE 's/^ARG RUST_TOOLCHAIN=([^ ]+)/\1/p' .devcontainer/Dockerfile)
-          ex=0
-          for mismatch in $(echo "$versions" | grep -vF "$(cat rust-toolchain)" || true) ; do
-            echo "::error file=.devcontainer/Dockerfile::Devcontainer uses incorrect rust version(s): $mismatch"
-            ex=$((ex + 1))
-          done
-          exit $ex
+          dev=$(cargo version | cut -d' ' -f2)
+          tc=$(cat rust-toolchain)
+          if [ "$dev" != "$tc" ]; then
+            echo "::error file=rust-toolchain,line=1::rust-toolchain ($tc) does not match devcontainer ($dev)"
+            exit 1
+          fi
 
   devcontainer-image:
     runs-on: ubuntu-latest
@@ -43,11 +37,12 @@ jobs:
       - run: |
           # Strip jsonc comments because `jq` doesn't support them.
           image=$(sed -E '/^\s*\/\/.*/d' .devcontainer/devcontainer.json |jq -Mr .image)
+          line=$(grep -nF '"image"' .devcontainer/devcontainer.json |cut -d':' -f1 |head -n1)
           if [ "$image" == "null" ]; then
-            echo "::error file=.devcontainer/devcontainer.json::Missing image"
+            echo "::error file=.devcontainer/devcontainer.json,line=$line::Missing image"
             exit 1
           fi
           if ! docker pull "$image" ; then
-            echo "::error file=.devcontainer/devcontainer.json::Unable to pull image: $image"
+            echo "::error file=.devcontainer/devcontainer.json,line=$line::Unable to pull image: $image"
             exit 1
           fi

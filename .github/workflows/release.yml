@@ -143,7 +143,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-    - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
+    - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
       with:
         go-version: '1.17'
     - name: Download image archives
@@ -177,7 +177,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-    - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
+    - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
       with:
         go-version: '1.17'
     - name: Set environment variables from scripts
@@ -203,7 +203,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
-    - uses: actions/setup-go@84cbf8094393cdc5fe1fe1671ff2647332956b1a
+    - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
       with:
         go-version: '1.17'
     - name: Set environment variables from scripts
@@ -239,7 +239,6 @@ jobs:
     # only runs for stable tags. The conditionals are at each step level instead of the job level
     # otherwise the jobs below that depend on this one won't run
     name: Pack Chocolatey release
-    if: ${{ false }} # temporarily disabled
     timeout-minutes: 30
     needs: [integration_tests]
     runs-on: windows-2019
@@ -250,7 +249,7 @@ jobs:
     - name: Chocolatey - update nuspec
       if: startsWith(github.ref, 'refs/tags/stable')
       run: |
-        "$LINKERD_VERSION"="$env":GITHUB_REF.Substring(17)
+        $LINKERD_VERSION=$env:GITHUB_REF.Substring(17)
         (Get-Content bin\win\linkerd.nuspec).replace('LINKERD_VERSION', "$LINKERD_VERSION") | Set-Content bin\win\linkerd.nuspec
     - name: Chocolatey - pack
       if: startsWith(github.ref, 'refs/tags/stable')
@@ -269,7 +268,7 @@ jobs:
     needs:
     - tag
     - integration_tests
-    # - choco_pack
+    - choco_pack
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     timeout-minutes: 30
     runs-on: ubuntu-20.04
@@ -283,8 +282,7 @@ jobs:
         . bin/_release.sh
         extract_release_notes NOTES.md
     - name: Download choco package
-      # if: startsWith(github.ref, 'refs/tags/stable')
-      if: ${{ false }} # temporarily disabled
+      if: startsWith(github.ref, 'refs/tags/stable')
       uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741
       with:
         name: choco
@@ -361,7 +359,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - name: Log into GCP
-      uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955'
+      uses: 'google-github-actions/auth@dac4e13deb3640f22e3ffe758fd3f95e6e89f712'
       with:
         credentials_json: ${{ secrets.LINKERD_SITE_TOKEN }}
     - name: Edge Helm chart creation and upload

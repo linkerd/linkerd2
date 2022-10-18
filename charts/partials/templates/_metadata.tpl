@@ -1,7 +1,3 @@
-{{- define "partials.namespace" -}}
-{{ if eq .Release.Service "CLI" }}namespace: {{.Release.Namespace}}{{ end }}
-{{- end -}}
-
 {{- define "partials.annotations.created-by" -}}
 linkerd.io/created-by: {{ .Values.cliVersion | default (printf "linkerd/helm %s" (.Values.cniPluginVersion | default .Values.linkerdVersion)) }}
 {{- end -}}

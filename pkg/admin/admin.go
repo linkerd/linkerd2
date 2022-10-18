@@ -25,7 +25,7 @@ func NewServer(addr string, enablePprof bool) *http.Server {
 	return &http.Server{
 		Addr:              addr,
 		Handler:           h,
-		ReadHeaderTimeout: 10 * time.Second,
+		ReadHeaderTimeout: 15 * time.Second,
 	}
 }
 

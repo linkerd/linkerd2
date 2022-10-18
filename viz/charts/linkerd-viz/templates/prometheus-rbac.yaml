@@ -35,7 +35,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: prometheus
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: viz
     component: prometheus

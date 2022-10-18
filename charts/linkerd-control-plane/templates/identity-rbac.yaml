@@ -13,9 +13,8 @@ rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
   verbs: ["create"]
-- apiGroups: ["apps"]
-  resources: ["deployments"]
-  verbs: ["get"]
+# TODO(ver) Restrict this to the Linkerd namespace. See
+# https://github.com/linkerd/linkerd2/issues/9367
 - apiGroups: [""]
   resources: ["events"]
   verbs: ["create", "patch"]
@@ -40,7 +39,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  {{ include "partials.namespace" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
