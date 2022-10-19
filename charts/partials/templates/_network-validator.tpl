@@ -1,24 +1,20 @@
 
 {{- define "partials.network-validator" -}}
 name: linkerd-network-validator
-image: {{.Values.proxyInit.image.name}}:{{.Values.proxyInit.image.version}}
-imagePullPolicy: {{.Values.proxyInit.image.pullPolicy | default .Values.imagePullPolicy}}
-env:
-  {{- if .Values.networkValidator.logLevel -}}
-  - name: LINKERD_NETWORK_VALIDATOR_LOG_LEVEL
-    value: {{ .Values.networkValidator.logLevel }}
-  {{- end -}}
-  {{- if .Values.networkValidator.LogFormat -}}
-    - name: LINKERD_NETWORK_VALIDATOR_LOG_FORMAT
-      value: {{.Values.networkValidator.logFormat}}
-  {{- end -}}
-command: /usr/lib/linkerd/linkerd2-network-validator
+image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version}}
+imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}
+command:
+  - /usr/lib/linkerd/linkerd2-network-validator
 args:
-  - name: connectAddr
-    value: {{.Values.networkValidator.connectAddr}}
-  - name: listenAddr
-    value: {{.Values.networkValidator.listenAddr}}
-  - name: timeout
-    value: {{.Values.networkValidator.timeout}}
+  - --logFormat
+  - {{ .Values.networkValidator.logFormat }}
+  - --logLevel
+  - {{ .Values.networkValidator.logLevel }}
+  - --connectAddr
+  - {{ .Values.networkValidator.connectAddr }}
+  - --listenAddr
+  - {{ .Values.networkValidator.listenAddr }}
+  - --timeout
+  - {{ .Values.networkValidator.timeout }}
 
 {{- end -}}
