@@ -9,7 +9,6 @@ kubernetes-api
 kubernetes-version
 ------------------
 √ is running the minimum Kubernetes API version
-√ is running the minimum kubectl version
 
 pre-kubernetes-setup
 --------------------
