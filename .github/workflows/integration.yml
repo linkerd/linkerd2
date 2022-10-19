@@ -122,7 +122,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
+      - uses: actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f
         with:
           go-version: '1.18'
       - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
@@ -261,7 +261,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
+      - uses: actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f
         with:
           go-version: '1.18'
       - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
@@ -304,7 +304,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
+      - uses: actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f
         with:
           go-version: '1.18'
       - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
@@ -353,7 +353,7 @@ jobs:
           - v1.25
     steps:
       - uses: extractions/setup-just@aa5d15c144db4585980a44ebfdd2cf337c4f14cb
-      - uses: actions/setup-go@268d8c0ca0432bb2cf416faae41297df9d262d7f
+      - uses: actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f
         with:
           go-version: '1.18'
       - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
