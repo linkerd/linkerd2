@@ -317,7 +317,7 @@ jobs:
       contents: write
     steps:
     - name: Create linkerd/website repository dispatch event
-      uses: peter-evans/repository-dispatch@11ba7d3f32dc7cc919d1c43f1fec1c05260c26b5
+      uses: peter-evans/repository-dispatch@b8601598d81a169e6e83657904679c500a0af9b8
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
         repository: linkerd/website
