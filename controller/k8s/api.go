@@ -191,81 +191,81 @@ func newAPI(
 		case CJ:
 			api.cj = sharedInformers.Batch().V1().CronJobs()
 			api.syncChecks = append(api.syncChecks, api.cj.Informer().HasSynced)
-			api.addInformerSize("cron_job", api.cj.Informer())
+			api.addInformerSize(k8s.CronJob, api.cj.Informer())
 		case CM:
 			api.cm = sharedInformers.Core().V1().ConfigMaps()
 			api.syncChecks = append(api.syncChecks, api.cm.Informer().HasSynced)
-			api.addInformerSize("config_map", api.cm.Informer())
+			api.addInformerSize(k8s.ConfigMap, api.cm.Informer())
 		case Deploy:
 			api.deploy = sharedInformers.Apps().V1().Deployments()
 			api.syncChecks = append(api.syncChecks, api.deploy.Informer().HasSynced)
-			api.addInformerSize("deployment", api.deploy.Informer())
+			api.addInformerSize(k8s.Deployment, api.deploy.Informer())
 		case DS:
 			api.ds = sharedInformers.Apps().V1().DaemonSets()
 			api.syncChecks = append(api.syncChecks, api.ds.Informer().HasSynced)
-			api.addInformerSize("daemon_set", api.ds.Informer())
+			api.addInformerSize(k8s.DaemonSet, api.ds.Informer())
 		case Endpoint:
 			api.endpoint = sharedInformers.Core().V1().Endpoints()
 			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
-			api.addInformerSize("endpoint", api.endpoint.Informer())
+			api.addInformerSize(k8s.Endpoints, api.endpoint.Informer())
 		case ES:
 			api.es = sharedInformers.Discovery().V1().EndpointSlices()
 			api.syncChecks = append(api.syncChecks, api.es.Informer().HasSynced)
-			api.addInformerSize("endpoint_slice", api.es.Informer())
+			api.addInformerSize(k8s.EndpointSlices, api.es.Informer())
 		case Job:
 			api.job = sharedInformers.Batch().V1().Jobs()
 			api.syncChecks = append(api.syncChecks, api.job.Informer().HasSynced)
-			api.addInformerSize("job", api.job.Informer())
+			api.addInformerSize(k8s.Job, api.job.Informer())
 		case MWC:
 			api.mwc = sharedInformers.Admissionregistration().V1().MutatingWebhookConfigurations()
 			api.syncChecks = append(api.syncChecks, api.mwc.Informer().HasSynced)
-			api.addInformerSize("mutating_webhook_configuration", api.mwc.Informer())
+			api.addInformerSize(k8s.MutatingWebhookConfig, api.mwc.Informer())
 		case NS:
 			api.ns = sharedInformers.Core().V1().Namespaces()
 			api.syncChecks = append(api.syncChecks, api.ns.Informer().HasSynced)
-			api.addInformerSize("namespace", api.ns.Informer())
+			api.addInformerSize(k8s.Namespace, api.ns.Informer())
 		case Pod:
 			api.pod = sharedInformers.Core().V1().Pods()
 			api.syncChecks = append(api.syncChecks, api.pod.Informer().HasSynced)
-			api.addInformerSize("pod", api.pod.Informer())
+			api.addInformerSize(k8s.Pod, api.pod.Informer())
 		case RC:
 			api.rc = sharedInformers.Core().V1().ReplicationControllers()
 			api.syncChecks = append(api.syncChecks, api.rc.Informer().HasSynced)
-			api.addInformerSize("replication_controller", api.rc.Informer())
+			api.addInformerSize(k8s.ReplicationController, api.rc.Informer())
 		case RS:
 			api.rs = sharedInformers.Apps().V1().ReplicaSets()
 			api.syncChecks = append(api.syncChecks, api.rs.Informer().HasSynced)
-			api.addInformerSize("replica_set", api.rs.Informer())
+			api.addInformerSize(k8s.ReplicaSet, api.rs.Informer())
 		case SP:
 			if l5dCrdSharedInformers == nil {
 				panic("Linkerd CRD shared informer not configured")
 			}
 			api.sp = l5dCrdSharedInformers.Linkerd().V1alpha2().ServiceProfiles()
 			api.syncChecks = append(api.syncChecks, api.sp.Informer().HasSynced)
-			api.addInformerSize("service_profile", api.sp.Informer())
+			api.addInformerSize(k8s.ServiceProfile, api.sp.Informer())
 		case Srv:
 			if l5dCrdSharedInformers == nil {
 				panic("Linkerd CRD shared informer not configured")
 			}
 			api.srv = l5dCrdSharedInformers.Server().V1beta1().Servers()
 			api.syncChecks = append(api.syncChecks, api.srv.Informer().HasSynced)
-			api.addInformerSize("server", api.srv.Informer())
+			api.addInformerSize(k8s.Server, api.srv.Informer())
 		case SS:
 			api.ss = sharedInformers.Apps().V1().StatefulSets()
 			api.syncChecks = append(api.syncChecks, api.ss.Informer().HasSynced)
-			api.addInformerSize("stateful_set", api.ss.Informer())
+			api.addInformerSize(k8s.StatefulSet, api.ss.Informer())
 		case Svc:
 			api.svc = sharedInformers.Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
-			api.addInformerSize("service", api.svc.Informer())
+			api.addInformerSize(k8s.Service, api.svc.Informer())
 		case Node:
 			api.node = sharedInformers.Core().V1().Nodes()
 			api.syncChecks = append(api.syncChecks, api.node.Informer().HasSynced)
-			api.addInformerSize("node", api.node.Informer())
+			api.addInformerSize(k8s.Node, api.node.Informer())
 		case Secret:
 			api.secret = sharedInformers.Core().V1().Secrets()
 			api.syncChecks = append(api.syncChecks, api.secret.Informer().HasSynced)
-			api.addInformerSize("secret", api.secret.Informer())
+			api.addInformerSize(k8s.Secret, api.secret.Informer())
 		}
 	}
 	return api
@@ -502,10 +502,10 @@ func (api *API) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod, retry 
 	ownerRefs := pod.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
 		// pod without a parent
-		return "pod", pod.Name
+		return k8s.Pod, pod.Name
 	} else if len(ownerRefs) > 1 {
 		log.Debugf("unexpected owner reference count (%d): %+v", len(ownerRefs), ownerRefs)
-		return "pod", pod.Name
+		return k8s.Pod, pod.Name
 	}
 
 	parent := ownerRefs[0]

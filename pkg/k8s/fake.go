@@ -140,7 +140,9 @@ metadata:
 // NewFakeMetadataClientSet provides a mock Kubernetes Clientset for the metadata API
 func NewFakeMetadataClientSet(configs ...string) (metadata.Interface, error) {
 	sch := scheme.Scheme
-	metav1.AddMetaToScheme(sch)
+	if err := metav1.AddMetaToScheme(sch); err != nil {
+		return nil, nil
+	}
 	objs := []runtime.Object{}
 	for _, config := range configs {
 		obj, err := ToRuntimeObject(config)
