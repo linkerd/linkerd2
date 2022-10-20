@@ -206,9 +206,8 @@ func ShortNameFromCanonicalResourceName(canonicalName string) string {
 
 // KindToL5DLabel converts a Kubernetes `kind` to a Linkerd label.
 // For example:
-//
-//	`pod` -> `pod`
-//	`job` -> `k8s_job`
+//   `pod` -> `pod`
+//   `job` -> `k8s_job`
 func KindToL5DLabel(k8sKind string) string {
 	if k8sKind == Job {
 		return l5dJob
