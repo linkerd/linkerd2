@@ -6,13 +6,13 @@ imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPol
 command:
   - /usr/lib/linkerd/linkerd2-network-validator
 args:
-  - --logFormat
+  - --log-format
   - {{ .Values.networkValidator.logFormat }}
-  - --logLevel
+  - --log-level
   - {{ .Values.networkValidator.logLevel }}
-  - --connectAddr
+  - --connect-addr
   - {{ .Values.networkValidator.connectAddr }}
-  - --listenAddr
+  - --listen-addr
   - {{ .Values.networkValidator.listenAddr }}
   - --timeout
   - {{ .Values.networkValidator.timeout }}
