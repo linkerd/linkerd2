@@ -11,6 +11,7 @@ metadata:
   labels:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- include "linkerd.giantswarm-labels" . | nindent 4 }}
 spec:
   group: linkerd.io
   versions:
