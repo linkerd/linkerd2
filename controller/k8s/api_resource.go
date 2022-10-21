@@ -42,43 +42,119 @@ const (
 func (res APIResource) GVK() (schema.GroupVersionKind, error) {
 	switch res {
 	case CJ:
-		return strToGVK("CronJob.v1.batch"), nil
+		return schema.GroupVersionKind{
+			Group:   "batch",
+			Version: "v1",
+			Kind:    "CronJob",
+		}, nil
 	case CM:
-		return strToGVK("Configmap.v1."), nil
+		return schema.GroupVersionKind{
+			Group:   "",
+			Version: "v1",
+			Kind:    "Configmap",
+		}, nil
 	case Deploy:
-		return strToGVK("Deployment.v1.apps"), nil
+		return schema.GroupVersionKind{
+			Group:   "apps",
+			Version: "v1",
+			Kind:    "Deployment",
+		}, nil
 	case DS:
-		return strToGVK("DaemonSet.v1.apps"), nil
+		return schema.GroupVersionKind{
+			Group:   "apps",
+			Version: "v1",
+			Kind:    "DaemonSet",
+		}, nil
 	case Endpoint:
-		return strToGVK("Endpoint.v1."), nil
+		return schema.GroupVersionKind{
+			Group:   "",
+			Version: "v1",
+			Kind:    "Endpoint",
+		}, nil
 	case ES:
-		return strToGVK("Endpointslice.v1.discovery.k8s.io"), nil
+		return schema.GroupVersionKind{
+			Group:   "discovery.k8s.io",
+			Version: "v1",
+			Kind:    "Endpointslice",
+		}, nil
 	case Job:
-		return strToGVK("Job.v1.batch"), nil
+		return schema.GroupVersionKind{
+			Group:   "batch",
+			Version: "v1",
+			Kind:    "Job",
+		}, nil
 	case MWC:
-		return strToGVK("Mutatingwebhookconfiguration.v1.admissionregistration.k8s.io"), nil
+		return schema.GroupVersionKind{
+			Group:   "admissionregistration.k8s.io",
+			Version: "v1",
+			Kind:    "Mutatingwebhookconfiguration",
+		}, nil
 	case Node:
-		return strToGVK("Node.v1."), nil
+		return schema.GroupVersionKind{
+			Group:   "",
+			Version: "v1",
+			Kind:    "Node",
+		}, nil
 	case NS:
-		return strToGVK("Namespace.v1."), nil
+		return schema.GroupVersionKind{
+			Group:   "",
+			Version: "v1",
+			Kind:    "Namespace",
+		}, nil
 	case Pod:
-		return strToGVK("Pod.v1."), nil
+		return schema.GroupVersionKind{
+			Group:   "",
+			Version: "v1",
+			Kind:    "Pod",
+		}, nil
 	case RC:
-		return strToGVK("ReplicationController.v1."), nil
+		return schema.GroupVersionKind{
+			Group:   "",
+			Version: "v1",
+			Kind:    "ReplicationController",
+		}, nil
 	case RS:
-		return strToGVK("Replicaset.v1.apps"), nil
+		return schema.GroupVersionKind{
+			Group:   "apps",
+			Version: "v1",
+			Kind:    "Replicaset",
+		}, nil
 	case Saz:
-		return strToGVK("Serverauthorization.v1beta1.policy.linkerd.io"), nil
+		return schema.GroupVersionKind{
+			Group:   "policy.linkerd.io",
+			Version: "v1beta1",
+			Kind:    "Serverauthorization",
+		}, nil
 	case Secret:
-		return strToGVK("Secret.v1."), nil
+		return schema.GroupVersionKind{
+			Group:   "",
+			Version: "v1",
+			Kind:    "Secret",
+		}, nil
 	case SP:
-		return strToGVK("Serviceprofile.v1alpha2.linkerd.io"), nil
+		return schema.GroupVersionKind{
+			Group:   "linkerd.io",
+			Version: "v1alpha2",
+			Kind:    "Serviceprofile",
+		}, nil
 	case SS:
-		return strToGVK("StatefulSet.v1.apps"), nil
+		return schema.GroupVersionKind{
+			Group:   "apps",
+			Version: "v1",
+			Kind:    "StatefulSet",
+		}, nil
 	case Srv:
-		return strToGVK("Server.v1beta1.policy.linkerd.io"), nil
+		return schema.GroupVersionKind{
+			Group:   "policy.linkerd.io",
+			Version: "v1beta1",
+			Kind:    "Server",
+		}, nil
 	case Svc:
-		return strToGVK("Service.v1."), nil
+		return schema.GroupVersionKind{
+			Group:   "",
+			Version: "v1",
+			Kind:    "Service",
+		}, nil
 	default:
 		return schema.GroupVersionKind{}, status.Errorf(codes.Unimplemented, "unimplemented resource type: %d", res)
 	}
@@ -128,12 +204,4 @@ func GetAPIResource(kind string) (APIResource, error) {
 	default:
 		return 0, fmt.Errorf("APIResource not found: %s", kind)
 	}
-}
-
-func strToGVK(str string) schema.GroupVersionKind {
-	parts := strings.SplitN(str, ".", 3)
-	if len(parts) != 3 {
-		return schema.GroupVersionKind{}
-	}
-	return schema.GroupVersionKind{Group: parts[2], Version: parts[1], Kind: parts[0]}
 }
