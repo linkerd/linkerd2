@@ -44,9 +44,15 @@ linters:
   # - prealloc
   # - stylecheck
 
-  # https://github.com/golangci/golangci-lint/issues/2649
   disable:
+  # https://github.com/golangci/golangci-lint/issues/2649
   - structcheck
+
+linters-settings:
+  revive:
+    rules:
+    - name: package-comments
+      disabled: true
 
 issues:
   exclude-use-default: false
