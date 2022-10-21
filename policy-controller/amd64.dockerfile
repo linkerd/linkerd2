@@ -1,4 +1,4 @@
-ARG RUST_IMAGE=docker.io/library/rust:1.63.0
+ARG RUST_IMAGE=docker.io/library/rust:1.64.0
 ARG RUNTIME_IMAGE=gcr.io/distroless/cc
 
 # Builds the controller binary.
@@ -11,10 +11,10 @@ COPY Cargo.toml Cargo.lock .
 COPY policy-controller policy-controller
 RUN cargo new policy-test --lib
 RUN --mount=type=cache,target=target \
-    --mount=type=cache,from=rust:1.63.0,source=/usr/local/cargo,target=/usr/local/cargo \
+    --mount=type=cache,from=rust:1.64.0,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo fetch
 RUN --mount=type=cache,target=target \
-    --mount=type=cache,from=rust:1.63.0,source=/usr/local/cargo,target=/usr/local/cargo \
+    --mount=type=cache,from=rust:1.64.0,source=/usr/local/cargo,target=/usr/local/cargo \
     if [ "$BUILD_TYPE" = debug ]; then \
         cargo build --frozen --target=x86_64-unknown-linux-gnu --package=linkerd-policy-controller && \
         mv target/x86_64-unknown-linux-gnu/debug/linkerd-policy-controller /tmp/ ; \
