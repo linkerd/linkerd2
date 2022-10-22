@@ -1,4 +1,4 @@
-ARG RUST_IMAGE=docker.io/library/rust:1.63.0
+ARG RUST_IMAGE=docker.io/library/rust:1.64.0
 ARG RUNTIME_IMAGE=gcr.io/distroless/cc
 
 FROM $RUST_IMAGE as build
@@ -13,11 +13,11 @@ COPY Cargo.toml Cargo.lock .
 COPY policy-controller policy-controller
 RUN cargo new policy-test --lib
 RUN --mount=type=cache,target=target \
-    --mount=type=cache,from=rust:1.63.0,source=/usr/local/cargo,target=/usr/local/cargo \
+    --mount=type=cache,from=rust:1.64.0,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo fetch
 # XXX(ver) we can't easily cross-compile against openssl, so use rustls on arm.
 RUN --mount=type=cache,target=target \
-    --mount=type=cache,from=rust:1.63.0,source=/usr/local/cargo,target=/usr/local/cargo \
+    --mount=type=cache,from=rust:1.64.0,source=/usr/local/cargo,target=/usr/local/cargo \
     cargo build --frozen --release --target=aarch64-unknown-linux-gnu \
         --package=linkerd-policy-controller --no-default-features --features="rustls-tls" && \
     mv target/aarch64-unknown-linux-gnu/release/linkerd-policy-controller /tmp/
