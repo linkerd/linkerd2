@@ -242,7 +242,7 @@ networkValidator:
   # @default -- plain
   logFormat: plain
   # Address to which the client will attempt to connect
-  connectAddr: "192.0.2.2:1404"
+  connectAddr: "1.1.1.1:20001"
   # Address to which are supposed to be redirected by the OS
   listenAddr: "0.0.0.0:4140"
   timeout: "10s"

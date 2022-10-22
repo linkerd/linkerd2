@@ -28,7 +28,6 @@ var (
 		"charts/partials/templates/_metadata.tpl",
 		"charts/partials/templates/_nodeselector.tpl",
 		"charts/partials/templates/_network-validator.tpl",
-		"charts/partials/templates/_noop.tpl",
 		"charts/partials/templates/_proxy-config-ann.tpl",
 		"charts/partials/templates/_proxy-init.tpl",
 		"charts/partials/templates/_proxy.tpl",
