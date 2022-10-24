@@ -41,7 +41,7 @@
     "whatwg-fetch": "3.6.2"
   },
   "devDependencies": {
-    "@babel/core": "^7.19.3",
+    "@babel/core": "^7.19.6",
     "@babel/eslint-parser": "^7.19.1",
     "@babel/plugin-proposal-class-properties": "^7.17.12",
     "@babel/preset-env": "^7.19.3",
@@ -49,7 +49,7 @@
     "@babel/runtime": "^7.19.4",
     "@lingui/cli": "3.14.0",
     "babel-core": "^7.0.0-bridge.0",
-    "babel-jest": "^29.1.2",
+    "babel-jest": "^29.2.1",
     "babel-loader": "^8.2.5",
     "babel-plugin-import": "^1.13.5",
     "babel-plugin-macros": "^3.1.0",
@@ -63,8 +63,8 @@
     "eslint-config-airbnb": "^19.0.4",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-jsx-a11y": "^6.6.1",
-    "eslint-plugin-promise": "^6.1.0",
-    "eslint-plugin-react": "^7.31.8",
+    "eslint-plugin-promise": "^6.1.1",
+    "eslint-plugin-react": "^7.31.10",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-webpack-plugin": "^3.2.0",
     "file-loader": "^6.2.0",

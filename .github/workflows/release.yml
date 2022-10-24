@@ -79,7 +79,7 @@ jobs:
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact
       if: matrix.component == 'cli-bin'
-      uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
+      uses: actions/upload-artifact@83fd05a356d7e2593de66fc9913b3002723633cb
       with:
         name: image-archives
         path: /home/runner/archives
@@ -258,7 +258,7 @@ jobs:
         args: pack bin/win/linkerd.nuspec
     - name: Chocolatey - upload package
       if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
+      uses: actions/upload-artifact@83fd05a356d7e2593de66fc9913b3002723633cb
       with:
         name: choco
         path: ./linkerd.*.nupkg
@@ -296,7 +296,7 @@ jobs:
         mv choco/linkerd.*.nupkg "target/release/linkerd2-cli-stable-$v.nupkg" || true
     - name: Create release
       id: create_release
-      uses: softprops/action-gh-release@fb0163a75bee697a9cfec2c931801de7c7f10042
+      uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5
       with:
         draft: false
         prerelease: false
