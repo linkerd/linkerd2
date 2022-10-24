@@ -343,8 +343,6 @@ message RouteTable {
 
 
 message GatewaysTable {
-  option deprecated = true;
-
   repeated Row rows = 1;
 
   message Row {
@@ -360,16 +358,12 @@ message GatewaysTable {
 }
 
 message GatewaysRequest {
-  option deprecated = true;
-
   string remote_cluster_name = 1;
   string gateway_namespace = 2;
   string time_window = 3;
 }
 
 message GatewaysResponse {
-  option deprecated = true;
-
   oneof response {
     Ok ok = 1;
     ResourceError error = 2;
@@ -385,7 +379,7 @@ service Api {
 
   rpc Edges(EdgesRequest) returns (EdgesResponse) {}
 
-  rpc Gateways(GatewaysRequest) returns (GatewaysResponse) { option deprecated = true; }
+  rpc Gateways(GatewaysRequest) returns (GatewaysResponse) {}
 
   rpc TopRoutes(TopRoutesRequest) returns (TopRoutesResponse) {}
 
