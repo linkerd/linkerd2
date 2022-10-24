@@ -467,6 +467,12 @@ data:
     imagePullPolicy: IfNotPresent
     imagePullSecrets: []
     linkerdVersion: install-control-plane-version
+    networkValidator:
+      connectAddr: 1.1.1.1:20001
+      listenAddr: 0.0.0.0:4140
+      logFormat: plain
+      logLevel: debug
+      timeout: 10s
     nodeAffinity: null
     nodeSelector:
       kubernetes.io/os: linux
@@ -743,7 +749,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - identity
@@ -901,10 +907,22 @@ spec:
         - mountPath: /var/run/secrets/tokens
           name: linkerd-identity-token
       initContainers:
-      - args:
-          - -v
-        image: gcr.io/google_containers/pause:3.2
-        name: noop
+        - name: linkerd-network-validator
+          image: cr.l5d.io/linkerd/proxy:install-proxy-version
+          imagePullPolicy: IfNotPresent
+          command:
+            - /usr/lib/linkerd/linkerd2-network-validator
+          args:
+            - --log-format
+            - plain
+            - --log-level
+            - debug
+            - --connect-addr
+            - 1.1.1.1:20001
+            - --listen-addr
+            - 0.0.0.0:4140
+            - --timeout
+            - 10s
       serviceAccountName: linkerd-identity
       volumes:
       - name: identity-issuer
@@ -1062,7 +1080,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - env:
         - name: _pod_name
@@ -1289,10 +1307,22 @@ spec:
           name: policy-tls
           readOnly: true
       initContainers:
-      - args:
-          - -v
-        image: gcr.io/google_containers/pause:3.2
-        name: noop
+        - name: linkerd-network-validator
+          image: cr.l5d.io/linkerd/proxy:install-proxy-version
+          imagePullPolicy: IfNotPresent
+          command:
+            - /usr/lib/linkerd/linkerd2-network-validator
+          args:
+            - --log-format
+            - plain
+            - --log-level
+            - debug
+            - --connect-addr
+            - 1.1.1.1:20001
+            - --listen-addr
+            - 0.0.0.0:4140
+            - --timeout
+            - 10s
       serviceAccountName: linkerd-destination
       volumes:
       - name: sp-tls
@@ -1405,7 +1435,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - env:
         - name: _pod_name
@@ -1563,10 +1593,22 @@ spec:
           name: tls
           readOnly: true
       initContainers:
-      - args:
-          - -v
-        image: gcr.io/google_containers/pause:3.2
-        name: noop
+        - name: linkerd-network-validator
+          image: cr.l5d.io/linkerd/proxy:install-proxy-version
+          imagePullPolicy: IfNotPresent
+          command:
+            - /usr/lib/linkerd/linkerd2-network-validator
+          args:
+            - --log-format
+            - plain
+            - --log-level
+            - debug
+            - --connect-addr
+            - 1.1.1.1:20001
+            - --listen-addr
+            - 0.0.0.0:4140
+            - --timeout
+            - 10s
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:

@@ -494,6 +494,12 @@ data:
     imagePullPolicy: IfNotPresent
     imagePullSecrets: null
     linkerdVersion: install-control-plane-version
+    networkValidator:
+      connectAddr: 1.1.1.1:20001
+      listenAddr: 0.0.0.0:4140
+      logFormat: plain
+      logLevel: debug
+      timeout: 10s
     nodeAffinity: null
     nodeSelector:
       kubernetes.io/os: linux

@@ -237,14 +237,15 @@ proxyInit:
 networkValidator:
   # -- Log level for the network-validator
   # @default -- info
-  logLevel: info
+  logLevel: debug
   # -- Log format (`plain` or `json`) for the proxy-init
   # @default -- plain
   logFormat: plain
-  # Address to which the client will attempt to connect
+  # -- Address to which the network-validator will attempt to connect. we expect this to be rewritten
   connectAddr: "1.1.1.1:20001"
-  # Address to which are supposed to be redirected by the OS
+  # -- Address to which network-validator listens to requests from itself
   listenAddr: "0.0.0.0:4140"
+  # -- Timeout before network-validator fails to validate the pod's network connectivity
   timeout: "10s"
 
 # -- For Private docker registries, authentication is needed.
