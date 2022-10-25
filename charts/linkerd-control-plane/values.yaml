@@ -238,7 +238,7 @@ networkValidator:
   # -- Log level for the network-validator
   # @default -- info
   logLevel: debug
-  # -- Log format (`plain` or `json`) for the proxy-init
+  # -- Log format (`plain` or `json`) for network-validator
   # @default -- plain
   logFormat: plain
   # -- Address to which the network-validator will attempt to connect. we expect this to be rewritten
