@@ -1,4 +1,3 @@
-
 {{- define "partials.network-validator" -}}
 name: linkerd-network-validator
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion }}
