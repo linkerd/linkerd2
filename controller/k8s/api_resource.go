@@ -4,9 +4,17 @@ import (
 	"fmt"
 	"strings"
 
+	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
+	sazv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
+	spv1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	v1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -42,119 +50,43 @@ const (
 func (res APIResource) GVK() (schema.GroupVersionKind, error) {
 	switch res {
 	case CJ:
-		return schema.GroupVersionKind{
-			Group:   "batch",
-			Version: "v1",
-			Kind:    "CronJob",
-		}, nil
+		return batchv1.SchemeGroupVersion.WithKind("CronJob"), nil
 	case CM:
-		return schema.GroupVersionKind{
-			Group:   "",
-			Version: "v1",
-			Kind:    "ConfigMap",
-		}, nil
+		return v1.SchemeGroupVersion.WithKind("ConfigMap"), nil
 	case Deploy:
-		return schema.GroupVersionKind{
-			Group:   "apps",
-			Version: "v1",
-			Kind:    "Deployment",
-		}, nil
+		return appsv1.SchemeGroupVersion.WithKind("Deployment"), nil
 	case DS:
-		return schema.GroupVersionKind{
-			Group:   "apps",
-			Version: "v1",
-			Kind:    "DaemonSet",
-		}, nil
+		return appsv1.SchemeGroupVersion.WithKind("DaemonSet"), nil
 	case Endpoint:
-		return schema.GroupVersionKind{
-			Group:   "",
-			Version: "v1",
-			Kind:    "Endpoint",
-		}, nil
+		return v1.SchemeGroupVersion.WithKind("Endpoint"), nil
 	case ES:
-		return schema.GroupVersionKind{
-			Group:   "discovery.k8s.io",
-			Version: "v1",
-			Kind:    "EndpointSlice",
-		}, nil
+		return discoveryv1.SchemeGroupVersion.WithKind("EndpointSlice"), nil
 	case Job:
-		return schema.GroupVersionKind{
-			Group:   "batch",
-			Version: "v1",
-			Kind:    "Job",
-		}, nil
+		return batchv1.SchemeGroupVersion.WithKind("Job"), nil
 	case MWC:
-		return schema.GroupVersionKind{
-			Group:   "admissionregistration.k8s.io",
-			Version: "v1",
-			Kind:    "MutatingWebhookConfiguration",
-		}, nil
+		return admissionregistrationv1.SchemeGroupVersion.WithKind("MutatingWebhookConfiguration"), nil
 	case Node:
-		return schema.GroupVersionKind{
-			Group:   "",
-			Version: "v1",
-			Kind:    "Node",
-		}, nil
+		return v1.SchemeGroupVersion.WithKind("Node"), nil
 	case NS:
-		return schema.GroupVersionKind{
-			Group:   "",
-			Version: "v1",
-			Kind:    "Namespace",
-		}, nil
+		return v1.SchemeGroupVersion.WithKind("Namespace"), nil
 	case Pod:
-		return schema.GroupVersionKind{
-			Group:   "",
-			Version: "v1",
-			Kind:    "Pod",
-		}, nil
+		return v1.SchemeGroupVersion.WithKind("Pod"), nil
 	case RC:
-		return schema.GroupVersionKind{
-			Group:   "",
-			Version: "v1",
-			Kind:    "ReplicationController",
-		}, nil
+		return v1.SchemeGroupVersion.WithKind("ReplicationController"), nil
 	case RS:
-		return schema.GroupVersionKind{
-			Group:   "apps",
-			Version: "v1",
-			Kind:    "ReplicaSet",
-		}, nil
+		return appsv1.SchemeGroupVersion.WithKind("ReplicaSet"), nil
 	case Saz:
-		return schema.GroupVersionKind{
-			Group:   "policy.linkerd.io",
-			Version: "v1beta1",
-			Kind:    "ServerAuthorization",
-		}, nil
+		return sazv1beta1.SchemeGroupVersion.WithKind("ServerAuthorization"), nil
 	case Secret:
-		return schema.GroupVersionKind{
-			Group:   "",
-			Version: "v1",
-			Kind:    "Secret",
-		}, nil
+		return v1.SchemeGroupVersion.WithKind("Secret"), nil
 	case SP:
-		return schema.GroupVersionKind{
-			Group:   "linkerd.io",
-			Version: "v1alpha2",
-			Kind:    "ServiceProfile",
-		}, nil
+		return spv1alpha2.SchemeGroupVersion.WithKind("ServiceProfile"), nil
 	case SS:
-		return schema.GroupVersionKind{
-			Group:   "apps",
-			Version: "v1",
-			Kind:    "StatefulSet",
-		}, nil
+		return appsv1.SchemeGroupVersion.WithKind("StatefulSet"), nil
 	case Srv:
-		return schema.GroupVersionKind{
-			Group:   "policy.linkerd.io",
-			Version: "v1beta1",
-			Kind:    "Server",
-		}, nil
+		return serverv1beta1.SchemeGroupVersion.WithKind("Server"), nil
 	case Svc:
-		return schema.GroupVersionKind{
-			Group:   "",
-			Version: "v1",
-			Kind:    "Service",
-		}, nil
+		return v1.SchemeGroupVersion.WithKind("Service"), nil
 	default:
 		return schema.GroupVersionKind{}, status.Errorf(codes.Unimplemented, "unimplemented resource type: %d", res)
 	}
