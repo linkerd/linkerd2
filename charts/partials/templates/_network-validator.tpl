@@ -4,6 +4,7 @@ name: linkerd-network-validator
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion }}
 imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}
 securityContext:
+  runAsUser: 2104
   capabilities:
     drop:
       - all

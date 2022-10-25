@@ -912,6 +912,7 @@ spec:
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         securityContext:
+          runAsUser: 2104
           capabilities:
             drop:
               - all
@@ -1316,6 +1317,7 @@ spec:
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         securityContext:
+          runAsUser: 2104
           capabilities:
             drop:
               - all
@@ -1606,6 +1608,7 @@ spec:
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         securityContext:
+          runAsUser: 2104
           capabilities:
             drop:
               - all
