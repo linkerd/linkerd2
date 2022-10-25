@@ -236,7 +236,7 @@ proxyInit:
 # ensures that iptables is correctly routing requests before we start linkerd.
 networkValidator:
   # -- Log level for the network-validator
-  # @default -- info
+  # @default -- debug
   logLevel: debug
   # -- Log format (`plain` or `json`) for network-validator
   # @default -- plain
