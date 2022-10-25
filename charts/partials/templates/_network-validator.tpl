@@ -3,7 +3,7 @@ name: linkerd-network-validator
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion }}
 imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}
 securityContext:
-  runAsUser: {{ .Values.proxy.uid }}
+  runAsUser: 65534
   capabilities:
     drop:
       - all

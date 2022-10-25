@@ -184,7 +184,7 @@ spec:
           capabilities:
             drop:
             - all
-          runAsUser: 2102
+          runAsUser: 65534
       volumes:
       - emptyDir:
           medium: Memory
