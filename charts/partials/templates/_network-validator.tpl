@@ -3,6 +3,10 @@
 name: linkerd-network-validator
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion }}
 imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}
+securityContext:
+  capabilities:
+    drop:
+      - all
 command:
   - /usr/lib/linkerd/linkerd2-network-validator
 args:
