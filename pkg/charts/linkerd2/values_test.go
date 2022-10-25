@@ -158,6 +158,13 @@ func TestNewValues(t *testing.T) {
 			RunAsRoot: false,
 			RunAsUser: 65534,
 		},
+		NetworkValidator: &NetworkValidator{
+			LogLevel:    "debug",
+			LogFormat:   "plain",
+			ConnectAddr: "1.1.1.1:20001",
+			ListenAddr:  "0.0.0.0:4140",
+			Timeout:     "10s",
+		},
 		Identity: &Identity{
 			ServiceAccountTokenProjection: true,
 			Issuer: &Issuer{

@@ -290,6 +290,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: heartbeat
     linkerd.io/control-plane-ns: linkerd
+
 ---
 ###
 ### Proxy Injector RBAC
@@ -885,6 +886,7 @@ spec:
         - mountPath: /var/run/secrets/tokens
           name: linkerd-identity-token
       initContainers:
+      
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -1311,6 +1313,7 @@ spec:
           name: policy-tls
           readOnly: true
       initContainers:
+      
       - args:
         - --incoming-proxy-port
         - "4143"
