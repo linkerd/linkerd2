@@ -51,7 +51,7 @@ func (res APIResource) GVK() (schema.GroupVersionKind, error) {
 		return schema.GroupVersionKind{
 			Group:   "",
 			Version: "v1",
-			Kind:    "Configmap",
+			Kind:    "ConfigMap",
 		}, nil
 	case Deploy:
 		return schema.GroupVersionKind{
@@ -75,7 +75,7 @@ func (res APIResource) GVK() (schema.GroupVersionKind, error) {
 		return schema.GroupVersionKind{
 			Group:   "discovery.k8s.io",
 			Version: "v1",
-			Kind:    "Endpointslice",
+			Kind:    "EndpointSlice",
 		}, nil
 	case Job:
 		return schema.GroupVersionKind{
@@ -87,7 +87,7 @@ func (res APIResource) GVK() (schema.GroupVersionKind, error) {
 		return schema.GroupVersionKind{
 			Group:   "admissionregistration.k8s.io",
 			Version: "v1",
-			Kind:    "Mutatingwebhookconfiguration",
+			Kind:    "MutatingWebhookConfiguration",
 		}, nil
 	case Node:
 		return schema.GroupVersionKind{
@@ -117,13 +117,13 @@ func (res APIResource) GVK() (schema.GroupVersionKind, error) {
 		return schema.GroupVersionKind{
 			Group:   "apps",
 			Version: "v1",
-			Kind:    "Replicaset",
+			Kind:    "ReplicaSet",
 		}, nil
 	case Saz:
 		return schema.GroupVersionKind{
 			Group:   "policy.linkerd.io",
 			Version: "v1beta1",
-			Kind:    "Serverauthorization",
+			Kind:    "ServerAuthorization",
 		}, nil
 	case Secret:
 		return schema.GroupVersionKind{
@@ -135,7 +135,7 @@ func (res APIResource) GVK() (schema.GroupVersionKind, error) {
 		return schema.GroupVersionKind{
 			Group:   "linkerd.io",
 			Version: "v1alpha2",
-			Kind:    "Serviceprofile",
+			Kind:    "ServiceProfile",
 		}, nil
 	case SS:
 		return schema.GroupVersionKind{
