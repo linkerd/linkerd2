@@ -340,12 +340,12 @@ proxyInjector:
     - key: config.linkerd.io/admission-webhooks
       operator: NotIn
       values:
-        - disabled
+      - disabled
     - key: kubernetes.io/metadata.name
       operator: NotIn
       values:
-        - kube-system
-        - cert-manager
+      - kube-system
+      - cert-manager
 
   # -- Object selector used by admission webhook.
   objectSelector:
@@ -405,7 +405,7 @@ profileValidator:
     - key: config.linkerd.io/admission-webhooks
       operator: NotIn
       values:
-        - disabled
+      - disabled
 
   # -- Certificate for the service profile validator. If not provided and not using an external secret
   # then Helm will generate one.
@@ -450,7 +450,7 @@ policyValidator:
     - key: config.linkerd.io/admission-webhooks
       operator: NotIn
       values:
-        - disabled
+      - disabled
 
   # -- Certificate for the policy validator. If not provided and not using an external secret
   # then Helm will generate one.
