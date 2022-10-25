@@ -337,23 +337,23 @@ proxyInjector:
   # -- Namespace selector used by admission webhook.
   namespaceSelector:
     matchExpressions:
-      - key: config.linkerd.io/admission-webhooks
-        operator: NotIn
-        values:
-          - disabled
-      - key: kubernetes.io/metadata.name
-        operator: NotIn
-        values:
-          - kube-system
-          - cert-manager
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+        - disabled
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+        - kube-system
+        - cert-manager
 
   # -- Object selector used by admission webhook.
   objectSelector:
     matchExpressions:
-      - key: linkerd.io/control-plane-component
-        operator: DoesNotExist
-      - key: linkerd.io/cni-resource
-        operator: DoesNotExist
+    - key: linkerd.io/control-plane-component
+      operator: DoesNotExist
+    - key: linkerd.io/cni-resource
+      operator: DoesNotExist
 
   # -- Certificate for the proxy injector. If not provided and not using an external secret
   # then Helm will generate one.
@@ -402,10 +402,10 @@ profileValidator:
   # -- Namespace selector used by admission webhook
   namespaceSelector:
     matchExpressions:
-      - key: config.linkerd.io/admission-webhooks
-        operator: NotIn
-        values:
-          - disabled
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+        - disabled
 
   # -- Certificate for the service profile validator. If not provided and not using an external secret
   # then Helm will generate one.
@@ -447,10 +447,10 @@ policyValidator:
   # -- Namespace selector used by admission webhook
   namespaceSelector:
     matchExpressions:
-      - key: config.linkerd.io/admission-webhooks
-        operator: NotIn
-        values:
-          - disabled
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+        - disabled
 
   # -- Certificate for the policy validator. If not provided and not using an external secret
   # then Helm will generate one.
