@@ -169,7 +169,7 @@ Kubernetes: `>=1.21.0-0`
 | networkValidator.connectAddr | string | `"1.1.1.1:20001"` | Address to which the network-validator will attempt to connect. we expect this to be rewritten |
 | networkValidator.listenAddr | string | `"0.0.0.0:4140"` | Address to which network-validator listens to requests from itself |
 | networkValidator.logFormat | string | plain | Log format (`plain` or `json`) for network-validator |
-| networkValidator.logLevel | string | info | Log level for the network-validator |
+| networkValidator.logLevel | string | debug | Log level for the network-validator |
 | networkValidator.timeout | string | `"10s"` | Timeout before network-validator fails to validate the pod's network connectivity |
 | nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | podAnnotations | object | `{}` | Additional annotations to add to all pods |
