@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
@@ -149,7 +148,7 @@ func NewClusterScopedAPI(
 	l5dCrdClient l5dcrdclient.Interface,
 	resources ...APIResource,
 ) *API {
-	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
+	sharedInformers := informers.NewSharedInformerFactory(k8sClient, resyncTime)
 	return newAPI(k8sClient, dynamicClient, l5dCrdClient, sharedInformers, resources...)
 }
 
@@ -161,7 +160,7 @@ func NewNamespacedAPI(
 	namespace string,
 	resources ...APIResource,
 ) *API {
-	sharedInformers := informers.NewSharedInformerFactoryWithOptions(k8sClient, 10*time.Minute, informers.WithNamespace(namespace))
+	sharedInformers := informers.NewSharedInformerFactoryWithOptions(k8sClient, resyncTime, informers.WithNamespace(namespace))
 	return newAPI(k8sClient, dynamicClient, l5dCrdClient, sharedInformers, resources...)
 }
 
@@ -175,7 +174,7 @@ func newAPI(
 ) *API {
 	var l5dCrdSharedInformers l5dcrdinformer.SharedInformerFactory
 	if l5dCrdClient != nil {
-		l5dCrdSharedInformers = l5dcrdinformer.NewSharedInformerFactory(l5dCrdClient, 10*time.Minute)
+		l5dCrdSharedInformers = l5dcrdinformer.NewSharedInformerFactory(l5dCrdClient, resyncTime)
 	}
 
 	api := &API{

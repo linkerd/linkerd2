@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
@@ -69,7 +68,7 @@ func newClusterScopedMetadataAPI(
 ) (*MetadataAPI, error) {
 	sharedInformers := metadatainformer.NewFilteredSharedInformerFactory(
 		metadataClient,
-		10*time.Minute,
+		resyncTime,
 		metav1.NamespaceAll,
 		nil,
 	)
