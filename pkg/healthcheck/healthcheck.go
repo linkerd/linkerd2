@@ -539,13 +539,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 						return hc.kubeAPI.CheckVersion(hc.kubeVersion)
 					},
 				},
-				{
-					description: "is running the minimum kubectl version",
-					hintAnchor:  "kubectl-version",
-					check: func(context.Context) error {
-						return k8s.CheckKubectlVersion()
-					},
-				},
 			},
 			false,
 		),
@@ -1946,7 +1939,8 @@ func (hc *HealthChecker) checkClusterNetworksContainAllServices(ctx context.Cont
 		return err
 	}
 	for _, svc := range svcs.Items {
-		if svc.Spec.ClusterIP != "None" && !clusterNetworksContainIP(clusterIPNets, svc.Spec.ClusterIP) {
+		clusterIP := svc.Spec.ClusterIP
+		if clusterIP != "" && clusterIP != "None" && !clusterNetworksContainIP(clusterIPNets, svc.Spec.ClusterIP) {
 			return fmt.Errorf("the Linkerd clusterNetworks [%q] do not include svc %s/%s (%s)", hc.linkerdConfig.ClusterNetworks, svc.Namespace, svc.Name, svc.Spec.ClusterIP)
 		}
 	}

@@ -44,9 +44,15 @@ linters:
   # - prealloc
   # - stylecheck
 
-  # https://github.com/golangci/golangci-lint/issues/2649
   disable:
+  # https://github.com/golangci/golangci-lint/issues/2649
   - structcheck
+
+linters-settings:
+  revive:
+    rules:
+    - name: package-comments
+      disabled: true
 
 issues:
   exclude-use-default: false
@@ -79,6 +85,14 @@ issues:
   - linters:
     - gosec
     text: "G101: Potential hardcoded credentials"
+
+  # Temporarily disable this check until the next golang-ci upgrade (greater
+  # than v1.50.1) which upgrades gosec from v2.13.1 to v2.14.0. The fix is in
+  # this commit, that refers to G404 but it seems it also affects G402:
+  # https://github.com/securego/gosec/commit/dfde579243e1bfe0856ddafc5fc6aebb29c0edf6
+  - linters:
+    - gosec
+    text: "G402: TLS MinVersion too low"
 
   # Flag operations are fallible if the flag does not exist. We assume these
   # exist as they are generally flags we are deprecating or use only for
