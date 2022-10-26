@@ -3,4 +3,4 @@ description: |
   A Helm chart containing Linkerd partial templates,
   depended by the 'linkerd' and 'patch' charts.
 name: partials
-version: 22.10.3-edge
+version: 0.1.0

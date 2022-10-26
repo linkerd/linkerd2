@@ -2,22 +2,23 @@
 
 ## edge-22.10.3
 
-This edge release adds network-validator, a new initContainer to be used when
-CNI is enabled. network-validator ensures that local iptables rules are
+This edge release adds network-validator, a new init container to be used when
+CNI is enabled. `network-validator` ensures that local iptables rules are
 working as expected. It will validate this before linkerd-proxy starts.
-network-validator replaces the noop container, runs as nobody, and drops
+`network-validator` replaces the `noop` container, runs as `nobody`, and drops
 all capabilities before starting.
 
-* Remove deprecation option from Gateways API (#9692)
-* Validate CNI configurations during pod startup (#9678)
+* Remove deprecation option from Gateways API
+* Validate CNI configurations during pod startup 
 * Fix "cluster networks contains all services" fails with services with no
-  ClusterIP (#9662)
-* Fixes #9616 remove kubectl version check from `linkerd check` (#9623)
-* Refactor use of `watch` channels in policy controller index (#9405)
-* Set readOnlyRootFilesystem: true in viz chart (#9410)
-* Add gateway pauseImage to CLI values struct (#9603)
+  ClusterIP
+* Remove kubectl version check from `linkerd check` (thanks @ziollek!)
+* Refactor use of `watch` channels in policy controller index
+* Set `readOnlyRootFilesystem: true` in viz chart (thanks @mikutas!)
+* Fix `linkerd multicluster install` by re-adding `pause` container image
+  in chart
 * linkerd-viz have hardcoded image value in namespace-metadata.yml template
-  bug correction
+  bug correction (thanks @bastienbosser!)
 
 ## edge-22.10.2
 
