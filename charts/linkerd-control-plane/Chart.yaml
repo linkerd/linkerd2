@@ -14,9 +14,9 @@ sources:
 - https://github.com/linkerd/linkerd2/
 dependencies:
 - name: partials
-  version: 0.1.0
+  version: 22.10.3-edge
   repository: file://../partials
-version: 1.10.1-edge
+version: 22.10.3-edge
 icon: https://linkerd.io/images/logo-only-200h.png
 maintainers:
   - name: Linkerd authors

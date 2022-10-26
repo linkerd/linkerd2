@@ -3,7 +3,7 @@
 Linkerd gives you observability, reliability, and security
 for your microservices — with no code change required.
 
-![Version: 1.10.1-edge](https://img.shields.io/badge/Version-1.10.1--edge-informational?style=flat-square)
+![Version: 22.10.3-edge](https://img.shields.io/badge/Version-22.10.3--edge-informational?style=flat-square)
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -126,7 +126,7 @@ Kubernetes: `>=1.21.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
-| file://../partials | partials | 0.1.0 |
+| file://../partials | partials | 22.10.3-edge |
 
 ## Values
 

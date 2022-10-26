@@ -12,4 +12,4 @@ description: |
 kubeVersion: ">=1.21.0-0"
 icon: https://linkerd.io/images/logo-only-200h.png
 name: "linkerd-multicluster-link"
-version: 0.1.1
+version: 22.10.3-edge

@@ -9,7 +9,7 @@ multicluster link` CLI command, which also produces the
 chart. Therefore this chart is not a replacement for that command, and
 shouldn't be used as-is unless you really know what you're doing ;-)
 
-![Version: 0.1.1](https://img.shields.io/badge/Version-0.1.1-informational?style=flat-square)
+![Version: 22.10.3-edge](https://img.shields.io/badge/Version-22.10.3--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
