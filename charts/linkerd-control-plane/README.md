@@ -126,7 +126,7 @@ Kubernetes: `>=1.21.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
-| file://../partials | partials | 22.10.3-edge |
+| file://../partials | partials | 0.1.0 |
 
 ## Values
 
