@@ -141,11 +141,6 @@ issues:
     path: .*(test|fuzzer).*\.go
     text: Deferring unsafe method \"Close\" on type \"\*os\.File\"
 
-  # Gateways API is being deprecated in 2.12 and will be removed in 2.13
-  - linters:
-    - staticcheck
-    text: "SA1019: .*.(GatewaysTable|GatewaysRequest|GatewaysResponse|Gateways) is deprecated: Do not use."
-
   # In tests/fuzzing we are usually mocking components or have a good idea
   # about the errors that we expect. For this reason, we ignore unchecked
   # errors in all test files.
