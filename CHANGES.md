@@ -9,7 +9,7 @@ working as expected. It will validate this before linkerd-proxy starts.
 all capabilities before starting.
 
 * Remove deprecation option from Gateways API
-* Validate CNI configurations during pod startup 
+* Validate CNI configurations during pod startup
 * Fix "cluster networks contains all services" fails with services with no
   ClusterIP
 * Remove kubectl version check from `linkerd check` (thanks @ziollek!)
