@@ -9,8 +9,7 @@ metadata:
   name: collector
   namespace: {{ .Release.Namespace }}
   {{- with .Values.commonLabels }}
-  labels:
-    {{ toYaml . | trim | nindent 4 }}
+  labels: {{ toYaml . | trim | nindent 4 }}
   {{- end }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{ end -}}
@@ -54,7 +53,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- with .Values.commonLabels }}
   labels:
-    {{ toYaml . | trim | nindent 4 }}
+    {{ toYaml . | trim | indent 4 }}
   {{- end }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
@@ -67,8 +66,7 @@ metadata:
   name: jaeger-injector-k8s-tls
   namespace: {{ .Release.Namespace }}
   {{- with .Values.commonLabels }}
-  labels:
-    {{ toYaml . | trim | nindent 4 }}
+  labels: {{ toYaml . | trim | nindent 4 }}
   {{- end }}
 type: kubernetes.io/tls
 data:
@@ -131,8 +129,7 @@ metadata:
   name: jaeger
   namespace: {{ .Release.Namespace }}
   {{- with .Values.commonLabels }}
-  labels:
-    {{ toYaml . | trim | nindent 4 }}
+  labels: {{ toYaml . | trim | nindent 4 }}
   {{- end }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{ end -}}

@@ -35,6 +35,7 @@ Kubernetes: `>=1.21.0-0`
 | inboundProxyPort | int | `4143` | Inbound port for the proxy container |
 | logLevel | string | `"info"` | Log level for the CNI plugin |
 | outboundProxyPort | int | `4140` | Outbound port for the proxy container |
+| podLabels | object | `{}` | Additional labels to add to all pods |
 | portsToRedirect | string | `""` | Ports to redirect to proxy |
 | priorityClassName | string | `""` | Kubernetes priorityClassName for the CNI plugin's Pods |
 | privileged | bool | `false` | Run the install-cni container in privileged mode |

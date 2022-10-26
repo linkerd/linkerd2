@@ -18,7 +18,6 @@ This file was inspired by
 1) https://github.com/istio/cni/blob/c63a509539b5ed165a6617548c31b686f13c2133/deployments/kubernetes/install/manifests/istio-cni.yaml
 */ -}}
 {{- if eq .Release.Service "CLI" -}}
----
 kind: Namespace
 apiVersion: v1
 metadata:
@@ -26,8 +25,8 @@ metadata:
   labels:
     linkerd.io/cni-resource: "true"
     config.linkerd.io/admission-webhooks: disabled
-{{ end -}}
 ---
+{{ end -}}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -194,7 +193,7 @@ spec:
     metadata:
       labels:
         k8s-app: linkerd-cni
-        {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       annotations:
         {{ include "partials.annotations.created-by" . }}
         linkerd.io/cni-resource: "true"

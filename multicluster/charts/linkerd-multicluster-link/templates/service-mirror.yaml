@@ -107,7 +107,7 @@ spec:
       labels:
         component: linkerd-service-mirror
         mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
-        {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       containers:
       - args:

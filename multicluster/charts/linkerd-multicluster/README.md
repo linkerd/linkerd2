@@ -93,6 +93,7 @@ Kubernetes: `>=1.21.0-0`
 | namespaceMetadata.image.pullPolicy | string | imagePullPolicy | Pull policy for the namespace-metadata instance |
 | namespaceMetadata.image.registry | string | `"curlimages"` | Docker registry for the namespace-metadata instance |
 | namespaceMetadata.image.tag | string | `"7.78.0"` | Docker image tag for the namespace-metadata instance |
+| podLabels | object | `{}` | Additional labels to add to all pods |
 | proxyOutboundPort | int | `4140` | The port on which the proxy accepts outbound traffic |
 | remoteMirrorServiceAccount | bool | `true` | If the remote mirror service account should be installed |
 | remoteMirrorServiceAccountName | string | `"linkerd-service-mirror-remote-access-default"` | The name of the service account used to allow remote clusters to mirror local services |

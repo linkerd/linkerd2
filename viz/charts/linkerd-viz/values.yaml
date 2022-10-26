@@ -8,6 +8,8 @@
 linkerdVersion: linkerdVersionValue
 # -- Kubernetes DNS Domain name to use
 clusterDomain: cluster.local
+# -- Additional labels to add to all pods
+podLabels: {}
 # -- Labels to apply to all resources
 commonLabels: {}
 # -- Trust domain used for identity

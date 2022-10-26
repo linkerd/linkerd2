@@ -81,7 +81,7 @@ spec:
       labels:
         linkerd.io/extension: jaeger
         component: collector
-        {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.collector.tolerations -}}
       {{- include "linkerd.tolerations" (dict "Values" .Values.collector) | nindent 6 }}
@@ -189,7 +189,7 @@ spec:
       labels:
         linkerd.io/extension: jaeger
         component: jaeger
-        {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.jaeger.tolerations -}}
       {{- include "linkerd.tolerations" (dict "Values" .Values.jaeger) | nindent 6 }}

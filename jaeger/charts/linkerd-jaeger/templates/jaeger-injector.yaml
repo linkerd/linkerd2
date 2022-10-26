@@ -30,7 +30,7 @@ spec:
       labels:
         linkerd.io/extension: jaeger
         component: jaeger-injector
-        {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.webhook.tolerations -}}
       {{- include "linkerd.tolerations" (dict "Values" .Values.webhook) | nindent 6 }}

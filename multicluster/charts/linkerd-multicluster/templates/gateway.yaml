@@ -37,7 +37,7 @@ spec:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         app: {{.Values.gateway.name}}
-        {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- $_ := set $tree "component" .Values.gateway.name -}}
       {{- $_ := set $tree "label" "app" -}}
