@@ -231,6 +231,23 @@ proxyInit:
     mountPath: /run
     name: linkerd-proxy-init-xtables-lock
 
+# network validator configuration
+# This runs on a host that uses iptables to reroute network traffic. The validator
+# ensures that iptables is correctly routing requests before we start linkerd.
+networkValidator:
+  # -- Log level for the network-validator
+  # @default -- debug
+  logLevel: debug
+  # -- Log format (`plain` or `json`) for network-validator
+  # @default -- plain
+  logFormat: plain
+  # -- Address to which the network-validator will attempt to connect. we expect this to be rewritten
+  connectAddr: "1.1.1.1:20001"
+  # -- Address to which network-validator listens to requests from itself
+  listenAddr: "0.0.0.0:4140"
+  # -- Timeout before network-validator fails to validate the pod's network connectivity
+  timeout: "10s"
+
 # -- For Private docker registries, authentication is needed.
 #  Registry secrets are applied to the respective service accounts
 imagePullSecrets: []
@@ -297,7 +314,6 @@ identity:
       # -- Key for the issuer certificate (ECDSA). It must be provided during
       # install
       keyPEM: |
-
 
 # -|- CPU, Memory and Ephemeral Storage resources required by the identity controller (see `proxy.resources` for sub-fields)
 #identityResources:

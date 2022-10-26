@@ -108,7 +108,7 @@ spec:
           readOnly: true
       initContainers:
       {{ if .Values.cniEnabled -}}
-      - {{- include "partials.noop" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
+      - {{- include "partials.network-validator" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ else -}}
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}

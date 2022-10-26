@@ -201,7 +201,7 @@ spec:
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       initContainers:
       {{ if .Values.cniEnabled -}}
-      - {{- include "partials.noop" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
+      - {{- include "partials.network-validator" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ else -}}
       {{- /*
         The identity controller needs to connect to the Kubernetes API before the proxy is able to

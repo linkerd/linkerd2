@@ -71,7 +71,7 @@
     "op": "add",
     "path": "{{$prefix}}/spec/initContainers/-",
     "value":
-      {{- include "partials.noop" . | fromYaml | toPrettyJson | nindent 6 }}
+      {{- include "partials.network-validator" . | fromYaml | toPrettyJson | nindent 6 }}
   },
   {{- end }}
   {{- if .Values.debugContainer }}

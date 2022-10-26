@@ -64,6 +64,7 @@ type (
 		PolicyController *PolicyController `json:"policyController"`
 		Proxy            *Proxy            `json:"proxy"`
 		ProxyInit        *ProxyInit        `json:"proxyInit"`
+		NetworkValidator *NetworkValidator `json:"networkValidator"`
 		Identity         *Identity         `json:"identity"`
 		DebugContainer   *DebugContainer   `json:"debugContainer"`
 		ProxyInjector    *Webhook          `json:"proxyInjector"`
@@ -132,6 +133,14 @@ type (
 		RunAsRoot            bool             `json:"runAsRoot"`
 		RunAsUser            int64            `json:"runAsUser"`
 		IptablesMode         string           `json:"iptablesMode"`
+	}
+
+	NetworkValidator struct {
+		LogLevel    string `json:"logLevel"`
+		LogFormat   string `json:"logFormat"`
+		ConnectAddr string `json:"connectAddr"`
+		ListenAddr  string `json:"listenAddr"`
+		Timeout     string `json:"timeout"`
 	}
 
 	// DebugContainer contains the fields to set the debugging sidecar
