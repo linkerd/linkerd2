@@ -12,7 +12,6 @@ all capabilities before starting.
 * Fix "cluster networks contains all services" fails with services with no
   ClusterIP
 * Remove kubectl version check from `linkerd check` (thanks @ziollek!)
-* Refactor use of `watch` channels in policy controller index
 * Set `readOnlyRootFilesystem: true` in viz chart (thanks @mikutas!)
 * Fix `linkerd multicluster install` by re-adding `pause` container image
   in chart
