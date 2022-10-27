@@ -16,7 +16,7 @@ dependencies:
 - name: partials
   version: 0.1.0
   repository: file://../partials
-version: 22.10.3-edge
+version: 1.10.2-edge
 icon: https://linkerd.io/images/logo-only-200h.png
 maintainers:
   - name: Linkerd authors
