@@ -8,8 +8,7 @@ working as expected. It will validate this before linkerd-proxy starts.
 `network-validator` replaces the `noop` container, runs as `nobody`, and drops
 all capabilities before starting.
 
-* Remove deprecation option from Gateways API
-* Validate CNI configurations during pod startup
+* Validate CNI `iptables` configuration during pod startup
 * Fix "cluster networks contains all services" fails with services with no
   ClusterIP
 * Remove kubectl version check from `linkerd check` (thanks @ziollek!)
