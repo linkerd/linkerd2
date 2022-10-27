@@ -10,7 +10,7 @@ RUN go mod download
 ARG TARGETARCH
 RUN ./bin/install-deps $TARGETARCH
 
-FROM --platform=$BUILDPLATFORM curlimages/curl:7.85.0 as fetch
+FROM --platform=$BUILDPLATFORM curlimages/curl:7.86.0 as fetch
 WORKDIR /build
 COPY bin/fetch-proxy bin/fetch-proxy
 COPY bin/scurl bin/scurl
