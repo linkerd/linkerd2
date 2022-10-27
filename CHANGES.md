@@ -2,7 +2,7 @@
 
 ## edge-22.10.3
 
-This edge release adds network-validator, a new init container to be used when
+This edge release adds `network-validator`, a new init container to be used when
 CNI is enabled. `network-validator` ensures that local iptables rules are
 working as expected. It will validate this before linkerd-proxy starts.
 `network-validator` replaces the `noop` container, runs as `nobody`, and drops
