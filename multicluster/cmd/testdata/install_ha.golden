@@ -4,6 +4,7 @@ metadata:
   name: linkerd-multicluster
   labels:
     linkerd.io/extension: multicluster
+    pod-security.kubernetes.io/enforce: privileged
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -63,7 +64,14 @@ spec:
         - name: pause
           image: gcr.io/google_containers/pause:3.2
           securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            runAsNonRoot: true
             runAsUser: 2103
+            seccompProfile:
+              type: RuntimeDefault
       serviceAccountName: linkerd-gateway
 ---
 kind: PodDisruptionBudget

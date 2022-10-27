@@ -264,10 +264,16 @@ spec:
         {{- include "partials.resources" .Values.prometheus.resources | nindent 8 }}
         {{- end }}
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 65534
           runAsGroup: 65534
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
       {{- range .Values.prometheus.ruleConfigMapMounts }}
         - name: {{ .name }}

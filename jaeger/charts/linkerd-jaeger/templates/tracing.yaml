@@ -118,7 +118,14 @@ spec:
         {{- include "partials.resources" .Values.collector.resources | nindent 8 }}
         {{- end }}
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: {{.Values.collector.UID | default .Values.defaultUID}}
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /conf
           name: collector-config-val
@@ -209,7 +216,14 @@ spec:
         {{- include "partials.resources" .Values.jaeger.resources | nindent 8 }}
         {{- end }}
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: {{.Values.jaeger.UID | default .Values.defaultUID}}
+          seccompProfile:
+            type: RuntimeDefault
       dnsPolicy: ClusterFirst
       serviceAccountName: jaeger
 {{ end -}}

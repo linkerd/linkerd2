@@ -61,7 +61,14 @@ spec:
             path: /ready
             port: 9995
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: {{.Values.webhook.UID | default .Values.defaultUID}}
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls

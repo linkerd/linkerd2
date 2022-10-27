@@ -122,6 +122,13 @@ spec:
         {{- include "partials.resources" .Values.dashboard.resources | nindent 8 }}
         {{- end }}
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: {{.Values.dashboard.UID | default .Values.defaultUID}}
+          seccompProfile:
+            type: RuntimeDefault
       serviceAccountName: web

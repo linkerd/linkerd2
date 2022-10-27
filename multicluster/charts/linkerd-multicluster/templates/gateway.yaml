@@ -44,7 +44,14 @@ spec:
         - name: pause
           image: {{ .Values.gateway.pauseImage }}
           securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            runAsNonRoot: true
             runAsUser: {{.Values.gateway.UID}}
+            seccompProfile:
+              type: RuntimeDefault
       serviceAccountName: {{.Values.gateway.name}}
 {{- if .Values.enablePodAntiAffinity }}
 ---

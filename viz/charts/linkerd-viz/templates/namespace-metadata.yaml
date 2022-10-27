@@ -30,8 +30,15 @@ spec:
         imagePullPolicy: {{.Values.namespaceMetadata.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         command: ["/bin/sh"]
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           readOnlyRootFilesystem: true
           runAsUser: {{.Values.defaultUID}}
+          seccompProfile:
+            type: RuntimeDefault
         args:
         - -c
         - |

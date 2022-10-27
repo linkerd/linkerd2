@@ -5,4 +5,6 @@ metadata:
   name: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: multicluster
+    {{- /* linkerd-init requires extended capabilities and so requires priviledged mode */}}
+    pod-security.kubernetes.io/enforce: {{ ternary "restricted" "privileged" .Values.cniEnabled }}
 {{end -}}

@@ -25,6 +25,11 @@ tolerations: &default_tolerations
 # deprecated since k8s v1.21
 enablePSP: false
 
+# -- This should be the same value used on the control-plane chart. If
+# enabled, the linkerd-jaeger namespace will enforce the "privileged"
+# PodSecurity mode.
+cniEnabled: false
+
 # -- Default UID for all the jaeger components
 defaultUID: 2103
 
