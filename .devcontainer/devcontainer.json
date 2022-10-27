@@ -15,7 +15,10 @@
         "zxh404.vscode-proto3"
     ],
     "settings": {
-        "go.lintTool": "golangci-lint"
+        "go.lintTool": "golangci-lint",
+        // TODO(ver) Find a way to enforce YAML formatting.
+        // See https://github.com/redhat-developer/vscode-yaml/discussions/839
+        "yaml.format.enable": false
     },
     "runArgs": [
         "--init",
