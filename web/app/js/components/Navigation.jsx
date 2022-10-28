@@ -437,16 +437,15 @@ class NavigationBase extends React.Component {
   };
 
   menuItem(path, title, icon, onClick) {
-    const { classes, location, pathPrefix } = this.props;
-    const normalizedPath = location.pathname.replace(pathPrefix, '');
+    const { classes, location } = this.props;
 
     return (
       <MenuItem
         component={Link}
         onClick={onClick}
-        to={this.api.prefixLink(path)}
+        to={path}
         className={classes.navMenuItem}
-        selected={path === normalizedPath}>
+        selected={path === location.pathname}>
         <ListItemIcon>{icon}</ListItemIcon>
         <ListItemText primary={title} />
       </MenuItem>

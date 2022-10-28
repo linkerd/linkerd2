@@ -10,7 +10,6 @@ describe('GrafanaLink', () => {
       resource: "replicationcontroller",
       name: "aldksf-3409823049823",
       namespace: "myns",
-      PrefixedLink: api.PrefixedLink
     };
     let component = mount(routerWrap(GrafanaLink, linkProps));
 
@@ -32,7 +31,6 @@ describe('GrafanaLink', () => {
     let linkProps = {
       resource: "replicationcontroller",
       name: "aldksf-3409823049823",
-      PrefixedLink: api.PrefixedLink
     };
     let component = mount(routerWrap(GrafanaLink, linkProps));
 

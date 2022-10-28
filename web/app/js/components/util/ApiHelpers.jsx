@@ -205,29 +205,6 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
 
   const prefixLink = to => `${pathPrefix}${to}`;
 
-  // prefix all links in the app with `pathPrefix`
-  const PrefixedLink = function PrefixedLink({ to, targetBlank, children }) {
-    const url = prefixLink(to);
-
-    return (
-      <Link
-        to={url}
-        {...(targetBlank ? { target: '_blank' } : {})}>
-        {children}
-      </Link>
-    );
-  };
-
-  PrefixedLink.propTypes = {
-    children: PropTypes.node.isRequired,
-    targetBlank: PropTypes.bool,
-    to: PropTypes.string.isRequired,
-  };
-
-  PrefixedLink.defaultProps = {
-    targetBlank: false,
-  };
-
   const generateResourceURL = r => {
     if (r.type === 'namespace') {
       return `/namespaces/${r.namespace || r.name}`;
@@ -239,9 +216,9 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   // a prefixed link to a Resource Detail page
   const ResourceLink = function({ resource, linkText }) {
     return (
-      <PrefixedLink to={generateResourceURL(resource)}>
+      <Link to={generateResourceURL(resource)}>
         {linkText || `${resource.type}/${resource.name}`}
-      </PrefixedLink>
+      </Link>
     );
   };
   ResourceLink.propTypes = {
@@ -274,7 +251,6 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     getMetricsWindowDisplayText,
     urlsForResource,
     urlsForResourceNoStats,
-    PrefixedLink,
     prefixLink,
     ResourceLink,
     setCurrentRequests,

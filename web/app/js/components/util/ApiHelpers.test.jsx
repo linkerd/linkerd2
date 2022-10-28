@@ -57,49 +57,6 @@ describe('ApiHelpers', () => {
     });
   });
 
-  describe('PrefixedLink', () => {
-    it('respects default values', () => {
-      api = ApiHelpers('/my/path/prefix/linkerd-web:/foo');
-      let linkProps = { to: "/myrelpath", children: ["Informative Link Title"] };
-      let prefixedLink = mount(routerWrap(api.PrefixedLink, linkProps));
-
-      expect(prefixedLink.find("Link")).to.have.length(1);
-      expect(prefixedLink.html()).to.contain('href="/my/path/prefix/linkerd-web:/foo/myrelpath"');
-      expect(prefixedLink.html()).to.not.contain('target="_blank"');
-      expect(prefixedLink.html()).to.contain(linkProps.children[0]);
-    });
-
-    it('wraps a relative link with the pathPrefix', () => {
-      api = ApiHelpers('/my/path/prefix');
-      let linkProps = { to: "/myrelpath", children: ["Informative Link Title"] };
-      let prefixedLink = mount(routerWrap(api.PrefixedLink, linkProps));
-
-      expect(prefixedLink.find("Link")).to.have.length(1);
-      expect(prefixedLink.html()).to.contain('href="/my/path/prefix/myrelpath"');
-      expect(prefixedLink.html()).to.include(linkProps.children[0]);
-    });
-
-    it('wraps a relative link with no pathPrefix', () => {
-      api = ApiHelpers('');
-      let linkProps = { to: "/myrelpath", children: ["Informative Link Title"] };
-      let prefixedLink = mount(routerWrap(api.PrefixedLink, linkProps));
-
-      expect(prefixedLink.find("Link")).to.have.length(1);
-      expect(prefixedLink.html()).to.contain('href="/myrelpath"');
-      expect(prefixedLink.html()).to.include(linkProps.children[0]);
-    });
-
-    it('sets target=blank', () => {
-      api = ApiHelpers('/my/path/prefix');
-      let linkProps = { targetBlank: true, to: "/myrelpath", children: ["Informative Link Title"] };
-      let prefixedLink = mount(routerWrap(api.PrefixedLink, linkProps));
-
-      expect(prefixedLink.find("Link")).to.have.length(1);
-      expect(prefixedLink.html()).to.contain('target="_blank"');
-      expect(prefixedLink.html()).to.include(linkProps.children[0]);
-    });
-  });
-
   describe('makeCancelable', () => {
     it('wraps the original promise', () => {
       let p = Promise.resolve({ result: 'my response', ok: true });

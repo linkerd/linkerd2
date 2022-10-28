@@ -2,8 +2,9 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import _isEmpty from 'lodash/isEmpty';
 import { grafanaIcon } from './util/SvgWrappers.jsx';
+import { Link } from 'react-router-dom';
 
-const GrafanaLink = function({ PrefixedLink, name, namespace, resource, grafanaExternalUrl, grafanaPrefix }) {
+const GrafanaLink = function({ name, namespace, resource, grafanaExternalUrl, grafanaPrefix }) {
   let link = '/grafana/d/';
 
   if (grafanaExternalUrl !== '') {
@@ -27,7 +28,7 @@ const GrafanaLink = function({ PrefixedLink, name, namespace, resource, grafanaE
 
   if (grafanaExternalUrl !== '') {
     return (
-      // <a> instead of <PrefixedLink> because <Link> doesn't work with external URL's
+      // <a> instead of <Link> because <Link> doesn't work with external URL's
       <a
         href={link}
         rel="noreferrer"
@@ -38,12 +39,12 @@ const GrafanaLink = function({ PrefixedLink, name, namespace, resource, grafanaE
     );
   } else {
     return (
-      <PrefixedLink
+      <Link
         to={link}
         targetBlank>
         &nbsp;&nbsp;
         {grafanaIcon}
-      </PrefixedLink>
+      </Link>
     );
   }
 };
@@ -51,7 +52,6 @@ const GrafanaLink = function({ PrefixedLink, name, namespace, resource, grafanaE
 GrafanaLink.propTypes = {
   name: PropTypes.string.isRequired,
   namespace: PropTypes.string,
-  PrefixedLink: PropTypes.func.isRequired,
   resource: PropTypes.string.isRequired,
   grafanaExternalUrl: PropTypes.string,
   grafanaPrefix: PropTypes.string,

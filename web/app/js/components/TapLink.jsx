@@ -2,8 +2,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { faMicroscope } from '@fortawesome/free-solid-svg-icons/faMicroscope';
+import { Link } from 'react-router-dom';
 
-const TapLink = function({ PrefixedLink, namespace, resource, toNamespace, toResource, path, disabled }) {
+const TapLink = function({ namespace, resource, toNamespace, toResource, path, disabled }) {
   if (disabled || namespace === '') {
     return <FontAwesomeIcon icon={faMicroscope} className="tapGrayed" />;
   }
@@ -18,9 +19,9 @@ const TapLink = function({ PrefixedLink, namespace, resource, toNamespace, toRes
   const queryStr = Object.entries(params).map(([k, v]) => `${k}=${v}`).join('&');
 
   return (
-    <PrefixedLink to={`/tap?${queryStr}`}>
+    <Link to={`/tap?${queryStr}`}>
       <FontAwesomeIcon icon={faMicroscope} />
-    </PrefixedLink>
+    </Link>
   );
 };
 
@@ -28,7 +29,6 @@ TapLink.propTypes = {
   disabled: PropTypes.bool,
   namespace: PropTypes.string,
   path: PropTypes.string.isRequired,
-  PrefixedLink: PropTypes.func.isRequired,
   resource: PropTypes.string.isRequired,
   toNamespace: PropTypes.string.isRequired,
   toResource: PropTypes.string.isRequired,

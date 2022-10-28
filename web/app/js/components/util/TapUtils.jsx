@@ -365,7 +365,7 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
   );
 };
 
-export const tapLink = (d, resourceType, PrefixedLink) => {
+export const tapLink = (d, resourceType) => {
   let disabled = false;
   const namespace = d.sourceLabels.namespace;
   let resource = '';
@@ -399,7 +399,6 @@ export const tapLink = (d, resourceType, PrefixedLink) => {
       toNamespace={toNamespace}
       toResource={toResource}
       path={d.path}
-      PrefixedLink={PrefixedLink}
       disabled={disabled} />
   );
 };

@@ -8,6 +8,7 @@ import Tooltip from '@material-ui/core/Tooltip';
 import { Trans } from '@lingui/macro';
 import _isEmpty from 'lodash/isEmpty';
 import { withContext } from './util/AppContext.jsx';
+import { Link } from 'react-router-dom';
 
 const getClassification = (meshedPodCount, failedPodCount) => {
   if (failedPodCount > 0) {
@@ -19,7 +20,7 @@ const getClassification = (meshedPodCount, failedPodCount) => {
   }
 };
 
-const namespacesColumns = PrefixedLink => [
+const namespacesColumns = () => [
   {
     title: <Trans>columnTitleNamespace</Trans>,
     dataIndex: 'namespace',
@@ -27,7 +28,7 @@ const namespacesColumns = PrefixedLink => [
     render: d => {
       return (
         <Grid container alignItems="center" spacing={1}>
-          <Grid item><PrefixedLink to={`/namespaces/${d.namespace}`}>{d.namespace}</PrefixedLink></Grid>
+          <Grid item><Link to={`/namespaces/${d.namespace}`}>{d.namespace}</Link></Grid>
           { _isEmpty(d.errors) ? null :
           <Grid item><ErrorModal errors={d.errors} resourceName={d.namespace} resourceType="namespace" /></Grid>
           }
@@ -70,21 +71,18 @@ const namespacesColumns = PrefixedLink => [
   },
 ];
 
-const MeshedStatusTable = function({ api, tableRows }) {
+const MeshedStatusTable = function({ tableRows }) {
   return (
     <BaseTable
       tableClassName="metric-table mesh-completion-table"
       tableRows={tableRows}
-      tableColumns={namespacesColumns(api.PrefixedLink)}
+      tableColumns={namespacesColumns()}
       defaultOrderBy="namespace"
       rowKey={d => d.namespace} />
   );
 };
 
 MeshedStatusTable.propTypes = {
-  api: PropTypes.shape({
-    PrefixedLink: PropTypes.func.isRequired,
-  }).isRequired,
   tableRows: PropTypes.arrayOf(PropTypes.shape({})),
 };
 

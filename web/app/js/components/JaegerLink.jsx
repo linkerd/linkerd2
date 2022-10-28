@@ -2,6 +2,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import _isEmpty from 'lodash/isEmpty';
 import { jaegerIcon } from './util/SvgWrappers.jsx';
+import { Link } from 'react-router-dom';
 
 function jaegerQuery(name, namespace, resource) {
   if (_isEmpty(namespace)) {
@@ -13,23 +14,22 @@ function jaegerQuery(name, namespace, resource) {
   }
 }
 
-const JaegerLink = function({ PrefixedLink, name, namespace, resource }) {
+const JaegerLink = function({ name, namespace, resource }) {
   const link = `/jaeger/search?service=linkerd-proxy&tags=${jaegerQuery(name, namespace, resource)}`;
 
   return (
-    <PrefixedLink
+    <Link
       to={link}
       targetBlank>
       &nbsp;&nbsp;
       {jaegerIcon}
-    </PrefixedLink>
+    </Link>
   );
 };
 
 JaegerLink.propTypes = {
   name: PropTypes.string.isRequired,
   namespace: PropTypes.string,
-  PrefixedLink: PropTypes.func.isRequired,
   resource: PropTypes.string.isRequired,
 };
 

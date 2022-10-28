@@ -370,7 +370,6 @@ class ServiceMesh extends React.Component {
 ServiceMesh.propTypes = {
   api: PropTypes.shape({
     cancelCurrentRequests: PropTypes.func.isRequired,
-    PrefixedLink: PropTypes.func.isRequired,
     fetchMetrics: PropTypes.func.isRequired,
     getCurrentPromises: PropTypes.func.isRequired,
     setCurrentRequests: PropTypes.func.isRequired,
