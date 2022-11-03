@@ -13,6 +13,7 @@ metadata:
     component: gateway
     app: {{.Values.gateway.name}}
     linkerd.io/extension: multicluster
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: {{.Values.gateway.name}}
   namespace: {{ .Release.Namespace }}
 spec:
@@ -36,6 +37,7 @@ spec:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         app: {{.Values.gateway.name}}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- $_ := set $tree "component" .Values.gateway.name -}}
       {{- $_ := set $tree "label" "app" -}}
@@ -62,6 +64,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: {{.Values.gateway.name}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -78,6 +81,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: multicluster
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     mirror.linkerd.io/gateway-identity: {{.Values.gateway.name}}.{{.Release.Namespace}}.serviceaccount.identity.{{.Values.linkerdNamespace}}.{{.Values.identityTrustDomain}}
     mirror.linkerd.io/probe-period: "{{.Values.gateway.probe.seconds}}"
@@ -115,4 +119,5 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: multicluster
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 {{end -}}

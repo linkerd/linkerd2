@@ -3,7 +3,7 @@
 The Linkerd-Jaeger extension adds distributed tracing to Linkerd using
 OpenCensus and Jaeger.
 
-![Version: 30.5.1-edge](https://img.shields.io/badge/Version-30.5.1--edge-informational?style=flat-square)
+![Version: 30.5.2-edge](https://img.shields.io/badge/Version-30.5.2--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -88,6 +88,7 @@ Kubernetes: `>=1.21.0-0`
 | collector.resources.memory.limit | string | `nil` | Maximum amount of memory that collector container can use |
 | collector.resources.memory.request | string | `nil` | Amount of memory that the collector container requests |
 | collector.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
+| commonLabels | object | `{}` | Labels to apply to all resources |
 | defaultUID | int | `2103` | Default UID for all the jaeger components |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | imagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all jaeger components |
@@ -113,6 +114,7 @@ Kubernetes: `>=1.21.0-0`
 | namespaceMetadata.image.registry | string | `"curlimages"` | Docker registry for the namespace-metadata instance |
 | namespaceMetadata.image.tag | string | `"7.78.0"` | Docker image tag for the namespace-metadata instance |
 | nodeSelector | object | `{"kubernetes.io/os":"linux"}` | Default nodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
+| podLabels | object | `{}` | Additional labels to add to all pods |
 | tolerations | string | `nil` | Default tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | webhook.UID | string | `nil` | UID for the webhook resource |
 | webhook.caBundle | string | `""` | Bundle of CA certificates for webhook. If not provided nor injected with cert-manager, then Helm will use the certificate generated for `webhook.crtPEM`. If `webhook.externalSecret` is set to true, this value, injectCaFrom, or injectCaFromSecret must be set, as no certificate will be generated. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information. |

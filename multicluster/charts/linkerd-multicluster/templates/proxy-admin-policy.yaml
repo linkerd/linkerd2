@@ -6,6 +6,7 @@ metadata:
   name: gateway-proxy-admin
   labels:
     linkerd.io/extension: multicluster
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -22,6 +23,7 @@ metadata:
   name: proxy-admin
   labels:
     linkerd.io/extension: multicluster
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -38,6 +40,7 @@ metadata:
   name: service-mirror-proxy-admin
   labels:
     linkerd.io/extension: multicluster
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   podSelector:
     matchLabels:
@@ -52,6 +55,7 @@ metadata:
   name: service-mirror-proxy-admin
   labels:
     linkerd.io/extension: multicluster
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   server:
     name: service-mirror-proxy-admin

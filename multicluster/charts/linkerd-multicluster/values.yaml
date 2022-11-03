@@ -34,6 +34,10 @@ gateway:
 
 # -- Control plane version
 linkerdVersion: linkerdVersionValue
+# -- Additional labels to add to all pods
+podLabels: {}
+# -- Labels to apply to all resources
+commonLabels: {}
 # -- Docker imagePullPolicy for all multicluster components
 imagePullPolicy: IfNotPresent
 # -- The port on which the proxy accepts outbound traffic

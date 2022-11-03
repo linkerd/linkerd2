@@ -7,6 +7,7 @@ metadata:
   labels:
     linkerd.io/extension: viz
     component: tap
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -25,6 +26,7 @@ metadata:
   labels:
     linkerd.io/extension: viz
     component: tap
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:

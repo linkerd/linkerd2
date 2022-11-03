@@ -3,7 +3,7 @@
 The Linkerd-Multicluster extension contains resources to support multicluster
 linking to remote clusters
 
-![Version: 30.3.1-edge](https://img.shields.io/badge/Version-30.3.1--edge-informational?style=flat-square)
+![Version: 30.3.2-edge](https://img.shields.io/badge/Version-30.3.2--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -71,6 +71,7 @@ Kubernetes: `>=1.21.0-0`
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | cniEnabled | bool | `false` | This should be the same value used on the control-plane chart. If enabled, the linkerd-multicluster namespace will enforce the "privileged" PodSecurity mode. |
+| commonLabels | object | `{}` | Labels to apply to all resources |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
 | gateway.UID | int | `2103` | User id under which the gateway shall be ran |
@@ -93,6 +94,7 @@ Kubernetes: `>=1.21.0-0`
 | namespaceMetadata.image.pullPolicy | string | imagePullPolicy | Pull policy for the namespace-metadata instance |
 | namespaceMetadata.image.registry | string | `"curlimages"` | Docker registry for the namespace-metadata instance |
 | namespaceMetadata.image.tag | string | `"7.78.0"` | Docker image tag for the namespace-metadata instance |
+| podLabels | object | `{}` | Additional labels to add to all pods |
 | proxyOutboundPort | int | `4140` | The port on which the proxy accepts outbound traffic |
 | remoteMirrorServiceAccount | bool | `true` | If the remote mirror service account should be installed |
 | remoteMirrorServiceAccountName | string | `"linkerd-service-mirror-remote-access-default"` | The name of the service account used to allow remote clusters to mirror local services |
