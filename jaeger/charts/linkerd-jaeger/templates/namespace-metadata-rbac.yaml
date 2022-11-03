@@ -1,6 +1,10 @@
+---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  {{- with .Values.commonLabels }}
+  labels: {{ toYaml . | trim | nindent 4 }}
+  {{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
     "helm.sh/hook": post-install
@@ -11,6 +15,9 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
+  {{- with .Values.commonLabels }}
+  labels: {{ toYaml . | trim | nindent 4 }}
+  {{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
     "helm.sh/hook": post-install
@@ -26,6 +33,9 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
+  {{- with .Values.commonLabels }}
+  labels: {{ toYaml . | trim | nindent 4 }}
+  {{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
     "helm.sh/hook": post-install

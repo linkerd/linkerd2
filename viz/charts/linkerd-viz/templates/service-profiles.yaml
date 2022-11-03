@@ -6,6 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: viz
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   routes:
   - name: POST /api/v1/StatSummary
@@ -45,6 +46,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: viz
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   routes:
   - name: POST /api/v1/query

@@ -8,6 +8,7 @@ metadata:
   labels:
     linkerd.io/extension: multicluster
     app: {{.Values.gateway.name}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -25,6 +26,7 @@ metadata:
   labels:
     linkerd.io/extension: multicluster
     app: {{.Values.gateway.name}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -49,6 +51,7 @@ metadata:
   labels:
     linkerd.io/extension: multicluster
     app: {{.Values.gateway.name}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:

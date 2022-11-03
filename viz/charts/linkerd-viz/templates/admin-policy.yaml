@@ -6,6 +6,7 @@ metadata:
   name: admin
   labels:
     linkerd.io/extension: viz
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -22,6 +23,7 @@ metadata:
   name: admin
   labels:
     linkerd.io/extension: viz
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -41,6 +43,7 @@ metadata:
   name: kubelet
   labels:
     linkerd.io/extension: viz
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:

@@ -70,6 +70,7 @@ Kubernetes: `>=1.21.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| commonLabels | object | `{}` | Labels to apply to all resources |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
 | gateway.UID | int | `2103` | User id under which the gateway shall be ran |
@@ -92,6 +93,7 @@ Kubernetes: `>=1.21.0-0`
 | namespaceMetadata.image.pullPolicy | string | imagePullPolicy | Pull policy for the namespace-metadata instance |
 | namespaceMetadata.image.registry | string | `"curlimages"` | Docker registry for the namespace-metadata instance |
 | namespaceMetadata.image.tag | string | `"7.78.0"` | Docker image tag for the namespace-metadata instance |
+| podLabels | object | `{}` | Additional labels to add to all pods |
 | proxyOutboundPort | int | `4140` | The port on which the proxy accepts outbound traffic |
 | remoteMirrorServiceAccount | bool | `true` | If the remote mirror service account should be installed |
 | remoteMirrorServiceAccountName | string | `"linkerd-service-mirror-remote-access-default"` | The name of the service account used to allow remote clusters to mirror local services |

@@ -11,6 +11,7 @@ metadata:
   labels:
     linkerd.io/extension: jaeger
     component: collector
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 data:
   collector-config: |
     {{- .Values.collector.config | trim | nindent 4 }}
@@ -23,6 +24,7 @@ metadata:
   labels:
     linkerd.io/extension: jaeger
     component: collector
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   type: ClusterIP
   ports:
@@ -57,6 +59,7 @@ metadata:
     app.kubernetes.io/name: collector
     app.kubernetes.io/part-of: Linkerd
     component: collector
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: collector
   namespace: {{ .Release.Namespace }}
 spec:
@@ -78,6 +81,7 @@ spec:
       labels:
         linkerd.io/extension: jaeger
         component: collector
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.collector.tolerations -}}
       {{- include "linkerd.tolerations" (dict "Values" .Values.collector) | nindent 6 }}
@@ -144,6 +148,7 @@ metadata:
   labels:
     linkerd.io/extension: jaeger
     component: jaeger
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   type: ClusterIP
   selector:
@@ -164,6 +169,7 @@ metadata:
     app.kubernetes.io/name: jaeger
     app.kubernetes.io/part-of: Linkerd
     component: jaeger
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: jaeger
   namespace: {{ .Release.Namespace }}
 spec:
@@ -183,6 +189,7 @@ spec:
       labels:
         linkerd.io/extension: jaeger
         component: jaeger
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.jaeger.tolerations -}}
       {{- include "linkerd.tolerations" (dict "Values" .Values.jaeger) | nindent 6 }}

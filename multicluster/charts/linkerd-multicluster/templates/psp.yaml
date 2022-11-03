@@ -7,6 +7,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/extension: multicluster
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
 - apiGroups: ['policy', 'extensions']
   resources: ['podsecuritypolicies']
@@ -22,6 +23,7 @@ metadata:
   labels:
     linkerd.io/extension: multicluster
     namespace: {{.Release.Namespace}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 roleRef:
   kind: Role
   name: psp

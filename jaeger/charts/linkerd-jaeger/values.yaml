@@ -1,6 +1,12 @@
 # -- Namespace of the Linkerd core control-plane install
 linkerdNamespace: linkerd
 
+# -- Additional labels to add to all pods
+podLabels: {}
+
+# -- Labels to apply to all resources
+commonLabels: {}
+
 # -- Docker imagePullPolicy for all jaeger components
 imagePullPolicy: IfNotPresent
 

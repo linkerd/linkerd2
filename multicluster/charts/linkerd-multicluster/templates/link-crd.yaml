@@ -8,6 +8,7 @@ metadata:
   name: links.multicluster.linkerd.io
   labels:
     linkerd.io/extension: multicluster
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:

@@ -34,6 +34,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/cni-resource: "true"
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 {{- if .Values.imagePullSecrets }}
 imagePullSecrets:
 {{ toYaml .Values.imagePullSecrets | indent 2 }}
@@ -46,6 +47,7 @@ metadata:
   name: linkerd-{{.Release.Namespace}}-cni
   labels:
     linkerd.io/cni-resource: "true"
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   {{- if not .Values.privileged }}
   allowPrivilegeEscalation: false
@@ -71,6 +73,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/cni-resource: "true"
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
 - apiGroups: ['extensions', 'policy']
   resources: ['podsecuritypolicies']
@@ -85,6 +88,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/cni-resource: "true"
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -101,6 +105,7 @@ metadata:
   name: linkerd-cni
   labels:
     linkerd.io/cni-resource: "true"
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
 - apiGroups: [""]
   resources: ["pods", "nodes", "namespaces"]
@@ -112,6 +117,7 @@ metadata:
   name: linkerd-cni
   labels:
     linkerd.io/cni-resource: "true"
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -128,6 +134,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/cni-resource: "true"
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 data:
   dest_cni_net_dir: "{{.Values.destCNINetDir}}"
   dest_cni_bin_dir: "{{.Values.destCNIBinDir}}"
@@ -171,6 +178,7 @@ metadata:
   labels:
     k8s-app: linkerd-cni
     linkerd.io/cni-resource: "true"
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -185,6 +193,7 @@ spec:
     metadata:
       labels:
         k8s-app: linkerd-cni
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       annotations:
         {{ include "partials.annotations.created-by" . }}
         linkerd.io/cni-resource: "true"

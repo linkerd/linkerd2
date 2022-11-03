@@ -24,6 +24,7 @@ Kubernetes: `>=1.21.0-0`
 |-----|------|---------|-------------|
 | cniPluginImage | string | `"cr.l5d.io/linkerd/cni-plugin"` | Docker image for the CNI plugin |
 | cniPluginVersion | string | `"linkerdVersionValue"` | Tag for the CNI container Docker image |
+| commonLabels | object | `{}` | Labels to apply to all resources |
 | destCNIBinDir | string | `"/opt/cni/bin"` | Directory on the host where the CNI configuration will be placed |
 | destCNINetDir | string | `"/etc/cni/net.d"` | Directory on the host where the CNI plugin binaries reside |
 | enablePSP | bool | `false` | Add a PSP resource and bind it to the linkerd-cni ServiceAccounts. Note PSP has been deprecated since k8s v1.21 |
@@ -34,6 +35,7 @@ Kubernetes: `>=1.21.0-0`
 | inboundProxyPort | int | `4143` | Inbound port for the proxy container |
 | logLevel | string | `"info"` | Log level for the CNI plugin |
 | outboundProxyPort | int | `4140` | Outbound port for the proxy container |
+| podLabels | object | `{}` | Additional labels to add to all pods |
 | portsToRedirect | string | `""` | Ports to redirect to proxy |
 | priorityClassName | string | `""` | Kubernetes priorityClassName for the CNI plugin's Pods |
 | privileged | bool | `false` | Run the install-cni container in privileged mode |
