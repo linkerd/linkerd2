@@ -249,7 +249,7 @@ func (api *MetadataAPI) addInformer(res APIResource) error {
 	gvr, _ := meta.UnsafeGuessKindToResource(gvk)
 	inf := api.sharedInformers.ForResource(gvr)
 	api.syncChecks = append(api.syncChecks, inf.Informer().HasSynced)
-	api.addInformerSize(strings.ToLower(gvk.Kind), inf.Informer())
+	api.promGauges.addInformerSize(strings.ToLower(gvk.Kind), inf.Informer())
 	api.inf[res] = inf
 
 	return nil
