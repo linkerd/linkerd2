@@ -104,7 +104,9 @@ func (api *MetadataAPI) getLister(res APIResource) (cache.GenericLister, error) 
 	return inf.Lister(), nil
 }
 
-// Get returns the metadata for the supplied object type and name
+// Get returns the metadata for the supplied object type and name. This uses a
+// shared informer and the results may be out of date if the informer is
+// lagging behind.
 func (api *MetadataAPI) Get(res APIResource, name string) (*metav1.PartialObjectMetadata, error) {
 	ls, err := api.getLister(res)
 	if err != nil {
@@ -116,6 +118,8 @@ func (api *MetadataAPI) Get(res APIResource, name string) (*metav1.PartialObject
 		return nil, err
 	}
 
+	// ls' concrete type is metadatalister.metadataListerShim, whose
+	// Get method always returns *metav1.PartialObjectMetadata
 	nsMeta, ok := obj.(*metav1.PartialObjectMetadata)
 	if !ok {
 		return nil, fmt.Errorf("couldn't convert obj %v to PartialObjectMetadata", obj)
@@ -143,8 +147,9 @@ func (api *MetadataAPI) getByNamespace(res APIResource, ns, name string) (*metav
 	return nsMeta, nil
 }
 
-// GetByNamespaceFiltered returns a list of Kubernetes object references,
-// given a type, namespace, name and label selector
+// GetByNamespaceFiltered returns a list of Kubernetes object references, given
+// a type, namespace, name and label selector. This uses a shared informer and
+// the results may be out of date if the informer is lagging behind.
 func (api *MetadataAPI) GetByNamespaceFiltered(
 	restype APIResource,
 	ns string,
@@ -163,6 +168,8 @@ func (api *MetadataAPI) GetByNamespaceFiltered(
 
 	refs := []*corev1.ObjectReference{}
 	for _, obj := range objs {
+		// ls' concrete type is metadatalister.metadataListerShim, which
+		// guarantees this cast won't fail
 		objMeta, ok := obj.(*metav1.PartialObjectMetadata)
 		if !ok {
 			return nil, fmt.Errorf("couldn't convert obj %v to PartialObjectMetadata", obj)
