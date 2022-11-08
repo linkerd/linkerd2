@@ -33,6 +33,12 @@ type Values struct {
 	PriorityClassName   string `json:"priorityClassName"`
 	ProxyAdminPort      string `json:"proxyAdminPort"`
 	ProxyControlPort    string `json:"proxyControlPort"`
+	Tolerations         string `json:"tolerations"`
+}
+
+type Tolerations struct {
+	Operator string `json:"operator"`
+	Effect   string `json:"effect"`
 }
 
 // NewValues returns a new instance of the Values type.
