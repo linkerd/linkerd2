@@ -107,6 +107,7 @@ func chartCniPlugin(t *testing.T) *chart.Chart {
 	chartPartials := chartPartials([]string{
 		"templates/_helpers.tpl",
 		"templates/_metadata.tpl",
+		"templates/_tolerations.tpl",
 	})
 
 	cniChart := &chart.Chart{
@@ -121,9 +122,9 @@ func chartCniPlugin(t *testing.T) *chart.Chart {
 
 	cniChart.AddDependency(chartPartials)
 
-	cniChart.Templates = append(cniChart.Templates, &chart.File{
-		Name: "templates/cni-plugin.yaml",
-	})
+	cniChart.Templates = append(cniChart.Templates,
+		&chart.File{Name: "templates/cni-plugin.yaml"},
+	)
 
 	for _, template := range cniChart.Templates {
 		filepath := filepath.Join(cniChart.Metadata.Sources[0], template.Name)

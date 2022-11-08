@@ -97,6 +97,9 @@ spec:
         linkerd.io/cni-resource: "true"
         linkerd.io/inject: disabled
     spec:
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
       nodeSelector:
         kubernetes.io/os: linux
       hostNetwork: true
