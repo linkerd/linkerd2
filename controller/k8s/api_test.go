@@ -65,7 +65,7 @@ func newMockAPI(retry bool, res resources) (
 }
 
 // TestGetObjects tests both api.GetObjects() and
-// metadataAPI.GetByNamespaceFilteredCached()
+// metadataAPI.GetByNamespaceFiltered()
 // The latter returns as concrete values []*corev1.ObjectReference, so we
 // need to provide them explicitly in resources.meta fixtures, in order to
 // provide deep.Equal() with slices of the same types
@@ -394,7 +394,7 @@ metadata:
 			var refs []*corev1.ObjectReference
 			res, err := GetAPIResource(exp.resType)
 			if err == nil {
-				refs, err = metadataAPI.GetByNamespaceFilteredCached(res, exp.namespace, exp.name, labels.Everything())
+				refs, err = metadataAPI.GetByNamespaceFiltered(res, exp.namespace, exp.name, labels.Everything())
 			}
 			if err != nil || exp.err != nil {
 				if unexpectedErrors(err, exp.err) {

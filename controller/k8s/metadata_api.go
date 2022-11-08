@@ -104,8 +104,8 @@ func (api *MetadataAPI) getLister(res APIResource) (cache.GenericLister, error) 
 	return inf.Lister(), nil
 }
 
-// GetCached returns the metadata for the supplied object type and name
-func (api *MetadataAPI) GetCached(res APIResource, name string) (*metav1.PartialObjectMetadata, error) {
+// Get returns the metadata for the supplied object type and name
+func (api *MetadataAPI) Get(res APIResource, name string) (*metav1.PartialObjectMetadata, error) {
 	ls, err := api.getLister(res)
 	if err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func (api *MetadataAPI) GetCached(res APIResource, name string) (*metav1.Partial
 	return nsMeta, nil
 }
 
-func (api *MetadataAPI) getByNamespaceCached(res APIResource, ns, name string) (*metav1.PartialObjectMetadata, error) {
+func (api *MetadataAPI) getByNamespace(res APIResource, ns, name string) (*metav1.PartialObjectMetadata, error) {
 	ls, err := api.getLister(res)
 	if err != nil {
 		return nil, err
@@ -143,9 +143,9 @@ func (api *MetadataAPI) getByNamespaceCached(res APIResource, ns, name string) (
 	return nsMeta, nil
 }
 
-// GetByNamespaceFilteredCached returns a list of Kubernetes object references,
+// GetByNamespaceFiltered returns a list of Kubernetes object references,
 // given a type, namespace, name and label selector
-func (api *MetadataAPI) GetByNamespaceFilteredCached(
+func (api *MetadataAPI) GetByNamespaceFiltered(
 	restype APIResource,
 	ns string,
 	name string,
@@ -205,7 +205,7 @@ func (api *MetadataAPI) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod
 	var err error
 	switch parent.Kind {
 	case "Job":
-		parentObj, err = api.getByNamespaceCached(Job, pod.Namespace, parent.Name)
+		parentObj, err = api.getByNamespace(Job, pod.Namespace, parent.Name)
 		if err != nil {
 			log.Warnf("failed to retrieve job from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
 			parentObj, err = api.Client.BatchV1().Jobs(pod.Namespace).Get(ctx, parent.Name, metav1.GetOptions{})
@@ -215,7 +215,7 @@ func (api *MetadataAPI) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod
 		}
 	case "ReplicaSet":
 		var rsObj metav1.Object
-		rsObj, err = api.getByNamespaceCached(RS, pod.Namespace, parent.Name)
+		rsObj, err = api.getByNamespace(RS, pod.Namespace, parent.Name)
 		isNil := rsObj.(*metav1.PartialObjectMetadata) == nil
 		if err != nil {
 			log.Warnf("failed to retrieve replicaset from indexer %s/%s: %s", pod.Namespace, parent.Name, err)

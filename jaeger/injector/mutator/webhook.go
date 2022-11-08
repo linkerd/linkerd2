@@ -69,7 +69,7 @@ func Mutate(collectorSvcAddr, collectorSvcAccount, clusterDomain, linkerdNamespa
 			return admissionResponse, nil
 		}
 
-		namespace, err := api.GetCached(k8s.NS, request.Namespace)
+		namespace, err := api.Get(k8s.NS, request.Namespace)
 		if err != nil {
 			return nil, err
 		}

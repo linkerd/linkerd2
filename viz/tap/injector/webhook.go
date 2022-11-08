@@ -47,7 +47,7 @@ func Mutate(tapSvcName string) webhook.Handler {
 		if params.ProxyIndex < 0 || vizLabels.IsTapEnabled(pod) {
 			return admissionResponse, nil
 		}
-		namespace, err := k8sAPI.GetCached(k8s.NS, request.Namespace)
+		namespace, err := k8sAPI.Get(k8s.NS, request.Namespace)
 		if err != nil {
 			return nil, err
 		}

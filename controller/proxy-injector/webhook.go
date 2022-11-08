@@ -50,7 +50,7 @@ func Inject(linkerdNamespace string) webhook.Handler {
 		}
 		valuesConfig.IdentityTrustAnchorsPEM = string(caPEM)
 
-		ns, err := api.GetCached(k8s.NS, request.Namespace)
+		ns, err := api.Get(k8s.NS, request.Namespace)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +75,7 @@ func Inject(linkerdNamespace string) webhook.Handler {
 			if err != nil {
 				log.Warningf("skipping event for parent %s: %s", ownerRef.Kind, err)
 			} else {
-				objs, err := api.GetByNamespaceFilteredCached(res, request.Namespace, ownerRef.Name, labels.Everything())
+				objs, err := api.GetByNamespaceFiltered(res, request.Namespace, ownerRef.Name, labels.Everything())
 				if err != nil {
 					log.Warnf("couldn't retrieve parent object %s-%s-%s; error: %s", request.Namespace, ownerRef.Kind, ownerRef.Name, err)
 				} else if len(objs) == 0 {
