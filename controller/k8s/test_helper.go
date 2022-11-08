@@ -3,7 +3,6 @@ package k8s
 import (
 	"github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/metadata/fake"
@@ -41,7 +40,7 @@ func NewFakeAPI(configs ...string) (*API, error) {
 }
 
 // NewFakeMetadataAPI provides a mock Kubernetes API for testing.
-func NewFakeMetadataAPI(configs []string, refs []*corev1.ObjectReference) (*MetadataAPI, error) {
+func NewFakeMetadataAPI(configs []string, objMetas []*metav1.PartialObjectMetadata) (*MetadataAPI, error) {
 	k8sClient, _, _, _, err := k8s.NewFakeClientSets(configs...)
 	if err != nil {
 		return nil, err
@@ -50,22 +49,12 @@ func NewFakeMetadataAPI(configs []string, refs []*corev1.ObjectReference) (*Meta
 	sch := scheme.Scheme
 	metav1.AddMetaToScheme(sch)
 
-	var rmc []runtime.Object
-	for _, ref := range refs {
-		meta := &metav1.PartialObjectMetadata{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: ref.APIVersion,
-				Kind:       ref.Kind,
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ref.Namespace,
-				Name:      ref.Name,
-			},
-		}
-		rmc = append(rmc, meta)
+	var objs []runtime.Object
+	for _, obj := range objMetas {
+		objs = append(objs, obj)
 	}
 
-	metadataClient := fake.NewSimpleMetadataClient(sch, rmc...)
+	metadataClient := fake.NewSimpleMetadataClient(sch, objs...)
 
 	return newClusterScopedMetadataAPI(
 		k8sClient,

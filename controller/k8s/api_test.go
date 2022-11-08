@@ -20,7 +20,7 @@ import (
 
 type resources struct {
 	results []string
-	meta    []*corev1.ObjectReference
+	meta    []*metav1.PartialObjectMetadata
 	misc    []string
 }
 
@@ -89,7 +89,7 @@ func TestGetObjects(t *testing.T) {
 				name:      "baz",
 				resources: resources{
 					results: []string{},
-					meta:    []*corev1.ObjectReference{},
+					meta:    []*metav1.PartialObjectMetadata{},
 					misc:    []string{},
 				},
 			},
@@ -111,7 +111,7 @@ spec:
 status:
   phase: Running`,
 					},
-					meta: []*corev1.ObjectReference{},
+					meta: []*metav1.PartialObjectMetadata{},
 					misc: []string{},
 				},
 			},
@@ -122,7 +122,7 @@ status:
 				name:      "my-pod",
 				resources: resources{
 					results: []string{},
-					meta:    []*corev1.ObjectReference{},
+					meta:    []*metav1.PartialObjectMetadata{},
 					misc: []string{`
 apiVersion: v1
 kind: Pod
@@ -145,12 +145,16 @@ metadata:
   name: my-rc
   namespace: my-ns`,
 					},
-					meta: []*corev1.ObjectReference{
+					meta: []*metav1.PartialObjectMetadata{
 						{
-							Kind:       "ReplicationController",
-							Namespace:  "my-ns",
-							Name:       "my-rc",
-							APIVersion: "v1",
+							metav1.TypeMeta{
+								Kind:       "ReplicationController",
+								APIVersion: "v1",
+							},
+							metav1.ObjectMeta{
+								Namespace: "my-ns",
+								Name:      "my-rc",
+							},
 						},
 					},
 					misc: []string{},
@@ -169,12 +173,16 @@ metadata:
   name: my-deploy
   namespace: my-ns`,
 					},
-					meta: []*corev1.ObjectReference{
+					meta: []*metav1.PartialObjectMetadata{
 						{
-							Kind:       "Deployment",
-							Namespace:  "my-ns",
-							Name:       "my-deploy",
-							APIVersion: "apps/v1",
+							metav1.TypeMeta{
+								Kind:       "Deployment",
+								APIVersion: "apps/v1",
+							},
+							metav1.ObjectMeta{
+								Namespace: "my-ns",
+								Name:      "my-deploy",
+							},
 						},
 					},
 					misc: []string{`
@@ -199,12 +207,16 @@ metadata:
   name: my-ds
   namespace: my-ns`,
 					},
-					meta: []*corev1.ObjectReference{
+					meta: []*metav1.PartialObjectMetadata{
 						{
-							Kind:       "DaemonSet",
-							Namespace:  "my-ns",
-							Name:       "my-ds",
-							APIVersion: "apps/v1",
+							metav1.TypeMeta{
+								Kind:       "DaemonSet",
+								APIVersion: "apps/v1",
+							},
+							metav1.ObjectMeta{
+								Namespace: "my-ns",
+								Name:      "my-ds",
+							},
 						},
 					},
 				},
@@ -222,12 +234,16 @@ metadata:
   name: my-ds
   namespace: my-ns`,
 					},
-					meta: []*corev1.ObjectReference{
+					meta: []*metav1.PartialObjectMetadata{
 						{
-							Kind:       "DaemonSet",
-							Namespace:  "my-ns",
-							Name:       "my-ds",
-							APIVersion: "apps/v1",
+							metav1.TypeMeta{
+								Kind:       "DaemonSet",
+								APIVersion: "apps/v1",
+							},
+							metav1.ObjectMeta{
+								Namespace: "my-ns",
+								Name:      "my-ds",
+							},
 						},
 					},
 					misc: []string{`
@@ -252,12 +268,16 @@ metadata:
   name: my-job
   namespace: my-ns`,
 					},
-					meta: []*corev1.ObjectReference{
+					meta: []*metav1.PartialObjectMetadata{
 						{
-							Kind:       "Job",
-							Namespace:  "my-ns",
-							Name:       "my-job",
-							APIVersion: "batch/v1",
+							metav1.TypeMeta{
+								Kind:       "Job",
+								APIVersion: "batch/v1",
+							},
+							metav1.ObjectMeta{
+								Namespace: "my-ns",
+								Name:      "my-job",
+							},
 						},
 					},
 					misc: []string{`
@@ -282,12 +302,16 @@ metadata:
   name: my-cronjob
   namespace: my-ns`,
 					},
-					meta: []*corev1.ObjectReference{
+					meta: []*metav1.PartialObjectMetadata{
 						{
-							Kind:       "CronJob",
-							Namespace:  "my-ns",
-							Name:       "my-cronjob",
-							APIVersion: "batch/v1",
+							metav1.TypeMeta{
+								Kind:       "CronJob",
+								APIVersion: "batch/v1",
+							},
+							metav1.ObjectMeta{
+								Namespace: "my-ns",
+								Name:      "my-cronjob",
+							},
 						},
 					},
 					misc: []string{`
@@ -312,12 +336,16 @@ metadata:
   name: my-ss
   namespace: my-ns`,
 					},
-					meta: []*corev1.ObjectReference{
+					meta: []*metav1.PartialObjectMetadata{
 						{
-							Kind:       "StatefulSet",
-							Namespace:  "my-ns",
-							Name:       "my-ss",
-							APIVersion: "apps/v1",
+							metav1.TypeMeta{
+								Kind:       "StatefulSet",
+								APIVersion: "apps/v1",
+							},
+							metav1.ObjectMeta{
+								Namespace: "my-ns",
+								Name:      "my-ss",
+							},
 						},
 					},
 				},
@@ -335,12 +363,16 @@ metadata:
   name: my-ss
   namespace: my-ns`,
 					},
-					meta: []*corev1.ObjectReference{
+					meta: []*metav1.PartialObjectMetadata{
 						{
-							Kind:       "StatefulSet",
-							Namespace:  "my-ns",
-							Name:       "my-ss",
-							APIVersion: "apps/v1",
+							metav1.TypeMeta{
+								Kind:       "StatefulSet",
+								APIVersion: "apps/v1",
+							},
+							metav1.ObjectMeta{
+								Namespace: "my-ns",
+								Name:      "my-ss",
+							},
 						},
 					},
 					misc: []string{`
@@ -364,7 +396,7 @@ kind: Namespace
 metadata:
   name: my-ns`,
 					},
-					meta: []*corev1.ObjectReference{},
+					meta: []*metav1.PartialObjectMetadata{},
 					misc: []string{},
 				},
 			},
@@ -391,16 +423,16 @@ metadata:
 				continue
 			}
 
-			var refs []*corev1.ObjectReference
+			var objMetas []*metav1.PartialObjectMetadata
 			res, err := GetAPIResource(exp.resType)
 			if err == nil {
-				refs, err = metadataAPI.GetByNamespaceFiltered(res, exp.namespace, exp.name, labels.Everything())
+				objMetas, err = metadataAPI.GetByNamespaceFiltered(res, exp.namespace, exp.name, labels.Everything())
 			}
 			if err != nil || exp.err != nil {
 				if unexpectedErrors(err, exp.err) {
 					t.Fatalf("metadataAPI.GetNamespaceFilteredCache() unexpected error, expected [%s] got: [%s]", exp.err, err)
 				}
-			} else if diff := deep.Equal(refs, exp.meta); diff != nil {
+			} else if diff := deep.Equal(objMetas, exp.meta); diff != nil {
 				t.Fatalf("Expected: %+v", diff)
 			}
 		}

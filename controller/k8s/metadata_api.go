@@ -155,7 +155,7 @@ func (api *MetadataAPI) GetByNamespaceFiltered(
 	ns string,
 	name string,
 	label labels.Selector,
-) ([]*corev1.ObjectReference, error) {
+) ([]*metav1.PartialObjectMetadata, error) {
 	ls, err := api.getLister(restype)
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (api *MetadataAPI) GetByNamespaceFiltered(
 		return nil, err
 	}
 
-	refs := []*corev1.ObjectReference{}
+	objMetas := []*metav1.PartialObjectMetadata{}
 	for _, obj := range objs {
 		// ls' concrete type is metadatalister.metadataListerShim, which
 		// guarantees this cast won't fail
@@ -178,18 +178,14 @@ func (api *MetadataAPI) GetByNamespaceFiltered(
 		if err != nil {
 			return nil, err
 		}
-		ref := &corev1.ObjectReference{
-			Kind:            gvk.Kind,
-			APIVersion:      gvk.GroupVersion().String(),
-			Name:            objMeta.GetName(),
-			Namespace:       objMeta.GetNamespace(),
-			UID:             objMeta.GetUID(),
-			ResourceVersion: objMeta.GetResourceVersion(),
-		}
-		refs = append(refs, ref)
+
+		// objMeta's TypeMeta fields aren't getting populated, so we do it
+		// manually here
+		objMeta.SetGroupVersionKind(gvk)
+		objMetas = append(objMetas, objMeta)
 	}
 
-	return refs, nil
+	return objMetas, nil
 }
 
 // GetOwnerKindAndName returns the pod owner's kind and name, using owner

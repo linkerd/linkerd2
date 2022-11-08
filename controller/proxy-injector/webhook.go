@@ -15,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/record"
 )
@@ -68,7 +69,7 @@ func Inject(linkerdNamespace string) webhook.Handler {
 
 		// If the resource has an owner, then it should be retrieved for recording
 		// events.
-		var parent *v1.ObjectReference
+		var parent *metav1.PartialObjectMetadata
 		var ownerKind string
 		if ownerRef := resourceConfig.GetOwnerRef(); ownerRef != nil {
 			res, err := k8s.GetAPIResource(ownerRef.Kind)
