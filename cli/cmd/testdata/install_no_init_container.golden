@@ -293,6 +293,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: heartbeat
     linkerd.io/control-plane-ns: linkerd
+
 ---
 ###
 ### Proxy Injector RBAC
@@ -902,9 +903,11 @@ spec:
           name: linkerd-identity-token
       initContainers:
       - args:
-          - -v
+        - -v
         image: gcr.io/google_containers/pause:3.2
         name: noop
+        securityContext:
+          runAsUser: 65534
       serviceAccountName: linkerd-identity
       volumes:
       - name: identity-issuer
@@ -1290,9 +1293,11 @@ spec:
           readOnly: true
       initContainers:
       - args:
-          - -v
+        - -v
         image: gcr.io/google_containers/pause:3.2
         name: noop
+        securityContext:
+          runAsUser: 65534
       serviceAccountName: linkerd-destination
       volumes:
       - name: sp-tls
@@ -1564,9 +1569,11 @@ spec:
           readOnly: true
       initContainers:
       - args:
-          - -v
+        - -v
         image: gcr.io/google_containers/pause:3.2
         name: noop
+        securityContext:
+          runAsUser: 65534
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:
