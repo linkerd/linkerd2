@@ -24,8 +24,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/metadata"
-	metadataFake "k8s.io/client-go/metadata/fake"
 	"k8s.io/client-go/rest"
 	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	apiregistrationclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
@@ -135,24 +133,6 @@ metadata:
 		apiregistrationfake.NewSimpleClientset(apiRegObjs...),
 		spfake.NewSimpleClientset(spObjs...),
 		nil
-}
-
-// NewFakeMetadataClientSet provides a mock Kubernetes Clientset for the metadata API
-func NewFakeMetadataClientSet(configs ...string) (metadata.Interface, error) {
-	sch := scheme.Scheme
-	if err := metav1.AddMetaToScheme(sch); err != nil {
-		return nil, nil
-	}
-	objs := []runtime.Object{}
-	for _, config := range configs {
-		obj, err := ToRuntimeObject(config)
-		if err != nil {
-			return nil, err
-		}
-		objs = append(objs, obj)
-	}
-
-	return metadataFake.NewSimpleMetadataClient(sch, objs...), nil
 }
 
 // newFakeClientSetsFromManifests reads from a slice of readers, each
