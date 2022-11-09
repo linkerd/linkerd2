@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"fmt"
 	"strings"
 
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
@@ -134,6 +133,6 @@ func GetAPIResource(kind string) (APIResource, error) {
 	case k8s.Server:
 		return Srv, nil
 	default:
-		return 0, fmt.Errorf("APIResource not found: %s", kind)
+		return 0, status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", kind)
 	}
 }
