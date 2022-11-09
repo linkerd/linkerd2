@@ -1,10 +1,11 @@
 package k8s
 
 import (
-	"github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/metadata/fake"
 )
 
@@ -40,24 +41,26 @@ func NewFakeAPI(configs ...string) (*API, error) {
 }
 
 // NewFakeMetadataAPI provides a mock Kubernetes API for testing.
-func NewFakeMetadataAPI(configs []string, objMetas []*metav1.PartialObjectMetadata) (*MetadataAPI, error) {
-	k8sClient, _, _, _, err := k8s.NewFakeClientSets(configs...)
-	if err != nil {
-		return nil, err
-	}
-
-	sch := scheme.Scheme
+func NewFakeMetadataAPI(configs []string) (*MetadataAPI, error) {
+	sch := clientsetscheme.Scheme
 	metav1.AddMetaToScheme(sch)
 
 	var objs []runtime.Object
-	for _, obj := range objMetas {
-		objs = append(objs, obj)
+	for _, config := range configs {
+		obj, err := k8s.ToRuntimeObject(config)
+		if err != nil {
+			return nil, err
+		}
+		objMeta, err := toPartialObjectMetadata(obj)
+		if err != nil {
+			return nil, err
+		}
+		objs = append(objs, objMeta)
 	}
 
 	metadataClient := fake.NewSimpleMetadataClient(sch, objs...)
 
 	return newClusterScopedMetadataAPI(
-		k8sClient,
 		metadataClient,
 		CJ,
 		CM,
@@ -77,4 +80,24 @@ func NewFakeMetadataAPI(configs []string, objMetas []*metav1.PartialObjectMetada
 		ES,
 		Svc,
 	)
+}
+
+func toPartialObjectMetadata(obj runtime.Object) (*metav1.PartialObjectMetadata, error) {
+	u := &unstructured.Unstructured{}
+	err := clientsetscheme.Scheme.Convert(obj, u, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &metav1.PartialObjectMetadata{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: u.GetAPIVersion(),
+			Kind:       u.GetKind(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       u.GetNamespace(),
+			Name:            u.GetName(),
+			OwnerReferences: u.GetOwnerReferences(),
+		},
+	}, nil
 }

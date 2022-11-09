@@ -5,14 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -20,13 +22,12 @@ import (
 
 type resources struct {
 	results []string
-	meta    []*metav1.PartialObjectMetadata
 	misc    []string
 }
 
-// newMockAPI constructs a mock controller/k8s.API object for testing
-// If retry is true, it forces informer indexing, enabling informer lookups
-func newMockAPI(retry bool, res resources) (
+// newMockAPI constructs a mock controller/k8s.API object for testing If
+// useInformer is true, it forces informer indexing, enabling informer lookups
+func newMockAPI(useInformer bool, res resources) (
 	*API,
 	*MetadataAPI,
 	[]runtime.Object,
@@ -51,12 +52,12 @@ func newMockAPI(retry bool, res resources) (
 		return nil, nil, nil, fmt.Errorf("NewFakeAPI returned an error: %w", err)
 	}
 
-	metadataAPI, err := NewFakeMetadataAPI(k8sConfigs, res.meta)
+	metadataAPI, err := NewFakeMetadataAPI(k8sConfigs)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("NewFakeMetadataAPI returned an error: %w", err)
 	}
 
-	if retry {
+	if useInformer {
 		api.Sync(nil)
 		metadataAPI.Sync(nil)
 	}
@@ -66,9 +67,6 @@ func newMockAPI(retry bool, res resources) (
 
 // TestGetObjects tests both api.GetObjects() and
 // metadataAPI.GetByNamespaceFiltered()
-// The latter returns as concrete values []*corev1.ObjectReference, so we
-// need to provide them explicitly in resources.meta fixtures, in order to
-// provide deep.Equal() with slices of the same types
 func TestGetObjects(t *testing.T) {
 
 	type getObjectsExpected struct {
@@ -89,7 +87,6 @@ func TestGetObjects(t *testing.T) {
 				name:      "baz",
 				resources: resources{
 					results: []string{},
-					meta:    []*metav1.PartialObjectMetadata{},
 					misc:    []string{},
 				},
 			},
@@ -111,18 +108,16 @@ spec:
 status:
   phase: Running`,
 					},
-					meta: []*metav1.PartialObjectMetadata{},
 					misc: []string{},
 				},
 			},
 			{
-				err:       errors.New("pod \"my-pod\" not found"),
+				err:       errors.New("\"my-pod\" not found"),
 				namespace: "not-my-ns",
 				resType:   k8s.Pod,
 				name:      "my-pod",
 				resources: resources{
 					results: []string{},
-					meta:    []*metav1.PartialObjectMetadata{},
 					misc: []string{`
 apiVersion: v1
 kind: Pod
@@ -145,18 +140,6 @@ metadata:
   name: my-rc
   namespace: my-ns`,
 					},
-					meta: []*metav1.PartialObjectMetadata{
-						{
-							metav1.TypeMeta{
-								Kind:       "ReplicationController",
-								APIVersion: "v1",
-							},
-							metav1.ObjectMeta{
-								Namespace: "my-ns",
-								Name:      "my-rc",
-							},
-						},
-					},
 					misc: []string{},
 				},
 			},
@@ -172,18 +155,6 @@ kind: Deployment
 metadata:
   name: my-deploy
   namespace: my-ns`,
-					},
-					meta: []*metav1.PartialObjectMetadata{
-						{
-							metav1.TypeMeta{
-								Kind:       "Deployment",
-								APIVersion: "apps/v1",
-							},
-							metav1.ObjectMeta{
-								Namespace: "my-ns",
-								Name:      "my-deploy",
-							},
-						},
 					},
 					misc: []string{`
 apiVersion: apps/v1
@@ -207,18 +178,6 @@ metadata:
   name: my-ds
   namespace: my-ns`,
 					},
-					meta: []*metav1.PartialObjectMetadata{
-						{
-							metav1.TypeMeta{
-								Kind:       "DaemonSet",
-								APIVersion: "apps/v1",
-							},
-							metav1.ObjectMeta{
-								Namespace: "my-ns",
-								Name:      "my-ds",
-							},
-						},
-					},
 				},
 			},
 			{
@@ -233,18 +192,6 @@ kind: DaemonSet
 metadata:
   name: my-ds
   namespace: my-ns`,
-					},
-					meta: []*metav1.PartialObjectMetadata{
-						{
-							metav1.TypeMeta{
-								Kind:       "DaemonSet",
-								APIVersion: "apps/v1",
-							},
-							metav1.ObjectMeta{
-								Namespace: "my-ns",
-								Name:      "my-ds",
-							},
-						},
 					},
 					misc: []string{`
 apiVersion: apps/v1
@@ -268,18 +215,6 @@ metadata:
   name: my-job
   namespace: my-ns`,
 					},
-					meta: []*metav1.PartialObjectMetadata{
-						{
-							metav1.TypeMeta{
-								Kind:       "Job",
-								APIVersion: "batch/v1",
-							},
-							metav1.ObjectMeta{
-								Namespace: "my-ns",
-								Name:      "my-job",
-							},
-						},
-					},
 					misc: []string{`
 apiVersion: batch/v1
 kind: Job
@@ -302,18 +237,6 @@ metadata:
   name: my-cronjob
   namespace: my-ns`,
 					},
-					meta: []*metav1.PartialObjectMetadata{
-						{
-							metav1.TypeMeta{
-								Kind:       "CronJob",
-								APIVersion: "batch/v1",
-							},
-							metav1.ObjectMeta{
-								Namespace: "my-ns",
-								Name:      "my-cronjob",
-							},
-						},
-					},
 					misc: []string{`
 apiVersion: batch/v1
 kind: CronJob
@@ -336,18 +259,6 @@ metadata:
   name: my-ss
   namespace: my-ns`,
 					},
-					meta: []*metav1.PartialObjectMetadata{
-						{
-							metav1.TypeMeta{
-								Kind:       "StatefulSet",
-								APIVersion: "apps/v1",
-							},
-							metav1.ObjectMeta{
-								Namespace: "my-ns",
-								Name:      "my-ss",
-							},
-						},
-					},
 				},
 			},
 			{
@@ -362,18 +273,6 @@ kind: StatefulSet
 metadata:
   name: my-ss
   namespace: my-ns`,
-					},
-					meta: []*metav1.PartialObjectMetadata{
-						{
-							metav1.TypeMeta{
-								Kind:       "StatefulSet",
-								APIVersion: "apps/v1",
-							},
-							metav1.ObjectMeta{
-								Namespace: "my-ns",
-								Name:      "my-ss",
-							},
-						},
 					},
 					misc: []string{`
 apiVersion: apps/v1
@@ -396,7 +295,6 @@ kind: Namespace
 metadata:
   name: my-ns`,
 					},
-					meta: []*metav1.PartialObjectMetadata{},
 					misc: []string{},
 				},
 			},
@@ -419,10 +317,6 @@ metadata:
 				}
 			}
 
-			if len(exp.meta) == 0 {
-				continue
-			}
-
 			var objMetas []*metav1.PartialObjectMetadata
 			res, err := GetAPIResource(exp.resType)
 			if err == nil {
@@ -430,10 +324,21 @@ metadata:
 			}
 			if err != nil || exp.err != nil {
 				if unexpectedErrors(err, exp.err) {
+					fmt.Printf("objMetas: %#v\n", objMetas)
 					t.Fatalf("metadataAPI.GetNamespaceFilteredCache() unexpected error, expected [%s] got: [%s]", exp.err, err)
 				}
-			} else if diff := deep.Equal(objMetas, exp.meta); diff != nil {
-				t.Fatalf("Expected: %+v", diff)
+			} else {
+				expMetas := []*metav1.PartialObjectMetadata{}
+				for _, obj := range k8sResults {
+					objMeta, err := toPartialObjectMetadata(obj)
+					if err != nil {
+						t.Fatalf("error converting Object to PartialObjectMetadata: %s", err)
+					}
+					expMetas = append(expMetas, objMeta)
+				}
+				if diff := deep.Equal(objMetas, expMetas); diff != nil {
+					t.Fatalf("Expected: %+v", diff)
+				}
 			}
 		}
 	})
@@ -1311,13 +1216,13 @@ metadata:
 		} {
 			retry := retry // pin
 			t.Run(fmt.Sprintf("%d/retry:%t", i, retry), func(t *testing.T) {
-				api, metadataAPI, objs, err := newMockAPI(retry, tt.resources)
+				api, metadataAPI, objs, err := newMockAPI(!retry, tt.resources)
 				if err != nil {
 					t.Fatalf("newMockAPI error: %s", err)
 				}
 
 				pod := objs[0].(*corev1.Pod)
-				ownerKind, ownerName := api.GetOwnerKindAndName(context.Background(), pod, !retry)
+				ownerKind, ownerName := api.GetOwnerKindAndName(context.Background(), pod, retry)
 
 				if ownerKind != tt.expectedOwnerKind {
 					t.Fatalf("Expected kind to be [%s], got [%s]", tt.expectedOwnerKind, ownerKind)
@@ -1327,7 +1232,7 @@ metadata:
 					t.Fatalf("Expected name to be [%s], got [%s]", tt.expectedOwnerName, ownerName)
 				}
 
-				ownerKind, ownerName, err = metadataAPI.GetOwnerKindAndName(context.Background(), pod)
+				ownerKind, ownerName, err = metadataAPI.GetOwnerKindAndName(context.Background(), pod, retry)
 				if err != nil {
 					t.Fatalf("Unexpected error: %s", err)
 				}
@@ -1552,5 +1457,5 @@ spec:
 func unexpectedErrors(err, expErr error) bool {
 	return (err == nil && expErr != nil) ||
 		(err != nil && expErr == nil) ||
-		(err.Error() != expErr.Error())
+		!strings.Contains(err.Error(), expErr.Error())
 }

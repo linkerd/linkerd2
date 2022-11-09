@@ -8,13 +8,14 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	v1 "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/metadata"
 	"k8s.io/client-go/metadata/metadatainformer"
 	"k8s.io/client-go/tools/cache"
@@ -24,7 +25,7 @@ import (
 type MetadataAPI struct {
 	promGauges
 
-	Client          kubernetes.Interface
+	client          metadata.Interface
 	inf             map[APIResource]informers.GenericInformer
 	syncChecks      []cache.InformerSynced
 	sharedInformers metadatainformer.SharedInformerFactory
@@ -38,17 +39,12 @@ func InitializeMetadataAPI(kubeConfig string, resources ...APIResource) (*Metada
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %w", err)
 	}
 
-	k8sClient, err := k8s.NewAPIForConfig(config, "", []string{}, 0)
-	if err != nil {
-		return nil, err
-	}
-
 	client, err := metadata.NewForConfig(config)
 	if err != nil {
 		return nil, err
 	}
 
-	api, err := newClusterScopedMetadataAPI(k8sClient, client, resources...)
+	api, err := newClusterScopedMetadataAPI(client, resources...)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +58,6 @@ func InitializeMetadataAPI(kubeConfig string, resources ...APIResource) (*Metada
 }
 
 func newClusterScopedMetadataAPI(
-	k8sClient kubernetes.Interface,
 	metadataClient metadata.Interface,
 	resources ...APIResource,
 ) (*MetadataAPI, error) {
@@ -74,7 +69,7 @@ func newClusterScopedMetadataAPI(
 	)
 
 	api := &MetadataAPI{
-		Client:          k8sClient,
+		client:          metadataClient,
 		inf:             make(map[APIResource]informers.GenericInformer),
 		syncChecks:      make([]cache.InformerSynced, 0),
 		sharedInformers: sharedInformers,
@@ -154,14 +149,24 @@ func (api *MetadataAPI) GetByNamespaceFiltered(
 	restype APIResource,
 	ns string,
 	name string,
-	label labels.Selector,
+	labelSelector labels.Selector,
 ) ([]*metav1.PartialObjectMetadata, error) {
 	ls, err := api.getLister(restype)
 	if err != nil {
 		return nil, err
 	}
 
-	objs, err := ls.ByNamespace(ns).List(label)
+	var objs []runtime.Object
+	if ns == "" {
+		objs, err = ls.List(labelSelector)
+	} else if name == "" {
+		objs, err = ls.ByNamespace(ns).List(labelSelector)
+	} else {
+		var obj runtime.Object
+		obj, err = ls.ByNamespace(ns).Get(name)
+		objs = []runtime.Object{obj}
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -191,9 +196,9 @@ func (api *MetadataAPI) GetByNamespaceFiltered(
 // GetOwnerKindAndName returns the pod owner's kind and name, using owner
 // references from the Kubernetes API. The kind is represented as the
 // Kubernetes singular resource type (e.g. deployment, daemonset, job, etc.).
-// When the shared informer cache doesn't return anything we try again with a
-// direct Kubernetes API call.
-func (api *MetadataAPI) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod) (string, string, error) {
+// If retry is true, when the shared informer cache doesn't return anything we
+// try again with a direct Kubernetes API call.
+func (api *MetadataAPI) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod, retry bool) (string, string, error) {
 	ownerRefs := pod.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
 		// pod without a parent
@@ -211,25 +216,33 @@ func (api *MetadataAPI) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod
 		parentObj, err = api.getByNamespace(Job, pod.Namespace, parent.Name)
 		if err != nil {
 			log.Warnf("failed to retrieve job from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
-			parentObj, err = api.Client.BatchV1().Jobs(pod.Namespace).Get(ctx, parent.Name, metav1.GetOptions{})
-			if err != nil {
-				log.Warnf("failed to retrieve job from direct API call %s/%s: %s", pod.Namespace, parent.Name, err)
+			if retry {
+				parentObj, err = api.client.
+					Resource(batchv1.SchemeGroupVersion.WithResource("jobs")).
+					Namespace(pod.Namespace).
+					Get(ctx, parent.Name, metav1.GetOptions{})
+				if err != nil {
+					log.Warnf("failed to retrieve job from direct API call %s/%s: %s", pod.Namespace, parent.Name, err)
+				}
 			}
 		}
 	case "ReplicaSet":
-		var rsObj metav1.Object
+		var rsObj *metav1.PartialObjectMetadata
 		rsObj, err = api.getByNamespace(RS, pod.Namespace, parent.Name)
-		isNil := rsObj.(*metav1.PartialObjectMetadata) == nil
 		if err != nil {
 			log.Warnf("failed to retrieve replicaset from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
-			rsObj, err = api.Client.AppsV1().ReplicaSets(pod.Namespace).Get(ctx, parent.Name, metav1.GetOptions{})
-			if err != nil {
-				log.Warnf("failed to retrieve replicaset from direct API call %s/%s: %s", pod.Namespace, parent.Name, err)
+			if retry {
+				rsObj, err = api.client.
+					Resource(appsv1.SchemeGroupVersion.WithResource("replicasets")).
+					Namespace(pod.Namespace).
+					Get(ctx, parent.Name, metav1.GetOptions{})
+				if err != nil {
+					log.Warnf("failed to retrieve replicaset from direct API call %s/%s: %s", pod.Namespace, parent.Name, err)
+				}
 			}
-			isNil = rsObj.(*v1.ReplicaSet) == nil
 		}
 
-		if isNil || !isValidRSParent(rsObj) {
+		if rsObj == nil || !isValidRSParent(rsObj) {
 			return strings.ToLower(parent.Kind), parent.Name, nil
 		}
 		parentObj = rsObj

@@ -191,6 +191,6 @@ func Inject(linkerdNamespace string) webhook.Handler {
 func ownerRetriever(ctx context.Context, api *k8s.MetadataAPI, ns string) inject.OwnerRetrieverFunc {
 	return func(p *v1.Pod) (string, string, error) {
 		p.SetNamespace(ns)
-		return api.GetOwnerKindAndName(ctx, p)
+		return api.GetOwnerKindAndName(ctx, p, true)
 	}
 }

@@ -24,7 +24,7 @@ var mockHTTPServer = &http.Server{
 
 func TestServe(t *testing.T) {
 	t.Run("with empty http request body", func(t *testing.T) {
-		k8sAPI, err := k8s.NewFakeMetadataAPI(nil, nil)
+		k8sAPI, err := k8s.NewFakeMetadataAPI(nil)
 		if err != nil {
 			panic(err)
 		}

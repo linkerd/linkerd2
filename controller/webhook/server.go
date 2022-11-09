@@ -37,16 +37,17 @@ type Handler func(
 // Server describes the https server implementing the webhook
 type Server struct {
 	*http.Server
-	api       *k8s.MetadataAPI
-	handler   Handler
-	certValue *atomic.Value
-	recorder  record.EventRecorder
+	metadataAPI *k8s.MetadataAPI
+	handler     Handler
+	certValue   *atomic.Value
+	recorder    record.EventRecorder
 }
 
 // NewServer returns a new instance of Server
 func NewServer(
 	ctx context.Context,
-	api *k8s.MetadataAPI,
+	api *pkgk8s.KubernetesAPI,
+	metadataAPI *k8s.MetadataAPI,
 	addr, certPath string,
 	handler Handler,
 	component string,
@@ -73,11 +74,11 @@ func NewServer(
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{
 		// In order to send events to all namespaces, we need to use an empty string here
 		// re: client-go's event_expansion.go CreateWithEventNamespace()
-		Interface: api.Client.CoreV1().Events(""),
+		Interface: api.CoreV1().Events(""),
 	})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: component})
 
-	s := getConfiguredServer(server, api, handler, recorder)
+	s := getConfiguredServer(server, metadataAPI, handler, recorder)
 	if err := watcher.UpdateCert(s.certValue); err != nil {
 		log.Fatalf("Failed to initialized certificate: %s", err)
 	}
@@ -94,12 +95,12 @@ func NewServer(
 
 func getConfiguredServer(
 	httpServer *http.Server,
-	api *k8s.MetadataAPI,
+	metadataAPI *k8s.MetadataAPI,
 	handler Handler,
 	recorder record.EventRecorder,
 ) *Server {
 	var emptyCert atomic.Value
-	s := &Server{httpServer, api, handler, &emptyCert, recorder}
+	s := &Server{httpServer, metadataAPI, handler, &emptyCert, recorder}
 	s.Handler = http.HandlerFunc(s.serve)
 	httpServer.TLSConfig.GetCertificate = s.getCertificate
 	return s
@@ -168,7 +169,7 @@ func (s *Server) processReq(ctx context.Context, data []byte) (*admissionv1beta1
 	log.Infof("received admission review request %q", admissionReview.Request.UID)
 	log.Debugf("admission request: %+v", admissionReview.Request)
 
-	admissionResponse, err := s.handler(ctx, s.api, admissionReview.Request, s.recorder)
+	admissionResponse, err := s.handler(ctx, s.metadataAPI, admissionReview.Request, s.recorder)
 	if err != nil {
 		log.Error("failed to run webhook handler. Reason: ", err)
 		admissionReview.Response = &admissionv1beta1.AdmissionResponse{
