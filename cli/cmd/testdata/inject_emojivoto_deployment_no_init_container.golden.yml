@@ -168,6 +168,8 @@ spec:
         - -v
         image: gcr.io/google_containers/pause:3.2
         name: noop
+        securityContext:
+          runAsUser: 65534
       volumes:
       - emptyDir:
           medium: Memory
