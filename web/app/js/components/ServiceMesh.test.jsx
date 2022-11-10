@@ -167,19 +167,19 @@ describe('ServiceMesh', () => {
       component = mount(i18nAndRouterWrap(ServiceMesh));
 
       return withPromise(() => {
-        expect(component.html()).to.include("4 namespaces have no meshed resources.");
+        expect(component.html()).to.include("2 namespaces have no meshed resources.");
       });
     });
 
     it("displays a message if 1 resource has not added to servicemesh", () => {
       let nsOneResourceNotAdded = _cloneDeep(nsFixtures);
-      _each(nsOneResourceNotAdded.ok.statTables[0].podGroup.rows, row => {
+      nsOneResourceNotAdded.ok.statTables[0].podGroup.rows.forEach(row => {
         // set all namespaces to have fully meshed pod counts, except one
-        if (row.resource.name !== "default") {
+        if (row.resource.name !== "shiny-product-unmeshed") {
           row.meshedPodCount = "10";
           row.runningPodCount = "10";
         }
-      });
+      })
       fetchStub.resolves({
         ok: true,
         json: () => Promise.resolve(nsOneResourceNotAdded)
