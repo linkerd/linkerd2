@@ -15,6 +15,7 @@
 
 {{ define "script-tags" }}
   {{ if not .Contents.Error }}
-    <script type="text/javascript" src="{{.Contents.PathPrefix}}dist/index_bundle.js" async></script>
+    <script>window.PATH_PREFIX = {{.Contents.PathPrefix}}</script>
+    <script type="text/javascript" src="{{.Contents.PathPrefix}}/dist/index_bundle.js" async></script>
   {{end}}
 {{end}}

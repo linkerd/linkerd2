@@ -10,7 +10,7 @@ import _isEmpty from 'lodash/isEmpty';
 import _isNil from 'lodash/isNil';
 import { withContext } from './util/AppContext.jsx';
 
-const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
+const topColumns = (resourceType, ResourceLink) => [
   {
     title: ' ',
     dataIndex: 'direction',
@@ -80,12 +80,12 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     title: <Trans>columnTitleTap</Trans>,
     key: 'tap',
     isNumeric: true,
-    render: d => tapLink(d, resourceType, PrefixedLink),
+    render: d => tapLink(d, resourceType),
   },
 ];
 
 const TopEventTable = function({ tableRows, resourceType, api }) {
-  const columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink);
+  const columns = topColumns(resourceType, api.ResourceLink);
 
   return (
     <BaseTable
@@ -101,7 +101,6 @@ const TopEventTable = function({ tableRows, resourceType, api }) {
 
 TopEventTable.propTypes = {
   api: PropTypes.shape({
-    PrefixedLink: PropTypes.func.isRequired,
     ResourceLink: PropTypes.func.isRequired,
   }).isRequired,
   resourceType: PropTypes.string.isRequired,

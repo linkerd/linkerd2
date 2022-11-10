@@ -73,6 +73,7 @@ Kubernetes: `>=1.21.0-0`
 | clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use |
 | commonLabels | object | `{}` | Labels to apply to all resources |
 | dashboard.UID | string | `nil` | UID for the dashboard resource |
+| dashboard.basePath | string | `""` | Base path under which to serve the dashboard |
 | dashboard.enforcedHostRegexp | string | `""` | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information |
 | dashboard.image.name | string | `"web"` | Docker image name for the web instance |
 | dashboard.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the  web component |

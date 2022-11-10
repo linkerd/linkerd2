@@ -96,9 +96,6 @@ class BreadcrumbHeader extends React.Component {
 }
 
 BreadcrumbHeader.propTypes = {
-  api: PropTypes.shape({
-    PrefixedLink: PropTypes.func.isRequired,
-  }).isRequired,
   location: ReactRouterPropTypes.location.isRequired,
   pathPrefix: PropTypes.string.isRequired,
 };

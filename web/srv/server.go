@@ -90,6 +90,7 @@ func NewServer(
 	jaegerAddr string,
 	templateDir string,
 	staticDir string,
+	basePath string,
 	uuid string,
 	version string,
 	controllerNamespace string,
@@ -126,6 +127,7 @@ func NewServer(
 		grafanaExternalURL:  grafanaExternalAddr,
 		grafanaPrefix:       grafanaPrefix,
 		jaeger:              jaegerAddr,
+		basePath:            basePath,
 		hc:                  hc,
 		statCache:           cache.New(statExpiration, statCleanupInterval),
 	}

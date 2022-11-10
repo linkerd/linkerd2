@@ -8,6 +8,7 @@ import WarningIcon from '@material-ui/icons/Warning';
 import { directionColumn } from './util/TapUtils.jsx';
 import { processedEdgesPropType } from './util/EdgesUtils.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import { Link } from 'react-router-dom';
 
 const styles = theme => ({
   secure: {
@@ -18,7 +19,7 @@ const styles = theme => ({
   },
 });
 
-const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
+const edgesColumnDefinitions = (namespace, type, classes) => {
   return [
     {
       title: ' ',
@@ -31,9 +32,9 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       isNumeric: false,
       filter: d => d.namespace,
       render: d => (
-        <PrefixedLink to={`/namespaces/${d.namespace}`}>
+        <Link to={`/namespaces/${d.namespace}`}>
           {d.namespace}
-        </PrefixedLink>
+        </Link>
       ),
       sorter: d => d.namespace,
     },
@@ -46,9 +47,9 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
         // check that the resource is a k8s resource with a name we can link to
         if (namespace && type && d.name) {
           return (
-            <PrefixedLink to={`/namespaces/${namespace}/${type}s/${d.name}`}>
+            <Link to={`/namespaces/${namespace}/${type}s/${d.name}`}>
               {d.name}
-            </PrefixedLink>
+            </Link>
           );
         } else {
           return d.name;
@@ -95,8 +96,8 @@ const generateEdgesTableTitle = edges => {
   return title;
 };
 
-const EdgesTable = function({ edges, api, namespace, type, classes }) {
-  const edgesColumns = edgesColumnDefinitions(api.PrefixedLink, namespace, type, classes);
+const EdgesTable = function({ edges, namespace, type, classes }) {
+  const edgesColumns = edgesColumnDefinitions(namespace, type, classes);
   const edgesTableTitle = generateEdgesTableTitle(edges);
 
   return (
@@ -113,7 +114,7 @@ const EdgesTable = function({ edges, api, namespace, type, classes }) {
 
 EdgesTable.propTypes = {
   api: PropTypes.shape({
-    PrefixedLink: PropTypes.func.isRequired,
+    Link: PropTypes.func.isRequired,
   }).isRequired,
   edges: PropTypes.arrayOf(processedEdgesPropType),
   namespace: PropTypes.string.isRequired,
