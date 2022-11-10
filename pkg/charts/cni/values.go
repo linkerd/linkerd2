@@ -36,7 +36,7 @@ type Values struct {
 	Tolerations         []Tolerations `json:"tolerations"`
 }
 
-type Tolerations struct {
+type Toleration struct {
 	Operator string `json:"operator"`
 	Effect   string `json:"effect"`
 }
