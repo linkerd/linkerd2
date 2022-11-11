@@ -213,14 +213,10 @@ func upgradeControlPlane(ctx context.Context, k *k8s.KubernetesAPI, flags []flag
 		return nil, fmt.Errorf("failed to load stored values: %w", err)
 	}
 
-	// If values is still nil, then the linkerd-config-overrides secret was not found.
-	// This means either means that Linkerd was installed with Helm or that the installation
-	// needs to be repaired.
 	if values == nil {
 		return nil, errors.New(
-			`Could not find the Linkerd config. If Linkerd was installed with Helm, please
-use Helm to perform upgrades. If Linkerd was not installed with Helm, please use
-the 'linkerd repair' command to repair the Linkerd config`)
+			`Could not find the linkerd-config-overrides secret.
+			If Linkerd was installed with Helm, please use Helm to perform upgrades`)
 	}
 
 	err = flag.ApplySetFlags(values, flags)
