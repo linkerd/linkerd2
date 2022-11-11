@@ -218,7 +218,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			var address watcher.Address
 			var endpoint *pb.WeightedAddr
 			if pod != nil {
-				address, err = s.createAddress(pod, port)
+				address, err = s.createAddress(pod, host, port)
 				if err != nil {
 					return fmt.Errorf("failed to create address: %w", err)
 				}
@@ -364,8 +364,31 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	return nil
 }
 
-func (s *server) createAddress(pod *corev1.Pod, port uint32) (watcher.Address, error) {
+// hostOrPodPort returns a container's port and handles the hostPort mapping if host belongs to the node.
+func (s *server) hostOrPodPort(pod *corev1.Pod, host string, port uint32) (uint32, error) {
+	if host == pod.Status.PodIP {
+		return port, nil
+	}
+
+	if host == pod.Status.HostIP {
+		if len(pod.Spec.Containers) == 0 || len(pod.Spec.Containers[0].Ports) == 0 {
+			s.log.Warnf("Spec has no Containers or Containers have no Ports.")
+			return port, nil
+		}
+		return uint32(pod.Spec.Containers[0].Ports[0].ContainerPort), nil
+	}
+
+	s.log.Warnf("host (%s) matches neither podID (%s) nor hostIP (%s), returning port 0", host, pod, host)
+	return 0, fmt.Errorf("unable to find container port as host (%s) matches neither PodIP nor HostIP (%s)", host, pod)
+}
+
+func (s *server) createAddress(pod *corev1.Pod, host string, port uint32) (watcher.Address, error) {
 	ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
+	port, err := s.hostOrPodPort(pod, host, port)
+	if err != nil {
+		return watcher.Address{}, fmt.Errorf("failed to find Port for Pod: %w", err)
+	}
+
 	address := watcher.Address{
 		IP:        pod.Status.PodIP,
 		Port:      port,
@@ -373,8 +396,8 @@ func (s *server) createAddress(pod *corev1.Pod, port uint32) (watcher.Address, e
 		OwnerName: ownerName,
 		OwnerKind: ownerKind,
 	}
-	err := watcher.SetToServerProtocol(s.k8sAPI, &address, port)
-	if err != nil {
+
+	if err := watcher.SetToServerProtocol(s.k8sAPI, &address, port); err != nil {
 		return watcher.Address{}, fmt.Errorf("failed to set address OpaqueProtocol: %w", err)
 	}
 	return address, nil
@@ -446,7 +469,7 @@ func (s *server) getEndpointByHostname(k8sAPI *k8s.API, hostname string, svcID w
 					if err != nil {
 						return nil, err
 					}
-					address, err := s.createAddress(pod, port)
+					address, err := s.createAddress(pod, addr.IP, port)
 					if err != nil {
 						return nil, err
 					}
