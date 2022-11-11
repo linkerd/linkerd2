@@ -11,7 +11,7 @@ import (
 // plane. If the checks fail, then CLI will print an error and exit. If the
 // hcOptions.retryDeadline param is specified, then the CLI will print a
 // message to stderr and retry.
-func CheckPublicAPIClientOrRetryOrExit(hcOptions healthcheck.Options) {
+func CheckPublicAPIClientOrRetryOrExit(hcOptions healthcheck.Options) *healthcheck.HealthChecker {
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.LinkerdControlPlaneExistenceChecks,
@@ -20,6 +20,8 @@ func CheckPublicAPIClientOrRetryOrExit(hcOptions healthcheck.Options) {
 	hc := healthcheck.NewHealthChecker(checks, &hcOptions)
 
 	hc.RunChecks(exitOnError)
+
+	return hc
 }
 
 func exitOnError(result *healthcheck.CheckResult) {

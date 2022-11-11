@@ -59,9 +59,10 @@ The installation can be configured by using the --set, --values, --set-string an
 A full list of configurable values can be found at https://github.com/linkerd/linkerd2/blob/main/multicluster/charts/linkerd-multicluster/README.md
   `,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cniEnabled := false
 			if !ignoreCluster {
 				// Wait for the core control-plane to be up and running
-				api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+				hc := api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
 					ControlPlaneNamespace: controlPlaneNamespace,
 					KubeConfig:            kubeconfigPath,
 					KubeContext:           kubeContext,
@@ -70,8 +71,9 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 					APIAddr:               apiAddr,
 					RetryDeadline:         time.Now().Add(wait),
 				})
+				cniEnabled = hc.CNIEnabled
 			}
-			return install(cmd.Context(), stdout, options, valuesOptions, ha, ignoreCluster)
+			return install(cmd.Context(), stdout, options, valuesOptions, ha, ignoreCluster, cniEnabled)
 		},
 	}
 
@@ -101,7 +103,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	return cmd
 }
 
-func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptions, valuesOptions valuespkg.Options, ha, ignoreCluster bool) error {
+func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptions, valuesOptions valuespkg.Options, ha, ignoreCluster, cniEnabled bool) error {
 	values, err := buildMulticlusterInstallValues(ctx, options, ignoreCluster)
 	if err != nil {
 		return err
@@ -118,6 +120,10 @@ func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptio
 		if err != nil {
 			return err
 		}
+	}
+
+	if cniEnabled {
+		valuesOverrides["cniEnabled"] = true
 	}
 
 	return render(w, values, valuesOverrides)

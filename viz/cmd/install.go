@@ -62,10 +62,11 @@ func newCmdInstall() *cobra.Command {
 The installation can be configured by using the --set, --values, --set-string and --set-file flags.
 A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/viz/charts/linkerd-viz/README.md
   `,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
+			cniEnabled := false
 			if !skipChecks && !ignoreCluster {
 				// Wait for the core control-plane to be up and running
-				api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+				hc := api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
 					ControlPlaneNamespace: controlPlaneNamespace,
 					KubeConfig:            kubeconfigPath,
 					KubeContext:           kubeContext,
@@ -74,9 +75,9 @@ A full list of configurable values can be found at https://www.github.com/linker
 					APIAddr:               apiAddr,
 					RetryDeadline:         time.Now().Add(wait),
 				})
-
+				cniEnabled = hc.CNIEnabled
 			}
-			return install(os.Stdout, options, ha)
+			return install(os.Stdout, options, ha, cniEnabled)
 		},
 	}
 
@@ -91,7 +92,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 	return cmd
 }
 
-func install(w io.Writer, options values.Options, ha bool) error {
+func install(w io.Writer, options values.Options, ha, cniEnabled bool) error {
 
 	// Create values override
 	valuesOverrides, err := options.MergeValues(nil)
@@ -112,6 +113,10 @@ func install(w io.Writer, options values.Options, ha bool) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if cniEnabled {
+		valuesOverrides["cniEnabled"] = true
 	}
 
 	// TODO: Add any validation logic here
