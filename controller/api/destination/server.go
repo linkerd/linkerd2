@@ -365,7 +365,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 }
 
 // hostOrPodPort returns a container's port and handles the hostPort mapping if host belongs to the node.
-func (s *server) hostOrPodPort(pod *corev1.Pod, host string, port uint32) (uint32, error) {
+func (s *server) getPortForPod(pod *corev1.Pod, host string, port uint32) (uint32, error) {
 	if host == pod.Status.PodIP {
 		return port, nil
 	}
@@ -384,7 +384,7 @@ func (s *server) hostOrPodPort(pod *corev1.Pod, host string, port uint32) (uint3
 
 func (s *server) createAddress(pod *corev1.Pod, host string, port uint32) (watcher.Address, error) {
 	ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
-	port, err := s.hostOrPodPort(pod, host, port)
+	port, err := s.getPortForPod(pod, host, port)
 	if err != nil {
 		return watcher.Address{}, fmt.Errorf("failed to find Port for Pod: %w", err)
 	}
