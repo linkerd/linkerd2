@@ -1,5 +1,28 @@
 # Changes
 
+## edge-22.11.1
+
+This edge releases ships a few fixes in Linkerd's dashboard, and the
+multicluster extension. Additionally, a regression has been fixed in the CLI
+that blocked upgrades from versions older than 2.12.0, due to missing CRDs
+(even if the CRDs were present in-cluster). Finally, the release includes
+changes to the helm charts to allow for arbitrary (user-provided) labels on
+Linkerd workloads.
+
+* Fixed an issue in the CLI where upgrades from any version prior to
+  stable-2.12.0 would fail when using the `--from-manifest` flag
+* Removed un-injectable namespaces, such as kube-system from unmeshed resource
+  notification in the dashboard (thanks @MoSattler!)
+* Fixed an issue where the dashboard would respond to requests with 404 due to
+  wrong root paths in the HTML script (thanks @junnplus!)
+* Removed the proxyProtocol field in the multicluster gateway policy; this has
+  the effect of changing the protocol from 'HTTP/1.1' to 'unknown' (thanks
+  @psmit!)
+* Fixed the multicluster gateway UID when installing through the CLI, prior to
+  this change the 'runAsUser' field would be empty
+* Changed the helm chart for the control plane and all extensions to support
+  arbitrary labels on resources (thanks @bastienbosser!)
+
 ## edge-22.10.3
 
 This edge release adds `network-validator`, a new init container to be used when
