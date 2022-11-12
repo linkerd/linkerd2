@@ -1159,8 +1159,7 @@ dependencies = [
 [[package]]
 name = "linkerd2-proxy-api"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9461e1bf61263ffa493117f2177c15a470b4b66f6b58c74e548401293f9ea639"
+source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=alex/outbound#9cfb93f376ac2e74a34f3aa75916783c76d65f0a"
 dependencies = [
  "http",
  "ipnet",

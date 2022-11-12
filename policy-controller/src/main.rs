@@ -159,10 +159,19 @@ async fn main() -> Result<()> {
     );
 
     // Run the gRPC server, serving results by looking up against the index handle.
-    tokio::spawn(grpc(
+    tokio::spawn(inbound_grpc(
         grpc_addr,
         cluster_networks,
         index,
+        runtime.shutdown_handle(),
+    ));
+
+    let mut outbound_policy_addr = grpc_addr.clone();
+    // TODO: (Hack) we just set the outbound policy server port to the next one
+    // above the inbound policy server port.
+    outbound_policy_addr.set_port(grpc_addr.port()+1);
+    tokio::spawn(outbound_grpc(
+        grpc_addr,
         runtime.shutdown_handle(),
     ));
 
@@ -192,19 +201,40 @@ impl std::str::FromStr for IpNets {
 }
 
 #[instrument(skip_all, fields(port = %addr.port()))]
-async fn grpc(
+async fn inbound_grpc(
     addr: SocketAddr,
     cluster_networks: Vec<IpNet>,
     index: SharedIndex,
     drain: drain::Watch,
 ) -> Result<()> {
     let discover = IndexDiscover::new(index);
-    let server = grpc::Server::new(discover, cluster_networks, drain.clone());
+    let server = grpc::InboundPolicyServer::new(discover, cluster_networks, drain.clone());
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
     tokio::pin! {
         let srv = server.serve(addr, close_rx.map(|_| {}));
     }
-    info!(%addr, "gRPC server listening");
+    info!(%addr, "inbound policy gRPC server listening");
+    tokio::select! {
+        res = (&mut srv) => res?,
+        handle = drain.signaled() => {
+            let _ = close_tx.send(());
+            handle.release_after(srv).await?
+        }
+    }
+    Ok(())
+}
+
+#[instrument(skip_all, fields(port = %addr.port()))]
+async fn outbound_grpc(
+    addr: SocketAddr,
+    drain: drain::Watch,
+) -> Result<()> {
+    let server = grpc::OutboundPolicyServer{};
+    let (close_tx, close_rx) = tokio::sync::oneshot::channel();
+    tokio::pin! {
+        let srv = server.serve(addr, close_rx.map(|_| {}));
+    }
+    info!(%addr, "outbound policy gRPC server listening");
     tokio::select! {
         res = (&mut srv) => res?,
         handle = drain.signaled() => {

@@ -10,6 +10,10 @@ use linkerd2_proxy_api::{
         self as proto,
         inbound_server_policies_server::{InboundServerPolicies, InboundServerPoliciesServer},
     },
+    outbound::{
+        self,
+        outbound_policies_server::{OutboundPolicies, OutboundPoliciesServer},
+    },
     meta::{metadata, Metadata},
 };
 use linkerd_policy_controller_core::{
@@ -23,15 +27,18 @@ use std::{num::NonZeroU16, sync::Arc};
 use tracing::trace;
 
 #[derive(Clone, Debug)]
-pub struct Server<T> {
+pub struct InboundPolicyServer<T> {
     discover: T,
     drain: drain::Watch,
     cluster_networks: Arc<[IpNet]>,
 }
 
-// === impl Server ===
+#[derive(Clone, Debug)]
+pub struct OutboundPolicyServer;
 
-impl<T> Server<T>
+// === impl InboundPolicyServer ===
+
+impl<T> InboundPolicyServer<T>
 where
     T: DiscoverInboundServer<(String, String, NonZeroU16)> + Send + Sync + 'static,
 {
@@ -90,7 +97,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<T> InboundServerPolicies for Server<T>
+impl<T> InboundServerPolicies for InboundPolicyServer<T>
 where
     T: DiscoverInboundServer<(String, String, NonZeroU16)> + Send + Sync + 'static,
 {
@@ -134,8 +141,48 @@ where
     }
 }
 
+impl OutboundPolicyServer {
+    pub async fn serve(
+        self,
+        addr: std::net::SocketAddr,
+        shutdown: impl std::future::Future<Output = ()>,
+    ) -> hyper::Result<()> {
+        let svc = OutboundPoliciesServer::new(self);
+        hyper::Server::bind(&addr)
+            .http2_only(true)
+            .tcp_nodelay(true)
+            .serve(hyper::service::make_service_fn(move |_| {
+                future::ok::<_, std::convert::Infallible>(svc.clone())
+            }))
+            .with_graceful_shutdown(shutdown)
+            .await
+    }
+}
+
+#[async_trait::async_trait]
+impl OutboundPolicies for OutboundPolicyServer {
+    async fn get(
+        &self,
+        _req: tonic::Request<outbound::TargetSpec>,
+    ) -> Result<tonic::Response<outbound::Service>, tonic::Status> {
+        Err(tonic::Status::unimplemented("TODO"))
+    }
+
+    type WatchStream = BoxWatchServiceStream;
+
+    async fn watch(
+        &self,
+        _req: tonic::Request<outbound::TargetSpec>,
+    ) -> Result<tonic::Response<BoxWatchServiceStream>, tonic::Status> {
+        Err(tonic::Status::unimplemented("TODO"))
+    }
+
+}
+
 type BoxWatchStream =
     std::pin::Pin<Box<dyn Stream<Item = Result<proto::Server, tonic::Status>> + Send + Sync>>;
+type BoxWatchServiceStream =
+    std::pin::Pin<Box<dyn Stream<Item = Result<outbound::Service, tonic::Status>> + Send + Sync>>;
 
 fn response_stream(
     drain: drain::Watch,
