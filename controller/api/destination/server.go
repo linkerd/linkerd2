@@ -364,7 +364,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	return nil
 }
 
-// getPortForPod returns the port that a `pod`` is listening on.
+// getPortForPod returns the port that a `pod` is listening on.
 //
 // If the `host` address given is the HostIP, use the HostPort mapping for the `pod`
 // to determine the port to return.
