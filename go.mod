@@ -45,7 +45,7 @@ require (
 	k8s.io/api v0.25.4
 	k8s.io/apiextensions-apiserver v0.25.2
 	k8s.io/apimachinery v0.25.4
-	k8s.io/client-go v0.25.3
+	k8s.io/client-go v0.25.4
 	k8s.io/code-generator v0.25.3
 	k8s.io/klog/v2 v2.80.1
 	k8s.io/kube-aggregator v0.23.5
@@ -152,7 +152,6 @@ require (
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	google.golang.org/api v0.62.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220502173005-c8bf987b8c21 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/cli-runtime v0.25.2 // indirect
