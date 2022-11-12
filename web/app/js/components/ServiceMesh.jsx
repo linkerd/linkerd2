@@ -16,7 +16,6 @@ import Spinner from './util/Spinner.jsx';
 import StatusTable from './StatusTable.jsx';
 import Typography from '@material-ui/core/Typography';
 import _compact from 'lodash/compact';
-import _countBy from 'lodash/countBy';
 import _filter from 'lodash/filter';
 import _get from 'lodash/get';
 import _groupBy from 'lodash/groupBy';
@@ -309,10 +308,11 @@ class ServiceMesh extends React.Component {
     if (_isEmpty(nsStatuses)) {
       message = <Trans>noNamespacesDetectedMsg</Trans>;
     } else {
-      const meshedCount = _countBy(nsStatuses, pod => {
-        return pod.meshedPercent.get() > 0;
-      });
-      numUnadded = meshedCount.false || 0;
+      const unmeshedNamespaces = nsStatuses
+        .filter(pod => pod.meshedPercent.get() <= 0)
+        .filter(pod => pod.totalPods > 0)
+        .filter(pod => pod.namespace !== 'kube-system');
+      numUnadded = unmeshedNamespaces.length ?? 0;
       message = numUnadded === 0 ? <Trans>All namespaces have a {productName} install.</Trans> : (
         <Plural
           value={numUnadded}

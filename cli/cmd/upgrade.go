@@ -101,11 +101,12 @@ A full list of configurable values can be found at https://www.github.com/linker
 				return nil
 			}
 
-			k, err := k8sClient(manifests)
+			k, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to create a kubernetes client: %w", err)
 			}
-			if err = upgradeControlPlaneRunE(cmd.Context(), k, flags, options); err != nil {
+
+			if err = upgradeControlPlaneRunE(cmd.Context(), k, flags, options, manifests); err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
 			}
@@ -122,25 +123,26 @@ A full list of configurable values can be found at https://www.github.com/linker
 	return cmd
 }
 
-func k8sClient(manifestsFile string) (*k8s.KubernetesAPI, error) {
-	// We need a Kubernetes client to fetch configs and issuer secrets.
-	var k *k8s.KubernetesAPI
-	var err error
-	if manifestsFile != "" {
-		readers, err := read(manifestsFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse manifests from %s: %w", manifestsFile, err)
-		}
+// makeConfigClient is used to re-initialize the Kubernetes client in order
+// to fetch existing configuration. It accepts two arguments: a Kubernetes
+// client, and a path to a manifest file. If the manifest path is empty, the
+// client will not be re-initialized. When non-empty, the client will be
+// replaced by a fake Kubernetes client that will hold the values parsed from
+// the manifest.
+func makeConfigClient(k *k8s.KubernetesAPI, localManifestPath string) (*k8s.KubernetesAPI, error) {
+	if localManifestPath == "" {
+		return k, nil
+	}
 
-		k, err = k8s.NewFakeAPIFromManifests(readers)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse Kubernetes objects from manifest %s: %w", manifestsFile, err)
-		}
-	} else {
-		k, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create a kubernetes client: %w", err)
-		}
+	// We need a Kubernetes client to fetch configs and issuer secrets.
+	readers, err := read(localManifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse manifests from %s: %w", localManifestPath, err)
+	}
+
+	k, err = k8s.NewFakeAPIFromManifests(readers)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse Kubernetes objects from manifest %s: %w", localManifestPath, err)
 	}
 	return k, nil
 }
@@ -163,7 +165,7 @@ func makeUpgradeFlags() *pflag.FlagSet {
 	return upgradeFlags
 }
 
-func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, options valuespkg.Options) error {
+func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, options valuespkg.Options, localManifestPath string) error {
 
 	crds := bytes.Buffer{}
 	err := renderCRDs(&crds, options)
@@ -174,6 +176,12 @@ func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []
 	err = healthcheck.CheckCustomResourceDefinitions(ctx, k, crds.String())
 	if err != nil {
 		return fmt.Errorf("Linkerd CRDs must be installed first. Run linkerd upgrade with the --crds flag:\n%w", err)
+	}
+
+	// Re-initialize client if a local manifest path is used
+	k, err = makeConfigClient(k, localManifestPath)
+	if err != nil {
+		return err
 	}
 
 	buf, err := upgradeControlPlane(ctx, k, flags, options)
@@ -205,14 +213,10 @@ func upgradeControlPlane(ctx context.Context, k *k8s.KubernetesAPI, flags []flag
 		return nil, fmt.Errorf("failed to load stored values: %w", err)
 	}
 
-	// If values is still nil, then the linkerd-config-overrides secret was not found.
-	// This means either means that Linkerd was installed with Helm or that the installation
-	// needs to be repaired.
 	if values == nil {
 		return nil, errors.New(
-			`Could not find the Linkerd config. If Linkerd was installed with Helm, please
-use Helm to perform upgrades. If Linkerd was not installed with Helm, please use
-the 'linkerd repair' command to repair the Linkerd config`)
+			`Could not find the linkerd-config-overrides secret.
+			If Linkerd was installed with Helm, please use Helm to perform upgrades`)
 	}
 
 	err = flag.ApplySetFlags(values, flags)

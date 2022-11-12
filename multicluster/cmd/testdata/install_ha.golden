@@ -190,7 +190,6 @@ spec:
     matchLabels:
       app: linkerd-gateway
   port: linkerd-proxy
-  proxyProtocol: HTTP/1
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: ServerAuthorization

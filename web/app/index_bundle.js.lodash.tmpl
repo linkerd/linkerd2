@@ -1,10 +1,10 @@
 // based on https://gist.github.com/necolas/1025811
-(function(doc, script) {
+(function(doc) {
   let js,
-    fjs = doc.getElementsByTagName(script)[0],
+    fjs = doc.getElementById('bundle'),
     add = function(url, id) {
       if (doc.getElementById(id)) {return;}
-      js = doc.createElement(script);
+      js = doc.createElement('script');
       js.src = url;
       id && (js.id = id);
       fjs.parentNode.insertBefore(js, fjs);
@@ -13,8 +13,8 @@
   <% if (compilation.compiler.outputFileSystem.constructor.name === 'MemoryFileSystem') { %>
     add('http://localhost:8080/<%= htmlWebpackPlugin.files.js[chunk] %>');
   <% } else { %>
-    let root = fjs.src.substring(0, fjs.src.indexOf("dist"));
+    let root = fjs.src.substring(0, fjs.src.indexOf('dist'));
     add(root+'<%= htmlWebpackPlugin.files.js[chunk] %>');
   <% } %>
 <% } %>
-}(document, 'script'));
+}(document));
