@@ -801,21 +801,6 @@ func TestHostPortMapping(t *testing.T) {
 	hostPort := uint32(7777)
 	containerPort := uint32(80)
 	server := makeServer(t)
-	stream := &bufferingGetProfileStream{
-		updates:          []*pb.DestinationProfile{},
-		MockServerStream: util.NewMockServerStream(),
-	}
-	stream.Cancel()
-
-	dest := &pb.GetDestination{
-		ContextToken: "name:hostport-mapping",
-		Path:         fmt.Sprintf("%s:%d", externalIP, hostPort),
-	}
-
-	err := server.GetProfile(dest, stream)
-	if err != nil {
-		t.Fatalf("Got error from GetProfile: %s", err)
-	}
 
 	pod, err := getPodByIP(server.k8sAPI, externalIP, hostPort, server.log)
 	if err != nil {

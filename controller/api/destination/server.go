@@ -364,21 +364,25 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	return nil
 }
 
-// hostOrPodPort returns a container's port and handles the hostPort mapping if host belongs to the node.
+// getPortForPod returns the port that a `pod`` is listening on.
+//
+// If the `host` address given is the HostIP, use the HostPort mapping for the `pod`
+// to determine the port to return.
 func (s *server) getPortForPod(pod *corev1.Pod, host string, port uint32) (uint32, error) {
 	if host == pod.Status.PodIP {
 		return port, nil
 	}
 
 	if host == pod.Status.HostIP {
-		if len(pod.Spec.Containers) == 0 || len(pod.Spec.Containers[0].Ports) == 0 {
-			s.log.Warnf("Spec has no Containers or Containers have no Ports.")
-			return port, nil
+		for _, container := range pod.Spec.Containers {
+			for _, containerPort := range container.Ports {
+				if uint32(containerPort.HostPort) == port {
+					return uint32(containerPort.ContainerPort), nil
+				}
+			}
 		}
-		return uint32(pod.Spec.Containers[0].Ports[0].ContainerPort), nil
 	}
 
-	s.log.Warnf("host (%s) matches neither podID (%s) nor hostIP (%s), returning port 0", host, pod, host)
 	return 0, fmt.Errorf("unable to find container port as host (%s) matches neither PodIP nor HostIP (%s)", host, pod)
 }
 
