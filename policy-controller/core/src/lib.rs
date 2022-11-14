@@ -6,7 +6,7 @@ mod identity_match;
 mod network_match;
 
 pub use self::{
-    http_route::InboundHttpRoute, identity_match::IdentityMatch, network_match::NetworkMatch,
+    http_route::InboundHttpRoute, identity_match::IdentityMatch, network_match::NetworkMatch, http_route::OutboundHttpRoute,
 };
 use ahash::AHashMap as HashMap;
 use anyhow::Result;

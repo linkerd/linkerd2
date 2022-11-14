@@ -22,6 +22,9 @@ pub struct InboundHttpRoute {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OutboundHttpRoute {}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HostMatch {
     Exact(String),
     Suffix { reverse_labels: Vec<String> },
