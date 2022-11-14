@@ -54,7 +54,7 @@
     "babel-plugin-import": "^1.13.5",
     "babel-plugin-macros": "^3.1.0",
     "babel-plugin-transform-react-remove-prop-types": "0.4.24",
-    "chai": "4.3.6",
+    "chai": "4.3.7",
     "clean-webpack-plugin": "4.0.0",
     "css-loader": "^6.7.1",
     "enzyme": "3.11.0",
