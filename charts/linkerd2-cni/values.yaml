@@ -45,7 +45,6 @@ privileged: false
 # for more information
 tolerations:
 - operator: Exists
-  effect: NoSchedule
 
 # -|- NodeAffinity section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)

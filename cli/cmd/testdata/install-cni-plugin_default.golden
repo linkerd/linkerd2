@@ -104,8 +104,7 @@ spec:
         linkerd.io/inject: disabled
     spec:
       tolerations:
-        - effect: NoSchedule
-          operator: Exists
+        - operator: Exists
       nodeSelector:
         kubernetes.io/os: linux
       hostNetwork: true
