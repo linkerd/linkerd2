@@ -12,6 +12,7 @@ permissions:
 env:
   GH_ANNOTATION: true
   DOCKER_REGISTRY: ghcr.io/linkerd
+  K3D_VERSION: v5.4.4
 
 jobs:
   # TODO(ver) We should stop relying so heavily on the environment,
@@ -196,44 +197,15 @@ jobs:
         bin/tests --images preload --name ${{ matrix.integration_test }} "$CMD"
 
   arm64_integration_tests:
-    name: ARM64 integration tests
-    timeout-minutes: 60
-    runs-on: ubuntu-20.04
     needs: [tag, docker_build, policy_controller_manifest]
+    runs-on: [self-hosted, Linux, ARM64]
+    timeout-minutes: 30
     steps:
-    - name: Checkout code
-      uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
-    - uses: actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f
-      with:
-        go-version: '1.18'
-    - name: Set environment variables from scripts
-      run: |
-        TAG='${{ needs.tag.outputs.tag }}'
-        CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
-        echo "CMD=$CMD" >> "$GITHUB_ENV"
-        echo "TAG=$TAG" >> "$GITHUB_ENV"
-    - name: Install linkerd CLI
-      run: |
-        bin/docker-pull-binaries "$TAG"
-        "$CMD" version --client
-        # validate CLI version matches the repo
-        [[ "$TAG" == "$($CMD version --short --client)" ]]
-        echo "Installed Linkerd CLI version: $TAG"
-    - name: Set KUBECONFIG environment variables
-      run: |
-        mkdir -p "$HOME"/.kube
-        echo "${{ secrets.ARM64_KUBECONFIG }}" > "$HOME"/.kube/config
-        echo "KUBECONFIG=$HOME/.kube/config" >> "$GITHUB_ENV"
-        kubectl cluster-info
-    - name: Run integration tests
-      env:
-        RUN_ARM_TEST: 1
-        LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
-      run: bin/tests --name deep --images preload --skip-cluster-create "$CMD"
-    - run: go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
-    # Cleanup may fail if other steps didn't run. Ignore the error.
-    - run: bin/test-cleanup "$CMD" || true
-      if: always()
+      - uses: ./.github/actions/arm64-integration
+        with:
+          tag: ${{ needs.tag.outputs.tag }}
+          docker-registry: ${{ env.DOCKER_REGISTRY }}
+          k3d-version: ${{ env.K3D_VERSION }}
 
   choco_pack:
     # only runs for stable tags. The conditionals are at each step level instead of the job level
