@@ -11,7 +11,6 @@ import (
 	partials "github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	api "github.com/linkerd/linkerd2/pkg/public"
 	"github.com/linkerd/linkerd2/viz/static"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -66,7 +65,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 			cniEnabled := false
 			if !skipChecks && !ignoreCluster {
 				// Wait for the core control-plane to be up and running
-				hc := api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+				hc := healthcheck.NewWithBasicCategories(&healthcheck.Options{
 					ControlPlaneNamespace: controlPlaneNamespace,
 					KubeConfig:            kubeconfigPath,
 					KubeContext:           kubeContext,
@@ -75,6 +74,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 					APIAddr:               apiAddr,
 					RetryDeadline:         time.Now().Add(wait),
 				})
+				hc.RunChecksExitOnError()
 				cniEnabled = hc.CNIEnabled
 			}
 			return install(os.Stdout, options, ha, cniEnabled)
