@@ -28,7 +28,7 @@ runs:
         TAG: ${{ inputs.tag }}
         RUN_ARM_TEST: 1
         LINKERD_DOCKER_REGISTRY: ${{ inputs.docker-registry }}
-      run: bin/tests --name deep --skip-cluster-delete --images preload "$CMD"
-#    - shell: bash
-#      run: bin/k3d cluster delete --all
-#      if: always()
+      run: bin/tests --name deep --images preload "$CMD"
+    - shell: bash
+      run: bin/k3d cluster delete --all
+      if: always()
