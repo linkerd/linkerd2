@@ -59,7 +59,19 @@ spec:
           {{- if .Values.prometheusUrl }}
           ops="$ops{\"op\": \"add\", \"path\": \"/metadata/annotations/viz.linkerd.io~1external-prometheus\", \"value\": \"{{.Values.prometheusUrl}}\"},"
           {{- end }}
-          ops="$ops{\"op\": \"add\", \"path\": \"/metadata/labels/linkerd.io~1extension\", \"value\": \"viz\"}"
+          ops="$ops{\"op\": \"add\", \"path\": \"/metadata/labels/linkerd.io~1extension\", \"value\": \"viz\"},"
+
+          # grab the latest occurence of cniEnabled in linkerd-config, to
+          # discard value in the last-applied-configuration annotation
+          cniEnabled=$(curl -kfv -H "Authorization: Bearer $token" \
+            "https://kubernetes.default.svc/api/v1/namespaces/{{.Values.linkerdNamespace}}/configmaps/linkerd-config" | \
+            sed -r -n 's/.*cniEnabled: (\w+).*/\1/gp' | tail -1)
+
+          level="privileged"
+          if [ "$cniEnabled" = "true" ]; then
+            level="restricted"
+          fi
+          ops="$ops{\"op\": \"add\", \"path\": \"/metadata/labels/pod-security.kubernetes.io~1enforce\", \"value\": \"$level\"}"
 
           curl -kfv -XPATCH -H "Content-Type: application/json-patch+json" -H "Authorization: Bearer $token" \
             -d "[$ops]" \

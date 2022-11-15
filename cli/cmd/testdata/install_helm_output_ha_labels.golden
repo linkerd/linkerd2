@@ -650,6 +650,21 @@ data:
     tolerations: null
     webhookFailurePolicy: Fail
 ---
+# Source: linkerd-control-plane/templates/config-rbac.yaml
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+  name: ext-namespace-metadata-linkerd-config
+  namespace: linkerd-dev
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["linkerd-config"]
+---
 # Source: linkerd-control-plane/templates/identity.yaml
 ---
 ###

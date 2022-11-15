@@ -50,3 +50,26 @@ subjects:
 - kind: ServiceAccount
   name: namespace-metadata
   namespace: {{.Release.Namespace}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: {{ .Values.linkerdNamespace }}
+  {{- with .Values.commonLabels }}
+  labels: {{ toYaml . | trim | nindent 4 }}
+  {{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+    {{- /* cross-namespace RBAC doesn't play well as a hook for some reason */}}
+#    "helm.sh/hook": post-install
+#    "helm.sh/hook-weight": "0"
+#    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  name: jaeger-namespace-metadata-linkerd-config
+roleRef:
+  kind: Role
+  name: ext-namespace-metadata-linkerd-config
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: namespace-metadata
+  namespace: {{.Release.Namespace}}

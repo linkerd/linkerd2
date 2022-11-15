@@ -561,6 +561,19 @@ data:
     tolerations: null
     webhookFailurePolicy: Ignore
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  name: ext-namespace-metadata-linkerd-config
+  namespace: linkerd
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["linkerd-config"]
+---
 ###
 ### Identity Controller Service
 ###
