@@ -192,6 +192,9 @@ proxyInit:
   # -- Default set of outbound ports to skip via iptables
   # - Galera (4567,4568)
   ignoreOutboundPorts: "4567,4568"
+  # -- Default set of ports to skip via iptables for control plane
+  # -- components so they can communicate with the Kubernetes API Server
+  kubeAPIServerPorts: "443,6443"
   # -- Comma-separated list of subnets in valid CIDR format that should be skipped by the proxy
   skipSubnets: ""
   # -- Log level for the proxy-init

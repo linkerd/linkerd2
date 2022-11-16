@@ -224,6 +224,7 @@ subjects:
     name: linkerd-destination
     namespace: linkerd
 
+
 ---
 ###
 ### Proxy Injector RBAC
@@ -517,6 +518,7 @@ data:
         pullPolicy: ""
         version: v2.0.0
       iptablesMode: legacy
+      kubeAPIServerPorts: 443,6443
       logFormat: ""
       logLevel: ""
       resources:
@@ -838,6 +840,7 @@ spec:
         - mountPath: /var/run/secrets/tokens
           name: linkerd-identity-token
       initContainers:
+      
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -848,7 +851,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
-        - "443"
+        - "443,6443"
         image: cr.l5d.io/linkerd/proxy-init:v2.0.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1259,6 +1262,7 @@ spec:
           name: policy-tls
           readOnly: true
       initContainers:
+      
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -1269,7 +1273,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
-        - "443"
+        - "443,6443"
         image: cr.l5d.io/linkerd/proxy-init:v2.0.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init

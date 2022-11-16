@@ -122,6 +122,7 @@ type (
 		Capabilities         *Capabilities    `json:"capabilities"`
 		IgnoreInboundPorts   string           `json:"ignoreInboundPorts"`
 		IgnoreOutboundPorts  string           `json:"ignoreOutboundPorts"`
+		KubeAPIServerPorts   string           `json:"kubeAPIServerPorts"`
 		SkipSubnets          string           `json:"skipSubnets"`
 		LogLevel             string           `json:"logLevel"`
 		LogFormat            string           `json:"logFormat"`
