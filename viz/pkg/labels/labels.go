@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -37,14 +38,8 @@ func IsTapEnabled(pod *corev1.Pod) bool {
 
 // IsTapDisabled returns true if a namespace or pod has an annotation for
 // explicitly disabling tap
-func IsTapDisabled(obj interface{}) bool {
-	var valStr string
-	switch resource := obj.(type) {
-	case *corev1.Pod:
-		valStr = resource.GetAnnotations()[VizTapDisabled]
-	case *corev1.Namespace:
-		valStr = resource.GetAnnotations()[VizTapDisabled]
-	}
+func IsTapDisabled(obj metav1.Object) bool {
+	valStr := obj.GetAnnotations()[VizTapDisabled]
 	if valStr != "" {
 		valBool, err := strconv.ParseBool(valStr)
 		if err == nil && valBool {

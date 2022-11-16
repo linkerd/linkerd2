@@ -26,10 +26,10 @@ type Params struct {
 // pod or the namespace.
 func Mutate(tapSvcName string) webhook.Handler {
 	return func(
-		ctx context.Context,
-		k8sAPI *k8s.API,
+		_ context.Context,
+		k8sAPI *k8s.MetadataAPI,
 		request *admissionv1beta1.AdmissionRequest,
-		recorder record.EventRecorder,
+		_ record.EventRecorder,
 	) (*admissionv1beta1.AdmissionResponse, error) {
 		log.Debugf("request object bytes: %s", request.Object.Raw)
 		admissionResponse := &admissionv1beta1.AdmissionResponse{
@@ -47,7 +47,7 @@ func Mutate(tapSvcName string) webhook.Handler {
 		if params.ProxyIndex < 0 || vizLabels.IsTapEnabled(pod) {
 			return admissionResponse, nil
 		}
-		namespace, err := k8sAPI.NS().Lister().Get(request.Namespace)
+		namespace, err := k8sAPI.Get(k8s.NS, request.Namespace)
 		if err != nil {
 			return nil, err
 		}

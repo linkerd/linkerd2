@@ -48,7 +48,7 @@ func newCmdList() *cobra.Command {
 			for _, pod := range pods.Items {
 				pod := pod
 				if pkgK8s.IsMeshed(&pod, controlPlaneNamespace) {
-					if vizLabels.IsTapDisabled(pod) {
+					if vizLabels.IsTapDisabled(pod.GetObjectMeta()) {
 						tapDisabled = append(tapDisabled, pod)
 					} else if !vizLabels.IsTapEnabled(&pod) {
 						tapNotEnabled = append(tapNotEnabled, pod)
