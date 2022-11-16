@@ -242,7 +242,7 @@ Kubernetes: `>=1.21.0-0`
 | proxyInit.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy-init container Docker image |
 | proxyInit.image.version | string | `"v2.0.0"` | Tag for the proxy-init container Docker image |
 | proxyInit.iptablesMode | string | `"legacy"` | Variant of iptables that will be used to configure routing. Currently, proxy-init can be run either in 'nft' or in 'legacy' mode. The mode will control which utility binary will be called. The host must support whichever mode will be used |
-| proxyInit.kubeAPIServerPorts | string | `"443"` | components so they can communicate with the Kubernetes API Server |
+| proxyInit.kubeAPIServerPorts | string | `"443,6443"` | components so they can communicate with the Kubernetes API Server |
 | proxyInit.logFormat | string | plain | Log format (`plain` or `json`) for the proxy-init |
 | proxyInit.logLevel | string | info | Log level for the proxy-init |
 | proxyInit.resources.cpu.limit | string | `"100m"` | Maximum amount of CPU units that the proxy-init container can use |
