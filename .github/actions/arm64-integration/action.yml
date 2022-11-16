@@ -36,7 +36,7 @@ runs:
     - name: Cluster setup
       shell: bash
       run: |
-       CLUSTER_NAME=$(echo "${{ github.ref_name }}" | tr -c 'a-z0-9' -)
+       CLUSTER_NAME=$(printf "${{ github.ref_name }}" | tr -c [:alnum:] -)
        echo "CLUSTER_NAME=$CLUSTER_NAME" >> "$GITHUB_ENV"
        just k3d-name=$CLUSTER_NAME k3d-create
        just k3d-name=$CLUSTER_NAME k3d-use
