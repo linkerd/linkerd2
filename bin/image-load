@@ -126,7 +126,7 @@ for i in "${!images[@]}"; do
   else
     param="$DOCKER_REGISTRY/${images[$i]}:$TAG"
     if [ $preload ]; then
-      "$bindir"/docker pull -q "$param" || (echo "Error pulling image $param"; touch load_fail) &
+      docker pull -q "$param" || (echo "Error pulling image $param"; touch load_fail) &
     fi
   fi
 
