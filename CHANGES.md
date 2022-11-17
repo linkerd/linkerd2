@@ -1,5 +1,17 @@
 # Changes
 
+## edge-22.11.2
+
+This edge release introduces the use of the Kubernetes metadata API in the
+proxy-injector and tap-injector components. This can reduce the IO and memory
+footprint for those components as they now only need to track the metadata for
+certain resources, rather than the entire resource itself. Similar changes will
+be made for the destination component in an upcoming release.
+
+* Bumped HTTP dependencies to fix a potential deadlock in HTTP/2 clients
+* Changed the proxy-injector and tap-injector components to use the metadata API
+  which should result in less memory consumption
+
 ## edge-22.11.1
 
 This edge releases ships a few fixes in Linkerd's dashboard, and the
