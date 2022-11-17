@@ -218,24 +218,24 @@ jobs:
       - uses: azure/setup-kubectl@7f7e5ba5ea3e491b92e6e8e5819963f8f3a1f076
       - name: Setup k3d
         run: |
-          mkdir -p $PWD/target/bin
-          PATH=$PATH:$PWD/target/bin
+          mkdir -p "$PWD/target/bin"
+          PATH=$PATH:"$PWD/target/bin"
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           bin/scurl "https://raw.githubusercontent.com/k3d-io/k3d/${{ env.K3D_VERSION }}/install.sh" \
             | USE_SUDO=false K3D_INSTALL_DIR=$PWD/target/bin bash
       - name: Cluster setup
         run: |
-         CLUSTER_NAME=$(printf "${{ github.ref_name }}" | tr -c [:alnum:] -)
+         CLUSTER_NAME=$(printf "${{ github.ref_name }}" | tr -c '[:alnum:]' -)
          echo "CLUSTER_NAME=$CLUSTER_NAME" >> "$GITHUB_ENV"
-         just k3d-name=$CLUSTER_NAME k3d-create
-         just k3d-name=$CLUSTER_NAME k3d-use
+         just k3d-name="$CLUSTER_NAME" k3d-create
+         just k3d-name="$CLUSTER_NAME" k3d-use
       - env:
           RUN_ARM_TEST: 1
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
-        run: go test ./test/integration/deep/... --integration-tests --linkerd $CMD
+        run: go test ./test/integration/deep/... --integration-tests --linkerd "$CMD"
       - name: Delete cluster
         if: always()
-        run: just k3d-name=$CLUSTER_NAME k3d-delete
+        run: just k3d-name="$CLUSTER_NAME" k3d-delete
 
   choco_pack:
     # only runs for stable tags. The conditionals are at each step level instead of the job level
