@@ -209,7 +209,6 @@ jobs:
       - name: Pull linkerd binary
         run: |
           TAG='${{ needs.tag.outputs.tag }}'
-          echo "TAG=$TAG" >> "$GITHUB_ENV"
           bin/docker-pull-binaries "$TAG"
           CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-arm64"
           echo "CMD=$CMD" >> "$GITHUB_ENV"
