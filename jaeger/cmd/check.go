@@ -33,10 +33,11 @@ var (
 )
 
 type checkOptions struct {
-	wait      time.Duration
-	output    string
-	proxy     bool
-	namespace string
+	wait               time.Duration
+	output             string
+	proxy              bool
+	namespace          string
+	cliVersionOverride string
 }
 
 func jaegerCategory(hc *healthcheck.HealthChecker) *healthcheck.Category {
@@ -184,6 +185,9 @@ code.`,
 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 	cmd.Flags().BoolVar(&options.proxy, "proxy", options.proxy, "Also run data-plane checks, to determine if the data plane is healthy")
 	cmd.Flags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
+	cmd.Flags().StringVar(&options.cliVersionOverride, "cli-version-override", "", "Used to override the version of the cli (mostly for testing)")
+
+	cmd.Flags().MarkHidden("cli-version-override")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"namespace"},
@@ -197,6 +201,10 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	err := options.validate()
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %w", err)
+	}
+
+	if options.cliVersionOverride != "" {
+		version.Version = options.cliVersionOverride
 	}
 
 	hc := healthcheck.NewHealthChecker([]healthcheck.CategoryID{}, &healthcheck.Options{
