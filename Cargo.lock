@@ -373,15 +373,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 
 [[package]]
-name = "fastrand"
-version = "1.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7a407cfaa3385c4ae6b23e84623d48c2798d06e3e6a1878f7f59f17b3f86499"
-dependencies = [
- "instant",
-]
-
-[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -677,19 +668,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hyper-tls"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6183ddfa99b85da61a140bea0efc93fdf56ceaa041b37d553518030827f9905"
-dependencies = [
- "bytes",
- "hyper",
- "native-tls",
- "tokio",
- "tokio-native-tls",
-]
-
-[[package]]
 name = "iana-time-zone"
 version = "0.1.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -827,9 +805,9 @@ dependencies = [
 
 [[package]]
 name = "k8s-gateway-api"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2b1071248ff409397c864c1587a946acd60b8fba8698828623c8c1cd687274d"
+checksum = "6c5aff351861fa8aef1329a3eae6512ead291e58e478b293e20dfa8104965fb8"
 dependencies = [
  "k8s-openapi",
  "kube",
@@ -858,9 +836,9 @@ dependencies = [
 
 [[package]]
 name = "kube"
-version = "0.75.0"
+version = "0.76.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bb19108692aeafebb108fd0a1c381c06ac4c03859652599420975165e939b8a"
+checksum = "fcf241a3a42bca4a2d1c21f2f34a659655032a7858270c7791ad4433aa8d79cb"
 dependencies = [
  "k8s-openapi",
  "kube-client",
@@ -871,9 +849,9 @@ dependencies = [
 
 [[package]]
 name = "kube-client"
-version = "0.75.0"
+version = "0.76.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97e1a80ecd1b1438a2fc004549e155d47250b9e01fbfcf4cfbe9c8b56a085593"
+checksum = "7e442b4e6d55c4b3d0c0c70d79a8865bf17e2c33725f9404bfcb8a29ee002ffe"
 dependencies = [
  "base64",
  "bytes",
@@ -887,7 +865,6 @@ dependencies = [
  "hyper-openssl",
  "hyper-rustls",
  "hyper-timeout",
- "hyper-tls",
  "jsonpath_lib",
  "k8s-openapi",
  "kube-core",
@@ -903,7 +880,6 @@ dependencies = [
  "serde_yaml",
  "thiserror",
  "tokio",
- "tokio-native-tls",
  "tokio-tungstenite",
  "tokio-util 0.7.0",
  "tower",
@@ -913,9 +889,9 @@ dependencies = [
 
 [[package]]
 name = "kube-core"
-version = "0.75.0"
+version = "0.76.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4d780f2bb048eeef64a4c6b2582d26a0fe19e30b4d3cc9e081616e1779c5d47"
+checksum = "eca2e1b1528287ba61602bbd17d0aa717fbb4d0fb257f4fa3a5fa884116ef778"
 dependencies = [
  "chrono",
  "form_urlencoded",
@@ -931,9 +907,9 @@ dependencies = [
 
 [[package]]
 name = "kube-derive"
-version = "0.75.0"
+version = "0.76.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98459d53b2841237392cd6959956185b2df15c19d32c3b275ed6ca7b7ee1adae"
+checksum = "1af50996adb7e1251960d278859772fa30df99879dc154d792e36832209637cb"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -944,9 +920,9 @@ dependencies = [
 
 [[package]]
 name = "kube-runtime"
-version = "0.75.0"
+version = "0.76.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7769af142ee2e46bfa44bd393cf7f40b9d8b80d2e11f6317399551ed17760beb"
+checksum = "0b9b312c38884a3f41d67e2f7580824b6f45d360b98497325b5630664b3a359d"
 dependencies = [
  "ahash",
  "backoff",
@@ -968,9 +944,9 @@ dependencies = [
 
 [[package]]
 name = "kubert"
-version = "0.11.1"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cde503669a3277ab3c576ab3349fb21a7e82288210369b37ed65d88a14cf3e51"
+checksum = "299878b335dccc1c2284b0f10a685daf101bd2f95facbc3ecadb2a6f4bdaed0a"
 dependencies = [
  "ahash",
  "clap",
@@ -1218,24 +1194,6 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys 0.42.0",
-]
-
-[[package]]
-name = "native-tls"
-version = "0.2.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07226173c32f2926027b63cce4bcd8076c3552846cbe7925f3aaffeac0a3b92e"
-dependencies = [
- "lazy_static",
- "libc",
- "log",
- "openssl",
- "openssl-probe",
- "openssl-sys",
- "schannel",
- "security-framework",
- "security-framework-sys",
- "tempfile",
 ]
 
 [[package]]
@@ -1583,15 +1541,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "456c603be3e8d448b072f410900c09faf164fbce2d480456f50eea6e25f9c848"
 
 [[package]]
-name = "remove_dir_all"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3acd125665422973a33ac9d3dd2df85edad0f4ae9b00dafb1a05e43a9f5ef8e7"
-dependencies = [
- "winapi",
-]
-
-[[package]]
 name = "ring"
 version = "0.16.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1877,20 +1826,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tempfile"
-version = "3.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cdb1ef4eaeeaddc8fbd371e5017057064af0911902ef36b39801f67cc6d79e4"
-dependencies = [
- "cfg-if",
- "fastrand",
- "libc",
- "redox_syscall",
- "remove_dir_all",
- "winapi",
-]
-
-[[package]]
 name = "termcolor"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1982,16 +1917,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "tokio-native-tls"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7d995660bd2b7f8c1568414c1126076c13fbb725c40112dc0120b78eb9b717b"
-dependencies = [
- "native-tls",
- "tokio",
 ]
 
 [[package]]
