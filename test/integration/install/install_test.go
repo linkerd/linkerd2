@@ -326,8 +326,9 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 }
 
-// These need to be updated (if there are changes) once a new stable is released
-func helmOverridesStable(root *tls.CA) ([]string, []string) {
+// helmInstallFlags returns the flags required for the `helm install` command,
+// both for the linkerd-control-plane and the linkerd-viz charts
+func helmInstallFlags(root *tls.CA) ([]string, []string) {
 	coreArgs := []string{
 		"--set", "controllerLogLevel=debug",
 		"--set", "linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
@@ -339,13 +340,16 @@ func helmOverridesStable(root *tls.CA) ([]string, []string) {
 		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
 	}
 	vizArgs := []string{
+		"--namespace", TestHelper.GetVizNamespace(),
+		"--create-namespace",
 		"--set", "linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
 	}
 	return coreArgs, vizArgs
 }
 
-// These need to correspond to the flags in the current edge
-func helmOverridesEdge(root *tls.CA) ([]string, []string) {
+// helmUpgradeFlags returns the flags required for the `helm upgrade` command,
+// both for the linkerd-control-plane and the linkerd-viz charts
+func helmUpgradeFlags(root *tls.CA) ([]string, []string) {
 	skippedInboundPortsEscaped := strings.Replace(skippedInboundPorts, ",", "\\,", 1)
 	coreArgs := []string{
 		"--set", "controllerLogLevel=debug",
@@ -358,7 +362,6 @@ func helmOverridesEdge(root *tls.CA) ([]string, []string) {
 	}
 	vizArgs := []string{
 		"--namespace", TestHelper.GetVizNamespace(),
-		"--create-namespace",
 		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
 	}
 
@@ -394,25 +397,13 @@ func TestInstallHelm(t *testing.T) {
 			"failed to generate root certificate for identity: %s", err)
 	}
 
-	var crdsChartToInstall string
-	var controlPlaneChartToInstall string
-	var vizChartToInstall string
-	var args []string
-	var vizArgs []string
-
-	if TestHelper.UpgradeHelmFromVersion() != "" {
-		crdsChartToInstall = TestHelper.GetHelmStableChart()
-		vizChartToInstall = TestHelper.GetLinkerdVizHelmStableChart()
-		args, vizArgs = helmOverridesStable(helmTLSCerts)
-	} else {
-		crdsChartToInstall = TestHelper.GetHelmCharts() + "/linkerd-crds"
-		controlPlaneChartToInstall = TestHelper.GetHelmCharts() + "/linkerd-control-plane"
-		vizChartToInstall = TestHelper.GetLinkerdVizHelmChart()
-		args, vizArgs = helmOverridesEdge(helmTLSCerts)
-	}
+	crdsChartToInstall := TestHelper.GetHelmCharts() + "/linkerd-crds"
+	controlPlaneChartToInstall := TestHelper.GetHelmCharts() + "/linkerd-control-plane"
+	vizChartToInstall := TestHelper.GetLinkerdVizHelmStableChart()
+	args, vizArgs := helmInstallFlags(helmTLSCerts)
 
 	releaseName := TestHelper.GetHelmReleaseName() + "-crds"
-	if stdout, stderr, err := TestHelper.HelmInstall(crdsChartToInstall, releaseName, args...); err != nil {
+	if stdout, stderr, err := TestHelper.HelmInstall(crdsChartToInstall, releaseName); err != nil {
 		testutil.AnnotatedFatalf(t, "'helm install' command failed",
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
@@ -488,9 +479,13 @@ func TestUpgradeHelm(t *testing.T) {
 		"--timeout", "60m",
 		"--wait",
 	}
-	extraArgs, vizArgs := helmOverridesEdge(helmTLSCerts)
+	extraArgs, vizArgs := helmUpgradeFlags(helmTLSCerts)
 	args = append(args, extraArgs...)
-	if stdout, stderr, err := TestHelper.HelmUpgrade(TestHelper.GetHelmCharts()+"/linkerd-crds", args...); err != nil {
+	if stdout, stderr, err := TestHelper.HelmUpgrade(TestHelper.GetHelmCharts()+"/linkerd-crds", TestHelper.GetHelmReleaseName()+"-crds"); err != nil {
+		testutil.AnnotatedFatalf(t, "'helm upgrade' command failed",
+			"'helm upgrade' command failed\n%s\n%s", stdout, stderr)
+	}
+	if stdout, stderr, err := TestHelper.HelmUpgrade(TestHelper.GetHelmCharts()+"/linkerd-control-plane", TestHelper.GetHelmReleaseName()+"-control-plane", args...); err != nil {
 		testutil.AnnotatedFatalf(t, "'helm upgrade' command failed",
 			"'helm upgrade' command failed\n%s\n%s", stdout, stderr)
 	}

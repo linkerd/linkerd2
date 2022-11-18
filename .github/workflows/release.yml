@@ -168,8 +168,7 @@ jobs:
         - default-policy-deny
         - external
         - rsa-ca
-        # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
-        #- helm-upgrade
+        - helm-upgrade
         - uninstall
         - upgrade-edge
         - upgrade-stable
