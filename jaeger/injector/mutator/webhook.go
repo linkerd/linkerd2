@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/yaml"
 )
@@ -37,10 +38,10 @@ type Params struct {
 // to the proxy
 func Mutate(collectorSvcAddr, collectorSvcAccount, clusterDomain, linkerdNamespace string) webhook.Handler {
 	return func(
-		ctx context.Context,
-		api *k8s.API,
+		_ context.Context,
+		api *k8s.MetadataAPI,
 		request *admissionv1beta1.AdmissionRequest,
-		recorder record.EventRecorder,
+		_ record.EventRecorder,
 	) (*admissionv1beta1.AdmissionResponse, error) {
 		log.Debugf("request object bytes: %s", request.Object.Raw)
 
@@ -68,7 +69,7 @@ func Mutate(collectorSvcAddr, collectorSvcAccount, clusterDomain, linkerdNamespa
 			return admissionResponse, nil
 		}
 
-		namespace, err := api.NS().Lister().Get(request.Namespace)
+		namespace, err := api.Get(k8s.NS, request.Namespace)
 		if err != nil {
 			return nil, err
 		}
@@ -92,7 +93,7 @@ func Mutate(collectorSvcAddr, collectorSvcAccount, clusterDomain, linkerdNamespa
 	}
 }
 
-func applyOverrides(ns *corev1.Namespace, pod *corev1.Pod, params *Params) {
+func applyOverrides(ns metav1.Object, pod *corev1.Pod, params *Params) {
 	ann := ns.GetAnnotations()
 	if ann == nil {
 		ann = map[string]string{}

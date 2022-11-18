@@ -13,7 +13,7 @@ import (
 // AdmitSP verifies that the received Admission Request contains a valid
 // Service Profile definition
 func AdmitSP(
-	_ context.Context, _ *k8s.API, request *admissionv1beta1.AdmissionRequest, _ record.EventRecorder,
+	_ context.Context, _ *k8s.MetadataAPI, request *admissionv1beta1.AdmissionRequest, _ record.EventRecorder,
 ) (*admissionv1beta1.AdmissionResponse, error) {
 	admissionResponse := &admissionv1beta1.AdmissionResponse{
 		UID:     request.UID,

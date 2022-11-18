@@ -28,13 +28,25 @@ func Launch(
 	defer close(stop)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	k8sAPI, err := k8s.InitializeAPI(ctx, kubeconfig, false, apiresources...)
+	config, err := pkgk8s.GetConfig(kubeconfig, "")
+	if err != nil {
+		//nolint:gocritic
+		log.Fatalf("error building Kubernetes API config: %s", err)
+	}
+
+	k8sAPI, err := pkgk8s.NewAPIForConfig(config, "", []string{}, 0)
+	if err != nil {
+		//nolint:gocritic
+		log.Fatalf("error configuring Kubernetes API client: %s", err)
+	}
+
+	metadataAPI, err := k8s.InitializeMetadataAPI(kubeconfig, apiresources...)
 	if err != nil {
 		//nolint:gocritic
 		log.Fatalf("failed to initialize Kubernetes API: %s", err)
 	}
 
-	s, err := NewServer(ctx, k8sAPI, addr, pkgk8s.MountPathTLSBase, handler, component)
+	s, err := NewServer(ctx, k8sAPI, metadataAPI, addr, pkgk8s.MountPathTLSBase, handler, component)
 	if err != nil {
 		//nolint:gocritic
 		log.Fatalf("failed to initialize the webhook server: %s", err)
@@ -42,7 +54,7 @@ func Launch(
 
 	go s.Start()
 
-	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
 
 	adminServer := admin.NewServer(metricsAddr, enablePprof)
 
