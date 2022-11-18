@@ -243,7 +243,8 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 		nsLabels[i] = ns.Labels[k8s.LinkerdExtensionLabel]
 	}
 
-	extensionSuccess, extensionWarning := healthcheck.RunExtensionsChecks(wout, werr, nsLabels, getExtensionCheckFlags(cmd.Flags()), opts.output)
+	flags := getExtensionCheckFlags(cmd.Flags())
+	extensionSuccess, extensionWarning := healthcheck.RunExtensionsChecks(wout, werr, nsLabels, flags, opts.output, opts.cliVersionOverride)
 	return extensionSuccess, extensionWarning, nil
 }
 

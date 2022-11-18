@@ -96,7 +96,7 @@ func PrintChecksResult(wout io.Writer, output string, success bool, warning bool
 // RunExtensionsChecks runs checks for each extension name passed into the `extensions` parameter
 // and handles formatting the output for each extension's check. This function also handles
 // finding the extension in the user's path and runs it.
-func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, flags []string, output string) (bool, bool) {
+func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, flags []string, output, cliVersionOverride string) (bool, bool) {
 	if output == TableOutput {
 		PrintChecksHeader(wout, extensionsHeader)
 	}
@@ -122,6 +122,9 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 		case "viz":
 			path = os.Args[0]
 			args = append([]string{"viz"}, args...)
+			if cliVersionOverride != "" {
+				args = append(args, "--cli-version-override", cliVersionOverride)
+			}
 		case "multicluster":
 			path = os.Args[0]
 			args = append([]string{"multicluster"}, args...)
