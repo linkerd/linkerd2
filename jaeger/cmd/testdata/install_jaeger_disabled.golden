@@ -446,7 +446,7 @@ spec:
     matchLabels:
       component: collector
   port: 4318
-  proxyProtocol: htto
+  proxyProtocol: HTTP/1
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
