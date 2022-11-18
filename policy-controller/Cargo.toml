@@ -6,8 +6,8 @@ license = "Apache-2.0"
 publish = false
 
 [features]
-default = ["native-tls"]
-native-tls = ["kube/native-tls"]
+default = ["openssl-tls"]
+openssl-tls = ["kube/openssl-tls"]
 rustls-tls = ["kube/rustls-tls"]
 
 [dependencies]
@@ -36,7 +36,7 @@ default-features = false
 features = ["derive", "env", "std"]
 
 [dependencies.kube]
-version = "0.75"
+version = "0.76"
 default-features = false
 features = ["admission", "derive"]
 
