@@ -368,12 +368,16 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 //
 // If the `host` address given is the HostIP, use the HostPort mapping for the `pod`
 // to determine the port to return.
-func (s *server) getPortForPod(pod *corev1.Pod, host string, port uint32) (uint32, error) {
-	if host == pod.Status.PodIP {
+func (s *server) getPortForPod(pod *corev1.Pod, targetIP string, port uint32) (uint32, error) {
+	if net.ParseIP(targetIP) == nil {
+		return port, fmt.Errorf("failed to parse hostIP into net.IP: %s", targetIP)
+	}
+
+	if targetIP == pod.Status.PodIP {
 		return port, nil
 	}
 
-	if host == pod.Status.HostIP {
+	if targetIP == pod.Status.HostIP {
 		for _, container := range pod.Spec.Containers {
 			for _, containerPort := range container.Ports {
 				if uint32(containerPort.HostPort) == port {
@@ -383,12 +387,14 @@ func (s *server) getPortForPod(pod *corev1.Pod, host string, port uint32) (uint3
 		}
 	}
 
-	return 0, fmt.Errorf("unable to find container port as host (%s) matches neither PodIP nor HostIP (%s)", host, pod)
+	s.log.Warnf("unable to find container port as host (%s) matches neither PodIP nor HostIP (%s)", targetIP, pod)
+	return port, nil
 }
 
-func (s *server) createAddress(pod *corev1.Pod, host string, port uint32) (watcher.Address, error) {
+func (s *server) createAddress(pod *corev1.Pod, targetIP string, port uint32) (watcher.Address, error) {
 	ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
-	port, err := s.getPortForPod(pod, host, port)
+
+	port, err := s.getPortForPod(pod, targetIP, port)
 	if err != nil {
 		return watcher.Address{}, fmt.Errorf("failed to find Port for Pod: %w", err)
 	}
