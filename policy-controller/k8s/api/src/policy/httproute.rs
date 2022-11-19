@@ -1,3 +1,4 @@
+use k8s_gateway_api::HttpBackendRef;
 pub use k8s_gateway_api::{
     CommonRouteSpec, Hostname, HttpHeader, HttpHeaderMatch, HttpHeaderName, HttpMethod,
     HttpPathMatch, HttpPathModifier, HttpQueryParamMatch, HttpRequestHeaderFilter,
@@ -126,6 +127,8 @@ pub struct HttpRouteRule {
     ///
     /// Support: Core
     pub filters: Option<Vec<HttpRouteFilter>>,
+
+    pub backend_refs: Option<Vec<HttpBackendRef>>,
 }
 
 /// HTTPRouteFilter defines processing steps that must be completed during the

@@ -6,13 +6,14 @@ mod identity_match;
 mod network_match;
 
 pub use self::{
-    http_route::InboundHttpRoute, identity_match::IdentityMatch, network_match::NetworkMatch, http_route::OutboundHttpRoute,
+    http_route::InboundHttpRoute, http_route::OutboundHttpRoute, identity_match::IdentityMatch,
+    network_match::NetworkMatch,
 };
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use futures::prelude::*;
 pub use ipnet::{IpNet, Ipv4Net, Ipv6Net};
-use std::{hash::Hash, pin::Pin, time::Duration};
+use std::{hash::Hash, net::IpAddr, num::NonZeroU16, pin::Pin, time::Duration};
 
 /// Models inbound server configuration discovery.
 #[async_trait::async_trait]
@@ -92,6 +93,23 @@ pub enum ClientAuthentication {
 
     /// Indicates that clients must use mutually-authenticated TLS.
     TlsAuthenticated(Vec<IdentityMatch>),
+}
+
+/// Models outbound policy discovery.
+#[async_trait::async_trait]
+pub trait DiscoverOutboundPolicy<T> {
+    async fn get_outbound_policy(&self, target: T) -> Result<Option<OutboundPolicy>>;
+
+    async fn watch_outbound_policy(&self, target: T) -> Result<Option<OutboundPolicyStream>>;
+
+    fn service_lookup(&self, addr: IpAddr, port: NonZeroU16) -> Option<T>;
+}
+
+pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send + Sync + 'static>>;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OutboundPolicy {
+    pub http_routes: HashMap<String, OutboundHttpRoute>,
 }
 
 // === impl InboundHttpRouteRef ===

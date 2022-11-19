@@ -6,7 +6,8 @@ use clap::Parser;
 use futures::prelude::*;
 use kube::api::ListParams;
 use linkerd_policy_controller::{
-    grpc, k8s, Admission, ClusterInfo, DefaultPolicy, Index, IndexDiscover, IpNet, SharedIndex,
+    grpc, index::outbound_index, k8s, Admission, ClusterInfo, DefaultPolicy, Index, IndexDiscover,
+    IpNet, OutboundDiscover, SharedIndex,
 };
 use std::net::SocketAddr;
 use tokio::time;
@@ -166,12 +167,26 @@ async fn main() -> Result<()> {
         runtime.shutdown_handle(),
     ));
 
-    let mut outbound_policy_addr = grpc_addr.clone();
+    // TODO: Reuse or clone previous stream instead of watching twice
+    let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
+    let services = runtime.watch_all::<k8s::Service>(ListParams::default());
+    let outbound_index = outbound_index::Index::shared();
+    tokio::spawn(
+        kubert::index::namespaced(outbound_index.clone(), http_routes)
+            .instrument(info_span!("httproutes2")),
+    );
+    tokio::spawn(
+        kubert::index::namespaced(outbound_index.clone(), services)
+            .instrument(info_span!("services")),
+    );
+
+    let mut outbound_policy_addr = grpc_addr;
     // TODO: (Hack) we just set the outbound policy server port to the next one
     // above the inbound policy server port.
-    outbound_policy_addr.set_port(grpc_addr.port()+1);
+    outbound_policy_addr.set_port(grpc_addr.port() + 1);
     tokio::spawn(outbound_grpc(
-        grpc_addr,
+        outbound_policy_addr,
+        outbound_index,
         runtime.shutdown_handle(),
     ));
 
@@ -227,9 +242,11 @@ async fn inbound_grpc(
 #[instrument(skip_all, fields(port = %addr.port()))]
 async fn outbound_grpc(
     addr: SocketAddr,
+    index: outbound_index::SharedIndex,
     drain: drain::Watch,
 ) -> Result<()> {
-    let server = grpc::OutboundPolicyServer{};
+    let discover = OutboundDiscover::new(index);
+    let server = grpc::OutboundPolicyServer::new(discover);
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
     tokio::pin! {
         let srv = server.serve(addr, close_rx.map(|_| {}));

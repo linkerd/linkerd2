@@ -3,6 +3,7 @@
 
 mod http_route;
 
+use api::destination;
 use futures::prelude::*;
 use linkerd2_proxy_api::{
     self as api,
@@ -10,17 +11,19 @@ use linkerd2_proxy_api::{
         self as proto,
         inbound_server_policies_server::{InboundServerPolicies, InboundServerPoliciesServer},
     },
+    meta::{metadata, Metadata},
     outbound::{
         self,
         outbound_policies_server::{OutboundPolicies, OutboundPoliciesServer},
     },
-    meta::{metadata, Metadata},
 };
 use linkerd_policy_controller_core::{
-    http_route::{InboundFilter, InboundHttpRoute, InboundHttpRouteRule},
+    http_route::{
+        Backend, InboundFilter, InboundHttpRoute, InboundHttpRouteRule, OutboundHttpRouteRule,
+    },
     AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer,
-    IdentityMatch, InboundHttpRouteRef, InboundServer, InboundServerStream, IpNet, NetworkMatch,
-    ProxyProtocol, ServerRef,
+    DiscoverOutboundPolicy, IdentityMatch, InboundHttpRouteRef, InboundServer, InboundServerStream,
+    IpNet, NetworkMatch, OutboundHttpRoute, OutboundPolicy, ProxyProtocol, ServerRef,
 };
 use maplit::*;
 use std::{num::NonZeroU16, sync::Arc};
@@ -34,7 +37,9 @@ pub struct InboundPolicyServer<T> {
 }
 
 #[derive(Clone, Debug)]
-pub struct OutboundPolicyServer;
+pub struct OutboundPolicyServer<T> {
+    index: T,
+}
 
 // === impl InboundPolicyServer ===
 
@@ -141,7 +146,14 @@ where
     }
 }
 
-impl OutboundPolicyServer {
+impl<T> OutboundPolicyServer<T>
+where
+    T: DiscoverOutboundPolicy<(String, String, NonZeroU16)> + Send + Sync + 'static,
+{
+    pub fn new(discover: T) -> Self {
+        Self { index: discover }
+    }
+
     pub async fn serve(
         self,
         addr: std::net::SocketAddr,
@@ -160,12 +172,37 @@ impl OutboundPolicyServer {
 }
 
 #[async_trait::async_trait]
-impl OutboundPolicies for OutboundPolicyServer {
+impl<T> OutboundPolicies for OutboundPolicyServer<T>
+where
+    T: DiscoverOutboundPolicy<(String, String, NonZeroU16)> + Send + Sync + 'static,
+{
     async fn get(
         &self,
-        _req: tonic::Request<outbound::TargetSpec>,
+        req: tonic::Request<outbound::TargetSpec>,
     ) -> Result<tonic::Response<outbound::Service>, tonic::Status> {
-        Err(tonic::Status::unimplemented("TODO"))
+        let target = req.into_inner();
+        // TODO: get rid of all these expects
+        let port = target.port.try_into().expect("port out of range");
+        let port = NonZeroU16::new(port).expect("port cannot be zero");
+        let addr = target
+            .address
+            .expect("address must be specified")
+            .try_into()
+            .expect("failed to parse target addr");
+        if let Some(target) = self.index.service_lookup(addr, port) {
+            if let Some(policy) = self
+                .index
+                .get_outbound_policy(target)
+                .await
+                .expect("failed to get outbound policy")
+            {
+                Ok(tonic::Response::new(to_service(policy)))
+            } else {
+                Err(tonic::Status::not_found("No such policy"))
+            }
+        } else {
+            Err(tonic::Status::not_found("No such service"))
+        }
     }
 
     type WatchStream = BoxWatchServiceStream;
@@ -176,7 +213,6 @@ impl OutboundPolicies for OutboundPolicyServer {
     ) -> Result<tonic::Response<BoxWatchServiceStream>, tonic::Status> {
         Err(tonic::Status::unimplemented("TODO"))
     }
-
 }
 
 type BoxWatchStream =
@@ -497,5 +533,66 @@ fn convert_filter(filter: InboundFilter) -> proto::http_route::Filter {
                 Kind::Redirect(http_route::convert_redirect_filter(f))
             }
         }),
+    }
+}
+
+fn to_service(outbound: OutboundPolicy) -> outbound::Service {
+    let http_routes = outbound
+        .http_routes
+        .into_iter()
+        .map(|(name, route)| convert_outbound_http_route(name, route))
+        .collect();
+
+    outbound::Service {
+        backends: Default::default(),
+        http_routes,
+    }
+}
+
+fn convert_outbound_http_route(
+    name: String,
+    OutboundHttpRoute { hostnames, rules }: OutboundHttpRoute,
+) -> outbound::HttpRoute {
+    let metadata = Some(Metadata {
+        kind: Some(metadata::Kind::Resource(api::meta::Resource {
+            group: "policy.linkerd.io".to_string(),
+            kind: "HTTPRoute".to_string(),
+            name,
+        })),
+    });
+
+    let hosts = hostnames
+        .into_iter()
+        .map(http_route::convert_host_match)
+        .collect();
+
+    let rules = rules
+        .into_iter()
+        .map(
+            |OutboundHttpRouteRule { matches, backends }| outbound::http_route::Rule {
+                matches: matches.into_iter().map(http_route::convert_match).collect(),
+                backends: backends.into_iter().filter_map(convert_backend).collect(),
+            },
+        )
+        .collect();
+
+    outbound::HttpRoute {
+        metadata,
+        hosts,
+        rules,
+    }
+}
+
+fn convert_backend(backend: Backend) -> Option<outbound::Backend> {
+    if let Backend::Dst(dst) = backend {
+        Some(outbound::Backend {
+            backend: Some(outbound::backend::Backend::Dst(destination::WeightedDst {
+                authority: dst.authority,
+                weight: dst.weight,
+            })),
+        })
+    } else {
+        // TODO: Only Dst backends are supported for now, not endpoint backends.
+        None
     }
 }

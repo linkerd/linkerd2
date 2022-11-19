@@ -95,9 +95,13 @@ impl TryFrom<policy::HttpRoute> for InboundRouteBinding {
             .rules
             .into_iter()
             .flatten()
-            .map(|policy::HttpRouteRule { matches, filters }| {
-                Self::try_rule(matches, filters, Self::try_policy_filter)
-            })
+            .map(
+                |policy::HttpRouteRule {
+                     matches,
+                     filters,
+                     backend_refs: _,
+                 }| { Self::try_rule(matches, filters, Self::try_policy_filter) },
+            )
             .collect::<Result<_>>()?;
 
         Ok(InboundRouteBinding {
@@ -120,7 +124,7 @@ impl InboundRouteBinding {
             .any(|p| matches!(p, InboundParentRef::Server(n) if n == name))
     }
 
-    fn try_match(
+    pub fn try_match(
         api::HttpRouteMatch {
             path,
             headers,
