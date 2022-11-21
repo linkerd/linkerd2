@@ -119,6 +119,7 @@ type (
 
 	// ProxyInit contains the fields to set the proxy-init container
 	ProxyInit struct {
+		Privileged           bool             `json:"privileged"`
 		Capabilities         *Capabilities    `json:"capabilities"`
 		IgnoreInboundPorts   string           `json:"ignoreInboundPorts"`
 		IgnoreOutboundPorts  string           `json:"ignoreOutboundPorts"`
