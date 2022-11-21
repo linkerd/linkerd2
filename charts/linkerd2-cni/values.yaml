@@ -78,3 +78,21 @@ extraInitContainers: []
 #   volumeMounts:
 #     - mountPath: /host/etc/cni/net.d
 #       name: cni-net-dir
+
+# -- Resource requests and limits for linkerd-cni daemonset containers
+resources:
+  cpu:
+    # -- Maximum amount of CPU units that the cni container can use
+    limit: ""
+    # -- Amount of CPU units that the cni container requests
+    request: ""
+  memory:
+    # -- Maximum amount of memory that the cni container can use
+    limit: ""
+    # -- Amount of memory that the cni container requests
+    request: ""
+  ephemeral-storage:
+    # -- Maximum amount of ephemeral storage that the cni container can use
+    limit: ""
+    # -- Amount of ephemeral storage that the cni container requests
+    request: ""
