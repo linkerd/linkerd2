@@ -366,14 +366,16 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 // getPortForPod returns the port that a `pod` is listening on.
 //
-// If the `host` address given is the HostIP, use the HostPort mapping for the `pod`
-// to determine the port to return.
+// Proxies usually receive traffic targeting `podIp:containerPort`.
+// However, they may be receiving traffic on `nodeIp:nodePort`. In this
+// case, we convert the port to the containerPort for discovery. In k8s parlance,
+// this is the 'HostPort' mapping.
 func (s *server) getPortForPod(pod *corev1.Pod, targetIP string, port uint32) (uint32, error) {
 	if net.ParseIP(targetIP) == nil {
 		return port, fmt.Errorf("failed to parse hostIP into net.IP: %s", targetIP)
 	}
 
-	if targetIP == pod.Status.PodIP {
+	if containsIP(pod.Status.PodIPs, targetIP) {
 		return port, nil
 	}
 
@@ -709,4 +711,15 @@ func getPodSkippedInboundPortsAnnotations(pod *corev1.Pod) (map[uint32]struct{},
 	}
 
 	return util.ParsePorts(annotation)
+}
+
+// Given a list of PodIP, determine is `targetIP` is a member
+func containsIP(podIPs []corev1.PodIP, targetIP string) bool {
+	for _, ip := range podIPs {
+		if ip.String() == targetIP {
+			return true
+		}
+	}
+
+	return false
 }
