@@ -16,12 +16,10 @@ import (
 	partials "github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	api "github.com/linkerd/linkerd2/pkg/public"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/chart/loader"
-	chartloader "helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	valuespkg "helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/engine"
@@ -42,6 +40,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	var wait time.Duration
 	var valuesOptions valuespkg.Options
 	var ignoreCluster bool
+	var cniEnabled bool
 
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -58,11 +57,10 @@ func newMulticlusterInstallCommand() *cobra.Command {
 The installation can be configured by using the --set, --values, --set-string and --set-file flags.
 A full list of configurable values can be found at https://github.com/linkerd/linkerd2/blob/main/multicluster/charts/linkerd-multicluster/README.md
   `,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cniEnabled := false
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if !ignoreCluster {
 				// Wait for the core control-plane to be up and running
-				hc := api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+				hc := healthcheck.NewWithCoreChecks(&healthcheck.Options{
 					ControlPlaneNamespace: controlPlaneNamespace,
 					KubeConfig:            kubeconfigPath,
 					KubeContext:           kubeContext,
@@ -71,6 +69,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 					APIAddr:               apiAddr,
 					RetryDeadline:         time.Now().Add(wait),
 				})
+				hc.RunWithExitOnError()
 				cniEnabled = hc.CNIEnabled
 			}
 			return install(cmd.Context(), stdout, options, valuesOptions, ha, ignoreCluster, cniEnabled)
@@ -130,7 +129,7 @@ func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptio
 }
 
 func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string]interface{}) error {
-	files := []*chartloader.BufferedFile{
+	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 		{Name: chartutil.ValuesfileName},
 		{Name: "templates/namespace.yaml"},

@@ -451,7 +451,7 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 	return hc
 }
 
-func NewWithBasicCategories(options *Options) *HealthChecker {
+func NewWithCoreChecks(options *Options) *HealthChecker {
 	checks := []CategoryID{KubernetesAPIChecks, LinkerdControlPlaneExistenceChecks}
 	return NewHealthChecker(checks, options)
 }
@@ -1600,7 +1600,7 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) (bool, bool) {
 	return success, warning
 }
 
-func (hc *HealthChecker) RunChecksExitOnError() (bool, bool) {
+func (hc *HealthChecker) RunWithExitOnError() (bool, bool) {
 	return hc.RunChecks(func(result *CheckResult) {
 		if result.Retry {
 			fmt.Fprintln(os.Stderr, "Waiting for control plane to become available")
@@ -1615,11 +1615,8 @@ func (hc *HealthChecker) RunChecksExitOnError() (bool, bool) {
 			case LinkerdControlPlaneExistenceChecks:
 				msg = "Cannot find Linkerd"
 			}
-			fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
-
-			checkCmd := "linkerd check"
-			fmt.Fprintf(os.Stderr, "Validate the install with: %s\n", checkCmd)
-
+			fmt.Fprintf(os.Stderr, "%s: %s\nValidate the install with: 'linkerd check'\n",
+				msg, result.Err)
 			os.Exit(1)
 		}
 	})

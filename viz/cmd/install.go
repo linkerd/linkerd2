@@ -47,6 +47,7 @@ func newCmdInstall() *cobra.Command {
 	var skipChecks bool
 	var ignoreCluster bool
 	var ha bool
+	var cniEnabled bool
 	var wait time.Duration
 	var options values.Options
 
@@ -62,10 +63,9 @@ The installation can be configured by using the --set, --values, --set-string an
 A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/viz/charts/linkerd-viz/README.md
   `,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			cniEnabled := false
 			if !skipChecks && !ignoreCluster {
 				// Wait for the core control-plane to be up and running
-				hc := healthcheck.NewWithBasicCategories(&healthcheck.Options{
+				hc := healthcheck.NewWithCoreChecks(&healthcheck.Options{
 					ControlPlaneNamespace: controlPlaneNamespace,
 					KubeConfig:            kubeconfigPath,
 					KubeContext:           kubeContext,
@@ -74,7 +74,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 					APIAddr:               apiAddr,
 					RetryDeadline:         time.Now().Add(wait),
 				})
-				hc.RunChecksExitOnError()
+				hc.RunWithExitOnError()
 				cniEnabled = hc.CNIEnabled
 			}
 			return install(os.Stdout, options, ha, cniEnabled)
