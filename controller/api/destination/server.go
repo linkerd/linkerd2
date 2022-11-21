@@ -371,6 +371,10 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 // case, we convert the port to the containerPort for discovery. In k8s parlance,
 // this is the 'HostPort' mapping.
 func (s *server) getPortForPod(pod *corev1.Pod, targetIP string, port uint32) (uint32, error) {
+	if pod == nil {
+		return port, fmt.Errorf("getPortForPod passed a nil pod")
+	}
+
 	if net.ParseIP(targetIP) == nil {
 		return port, fmt.Errorf("failed to parse hostIP into net.IP: %s", targetIP)
 	}
