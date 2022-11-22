@@ -150,6 +150,9 @@ spec:
                       minLength: 1
                       pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                       type: string
+                    port:
+                      description: "port"
+                      type: integer
                     sectionName:
                       description: "SectionName is the name of a section within the
                         target resource. In the following resources, SectionName is
@@ -189,6 +192,18 @@ spec:
                   description: HTTPRouteRule defines semantics for matching an HTTP
                     request based on conditions (matches) and processing it (filters).
                   properties:
+                    backendRefs:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          port:
+                            type: integer
+                          namespace:
+                            type: string
+                            default: "default"
                     filters:
                       description: "Filters define the filters that are applied to
                         requests that match this rule. \n The effects of ordering
@@ -905,6 +920,9 @@ spec:
                       minLength: 1
                       pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                       type: string
+                    port:
+                      description: "port"
+                      type: integer
                     sectionName:
                       description: "SectionName is the name of a section within the
                         target resource. In the following resources, SectionName is
@@ -944,6 +962,18 @@ spec:
                   description: HTTPRouteRule defines semantics for matching an HTTP
                     request based on conditions (matches) and processing it (filters).
                   properties:
+                    backendRefs:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          port:
+                            type: integer
+                          namespace:
+                            type: string
+                            default: "default"
                     filters:
                       description: "Filters define the filters that are applied to
                         requests that match this rule. \n The effects of ordering

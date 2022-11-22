@@ -246,7 +246,7 @@ async fn outbound_grpc(
     drain: drain::Watch,
 ) -> Result<()> {
     let discover = OutboundDiscover::new(index);
-    let server = grpc::OutboundPolicyServer::new(discover);
+    let server = grpc::OutboundPolicyServer::new(discover, drain.clone());
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
     tokio::pin! {
         let srv = server.serve(addr, close_rx.map(|_| {}));

@@ -54,10 +54,9 @@ struct ServiceRoutes {
 
 impl kubert::index::IndexNamespacedResource<HttpRoute> for Index {
     fn apply(&mut self, route: HttpRoute) {
+        tracing::debug!(name=route.name_unchecked(), "indexing route");
         let ns = route.namespace().expect("HttpRoute must have a namespace");
-        if let Some(ns_index) = self.namespaces.by_ns.get_mut(&ns) {
-            ns_index.apply(route);
-        }
+        self.namespaces.by_ns.entry(ns).or_default().apply(route);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -122,6 +121,7 @@ impl Index {
             service: service.to_string(),
             port,
         };
+        tracing::debug!(?key, "subscribing to service port");
         let routes = ns.service_routes_or_default(key);
         Ok(routes.watch.subscribe())
     }
@@ -133,6 +133,7 @@ impl Index {
 
 impl Namespace {
     fn apply(&mut self, route: HttpRoute) {
+        tracing::debug!(?route);
         for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
             if parent_ref.kind.as_deref() == Some("Service") {
                 if let Some(port) = parent_ref.port {
@@ -141,12 +142,17 @@ impl Namespace {
                             port,
                             service: parent_ref.name.clone(),
                         };
+                        tracing::debug!(?service_port, route=route.name_unchecked(), "inserting route for service");
                         let service_routes = self.service_routes_or_default(service_port);
                         service_routes.apply(route.clone());
                     } else {
-                        tracing::warn!(?parent_ref, "ignoring parent_ref without port");
+                        tracing::warn!(?parent_ref, "ignoring parent_ref with port 0");
                     }
+                } else {
+                    tracing::warn!(?parent_ref, "ignoring parent_ref without port");
                 }
+            } else {
+                tracing::warn!(parent_kind=parent_ref.kind.as_deref(), "ignoring parent_ref with non-Service kind");
             }
         }
     }
