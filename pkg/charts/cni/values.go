@@ -36,10 +36,6 @@ type Values struct {
 	Tolerations         []interface{} `json:"tolerations"`
 }
 
-type Toleration struct {
-	Operator string `json:"operator"`
-}
-
 // NewValues returns a new instance of the Values type.
 func NewValues() (*Values, error) {
 	chartDir := fmt.Sprintf("%s/", helmDefaultCNIChartDir)
