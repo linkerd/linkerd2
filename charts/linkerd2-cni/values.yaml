@@ -39,7 +39,9 @@ privileged: false
 # -|- Tolerations section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 # for more information
-#tolerations:
+tolerations:
+  # -- toleration properties
+  - operator: Exists
 
 # -|- NodeAffinity section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)

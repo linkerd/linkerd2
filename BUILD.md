@@ -41,7 +41,7 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
   - [Making changes to the chart templates](#making-changes-to-the-chart-templates)
   - [Generating Helm charts docs](#generating-helm-charts-docs)
   - [Using helm-docs](#using-helm-docs)
-  - [Annotating values.yml](#annotating-valuesyml)
+  - [Annotating values.yaml](#annotating-valuesyaml)
   - [Markdown templates](#markdown-templates)
 
 ## Repo layout
@@ -510,8 +510,8 @@ the templates.
 
 ### Generating Helm charts docs
 
-Whenever a new chart is created, or updated a README should be generated from
-the chart's values.yml. This can be done by utilizing the bundled
+Whenever a new chart is created or updated a README should be generated from
+the chart's `values.yaml`. This can be done by utilizing the bundled
 [helm-docs](https://github.com/norwoodj/helm-docs) binary. For adding additional
 information, such as specific installation instructions a README template is
 required to be created. Check existing charts for examples.
@@ -531,9 +531,9 @@ Note:
 The tool searches through the current directory and sub-directories by default.
 For additional information checkout their repo above.
 
-#### Annotating values.yml
+#### Annotating values.yaml
 
-To allow helm-docs to properly document the values in values.yml a descriptive
+To allow helm-docs to properly document the values in `values.yaml` a descriptive
 comment is required. This can be done in two ways.
 Either comment the value directly above with
 `# -- This is a really nice value` where the double dashes automatically
