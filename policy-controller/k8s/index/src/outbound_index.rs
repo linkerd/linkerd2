@@ -11,7 +11,7 @@ use linkerd_policy_controller_k8s_api::{
     ResourceExt, Service,
 };
 use parking_lot::RwLock;
-use std::{net::IpAddr, num::NonZeroU16, sync::Arc};
+use std::{net::IpAddr, num::NonZeroU16, sync::Arc, fmt};
 use tokio::sync::watch;
 
 use super::http_route::convert;
@@ -33,11 +33,14 @@ pub struct ServiceRef {
 #[derive(Debug)]
 pub struct NamespaceIndex {
     by_ns: HashMap<String, Namespace>,
+    cluster_domain: Arc<String>,
 }
 
 #[derive(Debug, Default)]
 struct Namespace {
     services: HashMap<ServicePort, ServiceRoutes>,
+    namespace: Arc<String>,
+    cluster_domain: Arc<String>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -50,13 +53,19 @@ struct ServicePort {
 struct ServiceRoutes {
     routes: HashMap<String, OutboundHttpRoute>,
     watch: watch::Sender<OutboundPolicy>,
+    namespace: Arc<String>,
+    cluster_domain: Arc<String>,
 }
 
 impl kubert::index::IndexNamespacedResource<HttpRoute> for Index {
     fn apply(&mut self, route: HttpRoute) {
         tracing::debug!(name=route.name_unchecked(), "indexing route");
         let ns = route.namespace().expect("HttpRoute must have a namespace");
-        self.namespaces.by_ns.entry(ns).or_default().apply(route);
+        self.namespaces.by_ns.entry(ns.clone()).or_insert_with(|| Namespace {
+            services: Default::default(),
+            namespace: Arc::new(ns),
+            cluster_domain: self.namespaces.cluster_domain.clone(),
+        }).apply(route);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -97,10 +106,11 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
 }
 
 impl Index {
-    pub fn shared() -> SharedIndex {
+    pub fn shared(cluster_domain: String) -> SharedIndex {
         Arc::new(RwLock::new(Self {
             namespaces: NamespaceIndex {
                 by_ns: HashMap::default(),
+                cluster_domain: Arc::new(cluster_domain),
             },
             services: HashMap::default(),
         }))
@@ -116,7 +126,11 @@ impl Index {
             .namespaces
             .by_ns
             .entry(namespace.to_string())
-            .or_default();
+            .or_insert_with(|| Namespace {
+                services: Default::default(),
+                namespace: Arc::new(namespace.to_string()),
+                cluster_domain: self.namespaces.cluster_domain.clone(),
+             });
         let key = ServicePort {
             service: service.to_string(),
             port,
@@ -171,6 +185,8 @@ impl Namespace {
             ServiceRoutes {
                 routes: Default::default(),
                 watch: sender,
+                namespace: self.namespace.clone(),
+                cluster_domain: self.cluster_domain.clone(),
             }
         })
     }
@@ -179,7 +195,7 @@ impl Namespace {
 impl ServiceRoutes {
     fn apply(&mut self, route: HttpRoute) {
         let name = route.name_unchecked();
-        match convert_route(route) {
+        match self.convert_route(route) {
             Ok(route) => {
                 self.routes.insert(name, route);
                 self.send_if_modified();
@@ -203,49 +219,50 @@ impl ServiceRoutes {
             }
         });
     }
-}
 
-fn convert_route(route: HttpRoute) -> Result<OutboundHttpRoute> {
-    let hostnames = route
-        .spec
-        .hostnames
-        .into_iter()
-        .flatten()
-        .map(convert::host_match)
-        .collect();
-
-    let rules = route
-        .spec
-        .rules
-        .into_iter()
-        .flatten()
-        .map(convert_rule)
-        .collect::<Result<_>>()?;
-    Ok(OutboundHttpRoute { hostnames, rules })
-}
-
-fn convert_rule(rule: HttpRouteRule) -> Result<OutboundHttpRouteRule> {
-    let matches = rule
-        .matches
-        .into_iter()
-        .flatten()
-        .map(InboundRouteBinding::try_match)
-        .collect::<Result<_>>()?;
-
-    let backends = rule
-        .backend_refs
-        .into_iter()
-        .flatten()
-        .filter_map(convert_backend)
-        .collect();
-    Ok(OutboundHttpRouteRule { matches, backends })
-}
-
-fn convert_backend(backend: HttpBackendRef) -> Option<Backend> {
-    backend.backend_ref.map(|backend| {
-        Backend::Dst(WeightedDst {
-            weight: backend.weight.unwrap_or(1).into(),
-            authority: backend.name,
+    fn convert_route(&self, route: HttpRoute) -> Result<OutboundHttpRoute> {
+        let hostnames = route
+            .spec
+            .hostnames
+            .into_iter()
+            .flatten()
+            .map(convert::host_match)
+            .collect();
+    
+        let rules = route
+            .spec
+            .rules
+            .into_iter()
+            .flatten()
+            .map(|r| self.convert_rule(r))
+            .collect::<Result<_>>()?;
+        Ok(OutboundHttpRoute { hostnames, rules })
+    }
+    
+    fn convert_rule(&self, rule: HttpRouteRule) -> Result<OutboundHttpRouteRule> {
+        let matches = rule
+            .matches
+            .into_iter()
+            .flatten()
+            .map(InboundRouteBinding::try_match)
+            .collect::<Result<_>>()?;
+    
+        let backends = rule
+            .backend_refs
+            .into_iter()
+            .flatten()
+            .filter_map(|b| self.convert_backend(b))
+            .collect();
+        Ok(OutboundHttpRouteRule { matches, backends })
+    }
+    
+    fn convert_backend(&self, backend: HttpBackendRef) -> Option<Backend> {
+        backend.backend_ref.map(|backend| {
+            Backend::Dst(WeightedDst {
+                weight: backend.weight.unwrap_or(1).into(),
+                authority: fmt::format(format_args!("{}.{}.svc.{}:{}", backend.name, self.namespace, self.cluster_domain, backend.port)),
+            })
         })
-    })
+    }
 }
+

@@ -6,10 +6,12 @@ use crate::k8s::{
         NetworkAuthentication, NetworkAuthenticationSpec, Server, ServerAuthorization,
         ServerAuthorizationSpec, ServerSpec,
     },
+    Service,
 };
 use anyhow::{anyhow, bail, ensure, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
+use k8s_gateway_api::ParentReference;
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_core as core;

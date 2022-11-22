@@ -60,6 +60,9 @@ struct Args {
     #[clap(long, default_value = "cluster.local")]
     identity_domain: String,
 
+    #[clap(long, default_value = "cluster.local")]
+    cluster_domain: String,
+
     #[clap(long, default_value = "all-unauthenticated")]
     default_policy: DefaultPolicy,
 
@@ -82,6 +85,7 @@ async fn main() -> Result<()> {
         grpc_addr,
         admission_controller_disabled,
         identity_domain,
+        cluster_domain,
         cluster_networks: IpNets(cluster_networks),
         default_policy,
         control_plane_namespace,
@@ -170,7 +174,7 @@ async fn main() -> Result<()> {
     // TODO: Reuse or clone previous stream instead of watching twice
     let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
     let services = runtime.watch_all::<k8s::Service>(ListParams::default());
-    let outbound_index = outbound_index::Index::shared();
+    let outbound_index = outbound_index::Index::shared(cluster_domain);
     tokio::spawn(
         kubert::index::namespaced(outbound_index.clone(), http_routes)
             .instrument(info_span!("httproutes2")),
