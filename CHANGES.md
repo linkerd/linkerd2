@@ -2,10 +2,11 @@
 
 ## edge-22.11.3
 
-This edge release fixes connection errors to pods using a `hostPort` different
-than their `containerPort`. Also the `network-validator` init container improves
-its logging, and the `linkerd-cni` DaemonSet now gets deployed in all nodes by
-default.
+This edge release fixes connection errors to pods that use `hostPort`
+configurations. The CNI `network-validator` init container features
+improved error logging, and the default `linkerd-cni` DaemonSet
+configuration is updated to tolerate all node taints so that the CNI
+runs on all nodes in a cluster.
 
 * Fixed `destination` service to properly discover targets using a `hostPort`
   different than their `containerPort`, which was causing 502 errors
