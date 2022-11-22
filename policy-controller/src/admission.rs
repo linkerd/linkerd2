@@ -462,7 +462,7 @@ impl Validate<HttpRouteSpec> for Admission {
             .parent_refs
             .iter()
             .flatten()
-            .all(httproute::parent_ref_targets_kind::<Server>);
+            .all(parent_ref_kind_is_valid);
         ensure!(
             all_target_servers,
             "policy.linkerd.io HTTPRoutes must target only Server resources"
@@ -489,4 +489,8 @@ impl Validate<HttpRouteSpec> for Admission {
 
         Ok(())
     }
+}
+
+fn parent_ref_kind_is_valid(parent_ref: &ParentReference) -> bool {
+    httproute::parent_ref_targets_kind::<Server>(parent_ref) || httproute::parent_ref_targets_kind::<Service>(parent_ref)
 }
