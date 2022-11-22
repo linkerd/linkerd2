@@ -71,7 +71,7 @@ Usage:
     current_xx=$(echo "$current_edge" | sed -n -E "s/.*$edge_tag_regex}$/\4/p")
 
     yy=$(date +"%y")
-    
+
     # Strip leading zero
     new_mm=$(date +"%-m")
 
@@ -91,10 +91,10 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 tmp=$(. "$bindir"/_release.sh; extract_release_notes)
 
 # Create a signed tag with the commit message.
-git tag -s -F "$tmp" "$release_tag"
+git tag -F "$tmp" "$release_tag"
 
 # Success message
-echo "$release_tag tag created and signed.
+echo "$release_tag tag created.
 
 tag: $release_tag
 

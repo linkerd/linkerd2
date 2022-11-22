@@ -260,9 +260,6 @@ After the review has passed and the branches from step 2 and 4 have been merged,
 follow the instructions below to properly create and push the release tag from
 the appropriate branch.
 
-**Note**: The release script will create a GPG-signed tag, so users must have
-GPG signing setup in their local git config.
-
 If performing an edge release then issue these commands. The appropriate tag
 will be automatically calculated:
 
