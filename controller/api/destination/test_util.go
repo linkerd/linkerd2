@@ -314,6 +314,26 @@ spec:
   proxyProtocol: opaque`,
 	}
 
+	hostPortMapping := []string{
+		`
+kind: Pod
+apiVersion: v1
+metadata:
+  name: hostport-mapping
+status:
+  phase: Running
+  hostIP: 192.168.1.20
+  podIP: 172.17.0.17
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+      hostPort: 7777
+      name: nginx-7777`,
+	}
+
 	res := append(meshedPodResources, clientSP...)
 	res = append(res, unmeshedPod)
 	res = append(res, meshedOpaquePodResources...)
@@ -321,6 +341,7 @@ spec:
 	res = append(res, meshedSkippedPodResource...)
 	res = append(res, meshedStatefulSetPodResource...)
 	res = append(res, policyResources...)
+	res = append(res, hostPortMapping...)
 	k8sAPI, err := k8s.NewFakeAPI(res...)
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
