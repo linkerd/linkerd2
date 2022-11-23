@@ -23,6 +23,7 @@ const clusterIP = "172.17.12.0"
 const clusterIPOpaque = "172.17.12.1"
 const podIP1 = "172.17.0.12"
 const podIP2 = "172.17.0.13"
+const podIP3 = "172.17.0.17"
 const podIPOpaque = "172.17.0.14"
 const podIPSkipped = "172.17.0.15"
 const podIPPolicy = "172.17.0.16"
@@ -796,6 +797,30 @@ func toAddress(path string, port uint32) (*net.TcpAddress, error) {
 	}, nil
 }
 
+func TestHostPortMapping(t *testing.T) {
+	hostPort := uint32(7777)
+	containerPort := uint32(80)
+	server := makeServer(t)
+
+	pod, err := getPodByIP(server.k8sAPI, externalIP, hostPort, server.log)
+	if err != nil {
+		t.Fatalf("error retrieving pod by external IP %s", err)
+	}
+
+	address, err := server.createAddress(pod, externalIP, hostPort)
+	if err != nil {
+		t.Fatalf("error calling createAddress() %s", err)
+	}
+
+	if address.IP != podIP3 {
+		t.Fatalf("expected podIP (%s), received other IP (%s)", podIP3, address.IP)
+	}
+
+	if address.Port != containerPort {
+		t.Fatalf("expected containerPort (%d) but received port (%d) instead", containerPort, address.Port)
+	}
+}
+
 func TestIpWatcherGetSvcID(t *testing.T) {
 	name := "service"
 	namespace := "test"
@@ -854,8 +879,8 @@ spec:
 func TestIpWatcherGetPod(t *testing.T) {
 	podIP := "10.255.0.1"
 	hostIP := "172.0.0.1"
-	var hostPort1 uint32 = 12345
-	var hostPort2 uint32 = 12346
+	var hostPort1 uint32 = 22345
+	var hostPort2 uint32 = 22346
 	expectedPodName := "hostPortPod1"
 	k8sConfigs := []string{`
 apiVersion: v1
@@ -870,13 +895,13 @@ spec:
     ports:
     - containerPort: 12345
       hostIP: 172.0.0.1
-      hostPort: 12345
+      hostPort: 22345
   - image: test
     name: hostPortContainer2
     ports:
     - containerPort: 12346
       hostIP: 172.0.0.1
-      hostPort: 12346
+      hostPort: 22346
 status:
   phase: Running
   podIP: 10.255.0.1
