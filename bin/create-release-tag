@@ -90,7 +90,7 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 # shellcheck source=_release.sh
 tmp=$(. "$bindir"/_release.sh; extract_release_notes)
 
-# Create a signed tag with the commit message.
+# Create a tag with the commit message.
 git tag -F "$tmp" "$release_tag"
 
 # Success message
