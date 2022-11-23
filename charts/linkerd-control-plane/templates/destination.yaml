@@ -317,7 +317,7 @@ spec:
         The destination controller needs to connect to the Kubernetes API before the proxy is able
         to proxy requests, so we always skip these connections.
       */}}
-      {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" "443" }}
+      {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" "443" -}}
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       {{- if .Values.priorityClassName -}}
