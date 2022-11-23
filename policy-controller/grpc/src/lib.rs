@@ -23,7 +23,8 @@ use linkerd_policy_controller_core::{
     },
     AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer,
     DiscoverOutboundPolicy, IdentityMatch, InboundHttpRouteRef, InboundServer, InboundServerStream,
-    IpNet, NetworkMatch, OutboundHttpRoute, OutboundPolicy, ProxyProtocol, ServerRef, OutboundPolicyStream,
+    IpNet, NetworkMatch, OutboundHttpRoute, OutboundPolicy, OutboundPolicyStream, ProxyProtocol,
+    ServerRef,
 };
 use maplit::*;
 use std::{num::NonZeroU16, sync::Arc};
@@ -152,7 +153,10 @@ where
     T: DiscoverOutboundPolicy<(String, String, NonZeroU16)> + Send + Sync + 'static,
 {
     pub fn new(discover: T, drain: drain::Watch) -> Self {
-        Self { index: discover, drain}
+        Self {
+            index: discover,
+            drain,
+        }
     }
 
     pub async fn serve(
@@ -212,16 +216,15 @@ where
         &self,
         req: tonic::Request<outbound::TargetSpec>,
     ) -> Result<tonic::Response<BoxWatchServiceStream>, tonic::Status> {
-
         let target = req.into_inner();
-                // TODO: get rid of all these expects
-                let port = target.port.try_into().expect("port out of range");
-                let port = NonZeroU16::new(port).expect("port cannot be zero");
-                let addr = target
-                    .address
-                    .expect("address must be specified")
-                    .try_into()
-                    .expect("failed to parse target addr");
+        // TODO: get rid of all these expects
+        let port = target.port.try_into().expect("port out of range");
+        let port = NonZeroU16::new(port).expect("port cannot be zero");
+        let addr = target
+            .address
+            .expect("address must be specified")
+            .try_into()
+            .expect("failed to parse target addr");
         let drain = self.drain.clone();
         if let Some(target) = self.index.service_lookup(addr, port) {
             let rx = self
@@ -230,10 +233,7 @@ where
                 .await
                 .map_err(|e| tonic::Status::internal(format!("lookup failed: {}", e)))?
                 .ok_or_else(|| tonic::Status::not_found("unknown server"))?;
-                Ok(tonic::Response::new(outbound_policy_stream(
-                    drain,
-                    rx,
-                )))
+            Ok(tonic::Response::new(outbound_policy_stream(drain, rx)))
         } else {
             Err(tonic::Status::not_found("No such service"))
         }

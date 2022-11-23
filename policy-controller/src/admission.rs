@@ -494,5 +494,6 @@ impl Validate<HttpRouteSpec> for Admission {
 }
 
 fn parent_ref_kind_is_valid(parent_ref: &ParentReference) -> bool {
-    httproute::parent_ref_targets_kind::<Server>(parent_ref) || httproute::parent_ref_targets_kind::<Service>(parent_ref)
+    httproute::parent_ref_targets_kind::<Server>(parent_ref)
+        || httproute::parent_ref_targets_kind::<Service>(parent_ref)
 }

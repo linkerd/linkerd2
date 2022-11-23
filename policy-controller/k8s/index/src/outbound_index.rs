@@ -11,7 +11,7 @@ use linkerd_policy_controller_k8s_api::{
     ResourceExt, Service,
 };
 use parking_lot::RwLock;
-use std::{net::IpAddr, num::NonZeroU16, sync::Arc, fmt};
+use std::{fmt, net::IpAddr, num::NonZeroU16, sync::Arc};
 use tokio::sync::watch;
 
 use super::http_route::convert;
@@ -59,13 +59,17 @@ struct ServiceRoutes {
 
 impl kubert::index::IndexNamespacedResource<HttpRoute> for Index {
     fn apply(&mut self, route: HttpRoute) {
-        tracing::debug!(name=route.name_unchecked(), "indexing route");
+        tracing::debug!(name = route.name_unchecked(), "indexing route");
         let ns = route.namespace().expect("HttpRoute must have a namespace");
-        self.namespaces.by_ns.entry(ns.clone()).or_insert_with(|| Namespace {
-            services: Default::default(),
-            namespace: Arc::new(ns),
-            cluster_domain: self.namespaces.cluster_domain.clone(),
-        }).apply(route);
+        self.namespaces
+            .by_ns
+            .entry(ns.clone())
+            .or_insert_with(|| Namespace {
+                services: Default::default(),
+                namespace: Arc::new(ns),
+                cluster_domain: self.namespaces.cluster_domain.clone(),
+            })
+            .apply(route);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -130,7 +134,7 @@ impl Index {
                 services: Default::default(),
                 namespace: Arc::new(namespace.to_string()),
                 cluster_domain: self.namespaces.cluster_domain.clone(),
-             });
+            });
         let key = ServicePort {
             service: service.to_string(),
             port,
@@ -156,7 +160,11 @@ impl Namespace {
                             port,
                             service: parent_ref.name.clone(),
                         };
-                        tracing::debug!(?service_port, route=route.name_unchecked(), "inserting route for service");
+                        tracing::debug!(
+                            ?service_port,
+                            route = route.name_unchecked(),
+                            "inserting route for service"
+                        );
                         let service_routes = self.service_routes_or_default(service_port);
                         service_routes.apply(route.clone());
                     } else {
@@ -166,7 +174,10 @@ impl Namespace {
                     tracing::warn!(?parent_ref, "ignoring parent_ref without port");
                 }
             } else {
-                tracing::warn!(parent_kind=parent_ref.kind.as_deref(), "ignoring parent_ref with non-Service kind");
+                tracing::warn!(
+                    parent_kind = parent_ref.kind.as_deref(),
+                    "ignoring parent_ref with non-Service kind"
+                );
             }
         }
     }
@@ -228,7 +239,7 @@ impl ServiceRoutes {
             .flatten()
             .map(convert::host_match)
             .collect();
-    
+
         let rules = route
             .spec
             .rules
@@ -238,7 +249,7 @@ impl ServiceRoutes {
             .collect::<Result<_>>()?;
         Ok(OutboundHttpRoute { hostnames, rules })
     }
-    
+
     fn convert_rule(&self, rule: HttpRouteRule) -> Result<OutboundHttpRouteRule> {
         let matches = rule
             .matches
@@ -246,7 +257,7 @@ impl ServiceRoutes {
             .flatten()
             .map(InboundRouteBinding::try_match)
             .collect::<Result<_>>()?;
-    
+
         let backends = rule
             .backend_refs
             .into_iter()
@@ -255,14 +266,16 @@ impl ServiceRoutes {
             .collect();
         Ok(OutboundHttpRouteRule { matches, backends })
     }
-    
+
     fn convert_backend(&self, backend: HttpBackendRef) -> Option<Backend> {
         backend.backend_ref.map(|backend| {
             Backend::Dst(WeightedDst {
                 weight: backend.weight.unwrap_or(1).into(),
-                authority: fmt::format(format_args!("{}.{}.svc.{}:{}", backend.name, self.namespace, self.cluster_domain, backend.port)),
+                authority: fmt::format(format_args!(
+                    "{}.{}.svc.{}:{}",
+                    backend.name, self.namespace, self.cluster_domain, backend.port
+                )),
             })
         })
     }
 }
-
