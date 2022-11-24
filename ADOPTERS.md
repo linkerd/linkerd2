@@ -12,7 +12,7 @@
 - [Attest](https://www.askattest.com)
 - [Bede Gaming](https://bedegaming.com)
 - [Bink](https://bink.com)
-- [Bitfactory](https://www.bitfactory.com/)
+- [Bitfactory](https://www.bitfactory.nl/)
 - [Boomin](https://www.boomin.com)
 - [Bosch Thermotecnology](https://www.bosch-thermotechnology.com)
 - [Buoyant](https://buoyant.io)
