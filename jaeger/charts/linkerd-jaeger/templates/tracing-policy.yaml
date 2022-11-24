@@ -22,6 +22,23 @@ apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: {{ .Release.Namespace }}
+  name: collector-otlp-http
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  podSelector:
+    matchLabels:
+      component: collector
+  port: 4318
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  namespace: {{ .Release.Namespace }}
   name: collector-opencensus
   labels:
     linkerd.io/extension: jaeger
