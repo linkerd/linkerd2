@@ -218,7 +218,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			var address watcher.Address
 			var endpoint *pb.WeightedAddr
 			if pod != nil {
-				address, err = s.createAddress(pod, port)
+				address, err = s.createAddress(pod, host, port)
 				if err != nil {
 					return fmt.Errorf("failed to create address: %w", err)
 				}
@@ -364,8 +364,47 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	return nil
 }
 
-func (s *server) createAddress(pod *corev1.Pod, port uint32) (watcher.Address, error) {
+// getPortForPod returns the port that a `pod` is listening on.
+//
+// Proxies usually receive traffic targeting `podIp:containerPort`.
+// However, they may be receiving traffic on `nodeIp:nodePort`. In this
+// case, we convert the port to the containerPort for discovery. In k8s parlance,
+// this is the 'HostPort' mapping.
+func (s *server) getPortForPod(pod *corev1.Pod, targetIP string, port uint32) (uint32, error) {
+	if pod == nil {
+		return port, fmt.Errorf("getPortForPod passed a nil pod")
+	}
+
+	if net.ParseIP(targetIP) == nil {
+		return port, fmt.Errorf("failed to parse hostIP into net.IP: %s", targetIP)
+	}
+
+	if containsIP(pod.Status.PodIPs, targetIP) {
+		return port, nil
+	}
+
+	if targetIP == pod.Status.HostIP {
+		for _, container := range pod.Spec.Containers {
+			for _, containerPort := range container.Ports {
+				if uint32(containerPort.HostPort) == port {
+					return uint32(containerPort.ContainerPort), nil
+				}
+			}
+		}
+	}
+
+	s.log.Warnf("unable to find container port as host (%s) matches neither PodIP nor HostIP (%s)", targetIP, pod)
+	return port, nil
+}
+
+func (s *server) createAddress(pod *corev1.Pod, targetIP string, port uint32) (watcher.Address, error) {
 	ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
+
+	port, err := s.getPortForPod(pod, targetIP, port)
+	if err != nil {
+		return watcher.Address{}, fmt.Errorf("failed to find Port for Pod: %w", err)
+	}
+
 	address := watcher.Address{
 		IP:        pod.Status.PodIP,
 		Port:      port,
@@ -373,8 +412,8 @@ func (s *server) createAddress(pod *corev1.Pod, port uint32) (watcher.Address, e
 		OwnerName: ownerName,
 		OwnerKind: ownerKind,
 	}
-	err := watcher.SetToServerProtocol(s.k8sAPI, &address, port)
-	if err != nil {
+
+	if err := watcher.SetToServerProtocol(s.k8sAPI, &address, port); err != nil {
 		return watcher.Address{}, fmt.Errorf("failed to set address OpaqueProtocol: %w", err)
 	}
 	return address, nil
@@ -446,7 +485,7 @@ func (s *server) getEndpointByHostname(k8sAPI *k8s.API, hostname string, svcID w
 					if err != nil {
 						return nil, err
 					}
-					address, err := s.createAddress(pod, port)
+					address, err := s.createAddress(pod, addr.IP, port)
 					if err != nil {
 						return nil, err
 					}
@@ -676,4 +715,15 @@ func getPodSkippedInboundPortsAnnotations(pod *corev1.Pod) (map[uint32]struct{},
 	}
 
 	return util.ParsePorts(annotation)
+}
+
+// Given a list of PodIP, determine is `targetIP` is a member
+func containsIP(podIPs []corev1.PodIP, targetIP string) bool {
+	for _, ip := range podIPs {
+		if ip.String() == targetIP {
+			return true
+		}
+	}
+
+	return false
 }
