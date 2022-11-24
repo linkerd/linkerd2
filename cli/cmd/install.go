@@ -235,7 +235,7 @@ func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Wr
 		// Server listens on. If the ports are different from the default ('443,6443')
 		// then replace with ports from the service spec.
 		apiSrvPorts := getApiServerPorts(ctx, k8sAPI)
-		if apiSrvPorts != "" && apiSrvPorts != values.ProxyInit.KubeAPIServerPorts {
+		if apiSrvPorts != "" {
 			values.ProxyInit.KubeAPIServerPorts = apiSrvPorts
 		}
 	}
