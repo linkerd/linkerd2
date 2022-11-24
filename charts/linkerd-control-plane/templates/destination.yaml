@@ -310,7 +310,7 @@ spec:
           name: policy-tls
           readOnly: true
       initContainers:
-      {{ if .Values.cniEnabled -}}
+      {{- if .Values.cniEnabled -}}
       - {{- include "partials.network-validator" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ else -}}
       {{- /*

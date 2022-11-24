@@ -206,7 +206,7 @@ spec:
       {{- $_ := set $tree.Values.proxy "requireTLSOnInboundPorts" "8080" }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       initContainers:
-      {{ if .Values.cniEnabled -}}
+      {{- if .Values.cniEnabled -}}
       - {{- include "partials.network-validator" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ else -}}
       {{- /*

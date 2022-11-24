@@ -119,7 +119,6 @@ type (
 
 	// ProxyInit contains the fields to set the proxy-init container
 	ProxyInit struct {
-		Privileged           bool             `json:"privileged"`
 		Capabilities         *Capabilities    `json:"capabilities"`
 		IgnoreInboundPorts   string           `json:"ignoreInboundPorts"`
 		IgnoreOutboundPorts  string           `json:"ignoreOutboundPorts"`
@@ -131,6 +130,7 @@ type (
 		XTMountPath          *VolumeMountPath `json:"xtMountPath"`
 		Resources            *Resources       `json:"resources"`
 		CloseWaitTimeoutSecs int64            `json:"closeWaitTimeoutSecs"`
+		Privileged           bool             `json:"privileged"`
 		RunAsRoot            bool             `json:"runAsRoot"`
 		RunAsUser            int64            `json:"runAsUser"`
 		IptablesMode         string           `json:"iptablesMode"`

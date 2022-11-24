@@ -108,7 +108,7 @@ spec:
           name: tls
           readOnly: true
       initContainers:
-      {{ if .Values.cniEnabled -}}
+      {{- if .Values.cniEnabled -}}
       - {{- include "partials.network-validator" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ else -}}
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
