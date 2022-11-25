@@ -289,6 +289,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd-dev
 ---
 # Source: linkerd-control-plane/templates/podmonitor.yaml
+
 ---
 # Source: linkerd-control-plane/templates/proxy-injector-rbac.yaml
 ---
@@ -588,6 +589,7 @@ data:
       iptablesMode: legacy
       logFormat: ""
       logLevel: ""
+      privileged: false
       resources:
         cpu:
           limit: 100m
@@ -951,6 +953,7 @@ spec:
         - mountPath: /var/run/secrets/tokens
           name: linkerd-identity-token
       initContainers:
+      
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -978,9 +981,9 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
-          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          privileged: false
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1421,6 +1424,7 @@ spec:
           name: policy-tls
           readOnly: true
       initContainers:
+      
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -1448,9 +1452,9 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
-          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          privileged: false
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1796,9 +1800,9 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
-          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          privileged: false
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
