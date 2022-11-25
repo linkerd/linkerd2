@@ -3,7 +3,7 @@
 The Linkerd-Jaeger extension adds distributed tracing to Linkerd using
 OpenCensus and Jaeger.
 
-![Version: 30.5.4-edge](https://img.shields.io/badge/Version-30.5.4--edge-informational?style=flat-square)
+![Version: 30.5.5-edge](https://img.shields.io/badge/Version-30.5.5--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -78,7 +78,7 @@ Kubernetes: `>=1.21.0-0`
 | collector.enabled | bool | `true` | Set to false to exclude collector installation |
 | collector.image.name | string | `"otel/opentelemetry-collector"` |  |
 | collector.image.pullPolicy | string | `"Always"` |  |
-| collector.image.version | string | `"0.43.0"` |  |
+| collector.image.version | string | `"0.59.0"` |  |
 | collector.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | collector.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the collector container can use |
 | collector.resources.cpu.request | string | `nil` | Amount of CPU units that the collector container requests |

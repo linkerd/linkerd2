@@ -1,5 +1,21 @@
 # Changes
 
+## edge-22.11.3
+
+This edge release fixes connection errors to pods that use `hostPort`
+configurations. The CNI `network-validator` init container features
+improved error logging, and the default `linkerd-cni` DaemonSet
+configuration is updated to tolerate all node taints so that the CNI
+runs on all nodes in a cluster.
+
+* Fixed `destination` service to properly discover targets using a `hostPort`
+  different than their `containerPort`, which was causing 502 errors
+* Upgraded the `network-validator` with better logging allowing users to
+  determine whether failures occur as a result of their environment or the tool
+  itself
+* Added default `Exists` toleration to the `linkerd-cni` DaemonSet, allowing it
+  to be deployed in all nodes by default, regardless of taints
+
 ## edge-22.11.2
 
 This edge release introduces the use of the Kubernetes metadata API in the

@@ -214,7 +214,7 @@ spec:
         proxy requests, so we always skip these connections. The identity controller makes no other
         outbound connections (so it's not important to persist any other skip ports here)
       */}}
-      {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" "443" }}
+      {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" "443" -}}
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       {{- if .Values.priorityClassName -}}
