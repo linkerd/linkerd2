@@ -583,6 +583,7 @@ data:
       iptablesMode: legacy
       logFormat: ""
       logLevel: ""
+      privileged: false
       resources:
         cpu:
           limit: 100m
