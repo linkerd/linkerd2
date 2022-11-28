@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
@@ -36,6 +37,8 @@ type endpointTranslator struct {
 	filteredSnapshot   watcher.AddressSet
 	stream             pb.Destination_GetServer
 	log                *logging.Entry
+
+	mu sync.Mutex
 }
 
 func newEndpointTranslator(
@@ -72,10 +75,14 @@ func newEndpointTranslator(
 		filteredSnapshot,
 		stream,
 		log,
+		sync.Mutex{},
 	}
 }
 
 func (et *endpointTranslator) Add(set watcher.AddressSet) {
+	et.mu.Lock()
+	defer et.mu.Unlock()
+
 	for id, address := range set.Addresses {
 		et.availableEndpoints.Addresses[id] = address
 	}
@@ -84,6 +91,9 @@ func (et *endpointTranslator) Add(set watcher.AddressSet) {
 }
 
 func (et *endpointTranslator) Remove(set watcher.AddressSet) {
+	et.mu.Lock()
+	defer et.mu.Unlock()
+
 	for id := range set.Addresses {
 		delete(et.availableEndpoints.Addresses, id)
 	}
