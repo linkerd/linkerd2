@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -323,6 +324,23 @@ func TestEndpointTranslatorForZonedAddresses(t *testing.T) {
 			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
 		}
 	})
+}
+
+// TestConcurrency, to be triggered with `go test -race`, shouldn't report a race condition
+func TestConcurrency(t *testing.T) {
+	_, translator := makeEndpointTranslator(t)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			translator.Add(mkAddressSetForServices(west1aAddress, west1bAddress))
+			translator.Remove(mkAddressSetForServices(west1bAddress))
+		}()
+	}
+
+	wg.Wait()
 }
 
 func mkAddressSetForServices(gatewayAddresses ...watcher.Address) watcher.AddressSet {
