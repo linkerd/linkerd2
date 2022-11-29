@@ -147,7 +147,7 @@ policy-test-build:
 # Delete all test namespaces and remove linkerd from the cluster.
 policy-test-cleanup:
     {{ _kubectl }} delete ns --selector='linkerd-policy-test'
-    @-while [ $({{ _kubectl }} get ns --selector='linkerd-policy-test' -o json |jq '.items | length') != "0" ]; do sleep 1 ; done
+    @while [ $({{ _kubectl }} get ns --selector='linkerd-policy-test' -o json |jq '.items | length') != "0" ]; do sleep 1 ; done
 
 policy-test-deps-pull:
     docker pull -q docker.io/bitnami/kubectl:latest
@@ -489,7 +489,7 @@ mc-target-k3d-delete:
 _mc-load: _k3d-init linkerd-load linkerd-viz-load
 
 _mc-target-load:
-    @-{{ just_executable() }} \
+    @{{ just_executable() }} \
         k3d-name='{{ k3d-name }}-target' \
         k3d-k8s='{{ k3d-k8s }}' \
         k3d-agents='{{ k3d-agents }}' \
@@ -560,10 +560,10 @@ sh-lint:
 
 # Display the git history minus Dependabot updates
 history *paths='.':
-    @-git log --oneline --graph --invert-grep --author="dependabot" -- {{ paths }}
+    @git log --oneline --graph --invert-grep --author="dependabot" -- {{ paths }}
 
 # Display the history of Dependabot changes
 history-dependabot *paths='.':
-    @-git log --oneline --graph --author="dependabot" -- {{ paths }}
+    @git log --oneline --graph --author="dependabot" -- {{ paths }}
 
 # vim: set ft=make :

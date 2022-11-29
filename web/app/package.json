@@ -6,7 +6,7 @@
   "dependencies": {
     "@babel/eslint-plugin": "7.19.1",
     "@fortawesome/fontawesome-svg-core": "6.2.1",
-    "@fortawesome/free-regular-svg-icons": "6.2.0",
+    "@fortawesome/free-regular-svg-icons": "6.2.1",
     "@fortawesome/free-solid-svg-icons": "6.2.1",
     "@fortawesome/react-fontawesome": "0.2.0",
     "@lingui/core": "^3.15.0",
@@ -26,7 +26,7 @@
     "jest-progress-bar-reporter": "^1.0.25",
     "locales-detector": "3.0.2",
     "lodash": "4.17.21",
-    "make-plural": "^7.1.0",
+    "make-plural": "^7.2.0",
     "path": "0.12.7",
     "prop-types": "15.8.1",
     "query-string": "^7.1.1",
@@ -64,7 +64,7 @@
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-jsx-a11y": "^6.6.1",
     "eslint-plugin-promise": "^6.1.1",
-    "eslint-plugin-react": "^7.31.10",
+    "eslint-plugin-react": "^7.31.11",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-webpack-plugin": "^3.2.0",
     "file-loader": "^6.2.0",
@@ -78,9 +78,9 @@
     "sinon-stub-promise": "4.0.0",
     "style-loader": "^3.3.1",
     "url-loader": "^4.1.1",
-    "webpack": "^5.74.0",
+    "webpack": "^5.75.0",
     "webpack-bundle-analyzer": "4.7.0",
-    "webpack-cli": "4.10.0",
+    "webpack-cli": "5.0.0",
     "webpack-dev-server": "4.11.1"
   },
   "resolutions": {

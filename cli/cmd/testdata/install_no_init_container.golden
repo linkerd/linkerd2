@@ -590,6 +590,7 @@ data:
       kubeAPIServerPorts: 443,6443
       logFormat: ""
       logLevel: ""
+      privileged: false
       resources:
         cpu:
           limit: 100m

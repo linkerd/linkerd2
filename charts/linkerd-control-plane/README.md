@@ -245,6 +245,7 @@ Kubernetes: `>=1.21.0-0`
 | proxyInit.kubeAPIServerPorts | string | `"443,6443"` | Default set of ports to skip via iptables for control plane components so they can communicate with the Kubernetes API Server |
 | proxyInit.logFormat | string | plain | Log format (`plain` or `json`) for the proxy-init |
 | proxyInit.logLevel | string | info | Log level for the proxy-init |
+| proxyInit.privileged | bool | false | Privileged mode allows the container processes to inherit all security capabilities and bypass any security limitations enforced by the kubelet. When used with 'runAsRoot: true', the container will behave exactly as if it was running as root on the host. May escape cgroup limits and see other processes and devices on the host.  |
 | proxyInit.resources.cpu.limit | string | `"100m"` | Maximum amount of CPU units that the proxy-init container can use |
 | proxyInit.resources.cpu.request | string | `"100m"` | Amount of CPU units that the proxy-init container requests |
 | proxyInit.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the proxy-init container can use |

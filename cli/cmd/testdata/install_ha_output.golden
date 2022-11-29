@@ -617,6 +617,7 @@ data:
       kubeAPIServerPorts: 443,6443
       logFormat: ""
       logLevel: ""
+      privileged: false
       resources:
         cpu:
           limit: 100m
@@ -1019,9 +1020,9 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
-          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          privileged: false
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1487,9 +1488,9 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
-          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          privileged: false
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1830,9 +1831,9 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
-          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          privileged: false
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:

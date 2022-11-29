@@ -228,6 +228,13 @@ proxyInit:
       # -- Amount of ephemeral storage that the proxy-init container requests
       request: ""
   closeWaitTimeoutSecs: 0
+  # -- Privileged mode allows the container processes to inherit all security
+  # capabilities and bypass any security limitations enforced by the kubelet.
+  # When used with 'runAsRoot: true', the container will behave exactly as if
+  # it was running as root on the host. May escape cgroup limits and see other
+  # processes and devices on the host. 
+  # @default -- false
+  privileged: false
   # -- Allow overriding the runAsNonRoot behaviour (<https://github.com/linkerd/linkerd2/issues/7308>)
   runAsRoot: false
   # -- This value is used only if runAsRoot is false; otherwise runAsUser will be 0

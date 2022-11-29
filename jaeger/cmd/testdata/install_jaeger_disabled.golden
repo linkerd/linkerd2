@@ -312,6 +312,10 @@ spec:
     port: 4317
     protocol: TCP
     targetPort: 4317
+  - name: otlp-http
+    port: 4318
+    protocol: TCP
+    targetPort: 4318
   - name: opencensus
     port: 55678
     protocol: TCP
@@ -375,7 +379,7 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
-        image: otel/opentelemetry-collector:0.43.0
+        image: otel/opentelemetry-collector:0.59.0
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
@@ -385,6 +389,7 @@ spec:
         ports:
         - containerPort: 13133
         - containerPort: 4317
+        - containerPort: 4318
         - containerPort: 55678
         - containerPort: 9411
         - containerPort: 14268
@@ -425,6 +430,23 @@ spec:
       component: collector
   port: 4317
   proxyProtocol: gRPC
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  namespace: linkerd-jaeger
+  name: collector-otlp-http
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  podSelector:
+    matchLabels:
+      component: collector
+  port: 4318
+  proxyProtocol: HTTP/1
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
