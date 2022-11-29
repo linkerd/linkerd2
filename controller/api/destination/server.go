@@ -720,7 +720,7 @@ func getPodSkippedInboundPortsAnnotations(pod *corev1.Pod) (map[uint32]struct{},
 // Given a list of PodIP, determine is `targetIP` is a member
 func containsIP(podIPs []corev1.PodIP, targetIP string) bool {
 	for _, ip := range podIPs {
-		if ip.String() == targetIP {
+		if ip.IP == targetIP {
 			return true
 		}
 	}
