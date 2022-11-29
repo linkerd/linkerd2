@@ -85,6 +85,26 @@ spec:
 kind: Service
 apiVersion: v1
 metadata:
+  name: linkerd-client-policy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  clusterIP: None
+  selector:
+    linkerd.io/control-plane-component: destination
+  ports:
+  - name: grpc
+    port: 8091
+    targetPort: 8091
+---
+kind: Service
+apiVersion: v1
+metadata:
   name: linkerd-policy-validator
   namespace: {{ .Release.Namespace }}
   labels:
