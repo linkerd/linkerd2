@@ -256,7 +256,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 				if err != nil {
 					// If we cannot retrieve the 'kubernetes' service's ports (for
 					// whatever reason), skip default ports: 443, 6443
-					logEntry.Debugf("linkerd-cni: could not retrieve ports from 'kubernetes' service: %v", err)
+					logEntry.Errorf("linkerd-cni: could not retrieve ports from 'kubernetes' service: %v", err)
 					skippedPorts = []string{"443", "6443"}
 				}
 
