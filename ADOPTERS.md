@@ -84,6 +84,7 @@
 - [Timescale](https://www.timescale.com)
 - [Tradeshift](https://tradeshift.com/)
 - [Transit](https://transit.app)
+- [True Tickets](https://true-tickets.com)
 - [Web Summit](https://websummit.com)
 - [Wiz Security](https://www.wiz.io/)
 - [xCloud](https://www.xbox.com/en-US/xbox-game-streaming/project-xcloud)
