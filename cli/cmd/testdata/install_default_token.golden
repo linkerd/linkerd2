@@ -293,6 +293,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: heartbeat
     linkerd.io/control-plane-ns: linkerd
+
 ---
 ###
 ### Proxy Injector RBAC
@@ -580,6 +581,7 @@ data:
         pullPolicy: ""
         version: v2.0.0
       iptablesMode: legacy
+      kubeAPIServerPorts: 443,6443
       logFormat: ""
       logLevel: ""
       privileged: false
@@ -910,7 +912,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
-        - "443"
+        - "443,6443"
         image: cr.l5d.io/linkerd/proxy-init:v2.0.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -927,9 +929,9 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
+          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
-          privileged: false
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1322,7 +1324,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
-        - "443"
+        - "443,6443"
         image: cr.l5d.io/linkerd/proxy-init:v2.0.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1339,9 +1341,9 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
+          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
-          privileged: false
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1637,9 +1639,9 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
+          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
-          privileged: false
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:

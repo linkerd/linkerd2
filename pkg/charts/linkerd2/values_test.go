@@ -135,6 +135,7 @@ func TestNewValues(t *testing.T) {
 			IptablesMode:        "legacy",
 			IgnoreInboundPorts:  "4567,4568",
 			IgnoreOutboundPorts: "4567,4568",
+			KubeAPIServerPorts:  "443,6443",
 			LogLevel:            "",
 			LogFormat:           "",
 			Image: &Image{
