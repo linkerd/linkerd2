@@ -587,6 +587,7 @@ data:
         pullPolicy: ""
         version: v2.1.0
       iptablesMode: legacy
+      kubeAPIServerPorts: 443,6443
       logFormat: ""
       logLevel: ""
       privileged: false

@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"path"
+	"strconv"
+	"strings"
 	"text/template"
 	"time"
 
@@ -26,6 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
 )
 
@@ -226,6 +229,14 @@ func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Wr
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
+		}
+
+		// Check 'kubernetes' service in default namespace to see what ports the API
+		// Server listens on. If the ports are different from the default ('443,6443')
+		// then replace with ports from the service spec.
+		apiSrvPorts := getApiServerPorts(ctx, k8sAPI)
+		if apiSrvPorts != "" {
+			values.ProxyInit.KubeAPIServerPorts = apiSrvPorts
 		}
 	}
 
@@ -455,4 +466,27 @@ func errAfterRunningChecks(cniEnabled bool) error {
 	})
 
 	return err
+}
+
+// getApiServerPorts looks at the 'kubernetes' service in the 'default'
+// namespace and returns the ClusterIP port for the API Server (by default 443),
+// and the port that the API Server backend is expecting TLS connections on (by
+// default 6443.)
+func getApiServerPorts(ctx context.Context, api *k8s.KubernetesAPI) string {
+	service, err := api.CoreV1().Services("default").Get(ctx, "kubernetes", metav1.GetOptions{})
+	if err != nil {
+		return ""
+	}
+
+	ports := make([]string, 0)
+	for _, port := range service.Spec.Ports {
+		ports = append(ports, strconv.Itoa(int(port.Port)))
+		// We only care about int ports since string ports (e.g targetPort: web)
+		// correspond to a named port in a pod spec.
+		if port.TargetPort.Type == intstr.Int {
+			ports = append(ports, strconv.Itoa(port.TargetPort.IntValue()))
+		}
+	}
+
+	return strings.Join(ports, ",")
 }
