@@ -7,7 +7,6 @@ description: |
 home: https://linkerd.io
 keywords:
 - service-mesh
-kubeVersion: ">=1.21.0-0"
 name: "linkerd-viz"
 sources:
 - https://github.com/linkerd/linkerd2/
