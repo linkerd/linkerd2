@@ -9,26 +9,29 @@
 use crate::{
     authorization_policy,
     defaults::DefaultPolicy,
-    http_route::InboundRouteBinding,
+    http_route::{
+        GetParentRefs, InboundParentRef, InboundRouteBinding, IntoRouteBinding, InvalidParentRef,
+    },
     meshtls_authentication, network_authentication,
     pod::{self, PortMap},
     server, server_authorization, ClusterInfo,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
+use chrono::offset::Utc;
 use linkerd_policy_controller_core::{
     http_route::{HttpRouteMatch, InboundHttpRouteRule, Method, PathMatch},
     AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundHttpRoute,
     InboundHttpRouteRef, InboundServer, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
 };
-use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
 use std::{
     collections::{hash_map::Entry, BTreeSet},
     num::NonZeroU16,
     sync::Arc,
 };
-use tokio::sync::watch;
+use tokio::sync::{mpsc, watch};
 use tracing::info_span;
 
 pub type SharedIndex = Arc<RwLock<Index>>;
@@ -41,6 +44,14 @@ pub struct Index {
     cluster_info: Arc<ClusterInfo>,
     namespaces: NamespaceIndex,
     authentications: AuthenticationNsIndex,
+    patches_tx: mpsc::UnboundedSender<Patch>,
+}
+
+#[derive(Debug)]
+pub struct Patch {
+    pub name: String,
+    pub namespace: String,
+    pub value: serde_json::Value,
 }
 
 /// Holds all `Pod`, `Server`, and `ServerAuthorization` indices by-namespace.
@@ -140,7 +151,10 @@ struct NsUpdate<T> {
 // === impl Index ===
 
 impl Index {
-    pub fn shared(cluster_info: impl Into<Arc<ClusterInfo>>) -> SharedIndex {
+    pub fn shared(
+        cluster_info: impl Into<Arc<ClusterInfo>>,
+        patches_tx: mpsc::UnboundedSender<Patch>,
+    ) -> SharedIndex {
         let cluster_info = cluster_info.into();
         Arc::new(RwLock::new(Self {
             cluster_info: cluster_info.clone(),
@@ -149,6 +163,7 @@ impl Index {
                 by_ns: HashMap::default(),
             },
             authentications: AuthenticationNsIndex::default(),
+            patches_tx,
         }))
     }
 
@@ -201,15 +216,192 @@ impl Index {
 
     fn apply_route<R>(&mut self, route: R)
     where
-        R: ResourceExt,
+        R: ResourceExt + GetParentRefs + Clone + IntoRouteBinding,
         InboundRouteBinding: TryFrom<R>,
         <InboundRouteBinding as TryFrom<R>>::Error: std::fmt::Display,
     {
+        fn make_patch(name: &str, status: gateway::HttpRouteStatus) -> serde_json::Value {
+            serde_json::json!({
+                "apiVersion": "policy.linkerd.io/v1alpha1",
+                "kind": "HTTPRoute",
+                "name": name,
+                "status": status,
+            })
+        }
+
         let ns = route.namespace().expect("HttpRoute must have a namespace");
         let name = route.name_unchecked();
         let _span = info_span!("apply", %ns, %name).entered();
 
-        let route_binding = match route.try_into() {
+        let mut skip_index = false;
+        let mut parent_refs = vec![];
+        let mut parent_statuses: Vec<gateway::RouteParentStatus> = vec![];
+        for parent_ref in route.clone().get_parent_refs() {
+            match parent_ref {
+                Ok(parent) => {
+                    let InboundParentRef::Server(ref name) = parent;
+
+                    // Ensure the Server exists.
+                    if self
+                        .namespaces
+                        .by_ns
+                        .get(&ns)
+                        .and_then(|ns| ns.policy.servers.get(name))
+                        .is_none()
+                    {
+                        skip_index = true;
+                        parent_statuses.push(gateway::RouteParentStatus {
+                            parent_ref: gateway::ParentReference {
+                                group: Some("policy.linkerd.io".to_string()),
+                                kind: Some("Server".to_string()),
+                                namespace: Some(ns.clone()),
+                                name: name.to_string(),
+                                section_name: None,
+                                port: None,
+                            },
+                            controller_name: "policy.linkerd.io/status-controller".to_string(),
+                            conditions: vec![k8s::Condition {
+                                last_transition_time: k8s::Time(Utc::now()),
+                                message: "".to_string(),
+                                observed_generation: None,
+                                reason: "NoMatchingParent".to_string(),
+                                status: "False".to_string(),
+                                type_: "Accepted".to_string(),
+                            }],
+                        })
+                    } else {
+                        parent_statuses.push(gateway::RouteParentStatus {
+                            parent_ref: gateway::ParentReference {
+                                group: Some("policy.linkerd.io".to_string()),
+                                kind: Some("Server".to_string()),
+                                namespace: Some(ns.clone()),
+                                name: name.to_string(),
+                                section_name: None,
+                                port: None,
+                            },
+                            controller_name: "policy.linkerd.io/status-controller".to_string(),
+                            conditions: vec![k8s::Condition {
+                                last_transition_time: k8s::Time(Utc::now()),
+                                message: "".to_string(),
+                                observed_generation: None,
+                                reason: "Accepted".to_string(),
+                                status: "True".to_string(),
+                                type_: "Accepted".to_string(),
+                            }],
+                        });
+                        parent_refs.push(parent);
+                    }
+                }
+                Err(e) => match e {
+                    InvalidParentRef::DoesNotSelectServer(name) => {
+                        parent_statuses.push(gateway::RouteParentStatus {
+                            parent_ref: gateway::ParentReference {
+                                group: Some("policy.linkerd.io".to_string()),
+                                kind: Some("Server".to_string()),
+                                namespace: Some(ns.clone()),
+                                name,
+                                section_name: None,
+                                port: None,
+                            },
+                            controller_name: "policy.linkerd.io/status-controller".to_string(),
+                            conditions: vec![k8s::Condition {
+                                last_transition_time: k8s::Time(Utc::now()),
+                                message: "".to_string(),
+                                observed_generation: None,
+                                reason: "InvalidKind".to_string(),
+                                status: "False".to_string(),
+                                type_: "Accepted".to_string(),
+                            }],
+                        })
+                    }
+                    InvalidParentRef::ServerInAnotherNamespace(name) => {
+                        parent_statuses.push(gateway::RouteParentStatus {
+                            parent_ref: gateway::ParentReference {
+                                group: Some("policy.linkerd.io".to_string()),
+                                kind: Some("Server".to_string()),
+                                namespace: Some(ns.clone()),
+                                name,
+                                section_name: None,
+                                port: None,
+                            },
+                            controller_name: "policy.linkerd.io/status-controller".to_string(),
+                            conditions: vec![k8s::Condition {
+                                last_transition_time: k8s::Time(Utc::now()),
+                                message: "".to_string(),
+                                observed_generation: None,
+                                reason: "RefNotPermitted".to_string(),
+                                status: "False".to_string(),
+                                type_: "Accepted".to_string(),
+                            }],
+                        })
+                    }
+                    InvalidParentRef::SpecifiesPort(name) => {
+                        parent_statuses.push(gateway::RouteParentStatus {
+                            parent_ref: gateway::ParentReference {
+                                group: Some("policy.linkerd.io".to_string()),
+                                kind: Some("Server".to_string()),
+                                namespace: Some(ns.clone()),
+                                name,
+                                section_name: None,
+                                port: None,
+                            },
+                            controller_name: "policy.linkerd.io/status-controller".to_string(),
+                            conditions: vec![k8s::Condition {
+                                last_transition_time: k8s::Time(Utc::now()),
+                                message: "".to_string(),
+                                observed_generation: None,
+                                reason: "UnsupportedValue".to_string(),
+                                status: "False".to_string(),
+                                type_: "Accepted".to_string(),
+                            }],
+                        })
+                    }
+                    InvalidParentRef::SpecifiesSection(name) => {
+                        parent_statuses.push(gateway::RouteParentStatus {
+                            parent_ref: gateway::ParentReference {
+                                group: Some("policy.linkerd.io".to_string()),
+                                kind: Some("Server".to_string()),
+                                namespace: Some(ns.clone()),
+                                name,
+                                section_name: None,
+                                port: None,
+                            },
+                            controller_name: "policy.linkerd.io/status-controller".to_string(),
+                            conditions: vec![k8s::Condition {
+                                last_transition_time: k8s::Time(Utc::now()),
+                                message: "".to_string(),
+                                observed_generation: None,
+                                reason: "UnsupportedValue".to_string(),
+                                status: "False".to_string(),
+                                type_: "Accepted".to_string(),
+                            }],
+                        })
+                    }
+                },
+            }
+        }
+        let status = gateway::HttpRouteStatus {
+            inner: gateway::RouteStatus {
+                parents: parent_statuses,
+            },
+        };
+        let value = make_patch(&name, status);
+        let patch = Patch {
+            name: name.clone(),
+            namespace: ns.clone(),
+            value,
+        };
+        if let Err(error) = self.patches_tx.send(patch) {
+            tracing::info!(%ns, %name, %error, "Failed to send patch to status controller")
+        }
+
+        // A parentRef was invalid so we'll skip indexing this route.
+        if skip_index {
+            tracing::info!(%ns, %name, "Ignoring HTTPRoute; invalid parentRef");
+            return;
+        }
+
+        let route_binding = match route.into_route_binding(parent_refs) {
             Ok(binding) => binding,
             Err(error) => {
                 tracing::info!(%ns, %name, %error, "Ignoring HTTPRoute");
@@ -1426,6 +1618,7 @@ impl PolicyIndex {
                 entry.insert(route);
             }
         }
+
         true
     }
 }

@@ -8,8 +8,9 @@ use kube::api::ListParams;
 use linkerd_policy_controller::{
     grpc, k8s, Admission, ClusterInfo, DefaultPolicy, Index, IndexDiscover, IpNet, SharedIndex,
 };
+use linkerd_policy_controller_k8s_status_controller as status_controller;
 use std::net::SocketAddr;
-use tokio::time;
+use tokio::{sync::mpsc, time};
 use tracing::{info, info_span, instrument, Instrument};
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
@@ -103,19 +104,25 @@ async fn main() -> Result<()> {
 
     let probe_networks = probe_networks.map(|IpNets(nets)| nets).unwrap_or_default();
 
+    // Create channel that the index will use to send patches to the status
+    // controller.
+    let (patches_tx, patches_rx) = mpsc::unbounded_channel();
+
     // Build the index data structure, which will be used to process events from all watches
     // The lookup handle is used by the gRPC server.
-    let index = Index::shared(ClusterInfo {
-        networks: cluster_networks.clone(),
-        identity_domain,
-        control_plane_ns: control_plane_namespace,
-        default_policy,
-        default_detect_timeout: DETECT_TIMEOUT,
-        probe_networks,
-    });
+    let index = Index::shared(
+        ClusterInfo {
+            networks: cluster_networks.clone(),
+            identity_domain,
+            control_plane_ns: control_plane_namespace,
+            default_policy,
+            default_detect_timeout: DETECT_TIMEOUT,
+            probe_networks,
+        },
+        patches_tx,
+    );
 
     // Spawn resource indexers that update the index and publish lookups for the gRPC server.
-
     let pods =
         runtime.watch_all::<k8s::Pod>(ListParams::default().labels("linkerd.io/control-plane-ns"));
     tokio::spawn(kubert::index::namespaced(index.clone(), pods).instrument(info_span!("pods")));
@@ -165,6 +172,13 @@ async fn main() -> Result<()> {
         index,
         runtime.shutdown_handle(),
     ));
+
+    // Spawn the status controller, which will process patches from the index
+    // and apply them to resources.
+    let client = runtime.client();
+    tokio::spawn(async move {
+        status_controller::process_patches(client, patches_rx).await;
+    });
 
     let client = runtime.client();
     let runtime = runtime.spawn_server(|| Admission::new(client));

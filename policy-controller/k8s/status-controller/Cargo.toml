@@ -1,0 +1,12 @@
+[package]
+name = "linkerd-policy-controller-k8s-status-controller"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+linkerd-policy-controller-k8s-api = { path = "../api" }
+linkerd-policy-controller-k8s-index = { path = "../index" }
+tokio = "1"
+tracing = "0.1"

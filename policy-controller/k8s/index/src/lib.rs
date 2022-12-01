@@ -20,7 +20,8 @@
 //! these resources cannot reference resources in other namespaces. This scoping helps to narrow the
 //! search space when processing updates and linking resources.
 
-#![deny(warnings, rust_2018_idioms)]
+// #![deny(warnings, rust_2018_idioms)]
+#![deny(rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
 pub mod authorization_policy;
@@ -41,7 +42,7 @@ use std::time;
 
 pub use self::{
     defaults::DefaultPolicy,
-    index::{Index, SharedIndex},
+    index::{Index, Patch, SharedIndex},
 };
 
 /// Holds cluster metadata.

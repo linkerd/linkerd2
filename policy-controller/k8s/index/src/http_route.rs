@@ -22,16 +22,84 @@ pub enum InboundParentRef {
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum InvalidParentRef {
     #[error("HTTPRoute resource does not reference a Server resource")]
-    DoesNotSelectServer,
+    DoesNotSelectServer(String),
 
     #[error("HTTPRoute resource may not reference a parent Server in an other namespace")]
-    ServerInAnotherNamespace,
+    ServerInAnotherNamespace(String),
 
     #[error("HTTPRoute resource may not reference a parent by port")]
-    SpecifiesPort,
+    SpecifiesPort(String),
 
     #[error("HTTPRoute resource may not reference a parent by section name")]
-    SpecifiesSection,
+    SpecifiesSection(String),
+}
+
+pub trait GetParentRefs {
+    fn get_parent_refs(self) -> Vec<Result<InboundParentRef, InvalidParentRef>>;
+}
+
+impl GetParentRefs for policy::HttpRoute {
+    fn get_parent_refs(self) -> Vec<Result<InboundParentRef, InvalidParentRef>> {
+        let mut parent_refs = vec![];
+        let route_ns = self.metadata.namespace.as_deref();
+        for parent_ref in self.spec.inner.parent_refs.into_iter().flatten() {
+            let parent = InboundParentRef::from_parent_ref_new(route_ns, parent_ref);
+            parent_refs.push(parent);
+        }
+        parent_refs
+    }
+}
+
+impl GetParentRefs for api::HttpRoute {
+    fn get_parent_refs(self) -> Vec<Result<InboundParentRef, InvalidParentRef>> {
+        todo!()
+    }
+}
+
+pub trait IntoRouteBinding {
+    fn into_route_binding(
+        self,
+        parents: Vec<InboundParentRef>,
+    ) -> Result<InboundRouteBinding, Error>;
+}
+
+impl IntoRouteBinding for policy::HttpRoute {
+    fn into_route_binding(
+        self,
+        parents: Vec<InboundParentRef>,
+    ) -> Result<InboundRouteBinding, Error> {
+        let creation_timestamp = self.metadata.creation_timestamp.map(|k8s::Time(t)| t);
+        let hostnames = self
+            .spec
+            .hostnames
+            .into_iter()
+            .flatten()
+            .map(convert::host_match)
+            .collect();
+        let rules = self
+            .spec
+            .rules
+            .into_iter()
+            .flatten()
+            .map(|policy::HttpRouteRule { matches, filters }| {
+                InboundRouteBinding::try_rule(
+                    matches,
+                    filters,
+                    InboundRouteBinding::try_policy_filter,
+                )
+            })
+            .collect::<Result<_>>()?;
+
+        Ok(InboundRouteBinding {
+            parents,
+            route: http_route::InboundHttpRoute {
+                hostnames,
+                rules,
+                authorizations: HashMap::default(),
+                creation_timestamp,
+            },
+        })
+    }
 }
 
 impl TryFrom<api::HttpRoute> for InboundRouteBinding {
@@ -232,8 +300,10 @@ impl InboundParentRef {
             .collect::<Result<Vec<_>, InvalidParentRef>>()?;
 
         // If there are no valid parents, then the route is invalid.
+        // todo: can this be empty now that we return an error for parents
+        // that do not select a Server?
         if parents.is_empty() {
-            return Err(InvalidParentRef::DoesNotSelectServer);
+            return Err(InvalidParentRef::DoesNotSelectServer("todo".to_string()));
         }
 
         Ok(parents)
@@ -258,16 +328,52 @@ impl InboundParentRef {
         } = parent_ref;
 
         if namespace.is_some() && namespace.as_deref() != route_ns {
-            return Some(Err(InvalidParentRef::ServerInAnotherNamespace));
+            return Some(Err(InvalidParentRef::ServerInAnotherNamespace(
+                "todo".to_string(),
+            )));
         }
         if port.is_some() {
-            return Some(Err(InvalidParentRef::SpecifiesPort));
+            return Some(Err(InvalidParentRef::SpecifiesPort("todo".to_string())));
         }
         if section_name.is_some() {
-            return Some(Err(InvalidParentRef::SpecifiesSection));
+            return Some(Err(InvalidParentRef::SpecifiesSection("todo".to_string())));
         }
 
         Some(Ok(InboundParentRef::Server(name)))
+    }
+
+    fn from_parent_ref_new(
+        route_ns: Option<&str>,
+        parent_ref: api::ParentReference,
+    ) -> Result<Self, InvalidParentRef> {
+        if parent_ref.name.is_empty() {
+            todo!()
+        }
+
+        if !policy::parent_ref_targets_kind::<Server>(&parent_ref) {
+            return Err(InvalidParentRef::DoesNotSelectServer(parent_ref.name));
+        }
+
+        let api::ParentReference {
+            group: _,
+            kind: _,
+            namespace,
+            name,
+            section_name,
+            port,
+        } = parent_ref;
+
+        if namespace.is_some() && namespace.as_deref() != route_ns {
+            return Err(InvalidParentRef::ServerInAnotherNamespace(name));
+        }
+        if port.is_some() {
+            return Err(InvalidParentRef::SpecifiesPort(name));
+        }
+        if section_name.is_some() {
+            return Err(InvalidParentRef::SpecifiesSection(name));
+        }
+
+        Ok(InboundParentRef::Server(name))
     }
 }
 
