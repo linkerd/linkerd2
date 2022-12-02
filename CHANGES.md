@@ -1,5 +1,27 @@
 # Changes
 
+## edge-22.12.1
+
+This edge release introduces static and dynamic port overrides for CNI eBPF
+socket-level load balancing. In certain installations when CNI plugins run in
+eBPF mode, socket-level load balancing rewrites packet destinations to port
+6443; as with 443 already, this port is now skipped as well on control plane
+components so that they can communicate with the Kubernetes API before their
+proxies are running.
+
+Additionally, a potential panic and false warning have been fixed in the
+destination controller.
+
+* Updated linkerd-jaeger's collector to expose port 4318 in order support HTTP
+  alongside gRPC (thanks @uralsemih!)
+* Added a `proxyInit.privileged` setting to control whether the `proxy-init`
+  initContainer runs as a privileged process
+* Fixed a potential panic in the destination controller caused by concurrent
+  writes when dealing with Endpoint updates
+* Fixed false warning when looking up HostPort mappings on Pods
+* Added static and dynamic port overrides for CNI eBPF to work with socket-level
+  load balancing
+
 ## edge-22.11.3
 
 This edge release fixes connection errors to pods that use `hostPort`
