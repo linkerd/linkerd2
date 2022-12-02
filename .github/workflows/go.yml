@@ -16,7 +16,7 @@ jobs:
   go-lint:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container: ghcr.io/linkerd/dev:v32-go
+    container: ghcr.io/linkerd/dev:v36-go
     steps:
       - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - run: just go-lint --verbose --timeout=10m
@@ -24,7 +24,7 @@ jobs:
   go-format:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container: ghcr.io/linkerd/dev:v32-go
+    container: ghcr.io/linkerd/dev:v36-go
     steps:
       - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - run: just go-fmt
@@ -32,7 +32,7 @@ jobs:
   go-test:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container: ghcr.io/linkerd/dev:v32-go
+    container: ghcr.io/linkerd/dev:v36-go
     steps:
       - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - run: just go-fetch

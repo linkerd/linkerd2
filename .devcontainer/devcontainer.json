@@ -1,6 +1,6 @@
 {
     "name": "linkerd2",
-    "image": "ghcr.io/linkerd/dev:v32",
+    "image": "ghcr.io/linkerd/dev:v36",
     // "dockerFile": "./Dockerfile",
     // "context": "..",
     "extensions": [

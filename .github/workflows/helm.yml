@@ -12,10 +12,11 @@ permissions:
   contents: read
 
 jobs:
-  helm-docs-diff:
+  helm-docs:
     runs-on: ubuntu-20.04
     timeout-minutes: 5
-    container: ghcr.io/linkerd/dev:v32-tools
     steps:
-    - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
-    - run: bin/helm-docs-diff
+      - uses: linkerd/dev/actions/setup-tools@v36
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
+      - run: helm-docs
+      - run: git diff --exit-code -- charts/**/README.md

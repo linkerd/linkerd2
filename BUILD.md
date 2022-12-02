@@ -447,7 +447,7 @@ config.linkerd.io/proxy-version: dev
  If you make Protobuf changes, run:
 
  ```bash
-bin/protoc-go.sh
+just go-gen-proto
 ```
 
 ### Updating ServiceProfile generated code
