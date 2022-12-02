@@ -10,13 +10,13 @@ components so that they can communicate with the Kubernetes API before their
 proxies are running.
 
 Additionally, a potential panic and false warning have been fixed in the
-destination component.
+destination controller.
 
-* Updated linkerd-jaeger's collector component to expose port 4318 in order
+* Updated linkerd-jaeger's collector to expose port 4318 in order
   support HTTP alongside gRPC (thanks @uralsemih!)
 * Introduced the `privileged` configuration which allows the `proxy-init`
   container to run as privileged without also running as root
-* Fixed a potential panic in the destination component caused by concurrent
+* Fixed a potential panic in the destination controller caused by concurrent
   writes when dealing with Endpoint updates
 * Fixed false warning when looking up HostPort mappings on Pods
 * Added static and dynamic port overrides for CNI eBPF to work with socket-level
