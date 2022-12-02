@@ -12,10 +12,10 @@ proxies are running.
 Additionally, a potential panic and false warning have been fixed in the
 destination controller.
 
-* Updated linkerd-jaeger's collector to expose port 4318 in order
-  support HTTP alongside gRPC (thanks @uralsemih!)
-* Introduced the `privileged` configuration which allows the `proxy-init`
-  container to run as privileged without also running as root
+* Updated linkerd-jaeger's collector to expose port 4318 in order support HTTP
+  alongside gRPC (thanks @uralsemih!)
+* Added a `proxyInit.privileged` setting to control whether the `proxy-init`
+  initContainer runs as a privileged process
 * Fixed a potential panic in the destination controller caused by concurrent
   writes when dealing with Endpoint updates
 * Fixed false warning when looking up HostPort mappings on Pods
