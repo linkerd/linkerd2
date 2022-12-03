@@ -350,6 +350,7 @@ jobs:
       - run: docker image ls
 
       - uses: linkerd/dev/actions/setup-tools@v36
+      - run: echo K8S_VERSION='${{ matrix.k8s }}' >> "$GITHUB_ENV"
       - uses: linkerd/dev/actions/setup-go@v36
       - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - run: just mc-test-build

@@ -180,6 +180,7 @@ policy-test-deps-load: _k3d-ready policy-test-deps-pull
 ##
 
 export K3D_CLUSTER_NAME := env_var_or_default('K3D_CLUSTER_NAME', 'l5d')
+export K3D_NETWORK_NAME := env_var_or_default('K3D_NETWORK_NAME', K3D_CLUSTER_NAME)
 export K3D_CREATE_FLAGS := env_var_or_default('K3D_CREATE_FLAGS', '--no-lb')
 export K3S_DISABLE := env_var_or_default('K3S_DISABLE', 'local-storage,traefik,metrics-server@server:*')
 
@@ -433,6 +434,7 @@ _mc-target-load:
     @{{ just_executable() }} \
         K3D_CLUSTER_NAME='{{ K3D_CLUSTER_NAME }}-target' \
         K3S_DISABLE='local-storage,metrics-server@server:*' \
+        K3D_NETWORK_NAME='{{ K3D_NETWORK_NAME }}' \
         controller-image='{{ controller-image }}' \
         proxy-image='{{ proxy-image }}' \
         proxy-init-image='{{ proxy-init-image }}' \
