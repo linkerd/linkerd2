@@ -97,7 +97,7 @@ bin/web test --watchAll # runs all tests after a change to a file
 ### Shell
 
 ```bash
-bin/shellcheck -x bin/*
+just sh-lint
 ```
 
 ## Integration tests
