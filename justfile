@@ -144,7 +144,7 @@ _cargo-test := _cargo + ```
 ## Policy integration tests
 ##
 
-export POLICY_TEST_CONTEXT := "k3d-" + k3d-name
+export POLICY_TEST_CONTEXT := "k3d-" + K3D_CLUSTER_NAME
 
 # Install linkerd in the test cluster and run the policy tests.
 policy-test: linkerd-install policy-test-deps-load policy-test-run && policy-test-cleanup linkerd-uninstall
@@ -168,100 +168,43 @@ policy-test-deps-pull:
     docker pull -q ghcr.io/olix0r/hokay:latest
 
 # Load all images into the test cluster.
-policy-test-deps-load: _k3d-init policy-test-deps-pull
-    for i in {1..3} ; do {{ _k3d-load }} \
+policy-test-deps-load: _k3d-ready policy-test-deps-pull
+    @just-k3d import \
         bitnami/kubectl:latest \
         curlimages/curl:latest \
-        ghcr.io/olix0r/hokay:latest && exit ; sleep 1 ; done
+        ghcr.io/olix0r/hokay:latest
+
 
 ##
 ## Test cluster
 ##
 
-# The name of the k3d cluster to use.
-k3d-name := "l5d-test"
+export K3D_CLUSTER_NAME := env_var_or_default('K3D_CLUSTER_NAME', 'l5d')
+export K3D_CREATE_FLAGS := env_var_or_default('K3D_CREATE_FLAGS', '--no-lb')
+export K3S_DISABLE := env_var_or_default('K3S_DISABLE', 'local-storage,traefik,metrics-server@server:*')
 
-# The name of the docker network to use (i.e., for multicluster testing).
-k3d-network := "k3d-name"
-
-# The kubernetes version to use for the test cluster. e.g. 'v1.24', 'latest', etc
-k3d-k8s := "latest"
-
-k3d-agents := "0"
-k3d-servers := "1"
-
-_k3d-flags := "--no-lb --k3s-arg --disable='local-storage,traefik,servicelb,metrics-server@server:*'"
-
-_context := "--context=k3d-" + k3d-name
+_context := "--context=k3d-" + K3D_CLUSTER_NAME
 _kubectl := "kubectl " + _context
-
-_k3d-load := "k3d image import --mode=direct --cluster=" + k3d-name
 
 # Run kubectl with the test cluster context.
 k *flags:
     {{ _kubectl }} {{ flags }}
 
 # Creates a k3d cluster that can be used for testing.
-k3d-create: && _k3d-ready
-    k3d cluster create {{ k3d-name }} \
-        --image='+{{ k3d-k8s }}' \
-        --agents='{{ k3d-agents }}' \
-        --servers='{{ k3d-servers }}' \
-        --network='{{ k3d-network }}' \
-        {{ _k3d-flags }} \
-        --kubeconfig-update-default \
-        --kubeconfig-switch-context=false
+k3d-create:
+    @just-k3d create
 
 # Deletes the test cluster.
 k3d-delete:
-    k3d cluster delete {{ k3d-name }}
-
-# Print information the test cluster's detailed status.
-k3d-info:
-    k3d cluster list {{ k3d-name }} -o json | jq .
+    @just-k3d delete
 
 # Set the default kubectl context to the test cluster.
 k3d-use:
-    k3d kubeconfig merge {{ k3d-name }} \
-        --kubeconfig-merge-default \
-        --kubeconfig-switch-context=true \
-        >/dev/null
+    @just-k3d use
 
 # Ensures the test cluster has been initialized.
-_k3d-init: && _k3d-ready
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if ! k3d cluster list {{ k3d-name }} >/dev/null 2>/dev/null; then
-        {{ just_executable() }} \
-            k3d-k8s='{{ k3d-k8s }}' \
-            k3d-name='{{ k3d-name }}' \
-            k3d-network='{{ k3d-network }}' \
-            _k3d-flags='{{ _k3d-flags }}' \
-            k3d-create
-    fi
-    k3d kubeconfig merge {{ k3d-name }} \
-        --kubeconfig-merge-default \
-        --kubeconfig-switch-context=false \
-        >/dev/null
-
-_k3d-ready: _k3d-api-ready _k3d-dns-ready
-
-# Wait for the cluster's API server to be accessible
-_k3d-api-ready:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    for i in {1..6} ; do
-        if {{ _kubectl }} cluster-info >/dev/null ; then exit 0 ; fi
-        sleep 10
-    done
-    exit 1
-
-# Wait for the cluster's DNS pods to be ready.
-_k3d-dns-ready:
-    while [ $({{ _kubectl }} get po -n kube-system -l k8s-app=kube-dns -o json |jq '.items | length') = "0" ]; do sleep 1 ; done
-    {{ _kubectl }} wait pod --for=condition=ready \
-        --namespace=kube-system --selector=k8s-app=kube-dns \
-        --timeout=1m
+_k3d-ready:
+    @just-k3d ready
 
 ##
 ## Docker images
@@ -277,14 +220,14 @@ linkerd-tag := `bin/root-tag`
 
 docker-arch := ''
 
-_pause-load: _k3d-init
+_pause-load: _k3d-ready
     #!/usr/bin/env bash
     set -euo pipefail
     img="$(yq .gateway.pauseImage multicluster/charts/linkerd-multicluster/values.yaml)"
     if [ -z "$(docker image ls -q "$img")" ]; then
        docker pull -q "$img"
     fi
-    k3d image import --mode=direct --cluster='{{ k3d-name }}' "$img"
+    just-k3d import "$img"
 
 ##
 ## Linkerd CLI
@@ -310,7 +253,7 @@ linkerd *flags:
     {{ _linkerd }} {{ flags }}
 
 # Install crds on the test cluster.
-linkerd-crds-install: _k3d-init
+linkerd-crds-install: _k3d-ready
     {{ _linkerd }} install --crds \
         | {{ _kubectl }} apply -f -
     {{ _kubectl }} wait crd --for condition=established \
@@ -338,12 +281,12 @@ linkerd-uninstall:
     {{ _linkerd }} uninstall \
         | {{ _kubectl }} delete -f -
 
-linkerd-load: _linkerd-images _k3d-init
-    for i in {1..3} ; do {{ _k3d-load }} \
+linkerd-load: _linkerd-images _k3d-ready
+    @just-k3d import \
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ policy-controller-image }}:{{ linkerd-tag }}' \
         '{{ proxy-image }}:{{ linkerd-tag }}' \
-        "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" && exit ; sleep 1 ; done
+        "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
 
 linkerd-build: _policy-controller-build
     TAG={{ linkerd-tag }} bin/docker-build-controller
@@ -393,12 +336,6 @@ _linkerd-init: && _linkerd-ready
     set -euo pipefail
     if ! {{ _kubectl }} get ns linkerd >/dev/null 2>&1 ; then
         {{ just_executable() }} \
-            k3d-name='{{ k3d-name }}' \
-            k3d-k8s='{{ k3d-k8s }}' \
-            k3d-agents='{{ k3d-agents }}' \
-            k3d-servers='{{ k3d-servers }}' \
-            k3d-network='{{ k3d-network }}' \
-            _k3d-flags='{{ _k3d-flags }}' \
             linkerd-tag='{{ linkerd-tag }}' \
             controller-image='{{ controller-image }}' \
             proxy-image='{{ proxy-image }}' \
@@ -411,7 +348,7 @@ _linkerd-init: && _linkerd-ready
 ## linkerd viz
 ##
 
-linkerd-viz *flags: _k3d-init
+linkerd-viz *flags: _k3d-ready
     {{ _linkerd }} viz {{ flags }}
 
 linkerd-viz-install: _linkerd-init linkerd-viz-load && _linkerd-viz-ready
@@ -444,13 +381,13 @@ _linkerd-viz-images:
         fi
     done
 
-linkerd-viz-load: _linkerd-viz-images _k3d-init
-    for i in {1..3} ; do {{ _k3d-load }} \
-        {{ DOCKER_REGISTRY }}/metrics-api:{{ linkerd-tag }} \
-        {{ DOCKER_REGISTRY }}/tap:{{ linkerd-tag }} \
-        {{ DOCKER_REGISTRY }}/web:{{ linkerd-tag }} \
+linkerd-viz-load: _linkerd-viz-images _k3d-ready
+    @just-k3d import \
+        '{{ DOCKER_REGISTRY }}/metrics-api:{{ linkerd-tag }}' \
+        '{{ DOCKER_REGISTRY }}/tap:{{ linkerd-tag }}' \
+        '{{ DOCKER_REGISTRY }}/web:{{ linkerd-tag }}' \
         "$(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
-                viz/charts/linkerd-viz/values.yaml)" && exit ; sleep 1 ; done
+                viz/charts/linkerd-viz/values.yaml)"
 
 linkerd-viz-build:
     TAG={{ linkerd-tag }} bin/docker-build-metrics-api
@@ -468,7 +405,6 @@ _linkerd-viz-uninit:
     set -euo pipefail
     if {{ _kubectl }} get ns linkerd-viz >/dev/null 2>&1 ; then
         {{ just_executable() }} \
-            k3d-name='{{ k3d-name }}' \
             linkerd-exec='{{ linkerd-exec }}' \
             linkerd-viz-uninstall
     fi
@@ -478,8 +414,6 @@ _linkerd-viz-uninit:
 ##
 ## linkerd multicluster
 ## 
-
-_mc-target-k3d-flags := "--k3s-arg --disable='local-storage,metrics-server@server:*'"
 
 linkerd-mc-install: _linkerd-init
     {{ _linkerd }} mc install --set='linkerdVersion={{ linkerd-tag }}' \
@@ -491,24 +425,14 @@ linkerd-mc-uninstall:
         | {{ _kubectl }} delete -f -
 
 mc-target-k3d-delete:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if k3d cluster list '{{ k3d-name }}-target' >/dev/null 2>/dev/null; then
-        {{ just_executable() }} \
-            k3d-name='{{ k3d-name }}-target' \
-            k3d-delete
-    fi
+    just-k3d K3D_CLUSTER_NAME='{{ K3D_CLUSTER_NAME }}-target' delete
 
-_mc-load: _k3d-init linkerd-load linkerd-viz-load
+_mc-load: _k3d-ready linkerd-load linkerd-viz-load
 
 _mc-target-load:
     @{{ just_executable() }} \
-        k3d-name='{{ k3d-name }}-target' \
-        k3d-k8s='{{ k3d-k8s }}' \
-        k3d-agents='{{ k3d-agents }}' \
-        k3d-servers='{{ k3d-servers }}' \
-        k3d-network='{{ k3d-network }}' \
-        _k3d-flags='{{ _mc-target-k3d-flags }}' \
+        K3D_CLUSTER_NAME='{{ K3D_CLUSTER_NAME }}-target' \
+        K3S_DISABLE='local-storage,metrics-server@server:*' \
         controller-image='{{ controller-image }}' \
         proxy-image='{{ proxy-image }}' \
         proxy-init-image='{{ proxy-init-image }}' \
@@ -537,8 +461,8 @@ mc-test-run:
             ./test/integration/multicluster/... \
                 -integration-tests \
                 -linkerd='{{ justfile_directory() }}/bin/linkerd' \
-                -multicluster-source-context='k3d-{{ k3d-name }}' \
-                -multicluster-target-context='k3d-{{ k3d-name }}-target'
+                -multicluster-source-context='k3d-{{ K3D_CLUSTER_NAME }}' \
+                -multicluster-target-context='k3d-{{ K3D_CLUSTER_NAME }}-target'
 
 ##
 ## GitHub Actions
@@ -562,21 +486,7 @@ action-dev-check:
 ##
 
 md-lint:
-    markdownlint-cli2 '**/*.md' '!**/node_modules' '!target'
+    @just-md
 
 sh-lint:
-    bin/shellcheck-all
-
-##
-## Git
-##
-
-# Display the git history minus Dependabot updates
-history *paths='.':
-    @git log --oneline --graph --invert-grep --author="dependabot" -- {{ paths }}
-
-# Display the history of Dependabot changes
-history-dependabot *paths='.':
-    @git log --oneline --graph --author="dependabot" -- {{ paths }}
-
-# vim: set ft=make :
+    @just-sh SHELL_SOURCE_PATH=bin

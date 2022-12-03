@@ -173,40 +173,24 @@ jobs:
           - v1.21
           - v1.25
     steps:
-      - uses: extractions/setup-just@95b912dc5d3ed106a72907f2f9b91e76d60bdb76
-      - uses: olix0r/cargo-action-fmt@ed3530f0739c46ffa0dd983f8746b8c4a3d0a01c
-      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
+      - uses: linkerd/dev/actions/setup-tools@v36
+      - uses: linkerd/dev/actions/setup-rust@v36
+      - run: echo K8S_VERSION='${{ matrix.k8s }}' >> "$GITHUB_ENV"
       - uses: actions/download-artifact@9782bd6a9848b53b110e712e20e42d89988822b7
         with:
           name: image-archives
           path: image-archives
       - run: find image-archives -ls
-      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
-      - name: Setup deps
-        run: |
-          rm -rf "$HOME/.cargo"
-          bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(cat rust-toolchain)"
-          # shellcheck disable=SC1090
-          source ~/.cargo/env
-          echo "PATH=$PATH" >> "$GITHUB_ENV"
-          bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
-          bin/scurl -vo /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" && chmod +x /usr/local/bin/yq
-      - run: just policy-test-build
-      - run: just k3d-k8s='${{ matrix.k8s }}' k3d-create
       - run: docker load <image-archives/controller.tar
       - run: docker load <image-archives/policy-controller.tar
       - run: docker load <image-archives/proxy.tar
       - run: docker image ls
+      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
+      - run: just policy-test-build
+      - run: just k3d-create
       - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' linkerd-exec="$HOME/linkerd" linkerd-install
-      - name: Load images
-        run: |
-          # Image loading is flakey in CI, so retry!
-          for _ in {1..6} ; do
-            if just linkerd-tag='${{ needs.tag.outputs.tag }}' policy-test-deps-load ; then exit 0 ; fi
-            sleep 10
-            echo retrying...
-          done
-          exit 1
+      - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' policy-test-deps-load
       - run: just policy-test-run --jobs=1
 
   ##
@@ -328,7 +312,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
       - uses: tj-actions/changed-files@8a4cc4fbd67975557b6d85dd302f5f9400b9c92e
         id: changed
         with:
@@ -352,36 +336,22 @@ jobs:
           - v1.21
           - v1.25
     steps:
-      - uses: extractions/setup-just@95b912dc5d3ed106a72907f2f9b91e76d60bdb76
-      - uses: actions/setup-go@d0a58c1c4d2b25278816e339b944508c875f3613
-        with:
-          go-version: '1.18'
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
       - uses: actions/download-artifact@9782bd6a9848b53b110e712e20e42d89988822b7
         with:
           name: image-archives
           path: image-archives
       - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: ls -l image-archives/linkerd
-      - name: Setup deps
-        run: |
-          echo "PATH=$PATH" >> "$GITHUB_ENV"
-          bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
       - name: Load docker images
         run: |
           for img in controller policy-controller proxy web metrics-api tap jaeger-webhook; do
             docker load <"image-archives/${img}.tar"
           done
       - run: docker image ls
-      - run: just mc-test-build
-      - name: Run just mc-test-load
-        run: |
-          just linkerd-tag='${{ needs.tag.outputs.tag }}' \
-              k3d-k8s='${{ matrix.k8s }}' \
-              mc-test-load
-      - name: Run just mc-test-run
-        run: |
-          just linkerd-tag='${{ needs.tag.outputs.tag }}' \
-              k3d-k8s='${{ matrix.k8s }}' \
-              mc-test-run
 
+      - uses: linkerd/dev/actions/setup-tools@v36
+      - uses: linkerd/dev/actions/setup-go@v36
+      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8
+      - run: just mc-test-build
+      - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' mc-test-load
+      - run: just linkerd-tag='${{ needs.tag.outputs.tag }}' mc-test-run
