@@ -9,9 +9,8 @@ rootdir=$( cd "$bindir"/.. && pwd )
 
 bin=$rootdir/target/cli/$(os)/linkerd
 
-# build linkerd executable if it does not exist
-if [ ! -f "$bin" ]; then
-  "$bindir"/build-cli-bin >/dev/null
-fi
+# Always rebuild the linkerd CLI binary before running it. This should be
+# relatively fast (<2s) if nothing has changed.
+"$bindir"/build-cli-bin >/dev/null
 
 exec "$bin" "$@"
