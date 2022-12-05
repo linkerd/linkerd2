@@ -9,6 +9,7 @@ lint: action-lint action-dev-check md-lint sh-lint rs-fetch rs-clippy rs-check-f
 export GO111MODULE := "on"
 
 go-fetch:
+    go mod tidy
     go mod download
 
 go-fmt *flags:
@@ -38,14 +39,14 @@ go-gen-proto:
 ##
 
 # By default we compile in development mode mode because it's faster.
-rs-build-type := if env_var_or_default("RELEASE", "") == "" { "debug" } else { "release" }
+rs-profile := 'debug' # 'release'
 
 # Overriddes the default Rust toolchain version.
-rs-toolchain := ""
+rs-toolchain := ''
 
 rs-features := 'all'
 
-_cargo := "cargo" + if rs-toolchain != "" { " +" + rs-toolchain } else { "" }
+_cargo := 'just-cargo toolchain=' + rs-toolchain + ' profile=' + rs-profile
 
 # Fetch Rust dependencies.
 rs-fetch:
@@ -65,7 +66,7 @@ rs-clippy:
 
 # Audit Rust dependencies.
 rs-audit-deps:
-    {{ _cargo }} deny {{ _features }} check
+    cargo-deny {{ _features }} check
 
 # Generate Rust documentation.
 rs-doc *flags:
@@ -75,16 +76,15 @@ rs-doc *flags:
         {{ flags }}
 
 rs-test-build:
-    {{ _cargo-test }} --no-run --frozen \
+    {{ _cargo }} test-build --frozen \
         --workspace --exclude=linkerd-policy-test \
         {{ _features }} \
         {{ _fmt }}
 
 # Run Rust unit tests
 rs-test *flags:
-    {{ _cargo-test }} --frozen \
+    {{ _cargo }} test --frozen \
         --workspace --exclude=linkerd-policy-test \
-        {{ if rs-build-type == "release" { "--release" } else { "" } }} \
         {{ _features }} \
         {{ flags }}
 
@@ -110,18 +110,7 @@ _rs-check-dir dir *flags:
         && {{ _cargo }} check --frozen \
                 {{ if rs-build-type == "release" { "--release" } else { "" } }} \
                 {{ _features }} \
-                {{ flags }} \
-                {{ _fmt }}
-
-# If we're running in github actions and cargo-action-fmt is installed, then add
-# a command suffix that formats errors.
-_fmt := if env_var_or_default("GITHUB_ACTIONS", "") != "true" { "" } else {
-    ```
-    if command -v cargo-action-fmt >/dev/null 2>&1; then
-        echo "--message-format=json | cargo-action-fmt"
-    fi
-    ```
-}
+                {{ flags }}
 
 # Configures which features to enable when invoking cargo commands.
 _features := if rs-features == "all" {
@@ -129,16 +118,6 @@ _features := if rs-features == "all" {
     } else if rs-features != "" {
         "--no-default-features --features=" + rs-features
     } else { "" }
-
-# Use cargo-nextest if it is available. It may not be available when running
-# outside of the devcontainer.
-_cargo-test := _cargo + ```
-    if command -v cargo-nextest >/dev/null 2>&1 ; then
-        echo " nextest run"
-    else
-        echo " test"
-    fi
-    ```
 
 ##
 ## Policy integration tests
@@ -151,11 +130,11 @@ policy-test: linkerd-install policy-test-deps-load policy-test-run && policy-tes
 
 # Run the policy tests without installing linkerd.
 policy-test-run *flags:
-    cd policy-test && {{ _cargo-test }} {{ flags }}
+    cd policy-test && {{ _cargo }} test {{ flags }}
 
 # Build the policy tests without running them.
 policy-test-build:
-    cd policy-test && {{ _cargo-test }} --no-run {{ _fmt }}
+    cd policy-test && {{ _cargo }} test --no-run {{ _fmt }}
 
 # Delete all test namespaces and remove linkerd from the cluster.
 policy-test-cleanup:
