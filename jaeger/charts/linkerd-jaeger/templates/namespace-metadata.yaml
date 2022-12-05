@@ -5,7 +5,7 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
     "helm.sh/hook": post-install
-    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-weight": "1"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
   labels:
     app.kubernetes.io/name: namespace-metadata

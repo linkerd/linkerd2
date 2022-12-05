@@ -60,10 +60,9 @@ metadata:
   {{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
-    {{- /* cross-namespace RBAC doesn't play well as a hook for some reason */}}
-#    "helm.sh/hook": post-install
-#    "helm.sh/hook-weight": "0"
-#    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
   name: viz-namespace-metadata-linkerd-config
 roleRef:
   kind: Role
