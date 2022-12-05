@@ -57,20 +57,8 @@ where
         }
     }
 
-    pub async fn serve(
-        self,
-        addr: std::net::SocketAddr,
-        shutdown: impl std::future::Future<Output = ()>,
-    ) -> hyper::Result<()> {
-        let svc = InboundServerPoliciesServer::new(self);
-        hyper::Server::bind(&addr)
-            .http2_only(true)
-            .tcp_nodelay(true)
-            .serve(hyper::service::make_service_fn(move |_| {
-                future::ok::<_, std::convert::Infallible>(svc.clone())
-            }))
-            .with_graceful_shutdown(shutdown)
-            .await
+    pub fn svc(self) -> InboundServerPoliciesServer<Self> {
+        InboundServerPoliciesServer::new(self)
     }
 
     fn check_target(
@@ -159,20 +147,8 @@ where
         }
     }
 
-    pub async fn serve(
-        self,
-        addr: std::net::SocketAddr,
-        shutdown: impl std::future::Future<Output = ()>,
-    ) -> hyper::Result<()> {
-        let svc = OutboundPoliciesServer::new(self);
-        hyper::Server::bind(&addr)
-            .http2_only(true)
-            .tcp_nodelay(true)
-            .serve(hyper::service::make_service_fn(move |_| {
-                future::ok::<_, std::convert::Infallible>(svc.clone())
-            }))
-            .with_graceful_shutdown(shutdown)
-            .await
+    pub fn svc(self) -> OutboundPoliciesServer<Self> {
+        OutboundPoliciesServer::new(self)
     }
 }
 

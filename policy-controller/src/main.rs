@@ -11,6 +11,7 @@ use linkerd_policy_controller::{
 };
 use std::net::SocketAddr;
 use tokio::time;
+use tonic::transport::Server;
 use tracing::{info, info_span, instrument, Instrument};
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
@@ -163,14 +164,6 @@ async fn main() -> Result<()> {
         kubert::index::namespaced(index.clone(), http_routes).instrument(info_span!("httproutes")),
     );
 
-    // Run the gRPC server, serving results by looking up against the index handle.
-    tokio::spawn(inbound_grpc(
-        grpc_addr,
-        cluster_networks,
-        index,
-        runtime.shutdown_handle(),
-    ));
-
     // TODO: Reuse or clone previous stream instead of watching twice
     let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
     let services = runtime.watch_all::<k8s::Service>(ListParams::default());
@@ -184,12 +177,11 @@ async fn main() -> Result<()> {
             .instrument(info_span!("services")),
     );
 
-    let mut outbound_policy_addr = grpc_addr;
-    // TODO: (Hack) we just set the outbound policy server port to the next one
-    // above the inbound policy server port.
-    outbound_policy_addr.set_port(grpc_addr.port() + 1);
-    tokio::spawn(outbound_grpc(
-        outbound_policy_addr,
+    // Run the gRPC server, serving results by looking up against the index handle.
+    tokio::spawn(grpc(
+        grpc_addr,
+        cluster_networks,
+        index,
         outbound_index,
         runtime.shutdown_handle(),
     ));
@@ -220,42 +212,26 @@ impl std::str::FromStr for IpNets {
 }
 
 #[instrument(skip_all, fields(port = %addr.port()))]
-async fn inbound_grpc(
+async fn grpc(
     addr: SocketAddr,
     cluster_networks: Vec<IpNet>,
-    index: SharedIndex,
+    inbound_index: SharedIndex,
+    outbound_index: outbound_index::SharedIndex,
     drain: drain::Watch,
 ) -> Result<()> {
-    let discover = IndexDiscover::new(index);
-    let server = grpc::InboundPolicyServer::new(discover, cluster_networks, drain.clone());
-    let (close_tx, close_rx) = tokio::sync::oneshot::channel();
-    tokio::pin! {
-        let srv = server.serve(addr, close_rx.map(|_| {}));
-    }
-    info!(%addr, "inbound policy gRPC server listening");
-    tokio::select! {
-        res = (&mut srv) => res?,
-        handle = drain.signaled() => {
-            let _ = close_tx.send(());
-            handle.release_after(srv).await?
-        }
-    }
-    Ok(())
-}
+    let inbound_discover = IndexDiscover::new(inbound_index);
+    let inbound_svc =
+        grpc::InboundPolicyServer::new(inbound_discover, cluster_networks, drain.clone()).svc();
 
-#[instrument(skip_all, fields(port = %addr.port()))]
-async fn outbound_grpc(
-    addr: SocketAddr,
-    index: outbound_index::SharedIndex,
-    drain: drain::Watch,
-) -> Result<()> {
-    let discover = OutboundDiscover::new(index);
-    let server = grpc::OutboundPolicyServer::new(discover, drain.clone());
+    let outbound_discover = OutboundDiscover::new(outbound_index);
+    let outbound_svc = grpc::OutboundPolicyServer::new(outbound_discover, drain.clone()).svc();
+
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
     tokio::pin! {
-        let srv = server.serve(addr, close_rx.map(|_| {}));
+        let srv = Server::builder().add_service(inbound_svc).add_service(outbound_svc).serve_with_shutdown(addr, close_rx.map(|_| {}));
     }
-    info!(%addr, "outbound policy gRPC server listening");
+
+    info!(%addr, "policy gRPC server listening");
     tokio::select! {
         res = (&mut srv) => res?,
         handle = drain.signaled() => {

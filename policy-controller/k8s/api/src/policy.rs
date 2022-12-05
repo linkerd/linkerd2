@@ -30,7 +30,7 @@ where
         t_group = "core";
     }
 
-    tracing::debug!(t_group, dt=&*T::kind(&dt), group, kind, "checking kind");
+    tracing::debug!(t_group, dt = &*T::kind(&dt), group, kind, "checking kind");
 
     group.unwrap_or("core").eq_ignore_ascii_case(t_group)
         && kind.eq_ignore_ascii_case(&*T::kind(&dt))
