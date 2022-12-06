@@ -62,7 +62,7 @@ rs-check-fmt:
 
 # Lint Rust code.
 rs-clippy:
-    {{ _cargo }} clippy --frozen --workspace --all-targets --no-deps {{ _features }} {{ _fmt }}
+    {{ _cargo }} clippy --frozen --workspace --all-targets --no-deps {{ _features }}
 
 # Audit Rust dependencies.
 rs-audit-deps:
@@ -71,15 +71,13 @@ rs-audit-deps:
 # Generate Rust documentation.
 rs-doc *flags:
     {{ _cargo }} doc --frozen \
-        {{ if rs-build-type == "release" { "--release" } else { "" } }} \
         {{ _features }} \
         {{ flags }}
 
 rs-test-build:
     {{ _cargo }} test-build --frozen \
         --workspace --exclude=linkerd-policy-test \
-        {{ _features }} \
-        {{ _fmt }}
+        {{ _features }}
 
 # Run Rust unit tests
 rs-test *flags:
@@ -94,23 +92,19 @@ rs-check-dirs:
     set -euo pipefail
     while IFS= read -r toml ; do
         {{ just_executable() }} \
-            rs-build-type='{{ rs-build-type }}' \
+            rs-profile='{{ rs-profile }}' \
             rs-features='{{ rs-features }}' \
             rs-toolchain='{{ rs-toolchain }}' \
             _rs-check-dir "${toml%/*}"
         {{ just_executable() }} \
-            rs-build-type='{{ rs-build-type }}' \
+            rs-profile='{{ rs-profile }}' \
             rs-features='{{ rs-features }}' \
             rs-toolchain='{{ rs-toolchain }}' \
             _rs-check-dir "${toml%/*}" --tests
     done < <(find . -mindepth 2 -name Cargo.toml | sort -r)
 
 _rs-check-dir dir *flags:
-    cd {{ dir }} \
-        && {{ _cargo }} check --frozen \
-                {{ if rs-build-type == "release" { "--release" } else { "" } }} \
-                {{ _features }} \
-                {{ flags }}
+    cd {{ dir }} && {{ _cargo }} check --frozen {{ _features }} {{ flags }}
 
 # Configures which features to enable when invoking cargo commands.
 _features := if rs-features == "all" {
@@ -134,7 +128,7 @@ policy-test-run *flags:
 
 # Build the policy tests without running them.
 policy-test-build:
-    cd policy-test && {{ _cargo }} test --no-run {{ _fmt }}
+    cd policy-test && {{ _cargo }} test-build
 
 # Delete all test namespaces and remove linkerd from the cluster.
 policy-test-cleanup:
@@ -152,7 +146,6 @@ policy-test-deps-load: _k3d-ready policy-test-deps-pull
         bitnami/kubectl:latest \
         curlimages/curl:latest \
         ghcr.io/olix0r/hokay:latest
-
 
 ##
 ## Test cluster
@@ -300,7 +293,7 @@ _linkerd-images:
 _policy-controller-build:
     docker buildx build . \
         --file='policy-controller/{{ if docker-arch == '' { "amd64" } else { docker-arch } }}.dockerfile' \
-        --build-arg='build_type={{ rs-build-type }}' \
+        --build-arg='BUILD_TYPE={{ rs-profile }}' \
         --tag='{{ policy-controller-image }}:{{ linkerd-tag }}' \
         --progress=plain \
         --load
