@@ -55,6 +55,8 @@ metadata:
 status:
   phase: Running
   podIP: 172.17.0.12
+  podIPs:
+  - ip: 172.17.0.12
 spec:
   containers:
     - env:
@@ -69,7 +71,9 @@ metadata:
   namespace: ns
 status:
   phase: Succeeded
-  podIP: 172.17.0.13`,
+  podIP: 172.17.0.13
+  podIPs:
+  - ip: 172.17.0.13`,
 		`
 apiVersion: v1
 kind: Pod
@@ -78,7 +82,9 @@ metadata:
   namespace: ns
 status:
   phase: Failed
-  podIP: 172.17.0.13`,
+  podIP: 172.17.0.13
+  podIPs:
+  - ip: 172.17.0.13`,
 		`
 apiVersion: v1
 kind: Pod
@@ -87,7 +93,9 @@ metadata:
   namespace: ns
   deletionTimestamp: 2021-01-01T00:00:00Z
 status:
-  podIP: 172.17.0.13`,
+  podIP: 172.17.0.13
+  podIPs:
+  - ip: 172.17.0.13`,
 		`
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
@@ -125,7 +133,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
-  podIP: 172.17.0.13`
+  podIP: 172.17.0.13
+  podIPs:
+  - ip: 172.17.0.13`
 
 	meshedOpaquePodResources := []string{
 		`
@@ -167,6 +177,8 @@ metadata:
 status:
   phase: Running
   podIP: 172.17.0.14
+  podIPs:
+  - ip: 172.17.0.14
 spec:
   containers:
     - env:
@@ -226,6 +238,8 @@ metadata:
 status:
   phase: Running
   podIP: 172.17.0.15
+  podIPs:
+  - ip: 172.17.0.15
 spec:
   containers:
     - env:
@@ -272,7 +286,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
-  podIP: 172.17.13.15`,
+  podIP: 172.17.13.15
+  podIPs:
+  - ip: 172.17.13.15`,
 	}
 
 	policyResources := []string{
@@ -288,6 +304,8 @@ metadata:
 status:
   phase: Running
   podIP: 172.17.0.16
+  podIPs:
+  - ip: 172.17.0.16
 spec:
   containers:
     - name: linkerd-proxy
@@ -314,6 +332,28 @@ spec:
   proxyProtocol: opaque`,
 	}
 
+	hostPortMapping := []string{
+		`
+kind: Pod
+apiVersion: v1
+metadata:
+  name: hostport-mapping
+status:
+  phase: Running
+  hostIP: 192.168.1.20
+  podIP: 172.17.0.17
+  podIPs:
+  - ip: 172.17.0.17
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+      hostPort: 7777
+      name: nginx-7777`,
+	}
+
 	res := append(meshedPodResources, clientSP...)
 	res = append(res, unmeshedPod)
 	res = append(res, meshedOpaquePodResources...)
@@ -321,6 +361,7 @@ spec:
 	res = append(res, meshedSkippedPodResource...)
 	res = append(res, meshedStatefulSetPodResource...)
 	res = append(res, policyResources...)
+	res = append(res, hostPortMapping...)
 	k8sAPI, err := k8s.NewFakeAPI(res...)
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)

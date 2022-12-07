@@ -20,7 +20,7 @@ RUN (proxy=$(bin/fetch-proxy $(cat proxy-version) $TARGETARCH) && \
     mv "$proxy" linkerd2-proxy)
 ARG LINKERD_AWAIT_VERSION=v0.2.6
 RUN bin/scurl -o linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-${TARGETARCH} && chmod +x linkerd-await
-ARG LINKERD_VALIDATOR_VERSION=v0.1.0
+ARG LINKERD_VALIDATOR_VERSION=v0.1.1
 RUN bin/scurl -o linkerd-network-validator https://github.com/linkerd/linkerd2-proxy-init/releases/download/validator%2F${LINKERD_VALIDATOR_VERSION}/linkerd-network-validator-${LINKERD_VALIDATOR_VERSION}-${TARGETARCH} && chmod +x linkerd-network-validator
 
 ## compile proxy-identity agent

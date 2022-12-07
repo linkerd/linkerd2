@@ -122,6 +122,7 @@ type (
 		Capabilities         *Capabilities    `json:"capabilities"`
 		IgnoreInboundPorts   string           `json:"ignoreInboundPorts"`
 		IgnoreOutboundPorts  string           `json:"ignoreOutboundPorts"`
+		KubeAPIServerPorts   string           `json:"kubeAPIServerPorts"`
 		SkipSubnets          string           `json:"skipSubnets"`
 		LogLevel             string           `json:"logLevel"`
 		LogFormat            string           `json:"logFormat"`
@@ -130,6 +131,7 @@ type (
 		XTMountPath          *VolumeMountPath `json:"xtMountPath"`
 		Resources            *Resources       `json:"resources"`
 		CloseWaitTimeoutSecs int64            `json:"closeWaitTimeoutSecs"`
+		Privileged           bool             `json:"privileged"`
 		RunAsRoot            bool             `json:"runAsRoot"`
 		RunAsUser            int64            `json:"runAsUser"`
 		IptablesMode         string           `json:"iptablesMode"`

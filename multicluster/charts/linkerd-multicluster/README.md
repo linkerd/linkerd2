@@ -3,7 +3,7 @@
 The Linkerd-Multicluster extension contains resources to support multicluster
 linking to remote clusters
 
-![Version: 30.3.4-edge](https://img.shields.io/badge/Version-30.3.4--edge-informational?style=flat-square)
+![Version: 30.3.6-edge](https://img.shields.io/badge/Version-30.3.6--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 

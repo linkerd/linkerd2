@@ -289,6 +289,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd-dev
 ---
 # Source: linkerd-control-plane/templates/podmonitor.yaml
+
 ---
 # Source: linkerd-control-plane/templates/proxy-injector-rbac.yaml
 ---
@@ -595,8 +596,10 @@ data:
         pullPolicy: ""
         version: test-proxy-init-version
       iptablesMode: legacy
+      kubeAPIServerPorts: 443,6443
       logFormat: ""
       logLevel: ""
+      privileged: false
       resources:
         cpu:
           limit: 100m
@@ -969,6 +972,7 @@ spec:
         - mountPath: /var/run/secrets/tokens
           name: linkerd-identity-token
       initContainers:
+      
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -979,7 +983,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,444"
         - --outbound-ports-to-ignore
-        - "443"
+        - "443,6443"
         image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -996,9 +1000,9 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
-          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          privileged: false
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1443,6 +1447,7 @@ spec:
           name: policy-tls
           readOnly: true
       initContainers:
+      
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -1453,7 +1458,7 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,444"
         - --outbound-ports-to-ignore
-        - "443"
+        - "443,6443"
         image: cr.l5d.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1470,9 +1475,9 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
-          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          privileged: false
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1826,9 +1831,9 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
-          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          privileged: false
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:

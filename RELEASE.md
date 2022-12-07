@@ -133,7 +133,7 @@ reset the patch. This leaves room for eventual maintenance stable release
 versions.
 
 MOST COMMON CASE: If making an edge release after another edge release, just
-bump the minor.
+bump the patch.
 
 In any case remember to keep the `-edge` suffix.
 

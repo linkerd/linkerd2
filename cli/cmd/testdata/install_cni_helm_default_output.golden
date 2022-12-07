@@ -16,7 +16,7 @@ metadata:
     linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: [""]
-  resources: ["pods", "nodes", "namespaces"]
+  resources: ["pods", "nodes", "namespaces", "services"]
   verbs: ["list", "get", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -97,6 +97,8 @@ spec:
         linkerd.io/cni-resource: "true"
         linkerd.io/inject: disabled
     spec:
+      tolerations:
+        - operator: Exists
       nodeSelector:
         kubernetes.io/os: linux
       hostNetwork: true
