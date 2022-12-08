@@ -1,5 +1,37 @@
 # Changes
 
+## stable-2.12.3
+
+This stable release is packed with various fixes in both the core linkerd
+controllers and extensions.
+
+* CLI
+  * Fixed `linkerd check` failing when the cluster had services of type
+    `ExternalName`
+  * Fixed `linkerd multicluster install` not honoring the `gateway.UID` setting
+  * Fixed flag `linkerd upgrade --from-manifests`
+
+* Destination Controller
+  * Fixed race condition in destination controller
+  * Fixed issue in the destination controller where `hostPort` mappings were
+    being ignored
+
+* linkerd-proxy-init
+  * Set the `noop` init container user to be the same as `proxy-init`'s to avoid
+    errors when the security context disallows running as root
+  * Introduced `proxyInit.privileged` setting to allow running
+    `linkerd-proxy-init` without restrictions when required
+  * Added port 6443 to default skipped ports to bypass proxy when ebpf CNIs
+    override the API Server packet destination
+
+* Extensions
+  * Removed unnecessary `proxyProtocol` restriction in the multicluster gateway
+    Server (thanks @psmit!)
+  * Added "Exists" toleration to the `linkerd-cni` DaemonSet to have it
+    installed by default in tainted nodes
+  * Make dashboard loading more robust when in the presence of browser plugins
+    injecting script tags (thanks @junnplus!)
+
 ## stable-2.12.2
 
 This stable release fixes an issue with CNI chaining that was preventing the
