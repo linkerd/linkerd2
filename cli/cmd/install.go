@@ -234,7 +234,7 @@ func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Wr
 		// Check 'kubernetes' service in default namespace to see what ports the API
 		// Server listens on. If the ports are different from the default ('443,6443')
 		// then replace with ports from the service spec.
-		apiSrvPorts := getApiServerPorts(ctx, k8sAPI)
+		apiSrvPorts := getAPIServerPorts(ctx, k8sAPI)
 		if apiSrvPorts != "" {
 			values.ProxyInit.KubeAPIServerPorts = apiSrvPorts
 		}
@@ -468,11 +468,11 @@ func errAfterRunningChecks(cniEnabled bool) error {
 	return err
 }
 
-// getApiServerPorts looks at the 'kubernetes' service in the 'default'
+// getAPIServerPorts looks at the 'kubernetes' service in the 'default'
 // namespace and returns the ClusterIP port for the API Server (by default 443),
 // and the port that the API Server backend is expecting TLS connections on (by
 // default 6443.)
-func getApiServerPorts(ctx context.Context, api *k8s.KubernetesAPI) string {
+func getAPIServerPorts(ctx context.Context, api *k8s.KubernetesAPI) string {
 	service, err := api.CoreV1().Services("default").Get(ctx, "kubernetes", metav1.GetOptions{})
 	if err != nil {
 		return ""

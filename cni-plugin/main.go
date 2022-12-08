@@ -252,7 +252,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 			if pod.GetLabels()[k8s.ControllerComponentLabel] != "" {
 				// Skip k8s api server ports on the outbound side if pod is a
 				// control plane component
-				skippedPorts, err := getApiServerPorts(ctx, client)
+				skippedPorts, err := getAPIServerPorts(ctx, client)
 				if err != nil {
 					// If we cannot retrieve the 'kubernetes' service's ports (for
 					// whatever reason), skip default ports: 443, 6443
@@ -308,7 +308,7 @@ func cmdDel(args *skel.CmdArgs) error {
 	return nil
 }
 
-func getApiServerPorts(ctx context.Context, api *k8s.KubernetesAPI) ([]string, error) {
+func getAPIServerPorts(ctx context.Context, api *k8s.KubernetesAPI) ([]string, error) {
 	service, err := api.CoreV1().Services("default").Get(ctx, "kubernetes", metav1.GetOptions{})
 	if err != nil {
 		return []string{}, err
