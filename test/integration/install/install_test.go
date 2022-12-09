@@ -1,23 +1,19 @@
 package test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
-	"text/template"
 	"time"
 
 	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
-	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/tree"
-	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -52,10 +48,9 @@ var (
 
 	// skippedInboundPorts lists some ports to be marked as skipped, which will
 	// be verified in test/integration/inject
-	skippedInboundPorts       = "1234,5678"
-	skippedOutboundPorts      = "1234,5678"
-	multiclusterExtensionName = "multicluster"
-	vizExtensionName          = "viz"
+	skippedInboundPorts  = "1234,5678"
+	skippedOutboundPorts = "1234,5678"
+	vizExtensionName     = "viz"
 )
 
 //////////////////////
@@ -458,7 +453,9 @@ func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
 		t.Skip("Skipping as this is not a helm upgrade test")
 	}
 
-	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion())
+	if err := TestHelper.TestCheck(); err != nil {
+		t.Fatalf("'linkerd check' command failed: %s", err)
+	}
 }
 
 func TestUpgradeHelm(t *testing.T) {
@@ -738,108 +735,10 @@ func TestVersionPostInstall(t *testing.T) {
 	}
 }
 
-func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersionOverride string) {
-	var cmd []string
-	var golden string
-	proxyStage := "proxy"
-	if stage == proxyStage {
-		cmd = []string{"check", "--proxy", "--expected-version", expectedVersion, "--namespace", namespace, "--wait=60m"}
-		if TestHelper.CNI() {
-			golden = "check.cni.proxy.golden"
-		} else {
-			golden = "check.proxy.golden"
-		}
-	} else {
-		cmd = []string{"check", "--expected-version", expectedVersion, "--wait=60m"}
-		if TestHelper.CNI() {
-			golden = "check.cni.golden"
-		} else {
-			golden = "check.golden"
-		}
-	}
-
-	expected := getCheckOutput(t, golden, TestHelper.GetLinkerdNamespace())
-	timeout := time.Minute * 5
-	err := TestHelper.RetryFor(timeout, func() error {
-		if cliVersionOverride != "" {
-			cliVOverride := []string{"--cli-version-override", cliVersionOverride}
-			cmd = append(cmd, cliVOverride...)
-		}
-		out, err := TestHelper.LinkerdRun(cmd...)
-
-		if err != nil {
-			return fmt.Errorf("'linkerd check' command failed\n%w\n%s", err, out)
-		}
-
-		if !strings.Contains(out, expected) {
-			return fmt.Errorf(
-				"Expected:\n%s\nActual:\n%s", expected, out)
-		}
-
-		for _, ext := range TestHelper.GetInstalledExtensions() {
-			if ext == multiclusterExtensionName {
-				// multicluster check --proxy and multicluster check have the same output
-				// so use the same golden file.
-				expected = getCheckOutput(t, "check.multicluster.golden", TestHelper.GetMulticlusterNamespace())
-				if !strings.Contains(out, expected) {
-					return fmt.Errorf(
-						"Expected:\n%s\nActual:\n%s", expected, out)
-				}
-			} else if ext == vizExtensionName {
-				if stage == proxyStage {
-					expected = getCheckOutput(t, "check.viz.proxy.golden", TestHelper.GetVizNamespace())
-					if !strings.Contains(out, expected) {
-						return fmt.Errorf(
-							"Expected:\n%s\nActual:\n%s", expected, out)
-					}
-				} else {
-					expected = getCheckOutput(t, "check.viz.golden", TestHelper.GetVizNamespace())
-					if !strings.Contains(out, expected) {
-						return fmt.Errorf(
-							"Expected:\n%s\nActual:\n%s", expected, out)
-					}
-				}
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd check' command timed-out (%s)", timeout), err)
-	}
-}
-
-func getCheckOutput(t *testing.T, goldenFile string, namespace string) string {
-	pods, err := TestHelper.KubernetesHelper.GetPods(context.Background(), namespace, nil)
-	if err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to retrieve pods: %s", err), err)
-	}
-
-	proxyVersionErr := ""
-	err = healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{})
-	if err != nil {
-		proxyVersionErr = err.Error()
-	}
-
-	tpl := template.Must(template.ParseFiles("testdata" + "/" + goldenFile))
-	vars := struct {
-		ProxyVersionErr string
-		HintURL         string
-	}{
-		proxyVersionErr,
-		healthcheck.HintBaseURL(TestHelper.GetVersion()),
-	}
-
-	var expected bytes.Buffer
-	if err := tpl.Execute(&expected, vars); err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse check.viz.golden template: %s", err), err)
-	}
-
-	return expected.String()
-}
-
 func TestCheckPostInstall(t *testing.T) {
-	testCheckCommand(t, "proxy", TestHelper.GetVersion(), TestHelper.GetLinkerdNamespace(), "")
+	if err := TestHelper.TestCheckProxy(TestHelper.GetVersion(), TestHelper.GetLinkerdNamespace()); err != nil {
+		t.Fatalf("'linkerd check --proxy' command failed: %s", err)
+	}
 }
 
 func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
