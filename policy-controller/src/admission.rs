@@ -6,10 +6,12 @@ use crate::k8s::{
         NetworkAuthentication, NetworkAuthenticationSpec, Server, ServerAuthorization,
         ServerAuthorizationSpec, ServerSpec,
     },
+    Service,
 };
 use anyhow::{anyhow, bail, ensure, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
+use k8s_gateway_api::ParentReference;
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_core as core;
@@ -462,17 +464,22 @@ impl Validate<HttpRouteSpec> for Admission {
             .parent_refs
             .iter()
             .flatten()
-            .all(httproute::parent_ref_targets_kind::<Server>);
+            .all(parent_ref_kind_is_valid);
         ensure!(
             all_target_servers,
-            "policy.linkerd.io HTTPRoutes must target only Server resources"
+            "policy.linkerd.io HTTPRoutes must target only Server or Service resources"
         );
 
         // Validate the rules in this spec.
         // This is essentially equivalent to the indexer's conversion function
         // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
         // actually allocate stuff in order to return an `InboundRouteBinding`.
-        for httproute::HttpRouteRule { filters, matches } in spec.rules.into_iter().flatten() {
+        for httproute::HttpRouteRule {
+            filters,
+            matches,
+            backend_refs: _,
+        } in spec.rules.into_iter().flatten()
+        {
             for m in matches.into_iter().flatten() {
                 validate_match(m)?;
             }
@@ -484,4 +491,9 @@ impl Validate<HttpRouteSpec> for Admission {
 
         Ok(())
     }
+}
+
+fn parent_ref_kind_is_valid(parent_ref: &ParentReference) -> bool {
+    httproute::parent_ref_targets_kind::<Server>(parent_ref)
+        || httproute::parent_ref_targets_kind::<Service>(parent_ref)
 }
