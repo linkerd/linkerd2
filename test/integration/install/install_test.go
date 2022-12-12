@@ -81,16 +81,8 @@ func TestCheckPreInstall(t *testing.T) {
 		t.Skip("Skipping pre-install check for upgrade test")
 	}
 
-	cmd := []string{"check", "--pre", "--expected-version", TestHelper.GetVersion()}
-	golden := "check.pre.golden"
-	out, err := TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		testutil.AnnotatedFatal(t, "'linkerd check' command failed", err)
-	}
-
-	err = TestHelper.ValidateOutput(out, golden)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())
+	if err := TestHelper.TestCheckPre(); err != nil {
+		t.Fatalf("'linkerd check --pre' command failed: %s", err)
 	}
 }
 

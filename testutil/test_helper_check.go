@@ -42,7 +42,7 @@ func (h *TestHelper) TestCheckPre() error {
 	return h.testCheck(cmd, preCategories)
 }
 
-// TestCheckPre runs validates the output of `linkerd check`
+// TestCheck runs validates the output of `linkerd check`
 func (h *TestHelper) TestCheck(extraArgs ...string) error {
 	cmd := []string{"check", "--output", "json", "--wait", "5m"}
 	cmd = append(cmd, extraArgs...)
@@ -51,7 +51,7 @@ func (h *TestHelper) TestCheck(extraArgs ...string) error {
 	return h.testCheck(cmd, categories)
 }
 
-// TestCheckPre runs validates the output of `linkerd check --proxy`
+// TestCheckProxy runs validates the output of `linkerd check --proxy`
 func (h *TestHelper) TestCheckProxy(expectedVersion, namespace string) error {
 	cmd := []string{"check", "--proxy", "--expected-version", expectedVersion,
 		"--namespace", namespace, "--output", "json", "--wait", "5m"}
