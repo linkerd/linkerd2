@@ -311,13 +311,13 @@ func TestEventToString(t *testing.T) {
 		event := toTapEvent(&tapPb.TapEvent_Http{
 			Event: &tapPb.TapEvent_Http_ResponseInit_{
 				ResponseInit: &tapPb.TapEvent_Http_ResponseInit{
-					SinceRequestInit: &duration.Duration{Nanos: 999000},
+					SinceRequestInit: &duration.Duration{Seconds: 9, Nanos: 999000},
 					HttpStatus:       http.StatusOK,
 				},
 			},
 		})
 
-		expectedOutput := "rsp id=7:8 proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls= :status=200 latency=999µs"
+		expectedOutput := "rsp id=7:8 proxy=out src=1.2.3.4:5555 dst=2.3.4.5:6666 tls= :status=200 latency=9000999µs"
 		output := renderTapEvent(event)
 		if output != expectedOutput {
 			t.Fatalf("Expecting command output to be [%s], got [%s]", expectedOutput, output)
