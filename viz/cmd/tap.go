@@ -381,7 +381,7 @@ func renderTapEvent(event *tapPb.TapEvent) string {
 			ev.ResponseInit.GetId().GetStream(),
 			flow,
 			ev.ResponseInit.GetHttpStatus(),
-			ev.ResponseInit.GetSinceRequestInit().GetNanos()/1000,
+			ev.ResponseInit.GetSinceRequestInit().AsDuration().Microseconds(),
 		)
 
 	case *tapPb.TapEvent_Http_ResponseEnd_:
@@ -393,7 +393,7 @@ func renderTapEvent(event *tapPb.TapEvent) string {
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				codes.Code(eos.GrpcStatusCode),
-				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
+				ev.ResponseEnd.GetSinceResponseInit().AsDuration().Microseconds(),
 				ev.ResponseEnd.GetResponseBytes(),
 			)
 
@@ -404,7 +404,7 @@ func renderTapEvent(event *tapPb.TapEvent) string {
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
 				eos.ResetErrorCode,
-				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
+				ev.ResponseEnd.GetSinceResponseInit().AsDuration().Microseconds(),
 				ev.ResponseEnd.GetResponseBytes(),
 			)
 
@@ -413,7 +413,7 @@ func renderTapEvent(event *tapPb.TapEvent) string {
 				ev.ResponseEnd.GetId().GetBase(),
 				ev.ResponseEnd.GetId().GetStream(),
 				flow,
-				ev.ResponseEnd.GetSinceResponseInit().GetNanos()/1000,
+				ev.ResponseEnd.GetSinceResponseInit().AsDuration().Microseconds(),
 				ev.ResponseEnd.GetResponseBytes(),
 			)
 		}
