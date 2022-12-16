@@ -437,7 +437,7 @@ func TestCheckProxyPostUpgrade(t *testing.T) {
 	// current version. This tends to cause a mismatch between the expected
 	// output (which is templated) and the actual output. We add a retry to "eventually"
 	// get a match
-	err := TestHelper.RetryFor(5*time.Minute, func() error {
+	err := testutil.RetryFor(5*time.Minute, func() error {
 		out, err := TestHelper.LinkerdRun(cmd...)
 		if err != nil {
 			return fmt.Errorf("%w\n%s", err, out)

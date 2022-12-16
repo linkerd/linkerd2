@@ -760,7 +760,7 @@ func testCheckCommand(t *testing.T, stage, expectedVersion, namespace, cliVersio
 
 	expected := getCheckOutput(t, golden, TestHelper.GetLinkerdNamespace())
 	timeout := time.Minute * 5
-	err := TestHelper.RetryFor(timeout, func() error {
+	err := testutil.RetryFor(timeout, func() error {
 		if cliVersionOverride != "" {
 			cliVOverride := []string{"--cli-version-override", cliVersionOverride}
 			cmd = append(cmd, cliVOverride...)

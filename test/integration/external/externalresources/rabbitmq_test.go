@@ -65,7 +65,7 @@ func TestRabbitMQDeploy(t *testing.T) {
 		// Verify client output
 		golden := "check.rabbitmq.golden"
 		timeout := 50 * time.Second
-		err = TestHelper.RetryFor(timeout, func() error {
+		err = testutil.RetryFor(timeout, func() error {
 			out, err := TestHelper.Kubectl("", "-n", testNamespace, "logs", "-lapp=rabbitmq-client", "-crabbitmq-client")
 			if err != nil {
 				return fmt.Errorf("'kubectl logs -l app=rabbitmq-client -c rabbitmq-client' command failed\n%w", err)
