@@ -144,7 +144,10 @@ items:
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            runAsNonRoot: true
             runAsUser: 2102
+            seccompProfile:
+              type: RuntimeDefault
           terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
           - mountPath: /var/run/linkerd/identity/end-entity
@@ -358,7 +361,10 @@ items:
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            runAsNonRoot: true
             runAsUser: 2102
+            seccompProfile:
+              type: RuntimeDefault
           terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
           - mountPath: /var/run/linkerd/identity/end-entity

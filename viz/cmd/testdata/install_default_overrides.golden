@@ -8,6 +8,7 @@ metadata:
   name: linkerd-viz
   labels:
     linkerd.io/extension: viz
+    pod-security.kubernetes.io/enforce: privileged
   annotations:
 ---
 ###
@@ -502,7 +503,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - -controller-namespace=linkerd
@@ -531,8 +532,15 @@ spec:
             port: 9995
         resources:
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           readOnlyRootFilesystem: true
           runAsUser: 1234
+          seccompProfile:
+            type: RuntimeDefault
       serviceAccountName: metrics-api
 ---
 apiVersion: policy.linkerd.io/v1beta1
@@ -811,10 +819,16 @@ spec:
           timeoutSeconds: 30
         resources:
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 65534
           runAsGroup: 65534
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /data
           name: data
@@ -895,7 +909,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - api
@@ -926,8 +940,15 @@ spec:
             port: 9998
         resources:
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 5678
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
@@ -1093,7 +1114,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - injector
@@ -1121,8 +1142,15 @@ spec:
             port: 9995
         resources:
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 1234
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
@@ -1281,8 +1309,15 @@ spec:
             port: 9994
         resources:
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 1234
+          seccompProfile:
+            type: RuntimeDefault
       serviceAccountName: web
 ---
 apiVersion: linkerd.io/v1alpha2

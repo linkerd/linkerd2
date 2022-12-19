@@ -12,6 +12,7 @@ metadata:
     linkerd.io/is-control-plane: "true"
     config.linkerd.io/admission-webhooks: disabled
     linkerd.io/control-plane-ns: linkerd
+    pod-security.kubernetes.io/enforce: privileged
 ---
 ###
 ### Identity Controller Service RBAC
@@ -631,6 +632,19 @@ data:
     tolerations: null
     webhookFailurePolicy: Ignore
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  name: ext-namespace-metadata-linkerd-config
+  namespace: linkerd
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["linkerd-config"]
+---
 ###
 ### Identity Controller Service
 ###
@@ -787,8 +801,14 @@ spec:
             path: /ready
             port: 9990
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
@@ -902,8 +922,14 @@ spec:
         resources:
         securityContext:
           allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 2102
+          seccompProfile:
+            type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
@@ -1214,8 +1240,14 @@ spec:
         resources:
         securityContext:
           allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 2102
+          seccompProfile:
+            type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
         lifecycle:
           postStart:
@@ -1260,8 +1292,14 @@ spec:
             path: /ready
             port: 9996
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
       - args:
         - sp-validator
         - -log-level=info
@@ -1286,8 +1324,14 @@ spec:
             path: /ready
             port: 9997
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: sp-tls
@@ -1327,8 +1371,14 @@ spec:
           initialDelaySeconds: 10
         resources:
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: policy-tls
@@ -1439,8 +1489,14 @@ spec:
             - "-log-format=plain"
             - "-prometheus-url=http://prometheus.linkerd-viz.svc.cluster.local:9090"
             securityContext:
+              capabilities:
+                drop:
+                - ALL
+              runAsNonRoot: true
               runAsUser: 2103
               allowPrivilegeEscalation: false
+              seccompProfile:
+                type: RuntimeDefault
 ---
 ###
 ### Proxy Injector
@@ -1592,8 +1648,14 @@ spec:
         resources:
         securityContext:
           allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 2102
+          seccompProfile:
+            type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
         lifecycle:
           postStart:
@@ -1631,8 +1693,14 @@ spec:
             path: /ready
             port: 9995
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config

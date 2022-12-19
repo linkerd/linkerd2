@@ -184,8 +184,14 @@ spec:
         {{- include "partials.resources" .Values.identityResources | nindent 8 }}
         {{- end }}
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: {{.Values.controllerUID}}
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
@@ -204,6 +210,7 @@ spec:
       */}}
       {{- $_ := set $tree.Values.proxy "defaultInboundPolicy" "all-unauthenticated" }}
       {{- $_ := set $tree.Values.proxy "requireTLSOnInboundPorts" "8080" }}
+      {{- $_ := set $tree.Values.proxy "capabilities" (dict "drop" (list "ALL")) }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       initContainers:
       {{ if .Values.cniEnabled -}}
