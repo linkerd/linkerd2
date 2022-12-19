@@ -70,7 +70,6 @@ Kubernetes: `>=1.21.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| cniEnabled | bool | `false` | This should be the same value used on the control-plane chart. If enabled, the linkerd-multicluster namespace will enforce the "privileged" PodSecurity mode. |
 | commonLabels | object | `{}` | Labels to apply to all resources |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |

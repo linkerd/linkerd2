@@ -16,11 +16,6 @@ commonLabels: {}
 # @default -- clusterDomain
 identityTrustDomain: ""
 
-# -- This should be the same value used on the control-plane chart.
-# If enabled, the linkerd-viz namespace will enforce the
-# "privileged" PodSecurity mode.
-cniEnabled: false
-
 # -- Docker registry for all viz components
 defaultRegistry: cr.l5d.io/linkerd
 # -- Docker imagePullPolicy for all viz components

@@ -73,7 +73,6 @@ Kubernetes: `>=1.21.0-0`
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use |
-| cniEnabled | bool | `false` | This should be the same value used on the control-plane chart. If enabled, the linkerd-jaeger namespace will enforce the "privileged" PodSecurity mode. |
 | collector.UID | string | `nil` | UID for the collector resource |
 | collector.config | string | see `value.yaml` for actual configuration | OpenTelemetry Collector config, See the [Configuration docs](https://opentelemetry.io/docs/collector/configuration/) for more information |
 | collector.enabled | bool | `true` | Set to false to exclude collector installation |

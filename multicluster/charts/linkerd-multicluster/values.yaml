@@ -52,11 +52,6 @@ linkerdNamespace: linkerd
 # -- Identity Trust Domain of the certificate authority
 identityTrustDomain: cluster.local
 
-# -- This should be the same value used on the control-plane chart.
-# If enabled, the linkerd-multicluster namespace will enforce the
-# "privileged" PodSecurity mode.
-cniEnabled: false
-
 namespaceMetadata:
   image:
     # -- Docker registry for the namespace-metadata instance
