@@ -20,8 +20,10 @@ const (
 	Endpoints             = "endpoints"
 	EndpointSlices        = "endpointslices"
 	Job                   = "job"
+	MeshTLSAuthentication = "meshtlsauthentication"
 	MutatingWebhookConfig = "mutatingwebhookconfig"
 	Namespace             = "namespace"
+	NetworkAuthentication = "networkauthentication"
 	Pod                   = "pod"
 	ReplicationController = "replicationcontroller"
 	ReplicaSet            = "replicaset"
@@ -117,16 +119,24 @@ var resourceNames = []resourceName{
 	{"ds", "daemonset", "daemonsets"},
 	{"deploy", "deployment", "deployments"},
 	{"job", "job", "jobs"},
+	{"meshtlsauthn", "meshtlsauthentication", "meshtlsauthentications"},
 	{"ns", "namespace", "namespaces"},
+	{"netauthn", "networkauthentication", "networkauthentications"},
+	{"networkauthn", "networkauthentication", "networkauthentications"},
 	{"po", "pod", "pods"},
 	{"rc", "replicationcontroller", "replicationcontrollers"},
 	{"rs", "replicaset", "replicasets"},
 	{"svc", "service", "services"},
 	{"sp", "serviceprofile", "serviceprofiles"},
 	{"saz", "serverauthorization", "serverauthorizations"},
+	{"serverauthz", "serverauthorization", "serverauthorizations"},
+	{"srvauthz", "serverauthorization", "serverauthorizations"},
 	{"srv", "server", "servers"},
 	{"ap", "authorizationpolicy", "authorizationpolicies"},
+	{"authzpolicy", "authorizationpolicy", "authorizationpolicies"},
 	{"route", "httproute", "httproutes"},
+	{"httprt", "httproute", "httproutes"},
+	{"rt", "httproute", "httproutes"},
 	{"sts", "statefulset", "statefulsets"},
 	{"ln", "link", "links"},
 	{"all", "all", "all"},
@@ -206,8 +216,9 @@ func ShortNameFromCanonicalResourceName(canonicalName string) string {
 
 // KindToL5DLabel converts a Kubernetes `kind` to a Linkerd label.
 // For example:
-//   `pod` -> `pod`
-//   `job` -> `k8s_job`
+//
+//	`pod` -> `pod`
+//	`job` -> `k8s_job`
 func KindToL5DLabel(k8sKind string) string {
 	if k8sKind == Job {
 		return l5dJob
