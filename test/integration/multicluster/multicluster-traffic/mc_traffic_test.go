@@ -1,19 +1,15 @@
 package multiclustertraffic
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"html/template"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 	"github.com/linkerd/linkerd2/testutil/prommatch"
 )
@@ -127,56 +123,14 @@ func TestGateways(t *testing.T) {
 // TestCheckAfterRepairEndpoints calls `linkerd mc check` again after 1 minute,
 // so that the RepairEndpoints event has already been processed, making sure
 // that resyncing didn't break things.
-// CheckGateway will make use of nginx-gateway-deploy to see whether check
-// result returns number of mirror services.
 func TestCheckGatewayAfterRepairEndpoints(t *testing.T) {
 	// Re-build the clientset with the source context
 	if err := TestHelper.SwitchContext(contexts[testutil.SourceContextKey]); err != nil {
 		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts[testutil.SourceContextKey], err)
 	}
 	time.Sleep(time.Minute + 5*time.Second)
-	cmd := []string{"--context=" + contexts[testutil.SourceContextKey], "multicluster", "check", "--wait=10s"}
-	timeout := 20 * time.Second
-	err := TestHelper.RetryFor(timeout, func() error {
-		out, err := TestHelper.LinkerdRun(cmd...)
-		if err != nil {
-			return fmt.Errorf("'linkerd multicluster check' command failed\n%s", out)
-		}
-
-		pods, err := TestHelper.KubernetesHelper.GetPods(context.Background(), "linkerd-multicluster", nil)
-		if err != nil {
-			testutil.AnnotatedFatal(t, fmt.Sprintf("failed to retrieve pods: %s", err), err)
-		}
-
-		tpl := template.Must(template.ParseFiles("testdata/check-gateway.multicluster.golden"))
-		versionErr := healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{})
-		versionErrMsg := ""
-		if versionErr != nil {
-			versionErrMsg = versionErr.Error()
-		}
-		vars := struct {
-			ProxyVersionErr string
-			HintURL         string
-			LinkName        string
-		}{
-			versionErrMsg,
-			healthcheck.HintBaseURL(TestHelper.GetVersion()),
-			"target", // name of linked cluster, not its context
-		}
-
-		var expected bytes.Buffer
-		if err := tpl.Execute(&expected, vars); err != nil {
-			testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse check.multicluster.golden template: %s", err), err)
-		}
-
-		if out != expected.String() {
-			return fmt.Errorf(
-				"Expected:\n%s\nActual:\n%s", expected.String(), out)
-		}
-		return nil
-	})
-	if err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd multicluster check' command timed-out (%s)", timeout), err)
+	if err := TestHelper.TestCheck("--context", contexts[testutil.SourceContextKey]); err != nil {
+		t.Fatalf("'linkerd check' command failed: %s", err)
 	}
 }
 
