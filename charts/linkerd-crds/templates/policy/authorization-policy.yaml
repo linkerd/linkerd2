@@ -15,7 +15,7 @@ spec:
     kind: AuthorizationPolicy
     plural: authorizationpolicies
     singular: authorizationpolicy
-    shortNames: []
+    shortNames: [ap, authzpolicy]
   versions:
     - name: v1alpha1
       served: true
