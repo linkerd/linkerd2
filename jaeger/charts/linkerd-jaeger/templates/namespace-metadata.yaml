@@ -13,6 +13,7 @@ metadata:
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: namespace-metadata
+  namespace: {{.Release.Namespace}}
 spec:
   template:
     metadata:
