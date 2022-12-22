@@ -413,16 +413,13 @@ setup_helm() {
 helm_cleanup() {
   (
     set -e
-    "$helm_path" --kube-context="$context" --namespace linkerd delete "$helm_release_name-crds" || true
+   "$helm_path" --kube-context="$context" --namespace linkerd-multicluster delete "$helm_multicluster_release_name" || true
+    kubectl delete ns/linkerd-multicluster || true
+    "$helm_path" --kube-context="$context" --namespace linkerd-viz delete "$helm_release_name-l5d-viz" || true
+    kubectl delete ns/linkerd-viz || true
     "$helm_path" --kube-context="$context" --namespace linkerd delete "$helm_release_name-control-plane" || true
+    "$helm_path" --kube-context="$context" --namespace linkerd delete "$helm_release_name-crds" || true
     kubectl delete ns/linkerd
-    "$helm_path" --kube-context="$context" --namespace linkerd-multicluster delete "$helm_multicluster_release_name" || true
-    kubectl delete ns/linkerd-multicluster
-    # We wait for the namespace to be gone so the following call to `cleanup` doesn't fail when it attempts to delete
-    # the same namespace that is already being deleted here (error thrown by the NamespaceLifecycle controller).
-    # We don't have that problem with global resources, so no need to wait for them to be gone.
-    kubectl wait --for=delete ns/linkerd --timeout=120s || true
-    kubectl wait --for=delete ns/linkerd-multicluster --timeout=120s || true
   )
   exit_on_err 'error cleaning up Helm'
 }
@@ -439,7 +436,7 @@ run_helm-upgrade_test() {
   setup_helm
   helm_viz_chart="$( cd "$bindir"/.. && pwd )"/viz/charts/linkerd-viz
   run_test "$test_directory/install/install_test.go" --helm-path="$helm_path" --helm-charts="$helm_charts" \
-  --viz-helm-chart="$helm_viz_chart" --helm-stable-chart='linkerd/linkerd2' --viz-helm-stable-chart="linkerd/linkerd-viz" --helm-release="$helm_release_name" --upgrade-helm-from-version="$stable_version"
+  --viz-helm-chart="$helm_viz_chart" --viz-helm-stable-chart="linkerd/linkerd-viz" --helm-release="$helm_release_name" --upgrade-helm-from-version="$stable_version"
   helm_cleanup
 }
 
