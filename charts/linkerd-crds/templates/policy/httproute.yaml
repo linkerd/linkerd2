@@ -16,7 +16,7 @@ spec:
     listKind: HTTPRouteList
     plural: httproutes
     singular: httproute
-    shortNames: [route, httprt, rt]
+    shortNames: []
   scope: Namespaced
   versions:
   - additionalPrinterColumns:

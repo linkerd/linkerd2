@@ -42,8 +42,6 @@ func TestCanonicalResourceNameFromFriendlyName(t *testing.T) {
 			"meshtlsauthn": MeshTLSAuthentication,
 			"networkauthn": NetworkAuthentication,
 			"netauthn":     NetworkAuthentication,
-			"httprt":       HTTPRoute,
-			"rt":           HTTPRoute,
 		}
 
 		for input, expectedName := range expectations {
