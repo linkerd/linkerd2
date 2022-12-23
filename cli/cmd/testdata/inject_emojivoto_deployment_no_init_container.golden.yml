@@ -142,7 +142,10 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 2102
+          seccompProfile:
+            type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
@@ -181,10 +184,14 @@ spec:
         imagePullPolicy: IfNotPresent
         name: linkerd-network-validator
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             drop:
-            - all
+            - ALL
+          runAsNonRoot: true
           runAsUser: 65534
+          seccompProfile:
+            type: RuntimeDefault
       volumes:
       - emptyDir:
           medium: Memory

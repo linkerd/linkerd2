@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -448,6 +449,11 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 	}
 
 	return hc
+}
+
+func NewWithCoreChecks(options *Options) *HealthChecker {
+	checks := []CategoryID{KubernetesAPIChecks, LinkerdControlPlaneExistenceChecks}
+	return NewHealthChecker(checks, options)
 }
 
 // InitializeKubeAPIClient creates a client for the HealthChecker. It avoids
@@ -1592,6 +1598,28 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) (bool, bool) {
 	}
 
 	return success, warning
+}
+
+func (hc *HealthChecker) RunWithExitOnError() (bool, bool) {
+	return hc.RunChecks(func(result *CheckResult) {
+		if result.Retry {
+			fmt.Fprintln(os.Stderr, "Waiting for control plane to become available")
+			return
+		}
+
+		if result.Err != nil && !result.Warning {
+			var msg string
+			switch result.Category {
+			case KubernetesAPIChecks:
+				msg = "Cannot connect to Kubernetes"
+			case LinkerdControlPlaneExistenceChecks:
+				msg = "Cannot find Linkerd"
+			}
+			fmt.Fprintf(os.Stderr, "%s: %s\nValidate the install with: 'linkerd check'\n",
+				msg, result.Err)
+			os.Exit(1)
+		}
+	})
 }
 
 // LinkerdConfig gets the Linkerd configuration values.

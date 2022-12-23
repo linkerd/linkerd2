@@ -52,6 +52,27 @@ type CheckResults struct {
 	Results []CheckResult
 }
 
+// CheckOutput groups the check results for all categories
+type CheckOutput struct {
+	Success    bool             `json:"success"`
+	Categories []*CheckCategory `json:"categories"`
+}
+
+// CheckCategory groups a series of check for a category
+type CheckCategory struct {
+	Name   CategoryID `json:"categoryName"`
+	Checks []*Check   `json:"checks"`
+}
+
+// Check is a user-facing version of `healthcheck.CheckResult`, for output via
+// `linkerd check -o json`.
+type Check struct {
+	Description string         `json:"description"`
+	Hint        string         `json:"hint,omitempty"`
+	Error       string         `json:"error,omitempty"`
+	Result      CheckResultStr `json:"result"`
+}
+
 // RunChecks submits each of the individual CheckResult structs to the given
 // observer.
 func (cr CheckResults) RunChecks(observer CheckObserver) (bool, bool) {
@@ -256,57 +277,38 @@ func runChecksTable(wout io.Writer, hc Runner, output string) (bool, bool) {
 	return success, warning
 }
 
-type checkOutput struct {
-	Success    bool             `json:"success"`
-	Categories []*checkCategory `json:"categories"`
-}
-
-type checkCategory struct {
-	Name   string   `json:"categoryName"`
-	Checks []*check `json:"checks"`
-}
-
-// check is a user-facing version of `healthcheck.CheckResult`, for output via
-// `linkerd check -o json`.
-type check struct {
-	Description string      `json:"description"`
-	Hint        string      `json:"hint,omitempty"`
-	Error       string      `json:"error,omitempty"`
-	Result      checkResult `json:"result"`
-}
-
-type checkResult string
+// CheckResultStr is a string describing the result of a check
+type CheckResultStr string
 
 const (
-	checkSuccess checkResult = "success"
-	checkWarn    checkResult = "warning"
-	checkErr     checkResult = "error"
+	CheckSuccess CheckResultStr = "success"
+	CheckWarn    CheckResultStr = "warning"
+	CheckErr     CheckResultStr = "error"
 )
 
 func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) (bool, bool) {
-	var categories []*checkCategory
+	var categories []*CheckCategory
 
 	collectJSONOutput := func(result *CheckResult) {
-		categoryName := string(result.Category)
-		if categories == nil || categories[len(categories)-1].Name != categoryName {
-			categories = append(categories, &checkCategory{
-				Name:   categoryName,
-				Checks: []*check{},
+		if categories == nil || categories[len(categories)-1].Name != result.Category {
+			categories = append(categories, &CheckCategory{
+				Name:   result.Category,
+				Checks: []*Check{},
 			})
 		}
 
 		if !result.Retry {
 			currentCategory := categories[len(categories)-1]
 			// ignore checks that are going to be retried, we want only final results
-			status := checkSuccess
+			status := CheckSuccess
 			if result.Err != nil {
-				status = checkErr
+				status = CheckErr
 				if result.Warning {
-					status = checkWarn
+					status = CheckWarn
 				}
 			}
 
-			currentCheck := &check{
+			currentCheck := &Check{
 				Description: result.Description,
 				Result:      status,
 			}
@@ -324,7 +326,7 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) (bool, bool) {
 
 	success, warning := hc.RunChecks(collectJSONOutput)
 
-	outputJSON := checkOutput{
+	outputJSON := CheckOutput{
 		Success:    success,
 		Categories: categories,
 	}
@@ -339,11 +341,11 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) (bool, bool) {
 }
 
 // ParseJSONCheckOutput parses the output of a check command run with json
-// output mode. The data is expected to be a checkOutput struct serialized
+// output mode. The data is expected to be a CheckOutput struct serialized
 // to json. In addition to deserializing, this function will convert the result
 // to a CheckResults struct.
 func parseJSONCheckOutput(data []byte) (CheckResults, error) {
-	var checks checkOutput
+	var checks CheckOutput
 	err := json.Unmarshal(data, &checks)
 	if err != nil {
 		return CheckResults{}, err
@@ -356,11 +358,11 @@ func parseJSONCheckOutput(data []byte) (CheckResults, error) {
 				err = errors.New(check.Error)
 			}
 			results = append(results, CheckResult{
-				Category:    CategoryID(category.Name),
+				Category:    category.Name,
 				Description: check.Description,
 				Err:         err,
 				HintURL:     check.Hint,
-				Warning:     check.Result == checkWarn,
+				Warning:     check.Result == CheckWarn,
 			})
 		}
 	}

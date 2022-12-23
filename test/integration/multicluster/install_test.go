@@ -2,7 +2,6 @@ package multiclustertest
 
 import (
 	"bytes"
-	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -10,14 +9,11 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"html/template"
 	"math/big"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -238,53 +234,16 @@ func TestInstallViz(t *testing.T) {
 }
 
 func TestCheckMulticluster(t *testing.T) {
-	golden := "check.multicluster.golden"
 	// Check resources after link were created successfully in source cluster
 	ctx := contexts[testutil.SourceContextKey]
-	checkCmd := []string{"--context=" + ctx, "multicluster", "check", "--wait=40s"}
 
 	// First, switch context to make sure we check pods in the cluster we're
 	// supposed to be checking them in. This will rebuild the clientset
 	if err := TestHelper.SwitchContext(ctx); err != nil {
 		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", ctx, err)
 	}
-	pods, err := TestHelper.KubernetesHelper.GetPods(context.Background(), TestHelper.GetMulticlusterNamespace(), nil)
-	if err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to retrieve pods: %s", err), err)
-	}
-
-	linkName := "target"
-	tpl := template.Must(template.ParseFiles("testdata" + "/" + golden))
-	vars := struct {
-		ProxyVersionErr string
-		HintURL         string
-		LinkName        string
-	}{
-		healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{}).Error(),
-		healthcheck.HintBaseURL(TestHelper.GetVersion()),
-		linkName,
-	}
-
-	var expected bytes.Buffer
-	if err := tpl.Execute(&expected, vars); err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("failed to parse %s template: %s", golden, err), err)
-	}
-
-	timeout := 5 * time.Minute
-	err = testutil.RetryFor(timeout, func() error {
-		out, err := TestHelper.LinkerdRun(checkCmd...)
-		if err != nil {
-			return fmt.Errorf("'linkerd multicluster check' command failed\n%w", err)
-		}
-
-		if out != expected.String() {
-			return fmt.Errorf(
-				"Expected:\n%s\nActual:\n%s", expected.String(), out)
-		}
-		return nil
-	})
-	if err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd multicluster check' command timed-out (%s)", timeout), err)
+	if err := TestHelper.TestCheck("--context", ctx); err != nil {
+		t.Fatalf("'linkerd check' command failed: %s", err)
 	}
 }
 

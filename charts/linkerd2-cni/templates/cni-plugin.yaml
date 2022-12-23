@@ -25,6 +25,7 @@ metadata:
   labels:
     linkerd.io/cni-resource: "true"
     config.linkerd.io/admission-webhooks: disabled
+    pod-security.kubernetes.io/enforce: privileged
 ---
 {{ end -}}
 apiVersion: v1
