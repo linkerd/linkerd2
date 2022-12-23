@@ -660,7 +660,10 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			if err != nil {
+				t.Fatalf("can't create Endpoints watcher: %s", err)
+			}
 
 			k8sAPI.Sync(nil)
 
@@ -1276,7 +1279,10 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), true)
+			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), true)
+			if err != nil {
+				t.Fatalf("can't create Endpoints watcher: %s", err)
+			}
 
 			k8sAPI.Sync(nil)
 
@@ -1393,7 +1399,10 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			if err != nil {
+				t.Fatalf("can't create Endpoints watcher: %s", err)
+			}
 
 			k8sAPI.Sync(nil)
 
@@ -1514,7 +1523,10 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), true)
+			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), true)
+			if err != nil {
+				t.Fatalf("can't create Endpoints watcher: %s", err)
+			}
 
 			k8sAPI.Sync(nil)
 
@@ -1741,7 +1753,10 @@ subsets:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), tt.enableEndpointSlices)
+			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), tt.enableEndpointSlices)
+			if err != nil {
+				t.Fatalf("can't create Endpoints watcher: %s", err)
+			}
 
 			k8sAPI.Sync(nil)
 
@@ -1901,7 +1916,10 @@ subsets:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			if err != nil {
+				t.Fatalf("can't create Endpoints watcher: %s", err)
+			}
 
 			k8sAPI.Sync(nil)
 
@@ -2024,7 +2042,10 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			if err != nil {
+				t.Fatalf("can't create Endpoints watcher: %s", err)
+			}
 
 			k8sAPI.Sync(nil)
 

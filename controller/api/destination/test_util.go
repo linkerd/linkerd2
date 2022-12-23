@@ -381,10 +381,22 @@ spec:
 		t.Fatalf("initializeIndexers returned an error: %s", err)
 	}
 
-	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, false)
-	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
-	profiles := watcher.NewProfileWatcher(k8sAPI, log)
-	servers := watcher.NewServerWatcher(k8sAPI, log)
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, log, false)
+	if err != nil {
+		t.Fatalf("can't create Endpoints watcher: %s", err)
+	}
+	opaquePorts, err := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
+	if err != nil {
+		t.Fatalf("can't create opaque ports watcher: %s", err)
+	}
+	profiles, err := watcher.NewProfileWatcher(k8sAPI, log)
+	if err != nil {
+		t.Fatalf("can't create profile watcher: %s", err)
+	}
+	servers, err := watcher.NewServerWatcher(k8sAPI, log)
+	if err != nil {
+		t.Fatalf("can't create Server watcher: %s", err)
+	}
 
 	// Sync after creating watchers so that the the indexers added get updated
 	// properly
