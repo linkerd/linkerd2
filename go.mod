@@ -166,17 +166,6 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
-// to avoid the `github.com/golang/protobuf/protoc-gen-go/generator` deprecation warning
-// (see https://github.com/golang/protobuf/issues/1104)
-replace github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.14.8
-
-// avoids scanners hitting the alert described in https://github.com/helm/helm/issues/7846
-// this should be removed when helm upgrades that dependency on runc
-replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.3
-
-// Addresses https://github.com/advisories/GHSA-crp2-qrr5-8pq7,
-// https://github.com/advisories/GHSA-5ffw-gxpp-mxpf
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.6
-
-// Addresses https://github.com/advisories/GHSA-qq97-vm5h-rrhg
-replace github.com/docker/distribution => github.com/docker/distribution v2.8.1+incompatible
+// Addresses https://github.com/linkerd/linkerd2/security/dependabot/37
+// (CVE-2022-23471)
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.14
