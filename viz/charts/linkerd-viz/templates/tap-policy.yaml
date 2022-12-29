@@ -10,6 +10,7 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    {{- with .Values.tap.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   podSelector:
     matchLabels:
@@ -29,6 +30,7 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    {{- with .Values.tap.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   targetRef:
     group: policy.linkerd.io

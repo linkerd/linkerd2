@@ -10,6 +10,8 @@ metadata:
     linkerd.io/extension: viz
     component: metrics-api
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{- with .Values.metricsAPI.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
@@ -35,6 +37,8 @@ metadata:
     linkerd.io/extension: viz
     component: metrics-api
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{- with .Values.metricsAPI.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -53,4 +57,6 @@ metadata:
     linkerd.io/extension: viz
     component: metrics-api
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{- with .Values.metricsAPI.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}

@@ -124,6 +124,14 @@ metricsAPI:
   # for more information
   tolerations: *default_tolerations
 
+  # -- Annotations to apply to all resources related to metrics-api
+  annotations: {}
+
+  # -- metrics-api service configuration
+  service:
+    # -- Additional annotations to add to metrics-api service
+    annotations: {}
+
 # tap configuration
 tap:
     # -- Number of tap component replicas
@@ -206,6 +214,14 @@ tap:
 
   # -- UID for the dashboard resource
   UID:
+
+  # -- Annotations to apply to all resources related to tap
+  annotations: {}
+
+  # -- tap service configuration
+  service:
+    # -- Additional annotations to add to tap service
+    annotations: {}
 
 # tapInjector configuration
 tapInjector:
@@ -297,6 +313,14 @@ tapInjector:
   # for more information.
   injectCaFromSecret: ""
 
+  # -- Annotations to apply to all resources related to tapInjector
+  annotations: {}
+
+  # -- tap service configuration
+  service:
+    # -- Additional annotations to add to tapInjector service
+    annotations: {}
+
 # web dashboard configuration
 dashboard:
   # -- Number of replicas of dashboard
@@ -355,6 +379,9 @@ dashboard:
     # -- If set, overrides default proxy resources for the proxy injected
     # into the dashboard component
     # resources:
+
+  # -- Annotations to apply to all resources related to Dashboard
+  annotations: {}
 
 namespaceMetadata:
   image:

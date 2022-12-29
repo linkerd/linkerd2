@@ -10,6 +10,8 @@ metadata:
     linkerd.io/extension: viz
     component: tap
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{- with .Values.tap.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
 - apiGroups: [""]
   resources: ["pods", "services", "replicationcontrollers", "namespaces", "nodes"]
@@ -29,6 +31,8 @@ metadata:
     linkerd.io/extension: viz
     component: tap
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{- with .Values.tap.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -45,6 +49,8 @@ metadata:
     linkerd.io/extension: viz
     component: tap
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{- with .Values.tap.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -62,6 +68,8 @@ metadata:
     linkerd.io/extension: viz
     component: tap
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{- with .Values.tap.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -81,6 +89,8 @@ metadata:
     component: tap
     namespace: {{.Release.Namespace}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{- with .Values.tap.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -93,6 +103,8 @@ metadata:
     component: tap
     namespace: {{.Release.Namespace}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{- with .Values.tap.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -117,6 +129,7 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    {{- with .Values.tap.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tap.crtPEM)) (empty .Values.tap.crtPEM) }}
@@ -130,6 +143,7 @@ metadata:
   name: v1alpha1.tap.linkerd.io
   {{- if or (.Values.tap.injectCaFrom) (.Values.tap.injectCaFromSecret) }}
   annotations:
+  {{- with .Values.tap.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   {{- if .Values.tap.injectCaFrom }}
     cert-manager.io/inject-ca-from: {{ .Values.tap.injectCaFrom }}
   {{- end }}
