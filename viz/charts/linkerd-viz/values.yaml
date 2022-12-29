@@ -343,10 +343,6 @@ dashboard:
     # -- Pull policy for the  web component
     # @default -- defaultImagePullPolicy
     pullPolicy: ""
-  # -- dashboard service configuration
-  service:
-    # -- Additional annotations to add to dashboard service
-    annotations: {}
 
   # -- UID for the dashboard resource
   UID:
@@ -382,6 +378,11 @@ dashboard:
 
   # -- Annotations to apply to all resources related to Dashboard
   annotations: {}
+
+  # -- dashboard service configuration
+  service:
+    # -- Additional annotations to add to dashboard service
+    annotations: {}
 
 namespaceMetadata:
   image:
