@@ -3,10 +3,14 @@ name: linkerd-network-validator
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion }}
 imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}
 securityContext:
-  runAsUser: 65534
+  allowPrivilegeEscalation: false
   capabilities:
     drop:
-      - all
+    - ALL
+  runAsNonRoot: true
+  runAsUser: 65534
+  seccompProfile:
+    type: RuntimeDefault
 command:
   - /usr/lib/linkerd/linkerd2-network-validator
 args:

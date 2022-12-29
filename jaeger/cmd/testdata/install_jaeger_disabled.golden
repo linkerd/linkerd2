@@ -5,6 +5,7 @@ metadata:
   name: linkerd-jaeger
   labels:
     linkerd.io/extension: jaeger
+    pod-security.kubernetes.io/enforce: privileged
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
@@ -99,7 +100,14 @@ spec:
             path: /ready
             port: 9995
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
@@ -401,7 +409,14 @@ spec:
             port: 13133
         resources:
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /conf
           name: collector-config-val

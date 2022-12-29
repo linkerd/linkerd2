@@ -13,7 +13,7 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.20.7
-	github.com/go-test/deep v1.0.8
+	github.com/go-test/deep v1.1.0
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
@@ -28,7 +28,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
 	github.com/prometheus/client_golang v1.14.0
-	github.com/prometheus/common v0.37.0
+	github.com/prometheus/common v0.39.0
 	github.com/sergi/go-diff v1.2.0
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd
@@ -36,15 +36,15 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	go.opencensus.io v0.24.0
-	golang.org/x/net v0.3.0
+	golang.org/x/net v0.4.0
 	golang.org/x/tools v0.4.0
 	google.golang.org/grpc v1.51.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.28.1
-	helm.sh/helm/v3 v3.10.2
-	k8s.io/api v0.25.4
+	helm.sh/helm/v3 v3.10.3
+	k8s.io/api v0.25.5
 	k8s.io/apiextensions-apiserver v0.25.2
-	k8s.io/apimachinery v0.25.4
+	k8s.io/apimachinery v0.25.5
 	k8s.io/client-go v0.25.4
 	k8s.io/code-generator v0.25.4
 	k8s.io/klog/v2 v2.80.1
@@ -116,7 +116,7 @@ require (
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
-	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/moby/locker v1.0.1 // indirect
@@ -144,7 +144,7 @@ require (
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	golang.org/x/crypto v0.1.0 // indirect
 	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
+	golang.org/x/oauth2 v0.3.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/term v0.3.0 // indirect

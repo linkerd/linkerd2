@@ -14,7 +14,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	api "github.com/linkerd/linkerd2/pkg/public"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -38,6 +37,7 @@ var (
 
 func newCmdInstall() *cobra.Command {
 	var registry string
+	var cniEnabled bool
 	var skipChecks bool
 	var ignoreCluster bool
 	var wait time.Duration
@@ -59,7 +59,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !skipChecks && !ignoreCluster {
 				// Wait for the core control-plane to be up and running
-				api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+				hc := healthcheck.NewWithCoreChecks(&healthcheck.Options{
 					ControlPlaneNamespace: controlPlaneNamespace,
 					KubeConfig:            kubeconfigPath,
 					KubeContext:           kubeContext,
@@ -68,9 +68,11 @@ A full list of configurable values can be found at https://www.github.com/linker
 					APIAddr:               apiAddr,
 					RetryDeadline:         time.Now().Add(wait),
 				})
+				hc.RunWithExitOnError()
+				cniEnabled = hc.CNIEnabled
 			}
 
-			return install(os.Stdout, options, registry)
+			return install(os.Stdout, options, registry, cniEnabled)
 		},
 	}
 
@@ -86,12 +88,16 @@ A full list of configurable values can be found at https://www.github.com/linker
 	return cmd
 }
 
-func install(w io.Writer, options values.Options, registry string) error {
+func install(w io.Writer, options values.Options, registry string, cniEnabled bool) error {
 
 	// Create values override
 	valuesOverrides, err := options.MergeValues(nil)
 	if err != nil {
 		return err
+	}
+
+	if cniEnabled {
+		valuesOverrides["cniEnabled"] = true
 	}
 
 	// TODO: Add any validation logic here

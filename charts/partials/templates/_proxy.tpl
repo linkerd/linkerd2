@@ -161,7 +161,10 @@ securityContext:
   {{- include "partials.proxy.capabilities" . | nindent 2 -}}
   {{- end }}
   readOnlyRootFilesystem: true
+  runAsNonRoot: true
   runAsUser: {{.Values.proxy.uid}}
+  seccompProfile:
+    type: RuntimeDefault
 terminationMessagePolicy: FallbackToLogsOnError
 {{- if or (.Values.proxy.await) (.Values.proxy.waitBeforeExitSeconds) }}
 lifecycle:

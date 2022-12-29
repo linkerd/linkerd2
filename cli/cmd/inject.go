@@ -14,11 +14,9 @@ import (
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/linkerd/linkerd2/cli/flag"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	api "github.com/linkerd/linkerd2/pkg/public"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
@@ -49,7 +47,7 @@ func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transforme
 }
 
 func newCmdInject() *cobra.Command {
-	defaults, err := charts.NewValues()
+	defaults, err := linkerd2.NewValues()
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
@@ -357,7 +355,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 func fetchConfigs(ctx context.Context) (*linkerd2.Values, error) {
 
-	api.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+	hc := healthcheck.NewWithCoreChecks(&healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		Impersonate:           impersonate,
@@ -366,6 +364,7 @@ func fetchConfigs(ctx context.Context) (*linkerd2.Values, error) {
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Time{},
 	})
+	hc.RunWithExitOnError()
 
 	api, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
@@ -380,7 +379,7 @@ func fetchConfigs(ctx context.Context) (*linkerd2.Values, error) {
 // overrideConfigs uses command-line overrides to update the provided configs.
 // the overrideAnnotations map keeps track of which configs are overridden, by
 // storing the corresponding annotations and values.
-func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[string]string {
+func getOverrideAnnotations(values *linkerd2.Values, base *linkerd2.Values) map[string]string {
 	overrideAnnotations := make(map[string]string)
 
 	proxy := values.Proxy

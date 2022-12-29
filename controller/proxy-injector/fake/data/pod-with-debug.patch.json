@@ -338,7 +338,11 @@
       "securityContext": {
         "allowPrivilegeEscalation": false,
         "readOnlyRootFilesystem": true,
-        "runAsUser": 2102
+        "runAsNonRoot": true,
+        "runAsUser": 2102,
+        "seccompProfile": {
+          "type": "RuntimeDefault"
+		}
       },
       "terminationMessagePolicy": "FallbackToLogsOnError",
       "volumeMounts": [

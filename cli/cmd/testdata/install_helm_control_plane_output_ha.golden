@@ -648,6 +648,21 @@ data:
     tolerations: null
     webhookFailurePolicy: Fail
 ---
+# Source: linkerd-control-plane/templates/config-rbac.yaml
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+  name: ext-namespace-metadata-linkerd-config
+  namespace: linkerd-dev
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["linkerd-config"]
+---
 # Source: linkerd-control-plane/templates/identity.yaml
 ---
 ###
@@ -835,8 +850,14 @@ spec:
             cpu: "100m"
             memory: "10Mi"
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
@@ -955,8 +976,14 @@ spec:
             memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 2102
+          seccompProfile:
+            type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
@@ -1310,8 +1337,14 @@ spec:
             memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 2102
+          seccompProfile:
+            type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
         lifecycle:
           postStart:
@@ -1361,8 +1394,14 @@ spec:
             cpu: "100m"
             memory: "50Mi"
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
       - args:
         - sp-validator
         - -log-level=info
@@ -1387,8 +1426,14 @@ spec:
             path: /ready
             port: 9997
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: sp-tls
@@ -1428,8 +1473,14 @@ spec:
           initialDelaySeconds: 10
         resources:
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: policy-tls
@@ -1548,8 +1599,14 @@ spec:
                 cpu: "100m"
                 memory: "50Mi"
             securityContext:
+              capabilities:
+                drop:
+                - ALL
+              runAsNonRoot: true
               runAsUser: 2103
               allowPrivilegeEscalation: false
+              seccompProfile:
+                type: RuntimeDefault
 ---
 # Source: linkerd-control-plane/templates/proxy-injector.yaml
 ---
@@ -1728,8 +1785,14 @@ spec:
             memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 2102
+          seccompProfile:
+            type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
         lifecycle:
           postStart:
@@ -1773,8 +1836,14 @@ spec:
             cpu: "100m"
             memory: "50Mi"
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
