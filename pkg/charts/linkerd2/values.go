@@ -215,13 +215,13 @@ type (
 	// Identity contains the fields to set the identity variables in the proxy
 	// sidecar container
 	Identity struct {
+		ExternalCA                    bool    `json:"externalCA"`
 		ServiceAccountTokenProjection bool    `json:"serviceAccountTokenProjection"`
 		Issuer                        *Issuer `json:"issuer"`
 	}
 
 	// Issuer has the Helm variables of the identity issuer
 	Issuer struct {
-		ExternalCA         bool       `json:"externalCA"`
 		Scheme             string     `json:"scheme"`
 		ClockSkewAllowance string     `json:"clockSkewAllowance"`
 		IssuanceLifetime   string     `json:"issuanceLifetime"`

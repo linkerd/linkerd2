@@ -242,7 +242,7 @@ func makeInstallFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) 
 
 		flag.NewBoolFlag(installOnlyFlags, "identity-external-ca", false,
 			"Whether to use an external CA provider (default false)", func(values *l5dcharts.Values, value bool) error {
-				values.Identity.Issuer.ExternalCA = value
+				values.Identity.ExternalCA = value
 				return nil
 			}),
 	}

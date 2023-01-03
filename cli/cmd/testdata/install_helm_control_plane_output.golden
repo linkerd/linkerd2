@@ -431,9 +431,9 @@ data:
     heartbeatSchedule: 1 2 3 4 5
     highAvailability: false
     identity:
+      externalCA: false
       issuer:
         clockSkewAllowance: 20s
-        externalCA: false
         issuanceLifetime: 24h0m0s
         scheme: linkerd.io/tls
         tls:
@@ -718,7 +718,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - identity
@@ -876,7 +876,7 @@ spec:
         - mountPath: /var/run/secrets/tokens
           name: linkerd-identity-token
       initContainers:
-      
+
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -1074,7 +1074,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - env:
         - name: _pod_name
@@ -1301,7 +1301,7 @@ spec:
           name: policy-tls
           readOnly: true
       initContainers:
-      
+
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -1456,7 +1456,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - env:
         - name: _pod_name
