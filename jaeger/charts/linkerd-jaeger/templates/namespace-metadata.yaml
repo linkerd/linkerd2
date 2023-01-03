@@ -11,6 +11,7 @@ metadata:
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
   name: namespace-metadata
+  namespace: {{.Release.Namespace}}
 spec:
   template:
     metadata:
