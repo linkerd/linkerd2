@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
-      - uses: DavidAnson/markdownlint-cli2-action@d57f8bd57670b9c1deedf71219dd494614ff3335
+      - uses: DavidAnson/markdownlint-cli2-action@5b7c9f74fec47e6b15667b2cc23c63dff11e449e
         with:
           globs: |
             **/*.md
