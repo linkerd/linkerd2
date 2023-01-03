@@ -11,6 +11,7 @@ metadata:
     "helm.sh/hook-weight": "0"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
   name: namespace-metadata
+  namespace: {{.Release.Namespace}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -24,6 +25,7 @@ metadata:
     "helm.sh/hook-weight": "0"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
   name: namespace-metadata
+  namespace: {{.Release.Namespace}}
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -42,6 +44,7 @@ metadata:
     "helm.sh/hook-weight": "0"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
   name: namespace-metadata
+  namespace: {{.Release.Namespace}}
 roleRef:
   kind: Role
   name: namespace-metadata
