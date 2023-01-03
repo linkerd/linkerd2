@@ -634,8 +634,7 @@ func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, 
 		updatedAddressSet.Addresses[id] = address
 	}
 
-	oldAddressSet := pp.endpointSliceToAddresses(oldSlice)
-	for id := range oldAddressSet.Addresses {
+	for _, id := range pp.endpointSliceToIDs(oldSlice) {
 		delete(updatedAddressSet.Addresses, id)
 	}
 
@@ -769,6 +768,55 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 		Addresses: addresses,
 		Labels:    metricLabels(es),
 	}
+}
+
+// endpointSliceToIDs is similar to endpointSliceToAddresses but instead returns
+// only the IDs of the endpoints rather than the addresses themselves.
+func (pp *portPublisher) endpointSliceToIDs(es *discovery.EndpointSlice) []ID {
+	resolvedPort := pp.resolveESTargetPort(es.Ports)
+	if resolvedPort == undefinedEndpointPort {
+		return []ID{}
+	}
+
+	serviceID, err := getEndpointSliceServiceID(es)
+	if err != nil {
+		pp.log.Errorf("Could not fetch resource service name:%v", err)
+	}
+
+	ids := []ID{}
+	for _, endpoint := range es.Endpoints {
+		if endpoint.Hostname != nil {
+			if pp.hostname != "" && pp.hostname != *endpoint.Hostname {
+				continue
+			}
+		}
+		if endpoint.Conditions.Ready != nil && !*endpoint.Conditions.Ready {
+			continue
+		}
+
+		if endpoint.TargetRef == nil {
+			for _, IPAddr := range endpoint.Addresses {
+				ids = append(ids, ServiceID{
+					Name: strings.Join([]string{
+						serviceID.Name,
+						IPAddr,
+						fmt.Sprint(resolvedPort),
+					}, "-"),
+					Namespace: es.Namespace,
+				})
+			}
+			continue
+		}
+
+		if endpoint.TargetRef.Kind == endpointTargetRefPod {
+			ids = append(ids, PodID{
+				Name:      endpoint.TargetRef.Name,
+				Namespace: endpoint.TargetRef.Namespace,
+			})
+		}
+
+	}
+	return ids
 }
 
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) AddressSet {

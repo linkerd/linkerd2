@@ -229,7 +229,7 @@ func runTests(ctx context.Context, t *testing.T, ns string, tcs []testCase) {
 	t.Helper()
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			err := TestHelper.RetryFor(30*time.Second, func() error {
+			err := testutil.RetryFor(30*time.Second, func() error {
 				if err := checkPodMetrics(ctx, ns, tc.scName, tc.scChecks); err != nil {
 					return fmt.Errorf("failed to check metrics for client pod: %w", err)
 				}
