@@ -28,8 +28,6 @@ var (
 		"templates/tap-rbac.yaml",
 		"templates/web-rbac.yaml",
 		"templates/psp.yaml",
-		"templates/admin-policy.yaml",
-		"templates/proxy-admin-policy.yaml",
 		"templates/metrics-api.yaml",
 		"templates/metrics-api-policy.yaml",
 		"templates/prometheus.yaml",

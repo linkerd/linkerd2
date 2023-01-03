@@ -25,7 +25,6 @@ var (
 	// this doesn't include the namespace-metadata.* templates, which are Helm-only
 	templatesJaeger = []string{
 		"templates/namespace.yaml",
-		"templates/proxy-admin-policy.yaml",
 		"templates/jaeger-injector.yaml",
 		"templates/jaeger-injector-policy.yaml",
 		"templates/rbac.yaml",

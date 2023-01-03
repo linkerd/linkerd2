@@ -90,66 +90,6 @@ apiVersion: policy.linkerd.io/v1beta1
 kind: Server
 metadata:
   namespace: linkerd-multicluster
-  name: gateway-proxy-admin
-  labels:
-    linkerd.io/extension: multicluster
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerdVersionValue
-spec:
-  podSelector:
-    matchLabels:
-      app: linkerd-gateway
-  port: linkerd-admin
-  proxyProtocol: HTTP/1
----
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
-metadata:
-  namespace: linkerd-multicluster
-  name: proxy-admin
-  labels:
-    linkerd.io/extension: multicluster
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerdVersionValue
-spec:
-  server:
-    name: gateway-proxy-admin
-  client:
-    # for kubelet probes
-    unauthenticated: true
----
-apiVersion: policy.linkerd.io/v1beta1
-kind: Server
-metadata:
-  namespace: linkerd-multicluster
-  name: service-mirror-proxy-admin
-  labels:
-    linkerd.io/extension: multicluster
-spec:
-  podSelector:
-    matchLabels:
-      component: linkerd-service-mirror
-  port: linkerd-admin
-  proxyProtocol: HTTP/1
----
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
-metadata:
-  namespace: linkerd-multicluster
-  name: service-mirror-proxy-admin
-  labels:
-    linkerd.io/extension: multicluster
-spec:
-  server:
-    name: service-mirror-proxy-admin
-  client:
-    # for kubelet probes
-    unauthenticated: true
----
-apiVersion: policy.linkerd.io/v1beta1
-kind: Server
-metadata:
-  namespace: linkerd-multicluster
   name: linkerd-gateway
   labels:
     linkerd.io/extension: multicluster
