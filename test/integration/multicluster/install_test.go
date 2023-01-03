@@ -271,7 +271,7 @@ func TestCheckMulticluster(t *testing.T) {
 	}
 
 	timeout := 5 * time.Minute
-	err = TestHelper.RetryFor(timeout, func() error {
+	err = testutil.RetryFor(timeout, func() error {
 		out, err := TestHelper.LinkerdRun(checkCmd...)
 		if err != nil {
 			return fmt.Errorf("'linkerd multicluster check' command failed\n%w", err)

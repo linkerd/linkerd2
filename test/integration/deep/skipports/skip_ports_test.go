@@ -80,7 +80,7 @@ func TestSkipInboundPorts(t *testing.T) {
 		t.Run("check webapp metrics", func(t *testing.T) {
 			// Wait for slow-cookers to start sending requests by using a short
 			// time window through RetryFor.
-			err := TestHelper.RetryFor(30*time.Second, func() error {
+			err := testutil.RetryFor(30*time.Second, func() error {
 				pods, err := TestHelper.GetPods(ctx, ns, map[string]string{"app": "webapp"})
 				if err != nil {
 					return fmt.Errorf("error getting pods\n%w", err)

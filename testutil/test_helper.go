@@ -261,7 +261,7 @@ func NewTestHelper() *TestHelper {
 	}
 	testHelper.version = strings.TrimSpace(version)
 
-	kubernetesHelper, err := NewKubernetesHelper(*k8sContext, testHelper.RetryFor)
+	kubernetesHelper, err := NewKubernetesHelper(*k8sContext, RetryFor)
 	if err != nil {
 		exit(1, fmt.Sprintf("error creating kubernetes helper: %s", err.Error()))
 	}
@@ -619,7 +619,7 @@ func (h *TestHelper) CheckVersion(serverVersion string) error {
 // RetryFor retries a given function every second until the function returns
 // without an error, or a timeout is reached. If the timeout is reached, it
 // returns the last error received from the function.
-func (h *TestHelper) RetryFor(timeout time.Duration, fn func() error) error {
+func RetryFor(timeout time.Duration, fn func() error) error {
 	err := fn()
 	if err == nil {
 		return nil
@@ -649,7 +649,7 @@ func (h *TestHelper) RetryFor(timeout time.Duration, fn func() error) error {
 // giving pods time to start.
 func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 	var body string
-	err := h.RetryFor(time.Minute, func() error {
+	err := RetryFor(time.Minute, func() error {
 		resp, err := h.httpClient.Get(url)
 		if err != nil {
 			return err

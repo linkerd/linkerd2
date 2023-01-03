@@ -226,7 +226,7 @@ func testMetrics(t *testing.T) {
 func assertRouteStat(upstream, namespace, downstream string, t *testing.T, assertFn func(stat *cmd2.JSONRouteStats) error) {
 	const routePath = "GET /testpath"
 	timeout := 2 * time.Minute
-	err := TestHelper.RetryFor(timeout, func() error {
+	err := testutil.RetryFor(timeout, func() error {
 		routes, err := getRoutes(upstream, namespace, []string{"--to", downstream})
 		if err != nil {
 			return fmt.Errorf("'linkerd routes' command failed: %w", err)
@@ -286,7 +286,7 @@ func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.J
 
 	cmd = append(cmd, "--output", "json")
 	var results map[string][]*cmd2.JSONRouteStats
-	err := TestHelper.RetryFor(2*time.Minute, func() error {
+	err := testutil.RetryFor(2*time.Minute, func() error {
 		out, err := TestHelper.LinkerdRun(cmd...)
 		if err != nil {
 			return err

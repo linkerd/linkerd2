@@ -194,7 +194,7 @@ func TestCheckVizWithExternalPrometheus(t *testing.T) {
 	}
 
 	timeout := 5 * time.Minute
-	err = TestHelper.RetryFor(timeout, func() error {
+	err = testutil.RetryFor(timeout, func() error {
 		out, err := TestHelper.LinkerdRun(cmd...)
 		if err != nil {
 			return fmt.Errorf("'linkerd viz check' command failed\n%w", err)
