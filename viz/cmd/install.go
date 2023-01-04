@@ -31,6 +31,7 @@ var (
 		"templates/metrics-api.yaml",
 		"templates/metrics-api-policy.yaml",
 		"templates/prometheus.yaml",
+		"templates/prometheus-policy.yaml",
 		"templates/tap.yaml",
 		"templates/tap-policy.yaml",
 		"templates/tap-injector-rbac.yaml",
