@@ -312,6 +312,10 @@ identity:
   issuer:
     scheme: linkerd.io/tls
 
+    # -- Reference TLS crtPEM & keyPEM from an external secret
+    externalSecret: false
+    # externalSecretName:
+
     # -- Amount of time to allow for clock skew within a Linkerd cluster
     clockSkewAllowance: 20s
 

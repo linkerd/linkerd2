@@ -4,6 +4,7 @@
 ### Identity Controller Service
 ###
 {{ if and (.Values.identity.issuer) (eq .Values.identity.issuer.scheme "linkerd.io/tls") -}}
+{{ if not (.Values.identity.issuer.externalSecret) -}}
 ---
 kind: Secret
 apiVersion: v1
@@ -19,6 +20,7 @@ metadata:
 data:
   crt.pem: {{b64enc (required "Please provide the identity issuer certificate" .Values.identity.issuer.tls.crtPEM | trim)}}
   key.pem: {{b64enc (required "Please provide the identity issue private key" .Values.identity.issuer.tls.keyPEM | trim)}}
+{{- end}}
 {{- end}}
 {{ if not (.Values.identity.externalCA) -}}
 ---
@@ -231,7 +233,11 @@ spec:
       volumes:
       - name: identity-issuer
         secret:
+          {{ if not (.Values.identity.issuer.externalSecret) -}}
           secretName: linkerd-identity-issuer
+          {{ else -}}
+          secretName: {{.Values.identity.issuer.externalSecretName}}
+          {{ end -}}
       - configMap:
           name: linkerd-identity-trust-roots
         name: trust-roots
