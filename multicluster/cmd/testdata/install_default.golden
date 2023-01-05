@@ -102,8 +102,8 @@ spec:
       app: linkerd-gateway
   port: linkerd-proxy
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-multicluster
   name: linkerd-gateway
@@ -113,21 +113,52 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerdVersionValue
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: linkerd-gateway
-  client:
-    meshTLS:
-      identities:
-      - '*'
-    networks:
+  requiredAuthenticationRefs:
+    - kind: MeshTLSAuthentication
+      name: any-meshed
+      namespace: linkerd-multicluster
+    - kind: NetworkAuthentication
+      name: source-cluster
+      namespace: linkerd-multicluster
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthentication
+metadata:
+  namespace: linkerd-multicluster
+  name: any-meshed
+  labels:
+    linkerd.io/extension: multicluster
+    app: linkerd-gateway
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+spec:
+  identities:
+  - '*'
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  namespace: linkerd-multicluster
+  name: source-cluster
+  labels:
+    linkerd.io/extension: multicluster
+    app: linkerd-gateway
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerdVersionValue
+spec:
+  networks:
     # Change this to the source cluster cidrs pointing to this gateway.
     # Note that the source IP in some providers (e.g. GKE) will be the local
     # node's IP and not the source cluster's
-    - cidr: 0.0.0.0/0
-    - cidr: ::/0
+  - cidr: "0.0.0.0/0"
+  - cidr: "::/0"
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-multicluster
   name: linkerd-gateway-probe
@@ -137,17 +168,18 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerdVersionValue
 spec:
-  server:
-    name: gateway-proxy-admin
-  client:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: linkerd-gateway
+  requiredAuthenticationRefs:
     # allows probes from outside the cluster, as long as they have an identity
-    meshTLS:
-      identities:
-      - '*'
-    networks:
-    # cf note for linkerd-gateway ServerAuthorization
-    - cidr: 0.0.0.0/0
-    - cidr: ::/0
+    - kind: MeshTLSAuthentication
+      name: any-meshed
+      namespace: linkerd-multicluster
+    - kind: NetworkAuthentication
+      name: source-cluster
+      namespace: linkerd-multicluster
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -316,23 +348,24 @@ spec:
   port: admin-http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-multicluster
   name: service-mirror
   labels:
     component: linkerd-service-mirror
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: service-mirror
-  client:
+  requiredAuthenticationRefs:
     # In order to use `linkerd mc gateways` you need viz' Prometheus instance
     # to be able to reach the service-mirror. In order to also have a separate
-    # Prometheus scrape the service-mirror an additional ServerAuthorization
+    # Prometheus scrape the service-mirror an additional AuthorizationPolicy
     # resource should be created.
-    meshTLS:
-      serviceAccounts:
-      - name: prometheus
-        namespace: linkerd-viz
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: linkerd-viz
 ---

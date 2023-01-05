@@ -14,8 +14,8 @@ spec:
   port: admin-http
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: {{ .Release.Namespace }}
   name: service-mirror
@@ -23,14 +23,15 @@ metadata:
     component: linkerd-service-mirror
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: service-mirror
-  client:
+  requiredAuthenticationRefs:
     # In order to use `linkerd mc gateways` you need viz' Prometheus instance
     # to be able to reach the service-mirror. In order to also have a separate
-    # Prometheus scrape the service-mirror an additional ServerAuthorization
+    # Prometheus scrape the service-mirror an additional AuthorizationPolicy
     # resource should be created.
-    meshTLS:
-      serviceAccounts:
-      - name: prometheus
-        namespace: linkerd-viz
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: linkerd-viz
