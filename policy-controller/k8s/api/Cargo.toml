@@ -10,7 +10,7 @@ k8s-openapi = { version = "0.16", default-features = false, features = [
     "v1_20",
 ] }
 k8s-gateway-api = "0.8"
-kube = { version = "0.76", default-features = false, features = [
+kube = { version = "0.78", default-features = false, features = [
     "client",
     "derive",
     "runtime",
