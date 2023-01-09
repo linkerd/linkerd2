@@ -33,7 +33,7 @@ new_proxy_rev="release/$new_proxy_version"
 # Checkout the linkerd2-proxy repo to resolve the new proxy version to a SHA
 # and obtain the commit log since the prior version.
 tmp=$(mktemp -d -t l2-proxy.XXX)
-git clone --depth=100 https://github.com/linkerd/linkerd2-proxy "$tmp"
+git clone --depth=500 https://github.com/linkerd/linkerd2-proxy "$tmp"
 cd "$tmp"
 
 if ! git rev-parse --verify --quiet "${old_proxy_rev}" ; then

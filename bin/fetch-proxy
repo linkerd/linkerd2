@@ -40,7 +40,7 @@ if [ "$computed" != "$expected" ]; then
 fi
 
 mv "$pkgname/LICENSE" .
-mv "$pkgname/bin/linkerd2-proxy" .
+mv "$pkgname/linkerd2-proxy" .
 rm -r "$pkgfile" "$pkgname"
 mv linkerd2-proxy "$pkgname"
 echo "$builddir/$pkgname"
