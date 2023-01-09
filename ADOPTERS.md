@@ -23,6 +23,7 @@
 - [Commonbond](https://www.commonbond.co/)
 - [Crayon](https://crayon.com)
 - [Doji](https://www.doji.cn/)
+- [Dukaan](https://mydukaan.io/)
 - [Expedia](https://www.expedia.com)
 - [Facelift](https://www.facelift-bbt.com/en)
 - [Favrit](https://www.favrit.com)
