@@ -80,7 +80,7 @@ jobs:
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact
       if: matrix.component == 'cli-bin'
-      uses: actions/upload-artifact@83fd05a356d7e2593de66fc9913b3002723633cb
+      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
       with:
         name: image-archives
         path: /home/runner/archives
@@ -259,7 +259,7 @@ jobs:
         args: pack bin/win/linkerd.nuspec
     - name: Chocolatey - upload package
       if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/upload-artifact@83fd05a356d7e2593de66fc9913b3002723633cb
+      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
       with:
         name: choco
         path: ./linkerd.*.nupkg
