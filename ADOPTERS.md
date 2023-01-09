@@ -86,6 +86,7 @@
 - [Transit](https://transit.app)
 - [True Tickets](https://true-tickets.com)
 - [Web Summit](https://websummit.com)
+- [Winuall](https://www.winuall.com)
 - [Wiz Security](https://www.wiz.io/)
 - [xCloud](https://www.xbox.com/en-US/xbox-game-streaming/project-xcloud)
 - [YouMail](https://www.youmail.com)
