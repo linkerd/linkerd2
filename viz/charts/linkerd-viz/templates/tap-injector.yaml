@@ -13,7 +13,6 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
-    {{- with .Values.tapInjector.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
     {{- with .Values.tapInjector.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
     linkerd.io/inject: enabled
 spec:
@@ -32,7 +31,6 @@ apiVersion: apps/v1
 metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
-    {{- with .Values.tapInjector.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
     linkerd.io/inject: enabled
     config.linkerd.io/proxy-await: "enabled"
   labels:

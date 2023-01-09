@@ -9,8 +9,6 @@ metadata:
   labels:
     linkerd.io/extension: viz
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
-  annotations:
-    {{- with .Values.tapInjector.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -23,8 +21,6 @@ metadata:
   labels:
     linkerd.io/extension: viz
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
-  annotations:
-    {{- with .Values.tapInjector.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 subjects:
 - kind: ServiceAccount
   name: tap-injector
@@ -42,8 +38,6 @@ metadata:
   labels:
     linkerd.io/extension: viz
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
-  annotations:
-    {{- with .Values.tapInjector.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
 {{- $host := printf "tap-injector.%s.svc" .Release.Namespace }}
@@ -56,7 +50,6 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
-    {{- with .Values.tapInjector.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   labels:
     linkerd.io/extension: viz
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
@@ -73,7 +66,6 @@ metadata:
   name: linkerd-tap-injector-webhook-config
   {{- if or (.Values.tapInjector.injectCaFrom) (.Values.tapInjector.injectCaFromSecret) }}
   annotations:
-  {{- with .Values.tapInjector.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   {{- if .Values.tapInjector.injectCaFrom }}
     cert-manager.io/inject-ca-from: {{ .Values.tapInjector.injectCaFrom }}
   {{- end }}

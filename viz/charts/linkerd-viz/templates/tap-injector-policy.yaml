@@ -10,7 +10,6 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
-    {{- with .Values.tapInjector.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   podSelector:
     matchLabels:
@@ -30,7 +29,6 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
-    {{- with .Values.tapInjector.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   targetRef:
     group: policy.linkerd.io
@@ -51,7 +49,6 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
-    {{- with .Values.tapInjector.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   # Ideally, this should be restricted to the actual set of IPs the kubelet API
   # server uses for webhooks in a cluster. This can't easily be discovered.

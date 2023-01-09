@@ -13,7 +13,6 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
-    {{- with .Values.metricsAPI.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
     {{- with .Values.metricsAPI.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
     linkerd.io/inject: enabled
 spec:
@@ -32,7 +31,6 @@ kind: Deployment
 metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
-    {{- with .Values.metricsAPI.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
     linkerd.io/inject: enabled
     config.linkerd.io/proxy-await: "enabled"
   labels:

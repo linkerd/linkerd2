@@ -89,6 +89,8 @@ Kubernetes: `>=1.21.0-0`
 | dashboard.resources.memory.limit | string | `nil` | Maximum amount of memory that web container can use |
 | dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
 | dashboard.restrictPrivileges | bool | `false` | Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check |
+| dashboard.service | object | `{"annotations":{}}` | dashboard service configuration |
+| dashboard.service.annotations | object | `{}` | Additional annotations to add to dashboard service |
 | defaultImagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all viz components |
 | defaultLogFormat | string | `"plain"` | Log format (`plain` or `json`) for all the viz components. |
 | defaultLogLevel | string | `"info"` | Log level for all the viz components |
@@ -120,6 +122,8 @@ Kubernetes: `>=1.21.0-0`
 | metricsAPI.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the metrics-api container requests |
 | metricsAPI.resources.memory.limit | string | `nil` | Maximum amount of memory that metrics-api container can use |
 | metricsAPI.resources.memory.request | string | `nil` | Amount of memory that the metrics-api container requests |
+| metricsAPI.service | object | `{"annotations":{}}` | metrics-api service configuration |
+| metricsAPI.service.annotations | object | `{}` | Additional annotations to add to metrics-api service |
 | metricsAPI.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | namespaceMetadata.image.name | string | `"curl"` | Docker image name for the namespace-metadata instance |
 | namespaceMetadata.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the namespace-metadata instance |
@@ -173,6 +177,8 @@ Kubernetes: `>=1.21.0-0`
 | tap.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the tap container requests |
 | tap.resources.memory.limit | string | `nil` | Maximum amount of memory that tap container can use |
 | tap.resources.memory.request | string | `nil` | Amount of memory that the tap container requests |
+| tap.service | object | `{"annotations":{}}` | tap service configuration |
+| tap.service.annotations | object | `{}` | Additional annotations to add to tap service |
 | tapInjector.UID | string | `nil` | UID for the tapInjector resource |
 | tapInjector.caBundle | string | `""` | Bundle of CA certificates for the tapInjector. If not provided nor injected with cert-manager, then Helm will use the certificate generated for `tapInjector.crtPEM`. If `tapInjector.externalSecret` is set to true, this value, injectCaFrom, or injectCaFromSecret must be set, as no certificate will be generated. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information. |
 | tapInjector.crtPEM | string | `""` | Certificate for the tapInjector. If not provided and not using an external secret then Helm will generate one. |
@@ -197,6 +203,8 @@ Kubernetes: `>=1.21.0-0`
 | tapInjector.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the tapInjector container requests |
 | tapInjector.resources.memory.limit | string | `nil` | Maximum amount of memory that tapInjector container can use |
 | tapInjector.resources.memory.request | string | `nil` | Amount of memory that the tapInjector container requests |
+| tapInjector.service | object | `{"annotations":{}}` | tap service configuration |
+| tapInjector.service.annotations | object | `{}` | Additional annotations to add to tapInjector service |
 | tolerations | string | `nil` | Default tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 
 ----------------------------------------------
