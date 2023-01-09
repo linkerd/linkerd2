@@ -174,6 +174,8 @@ jobs:
           - v1.25
     steps:
       - uses: extractions/setup-just@95b912dc5d3ed106a72907f2f9b91e76d60bdb76
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: olix0r/cargo-action-fmt/setup@9269f3aa1ff01775d95efc97037e2cbdb41d9684
       - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b
       - uses: actions/download-artifact@9782bd6a9848b53b110e712e20e42d89988822b7
@@ -353,6 +355,8 @@ jobs:
           - v1.25
     steps:
       - uses: extractions/setup-just@95b912dc5d3ed106a72907f2f9b91e76d60bdb76
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568
         with:
           go-version: '1.18'
