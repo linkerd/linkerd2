@@ -11,7 +11,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/cmd"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -904,7 +903,7 @@ func (o *statOptions) validateConflictingFlags() error {
 		return fmt.Errorf("--to-namespace and --from-namespace flags are mutually exclusive")
 	}
 
-	if o.allNamespaces && o.namespace != cmd.GetDefaultNamespace(kubeconfigPath, kubeContext) {
+	if o.allNamespaces && o.namespace != pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext) {
 		return fmt.Errorf("--all-namespaces and --namespace flags are mutually exclusive")
 	}
 
@@ -924,7 +923,7 @@ func (o *statOptions) validateNamespaceFlags() error {
 
 	// Note: technically, this allows you to say `stat ns --namespace <default-namespace-from-kubectl-context>`, but that
 	// seems like an edge case.
-	if o.namespace != cmd.GetDefaultNamespace(kubeconfigPath, kubeContext) {
+	if o.namespace != pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext) {
 		return fmt.Errorf("--namespace flag is incompatible with namespace resource type")
 	}
 

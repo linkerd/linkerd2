@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -93,7 +92,7 @@ func (fscw *FsCredsWatcher) UpdateCert(certVal *atomic.Value) error {
 
 // ProcessEvents reads from the update and error channels and reloads the certs when necessary
 func (fscw *FsCredsWatcher) ProcessEvents(
-	log *logrus.Entry,
+	log *log.Entry,
 	certVal *atomic.Value,
 	updateEvent <-chan struct{},
 	errEvent <-chan error,

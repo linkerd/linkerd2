@@ -18,7 +18,6 @@ import (
 
 	jsonfilter "github.com/clarketm/json"
 	"github.com/linkerd/linkerd2/pkg/charts"
-	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -250,13 +249,13 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 }
 
 // GetValues returns the values used for rendering patches.
-func (conf *ResourceConfig) GetValues() *linkerd2.Values {
+func (conf *ResourceConfig) GetValues() *l5dcharts.Values {
 	return conf.values
 }
 
 // GetOverriddenValues returns the final Values struct which is created
 // by overriding annotated configuration on top of default Values
-func (conf *ResourceConfig) GetOverriddenValues() (*linkerd2.Values, error) {
+func (conf *ResourceConfig) GetOverriddenValues() (*l5dcharts.Values, error) {
 	// Make a copy of Values and mutate that
 	copyValues, err := conf.values.DeepCopy()
 	if err != nil {

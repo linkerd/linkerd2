@@ -28,6 +28,7 @@ linters:
   - nakedret
   - revive
   - staticcheck
+  - stylecheck
   - typecheck
   - unconvert
   - unparam
@@ -42,7 +43,6 @@ linters:
   # - lll
   # - maligned
   # - prealloc
-  # - stylecheck
 
   disable:
   # https://github.com/golangci/golangci-lint/issues/2649
@@ -53,6 +53,8 @@ linters-settings:
     rules:
     - name: package-comments
       disabled: true
+  stylecheck:
+    checks: ["ST1019"]
 
 issues:
   exclude-use-default: false
