@@ -65,7 +65,9 @@ impl Controller {
                     .iter()
                     .flatten()
                     .filter(|parent| parent.kind.as_deref() == Some("Server"))
-                    .map(|parent| &parent.name);
+                    .map(|parent| &parent.name)
+                    .collect::<Vec<&String>>();
+                tracing::info!(?parent_refs);
 
                 match accepted_routes.get(&name) {
                     Some(accepting_parents) => {
@@ -92,8 +94,9 @@ impl Controller {
                             parent_statuses.push(parent);
                         }
 
-                        let unaccepting_parents =
-                            parent_refs.filter(|parent| !accepting_parents.contains(parent));
+                        let unaccepting_parents = parent_refs
+                            .iter()
+                            .filter(|parent| !accepting_parents.contains(parent));
                         for server in unaccepting_parents {
                             let parent = gateway::RouteParentStatus {
                                 parent_ref: gateway::ParentReference {
@@ -169,8 +172,6 @@ impl Controller {
                 //             .collect(),
                 //         None => vec![],
                 //     };
-
-                tracing::info!(?parent_statuses);
 
                 let status = gateway::HttpRouteStatus {
                     inner: gateway::RouteStatus {

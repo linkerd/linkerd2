@@ -1483,12 +1483,12 @@ impl PolicyIndex {
     fn update_statuses(&self) {
         let mut accepted_routes = HashMap::default();
 
-        for name in self.servers.keys() {
+        for server_name in self.servers.keys() {
             let routes = self
                 .http_routes
                 .iter()
-                .filter(|(_, route)| route.selects_server(name))
-                .map(|(name, _)| InboundHttpRouteRef::Linkerd(name.clone()))
+                .filter(|(_, route)| route.selects_server(server_name))
+                .map(|(route_name, _)| InboundHttpRouteRef::Linkerd(route_name.clone()))
                 .collect::<Vec<_>>();
 
             if routes.is_empty() {
@@ -1499,7 +1499,7 @@ impl PolicyIndex {
                 // Skip default routes since they are not real resources.
                 if let InboundHttpRouteRef::Linkerd(name) = route {
                     let servers = accepted_routes.entry(name.to_string()).or_insert(vec![]);
-                    servers.push(name.to_string());
+                    servers.push(server_name.to_string());
                 }
             }
         }
