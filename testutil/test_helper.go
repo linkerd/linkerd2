@@ -51,7 +51,6 @@ type helm struct {
 	multiclusterChart       string
 	vizChart                string
 	vizStableChart          string
-	stableChart             string
 	releaseName             string
 	multiclusterReleaseName string
 	upgradeFromVersion      string
@@ -130,7 +129,6 @@ func NewGenericTestHelper(
 	clusterDomain,
 	helmPath,
 	helmCharts,
-	helmStableChart,
 	helmReleaseName,
 	helmMulticlusterReleaseName,
 	helmMulticlusterChart string,
@@ -154,7 +152,6 @@ func NewGenericTestHelper(
 			charts:                  helmCharts,
 			multiclusterChart:       helmMulticlusterChart,
 			multiclusterReleaseName: helmMulticlusterReleaseName,
-			stableChart:             helmStableChart,
 			releaseName:             helmReleaseName,
 			upgradeFromVersion:      upgradeFromVersion,
 		},
@@ -191,7 +188,6 @@ func NewTestHelper() *TestHelper {
 	multiclusterHelmChart := flag.String("multicluster-helm-chart", "charts/linkerd-multicluster", "path to linkerd2's multicluster Helm chart")
 	vizHelmChart := flag.String("viz-helm-chart", "charts/linkerd-viz", "path to linkerd2's viz extension Helm chart")
 	vizHelmStableChart := flag.String("viz-helm-stable-chart", "charts/linkerd-viz", "path to linkerd2's viz extension stable Helm chart")
-	helmStableChart := flag.String("helm-stable-chart", "linkerd/linkerd2", "path to linkerd2's stable Helm chart")
 	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
 	multiclusterHelmReleaseName := flag.String("multicluster-helm-release", "", "install linkerd multicluster via Helm using this release name")
 	upgradeFromVersion := flag.String("upgrade-from-version", "", "when specified, the upgrade test uses it as the base version of the upgrade")
@@ -240,7 +236,6 @@ func NewTestHelper() *TestHelper {
 			multiclusterChart:       *multiclusterHelmChart,
 			vizChart:                *vizHelmChart,
 			vizStableChart:          *vizHelmStableChart,
-			stableChart:             *helmStableChart,
 			releaseName:             *helmReleaseName,
 			multiclusterReleaseName: *multiclusterHelmReleaseName,
 			upgradeFromVersion:      *upgradeHelmFromVersion,
@@ -260,7 +255,7 @@ func NewTestHelper() *TestHelper {
 	}
 	testHelper.version = strings.TrimSpace(version)
 
-	kubernetesHelper, err := NewKubernetesHelper(*k8sContext, testHelper.RetryFor)
+	kubernetesHelper, err := NewKubernetesHelper(*k8sContext, RetryFor)
 	if err != nil {
 		exit(1, fmt.Sprintf("error creating kubernetes helper: %s", err.Error()))
 	}
@@ -342,11 +337,6 @@ func (h *TestHelper) GetLinkerdVizHelmChart() string {
 // stable chart
 func (h *TestHelper) GetLinkerdVizHelmStableChart() string {
 	return h.helm.vizStableChart
-}
-
-// GetHelmStableChart returns the path to the Linkerd Helm stable chart
-func (h *TestHelper) GetHelmStableChart() string {
-	return h.helm.stableChart
 }
 
 // UpgradeHelmFromVersion returns the version from which Linkerd should be upgraded with Helm
@@ -520,10 +510,10 @@ func (h *TestHelper) KubectlStream(arg ...string) (*Stream, error) {
 }
 
 // HelmUpgrade runs the helm upgrade subcommand, with the provided arguments
-func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, error) {
+func (h *TestHelper) HelmUpgrade(chart, releaseName string, arg ...string) (string, string, error) {
 	withParams := append([]string{
 		"upgrade",
-		h.helm.releaseName,
+		releaseName,
 		"--kube-context", h.k8sContext,
 		"--namespace", h.namespace,
 		"--timeout", "60m",
@@ -618,7 +608,7 @@ func (h *TestHelper) CheckVersion(serverVersion string) error {
 // RetryFor retries a given function every second until the function returns
 // without an error, or a timeout is reached. If the timeout is reached, it
 // returns the last error received from the function.
-func (h *TestHelper) RetryFor(timeout time.Duration, fn func() error) error {
+func RetryFor(timeout time.Duration, fn func() error) error {
 	err := fn()
 	if err == nil {
 		return nil
@@ -648,7 +638,7 @@ func (h *TestHelper) RetryFor(timeout time.Duration, fn func() error) error {
 // giving pods time to start.
 func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 	var body string
-	err := h.RetryFor(time.Minute, func() error {
+	err := RetryFor(time.Minute, func() error {
 		resp, err := h.httpClient.Get(url)
 		if err != nil {
 			return err

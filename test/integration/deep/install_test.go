@@ -73,7 +73,7 @@ func TestInstallCNIPlugin(t *testing.T) {
 
 	// perform a linkerd check with --linkerd-cni-enabled
 	timeout := time.Minute
-	err = TestHelper.RetryFor(timeout, func() error {
+	err = testutil.RetryFor(timeout, func() error {
 		out, err = TestHelper.LinkerdRun("check", "--pre", "--linkerd-cni-enabled", "--wait=60m")
 		if err != nil {
 			return err

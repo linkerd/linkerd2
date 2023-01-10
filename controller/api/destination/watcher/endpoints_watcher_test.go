@@ -1,16 +1,21 @@
 package watcher
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/testutil"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	dv1 "k8s.io/api/discovery/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -2045,4 +2050,134 @@ status:
 			listener.ExpectAdded(tt.expectedAddresses, t)
 		})
 	}
+}
+
+// Test that when an EndpointSlice is scaled down, the EndpointsWatcher sends
+// all of the Remove events, even if the associated pod is no longer available
+// from the API.
+func TestEndpointSliceScaleDown(t *testing.T) {
+	k8sConfigsWithES := []string{`
+kind: APIResourceList
+apiVersion: v1
+groupVersion: discovery.k8s.io/v1
+resources:
+- name: endpointslices
+  singularName: endpointslice
+  namespaced: true
+  kind: EndpointSlice
+  verbs:
+    - delete
+    - deletecollection
+    - get
+    - list
+    - patch
+    - create
+    - update
+    - watch
+`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`, `
+addressType: IPv4
+apiVersion: discovery.k8s.io/v1
+endpoints:
+- addresses:
+  - 172.17.0.12
+  conditions:
+  ready: true
+  targetRef:
+    kind: Pod
+    name: name1-1
+    namespace: ns
+  topology:
+  kubernetes.io/hostname: node-1
+kind: EndpointSlice
+metadata:
+  labels:
+    kubernetes.io/service-name: name1
+  name: name1-es
+  namespace: ns
+ports:
+- name: ""
+  port: 8989`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.0.12`}
+
+	// Create an EndpointSlice with one endpoint, backed by a pod.
+
+	k8sAPI, err := k8s.NewFakeAPI(k8sConfigsWithES...)
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
+
+	watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), true)
+
+	k8sAPI.Sync(nil)
+
+	listener := newBufferingEndpointListener()
+
+	err = watcher.Subscribe(ServiceID{Name: "name1", Namespace: "ns"}, 8989, "", listener)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	k8sAPI.Sync(nil)
+
+	listener.ExpectAdded([]string{"172.17.0.12:8989"}, t)
+
+	// Delete the backing pod and scale the EndpointSlice to 0 endpoints.
+
+	err = k8sAPI.Client.CoreV1().Pods("ns").Delete(context.Background(), "name1-1", metav1.DeleteOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// It may take some time before the pod deletion is recognized by the
+	// lister. We wait until the lister sees the pod as deleted.
+	err = testutil.RetryFor(time.Second*30, func() error {
+		_, err := k8sAPI.Pod().Lister().Pods("ns").Get("name1-1")
+		if kerrors.IsNotFound(err) {
+			return nil
+		}
+		if err == nil {
+			return errors.New("pod should be deleted, but still exists in lister")
+		}
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ES, err := k8sAPI.Client.DiscoveryV1().EndpointSlices("ns").Get(context.Background(), "name1-es", metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	emptyES := &dv1.EndpointSlice{
+		AddressType: "IPv4",
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "name1-es", Namespace: "ns",
+			Labels: map[string]string{dv1.LabelServiceName: "name1"},
+		},
+		Endpoints: []dv1.Endpoint{},
+		Ports:     []dv1.EndpointPort{},
+	}
+
+	watcher.updateEndpointSlice(ES, emptyES)
+
+	// Ensure the watcher emits a remove event.
+
+	listener.ExpectRemoved([]string{"172.17.0.12:8989"}, t)
 }
