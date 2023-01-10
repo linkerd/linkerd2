@@ -22,13 +22,14 @@ use linkerd_policy_controller_core::{
     InboundHttpRouteRef, InboundServer, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
+use linkerd_policy_controller_k8s_status::Update;
 use parking_lot::RwLock;
 use std::{
     collections::{hash_map::Entry, BTreeSet},
     num::NonZeroU16,
     sync::Arc,
 };
-use tokio::sync::watch;
+use tokio::sync::{mpsc::UnboundedSender, watch};
 use tracing::info_span;
 
 pub type SharedIndex = Arc<RwLock<Index>>;
@@ -41,6 +42,7 @@ pub struct Index {
     cluster_info: Arc<ClusterInfo>,
     namespaces: NamespaceIndex,
     authentications: AuthenticationNsIndex,
+    route_updates: UnboundedSender<Update>,
 }
 
 /// Holds all `Pod`, `Server`, and `ServerAuthorization` indices by-namespace.
@@ -124,6 +126,8 @@ struct PolicyIndex {
 
     authorization_policies: HashMap<String, authorization_policy::Spec>,
     http_routes: HashMap<String, InboundRouteBinding>,
+
+    route_updates: UnboundedSender<Update>,
 }
 
 #[derive(Debug, Default)]
@@ -140,7 +144,10 @@ struct NsUpdate<T> {
 // === impl Index ===
 
 impl Index {
-    pub fn shared(cluster_info: impl Into<Arc<ClusterInfo>>) -> SharedIndex {
+    pub fn shared(
+        cluster_info: impl Into<Arc<ClusterInfo>>,
+        route_updates: UnboundedSender<Update>,
+    ) -> SharedIndex {
         let cluster_info = cluster_info.into();
         Arc::new(RwLock::new(Self {
             cluster_info: cluster_info.clone(),
@@ -149,6 +156,7 @@ impl Index {
                 by_ns: HashMap::default(),
             },
             authentications: AuthenticationNsIndex::default(),
+            route_updates,
         }))
     }
 
@@ -188,8 +196,12 @@ impl Index {
         namespace: String,
         f: impl FnOnce(&mut Namespace) -> bool,
     ) {
-        self.namespaces
-            .get_or_default_with_reindex(namespace, &self.authentications, f)
+        self.namespaces.get_or_default_with_reindex(
+            namespace,
+            &self.authentications,
+            self.route_updates.clone(),
+            f,
+        )
     }
 
     fn reindex_all(&mut self) {
@@ -308,7 +320,9 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
         // Add or update the pod. If the pod was not already present in the
         // index with the same metadata, index it against the policy resources,
         // updating its watches.
-        let ns = self.namespaces.get_or_default(namespace);
+        let ns = self
+            .namespaces
+            .get_or_default(namespace, self.route_updates.clone());
         match ns.pods.update(name, meta, port_names, probes) {
             Ok(None) => {}
             Ok(Some(pod)) => pod.reindex_servers(&ns.policy, &self.authentications),
@@ -740,10 +754,14 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
 // === impl NemspaceIndex ===
 
 impl NamespaceIndex {
-    fn get_or_default(&mut self, ns: String) -> &mut Namespace {
+    fn get_or_default(
+        &mut self,
+        ns: String,
+        route_updates: UnboundedSender<Update>,
+    ) -> &mut Namespace {
         self.by_ns
             .entry(ns.clone())
-            .or_insert_with(|| Namespace::new(ns, self.cluster_info.clone()))
+            .or_insert_with(|| Namespace::new(ns, self.cluster_info.clone(), route_updates))
     }
 
     /// Gets the given namespace and, if it exists, passes it to the given
@@ -774,9 +792,10 @@ impl NamespaceIndex {
         &mut self,
         namespace: String,
         authns: &AuthenticationNsIndex,
+        route_updates: UnboundedSender<Update>,
         f: impl FnOnce(&mut Namespace) -> bool,
     ) {
-        let ns = self.get_or_default(namespace);
+        let ns = self.get_or_default(namespace, route_updates);
         if f(ns) {
             ns.reindex(authns);
         }
@@ -786,7 +805,11 @@ impl NamespaceIndex {
 // === impl Namespace ===
 
 impl Namespace {
-    fn new(namespace: String, cluster_info: Arc<ClusterInfo>) -> Self {
+    fn new(
+        namespace: String,
+        cluster_info: Arc<ClusterInfo>,
+        route_updates: UnboundedSender<Update>,
+    ) -> Self {
         Namespace {
             pods: PodIndex {
                 namespace: namespace.clone(),
@@ -799,6 +822,7 @@ impl Namespace {
                 server_authorizations: HashMap::default(),
                 authorization_policies: HashMap::default(),
                 http_routes: HashMap::default(),
+                route_updates,
             },
         }
     }
@@ -889,6 +913,8 @@ impl Pod {
             std::hash::BuildHasherDefault::<pod::PortHasher>::default(),
         );
 
+        let mut accepted_routes = HashMap::default();
+
         for (srvname, server) in policy.servers.iter() {
             if server.pod_selector.matches(&self.meta.labels) {
                 for port in self.select_ports(&server.port_ref).into_iter() {
@@ -914,6 +940,15 @@ impl Pod {
                             .flatten()
                             .map(|p| p.as_str()),
                     );
+
+                    for route in s.http_routes.keys() {
+                        // Skip default routes since they are not real resources.
+                        if let InboundHttpRouteRef::Linkerd(name) = route {
+                            let servers = accepted_routes.entry(name.to_string()).or_insert(vec![]);
+                            servers.push(srvname.to_string());
+                        }
+                    }
+
                     self.update_server(port, srvname, s);
 
                     matched_ports.insert(port, srvname.clone());
@@ -921,6 +956,11 @@ impl Pod {
                 }
             }
         }
+
+        let _ = policy.route_updates.send(Update {
+            namespace: policy.namespace.to_string(),
+            accepted_routes,
+        });
 
         // Reset all remaining ports to the default policy.
         for port in unmatched_ports.into_iter() {
