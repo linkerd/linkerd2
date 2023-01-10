@@ -84,7 +84,7 @@ impl Controller {
                                     last_transition_time: k8s::Time(Utc::now()),
                                     message: "".to_string(),
                                     observed_generation: None,
-                                    reason: "".to_string(),
+                                    reason: "Accepted".to_string(),
                                     status: "True".to_string(), // accepted is true
                                     type_: "Accepted".to_string(),
                                 }],
@@ -109,7 +109,7 @@ impl Controller {
                                     last_transition_time: k8s::Time(Utc::now()),
                                     message: "".to_string(),
                                     observed_generation: None,
-                                    reason: "ParentNotFound".to_string(),
+                                    reason: "NoMatchingParent".to_string(),
                                     status: "False".to_string(), // accepted is false
                                     type_: "Accepted".to_string(),
                                 }],
@@ -133,7 +133,7 @@ impl Controller {
                                     last_transition_time: k8s::Time(Utc::now()),
                                     message: "".to_string(),
                                     observed_generation: None,
-                                    reason: "ParentNotFound".to_string(),
+                                    reason: "NoMatchingParent".to_string(),
                                     status: "False".to_string(), // accepted is false
                                     type_: "Accepted".to_string(),
                                 }],
