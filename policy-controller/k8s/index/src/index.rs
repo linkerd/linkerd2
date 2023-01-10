@@ -835,7 +835,13 @@ impl Namespace {
 
     #[inline]
     fn reindex(&mut self, authns: &AuthenticationNsIndex) {
-        self.pods.reindex(&self.policy, authns);
+        if !self.pods.is_empty() {
+            self.pods.reindex(&self.policy, authns)
+        } else {
+            // todo: can we separate this from PodIndex::reindex_servers and
+            // always call PolicyIndex::update_statuses?
+            self.policy.update_statuses()
+        }
     }
 }
 
@@ -957,10 +963,15 @@ impl Pod {
             }
         }
 
-        let _ = policy.route_updates.send(Update {
+        // Send the status controller an update containing the Namespace's
+        // routes and Servers that accept them.
+        let update = Update {
             namespace: policy.namespace.to_string(),
             accepted_routes,
-        });
+        };
+        if let Err(error) = policy.route_updates.send(update) {
+            tracing::error!(%error, "Failed to send update to status controller");
+        }
 
         // Reset all remaining ports to the default policy.
         for port in unmatched_ports.into_iter() {
@@ -1467,6 +1478,41 @@ impl PolicyIndex {
             }
         }
         true
+    }
+
+    fn update_statuses(&self) {
+        let mut accepted_routes = HashMap::default();
+
+        for name in self.servers.keys() {
+            let routes = self
+                .http_routes
+                .iter()
+                .filter(|(_, route)| route.selects_server(name))
+                .map(|(name, _)| InboundHttpRouteRef::Linkerd(name.clone()))
+                .collect::<Vec<_>>();
+
+            if routes.is_empty() {
+                return;
+            }
+
+            for route in routes {
+                // Skip default routes since they are not real resources.
+                if let InboundHttpRouteRef::Linkerd(name) = route {
+                    let servers = accepted_routes.entry(name.to_string()).or_insert(vec![]);
+                    servers.push(name.to_string());
+                }
+            }
+        }
+
+        // Send the status controller an update containing the Namespace's
+        // routes and Servers that accept them.
+        let update = Update {
+            namespace: self.namespace.to_string(),
+            accepted_routes,
+        };
+        if let Err(error) = self.route_updates.send(update) {
+            tracing::error!(%error, "Failed to send update to status controller");
+        }
     }
 }
 
