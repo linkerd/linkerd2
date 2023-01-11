@@ -18,7 +18,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
 	pb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -30,7 +29,7 @@ type Server struct {
 	router       *httprouter.Router
 	allowedNames []string
 	certValue    *atomic.Value
-	log          *logrus.Entry
+	log          *log.Entry
 }
 
 // NewServer creates a new server that implements the Tap APIService.
@@ -61,7 +60,7 @@ func NewServer(
 		allowedNames = []string{}
 	}
 
-	log := logrus.WithFields(logrus.Fields{
+	log := log.WithFields(log.Fields{
 		"component": "tap",
 		"addr":      addr,
 	})

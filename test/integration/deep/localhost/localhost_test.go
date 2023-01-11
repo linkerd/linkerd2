@@ -95,7 +95,7 @@ func TestLocalhostServer(t *testing.T) {
 			}
 		}
 
-		err = TestHelper.RetryFor(50*time.Second, func() error {
+		err = testutil.RetryFor(50*time.Second, func() error {
 			// Use a short time window so that transient errors at startup
 			// fall out of the window.
 			metrics, err := TestHelper.LinkerdRun("diagnostics", "proxy-metrics", "-n", ns, "deploy/slow-cooker")

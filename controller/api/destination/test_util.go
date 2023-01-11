@@ -7,8 +7,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	pkgk8s "github.com/linkerd/linkerd2/controller/k8s"
-	"github.com/sirupsen/logrus"
 	logging "github.com/sirupsen/logrus"
 )
 
@@ -461,7 +459,7 @@ func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) e
 }
 
 func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointTranslator) {
-	k8sAPI, err := pkgk8s.NewFakeAPI(`
+	k8sAPI, err := k8s.NewFakeAPI(`
 apiVersion: v1
 kind: Node
 metadata:
@@ -494,7 +492,7 @@ metadata:
 		map[uint32]struct{}{},
 		k8sAPI.Node(),
 		mockGetServer,
-		logrus.WithField("test", t.Name()),
+		logging.WithField("test", t.Name()),
 	)
 	return mockGetServer, translator
 }

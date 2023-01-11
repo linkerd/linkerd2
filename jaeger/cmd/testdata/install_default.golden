@@ -7,39 +7,6 @@ metadata:
     linkerd.io/extension: jaeger
     pod-security.kubernetes.io/enforce: privileged
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: Server
-metadata:
-  namespace: linkerd-jaeger
-  name: proxy-admin
-  labels:
-    linkerd.io/extension: jaeger
-  annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
-spec:
-  podSelector:
-    matchLabels:
-      linkerd.io/extension: jaeger
-  port: linkerd-admin
-  proxyProtocol: HTTP/1
----
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
-metadata:
-  namespace: linkerd-jaeger
-  name: proxy-admin
-  labels:
-    linkerd.io/extension: jaeger
-  annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
-spec:
-  server:
-    name: proxy-admin
-  client:
-    # for kubelet probes
-    unauthenticated: true
-
----
 ###
 ### Jaeger Injector
 ###

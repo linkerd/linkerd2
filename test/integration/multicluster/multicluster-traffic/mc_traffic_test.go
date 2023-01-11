@@ -90,7 +90,7 @@ func TestGateways(t *testing.T) {
 	})
 
 	timeout := time.Minute
-	err := TestHelper.RetryFor(timeout, func() error {
+	err := testutil.RetryFor(timeout, func() error {
 		out, err := TestHelper.LinkerdRun("--context="+contexts[testutil.SourceContextKey], "multicluster", "gateways")
 		if err != nil {
 			return err
@@ -178,7 +178,7 @@ func TestTargetTraffic(t *testing.T) {
 		})
 
 		timeout := time.Minute
-		err := TestHelper.RetryFor(timeout, func() error {
+		err := testutil.RetryFor(timeout, func() error {
 			out, err := TestHelper.KubectlWithContext("",
 				targetCtx,
 				"--namespace", ns,
@@ -259,7 +259,7 @@ func TestMulticlusterStatefulSetTargetTraffic(t *testing.T) {
 		t.Run("expect open outbound TCP connection from gateway to nginx", func(t *testing.T) {
 			// Use a short time window so that slow-cooker can warm-up and send
 			// requests.
-			err := TestHelper.RetryFor(1*time.Minute, func() error {
+			err := testutil.RetryFor(1*time.Minute, func() error {
 				// Check gateway metrics
 				metrics, err := TestHelper.LinkerdRun(dgCmd...)
 				if err != nil {

@@ -22,7 +22,7 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/linkerd/linkerd2-proxy-api v0.7.0
 	github.com/linkerd/linkerd2-proxy-init v1.6.2
-	github.com/mattn/go-isatty v0.0.16
+	github.com/mattn/go-isatty v0.0.17
 	github.com/mattn/go-runewidth v0.0.14
 	github.com/nsf/termbox-go v0.0.0-20180613055208-5c94acc5e6eb
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -36,8 +36,8 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	go.opencensus.io v0.24.0
-	golang.org/x/net v0.4.0
-	golang.org/x/tools v0.4.0
+	golang.org/x/net v0.5.0
+	golang.org/x/tools v0.5.0
 	google.golang.org/grpc v1.51.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.28.1
@@ -138,9 +138,9 @@ require (
 	golang.org/x/mod v0.7.0 // indirect
 	golang.org/x/oauth2 v0.3.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.3.0 // indirect
-	golang.org/x/term v0.3.0 // indirect
-	golang.org/x/text v0.5.0 // indirect
+	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/term v0.4.0 // indirect
+	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	google.golang.org/api v0.62.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
@@ -158,17 +158,6 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
-// to avoid the `github.com/golang/protobuf/protoc-gen-go/generator` deprecation warning
-// (see https://github.com/golang/protobuf/issues/1104)
-replace github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.14.8
-
-// avoids scanners hitting the alert described in https://github.com/helm/helm/issues/7846
-// this should be removed when helm upgrades that dependency on runc
-replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.3
-
-// Addresses https://github.com/advisories/GHSA-crp2-qrr5-8pq7,
-// https://github.com/advisories/GHSA-5ffw-gxpp-mxpf
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.6
-
-// Addresses https://github.com/advisories/GHSA-qq97-vm5h-rrhg
-replace github.com/docker/distribution => github.com/docker/distribution v2.8.1+incompatible
+// Addresses https://github.com/linkerd/linkerd2/security/dependabot/37
+// (CVE-2022-23471)
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.14

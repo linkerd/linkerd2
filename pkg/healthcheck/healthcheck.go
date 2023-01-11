@@ -28,7 +28,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -2203,7 +2202,7 @@ func CheckCustomResourceDefinitions(ctx context.Context, k8sAPI *k8s.KubernetesA
 	return nil
 }
 
-func crdHasVersion(crd *v1.CustomResourceDefinition, version string) bool {
+func crdHasVersion(crd *apiextv1.CustomResourceDefinition, version string) bool {
 	for _, crdVersion := range crd.Spec.Versions {
 		if crdVersion.Name == version {
 			return true
@@ -2760,8 +2759,9 @@ func CheckCanPerformAction(ctx context.Context, api *k8s.KubernetesAPI, verb, na
 
 // getPodStatuses returns a map of all Linkerd container statuses:
 // component =>
-//   pod name =>
-//     container statuses
+//
+//	pod name =>
+//	  container statuses
 func getPodStatuses(pods []corev1.Pod) map[string]map[string][]corev1.ContainerStatus {
 	statuses := make(map[string]map[string][]corev1.ContainerStatus)
 

@@ -49,7 +49,7 @@ func TestEdges(t *testing.T) {
 		"-ojson",
 	}
 	r := regexp.MustCompile(b.String())
-	err := TestHelper.RetryFor(timeout, func() error {
+	err := testutil.RetryFor(timeout, func() error {
 		out, err := TestHelper.LinkerdRun(cmd...)
 		if err != nil {
 			t.Fatal(err)
@@ -141,7 +141,7 @@ func TestDirectEdges(t *testing.T) {
 		// check edges
 		timeout := 50 * time.Second
 		testDataPath := "testdata"
-		err = TestHelper.RetryFor(timeout, func() error {
+		err = testutil.RetryFor(timeout, func() error {
 			out, err = TestHelper.LinkerdRun("-n", testNamespace, "-o", "json", "viz", "edges", "deploy")
 			if err != nil {
 				return err

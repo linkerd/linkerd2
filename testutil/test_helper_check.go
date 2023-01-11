@@ -63,7 +63,7 @@ func (h *TestHelper) TestCheckProxy(expectedVersion, namespace string) error {
 
 func (h *TestHelper) testCheck(cmd []string, categories []healthcheck.CategoryID) error {
 	timeout := time.Minute * 10
-	return h.RetryFor(timeout, func() error {
+	return RetryFor(timeout, func() error {
 		res, err := h.LinkerdRun(cmd...)
 		if err != nil {
 			return fmt.Errorf("'linkerd check' command failed\n%w\n%s", err, res)

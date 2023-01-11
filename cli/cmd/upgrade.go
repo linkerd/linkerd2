@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/cli/flag"
-	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
 	flagspkg "github.com/linkerd/linkerd2/pkg/flags"
@@ -262,9 +261,9 @@ func upgradeControlPlane(ctx context.Context, k *k8s.KubernetesAPI, flags []flag
 	return &buf, nil
 }
 
-func loadStoredValues(ctx context.Context, k *k8s.KubernetesAPI) (*charts.Values, error) {
+func loadStoredValues(ctx context.Context, k *k8s.KubernetesAPI) (*l5dcharts.Values, error) {
 	// Load the default values from the chart.
-	values, err := charts.NewValues()
+	values, err := l5dcharts.NewValues()
 	if err != nil {
 		return nil, err
 	}
