@@ -432,7 +432,7 @@ spec:
                                   the path of the incoming request. The modified
                                   path is then used to construct the Location header.
                                   When empty, the request path is used as-is.
-                                  \n Suppor: Extended"
+                                  \n Support: Extended"
                                 type: string
                               port:
                                 description: "Port is the port to be used in the value
@@ -1194,7 +1194,7 @@ spec:
                                   the path of the incoming request. The modified
                                   path is then used to construct the Location header.
                                   When empty, the request path is used as-is.
-                                  \n Suppor: Extended"
+                                  \n Support: Extended"
                                 type: string
                               port:
                                 description: "Port is the port to be used in the value
@@ -1769,14 +1769,14 @@ spec:
                       pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                       type: string
                     port:
-                      description: Port specifies the destination
+                      description: "Port specifies the destination
                         port number to use for this resource.
                         Port is required when the referent is
                         a Kubernetes Service. In this case, the
                         port number is the service port number,
                         not the target port. For other resources,
                         destination port might be derived from
-                        the referent resource or this field.
+                        the referent resource or this field. \n Support: Extended"
                       format: int32
                       maximum: 65535
                       minimum: 1
