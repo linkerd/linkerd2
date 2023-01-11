@@ -122,11 +122,11 @@ spec:
   port: 13133
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: {{ .Release.Namespace }}
-  name: collector
+  name: collector-otlp
   labels:
     linkerd.io/extension: jaeger
     component: collector
@@ -134,16 +134,107 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
-  server:
-    selector:
-      matchLabels:
-        linkerd.io/extension: jaeger
-        component: collector
-  client:
-    # allow connections from any pod (meshed or not) sending trace data
-    unauthenticated: true
-{{ end -}}
-{{ if .Values.jaeger.enabled -}}
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: collector-otlp
+  # allow connections from any pod (meshed or not) sending trace data
+  requiredAuthenticationRefs: []
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: collector-otlp-http
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: collector-otlp-http
+  # allow connections from any pod (meshed or not) sending trace data
+  requiredAuthenticationRefs: []
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: collector-opencensus
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: collector-opencensus
+  # allow connections from any pod (meshed or not) sending trace data
+  requiredAuthenticationRefs: []
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: collector-zipkin
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: collector-zipkin
+  # allow connections from any pod (meshed or not) sending trace data
+  requiredAuthenticationRefs: []
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: collector-jaeger-thrift
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: collector-jaeger-thrift
+  # allow connections from any pod (meshed or not) sending trace data
+  requiredAuthenticationRefs: []
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: collector-jaeger-grpc
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: collector-jaeger-grpc
+  # allow connections from any pod (meshed or not) sending trace data
+  requiredAuthenticationRefs: []
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
@@ -163,8 +254,8 @@ spec:
   port: grpc
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: {{ .Release.Namespace }}
   name: jaeger-grpc
@@ -175,12 +266,14 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: jaeger-grpc
-  client:
-    meshTLS:
-      serviceAccounts:
-      - name: collector
+  requiredAuthenticationRefs:
+    - kind: ServiceAccount
+      name: collector
+      namespace: {{.Release.Namespace}}
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
@@ -200,8 +293,8 @@ spec:
   port: admin
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: {{ .Release.Namespace }}
   name: jaeger-admin
@@ -212,14 +305,15 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: jaeger-admin
-  client:
-    meshTLS:
-      serviceAccounts:
-      # if not using linkerd-viz' prometheus, replace its SA here
-      - name: prometheus
-        namespace: linkerd-viz
+  requiredAuthenticationRefs:
+    # if not using linkerd-viz' prometheus, replace its SA here
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: linkerd-viz
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
@@ -239,8 +333,8 @@ spec:
   port: ui
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: {{ .Release.Namespace }}
   name: jaeger-ui
@@ -251,12 +345,13 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: jaeger-ui
-  client:
-    meshTLS:
-      serviceAccounts:
-      # for the optional dashboard integration
-      - name: web
-        namespace: linkerd-viz
+  requiredAuthenticationRefs:
+    # for the optional dashboard integration
+    - kind: ServiceAccount
+      name: web
+      namespace: linkerd-viz
 {{ end -}}
