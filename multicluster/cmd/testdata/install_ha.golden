@@ -155,10 +155,12 @@ spec:
     kind: Server
     name: linkerd-gateway
   requiredAuthenticationRefs:
-    - kind: MeshTLSAuthentication
+    - group: policy.linkerd.io
+      kind: MeshTLSAuthentication
       name: any-meshed
       namespace: linkerd-multicluster
-    - kind: NetworkAuthentication
+    - group: policy.linkerd.io
+      kind: NetworkAuthentication
       name: source-cluster
       namespace: linkerd-multicluster
 ---
@@ -211,10 +213,12 @@ spec:
     name: linkerd-gateway
   requiredAuthenticationRefs:
     # allows probes from outside the cluster, as long as they have an identity
-    - kind: MeshTLSAuthentication
+    - group: policy.linkerd.io
+      kind: MeshTLSAuthentication
       name: any-meshed
       namespace: linkerd-multicluster
-    - kind: NetworkAuthentication
+    - group: policy.linkerd.io
+      kind: NetworkAuthentication
       name: source-cluster
       namespace: linkerd-multicluster
 ---
