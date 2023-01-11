@@ -3,22 +3,30 @@ use chrono::offset::Utc;
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
 use tokio::sync::mpsc::UnboundedReceiver;
 
-// todo
-//   - impl fn new to remove pub fields
-//   - is debug derive needed?
-#[derive(Debug)]
 pub struct Update {
-    pub namespace: String,
-    pub accepted_routes: HashMap<String, Vec<String>>,
+    namespace: String,
+    accepted_routes: HashMap<String, Vec<String>>,
 }
 
-// todo: impl fn new to remove pub fields
 pub struct Controller {
-    pub updates: UnboundedReceiver<Update>,
-    pub client: k8s::Client,
+    updates: UnboundedReceiver<Update>,
+    client: k8s::Client,
+}
+
+impl Update {
+    pub fn new(namespace: String, accepted_routes: HashMap<String, Vec<String>>) -> Self {
+        Self {
+            namespace,
+            accepted_routes,
+        }
+    }
 }
 
 impl Controller {
+    pub fn new(updates: UnboundedReceiver<Update>, client: k8s::Client) -> Self {
+        Self { updates, client }
+    }
+
     pub async fn process_updates(mut self) {
         let patch_params = k8s::PatchParams::apply("policy.linkerd.io");
 
@@ -32,7 +40,7 @@ impl Controller {
             let routes = match api.list(&k8s::ListParams::default()).await {
                 Ok(routes) => routes,
                 Err(error) => {
-                    // TODO: We log error and skip this update. This leaves us
+                    // todo: We log error and skip this update. This leaves us
                     // stuck with the statuses in the previous state until
                     // another update happens.  Instead, we should requeue the
                     // update so that we can try again.
@@ -43,6 +51,7 @@ impl Controller {
             for route in routes {
                 let name = route.name_unchecked();
 
+                // todo: Use current_servers to avoid unnecessary updates?
                 // let current_servers: Vec<&String> = route
                 //     .status
                 //     .iter()
@@ -57,7 +66,6 @@ impl Controller {
                 //     .collect();
 
                 let mut parent_statuses: Vec<k8s::gateway::RouteParentStatus> = vec![];
-
                 let parent_refs = route
                     .spec
                     .inner
@@ -67,7 +75,6 @@ impl Controller {
                     .filter(|parent| parent.kind.as_deref() == Some("Server"))
                     .map(|parent| &parent.name)
                     .collect::<Vec<&String>>();
-                tracing::info!(?parent_refs);
 
                 match accepted_routes.get(&name) {
                     Some(accepting_parents) => {
@@ -87,7 +94,7 @@ impl Controller {
                                     message: "".to_string(),
                                     observed_generation: None,
                                     reason: "Accepted".to_string(),
-                                    status: "True".to_string(), // accepted is true
+                                    status: "True".to_string(),
                                     type_: "Accepted".to_string(),
                                 }],
                             };
@@ -113,7 +120,7 @@ impl Controller {
                                     message: "".to_string(),
                                     observed_generation: None,
                                     reason: "NoMatchingParent".to_string(),
-                                    status: "False".to_string(), // accepted is false
+                                    status: "False".to_string(),
                                     type_: "Accepted".to_string(),
                                 }],
                             };
@@ -137,7 +144,7 @@ impl Controller {
                                     message: "".to_string(),
                                     observed_generation: None,
                                     reason: "NoMatchingParent".to_string(),
-                                    status: "False".to_string(), // accepted is false
+                                    status: "False".to_string(),
                                     type_: "Accepted".to_string(),
                                 }],
                             };
@@ -188,7 +195,7 @@ impl Controller {
                     .patch_status(&name, &patch_params, &k8s::Patch::Merge(patch))
                     .await
                 {
-                    tracing::error!(%error, "failed to patch HTTPRoute");
+                    tracing::error!(%error, "Failed to patch HTTPRoute");
                 }
             }
         }

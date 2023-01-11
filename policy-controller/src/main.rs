@@ -175,10 +175,7 @@ async fn main() -> Result<()> {
     ));
 
     let client = runtime.client();
-    let status_controller = status::Controller {
-        updates: status_updates_rx,
-        client,
-    };
+    let status_controller = status::Controller::new(status_updates_rx, client);
     tokio::spawn(status_controller.process_updates());
 
     let client = runtime.client();

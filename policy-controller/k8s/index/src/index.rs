@@ -1464,7 +1464,6 @@ impl PolicyIndex {
                 .filter(|(_, route)| route.selects_server(server_name))
                 .map(|(route_name, _)| InboundHttpRouteRef::Linkerd(route_name.clone()))
                 .collect::<Vec<_>>();
-
             for route in routes {
                 // Skip default routes since they are not real resources.
                 if let InboundHttpRouteRef::Linkerd(name) = route {
@@ -1474,16 +1473,14 @@ impl PolicyIndex {
             }
         }
 
+        // Avoid sending empty updates.
         if accepted_routes.is_empty() {
             return;
         }
 
         // Send the status controller an update containing the Namespace's
-        // routes and Servers that accept them.
-        let update = Update {
-            namespace: self.namespace.to_string(),
-            accepted_routes,
-        };
+        // routes and the Servers that accept them.
+        let update = Update::new(self.namespace.to_string(), accepted_routes);
         if let Err(error) = self.route_updates.send(update) {
             tracing::error!(%error, "Failed to send update to status controller");
         }
