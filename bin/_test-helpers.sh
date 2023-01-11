@@ -244,7 +244,7 @@ setup_cluster() {
 
   test_setup
   if [ -z "$skip_cluster_create" ]; then
-    "$bindir"/k3d cluster create --image='+v1.21' "$@"
+    "$bindir"/k3d cluster create "$@"
     image_load "$name"
   fi
   check_cluster
