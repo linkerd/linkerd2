@@ -835,13 +835,8 @@ impl Namespace {
 
     #[inline]
     fn reindex(&mut self, authns: &AuthenticationNsIndex) {
-        if !self.pods.is_empty() {
-            self.pods.reindex(&self.policy, authns)
-        } else {
-            // todo: can we separate this from PodIndex::reindex_servers and
-            // always call PolicyIndex::update_statuses?
-            self.policy.update_statuses()
-        }
+        self.pods.reindex(&self.policy, authns);
+        self.policy.update_statuses()
     }
 }
 
@@ -919,8 +914,6 @@ impl Pod {
             std::hash::BuildHasherDefault::<pod::PortHasher>::default(),
         );
 
-        let mut accepted_routes = HashMap::default();
-
         for (srvname, server) in policy.servers.iter() {
             if server.pod_selector.matches(&self.meta.labels) {
                 for port in self.select_ports(&server.port_ref).into_iter() {
@@ -946,31 +939,12 @@ impl Pod {
                             .flatten()
                             .map(|p| p.as_str()),
                     );
-
-                    for route in s.http_routes.keys() {
-                        // Skip default routes since they are not real resources.
-                        if let InboundHttpRouteRef::Linkerd(name) = route {
-                            let servers = accepted_routes.entry(name.to_string()).or_insert(vec![]);
-                            servers.push(srvname.to_string());
-                        }
-                    }
-
                     self.update_server(port, srvname, s);
 
                     matched_ports.insert(port, srvname.clone());
                     unmatched_ports.remove(&port);
                 }
             }
-        }
-
-        // Send the status controller an update containing the Namespace's
-        // routes and Servers that accept them.
-        let update = Update {
-            namespace: policy.namespace.to_string(),
-            accepted_routes,
-        };
-        if let Err(error) = policy.route_updates.send(update) {
-            tracing::error!(%error, "Failed to send update to status controller");
         }
 
         // Reset all remaining ports to the default policy.
@@ -1491,10 +1465,6 @@ impl PolicyIndex {
                 .map(|(route_name, _)| InboundHttpRouteRef::Linkerd(route_name.clone()))
                 .collect::<Vec<_>>();
 
-            if routes.is_empty() {
-                return;
-            }
-
             for route in routes {
                 // Skip default routes since they are not real resources.
                 if let InboundHttpRouteRef::Linkerd(name) = route {
@@ -1502,6 +1472,10 @@ impl PolicyIndex {
                     servers.push(server_name.to_string());
                 }
             }
+        }
+
+        if accepted_routes.is_empty() {
+            return;
         }
 
         // Send the status controller an update containing the Namespace's
