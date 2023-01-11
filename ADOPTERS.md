@@ -16,6 +16,7 @@
 - [Boomin](https://www.boomin.com)
 - [Bosch Thermotecnology](https://www.bosch-thermotechnology.com)
 - [Buoyant](https://buoyant.io)
+- [Cabify](https://cabify.com)
 - [Candide](https://candidegardening.com)
 - [Celonis](https://celonis.com)
 - [CloverHealth](https://www.cloverhealth.com/)
