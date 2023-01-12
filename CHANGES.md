@@ -1,5 +1,50 @@
 # Changes
 
+## edge-23.1.1
+
+This edge release introduces a number of different fixes changes to the proxy.
+The proxy has been updated to initialize routes lazily, which means service
+profile routes will now only show up in the metrics when a route is used. In
+the extensions, old (`ServerAuthorization`) resources have been converted to
+`AuthorizationPolicy` -- as part of this change, redundant policy resources
+have been cleaned up. A bug in the destination controller that could
+potentially lead to stale pods being considered in the load balancer has been
+fixed; operations that could previously result in this behavior are now
+infallible. Support has been added for `Pod Security Admission`, used instead
+of `Pod Security Policy`, as part of this change, some of the extension charts
+have been modified to include a `cniEnabled` flag that will impact the policy
+used. 
+
+Finally, this edge release contains a number of fixes and improvements
+from our contributors.
+
+* Converted `ServerAuthorization` resources to `AuthorizationPolicy` resources
+  in Linkerd extensions
+* Removed policy resources bound to admin servers in extensions (previously
+  these resources were used to authorize probes but now are authorized by
+  default)
+* Added a `resources` field in the linkerd-cni chart (thanks @jcogilvie!)
+* Fixed an issue in the CLI where `--identity-external-ca` would set an
+  incorrect field (thanks @anoxape!)
+* Fixed an issue in the destination controller that could result in stale
+  endpoints when using EndpointSlice objects. Logic that previously resulted in
+  undefined behavior is now infallible and endpoints will no longer be skipped
+  during removal
+* Added namespace to namespace-metadata resources in Helm (thanks @joebowbeer!)
+* Added support for Pod Security Admission (superseedes PSPs); through this
+  change extensions now have a `cniEnabled` value in their charts that will
+  directly influence which PSA policy to use
+* Changed routes to be initialized lazily. Service Profile routes will no
+  longer show up in metrics until the route is used (default routes are always
+  available when no Service Profile is defined for a service)
+* Changed the proxy's behavior when traffic splitting so that only services
+  that are not in failfast are used. This will enable the proxy to manage
+  failover without external coordination
+* Updated tokio (async runtime) in the proxy which should reduce CPU usage,
+  especially for proxy's pod local (i.e in the same network namespace)
+  communication
+
+
 ## edge-22.12.1
 
 This edge release introduces static and dynamic port overrides for CNI eBPF
