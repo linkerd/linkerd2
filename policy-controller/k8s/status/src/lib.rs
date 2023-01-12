@@ -50,21 +50,6 @@ impl Controller {
             };
             for route in routes {
                 let name = route.name_unchecked();
-
-                // todo: Use current_servers to avoid unnecessary updates?
-                // let current_servers: Vec<&String> = route
-                //     .status
-                //     .iter()
-                //     .flat_map(|s| s.inner.parents.iter())
-                //     .filter(|parent| {
-                //         parent
-                //             .conditions
-                //             .iter()
-                //             .any(|c| c.type_ == "Accepted" && c.status == "True")
-                //     })
-                //     .map(|parent| &parent.parent_ref.name)
-                //     .collect();
-
                 let mut parent_statuses: Vec<k8s::gateway::RouteParentStatus> = vec![];
                 let parent_refs = route
                     .spec
@@ -77,108 +62,45 @@ impl Controller {
                     .collect::<Vec<&String>>();
 
                 match accepted_routes.get(&name) {
-                    Some(accepting_parents) => {
-                        for server in accepting_parents {
-                            let parent = gateway::RouteParentStatus {
-                                parent_ref: gateway::ParentReference {
-                                    group: Some("policy.linkerd.io".to_string()),
-                                    kind: Some("Server".to_string()),
-                                    namespace: Some(namespace.clone()),
-                                    name: server.to_string(),
-                                    section_name: None,
-                                    port: None,
-                                },
-                                controller_name: "policy.linkerd.io/status-controller".to_string(),
-                                conditions: vec![k8s::Condition {
-                                    last_transition_time: k8s::Time(Utc::now()),
-                                    message: "".to_string(),
-                                    observed_generation: None,
-                                    reason: "Accepted".to_string(),
-                                    status: "True".to_string(),
-                                    type_: "Accepted".to_string(),
-                                }],
-                            };
+                    Some(servers) => {
+                        for server in servers {
+                            let parent = make_parent_status(
+                                server.to_string(),
+                                namespace.clone(),
+                                "Accepted".to_string(),
+                                "True".to_string(),
+                                "Accepted".to_string(),
+                            );
                             parent_statuses.push(parent);
                         }
 
                         let unaccepting_parents = parent_refs
                             .iter()
-                            .filter(|parent| !accepting_parents.contains(parent));
+                            .filter(|parent| !servers.contains(parent));
                         for server in unaccepting_parents {
-                            let parent = gateway::RouteParentStatus {
-                                parent_ref: gateway::ParentReference {
-                                    group: Some("policy.linkerd.io".to_string()),
-                                    kind: Some("Server".to_string()),
-                                    namespace: Some(namespace.clone()),
-                                    name: server.to_string(),
-                                    section_name: None,
-                                    port: None,
-                                },
-                                controller_name: "policy.linkerd.io/status-controller".to_string(),
-                                conditions: vec![k8s::Condition {
-                                    last_transition_time: k8s::Time(Utc::now()),
-                                    message: "".to_string(),
-                                    observed_generation: None,
-                                    reason: "NoMatchingParent".to_string(),
-                                    status: "False".to_string(),
-                                    type_: "Accepted".to_string(),
-                                }],
-                            };
+                            let parent = make_parent_status(
+                                server.to_string(),
+                                namespace.clone(),
+                                "NoMatchingParent".to_string(),
+                                "False".to_string(),
+                                "Accepted".to_string(),
+                            );
                             parent_statuses.push(parent);
                         }
                     }
                     None => {
                         for server in parent_refs {
-                            let parent = gateway::RouteParentStatus {
-                                parent_ref: gateway::ParentReference {
-                                    group: Some("policy.linkerd.io".to_string()),
-                                    kind: Some("Server".to_string()),
-                                    namespace: Some(namespace.clone()),
-                                    name: server.to_string(),
-                                    section_name: None,
-                                    port: None,
-                                },
-                                controller_name: "policy.linkerd.io/status-controller".to_string(),
-                                conditions: vec![k8s::Condition {
-                                    last_transition_time: k8s::Time(Utc::now()),
-                                    message: "".to_string(),
-                                    observed_generation: None,
-                                    reason: "NoMatchingParent".to_string(),
-                                    status: "False".to_string(),
-                                    type_: "Accepted".to_string(),
-                                }],
-                            };
+                            let parent = make_parent_status(
+                                server.to_string(),
+                                namespace.clone(),
+                                "NoMatchingParent".to_string(),
+                                "False".to_string(),
+                                "Accepted".to_string(),
+                            );
                             parent_statuses.push(parent);
                         }
                     }
                 }
-
-                // let parent_statuses2: Vec<k8s::gateway::RouteParentStatus> =
-                //     match accepted_routes.get(&name) {
-                //         Some(servers) => servers
-                //             .iter()
-                //             .map(|server| gateway::RouteParentStatus {
-                //                 parent_ref: gateway::ParentReference {
-                //                     group: Some("policy.linkerd.io".to_string()),
-                //                     kind: Some("Server".to_string()),
-                //                     namespace: Some(namespace.clone()),
-                //                     name: server.to_string(),
-                //                     section_name: None,
-                //                     port: None,
-                //                 },
-                //                 controller_name: "policy.linkerd.io/status-controller".to_string(),
-                //                 conditions: vec![k8s::Condition {
-                //                     last_transition_time: k8s::Time(Utc::now()),
-                //                     message: "".to_string(),
-                //                     observed_generation: None,
-                //                     reason: "".to_string(),
-                //                     status: "True".to_string(),
-                //                     type_: "Accepted".to_string(),
-                //                 }],
-                //             })
-                //             .collect(),
-                //         None => vec![],
-                //     };
 
                 let status = gateway::HttpRouteStatus {
                     inner: gateway::RouteStatus {
@@ -199,5 +121,33 @@ impl Controller {
                 }
             }
         }
+    }
+}
+
+fn make_parent_status(
+    name: String,
+    namespace: String,
+    reason: String,
+    status: String,
+    type_: String,
+) -> gateway::RouteParentStatus {
+    gateway::RouteParentStatus {
+        parent_ref: gateway::ParentReference {
+            group: Some("policy.linkerd.io".to_string()),
+            kind: Some("Server".to_string()),
+            namespace: Some(namespace),
+            name,
+            section_name: None,
+            port: None,
+        },
+        controller_name: "policy.linkerd.io/status-controller".to_string(),
+        conditions: vec![k8s::Condition {
+            last_transition_time: k8s::Time(Utc::now()),
+            message: "".to_string(),
+            observed_generation: None,
+            reason,
+            status,
+            type_,
+        }],
     }
 }
