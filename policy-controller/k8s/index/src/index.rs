@@ -1457,6 +1457,8 @@ impl PolicyIndex {
     fn update_statuses(&self) {
         let mut accepted_routes = HashMap::default();
 
+        // For each Server in the namespace, construct a map where each key is
+        // a route, and its value is the list of Servers that accept it.
         for server_name in self.servers.keys() {
             let routes = self
                 .http_routes
@@ -1472,8 +1474,6 @@ impl PolicyIndex {
                 }
             }
         }
-
-        // Avoid sending empty updates.
         if accepted_routes.is_empty() {
             return;
         }
