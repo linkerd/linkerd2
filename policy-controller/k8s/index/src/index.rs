@@ -1455,25 +1455,26 @@ impl PolicyIndex {
     }
 
     fn update_statuses(&self) {
-        let mut accepted_routes = HashMap::default();
-
-        // For each Server in the namespace, construct a map where each key is
-        // a route, and its value is the list of Servers that accept it.
-        for server_name in self.servers.keys() {
-            let routes = self
-                .http_routes
-                .iter()
-                .filter(|(_, route)| route.selects_server(server_name))
-                .map(|(route_name, _)| InboundHttpRouteRef::Linkerd(route_name.clone()))
-                .collect::<Vec<_>>();
-            for route in routes {
-                // Skip default routes since they are not real resources.
-                if let InboundHttpRouteRef::Linkerd(name) = route {
-                    let servers = accepted_routes.entry(name.to_string()).or_insert(vec![]);
-                    servers.push(server_name.to_string());
-                }
-            }
-        }
+        // Construct a map where each key is a route, and its value is the
+        // list of Servers that accept it.
+        let accepted_routes: HashMap<String, Vec<String>> = self
+            .http_routes
+            .iter()
+            .map(|(route_name, route)| {
+                let servers = self
+                    .servers
+                    .keys()
+                    .filter_map(|server| {
+                        if route.selects_server(server) {
+                            Some(server.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                (route_name.clone(), servers)
+            })
+            .collect();
         if accepted_routes.is_empty() {
             return;
         }
