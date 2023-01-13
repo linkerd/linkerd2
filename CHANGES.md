@@ -2,21 +2,29 @@
 
 ## edge-23.1.1
 
-This edge release introduces a number of different fixes changes to the proxy.
-The proxy has been updated to initialize routes lazily, which means service
-profile routes will now only show up in the metrics when a route is used. In
-the extensions, old (`ServerAuthorization`) resources have been converted to
-`AuthorizationPolicy` -- as part of this change, redundant policy resources
-have been cleaned up. A bug in the destination controller that could
-potentially lead to stale pods being considered in the load balancer has been
-fixed; operations that could previously result in this behavior are now
-infallible. Support has been added for `Pod Security Admission`, used instead
-of `Pod Security Policy`, as part of this change, some of the extension charts
-have been modified to include a `cniEnabled` flag that will impact the policy
-used. 
+This edge release fixes a caching issue in the destination controller, converts
+deprecated policy resources, and introduces several changes to how the proxy
+works.
 
-Finally, this edge release contains a number of fixes and improvements
-from our contributors.
+A bug in the destination controller that could potentially lead to stale pods
+being considered in the load balancer has been fixed; operations that could
+previously result in this behavior are now infallible.
+
+Several Linkerd extensions were still using the now deprecated
+ServerAuthorization resource. These instances have now been converted to using
+AuthorizationPolicy. Additionally, there were several policy resources that
+authenticated probes, but these became redundant after a previous change that
+automatically authenticates probes; those resources have been removed.
+
+As part of ongoing policy work in the proxy, there are several changes with how
+the proxy works. There were several places that we were able to remove
+unnecessary caching and buffering. Routes are now lazily initialized so that
+service profile routes will not show up in metrics until the route is used.
+Furthermore, the proxy’s traffic splitting behavior has changed so that only
+available resources are used, resulting in less failfast errors.
+
+Finally, this edge release contains a number of fixes and improvements from our
+contributors.
 
 * Converted `ServerAuthorization` resources to `AuthorizationPolicy` resources
   in Linkerd extensions
