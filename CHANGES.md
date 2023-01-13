@@ -7,21 +7,18 @@ deprecated policy resources, and introduces several changes to how the proxy
 works.
 
 A bug in the destination controller that could potentially lead to stale pods
-being considered in the load balancer has been fixed; operations that could
-previously result in this behavior are now infallible.
+being considered in the load balancer has been fixed.
 
 Several Linkerd extensions were still using the now deprecated
 ServerAuthorization resource. These instances have now been converted to using
-AuthorizationPolicy. Additionally, there were several policy resources that
-authenticated probes, but these became redundant after a previous change that
-automatically authenticates probes; those resources have been removed.
+AuthorizationPolicy. Additionally, removed several policy resources that
+authenticated probes, since probes are now authenticated by default.
 
-As part of ongoing policy work in the proxy, there are several changes with how
-the proxy works. There were several places that we were able to remove
-unnecessary caching and buffering. Routes are now lazily initialized so that
-service profile routes will not show up in metrics until the route is used.
-Furthermore, the proxy’s traffic splitting behavior has changed so that only
-available resources are used, resulting in less failfast errors.
+As part of ongoing policy work, there are several changes with how the proxy
+works. Routes are now lazily initialized so that service profile routes will
+not show up in metrics until the route is used. Furthermore, the proxy’s
+traffic splitting behavior has changed so that only available resources are
+used, resulting in less failfast errors.
 
 Finally, this edge release contains a number of fixes and improvements from our
 contributors.
@@ -34,14 +31,11 @@ contributors.
 * Added a `resources` field in the linkerd-cni chart (thanks @jcogilvie!)
 * Fixed an issue in the CLI where `--identity-external-ca` would set an
   incorrect field (thanks @anoxape!)
-* Fixed an issue in the destination controller that could result in stale
-  endpoints when using EndpointSlice objects. Logic that previously resulted in
-  undefined behavior is now infallible and endpoints will no longer be skipped
-  during removal
+* Fixed an issue in the destination controller's cache that could result in
+  stale endpoints when using EndpointSlice objects
 * Added namespace to namespace-metadata resources in Helm (thanks @joebowbeer!)
-* Added support for Pod Security Admission (superseedes PSPs); through this
-  change extensions now have a `cniEnabled` value in their charts that will
-  directly influence which PSA policy to use
+* Added support for Pod Security Admission (Pod Security Policy resources are
+  still supported but disabled by default)
 * Changed routes to be initialized lazily. Service Profile routes will no
   longer show up in metrics until the route is used (default routes are always
   available when no Service Profile is defined for a service)
@@ -51,7 +45,8 @@ contributors.
 * Updated tokio (async runtime) in the proxy which should reduce CPU usage,
   especially for proxy's pod local (i.e in the same network namespace)
   communication
-
+* Fixed an issue where `linkerd viz tap` would display wrong latency/duration
+  value (thanks @olegy2008!)
 
 ## edge-22.12.1
 
