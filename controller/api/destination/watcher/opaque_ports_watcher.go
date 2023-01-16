@@ -37,19 +37,23 @@ type (
 
 // NewOpaquePortsWatcher creates a OpaquePortsWatcher and begins watching for
 // k8sAPI for service changes.
-func NewOpaquePortsWatcher(k8sAPI *k8s.API, log *logging.Entry, opaquePorts map[uint32]struct{}) *OpaquePortsWatcher {
+func NewOpaquePortsWatcher(k8sAPI *k8s.API, log *logging.Entry, opaquePorts map[uint32]struct{}) (*OpaquePortsWatcher, error) {
 	opw := &OpaquePortsWatcher{
 		subscriptions:      make(map[ServiceID]*svcSubscriptions),
 		k8sAPI:             k8sAPI,
 		log:                log.WithField("component", "opaque-ports-watcher"),
 		defaultOpaquePorts: opaquePorts,
 	}
-	k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    opw.addService,
 		DeleteFunc: opw.deleteService,
 		UpdateFunc: func(_, obj interface{}) { opw.addService(obj) },
 	})
-	return opw
+	if err != nil {
+		return nil, err
+	}
+
+	return opw, nil
 }
 
 // Subscribe subscribes a listener to a service; each time the service

@@ -84,7 +84,10 @@ func TestProfileWatcherUpdates(t *testing.T) {
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewProfileWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher, err := NewProfileWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			if err != nil {
+				t.Fatalf("can't create profile watcher: %s", err)
+			}
 
 			k8sAPI.Sync(nil)
 
@@ -136,7 +139,10 @@ func TestProfileWatcherDeletes(t *testing.T) {
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewProfileWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher, err := NewProfileWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			if err != nil {
+				t.Fatalf("can't create profile watcher: %s", err)
+			}
 			k8sAPI.Sync(nil)
 
 			listener := NewDeletingProfileListener()

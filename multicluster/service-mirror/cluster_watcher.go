@@ -781,7 +781,7 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents(ctx context.Context) {
 func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 	rcsw.remoteAPIClient.Sync(rcsw.stopper)
 	rcsw.eventsQueue.Add(&OrphanedServicesGcTriggered{})
-	rcsw.remoteAPIClient.Svc().Informer().AddEventHandler(
+	_, err := rcsw.remoteAPIClient.Svc().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(svc interface{}) {
 				rcsw.eventsQueue.Add(&OnAddCalled{svc.(*corev1.Service)})
@@ -807,8 +807,11 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 			},
 		},
 	)
+	if err != nil {
+		return err
+	}
 
-	rcsw.remoteAPIClient.Endpoint().Informer().AddEventHandler(
+	_, err = rcsw.remoteAPIClient.Endpoint().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			// AddFunc only relevant for exported headless endpoints
 			AddFunc: func(obj interface{}) {
@@ -844,14 +847,20 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 			},
 		},
 	)
+	if err != nil {
+		return err
+	}
 
-	rcsw.localAPIClient.NS().Informer().AddEventHandler(
+	_, err = rcsw.localAPIClient.NS().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				rcsw.eventsQueue.Add(&OnLocalNamespaceAdded{obj.(*corev1.Namespace)})
 			},
 		},
 	)
+	if err != nil {
+		return err
+	}
 
 	go rcsw.processEvents(ctx)
 
