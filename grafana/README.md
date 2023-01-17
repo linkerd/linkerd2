@@ -35,6 +35,16 @@ relevant, and have it link to the appropriate Grafana dashboard, make sure you
 have a proper location set up in the `grafana.url` setting in Linkerd Viz's
 `values.yaml`.
 
+## Granting access
+
+As of linkerd `stable-2.13.0` (or `edge-23.1.1`), the access to Linkerd Viz'
+Prometheus instance has been restricted through the `prometheus-admin`
+AuthorizationPolicy, granting access only to the `metrics-api` ServiceAccount.
+In order to grant access to Grafana, you need to add an AuthorizationPolicy
+pointing to its ServiceAccount. You can apply
+[authzpolicy-grafana.yaml](grafana/authzpolicy-grafana.yaml) which grants permission for the
+`grafana` ServiceAccount.
+
 ## Note to developers
 
 The `grafana/dashboards` directory contains the same dashboard definitions
