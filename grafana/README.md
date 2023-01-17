@@ -42,8 +42,8 @@ Prometheus instance has been restricted through the `prometheus-admin`
 AuthorizationPolicy, granting access only to the `metrics-api` ServiceAccount.
 In order to grant access to Grafana, you need to add an AuthorizationPolicy
 pointing to its ServiceAccount. You can apply
-[authzpolicy-grafana.yaml](grafana/authzpolicy-grafana.yaml) which grants permission for the
-`grafana` ServiceAccount.
+[authzpolicy-grafana.yaml](grafana/authzpolicy-grafana.yaml) which grants
+permission for the `grafana` ServiceAccount.
 
 ## Note to developers
 
