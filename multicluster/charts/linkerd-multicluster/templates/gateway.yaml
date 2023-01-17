@@ -111,6 +111,12 @@ spec:
 {{- if .Values.gateway.loadBalancerIP }}
   loadBalancerIP: {{ .Values.gateway.loadBalancerIP }}
 {{- end }}
+{{- if .Values.gateway.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+  {{- range .Values.gateway.loadBalancerSourceRanges }}
+  - {{ . }}
+  {{- end }}
+{{- end }}
 ---
 kind: ServiceAccount
 apiVersion: v1

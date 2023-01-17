@@ -25,7 +25,8 @@ gateway:
   serviceAnnotations: {}
   # -- Set loadBalancerIP on gateway service
   loadBalancerIP: ""
-
+  # -- Set loadBalancerSourceRanges on gateway service
+  loadBalancerSourceRanges: ""
   # -- The pause container to use
   pauseImage: "gcr.io/google_containers/pause:3.2"
 
