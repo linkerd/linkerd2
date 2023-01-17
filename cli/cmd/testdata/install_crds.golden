@@ -15,7 +15,7 @@ spec:
     kind: AuthorizationPolicy
     plural: authorizationpolicies
     singular: authorizationpolicy
-    shortNames: []
+    shortNames: [authzpolicy]
   versions:
     - name: v1alpha1
       served: true
@@ -1649,7 +1649,7 @@ spec:
     kind: MeshTLSAuthentication
     plural: meshtlsauthentications
     singular: meshtlsauthentication
-    shortNames: []
+    shortNames: [meshtlsauthn]
   versions:
     - name: v1alpha1
       served: true
@@ -1735,7 +1735,7 @@ spec:
     kind: NetworkAuthentication
     plural: networkauthentications
     singular: networkauthentication
-    shortNames: []
+    shortNames: [netauthn, networkauthn]
   versions:
     - name: v1alpha1
       served: true
@@ -1788,7 +1788,7 @@ spec:
     kind: ServerAuthorization
     plural: serverauthorizations
     singular: serverauthorization
-    shortNames: [saz]
+    shortNames: [saz, serverauthz, srvauthz]
   versions:
     - name: v1alpha1
       served: true
