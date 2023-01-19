@@ -1049,6 +1049,7 @@ dependencies = [
  "futures",
  "http",
  "ipnet",
+ "linkerd-policy-controller-k8s-api",
  "regex",
 ]
 

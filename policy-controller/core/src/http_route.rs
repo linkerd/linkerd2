@@ -7,6 +7,7 @@ pub use http::{
     uri::Scheme,
     Method, StatusCode,
 };
+use linkerd_policy_controller_k8s_api::gateway;
 use regex::Regex;
 use std::num::NonZeroU16;
 
@@ -15,6 +16,7 @@ pub struct InboundHttpRoute {
     pub hostnames: Vec<HostMatch>,
     pub rules: Vec<InboundHttpRouteRule>,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
+    pub statuses: Vec<Status>,
 
     /// This is required for ordering returned `HttpRoute`s by their creation
     /// timestamp.
@@ -102,6 +104,24 @@ pub enum QueryParamMatch {
     Regex(String, Regex),
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Status {
+    pub parent: String,
+    pub conditions: Vec<Condition>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Condition {
+    pub type_: ConditionType,
+    pub status: bool,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ConditionType {
+    Accepted,
+    ResolvedRefs,
+}
+
 // === impl InboundHttpRoute ===
 
 /// The default `InboundHttpRoute` used for any `InboundServer` that
@@ -123,6 +143,7 @@ impl Default for InboundHttpRoute {
             // authzs will be configured by the default `InboundServer`, not by
             // the route.
             authorizations: HashMap::new(),
+            statuses: vec![],
             creation_timestamp: None,
         }
     }
@@ -176,3 +197,51 @@ impl PartialEq for QueryParamMatch {
 }
 
 impl Eq for QueryParamMatch {}
+
+impl Status {
+    pub fn collect_from(status: Option<gateway::HttpRouteStatus>) -> Vec<Self> {
+        status
+            .into_iter()
+            .map(|status| {
+                status
+                    .inner
+                    .parents
+                    .iter()
+                    .filter_map(|parent_status| Self::from_parent_status(parent_status))
+                    .collect::<Vec<_>>()
+            })
+            .flatten()
+            .collect()
+    }
+
+    fn from_parent_status(status: &gateway::RouteParentStatus) -> Option<Self> {
+        if let Some(ref kind) = status.parent_ref.kind {
+            if kind != "Server" {
+                return None;
+            }
+        }
+
+        let conditions = status
+            .conditions
+            .iter()
+            .filter_map(|condition| {
+                let type_ = match condition.type_.as_ref() {
+                    "Accepted" => ConditionType::Accepted,
+                    "ResolvedRefs" => ConditionType::ResolvedRefs,
+                    _ => return None,
+                };
+                let status = match condition.status.as_ref() {
+                    "True" => true,
+                    "False" => false,
+                    _ => return None,
+                };
+                Some(Condition { type_, status })
+            })
+            .collect();
+
+        Some(Status {
+            parent: status.parent_ref.name.to_string(),
+            conditions,
+        })
+    }
+}

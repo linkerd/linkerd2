@@ -1322,6 +1322,7 @@ impl PolicyIndex {
             .http_routes
             .iter()
             .filter(|(_, route)| route.selects_server(server_name))
+            .filter(|(_, route)| route.accepted_by_server(server_name))
             .map(|(name, route)| {
                 let mut route = route.route.clone();
                 route.authorizations = self.route_client_authzs(name, authentications);
@@ -1615,6 +1616,7 @@ impl ClusterInfo {
                 filters: Vec::new(),
             }],
             authorizations,
+            statuses: Vec::new(),
             creation_timestamp: None,
         };
         routes.insert(InboundHttpRouteRef::Default("probe"), probe_route);
