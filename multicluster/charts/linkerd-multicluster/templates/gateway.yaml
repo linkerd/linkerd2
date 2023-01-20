@@ -35,6 +35,7 @@ spec:
         config.linkerd.io/enable-gateway: "true"
         config.linkerd.io/default-inbound-policy: all-authenticated
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        {{- with .Values.gateway.deploymentAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
         app: {{.Values.gateway.name}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
@@ -42,11 +43,21 @@ spec:
       {{- $_ := set $tree "component" .Values.gateway.name -}}
       {{- $_ := set $tree "label" "app" -}}
       {{- include "linkerd.affinity" $tree | nindent 6 }}
+      {{- if .Values.gateway.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{.Values.gateway.terminationGracePeriodSeconds}}
+      {{- end }}
       containers:
         - name: pause
           image: {{ .Values.gateway.pauseImage }}
           securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            runAsNonRoot: true
             runAsUser: {{.Values.gateway.UID}}
+            seccompProfile:
+              type: RuntimeDefault
       serviceAccountName: {{.Values.gateway.name}}
 {{- if .Values.enablePodAntiAffinity }}
 ---

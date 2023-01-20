@@ -134,7 +134,7 @@ var undefinedEndpointPort = Port(0)
 // NewEndpointsWatcher creates an EndpointsWatcher and begins watching the
 // k8sAPI for pod, service, and endpoint changes. An EndpointsWatcher will
 // watch on Endpoints or EndpointSlice resources, depending on cluster configuration.
-func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlices bool) *EndpointsWatcher {
+func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlices bool) (*EndpointsWatcher, error) {
 	ew := &EndpointsWatcher{
 		publishers:           make(map[ServiceID]*servicePublisher),
 		k8sAPI:               k8sAPI,
@@ -144,34 +144,46 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlic
 		}),
 	}
 
-	k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ew.addService,
 		DeleteFunc: ew.deleteService,
 		UpdateFunc: func(_, obj interface{}) { ew.addService(obj) },
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ew.addServer,
 		DeleteFunc: ew.deleteServer,
 		UpdateFunc: func(_, obj interface{}) { ew.addServer(obj) },
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	if ew.enableEndpointSlices {
 		ew.log.Debugf("Watching EndpointSlice resources")
-		k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		_, err := k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    ew.addEndpointSlice,
 			DeleteFunc: ew.deleteEndpointSlice,
 			UpdateFunc: ew.updateEndpointSlice,
 		})
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		ew.log.Debugf("Watching Endpoints resources")
-		k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		_, err = k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    ew.addEndpoints,
 			DeleteFunc: ew.deleteEndpoints,
 			UpdateFunc: func(_, obj interface{}) { ew.addEndpoints(obj) },
 		})
+		if err != nil {
+			return nil, err
+		}
 	}
-	return ew
+	return ew, nil
 }
 
 ////////////////////////
@@ -634,8 +646,7 @@ func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, 
 		updatedAddressSet.Addresses[id] = address
 	}
 
-	oldAddressSet := pp.endpointSliceToAddresses(oldSlice)
-	for id := range oldAddressSet.Addresses {
+	for _, id := range pp.endpointSliceToIDs(oldSlice) {
 		delete(updatedAddressSet.Addresses, id)
 	}
 
@@ -769,6 +780,55 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 		Addresses: addresses,
 		Labels:    metricLabels(es),
 	}
+}
+
+// endpointSliceToIDs is similar to endpointSliceToAddresses but instead returns
+// only the IDs of the endpoints rather than the addresses themselves.
+func (pp *portPublisher) endpointSliceToIDs(es *discovery.EndpointSlice) []ID {
+	resolvedPort := pp.resolveESTargetPort(es.Ports)
+	if resolvedPort == undefinedEndpointPort {
+		return []ID{}
+	}
+
+	serviceID, err := getEndpointSliceServiceID(es)
+	if err != nil {
+		pp.log.Errorf("Could not fetch resource service name:%v", err)
+	}
+
+	ids := []ID{}
+	for _, endpoint := range es.Endpoints {
+		if endpoint.Hostname != nil {
+			if pp.hostname != "" && pp.hostname != *endpoint.Hostname {
+				continue
+			}
+		}
+		if endpoint.Conditions.Ready != nil && !*endpoint.Conditions.Ready {
+			continue
+		}
+
+		if endpoint.TargetRef == nil {
+			for _, IPAddr := range endpoint.Addresses {
+				ids = append(ids, ServiceID{
+					Name: strings.Join([]string{
+						serviceID.Name,
+						IPAddr,
+						fmt.Sprint(resolvedPort),
+					}, "-"),
+					Namespace: es.Namespace,
+				})
+			}
+			continue
+		}
+
+		if endpoint.TargetRef.Kind == endpointTargetRefPod {
+			ids = append(ids, PodID{
+				Name:      endpoint.TargetRef.Name,
+				Namespace: endpoint.TargetRef.Namespace,
+			})
+		}
+
+	}
+	return ids
 }
 
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) AddressSet {

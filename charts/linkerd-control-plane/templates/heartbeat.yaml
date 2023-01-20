@@ -66,6 +66,12 @@ spec:
             {{- include "partials.resources" .Values.heartbeatResources | nindent 12 }}
             {{- end }}
             securityContext:
+              capabilities:
+                drop:
+                - ALL
+              runAsNonRoot: true
               runAsUser: {{.Values.controllerUID}}
               allowPrivilegeEscalation: false
+              seccompProfile:
+                type: RuntimeDefault
 {{- end }}

@@ -8,6 +8,7 @@ metadata:
   name: linkerd-viz
   labels:
     linkerd.io/extension: viz
+    pod-security.kubernetes.io/enforce: privileged
   annotations:
 ---
 ###
@@ -358,92 +359,6 @@ metadata:
     component: web
     namespace: linkerd-viz
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: Server
-metadata:
-  namespace: linkerd-viz
-  name: admin
-  labels:
-    linkerd.io/extension: viz
-  annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
-spec:
-  podSelector:
-    matchLabels:
-      linkerd.io/extension: viz
-  port: admin-http
-  proxyProtocol: HTTP/1
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: AuthorizationPolicy
-metadata:
-  namespace: linkerd-viz
-  name: admin
-  labels:
-    linkerd.io/extension: viz
-  annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
-spec:
-  targetRef:
-    group: policy.linkerd.io
-    kind: Server
-    name: admin
-  requiredAuthenticationRefs:
-  - group: policy.linkerd.io
-    kind: NetworkAuthentication
-    name: kubelet
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: NetworkAuthentication
-metadata:
-  namespace: linkerd-viz
-  name: kubelet
-  labels:
-    linkerd.io/extension: viz
-  annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
-spec:
-  # Ideally, this should be restricted to the actual set of IPs kubelet uses in
-  # a cluster. This can't easily be discovered.
-  networks:
-  - cidr: "0.0.0.0/0"
-  - cidr: "::/0"
----
-apiVersion: policy.linkerd.io/v1beta1
-kind: Server
-metadata:
-  namespace: linkerd-viz
-  name: proxy-admin
-  labels:
-    linkerd.io/extension: viz
-  annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
-spec:
-  podSelector:
-    matchLabels:
-      linkerd.io/extension: viz
-  port: linkerd-admin
-  proxyProtocol: HTTP/1
----
-apiVersion: policy.linkerd.io/v1alpha1
-kind: AuthorizationPolicy
-metadata:
-  namespace: linkerd-viz
-  name: proxy-admin
-  labels:
-    linkerd.io/extension: viz
-  annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
-spec:
-  targetRef:
-    group: policy.linkerd.io
-    kind: Server
-    name: proxy-admin
-  requiredAuthenticationRefs:
-  - group: policy.linkerd.io
-    kind: NetworkAuthentication
-    name: kubelet
----
 ###
 ### Metrics API
 ###
@@ -502,7 +417,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - -controller-namespace=linkerd
@@ -531,8 +446,15 @@ spec:
             port: 9995
         resources:
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           readOnlyRootFilesystem: true
           runAsUser: 2103
+          seccompProfile:
+            type: RuntimeDefault
       serviceAccountName: metrics-api
 ---
 apiVersion: policy.linkerd.io/v1beta1
@@ -811,10 +733,16 @@ spec:
           timeoutSeconds: 30
         resources:
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 65534
           runAsGroup: 65534
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /data
           name: data
@@ -829,6 +757,43 @@ spec:
       - configMap:
           name: prometheus-config
         name: prometheus-config
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  namespace: linkerd-viz
+  name: prometheus-admin
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  podSelector:
+    matchLabels:
+      linkerd.io/extension: viz
+      component: prometheus
+      namespace: linkerd-viz
+  port: admin-http
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: linkerd-viz
+  name: prometheus-admin
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: prometheus-admin
+  requiredAuthenticationRefs:
+    - kind: ServiceAccount
+      name: metrics-api
+      namespace: linkerd-viz
 ---
 ###
 ### Tap
@@ -895,7 +860,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - api
@@ -926,8 +891,15 @@ spec:
             port: 9998
         resources:
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 2103
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
@@ -1093,7 +1065,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - injector
@@ -1121,8 +1093,15 @@ spec:
             port: 9995
         resources:
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 2103
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
@@ -1280,8 +1259,15 @@ spec:
             port: 9994
         resources:
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 2103
+          seccompProfile:
+            type: RuntimeDefault
       serviceAccountName: web
 ---
 apiVersion: linkerd.io/v1alpha2

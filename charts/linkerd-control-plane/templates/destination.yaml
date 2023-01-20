@@ -188,6 +188,7 @@ spec:
         cluster network.
       */}}
       {{- $_ := set $tree.Values.proxy "defaultInboundPolicy" "all-unauthenticated" }}
+      {{- $_ := set $tree.Values.proxy "capabilities" (dict "drop" (list "ALL")) }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       - args:
         - destination
@@ -224,8 +225,14 @@ spec:
         {{- include "partials.resources" .Values.destinationResources | nindent 8 }}
         {{- end }}
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: {{.Values.controllerUID}}
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
       - args:
         - sp-validator
         - -log-level={{.Values.controllerLogLevel}}
@@ -253,8 +260,14 @@ spec:
         {{- include "partials.resources" .Values.spValidatorResources | nindent 8 }}
         {{- end }}
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: {{.Values.controllerUID}}
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: sp-tls
@@ -303,8 +316,14 @@ spec:
         {{- include "partials.resources" $res | nindent 8 }}
         {{- end }}
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: {{.Values.controllerUID}}
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: policy-tls

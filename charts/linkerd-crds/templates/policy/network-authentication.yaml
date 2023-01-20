@@ -15,7 +15,7 @@ spec:
     kind: NetworkAuthentication
     plural: networkauthentications
     singular: networkauthentication
-    shortNames: []
+    shortNames: [netauthn, networkauthn]
   versions:
     - name: v1alpha1
       served: true

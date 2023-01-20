@@ -162,7 +162,7 @@ func TestInjectAutoParams(t *testing.T) {
 		}
 
 		var pod *v1.Pod
-		err = TestHelper.RetryFor(30*time.Second, func() error {
+		err = testutil.RetryFor(30*time.Second, func() error {
 			pods, err := TestHelper.GetPodsForDeployment(ctx, ns, deployName)
 			if err != nil {
 				return fmt.Errorf("failed to get pods for namespace %s", ns)

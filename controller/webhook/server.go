@@ -14,7 +14,6 @@ import (
 	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
 	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/util"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
@@ -83,7 +82,7 @@ func NewServer(
 		log.Fatalf("Failed to initialized certificate: %s", err)
 	}
 
-	log := logrus.WithFields(logrus.Fields{
+	log := log.WithFields(log.Fields{
 		"component": "proxy-injector",
 		"addr":      addr,
 	})

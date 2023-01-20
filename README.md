@@ -88,12 +88,12 @@ minutes to review our [Code of Conduct][CoC].
 See [SECURITY.md](SECURITY.md) for our security policy, including how to report
 vulnerabilities.
 
-A third party security audit was performed by Cure53 in June 2019. You can see
-the full report [here](SECURITY_AUDIT.pdf).
+Linkerd undergoes periodic third-party security audits and we
+[publish the results here](https://github.com/linkerd/linkerd2/tree/main/audits).
 
 ## License
 
-Copyright 2021 the Linkerd Authors. All rights reserved.
+Copyright 2023 the Linkerd Authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 these files except in compliance with the License. You may obtain a copy of the

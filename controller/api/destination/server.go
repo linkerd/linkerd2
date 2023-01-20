@@ -80,10 +80,22 @@ func NewServer(
 		return nil, err
 	}
 
-	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, enableEndpointSlices)
-	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
-	profiles := watcher.NewProfileWatcher(k8sAPI, log)
-	servers := watcher.NewServerWatcher(k8sAPI, log)
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, log, enableEndpointSlices)
+	if err != nil {
+		return nil, err
+	}
+	opaquePorts, err := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
+	if err != nil {
+		return nil, err
+	}
+	profiles, err := watcher.NewProfileWatcher(k8sAPI, log)
+	if err != nil {
+		return nil, err
+	}
+	servers, err := watcher.NewServerWatcher(k8sAPI, log)
+	if err != nil {
+		return nil, err
+	}
 
 	srv := server{
 		pb.UnimplementedDestinationServer{},

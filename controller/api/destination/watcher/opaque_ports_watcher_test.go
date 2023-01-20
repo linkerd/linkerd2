@@ -218,7 +218,10 @@ func TestOpaquePortsWatcher(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewFakeAPI returned an error: %s", err)
 		}
-		watcher := NewOpaquePortsWatcher(k8sAPI, logging.WithField("test", t.Name()), defaultOpaquePorts)
+		watcher, err := NewOpaquePortsWatcher(k8sAPI, logging.WithField("test", t.Name()), defaultOpaquePorts)
+		if err != nil {
+			t.Fatalf("can't create opaque ports watcher: %s", err)
+		}
 		k8sAPI.Sync(nil)
 		listener := newTestOpaquePortsListener()
 		watcher.Subscribe(tt.service, listener)

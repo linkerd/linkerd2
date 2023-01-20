@@ -58,7 +58,6 @@ CGO_ENABLED=0 GOOS=linux GOARCH=$arch go install -mod=readonly \
     k8s.io/client-go/plugin/pkg/client/auth/azure \
     k8s.io/client-go/plugin/pkg/client/auth/gcp \
     k8s.io/client-go/plugin/pkg/client/auth/oidc \
-    k8s.io/client-go/plugin/pkg/client/auth/openstack \
     k8s.io/client-go/rest \
     k8s.io/client-go/rest/watch \
     k8s.io/client-go/tools/auth \

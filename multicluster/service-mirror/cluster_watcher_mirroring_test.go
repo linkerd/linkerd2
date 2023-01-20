@@ -11,7 +11,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/multicluster"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -274,7 +273,7 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 	}
 
 	skippedEvent := <-eventRecorder.Events
-	if skippedEvent != fmt.Sprintf("%s %s %s", v1.EventTypeNormal, eventTypeSkipped, "Skipped mirroring service: namespace does not exist") {
+	if skippedEvent != fmt.Sprintf("%s %s %s", corev1.EventTypeNormal, eventTypeSkipped, "Skipped mirroring service: namespace does not exist") {
 		t.Error("Expected skipped event, got:", skippedEvent)
 	}
 

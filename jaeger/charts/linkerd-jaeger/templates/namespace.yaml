@@ -6,4 +6,6 @@ metadata:
   name: {{.Release.Namespace}}
   labels:
     linkerd.io/extension: jaeger
+    {{- /* linkerd-init requires extended capabilities and so requires priviledged mode */}}
+    pod-security.kubernetes.io/enforce: {{ if .Values.cniEnabled }}restricted{{ else }}privileged{{ end }}
 {{ end -}}

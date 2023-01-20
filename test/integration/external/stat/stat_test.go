@@ -233,7 +233,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			tt := tt // pin
 			timeout := 20 * time.Second
 			t.Run("linkerd "+strings.Join(tt.args, " "), func(t *testing.T) {
-				err := TestHelper.RetryFor(timeout, func() error {
+				err := testutil.RetryFor(timeout, func() error {
 					// Use a short time window so that transient errors at startup
 					// fall out of the window.
 					tt.args = append(tt.args, "-t", "30s")

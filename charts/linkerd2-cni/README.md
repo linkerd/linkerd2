@@ -6,7 +6,7 @@ Linkerd [CNI plugin](https://linkerd.io/2/features/cni/) takes care of setting
 up your pod's network so  incoming and outgoing traffic is proxied through the
 data plane.
 
-![Version: 30.5.1-edge](https://img.shields.io/badge/Version-30.5.1--edge-informational?style=flat-square)
+![Version: 30.6.0-edge](https://img.shields.io/badge/Version-30.6.0--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -42,6 +42,13 @@ Kubernetes: `>=1.21.0-0`
 | proxyAdminPort | int | `4191` | Admin port for the proxy container |
 | proxyControlPort | int | `4190` | Control port for the proxy container |
 | proxyUID | int | `2102` | User id under which the proxy shall be ran |
+| resources | object | `{"cpu":{"limit":"","request":""},"ephemeral-storage":{"limit":"","request":""},"memory":{"limit":"","request":""}}` | Resource requests and limits for linkerd-cni daemonset containers |
+| resources.cpu.limit | string | `""` | Maximum amount of CPU units that the cni container can use |
+| resources.cpu.request | string | `""` | Amount of CPU units that the cni container requests |
+| resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the cni container can use |
+| resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the cni container requests |
+| resources.memory.limit | string | `""` | Maximum amount of memory that the cni container can use |
+| resources.memory.request | string | `""` | Amount of memory that the cni container requests |
 | tolerations[0] | object | `{"operator":"Exists"}` | toleration properties |
 | useWaitFlag | bool | `false` | Configures the CNI plugin to use the -w flag for the iptables command |
 

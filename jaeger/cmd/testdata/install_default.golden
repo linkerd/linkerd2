@@ -5,39 +5,7 @@ metadata:
   name: linkerd-jaeger
   labels:
     linkerd.io/extension: jaeger
----
-apiVersion: policy.linkerd.io/v1beta1
-kind: Server
-metadata:
-  namespace: linkerd-jaeger
-  name: proxy-admin
-  labels:
-    linkerd.io/extension: jaeger
-  annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
-spec:
-  podSelector:
-    matchLabels:
-      linkerd.io/extension: jaeger
-  port: linkerd-admin
-  proxyProtocol: HTTP/1
----
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
-metadata:
-  namespace: linkerd-jaeger
-  name: proxy-admin
-  labels:
-    linkerd.io/extension: jaeger
-  annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
-spec:
-  server:
-    name: proxy-admin
-  client:
-    # for kubelet probes
-    unauthenticated: true
-
+    pod-security.kubernetes.io/enforce: privileged
 ---
 ###
 ### Jaeger Injector
@@ -99,7 +67,14 @@ spec:
             path: /ready
             port: 9995
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
@@ -147,26 +122,8 @@ spec:
   port: jaeger-injector
   proxyProtocol: TLS
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: Server
-metadata:
-  namespace: linkerd-jaeger
-  name: jaeger-injector-admin
-  labels:
-    linkerd.io/extension: jaeger
-    component: jaeger-injector
-  annotations:
-    linkerd.io/created-by: linkerd/helm dev-undefined
-spec:
-  podSelector:
-    matchLabels:
-      linkerd.io/extension: jaeger
-      component: jaeger-injector
-  port: admin-http
-  proxyProtocol: HTTP/1
----
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-jaeger
   name: jaeger-injector
@@ -176,14 +133,30 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  server:
-    selector:
-      matchLabels:
-        linkerd.io/extension: jaeger
-        component: jaeger-injector
-  client:
-    # traffic coming from the kubelet and from kube-api
-    unauthenticated: true
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: jaeger-injector-webhook
+  requiredAuthenticationRefs:
+  - group: policy.linkerd.io
+    kind: NetworkAuthentication
+    name: kube-api-server
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  namespace: linkerd-jaeger
+  name: kube-api-server
+  labels:
+    linkerd.io/extension: viz
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  # Ideally, this should be restricted to the actual set of IPs the kubelet API
+  # server uses for webhooks in a cluster. This can't easily be discovered.
+  networks:
+  - cidr: "0.0.0.0/0"
+  - cidr: "::/0"
 ---
 ###
 ### collector RBAC
@@ -410,7 +383,14 @@ spec:
             port: 13133
         resources:
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /conf
           name: collector-config-val
@@ -493,7 +473,14 @@ spec:
           name: ui
         resources:
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
+          seccompProfile:
+            type: RuntimeDefault
       dnsPolicy: ClusterFirst
       serviceAccountName: jaeger
 ---
@@ -613,25 +600,113 @@ spec:
   port: 13133
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-jaeger
-  name: collector
+  name: collector-otlp
   labels:
     linkerd.io/extension: jaeger
     component: collector
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  server:
-    selector:
-      matchLabels:
-        linkerd.io/extension: jaeger
-        component: collector
-  client:
-    # allow connections from any pod (meshed or not) sending trace data
-    unauthenticated: true
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: collector-otlp
+  # allow connections from any pod (meshed or not) sending trace data
+  requiredAuthenticationRefs: []
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: linkerd-jaeger
+  name: collector-otlp-http
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: collector-otlp-http
+  # allow connections from any pod (meshed or not) sending trace data
+  requiredAuthenticationRefs: []
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: linkerd-jaeger
+  name: collector-opencensus
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: collector-opencensus
+  # allow connections from any pod (meshed or not) sending trace data
+  requiredAuthenticationRefs: []
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: linkerd-jaeger
+  name: collector-zipkin
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: collector-zipkin
+  # allow connections from any pod (meshed or not) sending trace data
+  requiredAuthenticationRefs: []
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: linkerd-jaeger
+  name: collector-jaeger-thrift
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: collector-jaeger-thrift
+  # allow connections from any pod (meshed or not) sending trace data
+  requiredAuthenticationRefs: []
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  namespace: linkerd-jaeger
+  name: collector-jaeger-grpc
+  labels:
+    linkerd.io/extension: jaeger
+    component: collector
+  annotations:
+    linkerd.io/created-by: linkerd/helm dev-undefined
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: collector-jaeger-grpc
+  # allow connections from any pod (meshed or not) sending trace data
+  requiredAuthenticationRefs: []
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
@@ -650,8 +725,8 @@ spec:
   port: grpc
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-jaeger
   name: jaeger-grpc
@@ -661,12 +736,14 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: jaeger-grpc
-  client:
-    meshTLS:
-      serviceAccounts:
-      - name: collector
+  requiredAuthenticationRefs:
+    - kind: ServiceAccount
+      name: collector
+      namespace: linkerd-jaeger
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
@@ -685,8 +762,8 @@ spec:
   port: admin
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-jaeger
   name: jaeger-admin
@@ -696,14 +773,15 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: jaeger-admin
-  client:
-    meshTLS:
-      serviceAccounts:
-      # if not using linkerd-viz' prometheus, replace its SA here
-      - name: prometheus
-        namespace: linkerd-viz
+  requiredAuthenticationRefs:
+    # if not using linkerd-viz' prometheus, replace its SA here
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: linkerd-viz
 ---
 apiVersion: policy.linkerd.io/v1beta1
 kind: Server
@@ -722,8 +800,8 @@ spec:
   port: ui
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
-kind: ServerAuthorization
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
 metadata:
   namespace: linkerd-jaeger
   name: jaeger-ui
@@ -733,11 +811,12 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  server:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
     name: jaeger-ui
-  client:
-    meshTLS:
-      serviceAccounts:
-      # for the optional dashboard integration
-      - name: web
-        namespace: linkerd-viz
+  requiredAuthenticationRefs:
+    # for the optional dashboard integration
+    - kind: ServiceAccount
+      name: web
+      namespace: linkerd-viz
