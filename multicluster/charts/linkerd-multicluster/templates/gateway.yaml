@@ -59,6 +59,12 @@ spec:
             seccompProfile:
               type: RuntimeDefault
       serviceAccountName: {{.Values.gateway.name}}
+      {{- with .Values.gateway.nodeSelector }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.gateway.tolerations }}
+      tolerations: {{ toYaml . | nindent 6 }}
+      {{- end }}
 {{- if .Values.enablePodAntiAffinity }}
 ---
 kind: PodDisruptionBudget

@@ -29,6 +29,10 @@ gateway:
   loadBalancerIP: ""
   # -- Set terminationGracePeriodSeconds on gateway deployment
   terminationGracePeriodSeconds: ""
+  # -- Node selectors for the gateway pod
+  nodeSelector: {}
+  # -- Tolerations for the gateway pod
+  tolerations: []
 
   # -- The pause container to use
   pauseImage: "gcr.io/google_containers/pause:3.2"
