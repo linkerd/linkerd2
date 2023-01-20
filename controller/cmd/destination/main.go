@@ -37,6 +37,16 @@ func Main(args []string) {
 
 	flags.ConfigureAndParse(cmd, args)
 
+	ready := false
+	adminServer := admin.NewServer(*metricsAddr, *enablePprof, &ready)
+
+	go func() {
+		log.Infof("starting admin server on %s", *metricsAddr)
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Errorf("failed to start destination admin server: %s", err)
+		}
+	}()
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
@@ -129,14 +139,7 @@ func Main(args []string) {
 		}
 	}()
 
-	adminServer := admin.NewServer(*metricsAddr, *enablePprof)
-
-	go func() {
-		log.Infof("starting admin server on %s", *metricsAddr)
-		if err := adminServer.ListenAndServe(); err != nil {
-			log.Errorf("failed to start destination admin server: %s", err)
-		}
-	}()
+	ready = true
 
 	<-stop
 
