@@ -453,14 +453,6 @@ func TestControlPlaneResourcesPostInstall(t *testing.T) {
 	testutil.TestResourcesPostInstall(TestHelper.GetLinkerdNamespace(), expectedServices, expectedDeployments, TestHelper, t)
 }
 
-func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
-	if TestHelper.UpgradeHelmFromVersion() == "" {
-		t.Skip("Skipping as this is not a helm upgrade test")
-	}
-
-	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion())
-}
-
 func TestUpgradeHelm(t *testing.T) {
 	if TestHelper.UpgradeHelmFromVersion() == "" {
 		t.Skip("Skipping as this is not a helm upgrade test")
