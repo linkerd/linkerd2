@@ -74,6 +74,7 @@ Kubernetes: `>=1.21.0-0`
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
 | gateway.UID | int | `2103` | User id under which the gateway shall be ran |
+| gateway.deploymentAnnotations | object | `{}` | Annotations to add to the gateway deployment |
 | gateway.enabled | bool | `true` | If the gateway component should be installed |
 | gateway.loadBalancerIP | string | `""` | Set loadBalancerIP on gateway service |
 | gateway.loadBalancerSourceRanges | list | `""` | Set loadBalancerSourceRanges on gateway service |
@@ -86,6 +87,7 @@ Kubernetes: `>=1.21.0-0`
 | gateway.replicas | int | `1` | Number of replicas for the gateway pod |
 | gateway.serviceAnnotations | object | `{}` | Annotations to add to the gateway service |
 | gateway.serviceType | string | `"LoadBalancer"` | Service Type of gateway Service |
+| gateway.terminationGracePeriodSeconds | string | `""` | Set terminationGracePeriodSeconds on gateway deployment |
 | identityTrustDomain | string | `"cluster.local"` | Identity Trust Domain of the certificate authority |
 | imagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all multicluster components |
 | linkerdNamespace | string | `"linkerd"` | Namespace of linkerd installation |
