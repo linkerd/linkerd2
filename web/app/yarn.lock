@@ -1509,14 +1509,14 @@
     jest-validate "^26.5.2"
     lodash.get "^4.4.2"
 
-"@lingui/core@^3.15.0":
-  version "3.15.0"
-  resolved "https://registry.yarnpkg.com/@lingui/core/-/core-3.15.0.tgz#1f65bd6c1430133f1233dc9942c05c8bd9348e9d"
-  integrity sha512-owjYOn/3xaWVW01p32Ylt3cXkCP79oudJCHdcNOn4noxd/9BhyFX2wLiVf02DxGYnkAgAD3KCp3Z4iyKlueymg==
+"@lingui/core@3.16.0", "@lingui/core@^3.15.0":
+  version "3.16.0"
+  resolved "https://registry.yarnpkg.com/@lingui/core/-/core-3.16.0.tgz#ac61cbd617428fe2515cdace6e2080f6c8a7b0d3"
+  integrity sha512-2uZvxHv4IWF7xIRG1o4oXDFCrAhE0945Ses1eALmv/NqQ8BslXWWSq0Zf51qt+ZqQ3RfzCdl4kslZEqdGRe0gw==
   dependencies:
     "@babel/runtime" "^7.11.2"
+    "@messageformat/parser" "^5.0.0"
     make-plural "^6.2.2"
-    messageformat-parser "^4.1.3"
 
 "@lingui/macro@3.15.0":
   version "3.15.0"
@@ -1527,13 +1527,13 @@
     "@lingui/conf" "^3.15.0"
     ramda "^0.27.1"
 
-"@lingui/react@3.15.0":
-  version "3.15.0"
-  resolved "https://registry.yarnpkg.com/@lingui/react/-/react-3.15.0.tgz#6de83da27b4145e30f4dffc6a2947eecf3a954e4"
-  integrity sha512-Xq/48yf2IQhOPpgpqydj1OUyfDgNOY4aattmG4195LeqGPhN0ckiUCBLlNm0vHRsO3ZGwzfprTLYfI9WbfLBzA==
+"@lingui/react@3.16.0":
+  version "3.16.0"
+  resolved "https://registry.yarnpkg.com/@lingui/react/-/react-3.16.0.tgz#7f592a9387a1e73946c2cfe6809669513b8f8d00"
+  integrity sha512-0ZoiRXuEJIRDqqwfnbpuF8cXiQ3ZdAwnCTq1ftAk0ya+MKaW09sFjsRtqJG2dUYOAyOpQtpb5pOsi8IWKkw1MA==
   dependencies:
     "@babel/runtime" "^7.11.2"
-    "@lingui/core" "^3.15.0"
+    "@lingui/core" "3.16.0"
 
 "@material-ui/core@4.12.4":
   version "4.12.4"
@@ -1616,6 +1616,13 @@
     "@babel/runtime" "^7.4.4"
     prop-types "^15.7.2"
     react-is "^16.8.0 || ^17.0.0"
+
+"@messageformat/parser@^5.0.0":
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/@messageformat/parser/-/parser-5.0.0.tgz#5737e69d7d4a469998b527710f1891174fc1b262"
+  integrity sha512-WiDKhi8F0zQaFU8cXgqq69eYFarCnTVxKcvhAONufKf0oUxbqLMW6JX6rV4Hqh+BEQWGyKKKHY4g1XA6bCLylA==
+  dependencies:
+    moo "^0.5.1"
 
 "@nicolo-ribaudo/eslint-scope-5-internals@5.1.1-v1":
   version "5.1.1-v1"
@@ -6218,6 +6225,11 @@ moo@^0.5.0:
   version "0.5.1"
   resolved "https://registry.yarnpkg.com/moo/-/moo-0.5.1.tgz#7aae7f384b9b09f620b6abf6f74ebbcd1b65dbc4"
   integrity sha512-I1mnb5xn4fO80BH9BLcF0yLypy2UKl+Cb01Fu0hJRkJjlCRtxZMWkTdAtDd5ZqCOxtCkhmRwyI57vWT+1iZ67w==
+
+moo@^0.5.1:
+  version "0.5.2"
+  resolved "https://registry.yarnpkg.com/moo/-/moo-0.5.2.tgz#f9fe82473bc7c184b0d32e2215d3f6e67278733c"
+  integrity sha512-iSAJLHYKnX41mKcJKjqvnAN9sf0LMDTXDEvFv+ffuRR9a1MIuXLjMNL6EsnDHSkKLTWNqQQ5uo61P4EbU4NU+Q==
 
 ms@2.0.0:
   version "2.0.0"
