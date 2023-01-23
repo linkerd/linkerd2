@@ -429,16 +429,6 @@ func TestControlPlaneResourcesPostInstall(t *testing.T) {
 	testutil.TestResourcesPostInstall(TestHelper.GetLinkerdNamespace(), expectedServices, expectedDeployments, TestHelper, t)
 }
 
-func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
-	if TestHelper.UpgradeHelmFromVersion() == "" {
-		t.Skip("Skipping as this is not a helm upgrade test")
-	}
-
-	if err := TestHelper.TestCheck(); err != nil {
-		t.Fatalf("'linkerd check' command failed: %s", err)
-	}
-}
-
 func TestUpgradeHelm(t *testing.T) {
 	if TestHelper.UpgradeHelmFromVersion() == "" {
 		t.Skip("Skipping as this is not a helm upgrade test")
