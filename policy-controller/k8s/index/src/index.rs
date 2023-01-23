@@ -1465,13 +1465,8 @@ impl PolicyIndex {
                 let servers = self
                     .servers
                     .keys()
-                    .filter_map(|server| {
-                        if route.selects_server(server) {
-                            Some(server.clone())
-                        } else {
-                            None
-                        }
-                    })
+                    .filter(|server| route.selects_server(server))
+                    .cloned()
                     .collect();
                 (route_name.clone(), servers)
             })
