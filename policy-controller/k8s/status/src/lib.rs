@@ -44,7 +44,7 @@ impl Controller {
                     // stuck with the statuses in the previous state until
                     // another update happens.  Instead, we should requeue the
                     // update so that we can try again.
-                    tracing::error!(%error, "failed to list HTTPRoutes");
+                    tracing::error!(namespace = %namespace, %error, "failed to list HTTPRoutes");
                     continue;
                 }
             };
@@ -113,7 +113,7 @@ impl Controller {
                     .patch_status(&name, &patch_params, &k8s::Patch::Merge(patch))
                     .await
                 {
-                    tracing::error!(%error, "Failed to patch HTTPRoute");
+                    tracing::error!(namespace = %namespace, name = %name, %error, "Failed to patch HTTPRoute");
                 }
             }
         }
