@@ -7,7 +7,7 @@ function jaegerQuery(name, namespace, resource) {
   if (_isEmpty(namespace)) {
     return `{"linkerd.io/workload-ns"%3A"${name}"}`;
   } else if (resource === 'pod') {
-    return `{"hostname"%3A"${name}"%2C"linkerd.io/workload-ns"%3A"${namespace}"}`;
+    return `{"host.name"%3A"${name}"%2C"linkerd.io/workload-ns"%3A"${namespace}"}`;
   } else {
     return `{"linkerd.io%2Fproxy-${resource}"%3A"${name}"%2C"linkerd.io/workload-ns"%3A"${namespace}"}`;
   }
