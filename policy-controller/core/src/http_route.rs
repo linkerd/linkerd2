@@ -207,6 +207,9 @@ impl Status {
                     .inner
                     .parents
                     .iter()
+                    // todo: filter out parent statuses that are not set by
+                    // the status controller. `controller_name` is something
+                    // we could expect
                     .filter_map(|parent_status| Self::from_parent_status(parent_status))
                     .collect::<Vec<_>>()
             })
@@ -215,6 +218,10 @@ impl Status {
     }
 
     fn from_parent_status(status: &gateway::RouteParentStatus) -> Option<Self> {
+        // todo: we should match `controller_name` here since we know that the
+        // status controller will include it's name as part of setting the
+        // status.
+
         // Only match parent statuses that belong to resources of
         // `kind: Server`.
         match status.parent_ref.kind.as_deref() {
@@ -229,11 +236,15 @@ impl Status {
                 let type_ = match condition.type_.as_ref() {
                     "Accepted" => ConditionType::Accepted,
                     "ResolvedRefs" => ConditionType::ResolvedRefs,
+                    // todo: Handle error here when there is an unexpected
+                    // type
                     _ => return None,
                 };
                 let status = match condition.status.as_ref() {
                     "True" => true,
                     "False" => false,
+                    // todo: Handle error here when there is an unexpected
+                    // value
                     _ => return None,
                 };
                 Some(Condition { type_, status })
