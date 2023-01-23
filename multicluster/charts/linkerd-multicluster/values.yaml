@@ -31,7 +31,7 @@ gateway:
   loadBalancerSourceRanges: []
   # -- Set terminationGracePeriodSeconds on gateway deployment
   terminationGracePeriodSeconds: ""
-  
+
   # -- The pause container to use
   pauseImage: "gcr.io/google_containers/pause:3.2"
 
