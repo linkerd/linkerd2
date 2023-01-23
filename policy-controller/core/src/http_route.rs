@@ -215,10 +215,11 @@ impl Status {
     }
 
     fn from_parent_status(status: &gateway::RouteParentStatus) -> Option<Self> {
-        if let Some(ref kind) = status.parent_ref.kind {
-            if kind != "Server" {
-                return None;
-            }
+        // Only match parent statuses that belong to resources of
+        // `kind: Server`.
+        match status.parent_ref.kind.as_deref() {
+            Some("Server") => (),
+            _ => return None,
         }
 
         let conditions = status
