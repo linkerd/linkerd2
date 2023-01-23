@@ -128,12 +128,10 @@ impl InboundRouteBinding {
     #[inline]
     pub fn accepted_by_server(&self, name: &str) -> bool {
         self.route.statuses.iter().any(|status| {
-            if status.parent == name {
-                return status.conditions.iter().any(|condition| {
+            status.parent == name
+                && status.conditions.iter().any(|condition| {
                     condition.type_ == http_route::ConditionType::Accepted && condition.status
-                });
-            }
-            return false;
+                })
         })
     }
 
