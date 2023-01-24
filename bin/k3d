@@ -5,22 +5,22 @@ set -eu
 K3D_VERSION=v5.4.3
 
 bindir=$( cd "${0%/*}" && pwd )
+
+# shellcheck source=_os.sh
+. "$bindir"/_os.sh
+
 targetbin=$( cd "$bindir"/.. && pwd )/target/bin
 k3dbin="$targetbin/k3d-${K3D_VERSION}"
 
 if [ ! -f "$k3dbin" ]; then
+  arch=$(architecture)
+
   if [ "$(uname -s)" = Darwin ]; then
     os=darwin
-    arch=amd64
   elif [ "$(uname -o)" = Msys ]; then
     os=windows
-    arch=amd64
   else
     os=linux
-    case $(uname -m) in
-      x86_64) arch=amd64 ;;
-      arm) arch=arm64 ;;
-    esac
   fi
 
   mkdir -p "$targetbin"

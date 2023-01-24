@@ -1,5 +1,126 @@
 # Changes
 
+## edge-23.1.1
+
+This edge release fixes a caching issue in the destination controller, converts
+deprecated policy resources, and introduces several changes to how the proxy
+works.
+
+A bug in the destination controller that could potentially lead to stale pods
+being considered in the load balancer has been fixed.
+
+Several Linkerd extensions were still using the now deprecated
+ServerAuthorization resource. These instances have now been converted to using
+AuthorizationPolicy. Additionally, removed several policy resources that
+authenticated probes, since probes are now authenticated by default.
+
+As part of ongoing policy work, there are several changes with how the proxy
+works. Routes are now lazily initialized so that service profile routes will
+not show up in metrics until the route is used. Furthermore, the proxy’s
+traffic splitting behavior has changed so that only available resources are
+used, resulting in less failfast errors.
+
+Finally, this edge release contains a number of fixes and improvements from our
+contributors.
+
+* Converted `ServerAuthorization` resources to `AuthorizationPolicy` resources
+  in Linkerd extensions
+* Removed policy resources bound to admin servers in extensions (previously
+  these resources were used to authorize probes but now are authorized by
+  default)
+* Added a `resources` field in the linkerd-cni chart (thanks @jcogilvie!)
+* Fixed an issue in the CLI where `--identity-external-ca` would set an
+  incorrect field (thanks @anoxape!)
+* Fixed an issue in the destination controller's cache that could result in
+  stale endpoints when using EndpointSlice objects
+* Added namespace to namespace-metadata resources in Helm (thanks @joebowbeer!)
+* Added support for Pod Security Admission (Pod Security Policy resources are
+  still supported but disabled by default)
+* Changed routes to be initialized lazily. Service Profile routes will no
+  longer show up in metrics until the route is used (default routes are always
+  available when no Service Profile is defined for a service)
+* Changed the proxy's behavior when traffic splitting so that only services
+  that are not in failfast are used. This will enable the proxy to manage
+  failover without external coordination
+* Updated tokio (async runtime) in the proxy which should reduce CPU usage,
+  especially for proxy's pod local (i.e in the same network namespace)
+  communication
+* Fixed an issue where `linkerd viz tap` would display wrong latency/duration
+  value (thanks @olegy2008!)
+
+## edge-22.12.1
+
+This edge release introduces static and dynamic port overrides for CNI eBPF
+socket-level load balancing. In certain installations when CNI plugins run in
+eBPF mode, socket-level load balancing rewrites packet destinations to port
+6443; as with 443 already, this port is now skipped as well on control plane
+components so that they can communicate with the Kubernetes API before their
+proxies are running.
+
+Additionally, a potential panic and false warning have been fixed in the
+destination controller.
+
+* Updated linkerd-jaeger's collector to expose port 4318 in order support HTTP
+  alongside gRPC (thanks @uralsemih!)
+* Added a `proxyInit.privileged` setting to control whether the `proxy-init`
+  initContainer runs as a privileged process
+* Fixed a potential panic in the destination controller caused by concurrent
+  writes when dealing with Endpoint updates
+* Fixed false warning when looking up HostPort mappings on Pods
+* Added static and dynamic port overrides for CNI eBPF to work with socket-level
+  load balancing
+
+## edge-22.11.3
+
+This edge release fixes connection errors to pods that use `hostPort`
+configurations. The CNI `network-validator` init container features
+improved error logging, and the default `linkerd-cni` DaemonSet
+configuration is updated to tolerate all node taints so that the CNI
+runs on all nodes in a cluster.
+
+* Fixed `destination` service to properly discover targets using a `hostPort`
+  different than their `containerPort`, which was causing 502 errors
+* Upgraded the `network-validator` with better logging allowing users to
+  determine whether failures occur as a result of their environment or the tool
+  itself
+* Added default `Exists` toleration to the `linkerd-cni` DaemonSet, allowing it
+  to be deployed in all nodes by default, regardless of taints
+
+## edge-22.11.2
+
+This edge release introduces the use of the Kubernetes metadata API in the
+proxy-injector and tap-injector components. This can reduce the IO and memory
+footprint for those components as they now only need to track the metadata for
+certain resources, rather than the entire resource itself. Similar changes will
+be made for the destination component in an upcoming release.
+
+* Bumped HTTP dependencies to fix a potential deadlock in HTTP/2 clients
+* Changed the proxy-injector and tap-injector components to use the metadata API
+  which should result in less memory consumption
+
+## edge-22.11.1
+
+This edge releases ships a few fixes in Linkerd's dashboard, and the
+multicluster extension. Additionally, a regression has been fixed in the CLI
+that blocked upgrades from versions older than 2.12.0, due to missing CRDs
+(even if the CRDs were present in-cluster). Finally, the release includes
+changes to the helm charts to allow for arbitrary (user-provided) labels on
+Linkerd workloads.
+
+* Fixed an issue in the CLI where upgrades from any version prior to
+  stable-2.12.0 would fail when using the `--from-manifest` flag
+* Removed un-injectable namespaces, such as kube-system from unmeshed resource
+  notification in the dashboard (thanks @MoSattler!)
+* Fixed an issue where the dashboard would respond to requests with 404 due to
+  wrong root paths in the HTML script (thanks @junnplus!)
+* Removed the proxyProtocol field in the multicluster gateway policy; this has
+  the effect of changing the protocol from 'HTTP/1.1' to 'unknown' (thanks
+  @psmit!)
+* Fixed the multicluster gateway UID when installing through the CLI, prior to
+  this change the 'runAsUser' field would be empty
+* Changed the helm chart for the control plane and all extensions to support
+  arbitrary labels on resources (thanks @bastienbosser!)
+
 ## edge-22.10.3
 
 This edge release adds `network-validator`, a new init container to be used when

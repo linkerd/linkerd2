@@ -113,7 +113,14 @@ spec:
         image: cr.l5d.io/linkerd/controller:dev-undefined
         name: service-mirror
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
+          seccompProfile:
+            type: RuntimeDefault
         ports:
         - containerPort: 9999
           name: admin-http

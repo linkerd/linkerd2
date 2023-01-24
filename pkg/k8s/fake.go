@@ -138,6 +138,7 @@ metadata:
 // newFakeClientSetsFromManifests reads from a slice of readers, each
 // representing a manifest or collection of manifests, and returns a mock
 // Kubernetes ClientSet.
+//
 //nolint:unparam
 func newFakeClientSetsFromManifests(readers []io.Reader) (
 	kubernetes.Interface,

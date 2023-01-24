@@ -12,6 +12,7 @@ metadata:
     linkerd.io/is-control-plane: "true"
     config.linkerd.io/admission-webhooks: disabled
     linkerd.io/control-plane-ns: linkerd
+    pod-security.kubernetes.io/enforce: privileged
 ---
 ###
 ### Identity Controller Service RBAC
@@ -293,6 +294,7 @@ metadata:
   labels:
     linkerd.io/control-plane-component: heartbeat
     linkerd.io/control-plane-ns: linkerd
+
 ---
 ###
 ### Proxy Injector RBAC
@@ -428,9 +430,9 @@ data:
     heartbeatSchedule: 1 2 3 4 5
     highAvailability: false
     identity:
+      externalCA: false
       issuer:
         clockSkewAllowance: 20s
-        externalCA: false
         issuanceLifetime: 24h0m0s
         scheme: linkerd.io/tls
         tls:
@@ -584,10 +586,12 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v2.0.0
+        version: v2.1.0
       iptablesMode: legacy
+      kubeAPIServerPorts: 443,6443
       logFormat: ""
       logLevel: ""
+      privileged: false
       resources:
         cpu:
           limit: 100m
@@ -627,6 +631,19 @@ data:
     proxyInjectorResources: null
     tolerations: null
     webhookFailurePolicy: Ignore
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  name: ext-namespace-metadata-linkerd-config
+  namespace: linkerd
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["linkerd-config"]
 ---
 ###
 ### Identity Controller Service
@@ -749,7 +766,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - identity
@@ -783,8 +800,14 @@ spec:
             path: /ready
             port: 9990
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
@@ -898,13 +921,20 @@ spec:
         resources:
         securityContext:
           allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 2102
+          seccompProfile:
+            type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
+
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -915,8 +945,8 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
-        - "443"
-        image: cr.l5d.io/linkerd/proxy-init:v2.0.0
+        - "443,6443"
+        image: cr.l5d.io/linkerd/proxy-init:v2.1.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -932,9 +962,9 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
-          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          privileged: false
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1092,7 +1122,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - env:
         - name: _pod_name
@@ -1200,8 +1230,14 @@ spec:
         resources:
         securityContext:
           allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 2102
+          seccompProfile:
+            type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
         lifecycle:
           postStart:
@@ -1243,8 +1279,14 @@ spec:
             path: /ready
             port: 9996
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
       - args:
         - sp-validator
         - -log-level=info
@@ -1269,8 +1311,14 @@ spec:
             path: /ready
             port: 9997
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: sp-tls
@@ -1310,13 +1358,20 @@ spec:
           initialDelaySeconds: 10
         resources:
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: policy-tls
           readOnly: true
       initContainers:
+
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -1327,8 +1382,8 @@ spec:
         - --inbound-ports-to-ignore
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
-        - "443"
-        image: cr.l5d.io/linkerd/proxy-init:v2.0.0
+        - "443,6443"
+        image: cr.l5d.io/linkerd/proxy-init:v2.1.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1344,9 +1399,9 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
-          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          privileged: false
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -1414,8 +1469,14 @@ spec:
             - "-log-format=plain"
             - "-prometheus-url=http://prometheus.linkerd-viz.svc.cluster.local:9090"
             securityContext:
+              capabilities:
+                drop:
+                - ALL
+              runAsNonRoot: true
               runAsUser: 2103
               allowPrivilegeEscalation: false
+              seccompProfile:
+                type: RuntimeDefault
 ---
 ###
 ### Proxy Injector
@@ -1459,7 +1520,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - env:
         - name: _pod_name
@@ -1567,8 +1628,14 @@ spec:
         resources:
         securityContext:
           allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
           runAsUser: 2102
+          seccompProfile:
+            type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
         lifecycle:
           postStart:
@@ -1604,8 +1671,14 @@ spec:
             path: /ready
             port: 9995
         securityContext:
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
@@ -1626,7 +1699,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "4567,4568"
-        image: cr.l5d.io/linkerd/proxy-init:v2.0.0
+        image: cr.l5d.io/linkerd/proxy-init:v2.1.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1642,9 +1715,9 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
-          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          privileged: false
           readOnlyRootFilesystem: true
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:

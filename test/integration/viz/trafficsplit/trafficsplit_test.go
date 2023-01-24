@@ -98,7 +98,7 @@ func TestTrafficSplitCliWithSP(t *testing.T) {
 
 		t.Run(fmt.Sprintf("ensure traffic is sent to one backend only for %s", version), func(t *testing.T) {
 			timeout := 40 * time.Second
-			err := TestHelper.RetryFor(timeout, func() error {
+			err := testutil.RetryFor(timeout, func() error {
 				out, err := TestHelper.LinkerdRun("viz", "stat", "deploy", "--namespace", prefixedNs, "--from", "deploy/slow-cooker", "-t", "30s")
 				if err != nil {
 					return err
@@ -148,7 +148,7 @@ func TestTrafficSplitCliWithSP(t *testing.T) {
 
 		t.Run(fmt.Sprintf("ensure traffic is sent to both backends for %s", version), func(t *testing.T) {
 			timeout := 40 * time.Second
-			err := TestHelper.RetryFor(timeout, func() error {
+			err := testutil.RetryFor(timeout, func() error {
 
 				out, err := TestHelper.LinkerdRun("viz", "stat", "deploy", "-n", prefixedNs, "--from", "deploy/slow-cooker", "-t", "30s")
 				if err != nil {

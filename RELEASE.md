@@ -133,7 +133,7 @@ reset the patch. This leaves room for eventual maintenance stable release
 versions.
 
 MOST COMMON CASE: If making an edge release after another edge release, just
-bump the minor.
+bump the patch.
 
 In any case remember to keep the `-edge` suffix.
 
@@ -330,7 +330,19 @@ Subscribe to these mailing lists if you aren't on them:
 - [linkerd-announce](https://lists.cncf.io/g/cncf-linkerd-announce/join)
 - [linkerd-dev](https://lists.cncf.io/g/cncf-linkerd-dev/join)
 
-Include the full release notes in the email. Liberally apply emoji. ⭐
+Make sure to include the install instructions (adjust depending if it's an edge
+or a stable release):
+
+> To install the CLI for this edge release, run:
+<!-- markdownlint-disable MD034 -->
+>
+> curl --proto '=https' --tlsv1.2 -sSfL https://run.linkerd.io/install-edge | sh
+>
+> And please check the [upgrade
+instructions](https://linkerd.io/2.12/tasks/upgrade/) for detailed steps on how
+to upgrade your cluster using either the CLI or Helm.
+
+Aftewards, include the full release notes. Liberally apply emoji. ⭐
 
 ## 13. Send an announcement to Linkerd Slack's #announcements channel
 

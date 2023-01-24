@@ -458,16 +458,16 @@ impl Validate<HttpRouteSpec> for Admission {
             }
         }
 
-        // Ensure that the `HTTPRoute` targets a `Server` as its parent ref
-        let all_target_servers = spec
+        // Ensure that the `HTTPRoute` targets a `Server` or `Service` as its parent ref
+        let all_valid_targets = spec
             .inner
             .parent_refs
             .iter()
             .flatten()
             .all(parent_ref_kind_is_valid);
         ensure!(
-            all_target_servers,
-            "policy.linkerd.io HTTPRoutes must target only Server resources"
+            all_valid_targets,
+            "policy.linkerd.io HTTPRoutes must target only Server or Service resources"
         );
 
         // Validate the rules in this spec.

@@ -5,6 +5,7 @@ metadata:
   labels:
     linkerd.io/cni-resource: "true"
     config.linkerd.io/admission-webhooks: disabled
+    pod-security.kubernetes.io/enforce: privileged
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -22,7 +23,7 @@ metadata:
     linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: [""]
-  resources: ["pods", "nodes", "namespaces"]
+  resources: ["pods", "nodes", "namespaces", "services"]
   verbs: ["list", "get", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -104,6 +105,8 @@ spec:
         linkerd.io/cni-resource: "true"
         linkerd.io/inject: disabled
     spec:
+      tolerations:
+        - operator: Exists
       nodeSelector:
         kubernetes.io/os: linux
       hostNetwork: true

@@ -36,6 +36,7 @@ import (
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // ProxyInit is the configuration for the proxy-init binary
@@ -249,9 +250,18 @@ func cmdAdd(args *skel.CmdArgs) error {
 			}
 
 			if pod.GetLabels()[k8s.ControllerComponentLabel] != "" {
-				// Skip 443 outbound port if its a control plane component
-				logEntry.Debug("linkerd-cni: adding 443 to OutboundPortsToIgnore as its a control plane component")
-				options.OutboundPortsToIgnore = append(options.OutboundPortsToIgnore, "443")
+				// Skip k8s api server ports on the outbound side if pod is a
+				// control plane component
+				skippedPorts, err := getApiServerPorts(ctx, client)
+				if err != nil {
+					// If we cannot retrieve the 'kubernetes' service's ports (for
+					// whatever reason), skip default ports: 443, 6443
+					logEntry.Errorf("linkerd-cni: could not retrieve ports from 'kubernetes' service: %v", err)
+					skippedPorts = []string{"443", "6443"}
+				}
+
+				logEntry.Debugf("linkerd-cni: adding %v to OutboundPortsToIgnore as its a control plane component", skippedPorts)
+				options.OutboundPortsToIgnore = append(options.OutboundPortsToIgnore, skippedPorts...)
 			}
 
 			firewallConfiguration, err := cmd.BuildFirewallConfiguration(&options)
@@ -296,6 +306,23 @@ func cmdCheck(args *skel.CmdArgs) error {
 func cmdDel(args *skel.CmdArgs) error {
 	logrus.Debug("linkerd-cni: cmdDel not implemented")
 	return nil
+}
+
+func getApiServerPorts(ctx context.Context, api *k8s.KubernetesAPI) ([]string, error) {
+	service, err := api.CoreV1().Services("default").Get(ctx, "kubernetes", metav1.GetOptions{})
+	if err != nil {
+		return []string{}, err
+	}
+
+	ports := make([]string, 0)
+	for _, port := range service.Spec.Ports {
+		ports = append(ports, strconv.Itoa(int(port.Port)))
+		if port.TargetPort.Type == intstr.Int {
+			ports = append(ports, strconv.Itoa(port.TargetPort.IntValue()))
+		}
+	}
+
+	return ports, nil
 }
 
 func getAnnotationOverride(ctx context.Context, api *k8s.KubernetesAPI, pod *v1.Pod, key string) (string, error) {

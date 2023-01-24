@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -27,7 +28,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -448,6 +448,11 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 	}
 
 	return hc
+}
+
+func NewWithCoreChecks(options *Options) *HealthChecker {
+	checks := []CategoryID{KubernetesAPIChecks, LinkerdControlPlaneExistenceChecks}
+	return NewHealthChecker(checks, options)
 }
 
 // InitializeKubeAPIClient creates a client for the HealthChecker. It avoids
@@ -1594,6 +1599,28 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) (bool, bool) {
 	return success, warning
 }
 
+func (hc *HealthChecker) RunWithExitOnError() (bool, bool) {
+	return hc.RunChecks(func(result *CheckResult) {
+		if result.Retry {
+			fmt.Fprintln(os.Stderr, "Waiting for control plane to become available")
+			return
+		}
+
+		if result.Err != nil && !result.Warning {
+			var msg string
+			switch result.Category {
+			case KubernetesAPIChecks:
+				msg = "Cannot connect to Kubernetes"
+			case LinkerdControlPlaneExistenceChecks:
+				msg = "Cannot find Linkerd"
+			}
+			fmt.Fprintf(os.Stderr, "%s: %s\nValidate the install with: 'linkerd check'\n",
+				msg, result.Err)
+			os.Exit(1)
+		}
+	})
+}
+
 // LinkerdConfig gets the Linkerd configuration values.
 func (hc *HealthChecker) LinkerdConfig() *l5dcharts.Values {
 	return hc.linkerdConfig
@@ -2175,7 +2202,7 @@ func CheckCustomResourceDefinitions(ctx context.Context, k8sAPI *k8s.KubernetesA
 	return nil
 }
 
-func crdHasVersion(crd *v1.CustomResourceDefinition, version string) bool {
+func crdHasVersion(crd *apiextv1.CustomResourceDefinition, version string) bool {
 	for _, crdVersion := range crd.Spec.Versions {
 		if crdVersion.Name == version {
 			return true
@@ -2732,8 +2759,9 @@ func CheckCanPerformAction(ctx context.Context, api *k8s.KubernetesAPI, verb, na
 
 // getPodStatuses returns a map of all Linkerd container statuses:
 // component =>
-//   pod name =>
-//     container statuses
+//
+//	pod name =>
+//	  container statuses
 func getPodStatuses(pods []corev1.Pod) map[string]map[string][]corev1.ContainerStatus {
 	statuses := make(map[string]map[string][]corev1.ContainerStatus)
 

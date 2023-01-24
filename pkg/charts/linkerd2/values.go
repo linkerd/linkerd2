@@ -122,6 +122,7 @@ type (
 		Capabilities         *Capabilities    `json:"capabilities"`
 		IgnoreInboundPorts   string           `json:"ignoreInboundPorts"`
 		IgnoreOutboundPorts  string           `json:"ignoreOutboundPorts"`
+		KubeAPIServerPorts   string           `json:"kubeAPIServerPorts"`
 		SkipSubnets          string           `json:"skipSubnets"`
 		LogLevel             string           `json:"logLevel"`
 		LogFormat            string           `json:"logFormat"`
@@ -130,6 +131,7 @@ type (
 		XTMountPath          *VolumeMountPath `json:"xtMountPath"`
 		Resources            *Resources       `json:"resources"`
 		CloseWaitTimeoutSecs int64            `json:"closeWaitTimeoutSecs"`
+		Privileged           bool             `json:"privileged"`
 		RunAsRoot            bool             `json:"runAsRoot"`
 		RunAsUser            int64            `json:"runAsUser"`
 		IptablesMode         string           `json:"iptablesMode"`
@@ -222,13 +224,13 @@ type (
 	// Identity contains the fields to set the identity variables in the proxy
 	// sidecar container
 	Identity struct {
+		ExternalCA                    bool    `json:"externalCA"`
 		ServiceAccountTokenProjection bool    `json:"serviceAccountTokenProjection"`
 		Issuer                        *Issuer `json:"issuer"`
 	}
 
 	// Issuer has the Helm variables of the identity issuer
 	Issuer struct {
-		ExternalCA         bool       `json:"externalCA"`
 		Scheme             string     `json:"scheme"`
 		ClockSkewAllowance string     `json:"clockSkewAllowance"`
 		IssuanceLifetime   string     `json:"issuanceLifetime"`

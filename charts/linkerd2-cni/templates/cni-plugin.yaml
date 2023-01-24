@@ -25,6 +25,7 @@ metadata:
   labels:
     linkerd.io/cni-resource: "true"
     config.linkerd.io/admission-webhooks: disabled
+    pod-security.kubernetes.io/enforce: privileged
 ---
 {{ end -}}
 apiVersion: v1
@@ -108,7 +109,7 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
 - apiGroups: [""]
-  resources: ["pods", "nodes", "namespaces"]
+  resources: ["pods", "nodes", "namespaces", "services"]
   verbs: ["list", "get", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -266,6 +267,9 @@ spec:
         securityContext:
           readOnlyRootFilesystem: true
           privileged: {{.Values.privileged}}
+        {{- if .Values.resources }}
+        {{- include "partials.resources" .Values.resources | nindent 8 }}
+        {{- end }}
       volumes:
       {{- if ne .Values.destCNIBinDir .Values.destCNINetDir }}
       - name: cni-bin-dir

@@ -15,7 +15,7 @@ spec:
     kind: MeshTLSAuthentication
     plural: meshtlsauthentications
     singular: meshtlsauthentication
-    shortNames: []
+    shortNames: [meshtlsauthn]
   versions:
     - name: v1alpha1
       served: true

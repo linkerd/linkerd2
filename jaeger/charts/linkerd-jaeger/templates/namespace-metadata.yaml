@@ -5,7 +5,7 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
     "helm.sh/hook": post-install
-    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-weight": "1"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
   labels:
     app.kubernetes.io/name: namespace-metadata
@@ -13,6 +13,7 @@ metadata:
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: namespace-metadata
+  namespace: {{.Release.Namespace}}
 spec:
   template:
     metadata:
@@ -33,7 +34,14 @@ spec:
         imagePullPolicy: {{.Values.namespaceMetadata.image.pullPolicy | default .Values.imagePullPolicy}}
         command: ["/bin/sh"]
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           runAsUser: {{.Values.defaultUID}}
+          seccompProfile:
+            type: RuntimeDefault
         args:
         - -c
         - |
@@ -46,7 +54,19 @@ spec:
             ops="$ops{\"op\": \"add\",\"path\": \"/metadata/labels\",\"value\": {}},"
           fi
 
-          ops="$ops{\"op\": \"add\", \"path\": \"/metadata/labels/linkerd.io~1extension\", \"value\": \"jaeger\"}"
+          ops="$ops{\"op\": \"add\", \"path\": \"/metadata/labels/linkerd.io~1extension\", \"value\": \"jaeger\"},"
+
+          # grab the latest occurence of cniEnabled in linkerd-config, to
+          # discard value in the last-applied-configuration annotation
+          cniEnabled=$(curl -kfv -H "Authorization: Bearer $token" \
+            "https://kubernetes.default.svc/api/v1/namespaces/{{.Values.linkerdNamespace}}/configmaps/linkerd-config" | \
+            sed -r -n 's/.*cniEnabled: (\w+).*/\1/gp' | tail -1)
+
+          level="privileged"
+          if [ "$cniEnabled" = "true" ]; then
+            level="restricted"
+          fi
+          ops="$ops{\"op\": \"add\", \"path\": \"/metadata/labels/pod-security.kubernetes.io~1enforce\", \"value\": \"$level\"}"
 
           curl -kfv -XPATCH -H "Content-Type: application/json-patch+json" -H "Authorization: Bearer $token" \
             -d "[$ops]" \

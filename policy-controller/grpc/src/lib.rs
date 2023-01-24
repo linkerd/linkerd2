@@ -3,7 +3,10 @@
 
 mod http_route;
 
-use api::destination;
+use api::{
+    destination,
+    net::{ip_address::Ip, IPv6, IpAddress},
+};
 use futures::prelude::*;
 use linkerd2_proxy_api::{
     self as api,
@@ -12,6 +15,7 @@ use linkerd2_proxy_api::{
         inbound_server_policies_server::{InboundServerPolicies, InboundServerPoliciesServer},
     },
     meta::{metadata, Metadata},
+    net::TcpAddress,
     outbound::{
         self,
         outbound_policies_server::{OutboundPolicies, OutboundPoliciesServer},
@@ -27,7 +31,7 @@ use linkerd_policy_controller_core::{
     ServerRef,
 };
 use maplit::*;
-use std::{num::NonZeroU16, sync::Arc};
+use std::{net::IpAddr, num::NonZeroU16, sync::Arc};
 use tracing::trace;
 
 #[derive(Clone, Debug)]
@@ -160,16 +164,20 @@ where
     async fn get(
         &self,
         req: tonic::Request<outbound::TargetSpec>,
-    ) -> Result<tonic::Response<outbound::Service>, tonic::Status> {
+    ) -> Result<tonic::Response<outbound::OutboundPolicy>, tonic::Status> {
         let target = req.into_inner();
         // TODO: get rid of all these expects
         let port = target.port.try_into().expect("port out of range");
         let port = NonZeroU16::new(port).expect("port cannot be zero");
-        let addr = target
-            .address
-            .expect("address must be specified")
-            .try_into()
-            .expect("failed to parse target addr");
+        let addr = match target.target {
+            Some(outbound::target_spec::Target::Address(addr)) => {
+                addr.try_into().expect("failed to parse target addr")
+            }
+            Some(outbound::target_spec::Target::Authority(_)) => {
+                return Err(tonic::Status::unimplemented("TODO"))
+            }
+            None => return Err(tonic::Status::invalid_argument("TODO")),
+        };
         if let Some(target) = self.index.service_lookup(addr, port) {
             if let Some(policy) = self
                 .index
@@ -196,11 +204,15 @@ where
         // TODO: get rid of all these expects
         let port = target.port.try_into().expect("port out of range");
         let port = NonZeroU16::new(port).expect("port cannot be zero");
-        let addr = target
-            .address
-            .expect("address must be specified")
-            .try_into()
-            .expect("failed to parse target addr");
+        let addr = match target.target {
+            Some(outbound::target_spec::Target::Address(addr)) => {
+                addr.try_into().expect("failed to parse target addr")
+            }
+            Some(outbound::target_spec::Target::Authority(_)) => {
+                return Err(tonic::Status::unimplemented("TODO"))
+            }
+            None => return Err(tonic::Status::invalid_argument("TODO")),
+        };
         let drain = self.drain.clone();
         if let Some(target) = self.index.service_lookup(addr, port) {
             let rx = self
@@ -218,8 +230,9 @@ where
 
 type BoxWatchStream =
     std::pin::Pin<Box<dyn Stream<Item = Result<proto::Server, tonic::Status>> + Send + Sync>>;
-type BoxWatchServiceStream =
-    std::pin::Pin<Box<dyn Stream<Item = Result<outbound::Service, tonic::Status>> + Send + Sync>>;
+type BoxWatchServiceStream = std::pin::Pin<
+    Box<dyn Stream<Item = Result<outbound::OutboundPolicy, tonic::Status>> + Send + Sync>,
+>;
 
 fn response_stream(
     drain: drain::Watch,
@@ -358,6 +371,7 @@ fn to_authz(
                     group: "policy.linkerd.io".to_string(),
                     kind: "authorizationpolicy".to_string(),
                     name: name.to_string(),
+                    ..Default::default()
                 })
             }
             AuthorizationRef::ServerAuthorization(name) => {
@@ -365,6 +379,7 @@ fn to_authz(
                     group: "policy.linkerd.io".to_string(),
                     kind: "serverauthorization".to_string(),
                     name: name.clone(),
+                    ..Default::default()
                 })
             }
         }),
@@ -516,6 +531,7 @@ fn to_http_route(
                 group: "policy.linkerd.io".to_string(),
                 kind: "HTTPRoute".to_string(),
                 name: name.to_string(),
+                ..Default::default()
             }),
         }),
     };
@@ -566,16 +582,26 @@ fn convert_filter(filter: InboundFilter) -> proto::http_route::Filter {
     }
 }
 
-fn to_service(outbound: OutboundPolicy) -> outbound::Service {
-    let http_routes = outbound
+fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
+    let http_routes: Vec<_> = outbound
         .http_routes
         .into_iter()
         .map(|(name, route)| convert_outbound_http_route(name, route))
         .collect();
 
-    outbound::Service {
-        backends: Default::default(),
-        http_routes,
+    outbound::OutboundPolicy {
+        backend: None,
+        protocol: Some(outbound::ProxyProtocol {
+            kind: Some(linkerd2_proxy_api::outbound::proxy_protocol::Kind::Detect(
+                outbound::proxy_protocol::Detect {
+                    timeout: None,
+                    http1: Some(outbound::proxy_protocol::Http1 {
+                        http_routes: http_routes.clone(),
+                    }),
+                    http2: Some(outbound::proxy_protocol::Http2 { http_routes }),
+                },
+            )),
+        }),
     }
 }
 
@@ -588,6 +614,7 @@ fn convert_outbound_http_route(
             group: "policy.linkerd.io".to_string(),
             kind: "HTTPRoute".to_string(),
             name,
+            ..Default::default()
         })),
     });
 
@@ -601,7 +628,14 @@ fn convert_outbound_http_route(
         .map(
             |OutboundHttpRouteRule { matches, backends }| outbound::http_route::Rule {
                 matches: matches.into_iter().map(http_route::convert_match).collect(),
-                backends: backends.into_iter().filter_map(convert_backend).collect(),
+                backends: Some(outbound::Distribution {
+                    distribution: Some(outbound::distribution::Distribution::RandomAvailable(
+                        outbound::distribution::RandomAvailable {
+                            backends: backends.into_iter().map(convert_backend).collect(),
+                        },
+                    )),
+                }),
+                filters: Default::default(),
             },
         )
         .collect();
@@ -613,16 +647,59 @@ fn convert_outbound_http_route(
     }
 }
 
-fn convert_backend(backend: Backend) -> Option<outbound::Backend> {
-    if let Backend::Dst(dst) = backend {
-        Some(outbound::Backend {
-            backend: Some(outbound::backend::Backend::Dst(destination::WeightedDst {
-                authority: dst.authority,
-                weight: dst.weight,
-            })),
-        })
-    } else {
-        // TODO: Only Dst backends are supported for now, not endpoint backends.
-        None
+fn convert_backend(backend: Backend) -> outbound::Backend {
+    outbound::Backend {
+        backend: match backend {
+            Backend::Addr(addr) => Some(outbound::backend::Backend::Forward(
+                destination::WeightedAddr {
+                    addr: Some(convert_tcp_address(addr.addr, addr.port)),
+                    weight: addr.weight,
+                    ..Default::default()
+                },
+            )),
+            Backend::Dst(dst) => Some(outbound::backend::Backend::Balancer(
+                destination::WeightedDst {
+                    authority: dst.authority,
+                    weight: dst.weight,
+                },
+            )),
+        },
+        filters: Default::default(),
+    }
+}
+
+fn convert_tcp_address(ip_addr: IpAddr, port: NonZeroU16) -> TcpAddress {
+    let ip = match ip_addr {
+        IpAddr::V4(ipv4) => Ip::Ipv4(ipv4.into()),
+        IpAddr::V6(ipv6) => {
+            let first = [
+                ipv6.octets()[0],
+                ipv6.octets()[1],
+                ipv6.octets()[2],
+                ipv6.octets()[3],
+                ipv6.octets()[4],
+                ipv6.octets()[5],
+                ipv6.octets()[6],
+                ipv6.octets()[7],
+            ];
+            let last = [
+                ipv6.octets()[8],
+                ipv6.octets()[9],
+                ipv6.octets()[10],
+                ipv6.octets()[11],
+                ipv6.octets()[12],
+                ipv6.octets()[13],
+                ipv6.octets()[14],
+                ipv6.octets()[15],
+            ];
+            Ip::Ipv6(IPv6 {
+                first: u64::from_be_bytes(first),
+                last: u64::from_be_bytes(last),
+            })
+        }
+    };
+    TcpAddress {
+        ip: Some(IpAddress { ip: Some(ip) }),
+        port: port.get().into(),
     }
 }

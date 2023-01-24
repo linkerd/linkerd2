@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/net"
-	proxy "github.com/linkerd/linkerd2-proxy-api/go/net"
 	l5dNetPb "github.com/linkerd/linkerd2/controller/gen/common/net"
 	"google.golang.org/protobuf/proto"
 )
@@ -128,16 +127,16 @@ func TestProxyAddressesToString(t *testing.T) {
 			name: "ipv4",
 			addrs: []pb.TcpAddress{
 				{
-					Ip: &proxy.IPAddress{
-						Ip: &proxy.IPAddress_Ipv4{
+					Ip: &pb.IPAddress{
+						Ip: &pb.IPAddress_Ipv4{
 							Ipv4: 3232235521,
 						},
 					},
 					Port: 1234,
 				},
 				{
-					Ip: &proxy.IPAddress{
-						Ip: &proxy.IPAddress_Ipv4{
+					Ip: &pb.IPAddress{
+						Ip: &pb.IPAddress_Ipv4{
 							Ipv4: 3232235522,
 						},
 					},
@@ -200,18 +199,18 @@ func TestProxyIPToString(t *testing.T) {
 func TestNetToPublic(t *testing.T) {
 
 	type addrExp struct {
-		proxyAddr     *proxy.TcpAddress
+		proxyAddr     *pb.TcpAddress
 		publicAddress *l5dNetPb.TcpAddress
 	}
 
 	expectations := []addrExp{
 		{
-			proxyAddr:     &proxy.TcpAddress{},
+			proxyAddr:     &pb.TcpAddress{},
 			publicAddress: &l5dNetPb.TcpAddress{},
 		},
 		{
-			proxyAddr: &proxy.TcpAddress{
-				Ip:   &proxy.IPAddress{Ip: &proxy.IPAddress_Ipv4{Ipv4: 1}},
+			proxyAddr: &pb.TcpAddress{
+				Ip:   &pb.IPAddress{Ip: &pb.IPAddress_Ipv4{Ipv4: 1}},
 				Port: 1234,
 			},
 			publicAddress: &l5dNetPb.TcpAddress{
@@ -220,10 +219,10 @@ func TestNetToPublic(t *testing.T) {
 			},
 		},
 		{
-			proxyAddr: &proxy.TcpAddress{
-				Ip: &proxy.IPAddress{
-					Ip: &proxy.IPAddress_Ipv6{
-						Ipv6: &proxy.IPv6{
+			proxyAddr: &pb.TcpAddress{
+				Ip: &pb.IPAddress{
+					Ip: &pb.IPAddress_Ipv6{
+						Ipv6: &pb.IPv6{
 							First: 2345,
 							Last:  6789,
 						},

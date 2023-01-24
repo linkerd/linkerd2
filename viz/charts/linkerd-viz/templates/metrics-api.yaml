@@ -108,6 +108,13 @@ spec:
         {{- include "partials.resources" .Values.metricsAPI.resources | nindent 8 }}
         {{- end }}
         securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
           readOnlyRootFilesystem: true
           runAsUser: {{.Values.metricsAPI.UID | default .Values.defaultUID}}
+          seccompProfile:
+            type: RuntimeDefault
       serviceAccountName: metrics-api

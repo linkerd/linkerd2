@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -195,17 +194,17 @@ func (l Link) ToUnstructured() (unstructured.Unstructured, error) {
 
 // ExtractProbeSpec parses the ProbSpec from a gateway service's annotations.
 func ExtractProbeSpec(gateway *corev1.Service) (ProbeSpec, error) {
-	path := gateway.Annotations[consts.GatewayProbePath]
+	path := gateway.Annotations[k8s.GatewayProbePath]
 	if path == "" {
 		return ProbeSpec{}, errors.New("probe path is empty")
 	}
 
-	port, err := extractPort(gateway.Spec, consts.ProbePortName)
+	port, err := extractPort(gateway.Spec, k8s.ProbePortName)
 	if err != nil {
 		return ProbeSpec{}, err
 	}
 
-	period, err := strconv.ParseUint(gateway.Annotations[consts.GatewayProbePeriod], 10, 32)
+	period, err := strconv.ParseUint(gateway.Annotations[k8s.GatewayProbePeriod], 10, 32)
 	if err != nil {
 		return ProbeSpec{}, err
 	}
