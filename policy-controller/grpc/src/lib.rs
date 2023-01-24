@@ -154,6 +154,37 @@ where
     pub fn svc(self) -> OutboundPoliciesServer<Self> {
         OutboundPoliciesServer::new(self)
     }
+
+    fn service_lookup(
+        &self,
+        target: outbound::TargetSpec,
+    ) -> Result<(String, String, NonZeroU16), tonic::Status> {
+        let port = target.port.try_into().map_err(|_| {
+            tonic::Status::invalid_argument(format!(
+                "target port {} is outside valid range",
+                target.port
+            ))
+        })?;
+
+        let port = NonZeroU16::new(port)
+            .ok_or_else(|| tonic::Status::invalid_argument("port cannot be zero"))?;
+
+        let addr = match target.target {
+            Some(outbound::target_spec::Target::Address(addr)) => Ok(addr),
+            Some(outbound::target_spec::Target::Authority(_)) => Err(tonic::Status::unimplemented(
+                "getting policy by authority is not supported",
+            )),
+            None => Err(tonic::Status::invalid_argument("target is required")),
+        }?;
+
+        let addr = addr.try_into().map_err(|error| {
+            tonic::Status::invalid_argument(format!("failed to parse target addr: {}", error))
+        })?;
+
+        self.index
+            .service_lookup(addr, port)
+            .ok_or_else(|| tonic::Status::not_found("No such service"))
+    }
 }
 
 #[async_trait::async_trait]
@@ -166,31 +197,21 @@ where
         req: tonic::Request<outbound::TargetSpec>,
     ) -> Result<tonic::Response<outbound::OutboundPolicy>, tonic::Status> {
         let target = req.into_inner();
-        // TODO: get rid of all these expects
-        let port = target.port.try_into().expect("port out of range");
-        let port = NonZeroU16::new(port).expect("port cannot be zero");
-        let addr = match target.target {
-            Some(outbound::target_spec::Target::Address(addr)) => {
-                addr.try_into().expect("failed to parse target addr")
-            }
-            Some(outbound::target_spec::Target::Authority(_)) => {
-                return Err(tonic::Status::unimplemented("TODO"))
-            }
-            None => return Err(tonic::Status::invalid_argument("TODO")),
-        };
-        if let Some(target) = self.index.service_lookup(addr, port) {
-            if let Some(policy) = self
-                .index
-                .get_outbound_policy(target)
-                .await
-                .expect("failed to get outbound policy")
-            {
-                Ok(tonic::Response::new(to_service(policy)))
-            } else {
-                Err(tonic::Status::not_found("No such policy"))
-            }
+
+        let service = self.service_lookup(target)?;
+
+        let policy = self
+            .index
+            .get_outbound_policy(service)
+            .await
+            .map_err(|error| {
+                tonic::Status::internal(format!("failed to get outbound policy: {}", error))
+            })?;
+
+        if let Some(policy) = policy {
+            Ok(tonic::Response::new(to_service(policy)))
         } else {
-            Err(tonic::Status::not_found("No such service"))
+            Err(tonic::Status::not_found("No such policy"))
         }
     }
 
@@ -201,30 +222,16 @@ where
         req: tonic::Request<outbound::TargetSpec>,
     ) -> Result<tonic::Response<BoxWatchServiceStream>, tonic::Status> {
         let target = req.into_inner();
-        // TODO: get rid of all these expects
-        let port = target.port.try_into().expect("port out of range");
-        let port = NonZeroU16::new(port).expect("port cannot be zero");
-        let addr = match target.target {
-            Some(outbound::target_spec::Target::Address(addr)) => {
-                addr.try_into().expect("failed to parse target addr")
-            }
-            Some(outbound::target_spec::Target::Authority(_)) => {
-                return Err(tonic::Status::unimplemented("TODO"))
-            }
-            None => return Err(tonic::Status::invalid_argument("TODO")),
-        };
+        let service = self.service_lookup(target)?;
         let drain = self.drain.clone();
-        if let Some(target) = self.index.service_lookup(addr, port) {
-            let rx = self
-                .index
-                .watch_outbound_policy(target)
-                .await
-                .map_err(|e| tonic::Status::internal(format!("lookup failed: {}", e)))?
-                .ok_or_else(|| tonic::Status::not_found("unknown server"))?;
-            Ok(tonic::Response::new(outbound_policy_stream(drain, rx)))
-        } else {
-            Err(tonic::Status::not_found("No such service"))
-        }
+
+        let rx = self
+            .index
+            .watch_outbound_policy(service)
+            .await
+            .map_err(|e| tonic::Status::internal(format!("lookup failed: {}", e)))?
+            .ok_or_else(|| tonic::Status::not_found("unknown server"))?;
+        Ok(tonic::Response::new(outbound_policy_stream(drain, rx)))
     }
 }
 
