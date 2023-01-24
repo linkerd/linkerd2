@@ -27,6 +27,8 @@ gateway:
   deploymentAnnotations: {}
   # -- Set loadBalancerIP on gateway service
   loadBalancerIP: ""
+  # -- Set loadBalancerSourceRanges on gateway service
+  loadBalancerSourceRanges: []
   # -- Set terminationGracePeriodSeconds on gateway deployment
   terminationGracePeriodSeconds: ""
 
