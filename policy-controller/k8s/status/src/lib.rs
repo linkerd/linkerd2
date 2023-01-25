@@ -1,121 +1,191 @@
 use ahash::AHashMap as HashMap;
 use chrono::offset::Utc;
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
-use tokio::sync::mpsc::UnboundedReceiver;
+use parking_lot::RwLock;
+use std::sync::Arc;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
-pub struct Update {
-    namespace: String,
-    accepted_routes: HashMap<String, Vec<String>>,
-}
+pub type SharedIndex = Arc<RwLock<Index>>;
 
 pub struct Controller {
-    updates: UnboundedReceiver<Update>,
     client: k8s::Client,
+    index: SharedIndex,
+    updates: UnboundedReceiver<Update>,
 }
 
-impl Update {
-    pub fn new(namespace: String, accepted_routes: HashMap<String, Vec<String>>) -> Self {
-        Self {
-            namespace,
-            accepted_routes,
-        }
-    }
+pub struct Index {
+    updates: UnboundedSender<Update>,
+
+    http_routes: HashMap<ResourceId, k8s::policy::HttpRoute>,
+    servers: HashMap<ResourceId, k8s::policy::Server>,
+}
+
+pub enum Update {
+    HttpRoute(String),
+    Server,
+}
+
+struct ResourceId {
+    name: String,
+    namespace: String,
 }
 
 impl Controller {
-    pub fn new(updates: UnboundedReceiver<Update>, client: k8s::Client) -> Self {
-        Self { updates, client }
+    pub fn new(client: k8s::Client, index: SharedIndex, updates: UnboundedReceiver<Update>) -> Self {
+        Self {
+            client,
+            index,
+            updates,
+        }
     }
 
     pub async fn process_updates(mut self) {
-        let patch_params = k8s::PatchParams::apply("policy.linkerd.io");
+        todo!()
 
-        while let Some(Update {
-            namespace,
-            accepted_routes,
-        }) = self.updates.recv().await
-        {
-            let api =
-                k8s::Api::<k8s::policy::HttpRoute>::namespaced(self.client.clone(), &namespace);
-            let routes = match api.list(&k8s::ListParams::default()).await {
-                Ok(routes) => routes,
-                Err(error) => {
-                    // todo: We log error and skip this update. This leaves us
-                    // stuck with the statuses in the previous state until
-                    // another update happens.  Instead, we should requeue the
-                    // update so that we can try again.
-                    tracing::error!(namespace = %namespace, %error, "failed to list HTTPRoutes");
-                    continue;
-                }
-            };
-            for route in routes {
-                let name = route.name_unchecked();
-                let parent_statuses = route
-                    .spec
-                    .inner
-                    .parent_refs
-                    .iter()
-                    .flatten()
-                    .filter(|parent| parent.kind.as_deref() == Some("Server"))
-                    .map(|parent| {
-                        // Is this parent in the list of parents which accept
-                        // the route?
-                        let accepted = accepted_routes
-                            .get(&name)
-                            .into_iter()
-                            .flatten()
-                            .any(|accepting_parent| accepting_parent == &parent.name);
-                        let condition = if accepted {
-                            k8s::Condition {
-                                last_transition_time: k8s::Time(Utc::now()),
-                                message: "".to_string(),
-                                observed_generation: None,
-                                reason: "Accepted".to_string(),
-                                status: "True".to_string(),
-                                type_: "Accepted".to_string(),
-                            }
-                        } else {
-                            k8s::Condition {
-                                last_transition_time: k8s::Time(Utc::now()),
-                                message: "".to_string(),
-                                observed_generation: None,
-                                reason: "NoMatchingParent".to_string(),
-                                status: "False".to_string(),
-                                type_: "Accepted".to_string(),
-                            }
-                        };
-                        gateway::RouteParentStatus {
-                            parent_ref: gateway::ParentReference {
-                                group: Some("policy.linkerd.io".to_string()),
-                                kind: Some("Server".to_string()),
-                                namespace: Some(namespace.clone()),
-                                name: parent.name.clone(),
-                                section_name: None,
-                                port: None,
-                            },
-                            controller_name: "policy.linkerd.io/status-controller".to_string(),
-                            conditions: vec![condition],
-                        }
-                    })
-                    .collect();
-                let status = gateway::HttpRouteStatus {
-                    inner: gateway::RouteStatus {
-                        parents: parent_statuses,
-                    },
-                };
-                let patch = serde_json::json!({
-                    "apiVersion": "policy.linkerd.io/v1alpha1",
-                    "kind": "HTTPRoute",
-                    "name": name,
-                    "status": status,
-                });
-                if let Err(error) = api
-                    .patch_status(&name, &patch_params, &k8s::Patch::Merge(patch))
-                    .await
-                {
-                    tracing::error!(namespace = %namespace, name = %name, %error, "Failed to patch HTTPRoute");
-                }
-            }
-        }
+        // let patch_params = k8s::PatchParams::apply("policy.linkerd.io");
+
+        // while let Some(Update {
+        //     namespace,
+        //     accepted_routes,
+        // }) = self.updates.recv().await
+        // {
+        //     let api =
+        //         k8s::Api::<k8s::policy::HttpRoute>::namespaced(self.client.clone(), &namespace);
+        //     let routes = match api.list(&k8s::ListParams::default()).await {
+        //         Ok(routes) => routes,
+        //         Err(error) => {
+        //             // todo: We log error and skip this update. This leaves us
+        //             // stuck with the statuses in the previous state until
+        //             // another update happens.  Instead, we should requeue the
+        //             // update so that we can try again.
+        //             tracing::error!(namespace = %namespace, %error, "failed to list HTTPRoutes");
+        //             continue;
+        //         }
+        //     };
+        //     for route in routes {
+        //         let name = route.name_unchecked();
+        //         let parent_statuses = route
+        //             .spec
+        //             .inner
+        //             .parent_refs
+        //             .iter()
+        //             .flatten()
+        //             .filter(|parent| parent.kind.as_deref() == Some("Server"))
+        //             .map(|parent| {
+        //                 // Is this parent in the list of parents which accept
+        //                 // the route?
+        //                 let accepted = accepted_routes
+        //                     .get(&name)
+        //                     .into_iter()
+        //                     .flatten()
+        //                     .any(|accepting_parent| accepting_parent == &parent.name);
+        //                 let condition = if accepted {
+        //                     k8s::Condition {
+        //                         last_transition_time: k8s::Time(Utc::now()),
+        //                         message: "".to_string(),
+        //                         observed_generation: None,
+        //                         reason: "Accepted".to_string(),
+        //                         status: "True".to_string(),
+        //                         type_: "Accepted".to_string(),
+        //                     }
+        //                 } else {
+        //                     k8s::Condition {
+        //                         last_transition_time: k8s::Time(Utc::now()),
+        //                         message: "".to_string(),
+        //                         observed_generation: None,
+        //                         reason: "NoMatchingParent".to_string(),
+        //                         status: "False".to_string(),
+        //                         type_: "Accepted".to_string(),
+        //                     }
+        //                 };
+        //                 gateway::RouteParentStatus {
+        //                     parent_ref: gateway::ParentReference {
+        //                         group: Some("policy.linkerd.io".to_string()),
+        //                         kind: Some("Server".to_string()),
+        //                         namespace: Some(namespace.clone()),
+        //                         name: parent.name.clone(),
+        //                         section_name: None,
+        //                         port: None,
+        //                     },
+        //                     controller_name: "policy.linkerd.io/status-controller".to_string(),
+        //                     conditions: vec![condition],
+        //                 }
+        //             })
+        //             .collect();
+        //         let status = gateway::HttpRouteStatus {
+        //             inner: gateway::RouteStatus {
+        //                 parents: parent_statuses,
+        //             },
+        //         };
+        //         let patch = serde_json::json!({
+        //             "apiVersion": "policy.linkerd.io/v1alpha1",
+        //             "kind": "HTTPRoute",
+        //             "name": name,
+        //             "status": status,
+        //         });
+        //         if let Err(error) = api
+        //             .patch_status(&name, &patch_params, &k8s::Patch::Merge(patch))
+        //             .await
+        //         {
+        //             tracing::error!(namespace = %namespace, name = %name, %error, "Failed to patch HTTPRoute");
+        //         }
+        //     }
+        // }
+    }
+}
+
+impl Index {
+    pub fn shared(updates: UnboundedSender<Update>) -> SharedIndex {
+        Arc::new(RwLock::new(Self {
+            updates,
+            http_routes: HashMap::new(),
+            servers: HashMap::new(),
+        }))
+    }
+}
+
+impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
+    fn apply(&mut self, resource: k8s::policy::HttpRoute) {
+        // todo: add route to index; update the status only for this route
+        todo!()
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        // todo: remove route from index; no updates need to take place
+        todo!()
+    }
+
+    fn reset(
+        &mut self,
+        resources: Vec<k8s::policy::HttpRoute>,
+        removed: kubert::index::NamespacedRemoved,
+    ) {
+        // todo: make sure route is in index; update the status only for this
+        // route
+        todo!()
+    }
+}
+
+impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
+    fn apply(&mut self, resource: k8s::policy::Server) {
+        // todo: add server to index; update status for all routes since
+        // routes in any namespace could reference this server
+        todo!()
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        // todo: remove server from index; update status for all routes since
+        // routes in any namespace could reference this server
+        todo!()
+    }
+
+    fn reset(
+        &mut self,
+        resources: Vec<k8s::policy::Server>,
+        removed: kubert::index::NamespacedRemoved,
+    ) {
+        // todo: make sure server is in index; update status for all routes
+        // since routes in any namespace could reference this server
+        todo!()
     }
 }

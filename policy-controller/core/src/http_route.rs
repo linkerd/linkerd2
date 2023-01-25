@@ -104,19 +104,19 @@ pub enum QueryParamMatch {
     Regex(String, Regex),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Status {
     pub parent: String,
     pub conditions: Vec<Condition>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Condition {
     pub type_: ConditionType,
     pub status: bool,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ConditionType {
     Accepted,
     ResolvedRefs,
@@ -202,7 +202,7 @@ impl Status {
     pub fn collect_from(status: Option<gateway::HttpRouteStatus>) -> Vec<Self> {
         status
             .into_iter()
-            .map(|status| {
+            .flat_map(|status| {
                 status
                     .inner
                     .parents
@@ -210,10 +210,9 @@ impl Status {
                     // todo: filter out parent statuses that are not set by
                     // the status controller. `controller_name` is something
                     // we could expect
-                    .filter_map(|parent_status| Self::from_parent_status(parent_status))
+                    .filter_map(Self::from_parent_status)
                     .collect::<Vec<_>>()
             })
-            .flatten()
             .collect()
     }
 

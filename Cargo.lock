@@ -1116,8 +1116,10 @@ version = "0.1.0"
 dependencies = [
  "ahash",
  "chrono",
+ "kubert",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
+ "parking_lot",
  "serde_json",
  "tokio",
  "tracing",

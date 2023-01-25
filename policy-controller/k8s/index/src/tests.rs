@@ -18,7 +18,7 @@ use linkerd_policy_controller_k8s_api::{
     ResourceExt,
 };
 use maplit::*;
-use tokio::{sync::mpsc, time};
+use tokio::time;
 
 #[test]
 fn pod_must_exist_for_lookup() {
@@ -203,8 +203,7 @@ impl TestConfig {
             default_detect_timeout: detect_timeout,
             probe_networks,
         };
-        let (tx, _) = mpsc::unbounded_channel();
-        let index = Index::shared(cluster.clone(), tx);
+        let index = Index::shared(cluster.clone());
         Self {
             index,
             cluster,

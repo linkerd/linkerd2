@@ -8,9 +8,10 @@ edition = "2021"
 [dependencies]
 ahash = "0.8"
 chrono = "0.4.23"
+kubert = { version = "0.12", default-features = false, features = ["index"] }
 linkerd-policy-controller-core = { path = "../../core" }
 linkerd-policy-controller-k8s-api = { path = "../api" }
+parking_lot = "0.12"
 serde_json = "1.0.91"
-
 tokio = "1"
 tracing = "0.1.37"

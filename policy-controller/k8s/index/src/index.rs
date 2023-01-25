@@ -22,14 +22,13 @@ use linkerd_policy_controller_core::{
     InboundHttpRouteRef, InboundServer, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
-use linkerd_policy_controller_k8s_status::Update;
 use parking_lot::RwLock;
 use std::{
     collections::{hash_map::Entry, BTreeSet},
     num::NonZeroU16,
     sync::Arc,
 };
-use tokio::sync::{mpsc::UnboundedSender, watch};
+use tokio::sync::watch;
 use tracing::info_span;
 
 pub type SharedIndex = Arc<RwLock<Index>>;
@@ -42,7 +41,6 @@ pub struct Index {
     cluster_info: Arc<ClusterInfo>,
     namespaces: NamespaceIndex,
     authentications: AuthenticationNsIndex,
-    route_updates: UnboundedSender<Update>,
 }
 
 /// Holds all `Pod`, `Server`, and `ServerAuthorization` indices by-namespace.
@@ -126,8 +124,6 @@ struct PolicyIndex {
 
     authorization_policies: HashMap<String, authorization_policy::Spec>,
     http_routes: HashMap<String, InboundRouteBinding>,
-
-    route_updates: UnboundedSender<Update>,
 }
 
 #[derive(Debug, Default)]
@@ -144,10 +140,7 @@ struct NsUpdate<T> {
 // === impl Index ===
 
 impl Index {
-    pub fn shared(
-        cluster_info: impl Into<Arc<ClusterInfo>>,
-        route_updates: UnboundedSender<Update>,
-    ) -> SharedIndex {
+    pub fn shared(cluster_info: impl Into<Arc<ClusterInfo>>) -> SharedIndex {
         let cluster_info = cluster_info.into();
         Arc::new(RwLock::new(Self {
             cluster_info: cluster_info.clone(),
@@ -156,7 +149,6 @@ impl Index {
                 by_ns: HashMap::default(),
             },
             authentications: AuthenticationNsIndex::default(),
-            route_updates,
         }))
     }
 
@@ -196,12 +188,8 @@ impl Index {
         namespace: String,
         f: impl FnOnce(&mut Namespace) -> bool,
     ) {
-        self.namespaces.get_or_default_with_reindex(
-            namespace,
-            &self.authentications,
-            self.route_updates.clone(),
-            f,
-        )
+        self.namespaces
+            .get_or_default_with_reindex(namespace, &self.authentications, f)
     }
 
     fn reindex_all(&mut self) {
@@ -320,9 +308,7 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
         // Add or update the pod. If the pod was not already present in the
         // index with the same metadata, index it against the policy resources,
         // updating its watches.
-        let ns = self
-            .namespaces
-            .get_or_default(namespace, self.route_updates.clone());
+        let ns = self.namespaces.get_or_default(namespace);
         match ns.pods.update(name, meta, port_names, probes) {
             Ok(None) => {}
             Ok(Some(pod)) => pod.reindex_servers(&ns.policy, &self.authentications),
@@ -754,14 +740,10 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
 // === impl NemspaceIndex ===
 
 impl NamespaceIndex {
-    fn get_or_default(
-        &mut self,
-        ns: String,
-        route_updates: UnboundedSender<Update>,
-    ) -> &mut Namespace {
+    fn get_or_default(&mut self, ns: String) -> &mut Namespace {
         self.by_ns
             .entry(ns.clone())
-            .or_insert_with(|| Namespace::new(ns, self.cluster_info.clone(), route_updates))
+            .or_insert_with(|| Namespace::new(ns, self.cluster_info.clone()))
     }
 
     /// Gets the given namespace and, if it exists, passes it to the given
@@ -792,10 +774,9 @@ impl NamespaceIndex {
         &mut self,
         namespace: String,
         authns: &AuthenticationNsIndex,
-        route_updates: UnboundedSender<Update>,
         f: impl FnOnce(&mut Namespace) -> bool,
     ) {
-        let ns = self.get_or_default(namespace, route_updates);
+        let ns = self.get_or_default(namespace);
         if f(ns) {
             ns.reindex(authns);
         }
@@ -805,11 +786,7 @@ impl NamespaceIndex {
 // === impl Namespace ===
 
 impl Namespace {
-    fn new(
-        namespace: String,
-        cluster_info: Arc<ClusterInfo>,
-        route_updates: UnboundedSender<Update>,
-    ) -> Self {
+    fn new(namespace: String, cluster_info: Arc<ClusterInfo>) -> Self {
         Namespace {
             pods: PodIndex {
                 namespace: namespace.clone(),
@@ -822,7 +799,6 @@ impl Namespace {
                 server_authorizations: HashMap::default(),
                 authorization_policies: HashMap::default(),
                 http_routes: HashMap::default(),
-                route_updates,
             },
         }
     }
@@ -1458,29 +1434,24 @@ impl PolicyIndex {
     fn update_statuses(&self) {
         // Construct a map where each key is a route, and its value is the
         // list of Servers that accept it.
-        let accepted_routes: HashMap<String, Vec<String>> = self
-            .http_routes
-            .iter()
-            .map(|(route_name, route)| {
-                let servers = self
-                    .servers
-                    .keys()
-                    .filter(|server| route.selects_server(server))
-                    .cloned()
-                    .collect();
-                (route_name.clone(), servers)
-            })
-            .collect();
-        if accepted_routes.is_empty() {
-            return;
-        }
+        // let accepted_routes: HashMap<String, Vec<String>> = self
+        //     .http_routes
+        //     .iter()
+        //     .map(|(route_name, route)| {
+        //         let servers = self
+        //             .servers
+        //             .keys()
+        //             .filter(|server| route.selects_server(server))
+        //             .cloned()
+        //             .collect();
+        //         (route_name.clone(), servers)
+        //     })
+        //     .collect();
+        // if accepted_routes.is_empty() {
+        //     return;
+        // }
 
-        // Send the status controller an update containing the Namespace's
-        // routes and the Servers that accept them.
-        let update = Update::new(self.namespace.to_string(), accepted_routes);
-        if let Err(error) = self.route_updates.send(update) {
-            tracing::error!(%error, "Failed to send update to status controller");
-        }
+        todo!()
     }
 }
 

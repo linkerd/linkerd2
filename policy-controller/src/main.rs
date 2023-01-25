@@ -104,26 +104,18 @@ async fn main() -> Result<()> {
 
     let probe_networks = probe_networks.map(|IpNets(nets)| nets).unwrap_or_default();
 
-    // Create channel that the index will use to send status updates to the
-    // status controller.
-    let (status_updates_tx, status_updates_rx) = mpsc::unbounded_channel();
-
     // Build the index data structure, which will be used to process events from all watches
     // The lookup handle is used by the gRPC server.
-    let index = Index::shared(
-        ClusterInfo {
-            networks: cluster_networks.clone(),
-            identity_domain,
-            control_plane_ns: control_plane_namespace,
-            default_policy,
-            default_detect_timeout: DETECT_TIMEOUT,
-            probe_networks,
-        },
-        status_updates_tx,
-    );
+    let index = Index::shared(ClusterInfo {
+        networks: cluster_networks.clone(),
+        identity_domain,
+        control_plane_ns: control_plane_namespace,
+        default_policy,
+        default_detect_timeout: DETECT_TIMEOUT,
+        probe_networks,
+    });
 
     // Spawn resource indexers that update the index and publish lookups for the gRPC server.
-
     let pods =
         runtime.watch_all::<k8s::Pod>(ListParams::default().labels("linkerd.io/control-plane-ns"));
     tokio::spawn(kubert::index::namespaced(index.clone(), pods).instrument(info_span!("pods")));
@@ -166,6 +158,23 @@ async fn main() -> Result<()> {
         kubert::index::namespaced(index.clone(), http_routes).instrument(info_span!("httproutes")),
     );
 
+    // Build the status index which will be used to process updates to policy
+    // resources and send to the status controller.
+    let (updates_tx, updates_rx) = mpsc::unbounded_channel();
+    let status_index = status::Index::shared(updates_tx);
+
+    // Spawn resource indexers that update the status index.
+    let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(status_index.clone(), http_routes)
+            .instrument(info_span!("httproutes")),
+    );
+
+    let servers = runtime.watch_all::<k8s::policy::Server>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(status_index.clone(), servers).instrument(info_span!("servers")),
+    );
+
     // Run the gRPC server, serving results by looking up against the index handle.
     tokio::spawn(grpc(
         grpc_addr,
@@ -175,7 +184,7 @@ async fn main() -> Result<()> {
     ));
 
     let client = runtime.client();
-    let status_controller = status::Controller::new(status_updates_rx, client);
+    let status_controller = status::Controller::new(client, status_index, updates_rx);
     tokio::spawn(status_controller.process_updates());
 
     let client = runtime.client();
