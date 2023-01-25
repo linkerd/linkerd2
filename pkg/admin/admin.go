@@ -13,13 +13,15 @@ import (
 type handler struct {
 	promHandler http.Handler
 	enablePprof bool
+	ready       *bool
 }
 
 // NewServer returns an initialized `http.Server`, configured to listen on an address.
-func NewServer(addr string, enablePprof bool) *http.Server {
+func NewServer(addr string, enablePprof bool, ready *bool) *http.Server {
 	h := &handler{
 		promHandler: promhttp.Handler(),
 		enablePprof: enablePprof,
+		ready:       ready,
 	}
 
 	return &http.Server{
@@ -63,5 +65,10 @@ func (h *handler) servePing(w http.ResponseWriter) {
 }
 
 func (h *handler) serveReady(w http.ResponseWriter) {
-	w.Write([]byte("ok\n"))
+	if *h.ready {
+		w.Write([]byte("ok\n"))
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("not ready\n"))
+	}
 }

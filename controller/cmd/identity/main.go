@@ -53,6 +53,16 @@ func Main(args []string) {
 
 	flags.ConfigureAndParse(cmd, args)
 
+	ready := false
+	adminServer := admin.NewServer(*adminAddr, *enablePprof, &ready)
+
+	go func() {
+		log.Infof("starting admin server on %s", *adminAddr)
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Errorf("failed to start identity admin server: %s", err)
+		}
+	}()
+
 	identityTrustAnchorPEM, err := ioutil.ReadFile(k8s.MountPathTrustRootsPEM)
 	if err != nil {
 		log.Fatalf("could not read identity trust anchors PEM: %s", err.Error())
@@ -175,15 +185,6 @@ func Main(args []string) {
 	//
 	// Bind and serve
 	//
-	adminServer := admin.NewServer(*adminAddr, *enablePprof)
-
-	go func() {
-		log.Infof("starting admin server on %s", *adminAddr)
-		if err := adminServer.ListenAndServe(); err != nil {
-			log.Errorf("failed to start identity admin server: %s", err)
-		}
-	}()
-
 	lis, err := net.Listen("tcp", *addr)
 	if err != nil {
 		//nolint:gocritic
@@ -203,6 +204,9 @@ func Main(args []string) {
 			log.Errorf("failed to start identity gRPC server: %s", err)
 		}
 	}()
+
+	ready = true
+
 	<-stop
 	log.Infof("shutting down gRPC server on %s", *addr)
 	srv.GracefulStop()

@@ -24,6 +24,16 @@ func Launch(
 	kubeconfig string,
 	enablePprof bool,
 ) {
+	ready := false
+	adminServer := admin.NewServer(metricsAddr, enablePprof, &ready)
+
+	go func() {
+		log.Infof("starting admin server on %s", metricsAddr)
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Errorf("failed to start webhook admin server: %s", err)
+		}
+	}()
+
 	stop := make(chan os.Signal, 1)
 	defer close(stop)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -44,14 +54,7 @@ func Launch(
 
 	k8sAPI.Sync(nil)
 
-	adminServer := admin.NewServer(metricsAddr, enablePprof)
-
-	go func() {
-		log.Infof("starting admin server on %s", metricsAddr)
-		if err := adminServer.ListenAndServe(); err != nil {
-			log.Errorf("failed to start webhook admin server: %s", err)
-		}
-	}()
+	ready = true
 
 	<-stop
 	log.Info("shutting down webhook server")
