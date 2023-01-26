@@ -7,7 +7,7 @@ use futures::prelude::*;
 use kube::api::ListParams;
 use linkerd_policy_controller::{
     grpc, index::outbound_index, k8s, Admission, ClusterInfo, DefaultPolicy, Index, IndexDiscover,
-    IpNet, OutboundDiscover, SharedIndex,
+    IndexPair, IpNet, OutboundDiscover, SharedIndex,
 };
 use std::net::SocketAddr;
 use tokio::time;
@@ -119,6 +119,8 @@ async fn main() -> Result<()> {
         default_detect_timeout: DETECT_TIMEOUT,
         probe_networks,
     });
+    let outbound_index = outbound_index::Index::shared(cluster_domain);
+    let indexes = IndexPair::shared(index.clone(), outbound_index.clone());
 
     // Spawn resource indexers that update the index and publish lookups for the gRPC server.
 
@@ -161,17 +163,11 @@ async fn main() -> Result<()> {
 
     let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
     tokio::spawn(
-        kubert::index::namespaced(index.clone(), http_routes).instrument(info_span!("httproutes")),
+        kubert::index::namespaced(indexes, http_routes).instrument(info_span!("httproutes")),
     );
 
-    // TODO: Reuse or clone previous stream instead of watching twice
-    let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
     let services = runtime.watch_all::<k8s::Service>(ListParams::default());
-    let outbound_index = outbound_index::Index::shared(cluster_domain);
-    tokio::spawn(
-        kubert::index::namespaced(outbound_index.clone(), http_routes)
-            .instrument(info_span!("httproutes2")),
-    );
+
     tokio::spawn(
         kubert::index::namespaced(outbound_index.clone(), services)
             .instrument(info_span!("services")),

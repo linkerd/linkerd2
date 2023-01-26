@@ -297,6 +297,7 @@ async fn server_with_http_route() {
                     group: "policy.linkerd.io".to_string(),
                     kind: "HTTPRoute".to_string(),
                     name: "metrics-route".to_string(),
+                    ..Default::default()
                 }))
             }
         );
@@ -550,6 +551,7 @@ fn mk_admin_route(ns: &str, name: &str) -> k8s::policy::HttpRoute {
                     method: Some("GET".to_string()),
                 }]),
                 filters: None,
+                backend_refs: None,
             }]),
         },
         status: None,
@@ -589,6 +591,7 @@ fn mk_admin_route_with_path(ns: &str, name: &str, path: &str) -> k8s::policy::Ht
                     method: Some("GET".to_string()),
                 }]),
                 filters: None,
+                backend_refs: None,
             }]),
         },
         status: None,

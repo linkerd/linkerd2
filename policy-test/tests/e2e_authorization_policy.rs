@@ -670,6 +670,7 @@ fn http_route(
                     ..Default::default()
                 }]),
                 filters: None,
+                backend_refs: None,
             }]),
         },
         status: None,

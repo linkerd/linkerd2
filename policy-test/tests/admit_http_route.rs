@@ -72,6 +72,7 @@ async fn rejects_relative_path_match() {
                     ..HttpRouteMatch::default()
                 }]),
                 filters: None,
+                backend_refs: None,
             }]),
         },
         status: None,
@@ -104,6 +105,7 @@ async fn rejects_relative_redirect_path() {
                         status_code: None,
                     },
                 }]),
+                backend_refs: None,
             }]),
         },
         status: None,
@@ -150,5 +152,6 @@ fn rules() -> Vec<HttpRouteRule> {
             ..HttpRouteMatch::default()
         }]),
         filters: None,
+        backend_refs: None,
     }]
 }

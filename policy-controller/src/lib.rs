@@ -9,8 +9,10 @@ use linkerd_policy_controller_core::{
 use std::{net::IpAddr, num::NonZeroU16};
 
 mod admission;
+mod index_pair;
 
 pub use self::admission::Admission;
+pub use self::index_pair::IndexPair;
 pub use linkerd_policy_controller_core::{
     DiscoverInboundServer, InboundServer, InboundServerStream, IpNet,
 };
