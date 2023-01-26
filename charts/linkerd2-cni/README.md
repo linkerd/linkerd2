@@ -23,7 +23,7 @@ Kubernetes: `>=1.21.0-0`
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | cniPluginImage | string | `"cr.l5d.io/linkerd/cni-plugin"` | Docker image for the CNI plugin |
-| cniPluginVersion | string | `"linkerdVersionValue"` | Tag for the CNI container Docker image |
+| cniPluginVersion | string | `"1.0.0"` | Tag for the CNI container Docker image |
 | commonLabels | object | `{}` | Labels to apply to all resources |
 | destCNIBinDir | string | `"/opt/cni/bin"` | Directory on the host where the CNI configuration will be placed |
 | destCNINetDir | string | `"/etc/cni/net.d"` | Directory on the host where the CNI plugin binaries reside |

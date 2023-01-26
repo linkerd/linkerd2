@@ -36,6 +36,7 @@ type cniPluginOptions struct {
 	portsToRedirect     []uint
 	proxyUID            int64
 	cniPluginImage      string
+	cniPluginVersion    string
 	logLevel            string
 	destCNINetDir       string
 	destCNIBinDir       string
@@ -111,6 +112,7 @@ assumes that the 'linkerd install' command will be executed with the
 	cmd.PersistentFlags().StringSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports and/or port ranges (inclusive) that should skip the proxy")
 	cmd.PersistentFlags().UintSliceVar(&options.portsToRedirect, "redirect-ports", options.portsToRedirect, "Ports to redirect to proxy, if no port is specified then ALL ports are redirected")
 	cmd.PersistentFlags().StringVar(&options.cniPluginImage, "cni-image", options.cniPluginImage, "Image for the cni-plugin")
+	cmd.PersistentFlags().StringVar(&options.cniPluginVersion, "cni-image-version", options.cniPluginVersion, "Image Version for the cni-plugin")
 	cmd.PersistentFlags().StringVar(&options.logLevel, "cni-log-level", options.logLevel, "Log level for the cni-plugin")
 	cmd.PersistentFlags().StringVar(&options.destCNINetDir, "dest-cni-net-dir", options.destCNINetDir, "Directory on the host where the CNI configuration will be placed")
 	cmd.PersistentFlags().StringVar(&options.destCNIBinDir, "dest-cni-bin-dir", options.destCNIBinDir, "Directory on the host where the CNI binary will be placed")
@@ -140,6 +142,7 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 		ignoreOutboundPorts: nil,
 		proxyUID:            defaults.ProxyUID,
 		cniPluginImage:      defaultDockerRegistry + "/cni-plugin",
+		cniPluginVersion:    "1.0.0",
 		logLevel:            "info",
 		destCNINetDir:       defaults.DestCNINetDir,
 		destCNIBinDir:       defaults.DestCNIBinDir,
@@ -170,7 +173,7 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 	}
 
 	installValues.CNIPluginImage = options.pluginImage()
-	installValues.CNIPluginVersion = options.linkerdVersion
+	installValues.CNIPluginVersion = options.cniPluginVersion
 	installValues.LogLevel = options.logLevel
 	installValues.InboundProxyPort = options.inboundPort
 	installValues.OutboundProxyPort = options.outboundPort

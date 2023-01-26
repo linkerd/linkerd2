@@ -43,7 +43,7 @@ following updates are needed:
 
 - `charts/linkerd2/values.yaml`
 
-   Upgrade the version in `global.proxyInit.image.version`
+   Upgrade the version in `global.proxyInit.image.version` or `global.cniPluginVersion`
 
 Create a new branch in the `linkerd2` repo,
 `username/proxy-init-version-bump`.
