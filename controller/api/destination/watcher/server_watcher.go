@@ -90,7 +90,12 @@ func (sw *ServerWatcher) Unsubscribe(pod *corev1.Pod, port Port, listener Server
 			listeners = listeners[:n-1]
 		}
 	}
-	sw.subscriptions[pp] = listeners
+
+	if len(listeners) > 0 {
+		sw.subscriptions[pp] = listeners
+	} else {
+		delete(sw.subscriptions, pp)
+	}
 }
 
 func (sw *ServerWatcher) addServer(obj interface{}) {
