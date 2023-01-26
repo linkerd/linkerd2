@@ -227,6 +227,9 @@ spec:
       {{- if .Values.priorityClassName -}}
       priorityClassName: {{ .Values.priorityClassName }}
       {{ end -}}
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: linkerd-identity
       volumes:
       - name: identity-issuer

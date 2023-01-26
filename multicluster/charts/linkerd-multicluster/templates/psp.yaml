@@ -32,4 +32,7 @@ subjects:
 - kind: ServiceAccount
   name: {{.Values.gateway.name}}
   namespace: {{.Release.Namespace}}
+- kind: ServiceAccount
+  name: namespace-metadata
+  namespace: {{.Release.Namespace}}
 {{ end -}}

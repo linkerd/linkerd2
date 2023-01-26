@@ -58,6 +58,9 @@ spec:
             runAsUser: {{.Values.gateway.UID}}
             seccompProfile:
               type: RuntimeDefault
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: {{.Values.gateway.name}}
 {{- if .Values.enablePodAntiAffinity }}
 ---

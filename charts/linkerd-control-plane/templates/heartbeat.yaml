@@ -47,6 +47,9 @@ spec:
           {{- include "linkerd.tolerations" . | nindent 10 }}
           {{- end -}}
           {{- include "linkerd.node-selector" . | nindent 10 }}
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never
           containers:
