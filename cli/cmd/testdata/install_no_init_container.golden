@@ -766,7 +766,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - identity
@@ -961,6 +961,9 @@ spec:
           - 0.0.0.0:4140
           - --timeout
           - 10s
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: linkerd-identity
       volumes:
       - name: identity-issuer
@@ -1118,7 +1121,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - env:
         - name: _pod_name
@@ -1394,6 +1397,9 @@ spec:
           - 0.0.0.0:4140
           - --timeout
           - 10s
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: linkerd-destination
       volumes:
       - name: sp-tls
@@ -1445,6 +1451,9 @@ spec:
         spec:
           nodeSelector:
             kubernetes.io/os: linux
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never
           containers:
@@ -1512,7 +1521,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - env:
         - name: _pod_name
@@ -1707,6 +1716,9 @@ spec:
           - 0.0.0.0:4140
           - --timeout
           - 10s
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:

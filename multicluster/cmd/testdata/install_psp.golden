@@ -50,6 +50,9 @@ spec:
             runAsUser: 2103
             seccompProfile:
               type: RuntimeDefault
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: linkerd-gateway
 ---
 apiVersion: v1
@@ -214,6 +217,9 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-gateway
+  namespace: linkerd-multicluster
+- kind: ServiceAccount
+  name: namespace-metadata
   namespace: linkerd-multicluster
 ---
 apiVersion: rbac.authorization.k8s.io/v1
