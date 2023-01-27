@@ -321,9 +321,7 @@ impl Validate<ServerSpec> for Admission {
                 && server.spec.port == spec.port
                 && Self::overlaps(&server.spec.pod_selector, &spec.pod_selector)
             {
-                let existing = serde_yaml::to_string(&server.spec)
-                    .unwrap_or_else(|err| format!("error serializing yaml: {err}"));
-                bail!("identical server spec '{ns}/{name}' already exists:\n{existing}",);
+                bail!("identical server spec '{ns}/{name}' already exists",);
             }
         }
 
