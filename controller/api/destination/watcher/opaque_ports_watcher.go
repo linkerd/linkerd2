@@ -7,6 +7,8 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/util"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -19,6 +21,7 @@ type (
 	OpaquePortsWatcher struct {
 		subscriptions      map[ServiceID]*svcSubscriptions
 		k8sAPI             *k8s.API
+		subscribersGauge   *prometheus.GaugeVec
 		log                *logging.Entry
 		defaultOpaquePorts map[uint32]struct{}
 		sync.RWMutex
@@ -35,12 +38,21 @@ type (
 	}
 )
 
+var opaquePortsMetrics = promauto.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: "service_subscribers",
+		Help: "Number of subscribers to Service changes.",
+	},
+	[]string{"namespace", "name"},
+)
+
 // NewOpaquePortsWatcher creates a OpaquePortsWatcher and begins watching for
 // k8sAPI for service changes.
 func NewOpaquePortsWatcher(k8sAPI *k8s.API, log *logging.Entry, opaquePorts map[uint32]struct{}) (*OpaquePortsWatcher, error) {
 	opw := &OpaquePortsWatcher{
 		subscriptions:      make(map[ServiceID]*svcSubscriptions),
 		k8sAPI:             k8sAPI,
+		subscribersGauge:   opaquePortsMetrics,
 		log:                log.WithField("component", "opaque-ports-watcher"),
 		defaultOpaquePorts: opaquePorts,
 	}
@@ -67,21 +79,27 @@ func (opw *OpaquePortsWatcher) Subscribe(id ServiceID, listener OpaquePortsUpdat
 		return invalidService(id.String())
 	}
 	opw.log.Debugf("Starting watch on service %s", id)
+	var numListeners float64
 	ss, ok := opw.subscriptions[id]
-	// If there is no watched service, create a subscription for the service
-	// and no opaque ports
 	if !ok {
+		// If there is no watched service, create a subscription for the service
+		// and no opaque ports
 		opw.subscriptions[id] = &svcSubscriptions{
 			opaquePorts: opw.defaultOpaquePorts,
 			listeners:   []OpaquePortsUpdateListener{listener},
 		}
-		return nil
+		numListeners = 1
+	} else {
+		// There are subscriptions for this service, so add the listener to the
+		// service listeners. If there are opaque ports for the service, update
+		// the listener with that value.
+		ss.listeners = append(ss.listeners, listener)
+		listener.UpdateService(ss.opaquePorts)
+		numListeners = float64(len(ss.listeners))
 	}
-	// There are subscriptions for this service, so add the listener to the
-	// service listeners. If there are opaque ports for the service, update
-	// the listener with that value.
-	ss.listeners = append(ss.listeners, listener)
-	listener.UpdateService(ss.opaquePorts)
+
+	opw.subscribersGauge.With(id.Labels()).Set(numListeners)
+
 	return nil
 }
 
@@ -103,6 +121,12 @@ func (opw *OpaquePortsWatcher) Unsubscribe(id ServiceID, listener OpaquePortsUpd
 			ss.listeners = ss.listeners[:n-1]
 		}
 	}
+
+	if len(ss.listeners) == 0 {
+		delete(opw.subscriptions, id)
+	}
+
+	opw.subscribersGauge.With(id.Labels()).Set(float64(len(ss.listeners)))
 }
 
 func (opw *OpaquePortsWatcher) addService(obj interface{}) {
