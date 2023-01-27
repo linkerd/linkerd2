@@ -290,6 +290,9 @@ spec:
           name: prometheus-config
           subPath: prometheus.yml
           readOnly: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: prometheus
       volumes:
     {{- range .Values.prometheus.ruleConfigMapMounts }}

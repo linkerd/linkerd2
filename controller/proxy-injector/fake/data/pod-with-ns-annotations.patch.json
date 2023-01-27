@@ -92,7 +92,10 @@
         "privileged": false,
         "runAsNonRoot": true,
         "runAsUser": 65534,
-        "readOnlyRootFilesystem": true
+        "readOnlyRootFilesystem": true,
+        "seccompProfile": {
+          "type": "RuntimeDefault"
+		}
       },
       "terminationMessagePolicy": "FallbackToLogsOnError",
       "volumeMounts": [

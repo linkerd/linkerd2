@@ -133,4 +133,7 @@ spec:
           runAsUser: {{.Values.dashboard.UID | default .Values.defaultUID}}
           seccompProfile:
             type: RuntimeDefault
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: web

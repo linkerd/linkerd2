@@ -50,6 +50,9 @@ spec:
             runAsUser: 2103
             seccompProfile:
               type: RuntimeDefault
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: linkerd-gateway
 ---
 apiVersion: v1

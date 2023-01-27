@@ -200,6 +200,8 @@ items:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
           terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
           - mountPath: /run
@@ -412,6 +414,8 @@ items:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
           terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
           - mountPath: /run

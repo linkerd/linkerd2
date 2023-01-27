@@ -41,4 +41,7 @@ subjects:
   name: jaeger
   namespace: {{.Release.Namespace}}
 {{ end -}}
+- kind: ServiceAccount
+  name: namespace-metadata
+  namespace: {{.Release.Namespace}}
 {{ end -}}
