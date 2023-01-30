@@ -209,8 +209,8 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        // todo: remove route from index; no updates need to take place
-        todo!()
+        let id = ResourceId::new(namespace, name);
+        self.http_routes.remove(&id);
     }
 
     fn reset(
@@ -249,7 +249,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
 }
 
 impl ResourceId {
-    fn new(name: String, namespace: String) -> Self {
-        Self { name, namespace }
+    fn new(namespace: String, name: String) -> Self {
+        Self { namespace, name }
     }
 }
