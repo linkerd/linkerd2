@@ -812,7 +812,6 @@ impl Namespace {
     #[inline]
     fn reindex(&mut self, authns: &AuthenticationNsIndex) {
         self.pods.reindex(&self.policy, authns);
-        self.policy.update_statuses()
     }
 }
 
@@ -1429,29 +1428,6 @@ impl PolicyIndex {
             }
         }
         true
-    }
-
-    fn update_statuses(&self) {
-        // Construct a map where each key is a route, and its value is the
-        // list of Servers that accept it.
-        // let accepted_routes: HashMap<String, Vec<String>> = self
-        //     .http_routes
-        //     .iter()
-        //     .map(|(route_name, route)| {
-        //         let servers = self
-        //             .servers
-        //             .keys()
-        //             .filter(|server| route.selects_server(server))
-        //             .cloned()
-        //             .collect();
-        //         (route_name.clone(), servers)
-        //     })
-        //     .collect();
-        // if accepted_routes.is_empty() {
-        //     return;
-        // }
-
-        todo!()
     }
 }
 
