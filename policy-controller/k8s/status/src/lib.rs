@@ -1,4 +1,4 @@
-use ahash::AHashMap as HashMap;
+use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use chrono::offset::Utc;
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
 use linkerd_policy_controller_k8s_index::http_route::InboundRouteBinding;
@@ -18,7 +18,7 @@ pub struct Index {
     updates: UnboundedSender<Update>,
 
     http_routes: HashMap<ResourceId, InboundRouteBinding>,
-    servers: HashMap<ResourceId, k8s::policy::Server>,
+    servers: HashSet<ResourceId>,
 }
 
 pub enum Update {
@@ -55,7 +55,7 @@ impl Controller {
                         .await;
                 }
                 Update::Server => {
-                    todo!();
+                    self.process_server_update(patch_params.clone()).await;
                 }
             }
         }
@@ -79,7 +79,7 @@ impl Controller {
             .index
             .read()
             .servers
-            .keys()
+            .iter()
             // todo: we should allow cross-namespace references; confirm this
             // would allow that
             .filter(|server| route_binding.selects_server(&server.name))
@@ -161,6 +161,14 @@ impl Controller {
             tracing::error!(namespace = %route_id.namespace, name = %route_id.name, %error, "Failed to patch HTTPRoute");
         }
     }
+
+    async fn process_server_update(&mut self, patch_params: k8s::PatchParams) {
+        let route_ids: Vec<ResourceId> = self.index.read().http_routes.keys().cloned().collect();
+        for route_id in route_ids {
+            self.process_http_route_update(route_id, patch_params.clone())
+                .await;
+        }
+    }
 }
 
 impl Index {
@@ -168,7 +176,7 @@ impl Index {
         Arc::new(RwLock::new(Self {
             updates,
             http_routes: HashMap::new(),
-            servers: HashMap::new(),
+            servers: HashSet::new(),
         }))
     }
 }
@@ -204,7 +212,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         };
 
         if let Err(error) = self.updates.send(Update::HttpRoute(id.clone())) {
-            tracing::error!(%id.namespace, %id.name, %error, "Failed to send update")
+            tracing::error!(%id.namespace, %id.name, %error, "Failed to send HTTPRoute update")
         }
     }
 
@@ -219,15 +227,26 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     fn apply(&mut self, resource: k8s::policy::Server) {
-        // todo: add server to index; update status for all routes since
-        // routes in any namespace could reference this server
-        todo!()
+        let namespace = resource
+            .namespace()
+            .expect("HTTPRoute must have a namespace");
+        let name = resource.name_unchecked();
+        let id = ResourceId::new(namespace, name);
+
+        self.servers.insert(id.clone());
+
+        if let Err(error) = self.updates.send(Update::Server) {
+            tracing::error!(%id.namespace, %id.name, %error, "Failed to send Server apply update")
+        }
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        // todo: remove server from index; update status for all routes since
-        // routes in any namespace could reference this server
-        todo!()
+        let id = ResourceId::new(namespace, name);
+        self.servers.remove(&id);
+
+        if let Err(error) = self.updates.send(Update::Server) {
+            tracing::error!(%id.namespace, %id.name, %error, "Failed to send Server delete update")
+        }
     }
 
     fn reset(
@@ -237,7 +256,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     ) {
         // todo: make sure server is in index; update status for all routes
         // since routes in any namespace could reference this server
-        todo!()
+        // todo: can we skip the impl here similar to HTTPRoutes?
     }
 }
 
