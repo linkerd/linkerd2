@@ -1114,6 +1114,7 @@ name = "linkerd-policy-controller-k8s-status"
 version = "0.1.0"
 dependencies = [
  "ahash",
+ "anyhow",
  "chrono",
  "kubert",
  "linkerd-policy-controller-core",
@@ -1121,6 +1122,7 @@ dependencies = [
  "linkerd-policy-controller-k8s-index",
  "parking_lot",
  "serde_json",
+ "thiserror",
  "tokio",
  "tracing",
 ]
