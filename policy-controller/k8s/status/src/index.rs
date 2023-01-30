@@ -1,4 +1,4 @@
-use crate::http_route::RouteBinding;
+use crate::{http_route::RouteBinding, resource_id::ResourceId};
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use chrono::offset::Utc;
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
@@ -28,12 +28,6 @@ pub struct Index {
 pub enum Update {
     HttpRoute(ResourceId),
     Server,
-}
-
-#[derive(Clone, Eq, Hash, PartialEq)]
-pub struct ResourceId {
-    namespace: String,
-    name: String,
 }
 
 impl Controller {
@@ -84,7 +78,7 @@ impl Controller {
             .iter()
             // todo: we should allow cross-namespace references; confirm this
             // would allow that
-            .filter(|server| route_binding.selects_server(&server.name))
+            .filter(|server| route_binding.selects_server(server))
             .cloned()
             .collect();
 
@@ -260,11 +254,5 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
         // todo: make sure server is in index; update status for all routes
         // since routes in any namespace could reference this server
         // todo: can we skip the impl here similar to HTTPRoutes?
-    }
-}
-
-impl ResourceId {
-    fn new(namespace: String, name: String) -> Self {
-        Self { namespace, name }
     }
 }
