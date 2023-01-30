@@ -213,15 +213,8 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         self.http_routes.remove(&id);
     }
 
-    fn reset(
-        &mut self,
-        resources: Vec<k8s::policy::HttpRoute>,
-        removed: kubert::index::NamespacedRemoved,
-    ) {
-        // todo: make sure route is in index; update the status only for this
-        // route
-        todo!()
-    }
+    // Since apply only reindexes a single HTTPRoute at a time, there's no need
+    // to handle resets specially.
 }
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
