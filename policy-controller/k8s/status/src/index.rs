@@ -6,6 +6,10 @@ use parking_lot::RwLock;
 use std::{collections::hash_map::Entry, sync::Arc};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
+const POLICY_API_GROUP: &str = "policy.linkerd.io";
+const POLICY_API_VERSION: &str = "policy.linkerd.io/v1alpha1";
+const STATUS_CONTROLLER_NAME: &str = "policy.linkerd.io/status-controller";
+
 pub type SharedIndex = Arc<RwLock<Index>>;
 
 pub struct Controller {
@@ -67,8 +71,6 @@ impl Controller {
         patch_params: k8s::PatchParams,
     ) {
         let route_binding = match self.index.read().http_routes.get(&route_id) {
-            // todo: cloning here so that we don't need to hold a read lock on
-            // the index since there are several awaits after this
             Some(route) => route.clone(),
             None => {
                 tracing::info!(%route_id.namespace, %route_id.name, "Failed to find HTTPRoute in index");
@@ -86,6 +88,7 @@ impl Controller {
             .cloned()
             .collect();
 
+        // Create the namespace API client and patch the HTTPRoute.
         let api = k8s::Api::<k8s::policy::HttpRoute>::namespaced(
             self.client.clone(),
             &route_id.namespace,
@@ -131,14 +134,14 @@ impl Controller {
                 };
                 gateway::RouteParentStatus {
                     parent_ref: gateway::ParentReference {
-                        group: Some("policy.linkerd.io".to_string()),
+                        group: Some(POLICY_API_GROUP.to_string()),
                         kind: Some("Server".to_string()),
                         namespace: Some(route_id.namespace.clone()),
                         name: parent.name.clone(),
                         section_name: None,
                         port: None,
                     },
-                    controller_name: "policy.linkerd.io/status-controller".to_string(),
+                    controller_name: STATUS_CONTROLLER_NAME.to_string(),
                     conditions: vec![condition],
                 }
             })
@@ -149,7 +152,7 @@ impl Controller {
             },
         };
         let patch = serde_json::json!({
-            "apiVersion": "policy.linkerd.io/v1alpha1",
+            "apiVersion": POLICY_API_VERSION,
             "kind": "HTTPRoute",
             "name": route_id.name,
             "status": status,
