@@ -318,7 +318,6 @@ linkerd-install *args='': linkerd-load linkerd-crds-install && _linkerd-ready
             --set='proxy.image.version={{ linkerd-tag }}' \
             --set='proxyInit.image.name={{ proxy-init-image }}' \
             --set="proxyInit.image.version=$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" \
-            --set="cniPluginVersion=$(yq .cniPluginVersion charts/linkerd-cni/values.yaml)" \
             {{ args }} \
         | {{ _kubectl }} apply -f -
 

@@ -10,10 +10,6 @@ ignoreOutboundPorts: ""
 proxyAdminPort: 4191
 # -- Control port for the proxy container
 proxyControlPort: 4190
-# -- Docker image for the CNI plugin
-cniPluginImage:   "cr.l5d.io/linkerd/cni-plugin"
-# -- Tag for the CNI container Docker image
-cniPluginVersion: "1.0.0"
 # -- Additional labels to add to all pods
 podLabels: {}
 # -- Labels to apply to all resources
@@ -51,6 +47,14 @@ tolerations:
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
 # for more information
 #nodeAffinity:
+
+# -|- Image section
+image:
+  # -- Docker image for the CNI plugin
+  name: "cr.l5d.io/linkerd/cni-plugin"
+  # -- Tag for the CNI container Docker image
+  version: "1.0.0"
+  imagePullPolicy:
 
 #
 ## For Private docker registries, authentication is needed.

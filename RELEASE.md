@@ -41,9 +41,9 @@ following updates are needed:
    var ProxyInitVersion = "v1.2.0"
    ```
 
-- `charts/linkerd2/values.yaml`
+- `charts/linkerd-control-plane/values.yaml`
 
-   Upgrade the version in `global.proxyInit.image.version` or `global.cniPluginVersion`
+   Upgrade the version in `global.proxyInit.image.version`
 
 Create a new branch in the `linkerd2` repo,
 `username/proxy-init-version-bump`.

@@ -15,6 +15,13 @@ const (
 	helmDefaultCNIChartDir = "linkerd2-cni"
 )
 
+// Image contains details about the location of the container image
+type Image struct {
+	Name            string      `json:"name"`
+	Version         string      `json:"version"`
+	ImagePullPolicy interface{} `json:"imagePullPolicy"`
+}
+
 // Values contains the top-level elements in the cni Helm chart
 type Values struct {
 	InboundProxyPort    uint          `json:"inboundProxyPort"`
@@ -22,7 +29,7 @@ type Values struct {
 	IgnoreInboundPorts  string        `json:"ignoreInboundPorts"`
 	IgnoreOutboundPorts string        `json:"ignoreOutboundPorts"`
 	CliVersion          string        `json:"cliVersion"`
-	CNIPluginImage      string        `json:"cniPluginImage"`
+	Image               Image         `json:"image"`
 	CNIPluginVersion    string        `json:"cniPluginVersion"`
 	LogLevel            string        `json:"logLevel"`
 	PortsToRedirect     string        `json:"portsToRedirect"`
