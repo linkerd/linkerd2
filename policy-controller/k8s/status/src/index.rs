@@ -79,8 +79,6 @@ impl Controller {
             .read()
             .servers
             .iter()
-            // todo: we should allow cross-namespace references; confirm this
-            // would allow that
             .filter(|server| route_binding.selects_server(server))
             .cloned()
             .collect();
@@ -128,12 +126,6 @@ impl Controller {
                 }
             })
             .collect();
-
-        // Create the namespace API client and patch the HTTPRoute.
-        let api = k8s::Api::<k8s::policy::HttpRoute>::namespaced(
-            self.client.clone(),
-            &route_id.namespace,
-        );
         let status = gateway::HttpRouteStatus {
             inner: gateway::RouteStatus {
                 parents: parent_statuses,
@@ -145,6 +137,12 @@ impl Controller {
             "name": route_id.name,
             "status": status,
         });
+
+        // Patch the HTTPRoute with its status.
+        let api = k8s::Api::<k8s::policy::HttpRoute>::namespaced(
+            self.client.clone(),
+            &route_id.namespace,
+        );
         if let Err(error) = api
             .patch_status(&route_id.name, &patch_params, &k8s::Patch::Merge(patch))
             .await
@@ -170,6 +168,21 @@ impl Index {
             servers: HashSet::new(),
         }))
     }
+
+    fn update_http_route(&mut self, route_id: ResourceId, route_binding: RouteBinding) -> bool {
+        match self.http_routes.entry(route_id) {
+            Entry::Vacant(entry) => {
+                entry.insert(route_binding);
+            }
+            Entry::Occupied(mut entry) => {
+                if *entry.get() == route_binding {
+                    return false;
+                }
+                entry.insert(route_binding);
+            }
+        }
+        true
+    }
 }
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
@@ -188,22 +201,10 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
             }
         };
 
-        // todo: turn into var since we may not always need to update the
-        // status
-        // todo: remove `route_binding.clone()`s
-        match self.http_routes.entry(id.clone()) {
-            Entry::Vacant(entry) => {
-                entry.insert(route_binding);
+        if self.update_http_route(id.clone(), route_binding) {
+            if let Err(error) = self.updates.send(Update::HttpRoute(id.clone())) {
+                tracing::error!(%id.namespace, %id.name, %error, "Failed to send HTTPRoute update")
             }
-            Entry::Occupied(mut entry) => {
-                if *entry.get() != route_binding {
-                    entry.insert(route_binding);
-                }
-            }
-        };
-
-        if let Err(error) = self.updates.send(Update::HttpRoute(id.clone())) {
-            tracing::error!(%id.namespace, %id.name, %error, "Failed to send HTTPRoute update")
         }
     }
 
@@ -240,13 +241,6 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
         }
     }
 
-    fn reset(
-        &mut self,
-        _resources: Vec<k8s::policy::Server>,
-        _removed: kubert::index::NamespacedRemoved,
-    ) {
-        // todo: make sure server is in index; update status for all routes
-        // since routes in any namespace could reference this server
-        // todo: can we skip the impl here similar to HTTPRoutes?
-    }
+    // Since apply only reindexes a single Server at a time, there's no need
+    // to handle resets specially.
 }
