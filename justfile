@@ -342,7 +342,7 @@ _linkerd-images:
     #!/usr/bin/env bash
     set -xeuo pipefail
     docker pull -q "{{ orig-proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
-    docker pull -q "{{ cni-plugin-image }}:$(yq .cniPluginVersion charts/linkerd-cni/values.yaml)"
+    docker pull -q "{{ cni-plugin-image }}:$(yq .image.version charts/linkerd-cni/values.yaml)"
     docker tag \
         "{{ orig-proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" \
         "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
