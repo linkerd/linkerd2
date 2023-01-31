@@ -136,7 +136,7 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 	if et.availableEndpoints.LocalTrafficPolicy {
 		et.log.Debugf("Filtering through addresses that should be consumed by node %s", et.nodeName)
 		for id, address := range et.availableEndpoints.Addresses {
-			if address.Pod.Spec.NodeName == et.nodeName {
+			if address.Pod != nil && address.Pod.Spec.NodeName == et.nodeName {
 				filtered[id] = address
 			}
 		}
