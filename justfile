@@ -331,7 +331,7 @@ linkerd-load: _linkerd-images _k3d-init
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ policy-controller-image }}:{{ linkerd-tag }}' \
         '{{ proxy-image }}:{{ linkerd-tag }}' \
-        "{{ cni-plugin-image }}:$(yq .cniPluginVersion charts/linkerd-cni/values.yaml)" \
+        "{{ cni-plugin-image }}:$(yq .image.version charts/linkerd-cni/values.yaml)" \
         "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" && exit ; sleep 1 ; done
 
 linkerd-build: _policy-controller-build

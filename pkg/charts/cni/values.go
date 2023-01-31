@@ -30,7 +30,6 @@ type Values struct {
 	IgnoreOutboundPorts string        `json:"ignoreOutboundPorts"`
 	CliVersion          string        `json:"cliVersion"`
 	Image               Image         `json:"image"`
-	CNIPluginVersion    string        `json:"cniPluginVersion"`
 	LogLevel            string        `json:"logLevel"`
 	PortsToRedirect     string        `json:"portsToRedirect"`
 	ProxyUID            int64         `json:"proxyUID"`
