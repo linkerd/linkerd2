@@ -126,11 +126,16 @@ impl Controller {
                         type_: "Accepted".to_string(),
                     }
                 };
+                let namespace = if let Some(ref namespace) = parent.namespace {
+                    namespace.clone()
+                } else {
+                    route_id.namespace.clone()
+                };
                 gateway::RouteParentStatus {
                     parent_ref: gateway::ParentReference {
                         group: Some(POLICY_API_GROUP.to_string()),
                         kind: Some("Server".to_string()),
-                        namespace: Some(route_id.namespace.clone()),
+                        namespace: Some(namespace),
                         name: parent.name.clone(),
                         section_name: None,
                         port: None,
