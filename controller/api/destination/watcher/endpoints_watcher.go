@@ -491,8 +491,7 @@ func (sp *servicePublisher) updateService(newService *corev1.Service) {
 		}
 		// update service endpoints with new localTrafficPolicy
 		if port.localTrafficPolicy != sp.localTrafficPolicy {
-			port.localTrafficPolicy = sp.localTrafficPolicy
-			port.updateLocalTrafficPolicy(*newService)
+			port.updateLocalTrafficPolicy(sp.localTrafficPolicy)
 		}
 	}
 
@@ -968,20 +967,11 @@ func (pp *portPublisher) resolveTargetPort(subset corev1.EndpointSubset) Port {
 	return undefinedEndpointPort
 }
 
-func (pp *portPublisher) updateLocalTrafficPolicy(service corev1.Service) {
-	if pp.enableEndpointSlices {
-		matchLabels := map[string]string{discovery.LabelServiceName: service.Name}
-		selector := labels.Set(matchLabels).AsSelector()
-
-		endpointSlices, err := pp.k8sAPI.ES().Lister().EndpointSlices(service.Namespace).List(selector)
-		if err == nil {
-			pp.addresses = AddressSet{}
-			for _, slice := range endpointSlices {
-				pp.updateEndpointSlice(slice, slice)
-			}
-		} else {
-			pp.log.Errorf("Unable to get EndpointSlices during port update: %s", err)
-		}
+func (pp *portPublisher) updateLocalTrafficPolicy(localTrafficPolicy bool) {
+	pp.localTrafficPolicy = localTrafficPolicy
+	pp.addresses.LocalTrafficPolicy = localTrafficPolicy
+	for _, listener := range pp.listeners {
+		listener.Add(pp.addresses)
 	}
 }
 
@@ -1186,8 +1176,7 @@ func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSe
 		LocalTrafficPolicy: newAddresses.LocalTrafficPolicy,
 	}
 	remove = AddressSet{
-		Addresses:          removeAddresses,
-		LocalTrafficPolicy: oldAddresses.LocalTrafficPolicy,
+		Addresses: removeAddresses,
 	}
 	return add, remove
 }
