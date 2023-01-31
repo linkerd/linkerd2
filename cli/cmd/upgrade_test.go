@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/cli/flag"
-	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	flagspkg "github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -312,14 +311,14 @@ func TestUpgradeWebhookCrtsNameChange(t *testing.T) {
 
 	injectorCerts := generateCerts(t, "linkerd-proxy-injector.linkerd.svc", false)
 	defer injectorCerts.cleanup()
-	installOpts.ProxyInjector.TLS = &linkerd2.TLS{
+	installOpts.ProxyInjector.TLS = &charts.TLS{
 		ExternalSecret: true,
 		CaBundle:       injectorCerts.ca,
 	}
 
 	validatorCerts := generateCerts(t, "linkerd-sp-validator.linkerd.svc", false)
 	defer validatorCerts.cleanup()
-	installOpts.ProfileValidator.TLS = &linkerd2.TLS{
+	installOpts.ProfileValidator.TLS = &charts.TLS{
 		ExternalSecret: true,
 		CaBundle:       validatorCerts.ca,
 	}
@@ -363,14 +362,14 @@ func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
 	// This tests the case where the webhook certs are not self-signed.
 	injectorCerts := generateCerts(t, "linkerd-proxy-injector.linkerd.svc", false)
 	defer injectorCerts.cleanup()
-	installOpts.ProxyInjector.TLS = &linkerd2.TLS{
+	installOpts.ProxyInjector.TLS = &charts.TLS{
 		ExternalSecret: true,
 		CaBundle:       injectorCerts.ca,
 	}
 
 	validatorCerts := generateCerts(t, "linkerd-sp-validator.linkerd.svc", false)
 	defer validatorCerts.cleanup()
-	installOpts.ProfileValidator.TLS = &linkerd2.TLS{
+	installOpts.ProfileValidator.TLS = &charts.TLS{
 		ExternalSecret: true,
 		CaBundle:       validatorCerts.ca,
 	}
@@ -572,7 +571,7 @@ func pathMatch(path []string, template []string) bool {
 	return true
 }
 
-func renderInstall(t *testing.T, values *linkerd2.Values) *bytes.Buffer {
+func renderInstall(t *testing.T, values *charts.Values) *bytes.Buffer {
 	var buf bytes.Buffer
 	if err := renderCRDs(&buf, valuespkg.Options{}); err != nil {
 		t.Fatalf("could not render install manifests: %s", err)

@@ -7,8 +7,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	pkgk8s "github.com/linkerd/linkerd2/controller/k8s"
-	"github.com/sirupsen/logrus"
 	logging "github.com/sirupsen/logrus"
 )
 
@@ -381,10 +379,22 @@ spec:
 		t.Fatalf("initializeIndexers returned an error: %s", err)
 	}
 
-	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, false)
-	opaquePorts := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
-	profiles := watcher.NewProfileWatcher(k8sAPI, log)
-	servers := watcher.NewServerWatcher(k8sAPI, log)
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, log, false)
+	if err != nil {
+		t.Fatalf("can't create Endpoints watcher: %s", err)
+	}
+	opaquePorts, err := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
+	if err != nil {
+		t.Fatalf("can't create opaque ports watcher: %s", err)
+	}
+	profiles, err := watcher.NewProfileWatcher(k8sAPI, log)
+	if err != nil {
+		t.Fatalf("can't create profile watcher: %s", err)
+	}
+	servers, err := watcher.NewServerWatcher(k8sAPI, log)
+	if err != nil {
+		t.Fatalf("can't create Server watcher: %s", err)
+	}
 
 	// Sync after creating watchers so that the the indexers added get updated
 	// properly
@@ -449,7 +459,7 @@ func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) e
 }
 
 func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointTranslator) {
-	k8sAPI, err := pkgk8s.NewFakeAPI(`
+	k8sAPI, err := k8s.NewFakeAPI(`
 apiVersion: v1
 kind: Node
 metadata:
@@ -482,7 +492,7 @@ metadata:
 		map[uint32]struct{}{},
 		k8sAPI.Node(),
 		mockGetServer,
-		logrus.WithField("test", t.Name()),
+		logging.WithField("test", t.Name()),
 	)
 	return mockGetServer, translator
 }

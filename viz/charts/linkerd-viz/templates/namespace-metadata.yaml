@@ -26,6 +26,9 @@ spec:
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       restartPolicy: Never
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: namespace-metadata
       containers:
       - name: namespace-metadata

@@ -23,8 +23,14 @@ gateway:
     seconds: 3
   # -- Annotations to add to the gateway service
   serviceAnnotations: {}
+  # -- Annotations to add to the gateway deployment
+  deploymentAnnotations: {}
   # -- Set loadBalancerIP on gateway service
   loadBalancerIP: ""
+  # -- Set loadBalancerSourceRanges on gateway service
+  loadBalancerSourceRanges: []
+  # -- Set terminationGracePeriodSeconds on gateway deployment
+  terminationGracePeriodSeconds: ""
 
   # -- The pause container to use
   pauseImage: "gcr.io/google_containers/pause:3.2"

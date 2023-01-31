@@ -134,7 +134,7 @@ var undefinedEndpointPort = Port(0)
 // NewEndpointsWatcher creates an EndpointsWatcher and begins watching the
 // k8sAPI for pod, service, and endpoint changes. An EndpointsWatcher will
 // watch on Endpoints or EndpointSlice resources, depending on cluster configuration.
-func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlices bool) *EndpointsWatcher {
+func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlices bool) (*EndpointsWatcher, error) {
 	ew := &EndpointsWatcher{
 		publishers:           make(map[ServiceID]*servicePublisher),
 		k8sAPI:               k8sAPI,
@@ -144,34 +144,46 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlic
 		}),
 	}
 
-	k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ew.addService,
 		DeleteFunc: ew.deleteService,
 		UpdateFunc: func(_, obj interface{}) { ew.addService(obj) },
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ew.addServer,
 		DeleteFunc: ew.deleteServer,
 		UpdateFunc: func(_, obj interface{}) { ew.addServer(obj) },
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	if ew.enableEndpointSlices {
 		ew.log.Debugf("Watching EndpointSlice resources")
-		k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		_, err := k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    ew.addEndpointSlice,
 			DeleteFunc: ew.deleteEndpointSlice,
 			UpdateFunc: ew.updateEndpointSlice,
 		})
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		ew.log.Debugf("Watching Endpoints resources")
-		k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		_, err = k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    ew.addEndpoints,
 			DeleteFunc: ew.deleteEndpoints,
 			UpdateFunc: func(_, obj interface{}) { ew.addEndpoints(obj) },
 		})
+		if err != nil {
+			return nil, err
+		}
 	}
-	return ew
+	return ew, nil
 }
 
 ////////////////////////

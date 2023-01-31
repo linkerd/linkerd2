@@ -13,7 +13,6 @@ import (
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -415,7 +414,7 @@ func getFakeServiceReq(b []byte) *admissionv1beta1.AdmissionRequest {
 	}
 }
 
-func ownerRetrieverFake(p *v1.Pod) (string, string, error) {
+func ownerRetrieverFake(p *corev1.Pod) (string, string, error) {
 	return pkgK8s.Deployment, "owner-deployment", nil
 }
 

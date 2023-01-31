@@ -134,7 +134,6 @@ func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string
 		{Name: chartutil.ValuesfileName},
 		{Name: "templates/namespace.yaml"},
 		{Name: "templates/gateway.yaml"},
-		{Name: "templates/proxy-admin-policy.yaml"},
 		{Name: "templates/gateway-policy.yaml"},
 		{Name: "templates/psp.yaml"},
 		{Name: "templates/remote-access-service-mirror-rbac.yaml"},

@@ -7,7 +7,6 @@ import (
 	"github.com/linkerd/linkerd2/jaeger/pkg/labels"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,7 +47,7 @@ func newCmdList() *cobra.Command {
 
 			for _, pod := range pods.Items {
 				pod := pod
-				if pkgK8s.IsMeshed(&pod, controlPlaneNamespace) {
+				if k8s.IsMeshed(&pod, controlPlaneNamespace) {
 					if labels.IsTracingEnabled(&pod) {
 						tracingEnabled = append(tracingEnabled, pod)
 					} else {

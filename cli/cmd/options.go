@@ -18,7 +18,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
@@ -234,7 +233,7 @@ func makeInstallFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) 
 				if value {
 					values.Identity.Issuer.Scheme = string(corev1.SecretTypeTLS)
 				} else {
-					values.Identity.Issuer.Scheme = consts.IdentityIssuerSchemeLinkerd
+					values.Identity.Issuer.Scheme = k8s.IdentityIssuerSchemeLinkerd
 				}
 				return nil
 			}),
@@ -532,7 +531,7 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 		}
 	}
 
-	if values.Identity.Issuer.Scheme == consts.IdentityIssuerSchemeLinkerd {
+	if values.Identity.Issuer.Scheme == k8s.IdentityIssuerSchemeLinkerd {
 		issuerData := issuercerts.IssuerCertData{
 			IssuerCrt:    values.Identity.Issuer.TLS.CrtPEM,
 			IssuerKey:    values.Identity.Issuer.TLS.KeyPEM,

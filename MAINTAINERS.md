@@ -8,6 +8,7 @@ The Linkerd maintainers are:
 * Eliza Weisman <eliza@buoyant.io> @hawkw
 * Kevin Leimkuhler <kevinl@buoyant.io> @kleimkuhler
 * Matei David <matei@buoyant.io> @mateiidavid
+* Steve Jenson <stevej@buoyant.io> @stevej
 
 ## Steering Committee
 

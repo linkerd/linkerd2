@@ -1,5 +1,74 @@
 # Changes
 
+## edge-23.1.2
+
+This edge release fixes a memory leak in the Linkerd control plane that could
+occur when many many pods were created. It also adds a number of new
+configuration options Multicluster extension's gateway.
+
+* Added additional shortnames for Linkerd policy resources (thanks @javaducky!)
+* Added new configuration options for the multicluster gateway:
+  * `gateway.deploymentAnnotations`
+  * `gateway.terminationGracePeriodSeconds` (thanks @bunnybilou!)
+  * `gateway.loadBalancerSourceRanges` (thanks @Tyrion85!)
+* Added an optional AuthorizationPolicy to authorize Grafana to Prometheus
+  in the Viz extension
+* Fixed the link to the Jaeger dashboard the in viz dashboard (thanks @eugenegoncharuk!)
+* Fixed an issue where control plane components could fail to start on large
+  clusters because of failing readiness probes while caches were being
+  initialized
+* Fixed a memory leak in the Destination controller
+* Fixed an issue where PodSecurityPolicies could reject Linkerd control plane
+  components due to the `seccompProfile`
+
+## edge-23.1.1
+
+This edge release fixes a caching issue in the destination controller, converts
+deprecated policy resources, and introduces several changes to how the proxy
+works.
+
+A bug in the destination controller that could potentially lead to stale pods
+being considered in the load balancer has been fixed.
+
+Several Linkerd extensions were still using the now deprecated
+ServerAuthorization resource. These instances have now been converted to using
+AuthorizationPolicy. Additionally, removed several policy resources that
+authenticated probes, since probes are now authenticated by default.
+
+As part of ongoing policy work, there are several changes with how the proxy
+works. Routes are now lazily initialized so that service profile routes will
+not show up in metrics until the route is used. Furthermore, the proxy’s
+traffic splitting behavior has changed so that only available resources are
+used, resulting in less failfast errors.
+
+Finally, this edge release contains a number of fixes and improvements from our
+contributors.
+
+* Converted `ServerAuthorization` resources to `AuthorizationPolicy` resources
+  in Linkerd extensions
+* Removed policy resources bound to admin servers in extensions (previously
+  these resources were used to authorize probes but now are authorized by
+  default)
+* Added a `resources` field in the linkerd-cni chart (thanks @jcogilvie!)
+* Fixed an issue in the CLI where `--identity-external-ca` would set an
+  incorrect field (thanks @anoxape!)
+* Fixed an issue in the destination controller's cache that could result in
+  stale endpoints when using EndpointSlice objects
+* Added namespace to namespace-metadata resources in Helm (thanks @joebowbeer!)
+* Added support for Pod Security Admission (Pod Security Policy resources are
+  still supported but disabled by default)
+* Changed routes to be initialized lazily. Service Profile routes will no
+  longer show up in metrics until the route is used (default routes are always
+  available when no Service Profile is defined for a service)
+* Changed the proxy's behavior when traffic splitting so that only services
+  that are not in failfast are used. This will enable the proxy to manage
+  failover without external coordination
+* Updated tokio (async runtime) in the proxy which should reduce CPU usage,
+  especially for proxy's pod local (i.e in the same network namespace)
+  communication
+* Fixed an issue where `linkerd viz tap` would display wrong latency/duration
+  value (thanks @olegy2008!)
+
 ## edge-22.12.1
 
 This edge release introduces static and dynamic port overrides for CNI eBPF

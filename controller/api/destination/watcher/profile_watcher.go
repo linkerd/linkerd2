@@ -44,22 +44,25 @@ var profileVecs = newMetricsVecs("profile", []string{"namespace", "profile"})
 
 // NewProfileWatcher creates a ProfileWatcher and begins watching the k8sAPI for
 // service profile changes.
-func NewProfileWatcher(k8sAPI *k8s.API, log *logging.Entry) *ProfileWatcher {
+func NewProfileWatcher(k8sAPI *k8s.API, log *logging.Entry) (*ProfileWatcher, error) {
 	watcher := &ProfileWatcher{
 		profileLister: k8sAPI.SP().Lister(),
 		profiles:      make(map[ProfileID]*profilePublisher),
 		log:           log.WithField("component", "profile-watcher"),
 	}
 
-	k8sAPI.SP().Informer().AddEventHandler(
+	_, err := k8sAPI.SP().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    watcher.addProfile,
 			UpdateFunc: watcher.updateProfile,
 			DeleteFunc: watcher.deleteProfile,
 		},
 	)
+	if err != nil {
+		return nil, err
+	}
 
-	return watcher
+	return watcher, nil
 }
 
 //////////////////////

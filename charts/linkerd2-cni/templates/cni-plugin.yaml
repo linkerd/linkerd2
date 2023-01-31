@@ -46,6 +46,8 @@ apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
   name: linkerd-{{.Release.Namespace}}-cni
+  annotations:
+    seccomp.security.alpha.kubernetes.io/allowedProfileNames: "runtime/default"
   labels:
     linkerd.io/cni-resource: "true"
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
@@ -210,6 +212,9 @@ spec:
       {{- include "linkerd.node-affinity" . | nindent 8 }}
       {{- end }}
       hostNetwork: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: linkerd-cni
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}

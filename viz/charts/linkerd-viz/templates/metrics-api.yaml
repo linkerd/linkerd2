@@ -117,4 +117,7 @@ spec:
           runAsUser: {{.Values.metricsAPI.UID | default .Values.defaultUID}}
           seccompProfile:
             type: RuntimeDefault
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: metrics-api
