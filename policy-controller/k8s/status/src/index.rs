@@ -1,4 +1,7 @@
-use crate::{http_route::RouteBinding, resource_id::ResourceId};
+use crate::{
+    http_route::{ParentReference, RouteBinding},
+    resource_id::ResourceId,
+};
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use chrono::offset::Utc;
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
@@ -81,32 +84,17 @@ impl Controller {
             .filter(|server| route_binding.selects_server(server))
             .cloned()
             .collect();
-
-        // Create the namespace API client and patch the HTTPRoute.
-        let api = k8s::Api::<k8s::policy::HttpRoute>::namespaced(
-            self.client.clone(),
-            &route_id.namespace,
-        );
-        let route = match api.get(&route_id.name).await {
-            Ok(route) => route,
-            Err(error) => {
-                tracing::info!(%route_id.namespace, %route_id.name, %error, "Failed to find HTTPRoute");
-                return;
-            }
-        };
-        let parent_statuses = route
-            .spec
-            .inner
-            .parent_refs
+        let parent_statuses = route_binding
+            .parents
             .iter()
-            .flatten()
-            .filter(|parent| parent.kind.as_deref() == Some("Server"))
             .map(|parent| {
+                let ParentReference::Server(parent_reference_id) = parent;
+
                 // Is this parent in the list of parents which accept
                 // the route?
                 let accepted = accepting_servers
                     .iter()
-                    .any(|accepting_parent| accepting_parent.name == parent.name);
+                    .any(|accepting_parent| accepting_parent == parent_reference_id);
                 let condition = if accepted {
                     k8s::Condition {
                         last_transition_time: k8s::Time(Utc::now()),
@@ -126,17 +114,12 @@ impl Controller {
                         type_: "Accepted".to_string(),
                     }
                 };
-                let namespace = if let Some(ref namespace) = parent.namespace {
-                    namespace.clone()
-                } else {
-                    route_id.namespace.clone()
-                };
                 gateway::RouteParentStatus {
                     parent_ref: gateway::ParentReference {
                         group: Some(POLICY_API_GROUP.to_string()),
                         kind: Some("Server".to_string()),
-                        namespace: Some(namespace),
-                        name: parent.name.clone(),
+                        namespace: Some(parent_reference_id.namespace.clone()),
+                        name: parent_reference_id.name.clone(),
                         section_name: None,
                         port: None,
                     },
@@ -145,6 +128,12 @@ impl Controller {
                 }
             })
             .collect();
+
+        // Create the namespace API client and patch the HTTPRoute.
+        let api = k8s::Api::<k8s::policy::HttpRoute>::namespaced(
+            self.client.clone(),
+            &route_id.namespace,
+        );
         let status = gateway::HttpRouteStatus {
             inner: gateway::RouteStatus {
                 parents: parent_statuses,

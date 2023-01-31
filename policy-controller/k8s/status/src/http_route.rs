@@ -7,11 +7,11 @@ use linkerd_policy_controller_k8s_api::{
 
 #[derive(Clone, PartialEq)]
 pub struct RouteBinding {
-    parents: Vec<ParentReference>,
+    pub parents: Vec<ParentReference>,
 }
 
 #[derive(Clone, PartialEq)]
-enum ParentReference {
+pub enum ParentReference {
     Server(ResourceId),
 }
 
