@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/charts"
-	"github.com/linkerd/linkerd2/pkg/charts/cni"
 	cnicharts "github.com/linkerd/linkerd2/pkg/charts/cni"
 	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/cmd"
@@ -73,8 +72,8 @@ func (options *cniPluginOptions) validate() error {
 	return nil
 }
 
-func (options *cniPluginOptions) pluginImage() cni.Image {
-	image := cni.Image{
+func (options *cniPluginOptions) pluginImage() cnicharts.Image {
+	image := cnicharts.Image{
 		Name:            options.image.name,
 		Version:         options.image.version,
 		ImagePullPolicy: options.image.imagePullPolicy,
