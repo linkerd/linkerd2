@@ -31,7 +31,7 @@ Kubernetes: `>=1.21.0-0`
 | ignoreOutboundPorts | string | `""` | Default set of outbound ports to skip via iptables |
 | image.imagePullPolicy | string | `nil` |  |
 | image.name | string | `"cr.l5d.io/linkerd/cni-plugin"` | Docker image for the CNI plugin |
-| image.version | string | `"1.0.0"` | Tag for the CNI container Docker image |
+| image.version | string | `"v1.0.0"` | Tag for the CNI container Docker image |
 | imagePullSecrets | string | `nil` |  |
 | inboundProxyPort | int | `4143` | Inbound port for the proxy container |
 | logLevel | string | `"info"` | Log level for the CNI plugin |
