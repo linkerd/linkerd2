@@ -120,7 +120,7 @@ jobs:
           - deep
     continue-on-error: true
     runs-on: ubuntu-20.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568
         with:
