@@ -331,7 +331,7 @@ linkerd-load: _linkerd-images _k3d-init
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ policy-controller-image }}:{{ linkerd-tag }}' \
         '{{ proxy-image }}:{{ linkerd-tag }}' \
-        "{{ cni-plugin-image }}:$(yq .image.version charts/linkerd-cni/values.yaml)" \
+        "{{ cni-plugin-image }}:$(yq .image.version charts/linkerd2-cni/values.yaml)" \
         "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" && exit ; sleep 1 ; done
 
 linkerd-build: _policy-controller-build
@@ -342,7 +342,7 @@ _linkerd-images:
     #!/usr/bin/env bash
     set -xeuo pipefail
     docker pull -q "{{ orig-proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
-    docker pull -q "{{ cni-plugin-image }}:$(yq .image.version charts/linkerd-cni/values.yaml)"
+    docker pull -q "{{ cni-plugin-image }}:$(yq .image.version charts/linkerd2-cni/values.yaml)"
     docker tag \
         "{{ orig-proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" \
         "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
