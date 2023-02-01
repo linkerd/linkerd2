@@ -1,27 +1,27 @@
 {{- define "partials.resources" -}}
 {{- $ephemeralStorage := index . "ephemeral-storage" -}}
 resources:
-  {{- if or .cpu.limit .memory.limit $ephemeralStorage.limit }}
+  {{- if or (.cpu).limit (.memory).limit ($ephemeralStorage).limit }}
   limits:
-    {{- with .cpu.limit }}
+    {{- with (.cpu).limit }}
     cpu: {{. | quote}}
     {{- end }}
-    {{- with .memory.limit }}
+    {{- with (.memory).limit }}
     memory: {{. | quote}}
     {{- end }}
-    {{- with $ephemeralStorage.limit }}
+    {{- with ($ephemeralStorage).limit }}
     ephemeral-storage: {{. | quote}}
     {{- end }}
   {{- end }}
-  {{- if or .cpu.request .memory.request $ephemeralStorage.request }}
+  {{- if or (.cpu).request (.memory).request ($ephemeralStorage).request }}
   requests:
-    {{- with .cpu.request }}
+    {{- with (.cpu).request }}
     cpu: {{. | quote}}
     {{- end }}
-    {{- with .memory.request }}
+    {{- with (.memory).request }}
     memory: {{. | quote}}
     {{- end }}
-    {{- with $ephemeralStorage.request }}
+    {{- with ($ephemeralStorage).request }}
     ephemeral-storage: {{. | quote}}
     {{- end }}
   {{- end }}
