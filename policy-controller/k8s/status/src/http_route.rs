@@ -92,11 +92,7 @@ impl ParentReference {
 
         // If the parent reference does not have a namespace, default to using
         // the HTTPRoute's namespace.
-        let namespace = if let Some(namespace) = parent_namespace {
-            namespace
-        } else {
-            default_namespace.to_string()
-        };
+        let namespace = parent_namespace.unwrap_or_else(|| default_namespace.to_string());
         Some(Ok(ParentReference::Server(ResourceId::new(
             namespace, name,
         ))))
