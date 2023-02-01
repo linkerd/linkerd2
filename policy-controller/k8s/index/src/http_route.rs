@@ -63,12 +63,15 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
             )
             .collect::<Result<_>>()?;
 
+        let statuses = http_route::Status::collect_from(route.status);
+
         Ok(InboundRouteBinding {
             parents,
             route: http_route::InboundHttpRoute {
                 hostnames,
                 rules,
                 authorizations: HashMap::default(),
+                statuses,
                 creation_timestamp,
             },
         })
@@ -106,6 +109,8 @@ impl TryFrom<policy::HttpRoute> for InboundRouteBinding {
                 hostnames,
                 rules,
                 authorizations: HashMap::default(),
+                // todo: collect_from for policy::HttpRoute
+                statuses: vec![],
                 creation_timestamp,
             },
         })
@@ -118,6 +123,16 @@ impl InboundRouteBinding {
         self.parents
             .iter()
             .any(|p| matches!(p, InboundParentRef::Server(n) if n == name))
+    }
+
+    #[inline]
+    pub fn accepted_by_server(&self, name: &str) -> bool {
+        self.route.statuses.iter().any(|status| {
+            status.parent == name
+                && status.conditions.iter().any(|condition| {
+                    condition.type_ == http_route::ConditionType::Accepted && condition.status
+                })
+        })
     }
 
     fn try_match(
