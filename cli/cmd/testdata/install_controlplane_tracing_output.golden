@@ -674,7 +674,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
-  ca-bundle.crt: |
+  ca-bundle.crt: |-
     -----BEGIN CERTIFICATE-----
     MIIBwTCCAWagAwIBAgIQeDZp5lDaIygQ5UfMKZrFATAKBggqhkjOPQQDAjApMScw
     JQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwODI4

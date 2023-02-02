@@ -34,7 +34,7 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
 data:
-  ca-bundle.crt: |{{.Values.identityTrustAnchorsPEM | trim | nindent 4}}
+  ca-bundle.crt: |-{{.Values.identityTrustAnchorsPEM | trim | nindent 4}}
 {{- end}}
 ---
 kind: Service
@@ -99,6 +99,7 @@ spec:
 {{- $tree := deepCopy . }}
 {{ $_ := set $tree.Values.proxy "workloadKind" "deployment" -}}
 {{ $_ := set $tree.Values.proxy "component" "linkerd-identity" -}}
+{{ $_ := set $tree.Values.proxy "waitBeforeExitSeconds" 0 -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

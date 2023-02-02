@@ -219,6 +219,7 @@ spec:
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
         linkerd.io/inject: enabled
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
       labels:
         linkerd.io/extension: viz
         component: prometheus
@@ -230,6 +231,7 @@ spec:
       {{- end -}}
       {{- include "linkerd.node-selector" (dict "Values" .Values.prometheus) | nindent 6 }}
       securityContext:
+          allowPrivilegeEscalation: false
         fsGroup: 65534
       containers:
       {{- if .Values.prometheus.sidecarContainers -}}

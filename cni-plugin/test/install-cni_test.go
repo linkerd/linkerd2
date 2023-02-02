@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/user"
 	"strconv"
 	"strings"
 	"testing"
@@ -148,12 +147,7 @@ func populateK8sCreds(wd string, tempK8sSvcAcctDir string, t *testing.T) {
 
 // startDocker starts a test Docker container and runs the install-cni.sh script.
 func startDocker(testNum int, wd string, testWorkRootDir string, tempCNINetDir string, tempCNIBinDir string, tempK8sSvcAcctDir string, t *testing.T) string {
-	// The following is in place to default to a sane development environment that mirrors how bin/fast-build
-	// does it. To change to a different docker image, set the HUB and TAG environment variables before running the tests.
-	gitShaHead, _ := exec.Command("git", "rev-parse", "--short=8", "HEAD").Output()
-	user, _ := user.Current()
-	tag := "dev-" + strings.Trim(string(gitShaHead), "\n") + "-" + user.Username
-	dockerImage := env("HUB", "cr.l5d.io/linkerd") + "/cni-plugin:" + env("TAG", tag)
+	dockerImage := env("HUB", "cr.l5d.io/linkerd") + "/cni-plugin:" + env("CNI_PLUGIN_VERSION", "v1.0.0")
 	errFileName := testWorkRootDir + "/docker_run_stderr"
 
 	// Build arguments list by picking whatever is necessary from the environment.

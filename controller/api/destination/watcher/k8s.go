@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/cache"
@@ -40,6 +41,11 @@ type (
 		authority string
 	}
 )
+
+// Labels returns the labels for prometheus metrics associated to the service
+func (id ServiceID) Labels() prometheus.Labels {
+	return prometheus.Labels{"namespace": id.Namespace, "name": id.Name}
+}
 
 func (is InvalidService) Error() string {
 	return fmt.Sprintf("Invalid k8s service %s", is.authority)
