@@ -939,6 +939,13 @@ spec:
       - name: linkerd-network-validator
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            cpu: "50m"
+            memory: "10Mi"
+          requests:
+            cpu: "50m"
+            memory: "10Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1375,6 +1382,13 @@ spec:
       - name: linkerd-network-validator
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            cpu: "50m"
+            memory: "10Mi"
+          requests:
+            cpu: "50m"
+            memory: "10Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1694,6 +1708,13 @@ spec:
       - name: linkerd-network-validator
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            cpu: "50m"
+            memory: "10Mi"
+          requests:
+            cpu: "50m"
+            memory: "10Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
