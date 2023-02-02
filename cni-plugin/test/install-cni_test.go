@@ -147,7 +147,7 @@ func populateK8sCreds(wd string, tempK8sSvcAcctDir string, t *testing.T) {
 
 // startDocker starts a test Docker container and runs the install-cni.sh script.
 func startDocker(testNum int, wd string, testWorkRootDir string, tempCNINetDir string, tempCNIBinDir string, tempK8sSvcAcctDir string, t *testing.T) string {
-	dockerImage := env("HUB", "cr.l5d.io/linkerd") + "/cni-plugin:" + env("CNI_PLUGIN_VERSION", "1.0.0")
+	dockerImage := env("HUB", "cr.l5d.io/linkerd") + "/cni-plugin:" + env("CNI_PLUGIN_VERSION", "v1.0.0")
 	errFileName := testWorkRootDir + "/docker_run_stderr"
 
 	// Build arguments list by picking whatever is necessary from the environment.
