@@ -146,7 +146,7 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 
 	cniPluginImage := cniPluginImage{
 		name:    defaultDockerRegistry + "/cni-plugin",
-		version: "1.0.0",
+		version: "v1.0.0",
 	}
 
 	cniOptions := cniPluginOptions{
