@@ -32,9 +32,11 @@ func TestRenderCniHelm(t *testing.T) {
 			"namespace": "linkerd-test",
   			"inboundProxyPort": 1234,
   			"outboundProxyPort": 5678,
-  			"cniPluginImage": "cr.l5d.io/linkerd/cni-plugin-test",
-  			"cniPluginVersion": "test-version",
   			"logLevel": "debug",
+			"image": {
+				"name": "cr.l5d.io/linkerd/cni-plugin",
+				"version": "v1.0.0"
+			}
   			"proxyUID": 1111,
   			"destCNINetDir": "/etc/cni/net.d-test",
   			"destCNIBinDir": "/opt/cni/bin-test",
