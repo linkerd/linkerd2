@@ -684,7 +684,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 data:
-  ca-bundle.crt: |
+  ca-bundle.crt: |-
     test-trust-anchor
 ---
 kind: Service
