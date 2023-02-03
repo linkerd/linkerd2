@@ -1,5 +1,35 @@
 # Changes
 
+## stable-2.12.4
+
+This stable release fixes a memory leak in the Destination controller, and also
+includes other bug fixes for the Linkerd control plane, CLI, and extensions.
+
+* CLI
+  * Fixed an issue in the CLI where `--identity-external-ca` would set an
+    incorrect field (thanks @anoxape!)
+
+* Control Plane
+  * Fixed an issue in the destination controller's cache that could result in
+    stale endpoints when using EndpointSlice objects
+  * Fixed an issue where control plane components could fail to start on large
+    clusters because of failing readiness probes while caches were being
+    initialized
+  * Fixed a memory leak in the Destination controller
+
+* linkerd-proxy-init
+  * Added resource limits for `noop` init container, to support environments
+    where resource quotas are required
+
+* Helm
+  * Added namespace to namespace-metadata resources in Helm (thanks
+    @joebowbeer!)
+  * Fixed potential nil pointer dereference errors in template evaluation
+
+* Extensions
+  * Fixed an issue where `linkerd viz tap` would display wrong latency/duration
+    value (thanks @olegy2008!)
+
 ## stable-2.12.3
 
 This stable release is packed with various fixes in both the core linkerd
