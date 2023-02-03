@@ -76,7 +76,7 @@ func (sw *ServerWatcher) Subscribe(pod *corev1.Pod, port Port, listener ServerUp
 	if !ok {
 		sw.subscriptions[pp] = podPortPublisher{
 			pod:       pod,
-			listeners: []ServerUpdateListener{},
+			listeners: []ServerUpdateListener{listener},
 		}
 		return
 	}
