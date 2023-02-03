@@ -6,7 +6,7 @@ Linkerd [CNI plugin](https://linkerd.io/2/features/cni/) takes care of setting
 up your pod's network so  incoming and outgoing traffic is proxied through the
 data plane.
 
-![Version: 30.3.5](https://img.shields.io/badge/Version-30.3.5-informational?style=flat-square)
+![Version: 30.3.6](https://img.shields.io/badge/Version-30.3.6-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
