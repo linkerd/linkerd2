@@ -1528,6 +1528,18 @@
     jest-validate "^26.5.2"
     lodash.get "^4.4.2"
 
+"@lingui/conf@3.17.0":
+  version "3.17.0"
+  resolved "https://registry.yarnpkg.com/@lingui/conf/-/conf-3.17.0.tgz#85d062849e5a400ad21bc04e4ffd3162b9ae84e7"
+  integrity sha512-012O7O8WYiJIjV3Od3QNHu9rV/cz3xsbSBB0icSNSGOVtZwqBi41QTlJ1tLheYm+3W5guDOBiw6lWOjlUZNJlA==
+  dependencies:
+    "@babel/runtime" "^7.11.2"
+    chalk "^4.1.0"
+    cosmiconfig "^8.0.0"
+    cosmiconfig-typescript-loader "^4.3.0"
+    jest-validate "^26.5.2"
+    lodash.get "^4.4.2"
+
 "@lingui/core@3.16.0":
   version "3.16.0"
   resolved "https://registry.yarnpkg.com/@lingui/core/-/core-3.16.0.tgz#ac61cbd617428fe2515cdace6e2080f6c8a7b0d3"
@@ -1546,13 +1558,13 @@
     "@messageformat/parser" "^5.0.0"
     make-plural "^6.2.2"
 
-"@lingui/macro@3.16.0":
-  version "3.16.0"
-  resolved "https://registry.yarnpkg.com/@lingui/macro/-/macro-3.16.0.tgz#a512d168a52f48d9f89abca77e7a39ede17906e4"
-  integrity sha512-3HfP1Bqr4i60P3LoQq/ukhDvel4a5oBSMPRuYBUpwqdnKOAbZuN5vnZmu3TrlXntWTYOvrwa71D8SYGmvevelw==
+"@lingui/macro@3.17.0":
+  version "3.17.0"
+  resolved "https://registry.yarnpkg.com/@lingui/macro/-/macro-3.17.0.tgz#fc92c0a930087522bed737efb32f89b2f5f0a844"
+  integrity sha512-NDC34qE4+gORDr83TUYpJJ6nkrC7cpxhku3sHHCKAa174ZDBD/mnYi3qvERd6LpedzMPVuiD28YGpX/EFqarhw==
   dependencies:
     "@babel/runtime" "^7.11.2"
-    "@lingui/conf" "3.16.0"
+    "@lingui/conf" "3.17.0"
     ramda "^0.27.1"
 
 "@lingui/react@3.16.1":
@@ -3171,6 +3183,11 @@ cosmiconfig-typescript-loader@^2.0.1:
     cosmiconfig "^7"
     ts-node "^10.8.1"
 
+cosmiconfig-typescript-loader@^4.3.0:
+  version "4.3.0"
+  resolved "https://registry.yarnpkg.com/cosmiconfig-typescript-loader/-/cosmiconfig-typescript-loader-4.3.0.tgz#c4259ce474c9df0f32274ed162c0447c951ef073"
+  integrity sha512-NTxV1MFfZDLPiBMjxbHRwSh5LaLcPMwNdCutmnHJCKoVnlvldPWlllonKwrsRJ5pYZBIBGRWWU2tfvzxgeSW5Q==
+
 cosmiconfig@^7, cosmiconfig@^7.0.0:
   version "7.0.1"
   resolved "https://registry.yarnpkg.com/cosmiconfig/-/cosmiconfig-7.0.1.tgz#714d756522cace867867ccb4474c5d01bbae5d6d"
@@ -3181,6 +3198,16 @@ cosmiconfig@^7, cosmiconfig@^7.0.0:
     parse-json "^5.0.0"
     path-type "^4.0.0"
     yaml "^1.10.0"
+
+cosmiconfig@^8.0.0:
+  version "8.0.0"
+  resolved "https://registry.yarnpkg.com/cosmiconfig/-/cosmiconfig-8.0.0.tgz#e9feae014eab580f858f8a0288f38997a7bebe97"
+  integrity sha512-da1EafcpH6b/TD8vDRaWV7xFINlHlF6zKsGwS1TsuVJTZRkquaS5HTMq7uq6h31619QjbsYl21gVDOm32KM1vQ==
+  dependencies:
+    import-fresh "^3.2.1"
+    js-yaml "^4.1.0"
+    parse-json "^5.0.0"
+    path-type "^4.0.0"
 
 create-require@^1.1.0:
   version "1.1.1"
