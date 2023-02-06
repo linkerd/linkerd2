@@ -7,7 +7,6 @@ pub use http::{
     uri::Scheme,
     Method, StatusCode,
 };
-use linkerd_policy_controller_k8s_api::gateway;
 use regex::Regex;
 use std::num::NonZeroU16;
 
@@ -16,7 +15,6 @@ pub struct InboundHttpRoute {
     pub hostnames: Vec<HostMatch>,
     pub rules: Vec<InboundHttpRouteRule>,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
-    pub statuses: Vec<Status>,
 
     /// This is required for ordering returned `HttpRoute`s by their creation
     /// timestamp.
@@ -104,24 +102,6 @@ pub enum QueryParamMatch {
     Regex(String, Regex),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Status {
-    pub parent: String,
-    pub conditions: Vec<Condition>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Condition {
-    pub type_: ConditionType,
-    pub status: bool,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ConditionType {
-    Accepted,
-    ResolvedRefs,
-}
-
 // === impl InboundHttpRoute ===
 
 /// The default `InboundHttpRoute` used for any `InboundServer` that
@@ -143,7 +123,6 @@ impl Default for InboundHttpRoute {
             // authzs will be configured by the default `InboundServer`, not by
             // the route.
             authorizations: HashMap::new(),
-            statuses: vec![],
             creation_timestamp: None,
         }
     }
@@ -197,62 +176,3 @@ impl PartialEq for QueryParamMatch {
 }
 
 impl Eq for QueryParamMatch {}
-
-impl Status {
-    pub fn collect_from(status: Option<gateway::HttpRouteStatus>) -> Vec<Self> {
-        status
-            .into_iter()
-            .flat_map(|status| {
-                status
-                    .inner
-                    .parents
-                    .iter()
-                    // todo: filter out parent statuses that are not set by
-                    // the status controller. `controller_name` is something
-                    // we could expect
-                    .filter_map(Self::from_parent_status)
-                    .collect::<Vec<_>>()
-            })
-            .collect()
-    }
-
-    fn from_parent_status(status: &gateway::RouteParentStatus) -> Option<Self> {
-        // todo: we should match `controller_name` here since we know that the
-        // status controller will include it's name as part of setting the
-        // status.
-
-        // Only match parent statuses that belong to resources of
-        // `kind: Server`.
-        match status.parent_ref.kind.as_deref() {
-            Some("Server") => (),
-            _ => return None,
-        }
-
-        let conditions = status
-            .conditions
-            .iter()
-            .filter_map(|condition| {
-                let type_ = match condition.type_.as_ref() {
-                    "Accepted" => ConditionType::Accepted,
-                    "ResolvedRefs" => ConditionType::ResolvedRefs,
-                    // todo: Handle error here when there is an unexpected
-                    // type
-                    _ => return None,
-                };
-                let status = match condition.status.as_ref() {
-                    "True" => true,
-                    "False" => false,
-                    // todo: Handle error here when there is an unexpected
-                    // value
-                    _ => return None,
-                };
-                Some(Condition { type_, status })
-            })
-            .collect();
-
-        Some(Status {
-            parent: status.parent_ref.name.to_string(),
-            conditions,
-        })
-    }
-}

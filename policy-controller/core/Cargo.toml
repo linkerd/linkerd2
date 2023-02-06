@@ -12,6 +12,5 @@ async-trait = "0.1"
 chrono = { version = "0.4.23", default_features = false }
 futures = { version = "0.3", default-features = false, features = ["std"] }
 http = "0.2"
-linkerd-policy-controller-k8s-api = { path = "../k8s/api" }
 ipnet = "2"
 regex = "1"

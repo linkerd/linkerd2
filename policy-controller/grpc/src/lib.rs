@@ -392,7 +392,6 @@ fn to_http_route(
         hostnames,
         rules,
         authorizations,
-        statuses: _,
         creation_timestamp: _,
     }: InboundHttpRoute,
     cluster_networks: &[IpNet],
