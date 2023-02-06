@@ -5,6 +5,7 @@
 {{- $tree := deepCopy . }}
 {{ $_ := set $tree.Values.proxy "workloadKind" "deployment" -}}
 {{ $_ := set $tree.Values.proxy "component" "linkerd-proxy-injector" -}}
+{{ $_ := set $tree.Values.proxy "waitBeforeExitSeconds" 0 -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
