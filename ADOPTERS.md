@@ -65,6 +65,7 @@
 - [p3r](https://www.p3r.one/)
 - [Parklab](https://parklab.app/)
 - [Paybase](https://paybase.io/)
+- [Pento](https://pento.io/)
 - [Personio](https://www.personio.com/)
 - [PlayStudios Asia](https://www.playstudios.asia)
 - [PlexTrac](https://plextrac.com)
