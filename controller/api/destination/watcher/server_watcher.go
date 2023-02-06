@@ -44,7 +44,7 @@ type ServerUpdateListener interface {
 var serverMetrics = promauto.NewGaugeVec(
 	prometheus.GaugeOpts{
 		Name: "server_port_subscribers",
-		Help: "Number of subscribers to changes to Servers associated to a port in a pod.",
+		Help: "Number of subscribers to Server changes associated with a pod's port.",
 	},
 	[]string{"namespace", "name", "port"},
 )

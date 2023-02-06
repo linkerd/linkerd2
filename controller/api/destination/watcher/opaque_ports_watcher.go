@@ -122,11 +122,15 @@ func (opw *OpaquePortsWatcher) Unsubscribe(id ServiceID, listener OpaquePortsUpd
 		}
 	}
 
-	if len(ss.listeners) == 0 {
+	labels := id.Labels()
+	if len(ss.listeners) > 0 {
+		opw.subscribersGauge.With(labels).Set(float64(len(ss.listeners)))
+	} else {
+		if !opw.subscribersGauge.Delete(labels) {
+			opw.log.Warnf("unable to delete service_subscribers metric with labels %s", labels)
+		}
 		delete(opw.subscriptions, id)
 	}
-
-	opw.subscribersGauge.With(id.Labels()).Set(float64(len(ss.listeners)))
 }
 
 func (opw *OpaquePortsWatcher) addService(obj interface{}) {
