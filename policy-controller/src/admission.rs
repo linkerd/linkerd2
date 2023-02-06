@@ -6,10 +6,12 @@ use crate::k8s::{
         NetworkAuthentication, NetworkAuthenticationSpec, Server, ServerAuthorization,
         ServerAuthorizationSpec, ServerSpec,
     },
+    Service,
 };
 use anyhow::{anyhow, bail, ensure, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
+use k8s_gateway_api::ParentReference;
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_core as core;
@@ -456,16 +458,16 @@ impl Validate<HttpRouteSpec> for Admission {
             }
         }
 
-        // Ensure that the `HTTPRoute` targets a `Server` as its parent ref
-        let all_target_servers = spec
+        // Ensure that the `HTTPRoute` targets a `Server` or `Service` as its parent ref
+        let all_valid_targets = spec
             .inner
             .parent_refs
             .iter()
             .flatten()
-            .all(httproute::parent_ref_targets_kind::<Server>);
+            .all(parent_ref_kind_is_valid);
         ensure!(
-            all_target_servers,
-            "policy.linkerd.io HTTPRoutes must target only Server resources"
+            all_valid_targets,
+            "policy.linkerd.io HTTPRoutes must target only Server or Service resources"
         );
 
         // Validate the rules in this spec.
@@ -484,4 +486,9 @@ impl Validate<HttpRouteSpec> for Admission {
 
         Ok(())
     }
+}
+
+fn parent_ref_kind_is_valid(parent_ref: &ParentReference) -> bool {
+    httproute::parent_ref_targets_kind::<Server>(parent_ref)
+        || httproute::parent_ref_targets_kind::<Service>(parent_ref)
 }

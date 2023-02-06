@@ -1,5 +1,26 @@
 # Changes
 
+## edge-23.1.2
+
+This edge release fixes a memory leak in the Linkerd control plane that could
+occur when many many pods were created. It also adds a number of new
+configuration options Multicluster extension's gateway.
+
+* Added additional shortnames for Linkerd policy resources (thanks @javaducky!)
+* Added new configuration options for the multicluster gateway:
+  * `gateway.deploymentAnnotations`
+  * `gateway.terminationGracePeriodSeconds` (thanks @bunnybilou!)
+  * `gateway.loadBalancerSourceRanges` (thanks @Tyrion85!)
+* Added an optional AuthorizationPolicy to authorize Grafana to Prometheus
+  in the Viz extension
+* Fixed the link to the Jaeger dashboard the in viz dashboard (thanks @eugenegoncharuk!)
+* Fixed an issue where control plane components could fail to start on large
+  clusters because of failing readiness probes while caches were being
+  initialized
+* Fixed a memory leak in the Destination controller
+* Fixed an issue where PodSecurityPolicies could reject Linkerd control plane
+  components due to the `seccompProfile`
+
 ## edge-23.1.1
 
 This edge release fixes a caching issue in the destination controller, converts

@@ -46,4 +46,7 @@ subjects:
 - kind: ServiceAccount
   name: tap-injector
   namespace: {{.Release.Namespace}}
+- kind: ServiceAccount
+  name: namespace-metadata
+  namespace: {{.Release.Namespace}}
 {{ end -}}

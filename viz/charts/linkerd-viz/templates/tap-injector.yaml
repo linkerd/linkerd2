@@ -117,6 +117,9 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: tap-injector
       volumes:
       - name: tls

@@ -10,7 +10,7 @@ pub use k8s_openapi::{
         self,
         core::v1::{
             Container, ContainerPort, HTTPGetAction, Namespace, Node, NodeSpec, Pod, PodSpec,
-            PodStatus, Probe, ServiceAccount,
+            PodStatus, Probe, Service, ServiceAccount,
         },
     },
     apimachinery::{

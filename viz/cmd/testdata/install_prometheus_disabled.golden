@@ -415,6 +415,9 @@ spec:
           runAsUser: 2103
           seccompProfile:
             type: RuntimeDefault
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: metrics-api
 ---
 apiVersion: policy.linkerd.io/v1beta1
@@ -616,6 +619,9 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: tap
       volumes:
       - name: tls
@@ -818,6 +824,9 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: tap-injector
       volumes:
       - name: tls
@@ -980,6 +989,9 @@ spec:
           runAsUser: 2103
           seccompProfile:
             type: RuntimeDefault
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: web
 ---
 apiVersion: linkerd.io/v1alpha2

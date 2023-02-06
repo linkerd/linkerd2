@@ -78,6 +78,9 @@ spec:
         {{- if .Values.webhook.resources -}}
         {{- include "partials.resources" .Values.webhook.resources | nindent 8 }}
         {{- end }}
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: jaeger-injector
       volumes:
       - name: tls

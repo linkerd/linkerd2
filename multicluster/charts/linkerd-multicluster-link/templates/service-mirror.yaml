@@ -137,6 +137,9 @@ spec:
         {{- with .Values.resources }}
         resources: {{ toYaml . | nindent 10 }}
         {{- end }}
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: linkerd-service-mirror-{{.Values.targetClusterName}}
       {{- with .Values.nodeSelector }}
       nodeSelector: {{ toYaml . | nindent 8 }}

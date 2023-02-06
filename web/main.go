@@ -45,6 +45,17 @@ func main() {
 	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, os.Args[1:])
+
+	ready := false
+	adminServer := admin.NewServer(*metricsAddr, *enablePprof, &ready)
+
+	go func() {
+		log.Infof("starting admin server on %s", *metricsAddr)
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Errorf("failed to start web admin server: %s", err)
+		}
+	}()
+
 	ctx := context.Background()
 
 	_, _, err := net.SplitHostPort(*vizAPIAddr) // Verify vizAPIAddr is of the form host:port.
@@ -106,14 +117,7 @@ func main() {
 		}
 	}()
 
-	adminServer := admin.NewServer(*metricsAddr, *enablePprof)
-
-	go func() {
-		log.Infof("starting admin server on %s", *metricsAddr)
-		if err := adminServer.ListenAndServe(); err != nil {
-			log.Errorf("failed to start web admin server: %s", err)
-		}
-	}()
+	ready = true
 
 	<-stop
 
