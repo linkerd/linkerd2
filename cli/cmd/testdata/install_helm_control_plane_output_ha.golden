@@ -198,6 +198,12 @@ rules:
       - get
       - list
       - watch
+  - apiGroups:
+      - policy.linkerd.io
+    resources:
+      - httproutes/status
+    verbs:
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -215,39 +221,6 @@ subjects:
   - kind: ServiceAccount
     name: linkerd-destination
     namespace: linkerd-dev
----
- apiVersion: rbac.authorization.k8s.io/v1
- kind: ClusterRole
- metadata:
-   name: linkerd-policy-status
-   labels:
-     app.kubernetes.io/part-of: Linkerd
-     linkerd.io/control-plane-component: destination
-     linkerd.io/control-plane-ns: linkerd-dev
- rules:
-   - apiGroups:
-       - policy.linkerd.io
-     resources:
-       - httproutes/status
-     verbs:
-       - patch
----
- apiVersion: rbac.authorization.k8s.io/v1
- kind: ClusterRoleBinding
- metadata:
-   name: linkerd-destination-policy-status
-   labels:
-     app.kubernetes.io/part-of: Linkerd
-     linkerd.io/control-plane-component: destination
-     linkerd.io/control-plane-ns: linkerd-dev
- roleRef:
-   apiGroup: rbac.authorization.k8s.io
-   kind: ClusterRole
-   name: linkerd-policy-status
- subjects:
-   - kind: ServiceAccount
-     name: linkerd-destination
-     namespace: linkerd-dev
 ---
 # Source: linkerd-control-plane/templates/heartbeat-rbac.yaml
 ---

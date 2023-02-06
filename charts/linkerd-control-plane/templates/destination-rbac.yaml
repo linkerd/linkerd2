@@ -213,11 +213,11 @@ rules:
       - list
       - watch
   - apiGroups:
-       - policy.linkerd.io
-     resources:
-       - httproutes/status
-     verbs:
-       - patch
+      - policy.linkerd.io
+    resources:
+      - httproutes/status
+    verbs:
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
