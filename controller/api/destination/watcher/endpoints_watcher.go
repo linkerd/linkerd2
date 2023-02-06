@@ -58,8 +58,9 @@ type (
 
 	// AddressSet is a set of Address, indexed by ID.
 	AddressSet struct {
-		Addresses map[ID]Address
-		Labels    map[string]string
+		Addresses          map[ID]Address
+		Labels             map[string]string
+		LocalTrafficPolicy bool
 	}
 
 	portAndHostname struct {
@@ -94,6 +95,7 @@ type (
 		log                  *logging.Entry
 		k8sAPI               *k8s.API
 		enableEndpointSlices bool
+		localTrafficPolicy   bool
 		ports                map[portAndHostname]*portPublisher
 		// All access to the servicePublisher and its portPublishers is explicitly synchronized by
 		// this mutex.
@@ -117,6 +119,7 @@ type (
 		addresses            AddressSet
 		listeners            []EndpointUpdateListener
 		metrics              endpointsMetrics
+		localTrafficPolicy   bool
 	}
 
 	// EndpointUpdateListener is the interface that subscribers must implement.
@@ -474,10 +477,21 @@ func (sp *servicePublisher) updateService(newService *corev1.Service) {
 	defer sp.Unlock()
 	sp.log.Debugf("Updating service for %s", sp.id)
 
+	// set localTrafficPolicy to true if InternalTrafficPolicy is set to local
+	if newService.Spec.InternalTrafficPolicy != nil {
+		sp.localTrafficPolicy = *newService.Spec.InternalTrafficPolicy == corev1.ServiceInternalTrafficPolicyLocal
+	} else {
+		sp.localTrafficPolicy = false
+	}
+
 	for key, port := range sp.ports {
 		newTargetPort := getTargetPort(newService, key.port)
 		if newTargetPort != port.targetPort {
 			port.updatePort(newTargetPort)
+		}
+		// update service endpoints with new localTrafficPolicy
+		if port.localTrafficPolicy != sp.localTrafficPolicy {
+			port.updateLocalTrafficPolicy(sp.localTrafficPolicy)
 		}
 	}
 
@@ -541,6 +555,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 		log:                  log,
 		metrics:              endpointsVecs.newEndpointsMetrics(sp.metricsLabels(srcPort, hostname)),
 		enableEndpointSlices: sp.enableEndpointSlices,
+		localTrafficPolicy:   sp.localTrafficPolicy,
 	}
 
 	if port.enableEndpointSlices {
@@ -620,6 +635,7 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 	newAddressSet := pp.endpointSliceToAddresses(slice)
 	for id, addr := range pp.addresses.Addresses {
 		newAddressSet.Addresses[id] = addr
+		newAddressSet.LocalTrafficPolicy = pp.localTrafficPolicy
 	}
 
 	add, _ := diffAddresses(pp.addresses, newAddressSet)
@@ -638,8 +654,9 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 
 func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, newSlice *discovery.EndpointSlice) {
 	updatedAddressSet := AddressSet{
-		Addresses: make(map[ID]Address),
-		Labels:    pp.addresses.Labels,
+		Addresses:          make(map[ID]Address),
+		Labels:             pp.addresses.Labels,
+		LocalTrafficPolicy: pp.localTrafficPolicy,
 	}
 
 	for id, address := range pp.addresses.Addresses {
@@ -712,8 +729,9 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 	resolvedPort := pp.resolveESTargetPort(es.Ports)
 	if resolvedPort == undefinedEndpointPort {
 		return AddressSet{
-			Labels:    metricLabels(es),
-			Addresses: make(map[ID]Address),
+			Labels:             metricLabels(es),
+			Addresses:          make(map[ID]Address),
+			LocalTrafficPolicy: pp.localTrafficPolicy,
 		}
 	}
 
@@ -777,8 +795,9 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 
 	}
 	return AddressSet{
-		Addresses: addresses,
-		Labels:    metricLabels(es),
+		Addresses:          addresses,
+		Labels:             metricLabels(es),
+		LocalTrafficPolicy: pp.localTrafficPolicy,
 	}
 }
 
@@ -946,6 +965,14 @@ func (pp *portPublisher) resolveTargetPort(subset corev1.EndpointSubset) Port {
 		}
 	}
 	return undefinedEndpointPort
+}
+
+func (pp *portPublisher) updateLocalTrafficPolicy(localTrafficPolicy bool) {
+	pp.localTrafficPolicy = localTrafficPolicy
+	pp.addresses.LocalTrafficPolicy = localTrafficPolicy
+	for _, listener := range pp.listeners {
+		listener.Add(pp.addresses)
+	}
 }
 
 func (pp *portPublisher) updatePort(targetPort namedPort) {
@@ -1144,8 +1171,9 @@ func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSe
 		}
 	}
 	add = AddressSet{
-		Addresses: addAddresses,
-		Labels:    newAddresses.Labels,
+		Addresses:          addAddresses,
+		Labels:             newAddresses.Labels,
+		LocalTrafficPolicy: newAddresses.LocalTrafficPolicy,
 	}
 	remove = AddressSet{
 		Addresses: removeAddresses,

@@ -20,10 +20,11 @@ import (
 )
 
 type bufferingEndpointListener struct {
-	added             []string
-	removed           []string
-	noEndpointsCalled bool
-	noEndpointsExist  bool
+	added              []string
+	removed            []string
+	localTrafficPolicy bool
+	noEndpointsCalled  bool
+	noEndpointsExist   bool
 	sync.Mutex
 }
 
@@ -78,6 +79,7 @@ func (bel *bufferingEndpointListener) Add(set AddressSet) {
 	for _, address := range set.Addresses {
 		bel.added = append(bel.added, addressString(address))
 	}
+	bel.localTrafficPolicy = set.LocalTrafficPolicy
 }
 
 func (bel *bufferingEndpointListener) Remove(set AddressSet) {
@@ -86,6 +88,7 @@ func (bel *bufferingEndpointListener) Remove(set AddressSet) {
 	for _, address := range set.Addresses {
 		bel.removed = append(bel.removed, addressString(address))
 	}
+	bel.localTrafficPolicy = set.LocalTrafficPolicy
 }
 
 func (bel *bufferingEndpointListener) NoEndpoints(exists bool) {
@@ -708,6 +711,7 @@ func TestEndpointsWatcherWithEndpointSlices(t *testing.T) {
 		expectedNoEndpoints              bool
 		expectedNoEndpointsServiceExists bool
 		expectedError                    bool
+		expectedLocalTrafficPolicy       bool
 	}{
 		{
 			serviceType: "local services with EndpointSlice",
@@ -738,7 +742,8 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-  - port: 8989`,
+  - port: 8989
+  internalTrafficPolicy: Local`,
 				`
 addressType: IPv4
 apiVersion: discovery.k8s.io/v1
@@ -836,6 +841,7 @@ status:
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
 			expectedError:                    false,
+			expectedLocalTrafficPolicy:       true,
 		},
 		{
 			serviceType: "local services with missing addresses and EndpointSlice",
@@ -1299,6 +1305,10 @@ status:
 			}
 			if !tt.expectedError && err != nil {
 				t.Fatalf("Expected no error, got [%s]", err)
+			}
+
+			if listener.localTrafficPolicy != tt.expectedLocalTrafficPolicy {
+				t.Fatalf("Expected localTrafficPolicy [%v], got [%v]", tt.expectedLocalTrafficPolicy, listener.localTrafficPolicy)
 			}
 
 			listener.ExpectAdded(tt.expectedAddresses, t)

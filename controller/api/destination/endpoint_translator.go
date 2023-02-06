@@ -31,6 +31,7 @@ type endpointTranslator struct {
 	identityTrustDomain string
 	enableH2Upgrade     bool
 	nodeTopologyZone    string
+	nodeName            string
 	defaultOpaquePorts  map[uint32]struct{}
 
 	availableEndpoints watcher.AddressSet
@@ -70,6 +71,7 @@ func newEndpointTranslator(
 		identityTrustDomain,
 		enableH2Upgrade,
 		nodeTopologyZone,
+		srcNodeName,
 		defaultOpaquePorts,
 		availableEndpoints,
 		filteredSnapshot,
@@ -103,8 +105,9 @@ func (et *endpointTranslator) Remove(set watcher.AddressSet) {
 
 func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 	et.availableEndpoints = watcher.AddressSet{
-		Addresses: et.availableEndpoints.Addresses,
-		Labels:    set.Labels,
+		Addresses:          et.availableEndpoints.Addresses,
+		Labels:             set.Labels,
+		LocalTrafficPolicy: set.LocalTrafficPolicy,
 	}
 
 	filtered := et.filterAddresses()
@@ -124,8 +127,26 @@ func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 // topology zone. The client will only receive endpoints with the same
 // consumption zone as the node. An endpoints consumption zone is set
 // by its Hints field and can be different than its actual Topology zone.
+// when service.pec.internalTrafficPolicy is set to local, Topology Aware
+// Hints are not used.
 func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 	filtered := make(map[watcher.ID]watcher.Address)
+	// If service.pec.internalTrafficPolicy is set to local, filter and return the addresses
+	// for local node only
+	if et.availableEndpoints.LocalTrafficPolicy {
+		et.log.Debugf("Filtering through addresses that should be consumed by node %s", et.nodeName)
+		for id, address := range et.availableEndpoints.Addresses {
+			if address.Pod != nil && address.Pod.Spec.NodeName == et.nodeName {
+				filtered[id] = address
+			}
+		}
+		et.log.Debugf("Filtered from %d to %d addresses", len(et.availableEndpoints.Addresses), len(filtered))
+		return watcher.AddressSet{
+			Addresses:          filtered,
+			Labels:             et.availableEndpoints.Labels,
+			LocalTrafficPolicy: et.availableEndpoints.LocalTrafficPolicy,
+		}
+	}
 	// If any address does not have a hint, then all hints are ignored and all
 	// available addresses are returned. This replicates kube-proxy behavior
 	// documented in the KEP: https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/2433-topology-aware-hints/README.md#kube-proxy
@@ -135,8 +156,9 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 				filtered[k] = v
 			}
 			return watcher.AddressSet{
-				Addresses: filtered,
-				Labels:    et.availableEndpoints.Labels,
+				Addresses:          filtered,
+				Labels:             et.availableEndpoints.Labels,
+				LocalTrafficPolicy: et.availableEndpoints.LocalTrafficPolicy,
 			}
 		}
 	}
@@ -154,8 +176,9 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 	if len(filtered) > 0 {
 		et.log.Debugf("Filtered from %d to %d addresses", len(et.availableEndpoints.Addresses), len(filtered))
 		return watcher.AddressSet{
-			Addresses: filtered,
-			Labels:    et.availableEndpoints.Labels,
+			Addresses:          filtered,
+			Labels:             et.availableEndpoints.Labels,
+			LocalTrafficPolicy: et.availableEndpoints.LocalTrafficPolicy,
 		}
 	}
 
@@ -165,8 +188,9 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 		filtered[k] = v
 	}
 	return watcher.AddressSet{
-		Addresses: filtered,
-		Labels:    et.availableEndpoints.Labels,
+		Addresses:          filtered,
+		Labels:             et.availableEndpoints.Labels,
+		LocalTrafficPolicy: et.availableEndpoints.LocalTrafficPolicy,
 	}
 }
 
