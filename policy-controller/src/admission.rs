@@ -318,7 +318,7 @@ impl Validate<ServerSpec> for Admission {
             .await?;
         for server in servers.items.into_iter() {
             let server_name = server.name_unchecked();
-            if server_name == name
+            if server_name != name
                 && server.spec.port == spec.port
                 && Self::overlaps(&server.spec.pod_selector, &spec.pod_selector)
             {
