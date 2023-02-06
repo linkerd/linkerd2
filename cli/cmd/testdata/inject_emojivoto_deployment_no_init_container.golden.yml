@@ -168,6 +168,13 @@ spec:
         - -v
         image: gcr.io/google_containers/pause:3.2
         name: noop
+        resources:
+          limits:
+            cpu: 50m
+            memory: 10Mi
+          requests:
+            cpu: 50m
+            memory: 10Mi
         securityContext:
           runAsUser: 65534
       volumes:

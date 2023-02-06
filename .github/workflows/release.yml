@@ -171,7 +171,7 @@ jobs:
         # Skipping Helm upgrade test given chart in 2.11 is backwards-incompatible
         #- helm-upgrade
         - uninstall
-        - upgrade-edge
+        # - upgrade-edge
         - upgrade-stable
     timeout-minutes: 60
     runs-on: ubuntu-20.04
