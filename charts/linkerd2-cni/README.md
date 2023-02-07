@@ -29,7 +29,7 @@ Kubernetes: `>=1.21.0-0`
 | extraInitContainers | list | `[]` | Add additional initContainers to the daemonset |
 | ignoreInboundPorts | string | `""` | Default set of inbound ports to skip via iptables |
 | ignoreOutboundPorts | string | `""` | Default set of outbound ports to skip via iptables |
-| image.imagePullPolicy | string | `"IfNotPresent"` |  |
+| image.imagePullPolicy | string | `"IfNotPresent"` | Pull Policy for the linkerd-cni container |
 | image.name | string | `"cr.l5d.io/linkerd/cni-plugin"` | Docker image for the CNI plugin |
 | image.version | string | `"v1.0.0"` | Tag for the CNI container Docker image |
 | imagePullSecrets | string | `nil` |  |
