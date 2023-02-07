@@ -1115,7 +1115,6 @@ dependencies = [
  "kubert",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
- "linkerd-policy-controller-k8s-index",
  "parking_lot",
  "serde_json",
  "thiserror",
