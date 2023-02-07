@@ -35,9 +35,6 @@ const (
 
 const endpointTargetRefPod = "Pod"
 
-// TODO: prom metrics for all the queues/caches
-// https://github.com/linkerd/linkerd2/issues/2204
-
 type (
 	// Address represents an individual port on a specific endpoint.
 	// This endpoint might be the result of a the existence of a pod
