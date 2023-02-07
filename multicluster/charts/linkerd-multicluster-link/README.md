@@ -32,6 +32,7 @@ Kubernetes: `>=1.21.0-0`
 | enablePSP | bool | `false` | Create RoleBindings to associate ServiceAccount of target cluster Service Mirror to the control plane PSP resource. This requires that `enabledPSP` is set to true on the extension and control plane install. Note PSP has been deprecated since k8s v1.21 |
 | gateway.probe.port | int | `4191` | The port used for liveliness probing |
 | logLevel | string | `"info"` | Log level for the Multicluster components |
+| mirroredServiceNameTemplate | string | `"{{.remoteName}}-{{.targetClusterName}}"` | Go template string specifying the local name of mirrored services. |
 | nodeSelector | object | `{}` | Node selectors for the Service mirror pod |
 | podLabels | object | `{}` | Additional labels to add to all pods |
 | resources | object | `{}` | Resources for the Service mirror container |

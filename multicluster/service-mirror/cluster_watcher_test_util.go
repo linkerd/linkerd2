@@ -36,10 +36,11 @@ var (
 )
 
 type testEnvironment struct {
-	events          []interface{}
-	remoteResources []string
-	localResources  []string
-	link            multicluster.Link
+	events                      []interface{}
+	remoteResources             []string
+	localResources              []string
+	link                        multicluster.Link
+	mirroredServiceNameTemplate string
 }
 
 func (te *testEnvironment) runEnvironment(watcherQueue workqueue.RateLimitingInterface) (*k8s.API, error) {
@@ -54,16 +55,23 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.RateLimitingInt
 	remoteAPI.Sync(nil)
 	localAPI.Sync(nil)
 
+	mirroredServiceNameTemplate := te.mirroredServiceNameTemplate
+
+	if mirroredServiceNameTemplate == "" {
+		mirroredServiceNameTemplate = "{{.remoteName}}-{{.targetClusterName}}"
+	}
+
 	watcher := RemoteClusterServiceWatcher{
-		link:                    &te.link,
-		remoteAPIClient:         remoteAPI,
-		localAPIClient:          localAPI,
-		stopper:                 nil,
-		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
-		eventsQueue:             watcherQueue,
-		requeueLimit:            0,
-		gatewayAlive:            true,
-		headlessServicesEnabled: true,
+		link:                        &te.link,
+		remoteAPIClient:             remoteAPI,
+		localAPIClient:              localAPI,
+		stopper:                     nil,
+		log:                         logging.WithFields(logging.Fields{"cluster": clusterName}),
+		eventsQueue:                 watcherQueue,
+		requeueLimit:                0,
+		gatewayAlive:                true,
+		headlessServicesEnabled:     true,
+		mirroredServiceNameTemplate: mirroredServiceNameTemplate,
 	}
 
 	for _, ev := range te.events {
@@ -359,7 +367,7 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 					Port:     666,
 				},
 			}),
-		endpointMirrorAsYaml("pod-0", "service-two-remote", "eptest", "333", []corev1.ServicePort{
+		endpointMirrorAsYaml("pod-0-remote", "pod-0", "service-two-remote", "eptest", "333", []corev1.ServicePort{
 			{
 				Name:     "port1",
 				Protocol: "TCP",
@@ -801,7 +809,7 @@ func headlessMirrorService(name, namespace, resourceVersion string, ports []core
 	return svc
 }
 
-func endpointMirrorService(hostname, rootName, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
+func endpointMirrorService(serviceName, hostname, rootName, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
 	annotations := make(map[string]string)
 	annotations[consts.RemoteResourceVersionAnnotation] = resourceVersion
 	annotations[consts.RemoteServiceFqName] = fmt.Sprintf("%s.%s.%s.svc.cluster.local", hostname, strings.Replace(rootName, "-remote", "", 1), namespace)
@@ -812,7 +820,7 @@ func endpointMirrorService(hostname, rootName, namespace, resourceVersion string
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", hostname, clusterName),
+			Name:      serviceName,
 			Namespace: namespace,
 			Labels: map[string]string{
 
@@ -848,8 +856,8 @@ func headlessMirrorAsYaml(name, namespace, resourceVersion string, ports []corev
 	return string(bytes)
 }
 
-func endpointMirrorAsYaml(hostname, rootName, namespace, resourceVersion string, ports []corev1.ServicePort) string {
-	svc := endpointMirrorService(hostname, rootName, namespace, resourceVersion, ports)
+func endpointMirrorAsYaml(serviceName, hostname, rootName, namespace, resourceVersion string, ports []corev1.ServicePort) string {
+	svc := endpointMirrorService(serviceName, hostname, rootName, namespace, resourceVersion, ports)
 
 	bytes, err := yaml.Marshal(svc)
 	if err != nil {
@@ -951,9 +959,8 @@ func endpoints(name, namespace, gatewayIP string, gatewayIdentity string, ports 
 	return endpoints
 }
 
-func endpointMirrorEndpoints(rootName, namespace, hostname, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
-	localName := fmt.Sprintf("%s-%s", hostname, clusterName)
-	ep := endpoints(localName, namespace, gatewayIP, gatewayIdentity, ports)
+func endpointMirrorEndpoints(endPointsName, rootName, namespace, hostname, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
+	ep := endpoints(endPointsName, namespace, gatewayIP, gatewayIdentity, ports)
 
 	ep.Annotations[consts.RemoteServiceFqName] = fmt.Sprintf("%s.%s.%s.svc.cluster.local", hostname, strings.Replace(rootName, "-remote", "", 1), namespace)
 	ep.Labels[consts.MirroredHeadlessSvcNameLabel] = rootName
@@ -1079,7 +1086,7 @@ func headlessMirrorEndpointsAsYaml(name, namespace, hostname, hostIP, gatewayIde
 }
 
 func endpointMirrorEndpointsAsYaml(name, namespace, hostname, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) string {
-	ep := endpointMirrorEndpoints(name, namespace, hostname, gatewayIP, gatewayIdentity, ports)
+	ep := endpointMirrorEndpoints(hostname + "-" + clusterName, name, namespace, hostname, gatewayIP, gatewayIdentity, ports)
 
 	bytes, err := yaml.Marshal(ep)
 	if err != nil {

@@ -9,6 +9,8 @@ podLabels: {}
 commonLabels: {}
 # -- Toggle support for mirroring headless services
 enableHeadlessServices: false
+# -- Go template string specifying the local name of mirrored services.
+mirroredServiceNameTemplate: "{{.remoteName}}-{{.targetClusterName}}"
 gateway:
   probe:
     # -- The port used for liveliness probing

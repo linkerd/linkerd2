@@ -147,13 +147,8 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 							Port:     666,
 						},
 					}),
-				endpointMirrorService(
-					"pod-0",
-					"service-one-remote",
-					"ns2",
-					"112",
-					[]corev1.ServicePort{
-						{
+				endpointMirrorService("pod-0-remote", "pod-0", "service-one-remote", "ns2", "112", []corev1.ServicePort{
+					{
 							Name:     "port1",
 							Protocol: "TCP",
 							Port:     555,
@@ -179,13 +174,121 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 						Protocol: "TCP",
 					},
 				}),
-				endpointMirrorEndpoints(
-					"service-one-remote",
+				endpointMirrorEndpoints("pod-0-remote", "service-one-remote", "ns2", "pod-0", "192.0.2.129", "gateway-identity", []corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Port:     889,
+							Protocol: "TCP",
+						},
+						{
+							Name:     "port2",
+							Port:     889,
+							Protocol: "TCP",
+						},
+					}),
+			},
+		},
+	} {
+		tc := tt // pin
+		tc.run(t)
+	}
+}
+
+func TestRemoteServiceCreatedMirroringWithCustomName(t *testing.T) {
+
+	for _, tt := range []mirroringTestCase{
+		{
+			description: "create service and endpoints when gateway can be resolved",
+			environment: func() *testEnvironment {
+				env := createExportedService
+				env.mirroredServiceNameTemplate = "{{.remoteName}}"
+				return env
+			}(),
+			expectedLocalServices: []*corev1.Service{
+				mirrorService(
+					"service-one",
+					"ns1",
+					"111",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					}),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{
+				endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{
+					{
+						Name:     "port1",
+						Port:     888,
+						Protocol: "TCP",
+					},
+					{
+						Name:     "port2",
+						Port:     888,
+						Protocol: "TCP",
+					},
+				}),
+			},
+		},
+		{
+			description: "create headless service and endpoints when gateway can be resolved",
+			environment: func() *testEnvironment {
+				env := createExportedHeadlessService
+				env.mirroredServiceNameTemplate = "{{.remoteName}}"
+				return env
+			}(),
+			expectedLocalServices: []*corev1.Service{
+				headlessMirrorService(
+					"service-one",
 					"ns2",
-					"pod-0",
-					"192.0.2.129",
-					"gateway-identity",
-					[]corev1.EndpointPort{
+					"111",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					}),
+				endpointMirrorService("pod-0", "pod-0", "service-one", "ns2", "112", []corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					},
+				),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{
+				headlessMirrorEndpoints("service-one", "ns2", "pod-0", "", "gateway-identity", []corev1.EndpointPort{
+					{
+						Name:     "port1",
+						Port:     555,
+						Protocol: "TCP",
+					},
+					{
+						Name:     "port2",
+						Port:     666,
+						Protocol: "TCP",
+					},
+				}),
+				endpointMirrorEndpoints("pod-0", "service-one", "ns2", "pod-0", "192.0.2.129", "gateway-identity", []corev1.EndpointPort{
 						{
 							Name:     "port1",
 							Port:     889,
@@ -234,15 +337,16 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 			ProbeSpec:           defaultProbeSpec,
 			Selector:            *defaultSelector,
 		},
-		remoteAPIClient:         remoteAPI,
-		localAPIClient:          localAPI,
-		stopper:                 nil,
-		recorder:                eventRecorder,
-		log:                     logging.WithFields(logging.Fields{"cluster": clusterName}),
-		eventsQueue:             q,
-		requeueLimit:            0,
-		gatewayAlive:            true,
-		headlessServicesEnabled: true,
+		remoteAPIClient:             remoteAPI,
+		localAPIClient:              localAPI,
+		stopper:                     nil,
+		recorder:                    eventRecorder,
+		log:                         logging.WithFields(logging.Fields{"cluster": clusterName}),
+		eventsQueue:                 q,
+		requeueLimit:                0,
+		gatewayAlive:                true,
+		headlessServicesEnabled:     true,
+		mirroredServiceNameTemplate: "{{.remoteName}}-{{.targetClusterName}}",
 	}
 
 	q.Add(&RemoteServiceCreated{
@@ -322,12 +426,13 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 			ProbeSpec:           defaultProbeSpec,
 			Selector:            *defaultSelector,
 		},
-		remoteAPIClient: remoteAPI,
-		localAPIClient:  localAPI,
-		log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
-		eventsQueue:     events,
-		requeueLimit:    0,
-		gatewayAlive:    true,
+		remoteAPIClient:             remoteAPI,
+		localAPIClient:              localAPI,
+		log:                         logging.WithFields(logging.Fields{"cluster": clusterName}),
+		eventsQueue:                 events,
+		requeueLimit:                0,
+		gatewayAlive:                true,
+		mirroredServiceNameTemplate: "{{.remoteName}}-{{.targetClusterName}}",
 	}
 
 	events.Add(&RemoteServiceCreated{
@@ -469,12 +574,13 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 			ProbeSpec:           defaultProbeSpec,
 			Selector:            *defaultSelector,
 		},
-		remoteAPIClient: remoteAPI,
-		localAPIClient:  localAPI,
-		log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
-		eventsQueue:     events,
-		requeueLimit:    0,
-		gatewayAlive:    false,
+		remoteAPIClient:             remoteAPI,
+		localAPIClient:              localAPI,
+		log:                         logging.WithFields(logging.Fields{"cluster": clusterName}),
+		eventsQueue:                 events,
+		requeueLimit:                0,
+		gatewayAlive:                false,
+		mirroredServiceNameTemplate: "{{.remoteName}}-{{.targetClusterName}}",
 	}
 
 	events.Add(&RemoteServiceCreated{
@@ -610,7 +716,7 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 						Port:     666,
 					},
 				}),
-				endpointMirrorService("pod-0", "service-two-remote", "eptest", "333", []corev1.ServicePort{
+				endpointMirrorService("pod-0-remote", "pod-0", "service-two-remote", "eptest", "333", []corev1.ServicePort{
 					{
 						Name:     "port1",
 						Protocol: "TCP",
@@ -622,7 +728,7 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 						Port:     666,
 					},
 				}),
-				endpointMirrorService("pod-1", "service-two-remote", "eptest", "112", []corev1.ServicePort{
+				endpointMirrorService("pod-1-remote", "pod-1", "service-two-remote", "eptest", "112", []corev1.ServicePort{
 					{
 						Name:     "port1",
 						Protocol: "TCP",
@@ -654,13 +760,7 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 							Protocol: "TCP",
 						},
 					}),
-				endpointMirrorEndpoints(
-					"service-two-remote",
-					"eptest",
-					"pod-0",
-					"192.0.2.127",
-					"gateway-identity",
-					[]corev1.EndpointPort{
+				endpointMirrorEndpoints("pod-0-remote","service-two-remote", "eptest", "pod-0", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{
 						{
 							Name:     "port1",
 							Port:     888,
@@ -672,13 +772,7 @@ func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 							Protocol: "TCP",
 						},
 					}),
-				endpointMirrorEndpoints(
-					"service-two-remote",
-					"eptest",
-					"pod-1",
-					"192.0.2.127",
-					"gateway-identity",
-					[]corev1.EndpointPort{
+				endpointMirrorEndpoints("pod-1-remote", "service-two-remote", "eptest", "pod-1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{
 						{
 							Name:     "port1",
 							Port:     888,

@@ -40,6 +40,7 @@ func Main(args []string) {
 	namespace := cmd.String("namespace", "", "namespace containing Link and credentials Secret")
 	repairPeriod := cmd.Duration("endpoint-refresh-period", 1*time.Minute, "frequency to refresh endpoint resolution")
 	enableHeadlessSvc := cmd.Bool("enable-headless-services", false, "toggle support for headless service mirroring")
+	mirroredServiceNameTemplate := cmd.String("mirrored-service-name-template", "{{.remoteName}}-{{.targetClusterName}}", "Go template string specifying the local name of mirrored services")
 	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 
 	flags.ConfigureAndParse(cmd, args)
@@ -126,7 +127,7 @@ main:
 							if err != nil {
 								log.Errorf("Failed to load remote cluster credentials: %s", err)
 							}
-							err = restartClusterWatcher(ctx, link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc)
+							err = restartClusterWatcher(ctx, link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod, metrics, *enableHeadlessSvc, *mirroredServiceNameTemplate)
 							if err != nil {
 								// failed to restart cluster watcher; give a bit of slack
 								// and restart the link watch to give it another try
@@ -176,6 +177,7 @@ func restartClusterWatcher(
 	repairPeriod time.Duration,
 	metrics servicemirror.ProbeMetricVecs,
 	enableHeadlessSvc bool,
+	mirroredServiceNameTemplate string,
 ) error {
 	if clusterWatcher != nil {
 		clusterWatcher.Stop(false)
@@ -207,6 +209,7 @@ func restartClusterWatcher(
 		repairPeriod,
 		probeWorker.Liveness,
 		enableHeadlessSvc,
+		mirroredServiceNameTemplate,
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create cluster watcher: %w", err)

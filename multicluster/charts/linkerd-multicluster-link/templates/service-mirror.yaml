@@ -118,6 +118,9 @@ spec:
         {{- if .Values.enableHeadlessServices }}
         - -enable-headless-services
         {{- end }}
+        {{- if .Values.mirroredServiceNameTemplate }}
+        - -mirrored-service-name-template={{.Values.mirroredServiceNameTemplate}}
+        {{- end }}
         - -enable-pprof={{.Values.enablePprof | default false}}
         - {{.Values.targetClusterName}}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion}}

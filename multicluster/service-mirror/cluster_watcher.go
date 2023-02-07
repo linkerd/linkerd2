@@ -1,11 +1,13 @@
 package servicemirror
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"net"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -38,19 +40,20 @@ type (
 	// it can be requeued up to N times, to ensure that the failure is not due to some temporary network
 	// problems or general glitch in the Matrix.
 	RemoteClusterServiceWatcher struct {
-		serviceMirrorNamespace  string
-		link                    *multicluster.Link
-		remoteAPIClient         *k8s.API
-		localAPIClient          *k8s.API
-		stopper                 chan struct{}
-		recorder                record.EventRecorder
-		log                     *logging.Entry
-		eventsQueue             workqueue.RateLimitingInterface
-		requeueLimit            int
-		repairPeriod            time.Duration
-		gatewayAlive            bool
-		liveness                chan bool
-		headlessServicesEnabled bool
+		serviceMirrorNamespace      string
+		link                        *multicluster.Link
+		remoteAPIClient             *k8s.API
+		localAPIClient              *k8s.API
+		stopper                     chan struct{}
+		recorder                    record.EventRecorder
+		log                         *logging.Entry
+		eventsQueue                 workqueue.RateLimitingInterface
+		requeueLimit                int
+		repairPeriod                time.Duration
+		gatewayAlive                bool
+		liveness                    chan bool
+		headlessServicesEnabled     bool
+		mirroredServiceNameTemplate string
 	}
 
 	// RemoteServiceCreated is generated whenever a remote service is created Observing
@@ -158,6 +161,7 @@ func NewRemoteClusterServiceWatcher(
 	repairPeriod time.Duration,
 	liveness chan bool,
 	enableHeadlessSvc bool,
+	mirroredServiceNameTemplate string,
 ) (*RemoteClusterServiceWatcher, error) {
 	remoteAPI, err := k8s.InitializeAPIForConfig(ctx, cfg, false, k8s.Svc, k8s.Endpoint)
 	if err != nil {
@@ -189,26 +193,43 @@ func NewRemoteClusterServiceWatcher(
 			"cluster":    clusterName,
 			"apiAddress": cfg.Host,
 		}),
-		eventsQueue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		requeueLimit:            requeueLimit,
-		repairPeriod:            repairPeriod,
-		liveness:                liveness,
-		headlessServicesEnabled: enableHeadlessSvc,
+		eventsQueue:                 workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		requeueLimit:                requeueLimit,
+		repairPeriod:                repairPeriod,
+		liveness:                    liveness,
+		headlessServicesEnabled:     enableHeadlessSvc,
+		mirroredServiceNameTemplate: mirroredServiceNameTemplate,
 		// always instantiate the gatewayAlive=true to prevent unexpected service fail fast
 		gatewayAlive: true,
 	}, nil
 }
 
 func (rcsw *RemoteClusterServiceWatcher) mirroredResourceName(remoteName string) string {
-	return fmt.Sprintf("%s-%s", remoteName, rcsw.link.TargetClusterName)
+	data := map[string]interface{}{
+		"remoteName": 		 remoteName,
+		"targetClusterName": rcsw.link.TargetClusterName,
+	}
+
+	return format(rcsw.mirroredServiceNameTemplate, data)
 }
 
-func (rcsw *RemoteClusterServiceWatcher) targetResourceName(mirrorName string) string {
-	return strings.TrimSuffix(mirrorName, "-"+rcsw.link.TargetClusterName)
+func format(tmpl string, data map[string]interface{}) string {
+	t := template.Must(template.New("useless").Parse(tmpl))
+	buf := &bytes.Buffer{}
+	if err := t.Execute(buf, data); err != nil {
+		return ""
+	}
+	return buf.String()
 }
 
-func (rcsw *RemoteClusterServiceWatcher) originalResourceName(mirroredName string) string {
-	return strings.TrimSuffix(mirroredName, fmt.Sprintf("-%s", rcsw.link.TargetClusterName))
+func (rcsw *RemoteClusterServiceWatcher) targetResourceName(localService *corev1.Service) string {
+	parts := strings.Split(localService.ObjectMeta.Annotations[consts.RemoteServiceFqName], ".")
+	return parts[0]
+}
+
+func (rcsw *RemoteClusterServiceWatcher) originalResourceName(localService *corev1.Service) string {
+	parts := strings.Split(localService.ObjectMeta.Annotations[consts.RemoteServiceFqName], ".")
+	return parts[0]
 }
 
 // Provides labels for mirrored service.
@@ -288,7 +309,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices(ctx context.Con
 
 	var errors []error
 	for _, srv := range servicesOnLocalCluster {
-		_, err := rcsw.remoteAPIClient.Svc().Lister().Services(srv.Namespace).Get(rcsw.originalResourceName(srv.Name))
+		_, err := rcsw.remoteAPIClient.Svc().Lister().Services(srv.Namespace).Get(rcsw.originalResourceName(srv))
 		if err != nil {
 			if kerrors.IsNotFound(err) {
 				// service does not exist anymore. Need to delete
@@ -979,7 +1000,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		// endpoints for services like this, they'll always be set to empty.
 		if _, found := svc.Labels[consts.MirroredHeadlessSvcNameLabel]; !found {
 			targetService := svc.DeepCopy()
-			targetService.Name = rcsw.targetResourceName(svc.Name)
+			targetService.Name = rcsw.targetResourceName(&svc)
 			empty, err := rcsw.isEmptyService(targetService)
 			if err != nil {
 				rcsw.log.Errorf("Could not check service emptiness: %s", err)
