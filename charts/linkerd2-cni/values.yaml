@@ -55,7 +55,7 @@ image:
   # -- Tag for the CNI container Docker image
   version: "v1.0.0"
   # -- Pull policy for the linkerd-cni container
-  imagePullPolicy: IfNotPresent
+  pullPolicy: IfNotPresent
 
 #
 ## For Private docker registries, authentication is needed.

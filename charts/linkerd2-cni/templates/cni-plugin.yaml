@@ -230,7 +230,7 @@ spec:
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
         image: {{ .Values.image.name -}}:{{- .Values.image.version }}
-        imagePullPolicy: {{ .Values.image.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         env:
         - name: DEST_CNI_NET_DIR
           valueFrom:
