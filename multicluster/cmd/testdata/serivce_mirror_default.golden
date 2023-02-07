@@ -98,6 +98,7 @@ spec:
       annotations:
         linkerd.io/inject: enabled
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
       labels:
         component: linkerd-service-mirror
         mirror.linkerd.io/cluster-name: test-cluster
