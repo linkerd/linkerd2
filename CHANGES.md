@@ -12,9 +12,9 @@ includes other bug fixes for the Linkerd control plane, CLI, and extensions.
 * Control Plane
   * Fixed an issue in the destination controller's cache that could result in
     stale endpoints when using EndpointSlice objects
-  * Fixed an issue where control plane components could fail to start on large
-    clusters because of failing readiness probes while caches were being
-    initialized
+  * Fixed control plane components failing liveness probes while waiting for
+    caches to sync, which could prevent the control plane from starting in large
+    clusters
   * Fixed a memory leak in the Destination controller
 
 * linkerd-proxy-init
