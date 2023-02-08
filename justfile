@@ -274,6 +274,7 @@ controller-image := DOCKER_REGISTRY + "/controller"
 proxy-image := DOCKER_REGISTRY + "/proxy"
 proxy-init-image := "ghcr.io/linkerd/proxy-init"
 policy-controller-image := DOCKER_REGISTRY + "/policy-controller"
+cni-plugin-image := DOCKER_REGISTRY + "/cni-plugin"
 
 linkerd *flags:
     {{ _linkerd }} {{ flags }}
@@ -312,7 +313,8 @@ linkerd-load: _linkerd-images _k3d-init
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ policy-controller-image }}:{{ linkerd-tag }}' \
         '{{ proxy-image }}:{{ linkerd-tag }}' \
-        "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
+        "{{ cni-plugin-image }}:$(yq .image.version charts/linkerd2-cni/values.yaml)" \
+        "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" && exit ; sleep 1 ; done
 
 linkerd-build: _policy-controller-build
     docker pull -q "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
@@ -322,7 +324,11 @@ linkerd-build: _policy-controller-build
 _linkerd-images:
     #!/usr/bin/env bash
     set -xeuo pipefail
-    docker pull -q "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
+    docker pull -q "{{ orig-proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
+    docker pull -q "{{ cni-plugin-image }}:$(yq .image.version charts/linkerd2-cni/values.yaml)"
+    docker tag \
+        "{{ orig-proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" \
+        "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
     for img in \
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ policy-controller-image }}:{{ linkerd-tag }}' \
@@ -367,6 +373,7 @@ _linkerd-init: && _linkerd-ready
             controller-image='{{ controller-image }}' \
             proxy-image='{{ proxy-image }}' \
             proxy-init-image='{{ proxy-init-image }}' \
+            cni-plugin-image='{{ cni-plugin-image }}'
             linkerd-exec='{{ linkerd-exec }}' \
             linkerd-install
     fi
@@ -440,7 +447,72 @@ _linkerd-viz-uninit:
 
 
 # TODO linkerd-jaeger-install
-# TODO linkerd-multicluster-install
+
+##
+## linkerd multicluster
+##
+
+_mc-target-k3d-flags := "--k3s-arg --disable='local-storage,metrics-server@server:*'"
+
+linkerd-mc-install: _linkerd-init
+    {{ _linkerd }} mc install --set='linkerdVersion={{ linkerd-tag }}' \
+        | {{ _kubectl }} apply -f -
+
+# Wait for all test namespaces to be removed before uninstalling linkerd-multicluster.
+linkerd-mc-uninstall:
+    {{ _linkerd }} mc uninstall \
+        | {{ _kubectl }} delete -f -
+
+mc-target-k3d-delete:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if k3d cluster list '{{ k3d-name }}-target' >/dev/null 2>/dev/null; then
+        {{ just_executable() }} \
+            k3d-name='{{ k3d-name }}-target' \
+            k3d-delete
+    fi
+
+_mc-load: _k3d-init linkerd-load linkerd-viz-load
+
+_mc-target-load:
+    @{{ just_executable() }} \
+        k3d-name='{{ k3d-name }}-target' \
+        k3d-k8s='{{ k3d-k8s }}' \
+        k3d-agents='{{ k3d-agents }}' \
+        k3d-servers='{{ k3d-servers }}' \
+        k3d-network='{{ k3d-network }}' \
+        _k3d-flags='{{ _mc-target-k3d-flags }}' \
+        controller-image='{{ controller-image }}' \
+        proxy-image='{{ proxy-image }}' \
+        proxy-init-image='{{ proxy-init-image }}' \
+        cni-plugin-image='{{ cni-plugin-image }}' \
+        linkerd-exec='{{ linkerd-exec }}' \
+        linkerd-tag='{{ linkerd-tag }}' \
+        _pause-load \
+        _mc-load
+
+# Run the multicluster tests with cluster setup
+#
+# The multicluster test does its own installation of control planes/etc, so
+# we don't do any setup beyond ensuring the cluster is present with images
+# loaded.
+mc-test: mc-test-load mc-test-run
+
+mc-test-build:
+    go build --mod=readonly \
+        ./test/integration/multicluster/...
+
+mc-test-load: _mc-load _mc-target-load
+
+# Run the multicluster tests without any setup
+mc-test-run:
+    LINKERD_DOCKER_REGISTRY='{{ DOCKER_REGISTRY }}' \
+        go test -test.timeout=20m --failfast --mod=readonly \
+            ./test/integration/multicluster/... \
+                -integration-tests \
+                -linkerd='{{ justfile_directory() }}/bin/linkerd' \
+                -multicluster-source-context='k3d-{{ k3d-name }}' \
+                -multicluster-target-context='k3d-{{ k3d-name }}-target'
 
 ##
 ## GitHub Actions

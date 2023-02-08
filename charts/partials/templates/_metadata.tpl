@@ -1,5 +1,5 @@
 {{- define "partials.annotations.created-by" -}}
-linkerd.io/created-by: {{ .Values.cliVersion | default (printf "linkerd/helm %s" (.Values.cniPluginVersion | default .Values.linkerdVersion)) }}
+linkerd.io/created-by: {{ .Values.cliVersion | default (printf "linkerd/helm %s" ( (.Values.image).version | default .Values.linkerdVersion)) }}
 {{- end -}}
 
 {{- define "partials.proxy.annotations" -}}
