@@ -17,9 +17,9 @@ const (
 
 // Image contains details about the location of the container image
 type Image struct {
-	Name            string      `json:"name"`
-	Version         string      `json:"version"`
-	ImagePullPolicy interface{} `json:"imagePullPolicy"`
+	Name       string      `json:"name"`
+	Version    string      `json:"version"`
+	PullPolicy interface{} `json:"pullPolicy"`
 }
 
 // Values contains the top-level elements in the cni Helm chart

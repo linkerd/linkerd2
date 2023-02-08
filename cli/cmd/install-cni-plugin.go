@@ -25,9 +25,9 @@ const (
 )
 
 type cniPluginImage struct {
-	name            string
-	version         string
-	imagePullPolicy interface{}
+	name       string
+	version    string
+	pullPolicy interface{}
 }
 
 type cniPluginOptions struct {
@@ -74,9 +74,9 @@ func (options *cniPluginOptions) validate() error {
 
 func (options *cniPluginOptions) pluginImage() cnicharts.Image {
 	image := cnicharts.Image{
-		Name:            options.image.name,
-		Version:         options.image.version,
-		ImagePullPolicy: options.image.imagePullPolicy,
+		Name:       options.image.name,
+		Version:    options.image.version,
+		PullPolicy: options.image.pullPolicy,
 	}
 	// env var overrides CLI flag
 	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
