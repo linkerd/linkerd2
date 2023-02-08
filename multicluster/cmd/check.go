@@ -201,7 +201,7 @@ func multiclusterCategory(hc *healthChecker, wait time.Duration) *healthcheck.Ca
 				return hc.checkServiceMirrorController(ctx)
 			}))
 	checkers = append(checkers,
-		*healthcheck.NewChecker("all gateway mirrors are healthy").
+		*healthcheck.NewChecker("Probe service able to communicate with all gateway mirrors").
 			WithHintAnchor("l5d-multicluster-gateways-endpoints").
 			WithCheck(func(ctx context.Context) error {
 				return hc.checkIfGatewayMirrorsHaveEndpoints(ctx, wait)
