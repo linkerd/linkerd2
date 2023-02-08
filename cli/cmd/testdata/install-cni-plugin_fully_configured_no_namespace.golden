@@ -120,7 +120,8 @@ spec:
       # script copies the files into place and then sleeps so
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
-        image: my-docker-registry.io/awesome/cni-plugin-test-image:awesome-linkerd-version.1
+        image: my-docker-registry.io/awesome/cni-plugin-test-image:v1.0.0
+        imagePullPolicy: 
         env:
         - name: DEST_CNI_NET_DIR
           valueFrom:
