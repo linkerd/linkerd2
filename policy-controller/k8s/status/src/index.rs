@@ -17,7 +17,6 @@ pub type SharedIndex = Arc<RwLock<Index>>;
 
 pub struct Controller {
     client: k8s::Client,
-    index: SharedIndex,
     updates: UnboundedReceiver<Update>,
 }
 
@@ -28,61 +27,65 @@ pub struct Index {
     servers: HashSet<ResourceId>,
 }
 
-pub enum Update {
-    HttpRoute(ResourceId),
-    Server,
+pub struct Update {
+    id: ResourceId,
+    patch: k8s::Patch<serde_json::Value>,
 }
 
 impl Controller {
-    pub fn new(
-        client: k8s::Client,
-        index: SharedIndex,
-        updates: UnboundedReceiver<Update>,
-    ) -> Self {
-        Self {
-            client,
-            index,
-            updates,
-        }
+    pub fn new(client: k8s::Client, updates: UnboundedReceiver<Update>) -> Self {
+        Self { client, updates }
     }
 
     pub async fn process_updates(mut self) {
         let patch_params = k8s::PatchParams::apply("policy.linkerd.io");
 
-        while let Some(update) = self.updates.recv().await {
-            match update {
-                Update::HttpRoute(route) => {
-                    self.process_http_route_update(route, patch_params.clone())
-                        .await;
-                }
-                Update::Server => {
-                    self.process_server_update(patch_params.clone()).await;
-                }
+        while let Some(Update { id, patch }) = self.updates.recv().await {
+            let api =
+                k8s::Api::<k8s::policy::HttpRoute>::namespaced(self.client.clone(), &id.namespace);
+            if let Err(error) = api.patch_status(&id.name, &patch_params, &patch).await {
+                tracing::error!(namespace = %id.namespace, name = %id.name, %error, "Failed to patch HTTPRoute");
             }
         }
     }
+}
 
-    async fn process_http_route_update(
-        &mut self,
-        route_id: ResourceId,
-        patch_params: k8s::PatchParams,
-    ) {
-        let route_binding = match self.index.read().http_routes.get(&route_id) {
-            Some(route) => route.clone(),
-            None => {
-                tracing::info!(%route_id.namespace, %route_id.name, "Failed to find HTTPRoute in index");
-                return;
+impl Index {
+    pub fn shared(updates: UnboundedSender<Update>) -> SharedIndex {
+        Arc::new(RwLock::new(Self {
+            updates,
+            http_routes: HashMap::new(),
+            servers: HashSet::new(),
+        }))
+    }
+
+    fn update_http_route(&mut self, id: ResourceId, binding: RouteBinding) -> bool {
+        match self.http_routes.entry(id) {
+            Entry::Vacant(entry) => {
+                entry.insert(binding);
             }
-        };
+            Entry::Occupied(mut entry) => {
+                if *entry.get() == binding {
+                    return false;
+                }
+                entry.insert(binding);
+            }
+        }
+        true
+    }
+
+    fn make_http_route_patch(
+        &self,
+        id: &ResourceId,
+        binding: &RouteBinding,
+    ) -> k8s::Patch<serde_json::Value> {
         let accepting_servers: Vec<ResourceId> = self
-            .index
-            .read()
             .servers
             .iter()
-            .filter(|server| route_binding.selects_server(server))
+            .filter(|server| binding.selects_server(server))
             .cloned()
             .collect();
-        let parent_statuses = route_binding
+        let parent_statuses = binding
             .parents
             .iter()
             .map(|parent| {
@@ -131,57 +134,25 @@ impl Controller {
                 parents: parent_statuses,
             },
         };
-        let patch = serde_json::json!({
+        let patch_value = serde_json::json!({
             "apiVersion": POLICY_API_VERSION,
             "kind": "HTTPRoute",
-            "name": route_id.name,
+            "name": id.name,
             "status": status,
         });
-
-        // Patch the HTTPRoute with its status.
-        let api = k8s::Api::<k8s::policy::HttpRoute>::namespaced(
-            self.client.clone(),
-            &route_id.namespace,
-        );
-        if let Err(error) = api
-            .patch_status(&route_id.name, &patch_params, &k8s::Patch::Merge(patch))
-            .await
-        {
-            tracing::error!(namespace = %route_id.namespace, name = %route_id.name, %error, "Failed to patch HTTPRoute");
-        }
+        k8s::Patch::Merge(patch_value)
     }
 
-    async fn process_server_update(&mut self, patch_params: k8s::PatchParams) {
-        let route_ids: Vec<ResourceId> = self.index.read().http_routes.keys().cloned().collect();
-        for route_id in route_ids {
-            self.process_http_route_update(route_id, patch_params.clone())
-                .await;
-        }
-    }
-}
-
-impl Index {
-    pub fn shared(updates: UnboundedSender<Update>) -> SharedIndex {
-        Arc::new(RwLock::new(Self {
-            updates,
-            http_routes: HashMap::new(),
-            servers: HashSet::new(),
-        }))
-    }
-
-    fn update_http_route(&mut self, route_id: ResourceId, route_binding: RouteBinding) -> bool {
-        match self.http_routes.entry(route_id) {
-            Entry::Vacant(entry) => {
-                entry.insert(route_binding);
-            }
-            Entry::Occupied(mut entry) => {
-                if *entry.get() == route_binding {
-                    return false;
-                }
-                entry.insert(route_binding);
+    fn apply_server_update(&self) {
+        for (id, binding) in self.http_routes.iter() {
+            let patch = self.make_http_route_patch(id, binding);
+            if let Err(error) = self.updates.send(Update {
+                id: id.clone(),
+                patch,
+            }) {
+                tracing::error!(%id.namespace, %id.name, %error, "Failed to send HTTPRoute patch")
             }
         }
-        true
     }
 }
 
@@ -193,18 +164,28 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         let name = resource.name_unchecked();
         let id = ResourceId::new(namespace.clone(), name.clone());
 
-        let route_binding = match RouteBinding::try_from(resource) {
+        // Create the route binding and insert it into the index. If the
+        // HTTPRoute is already in the index and it hasn't changed, skip
+        // creating a patch.
+        let binding = match RouteBinding::try_from(resource) {
             Ok(binding) => binding,
             Err(error) => {
                 tracing::info!(%namespace, %name, %error, "Ignoring HTTPRoute");
                 return;
             }
         };
+        if !self.update_http_route(id.clone(), binding.clone()) {
+            return;
+        }
 
-        if self.update_http_route(id.clone(), route_binding) {
-            if let Err(error) = self.updates.send(Update::HttpRoute(id.clone())) {
-                tracing::error!(%id.namespace, %id.name, %error, "Failed to send HTTPRoute update")
-            }
+        // Create a patch for the HTTPRoute and send it to the controller so
+        // that it is applied.
+        let patch = self.make_http_route_patch(&id, &binding);
+        if let Err(error) = self.updates.send(Update {
+            id: id.clone(),
+            patch,
+        }) {
+            tracing::error!(%id.namespace, %id.name, %error, "Failed to send HTTPRoute patch")
         }
     }
 
@@ -225,20 +206,15 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
         let name = resource.name_unchecked();
         let id = ResourceId::new(namespace, name);
 
-        self.servers.insert(id.clone());
-
-        if let Err(error) = self.updates.send(Update::Server) {
-            tracing::error!(%id.namespace, %id.name, %error, "Failed to send Server apply update")
-        }
+        self.servers.insert(id);
+        self.apply_server_update();
     }
 
     fn delete(&mut self, namespace: String, name: String) {
         let id = ResourceId::new(namespace, name);
-        self.servers.remove(&id);
 
-        if let Err(error) = self.updates.send(Update::Server) {
-            tracing::error!(%id.namespace, %id.name, %error, "Failed to send Server delete update")
-        }
+        self.servers.remove(&id);
+        self.apply_server_update();
     }
 
     // Since apply only reindexes a single Server at a time, there's no need
