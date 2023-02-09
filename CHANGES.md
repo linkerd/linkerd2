@@ -9,21 +9,21 @@ minor fixes are also included.
 
 * Upgraded `linkerd-cni` to v1.0.0 which is now published from
   `linkerd2-proxy-init` and makes iptables rules idempotent (thanks @jim-minter!)
-  as well as minor logging improvements.
+  as well as minor logging improvements
 * Upgraded `proxy-init` from v2.1.0 to v2.2.0 which makes `iptables` rules
-  idempotent (thanks @jim-minter!).
+  idempotent (thanks @jim-minter!)
 * Added the server_port_subscribers metric to track the number of subscribers
-  to Server changes associated with a pod's port.
+  to Server changes associated with a pod's port
 * Added the service_subscribers metric to track the number of subscribers to
-  Service changes.
-* Fixed a small memory leak in the opaque ports watcher.
-* No longer apply `waitBeforeExitSeconds` to control plane, viz and jager
-  extension pods.
-* Added support for the `internalTrafficPolicy` of a service (thanks @yc185050!).
-* Added `limits` and `requests` to network-validator for ResourceQuota interop.
+  Service changes
+* Fixed a small memory leak in the opaque ports watcher
+* No longer apply `waitBeforeExitSeconds` to control plane, viz and jaeger
+  extension pods
+* Added support for the `internalTrafficPolicy` of a service (thanks @yc185050!)
+* Added `limits` and `requests` to network-validator for ResourceQuota interop
 * Added block chomping to strip trailing new lines in ConfigMap (thanks @avdicl!)
-* Added multicluster gateway `nodeSelector` and `tolerations` helm parameters.
-* Added protection against nil dereference in resources helm template.
+* Added multicluster gateway `nodeSelector` and `tolerations` helm parameters
+* Added protection against nil dereference in resources helm template
 
 ## edge-23.1.2
 
