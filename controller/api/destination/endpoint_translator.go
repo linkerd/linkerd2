@@ -385,11 +385,6 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 	// translation)
 	weightedAddr.ProtocolHint = &pb.ProtocolHint{}
 	if controllerNSLabel != "" && !isSkippedInboundPort {
-		if enableH2Upgrade {
-			weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_H2_{
-				H2: &pb.ProtocolHint_H2{},
-			}
-		}
 		// If address is set as opaque by a Server, or its port is set as
 		// opaque by annotation or default value, then hint its proxy's
 		// inbound port, and set the hinted protocol to Opaque, so that the
@@ -406,6 +401,10 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 				weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_Opaque_{
 					Opaque: &pb.ProtocolHint_Opaque{},
 				}
+			}
+		} else if enableH2Upgrade {
+			weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_H2_{
+				H2: &pb.ProtocolHint_H2{},
 			}
 		}
 	}
