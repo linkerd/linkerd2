@@ -293,6 +293,7 @@ spec:
           subPath: prometheus.yml
           readOnly: true
       securityContext:
+        allowPrivilegeEscalation: false
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: prometheus
