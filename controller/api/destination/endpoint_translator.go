@@ -392,7 +392,8 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 		}
 		// If address is set as opaque by a Server, or its port is set as
 		// opaque by annotation or default value, then hint its proxy's
-		// inbound port.
+		// inbound port, and set the hinted protocol to Opaque, so that the
+		// client proxy does not send a SessionProtocol.
 		_, opaquePort := opaquePorts[address.Port]
 		if address.OpaqueProtocol || opaquePort {
 			port, err := getInboundPort(&address.Pod.Spec)
@@ -401,6 +402,9 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 			} else {
 				weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
 					InboundPort: port,
+				}
+				weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_Opaque_{
+					Opaque: &pb.ProtocolHint_Opaque{},
 				}
 			}
 		}

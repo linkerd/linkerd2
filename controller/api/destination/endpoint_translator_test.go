@@ -69,6 +69,38 @@ var (
 		},
 	}
 
+	podOpaque = watcher.Address{
+		IP:   "1.1.1.4",
+		Port: 4,
+		Pod: &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod4",
+				Namespace: "ns",
+				Labels: map[string]string{
+					k8s.ControllerNSLabel:    "linkerd",
+					k8s.ProxyDeploymentLabel: "deployment-name",
+				},
+				Annotations: map[string]string{
+					k8s.ProxyOpaquePortsAnnotation: "4",
+				},
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name: k8s.ProxyContainerName,
+						Env: []corev1.EnvVar{
+							{
+								Name:  envInboundListenAddr,
+								Value: "0.0.0.0:4143",
+							},
+						},
+					},
+				},
+			},
+		},
+		OpaqueProtocol: true,
+	}
+
 	remoteGateway1 = watcher.Address{
 		IP:   "1.1.1.1",
 		Port: 1,
@@ -338,6 +370,31 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		actualTLSIdentity := addrs[0].GetTlsIdentity().GetDnsLikeIdentity()
 		if diff := deep.Equal(actualTLSIdentity, expectedTLSIdentity); diff != nil {
 			t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTLSIdentity, actualTLSIdentity)
+		}
+	})
+
+	t.Run("Sends Opaque ProtocolHint for opaque ports", func(t *testing.T) {
+		expectedProtocolHint := &pb.ProtocolHint{
+			Protocol: &pb.ProtocolHint_Opaque_{
+				Opaque: &pb.ProtocolHint_Opaque{},
+			},
+			OpaqueTransport: &pb.ProtocolHint_OpaqueTransport{
+				InboundPort: 4143,
+			},
+		}
+
+		mockGetServer, translator := makeEndpointTranslator(t)
+
+		translator.Add(mkAddressSetForServices(podOpaque))
+
+		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		if len(addrs) != 1 {
+			t.Fatalf("Expected [1] address returned, got %v", addrs)
+		}
+
+		actualProtocolHint := addrs[0].GetProtocolHint()
+		if diff := deep.Equal(actualProtocolHint, expectedProtocolHint); diff != nil {
+			t.Fatalf("ProtocolHint: %v", diff)
 		}
 	})
 }
