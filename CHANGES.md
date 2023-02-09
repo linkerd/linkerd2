@@ -7,11 +7,9 @@ This edge release sees the `linkerd-cni` plugin moved to
 improvement to `linkerd-cni` and `proxy-init` is the main focus. Other
 minor fixes are also included.
 
-* Upgraded `linkerd-cni` to v1.0.0 which is now published from
-  `linkerd2-proxy-init` and makes iptables rules idempotent (thanks @jim-minter!)
-  as well as minor logging improvements
-* Upgraded `proxy-init` from v2.1.0 to v2.2.0 which makes `iptables` rules
-  idempotent (thanks @jim-minter!)
+* Changed `proxy-init` iptables rules to be idempotent upon init pod
+  restart (thanks @jim-minter!)
+* Improved logging in `proxy-init` and `linkerd-cni`
 * Added the server_port_subscribers metric to track the number of subscribers
   to Server changes associated with a pod's port
 * Added the service_subscribers metric to track the number of subscribers to
