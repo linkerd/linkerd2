@@ -231,6 +231,7 @@ spec:
       {{- end -}}
       {{- include "linkerd.node-selector" (dict "Values" .Values.prometheus) | nindent 6 }}
       securityContext:
+          allowPrivilegeEscalation: false
         fsGroup: 65534
       containers:
       {{- if .Values.prometheus.sidecarContainers -}}
@@ -292,6 +293,7 @@ spec:
           subPath: prometheus.yml
           readOnly: true
       securityContext:
+        allowPrivilegeEscalation: false
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: prometheus

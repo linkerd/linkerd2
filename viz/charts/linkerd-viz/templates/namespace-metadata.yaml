@@ -27,6 +27,7 @@ spec:
     spec:
       restartPolicy: Never
       securityContext:
+        allowPrivilegeEscalation: false
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: namespace-metadata
