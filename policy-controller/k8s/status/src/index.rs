@@ -40,9 +40,12 @@ impl Controller {
     pub async fn process_updates(mut self) {
         let patch_params = k8s::PatchParams::apply("policy.linkerd.io");
 
+        // todo: If an update fails we should figure out a requeueing strategy
         while let Some(Update { id, patch }) = self.updates.recv().await {
             let api =
                 k8s::Api::<k8s::policy::HttpRoute>::namespaced(self.client.clone(), &id.namespace);
+
+            // todo: Do we need to consider a timeout here?
             if let Err(error) = api.patch_status(&id.name, &patch_params, &patch).await {
                 tracing::error!(namespace = %id.namespace, name = %id.name, %error, "Failed to patch HTTPRoute");
             }
