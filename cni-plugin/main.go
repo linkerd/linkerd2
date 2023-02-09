@@ -47,6 +47,7 @@ type ProxyInit struct {
 	PortsToRedirect       []int    `json:"ports-to-redirect"`
 	InboundPortsToIgnore  []string `json:"inbound-ports-to-ignore"`
 	OutboundPortsToIgnore []string `json:"outbound-ports-to-ignore"`
+	SubnetsToIgnore       []string `json:"subnets-to-ignore"`
 	Simulate              bool     `json:"simulate"`
 	UseWaitFlag           bool     `json:"use-wait-flag"`
 }
@@ -200,6 +201,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 				PortsToRedirect:       conf.ProxyInit.PortsToRedirect,
 				InboundPortsToIgnore:  conf.ProxyInit.InboundPortsToIgnore,
 				OutboundPortsToIgnore: conf.ProxyInit.OutboundPortsToIgnore,
+				SubnetsToIgnore:       conf.ProxyInit.SubnetsToIgnore,
 				SimulateOnly:          conf.ProxyInit.Simulate,
 				NetNs:                 args.Netns,
 				UseWaitFlag:           conf.ProxyInit.UseWaitFlag,
@@ -228,6 +230,18 @@ func cmdAdd(args *skel.CmdArgs) error {
 			if inboundSkipOverride != "" {
 				logEntry.Debugf("linkerd-cni: overriding InboundPortsToIgnore to %s", inboundSkipOverride)
 				options.InboundPortsToIgnore = strings.Split(inboundSkipOverride, ",")
+			}
+
+			// Check if there are any subnets to skip
+			subnetSkipOverride, err := getAnnotationOverride(ctx, client, pod, k8s.ProxySkipSubnetsAnnotation)
+			if err != nil {
+				logEntry.Errorf("linkerd-cni: could not retrieve overridden annotations: %s", err)
+				return err
+			}
+
+			if subnetSkipOverride != "" {
+				logEntry.Debugf("linkerd-cni: overriding SubnetsToIgnore to %s", subnetSkipOverride)
+				options.SubnetsToIgnore = strings.Split(subnetSkipOverride, ",")
 			}
 
 			// Override ProxyUID from annotations.
