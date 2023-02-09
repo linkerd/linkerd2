@@ -575,6 +575,8 @@ github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de h1:9TO3cAIGXtEhn
 github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de/go.mod h1:zAbeS9B/r2mtpb6U+EI2rYA5OAXxsYw6wTamcNW+zcE=
 github.com/linkerd/linkerd2-proxy-api v0.7.0 h1:T/2hDAaPR++5dKc26LiZhvs2PrwgoyowdT3gQJAMmCk=
 github.com/linkerd/linkerd2-proxy-api v0.7.0/go.mod h1:aEq0Ua1VHiRpqlPzMbPtx/wKqw83zXlNK7FNFOSP2mg=
+github.com/linkerd/linkerd2-proxy-api v0.8.0 h1:TEWX06AgKJO4wA3Fjaq+QXlrKupMpETLl+6hCNyWP2s=
+github.com/linkerd/linkerd2-proxy-api v0.8.0/go.mod h1:Vz/J0rqikrPCelImHq/0B6ogF6HoJ5S7pGeiZzMYdEA=
 github.com/linkerd/linkerd2-proxy-init v1.6.2 h1:hSB2rUsEf/wHYnHCA4JC4DgRKYYKiDEXnKhKub0RTvo=
 github.com/linkerd/linkerd2-proxy-init v1.6.2/go.mod h1:lHCNCzP6xCajRTNIiYX6oWcs8KbAph2Z2zUFgFtVHkw=
 github.com/linuxkit/virtsock v0.0.0-20201010232012-f8cee7dfc7a3/go.mod h1:3r6x7q95whyfWQpmGZTu3gk3v2YkMi05HEzl7Tf7YEo=
