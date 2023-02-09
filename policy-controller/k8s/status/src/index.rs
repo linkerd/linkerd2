@@ -59,6 +59,8 @@ impl Index {
         }))
     }
 
+    // If the route binding is new or has changed, return true so that a patch
+    // is generated; otherwise return false.
     fn update_http_route(&mut self, id: ResourceId, binding: RouteBinding) -> bool {
         match self.http_routes.entry(id) {
             Entry::Vacant(entry) => {
