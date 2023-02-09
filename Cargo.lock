@@ -1051,7 +1051,7 @@ dependencies = [
  "futures",
  "hyper",
  "linkerd-policy-controller-core",
- "linkerd2-proxy-api 0.8.0",
+ "linkerd2-proxy-api",
  "maplit",
  "tokio",
  "tonic",
@@ -1110,7 +1110,7 @@ dependencies = [
  "kube",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
- "linkerd2-proxy-api 0.7.0",
+ "linkerd2-proxy-api",
  "maplit",
  "rand",
  "schemars",
@@ -1121,20 +1121,6 @@ dependencies = [
  "tonic",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "linkerd2-proxy-api"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9461e1bf61263ffa493117f2177c15a470b4b66f6b58c74e548401293f9ea639"
-dependencies = [
- "http",
- "ipnet",
- "prost",
- "prost-types",
- "thiserror",
- "tonic",
 ]
 
 [[package]]
