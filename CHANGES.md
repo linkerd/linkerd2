@@ -1,5 +1,28 @@
 # Changes
 
+## edge-23.2.1
+
+This edge release sees the `linkerd-cni` plugin moved to
+`linkerd2-proxy-init` and released from that repository. An iptables
+improvement to `linkerd-cni` and `proxy-init` is the main focus. Other
+minor fixes are also included.
+
+* Changed `proxy-init` iptables rules to be idempotent upon init pod
+  restart (thanks @jim-minter!)
+* Improved logging in `proxy-init` and `linkerd-cni`
+* Added the server_port_subscribers metric to track the number of subscribers
+  to Server changes associated with a pod's port
+* Added the service_subscribers metric to track the number of subscribers to
+  Service changes
+* Fixed a small memory leak in the opaque ports watcher
+* No longer apply `waitBeforeExitSeconds` to control plane, viz and jaeger
+  extension pods
+* Added support for the `internalTrafficPolicy` of a service (thanks @yc185050!)
+* Added `limits` and `requests` to network-validator for ResourceQuota interop
+* Added block chomping to strip trailing new lines in ConfigMap (thanks @avdicl!)
+* Added multicluster gateway `nodeSelector` and `tolerations` helm parameters
+* Added protection against nil dereference in resources helm template
+
 ## edge-23.1.2
 
 This edge release fixes a memory leak in the Linkerd control plane that could
