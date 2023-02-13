@@ -3,15 +3,16 @@ use crate::{
     resource_id::ResourceId,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
+#[cfg(not(test))]
 use chrono::offset::Utc;
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
 use parking_lot::RwLock;
 use std::{collections::hash_map::Entry, sync::Arc};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
-const POLICY_API_GROUP: &str = "policy.linkerd.io";
+pub(crate) const POLICY_API_GROUP: &str = "policy.linkerd.io";
 const POLICY_API_VERSION: &str = "policy.linkerd.io/v1alpha1";
-const STATUS_CONTROLLER_NAME: &str = "policy.linkerd.io/status-controller";
+pub(crate) const STATUS_CONTROLLER_NAME: &str = "policy.linkerd.io/status-controller";
 
 pub type SharedIndex = Arc<RwLock<Index>>;
 
@@ -27,9 +28,10 @@ pub struct Index {
     servers: HashSet<ResourceId>,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Update {
-    id: ResourceId,
-    patch: k8s::Patch<serde_json::Value>,
+    pub id: ResourceId,
+    pub patch: k8s::Patch<serde_json::Value>,
 }
 
 impl Controller {
@@ -95,6 +97,11 @@ impl Index {
             .map(|parent| {
                 let ParentReference::Server(parent_reference_id) = parent;
 
+                #[cfg(not(test))]
+                let timestamp = Utc::now();
+                #[cfg(test)]
+                let timestamp = chrono::DateTime::<chrono::Utc>::MIN_UTC;
+
                 // Is this parent in the list of parents which accept
                 // the route?
                 let accepted = accepting_servers
@@ -102,7 +109,7 @@ impl Index {
                     .any(|accepting_parent| accepting_parent == parent_reference_id);
                 let condition = if accepted {
                     k8s::Condition {
-                        last_transition_time: k8s::Time(Utc::now()),
+                        last_transition_time: k8s::Time(timestamp),
                         message: "".to_string(),
                         observed_generation: None,
                         reason: "Accepted".to_string(),
@@ -111,7 +118,7 @@ impl Index {
                     }
                 } else {
                     k8s::Condition {
-                        last_transition_time: k8s::Time(Utc::now()),
+                        last_transition_time: k8s::Time(timestamp),
                         message: "".to_string(),
                         observed_generation: None,
                         reason: "NoMatchingParent".to_string(),
@@ -138,13 +145,7 @@ impl Index {
                 parents: parent_statuses,
             },
         };
-        let patch_value = serde_json::json!({
-            "apiVersion": POLICY_API_VERSION,
-            "kind": "HTTPRoute",
-            "name": id.name,
-            "status": status,
-        });
-        k8s::Patch::Merge(patch_value)
+        make_patch(&id.name, status)
     }
 
     fn apply_server_update(&self) {
@@ -223,4 +224,17 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
 
     // Since apply only reindexes a single Server at a time, there's no need
     // to handle resets specially.
+}
+
+pub(crate) fn make_patch(
+    name: &str,
+    status: gateway::HttpRouteStatus,
+) -> k8s::Patch<serde_json::Value> {
+    let value = serde_json::json!({
+        "apiVersion": POLICY_API_VERSION,
+            "kind": "HTTPRoute",
+            "name": name,
+            "status": status,
+    });
+    k8s::Patch::Merge(value)
 }
