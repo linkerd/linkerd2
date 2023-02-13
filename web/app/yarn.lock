@@ -1535,12 +1535,21 @@
     "@messageformat/parser" "^5.0.0"
     make-plural "^6.2.2"
 
-"@lingui/core@3.16.1", "@lingui/core@^3.15.0":
+"@lingui/core@3.16.1":
   version "3.16.1"
   resolved "https://registry.yarnpkg.com/@lingui/core/-/core-3.16.1.tgz#cac09e7afdc9daa5bf3ad9f9478ed2c2097a4af4"
   integrity sha512-F/oos3IquuA71eVUfVBFY4teq9QuE3enGV65AMb9VB0vUTxsy6HAOIo1A2aZ4wJ0ST8V7FhYshYRU6qXguRjMQ==
   dependencies:
     "@babel/runtime" "^7.11.2"
+    "@messageformat/parser" "^5.0.0"
+    make-plural "^6.2.2"
+
+"@lingui/core@^3.17.1":
+  version "3.17.1"
+  resolved "https://registry.yarnpkg.com/@lingui/core/-/core-3.17.1.tgz#7c8db6ddc61ecd8c2f445ddaf53c23cf647fd749"
+  integrity sha512-IUR+07aWFDQB8LkMFRM1UWTOj2spPNHukqX+9i9vPDpbPTiNjUO68aHqAXfpnMu/kUJBZJtN6V37wlJi8dc0oQ==
+  dependencies:
+    "@babel/runtime" "^7.20.13"
     "@messageformat/parser" "^5.0.0"
     make-plural "^6.2.2"
 
