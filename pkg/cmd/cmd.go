@@ -89,21 +89,24 @@ func Prune(ctx context.Context, k8sAPI *k8s.KubernetesAPI, expectedManifests str
 	}
 
 	for _, resource := range resources {
-		prune := func() bool {
-			for _, expected := range expectedResources {
-				if resourceEquals(resource, expected) {
-					return false
-				}
-			}
-			return true
-		}()
-		if prune {
+		// If the resource is not in the expected resource list, render it for
+		// pruning.
+		if !resourceListContains(expectedResources, resource) {
 			if err = resource.RenderResource(os.Stdout); err != nil {
 				return fmt.Errorf("error rendering Kubernetes resource: %w\n", err)
 			}
 		}
 	}
 	return nil
+}
+
+func resourceListContains(list []resource.Kubernetes, a resource.Kubernetes) bool {
+	for _, r := range list {
+		if resourceEquals(a, r) {
+			return true
+		}
+	}
+	return false
 }
 
 func resourceEquals(a resource.Kubernetes, b resource.Kubernetes) bool {
