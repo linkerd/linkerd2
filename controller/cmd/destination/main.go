@@ -100,18 +100,23 @@ func Main(args []string) {
 			ctx,
 			*kubeConfigPath,
 			true,
-			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.Job, k8s.Node, k8s.Srv,
+			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
 		)
 	} else {
 		k8sAPI, err = k8s.InitializeAPI(
 			ctx,
 			*kubeConfigPath,
 			true,
-			k8s.Endpoint, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.Job, k8s.Node, k8s.Srv,
+			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
 		)
 	}
 	if err != nil {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
+	}
+
+	metadataAPI, err := k8s.InitializeMetadataAPI(*kubeConfigPath, k8s.Node, k8s.RS)
+	if err != nil {
+		log.Fatalf("Failed to initialize Kubernetes metadata API: %s", err)
 	}
 
 	server, err := destination.NewServer(
@@ -121,6 +126,7 @@ func Main(args []string) {
 		*enableH2Upgrade,
 		*enableEndpointSlices,
 		k8sAPI,
+		metadataAPI,
 		*clusterDomain,
 		opaquePorts,
 		done,
@@ -130,7 +136,9 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize destination server: %s", err)
 	}
 
-	k8sAPI.Sync(nil) // blocks until caches are synced
+	// blocks until caches are synced
+	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
 
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)

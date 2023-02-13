@@ -10,11 +10,11 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
+	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
-	"github.com/linkerd/linkerd2/pkg/k8s"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	coreinformers "k8s.io/client-go/informers/core/v1"
 )
 
 const (
@@ -49,7 +49,7 @@ func newEndpointTranslator(
 	service string,
 	srcNodeName string,
 	defaultOpaquePorts map[uint32]struct{},
-	nodes coreinformers.NodeInformer,
+	k8sAPI *k8s.MetadataAPI,
 	stream pb.Destination_GetServer,
 	log *logging.Entry,
 ) *endpointTranslator {
@@ -58,7 +58,7 @@ func newEndpointTranslator(
 		"service":   service,
 	})
 
-	nodeTopologyZone, err := getNodeTopologyZone(nodes, srcNodeName)
+	nodeTopologyZone, err := getNodeTopologyZone(k8sAPI, srcNodeName)
 	if err != nil {
 		log.Errorf("Failed to get node topology zone for node %s: %s", srcNodeName, err)
 	}
@@ -375,9 +375,9 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 		log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
 	}
 
-	controllerNSLabel := address.Pod.Labels[k8s.ControllerNSLabel]
-	sa, ns := k8s.GetServiceAccountAndNS(address.Pod)
-	weightedAddr.MetricLabels = k8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
+	controllerNSLabel := address.Pod.Labels[pkgK8s.ControllerNSLabel]
+	sa, ns := pkgK8s.GetServiceAccountAndNS(address.Pod)
+	weightedAddr.MetricLabels = pkgK8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
 	_, isSkippedInboundPort := skippedInboundPorts[address.Port]
 
 	// If the pod is controlled by any Linkerd control plane, then it can be
@@ -428,8 +428,8 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 	return &weightedAddr, nil
 }
 
-func getNodeTopologyZone(nodes coreinformers.NodeInformer, srcNode string) (string, error) {
-	node, err := nodes.Lister().Get(srcNode)
+func getNodeTopologyZone(k8sAPI *k8s.MetadataAPI, srcNode string) (string, error) {
+	node, err := k8sAPI.Get(k8s.Node, srcNode)
 	if err != nil {
 		return "", err
 	}
@@ -450,7 +450,7 @@ func newEmptyAddressSet() watcher.AddressSet {
 // variable.
 func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
 	for _, containerSpec := range podSpec.Containers {
-		if containerSpec.Name != k8s.ProxyContainerName {
+		if containerSpec.Name != pkgK8s.ProxyContainerName {
 			continue
 		}
 		for _, envVar := range containerSpec.Env {
