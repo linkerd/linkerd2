@@ -1,5 +1,5 @@
 use crate::{
-    http_route::{ParentReference, RouteBinding},
+    http_route::{self, ParentReference},
     resource_id::ResourceId,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
@@ -23,7 +23,7 @@ pub struct Controller {
 pub struct Index {
     updates: UnboundedSender<Update>,
 
-    http_routes: HashMap<ResourceId, RouteBinding>,
+    http_routes: HashMap<ResourceId, Vec<ParentReference>>,
     servers: HashSet<ResourceId>,
 }
 
@@ -62,18 +62,18 @@ impl Index {
         }))
     }
 
-    // If the route binding is new or has changed, return true so that a patch
-    // is generated; otherwise return false.
-    fn update_http_route(&mut self, id: ResourceId, binding: RouteBinding) -> bool {
+    // If the route is new or its parents have changed, return true so that a
+    // patch is generated; otherwise return false.
+    fn update_http_route(&mut self, id: ResourceId, parents: Vec<ParentReference>) -> bool {
         match self.http_routes.entry(id) {
             Entry::Vacant(entry) => {
-                entry.insert(binding);
+                entry.insert(parents);
             }
             Entry::Occupied(mut entry) => {
-                if *entry.get() == binding {
+                if *entry.get() == parents {
                     return false;
                 }
-                entry.insert(binding);
+                entry.insert(parents);
             }
         }
         true
@@ -82,16 +82,15 @@ impl Index {
     fn make_http_route_patch(
         &self,
         id: &ResourceId,
-        binding: &RouteBinding,
+        parents: &[ParentReference],
     ) -> k8s::Patch<serde_json::Value> {
         let accepting_servers: Vec<ResourceId> = self
             .servers
             .iter()
-            .filter(|server| binding.selects_server(server))
+            .filter(|server| parents.iter().any(|parent| matches!(parent, ParentReference::Server(parent_id) if parent_id == *server)))
             .cloned()
             .collect();
-        let parent_statuses = binding
-            .parents
+        let parent_statuses = parents
             .iter()
             .map(|parent| {
                 let ParentReference::Server(parent_reference_id) = parent;
@@ -149,8 +148,8 @@ impl Index {
     }
 
     fn apply_server_update(&self) {
-        for (id, binding) in self.http_routes.iter() {
-            let patch = self.make_http_route_patch(id, binding);
+        for (id, parents) in self.http_routes.iter() {
+            let patch = self.make_http_route_patch(id, parents);
             if let Err(error) = self.updates.send(Update {
                 id: id.clone(),
                 patch,
@@ -169,23 +168,23 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         let name = resource.name_unchecked();
         let id = ResourceId::new(namespace.clone(), name.clone());
 
-        // Create the route binding and insert it into the index. If the
+        // Create the route parents and insert it into the index. If the
         // HTTPRoute is already in the index and it hasn't changed, skip
         // creating a patch.
-        let binding = match RouteBinding::try_from(resource) {
-            Ok(binding) => binding,
+        let parents = match http_route::try_from(resource) {
+            Ok(parents) => parents,
             Err(error) => {
                 tracing::info!(%namespace, %name, %error, "Ignoring HTTPRoute");
                 return;
             }
         };
-        if !self.update_http_route(id.clone(), binding.clone()) {
+        if !self.update_http_route(id.clone(), parents.clone()) {
             return;
         }
 
         // Create a patch for the HTTPRoute and send it to the controller so
         // that it is applied.
-        let patch = self.make_http_route_patch(&id, &binding);
+        let patch = self.make_http_route_patch(&id, &parents);
         if let Err(error) = self.updates.send(Update {
             id: id.clone(),
             patch,

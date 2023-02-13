@@ -1,14 +1,9 @@
 use crate::resource_id::ResourceId;
-use anyhow::{Error, Result};
+use anyhow::Result;
 use linkerd_policy_controller_k8s_api::{
     gateway,
     policy::{self, Server},
 };
-
-#[derive(Clone, Eq, PartialEq)]
-pub struct RouteBinding {
-    pub parents: Vec<ParentReference>,
-}
 
 #[derive(Clone, Eq, PartialEq)]
 pub enum ParentReference {
@@ -27,25 +22,13 @@ pub enum InvalidParentReference {
     SpecifiesSection,
 }
 
-impl TryFrom<policy::HttpRoute> for RouteBinding {
-    type Error = Error;
-
-    fn try_from(value: policy::HttpRoute) -> Result<Self, Self::Error> {
-        let namespace = value
-            .metadata
-            .namespace
-            .expect("HTTPRoute must have a namespace");
-        let parents = ParentReference::collect_from(value.spec.inner.parent_refs, &namespace)?;
-        Ok(RouteBinding { parents })
-    }
-}
-
-impl RouteBinding {
-    pub fn selects_server(&self, resource_id: &ResourceId) -> bool {
-        self.parents
-            .iter()
-            .any(|p| matches!(p, ParentReference::Server(parent_id) if parent_id == resource_id))
-    }
+pub(crate) fn try_from(http_route: policy::HttpRoute) -> Result<Vec<ParentReference>> {
+    let namespace = http_route
+        .metadata
+        .namespace
+        .expect("HTTPRoute must have a namespace");
+    let parents = ParentReference::collect_from(http_route.spec.inner.parent_refs, &namespace)?;
+    Ok(parents)
 }
 
 impl ParentReference {
