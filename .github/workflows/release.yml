@@ -212,7 +212,7 @@ jobs:
           CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-arm64"
           echo "CMD=$CMD" >> "$GITHUB_ENV"
           "$CMD" version --client
-      - uses: extractions/setup-just@95b912dc5d3ed106a72907f2f9b91e76d60bdb76
+      - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: azure/setup-kubectl@901a10e89ea615cf61f57ac05cecdf23e7de06d8
