@@ -12,6 +12,11 @@ func TestRenderCNIPlugin(t *testing.T) {
 		t.Fatalf("Unexpected error from newCNIInstallOptionsWithDefaults(): %v", err)
 	}
 
+	image := cniPluginImage{
+		name:       "my-docker-registry.io/awesome/cni-plugin-test-image",
+		version:    "v1.0.0",
+		pullPolicy: nil,
+	}
 	fullyConfiguredOptions := &cniPluginOptions{
 		linkerdVersion:      "awesome-linkerd-version.1",
 		dockerRegistry:      "cr.l5d.io/linkerd",
@@ -22,7 +27,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 		ignoreInboundPorts:  make([]string, 0),
 		ignoreOutboundPorts: make([]string, 0),
 		proxyUID:            12102,
-		cniPluginImage:      "my-docker-registry.io/awesome/cni-plugin-test-image",
+		image:               image,
 		logLevel:            "debug",
 		destCNINetDir:       "/etc/kubernetes/cni/net.d",
 		destCNIBinDir:       "/opt/my-cni/bin",
@@ -39,7 +44,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 		ignoreInboundPorts:  make([]string, 0),
 		ignoreOutboundPorts: make([]string, 0),
 		proxyUID:            12102,
-		cniPluginImage:      "my-docker-registry.io/awesome/cni-plugin-test-image",
+		image:               image,
 		logLevel:            "debug",
 		destCNINetDir:       "/etc/kubernetes/cni/net.d",
 		destCNIBinDir:       "/etc/kubernetes/cni/net.d",
@@ -56,7 +61,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 		ignoreInboundPorts:  make([]string, 0),
 		ignoreOutboundPorts: make([]string, 0),
 		proxyUID:            12102,
-		cniPluginImage:      "my-docker-registry.io/awesome/cni-plugin-test-image",
+		image:               image,
 		logLevel:            "debug",
 		destCNINetDir:       "/etc/kubernetes/cni/net.d",
 		destCNIBinDir:       "/opt/my-cni/bin",

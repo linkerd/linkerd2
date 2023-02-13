@@ -1,10 +1,14 @@
 package watcher
 
 import (
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,9 +21,10 @@ import (
 // update, it only sends updates to listeners if their endpoint's protocol
 // is changed by the Server.
 type ServerWatcher struct {
-	subscriptions map[podPort]podPortPublisher
-	k8sAPI        *k8s.API
-	log           *logging.Entry
+	subscriptions    map[podPort]podPortPublisher
+	k8sAPI           *k8s.API
+	subscribersGauge *prometheus.GaugeVec
+	log              *logging.Entry
 	sync.RWMutex
 }
 
@@ -41,12 +46,21 @@ type ServerUpdateListener interface {
 	UpdateProtocol(bool)
 }
 
+var serverMetrics = promauto.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: "server_port_subscribers",
+		Help: "Number of subscribers to Server changes associated with a pod's port.",
+	},
+	[]string{"namespace", "name", "port"},
+)
+
 // NewServerWatcher creates a new ServerWatcher.
 func NewServerWatcher(k8sAPI *k8s.API, log *logging.Entry) (*ServerWatcher, error) {
 	sw := &ServerWatcher{
-		subscriptions: make(map[podPort]podPortPublisher),
-		k8sAPI:        k8sAPI,
-		log:           log,
+		subscriptions:    make(map[podPort]podPortPublisher),
+		k8sAPI:           k8sAPI,
+		subscribersGauge: serverMetrics,
+		log:              log,
 	}
 	_, err := k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    sw.addServer,
@@ -82,6 +96,8 @@ func (sw *ServerWatcher) Subscribe(pod *corev1.Pod, port Port, listener ServerUp
 	}
 	ppp.listeners = append(ppp.listeners, listener)
 	sw.subscriptions[pp] = ppp
+
+	sw.subscribersGauge.With(serverMetricLabels(pod, port)).Set(float64(len(ppp.listeners)))
 }
 
 // Unsubscribe unsubcribes a listener from any Server updates.
@@ -109,9 +125,14 @@ func (sw *ServerWatcher) Unsubscribe(pod *corev1.Pod, port Port, listener Server
 		}
 	}
 
+	labels := serverMetricLabels(pod, port)
 	if len(ppp.listeners) > 0 {
+		sw.subscribersGauge.With(labels).Set(float64(len(ppp.listeners)))
 		sw.subscriptions[pp] = ppp
 	} else {
+		if !sw.subscribersGauge.Delete(labels) {
+			sw.log.Warnf("unable to delete server_port_subscribers metric with labels %s", labels)
+		}
 		delete(sw.subscriptions, pp)
 	}
 }
@@ -170,5 +191,14 @@ func (sw *ServerWatcher) updateServer(server *v1beta1.Server, selector labels.Se
 				}
 			}
 		}
+	}
+}
+
+func serverMetricLabels(pod *corev1.Pod, port Port) prometheus.Labels {
+	podName, _, _ := strings.Cut(pod.Name, "-")
+	return prometheus.Labels{
+		"namespace": pod.Namespace,
+		"name":      podName,
+		"port":      strconv.FormatUint(uint64(port), 10),
 	}
 }

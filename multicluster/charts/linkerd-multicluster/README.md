@@ -3,7 +3,7 @@
 The Linkerd-Multicluster extension contains resources to support multicluster
 linking to remote clusters
 
-![Version: 30.4.0-edge](https://img.shields.io/badge/Version-30.4.0--edge-informational?style=flat-square)
+![Version: 30.5.0-edge](https://img.shields.io/badge/Version-30.5.0--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -79,6 +79,7 @@ Kubernetes: `>=1.21.0-0`
 | gateway.loadBalancerIP | string | `""` | Set loadBalancerIP on gateway service |
 | gateway.loadBalancerSourceRanges | list | `[]` | Set loadBalancerSourceRanges on gateway service |
 | gateway.name | string | `"linkerd-gateway"` | The name of the gateway that will be installed |
+| gateway.nodeSelector | object | `{}` | Node selectors for the gateway pod |
 | gateway.pauseImage | string | `"gcr.io/google_containers/pause:3.2"` | The pause container to use |
 | gateway.port | int | `4143` | The port on which all the gateway will accept incoming traffic |
 | gateway.probe.path | string | `"/ready"` | The path that will be used by remote clusters for determining whether the gateway is alive |
@@ -88,6 +89,7 @@ Kubernetes: `>=1.21.0-0`
 | gateway.serviceAnnotations | object | `{}` | Annotations to add to the gateway service |
 | gateway.serviceType | string | `"LoadBalancer"` | Service Type of gateway Service |
 | gateway.terminationGracePeriodSeconds | string | `""` | Set terminationGracePeriodSeconds on gateway deployment |
+| gateway.tolerations | list | `[]` | Tolerations for the gateway pod |
 | identityTrustDomain | string | `"cluster.local"` | Identity Trust Domain of the certificate authority |
 | imagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all multicluster components |
 | linkerdNamespace | string | `"linkerd"` | Namespace of linkerd installation |
