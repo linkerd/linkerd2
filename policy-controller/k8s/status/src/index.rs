@@ -86,12 +86,6 @@ impl Index {
         id: &ResourceId,
         parents: &[ParentReference],
     ) -> k8s::Patch<serde_json::Value> {
-        let accepting_servers: Vec<ResourceId> = self
-            .servers
-            .iter()
-            .filter(|server| parents.iter().any(|parent| matches!(parent, ParentReference::Server(parent_id) if parent_id == *server)))
-            .cloned()
-            .collect();
         let parent_statuses = parents
             .iter()
             .map(|parent| {
@@ -104,9 +98,10 @@ impl Index {
 
                 // Is this parent in the list of parents which accept
                 // the route?
-                let accepted = accepting_servers
+                let accepted = self
+                    .servers
                     .iter()
-                    .any(|accepting_parent| accepting_parent == parent_reference_id);
+                    .any(|server| server == parent_reference_id);
                 let condition = if accepted {
                     k8s::Condition {
                         last_transition_time: k8s::Time(timestamp),
