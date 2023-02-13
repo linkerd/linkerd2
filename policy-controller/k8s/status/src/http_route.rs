@@ -5,6 +5,13 @@ use linkerd_policy_controller_k8s_api::{
     policy::{self, Server},
 };
 
+/// ParentReference represents an HTTPRoute's parent reference from its spec.
+///
+/// This is separate from the policy controller index's InboundParentRef
+/// because it does not validate that the parent reference is not in another
+/// namespace. This is something that should be relaxed in the future in the
+/// policy controller's index and we could then consider consolidating these
+/// types into a single shared lib.
 #[derive(Clone, Eq, PartialEq)]
 pub enum ParentReference {
     Server(ResourceId),
