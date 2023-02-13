@@ -364,6 +364,10 @@ spec:
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
+	metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+	if err != nil {
+		t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+	}
 	log := logging.WithField("test", t.Name())
 	defaultOpaquePorts := map[uint32]struct{}{
 		25:    {},
@@ -379,7 +383,7 @@ spec:
 		t.Fatalf("initializeIndexers returned an error: %s", err)
 	}
 
-	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, log, false)
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, false)
 	if err != nil {
 		t.Fatalf("can't create Endpoints watcher: %s", err)
 	}
@@ -399,6 +403,7 @@ spec:
 	// Sync after creating watchers so that the the indexers added get updated
 	// properly
 	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
 
 	return &server{
 		pb.UnimplementedDestinationServer{},
@@ -406,13 +411,13 @@ spec:
 		opaquePorts,
 		profiles,
 		servers,
-		k8sAPI.Node(),
 		true,
 		"linkerd",
 		"trust.domain",
 		"mycluster.local",
 		defaultOpaquePorts,
 		k8sAPI,
+		metadataAPI,
 		log,
 		make(<-chan struct{}),
 	}
@@ -459,8 +464,7 @@ func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) e
 }
 
 func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointTranslator) {
-	k8sAPI, err := k8s.NewFakeAPI(`
-apiVersion: v1
+	node := `apiVersion: v1
 kind: Node
 metadata:
   annotations:
@@ -475,12 +479,18 @@ metadata:
     topology.kubernetes.io/region: west
     topology.kubernetes.io/zone: west-1a
   name: test-123
-`,
-	)
+`
+	k8sAPI, err := k8s.NewFakeAPI(node)
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
 	k8sAPI.Sync(nil)
+
+	metadataAPI, err := k8s.NewFakeMetadataAPI([]string{node})
+	if err != nil {
+		t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+	}
+	metadataAPI.Sync(nil)
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
 	translator := newEndpointTranslator(
@@ -490,7 +500,7 @@ metadata:
 		"service-name.service-ns",
 		"test-123",
 		map[uint32]struct{}{},
-		k8sAPI.Node(),
+		metadataAPI,
 		mockGetServer,
 		logging.WithField("test", t.Name()),
 	)

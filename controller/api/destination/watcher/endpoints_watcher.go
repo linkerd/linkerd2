@@ -70,8 +70,9 @@ type (
 	// EndpointsWatcher will publish the address set and all future changes for
 	// that service:port.
 	EndpointsWatcher struct {
-		publishers map[ServiceID]*servicePublisher
-		k8sAPI     *k8s.API
+		publishers  map[ServiceID]*servicePublisher
+		k8sAPI      *k8s.API
+		metadataAPI *k8s.MetadataAPI
 
 		log                  *logging.Entry
 		enableEndpointSlices bool
@@ -91,6 +92,7 @@ type (
 		id                   ServiceID
 		log                  *logging.Entry
 		k8sAPI               *k8s.API
+		metadataAPI          *k8s.MetadataAPI
 		enableEndpointSlices bool
 		localTrafficPolicy   bool
 		ports                map[portAndHostname]*portPublisher
@@ -111,6 +113,7 @@ type (
 		hostname             string
 		log                  *logging.Entry
 		k8sAPI               *k8s.API
+		metadataAPI          *k8s.MetadataAPI
 		enableEndpointSlices bool
 		exists               bool
 		addresses            AddressSet
@@ -134,10 +137,11 @@ var undefinedEndpointPort = Port(0)
 // NewEndpointsWatcher creates an EndpointsWatcher and begins watching the
 // k8sAPI for pod, service, and endpoint changes. An EndpointsWatcher will
 // watch on Endpoints or EndpointSlice resources, depending on cluster configuration.
-func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlices bool) (*EndpointsWatcher, error) {
+func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.Entry, enableEndpointSlices bool) (*EndpointsWatcher, error) {
 	ew := &EndpointsWatcher{
 		publishers:           make(map[ServiceID]*servicePublisher),
 		k8sAPI:               k8sAPI,
+		metadataAPI:          metadataAPI,
 		enableEndpointSlices: enableEndpointSlices,
 		log: log.WithFields(logging.Fields{
 			"component": "endpoints-watcher",
@@ -387,6 +391,7 @@ func (ew *EndpointsWatcher) getOrNewServicePublisher(id ServiceID) *servicePubli
 				"svc":       id.Name,
 			}),
 			k8sAPI:               ew.k8sAPI,
+			metadataAPI:          ew.metadataAPI,
 			ports:                make(map[portAndHostname]*portPublisher),
 			enableEndpointSlices: ew.enableEndpointSlices,
 		}
@@ -549,6 +554,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 		hostname:             hostname,
 		exists:               exists,
 		k8sAPI:               sp.k8sAPI,
+		metadataAPI:          sp.metadataAPI,
 		log:                  log,
 		metrics:              endpointsVecs.newEndpointsMetrics(sp.metricsLabels(srcPort, hostname)),
 		enableEndpointSlices: sp.enableEndpointSlices,
@@ -916,7 +922,10 @@ func (pp *portPublisher) newPodRefAddress(endpointPort Port, endpointIP, podName
 	if err != nil {
 		return Address{}, PodID{}, fmt.Errorf("unable to fetch pod %v: %w", id, err)
 	}
-	ownerKind, ownerName := pp.k8sAPI.GetOwnerKindAndName(context.Background(), pod, false)
+	ownerKind, ownerName, err := pp.metadataAPI.GetOwnerKindAndName(context.Background(), pod, false)
+	if err != nil {
+		return Address{}, PodID{}, err
+	}
 	addr := Address{
 		IP:        endpointIP,
 		Port:      endpointPort,
