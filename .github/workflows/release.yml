@@ -107,7 +107,7 @@ jobs:
 
   integration_tests:
     name: Integration tests
-    needs: [tag, docker_build, policy_controller_manifest]
+    needs: [tag, docker_build]
     strategy:
       matrix:
         integration_test:
@@ -146,7 +146,7 @@ jobs:
         bin/tests --images preload --name ${{ matrix.integration_test }} "$CMD"
 
   arm64_integration_tests:
-    needs: [tag, docker_build, policy_controller_manifest]
+    needs: [tag, docker_build]
     runs-on: [self-hosted, Linux, ARM64]
     timeout-minutes: 30
     steps:
