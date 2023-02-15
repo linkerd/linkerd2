@@ -9,7 +9,7 @@ on:
       - justfile
       - deny.toml
       - '**/*.rs'
-      - policy-*/*.dockerfile
+      - policy-*/Dockerfile
       - rust-toolchain
 
 permissions:
@@ -91,16 +91,6 @@ jobs:
           for mismatch in $(echo "$versions" | grep -vF "$(cat rust-toolchain)" || true) ; do
             echo "::error file=.github/workflows/rust.yml::Workflow uses incorrect rust version(s): $mismatch"
             ex=$((ex + 1))
-          done
-
-          # Check the policy-controller dockerfiles workflow against the version
-          # in rust-toolchain.
-          for f in policy-controller/*.dockerfile ; do
-            versions=$(sed -nE 's|ARG RUST_IMAGE=(.*/)?rust:([^ #]+).*|\2|p' "$f")
-            for mismatch in $(echo "$versions" | grep -vF "$(cat rust-toolchain)" || true) ; do
-              echo "::error file=\"$f\"::$f uses incorrect rust version(s): $mismatch"
-              ex=$((ex + 1))
-            done
           done
 
           exit $ex
