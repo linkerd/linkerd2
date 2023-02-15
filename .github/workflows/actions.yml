@@ -23,4 +23,4 @@ jobs:
     steps:
       - uses: linkerd/dev/actions/setup-tools@v39
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-      - run: just action-dev-check
+      - run: just-dev check-action-images
