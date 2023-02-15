@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-20.04
     container: ghcr.io/linkerd/dev:v39-go
     steps:
+      - run: apt update && apt install -y unzip
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
       - run: bin/protoc-diff
 
