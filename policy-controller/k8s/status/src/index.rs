@@ -167,7 +167,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         // Create the route parents and insert it into the index. If the
         // HTTPRoute is already in the index and it hasn't changed, skip
         // creating a patch.
-        let parents = match http_route::try_from(resource) {
+        let parents = match http_route::make_parents(resource) {
             Ok(parents) => parents,
             Err(error) => {
                 tracing::info!(%namespace, %name, %error, "Ignoring HTTPRoute");

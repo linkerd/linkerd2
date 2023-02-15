@@ -29,7 +29,7 @@ pub enum InvalidParentReference {
     SpecifiesSection,
 }
 
-pub(crate) fn try_from(http_route: policy::HttpRoute) -> Result<Vec<ParentReference>> {
+pub(crate) fn make_parents(http_route: policy::HttpRoute) -> Result<Vec<ParentReference>> {
     let namespace = http_route
         .metadata
         .namespace
