@@ -32,8 +32,6 @@ rs-toolchain := ""
 
 rs-features := 'all'
 
-target := "x86_64-unknown-linux-gnu"
-
 _cargo := "cargo" + if rs-toolchain != "" { " +" + rs-toolchain } else { "" }
 
 # Fetch Rust dependencies.
@@ -263,7 +261,6 @@ _test-id := `tr -dc 'a-z0-9' </dev/urandom | fold -w 5 | head -n 1`
 
 # The docker image tag.
 linkerd-tag := `bin/root-tag`
-#linkerd-tag := "test"
 
 docker-arch := ''
 
