@@ -88,7 +88,6 @@ fn http_route_rejected_after_server_delete() {
     assert_eq!(id, update.id);
     assert_eq!(patch, update.patch);
 
-    // todo: delete the Server
     {
         let mut index = index.write();
         <index::Index as kubert::index::IndexNamespacedResource<k8s::policy::Server>>::delete(
