@@ -15,7 +15,7 @@ permissions:
 jobs:
   rust-version:
     runs-on: ubuntu-latest
-    container: ghcr.io/linkerd/dev:v32-rust
+    container: ghcr.io/linkerd/dev:v39-rust
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
       - run: |
@@ -29,20 +29,6 @@ jobs:
   devcontainer-image:
     runs-on: ubuntu-latest
     steps:
+      - uses: linkerd/dev/actions/setup-tools@v39
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-      - run: |
-          export DEBIAN_FRONTEND=noninteractive
-          sudo apt-get update
-          sudo apt-get -y --no-install-recommends install jq
-      - run: |
-          # Strip jsonc comments because `jq` doesn't support them.
-          image=$(sed -E '/^\s*\/\/.*/d' .devcontainer/devcontainer.json |jq -Mr .image)
-          line=$(grep -nF '"image"' .devcontainer/devcontainer.json |cut -d':' -f1 |head -n1)
-          if [ "$image" == "null" ]; then
-            echo "::error file=.devcontainer/devcontainer.json,line=$line::Missing image"
-            exit 1
-          fi
-          if ! docker pull "$image" ; then
-            echo "::error file=.devcontainer/devcontainer.json,line=$line::Unable to pull image: $image"
-            exit 1
-          fi
+      - run: just-dev pull-dev-image
