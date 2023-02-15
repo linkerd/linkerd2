@@ -59,6 +59,8 @@ impl ParentReference {
         parent_ref: gateway::ParentReference,
         default_namespace: &str,
     ) -> Option<Result<Self, InvalidParentReference>> {
+        // todo: Allow parent references to target all kinds so that a status
+        // is generated for invalid kinds
         if !policy::httproute::parent_ref_targets_kind::<Server>(&parent_ref)
             || parent_ref.name.is_empty()
         {
