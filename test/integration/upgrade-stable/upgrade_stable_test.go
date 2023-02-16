@@ -21,9 +21,6 @@ import (
 	"github.com/linkerd/linkerd2/testutil"
 )
 
-//////////////////////
-///   TEST SETUP   ///
-//////////////////////
 var (
 	TestHelper *testutil.TestHelper
 
@@ -49,9 +46,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-//////////////////////
-/// TEST EXECUTION ///
-//////////////////////
 func TestInstallResourcesPreUpgrade(t *testing.T) {
 	versions, err := TestHelper.GetReleaseChannelVersions()
 	if err != nil {

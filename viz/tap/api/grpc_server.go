@@ -54,6 +54,7 @@ var (
 
 // Tap is deprecated, use TapByResource.
 // This API endpoint is marked as deprecated but it's still used.
+//
 //nolint:staticcheck
 func (s *GRPCTapServer) Tap(req *tapPb.TapRequest, stream tapPb.Tap_TapServer) error {
 	return status.Error(codes.Unimplemented, "Tap is deprecated, use TapByResource")
