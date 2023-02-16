@@ -13,7 +13,7 @@ ReplicaSets. For all other resources it tracks, it uses additional information
 so continues to use the API as before.
 
 * Added colliding Server in the policy controller's admission webhook validation
-* Upated wording for linkerd-multicluster cluster when it fails to probe a
+* Updated wording for linkerd-multicluster cluster when it fails to probe a
   remote gateway mirror
 * Removed unnecessary Namespaces access from the destination controller RBAC
 * Added Kubernetes metadata API in the destination controller for watching Nodes
