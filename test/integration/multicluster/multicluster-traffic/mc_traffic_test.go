@@ -155,7 +155,7 @@ func TestTargetTraffic(t *testing.T) {
 	ctx := context.Background()
 	// Create emojivoto in target cluster, to be deleted at the end of the test.
 	annotations := map[string]string{
-		"config.linkerd.io/proxy-log-level": "linkerd=trace,info",
+		// "config.linkerd.io/proxy-log-level": "linkerd=debug,info",
 	}
 	TestHelper.WithDataPlaneNamespace(ctx, "emojivoto", annotations, t, func(t *testing.T, ns string) {
 		t.Run("Deploy resources in source and target clusters", func(t *testing.T) {
