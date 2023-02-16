@@ -2,6 +2,7 @@ package norelay
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -112,8 +113,17 @@ func TestRelay(t *testing.T) {
 			"--", "curl", "-fsv", "-H", "l5d-dst-override: server-hello."+ns+".svc.cluster.local:8080", "http://"+relayIP+":4140",
 		)
 		if err != nil {
+			log, err := TestHelper.Kubectl(
+				"", "logs",
+				"-n", ns,
+				"-l", "app=server-relay",
+				"-c", "linkerd-proxy",
+			)
+			if err != nil {
+				log = fmt.Sprintf("failed to retrieve server-relay logs: %s", err)
+			}
 			testutil.AnnotatedFatalf(t, "unexpected error returned",
-				"unexpected error returned: %s\n%s", o, err)
+				"unexpected error returned: %s\n%s\n---\n%s", o, err, log)
 		}
 		if !strings.Contains(o, "HELLO-FROM-SERVER") {
 			testutil.AnnotatedFatalf(t, "unexpected response returned",
