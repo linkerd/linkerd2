@@ -109,7 +109,7 @@ func TestRelay(t *testing.T) {
 		relayIP := strings.Trim(ip, "'")
 		o, err := TestHelper.Kubectl(
 			"", "-n", ns, "exec", "deploy/client",
-			"--", "curl", "-f", "-H", "l5d-dst-override: server-hello."+ns+".svc.cluster.local:8080", "http://"+relayIP+":4140",
+			"--", "curl", "-fsv", "-H", "l5d-dst-override: server-hello."+ns+".svc.cluster.local:8080", "http://"+relayIP+":4140",
 		)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "unexpected error returned",
