@@ -143,7 +143,7 @@ func getDeployments(t *testing.T) map[string]string {
 	}
 
 	// server-relay is injected in ingress mode, manually
-	deploys["server-relay"], err = TestHelper.LinkerdRun("inject", "--manual", "--ingress", "testdata/server-relay.yml")
+	deploys["server-relay"], err = TestHelper.LinkerdRun("inject", "--manual", "--ingress", "--proxy-log-level=linkerd=debug,info", "testdata/server-relay.yml")
 	if err != nil {
 		testutil.AnnotatedFatal(t, "unexpected error", err)
 	}
