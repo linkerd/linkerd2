@@ -96,7 +96,7 @@ jobs:
       uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
     - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568
       with:
-        go-version: '1.18'
+        go-version: '1.19'
     - name: Download image archives
       uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
       with:
@@ -129,7 +129,7 @@ jobs:
       uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
     - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568
       with:
-        go-version: '1.18'
+        go-version: '1.19'
     - name: Set environment variables from scripts
       run: |
         TAG='${{ needs.tag.outputs.tag }}'
@@ -153,7 +153,7 @@ jobs:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
       - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568
         with:
-          go-version: '1.18'
+          go-version: '1.19'
       - uses: docker/setup-buildx-action@f03ac48505955848960e80bbb68046aa35c7b9e7
       - name: Pull linkerd binary
         run: |
