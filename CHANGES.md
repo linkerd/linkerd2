@@ -1,5 +1,27 @@
 # Changes
 
+## edge-23.2.2
+
+This edge release adds the policy status controller which writes the `status`
+field to HTTPRoutes when a parent reference Server accepts or rejects the
+HTTPRoute. This field is currently not consumed by the policy controller, but
+acts as the first step for considering HTTPRoute `status` when serving policy.
+
+Additionally, the destination controller now uses the Kubernetes metadata API
+for resources which it only needs to track the metadata for — Nodes and
+ReplicaSets. For all other resources it tracks, it uses additional information
+so continues to use the API as before.
+
+* Added colliding Server in the policy controller's admission webhook validation
+* Upated wording for linkerd-multicluster cluster when it fails to probe a
+  remote gateway mirror
+* Removed unnecessary Namespaces access from the destination controller RBAC
+* Added Kubernetes metadata API in the destination controller for watching Nodes
+  and ReplicaSets
+* Fixed QueryParamMatch parsing for HTTPRoutes
+* Added the policy status controller which writes the `status` field to
+  HTTPRoutes when a parent reference Server accepts or rejects it
+
 ## edge-23.2.1
 
 This edge release sees the `linkerd-cni` plugin moved to
