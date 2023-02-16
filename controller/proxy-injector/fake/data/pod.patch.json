@@ -58,7 +58,7 @@
         "--outbound-ports-to-ignore",
         "4567,4568"
       ],
-      "image": "cr.l5d.io/linkerd/proxy-init:v2.1.0",
+      "image": "cr.l5d.io/linkerd/proxy-init:v2.2.0",
       "imagePullPolicy": "IfNotPresent",
       "name": "linkerd-init",
       "resources": {
@@ -82,7 +82,10 @@
         "privileged": false,
         "runAsNonRoot": true,
         "runAsUser": 65534,
-        "readOnlyRootFilesystem": true
+        "readOnlyRootFilesystem": true,
+        "seccompProfile": {
+          "type": "RuntimeDefault"
+		}
       },
       "terminationMessagePolicy": "FallbackToLogsOnError",
       "volumeMounts": [

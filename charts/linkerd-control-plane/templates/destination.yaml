@@ -144,6 +144,7 @@ spec:
 {{- $tree := deepCopy . }}
 {{ $_ := set $tree.Values.proxy "workloadKind" "deployment" -}}
 {{ $_ := set $tree.Values.proxy "component" "linkerd-destination" -}}
+{{ $_ := set $tree.Values.proxy "waitBeforeExitSeconds" 0 -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -362,6 +363,9 @@ spec:
       {{- if .Values.priorityClassName -}}
       priorityClassName: {{ .Values.priorityClassName }}
       {{ end -}}
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: linkerd-destination
       volumes:
       - name: sp-tls

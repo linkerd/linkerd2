@@ -21,7 +21,6 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
-	coreinformers "k8s.io/client-go/informers/core/v1"
 )
 
 type (
@@ -32,7 +31,6 @@ type (
 		opaquePorts *watcher.OpaquePortsWatcher
 		profiles    *watcher.ProfileWatcher
 		servers     *watcher.ServerWatcher
-		nodes       coreinformers.NodeInformer
 
 		enableH2Upgrade     bool
 		controllerNS        string
@@ -40,9 +38,10 @@ type (
 		clusterDomain       string
 		defaultOpaquePorts  map[uint32]struct{}
 
-		k8sAPI   *k8s.API
-		log      *logging.Entry
-		shutdown <-chan struct{}
+		k8sAPI      *k8s.API
+		metadataAPI *k8s.MetadataAPI
+		log         *logging.Entry
+		shutdown    <-chan struct{}
 	}
 )
 
@@ -65,6 +64,7 @@ func NewServer(
 	enableH2Upgrade bool,
 	enableEndpointSlices bool,
 	k8sAPI *k8s.API,
+	metadataAPI *k8s.MetadataAPI,
 	clusterDomain string,
 	defaultOpaquePorts map[uint32]struct{},
 	shutdown <-chan struct{},
@@ -80,7 +80,7 @@ func NewServer(
 		return nil, err
 	}
 
-	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, log, enableEndpointSlices)
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, enableEndpointSlices)
 	if err != nil {
 		return nil, err
 	}
@@ -103,13 +103,13 @@ func NewServer(
 		opaquePorts,
 		profiles,
 		servers,
-		k8sAPI.Node(),
 		enableH2Upgrade,
 		controllerNS,
 		identityTrustDomain,
 		clusterDomain,
 		defaultOpaquePorts,
 		k8sAPI,
+		metadataAPI,
 		log,
 		shutdown,
 	}
@@ -141,7 +141,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		dest.GetPath(),
 		token.NodeName,
 		s.defaultOpaquePorts,
-		s.nodes,
+		s.metadataAPI,
 		stream,
 		log,
 	)
@@ -410,9 +410,12 @@ func (s *server) getPortForPod(pod *corev1.Pod, targetIP string, port uint32) (u
 }
 
 func (s *server) createAddress(pod *corev1.Pod, targetIP string, port uint32) (watcher.Address, error) {
-	ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
+	ownerKind, ownerName, err := s.metadataAPI.GetOwnerKindAndName(context.Background(), pod, true)
+	if err != nil {
+		return watcher.Address{}, err
+	}
 
-	port, err := s.getPortForPod(pod, targetIP, port)
+	port, err = s.getPortForPod(pod, targetIP, port)
 	if err != nil {
 		return watcher.Address{}, fmt.Errorf("failed to find Port for Pod: %w", err)
 	}

@@ -153,9 +153,10 @@ proxy:
       request: ""
   # -- User id under which the proxy runs
   uid: 2102
-  # -- If set the proxy sidecar will stay alive for at
-  # least the given period before receiving SIGTERM signal from Kubernetes but
-  # no longer than pod's `terminationGracePeriodSeconds`. See [Lifecycle
+  # -- If set the injected proxy sidecars in the data plane will stay alive for
+  # at least the given period before receiving the SIGTERM signal from
+  # Kubernetes but no longer than the pod's `terminationGracePeriodSeconds`.
+  # See [Lifecycle
   # hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks)
   # for more info on container lifecycle hooks.
   waitBeforeExitSeconds: 0
@@ -210,7 +211,7 @@ proxyInit:
     # @default -- imagePullPolicy
     pullPolicy: ""
     # -- Tag for the proxy-init container Docker image
-    version: v2.1.0
+    version: v2.2.0
   resources:
     cpu:
       # -- Maximum amount of CPU units that the proxy-init container can use

@@ -9,8 +9,9 @@ use linkerd_policy_controller::{
     grpc, index::outbound_index, k8s, Admission, ClusterInfo, DefaultPolicy, Index, IndexDiscover,
     IndexPair, IpNet, OutboundDiscover, SharedIndex,
 };
+use linkerd_policy_controller_k8s_status::{self as status};
 use std::net::SocketAddr;
-use tokio::time;
+use tokio::{sync::mpsc, time};
 use tonic::transport::Server;
 use tracing::{info, info_span, instrument, Instrument};
 
@@ -123,7 +124,6 @@ async fn main() -> Result<()> {
     let indexes = IndexPair::shared(index.clone(), outbound_index.clone());
 
     // Spawn resource indexers that update the index and publish lookups for the gRPC server.
-
     let pods =
         runtime.watch_all::<k8s::Pod>(ListParams::default().labels("linkerd.io/control-plane-ns"));
     tokio::spawn(kubert::index::namespaced(index.clone(), pods).instrument(info_span!("pods")));
@@ -173,6 +173,23 @@ async fn main() -> Result<()> {
             .instrument(info_span!("services")),
     );
 
+    // Build the status index which will be used to process updates to policy
+    // resources and send to the status controller.
+    let (updates_tx, updates_rx) = mpsc::unbounded_channel();
+    let status_index = status::Index::shared(updates_tx);
+
+    // Spawn resource indexers that update the status index.
+    let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(status_index.clone(), http_routes)
+            .instrument(info_span!("httproutes")),
+    );
+
+    let servers = runtime.watch_all::<k8s::policy::Server>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(status_index.clone(), servers).instrument(info_span!("servers")),
+    );
+
     // Run the gRPC server, serving results by looking up against the index handle.
     tokio::spawn(grpc(
         grpc_addr,
@@ -181,6 +198,10 @@ async fn main() -> Result<()> {
         outbound_index,
         runtime.shutdown_handle(),
     ));
+
+    let client = runtime.client();
+    let status_controller = status::Controller::new(client, updates_rx);
+    tokio::spawn(status_controller.process_updates());
 
     let client = runtime.client();
     let runtime = runtime.spawn_server(|| Admission::new(client));

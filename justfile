@@ -292,6 +292,7 @@ proxy-image := DOCKER_REGISTRY + "/proxy"
 proxy-init-image := DOCKER_REGISTRY + "/proxy-init"
 orig-proxy-init-image := "ghcr.io/linkerd/proxy-init"
 policy-controller-image := DOCKER_REGISTRY + "/policy-controller"
+cni-plugin-image := DOCKER_REGISTRY + "/cni-plugin"
 
 linkerd *flags:
     {{ _linkerd }} {{ flags }}
@@ -330,6 +331,7 @@ linkerd-load: _linkerd-images _k3d-init
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ policy-controller-image }}:{{ linkerd-tag }}' \
         '{{ proxy-image }}:{{ linkerd-tag }}' \
+        "{{ cni-plugin-image }}:$(yq .image.version charts/linkerd2-cni/values.yaml)" \
         "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" && exit ; sleep 1 ; done
 
 linkerd-build: _policy-controller-build
@@ -340,6 +342,7 @@ _linkerd-images:
     #!/usr/bin/env bash
     set -xeuo pipefail
     docker pull -q "{{ orig-proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
+    docker pull -q "{{ cni-plugin-image }}:$(yq .image.version charts/linkerd2-cni/values.yaml)"
     docker tag \
         "{{ orig-proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" \
         "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
@@ -390,6 +393,7 @@ _linkerd-init: && _linkerd-ready
             controller-image='{{ controller-image }}' \
             proxy-image='{{ proxy-image }}' \
             proxy-init-image='{{ proxy-init-image }}' \
+            cni-plugin-image='{{ cni-plugin-image }}'
             linkerd-exec='{{ linkerd-exec }}' \
             linkerd-install
     fi
@@ -499,6 +503,7 @@ _mc-target-load:
         controller-image='{{ controller-image }}' \
         proxy-image='{{ proxy-image }}' \
         proxy-init-image='{{ proxy-init-image }}' \
+        cni-plugin-image='{{ cni-plugin-image }}' \
         linkerd-exec='{{ linkerd-exec }}' \
         linkerd-tag='{{ linkerd-tag }}' \
         _pause-load \
@@ -542,7 +547,7 @@ action-lint:
 
 # Ensure all devcontainer versions are in sync
 action-dev-check:
-    action-dev-check
+    just-dev check-action-images
 
 ##
 ## Other tools...

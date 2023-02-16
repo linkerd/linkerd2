@@ -68,7 +68,7 @@ rules:
   resources: ["jobs"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "nodes", "namespaces"]
+  resources: ["pods", "endpoints", "services", "nodes"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
@@ -198,6 +198,12 @@ rules:
       - get
       - list
       - watch
+  - apiGroups:
+      - policy.linkerd.io
+    resources:
+      - httproutes/status
+    verbs:
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -684,7 +690,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 data:
-  ca-bundle.crt: |
+  ca-bundle.crt: |-
     test-trust-anchor
 ---
 kind: Service
@@ -981,7 +987,6 @@ spec:
         - mountPath: /var/run/secrets/tokens
           name: linkerd-identity-token
       initContainers:
-
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -1009,14 +1014,19 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
+          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
-          privileged: false
           readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: linkerd-identity
       volumes:
       - name: identity-issuer
@@ -1476,7 +1486,6 @@ spec:
           name: policy-tls
           readOnly: true
       initContainers:
-
       - args:
         - --incoming-proxy-port
         - "4143"
@@ -1504,14 +1513,19 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
+          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
-          privileged: false
           readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: linkerd-destination
       volumes:
       - name: sp-tls
@@ -1567,6 +1581,9 @@ spec:
         spec:
           nodeSelector:
             kubernetes.io/os: linux
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never
           containers:
@@ -1870,14 +1887,19 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
+          privileged: false
           runAsNonRoot: true
           runAsUser: 65534
-          privileged: false
           readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:

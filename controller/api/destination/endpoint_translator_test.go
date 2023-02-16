@@ -101,6 +101,40 @@ var (
 			{Name: "west-1b"},
 		},
 	}
+	AddressOnTest123Node = watcher.Address{
+		IP:   "1.1.1.1",
+		Port: 1,
+		Pod: &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod1",
+				Namespace: "ns",
+				Labels: map[string]string{
+					k8s.ControllerNSLabel:    "linkerd",
+					k8s.ProxyDeploymentLabel: "deployment-name",
+				},
+			},
+			Spec: corev1.PodSpec{
+				NodeName: "test-123",
+			},
+		},
+	}
+	AddressNotOnTest123Node = watcher.Address{
+		IP:   "1.1.1.2",
+		Port: 2,
+		Pod: &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod1",
+				Namespace: "ns",
+				Labels: map[string]string{
+					k8s.ControllerNSLabel:    "linkerd",
+					k8s.ProxyDeploymentLabel: "deployment-name",
+				},
+			},
+			Spec: corev1.PodSpec{
+				NodeName: "test-234",
+			},
+		},
+	}
 )
 
 func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
@@ -317,6 +351,25 @@ func TestEndpointTranslatorForZonedAddresses(t *testing.T) {
 
 		// Only the address meant for west-1a should be added, which means
 		// that when we try to remove the address meant for west-1b there
+		// should be no remove update.
+		expectedNumUpdates := 1
+		actualNumUpdates := len(mockGetServer.updatesReceived)
+		if actualNumUpdates != expectedNumUpdates {
+			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
+		}
+	})
+}
+
+func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
+	t.Run("Sends one update for add and none for remove", func(t *testing.T) {
+		mockGetServer, translator := makeEndpointTranslator(t)
+		addressSet := mkAddressSetForServices(AddressOnTest123Node, AddressNotOnTest123Node)
+		addressSet.LocalTrafficPolicy = true
+		translator.Add(addressSet)
+		translator.Remove(mkAddressSetForServices(AddressNotOnTest123Node))
+
+		// Only the address meant for AddressOnTest123Node should be added, which means
+		// that when we try to remove the address meant for AddressNotOnTest123Node there
 		// should be no remove update.
 		expectedNumUpdates := 1
 		actualNumUpdates := len(mockGetServer.updatesReceived)

@@ -10,11 +10,11 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
+	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
-	"github.com/linkerd/linkerd2/pkg/k8s"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	coreinformers "k8s.io/client-go/informers/core/v1"
 )
 
 const (
@@ -31,6 +31,7 @@ type endpointTranslator struct {
 	identityTrustDomain string
 	enableH2Upgrade     bool
 	nodeTopologyZone    string
+	nodeName            string
 	defaultOpaquePorts  map[uint32]struct{}
 
 	availableEndpoints watcher.AddressSet
@@ -48,7 +49,7 @@ func newEndpointTranslator(
 	service string,
 	srcNodeName string,
 	defaultOpaquePorts map[uint32]struct{},
-	nodes coreinformers.NodeInformer,
+	k8sAPI *k8s.MetadataAPI,
 	stream pb.Destination_GetServer,
 	log *logging.Entry,
 ) *endpointTranslator {
@@ -57,7 +58,7 @@ func newEndpointTranslator(
 		"service":   service,
 	})
 
-	nodeTopologyZone, err := getNodeTopologyZone(nodes, srcNodeName)
+	nodeTopologyZone, err := getNodeTopologyZone(k8sAPI, srcNodeName)
 	if err != nil {
 		log.Errorf("Failed to get node topology zone for node %s: %s", srcNodeName, err)
 	}
@@ -70,6 +71,7 @@ func newEndpointTranslator(
 		identityTrustDomain,
 		enableH2Upgrade,
 		nodeTopologyZone,
+		srcNodeName,
 		defaultOpaquePorts,
 		availableEndpoints,
 		filteredSnapshot,
@@ -103,8 +105,9 @@ func (et *endpointTranslator) Remove(set watcher.AddressSet) {
 
 func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 	et.availableEndpoints = watcher.AddressSet{
-		Addresses: et.availableEndpoints.Addresses,
-		Labels:    set.Labels,
+		Addresses:          et.availableEndpoints.Addresses,
+		Labels:             set.Labels,
+		LocalTrafficPolicy: set.LocalTrafficPolicy,
 	}
 
 	filtered := et.filterAddresses()
@@ -124,8 +127,26 @@ func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 // topology zone. The client will only receive endpoints with the same
 // consumption zone as the node. An endpoints consumption zone is set
 // by its Hints field and can be different than its actual Topology zone.
+// when service.pec.internalTrafficPolicy is set to local, Topology Aware
+// Hints are not used.
 func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 	filtered := make(map[watcher.ID]watcher.Address)
+	// If service.pec.internalTrafficPolicy is set to local, filter and return the addresses
+	// for local node only
+	if et.availableEndpoints.LocalTrafficPolicy {
+		et.log.Debugf("Filtering through addresses that should be consumed by node %s", et.nodeName)
+		for id, address := range et.availableEndpoints.Addresses {
+			if address.Pod != nil && address.Pod.Spec.NodeName == et.nodeName {
+				filtered[id] = address
+			}
+		}
+		et.log.Debugf("Filtered from %d to %d addresses", len(et.availableEndpoints.Addresses), len(filtered))
+		return watcher.AddressSet{
+			Addresses:          filtered,
+			Labels:             et.availableEndpoints.Labels,
+			LocalTrafficPolicy: et.availableEndpoints.LocalTrafficPolicy,
+		}
+	}
 	// If any address does not have a hint, then all hints are ignored and all
 	// available addresses are returned. This replicates kube-proxy behavior
 	// documented in the KEP: https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/2433-topology-aware-hints/README.md#kube-proxy
@@ -135,8 +156,9 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 				filtered[k] = v
 			}
 			return watcher.AddressSet{
-				Addresses: filtered,
-				Labels:    et.availableEndpoints.Labels,
+				Addresses:          filtered,
+				Labels:             et.availableEndpoints.Labels,
+				LocalTrafficPolicy: et.availableEndpoints.LocalTrafficPolicy,
 			}
 		}
 	}
@@ -154,8 +176,9 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 	if len(filtered) > 0 {
 		et.log.Debugf("Filtered from %d to %d addresses", len(et.availableEndpoints.Addresses), len(filtered))
 		return watcher.AddressSet{
-			Addresses: filtered,
-			Labels:    et.availableEndpoints.Labels,
+			Addresses:          filtered,
+			Labels:             et.availableEndpoints.Labels,
+			LocalTrafficPolicy: et.availableEndpoints.LocalTrafficPolicy,
 		}
 	}
 
@@ -165,8 +188,9 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 		filtered[k] = v
 	}
 	return watcher.AddressSet{
-		Addresses: filtered,
-		Labels:    et.availableEndpoints.Labels,
+		Addresses:          filtered,
+		Labels:             et.availableEndpoints.Labels,
+		LocalTrafficPolicy: et.availableEndpoints.LocalTrafficPolicy,
 	}
 }
 
@@ -351,9 +375,9 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 		log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
 	}
 
-	controllerNSLabel := address.Pod.Labels[k8s.ControllerNSLabel]
-	sa, ns := k8s.GetServiceAccountAndNS(address.Pod)
-	weightedAddr.MetricLabels = k8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
+	controllerNSLabel := address.Pod.Labels[pkgK8s.ControllerNSLabel]
+	sa, ns := pkgK8s.GetServiceAccountAndNS(address.Pod)
+	weightedAddr.MetricLabels = pkgK8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
 	_, isSkippedInboundPort := skippedInboundPorts[address.Port]
 
 	// If the pod is controlled by any Linkerd control plane, then it can be
@@ -404,8 +428,8 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 	return &weightedAddr, nil
 }
 
-func getNodeTopologyZone(nodes coreinformers.NodeInformer, srcNode string) (string, error) {
-	node, err := nodes.Lister().Get(srcNode)
+func getNodeTopologyZone(k8sAPI *k8s.MetadataAPI, srcNode string) (string, error) {
+	node, err := k8sAPI.Get(k8s.Node, srcNode)
 	if err != nil {
 		return "", err
 	}
@@ -426,7 +450,7 @@ func newEmptyAddressSet() watcher.AddressSet {
 // variable.
 func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
 	for _, containerSpec := range podSpec.Containers {
-		if containerSpec.Name != k8s.ProxyContainerName {
+		if containerSpec.Name != pkgK8s.ProxyContainerName {
 			continue
 		}
 		for _, envVar := range containerSpec.Env {

@@ -1,5 +1,4 @@
 /*
-
 Package testutil provides helpers for running the linkerd integration tests.
 
 All helpers are defined as functions on the TestHelper struct, which you should
@@ -44,6 +43,5 @@ the tests aren't inadvertently executed when unit tests for the project are run.
 TestHelper embeds KubernetesHelper, so all functions defined on KubernetesHelper
 are also available to instances of TestHelper. See the individual function
 definitions for details on how to use each helper in tests.
-
 */
 package testutil

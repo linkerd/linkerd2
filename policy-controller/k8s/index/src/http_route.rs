@@ -328,7 +328,7 @@ pub mod convert {
                 Ok(http_route::QueryParamMatch::Exact(name, value))
             }
             api::HttpQueryParamMatch::RegularExpression { name, value } => {
-                Ok(http_route::QueryParamMatch::Exact(name, value.parse()?))
+                Ok(http_route::QueryParamMatch::Regex(name, value.parse()?))
             }
         }
     }

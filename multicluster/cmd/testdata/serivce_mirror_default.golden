@@ -38,9 +38,9 @@ metadata:
   name: linkerd-service-mirror-read-remote-creds-test-cluster
   namespace: test
   labels:
-      linkerd.io/extension: multicluster
-      component: service-mirror
-      mirror.linkerd.io/cluster-name: test-cluster
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: test-cluster
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
@@ -56,9 +56,9 @@ metadata:
   name: linkerd-service-mirror-read-remote-creds-test-cluster
   namespace: test
   labels:
-      linkerd.io/extension: multicluster
-      component: service-mirror
-      mirror.linkerd.io/cluster-name: test-cluster
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: test-cluster
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -98,6 +98,7 @@ spec:
       annotations:
         linkerd.io/inject: enabled
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
       labels:
         component: linkerd-service-mirror
         mirror.linkerd.io/cluster-name: test-cluster
@@ -124,6 +125,9 @@ spec:
         ports:
         - containerPort: 9999
           name: admin-http
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: linkerd-service-mirror-test-cluster
 ---
 apiVersion: v1

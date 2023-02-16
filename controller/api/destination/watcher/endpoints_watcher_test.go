@@ -20,10 +20,11 @@ import (
 )
 
 type bufferingEndpointListener struct {
-	added             []string
-	removed           []string
-	noEndpointsCalled bool
-	noEndpointsExist  bool
+	added              []string
+	removed            []string
+	localTrafficPolicy bool
+	noEndpointsCalled  bool
+	noEndpointsExist   bool
 	sync.Mutex
 }
 
@@ -78,6 +79,7 @@ func (bel *bufferingEndpointListener) Add(set AddressSet) {
 	for _, address := range set.Addresses {
 		bel.added = append(bel.added, addressString(address))
 	}
+	bel.localTrafficPolicy = set.LocalTrafficPolicy
 }
 
 func (bel *bufferingEndpointListener) Remove(set AddressSet) {
@@ -86,6 +88,7 @@ func (bel *bufferingEndpointListener) Remove(set AddressSet) {
 	for _, address := range set.Addresses {
 		bel.removed = append(bel.removed, addressString(address))
 	}
+	bel.localTrafficPolicy = set.LocalTrafficPolicy
 }
 
 func (bel *bufferingEndpointListener) NoEndpoints(exists bool) {
@@ -665,12 +668,18 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false)
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
 
 			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
 
 			listener := newBufferingEndpointListener()
 
@@ -708,6 +717,7 @@ func TestEndpointsWatcherWithEndpointSlices(t *testing.T) {
 		expectedNoEndpoints              bool
 		expectedNoEndpointsServiceExists bool
 		expectedError                    bool
+		expectedLocalTrafficPolicy       bool
 	}{
 		{
 			serviceType: "local services with EndpointSlice",
@@ -738,7 +748,8 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-  - port: 8989`,
+  - port: 8989
+  internalTrafficPolicy: Local`,
 				`
 addressType: IPv4
 apiVersion: discovery.k8s.io/v1
@@ -836,6 +847,7 @@ status:
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
 			expectedError:                    false,
+			expectedLocalTrafficPolicy:       true,
 		},
 		{
 			serviceType: "local services with missing addresses and EndpointSlice",
@@ -1284,12 +1296,18 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), true)
+			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true)
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
 
 			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
 
 			listener := newBufferingEndpointListener()
 
@@ -1299,6 +1317,10 @@ status:
 			}
 			if !tt.expectedError && err != nil {
 				t.Fatalf("Expected no error, got [%s]", err)
+			}
+
+			if listener.localTrafficPolicy != tt.expectedLocalTrafficPolicy {
+				t.Fatalf("Expected localTrafficPolicy [%v], got [%v]", tt.expectedLocalTrafficPolicy, listener.localTrafficPolicy)
 			}
 
 			listener.ExpectAdded(tt.expectedAddresses, t)
@@ -1404,12 +1426,18 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false)
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
 
 			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
 
 			listener := newBufferingEndpointListener()
 
@@ -1528,12 +1556,18 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), true)
+			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true)
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
 
 			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
 
 			listener := newBufferingEndpointListener()
 
@@ -1758,12 +1792,18 @@ subsets:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), tt.enableEndpointSlices)
+			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), tt.enableEndpointSlices)
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
 
 			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
 
 			listener := newBufferingEndpointListener()
 
@@ -1921,12 +1961,18 @@ subsets:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false)
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
 
 			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
 
 			listener := newBufferingEndpointListener()
 
@@ -2047,12 +2093,18 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false)
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
 
 			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
 
 			listener := newBufferingEndpointListenerWithResVersion()
 
@@ -2143,12 +2195,18 @@ status:
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
 
-	watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), true)
+	metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+	if err != nil {
+		t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+	}
+
+	watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true)
 	if err != nil {
 		t.Fatalf("can't create Endpoints watcher: %s", err)
 	}
 
 	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
 
 	listener := newBufferingEndpointListener()
 

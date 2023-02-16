@@ -78,6 +78,7 @@ spec:
       annotations:
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
         prometheus.io/path: /metrics
         prometheus.io/port: "8888"
         prometheus.io/scrape: "true"
@@ -138,6 +139,9 @@ spec:
         volumeMounts:
         - mountPath: /conf
           name: collector-config-val
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: collector
       volumes:
       - configMap:
@@ -237,5 +241,8 @@ spec:
           seccompProfile:
             type: RuntimeDefault
       dnsPolicy: ClusterFirst
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: jaeger
 {{ end -}}

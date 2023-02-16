@@ -317,11 +317,18 @@ impl Validate<ServerSpec> for Admission {
             .list(&kube::api::ListParams::default())
             .await?;
         for server in servers.items.into_iter() {
-            if server.name_unchecked() != name
+            let server_name = server.name_unchecked();
+            if server_name != name
                 && server.spec.port == spec.port
                 && Self::overlaps(&server.spec.pod_selector, &spec.pod_selector)
             {
-                bail!("identical server spec already exists");
+                let server_ns = server.namespace();
+                let server_ns = server_ns.as_deref().unwrap_or("default");
+                bail!(
+                    "Server spec '{server_ns}/{server_name}' already defines a policy \
+                    for port {}, and selects pods that would be selected by this Server",
+                    server.spec.port,
+                );
             }
         }
 

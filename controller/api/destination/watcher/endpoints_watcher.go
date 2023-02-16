@@ -35,9 +35,6 @@ const (
 
 const endpointTargetRefPod = "Pod"
 
-// TODO: prom metrics for all the queues/caches
-// https://github.com/linkerd/linkerd2/issues/2204
-
 type (
 	// Address represents an individual port on a specific endpoint.
 	// This endpoint might be the result of a the existence of a pod
@@ -58,8 +55,9 @@ type (
 
 	// AddressSet is a set of Address, indexed by ID.
 	AddressSet struct {
-		Addresses map[ID]Address
-		Labels    map[string]string
+		Addresses          map[ID]Address
+		Labels             map[string]string
+		LocalTrafficPolicy bool
 	}
 
 	portAndHostname struct {
@@ -72,8 +70,9 @@ type (
 	// EndpointsWatcher will publish the address set and all future changes for
 	// that service:port.
 	EndpointsWatcher struct {
-		publishers map[ServiceID]*servicePublisher
-		k8sAPI     *k8s.API
+		publishers  map[ServiceID]*servicePublisher
+		k8sAPI      *k8s.API
+		metadataAPI *k8s.MetadataAPI
 
 		log                  *logging.Entry
 		enableEndpointSlices bool
@@ -93,7 +92,9 @@ type (
 		id                   ServiceID
 		log                  *logging.Entry
 		k8sAPI               *k8s.API
+		metadataAPI          *k8s.MetadataAPI
 		enableEndpointSlices bool
+		localTrafficPolicy   bool
 		ports                map[portAndHostname]*portPublisher
 		// All access to the servicePublisher and its portPublishers is explicitly synchronized by
 		// this mutex.
@@ -112,11 +113,13 @@ type (
 		hostname             string
 		log                  *logging.Entry
 		k8sAPI               *k8s.API
+		metadataAPI          *k8s.MetadataAPI
 		enableEndpointSlices bool
 		exists               bool
 		addresses            AddressSet
 		listeners            []EndpointUpdateListener
 		metrics              endpointsMetrics
+		localTrafficPolicy   bool
 	}
 
 	// EndpointUpdateListener is the interface that subscribers must implement.
@@ -134,10 +137,11 @@ var undefinedEndpointPort = Port(0)
 // NewEndpointsWatcher creates an EndpointsWatcher and begins watching the
 // k8sAPI for pod, service, and endpoint changes. An EndpointsWatcher will
 // watch on Endpoints or EndpointSlice resources, depending on cluster configuration.
-func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlices bool) (*EndpointsWatcher, error) {
+func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.Entry, enableEndpointSlices bool) (*EndpointsWatcher, error) {
 	ew := &EndpointsWatcher{
 		publishers:           make(map[ServiceID]*servicePublisher),
 		k8sAPI:               k8sAPI,
+		metadataAPI:          metadataAPI,
 		enableEndpointSlices: enableEndpointSlices,
 		log: log.WithFields(logging.Fields{
 			"component": "endpoints-watcher",
@@ -387,6 +391,7 @@ func (ew *EndpointsWatcher) getOrNewServicePublisher(id ServiceID) *servicePubli
 				"svc":       id.Name,
 			}),
 			k8sAPI:               ew.k8sAPI,
+			metadataAPI:          ew.metadataAPI,
 			ports:                make(map[portAndHostname]*portPublisher),
 			enableEndpointSlices: ew.enableEndpointSlices,
 		}
@@ -474,10 +479,21 @@ func (sp *servicePublisher) updateService(newService *corev1.Service) {
 	defer sp.Unlock()
 	sp.log.Debugf("Updating service for %s", sp.id)
 
+	// set localTrafficPolicy to true if InternalTrafficPolicy is set to local
+	if newService.Spec.InternalTrafficPolicy != nil {
+		sp.localTrafficPolicy = *newService.Spec.InternalTrafficPolicy == corev1.ServiceInternalTrafficPolicyLocal
+	} else {
+		sp.localTrafficPolicy = false
+	}
+
 	for key, port := range sp.ports {
 		newTargetPort := getTargetPort(newService, key.port)
 		if newTargetPort != port.targetPort {
 			port.updatePort(newTargetPort)
+		}
+		// update service endpoints with new localTrafficPolicy
+		if port.localTrafficPolicy != sp.localTrafficPolicy {
+			port.updateLocalTrafficPolicy(sp.localTrafficPolicy)
 		}
 	}
 
@@ -538,9 +554,11 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 		hostname:             hostname,
 		exists:               exists,
 		k8sAPI:               sp.k8sAPI,
+		metadataAPI:          sp.metadataAPI,
 		log:                  log,
 		metrics:              endpointsVecs.newEndpointsMetrics(sp.metricsLabels(srcPort, hostname)),
 		enableEndpointSlices: sp.enableEndpointSlices,
+		localTrafficPolicy:   sp.localTrafficPolicy,
 	}
 
 	if port.enableEndpointSlices {
@@ -620,6 +638,7 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 	newAddressSet := pp.endpointSliceToAddresses(slice)
 	for id, addr := range pp.addresses.Addresses {
 		newAddressSet.Addresses[id] = addr
+		newAddressSet.LocalTrafficPolicy = pp.localTrafficPolicy
 	}
 
 	add, _ := diffAddresses(pp.addresses, newAddressSet)
@@ -638,8 +657,9 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 
 func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, newSlice *discovery.EndpointSlice) {
 	updatedAddressSet := AddressSet{
-		Addresses: make(map[ID]Address),
-		Labels:    pp.addresses.Labels,
+		Addresses:          make(map[ID]Address),
+		Labels:             pp.addresses.Labels,
+		LocalTrafficPolicy: pp.localTrafficPolicy,
 	}
 
 	for id, address := range pp.addresses.Addresses {
@@ -712,8 +732,9 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 	resolvedPort := pp.resolveESTargetPort(es.Ports)
 	if resolvedPort == undefinedEndpointPort {
 		return AddressSet{
-			Labels:    metricLabels(es),
-			Addresses: make(map[ID]Address),
+			Labels:             metricLabels(es),
+			Addresses:          make(map[ID]Address),
+			LocalTrafficPolicy: pp.localTrafficPolicy,
 		}
 	}
 
@@ -777,8 +798,9 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 
 	}
 	return AddressSet{
-		Addresses: addresses,
-		Labels:    metricLabels(es),
+		Addresses:          addresses,
+		Labels:             metricLabels(es),
+		LocalTrafficPolicy: pp.localTrafficPolicy,
 	}
 }
 
@@ -900,7 +922,10 @@ func (pp *portPublisher) newPodRefAddress(endpointPort Port, endpointIP, podName
 	if err != nil {
 		return Address{}, PodID{}, fmt.Errorf("unable to fetch pod %v: %w", id, err)
 	}
-	ownerKind, ownerName := pp.k8sAPI.GetOwnerKindAndName(context.Background(), pod, false)
+	ownerKind, ownerName, err := pp.metadataAPI.GetOwnerKindAndName(context.Background(), pod, false)
+	if err != nil {
+		return Address{}, PodID{}, err
+	}
 	addr := Address{
 		IP:        endpointIP,
 		Port:      endpointPort,
@@ -946,6 +971,14 @@ func (pp *portPublisher) resolveTargetPort(subset corev1.EndpointSubset) Port {
 		}
 	}
 	return undefinedEndpointPort
+}
+
+func (pp *portPublisher) updateLocalTrafficPolicy(localTrafficPolicy bool) {
+	pp.localTrafficPolicy = localTrafficPolicy
+	pp.addresses.LocalTrafficPolicy = localTrafficPolicy
+	for _, listener := range pp.listeners {
+		listener.Add(pp.addresses)
+	}
 }
 
 func (pp *portPublisher) updatePort(targetPort namedPort) {
@@ -1144,8 +1177,9 @@ func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSe
 		}
 	}
 	add = AddressSet{
-		Addresses: addAddresses,
-		Labels:    newAddresses.Labels,
+		Addresses:          addAddresses,
+		Labels:             newAddresses.Labels,
+		LocalTrafficPolicy: newAddresses.LocalTrafficPolicy,
 	}
 	remove = AddressSet{
 		Addresses: removeAddresses,

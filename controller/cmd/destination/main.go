@@ -37,6 +37,16 @@ func Main(args []string) {
 
 	flags.ConfigureAndParse(cmd, args)
 
+	ready := false
+	adminServer := admin.NewServer(*metricsAddr, *enablePprof, &ready)
+
+	go func() {
+		log.Infof("starting admin server on %s", *metricsAddr)
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Errorf("failed to start destination admin server: %s", err)
+		}
+	}()
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
@@ -90,18 +100,23 @@ func Main(args []string) {
 			ctx,
 			*kubeConfigPath,
 			true,
-			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.Job, k8s.NS, k8s.Node, k8s.Srv,
+			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
 		)
 	} else {
 		k8sAPI, err = k8s.InitializeAPI(
 			ctx,
 			*kubeConfigPath,
 			true,
-			k8s.Endpoint, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.Job, k8s.NS, k8s.Node, k8s.Srv,
+			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
 		)
 	}
 	if err != nil {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
+	}
+
+	metadataAPI, err := k8s.InitializeMetadataAPI(*kubeConfigPath, k8s.Node, k8s.RS)
+	if err != nil {
+		log.Fatalf("Failed to initialize Kubernetes metadata API: %s", err)
 	}
 
 	server, err := destination.NewServer(
@@ -111,6 +126,7 @@ func Main(args []string) {
 		*enableH2Upgrade,
 		*enableEndpointSlices,
 		k8sAPI,
+		metadataAPI,
 		*clusterDomain,
 		opaquePorts,
 		done,
@@ -120,7 +136,9 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize destination server: %s", err)
 	}
 
-	k8sAPI.Sync(nil) // blocks until caches are synced
+	// blocks until caches are synced
+	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
 
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)
@@ -129,14 +147,7 @@ func Main(args []string) {
 		}
 	}()
 
-	adminServer := admin.NewServer(*metricsAddr, *enablePprof)
-
-	go func() {
-		log.Infof("starting admin server on %s", *metricsAddr)
-		if err := adminServer.ListenAndServe(); err != nil {
-			log.Errorf("failed to start destination admin server: %s", err)
-		}
-	}()
+	ready = true
 
 	<-stop
 

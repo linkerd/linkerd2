@@ -61,6 +61,7 @@ spec:
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
         linkerd.io/inject: enabled
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         linkerd.io/extension: viz
@@ -133,4 +134,7 @@ spec:
           runAsUser: {{.Values.dashboard.UID | default .Values.defaultUID}}
           seccompProfile:
             type: RuntimeDefault
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: web

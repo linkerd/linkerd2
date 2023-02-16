@@ -42,7 +42,8 @@ runs:
           -f ./${{ inputs.component-path }}/${{ inputs.arch }}.dockerfile \
           --tag=ghcr.io/${{ github.repository_owner }}/${{ inputs.component }}:${{ inputs.tag }}-${{ inputs.arch }} \
           --cache-from type=local,src=${{ runner.temp }}/.buildx-cache \
-          --cache-to type=local,dest=${{ runner.temp }}/.buildx-cache,mode=max
+          --cache-to type=local,dest=${{ runner.temp }}/.buildx-cache,mode=max \
+          --provenance=false
 
 outputs:
   image:

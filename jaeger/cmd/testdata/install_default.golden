@@ -33,6 +33,7 @@ spec:
         checksum/config: 0d7be729559727e479e66942fc892c724870bdfda2beaeb2a93c5070f349f4a2
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         linkerd.io/extension: jaeger
@@ -80,6 +81,9 @@ spec:
           name: tls
           readOnly: true
         resources:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: jaeger-injector
       volumes:
       - name: tls
@@ -152,7 +156,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
 spec:
-  # Ideally, this should be restricted to the actual set of IPs the kubelet API
+  # Ideally, this should be restricted to the actual set of IPs the kube-api
   # server uses for webhooks in a cluster. This can't easily be discovered.
   networks:
   - cidr: "0.0.0.0/0"
@@ -339,6 +343,7 @@ spec:
       annotations:
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
         prometheus.io/path: /metrics
         prometheus.io/port: "8888"
         prometheus.io/scrape: "true"
@@ -394,6 +399,9 @@ spec:
         volumeMounts:
         - mountPath: /conf
           name: collector-config-val
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: collector
       volumes:
       - configMap:
@@ -482,6 +490,9 @@ spec:
           seccompProfile:
             type: RuntimeDefault
       dnsPolicy: ClusterFirst
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: jaeger
 ---
 apiVersion: policy.linkerd.io/v1beta1

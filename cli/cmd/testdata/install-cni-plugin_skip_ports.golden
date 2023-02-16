@@ -110,6 +110,9 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       hostNetwork: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: linkerd-cni
       containers:
       # This container installs the linkerd CNI binaries
@@ -117,7 +120,8 @@ spec:
       # script copies the files into place and then sleeps so
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
-        image: cr.l5d.io/linkerd/cni-plugin:dev-undefined
+        image: cr.l5d.io/linkerd/cni-plugin:v1.0.0
+        imagePullPolicy: 
         env:
         - name: DEST_CNI_NET_DIR
           valueFrom:

@@ -45,6 +45,16 @@ func Main(args []string) {
 	flags.ConfigureAndParse(cmd, args)
 	linkName := cmd.Arg(0)
 
+	ready := false
+	adminServer := admin.NewServer(*metricsAddr, *enablePprof, &ready)
+
+	go func() {
+		log.Infof("starting admin server on %s", *metricsAddr)
+		if err := adminServer.ListenAndServe(); err != nil {
+			log.Errorf("failed to start service mirror admin server: %s", err)
+		}
+	}()
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
@@ -77,16 +87,9 @@ func Main(args []string) {
 
 	metrics := servicemirror.NewProbeMetricVecs()
 
-	adminServer := admin.NewServer(*metricsAddr, *enablePprof)
-
-	go func() {
-		log.Infof("starting admin server on %s", *metricsAddr)
-		if err := adminServer.ListenAndServe(); err != nil {
-			log.Errorf("failed to start service mirror admin server: %s", err)
-		}
-	}()
-
 	controllerK8sAPI.Sync(nil)
+
+	ready = true
 
 main:
 	for {

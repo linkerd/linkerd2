@@ -410,6 +410,7 @@ spec:
         checksum/config: b73fb1bf343c4203fbab8ee108c5eba2e07d184177e204677dc83d4cad2cd12b
         linkerd.io/created-by: linkerd/helm dev-undefined
         linkerd.io/inject: enabled
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         linkerd.io/extension: viz
@@ -455,6 +456,9 @@ spec:
           runAsUser: 2103
           seccompProfile:
             type: RuntimeDefault
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: metrics-api
 ---
 apiVersion: policy.linkerd.io/v1beta1
@@ -701,6 +705,7 @@ spec:
         config.linkerd.io/proxy-memory-request: "20Mi"
         config.linkerd.io/proxy-memory-limit: "250Mi"
         linkerd.io/inject: enabled
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
       labels:
         linkerd.io/extension: viz
         component: prometheus
@@ -754,6 +759,9 @@ spec:
           name: prometheus-config
           subPath: prometheus.yml
           readOnly: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: prometheus
       volumes:
       - name: data
@@ -860,6 +868,7 @@ spec:
         config.linkerd.io/proxy-memory-request: "20Mi"
         config.linkerd.io/proxy-memory-limit: "250Mi"
         linkerd.io/inject: enabled
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         linkerd.io/extension: viz
@@ -912,6 +921,9 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: tap
       volumes:
       - name: tls
@@ -1066,6 +1078,7 @@ spec:
         checksum/config: 390143015ec83a86ded6630634da5834c8ac7700b93d486a7dc101a15cb87f15
         linkerd.io/created-by: linkerd/helm dev-undefined
         linkerd.io/inject: enabled
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         linkerd.io/extension: viz
@@ -1114,6 +1127,9 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: tap-injector
       volumes:
       - name: tls
@@ -1234,6 +1250,7 @@ spec:
         config.linkerd.io/proxy-memory-request: "20Mi"
         config.linkerd.io/proxy-memory-limit: "250Mi"
         linkerd.io/inject: enabled
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         linkerd.io/extension: viz
@@ -1280,6 +1297,9 @@ spec:
           runAsUser: 2103
           seccompProfile:
             type: RuntimeDefault
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: web
 ---
 apiVersion: linkerd.io/v1alpha2

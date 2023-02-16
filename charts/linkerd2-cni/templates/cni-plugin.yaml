@@ -46,6 +46,8 @@ apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
   name: linkerd-{{.Release.Namespace}}-cni
+  annotations:
+    seccomp.security.alpha.kubernetes.io/allowedProfileNames: "runtime/default"
   labels:
     linkerd.io/cni-resource: "true"
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
@@ -210,6 +212,9 @@ spec:
       {{- include "linkerd.node-affinity" . | nindent 8 }}
       {{- end }}
       hostNetwork: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: linkerd-cni
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}
@@ -224,7 +229,8 @@ spec:
       # script copies the files into place and then sleeps so
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
-        image: {{.Values.cniPluginImage}}:{{.Values.cniPluginVersion}}
+        image: {{ .Values.image.name -}}:{{- .Values.image.version }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         env:
         - name: DEST_CNI_NET_DIR
           valueFrom:
