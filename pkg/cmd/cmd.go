@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -15,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/yaml"
 )
@@ -68,10 +71,17 @@ func Uninstall(ctx context.Context, k8sAPI *k8s.KubernetesAPI, selector string) 
 // left on the cluster which are no longer part of the install manifest.
 func Prune(ctx context.Context, k8sAPI *k8s.KubernetesAPI, expectedManifests string, selector string) error {
 	expectedResources := []resource.Kubernetes{}
-	yamls := strings.Split(expectedManifests, "\n---\n")
-	for _, manifest := range yamls {
+	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(strings.NewReader(expectedManifests), 4096))
+	for {
+		manifest, err := reader.Read()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return err
+		}
 		resource := resource.Kubernetes{}
-		err := yaml.Unmarshal([]byte(manifest), &resource)
+		err = yaml.Unmarshal(manifest, &resource)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error parsing manifest: %s", manifest)
 			os.Exit(1)

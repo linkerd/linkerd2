@@ -14,6 +14,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	batch "k8s.io/api/batch/v1"
 	core "k8s.io/api/core/v1"
+	k8sPolicy "k8s.io/api/policy/v1"
 	rbac "k8s.io/api/rbac/v1"
 	apiextension "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -42,13 +43,16 @@ var prunableNamespaceResources []schema.GroupVersionResource = []schema.GroupVer
 	apps.SchemeGroupVersion.WithResource("deployments"),
 	batch.SchemeGroupVersion.WithResource("jobs"),
 	policy.SchemeGroupVersion.WithResource("meshtlsauthentications"),
-	admissionRegistration.SchemeGroupVersion.WithResource("mutatingwebhookconfigurations"),
 	policy.SchemeGroupVersion.WithResource("networkauthentication"),
 	core.SchemeGroupVersion.WithResource("replicationcontrollers"),
 	core.SchemeGroupVersion.WithResource("secrets"),
 	core.SchemeGroupVersion.WithResource("services"),
 	profile.SchemeGroupVersion.WithResource("serviceprofiles"),
 	apps.SchemeGroupVersion.WithResource("statefulsets"),
+	rbac.SchemeGroupVersion.WithResource("roles"),
+	rbac.SchemeGroupVersion.WithResource("rolebindings"),
+	core.SchemeGroupVersion.WithResource("serviceaccounts"),
+	k8sPolicy.SchemeGroupVersion.WithResource("poddisruptionbudgets"),
 	k8s.ServerGVR,
 	k8s.SazGVR,
 	k8s.AuthorizationPolicyGVR,
@@ -60,6 +64,9 @@ var prunableClusterResources []schema.GroupVersionResource = []schema.GroupVersi
 	rbac.SchemeGroupVersion.WithResource("clusterroles"),
 	rbac.SchemeGroupVersion.WithResource("clusterrolebindings"),
 	apiRegistration.SchemeGroupVersion.WithResource("apiservices"),
+	admissionRegistration.SchemeGroupVersion.WithResource("mutatingwebhookconfigurations"),
+	admissionRegistration.SchemeGroupVersion.WithResource("validatingwebhookconfigurations"),
+	apiextension.SchemeGroupVersion.WithResource("customresourcedefinitions"),
 }
 
 // New returns a kubernetes resource with the given data
