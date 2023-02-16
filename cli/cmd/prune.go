@@ -39,7 +39,7 @@ func newCmdPrune() *cobra.Command {
 			if values == nil {
 				return errors.New(
 					`Could not find the linkerd-config-overrides secret.
-If Linkerd was installed with Helm, please use Helm to perform upgrades`)
+Please note this command is only intended for instances of Linkerd that were installed via the CLI`)
 			}
 
 			err = validateValues(cmd.Context(), k8sAPI, values)

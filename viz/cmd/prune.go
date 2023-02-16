@@ -1,12 +1,15 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
 	pkgCmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
+	vizHealthcheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/cli/values"
 )
@@ -45,7 +48,8 @@ func newCmdPrune() *cobra.Command {
 				return err
 			}
 
-			return pkgCmd.Prune(cmd.Context(), hc.KubeAPIClient(), manifests.String(), "linkerd.io/extension=viz")
+			label := fmt.Sprintf("%s=%s", k8s.LinkerdExtensionLabel, vizHealthcheck.VizExtensionName)
+			return pkgCmd.Prune(cmd.Context(), hc.KubeAPIClient(), manifests.String(), label)
 		},
 	}
 
