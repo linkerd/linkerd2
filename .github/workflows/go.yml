@@ -3,6 +3,7 @@ name: Go
 on:
   pull_request:
     paths:
+      - .golangci.yml
       - .github/workflows/go.yml
       - go.sum
       - '**/*.go'
