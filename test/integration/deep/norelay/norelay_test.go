@@ -72,6 +72,10 @@ func TestNoRelay(t *testing.T) {
 // forcing an open relay by changing the value of
 // LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR from 127.0.0.1:4140 to 0.0.0.0:4140,
 // which is not possible without manually changing the injected proxy yaml
+//
+// We don't care if this behavior breaks--it's not a supported configuration.
+// However, this test is oddly useful in finding bugs in ingress-mode proxy
+// configurations, so we keep it around. ¯\_(ツ)_/¯
 func TestRelay(t *testing.T) {
 	ctx := context.Background()
 	deployments := getDeployments(t)
