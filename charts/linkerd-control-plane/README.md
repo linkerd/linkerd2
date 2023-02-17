@@ -39,7 +39,7 @@ Issuer certificates **must** live in a `Secret` named
 install namespace. In order to use an existing CA, Linkerd needs to be
 installed with `identity.externalCA=true`. To use an existing issuer
 certificate, Linkerd should be installed with
-`identity.issuer.scheme=kubernetes.io/tls`. 
+`identity.issuer.scheme=kubernetes.io/tls`.
 
 A more comprehensive description is in the [automatic certificate rotation
 guide](https://linkerd.io/2.12/tasks/automatically-rotating-control-plane-tls-credentials/#a-note-on-third-party-cert-management-solutions).
