@@ -12,7 +12,8 @@ for resources which it only needs to track the metadata for — Nodes and
 ReplicaSets. For all other resources it tracks, it uses additional information
 so continues to use the API as before.
 
-* Added colliding Server in the policy controller's admission webhook validation
+* Fixed error message to include the colliding Server in the policy controller's
+  admission webhook validation
 * Updated wording for linkerd-multicluster cluster when it fails to probe a
   remote gateway mirror
 * Removed unnecessary Namespaces access from the destination controller RBAC
