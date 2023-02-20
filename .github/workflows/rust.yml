@@ -9,6 +9,7 @@ on:
       - justfile
       - deny.toml
       - '**/*.rs'
+      - ns-annotator/Dockerfile
       - policy-*/Dockerfile
       - rust-toolchain
 

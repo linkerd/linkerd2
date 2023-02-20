@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "ns-labeler",
     "policy-controller",
     "policy-controller/core",
     "policy-controller/grpc",

@@ -12,6 +12,7 @@ on:
       - go.sum
       - justfile
       - multicluser/**
+      - ns-labeler/**
       - policy-controller/**
       - policy-test/**
       - viz/**
@@ -223,6 +224,7 @@ jobs:
         component:
           - jaeger-webhook
           - metrics-api
+          - ns-labeler
           - tap
           - web
     timeout-minutes: 15

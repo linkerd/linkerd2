@@ -1,10 +1,10 @@
-FROM --platform=$BUILDPLATFORM ghcr.io/linkerd/dev:v39-rust-musl as controller
+FROM --platform=$BUILDPLATFORM ghcr.io/linkerd/dev:v39-rust as builder
 ARG BUILD_TYPE="release"
 WORKDIR /build
 RUN mkdir -p target/bin
 COPY Cargo.toml Cargo.lock .
-# required for cargo fetch
 COPY ns-labeler ns-labeler
+# required for cargo fetch
 COPY policy-controller policy-controller
 RUN cargo new policy-test --lib
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
@@ -18,9 +18,9 @@ RUN --mount=type=cache,target=target \
         arm) echo armv7-unknown-linux-musleabihf ;; \
         *) echo "unsupported architecture: $TARGETARCH" >&2; exit 1 ;; \
     esac) && \
-    just-cargo profile=$BUILD_TYPE target=$target build --package=linkerd-policy-controller && \
-    mv "target/$target/$BUILD_TYPE/linkerd-policy-controller" /tmp/
+    just-cargo profile=$BUILD_TYPE target=$target build --package=ns-labeler && \
+    mv "target/$target/$BUILD_TYPE/ns-labeler" /tmp/
 
 FROM scratch as runtime
-COPY --from=controller /tmp/linkerd-policy-controller /bin/
-ENTRYPOINT ["/bin/linkerd-policy-controller"]
+COPY --from=builder /tmp/ns-labeler /bin/
+ENTRYPOINT ["/bin/ns-labeler"]

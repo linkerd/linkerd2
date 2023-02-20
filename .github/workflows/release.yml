@@ -39,6 +39,7 @@ jobs:
         - cli-bin
         - cni-plugin
         - controller
+        - ns-labeler
         - policy-controller
         - debug
         - jaeger-webhook
