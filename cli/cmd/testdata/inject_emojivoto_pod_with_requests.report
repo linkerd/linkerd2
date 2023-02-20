@@ -1,3 +1,4 @@
 
+pod "vote-bot" annotated
 pod "vote-bot" injected
 

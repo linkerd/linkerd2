@@ -1,6 +1,8 @@
 
+deployment "redis" annotated
 deployment "redis" injected
 
 
+deployment "nginx" annotated
 deployment "nginx" injected
 

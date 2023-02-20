@@ -6,6 +6,8 @@
 √ pod specs do not include UDP ports
 √ pods do not have automountServiceAccountToken set to "false" or service account token projection is enabled
 
+deployment "web" annotated
 deployment "web" injected
+deployment "emoji" annotated
 deployment "emoji" injected
 

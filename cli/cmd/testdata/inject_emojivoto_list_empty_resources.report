@@ -1,5 +1,7 @@
 
+deployment "web" annotated
 deployment "web" injected
+deployment "emoji" annotated
 deployment "emoji" injected
 document missing "kind" field, skipped
 document missing "kind" field, skipped

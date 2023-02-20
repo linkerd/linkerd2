@@ -1,4 +1,6 @@
 
+deployment "get-test-deploy-injected-1" annotated
 deployment "get-test-deploy-injected-1" injected
+deployment "get-test-deploy-injected-2" annotated
 deployment "get-test-deploy-injected-2" injected
 

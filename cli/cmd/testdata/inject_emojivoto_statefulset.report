@@ -1,3 +1,4 @@
 
+statefulset "web" annotated
 statefulset "web" injected
 

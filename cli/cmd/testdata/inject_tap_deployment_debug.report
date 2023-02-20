@@ -1,3 +1,4 @@
 
+deployment "linkerd-tap" annotated
 deployment "linkerd-tap" injected
 

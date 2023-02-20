@@ -1,4 +1,6 @@
 
+deployment "web" annotated
 deployment "web" injected
+deployment "emoji" annotated
 deployment "emoji" injected
 

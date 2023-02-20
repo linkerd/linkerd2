@@ -6,6 +6,8 @@
 √ pod specs do not include UDP ports
 √ pods do not have automountServiceAccountToken set to "false" or service account token projection is enabled
 
+deployment "get-test-deploy-injected-1" annotated
 deployment "get-test-deploy-injected-1" injected
+deployment "get-test-deploy-injected-2" annotated
 deployment "get-test-deploy-injected-2" injected
 

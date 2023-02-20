@@ -1,6 +1,10 @@
 
+deployment "web1" annotated
 deployment "web1" injected
+deployment "web2" annotated
 deployment "web2" injected
+deployment "web3" annotated
 deployment "web3" injected
+deployment "web4" annotated
 deployment "web4" injected
 

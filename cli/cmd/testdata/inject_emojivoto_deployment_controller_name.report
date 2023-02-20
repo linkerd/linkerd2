@@ -1,4 +1,6 @@
 
+deployment "controller" annotated
 deployment "controller" injected
+deployment "not-controller" annotated
 deployment "not-controller" injected
 

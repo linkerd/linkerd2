@@ -1,3 +1,4 @@
 
+deployment "redis" annotated
 deployment "redis" injected
 

@@ -166,8 +166,6 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return nil, nil, errors.New("--manual must be set when injecting control plane components")
 	}
 
-	reports := []inject.Report{*report}
-
 	if conf.IsService() {
 		opaquePorts, ok := rt.overrideAnnotations[k8s.ProxyOpaquePortsAnnotation]
 		if ok {
@@ -175,12 +173,12 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 			bytes, err = conf.AnnotateService(annotations)
 			report.Annotated = true
 		}
-		return bytes, reports, err
+		return bytes, []inject.Report{*report}, err
 	}
 	if rt.allowNsInject && conf.IsNamespace() {
 		bytes, err = conf.AnnotateNamespace(rt.overrideAnnotations)
 		report.Annotated = true
-		return bytes, reports, err
+		return bytes, []inject.Report{*report}, err
 	}
 	if conf.HasPodTemplate() {
 		conf.AppendPodAnnotations(rt.overrideAnnotations)
@@ -189,9 +187,9 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 
 	if ok, _ := report.Injectable(); !ok {
 		if errs := report.ThrowInjectError(); len(errs) > 0 {
-			return bytes, reports, fmt.Errorf("failed to inject %s%s%s: %w", report.Kind, slash, report.Name, concatErrors(errs, ", "))
+			return bytes, []inject.Report{*report}, fmt.Errorf("failed to inject %s%s%s: %w", report.Kind, slash, report.Name, concatErrors(errs, ", "))
 		}
-		return bytes, reports, nil
+		return bytes, []inject.Report{*report}, nil
 	}
 
 	if rt.injectProxy {
@@ -210,7 +208,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 
 	if len(patchJSON) == 0 {
-		return bytes, reports, nil
+		return bytes, []inject.Report{*report}, nil
 	}
 	log.Infof("patch generated for: %s", report.ResName())
 	log.Debugf("patch: %s", patchJSON)
@@ -230,7 +228,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if err != nil {
 		return nil, nil, err
 	}
-	return injectedYAML, reports, nil
+	return injectedYAML, []inject.Report{*report}, nil
 }
 
 func (resourceTransformerInject) generateReport(reports []inject.Report, output io.Writer) {
