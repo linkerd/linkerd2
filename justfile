@@ -366,7 +366,8 @@ _linkerd-images:
 # Build the policy controller docker image for testing (on amd64).
 _policy-controller-build:
     docker buildx build . \
-        --file='policy-controller/{{ if docker-arch == '' { "amd64" } else { docker-arch } }}.dockerfile' \
+        --file='policy-controller/Dockerfile' \
+        --platform={{ if docker-arch == '' { "amd64" } else { docker-arch} }} \
         --build-arg='build_type={{ rs-build-type }}' \
         --tag='{{ policy-controller-image }}:{{ linkerd-tag }}' \
         --progress=plain \

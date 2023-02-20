@@ -6,8 +6,10 @@ license = "Apache-2.0"
 publish = false
 
 [features]
-default = ["openssl-tls"]
+default = ["openssl-tls", "openssl-vendored"]
 openssl-tls = ["kube/openssl-tls"]
+# Vendor openssl to statically link lib
+openssl-vendored = ["openssl/vendored"]
 rustls-tls = ["kube/rustls-tls"]
 
 [dependencies]
@@ -22,6 +24,7 @@ ipnet = { version = "2", default-features = false }
 linkerd-policy-controller-core = { path = "./core" }
 linkerd-policy-controller-grpc = { path = "./grpc" }
 linkerd-policy-controller-k8s-api = { path = "./k8s/api" }
+openssl = { version = "0.10.45", optional = true }
 linkerd-policy-controller-k8s-index = { path = "./k8s/index" }
 linkerd-policy-controller-k8s-status = { path = "./k8s/status" }
 parking_lot = "0.12"
