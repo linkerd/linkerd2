@@ -156,7 +156,7 @@ func (kubeAPI *KubernetesAPI) GetNamespace(ctx context.Context, namespace string
 	return kubeAPI.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
 }
 
-// GetNodes returs all the nodes in a cluster.
+// GetNodes returns all the nodes in a cluster.
 func (kubeAPI *KubernetesAPI) GetNodes(ctx context.Context) ([]corev1.Node, error) {
 	nodes, err := kubeAPI.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
