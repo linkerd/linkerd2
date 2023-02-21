@@ -1017,8 +1017,14 @@ func (pp *portPublisher) deleteEndpointSlice(es *discovery.EndpointSlice) {
 		listener.Remove(addrSet)
 	}
 
-	svcExists := len(pp.addresses.Addresses) > 0
-	pp.noEndpoints(svcExists)
+	if len(pp.addresses.Addresses) == 0 {
+		pp.noEndpoints(false)
+	} else {
+		pp.exists = true
+		pp.metrics.incUpdates()
+		pp.metrics.setPods(len(pp.addresses.Addresses))
+		pp.metrics.setExists(true)
+	}
 }
 
 func (pp *portPublisher) noEndpoints(exists bool) {
