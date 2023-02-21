@@ -70,14 +70,13 @@ docker_build() {
 
     output_params="--load"
     if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
-      output_params="--platform $SUPPORTED_ARCHS"
+      output_params="--provenance=false --platform $SUPPORTED_ARCHS --output=type=oci,dest=test-tar.tar"
       if [ "$DOCKER_PUSH" ]; then
         output_params+=" --push"
-      else
-        echo 'Error: env DOCKER_PUSH=1 is missing
-When building the multi-arch images it is required to push the images to the registry
-See https://github.com/docker/buildx/issues/59 for more details'
-        exit 1
+        #echo 'Error: env DOCKER_PUSH=1 is missing
+#When building the multi-arch images it is required to push the images to the registry
+#See https://github.com/docker/buildx/issues/59 for more details'
+        #exit 1
       fi
     fi
 
@@ -87,8 +86,7 @@ See https://github.com/docker/buildx/issues/59 for more details'
         $output_params \
         -t "$repo:$tag" \
         -f "$file" \
-        "$@"
-
+        "$@" 
     echo "$repo:$tag"
 }
 
