@@ -3,10 +3,10 @@ use clap::Parser;
 use json_patch::{AddOperation, PatchOperation::Add};
 use k8s_openapi::api::core::v1::{ConfigMap, Namespace};
 use kube::{
-    api::{Api, Patch, PatchParams},
+    api::{Api, Patch, PatchParams, ResourceExt},
     Client,
 };
-use serde::Deserialize;
+use serde_yaml::Value;
 use thiserror::Error;
 use tokio::time;
 use tracing::{debug, info};
@@ -51,10 +51,12 @@ enum Error {
     ValuesNotFound,
 }
 
-#[derive(Deserialize)]
-struct ConfigValues {
-    #[serde(rename = "cniEnabled")]
+struct PatchOpts<'a> {
+    extension: &'a str,
+    prometheus_url: Option<String>,
     cni_enabled: bool,
+    add_annotations_root: bool,
+    add_labels_root: bool,
 }
 
 const LINKERD_CONFIG_CM: &str = "linkerd-config";
@@ -79,19 +81,20 @@ async fn main() -> Result<()> {
     info!("patching namespace {}", namespace);
 
     let client = Client::try_default().await?;
-    let namespaces: Api<Namespace> = Api::all(client.clone());
+    let namespaces = Api::<Namespace>::all(client.clone());
     let ns = namespaces.get(&namespace).await?;
 
-    let add_annotations_root = ns.metadata.annotations.filter(|x| !x.is_empty()).is_none();
-    let add_labels_root = ns.metadata.labels.filter(|x| !x.is_empty()).is_none();
+    let add_annotations_root = ns.annotations().is_empty();
+    let add_labels_root = ns.labels().is_empty();
     let cni_enabled = get_cni_enabled(client, &linkerd_namespace).await?;
-    let patch = get_patch(
-        &extension,
+    let ops = PatchOpts {
+        extension: &extension,
         prometheus_url,
         cni_enabled,
         add_annotations_root,
         add_labels_root,
-    );
+    };
+    let patch = ops.create_patch();
     let params: PatchParams = PatchParams::apply(FIELD_MANAGER);
     time::timeout(
         WRITE_TIMEOUT,
@@ -105,74 +108,83 @@ async fn main() -> Result<()> {
     })
 }
 
-fn get_patch(
-    extension: &str,
-    prometheus_url: Option<String>,
-    cni_enabled: bool,
-    add_annotations_root: bool,
-    add_labels_root: bool,
-) -> json_patch::Patch {
-    let mut patches = Vec::new();
-
-    if add_annotations_root {
-        patches.push(Add(AddOperation {
-            path: "/metadata/annotations".to_string(),
-            value: serde_json::json!({}),
-        }));
-    }
-
-    if add_labels_root {
-        patches.push(Add(AddOperation {
-            path: "/metadata/labels".to_string(),
-            value: serde_json::json!({}),
-        }));
-    }
-
-    prometheus_url.into_iter().for_each(|url| {
-        patches.push(Add(AddOperation {
-            path: "/metadata/annotations/viz.linkerd.io~1external-prometheus".to_string(),
-            value: serde_json::Value::String(url),
-        }));
-    });
-
-    patches.push(Add(AddOperation {
-        path: "/metadata/labels/linkerd.io~1extension".to_string(),
-        value: serde_json::Value::String(extension.to_string()),
-    }));
-
-    let level = if cni_enabled {
-        "restricted"
-    } else {
-        "privileged"
-    };
-
-    patches.push(Add(AddOperation {
-        path: "/metadata/labels/pod-security.kubernetes.io~1enforce".to_string(),
-        value: serde_json::Value::String(level.to_string()),
-    }));
-
-    debug!("patch to apply: {:?}", patches);
-
-    json_patch::Patch(patches)
-}
-
 async fn get_cni_enabled(client: Client, ns: &str) -> Result<bool> {
-    let cm_api: Api<ConfigMap> = Api::namespaced(client, ns);
+    let cm_api = Api::<ConfigMap>::namespaced(client, ns);
     let cm = cm_api.get(LINKERD_CONFIG_CM).await?;
     let data = cm.data.ok_or(Error::DataNotFound)?;
     let values = data.get("values").ok_or(Error::ValuesNotFound)?;
-    let config_values: ConfigValues = serde_yaml::from_str(&values)?;
-    Ok(config_values.cni_enabled)
+    let values_yaml = serde_yaml::from_str(&values)?;
+    match values_yaml {
+        Value::Mapping(mapping) => match mapping.get(&Value::String("cniEnabled".to_string())) {
+            Some(Value::Bool(true)) => Ok(true),
+            _ => Ok(false),
+        },
+        _ => Ok(false),
+    }
+}
+
+impl<'a> PatchOpts<'a> {
+    fn create_patch(&self) -> json_patch::Patch {
+        let mut patches = Vec::new();
+
+        if self.add_annotations_root {
+            patches.push(Add(AddOperation {
+                path: "/metadata/annotations".to_string(),
+                value: serde_json::json!({}),
+            }));
+        }
+
+        if self.add_labels_root {
+            patches.push(Add(AddOperation {
+                path: "/metadata/labels".to_string(),
+                value: serde_json::json!({}),
+            }));
+        }
+
+        self.prometheus_url.as_deref().into_iter().for_each(|url| {
+            patches.push(Add(AddOperation {
+                path: "/metadata/annotations/viz.linkerd.io~1external-prometheus".to_string(),
+                value: serde_json::Value::String(url.to_string()),
+            }));
+        });
+
+        patches.push(Add(AddOperation {
+            path: "/metadata/labels/linkerd.io~1extension".to_string(),
+            value: serde_json::Value::String(self.extension.to_string()),
+        }));
+
+        let level = if self.cni_enabled {
+            "restricted"
+        } else {
+            "privileged"
+        };
+
+        patches.push(Add(AddOperation {
+            path: "/metadata/labels/pod-security.kubernetes.io~1enforce".to_string(),
+            value: serde_json::Value::String(level.to_string()),
+        }));
+
+        debug!("patch to apply: {:?}", patches);
+
+        json_patch::Patch(patches)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::get_patch;
+    use crate::PatchOpts;
     use anyhow::Result;
 
     #[test]
     fn multicluster() -> Result<()> {
-        let patch = get_patch("multicluster", None, false, false, true);
+        let ops = PatchOpts {
+            extension: "multicluster",
+            prometheus_url: None,
+            cni_enabled: false,
+            add_annotations_root: false,
+            add_labels_root: true,
+        };
+        let patch = ops.create_patch();
         let patch_str = serde_json::to_string(&patch)?;
         assert_eq!(
             patch_str,
@@ -203,13 +215,14 @@ mod tests {
 
     #[test]
     fn viz() -> Result<()> {
-        let patch = get_patch(
-            "viz",
-            Some("prometheus.obs.svc.cluster.local:9090".to_string()),
-            true,
-            true,
-            false,
-        );
+        let ops = PatchOpts {
+            extension: "viz",
+            prometheus_url: Some("prometheus.obs.svc.cluster.local:9090".to_string()),
+            cni_enabled: true,
+            add_annotations_root: true,
+            add_labels_root: false,
+        };
+        let patch = ops.create_patch();
         let patch_str = serde_json::to_string(&patch)?;
         assert_eq!(
             patch_str,
