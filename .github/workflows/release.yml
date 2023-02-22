@@ -1,12 +1,6 @@
 name: Release
 
 on:
-  pull_request:
-    # By default, a workflow runs when a pull_request has an event activity of
-    # ['opened', 'synchronize','reopened']. We extend default with 'labeled'
-    types: [ opened, synchronize, reopened, labeled ]
-    paths:
-      - .github/workflows/release.yaml
   push:
     tags:
     - "edge-*"
@@ -21,29 +15,6 @@ env:
   K3D_VERSION: v5.4.4
 
 jobs:
-  meta:
-    timeout-minutes: 3
-    runs-on: ubuntu-20.04
-    steps:
-      - id: meta
-        shell: bash
-        run: |
-          set -eu
-          event='${{ github.event_name }}'
-          # Event may be push or pull_request
-          if [[ "$event" == "push" ]]; then
-            echo mode=release >> "$GITHUB_OUTPUT"
-          else
-            label='${{ github.event.pull_request.labels.*.name}}'
-            if [[ "$label" == "release_test" ]]; then
-              echo mode=test >> "$GITHUB_OUTPUT"
-            else
-              echo mode=skip >> "$GITHUB_OUTPUT"
-            fi
-          fi
-  outputs:
-    mode: ${{ steps.meta.outputs.mode }}
-
   # TODO(ver) We should stop relying so heavily on the environment,
   # especially the TAG variable. And it would be great to stop relying
   # on the root-tag script altogether.
@@ -58,7 +29,7 @@ jobs:
 
   docker_build:
     name: Docker build
-    needs: [tag, meta]
+    needs: [tag]
     runs-on: ubuntu-20.04
     permissions:
       id-token: write # needed for signing the images with GitHub OIDC Token

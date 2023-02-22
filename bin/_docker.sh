@@ -70,13 +70,22 @@ docker_build() {
 
     output_params="--load"
     if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
-      output_params="--provenance=false --platform $SUPPORTED_ARCHS --output=type=oci,dest=test-tar.tar"
+      output_params="--platform $SUPPORTED_ARCHS"
       if [ "$DOCKER_PUSH" ]; then
         output_params+=" --push"
-        #echo 'Error: env DOCKER_PUSH=1 is missing
-#When building the multi-arch images it is required to push the images to the registry
-#See https://github.com/docker/buildx/issues/59 for more details'
-        #exit 1
+      else
+        echo 'Error: env DOCKER_PUSH=1 is missing
+When building the multi-arch images it is required to push the images to the registry
+See https://github.com/docker/buildx/issues/59 for more details'
+        exit 1
+      fi
+    elif [ "$DOCKER_TARGET" != "$(os)" ]; then
+      if [[ "$SUPPORTED_ARCHS" =~ "$DOCKER_TARGET" ]]; then
+        output_params+=" --platform $DOCKER_TARGET"
+      else
+        echo "Error: env DOCKER_TARGET=${DOCKER_TARGET} has wrong value
+Supported target platforms: ${SUPPORTED_ARCHS}"
+        exit 1
       fi
     fi
 
@@ -86,7 +95,8 @@ docker_build() {
         $output_params \
         -t "$repo:$tag" \
         -f "$file" \
-        "$@" 
+        "$@"
+
     echo "$repo:$tag"
 }
 
