@@ -71,8 +71,6 @@ jobs:
     name: Docker build (arm64)
     needs: [tag]
     runs-on: ubuntu-20.04
-    permissions:
-      id-token: write # needed for signing the images with GitHub OIDC Token
     strategy:
       matrix:
         component:
@@ -95,7 +93,7 @@ jobs:
       id: build
       with:
         docker-registry: ${{ env.DOCKER_REGISTRY }}
-        docker-target: linux-arm64
+        docker-target: linux/arm64
         docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
         docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
         component: ${{ matrix.component }}
