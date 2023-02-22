@@ -119,7 +119,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        integration_test:
+        test:
         - cluster-domain
         - cni-calico-deep
         - deep
@@ -164,7 +164,7 @@ jobs:
           name: image-archives
           path: image-archives
       - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
-      - run: find image-archives-amd64 -ls
+      - run: find image-archives-arm64 -ls
       - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
