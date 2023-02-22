@@ -49,9 +49,9 @@ runs:
         TAG: ${{ inputs.tag }}
       shell: bash
       run: |
-        if [[ -n "$DOCKER_PUSH" ]];then
+        #if [[ -n "$DOCKER_PUSH" ]];then
         #echo "${{ inputs.docker-ghcr-pat }}" | docker login ghcr.io -u "${{ inputs.docker-ghcr-username }}" --password-stdin
-        fi
+        #fi
         bin/docker-build-${{ inputs.component }}
 
     # Delete older docker images to prevent cache bloat.
