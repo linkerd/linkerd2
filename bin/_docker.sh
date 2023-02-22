@@ -72,7 +72,9 @@ docker_build() {
     if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
       output_params="--platform $SUPPORTED_ARCHS"
       if [ "$DOCKER_PUSH" ]; then
-        output_params+=" --push"
+        #output_params+=" --push"
+        # disable temporarily bc I don't trust myself
+        echo "WIP: No push"
       else
         echo 'Error: env DOCKER_PUSH=1 is missing
 When building the multi-arch images it is required to push the images to the registry

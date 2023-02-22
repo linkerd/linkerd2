@@ -19,9 +19,6 @@ env:
   K3D_VERSION: v5.4.4
 
 jobs:
-  # TODO(ver) We should stop relying so heavily on the environment,
-  # especially the TAG variable. And it would be great to stop relying
-  # on the root-tag script altogether.
   tag:
     if: contains(github.event.pull_request.labels.*.name, 'release_test')
     runs-on: ubuntu-20.04
@@ -37,8 +34,6 @@ jobs:
     name: Docker build (amd64)
     needs: [tag]
     runs-on: ubuntu-20.04
-    permissions:
-      id-token: write # needed for signing the images with GitHub OIDC Token
     strategy:
       matrix:
         component:
