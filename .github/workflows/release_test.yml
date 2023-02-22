@@ -20,7 +20,7 @@ env:
 
 jobs:
   tag:
-    if: contains(github.event.pull_request.labels.*.name, 'release_test')
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'release_test') }}
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
@@ -30,7 +30,7 @@ jobs:
       tag: ${{ steps.tag.outputs.tag }}
 
   docker_build_amd64:
-    if: contains(github.event.pull_request.labels.*.name, 'release_test')
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'release_test') }}
     name: Docker build (amd64)
     needs: [tag]
     runs-on: ubuntu-20.04
@@ -70,7 +70,7 @@ jobs:
         name: image-archives-amd64
         path: /home/runner/archives
   docker_build_arm64:
-    if: contains(github.event.pull_request.labels.*.name, 'release_test')
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'release_test') }}
     name: Docker build (arm64)
     needs: [tag]
     runs-on: ubuntu-20.04
@@ -112,7 +112,7 @@ jobs:
         name: image-archives-arm64
         path: /home/runner/archives
   test_integration_amd64:
-    if: contains(github.event.pull_request.labels.*.name, 'release_test')
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'release_test') }}
     name: Integration tests (amd64)
     needs: [tag, docker_build_amd64]
     continue-on-error: true
@@ -149,7 +149,7 @@ jobs:
           TAG: ${{ needs.tag.outputs.tag }}
 
   test_integration_arm64:
-    if: contains(github.event.pull_request.labels.*.name, 'release_test')
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'release_test') }}
     needs: [tag, docker_build_arm64]
     runs-on: [self-hosted, Linux, ARM64]
     timeout-minutes: 30
