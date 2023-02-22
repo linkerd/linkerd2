@@ -82,13 +82,7 @@ See https://github.com/docker/buildx/issues/59 for more details'
         exit 1
       fi
     elif [ "$DOCKER_TARGET" != "$(os)" ]; then
-      if [[ "$SUPPORTED_ARCHS" =~ "$DOCKER_TARGET" ]]; then
         output_params+=" --platform $DOCKER_TARGET"
-      else
-        echo "Error: env DOCKER_TARGET=${DOCKER_TARGET} has wrong value
-Supported target platforms: ${SUPPORTED_ARCHS}"
-        exit 1
-      fi
     fi
 
     log_debug "  :; docker buildx $rootdir $cache_params $output_params -t $repo:$tag -f $file $*"
