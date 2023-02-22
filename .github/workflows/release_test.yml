@@ -6,9 +6,6 @@ on:
     # By default, a workflow runs when a pull_request has an event activity of
     # ['opened', 'synchronize','reopened']. We extend default with 'labeled'
     types: [ opened, synchronize, reopened, labeled ]
-    paths:
-      - .github/workflows/release.yaml
-      - CHANGES.md
 
 permissions:
   contents: read
