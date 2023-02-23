@@ -56,5 +56,6 @@ spec:
         - --linkerd-namespace
         - {{.Values.linkerdNamespace}}
         {{- with .Values.prometheusUrl }}
+        - -- prometheus-url
         - {{.}}
         {{- end }}
