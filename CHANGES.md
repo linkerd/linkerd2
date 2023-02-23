@@ -1,5 +1,30 @@
 # Changes
 
+## edge-23.2.3
+
+This edge release includes a number of fixes and introduces a new CLI command,
+`linkerd prune`. The new `prune` command should be used to remove resources
+which are no longer part of the Linkerd manifest when doing an upgrade.
+Previously, the recommendation was to use `linkerd upgrade` in conjunction with
+`kubectl apply --prune`, however, that will not remove resources which are not
+part of the input manifest, and it will not detect cluster scoped resources,
+`linkerd prune` (included in all core extensions) should be preferred over it.
+
+Additionally, this change contains a few fixes from our external contributors,
+and a change to the `viz` Helm chart which allows for arbitrary annotations on
+`Service` objects. Last but not least, the release contains a few proxy
+internal changes to prepare for the new client policy API.
+
+* Added a new `linkerd prune` command to the CLI (including extensions) to
+  remove resources which are no longer part of Linkerd's manifests
+* Introduced new values in the `viz` chart to allow for arbitrary annotations
+  on the `Service` objects (thanks @sgrzemski!)
+* Fixed up a comment in k8s API wrapper (thanks @ductnn!)
+* Fixed an issue with EndpointSlice endpoint reconciliation on slice deletion;
+  when using more than one slice, a `NoEndpoints` event would be sent to the
+  proxy regardless of the amount of endpoints that were still available (thanks
+  @utay!)
+
 ## edge-23.2.2
 
 This edge release adds the policy status controller which writes the `status`
