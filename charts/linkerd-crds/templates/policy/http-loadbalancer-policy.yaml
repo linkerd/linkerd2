@@ -39,7 +39,7 @@ spec:
             type: object
             properties:
               circuitBreaker:
-                description: Breaker of circuits.
+                description: Configures the type and behavior of failure accrual for the load balancer.
                 type: object
                 properties:
                   consecutiveFailure:
@@ -105,6 +105,16 @@ spec:
                     description: Name is the name of the referent.
                     maxLength: 253
                     minLength: 1
+                    type: string
+              queue:
+                description: Configures the buffering behavior of a load balancer.
+                type: object
+                properties:
+                  capacity:
+                    description: The number of requests in a queue before the proxy stops accepting connections.
+                    type: integer
+                  failfastTimeout:
+                    description: A duration representing how long a request stays in the queue.
                     type: string
           status:
             description: Status defines the current state of HTTPLoadBalancer.
