@@ -20,7 +20,7 @@ dockerfile=$rootdir/cli/Dockerfile
 # shellcheck disable=SC2046
 docker_build cli-bin "${TAG:-$(head_root_tag)}" "$dockerfile" \
     --build-arg LINKERD_VERSION="${TAG:-$(head_root_tag)}" \
-    --target="$DOCKER_TARGET"
+    #--target="$DOCKER_TARGET"
 
 IMG=$(docker_repo cli-bin):${TAG:-$(head_root_tag)}
 ID=$(docker create "$IMG")

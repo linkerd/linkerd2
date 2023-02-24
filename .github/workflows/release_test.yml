@@ -53,7 +53,7 @@ jobs:
       id: build
       with:
         docker-registry: ${{ env.DOCKER_REGISTRY }}
-        docker-target: linux-amd64
+        docker-target: linux\amd64
         docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
         docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
         component: ${{ matrix.component }}
@@ -136,7 +136,7 @@ jobs:
         with:
           name: image-archives
           path: image-archives
-      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
+      - run: cp image-archives-amd64/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: find image-archives-amd64 -ls
       - run: bin/tests --images archive --cleanup-docker --name ${{ matrix.test }} "$HOME/linkerd"
         env:
@@ -158,7 +158,7 @@ jobs:
         with:
           name: image-archives
           path: image-archives
-      - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
+      - run: cp image-archives-arm64/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: find image-archives-arm64 -ls
       - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
         env:
