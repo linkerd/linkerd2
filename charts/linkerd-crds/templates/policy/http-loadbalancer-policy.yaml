@@ -78,6 +78,34 @@ spec:
                   - required: ["consecutiveFailure"]
                   - required: ["successRate"]
                   - required: ["successRateWindowed"]
+              targetRef:
+                description: >-
+                  TargetRef references a resource to which the httploadbalancer
+                  policy applies.
+                type: object
+                required: [kind, name]
+                # Modified from the gateway API.
+                # Copyright 2020 The Kubernetes Authors
+                properties:
+                  group:
+                    description: >-
+                      Group is the group of the referent. When empty, the
+                      Kubernetes core API group is inferred.
+                    maxLength: 253
+                    pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                    type: string
+                  kind:
+                    description: >-
+                      Kind is the kind of the referent.
+                    maxLength: 63
+                    minLength: 1
+                    pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                    type: string
+                  name:
+                    description: Name is the name of the referent.
+                    maxLength: 253
+                    minLength: 1
+                    type: string
           status:
             description: Status defines the current state of HTTPLoadBalancer.
             properties:
