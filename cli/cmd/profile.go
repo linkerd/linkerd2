@@ -62,7 +62,7 @@ func (options *profileOptions) validate() error {
 	return nil
 }
 
-// NewCmdProfile creates a new cobra command for the Profile subcommand which
+// newCmdProfile creates a new cobra command for the Profile subcommand which
 // generates Linkerd service profiles.
 func newCmdProfile() *cobra.Command {
 	options := newProfileOptions()
