@@ -49,6 +49,7 @@ var (
 	templatesCrdFiles = []string{
 		"templates/policy/authorization-policy.yaml",
 		"templates/policy/httproute.yaml",
+		"templates/policy/http-loadbalancer-policy.yaml",
 		"templates/policy/meshtls-authentication.yaml",
 		"templates/policy/network-authentication.yaml",
 		"templates/policy/server-authorization.yaml",

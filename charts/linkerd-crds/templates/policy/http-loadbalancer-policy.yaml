@@ -1,0 +1,97 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: httploadbalancers.policy.linkerd.io
+spec:
+  group: policy.linkerd.io
+  names:
+    kind: HTTPLoadBalancer
+    listKind: HTTPLoadBalancerList
+    plural: httploadbalancers
+    singular: httploadbalancer
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: HTTPLoadBalancer configures a load balancer.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: Spec defines the desired state of HTTPLoadBalancer.
+            type: object
+            properties:
+              circuitBreaker:
+                description: Breaker of circuits.
+                type: object
+                properties:
+                  consecutiveFailure:
+                    description: Observes the number of consecutive failures to each service,
+                      and backs off sending requests to services that have exceeded the specified number
+                      of failures.
+                    type: object
+                    properties:
+                      failures:
+                        description: Number of consecutive failures before triggering circuit breaker.
+                        type: integer
+                  successRate:
+                    description: Computes an exponentially-weighted moving average success rate for
+                      each service, and backs off sending requests to services that have fallen below the
+                      specified success rate. The window size for computing success rate is
+                      constrained to a fixed number of requests.
+                    type: object
+                    properties:
+                      requests:
+                        description: Number of requests over which success rate is computed.
+                        type: integer
+                  successRateWindowed:
+                    description: Computes an exponentially-weighted moving average success
+                      rate for each service, and backs off sending requests to services that have fallen
+                      below the specified success rate. The window size for computing success rate is
+                      constrained to a fixed time `window`.
+                    type: object
+                    properties:
+                      successRate:
+                        description: Target success rate.
+                        type: number
+                      window:
+                        description: Duration over which success rate is computed.
+                        type: string
+                oneOf:
+                  - required: ["consecutiveFailure"]
+                  - required: ["successRate"]
+                  - required: ["successRateWindowed"]
+          status:
+            description: Status defines the current state of HTTPLoadBalancer.
+            properties:
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
