@@ -106,6 +106,10 @@ spec:
                     maxLength: 253
                     minLength: 1
                     type: string
+              strategy:
+                description: The load balancing strategy. Either P2CPeakEWMA or RoundRobin.
+                type: string
+                enum: [P2CPeakEWMA, RoundRobin]
               queue:
                 description: Configures the buffering behavior of a load balancer.
                 type: object
