@@ -1,7 +1,6 @@
-use k8s_gateway_api::HttpBackendRef;
 pub use k8s_gateway_api::{
-    CommonRouteSpec, Hostname, HttpHeader, HttpHeaderMatch, HttpHeaderName, HttpMethod,
-    HttpPathMatch, HttpPathModifier, HttpQueryParamMatch, HttpRequestHeaderFilter,
+    CommonRouteSpec, Hostname, HttpBackendRef, HttpHeader, HttpHeaderMatch, HttpHeaderName,
+    HttpMethod, HttpPathMatch, HttpPathModifier, HttpQueryParamMatch, HttpRequestHeaderFilter,
     HttpRequestRedirectFilter, HttpRouteMatch, LocalObjectReference, ParentReference, RouteStatus,
 };
 

@@ -177,6 +177,7 @@ fn make_route(
                     method: Some("GET".to_string()),
                 }]),
                 filters: None,
+                backend_refs: None,
             }]),
         },
         status: None,
