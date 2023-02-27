@@ -26,16 +26,16 @@ IMG=$(docker_repo cli-bin):${TAG:-$(head_root_tag)}
 ID=$(docker create "$IMG")
 
 # copy the newly built linkerd cli binaries to the local system
-OS=$DOCKER_TARGET
-if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
-  OS=$OS_ARCH_ALL
-fi
-for OS in $OS; do
-  DIR=$rootdir/target/cli/$OS
-  mkdir -p "$DIR"
-
+#OS=$DOCKER_TARGET
+#if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
+#  OS=$OS_ARCH_ALL
+#fi
+#for OS in $OS; do
+#  DIR=$rootdir/target/cli/$OS
+#  mkdir -p "$DIR"
+#
   # only copy if available
-  (docker cp "$ID:/out/linkerd-${OS}" "$DIR/linkerd" 2> /dev/null) && echo "$DIR/linkerd"
-done
+#  (docker cp "$ID:/out/linkerd-${OS}" "$DIR/linkerd" 2> /dev/null) && echo "$DIR/linkerd"
+#done
 
-docker rm "$ID" >/dev/null
+#docker rm "$ID" >/dev/null
