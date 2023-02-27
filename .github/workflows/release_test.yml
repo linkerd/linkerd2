@@ -26,7 +26,7 @@ jobs:
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
 
-  docker_build_amd64:
+  docker_build:
     if: ${{ contains(github.event.pull_request.labels.*.name, 'release_test') }}
     name: Docker build (amd64)
     needs: [tag]
@@ -69,7 +69,7 @@ jobs:
         path: /home/runner/archives
   test_integration_arm64:
     if: ${{ contains(github.event.pull_request.labels.*.name, 'release_test') }}
-    needs: [tag, docker_build_arm64]
+    needs: [tag, docker_build]
     runs-on: [self-hosted, Linux, ARM64]
     timeout-minutes: 30
     steps:
