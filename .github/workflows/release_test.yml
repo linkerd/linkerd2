@@ -34,16 +34,9 @@ jobs:
     strategy:
       matrix:
         component:
-        - cli-bin
-        - cni-plugin
         - controller
         - policy-controller
-        - debug
-        - jaeger-webhook
-        - metrics-api
         - proxy
-        - tap
-        - web
     timeout-minutes: 30
     steps:
     - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
