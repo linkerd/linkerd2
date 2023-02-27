@@ -53,6 +53,7 @@ docker_repo() {
 
 docker_build() {
     repo=$(docker_repo "$1")
+    component=$1
     shift
 
     tag=$1
@@ -71,6 +72,7 @@ docker_build() {
     output_params="--load"
     if [ "$DOCKER_TARGET" = 'multi-arch' ]; then
       output_params="--platform $SUPPORTED_ARCHS"
+      output_params+=" --output type=oci,dest=$component.tar --provenance=false --quiet"
       if [ "$DOCKER_PUSH" ]; then
         #output_params+=" --push"
         # disable temporarily bc I don't trust myself
