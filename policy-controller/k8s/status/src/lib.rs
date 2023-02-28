@@ -1,5 +1,5 @@
 mod http_route;
-mod index;
+pub mod index;
 mod resource_id;
 
 #[cfg(test)]

@@ -9,6 +9,7 @@ pub use k8s_gateway_api as gateway;
 pub use k8s_openapi::{
     api::{
         self,
+        coordination::v1::Lease,
         core::v1::{
             Container, ContainerPort, HTTPGetAction, Namespace, Node, NodeSpec, Pod, PodSpec,
             PodStatus, Probe, Service, ServiceAccount,
@@ -24,6 +25,7 @@ pub use k8s_openapi::{
 };
 pub use kube::{
     api::{Api, ListParams, ObjectMeta, Patch, PatchParams, Resource, ResourceExt},
+    error::ErrorResponse,
     runtime::watcher::Event as WatchEvent,
-    Client,
+    Client, Error,
 };

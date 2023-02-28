@@ -158,10 +158,21 @@ async fn main() -> Result<()> {
         kubert::index::namespaced(index.clone(), http_routes).instrument(info_span!("httproutes")),
     );
 
+    // Create the status controller lease and start trying to claim it.
+    let lease = status::index::create_lease_manager(runtime.client()).await?;
+    let pod_name =
+        std::env::var("HOSTNAME").expect("Failed to fetch `HOSTNAME` environment variable");
+    // todo: These should probably be configurable or set as consts
+    let params = kubert::lease::ClaimParams {
+        lease_duration: std::time::Duration::from_secs(30),
+        renew_grace_period: std::time::Duration::from_secs(1),
+    };
+    let (claims, _task) = lease.spawn(pod_name.clone(), params).await?;
+
     // Build the status index which will be used to process updates to policy
     // resources and send to the status controller.
     let (updates_tx, updates_rx) = mpsc::unbounded_channel();
-    let status_index = status::Index::shared(updates_tx);
+    let status_index = status::Index::shared(pod_name, claims, updates_tx);
 
     // Spawn resource indexers that update the status index.
     let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());

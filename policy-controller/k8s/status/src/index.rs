@@ -3,16 +3,21 @@ use crate::{
     resource_id::ResourceId,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
+use anyhow::{bail, Result};
 #[cfg(not(test))]
 use chrono::offset::Utc;
+use kubert::lease::Claim;
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
 use parking_lot::RwLock;
 use std::{collections::hash_map::Entry, sync::Arc};
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::sync::{
+    mpsc::{UnboundedReceiver, UnboundedSender},
+    watch::Receiver,
+};
 
 pub(crate) const POLICY_API_GROUP: &str = "policy.linkerd.io";
 const POLICY_API_VERSION: &str = "policy.linkerd.io/v1alpha1";
-pub(crate) const STATUS_CONTROLLER_NAME: &str = "policy.linkerd.io/status-controller";
+pub(crate) const STATUS_CONTROLLER_NAME: &str = "status-controller";
 
 pub type SharedIndex = Arc<RwLock<Index>>;
 
@@ -22,6 +27,14 @@ pub struct Controller {
 }
 
 pub struct Index {
+    // todo: Will be used to compare against the current claim's claimant to
+    // determine if this status controller is the leader
+    _name: String,
+
+    // todo: Will be used in the IndexNamespacedResource trait methods to
+    // check who the current leader is and if updates should be sent to the
+    // controller
+    _claims: Receiver<Arc<Claim>>,
     updates: UnboundedSender<Update>,
 
     http_routes: HashMap<ResourceId, Vec<ParentReference>>,
@@ -56,8 +69,14 @@ impl Controller {
 }
 
 impl Index {
-    pub fn shared(updates: UnboundedSender<Update>) -> SharedIndex {
+    pub fn shared(
+        name: impl ToString,
+        claims: Receiver<Arc<Claim>>,
+        updates: UnboundedSender<Update>,
+    ) -> SharedIndex {
         Arc::new(RwLock::new(Self {
+            _name: name.to_string(),
+            _claims: claims,
             updates,
             http_routes: HashMap::new(),
             servers: HashSet::new(),
@@ -130,7 +149,7 @@ impl Index {
                         section_name: None,
                         port: None,
                     },
-                    controller_name: STATUS_CONTROLLER_NAME.to_string(),
+                    controller_name: format!("{}/{}", POLICY_API_GROUP, STATUS_CONTROLLER_NAME),
                     conditions: vec![condition],
                 }
             })
@@ -232,4 +251,34 @@ pub(crate) fn make_patch(
             "status": status,
     });
     k8s::Patch::Merge(value)
+}
+
+pub async fn create_lease_manager(client: k8s::Client) -> Result<kubert::lease::LeaseManager> {
+    let api = k8s::Api::namespaced(client, "linkerd");
+    match api
+        .create(
+            &Default::default(),
+            &k8s::Lease {
+                metadata: k8s::ObjectMeta {
+                    name: Some(STATUS_CONTROLLER_NAME.to_string()),
+                    namespace: Some("linkerd".to_string()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
+        .await
+    {
+        // If the lease is created or already exists, start trying to claim
+        // it.
+        Ok(_) | Err(k8s::Error::Api(k8s::ErrorResponse { code: 409, .. })) => {}
+        Err(error) => {
+            tracing::error!(%error, "Failed to create {} Lease", STATUS_CONTROLLER_NAME);
+            bail!(error)
+        }
+    }
+
+    // todo: Do we need to use LeaseManager::field_manager here?
+    let lease = kubert::lease::LeaseManager::init(api, STATUS_CONTROLLER_NAME).await?;
+    Ok(lease)
 }

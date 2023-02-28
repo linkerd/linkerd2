@@ -951,11 +951,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11fd33a6cfc53c087537f849dc2d34b8f4ea68eca55b417125d41a9c3fe4a1a4"
 dependencies = [
  "ahash",
+ "chrono",
  "clap",
  "drain",
  "futures-core",
  "futures-util",
  "hyper",
+ "k8s-openapi",
  "kube-client",
  "kube-core",
  "kube-runtime",
@@ -963,6 +965,7 @@ dependencies = [
  "pin-project-lite",
  "rustls-pemfile",
  "serde",
+ "serde_json",
  "thiserror",
  "tokio",
  "tokio-rustls",
