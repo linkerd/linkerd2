@@ -842,10 +842,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "53ee2ba94546e32a5aef943e5831c6ac25592ff8dcfa8b2a06e0aaea90c69188"
 dependencies = [
  "k8s-openapi",
- "kube-client",
- "kube-core",
+ "kube-client 0.78.0",
+ "kube-core 0.78.0",
  "kube-derive",
- "kube-runtime",
+ "kube-runtime 0.78.0",
 ]
 
 [[package]]
@@ -868,7 +868,7 @@ dependencies = [
  "hyper-timeout",
  "jsonpath_lib",
  "k8s-openapi",
- "kube-core",
+ "kube-core 0.78.0",
  "openssl",
  "pem",
  "pin-project",
@@ -889,6 +889,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "kube-client"
+version = "0.79.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "80e9065963ad9966fea4a977efaf1eb22381b56ef4882ef19155869649669dfc"
+dependencies = [
+ "base64 0.20.0",
+ "bytes",
+ "chrono",
+ "dirs-next",
+ "either",
+ "futures",
+ "http",
+ "http-body",
+ "hyper",
+ "hyper-timeout",
+ "jsonpath_lib",
+ "k8s-openapi",
+ "kube-core 0.79.0",
+ "pem",
+ "pin-project",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror",
+ "tokio",
+ "tokio-util 0.7.0",
+ "tower",
+ "tower-http",
+ "tracing",
+]
+
+[[package]]
 name = "kube-core"
 version = "0.78.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -901,6 +934,23 @@ dependencies = [
  "k8s-openapi",
  "once_cell",
  "schemars",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "kube-core"
+version = "0.79.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "381a6982f9f48aec74022ae3e7012f990e2d9893bdafc9d4fb2c58521899440d"
+dependencies = [
+ "chrono",
+ "form_urlencoded",
+ "http",
+ "json-patch",
+ "k8s-openapi",
+ "once_cell",
  "serde",
  "serde_json",
  "thiserror",
@@ -931,7 +981,32 @@ dependencies = [
  "futures",
  "json-patch",
  "k8s-openapi",
- "kube-client",
+ "kube-client 0.78.0",
+ "parking_lot",
+ "pin-project",
+ "serde",
+ "serde_json",
+ "smallvec",
+ "thiserror",
+ "tokio",
+ "tokio-util 0.7.0",
+ "tracing",
+]
+
+[[package]]
+name = "kube-runtime"
+version = "0.79.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a11c9e91acd9115b92a7d6cf7210a50b1fdf6d341a146fb0e7eb3423d1548d4"
+dependencies = [
+ "ahash",
+ "async-trait",
+ "backoff",
+ "derivative",
+ "futures",
+ "json-patch",
+ "k8s-openapi",
+ "kube-client 0.79.0",
  "parking_lot",
  "pin-project",
  "serde",
@@ -945,9 +1020,9 @@ dependencies = [
 
 [[package]]
 name = "kubert"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d457fb44f5e08044ce60f0fab24396ed03dff6a5dca106e86d560356573c7ca"
+checksum = "11fd33a6cfc53c087537f849dc2d34b8f4ea68eca55b417125d41a9c3fe4a1a4"
 dependencies = [
  "ahash",
  "clap",
@@ -955,9 +1030,9 @@ dependencies = [
  "futures-core",
  "futures-util",
  "hyper",
- "kube-client",
- "kube-core",
- "kube-runtime",
+ "kube-client 0.79.0",
+ "kube-core 0.79.0",
+ "kube-runtime 0.79.0",
  "parking_lot",
  "pin-project-lite",
  "rustls-pemfile",
