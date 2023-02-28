@@ -374,14 +374,23 @@ pub mod convert {
     fn path_modifier(path_modifier: api::HttpPathModifier) -> Result<http_route::PathModifier> {
         use api::HttpPathModifier::*;
         match path_modifier {
-            ReplaceFullPath(ref path) | ReplacePrefixMatch(ref path) if !path.starts_with('/') => {
+            ReplaceFullPath {
+                replace_full_path: path,
+            }
+            | ReplacePrefixMatch {
+                replace_prefix_match: path,
+            } if !path.starts_with('/') => {
                 bail!(
                     "RequestRedirect filters may only contain absolute paths \
                     (starting with '/'); {path:?} is not an absolute path"
                 )
             }
-            ReplaceFullPath(s) => Ok(http_route::PathModifier::Full(s)),
-            ReplacePrefixMatch(s) => Ok(http_route::PathModifier::Prefix(s)),
+            ReplaceFullPath { replace_full_path } => {
+                Ok(http_route::PathModifier::Full(replace_full_path))
+            }
+            ReplacePrefixMatch {
+                replace_prefix_match,
+            } => Ok(http_route::PathModifier::Prefix(replace_prefix_match)),
         }
     }
 }

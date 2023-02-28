@@ -806,9 +806,9 @@ dependencies = [
 
 [[package]]
 name = "k8s-gateway-api"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "266b3caaa1d9ac351dc80a9d76787b0b2ff0c675641b3fe27c909caca0ca281c"
+checksum = "d11a21df154759f0651d797756b08ed01a4681254e532ec412a8670fa3543e63"
 dependencies = [
  "k8s-openapi",
  "kube",
@@ -837,9 +837,9 @@ dependencies = [
 
 [[package]]
 name = "kube"
-version = "0.78.0"
+version = "0.79.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53ee2ba94546e32a5aef943e5831c6ac25592ff8dcfa8b2a06e0aaea90c69188"
+checksum = "d1e74b6c3633982788dc51a02a356113b4b74e0db48929b2c7447cb57919b8ae"
 dependencies = [
  "k8s-openapi",
  "kube-client",
@@ -850,9 +850,9 @@ dependencies = [
 
 [[package]]
 name = "kube-client"
-version = "0.78.0"
+version = "0.79.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c9ca1f597bd48ed26f45f601bf2fa3aaa0933b8d1652d883b8444519b72af4a"
+checksum = "80e9065963ad9966fea4a977efaf1eb22381b56ef4882ef19155869649669dfc"
 dependencies = [
  "base64 0.20.0",
  "bytes",
@@ -890,9 +890,9 @@ dependencies = [
 
 [[package]]
 name = "kube-core"
-version = "0.78.0"
+version = "0.79.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61f2c6d1a2d1584859499eb05a41c5a44713818041621fa7515cfdbdf4769ea7"
+checksum = "381a6982f9f48aec74022ae3e7012f990e2d9893bdafc9d4fb2c58521899440d"
 dependencies = [
  "chrono",
  "form_urlencoded",
@@ -908,9 +908,9 @@ dependencies = [
 
 [[package]]
 name = "kube-derive"
-version = "0.78.0"
+version = "0.79.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e1dfe288fd87029f87c5713ddf585a4221e1b5be8f8c7c02ba28f5211f2a6d7"
+checksum = "1e300a7410efc929a817fefe80ad0b2b16987cc236eb7737f7686b5d9bffd818"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -921,11 +921,12 @@ dependencies = [
 
 [[package]]
 name = "kube-runtime"
-version = "0.78.0"
+version = "0.79.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7995aaf15656bf3694cd455578d59119acc3ca55f71e9a1b579a34a47d17ecce"
+checksum = "7a11c9e91acd9115b92a7d6cf7210a50b1fdf6d341a146fb0e7eb3423d1548d4"
 dependencies = [
  "ahash",
+ "async-trait",
  "backoff",
  "derivative",
  "futures",
@@ -945,9 +946,9 @@ dependencies = [
 
 [[package]]
 name = "kubert"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d457fb44f5e08044ce60f0fab24396ed03dff6a5dca106e86d560356573c7ca"
+checksum = "11fd33a6cfc53c087537f849dc2d34b8f4ea68eca55b417125d41a9c3fe4a1a4"
 dependencies = [
  "ahash",
  "clap",
