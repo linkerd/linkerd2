@@ -6,10 +6,10 @@ name: noop
 resources:
   limits:
     cpu: "50m"
-    memory: "10Mi"
+    memory: "25Mi"
   requests:
     cpu: "50m"
-    memory: "10Mi"
+    memory: "25Mi"
 securityContext:
   runAsUser: {{ .Values.proxyInit.runAsUser | int | eq 0 | ternary 65534 .Values.proxyInit.runAsUser }}
 {{- end -}}
