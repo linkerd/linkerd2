@@ -315,7 +315,7 @@ linkerd-install *args='': linkerd-load linkerd-crds-install && _linkerd-ready
             --set='policyController.loglevel=info\,linkerd=trace\,kubert=trace' \
             --set='proxy.image.name={{ proxy-image }}' \
             --set='proxy.image.version={{ linkerd-tag }}' \
-            --set='proxyInit.image.name=gchr.io/linkerd/proxy-init' \
+            --set='proxyInit.image.name=ghcr.io/linkerd/proxy-init' \
             {{ args }} \
         | {{ _kubectl }} apply -f -
 
