@@ -413,7 +413,7 @@ linkerd-viz-uninstall:
 _linkerd-viz-images:
     #!/usr/bin/env bash
     set -euo pipefail
-    docker pull -q ''
+    docker pull -q $({{ _prometheus-image-cmd }})
     for img in \
         '{{ DOCKER_REGISTRY }}/metrics-api:{{ linkerd-tag }}' \
         '{{ DOCKER_REGISTRY }}/tap:{{ linkerd-tag }}' \
