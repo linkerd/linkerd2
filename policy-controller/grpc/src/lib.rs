@@ -31,7 +31,7 @@ use linkerd_policy_controller_core::{
     ServerRef,
 };
 use maplit::*;
-use std::{net::IpAddr, num::NonZeroU16, sync::Arc};
+use std::{net::IpAddr, num::NonZeroU16, sync::Arc, time};
 use tracing::trace;
 
 #[derive(Clone, Debug)]
@@ -593,15 +593,31 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
     let http_routes: Vec<_> = outbound
         .http_routes
         .into_iter()
-        .map(|(name, route)| convert_outbound_http_route(name, route))
+        .map(|(name, route)| convert_outbound_http_route(outbound.namespace.clone(), name, route))
         .collect();
 
     outbound::OutboundPolicy {
-        backend: None,
+        backend: Some(outbound::Backend {
+            filters: vec![],
+            queue: Some(default_queue_config()),
+            backend: Some(outbound::backend::Backend::Balancer(
+                outbound::backend::BalanceP2c {
+                    dst: Some(destination::WeightedDst {
+                        authority: outbound.authority,
+                        weight: 1,
+                    }),
+                    load: Some(default_balancer_config()),
+                },
+            )),
+        }),
         protocol: Some(outbound::ProxyProtocol {
             kind: Some(linkerd2_proxy_api::outbound::proxy_protocol::Kind::Detect(
                 outbound::proxy_protocol::Detect {
-                    timeout: None,
+                    timeout: Some(
+                        time::Duration::from_secs(10)
+                            .try_into()
+                            .expect("failed to convert detect timeout to protobuf"),
+                    ),
                     http1: Some(outbound::proxy_protocol::Http1 {
                         http_routes: http_routes.clone(),
                     }),
@@ -613,6 +629,7 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
 }
 
 fn convert_outbound_http_route(
+    namespace: String,
     name: String,
     OutboundHttpRoute { hostnames, rules }: OutboundHttpRoute,
 ) -> outbound::HttpRoute {
@@ -620,6 +637,7 @@ fn convert_outbound_http_route(
         kind: Some(metadata::Kind::Resource(api::meta::Resource {
             group: "policy.linkerd.io".to_string(),
             kind: "HTTPRoute".to_string(),
+            namespace,
             name,
             ..Default::default()
         })),
@@ -665,13 +683,43 @@ fn convert_backend(backend: Backend) -> outbound::Backend {
                 },
             )),
             Backend::Dst(dst) => Some(outbound::backend::Backend::Balancer(
-                destination::WeightedDst {
-                    authority: dst.authority,
-                    weight: dst.weight,
+                outbound::backend::BalanceP2c {
+                    dst: Some(destination::WeightedDst {
+                        authority: dst.authority,
+                        weight: dst.weight,
+                    }),
+                    load: Some(default_balancer_config()),
                 },
             )),
         },
+        queue: Some(default_queue_config()),
         filters: Default::default(),
+    }
+}
+
+fn default_balancer_config() -> outbound::backend::balance_p2c::Load {
+    outbound::backend::balance_p2c::Load::PeakEwma(outbound::backend::balance_p2c::PeakEwma {
+        default_rtt: Some(
+            time::Duration::from_millis(30)
+                .try_into()
+                .expect("failed to convert ewma default_rtt to protobuf"),
+        ),
+        decay: Some(
+            time::Duration::from_secs(10)
+                .try_into()
+                .expect("failed to convert ewma decay to protobuf"),
+        ),
+    })
+}
+
+fn default_queue_config() -> outbound::backend::Queue {
+    outbound::backend::Queue {
+        capacity: 100,
+        failfast_timeout: Some(
+            time::Duration::from_secs(3)
+                .try_into()
+                .expect("failed to convert failfast_timeout to protobuf"),
+        ),
     }
 }
 

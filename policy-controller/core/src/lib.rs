@@ -110,6 +110,8 @@ pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OutboundPolicy {
     pub http_routes: HashMap<String, OutboundHttpRoute>,
+    pub authority: String,
+    pub namespace: String,
 }
 
 // === impl InboundHttpRouteRef ===

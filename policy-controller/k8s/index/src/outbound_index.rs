@@ -43,7 +43,7 @@ struct Namespace {
     cluster_domain: Arc<String>,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct ServicePort {
     service: String,
     port: NonZeroU16,
@@ -189,9 +189,15 @@ impl Namespace {
     }
 
     fn service_routes_or_default(&mut self, service_port: ServicePort) -> &mut ServiceRoutes {
+        let authority = format!(
+            "{}.{}.svc.{}:{}",
+            service_port.service, self.namespace, self.cluster_domain, service_port.port
+        );
         self.services.entry(service_port).or_insert_with(|| {
             let (sender, _) = watch::channel(OutboundPolicy {
                 http_routes: Default::default(),
+                authority,
+                namespace: self.namespace.to_string(),
             });
             ServiceRoutes {
                 routes: Default::default(),
