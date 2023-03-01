@@ -281,18 +281,17 @@ _pause-load: _k3d-init
 linkerd-exec := "bin/linkerd"
 _linkerd := linkerd-exec + " " + _context
 
-# TODO(ver) we should pin the tag in the image (and split appropriately where
-# we need to). so that it's possible to override a single image compltely. but
-# doing this would mean that we need to invoke `yq` in some cases, and this
-# dependency isn't universally available (e.g. in ci). if we change ci to use a
-# devcontainer base image.
-
 controller-image := DOCKER_REGISTRY + "/controller"
 proxy-image := DOCKER_REGISTRY + "/proxy"
-proxy-init-image := DOCKER_REGISTRY + "/proxy-init"
-orig-proxy-init-image := "ghcr.io/linkerd/proxy-init"
 policy-controller-image := DOCKER_REGISTRY + "/policy-controller"
-cni-plugin-image := DOCKER_REGISTRY + "/cni-plugin"
+
+# External dependencies
+#
+# We execute these commands lazily in case `yq` isn't present (so that other
+# just recipes can succeed).
+_proxy-init-image-cmd := "yq '.proxyInit.image | \"ghcr.io/linkerd/proxy-init:\" + .version' charts/linkerd-control-plane/values.yaml"
+_cni-plugin-image-cmd := "yq '.image | \"ghcr.io/linkerd/cni-plugin:\" + .version' charts/linkerd2-cni/values.yaml"
+_prometheus-image-cmd := "yq '.prometheus.image | .registry + \"/\" + .name + \":\" + .tag'  viz/charts/linkerd-viz/values.yaml"
 
 linkerd *flags:
     {{ _linkerd }} {{ flags }}
@@ -316,8 +315,6 @@ linkerd-install *args='': linkerd-load linkerd-crds-install && _linkerd-ready
             --set='policyController.loglevel=info\,linkerd=trace\,kubert=trace' \
             --set='proxy.image.name={{ proxy-image }}' \
             --set='proxy.image.version={{ linkerd-tag }}' \
-            --set='proxyInit.image.name={{ proxy-init-image }}' \
-            --set="proxyInit.image.version=$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" \
             {{ args }} \
         | {{ _kubectl }} apply -f -
 
@@ -331,8 +328,11 @@ linkerd-load: _linkerd-images _k3d-init
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ policy-controller-image }}:{{ linkerd-tag }}' \
         '{{ proxy-image }}:{{ linkerd-tag }}' \
-        "{{ cni-plugin-image }}:$(yq .image.version charts/linkerd2-cni/values.yaml)" \
-        "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" && exit ; sleep 1 ; done
+        $({{ _proxy-init-image-cmd }}) && exit ; sleep 1 ; done
+
+linkerd-load-cni:
+    docker pull -q $({{ _cni-plugin-image-cmd }})
+    {{ _k3d-load }} $({{ _cni-plugin-image-cmd }})
 
 linkerd-build: _policy-controller-build
     TAG={{ linkerd-tag }} bin/docker-build-controller
@@ -341,11 +341,7 @@ linkerd-build: _policy-controller-build
 _linkerd-images:
     #!/usr/bin/env bash
     set -xeuo pipefail
-    docker pull -q "{{ orig-proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
-    docker pull -q "{{ cni-plugin-image }}:$(yq .image.version charts/linkerd2-cni/values.yaml)"
-    docker tag \
-        "{{ orig-proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)" \
-        "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
+    docker pull -q $({{ _proxy-init-image-cmd }})
     for img in \
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ policy-controller-image }}:{{ linkerd-tag }}' \
@@ -356,8 +352,6 @@ _linkerd-images:
             exec {{ just_executable() }} \
                 controller-image='{{ controller-image }}' \
                 policy-controller-image='{{ policy-controller-image }}' \
-                proxy-image='{{ proxy-image }}' \
-                proxy-init-image='{{ proxy-init-image }}' \
                 linkerd-tag='{{ linkerd-tag }}' \
                 linkerd-build
         fi
@@ -393,8 +387,6 @@ _linkerd-init: && _linkerd-ready
             linkerd-tag='{{ linkerd-tag }}' \
             controller-image='{{ controller-image }}' \
             proxy-image='{{ proxy-image }}' \
-            proxy-init-image='{{ proxy-init-image }}' \
-            cni-plugin-image='{{ cni-plugin-image }}'
             linkerd-exec='{{ linkerd-exec }}' \
             linkerd-install
     fi
@@ -421,8 +413,7 @@ linkerd-viz-uninstall:
 _linkerd-viz-images:
     #!/usr/bin/env bash
     set -euo pipefail
-    docker pull -q $(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
-        viz/charts/linkerd-viz/values.yaml)
+    docker pull -q ''
     for img in \
         '{{ DOCKER_REGISTRY }}/metrics-api:{{ linkerd-tag }}' \
         '{{ DOCKER_REGISTRY }}/tap:{{ linkerd-tag }}' \
@@ -441,8 +432,7 @@ linkerd-viz-load: _linkerd-viz-images _k3d-init
         {{ DOCKER_REGISTRY }}/metrics-api:{{ linkerd-tag }} \
         {{ DOCKER_REGISTRY }}/tap:{{ linkerd-tag }} \
         {{ DOCKER_REGISTRY }}/web:{{ linkerd-tag }} \
-        "$(yq '.prometheus.image | .registry + "/" + .name + ":" + .tag' \
-                viz/charts/linkerd-viz/values.yaml)" && exit ; sleep 1 ; done
+        $({{ _prometheus-image-cmd }}) && exit ; sleep 1 ; done
 
 linkerd-viz-build:
     TAG={{ linkerd-tag }} bin/docker-build-metrics-api
@@ -503,8 +493,6 @@ _mc-target-load:
         _k3d-flags='{{ _mc-target-k3d-flags }}' \
         controller-image='{{ controller-image }}' \
         proxy-image='{{ proxy-image }}' \
-        proxy-init-image='{{ proxy-init-image }}' \
-        cni-plugin-image='{{ cni-plugin-image }}' \
         linkerd-exec='{{ linkerd-exec }}' \
         linkerd-tag='{{ linkerd-tag }}' \
         _pause-load \
