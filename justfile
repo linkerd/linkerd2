@@ -315,6 +315,7 @@ linkerd-install *args='': linkerd-load linkerd-crds-install && _linkerd-ready
             --set='policyController.loglevel=info\,linkerd=trace\,kubert=trace' \
             --set='proxy.image.name={{ proxy-image }}' \
             --set='proxy.image.version={{ linkerd-tag }}' \
+            --set='proxyInit.image.name=gchr.io/linkerd/proxy-init' \
             {{ args }} \
         | {{ _kubectl }} apply -f -
 
@@ -368,9 +369,11 @@ _policy-controller-build:
         --load
 
 _linkerd-ready:
-    {{ _kubectl }} wait pod --for=condition=ready \
-        --namespace=linkerd --selector='linkerd.io/control-plane-component' \
-        --timeout=1m
+    if ! {{ _kubectl }} wait pod --for=condition=ready \
+            --namespace=linkerd --selector='linkerd.io/control-plane-component' \
+            --timeout=1m ; then \
+        {{ _kubectl }} describe pods --namespace=linkerd ; \
+    fi
 
 # Ensure that a linkerd control plane is installed
 _linkerd-init: && _linkerd-ready
