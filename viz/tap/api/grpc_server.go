@@ -611,7 +611,7 @@ func (s *GRPCTapServer) hydrateEventLabels(ctx context.Context, ev *tapPb.TapEve
 
 }
 
-// hydrateIPMeta attempts to determine the metadata labels for `ip` and, if
+// hydrateIPLabels attempts to determine the metadata labels for `ip` and, if
 // successful, adds them to `labels`.
 func (s *GRPCTapServer) hydrateIPLabels(ctx context.Context, ip *netPb.IPAddress, labels map[string]string) error {
 	res, err := s.resourceForIP(ip)

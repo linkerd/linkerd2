@@ -340,7 +340,7 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) (bool, bool) {
 	return success, warning
 }
 
-// ParseJSONCheckOutput parses the output of a check command run with json
+// parseJSONCheckOutput parses the output of a check command run with json
 // output mode. The data is expected to be a CheckOutput struct serialized
 // to json. In addition to deserializing, this function will convert the result
 // to a CheckResults struct.
