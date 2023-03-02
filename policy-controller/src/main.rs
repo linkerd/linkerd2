@@ -159,7 +159,6 @@ async fn main() -> Result<()> {
     );
 
     // Create the lease manager used for trying to claim the status-controller lease.
-    // todo: Namespace should be parameterized now
     let api = k8s::Api::namespaced(runtime.client(), &control_plane_namespace);
     // todo: Do we need to use LeaseManager::field_manager here?
     let lease = kubert::lease::LeaseManager::init(api, status::STATUS_CONTROLLER_NAME).await?;
