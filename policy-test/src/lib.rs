@@ -161,6 +161,22 @@ pub async fn create_service(
     create(client, svc).await
 }
 
+/// Creates a service resource.
+pub async fn create_opaque_service(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+    port: i32,
+) -> k8s::Service {
+    let mut svc = mk_service(ns, name, port);
+    svc.annotations_mut().insert(
+        "config.linkerd.io/opaque-ports".to_string(),
+        format!("{}", port),
+    );
+
+    create(client, svc).await
+}
+
 pub fn mk_service(ns: &str, name: &str, port: i32) -> k8s::Service {
     k8s::Service {
         metadata: k8s::ObjectMeta {
