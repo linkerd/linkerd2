@@ -158,8 +158,11 @@ async fn main() -> Result<()> {
         kubert::index::namespaced(index.clone(), http_routes).instrument(info_span!("httproutes")),
     );
 
-    // Create the status controller lease and start trying to claim it.
-    let lease = status::index::create_lease_manager(runtime.client()).await?;
+    // Create the lease manager used for trying to claim the status-controller lease.
+    // todo: Namespace should be parameterized now
+    let api = k8s::Api::namespaced(runtime.client(), "linkerd");
+    // todo: Do we need to use LeaseManager::field_manager here?
+    let lease = kubert::lease::LeaseManager::init(api, status::STATUS_CONTROLLER_NAME).await?;
     let pod_name =
         std::env::var("HOSTNAME").expect("Failed to fetch `HOSTNAME` environment variable");
     // todo: These should probably be configurable or set as consts

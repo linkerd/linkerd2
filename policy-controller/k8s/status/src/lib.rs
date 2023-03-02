@@ -1,8 +1,8 @@
 mod http_route;
-pub mod index;
+mod index;
 mod resource_id;
 
 #[cfg(test)]
 mod tests;
 
-pub use self::index::{Controller, Index};
+pub use self::index::{Controller, Index, STATUS_CONTROLLER_NAME};

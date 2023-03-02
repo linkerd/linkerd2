@@ -3,7 +3,6 @@ use crate::{
     resource_id::ResourceId,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
-use anyhow::{bail, Result};
 #[cfg(not(test))]
 use chrono::offset::Utc;
 use kubert::lease::Claim;
@@ -17,7 +16,7 @@ use tokio::sync::{
 
 pub(crate) const POLICY_API_GROUP: &str = "policy.linkerd.io";
 const POLICY_API_VERSION: &str = "policy.linkerd.io/v1alpha1";
-pub(crate) const STATUS_CONTROLLER_NAME: &str = "status-controller";
+pub const STATUS_CONTROLLER_NAME: &str = "status-controller";
 
 pub type SharedIndex = Arc<RwLock<Index>>;
 
@@ -251,34 +250,4 @@ pub(crate) fn make_patch(
             "status": status,
     });
     k8s::Patch::Merge(value)
-}
-
-pub async fn create_lease_manager(client: k8s::Client) -> Result<kubert::lease::LeaseManager> {
-    let api = k8s::Api::namespaced(client, "linkerd");
-    match api
-        .create(
-            &Default::default(),
-            &k8s::Lease {
-                metadata: k8s::ObjectMeta {
-                    name: Some(STATUS_CONTROLLER_NAME.to_string()),
-                    namespace: Some("linkerd".to_string()),
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-        )
-        .await
-    {
-        // If the lease is created or already exists, start trying to claim
-        // it.
-        Ok(_) | Err(k8s::Error::Api(k8s::ErrorResponse { code: 409, .. })) => {}
-        Err(error) => {
-            tracing::error!(%error, "Failed to create {} Lease", STATUS_CONTROLLER_NAME);
-            bail!(error)
-        }
-    }
-
-    // todo: Do we need to use LeaseManager::field_manager here?
-    let lease = kubert::lease::LeaseManager::init(api, STATUS_CONTROLLER_NAME).await?;
-    Ok(lease)
 }
