@@ -63,8 +63,6 @@ jobs:
         tag: ${{ needs.tag.outputs.tag }}
     - uses: sigstore/cosign-installer@v3
     - run: cosign sign '${{ steps.build.outputs.image }}'
-      env:
-        COSIGN_EXPERIMENTAL: 1
     - name: Create artifact with CLI
       # windows_static_cli_tests below needs this because it can't create linux containers
       # inside windows
