@@ -109,7 +109,7 @@ async fn main() -> Result<()> {
     let index = Index::shared(ClusterInfo {
         networks: cluster_networks.clone(),
         identity_domain,
-        control_plane_ns: control_plane_namespace,
+        control_plane_ns: control_plane_namespace.clone(),
         default_policy,
         default_detect_timeout: DETECT_TIMEOUT,
         probe_networks,
@@ -160,7 +160,7 @@ async fn main() -> Result<()> {
 
     // Create the lease manager used for trying to claim the status-controller lease.
     // todo: Namespace should be parameterized now
-    let api = k8s::Api::namespaced(runtime.client(), "linkerd");
+    let api = k8s::Api::namespaced(runtime.client(), &control_plane_namespace);
     // todo: Do we need to use LeaseManager::field_manager here?
     let lease = kubert::lease::LeaseManager::init(api, status::STATUS_CONTROLLER_NAME).await?;
     let pod_name =
