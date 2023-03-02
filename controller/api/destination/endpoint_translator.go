@@ -244,7 +244,7 @@ func (et *endpointTranslator) NoEndpoints(exists bool) {
 
 	et.log.Debugf("Sending destination no endpoints: %+v", u)
 	if err := et.stream.Send(u); err != nil {
-		et.log.Errorf("Failed to send address update: %s", err)
+		et.log.Debugf("Failed to send address update: %s", err)
 	}
 }
 
@@ -313,7 +313,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 
 	et.log.Debugf("Sending destination add: %+v", add)
 	if err := et.stream.Send(add); err != nil {
-		et.log.Errorf("Failed to send address update: %s", err)
+		et.log.Debugf("Failed to send address update: %s", err)
 	}
 }
 
@@ -336,7 +336,7 @@ func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
 
 	et.log.Debugf("Sending destination remove: %+v", remove)
 	if err := et.stream.Send(remove); err != nil {
-		et.log.Errorf("Failed to send address update: %s", err)
+		et.log.Debugf("Failed to send address update: %s", err)
 	}
 }
 
