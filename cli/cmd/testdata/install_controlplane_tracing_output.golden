@@ -218,12 +218,8 @@ rules:
     resources:
       - leases
     verbs:
-      - create
       - get
-      - list
       - patch
-      - update
-      - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -1112,6 +1108,15 @@ spec:
   - name: policy-https
     port: 443
     targetPort: policy-https
+---
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  name: status-controller
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
 ---
 apiVersion: apps/v1
 kind: Deployment

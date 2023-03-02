@@ -209,12 +209,8 @@ rules:
     resources:
       - leases
     verbs:
-      - create
       - get
-      - list
       - patch
-      - update
-      - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -1174,6 +1170,15 @@ spec:
   selector:
     matchLabels:
       linkerd.io/control-plane-component: destination
+---
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  name: status-controller
+  namespace: linkerd-dev
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd-dev
 ---
 apiVersion: apps/v1
 kind: Deployment
