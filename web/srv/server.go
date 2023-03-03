@@ -55,6 +55,7 @@ type (
 		Grafana             string
 		GrafanaExternalURL  string
 		GrafanaPrefix       string
+		TapIgnoredHeaders   string
 	}
 
 	healthChecker interface {
@@ -87,6 +88,7 @@ func NewServer(
 	grafanaAddr string,
 	grafanaExternalAddr string,
 	grafanaPrefix string,
+	tapIgnoredHeaders string,
 	jaegerAddr string,
 	templateDir string,
 	staticDir string,
@@ -125,6 +127,7 @@ func NewServer(
 		grafana:             grafanaAddr,
 		grafanaExternalURL:  grafanaExternalAddr,
 		grafanaPrefix:       grafanaPrefix,
+		tapIgnoredHeaders:   tapIgnoredHeaders,
 		jaeger:              jaegerAddr,
 		hc:                  hc,
 		statCache:           cache.New(statExpiration, statCleanupInterval),

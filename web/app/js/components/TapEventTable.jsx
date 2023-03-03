@@ -138,77 +138,78 @@ const itemDisplay = (title, value) => {
   );
 };
 
-const requestInitSection = d => (
-  <React.Fragment>
-    <Typography variant="subtitle2"><Trans>tableTitleRequestInit</Trans></Typography>
-    <br />
-    <List dense>
-      {itemDisplay(<Trans>formAuthority</Trans>, _get(d, 'requestInit.http.requestInit.authority'))}
-      {itemDisplay(<Trans>formPath</Trans>, _get(d, 'requestInit.http.requestInit.path'))}
-      {itemDisplay(<Trans>formScheme</Trans>, _get(d, 'requestInit.http.requestInit.scheme.registered'))}
-      {itemDisplay(<Trans>formMethod</Trans>, _get(d, 'requestInit.http.requestInit.method.registered'))}
-      {headersDisplay(<Trans>formHeaders</Trans>, _get(d, 'requestInit.http.requestInit.headers'))}
-    </List>
-  </React.Fragment>
-);
+const expandedRowRender = (d, expandedWrapStyle, tapIgnoredHeaders) => {
+  const requestInitSection = () => (
+    <React.Fragment>
+      <Typography variant="subtitle2"><Trans>tableTitleRequestInit</Trans></Typography>
+      <br />
+      <List dense>
+        {itemDisplay(<Trans>formAuthority</Trans>, _get(d, 'requestInit.http.requestInit.authority'))}
+        {itemDisplay(<Trans>formPath</Trans>, _get(d, 'requestInit.http.requestInit.path'))}
+        {itemDisplay(<Trans>formScheme</Trans>, _get(d, 'requestInit.http.requestInit.scheme.registered'))}
+        {itemDisplay(<Trans>formMethod</Trans>, _get(d, 'requestInit.http.requestInit.method.registered'))}
+        {headersDisplay(<Trans>formHeaders</Trans>, _get(d, 'requestInit.http.requestInit.headers'), tapIgnoredHeaders)}
+      </List>
+    </React.Fragment>
+  );
 
-const responseInitSection = d => _isEmpty(d.responseInit) ? null : (
-  <React.Fragment>
-    <Typography variant="subtitle2"><Trans>tableTitleResponseInit</Trans></Typography>
-    <br />
-    <List dense>
-      {itemDisplay(<Trans>formHTTPStatus</Trans>, _get(d, 'responseInit.http.responseInit.httpStatus'))}
-      {itemDisplay(<Trans>formLatency</Trans>, formatTapLatency(_get(d, 'responseInit.http.responseInit.sinceRequestInit')))}
-      {headersDisplay(<Trans>formHeaders</Trans>, _get(d, 'responseInit.http.responseInit.headers'))}
-    </List>
-  </React.Fragment>
-);
+  const responseInitSection = () => _isEmpty(d.responseInit) ? null : (
+    <React.Fragment>
+      <Typography variant="subtitle2"><Trans>tableTitleResponseInit</Trans></Typography>
+      <br />
+      <List dense>
+        {itemDisplay(<Trans>formHTTPStatus</Trans>, _get(d, 'responseInit.http.responseInit.httpStatus'))}
+        {itemDisplay(<Trans>formLatency</Trans>, formatTapLatency(_get(d, 'responseInit.http.responseInit.sinceRequestInit')))}
+        {headersDisplay(<Trans>formHeaders</Trans>, _get(d, 'responseInit.http.responseInit.headers'), tapIgnoredHeaders)}
+      </List>
+    </React.Fragment>
+  );
 
-const responseEndSection = d => _isEmpty(d.responseEnd) ? null : (
-  <React.Fragment>
-    <Typography variant="subtitle2"><Trans>tableTitleResponseEnd</Trans></Typography>
-    <br />
+  const responseEndSection = () => _isEmpty(d.responseEnd) ? null : (
+    <React.Fragment>
+      <Typography variant="subtitle2"><Trans>tableTitleResponseEnd</Trans></Typography>
+      <br />
 
-    <List dense>
-      {itemDisplay(<Trans>formGRPCStatus</Trans>, _isNull(_get(d, 'responseEnd.http.responseEnd.eos')) ? 'N/A' : grpcStatusCodes[_get(d, 'responseEnd.http.responseEnd.eos.grpcStatusCode')])}
-      {itemDisplay(<Trans>formLatency</Trans>, formatTapLatency(_get(d, 'responseEnd.http.responseEnd.sinceResponseInit')))}
-      {itemDisplay(<Trans>formResponseLengthB</Trans>, formatWithComma(_get(d, 'responseEnd.http.responseEnd.responseBytes')))}
-    </List>
-  </React.Fragment>
-);
+      <List dense>
+        {itemDisplay(<Trans>formGRPCStatus</Trans>, _isNull(_get(d, 'responseEnd.http.responseEnd.eos')) ? 'N/A' : grpcStatusCodes[_get(d, 'responseEnd.http.responseEnd.eos.grpcStatusCode')])}
+        {itemDisplay(<Trans>formLatency</Trans>, formatTapLatency(_get(d, 'responseEnd.http.responseEnd.sinceResponseInit')))}
+        {itemDisplay(<Trans>formResponseLengthB</Trans>, formatWithComma(_get(d, 'responseEnd.http.responseEnd.responseBytes')))}
+      </List>
+    </React.Fragment>
+  );
 
-// hide verbose information
-const expandedRowRender = (d, expandedWrapStyle) => {
   return (
     <Grid container spacing={2} className={expandedWrapStyle}>
       <Grid item xs={4}>
         <Card elevation={3}>
-          <CardContent>{requestInitSection(d)}</CardContent>
+          <CardContent>{requestInitSection()}</CardContent>
         </Card>
       </Grid>
       <Grid item xs={4}>
         <Card elevation={3}>
-          <CardContent>{responseInitSection(d)}</CardContent>
+          <CardContent>{responseInitSection()}</CardContent>
         </Card>
       </Grid>
       <Grid item xs={4}>
         <Card elevation={3}>
-          <CardContent>{responseEndSection(d)}</CardContent>
+          <CardContent>{responseEndSection()}</CardContent>
         </Card>
       </Grid>
     </Grid>
   );
 };
 
-const TapEventTable = function({ tableRows, resource, api }) {
+const TapEventTable = function({ tableRows, resource, api, tapIgnoredHeaders }) {
   const resourceType = resource.split('/')[0];
   const columns = tapColumns(resourceType, api.ResourceLink);
+  expandedRowRender.tapIgnoredHeaders = tapIgnoredHeaders;
 
   return (
     <ExpandableTable
       tableRows={tableRows}
       tableColumns={columns}
-      expandedRowRender={expandedRowRender}
+      // expandedRowRender={expandedRowRender}
+      expandedRowRender={(d, expandedWrapStyle) => expandedRowRender(d, expandedWrapStyle, tapIgnoredHeaders)}
       tableClassName="metric-table" />
   );
 };
@@ -219,9 +220,11 @@ TapEventTable.propTypes = {
   }).isRequired,
   resource: PropTypes.string,
   tableRows: PropTypes.arrayOf(PropTypes.shape({})),
+  tapIgnoredHeaders: PropTypes.string,
 };
 
 TapEventTable.defaultProps = {
+  tapIgnoredHeaders: '',
   resource: '',
   tableRows: [],
 };

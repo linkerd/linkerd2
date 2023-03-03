@@ -31,6 +31,7 @@ class Tap extends React.Component {
     this.loadFromServer = this.loadFromServer.bind(this);
 
     this.state = {
+      tapIgnoredHeaders: this.tapIgnoredHeaders,
       tapResultsById: this.tapResultsById,
       error: null,
       resourcesByNs: {},
@@ -292,7 +293,7 @@ class Tap extends React.Component {
   };
 
   render() {
-    const { tapResultsById, tapRequestInProgress, tapIsClosing, resourcesByNs, authoritiesByNs, query, showTapEnabledWarning, error } = this.state;
+    const { tapResultsById, tapRequestInProgress, tapIsClosing, resourcesByNs, authoritiesByNs, query, showTapEnabledWarning, tapIgnoredHeaders, error } = this.state;
     const tableRows = _orderBy(_values(tapResultsById), r => r.lastUpdated, 'desc');
 
     return (
@@ -320,6 +321,7 @@ class Tap extends React.Component {
         {!showTapEnabledWarning &&
           <TapEventTable
             resource={query.resource}
+            tapIgnoredHeaders={tapIgnoredHeaders}
             tableRows={tableRows} />
         }
       </div>

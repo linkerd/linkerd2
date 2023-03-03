@@ -131,6 +131,8 @@ metricsAPI:
 
 # tap configuration
 tap:
+  # Headers that will be ignored for web Linkerd Tap
+  ignoredHeaders: ""
     # -- Number of tap component replicas
   replicas: 1
   # -- log level of the tap component

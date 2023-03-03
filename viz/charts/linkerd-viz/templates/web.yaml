@@ -90,6 +90,9 @@ spec:
         {{- if .Values.grafana.uidPrefix }}
         - -grafana-prefix={{.Values.grafana.uidPrefix}}
         {{- end}}
+        {{- if .Values.tap.ignoredHeaders }}
+        - -tap-ignored-headers={{.Values.tap.ignoredHeaders}}
+        {{- end}}        
         {{- if .Values.jaegerUrl }}
         - -jaeger-addr={{.Values.jaegerUrl}}
         {{- end}}
