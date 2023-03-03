@@ -21,19 +21,23 @@ pub const STATUS_CONTROLLER_NAME: &str = "status-controller";
 pub type SharedIndex = Arc<RwLock<Index>>;
 
 pub struct Controller {
+    claims: Receiver<Arc<Claim>>,
     client: k8s::Client,
+    name: String,
     updates: UnboundedReceiver<Update>,
+
+    // True if this status controller is the leader — false otherwise.
+    leader: bool,
 }
 
 pub struct Index {
-    // todo: Will be used to compare against the current claim's claimant to
-    // determine if this status controller is the leader
-    _name: String,
+    // Used to compare against the current claim's claimant to determine if
+    // this status controller is the leader.
+    name: String,
 
-    // todo: Will be used in the IndexNamespacedResource trait methods to
-    // check who the current leader is and if updates should be sent to the
-    // controller
-    _claims: Receiver<Arc<Claim>>,
+    // Used in the IndexNamespacedResource trait methods to check who the
+    // current leader is and if updates should be sent to the controller.
+    claims: Receiver<Arc<Claim>>,
     updates: UnboundedSender<Update>,
 
     http_routes: HashMap<ResourceId, Vec<ParentReference>>,
@@ -47,21 +51,54 @@ pub struct Update {
 }
 
 impl Controller {
-    pub fn new(client: k8s::Client, updates: UnboundedReceiver<Update>) -> Self {
-        Self { client, updates }
+    pub fn new(
+        claims: Receiver<Arc<Claim>>,
+        client: k8s::Client,
+        name: String,
+        updates: UnboundedReceiver<Update>,
+    ) -> Self {
+        Self {
+            claims,
+            client,
+            name,
+            updates,
+            leader: false,
+        }
     }
 
-    pub async fn process_updates(mut self) {
-        let patch_params = k8s::PatchParams::apply("policy.linkerd.io");
+    pub async fn run(mut self) {
+        let patch_params = k8s::PatchParams::apply(POLICY_API_GROUP);
 
-        // todo: If an update fails we should figure out a requeueing strategy
-        while let Some(Update { id, patch }) = self.updates.recv().await {
-            let api =
-                k8s::Api::<k8s::policy::HttpRoute>::namespaced(self.client.clone(), &id.namespace);
+        // Select between the status-controller lease claim changing and
+        // receiving updates from the index. If the lease claim changes, then
+        // check if we are now the leader. If so, we should apply the patches
+        // received; otherwise, we should drain the updates queue but not
+        // apply any patches since another status controller is responsible
+        // for that.
+        loop {
+            tokio::select! {
+                biased;
+                _ = self.claims.changed() => {
+                    let claim = self.claims.borrow_and_update();
+                    if claim.is_current_for(&self.name) {
+                        self.leader = true
+                    } else {
+                        self.leader = false
+                    }
+                }
+                Some(Update { id, patch}) = self.updates.recv() => {
+                    // If this status controller is not the leader, it should
+                    // process through the updates queue but not actually
+                    // patch any resources.
+                    if !self.leader {
+                        continue;
+                    }
 
-            // todo: Do we need to consider a timeout here?
-            if let Err(error) = api.patch_status(&id.name, &patch_params, &patch).await {
-                tracing::error!(namespace = %id.namespace, name = %id.name, %error, "Failed to patch HTTPRoute");
+                    let api = k8s::Api::<k8s::policy::HttpRoute>::namespaced(self.client.clone(), &id.namespace);
+                    if let Err(error) = api.patch_status(&id.name, &patch_params, &patch).await {
+                        tracing::error!(namespace = %id.namespace, name = %id.name, %error, "Failed to patch HTTPRoute");
+                    }
+                }
             }
         }
     }
@@ -74,12 +111,39 @@ impl Index {
         updates: UnboundedSender<Update>,
     ) -> SharedIndex {
         Arc::new(RwLock::new(Self {
-            _name: name.to_string(),
-            _claims: claims,
+            name: name.to_string(),
+            claims,
             updates,
             http_routes: HashMap::new(),
             servers: HashSet::new(),
         }))
+    }
+
+    pub async fn run(index: Arc<RwLock<Self>>) {
+        // Clone the claims watch out of the index. This will immediately
+        // drop the read lock on the index so that it is not held for the
+        // lifetime of this function.
+        let mut claims = index.read().claims.clone();
+
+        loop {
+            tokio::select! {
+                _ = claims.changed() => {
+                    tracing::debug!("Lease holder has changed")
+                }
+                _ = tokio::time::sleep(std::time::Duration::from_secs(10)) => {}
+            }
+
+            // The claimant has changed or we should attempt to reconcile all
+            // HTTPRoutes to account for any errors. In either case, we should
+            // only proceed if we are the current leader.
+            let claims = claims.borrow_and_update();
+            let index = index.write();
+            if !claims.is_current_for(&index.name) {
+                continue;
+            }
+            tracing::debug!(%index.name, "Lease holder reconciling cluster");
+            Index::reconcile(&*index);
+        }
     }
 
     // If the route is new or its parents have changed, return true so that a
@@ -161,7 +225,7 @@ impl Index {
         make_patch(&id.name, status)
     }
 
-    fn apply_server_update(&self) {
+    fn reconcile(&self) {
         for (id, parents) in self.http_routes.iter() {
             let patch = self.make_http_route_patch(id, parents);
             if let Err(error) = self.updates.send(Update {
@@ -196,6 +260,13 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
             return;
         }
 
+        // If we're not the leader, skip creating a patch and sending an
+        // update to the controller.
+        if !self.claims.borrow().is_current_for(&self.name) {
+            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
+            return;
+        }
+
         // Create a patch for the HTTPRoute and send it to the controller so
         // that it is applied.
         let patch = self.make_http_route_patch(&id, &parents);
@@ -225,14 +296,26 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
         let id = ResourceId::new(namespace, name);
 
         self.servers.insert(id);
-        self.apply_server_update();
+
+        // If we're not the leader, skip reconciling the cluster.
+        if !self.claims.borrow().is_current_for(&self.name) {
+            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
+            return;
+        }
+        self.reconcile();
     }
 
     fn delete(&mut self, namespace: String, name: String) {
         let id = ResourceId::new(namespace, name);
 
         self.servers.remove(&id);
-        self.apply_server_update();
+
+        // If we're not the leader, skip reconciling the cluster.
+        if !self.claims.borrow().is_current_for(&self.name) {
+            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
+            return;
+        }
+        self.reconcile();
     }
 
     // Since apply only reindexes a single Server at a time, there's no need
