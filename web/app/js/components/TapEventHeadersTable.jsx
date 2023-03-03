@@ -2,6 +2,7 @@ import ListItem from '@material-ui/core/ListItem';
 import ListItemText from '@material-ui/core/ListItemText';
 import PropTypes from 'prop-types';
 import React from 'react';
+
 import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -12,10 +13,14 @@ const headersStyles = {
   },
 };
 
-const HeadersContentBase = function({ headers, classes }) {
+const HeadersContentBase = function({ headers, classes, tapIgnoredHeaders }) {
+  const ignoredHeaders = new Set(tapIgnoredHeaders.split(','));
   return (
     <React.Fragment>
       {headers.map(header => {
+        if (ignoredHeaders.has(header.name)) {
+          return null;
+        }
         return (
           <React.Fragment key={`${header.name}_${header.valueStr}`}>
             <Typography
@@ -33,6 +38,7 @@ const HeadersContentBase = function({ headers, classes }) {
           </React.Fragment>
         );
       })}
+
     </React.Fragment>
   );
 };
@@ -42,11 +48,12 @@ HeadersContentBase.propTypes = {
     name: PropTypes.string.isRequired,
     valueStr: PropTypes.string.isRequired,
   })).isRequired,
+  tapIgnoredHeaders: PropTypes.string.isRequired,
 };
 
 const HeadersContentDisplay = withStyles(headersStyles)(HeadersContentBase);
 
-export const headersDisplay = (title, value) => {
+export const headersDisplay = (title, value, tapIgnoredHeaders) => {
   if (!value) {
     return null;
   }
@@ -55,7 +62,7 @@ export const headersDisplay = (title, value) => {
     <ListItem disableGutters>
       <ListItemText
         primary={title}
-        secondary={'headers' in value ? <HeadersContentDisplay headers={value.headers} /> : '-'} />
+        secondary={'headers' in value ? <HeadersContentDisplay headers={value.headers} tapIgnoredHeaders={tapIgnoredHeaders} /> : '-'} />
     </ListItem>
   );
 };
