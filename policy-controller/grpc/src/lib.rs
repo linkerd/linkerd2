@@ -590,48 +590,71 @@ fn convert_filter(filter: InboundFilter) -> proto::http_route::Filter {
 }
 
 fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
-    let http_routes: Vec<_> = outbound
-        .http_routes
-        .into_iter()
-        .map(|(name, route)| convert_outbound_http_route(outbound.namespace.clone(), name, route))
-        .collect();
+    let backend = default_backend(&outbound);
+
+    let kind = if outbound.opaque {
+        linkerd2_proxy_api::outbound::proxy_protocol::Kind::Opaque(
+            outbound::proxy_protocol::Opaque {},
+        )
+    } else {
+        let mut http_routes = outbound.http_routes.into_iter().collect::<Vec<_>>();
+        http_routes.sort_by(|(a_name, a_route), (b_name, b_route)| {
+            let by_ts = match (&a_route.creation_timestamp, &b_route.creation_timestamp) {
+                (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
+                (None, None) => std::cmp::Ordering::Equal,
+                // Routes with timestamps are preferred over routes without.
+                (Some(_), None) => return std::cmp::Ordering::Less,
+                (None, Some(_)) => return std::cmp::Ordering::Greater,
+            };
+            by_ts.then_with(|| a_name.cmp(b_name))
+        });
+
+        let mut http_routes: Vec<_> = http_routes
+            .into_iter()
+            .map(|(name, route)| {
+                convert_outbound_http_route(
+                    outbound.namespace.clone(),
+                    name,
+                    route,
+                    backend.clone(),
+                )
+            })
+            .collect();
+
+        if http_routes.is_empty() {
+            http_routes = vec![default_outbound_http_route(backend.clone())];
+        }
+
+        linkerd2_proxy_api::outbound::proxy_protocol::Kind::Detect(
+            outbound::proxy_protocol::Detect {
+                timeout: Some(
+                    time::Duration::from_secs(10)
+                        .try_into()
+                        .expect("failed to convert detect timeout to protobuf"),
+                ),
+                http1: Some(outbound::proxy_protocol::Http1 {
+                    http_routes: http_routes.clone(),
+                }),
+                http2: Some(outbound::proxy_protocol::Http2 { http_routes }),
+            },
+        )
+    };
 
     outbound::OutboundPolicy {
-        backend: Some(outbound::Backend {
-            filters: vec![],
-            queue: Some(default_queue_config()),
-            backend: Some(outbound::backend::Backend::Balancer(
-                outbound::backend::BalanceP2c {
-                    dst: Some(destination::WeightedDst {
-                        authority: outbound.authority,
-                        weight: 1,
-                    }),
-                    load: Some(default_balancer_config()),
-                },
-            )),
-        }),
-        protocol: Some(outbound::ProxyProtocol {
-            kind: Some(linkerd2_proxy_api::outbound::proxy_protocol::Kind::Detect(
-                outbound::proxy_protocol::Detect {
-                    timeout: Some(
-                        time::Duration::from_secs(10)
-                            .try_into()
-                            .expect("failed to convert detect timeout to protobuf"),
-                    ),
-                    http1: Some(outbound::proxy_protocol::Http1 {
-                        http_routes: http_routes.clone(),
-                    }),
-                    http2: Some(outbound::proxy_protocol::Http2 { http_routes }),
-                },
-            )),
-        }),
+        backend: Some(backend),
+        protocol: Some(outbound::ProxyProtocol { kind: Some(kind) }),
     }
 }
 
 fn convert_outbound_http_route(
     namespace: String,
     name: String,
-    OutboundHttpRoute { hostnames, rules }: OutboundHttpRoute,
+    OutboundHttpRoute {
+        hostnames,
+        rules,
+        creation_timestamp: _,
+    }: OutboundHttpRoute,
+    default_backend: outbound::Backend,
 ) -> outbound::HttpRoute {
     let metadata = Some(Metadata {
         kind: Some(metadata::Kind::Resource(api::meta::Resource {
@@ -650,19 +673,24 @@ fn convert_outbound_http_route(
 
     let rules = rules
         .into_iter()
-        .map(
-            |OutboundHttpRouteRule { matches, backends }| outbound::http_route::Rule {
+        .map(|OutboundHttpRouteRule { matches, backends }| {
+            let mut backends = backends
+                .into_iter()
+                .map(convert_backend)
+                .collect::<Vec<_>>();
+            if backends.is_empty() {
+                backends = vec![default_backend.clone()];
+            }
+            outbound::http_route::Rule {
                 matches: matches.into_iter().map(http_route::convert_match).collect(),
                 backends: Some(outbound::Distribution {
                     distribution: Some(outbound::distribution::Distribution::RandomAvailable(
-                        outbound::distribution::RandomAvailable {
-                            backends: backends.into_iter().map(convert_backend).collect(),
-                        },
+                        outbound::distribution::RandomAvailable { backends },
                     )),
                 }),
                 filters: Default::default(),
-            },
-        )
+            }
+        })
         .collect();
 
     outbound::HttpRoute {
@@ -694,6 +722,50 @@ fn convert_backend(backend: Backend) -> outbound::Backend {
         },
         queue: Some(default_queue_config()),
         filters: Default::default(),
+    }
+}
+
+fn default_backend(outbound: &OutboundPolicy) -> outbound::Backend {
+    outbound::Backend {
+        filters: vec![],
+        queue: Some(default_queue_config()),
+        backend: Some(outbound::backend::Backend::Balancer(
+            outbound::backend::BalanceP2c {
+                dst: Some(destination::WeightedDst {
+                    authority: outbound.authority.clone(),
+                    weight: 1,
+                }),
+                load: Some(default_balancer_config()),
+            },
+        )),
+    }
+}
+
+fn default_outbound_http_route(backend: outbound::Backend) -> outbound::HttpRoute {
+    let metadata = Some(Metadata {
+        kind: Some(metadata::Kind::Default("default".to_string())),
+    });
+
+    let rules = vec![outbound::http_route::Rule {
+        matches: vec![api::http_route::HttpRouteMatch {
+            path: Some(api::http_route::PathMatch {
+                kind: Some(api::http_route::path_match::Kind::Prefix("/".to_string())),
+            }),
+            ..Default::default()
+        }],
+        backends: Some(outbound::Distribution {
+            distribution: Some(outbound::distribution::Distribution::RandomAvailable(
+                outbound::distribution::RandomAvailable {
+                    backends: vec![backend],
+                },
+            )),
+        }),
+        filters: Default::default(),
+    }];
+    outbound::HttpRoute {
+        metadata,
+        rules,
+        ..Default::default()
     }
 }
 

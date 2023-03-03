@@ -43,6 +43,7 @@ use std::time;
 pub use self::{
     defaults::DefaultPolicy,
     index::{Index, SharedIndex},
+    pod::{parse_portset, PortSet},
 };
 
 /// Holds cluster metadata.

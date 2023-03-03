@@ -9,6 +9,7 @@ use linkerd_policy_controller::{
     grpc, index::outbound_index, k8s, Admission, ClusterInfo, DefaultPolicy, Index, IndexDiscover,
     IndexPair, IpNet, OutboundDiscover, SharedIndex,
 };
+use linkerd_policy_controller_k8s_index::parse_portset;
 use linkerd_policy_controller_k8s_status::{self as status};
 use std::net::SocketAddr;
 use tokio::{sync::mpsc, time};
@@ -74,6 +75,9 @@ struct Args {
     /// Network CIDRs of all expected probes.
     #[clap(long)]
     probe_networks: Option<IpNets>,
+
+    #[clap(long)]
+    default_opaque_ports: String,
 }
 
 #[tokio::main]
@@ -92,6 +96,7 @@ async fn main() -> Result<()> {
         default_policy,
         control_plane_namespace,
         probe_networks,
+        default_opaque_ports,
     } = Args::parse();
 
     let server = if admission_controller_disabled {
@@ -110,6 +115,8 @@ async fn main() -> Result<()> {
 
     let probe_networks = probe_networks.map(|IpNets(nets)| nets).unwrap_or_default();
 
+    let default_opaque_ports = parse_portset(&default_opaque_ports)?;
+
     // Build the index data structure, which will be used to process events from all watches
     // The lookup handle is used by the gRPC server.
     let index = Index::shared(ClusterInfo {
@@ -120,7 +127,7 @@ async fn main() -> Result<()> {
         default_detect_timeout: DETECT_TIMEOUT,
         probe_networks,
     });
-    let outbound_index = outbound_index::Index::shared(cluster_domain);
+    let outbound_index = outbound_index::Index::shared(cluster_domain, default_opaque_ports);
     let indexes = IndexPair::shared(index.clone(), outbound_index.clone());
 
     // Spawn resource indexers that update the index and publish lookups for the gRPC server.

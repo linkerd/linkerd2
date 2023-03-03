@@ -112,6 +112,7 @@ pub struct OutboundPolicy {
     pub http_routes: HashMap<String, OutboundHttpRoute>,
     pub authority: String,
     pub namespace: String,
+    pub opaque: bool,
 }
 
 // === impl InboundHttpRouteRef ===

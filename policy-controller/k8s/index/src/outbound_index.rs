@@ -1,4 +1,5 @@
-use crate::http_route::InboundRouteBinding;
+use crate::pod::ports_annotation;
+use crate::{http_route::InboundRouteBinding, pod::PortSet};
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use k8s_gateway_api::HttpBackendRef;
@@ -8,7 +9,7 @@ use linkerd_policy_controller_core::{
 };
 use linkerd_policy_controller_k8s_api::{
     policy::{httproute::HttpRouteRule, HttpRoute},
-    ResourceExt, Service,
+    ResourceExt, Service, Time,
 };
 use parking_lot::RwLock;
 use std::{fmt, net::IpAddr, num::NonZeroU16, sync::Arc};
@@ -22,6 +23,7 @@ pub type SharedIndex = Arc<RwLock<Index>>;
 pub struct Index {
     namespaces: NamespaceIndex,
     services: HashMap<IpAddr, ServiceRef>,
+    default_opaque_ports: PortSet,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,6 +43,7 @@ struct Namespace {
     services: HashMap<ServicePort, ServiceRoutes>,
     namespace: Arc<String>,
     cluster_domain: Arc<String>,
+    opaque_ports: HashMap<String, PortSet>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -55,6 +58,7 @@ struct ServiceRoutes {
     watch: watch::Sender<OutboundPolicy>,
     namespace: Arc<String>,
     cluster_domain: Arc<String>,
+    opaque: bool,
 }
 
 impl kubert::index::IndexNamespacedResource<HttpRoute> for Index {
@@ -68,6 +72,7 @@ impl kubert::index::IndexNamespacedResource<HttpRoute> for Index {
                 services: Default::default(),
                 namespace: Arc::new(ns),
                 cluster_domain: self.namespaces.cluster_domain.clone(),
+                opaque_ports: Default::default(),
             })
             .apply(route);
     }
@@ -85,14 +90,15 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         let ns = service.namespace().expect("Service must have a namespace");
         if let Some(cluster_ip) = service
             .spec
-            .and_then(|spec| spec.cluster_ip)
-            .filter(|ip| !ip.is_empty() && ip != "None")
+            .as_ref()
+            .and_then(|spec| spec.cluster_ip.as_deref())
+            .filter(|ip| !ip.is_empty() && *ip != "None")
         {
             match cluster_ip.parse() {
                 Ok(addr) => {
                     let service_ref = ServiceRef {
                         name,
-                        namespace: ns,
+                        namespace: ns.clone(),
                     };
                     self.services.insert(addr, service_ref);
                 }
@@ -101,6 +107,21 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                 }
             }
         }
+
+        let opaque_ports =
+            ports_annotation(service.annotations(), "config.linkerd.io/opaque-ports")
+                .unwrap_or_else(|| self.default_opaque_ports.clone());
+
+        self.namespaces
+            .by_ns
+            .entry(ns.clone())
+            .or_insert_with(|| Namespace {
+                services: Default::default(),
+                namespace: Arc::new(ns),
+                cluster_domain: self.namespaces.cluster_domain.clone(),
+                opaque_ports: Default::default(),
+            })
+            .update_opaque_ports(service.name_unchecked(), opaque_ports);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -110,13 +131,14 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
 }
 
 impl Index {
-    pub fn shared(cluster_domain: String) -> SharedIndex {
+    pub fn shared(cluster_domain: String, default_opaque_ports: PortSet) -> SharedIndex {
         Arc::new(RwLock::new(Self {
             namespaces: NamespaceIndex {
                 by_ns: HashMap::default(),
                 cluster_domain: Arc::new(cluster_domain),
             },
             services: HashMap::default(),
+            default_opaque_ports,
         }))
     }
 
@@ -134,6 +156,7 @@ impl Index {
                 services: Default::default(),
                 namespace: Arc::new(namespace.to_string()),
                 cluster_domain: self.namespaces.cluster_domain.clone(),
+                opaque_ports: Default::default(),
             });
         let key = ServicePort {
             service: service.to_string(),
@@ -182,6 +205,14 @@ impl Namespace {
         }
     }
 
+    fn update_opaque_ports(&mut self, svc: String, opaque_ports: PortSet) {
+        for (svc_port, svc_routes) in self.services.iter_mut() {
+            let opaque = opaque_ports.contains(&svc_port.port);
+            svc_routes.set_opaque(opaque);
+        }
+        self.opaque_ports.insert(svc, opaque_ports);
+    }
+
     fn delete(&mut self, name: String) {
         for service in self.services.values_mut() {
             service.delete(&name);
@@ -193,19 +224,27 @@ impl Namespace {
             "{}.{}.svc.{}:{}",
             service_port.service, self.namespace, self.cluster_domain, service_port.port
         );
-        self.services.entry(service_port).or_insert_with(|| {
-            let (sender, _) = watch::channel(OutboundPolicy {
-                http_routes: Default::default(),
-                authority,
-                namespace: self.namespace.to_string(),
-            });
-            ServiceRoutes {
-                routes: Default::default(),
-                watch: sender,
-                namespace: self.namespace.clone(),
-                cluster_domain: self.cluster_domain.clone(),
-            }
-        })
+        self.services
+            .entry(service_port.clone())
+            .or_insert_with(|| {
+                let opaque = match self.opaque_ports.get(&service_port.service) {
+                    Some(ports) => ports.contains(&service_port.port),
+                    None => false,
+                };
+                let (sender, _) = watch::channel(OutboundPolicy {
+                    http_routes: Default::default(),
+                    authority,
+                    namespace: self.namespace.to_string(),
+                    opaque,
+                });
+                ServiceRoutes {
+                    routes: Default::default(),
+                    watch: sender,
+                    namespace: self.namespace.clone(),
+                    cluster_domain: self.cluster_domain.clone(),
+                    opaque,
+                }
+            })
     }
 }
 
@@ -221,6 +260,11 @@ impl ServiceRoutes {
         }
     }
 
+    fn set_opaque(&mut self, opaque: bool) {
+        self.opaque = opaque;
+        self.send_if_modified();
+    }
+
     fn delete(&mut self, name: &String) {
         self.routes.remove(name);
         self.send_if_modified();
@@ -228,12 +272,16 @@ impl ServiceRoutes {
 
     fn send_if_modified(&mut self) {
         self.watch.send_if_modified(|policy| {
-            if self.routes == policy.http_routes {
-                false
-            } else {
+            let mut modified = false;
+            if self.routes != policy.http_routes {
                 policy.http_routes = self.routes.clone();
-                true
+                modified = true;
             }
+            if self.opaque != policy.opaque {
+                policy.opaque = self.opaque;
+                modified = true;
+            }
+            modified
         });
     }
 
@@ -253,7 +301,14 @@ impl ServiceRoutes {
             .flatten()
             .map(|r| self.convert_rule(r))
             .collect::<Result<_>>()?;
-        Ok(OutboundHttpRoute { hostnames, rules })
+
+        let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
+
+        Ok(OutboundHttpRoute {
+            hostnames,
+            rules,
+            creation_timestamp,
+        })
     }
 
     fn convert_rule(&self, rule: HttpRouteRule) -> Result<OutboundHttpRouteRule> {

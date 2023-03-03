@@ -72,6 +72,14 @@ async fn service_with_http_route_without_rules() {
 
         let _route = create(&client, mk_empty_http_route(&ns, "foo-route", &svc, 4191)).await;
 
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an updated config");
+        tracing::trace!(?config);
+
         // There should be a route with no rules.
         let (h1_routes, h2_routes) = detect_http_routes(&config);
         let route = assert_singleton(h1_routes);
@@ -254,8 +262,18 @@ async fn service_with_multiple_http_routes() {
         // name. To ensure that this test isn't timing dependant, routes should
         // be created in alphabetical order.
         let _a_route = create(&client, mk_http_route(&ns, "a-route", &svc, 4191, None)).await;
+
+        // First route update.
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an updated config");
+        tracing::trace!(?config);
+
         let _b_route = create(&client, mk_http_route(&ns, "b-route", &svc, 4191, None)).await;
 
+        // Second route update.
         let config = rx
             .next()
             .await
@@ -405,7 +423,7 @@ fn mk_empty_http_route(
                 }]),
             },
             hostnames: None,
-            rules: None,
+            rules: Some(vec![]),
         },
         status: None,
     }
@@ -531,6 +549,7 @@ fn assert_backend_matches_service(
     );
 }
 
+#[track_caller]
 fn assert_singleton<T>(ts: &[T]) -> &T {
     assert_eq!(ts.len(), 1);
     ts.get(0).unwrap()
