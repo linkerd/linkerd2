@@ -54,6 +54,7 @@ pub struct OutboundHttpRouteRule {
 pub enum Backend {
     Addr(WeightedAddr),
     Dst(WeightedDst),
+    InvalidDst(WeightedDst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

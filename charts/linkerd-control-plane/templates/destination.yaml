@@ -305,6 +305,7 @@ spec:
         - --default-policy={{.Values.proxy.defaultInboundPolicy}}
         - --log-level={{.Values.policyController.logLevel | default "linkerd=info,warn"}}
         - --log-format={{.Values.controllerLogFormat}}
+        - --default-opaque-ports={{.Values.proxy.opaquePorts}}
         {{- if .Values.policyController.probeNetworks }}
         - --probe-networks={{.Values.policyController.probeNetworks | join ","}}
         {{- end}}

@@ -40,10 +40,15 @@ pub struct NamespaceIndex {
 
 #[derive(Debug, Default)]
 struct Namespace {
-    services: HashMap<ServicePort, ServiceRoutes>,
+    service_routes: HashMap<ServicePort, ServiceRoutes>,
     namespace: Arc<String>,
     cluster_domain: Arc<String>,
-    opaque_ports: HashMap<String, PortSet>,
+    services: HashMap<String, ServiceInfo>,
+}
+
+#[derive(Debug, Default)]
+struct ServiceInfo {
+    opaque_ports: PortSet,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -56,8 +61,6 @@ struct ServicePort {
 struct ServiceRoutes {
     routes: HashMap<String, OutboundHttpRoute>,
     watch: watch::Sender<OutboundPolicy>,
-    namespace: Arc<String>,
-    cluster_domain: Arc<String>,
     opaque: bool,
 }
 
@@ -69,10 +72,10 @@ impl kubert::index::IndexNamespacedResource<HttpRoute> for Index {
             .by_ns
             .entry(ns.clone())
             .or_insert_with(|| Namespace {
-                services: Default::default(),
+                service_routes: Default::default(),
                 namespace: Arc::new(ns),
                 cluster_domain: self.namespaces.cluster_domain.clone(),
-                opaque_ports: Default::default(),
+                services: Default::default(),
             })
             .apply(route);
     }
@@ -111,20 +114,24 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         let opaque_ports =
             ports_annotation(service.annotations(), "config.linkerd.io/opaque-ports")
                 .unwrap_or_else(|| self.default_opaque_ports.clone());
+        let service_info = ServiceInfo { opaque_ports };
 
         self.namespaces
             .by_ns
             .entry(ns.clone())
             .or_insert_with(|| Namespace {
-                services: Default::default(),
+                service_routes: Default::default(),
                 namespace: Arc::new(ns),
                 cluster_domain: self.namespaces.cluster_domain.clone(),
-                opaque_ports: Default::default(),
+                services: Default::default(),
             })
-            .update_opaque_ports(service.name_unchecked(), opaque_ports);
+            .update_service(service.name_unchecked(), service_info);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
+        if let Some(ns) = self.namespaces.by_ns.get_mut(&namespace) {
+            ns.services.remove(&name);
+        }
         let service_ref = ServiceRef { name, namespace };
         self.services.retain(|_, v| *v != service_ref);
     }
@@ -153,10 +160,10 @@ impl Index {
             .by_ns
             .entry(namespace.to_string())
             .or_insert_with(|| Namespace {
-                services: Default::default(),
+                service_routes: Default::default(),
                 namespace: Arc::new(namespace.to_string()),
                 cluster_domain: self.namespaces.cluster_domain.clone(),
-                opaque_ports: Default::default(),
+                services: Default::default(),
             });
         let key = ServicePort {
             service: service.to_string(),
@@ -175,6 +182,16 @@ impl Index {
 impl Namespace {
     fn apply(&mut self, route: HttpRoute) {
         tracing::debug!(?route);
+        let name = route.name_unchecked();
+        let outbound_route = match self.convert_route(route.clone()) {
+            Ok(route) => route,
+            Err(error) => {
+                tracing::error!(%error, "failed to convert HttpRoute");
+                return;
+            }
+        };
+        tracing::debug!(?outbound_route);
+
         for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
             if parent_ref.kind.as_deref() == Some("Service") {
                 if let Some(port) = parent_ref.port {
@@ -189,7 +206,7 @@ impl Namespace {
                             "inserting route for service"
                         );
                         let service_routes = self.service_routes_or_default(service_port);
-                        service_routes.apply(route.clone());
+                        service_routes.apply(name.clone(), outbound_route.clone());
                     } else {
                         tracing::warn!(?parent_ref, "ignoring parent_ref with port 0");
                     }
@@ -205,16 +222,17 @@ impl Namespace {
         }
     }
 
-    fn update_opaque_ports(&mut self, svc: String, opaque_ports: PortSet) {
-        for (svc_port, svc_routes) in self.services.iter_mut() {
-            let opaque = opaque_ports.contains(&svc_port.port);
+    fn update_service(&mut self, name: String, service: ServiceInfo) {
+        tracing::debug!(?name, ?service, "updating service");
+        for (svc_port, svc_routes) in self.service_routes.iter_mut() {
+            let opaque = service.opaque_ports.contains(&svc_port.port);
             svc_routes.set_opaque(opaque);
         }
-        self.opaque_ports.insert(svc, opaque_ports);
+        self.services.insert(name, service);
     }
 
     fn delete(&mut self, name: String) {
-        for service in self.services.values_mut() {
+        for service in self.service_routes.values_mut() {
             service.delete(&name);
         }
     }
@@ -224,11 +242,11 @@ impl Namespace {
             "{}.{}.svc.{}:{}",
             service_port.service, self.namespace, self.cluster_domain, service_port.port
         );
-        self.services
+        self.service_routes
             .entry(service_port.clone())
             .or_insert_with(|| {
-                let opaque = match self.opaque_ports.get(&service_port.service) {
-                    Some(ports) => ports.contains(&service_port.port),
+                let opaque = match self.services.get(&service_port.service) {
+                    Some(svc) => svc.opaque_ports.contains(&service_port.port),
                     None => false,
                 };
                 let (sender, _) = watch::channel(OutboundPolicy {
@@ -240,49 +258,9 @@ impl Namespace {
                 ServiceRoutes {
                     routes: Default::default(),
                     watch: sender,
-                    namespace: self.namespace.clone(),
-                    cluster_domain: self.cluster_domain.clone(),
                     opaque,
                 }
             })
-    }
-}
-
-impl ServiceRoutes {
-    fn apply(&mut self, route: HttpRoute) {
-        let name = route.name_unchecked();
-        match self.convert_route(route) {
-            Ok(route) => {
-                self.routes.insert(name, route);
-                self.send_if_modified();
-            }
-            Err(error) => tracing::error!(%error, "failed to convert HttpRoute"),
-        }
-    }
-
-    fn set_opaque(&mut self, opaque: bool) {
-        self.opaque = opaque;
-        self.send_if_modified();
-    }
-
-    fn delete(&mut self, name: &String) {
-        self.routes.remove(name);
-        self.send_if_modified();
-    }
-
-    fn send_if_modified(&mut self) {
-        self.watch.send_if_modified(|policy| {
-            let mut modified = false;
-            if self.routes != policy.http_routes {
-                policy.http_routes = self.routes.clone();
-                modified = true;
-            }
-            if self.opaque != policy.opaque {
-                policy.opaque = self.opaque;
-                modified = true;
-            }
-            modified
-        });
     }
 
     fn convert_route(&self, route: HttpRoute) -> Result<OutboundHttpRoute> {
@@ -330,13 +308,50 @@ impl ServiceRoutes {
 
     fn convert_backend(&self, backend: HttpBackendRef) -> Option<Backend> {
         backend.backend_ref.map(|backend| {
-            Backend::Dst(WeightedDst {
+            let dst = WeightedDst {
                 weight: backend.weight.unwrap_or(1).into(),
                 authority: fmt::format(format_args!(
                     "{}.{}.svc.{}:{}",
                     backend.name, self.namespace, self.cluster_domain, backend.port
                 )),
-            })
+            };
+            if self.services.contains_key(&backend.name) {
+                Backend::Dst(dst)
+            } else {
+                Backend::InvalidDst(dst)
+            }
         })
+    }
+}
+
+impl ServiceRoutes {
+    fn apply(&mut self, name: String, route: OutboundHttpRoute) {
+        self.routes.insert(name, route);
+        self.send_if_modified();
+    }
+
+    fn set_opaque(&mut self, opaque: bool) {
+        self.opaque = opaque;
+        self.send_if_modified();
+    }
+
+    fn delete(&mut self, name: &String) {
+        self.routes.remove(name);
+        self.send_if_modified();
+    }
+
+    fn send_if_modified(&mut self) {
+        self.watch.send_if_modified(|policy| {
+            let mut modified = false;
+            if self.routes != policy.http_routes {
+                policy.http_routes = self.routes.clone();
+                modified = true;
+            }
+            if self.opaque != policy.opaque {
+                policy.opaque = self.opaque;
+                modified = true;
+            }
+            modified
+        });
     }
 }

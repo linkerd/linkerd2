@@ -701,6 +701,21 @@ fn convert_outbound_http_route(
 }
 
 fn convert_backend(backend: Backend) -> outbound::Backend {
+    let filters = match backend {
+        Backend::InvalidDst(ref dst) => {
+            vec![outbound::Filter {
+                kind: Some(outbound::filter::Kind::FailureInjector(
+                    api::http_route::HttpFailureInjector {
+                        status: 500,
+                        message: format!("backend {} is invalid", dst.authority),
+                        ratio: None,
+                    },
+                )),
+            }]
+        }
+        _ => vec![],
+    };
+
     outbound::Backend {
         backend: match backend {
             Backend::Addr(addr) => Some(outbound::backend::Backend::Forward(
@@ -719,9 +734,18 @@ fn convert_backend(backend: Backend) -> outbound::Backend {
                     load: Some(default_balancer_config()),
                 },
             )),
+            Backend::InvalidDst(dst) => Some(outbound::backend::Backend::Balancer(
+                outbound::backend::BalanceP2c {
+                    dst: Some(destination::WeightedDst {
+                        authority: dst.authority,
+                        weight: dst.weight,
+                    }),
+                    load: Some(default_balancer_config()),
+                },
+            )),
         },
         queue: Some(default_queue_config()),
-        filters: Default::default(),
+        filters,
     }
 }
 
