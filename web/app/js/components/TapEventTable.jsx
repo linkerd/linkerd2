@@ -208,7 +208,6 @@ const TapEventTable = function({ tableRows, resource, api, tapIgnoredHeaders }) 
     <ExpandableTable
       tableRows={tableRows}
       tableColumns={columns}
-      // expandedRowRender={expandedRowRender}
       expandedRowRender={(d, expandedWrapStyle) => expandedRowRender(d, expandedWrapStyle, tapIgnoredHeaders)}
       tableClassName="metric-table" />
   );
