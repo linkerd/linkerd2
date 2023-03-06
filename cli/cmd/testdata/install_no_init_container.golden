@@ -947,11 +947,11 @@ spec:
         imagePullPolicy: IfNotPresent
         resources:
           limits:
-            cpu: "50m"
-            memory: "10Mi"
+            cpu: "100m"
+            memory: "20Mi"
           requests:
-            cpu: "50m"
-            memory: "10Mi"
+            cpu: "100m"
+            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1390,11 +1390,11 @@ spec:
         imagePullPolicy: IfNotPresent
         resources:
           limits:
-            cpu: "50m"
-            memory: "10Mi"
+            cpu: "100m"
+            memory: "20Mi"
           requests:
-            cpu: "50m"
-            memory: "10Mi"
+            cpu: "100m"
+            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1716,11 +1716,11 @@ spec:
         imagePullPolicy: IfNotPresent
         resources:
           limits:
-            cpu: "50m"
-            memory: "10Mi"
+            cpu: "100m"
+            memory: "20Mi"
           requests:
-            cpu: "50m"
-            memory: "10Mi"
+            cpu: "100m"
+            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

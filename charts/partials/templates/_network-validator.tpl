@@ -2,13 +2,7 @@
 name: linkerd-network-validator
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion }}
 imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}
-resources:
-  limits:
-    cpu: "50m"
-    memory: "10Mi"
-  requests:
-    cpu: "50m"
-    memory: "10Mi"
+{{ include "partials.resources" .Values.proxyInit.resources }}
 securityContext:
   allowPrivilegeEscalation: false
   capabilities:
