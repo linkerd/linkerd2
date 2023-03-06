@@ -10,14 +10,16 @@ use linkerd_policy_controller::{
 };
 use linkerd_policy_controller_k8s_status::{self as status};
 use std::net::SocketAddr;
-use tokio::{sync::mpsc, time};
+use tokio::{sync::mpsc, time::Duration};
 use tracing::{info, info_span, instrument, Instrument};
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-const DETECT_TIMEOUT: time::Duration = time::Duration::from_secs(10);
+const DETECT_TIMEOUT: Duration = Duration::from_secs(10);
+const LEASE_DURATION: Duration = Duration::from_secs(30);
+const RENEW_GRACE_PERIOD: Duration = Duration::from_secs(1);
 
 #[derive(Debug, Parser)]
 #[clap(name = "policy", about = "A policy resource prototype")]
@@ -164,10 +166,9 @@ async fn main() -> Result<()> {
     let lease = kubert::lease::LeaseManager::init(api, status::STATUS_CONTROLLER_NAME).await?;
     let hostname =
         std::env::var("HOSTNAME").expect("Failed to fetch `HOSTNAME` environment variable");
-    // todo: These should probably be configurable or set as consts
     let params = kubert::lease::ClaimParams {
-        lease_duration: std::time::Duration::from_secs(30),
-        renew_grace_period: std::time::Duration::from_secs(1),
+        lease_duration: LEASE_DURATION,
+        renew_grace_period: RENEW_GRACE_PERIOD,
     };
     let (claims, _task) = lease.spawn(hostname.clone(), params).await?;
 
