@@ -171,10 +171,10 @@ spec:
         resources:
           limits:
             cpu: 50m
-            memory: 10Mi
+            memory: 25Mi
           requests:
             cpu: 50m
-            memory: 10Mi
+            memory: 25Mi
         securityContext:
           runAsUser: 65534
       volumes:

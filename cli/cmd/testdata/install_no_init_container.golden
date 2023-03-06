@@ -746,7 +746,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - identity
@@ -911,10 +911,10 @@ spec:
         resources:
           limits:
             cpu: "50m"
-            memory: "10Mi"
+            memory: "25Mi"
           requests:
             cpu: "50m"
-            memory: "10Mi"
+            memory: "25Mi"
         securityContext:
           runAsUser: 65534
       serviceAccountName: linkerd-identity
@@ -1074,7 +1074,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - env:
         - name: _pod_name
@@ -1308,10 +1308,10 @@ spec:
         resources:
           limits:
             cpu: "50m"
-            memory: "10Mi"
+            memory: "25Mi"
           requests:
             cpu: "50m"
-            memory: "10Mi"
+            memory: "25Mi"
         securityContext:
           runAsUser: 65534
       serviceAccountName: linkerd-destination
@@ -1426,7 +1426,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - env:
         - name: _pod_name
@@ -1591,10 +1591,10 @@ spec:
         resources:
           limits:
             cpu: "50m"
-            memory: "10Mi"
+            memory: "25Mi"
           requests:
             cpu: "50m"
-            memory: "10Mi"
+            memory: "25Mi"
         securityContext:
           runAsUser: 65534
       serviceAccountName: linkerd-proxy-injector
