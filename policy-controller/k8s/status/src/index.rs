@@ -9,9 +9,12 @@ use kubert::lease::Claim;
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
 use parking_lot::RwLock;
 use std::{collections::hash_map::Entry, sync::Arc};
-use tokio::sync::{
-    mpsc::{UnboundedReceiver, UnboundedSender},
-    watch::Receiver,
+use tokio::{
+    sync::{
+        mpsc::{UnboundedReceiver, UnboundedSender},
+        watch::Receiver,
+    },
+    time::{self, Duration},
 };
 
 pub(crate) const POLICY_API_GROUP: &str = "policy.linkerd.io";
@@ -80,11 +83,7 @@ impl Controller {
                 biased;
                 _ = self.claims.changed() => {
                     let claim = self.claims.borrow_and_update();
-                    if claim.is_current_for(&self.name) {
-                        self.leader = true
-                    } else {
-                        self.leader = false
-                    }
+                    self.leader =  claim.is_current_for(&self.name)
                 }
                 Some(Update { id, patch}) = self.updates.recv() => {
                     // If this status controller is not the leader, it should
@@ -130,19 +129,19 @@ impl Index {
                 _ = claims.changed() => {
                     tracing::debug!("Lease holder has changed")
                 }
-                _ = tokio::time::sleep(std::time::Duration::from_secs(10)) => {}
+                _ = time::sleep(Duration::from_secs(10)) => {}
             }
 
             // The claimant has changed or we should attempt to reconcile all
             // HTTPRoutes to account for any errors. In either case, we should
             // only proceed if we are the current leader.
             let claims = claims.borrow_and_update();
-            let index = index.write();
+            let index = index.read();
             if !claims.is_current_for(&index.name) {
                 continue;
             }
             tracing::debug!(%index.name, "Lease holder reconciling cluster");
-            Index::reconcile(&*index);
+            index.reconcile();
         }
     }
 
