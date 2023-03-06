@@ -1509,18 +1509,6 @@
     pseudolocale "^1.1.0"
     ramda "^0.27.1"
 
-"@lingui/conf@3.17.1":
-  version "3.17.1"
-  resolved "https://registry.yarnpkg.com/@lingui/conf/-/conf-3.17.1.tgz#3d416fea87ea5b4c4cb44b5f861d28588ad46e9b"
-  integrity sha512-lO55gQPPzy+N7PcU1hlj8mTYNp8TgFpaF+7AOAI2tSdRy8BbPD/o/RK4TEqNzhhuLOvGlgPu791X5b0w0b2C7g==
-  dependencies:
-    "@babel/runtime" "^7.20.13"
-    chalk "^4.1.0"
-    cosmiconfig "^8.0.0"
-    cosmiconfig-typescript-loader "^4.3.0"
-    jest-validate "^26.5.2"
-    lodash.get "^4.4.2"
-
 "@lingui/conf@3.17.2":
   version "3.17.2"
   resolved "https://registry.yarnpkg.com/@lingui/conf/-/conf-3.17.2.tgz#0a26343e2fdb20ad2e7b0f23b008b86416bcd792"
@@ -1542,14 +1530,14 @@
     "@messageformat/parser" "^5.0.0"
     make-plural "^6.2.2"
 
-"@lingui/macro@3.17.1":
-  version "3.17.1"
-  resolved "https://registry.yarnpkg.com/@lingui/macro/-/macro-3.17.1.tgz#c42570eece439d4f4035d610e70033ecf512f7a8"
-  integrity sha512-C2Zt31p8iBHRCQrv2WR24wrbuhw1Z1YWOrOBdO7z93mxfUeySwlgIKyhMB8OJc1prD1QB7tPvXRa3PrR7k3lKQ==
+"@lingui/macro@3.17.2":
+  version "3.17.2"
+  resolved "https://registry.yarnpkg.com/@lingui/macro/-/macro-3.17.2.tgz#b0c358335fa190df8364a66fa17fca2266561b0a"
+  integrity sha512-kk1ZtwYSx5Knu/5LsRGisTqfNoLIeVkJJPn6xjZXcItoxUgRsykyKb3BqCJwxqYUClz4i4A8Ld/aA4xBi4apRQ==
   dependencies:
     "@babel/runtime" "^7.20.13"
     "@babel/types" "^7.20.7"
-    "@lingui/conf" "3.17.1"
+    "@lingui/conf" "3.17.2"
     ramda "^0.27.1"
 
 "@lingui/react@3.17.2":
