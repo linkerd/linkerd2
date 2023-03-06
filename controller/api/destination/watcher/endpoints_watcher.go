@@ -1018,7 +1018,7 @@ func (pp *portPublisher) deleteEndpointSlice(es *discovery.EndpointSlice) {
 	}
 
 	if len(pp.addresses.Addresses) == 0 {
-		pp.noEndpoints(false)
+		pp.noEndpoints(true)
 	} else {
 		pp.exists = true
 		pp.metrics.incUpdates()

@@ -1561,6 +1561,7 @@ status:
 		deletingServices  bool
 		hasSliceAccess    bool
 		noEndpointsCalled bool
+		noEndpointsExists bool
 	}{
 		{
 			serviceType:       "can delete an EndpointSlice",
@@ -1571,6 +1572,7 @@ status:
 			objectToDelete:    createTestEndpointSlice(),
 			hasSliceAccess:    true,
 			noEndpointsCalled: true,
+			noEndpointsExists: true,
 		},
 		{
 			serviceType:       "can delete an EndpointSlice when wrapped in a DeletedFinalStateUnknown",
@@ -1581,6 +1583,7 @@ status:
 			objectToDelete:    createTestEndpointSlice(),
 			hasSliceAccess:    true,
 			noEndpointsCalled: true,
+			noEndpointsExists: true,
 		},
 		{
 			serviceType:       "can delete an EndpointSlice when there are multiple ones",
@@ -1591,6 +1594,9 @@ status:
 			objectToDelete:    createTestEndpointSlice(),
 			hasSliceAccess:    true,
 			noEndpointsCalled: false,
+			// NoEndpoints is never called, so there is never any reason to
+			// set `exists = false`
+			noEndpointsExists: false,
 		},
 	} {
 		tt := tt // pin
@@ -1625,6 +1631,9 @@ status:
 			if listener.endpointsAreNotCalled() != tt.noEndpointsCalled {
 				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
 					tt.noEndpointsCalled, listener.endpointsAreNotCalled())
+			}
+			if listener.endpointsDoNotExist() != tt.noEndpointsExists {
+				t.Fatalf("Expected service to exist")
 			}
 		})
 	}
