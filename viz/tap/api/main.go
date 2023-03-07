@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"fmt"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -27,6 +28,9 @@ func Main(args []string) {
 	disableCommonNames := cmd.Bool("disable-common-names", false, "disable checks for Common Names (for development)")
 	trustDomain := cmd.String("identity-trust-domain", defaultDomain, "configures the name suffix used for identities")
 	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
+
+	var tapIgnoredHeaders = &stringMap{}
+	cmd.Var(tapIgnoredHeaders, "tap-ignored-headers", "list of headers to ignore")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 	flags.ConfigureAndParse(cmd, args)
@@ -69,7 +73,7 @@ func Main(args []string) {
 			log.Warnf("failed to initialize tracing: %s", err)
 		}
 	}
-	grpcTapServer, err := NewGrpcTapServer(*tapPort, *apiNamespace, *trustDomain, k8sAPI)
+	grpcTapServer, err := NewGrpcTapServer(*tapPort, *apiNamespace, *trustDomain, k8sAPI, *tapIgnoredHeaders)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -86,4 +90,14 @@ func Main(args []string) {
 	log.Infof("shutting down APIServer on %s", *apiServerAddr)
 	apiServer.Shutdown(ctx)
 	adminServer.Shutdown(ctx)
+}
+type stringMap map[string]bool
+
+func (s *stringMap) String() string {
+    return fmt.Sprintf("%v", *s)
+}
+
+func (s *stringMap) Set(value string) error {
+    (*s)[value] = true
+    return nil
 }

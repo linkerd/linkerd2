@@ -424,11 +424,16 @@ status:
 			if err != nil {
 				t.Fatalf("Invalid port: %s", port)
 			}
+			
+			// TODO: Headers from the metadata context aren't being translated & removed
+			ignoredHeaders := map[string]bool{
+				"user-agent":  true,
+			}
 
-			fakeGrpcServer := newGRPCTapServer(uint(tapPort), "controller-ns", "cluster.local", k8sAPI)
+			fakeGrpcServer := newGRPCTapServer(uint(tapPort), "controller-ns", "cluster.local", k8sAPI, ignoredHeaders)
 
 			k8sAPI.Sync(nil)
-
+			
 			err = fakeGrpcServer.TapByResource(exp.req, &stream)
 			if err != nil || exp.err != nil {
 				code := status.Code(err)
@@ -450,7 +455,6 @@ status:
 					t.Fatalf("Unexpected l5d-require-id header: %+v", diff)
 				}
 			}
-
 		})
 	}
 }
@@ -663,7 +667,7 @@ status:
 			if err != nil {
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
-			s, _ := NewGrpcTapServer(4190, "controller-ns", "cluster.local", k8sAPI)
+			s, _ := NewGrpcTapServer(4190, "controller-ns", "cluster.local", k8sAPI, nil)
 			k8sAPI.Sync(nil)
 
 			labels := make(map[string]string)

@@ -12,14 +12,10 @@ const headersStyles = {
   },
 };
 
-const HeadersContentBase = function({ headers, classes, tapIgnoredHeaders }) {
-  const ignoredHeaders = new Set(tapIgnoredHeaders.split(','));
+const HeadersContentBase = function({ headers, classes }) {
   return (
     <React.Fragment>
       {headers.map(header => {
-        if (ignoredHeaders.has(header.name)) {
-          return null;
-        }
         return (
           <React.Fragment key={`${header.name}_${header.valueStr}`}>
             <Typography
@@ -37,7 +33,6 @@ const HeadersContentBase = function({ headers, classes, tapIgnoredHeaders }) {
           </React.Fragment>
         );
       })}
-
     </React.Fragment>
   );
 };
@@ -47,16 +42,11 @@ HeadersContentBase.propTypes = {
     name: PropTypes.string.isRequired,
     valueStr: PropTypes.string.isRequired,
   })).isRequired,
-  tapIgnoredHeaders: PropTypes.string,
-};
-
-HeadersContentBase.defaultProps = {
-  tapIgnoredHeaders: '',
 };
 
 const HeadersContentDisplay = withStyles(headersStyles)(HeadersContentBase);
 
-export const headersDisplay = (title, value, tapIgnoredHeaders) => {
+export const headersDisplay = (title, value) => {
   if (!value) {
     return null;
   }
@@ -65,7 +55,7 @@ export const headersDisplay = (title, value, tapIgnoredHeaders) => {
     <ListItem disableGutters>
       <ListItemText
         primary={title}
-        secondary={'headers' in value ? <HeadersContentDisplay headers={value.headers} tapIgnoredHeaders={tapIgnoredHeaders} /> : '-'} />
+        secondary={'headers' in value ? <HeadersContentDisplay headers={value.headers} /> : '-'} />
     </ListItem>
   );
 };

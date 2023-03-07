@@ -33,7 +33,6 @@ func main() {
 	grafanaExternalAddr := cmd.String("grafana-external-addr", "", "address of the external grafana service")
 	grafanaPrefix := cmd.String("grafana-prefix", "", "prefix for Grafana dashboard UID's")
 	jaegerAddr := cmd.String("jaeger-addr", "", "address of the jaeger service")
-	tapIgnoredHeaders := cmd.String("tap-ignored-headers", "", "comma-separated list of ignored headers displayed in linkerd tap")
 	templateDir := cmd.String("template-dir", "templates", "directory to search for template files")
 	staticDir := cmd.String("static-dir", "app/dist", "directory to search for static files")
 	reload := cmd.Bool("reload", true, "reloading set to true or false")
@@ -108,13 +107,7 @@ func main() {
 		log.Fatalf("invalid --enforced-host parameter: %s", err)
 	}
 
-	commaSeperatedPattern := regexp.MustCompile(`^([a-zA-Z0-9-]*,)*[a-zA-Z0-9-]*$`)
-	if !commaSeperatedPattern.MatchString(*tapIgnoredHeaders) {
-		log.Fatalf("invalid --tap-ignored-headers parameter: %s no white-space, comma seperated values only", *tapIgnoredHeaders)
-
-	}
-
-	server := srv.NewServer(*addr, *grafanaAddr, *grafanaExternalAddr, *grafanaPrefix, *tapIgnoredHeaders, *jaegerAddr, *templateDir, *staticDir, uuid, version,
+	server := srv.NewServer(*addr, *grafanaAddr, *grafanaExternalAddr, *grafanaPrefix, *jaegerAddr, *templateDir, *staticDir, uuid, version,
 		*controllerNamespace, *clusterDomain, *reload, reHost, client, k8sAPI, hc)
 
 	go func() {

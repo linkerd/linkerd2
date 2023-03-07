@@ -131,8 +131,6 @@ metricsAPI:
 
 # tap configuration
 tap:
-  # Headers that will be ignored for web Linkerd Tap
-  ignoredHeaders: ""
     # -- Number of tap component replicas
   replicas: 1
   # -- log level of the tap component
@@ -205,6 +203,8 @@ tap:
       limit: ""
       # -- Amount of ephemeral storage that the tap container requests
       request: ""
+
+  ignoredHeaders:
 
   proxy:
     # -- If set, overrides default proxy resources for the proxy injected

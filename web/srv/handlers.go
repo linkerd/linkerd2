@@ -30,7 +30,6 @@ type (
 		grafana             string
 		grafanaExternalURL  string
 		grafanaPrefix       string
-		tapIgnoredHeaders   string
 		jaeger              string
 		grafanaProxy        *reverseProxy
 		jaegerProxy         *reverseProxy
@@ -54,7 +53,6 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 		Grafana:             h.grafana,
 		GrafanaExternalURL:  h.grafanaExternalURL,
 		GrafanaPrefix:       h.grafanaPrefix,
-		TapIgnoredHeaders:   h.tapIgnoredHeaders,
 		Jaeger:              h.jaeger,
 	}
 
