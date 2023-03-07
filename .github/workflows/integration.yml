@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-      - run: echo "::set-output name=tag::$(CI_FORCE_CLEAN=1 bin/root-tag)"
+      - run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
         id: tag
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
@@ -147,7 +147,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-      - uses: tj-actions/changed-files@3ee6abf6107ccc2d8ee538de7ff6b1fb644f5d60
+      - uses: tj-actions/changed-files@04124efe7560d15e11ea2ba96c0df2989f68f1f4
         id: changed
         with:
           files: |
@@ -286,7 +286,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-      - uses: tj-actions/changed-files@3ee6abf6107ccc2d8ee538de7ff6b1fb644f5d60
+      - uses: tj-actions/changed-files@04124efe7560d15e11ea2ba96c0df2989f68f1f4
         id: changed
         with:
           files: |
@@ -330,7 +330,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-      - uses: tj-actions/changed-files@3ee6abf6107ccc2d8ee538de7ff6b1fb644f5d60
+      - uses: tj-actions/changed-files@04124efe7560d15e11ea2ba96c0df2989f68f1f4
         id: changed
         with:
           files: |

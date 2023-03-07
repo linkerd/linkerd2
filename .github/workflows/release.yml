@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-      - run: echo "::set-output name=tag::$(CI_FORCE_CLEAN=1 bin/root-tag)"
+      - run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
         id: tag
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
@@ -61,8 +61,8 @@ jobs:
         docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
         component: ${{ matrix.component }}
         tag: ${{ needs.tag.outputs.tag }}
-    - uses: sigstore/cosign-installer@v2
-    - run: cosign sign '${{ steps.build.outputs.image }}'
+    - uses: sigstore/cosign-installer@v3
+    - run: cosign sign -y '${{ steps.build.outputs.image }}'
       env:
         COSIGN_EXPERIMENTAL: 1
     - name: Create artifact with CLI

@@ -1,5 +1,17 @@
 # Changes
 
+## edge-23.3.1
+
+This edge release continues to build support under the hood for the upcoming
+features in 2.13. Also included are several dependency updates and less verbose
+logging.
+
+* Removed dependency on the `curlimages/curl` 3rd-party image used to initialize
+  extensions namespaces metadata (so they are visible by `linkerd check`),
+  replaced by the new `extension-init` image
+* Lowered non-actionable error messages in the Destination log to debug-level
+  entries to avoid triggering false alarms (thanks @siddharthshubhampal!)
+
 ## edge-23.2.3
 
 This edge release includes a number of fixes and introduces a new CLI command,

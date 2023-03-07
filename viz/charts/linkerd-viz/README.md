@@ -3,7 +3,7 @@
 The Linkerd-Viz extension contains observability and visualization
 components for Linkerd.
 
-![Version: 30.5.0-edge](https://img.shields.io/badge/Version-30.5.0--edge-informational?style=flat-square)
+![Version: 30.6.0-edge](https://img.shields.io/badge/Version-30.6.0--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -125,10 +125,10 @@ Kubernetes: `>=1.21.0-0`
 | metricsAPI.service | object | `{"annotations":{}}` | metrics-api service configuration |
 | metricsAPI.service.annotations | object | `{}` | Additional annotations to add to metrics-api service |
 | metricsAPI.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
-| namespaceMetadata.image.name | string | `"curl"` | Docker image name for the namespace-metadata instance |
+| namespaceMetadata.image.name | string | `"extension-init"` | Docker image name for the namespace-metadata instance |
 | namespaceMetadata.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the namespace-metadata instance |
-| namespaceMetadata.image.registry | string | `"curlimages"` | Docker registry for the namespace-metadata instance |
-| namespaceMetadata.image.tag | string | `"7.78.0"` | Docker image tag for the namespace-metadata instance |
+| namespaceMetadata.image.registry | string | `"cr.l5d.io/linkerd"` | Docker registry for the namespace-metadata instance |
+| namespaceMetadata.image.tag | string | `"v0.1.0"` | Docker image tag for the namespace-metadata instance |
 | nodeSelector | object | `{"kubernetes.io/os":"linux"}` | Default nodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | podLabels | object | `{}` | Additional labels to add to all pods |
 | prometheus.alertRelabelConfigs | string | `nil` | Alert relabeling is applied to alerts before they are sent to the Alertmanager. |
