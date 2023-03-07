@@ -120,6 +120,7 @@ spec:
           name: tls
           readOnly: true
       securityContext:
+        allowPrivilegeEscalation: false
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: tap-injector

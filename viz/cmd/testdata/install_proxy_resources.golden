@@ -714,6 +714,7 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       securityContext:
+        allowPrivilegeEscalation: false
         fsGroup: 65534
       containers:
       - args:
@@ -922,6 +923,7 @@ spec:
           name: tls
           readOnly: true
       securityContext:
+        allowPrivilegeEscalation: false
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: tap
@@ -1128,6 +1130,7 @@ spec:
           name: tls
           readOnly: true
       securityContext:
+        allowPrivilegeEscalation: false
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: tap-injector
@@ -1204,6 +1207,7 @@ metadata:
     namespace: linkerd-viz
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    
     linkerd.io/inject: enabled
 spec:
   type: ClusterIP
@@ -1298,6 +1302,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
       securityContext:
+        allowPrivilegeEscalation: false
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: web

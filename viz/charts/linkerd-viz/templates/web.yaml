@@ -136,6 +136,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
       securityContext:
+        allowPrivilegeEscalation: false
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: web
