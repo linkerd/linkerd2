@@ -85,14 +85,10 @@ impl Controller {
                     let claim = self.claims.borrow_and_update();
                     self.leader =  claim.is_current_for(&self.name)
                 }
-                Some(Update { id, patch}) = self.updates.recv() => {
-                    // If this status controller is not the leader, it should
-                    // process through the updates queue but not actually
-                    // patch any resources.
-                    if !self.leader {
-                        continue;
-                    }
-
+                // If this status controller is not the leader, it should
+                // process through the updates queue but not actually patch
+                // any resources.
+                Some(Update { id, patch}) = self.updates.recv(), if self.leader => {
                     let api = k8s::Api::<k8s::policy::HttpRoute>::namespaced(self.client.clone(), &id.namespace);
                     if let Err(error) = api.patch_status(&id.name, &patch_params, &patch).await {
                         tracing::error!(namespace = %id.namespace, name = %id.name, %error, "Failed to patch HTTPRoute");
