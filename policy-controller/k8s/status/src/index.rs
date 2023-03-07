@@ -29,17 +29,17 @@ pub struct Controller {
     name: String,
     updates: UnboundedReceiver<Update>,
 
-    // True if this status controller is the leader — false otherwise.
+    /// True if this status controller is the leader — false otherwise.
     leader: bool,
 }
 
 pub struct Index {
-    // Used to compare against the current claim's claimant to determine if
-    // this status controller is the leader.
+    /// Used to compare against the current claim's claimant to determine if
+    /// this status controller is the leader.
     name: String,
 
-    // Used in the IndexNamespacedResource trait methods to check who the
-    // current leader is and if updates should be sent to the controller.
+    /// Used in the IndexNamespacedResource trait methods to check who the
+    /// current leader is and if updates should be sent to the controller.
     claims: Receiver<Arc<Claim>>,
     updates: UnboundedSender<Update>,
 
