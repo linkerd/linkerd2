@@ -5,14 +5,18 @@ use crate::{
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 #[cfg(not(test))]
 use chrono::offset::Utc;
+use kubert::lease::Claim;
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
 use parking_lot::RwLock;
 use std::{collections::hash_map::Entry, sync::Arc};
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::sync::{
+    mpsc::{UnboundedReceiver, UnboundedSender},
+    watch::Receiver,
+};
 
 pub(crate) const POLICY_API_GROUP: &str = "policy.linkerd.io";
 const POLICY_API_VERSION: &str = "policy.linkerd.io/v1alpha1";
-pub(crate) const STATUS_CONTROLLER_NAME: &str = "policy.linkerd.io/status-controller";
+pub const STATUS_CONTROLLER_NAME: &str = "status-controller";
 
 pub type SharedIndex = Arc<RwLock<Index>>;
 
@@ -22,6 +26,14 @@ pub struct Controller {
 }
 
 pub struct Index {
+    // todo: Will be used to compare against the current claim's claimant to
+    // determine if this status controller is the leader
+    _name: String,
+
+    // todo: Will be used in the IndexNamespacedResource trait methods to
+    // check who the current leader is and if updates should be sent to the
+    // controller
+    _claims: Receiver<Arc<Claim>>,
     updates: UnboundedSender<Update>,
 
     http_routes: HashMap<ResourceId, Vec<ParentReference>>,
@@ -56,8 +68,14 @@ impl Controller {
 }
 
 impl Index {
-    pub fn shared(updates: UnboundedSender<Update>) -> SharedIndex {
+    pub fn shared(
+        name: impl ToString,
+        claims: Receiver<Arc<Claim>>,
+        updates: UnboundedSender<Update>,
+    ) -> SharedIndex {
         Arc::new(RwLock::new(Self {
+            _name: name.to_string(),
+            _claims: claims,
             updates,
             http_routes: HashMap::new(),
             servers: HashSet::new(),
@@ -130,7 +148,7 @@ impl Index {
                         section_name: None,
                         port: None,
                     },
-                    controller_name: STATUS_CONTROLLER_NAME.to_string(),
+                    controller_name: format!("{}/{}", POLICY_API_GROUP, STATUS_CONTROLLER_NAME),
                     conditions: vec![condition],
                 }
             })
