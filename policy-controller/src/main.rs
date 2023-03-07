@@ -175,6 +175,12 @@ async fn main() -> Result<()> {
         kubert::index::namespaced(status_index.clone(), servers).instrument(info_span!("servers")),
     );
 
+    let services = runtime.watch_all::<k8s::Service>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(status_index.clone(), services)
+            .instrument(info_span!("services")),
+    );
+
     // Run the gRPC server, serving results by looking up against the index handle.
     tokio::spawn(grpc(
         grpc_addr,

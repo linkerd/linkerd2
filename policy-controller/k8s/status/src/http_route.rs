@@ -17,6 +17,11 @@ pub enum ParentReference {
     Server(ResourceId),
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum BackendReference {
+    Service(ResourceId),
+}
+
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum InvalidParentReference {
     #[error("HTTPRoute resource does not reference a Server resource")]
@@ -36,6 +41,70 @@ pub(crate) fn make_parents(http_route: policy::HttpRoute) -> Result<Vec<ParentRe
         .expect("HTTPRoute must have a namespace");
     let parents = ParentReference::collect_from(http_route.spec.inner.parent_refs, &namespace)?;
     Ok(parents)
+}
+
+pub(crate) fn make_backends(http_route: policy::HttpRoute) -> Result<Vec<BackendReference>> {
+    let namespace = http_route
+        .metadata
+        .namespace
+        .expect("HTTPRoute must have a namespace");
+    let mut refs = Vec::new();
+    // For each rule in the route, pull out the (Http) BackendRefs
+    for rule in http_route.spec.rules.into_iter().flatten() {
+        let backends = BackendReference::collect_from(rule.backend_refs, &namespace)?;
+        refs.extend(backends.into_iter().flatten());
+    }
+    Ok(refs)
+}
+
+impl BackendReference {
+    // If no BackendRefs are present, then BackendRef is assumed to be the same
+    // as ParentRef. If it is a Server, do not collect.
+    //
+    // Use infallible as placeholder until we can typecheck references. When we
+    // do, we should introduce a new 'InvalidBackendReference' error.
+    fn collect_from(
+        rule_backend_refs: Option<Vec<gateway::HttpBackendRef>>,
+        namespace: &str,
+    ) -> Result<Option<Vec<Self>>, std::convert::Infallible> {
+        let backends = rule_backend_refs
+            .into_iter()
+            .flatten()
+            .filter_map(|rule_backend| Self::from_backend_ref(rule_backend.backend_ref, namespace))
+            .collect::<Result<Vec<_>, std::convert::Infallible>>()?;
+        if backends.is_empty() {
+            // Fine to skip processing for now, not a problem, but as soon as
+            // Service objects can be used as a parentRef, this logic will become
+            // more complicated
+            //
+            // When a route has no backendRefs, it is assumed the parentRef _is_ the
+            // backend.
+            // We will need to both:
+            //      include that for Service objects
+            //      exclude it for Server objects
+            // Solved through typechecking?
+            Ok(None)
+        } else {
+            Ok(Some(backends))
+        }
+    }
+
+    fn from_backend_ref(
+        rule_backend_ref: Option<gateway::BackendRef>,
+        namespace: &str,
+    ) -> Option<Result<Self, std::convert::Infallible>> {
+        // TODO: only accept Service objects, check object type and if not a
+        // Service, reject with error (Some(Err(..)))
+        //
+        // For now, namespace arg is needed to restrict cross-namespace
+        // references.
+        rule_backend_ref.map(|backend_ref| {
+            Ok(Self::Service(ResourceId {
+                namespace: namespace.to_string(),
+                name: backend_ref.name,
+            }))
+        })
+    }
 }
 
 impl ParentReference {
