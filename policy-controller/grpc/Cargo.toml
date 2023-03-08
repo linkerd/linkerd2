@@ -11,7 +11,7 @@ async-trait = "0.1"
 drain = "0.1"
 hyper = { version = "0.14", features = ["http2", "server", "tcp"] }
 futures = { version = "0.3", default-features = false }
-linkerd2-proxy-api = { features = ["inbound", "outbound"], git="https://github.com/linkerd/linkerd2-proxy-api", branch = "alex/outbound" }
+linkerd2-proxy-api = { features = ["inbound", "outbound"], git="https://github.com/linkerd/linkerd2-proxy-api", rev = "9efe50fd769cf8fbba4f0eedf95fa8ca896d7355" }
 linkerd-policy-controller-core = { path = "../core" }
 maplit = "1"
 tokio = { version = "1", features = ["macros"] }
