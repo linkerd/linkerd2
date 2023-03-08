@@ -128,7 +128,7 @@ impl Index {
                 _ = time::sleep(Duration::from_secs(10)) => {}
             }
 
-            // The claimant has changed or we should attempt to reconcile all
+            // The claimant has changed, or we should attempt to reconcile all
             // HTTPRoutes to account for any errors. In either case, we should
             // only proceed if we are the current leader.
             let claims = claims.borrow_and_update();
