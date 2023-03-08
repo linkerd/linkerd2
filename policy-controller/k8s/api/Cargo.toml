@@ -9,8 +9,8 @@ publish = false
 k8s-openapi = { version = "0.17", default-features = false, features = [
     "v1_20",
 ] }
-k8s-gateway-api = "0.10"
-kube = { version = "0.79", default-features = false, features = [
+k8s-gateway-api = "0.11"
+kube = { version = "0.80", default-features = false, features = [
     "client",
     "derive",
     "runtime",

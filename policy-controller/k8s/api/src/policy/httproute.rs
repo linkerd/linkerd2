@@ -1,6 +1,6 @@
 pub use k8s_gateway_api::{
-    CommonRouteSpec, Hostname, HttpHeader, HttpHeaderMatch, HttpHeaderName, HttpMethod,
-    HttpPathMatch, HttpPathModifier, HttpQueryParamMatch, HttpRequestHeaderFilter,
+    CommonRouteSpec, Hostname, HttpBackendRef, HttpHeader, HttpHeaderMatch, HttpHeaderName,
+    HttpMethod, HttpPathMatch, HttpPathModifier, HttpQueryParamMatch, HttpRequestHeaderFilter,
     HttpRequestRedirectFilter, HttpRouteMatch, LocalObjectReference, ParentReference, RouteStatus,
 };
 
@@ -126,6 +126,34 @@ pub struct HttpRouteRule {
     ///
     /// Support: Core
     pub filters: Option<Vec<HttpRouteFilter>>,
+
+    /// BackendRefs defines the backend(s) where matching requests should be
+    /// sent.
+    ///
+    /// A 500 status code MUST be returned if there are no BackendRefs or
+    /// filters specified that would result in a response being sent.
+    ///
+    /// A BackendRef is considered invalid when it refers to:
+    ///
+    /// * an unknown or unsupported kind of resource
+    /// * a resource that does not exist
+    /// * a resource in another namespace when the reference has not been
+    ///   explicitly allowed by a ReferencePolicy (or equivalent concept).
+    ///
+    /// When a BackendRef is invalid, 500 status codes MUST be returned for
+    /// requests that would have otherwise been routed to an invalid backend. If
+    /// multiple backends are specified, and some are invalid, the proportion of
+    /// requests that would otherwise have been routed to an invalid backend
+    /// MUST receive a 500 status code.
+    ///
+    /// When a BackendRef refers to a Service that has no ready endpoints, it is
+    /// recommended to return a 503 status code.
+    ///
+    /// Support: Core for Kubernetes Service
+    /// Support: Custom for any other resource
+    ///
+    /// Support for weight: Core
+    pub backend_refs: Option<Vec<HttpBackendRef>>,
 }
 
 /// HTTPRouteFilter defines processing steps that must be completed during the

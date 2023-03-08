@@ -481,7 +481,10 @@ impl Validate<HttpRouteSpec> for Admission {
         // This is essentially equivalent to the indexer's conversion function
         // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
         // actually allocate stuff in order to return an `InboundRouteBinding`.
-        for httproute::HttpRouteRule { filters, matches } in spec.rules.into_iter().flatten() {
+        for httproute::HttpRouteRule {
+            filters, matches, ..
+        } in spec.rules.into_iter().flatten()
+        {
             for m in matches.into_iter().flatten() {
                 validate_match(m)?;
             }
