@@ -69,6 +69,9 @@ impl Controller {
         }
     }
 
+    /// Process updates received from the index; each update is a patch that
+    /// should be applied to update the status of an HTTPRoute. A patch should
+    /// only be applied if we are the holder of the status-controller lease.
     pub async fn run(mut self) {
         let patch_params = k8s::PatchParams::apply(POLICY_API_GROUP);
 
@@ -114,6 +117,13 @@ impl Index {
         }))
     }
 
+    /// When the status-controller lease holder changes or a time duration has
+    /// elapsed, the index reconciles the statuses for all HTTPRoutes on the
+    /// cluster.
+    ///
+    /// This reconciliation loop ensures that if errors occur when the
+    /// controller applies patches or the status controller leader changes,
+    /// all HTTPRoutes have an up-to-date status.
     pub async fn run(index: Arc<RwLock<Self>>) {
         // Clone the claims watch out of the index. This will immediately
         // drop the read lock on the index so that it is not held for the
