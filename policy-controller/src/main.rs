@@ -175,7 +175,12 @@ async fn main() -> Result<()> {
     // Build the status index which will be used to process updates to policy
     // resources and send to the status controller.
     let (updates_tx, updates_rx) = mpsc::unbounded_channel();
-    let status_index = status::Index::shared(hostname, claims, updates_tx);
+    let status_index = status::Index::shared(hostname.clone(), claims.clone(), updates_tx);
+
+    // Spawn the status controller reconciliation.
+    tokio::spawn(
+        status::Index::run(status_index.clone()).instrument(info_span!("status_controller::Index")),
+    );
 
     // Spawn resource indexers that update the status index.
     let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
@@ -198,8 +203,12 @@ async fn main() -> Result<()> {
     ));
 
     let client = runtime.client();
-    let status_controller = status::Controller::new(client, updates_rx);
-    tokio::spawn(status_controller.process_updates());
+    let status_controller = status::Controller::new(claims, client, hostname, updates_rx);
+    tokio::spawn(
+        status_controller
+            .run()
+            .instrument(info_span!("status_controller::Controller")),
+    );
 
     let client = runtime.client();
     let runtime = runtime.spawn_server(|| Admission::new(client));
