@@ -806,12 +806,12 @@ dependencies = [
 
 [[package]]
 name = "k8s-gateway-api"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d11a21df154759f0651d797756b08ed01a4681254e532ec412a8670fa3543e63"
+checksum = "67a34efeb4ee6ac6f2c39ce7b25d97554a47a450a140bfd825287b88cf666dc8"
 dependencies = [
  "k8s-openapi",
- "kube",
+ "kube 0.80.0",
  "schemars",
  "serde",
  "serde_json",
@@ -843,9 +843,20 @@ checksum = "d1e74b6c3633982788dc51a02a356113b4b74e0db48929b2c7447cb57919b8ae"
 dependencies = [
  "k8s-openapi",
  "kube-client",
- "kube-core",
- "kube-derive",
+ "kube-core 0.79.0",
+ "kube-derive 0.79.0",
  "kube-runtime",
+]
+
+[[package]]
+name = "kube"
+version = "0.80.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "414d80c69906a91e8ecf4ae16d0fb504e19aa6b099135d35d85298b4e4be3ed3"
+dependencies = [
+ "k8s-openapi",
+ "kube-core 0.80.0",
+ "kube-derive 0.80.0",
 ]
 
 [[package]]
@@ -868,7 +879,7 @@ dependencies = [
  "hyper-timeout",
  "jsonpath_lib",
  "k8s-openapi",
- "kube-core",
+ "kube-core 0.79.0",
  "openssl",
  "pem",
  "pin-project",
@@ -907,10 +918,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "kube-core"
+version = "0.80.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98331c6f1354893f7c50da069e43a3fd1c84e55bbedc7765d9db22ec3291d07d"
+dependencies = [
+ "chrono",
+ "form_urlencoded",
+ "http",
+ "k8s-openapi",
+ "once_cell",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "kube-derive"
 version = "0.79.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e300a7410efc929a817fefe80ad0b2b16987cc236eb7737f7686b5d9bffd818"
+dependencies = [
+ "darling",
+ "proc-macro2",
+ "quote",
+ "serde_json",
+ "syn",
+]
+
+[[package]]
+name = "kube-derive"
+version = "0.80.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4be6ff26b9a34ce831d341e8b33bc78986a33c1be88f5bf9ca84e92e98b1dfb"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -959,7 +1000,7 @@ dependencies = [
  "hyper",
  "k8s-openapi",
  "kube-client",
- "kube-core",
+ "kube-core 0.79.0",
  "kube-runtime",
  "parking_lot",
  "pin-project-lite",
@@ -1024,7 +1065,7 @@ dependencies = [
  "jemallocator",
  "k8s-gateway-api",
  "k8s-openapi",
- "kube",
+ "kube 0.79.0",
  "kubert",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-grpc",
@@ -1079,7 +1120,7 @@ dependencies = [
  "ipnet",
  "k8s-gateway-api",
  "k8s-openapi",
- "kube",
+ "kube 0.79.0",
  "schemars",
  "serde",
  "serde_json",
@@ -1138,7 +1179,7 @@ dependencies = [
  "ipnet",
  "k8s-gateway-api",
  "k8s-openapi",
- "kube",
+ "kube 0.79.0",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
  "linkerd2-proxy-api",
