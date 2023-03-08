@@ -10,7 +10,7 @@ ahash = "0.8"
 anyhow = "1"
 # Fix for https://github.com/chronotope/chrono/issues/602
 chrono = { version = "0.4.23", default-features = false, features = ["clock"] }
-kubert = { version = "0.14", default-features = false, features = [
+kubert = { version = "0.15", default-features = false, features = [
     "index",
     "lease",
 ] }

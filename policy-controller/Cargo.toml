@@ -40,12 +40,12 @@ default-features = false
 features = ["derive", "env", "std"]
 
 [dependencies.kube]
-version = "0.79"
+version = "0.80"
 default-features = false
 features = ["admission", "derive"]
 
 [dependencies.kubert]
-version = "0.14"
+version = "0.15"
 default-features = false
 features = ["clap", "index", "lease", "runtime", "server"]
 

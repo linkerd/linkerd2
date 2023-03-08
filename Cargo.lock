@@ -811,7 +811,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67a34efeb4ee6ac6f2c39ce7b25d97554a47a450a140bfd825287b88cf666dc8"
 dependencies = [
  "k8s-openapi",
- "kube 0.80.0",
+ "kube",
  "schemars",
  "serde",
  "serde_json",
@@ -837,33 +837,22 @@ dependencies = [
 
 [[package]]
 name = "kube"
-version = "0.79.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1e74b6c3633982788dc51a02a356113b4b74e0db48929b2c7447cb57919b8ae"
-dependencies = [
- "k8s-openapi",
- "kube-client",
- "kube-core 0.79.0",
- "kube-derive 0.79.0",
- "kube-runtime",
-]
-
-[[package]]
-name = "kube"
 version = "0.80.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "414d80c69906a91e8ecf4ae16d0fb504e19aa6b099135d35d85298b4e4be3ed3"
 dependencies = [
  "k8s-openapi",
- "kube-core 0.80.0",
- "kube-derive 0.80.0",
+ "kube-client",
+ "kube-core",
+ "kube-derive",
+ "kube-runtime",
 ]
 
 [[package]]
 name = "kube-client"
-version = "0.79.0"
+version = "0.80.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80e9065963ad9966fea4a977efaf1eb22381b56ef4882ef19155869649669dfc"
+checksum = "6dc5ae0b9148b4e2ebb0dabda06a0cd65b1eed2f41d792d49787841a68050283"
 dependencies = [
  "base64 0.20.0",
  "bytes",
@@ -879,7 +868,7 @@ dependencies = [
  "hyper-timeout",
  "jsonpath_lib",
  "k8s-openapi",
- "kube-core 0.79.0",
+ "kube-core",
  "openssl",
  "pem",
  "pin-project",
@@ -901,9 +890,9 @@ dependencies = [
 
 [[package]]
 name = "kube-core"
-version = "0.79.0"
+version = "0.80.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "381a6982f9f48aec74022ae3e7012f990e2d9893bdafc9d4fb2c58521899440d"
+checksum = "98331c6f1354893f7c50da069e43a3fd1c84e55bbedc7765d9db22ec3291d07d"
 dependencies = [
  "chrono",
  "form_urlencoded",
@@ -915,36 +904,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
-]
-
-[[package]]
-name = "kube-core"
-version = "0.80.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98331c6f1354893f7c50da069e43a3fd1c84e55bbedc7765d9db22ec3291d07d"
-dependencies = [
- "chrono",
- "form_urlencoded",
- "http",
- "k8s-openapi",
- "once_cell",
- "schemars",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "kube-derive"
-version = "0.79.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e300a7410efc929a817fefe80ad0b2b16987cc236eb7737f7686b5d9bffd818"
-dependencies = [
- "darling",
- "proc-macro2",
- "quote",
- "serde_json",
- "syn",
 ]
 
 [[package]]
@@ -962,9 +921,9 @@ dependencies = [
 
 [[package]]
 name = "kube-runtime"
-version = "0.79.0"
+version = "0.80.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a11c9e91acd9115b92a7d6cf7210a50b1fdf6d341a146fb0e7eb3423d1548d4"
+checksum = "b698eb8998b46683b0dc3c2ce72c80bc308fc8159f25afa719668c290a037a57"
 dependencies = [
  "ahash",
  "async-trait",
@@ -987,9 +946,9 @@ dependencies = [
 
 [[package]]
 name = "kubert"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11fd33a6cfc53c087537f849dc2d34b8f4ea68eca55b417125d41a9c3fe4a1a4"
+checksum = "7171220877a57ac11ba23d28f42666ca800350e8fd3d6ecfe1b133a40e488ae2"
 dependencies = [
  "ahash",
  "chrono",
@@ -1000,7 +959,7 @@ dependencies = [
  "hyper",
  "k8s-openapi",
  "kube-client",
- "kube-core 0.79.0",
+ "kube-core",
  "kube-runtime",
  "parking_lot",
  "pin-project-lite",
@@ -1065,7 +1024,7 @@ dependencies = [
  "jemallocator",
  "k8s-gateway-api",
  "k8s-openapi",
- "kube 0.79.0",
+ "kube",
  "kubert",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-grpc",
@@ -1120,7 +1079,7 @@ dependencies = [
  "ipnet",
  "k8s-gateway-api",
  "k8s-openapi",
- "kube 0.79.0",
+ "kube",
  "schemars",
  "serde",
  "serde_json",
@@ -1179,7 +1138,7 @@ dependencies = [
  "ipnet",
  "k8s-gateway-api",
  "k8s-openapi",
- "kube 0.79.0",
+ "kube",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
  "linkerd2-proxy-api",
