@@ -417,6 +417,10 @@ fn mk_empty_http_route(
     }
 }
 
+// detect_http_routes asserts that the given outbound policy has a proxy protcol
+// of "Detect" and then invokes the given function with the Http1 and Http2
+// routes from the Detect.
+#[track_caller]
 fn detect_http_routes<F>(config: &grpc::outbound::OutboundPolicy, f: F)
 where
     F: Fn(&[grpc::outbound::HttpRoute]) -> (),
@@ -448,6 +452,7 @@ where
     }
 }
 
+#[track_caller]
 fn route_backends_random_available(
     route: &grpc::outbound::HttpRoute,
 ) -> &[grpc::outbound::http_route::WeightedRouteBackend] {
@@ -464,6 +469,7 @@ fn route_backends_random_available(
     }
 }
 
+#[track_caller]
 fn route_name(route: &grpc::outbound::HttpRoute) -> &str {
     match route.metadata.as_ref().unwrap().kind.as_ref().unwrap() {
         grpc::meta::metadata::Kind::Resource(grpc::meta::Resource {
@@ -477,6 +483,7 @@ fn route_name(route: &grpc::outbound::HttpRoute) -> &str {
     }
 }
 
+#[track_caller]
 fn assert_backend_has_failure_filter(backend: &grpc::outbound::http_route::WeightedRouteBackend) {
     let filter = assert_singleton(&backend.backend.as_ref().unwrap().filters);
     match filter.kind.as_ref().unwrap() {
@@ -485,6 +492,7 @@ fn assert_backend_has_failure_filter(backend: &grpc::outbound::http_route::Weigh
     };
 }
 
+#[track_caller]
 fn assert_route_is_default(route: &grpc::outbound::HttpRoute, svc: &k8s::Service, port: u16) {
     let backends = route_backends_random_available(route);
     let backend = assert_singleton(backends);
@@ -499,6 +507,7 @@ fn assert_route_is_default(route: &grpc::outbound::HttpRoute, svc: &k8s::Service
     );
 }
 
+#[track_caller]
 fn assert_backend_matches_service(
     backend: &grpc::outbound::http_route::WeightedRouteBackend,
     svc: &k8s::Service,
