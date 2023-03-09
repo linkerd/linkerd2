@@ -40,11 +40,10 @@ async fn service_with_no_http_routes() {
         tracing::trace!(?config);
 
         // There should be a default route.
-        let (h1_routes, h2_routes) = detect_http_routes(&config);
-        let route = assert_singleton(h1_routes);
-        assert_route_is_default(route, &svc, 4191);
-        let route = assert_singleton(h2_routes);
-        assert_route_is_default(route, &svc, 4191);
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
     })
     .await;
 }
@@ -64,11 +63,10 @@ async fn service_with_http_route_without_rules() {
         tracing::trace!(?config);
 
         // There should be a default route.
-        let (h1_routes, h2_routes) = detect_http_routes(&config);
-        let route = assert_singleton(h1_routes);
-        assert_route_is_default(route, &svc, 4191);
-        let route = assert_singleton(h2_routes);
-        assert_route_is_default(route, &svc, 4191);
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
 
         let _route = create(&client, mk_empty_http_route(&ns, "foo-route", &svc, 4191)).await;
 
@@ -81,11 +79,10 @@ async fn service_with_http_route_without_rules() {
         tracing::trace!(?config);
 
         // There should be a route with no rules.
-        let (h1_routes, h2_routes) = detect_http_routes(&config);
-        let route = assert_singleton(h1_routes);
-        assert_eq!(route.rules.len(), 0);
-        let route = assert_singleton(h2_routes);
-        assert_eq!(route.rules.len(), 0);
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            assert_eq!(route.rules.len(), 0);
+        });
     })
     .await;
 }
@@ -105,11 +102,10 @@ async fn service_with_http_routes_without_backends() {
         tracing::trace!(?config);
 
         // There should be a default route.
-        let (h1_routes, h2_routes) = detect_http_routes(&config);
-        let route = assert_singleton(h1_routes);
-        assert_route_is_default(route, &svc, 4191);
-        let route = assert_singleton(h2_routes);
-        assert_route_is_default(route, &svc, 4191);
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
 
         let _route = create(&client, mk_http_route(&ns, "foo-route", &svc, 4191, None)).await;
 
@@ -120,16 +116,13 @@ async fn service_with_http_routes_without_backends() {
             .expect("watch must return an updated config");
         tracing::trace!(?config);
 
-        // There should be a route with the top level backend.
-        let (h1_routes, h2_routes) = detect_http_routes(&config);
-        let route = assert_singleton(h1_routes);
-        let backends = route_backends_random_available(route);
-        let backend = assert_singleton(backends);
-        assert_backend_matches_service(backend, &svc, 4191);
-        let route = assert_singleton(h2_routes);
-        let backends = route_backends_random_available(route);
-        let backend = assert_singleton(backends);
-        assert_backend_matches_service(backend, &svc, 4191);
+        // There should be a route with the logical backend.
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            let backends = route_backends_random_available(route);
+            let backend = assert_singleton(backends);
+            assert_backend_matches_service(backend, &svc, 4191);
+        });
     })
     .await;
 }
@@ -149,11 +142,10 @@ async fn service_with_http_routes_with_backend() {
         tracing::trace!(?config);
 
         // There should be a default route.
-        let (h1_routes, h2_routes) = detect_http_routes(&config);
-        let route = assert_singleton(h1_routes);
-        assert_route_is_default(route, &svc, 4191);
-        let route = assert_singleton(h2_routes);
-        assert_route_is_default(route, &svc, 4191);
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
 
         let backend_name = "backend";
         let _backend_svc = create_service(&client, &ns, backend_name, 8888).await;
@@ -172,15 +164,13 @@ async fn service_with_http_routes_with_backend() {
         tracing::trace!(?config);
 
         // There should be a route with a backend with no filters.
-        let (h1_routes, h2_routes) = detect_http_routes(&config);
-        let route = assert_singleton(h1_routes);
-        let backends = route_backends_random_available(route);
-        let backend = assert_singleton(backends);
-        assert_eq!(backend.filters.len(), 0);
-        let route = assert_singleton(h2_routes);
-        let backends = route_backends_random_available(route);
-        let backend = assert_singleton(backends);
-        assert_eq!(backend.filters.len(), 0);
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            let backends = route_backends_random_available(route);
+            let backend = assert_singleton(backends);
+            let filters = &backend.backend.as_ref().unwrap().filters;
+            assert_eq!(filters.len(), 0);
+        });
     })
     .await;
 }
@@ -201,11 +191,10 @@ async fn service_with_http_routes_with_invalid_backend() {
         tracing::trace!(?config);
 
         // There should be a default route.
-        let (h1_routes, h2_routes) = detect_http_routes(&config);
-        let route = assert_singleton(h1_routes);
-        assert_route_is_default(route, &svc, 4191);
-        let route = assert_singleton(h2_routes);
-        assert_route_is_default(route, &svc, 4191);
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
 
         let backends = ["invalid-backend"];
         let _route = create(
@@ -222,15 +211,12 @@ async fn service_with_http_routes_with_invalid_backend() {
         tracing::trace!(?config);
 
         // There should be a route with a backend.
-        let (h1_routes, h2_routes) = detect_http_routes(&config);
-        let route = assert_singleton(h1_routes);
-        let backends = route_backends_random_available(route);
-        let backend = assert_singleton(backends);
-        assert_backend_has_failure_filter(backend);
-        let route = assert_singleton(h2_routes);
-        let backends = route_backends_random_available(route);
-        let backend = assert_singleton(backends);
-        assert_backend_has_failure_filter(backend);
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            let backends = route_backends_random_available(route);
+            let backend = assert_singleton(backends);
+            assert_backend_has_failure_filter(backend);
+        });
     })
     .await;
 }
@@ -252,11 +238,10 @@ async fn service_with_multiple_http_routes() {
         tracing::trace!(?config);
 
         // There should be a default route.
-        let (h1_routes, h2_routes) = detect_http_routes(&config);
-        let route = assert_singleton(h1_routes);
-        assert_route_is_default(route, &svc, 4191);
-        let route = assert_singleton(h2_routes);
-        assert_route_is_default(route, &svc, 4191);
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
 
         // Routes should be returned in sorted order by creation timestamp then
         // name. To ensure that this test isn't timing dependant, routes should
@@ -282,13 +267,11 @@ async fn service_with_multiple_http_routes() {
         tracing::trace!(?config);
 
         // There should be 2 routes, returned in order.
-        let (h1_routes, h2_routes) = detect_http_routes(&config);
-        assert_eq!(h1_routes.len(), 2);
-        assert_eq!(route_name(&h1_routes.get(0).unwrap()), "a-route");
-        assert_eq!(route_name(&h1_routes.get(1).unwrap()), "b-route");
-        assert_eq!(h2_routes.len(), 2);
-        assert_eq!(route_name(&h2_routes.get(0).unwrap()), "a-route");
-        assert_eq!(route_name(&h2_routes.get(1).unwrap()), "b-route");
+        detect_http_routes(&config, |routes| {
+            assert_eq!(routes.len(), 2);
+            assert_eq!(route_name(&routes.get(0).unwrap()), "a-route");
+            assert_eq!(route_name(&routes.get(1).unwrap()), "b-route");
+        });
     })
     .await;
 }
@@ -429,9 +412,10 @@ fn mk_empty_http_route(
     }
 }
 
-fn detect_http_routes(
-    config: &grpc::outbound::OutboundPolicy,
-) -> (&[grpc::outbound::HttpRoute], &[grpc::outbound::HttpRoute]) {
+fn detect_http_routes<F>(config: &grpc::outbound::OutboundPolicy, f: F)
+where
+    F: Fn(&[grpc::outbound::HttpRoute]) -> (),
+{
     let kind = config
         .protocol
         .as_ref()
@@ -440,6 +424,7 @@ fn detect_http_routes(
         .as_ref()
         .expect("must have kind");
     if let grpc::outbound::proxy_protocol::Kind::Detect(grpc::outbound::proxy_protocol::Detect {
+        opaque: _,
         timeout: _,
         http1,
         http2,
@@ -451,7 +436,8 @@ fn detect_http_routes(
         let http2 = http2
             .as_ref()
             .expect("proxy protocol must have http2 field");
-        (&http1.http_routes[..], &http2.http_routes[..])
+        f(&http1.routes);
+        f(&http2.routes);
     } else {
         panic!("proxy protocol must be Detect; actually got:\n{kind:#?}")
     }
@@ -459,21 +445,16 @@ fn detect_http_routes(
 
 fn route_backends_random_available(
     route: &grpc::outbound::HttpRoute,
-) -> &[grpc::outbound::Backend] {
-    let dist = route
-        .rules
-        .get(0)
-        .as_ref()
-        .expect("Route must have a rule")
+) -> &[grpc::outbound::http_route::WeightedRouteBackend] {
+    let kind = assert_singleton(&route.rules)
         .backends
         .as_ref()
         .expect("Rule must have backends")
-        .distribution
+        .kind
         .as_ref()
-        .expect("Backends must have distribution");
-
-    match dist {
-        grpc::outbound::distribution::Distribution::RandomAvailable(backends) => &backends.backends,
+        .expect("Backend must have kind");
+    match kind {
+        grpc::outbound::http_route::distribution::Kind::RandomAvailable(dist) => &dist.backends,
         _ => panic!("Distribution must be RandomAvailable"),
     }
 }
@@ -491,33 +472,20 @@ fn route_name(route: &grpc::outbound::HttpRoute) -> &str {
     }
 }
 
-fn assert_backend_has_failure_filter(backend: &grpc::outbound::Backend) {
-    match backend
-        .filters
-        .get(0)
-        .expect("backend must have a filter")
-        .kind
-    {
-        Some(grpc::outbound::filter::Kind::FailureInjector(_)) => {}
+fn assert_backend_has_failure_filter(backend: &grpc::outbound::http_route::WeightedRouteBackend) {
+    let filter = assert_singleton(&backend.backend.as_ref().unwrap().filters);
+    match filter.kind.as_ref().unwrap() {
+        grpc::outbound::http_route::filter::Kind::FailureInjector(_) => {}
         _ => panic!("backend must have FailureInjector filter"),
     };
 }
 
 fn assert_route_is_default(route: &grpc::outbound::HttpRoute, svc: &k8s::Service, port: u16) {
-    let rule = assert_singleton(&route.rules);
-    let backends = match rule
-        .backends
-        .as_ref()
-        .unwrap()
-        .distribution
-        .as_ref()
-        .unwrap()
-    {
-        grpc::outbound::distribution::Distribution::RandomAvailable(dist) => &dist.backends,
-        _ => panic!("default route must use RandomAvailable distribution"),
-    };
+    let backends = route_backends_random_available(route);
     let backend = assert_singleton(backends);
     assert_backend_matches_service(backend, svc, port);
+
+    let rule = assert_singleton(&route.rules);
     let route_match = assert_singleton(&rule.matches);
     let path_match = route_match.path.as_ref().unwrap().kind.as_ref().unwrap();
     assert_eq!(
@@ -527,18 +495,33 @@ fn assert_route_is_default(route: &grpc::outbound::HttpRoute, svc: &k8s::Service
 }
 
 fn assert_backend_matches_service(
-    backend: &grpc::outbound::Backend,
+    backend: &grpc::outbound::http_route::WeightedRouteBackend,
     svc: &k8s::Service,
     port: u16,
 ) {
-    let dst = match backend.backend.as_ref().unwrap() {
-        grpc::outbound::backend::Backend::Balancer(balance) => balance.dst.as_ref().unwrap(),
-        grpc::outbound::backend::Backend::Forward(_) => {
+    let kind = backend
+        .backend
+        .as_ref()
+        .unwrap()
+        .backend
+        .as_ref()
+        .unwrap()
+        .kind
+        .as_ref()
+        .unwrap();
+    let dst = match kind {
+        grpc::outbound::backend::Kind::Balancer(balance) => {
+            let kind = balance.discovery.as_ref().unwrap().kind.as_ref().unwrap();
+            match kind {
+                grpc::outbound::backend::endpoint_discovery::Kind::Dst(dst) => &dst.path,
+            }
+        }
+        grpc::outbound::backend::Kind::Forward(_) => {
             panic!("default route backend must be Balancer")
         }
     };
     assert_eq!(
-        dst.authority,
+        *dst,
         format!(
             "{}.{}.svc.{}:{}",
             svc.name_unchecked(),

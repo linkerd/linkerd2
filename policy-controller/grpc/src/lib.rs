@@ -823,7 +823,9 @@ fn default_http_backend(outbound: &OutboundPolicy) -> outbound::http_route::Weig
     }
 }
 
-fn default_outbound_http_route(backend: outbound::http_route::WeightedRouteBackend) -> outbound::HttpRoute {
+fn default_outbound_http_route(
+    backend: outbound::http_route::WeightedRouteBackend,
+) -> outbound::HttpRoute {
     let metadata = Some(Metadata {
         kind: Some(metadata::Kind::Default("default".to_string())),
     });

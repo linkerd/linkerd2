@@ -183,12 +183,14 @@ impl OutboundPolicyClient {
         let ip = address.parse::<Ipv4Addr>().unwrap();
         let rsp = self
             .client
-            .get(tonic::Request::new(outbound::TargetSpec {
-                target: Some(outbound::target_spec::Target::Address(net::IpAddress {
-                    ip: Some(net::ip_address::Ip::Ipv4(ip.into())),
+            .get(tonic::Request::new(outbound::TrafficSpec {
+                source_workload: format!("{}:client", ns),
+                target: Some(outbound::traffic_spec::Target::Addr(net::TcpAddress {
+                    ip: Some(net::IpAddress {
+                        ip: Some(net::ip_address::Ip::Ipv4(ip.into())),
+                    }),
+                    port: port as u32,
                 })),
-                workload: format!("{}:client", ns),
-                port: port as u32,
             }))
             .await?;
         Ok(rsp.into_inner())
@@ -211,12 +213,14 @@ impl OutboundPolicyClient {
         let ip = address.parse::<Ipv4Addr>().unwrap();
         let rsp = self
             .client
-            .watch(tonic::Request::new(outbound::TargetSpec {
-                target: Some(outbound::target_spec::Target::Address(net::IpAddress {
-                    ip: Some(net::ip_address::Ip::Ipv4(ip.into())),
+            .watch(tonic::Request::new(outbound::TrafficSpec {
+                source_workload: format!("{}:client", ns),
+                target: Some(outbound::traffic_spec::Target::Addr(net::TcpAddress {
+                    ip: Some(net::IpAddress {
+                        ip: Some(net::ip_address::Ip::Ipv4(ip.into())),
+                    }),
+                    port: port as u32,
                 })),
-                workload: format!("{}:client", ns),
-                port: port as u32,
             }))
             .await?;
         Ok(rsp.into_inner())
