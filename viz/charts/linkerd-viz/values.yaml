@@ -124,6 +124,11 @@ metricsAPI:
   # for more information
   tolerations: *default_tolerations
 
+  # -- metrics-api service configuration
+  service:
+    # -- Additional annotations to add to metrics-api service
+    annotations: {}
+
 # tap configuration
 tap:
     # -- Number of tap component replicas
@@ -206,6 +211,11 @@ tap:
 
   # -- UID for the dashboard resource
   UID:
+
+  # -- tap service configuration
+  service:
+    # -- Additional annotations to add to tap service
+    annotations: {}
 
 # tapInjector configuration
 tapInjector:
@@ -297,6 +307,11 @@ tapInjector:
   # for more information.
   injectCaFromSecret: ""
 
+  # -- tap service configuration
+  service:
+    # -- Additional annotations to add to tapInjector service
+    annotations: {}
+
 # web dashboard configuration
 dashboard:
   # -- Number of replicas of dashboard
@@ -352,14 +367,19 @@ dashboard:
     # into the dashboard component
     # resources:
 
+  # -- dashboard service configuration
+  service:
+    # -- Additional annotations to add to dashboard service
+    annotations: {}
+
 namespaceMetadata:
   image:
     # -- Docker registry for the namespace-metadata instance
-    registry: curlimages
+    registry: cr.l5d.io/linkerd
     # -- Docker image name for the namespace-metadata instance
-    name: curl
+    name: extension-init
     # -- Docker image tag for the namespace-metadata instance
-    tag: 7.78.0
+    tag: v0.1.0
     # -- Pull policy for the namespace-metadata instance
     # @default -- defaultImagePullPolicy
     pullPolicy: ""

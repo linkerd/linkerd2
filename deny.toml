@@ -55,6 +55,9 @@ deny = []
 skip = [
     # Waiting on h2, tonic, etc
     { name = "tokio-util", version = "0.6" },
+    # `rustls-pemfile` and `k8s-openapi` depend on versions of `base64` that
+    # have diverged significantly.
+    { name = "base64" },
 ]
 
 [sources]

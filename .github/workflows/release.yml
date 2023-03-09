@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-      - run: echo "::set-output name=tag::$(CI_FORCE_CLEAN=1 bin/root-tag)"
+      - run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
         id: tag
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
@@ -39,6 +39,7 @@ jobs:
         - cli-bin
         - cni-plugin
         - controller
+        - policy-controller
         - debug
         - jaeger-webhook
         - metrics-api
@@ -60,8 +61,8 @@ jobs:
         docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
         component: ${{ matrix.component }}
         tag: ${{ needs.tag.outputs.tag }}
-    - uses: sigstore/cosign-installer@v2
-    - run: cosign sign '${{ steps.build.outputs.image }}'
+    - uses: sigstore/cosign-installer@v3
+    - run: cosign sign -y '${{ steps.build.outputs.image }}'
       env:
         COSIGN_EXPERIMENTAL: 1
     - name: Create artifact with CLI
@@ -85,57 +86,6 @@ jobs:
         name: image-archives
         path: /home/runner/archives
 
-  policy_controller_build:
-    name: Policy controller build
-    needs: [tag]
-    runs-on: ubuntu-20.04
-    permissions:
-      id-token: write # needed for signing the images with GitHub OIDC Token
-    timeout-minutes: 30
-    strategy:
-      matrix:
-        arch:
-        - amd64
-        - arm
-        - arm64
-    steps:
-    - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-    - name: Set tag
-      run: echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
-    - uses: ./.github/actions/rust-docker-build
-      id: build
-      with:
-        docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
-        docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
-        component: policy-controller
-        component-path: ./policy-controller
-        arch: ${{ matrix.arch }}
-        tag: ${{ needs.tag.outputs.tag }}
-    - uses: sigstore/cosign-installer@v2
-    - run: cosign sign '${{ steps.build.outputs.image }}'
-      env:
-        COSIGN_EXPERIMENTAL: 1
-    - run: bin/docker-cache-prune
-      # changes generate new images while the existing ones don't get removed
-      # so we manually do that to avoid bloating the cache
-      env:
-        DOCKER_BUILDKIT_CACHE: "${{ runner.temp }}/.buildx-cache"
-
-  policy_controller_manifest:
-    name: Policy controller manifest
-    needs: [tag, policy_controller_build]
-    runs-on: ubuntu-20.04
-    timeout-minutes: 30
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-    - uses: ./.github/actions/rust-docker-manifest
-      with:
-        docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
-        docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
-        component: policy-controller
-        tag: ${{ needs.tag.outputs.tag }}
-
   windows_static_cli_tests:
     name: Static CLI tests (windows)
     timeout-minutes: 30
@@ -157,7 +107,7 @@ jobs:
 
   integration_tests:
     name: Integration tests
-    needs: [tag, docker_build, policy_controller_manifest]
+    needs: [tag, docker_build]
     strategy:
       matrix:
         integration_test:
@@ -196,7 +146,7 @@ jobs:
         bin/tests --images preload --name ${{ matrix.integration_test }} "$CMD"
 
   arm64_integration_tests:
-    needs: [tag, docker_build, policy_controller_manifest]
+    needs: [tag, docker_build]
     runs-on: [self-hosted, Linux, ARM64]
     timeout-minutes: 30
     steps:

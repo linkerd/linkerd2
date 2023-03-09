@@ -213,6 +213,13 @@ rules:
       - httproutes/status
     verbs:
       - patch
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -947,11 +954,11 @@ spec:
         imagePullPolicy: IfNotPresent
         resources:
           limits:
-            cpu: "50m"
-            memory: "10Mi"
+            cpu: "100m"
+            memory: "20Mi"
           requests:
-            cpu: "50m"
-            memory: "10Mi"
+            cpu: "100m"
+            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1093,6 +1100,15 @@ spec:
   - name: policy-https
     port: 443
     targetPort: policy-https
+---
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  name: status-controller
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -1390,11 +1406,11 @@ spec:
         imagePullPolicy: IfNotPresent
         resources:
           limits:
-            cpu: "50m"
-            memory: "10Mi"
+            cpu: "100m"
+            memory: "20Mi"
           requests:
-            cpu: "50m"
-            memory: "10Mi"
+            cpu: "100m"
+            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1716,11 +1732,11 @@ spec:
         imagePullPolicy: IfNotPresent
         resources:
           limits:
-            cpu: "50m"
-            memory: "10Mi"
+            cpu: "100m"
+            memory: "20Mi"
           requests:
-            cpu: "50m"
-            memory: "10Mi"
+            cpu: "100m"
+            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

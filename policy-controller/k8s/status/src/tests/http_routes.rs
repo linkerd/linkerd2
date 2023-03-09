@@ -6,12 +6,19 @@ use crate::{
 };
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy::server::Port};
-use tokio::sync::mpsc;
+use std::sync::Arc;
+use tokio::sync::{mpsc, watch};
 
 #[test]
 fn http_route_accepted_after_server_create() {
-    let (tx, mut rx) = mpsc::unbounded_channel();
-    let index = Index::shared(tx);
+    let hostname = "test";
+    let claim = kubert::lease::Claim {
+        holder: "test".to_string(),
+        expiry: chrono::DateTime::<chrono::Utc>::MAX_UTC,
+    };
+    let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
+    let (updates_tx, mut updates_rx) = mpsc::unbounded_channel();
+    let index = Index::shared(hostname, claims_rx, updates_tx);
 
     // Apply the route.
     let http_route = make_route("ns-0", "route-foo", "srv-8080");
@@ -26,7 +33,7 @@ fn http_route_accepted_after_server_create() {
 
     // The first update will be that the HTTPRoute is not accepted because the
     // Server has been created yet.
-    let update = rx.try_recv().unwrap();
+    let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
     assert_eq!(patch, update.patch);
 
@@ -49,16 +56,22 @@ fn http_route_accepted_after_server_create() {
 
     // The second update will be that the HTTPRoute is accepted because the
     // Server has been created.
-    let update = rx.try_recv().unwrap();
+    let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
     assert_eq!(patch, update.patch);
-    assert!(rx.try_recv().is_err())
+    assert!(updates_rx.try_recv().is_err())
 }
 
 #[test]
 fn http_route_rejected_after_server_delete() {
-    let (tx, mut rx) = mpsc::unbounded_channel();
-    let index = Index::shared(tx);
+    let hostname = "test";
+    let claim = kubert::lease::Claim {
+        holder: "test".to_string(),
+        expiry: chrono::DateTime::<chrono::Utc>::MAX_UTC,
+    };
+    let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
+    let (updates_tx, mut updates_rx) = mpsc::unbounded_channel();
+    let index = Index::shared(hostname, claims_rx, updates_tx);
 
     let server = make_server(
         "ns-0",
@@ -71,7 +84,7 @@ fn http_route_rejected_after_server_delete() {
     index.write().apply(server);
 
     // There should be no update since there are no HTTPRoutes yet.
-    assert!(rx.try_recv().is_err());
+    assert!(updates_rx.try_recv().is_err());
 
     let http_route = make_route("ns-0", "route-foo", "srv-8080");
     index.write().apply(http_route);
@@ -84,7 +97,7 @@ fn http_route_rejected_after_server_delete() {
 
     // The second update will be that the HTTPRoute is accepted because the
     // Server has been created.
-    let update = rx.try_recv().unwrap();
+    let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
     assert_eq!(patch, update.patch);
 
@@ -106,10 +119,10 @@ fn http_route_rejected_after_server_delete() {
 
     // The third update will be that the HTTPRoute is not accepted because the
     // Server has been deleted.
-    let update = rx.try_recv().unwrap();
+    let update = updates_rx.try_recv().unwrap();
     assert_eq!(id, update.id);
     assert_eq!(patch, update.patch);
-    assert!(rx.try_recv().is_err());
+    assert!(updates_rx.try_recv().is_err());
 }
 
 fn make_server(
@@ -208,7 +221,7 @@ fn make_parent_status(
             section_name: None,
             port: None,
         },
-        controller_name: STATUS_CONTROLLER_NAME.to_string(),
+        controller_name: format!("{}/{}", POLICY_API_GROUP, STATUS_CONTROLLER_NAME),
         conditions: vec![condition],
     }
 }

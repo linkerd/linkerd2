@@ -339,8 +339,13 @@ fn mk_http_route(
             .map(|name| api::HttpBackendRef {
                 backend_ref: Some(k8s_gateway_api::BackendRef {
                     weight: None,
-                    name: name.to_string(),
-                    port: 8888,
+                    inner: k8s_gateway_api::BackendObjectReference {
+                        name: name.to_string(),
+                        port: Some(8888),
+                        group: None,
+                        kind: None,
+                        namespace: None,
+                    },
                 }),
                 filters: None,
             })

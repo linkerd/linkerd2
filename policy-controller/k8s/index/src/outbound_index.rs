@@ -308,14 +308,18 @@ impl Namespace {
 
     fn convert_backend(&self, backend: HttpBackendRef) -> Option<Backend> {
         backend.backend_ref.map(|backend| {
+            let port = backend.inner.port.unwrap_or_else(|| {
+                tracing::warn!(?backend, "missing port in backend_ref");
+                u16::default()
+            });
             let dst = WeightedDst {
                 weight: backend.weight.unwrap_or(1).into(),
                 authority: fmt::format(format_args!(
                     "{}.{}.svc.{}:{}",
-                    backend.name, self.namespace, self.cluster_domain, backend.port
+                    backend.inner.name, self.namespace, self.cluster_domain, port
                 )),
             };
-            if self.services.contains_key(&backend.name) {
+            if self.services.contains_key(&backend.inner.name) {
                 Backend::Dst(dst)
             } else {
                 Backend::InvalidDst(dst)

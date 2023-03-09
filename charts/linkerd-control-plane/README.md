@@ -3,7 +3,7 @@
 Linkerd gives you observability, reliability, and security
 for your microservices — with no code change required.
 
-![Version: 1.11.3-edge](https://img.shields.io/badge/Version-1.11.3--edge-informational?style=flat-square)
+![Version: 1.11.6-edge](https://img.shields.io/badge/Version-1.11.6--edge-informational?style=flat-square)
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -30,6 +30,19 @@ to Helm by the user (unlike when using the `linkerd install` CLI which can
 generate these automatically). You can provide your own, or follow [these
 instructions](https://linkerd.io/2/tasks/generate-certificates/) to generate new
 ones.
+
+Alternatively, both trust anchor and identity issuer certificates may be
+derived from in-cluster resources. Existing CA (trust anchor) certificates
+**must** live in a `ConfigMap` resource named `linkerd-identity-trust-roots`.
+Issuer certificates **must** live in a `Secret` named
+`linkerd-identity-issuer`. Both resources should exist in the control-plane's
+install namespace. In order to use an existing CA, Linkerd needs to be
+installed with `identity.externalCA=true`. To use an existing issuer
+certificate, Linkerd should be installed with
+`identity.issuer.scheme=kubernetes.io/tls`.
+
+A more comprehensive description is in the [automatic certificate rotation
+guide](https://linkerd.io/2.12/tasks/automatically-rotating-control-plane-tls-credentials/#a-note-on-third-party-cert-management-solutions).
 
 Note that the provided certificates must be ECDSA certificates.
 

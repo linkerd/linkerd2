@@ -34,7 +34,6 @@ spec:
       - name: namespace-metadata
         image: {{.Values.namespaceMetadata.image.registry}}/{{.Values.namespaceMetadata.image.name}}:{{.Values.namespaceMetadata.image.tag}}
         imagePullPolicy: {{.Values.namespaceMetadata.image.pullPolicy | default .Values.defaultImagePullPolicy}}
-        command: ["/bin/sh"]
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -46,37 +45,17 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         args:
-        - -c
-        - |
-          ops=''
-          token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-          ns=$(curl -kfv -H "Authorization: Bearer $token" \
-            "https://kubernetes.default.svc/api/v1/namespaces/{{.Release.Namespace}}")
-
-          if ! echo "$ns" | grep -q 'labels'; then
-            ops="$ops{\"op\": \"add\",\"path\": \"/metadata/labels\",\"value\": {}},"
-          fi
-          if ! echo "$ns" | grep -q 'annotations'; then
-            ops="$ops{\"op\": \"add\", \"path\": \"/metadata/annotations\", \"value\": {}},"
-          fi
-
-          {{- if .Values.prometheusUrl }}
-          ops="$ops{\"op\": \"add\", \"path\": \"/metadata/annotations/viz.linkerd.io~1external-prometheus\", \"value\": \"{{.Values.prometheusUrl}}\"},"
-          {{- end }}
-          ops="$ops{\"op\": \"add\", \"path\": \"/metadata/labels/linkerd.io~1extension\", \"value\": \"viz\"},"
-
-          # grab the latest occurence of cniEnabled in linkerd-config, to
-          # discard value in the last-applied-configuration annotation
-          cniEnabled=$(curl -kfv -H "Authorization: Bearer $token" \
-            "https://kubernetes.default.svc/api/v1/namespaces/{{.Values.linkerdNamespace}}/configmaps/linkerd-config" | \
-            sed -r -n 's/.*cniEnabled: (\w+).*/\1/gp' | tail -1)
-
-          level="privileged"
-          if [ "$cniEnabled" = "true" ]; then
-            level="restricted"
-          fi
-          ops="$ops{\"op\": \"add\", \"path\": \"/metadata/labels/pod-security.kubernetes.io~1enforce\", \"value\": \"$level\"}"
-
-          curl -kfv -XPATCH -H "Content-Type: application/json-patch+json" -H "Authorization: Bearer $token" \
-            -d "[$ops]" \
-            "https://kubernetes.default.svc/api/v1/namespaces/{{.Release.Namespace}}?fieldManager=kubectl-label"
+        - --log-format
+        - {{.Values.defaultLogFormat}}
+        - --log-level
+        - {{.Values.defaultLogLevel}}
+        - --extension
+        - viz
+        - --namespace
+        - {{.Release.Namespace}}
+        - --linkerd-namespace
+        - {{.Values.linkerdNamespace}}
+        {{- with .Values.prometheusUrl }}
+        - -- prometheus-url
+        - {{.}}
+        {{- end }}

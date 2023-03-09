@@ -376,7 +376,7 @@ func fetchConfigs(ctx context.Context) (*linkerd2.Values, error) {
 	return values, err
 }
 
-// overrideConfigs uses command-line overrides to update the provided configs.
+// getOverrideAnnotations uses command-line overrides to update the provided configs.
 // the overrideAnnotations map keeps track of which configs are overridden, by
 // storing the corresponding annotations and values.
 func getOverrideAnnotations(values *linkerd2.Values, base *linkerd2.Values) map[string]string {

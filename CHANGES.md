@@ -1,5 +1,65 @@
 # Changes
 
+## edge-23.3.1
+
+This edge release continues to build support under the hood for the upcoming
+features in 2.13. Also included are several dependency updates and less verbose
+logging.
+
+* Removed dependency on the `curlimages/curl` 3rd-party image used to initialize
+  extensions namespaces metadata (so they are visible by `linkerd check`),
+  replaced by the new `extension-init` image
+* Lowered non-actionable error messages in the Destination log to debug-level
+  entries to avoid triggering false alarms (thanks @siddharthshubhampal!)
+
+## edge-23.2.3
+
+This edge release includes a number of fixes and introduces a new CLI command,
+`linkerd prune`. The new `prune` command should be used to remove resources
+which are no longer part of the Linkerd manifest when doing an upgrade.
+Previously, the recommendation was to use `linkerd upgrade` in conjunction with
+`kubectl apply --prune`, however, that will not remove resources which are not
+part of the input manifest, and it will not detect cluster scoped resources,
+`linkerd prune` (included in all core extensions) should be preferred over it.
+
+Additionally, this change contains a few fixes from our external contributors,
+and a change to the `viz` Helm chart which allows for arbitrary annotations on
+`Service` objects. Last but not least, the release contains a few proxy
+internal changes to prepare for the new client policy API.
+
+* Added a new `linkerd prune` command to the CLI (including extensions) to
+  remove resources which are no longer part of Linkerd's manifests
+* Introduced new values in the `viz` chart to allow for arbitrary annotations
+  on the `Service` objects (thanks @sgrzemski!)
+* Fixed up a comment in k8s API wrapper (thanks @ductnn!)
+* Fixed an issue with EndpointSlice endpoint reconciliation on slice deletion;
+  when using more than one slice, a `NoEndpoints` event would be sent to the
+  proxy regardless of the amount of endpoints that were still available (thanks
+  @utay!)
+
+## edge-23.2.2
+
+This edge release adds the policy status controller which writes the `status`
+field to HTTPRoutes when a parent reference Server accepts or rejects the
+HTTPRoute. This field is currently not consumed by the policy controller, but
+acts as the first step for considering HTTPRoute `status` when serving policy.
+
+Additionally, the destination controller now uses the Kubernetes metadata API
+for resources which it only needs to track the metadata for — Nodes and
+ReplicaSets. For all other resources it tracks, it uses additional information
+so continues to use the API as before.
+
+* Fixed error message to include the colliding Server in the policy controller's
+  admission webhook validation
+* Updated wording for linkerd-multicluster cluster when it fails to probe a
+  remote gateway mirror
+* Removed unnecessary Namespaces access from the destination controller RBAC
+* Added Kubernetes metadata API in the destination controller for watching Nodes
+  and ReplicaSets
+* Fixed QueryParamMatch parsing for HTTPRoutes
+* Added the policy status controller which writes the `status` field to
+  HTTPRoutes when a parent reference Server accepts or rejects it
+
 ## edge-23.2.1
 
 This edge release sees the `linkerd-cni` plugin moved to

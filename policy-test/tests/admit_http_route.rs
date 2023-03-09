@@ -100,7 +100,9 @@ async fn rejects_relative_redirect_path() {
                     request_redirect: HttpRequestRedirectFilter {
                         scheme: None,
                         hostname: None,
-                        path: Some(HttpPathModifier::ReplaceFullPath("foo/bar".to_string())),
+                        path: Some(HttpPathModifier::ReplaceFullPath {
+                            replace_full_path: "foo/bar".to_string(),
+                        }),
                         port: None,
                         status_code: None,
                     },

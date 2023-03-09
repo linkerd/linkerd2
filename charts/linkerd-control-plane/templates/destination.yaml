@@ -141,6 +141,16 @@ spec:
       linkerd.io/control-plane-component: destination
 {{- end }}
 ---
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  name: status-controller
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+---
 {{- $tree := deepCopy . }}
 {{ $_ := set $tree.Values.proxy "workloadKind" "deployment" -}}
 {{ $_ := set $tree.Values.proxy "component" "linkerd-destination" -}}
