@@ -8,8 +8,7 @@ pub use http::{
     Method, StatusCode,
 };
 use regex::Regex;
-use std::net::IpAddr;
-use std::num::NonZeroU16;
+use std::{net::IpAddr, num::NonZeroU16};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InboundHttpRoute {
@@ -54,7 +53,7 @@ pub struct OutboundHttpRouteRule {
 pub enum Backend {
     Addr(WeightedAddr),
     Dst(WeightedDst),
-    InvalidDst(WeightedDst),
+    InvalidDst { weight: u32 },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
