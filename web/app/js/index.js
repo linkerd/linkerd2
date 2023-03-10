@@ -128,7 +128,6 @@ const AppHTML = function() {
               <Redirect exact from={`${pathPrefix}/overview`} to={`${pathPrefix}/namespaces`} />
               <Redirect exact from={`${pathPrefix}/deployments`} to={`${pathPrefix}/namespaces/_all/deployments`} />
               <Redirect exact from={`${pathPrefix}/services`} to={`${pathPrefix}/namespaces/_all/services`} />
-              <Redirect exact from={`${pathPrefix}/trafficsplits`} to={`${pathPrefix}/namespaces/_all/trafficsplits`} />
               <Redirect exact from={`${pathPrefix}/daemonsets`} to={`${pathPrefix}/namespaces/_all/daemonsets`} />
               <Redirect exact from={`${pathPrefix}/statefulsets`} to={`${pathPrefix}/namespaces/_all/statefulsets`} />
               <Redirect exact from={`${pathPrefix}/jobs`} to={`${pathPrefix}/namespaces/_all/jobs`} />
@@ -163,12 +162,6 @@ const AppHTML = function() {
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/statefulsets`}
                 render={props => <Navigation {...props} ChildComponent={ResourceList} resource="statefulset" />} />
-              <Route
-                path={`${pathPrefix}/namespaces/:namespace/trafficsplits/:trafficsplit`}
-                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
-              <Route
-                path={`${pathPrefix}/namespaces/:namespace/trafficsplits`}
-                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="trafficsplit" />} />
               <Route
                 path={`${pathPrefix}/namespaces/:namespace/jobs/:job`}
                 render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />

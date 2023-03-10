@@ -196,10 +196,10 @@ export const processMultiResourceRollup = (rawMetrics, resourceType) => {
     // selected resource in the Octopus graph.
 
     // The below line checks if the statTable contains trafficsplit data and
-    // returns early if the selected resource is not "all" or "trafficsplit" or "service",
+    // returns early if the selected resource is not "all" or "service",
     // since any other resource should not include trafficsplit metrics.
     const isTrafficSplit = table.podGroup.rows[0].resource.type === 'trafficsplit';
-    if (isTrafficSplit && resourceType !== 'all' && resourceType !== 'trafficsplit') {
+    if (isTrafficSplit && resourceType !== 'all') {
       return;
     }
 
