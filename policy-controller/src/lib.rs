@@ -74,7 +74,7 @@ impl DiscoverOutboundPolicy<(String, String, NonZeroU16)> for OutboundDiscover {
         let rx = match self
             .0
             .write()
-            .outbound_policy_rx(&namespace, &service, port)
+            .outbound_policy_rx(namespace, service, port)
         {
             Ok(rx) => rx,
             Err(error) => {
@@ -93,7 +93,7 @@ impl DiscoverOutboundPolicy<(String, String, NonZeroU16)> for OutboundDiscover {
         match self
             .0
             .write()
-            .outbound_policy_rx(&namespace, &service, port)
+            .outbound_policy_rx(namespace, service, port)
         {
             Ok(rx) => Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx)))),
             Err(_) => Ok(None),

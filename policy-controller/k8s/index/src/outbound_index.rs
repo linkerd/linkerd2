@@ -106,7 +106,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                     self.services.insert(addr, service_ref);
                 }
                 Err(error) => {
-                    tracing::error!(%error, service=name, "invalid cluster ip");
+                    tracing::error!(%error, service=name, cluster_ip, "invalid cluster ip");
                 }
             }
         }
@@ -151,22 +151,22 @@ impl Index {
 
     pub fn outbound_policy_rx(
         &mut self,
-        namespace: &str,
-        service: &str,
+        namespace: String,
+        service: String,
         port: NonZeroU16,
     ) -> Result<watch::Receiver<OutboundPolicy>> {
         let ns = self
             .namespaces
             .by_ns
-            .entry(namespace.to_string())
+            .entry(namespace.clone())
             .or_insert_with(|| Namespace {
                 service_routes: Default::default(),
-                namespace: Arc::new(namespace.to_string()),
+                namespace: Arc::new(namespace),
                 cluster_domain: self.namespaces.cluster_domain.clone(),
                 services: Default::default(),
             });
         let key = ServicePort {
-            service: service.to_string(),
+            service,
             port,
         };
         tracing::debug!(?key, "subscribing to service port");
@@ -238,13 +238,13 @@ impl Namespace {
     }
 
     fn service_routes_or_default(&mut self, service_port: ServicePort) -> &mut ServiceRoutes {
-        let authority = format!(
-            "{}.{}.svc.{}:{}",
-            service_port.service, self.namespace, self.cluster_domain, service_port.port
-        );
         self.service_routes
             .entry(service_port.clone())
             .or_insert_with(|| {
+                let authority = format!(
+                    "{}.{}.svc.{}:{}",
+                    service_port.service, self.namespace, self.cluster_domain, service_port.port
+                );
                 let opaque = match self.services.get(&service_port.service) {
                     Some(svc) => svc.opaque_ports.contains(&service_port.port),
                     None => false,
