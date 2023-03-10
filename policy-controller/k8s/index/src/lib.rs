@@ -29,6 +29,7 @@ pub mod http_route;
 mod index;
 mod meshtls_authentication;
 mod network_authentication;
+pub mod outbound_index;
 mod pod;
 mod server;
 mod server_authorization;
@@ -42,6 +43,7 @@ use std::time;
 pub use self::{
     defaults::DefaultPolicy,
     index::{Index, SharedIndex},
+    pod::{parse_portset, PortSet},
 };
 
 /// Holds cluster metadata.

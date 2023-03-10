@@ -210,6 +210,13 @@ rules:
       - httproutes/status
     verbs:
       - patch
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -1078,6 +1085,15 @@ spec:
     port: 443
     targetPort: policy-https
 ---
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  name: status-controller
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1331,6 +1347,7 @@ spec:
         - --default-policy=default-allow-policy
         - --log-level=log-level
         - --log-format=ControllerLogFormat
+        - --default-opaque-ports=25,443,587,3306,5432,11211
         - --probe-networks=1.0.0.0/0,2.0.0.0/0
         image: PolicyControllerImageName:PolicyControllerVersion
         imagePullPolicy: ImagePullPolicy

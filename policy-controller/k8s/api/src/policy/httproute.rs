@@ -1,7 +1,7 @@
-use k8s_gateway_api::HttpBackendRef;
+use k8s_gateway_api::BackendRef;
 pub use k8s_gateway_api::{
-    CommonRouteSpec, Hostname, HttpHeader, HttpHeaderMatch, HttpHeaderName, HttpMethod,
-    HttpPathMatch, HttpPathModifier, HttpQueryParamMatch, HttpRequestHeaderFilter,
+    CommonRouteSpec, Hostname, HttpBackendRef, HttpHeader, HttpHeaderMatch, HttpHeaderName,
+    HttpMethod, HttpPathMatch, HttpPathModifier, HttpQueryParamMatch, HttpRequestHeaderFilter,
     HttpRequestRedirectFilter, HttpRouteMatch, LocalObjectReference, ParentReference, RouteStatus,
 };
 
@@ -206,4 +206,17 @@ where
     };
 
     super::targets_kind::<T>(parent_ref.group.as_deref(), kind)
+}
+
+pub fn backend_ref_targets_kind<T>(backend_ref: &BackendRef) -> bool
+where
+    T: kube::Resource,
+    T::DynamicType: Default,
+{
+    let kind = match backend_ref.inner.kind {
+        Some(ref kind) => kind,
+        None => return false,
+    };
+
+    super::targets_kind::<T>(backend_ref.inner.group.as_deref(), kind)
 }

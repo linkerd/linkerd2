@@ -122,7 +122,7 @@ impl InboundRouteBinding {
             .any(|p| matches!(p, InboundParentRef::Server(n) if n == name))
     }
 
-    fn try_match(
+    pub fn try_match(
         api::HttpRouteMatch {
             path,
             headers,

@@ -6,18 +6,23 @@ use clap::Parser;
 use futures::prelude::*;
 use kube::api::ListParams;
 use linkerd_policy_controller::{
-    grpc, k8s, Admission, ClusterInfo, DefaultPolicy, Index, IndexDiscover, IpNet, SharedIndex,
+    grpc, index::outbound_index, k8s, Admission, ClusterInfo, DefaultPolicy, Index, IndexDiscover,
+    IndexPair, IpNet, OutboundDiscover, SharedIndex,
 };
+use linkerd_policy_controller_k8s_index::parse_portset;
 use linkerd_policy_controller_k8s_status::{self as status};
 use std::net::SocketAddr;
-use tokio::{sync::mpsc, time};
+use tokio::{sync::mpsc, time::Duration};
+use tonic::transport::Server;
 use tracing::{info, info_span, instrument, Instrument};
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-const DETECT_TIMEOUT: time::Duration = time::Duration::from_secs(10);
+const DETECT_TIMEOUT: Duration = Duration::from_secs(10);
+const LEASE_DURATION: Duration = Duration::from_secs(30);
+const RENEW_GRACE_PERIOD: Duration = Duration::from_secs(1);
 
 #[derive(Debug, Parser)]
 #[clap(name = "policy", about = "A policy resource prototype")]
@@ -60,6 +65,9 @@ struct Args {
     #[clap(long, default_value = "cluster.local")]
     identity_domain: String,
 
+    #[clap(long, default_value = "cluster.local")]
+    cluster_domain: String,
+
     #[clap(long, default_value = "all-unauthenticated")]
     default_policy: DefaultPolicy,
 
@@ -69,6 +77,9 @@ struct Args {
     /// Network CIDRs of all expected probes.
     #[clap(long)]
     probe_networks: Option<IpNets>,
+
+    #[clap(long)]
+    default_opaque_ports: String,
 }
 
 #[tokio::main]
@@ -82,10 +93,12 @@ async fn main() -> Result<()> {
         grpc_addr,
         admission_controller_disabled,
         identity_domain,
+        cluster_domain,
         cluster_networks: IpNets(cluster_networks),
         default_policy,
         control_plane_namespace,
         probe_networks,
+        default_opaque_ports,
     } = Args::parse();
 
     let server = if admission_controller_disabled {
@@ -104,16 +117,20 @@ async fn main() -> Result<()> {
 
     let probe_networks = probe_networks.map(|IpNets(nets)| nets).unwrap_or_default();
 
+    let default_opaque_ports = parse_portset(&default_opaque_ports)?;
+
     // Build the index data structure, which will be used to process events from all watches
     // The lookup handle is used by the gRPC server.
     let index = Index::shared(ClusterInfo {
         networks: cluster_networks.clone(),
         identity_domain,
-        control_plane_ns: control_plane_namespace,
+        control_plane_ns: control_plane_namespace.clone(),
         default_policy,
         default_detect_timeout: DETECT_TIMEOUT,
         probe_networks,
     });
+    let outbound_index = outbound_index::Index::shared(cluster_domain, default_opaque_ports);
+    let indexes = IndexPair::shared(index.clone(), outbound_index.clone());
 
     // Spawn resource indexers that update the index and publish lookups for the gRPC server.
     let pods =
@@ -155,13 +172,37 @@ async fn main() -> Result<()> {
 
     let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
     tokio::spawn(
-        kubert::index::namespaced(index.clone(), http_routes).instrument(info_span!("httproutes")),
+        kubert::index::namespaced(indexes, http_routes).instrument(info_span!("httproutes")),
     );
+
+    let services = runtime.watch_all::<k8s::Service>(ListParams::default());
+
+    tokio::spawn(
+        kubert::index::namespaced(outbound_index.clone(), services)
+            .instrument(info_span!("services")),
+    );
+
+    // Create the lease manager used for trying to claim the status-controller lease.
+    let api = k8s::Api::namespaced(runtime.client(), &control_plane_namespace);
+    // todo: Do we need to use LeaseManager::field_manager here?
+    let lease = kubert::lease::LeaseManager::init(api, status::STATUS_CONTROLLER_NAME).await?;
+    let hostname =
+        std::env::var("HOSTNAME").expect("Failed to fetch `HOSTNAME` environment variable");
+    let params = kubert::lease::ClaimParams {
+        lease_duration: LEASE_DURATION,
+        renew_grace_period: RENEW_GRACE_PERIOD,
+    };
+    let (claims, _task) = lease.spawn(hostname.clone(), params).await?;
 
     // Build the status index which will be used to process updates to policy
     // resources and send to the status controller.
     let (updates_tx, updates_rx) = mpsc::unbounded_channel();
-    let status_index = status::Index::shared(updates_tx);
+    let status_index = status::Index::shared(hostname.clone(), claims.clone(), updates_tx);
+
+    // Spawn the status controller reconciliation.
+    tokio::spawn(
+        status::Index::run(status_index.clone()).instrument(info_span!("status_controller::Index")),
+    );
 
     // Spawn resource indexers that update the status index.
     let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
@@ -186,12 +227,17 @@ async fn main() -> Result<()> {
         grpc_addr,
         cluster_networks,
         index,
+        outbound_index,
         runtime.shutdown_handle(),
     ));
 
     let client = runtime.client();
-    let status_controller = status::Controller::new(client, updates_rx);
-    tokio::spawn(status_controller.process_updates());
+    let status_controller = status::Controller::new(claims, client, hostname, updates_rx);
+    tokio::spawn(
+        status_controller
+            .run()
+            .instrument(info_span!("status_controller::Controller")),
+    );
 
     let client = runtime.client();
     let runtime = runtime.spawn_server(|| Admission::new(client));
@@ -222,16 +268,23 @@ impl std::str::FromStr for IpNets {
 async fn grpc(
     addr: SocketAddr,
     cluster_networks: Vec<IpNet>,
-    index: SharedIndex,
+    inbound_index: SharedIndex,
+    outbound_index: outbound_index::SharedIndex,
     drain: drain::Watch,
 ) -> Result<()> {
-    let discover = IndexDiscover::new(index);
-    let server = grpc::Server::new(discover, cluster_networks, drain.clone());
+    let inbound_discover = IndexDiscover::new(inbound_index);
+    let inbound_svc =
+        grpc::InboundPolicyServer::new(inbound_discover, cluster_networks, drain.clone()).svc();
+
+    let outbound_discover = OutboundDiscover::new(outbound_index);
+    let outbound_svc = grpc::OutboundPolicyServer::new(outbound_discover, drain.clone()).svc();
+
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
     tokio::pin! {
-        let srv = server.serve(addr, close_rx.map(|_| {}));
+        let srv = Server::builder().add_service(inbound_svc).add_service(outbound_svc).serve_with_shutdown(addr, close_rx.map(|_| {}));
     }
-    info!(%addr, "gRPC server listening");
+
+    info!(%addr, "policy gRPC server listening");
     tokio::select! {
         res = (&mut srv) => res?,
         handle = drain.signaled() => {
