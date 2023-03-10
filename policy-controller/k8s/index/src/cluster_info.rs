@@ -1,4 +1,4 @@
-use crate::DefaultPolicy;
+use crate::{pod::PortSet, DefaultPolicy};
 use linkerd_policy_controller_core::IpNet;
 use tokio::time;
 
@@ -13,6 +13,9 @@ pub struct ClusterInfo {
     /// The namespace where the linkerd control plane is deployed
     pub control_plane_ns: String,
 
+    /// E.g. "cluster.local"
+    pub dns_domain: String,
+
     /// The cluster's mesh identity trust domain.
     pub identity_domain: String,
 
@@ -21,6 +24,9 @@ pub struct ClusterInfo {
 
     /// The cluster-wide default protocol detection timeout.
     pub default_detect_timeout: time::Duration,
+
+    /// The default set of ports to be marked opaque.
+    pub default_opaque_ports: PortSet,
 
     /// The networks that probes are expected to be from.
     pub probe_networks: Vec<IpNet>,

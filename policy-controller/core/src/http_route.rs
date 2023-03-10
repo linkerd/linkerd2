@@ -8,7 +8,6 @@ pub use http::{
     Method, StatusCode,
 };
 use regex::Regex;
-use std::net::IpAddr;
 use std::num::NonZeroU16;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -210,6 +209,8 @@ pub mod inbound {
 }
 
 pub mod outbound {
+    use std::net::IpAddr;
+
     pub use super::*;
 
     #[derive(Clone, Debug, PartialEq, Eq)]

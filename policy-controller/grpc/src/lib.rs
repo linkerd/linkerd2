@@ -731,6 +731,7 @@ fn convert_http_backend(
 ) -> outbound::http_route::WeightedRouteBackend {
     match backend {
         outbound_route::Backend::Addr(addr) => outbound::http_route::WeightedRouteBackend {
+            weight: addr.weight,
             backend: Some(outbound::http_route::RouteBackend {
                 backend: Some(outbound::Backend {
                     metadata: None,
@@ -745,9 +746,9 @@ fn convert_http_backend(
                 }),
                 filters: Default::default(),
             }),
-            weight: addr.weight,
         },
         outbound_route::Backend::Dst(dst) => outbound::http_route::WeightedRouteBackend {
+            weight: dst.weight,
             backend: Some(outbound::http_route::RouteBackend {
                 backend: Some(outbound::Backend {
                     metadata: None,
@@ -767,26 +768,11 @@ fn convert_http_backend(
                 }),
                 filters: Default::default(),
             }),
-            weight: dst.weight,
         },
         outbound_route::Backend::InvalidDst(dst) => outbound::http_route::WeightedRouteBackend {
+            weight: dst.weight,
             backend: Some(outbound::http_route::RouteBackend {
-                backend: Some(outbound::Backend {
-                    metadata: None,
-                    queue: Some(default_queue_config()),
-                    kind: Some(outbound::backend::Kind::Balancer(
-                        outbound::backend::BalanceP2c {
-                            discovery: Some(outbound::backend::EndpointDiscovery {
-                                kind: Some(outbound::backend::endpoint_discovery::Kind::Dst(
-                                    outbound::backend::endpoint_discovery::DestinationGet {
-                                        path: dst.authority.clone(),
-                                    },
-                                )),
-                            }),
-                            load: Some(default_balancer_config()),
-                        },
-                    )),
-                }),
+                backend: None,
                 filters: vec![outbound::http_route::Filter {
                     kind: Some(outbound::http_route::filter::Kind::FailureInjector(
                         api::http_route::HttpFailureInjector {
@@ -797,13 +783,13 @@ fn convert_http_backend(
                     )),
                 }],
             }),
-            weight: dst.weight,
         },
     }
 }
 
 fn default_http_backend(outbound: &OutboundPolicy) -> outbound::http_route::WeightedRouteBackend {
     outbound::http_route::WeightedRouteBackend {
+        weight: 1,
         backend: Some(outbound::http_route::RouteBackend {
             backend: Some(outbound::Backend {
                 metadata: Some(Metadata {
@@ -825,7 +811,6 @@ fn default_http_backend(outbound: &OutboundPolicy) -> outbound::http_route::Weig
             }),
             filters: Default::default(),
         }),
-        weight: 1,
     }
 }
 
@@ -885,6 +870,7 @@ fn default_queue_config() -> outbound::Queue {
     }
 }
 
+// TODO use a real conversion.
 fn convert_tcp_address(ip_addr: IpAddr, port: NonZeroU16) -> TcpAddress {
     let ip = match ip_addr {
         IpAddr::V4(ipv4) => Ip::Ipv4(ipv4.into()),
