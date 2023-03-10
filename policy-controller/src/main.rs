@@ -11,7 +11,7 @@ use linkerd_policy_controller::{
 };
 use linkerd_policy_controller_k8s_index::parse_portset;
 use linkerd_policy_controller_k8s_status::{self as status};
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 use tokio::{sync::mpsc, time::Duration};
 use tonic::transport::Server;
 use tracing::{info, info_span, instrument, Instrument};
@@ -119,18 +119,21 @@ async fn main() -> Result<()> {
     let probe_networks = probe_networks.map(|IpNets(nets)| nets).unwrap_or_default();
 
     let default_opaque_ports = parse_portset(&default_opaque_ports)?;
-
-    // Build the index data structure, which will be used to process events from all watches
-    // The lookup handle is used by the gRPC server.
-    let index = Index::shared(ClusterInfo {
+    let cluster_info = Arc::new(ClusterInfo {
         networks: cluster_networks.clone(),
         identity_domain,
         control_plane_ns: control_plane_namespace.clone(),
+        dns_domain: cluster_domain,
         default_policy,
         default_detect_timeout: DETECT_TIMEOUT,
+        default_opaque_ports,
         probe_networks,
     });
-    let outbound_index = outbound_index::Index::shared(cluster_domain, default_opaque_ports);
+
+    // Build the index data structure, which will be used to process events from all watches
+    // The lookup handle is used by the gRPC server.
+    let index = Index::shared(cluster_info.clone());
+    let outbound_index = outbound_index::Index::shared(cluster_info);
     let indexes = IndexPair::shared(index.clone(), outbound_index.clone());
 
     // Spawn resource indexers that update the index and publish lookups for the gRPC server.
