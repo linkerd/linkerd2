@@ -3,10 +3,9 @@
 
 mod http_route;
 
-use api::destination;
 use futures::prelude::*;
 use linkerd2_proxy_api::{
-    self as api,
+    self as api, destination,
     inbound::{
         self as proto,
         inbound_server_policies_server::{InboundServerPolicies, InboundServerPoliciesServer},
