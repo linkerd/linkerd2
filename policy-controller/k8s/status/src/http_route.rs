@@ -17,8 +17,13 @@ pub enum ParentReference {
     Server(ResourceId),
 }
 
+#[derive(Clone, Eq, PartialEq)]
+pub enum BackendReference {
+    Service(ResourceId),
+}
+
 #[derive(Clone, Debug, thiserror::Error)]
-pub enum InvalidParentReference {
+pub enum InvalidReference {
     #[error("HTTPRoute resource does not reference a Server resource")]
     DoesNotSelectServer,
 
@@ -29,36 +34,53 @@ pub enum InvalidParentReference {
     SpecifiesSection,
 }
 
-pub(crate) fn make_parents(http_route: policy::HttpRoute) -> Result<Vec<ParentReference>> {
-    let namespace = http_route
-        .metadata
-        .namespace
-        .expect("HTTPRoute must have a namespace");
-    let parents = ParentReference::collect_from(http_route.spec.inner.parent_refs, &namespace)?;
+pub(crate) fn make_parents(
+    http_route: &policy::HttpRoute,
+    namespace: &str,
+) -> Result<Vec<ParentReference>> {
+    let route_parent_refs = http_route.get_parents()?;
+    let parents = ParentReference::collect_from(route_parent_refs, &namespace)?;
     Ok(parents)
+}
+
+pub(crate) trait HasReferences {
+    fn get_parents(&self) -> Result<&Vec<gateway::ParentReference>, InvalidReference>;
+    fn get_backends(&self) -> Result<&Vec<gateway::BackendObjectReference>, InvalidReference>;
+}
+
+impl HasReferences for policy::HttpRoute {
+    fn get_parents(&self) -> Result<&Vec<gateway::ParentReference>, InvalidReference> {
+        match &self.spec.inner.parent_refs {
+            Some(parent_refs) => Ok(parent_refs.as_ref()),
+            None => Err(InvalidReference::DoesNotSelectServer),
+        }
+    }
+
+    fn get_backends(&self) -> Result<&Vec<gateway::BackendObjectReference>, InvalidReference> {
+        todo!()
+    }
 }
 
 impl ParentReference {
     fn collect_from(
-        parent_refs: Option<Vec<gateway::ParentReference>>,
+        parent_refs: &Vec<gateway::ParentReference>,
         namespace: &str,
-    ) -> Result<Vec<Self>, InvalidParentReference> {
+    ) -> Result<Vec<Self>, InvalidReference> {
         let parents = parent_refs
             .into_iter()
-            .flatten()
             .filter_map(|parent| Self::from_parent_ref(parent, namespace))
-            .collect::<Result<Vec<_>, InvalidParentReference>>()?;
+            .collect::<Result<Vec<_>, InvalidReference>>()?;
         if parents.is_empty() {
-            return Err(InvalidParentReference::DoesNotSelectServer);
+            return Err(InvalidReference::DoesNotSelectServer);
         }
 
         Ok(parents)
     }
 
     fn from_parent_ref(
-        parent_ref: gateway::ParentReference,
+        parent_ref: &gateway::ParentReference,
         default_namespace: &str,
-    ) -> Option<Result<Self, InvalidParentReference>> {
+    ) -> Option<Result<Self, InvalidReference>> {
         // todo: Allow parent references to target all kinds so that a status
         // is generated for invalid kinds
         if !policy::httproute::parent_ref_targets_kind::<Server>(&parent_ref)
@@ -76,17 +98,20 @@ impl ParentReference {
             port,
         } = parent_ref;
         if port.is_some() {
-            return Some(Err(InvalidParentReference::SpecifiesPort));
+            return Some(Err(InvalidReference::SpecifiesPort));
         }
         if section_name.is_some() {
-            return Some(Err(InvalidParentReference::SpecifiesSection));
+            return Some(Err(InvalidReference::SpecifiesSection));
         }
 
         // If the parent reference does not have a namespace, default to using
         // the HTTPRoute's namespace.
-        let namespace = parent_namespace.unwrap_or_else(|| default_namespace.to_string());
+        let namespace = parent_namespace
+            .to_owned()
+            .unwrap_or_else(|| default_namespace.to_owned());
         Some(Ok(ParentReference::Server(ResourceId::new(
-            namespace, name,
+            namespace,
+            name.to_owned(),
         ))))
     }
 }
