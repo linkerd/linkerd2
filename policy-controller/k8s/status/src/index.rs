@@ -120,7 +120,6 @@ impl Index {
             claims,
             updates,
             http_routes: HashMap::new(),
-            route_backends: HashMap::new(),
             servers: HashSet::new(),
             services: HashSet::new(),
         }))
@@ -178,26 +177,6 @@ impl Index {
         true
     }
 
-    fn update_http_route_backends(
-        &mut self,
-        id: ResourceId,
-        backends: Vec<BackendReference>,
-    ) -> bool {
-        match self.route_backends.entry(id) {
-            Entry::Vacant(entry) => {
-                entry.insert(backends);
-            }
-            Entry::Occupied(mut entry) => {
-                if *entry.get() == backends {
-                    return false;
-                }
-                entry.insert(backends);
-            }
-        };
-
-        true
-    }
-
     fn make_http_route_patch(
         &self,
         id: &ResourceId,
@@ -218,7 +197,6 @@ impl Index {
                 // a From trait would be good here so we could contains(backend.into())
                 let BackendReference::Service(backend_reference_id) = backend;
                 if !self.services.contains(&backend_reference_id) {
-                    tracing::info!(?self.services, ?backend_reference_id, "ResolvedAll false");
                     resolved_all = false;
                     break;
                 }
@@ -237,11 +215,7 @@ impl Index {
                     .servers
                     .iter()
                     .any(|server| server == parent_reference_id);
-                let condition = ParentReference::into_status_condition(
-                    &parent_reference_id,
-                    accepted,
-                    timestamp,
-                );
+                let condition = ParentReference::into_status_condition(accepted, timestamp);
 
                 gateway::RouteParentStatus {
                     parent_ref: gateway::ParentReference {

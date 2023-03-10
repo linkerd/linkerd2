@@ -161,7 +161,6 @@ impl ParentReference {
     /// successful condition is returned. Otherwise, the parentReference is rejected. Sets an
     /// "Accepted" type on the condition field.
     pub(crate) fn into_status_condition(
-        id: &ResourceId,
         accepted: bool,
         timestamp: chrono::DateTime<chrono::Utc>,
     ) -> Condition {
