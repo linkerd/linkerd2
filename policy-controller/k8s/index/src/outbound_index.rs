@@ -334,7 +334,7 @@ fn convert_backend(
                 message: format!(
                     "unsupported backend type {group} {kind}",
                     group = backend.inner.group.as_deref().unwrap_or("core"),
-                    kind = backend.inner.kind.as_deref().unwrap_or("core"),
+                    kind = backend.inner.kind.as_deref().unwrap_or("<empty>"),
                 ),
             };
         }
@@ -387,10 +387,12 @@ fn is_backend_service(backend: &BackendObjectReference) -> bool {
 fn is_service(group: Option<&str>, kind: Option<&str>) -> bool {
     group
         .map(|g| g.eq_ignore_ascii_case("core"))
+        // If the group is not specified, assume it's 'core'.
         .unwrap_or(true)
         && kind
             .map(|k| k.eq_ignore_ascii_case("Service"))
-            .unwrap_or(false)
+            // If the kind is not specified, assume it's a Service.
+            .unwrap_or(true)
 }
 
 impl ServiceRoutes {
