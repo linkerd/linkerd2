@@ -314,10 +314,10 @@ impl Namespace {
             });
             let dst = WeightedDst {
                 weight: backend.weight.unwrap_or(1).into(),
-                authority: fmt::format(format_args!(
-                    "{}.{}.svc.{}:{}",
-                    backend.inner.name, self.namespace, self.cluster_domain, port
-                )),
+                authority: format!(
+                    "{}.{}.svc.{}:{port}",
+                    backend.inner.name, self.namespace, self.cluster_domain,
+                ),
             };
             if self.services.contains_key(&backend.inner.name) {
                 Backend::Dst(dst)
