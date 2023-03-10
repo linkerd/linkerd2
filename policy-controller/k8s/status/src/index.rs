@@ -191,12 +191,9 @@ impl Index {
 
         let backend_condition = {
             let mut resolved_all = true;
-            for backend in backends.into_iter() {
-                // For each route <-> backendRef group binding
-                // check if _all_ of the backendRefs exist in the cache
-                // a From trait would be good here so we could contains(backend.into())
+            for backend in backends.iter() {
                 let BackendReference::Service(backend_reference_id) = backend;
-                if !self.services.contains(&backend_reference_id) {
+                if !self.services.contains(backend_reference_id) {
                     resolved_all = false;
                     break;
                 }

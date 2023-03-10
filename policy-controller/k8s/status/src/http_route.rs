@@ -67,6 +67,7 @@ pub(crate) fn make_backends(
     Ok(backends)
 }
 
+/// Convenience trait to get shared route reference types
 pub(crate) trait HasReferences {
     fn get_parents(&self) -> Result<Vec<&gateway::ParentReference>, InvalidReference>;
     fn get_backends(&self) -> Result<Vec<&gateway::BackendRef>, InvalidReference>;
@@ -124,7 +125,7 @@ impl ParentReference {
     ) -> Option<Result<Self, InvalidReference>> {
         // todo: Allow parent references to target all kinds so that a status
         // is generated for invalid kinds
-        if !policy::httproute::parent_ref_targets_kind::<Server>(&parent_ref)
+        if !policy::httproute::parent_ref_targets_kind::<Server>(parent_ref)
             || parent_ref.name.is_empty()
         {
             return None;
@@ -201,7 +202,7 @@ impl BackendReference {
             .clone()
             .unwrap_or_else(|| default_namespace.to_owned());
         Ok(BackendReference::Service(ResourceId::new(
-            namespace.to_owned(),
+            namespace,
             backend_ref.inner.name.to_owned(),
         )))
     }

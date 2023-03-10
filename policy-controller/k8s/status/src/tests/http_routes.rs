@@ -26,8 +26,18 @@ fn http_route_accepted_after_server_create() {
 
     // Create the expected update.
     let id = ResourceId::new("ns-0".to_string(), "route-foo".to_string());
-    let parent_status =
-        make_parent_status("ns-0", "srv-8080", "Accepted", "False", "NoMatchingParent");
+    let backend_condition = crate::http_route::BackendReference::into_status_condition(
+        true,
+        chrono::DateTime::<chrono::Utc>::MIN_UTC,
+    );
+    let parent_status = make_parent_status(
+        "ns-0",
+        "srv-8080",
+        "Accepted",
+        "False",
+        "NoMatchingParent",
+        backend_condition,
+    );
     let status = make_status(vec![parent_status]);
     let patch = index::make_patch("route-foo", status);
 
@@ -50,7 +60,18 @@ fn http_route_accepted_after_server_create() {
 
     // Create the expected update.
     let id = ResourceId::new("ns-0".to_string(), "route-foo".to_string());
-    let parent_status = make_parent_status("ns-0", "srv-8080", "Accepted", "True", "Accepted");
+    let backend_condition = crate::http_route::BackendReference::into_status_condition(
+        true,
+        chrono::DateTime::<chrono::Utc>::MIN_UTC,
+    );
+    let parent_status = make_parent_status(
+        "ns-0",
+        "srv-8080",
+        "Accepted",
+        "True",
+        "Accepted",
+        backend_condition,
+    );
     let status = make_status(vec![parent_status]);
     let patch = index::make_patch("route-foo", status);
 
@@ -91,7 +112,18 @@ fn http_route_rejected_after_server_delete() {
 
     // Create the expected update.
     let id = ResourceId::new("ns-0".to_string(), "route-foo".to_string());
-    let parent_status = make_parent_status("ns-0", "srv-8080", "Accepted", "True", "Accepted");
+    let backend_condition = crate::http_route::BackendReference::into_status_condition(
+        true,
+        chrono::DateTime::<chrono::Utc>::MIN_UTC,
+    );
+    let parent_status = make_parent_status(
+        "ns-0",
+        "srv-8080",
+        "Accepted",
+        "True",
+        "Accepted",
+        backend_condition,
+    );
     let status = make_status(vec![parent_status]);
     let patch = index::make_patch("route-foo", status);
 
@@ -112,8 +144,19 @@ fn http_route_rejected_after_server_delete() {
 
     // Create the expected update.
     let id = ResourceId::new("ns-0".to_string(), "route-foo".to_string());
-    let parent_status =
-        make_parent_status("ns-0", "srv-8080", "Accepted", "False", "NoMatchingParent");
+
+    let backend_condition = crate::http_route::BackendReference::into_status_condition(
+        true,
+        chrono::DateTime::<chrono::Utc>::MIN_UTC,
+    );
+    let parent_status = make_parent_status(
+        "ns-0",
+        "srv-8080",
+        "Accepted",
+        "False",
+        "NoMatchingParent",
+        backend_condition,
+    );
     let status = make_status(vec![parent_status]);
     let patch = index::make_patch("route-foo", status);
 
@@ -203,6 +246,7 @@ fn make_parent_status(
     type_: impl ToString,
     status: impl ToString,
     reason: impl ToString,
+    backend_condition: k8s::Condition,
 ) -> gateway::RouteParentStatus {
     let condition = k8s::Condition {
         last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
@@ -222,7 +266,7 @@ fn make_parent_status(
             port: None,
         },
         controller_name: format!("{}/{}", POLICY_API_GROUP, STATUS_CONTROLLER_NAME),
-        conditions: vec![condition],
+        conditions: vec![condition, backend_condition],
     }
 }
 
