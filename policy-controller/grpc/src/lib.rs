@@ -717,6 +717,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
         Backend::Addr(addr) => {
             let socket_addr = SocketAddr::new(addr.addr, addr.port.get());
             outbound::http_route::WeightedRouteBackend {
+                weight: addr.weight,
                 backend: Some(outbound::http_route::RouteBackend {
                     backend: Some(outbound::Backend {
                         metadata: None,
@@ -731,10 +732,10 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                     }),
                     filters: Default::default(),
                 }),
-                weight: addr.weight,
             }
         }
         Backend::Dst(dst) => outbound::http_route::WeightedRouteBackend {
+            weight: dst.weight,
             backend: Some(outbound::http_route::RouteBackend {
                 backend: Some(outbound::Backend {
                     metadata: None,
@@ -754,37 +755,21 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                 }),
                 filters: Default::default(),
             }),
-            weight: dst.weight,
         },
-        Backend::InvalidDst(dst) => outbound::http_route::WeightedRouteBackend {
+        Backend::InvalidDst { weight, message } => outbound::http_route::WeightedRouteBackend {
+            weight,
             backend: Some(outbound::http_route::RouteBackend {
-                backend: Some(outbound::Backend {
-                    metadata: None,
-                    queue: Some(default_queue_config()),
-                    kind: Some(outbound::backend::Kind::Balancer(
-                        outbound::backend::BalanceP2c {
-                            discovery: Some(outbound::backend::EndpointDiscovery {
-                                kind: Some(outbound::backend::endpoint_discovery::Kind::Dst(
-                                    outbound::backend::endpoint_discovery::DestinationGet {
-                                        path: dst.authority.clone(),
-                                    },
-                                )),
-                            }),
-                            load: Some(default_balancer_config()),
-                        },
-                    )),
-                }),
+                backend: None,
                 filters: vec![outbound::http_route::Filter {
                     kind: Some(outbound::http_route::filter::Kind::FailureInjector(
                         api::http_route::HttpFailureInjector {
                             status: 500,
-                            message: format!("backend {} is invalid", dst.authority),
+                            message,
                             ratio: None,
                         },
                     )),
                 }],
             }),
-            weight: dst.weight,
         },
     }
 }
