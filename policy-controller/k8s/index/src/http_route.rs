@@ -24,7 +24,7 @@ pub enum InboundParentRef {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Status {
-    pub parent: String,
+    pub parent: InboundParentRef,
     pub conditions: Vec<Condition>,
 }
 
@@ -155,7 +155,7 @@ impl InboundRouteBinding {
     #[inline]
     pub fn accepted_by_server(&self, name: &str) -> bool {
         self.statuses.iter().any(|status| {
-            status.parent == name
+            status.parent == InboundParentRef::Server(name.to_string())
                 && status
                     .conditions
                     .iter()
@@ -356,7 +356,7 @@ impl Status {
             .collect();
 
         Some(Status {
-            parent: status.parent_ref.name.to_string(),
+            parent: InboundParentRef::Server(status.parent_ref.name.to_string()),
             conditions,
         })
     }
