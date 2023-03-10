@@ -362,7 +362,7 @@ fn convert_backend(
         if !services.contains_key(&name) {
             return Backend::InvalidDst {
                 weight: weight.into(),
-                message: format!("service not found {name}"),
+                message: format!("Service not found {name}"),
             };
         }
 
