@@ -682,23 +682,19 @@ fn convert_outbound_http_route(
                 .map(convert_http_backend)
                 .collect::<Vec<_>>();
             let dist = if backends.is_empty() {
-                outbound::http_route::Distribution {
-                    kind: Some(outbound::http_route::distribution::Kind::FirstAvailable(
-                        outbound::http_route::distribution::FirstAvailable {
-                            backends: vec![default_backend.clone()],
-                        },
-                    )),
-                }
+                outbound::http_route::distribution::Kind::FirstAvailable(
+                    outbound::http_route::distribution::FirstAvailable {
+                        backends: vec![default_backend.clone()],
+                    },
+                )
             } else {
-                outbound::http_route::Distribution {
-                    kind: Some(outbound::http_route::distribution::Kind::RandomAvailable(
-                        outbound::http_route::distribution::RandomAvailable { backends },
-                    )),
-                }
+                outbound::http_route::distribution::Kind::RandomAvailable(
+                    outbound::http_route::distribution::RandomAvailable { backends },
+                )
             };
             outbound::http_route::Rule {
                 matches: matches.into_iter().map(http_route::convert_match).collect(),
-                backends: Some(dist),
+                backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
                 filters: Default::default(),
             }
         })
