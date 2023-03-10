@@ -269,8 +269,8 @@ async fn service_with_multiple_http_routes() {
         // There should be 2 routes, returned in order.
         detect_http_routes(&config, |routes| {
             assert_eq!(routes.len(), 2);
-            assert_eq!(route_name(&routes.get(0).unwrap()), "a-route");
-            assert_eq!(route_name(&routes.get(1).unwrap()), "b-route");
+            assert_eq!(route_name(&routes[0]), "a-route");
+            assert_eq!(route_name(&routes[1]), "b-route");
         });
     })
     .await;
@@ -423,7 +423,7 @@ fn mk_empty_http_route(
 #[track_caller]
 fn detect_http_routes<F>(config: &grpc::outbound::OutboundPolicy, f: F)
 where
-    F: Fn(&[grpc::outbound::HttpRoute]) -> (),
+    F: Fn(&[grpc::outbound::HttpRoute]),
 {
     let kind = config
         .protocol
