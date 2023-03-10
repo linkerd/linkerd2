@@ -53,7 +53,7 @@ pub struct OutboundHttpRouteRule {
 pub enum Backend {
     Addr(WeightedAddr),
     Dst(WeightedDst),
-    InvalidDst { weight: u32 },
+    InvalidDst { weight: u32, message: String },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

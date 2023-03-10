@@ -763,7 +763,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                 filters: Default::default(),
             }),
         },
-        Backend::InvalidDst { weight } => outbound::http_route::WeightedRouteBackend {
+        Backend::InvalidDst { weight, message } => outbound::http_route::WeightedRouteBackend {
             weight,
             backend: Some(outbound::http_route::RouteBackend {
                 backend: None,
@@ -771,7 +771,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                     kind: Some(outbound::http_route::filter::Kind::FailureInjector(
                         api::http_route::HttpFailureInjector {
                             status: 500,
-                            message: "backend is invalid".to_string(),
+                            message,
                             ratio: None,
                         },
                     )),

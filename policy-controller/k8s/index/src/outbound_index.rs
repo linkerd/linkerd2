@@ -5,7 +5,7 @@ use crate::{
 };
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
-use k8s_gateway_api::HttpBackendRef;
+use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
 use linkerd_policy_controller_core::{
     http_route::{Backend, OutboundHttpRoute, OutboundHttpRouteRule, WeightedDst},
     OutboundPolicy,
@@ -184,6 +184,10 @@ impl Namespace {
         let outbound_route = match self.convert_route(route.clone(), cluster_info) {
             Ok(route) => route,
             Err(error) => {
+                // XXX(ver) This is likely to fire whenever we process routes
+                // that target servers, for instance. Ultimately, we should
+                // unify the handling. Either that or we should reduce the log
+                // level to avoid user-facing noise.
                 tracing::error!(%error, "failed to convert HttpRoute");
                 return;
             }
@@ -191,32 +195,34 @@ impl Namespace {
         tracing::debug!(?outbound_route);
 
         for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
-            if parent_ref.kind.as_deref() == Some("Service") {
-                if let Some(port) = parent_ref.port {
-                    if let Some(port) = NonZeroU16::new(port) {
-                        let service_port = ServicePort {
-                            port,
-                            service: parent_ref.name.clone(),
-                        };
-                        tracing::debug!(
-                            ?service_port,
-                            route = route.name_unchecked(),
-                            "inserting route for service"
-                        );
-                        let service_routes =
-                            self.service_routes_or_default(service_port, cluster_info);
-                        service_routes.apply(name.clone(), outbound_route.clone());
-                    } else {
-                        tracing::warn!(?parent_ref, "ignoring parent_ref with port 0");
-                    }
-                } else {
-                    tracing::warn!(?parent_ref, "ignoring parent_ref without port");
-                }
-            } else {
+            // TODO(ver) we should check the group, too. Nothing stops `Service`
+            // from existing outside of the `core` group.
+            if !is_parent_service(parent_ref) {
                 tracing::warn!(
                     parent_kind = parent_ref.kind.as_deref(),
                     "ignoring parent_ref with non-Service kind"
                 );
+                continue;
+            }
+
+            if let Some(port) = parent_ref.port {
+                if let Some(port) = NonZeroU16::new(port) {
+                    let service_port = ServicePort {
+                        port,
+                        service: parent_ref.name.clone(),
+                    };
+                    tracing::debug!(
+                        ?service_port,
+                        route = route.name_unchecked(),
+                        "inserting route for service"
+                    );
+                    let service_routes = self.service_routes_or_default(service_port, cluster_info);
+                    service_routes.apply(name.clone(), outbound_route.clone());
+                } else {
+                    tracing::warn!(?parent_ref, "ignoring parent_ref with port 0");
+                }
+            } else {
+                tracing::warn!(?parent_ref, "ignoring parent_ref without port");
             }
         }
     }
@@ -322,25 +328,69 @@ fn convert_backend(
     services: &HashMap<String, ServiceInfo>,
 ) -> Option<Backend> {
     backend.backend_ref.map(|backend| {
-        if let Some(port) = backend
+        if !is_backend_service(&backend.inner) {
+            return Backend::InvalidDst {
+                weight: backend.weight.unwrap_or(1).into(),
+                message: format!(
+                    "unsupported backend type {group} {kind}",
+                    group = backend.inner.group.as_deref().unwrap_or("core"),
+                    kind = backend.inner.kind.as_deref().unwrap_or("core"),
+                ),
+            };
+        }
+
+        let name = backend.inner.name;
+        let weight = backend.weight.unwrap_or(1);
+
+        // The gateway API dictates:
+        //
+        // Port is required when the referent is a Kubernetes Service.
+        let port = match backend
             .inner
             .port
             .and_then(|p| NonZeroU16::try_from(p).ok())
         {
-            let dst = WeightedDst {
-                weight: backend.weight.unwrap_or(1).into(),
-                authority: cluster.service_dns_authority(ns, &backend.inner.name, port),
-            };
-
-            if services.contains_key(&backend.inner.name) {
-                return Backend::Dst(dst);
+            Some(port) => port,
+            None => {
+                return Backend::InvalidDst {
+                    weight: weight.into(),
+                    message: format!("missing port for backend Service {name}"),
+                }
             }
+        };
+
+        if !services.contains_key(&name) {
+            return Backend::InvalidDst {
+                weight: weight.into(),
+                message: format!("service not found {name}"),
+            };
         }
 
-        Backend::InvalidDst {
-            weight: backend.weight.unwrap_or(1).into(),
-        }
+        Backend::Dst(WeightedDst {
+            weight: weight.into(),
+            authority: cluster.service_dns_authority(ns, &name, port),
+        })
     })
+}
+
+#[inline]
+fn is_parent_service(parent: &ParentReference) -> bool {
+    is_service(parent.group.as_deref(), parent.kind.as_deref())
+}
+
+#[inline]
+fn is_backend_service(backend: &BackendObjectReference) -> bool {
+    is_service(backend.group.as_deref(), backend.kind.as_deref())
+}
+
+#[inline]
+fn is_service(group: Option<&str>, kind: Option<&str>) -> bool {
+    group
+        .map(|g| g.eq_ignore_ascii_case("core"))
+        .unwrap_or(true)
+        && kind
+            .map(|k| k.eq_ignore_ascii_case("Service"))
+            .unwrap_or(false)
 }
 
 impl ServiceRoutes {
