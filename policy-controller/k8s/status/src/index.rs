@@ -308,7 +308,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         self.http_routes.remove(&id);
     }
 
-    // Since  only reindexes a single HTTPRoute at a time, there's no need
+    // Since apply only reindexes a single HTTPRoute at a time, there's no need
     // to handle resets specially.
 }
 
@@ -341,7 +341,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
         self.reconcile();
     }
 
-    // Since  only reindexes a single Server at a time, there's no need
+    // Since apply only reindexes a single Server at a time, there's no need
     // to handle resets specially.
 }
 
