@@ -8,6 +8,7 @@ pub use http::{
     Method, StatusCode,
 };
 use regex::Regex;
+use std::net::IpAddr;
 use std::num::NonZeroU16;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -15,6 +16,16 @@ pub struct InboundHttpRoute {
     pub hostnames: Vec<HostMatch>,
     pub rules: Vec<InboundHttpRouteRule>,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
+
+    /// This is required for ordering returned `HttpRoute`s by their creation
+    /// timestamp.
+    pub creation_timestamp: Option<DateTime<Utc>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OutboundHttpRoute {
+    pub hostnames: Vec<HostMatch>,
+    pub rules: Vec<OutboundHttpRouteRule>,
 
     /// This is required for ordering returned `HttpRoute`s by their creation
     /// timestamp.
@@ -31,6 +42,32 @@ pub enum HostMatch {
 pub struct InboundHttpRouteRule {
     pub matches: Vec<HttpRouteMatch>,
     pub filters: Vec<InboundFilter>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OutboundHttpRouteRule {
+    pub matches: Vec<HttpRouteMatch>,
+    pub backends: Vec<Backend>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Backend {
+    Addr(WeightedAddr),
+    Dst(WeightedDst),
+    InvalidDst(WeightedDst),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WeightedAddr {
+    pub weight: u32,
+    pub addr: IpAddr,
+    pub port: NonZeroU16,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WeightedDst {
+    pub weight: u32,
+    pub authority: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
