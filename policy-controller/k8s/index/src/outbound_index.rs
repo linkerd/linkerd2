@@ -195,9 +195,9 @@ impl Namespace {
         tracing::debug!(?outbound_route);
 
         for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
-            // TODO(ver) we should check the group, too. Nothing stops `Service`
-            // from existing outside of the `core` group.
             if !is_parent_service(parent_ref) {
+                // XXX(ver) This is likely to fire whenever we process routes
+                // that only target inbound resources.
                 tracing::warn!(
                     parent_kind = parent_ref.kind.as_deref(),
                     "ignoring parent_ref with non-Service kind"
