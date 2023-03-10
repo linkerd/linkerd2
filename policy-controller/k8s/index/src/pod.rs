@@ -26,8 +26,7 @@ pub(crate) struct Settings {
 ///
 /// Because ports are `u16` values, this type avoids the overhead of actually
 /// hashing ports.
-pub(crate) type PortSet =
-    std::collections::HashSet<NonZeroU16, std::hash::BuildHasherDefault<PortHasher>>;
+pub type PortSet = std::collections::HashSet<NonZeroU16, std::hash::BuildHasherDefault<PortHasher>>;
 
 /// A `HashMap` specialized for ports.
 ///
@@ -43,7 +42,7 @@ pub(crate) type PortMap<V> =
 ///
 /// Borrowed from the proxy.
 #[derive(Debug, Default)]
-pub(crate) struct PortHasher(u16);
+pub struct PortHasher(u16);
 
 /// Gets the set of named ports with `protocol: TCP` from a pod spec.
 pub(crate) fn tcp_ports_by_name(spec: &k8s::PodSpec) -> HashMap<String, PortSet> {
@@ -146,11 +145,13 @@ impl Settings {
             None
         });
 
-        let opaque_ports = ports_annotation(anns, "config.linkerd.io/opaque-ports");
+        let opaque_ports =
+            ports_annotation(anns, "config.linkerd.io/opaque-ports").unwrap_or_default();
         let require_id_ports = ports_annotation(
             anns,
             "config.linkerd.io/proxy-require-identity-inbound-ports",
-        );
+        )
+        .unwrap_or_default();
 
         Self {
             default_policy,
@@ -174,23 +175,20 @@ fn default_policy(
 
 /// Reads `annotation` from the provided set of annotations, parsing it as a port set.  If the
 /// annotation is not set or is invalid, the empty set is returned.
-fn ports_annotation(
+pub(crate) fn ports_annotation(
     annotations: &std::collections::BTreeMap<String, String>,
     annotation: &str,
-) -> PortSet {
-    annotations
-        .get(annotation)
-        .map(|spec| {
-            parse_portset(spec).unwrap_or_else(|error| {
-                tracing::info!(%spec, %error, %annotation, "Invalid ports list");
-                Default::default()
-            })
+) -> Option<PortSet> {
+    annotations.get(annotation).map(|spec| {
+        parse_portset(spec).unwrap_or_else(|error| {
+            tracing::info!(%spec, %error, %annotation, "Invalid ports list");
+            Default::default()
         })
-        .unwrap_or_default()
+    })
 }
 
 /// Read a comma-separated of ports or port ranges from the given string.
-fn parse_portset(s: &str) -> Result<PortSet> {
+pub fn parse_portset(s: &str) -> Result<PortSet> {
     let mut ports = PortSet::default();
 
     for spec in s.split(',') {

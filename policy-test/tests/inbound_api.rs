@@ -297,6 +297,7 @@ async fn server_with_http_route() {
                     group: "policy.linkerd.io".to_string(),
                     kind: "HTTPRoute".to_string(),
                     name: "metrics-route".to_string(),
+                    ..Default::default()
                 }))
             }
         );
@@ -642,7 +643,7 @@ async fn retry_watch_server(
     // Port-forward to the control plane and start watching the pod's admin
     // server's policy and ensure that the first update uses the default
     // policy.
-    let mut policy_api = grpc::PolicyClient::port_forwarded(client).await;
+    let mut policy_api = grpc::InboundPolicyClient::port_forwarded(client).await;
     loop {
         match policy_api.watch_port(ns, pod_name, 4191).await {
             Ok(rx) => return rx,

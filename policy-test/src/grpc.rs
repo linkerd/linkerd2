@@ -4,8 +4,11 @@
 //! forwarding to connect to a running instance.
 
 use anyhow::Result;
-use linkerd2_proxy_api::inbound::inbound_server_policies_client::InboundServerPoliciesClient;
 pub use linkerd2_proxy_api::*;
+use linkerd2_proxy_api::{
+    inbound::inbound_server_policies_client::InboundServerPoliciesClient,
+    outbound::outbound_policies_client::OutboundPoliciesClient,
+};
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
 use tokio::io;
 
@@ -56,8 +59,13 @@ macro_rules! assert_protocol_detect {
 }
 
 #[derive(Debug)]
-pub struct PolicyClient {
+pub struct InboundPolicyClient {
     client: InboundServerPoliciesClient<GrpcHttp>,
+}
+
+#[derive(Debug)]
+pub struct OutboundPolicyClient {
+    client: OutboundPoliciesClient<GrpcHttp>,
 }
 
 #[derive(Debug)]
@@ -65,20 +73,44 @@ struct GrpcHttp {
     tx: hyper::client::conn::SendRequest<tonic::body::BoxBody>,
 }
 
-// === impl PolicyClient ===
+async fn get_policy_controller_pod(client: &kube::Client) -> Result<String> {
+    let params =
+        kube::api::ListParams::default().labels("linkerd.io/control-plane-component=destination");
+    let mut pods = kube::Api::<k8s::Pod>::namespaced(client.clone(), "linkerd")
+        .list(&params)
+        .await?;
+    let pod = pods
+        .items
+        .pop()
+        .ok_or_else(|| anyhow::anyhow!("no destination controller pods found"))?;
+    Ok(pod.name_unchecked())
+}
 
-impl PolicyClient {
+async fn connect_port_forward(
+    client: &kube::Client,
+    pod: &str,
+) -> Result<impl io::AsyncRead + io::AsyncWrite + Unpin> {
+    let mut pf = kube::Api::<k8s::Pod>::namespaced(client.clone(), "linkerd")
+        .portforward(pod, &[8090])
+        .await?;
+    let io = pf.take_stream(8090).expect("must have a stream");
+    Ok(io)
+}
+
+// === impl InboundPolicyClient ===
+
+impl InboundPolicyClient {
     pub async fn port_forwarded(client: &kube::Client) -> Self {
-        let pod = Self::get_policy_controller_pod(client)
+        let pod = get_policy_controller_pod(client)
             .await
             .expect("failed to find a policy controller pod");
-        let io = Self::connect_port_forward(client, &pod)
+        let io = connect_port_forward(client, &pod)
             .await
             .expect("failed to establish a port forward");
         let http = GrpcHttp::handshake(io)
             .await
             .expect("failed to connect to the gRPC server");
-        PolicyClient {
+        Self {
             client: InboundServerPoliciesClient::new(http),
         }
     }
@@ -114,29 +146,84 @@ impl PolicyClient {
             .await?;
         Ok(rsp.into_inner())
     }
+}
 
-    async fn get_policy_controller_pod(client: &kube::Client) -> Result<String> {
-        let params = kube::api::ListParams::default()
-            .labels("linkerd.io/control-plane-component=destination");
-        let mut pods = kube::Api::<k8s::Pod>::namespaced(client.clone(), "linkerd")
-            .list(&params)
-            .await?;
-        let pod = pods
-            .items
-            .pop()
-            .ok_or_else(|| anyhow::anyhow!("no destination controller pods found"))?;
-        Ok(pod.name_unchecked())
+// === impl OutboundPolicyClient ===
+
+impl OutboundPolicyClient {
+    pub async fn port_forwarded(client: &kube::Client) -> Self {
+        let pod = get_policy_controller_pod(client)
+            .await
+            .expect("failed to find a policy controller pod");
+        let io = connect_port_forward(client, &pod)
+            .await
+            .expect("failed to establish a port forward");
+        let http = GrpcHttp::handshake(io)
+            .await
+            .expect("failed to connect to the gRPC server");
+        Self {
+            client: OutboundPoliciesClient::new(http),
+        }
     }
 
-    async fn connect_port_forward(
-        client: &kube::Client,
-        pod: &str,
-    ) -> Result<impl io::AsyncRead + io::AsyncWrite + Unpin> {
-        let mut pf = kube::Api::<k8s::Pod>::namespaced(client.clone(), "linkerd")
-            .portforward(pod, &[8090])
+    pub async fn get(
+        &mut self,
+        ns: &str,
+        svc: &k8s::Service,
+        port: u16,
+    ) -> Result<outbound::OutboundPolicy, tonic::Status> {
+        use std::net::Ipv4Addr;
+        let address = svc
+            .spec
+            .as_ref()
+            .expect("Service must have a spec")
+            .cluster_ip
+            .as_ref()
+            .expect("Service must have a cluster ip");
+        let ip = address.parse::<Ipv4Addr>().unwrap();
+        let rsp = self
+            .client
+            .get(tonic::Request::new(outbound::TrafficSpec {
+                source_workload: format!("{}:client", ns),
+                target: Some(outbound::traffic_spec::Target::Addr(net::TcpAddress {
+                    ip: Some(net::IpAddress {
+                        ip: Some(net::ip_address::Ip::Ipv4(ip.into())),
+                    }),
+                    port: port as u32,
+                })),
+            }))
             .await?;
-        let io = pf.take_stream(8090).expect("must have a stream");
-        Ok(io)
+        Ok(rsp.into_inner())
+    }
+
+    pub async fn watch(
+        &mut self,
+        ns: &str,
+        svc: &k8s::Service,
+        port: u16,
+    ) -> Result<tonic::Streaming<outbound::OutboundPolicy>, tonic::Status> {
+        use std::net::Ipv4Addr;
+        let address = svc
+            .spec
+            .as_ref()
+            .expect("Service must have a spec")
+            .cluster_ip
+            .as_ref()
+            .expect("Service must have a cluster ip");
+        let ip = address.parse::<Ipv4Addr>().unwrap();
+        let rsp = self
+            .client
+            .watch(tonic::Request::new(outbound::TrafficSpec {
+                source_workload: format!("{}:client", ns),
+                target: Some(outbound::traffic_spec::Target::Addr(net::TcpAddress {
+                    ip: Some(net::IpAddress {
+                        ip: Some(net::ip_address::Ip::Ipv4(ip.into())),
+                    }),
+                    port: port as u32,
+                })),
+            }))
+            .await?;
+        Ok(rsp.into_inner())
     }
 }
 

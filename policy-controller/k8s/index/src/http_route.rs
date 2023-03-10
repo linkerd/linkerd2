@@ -163,7 +163,7 @@ impl InboundRouteBinding {
         })
     }
 
-    fn try_match(
+    pub fn try_match(
         api::HttpRouteMatch {
             path,
             headers,

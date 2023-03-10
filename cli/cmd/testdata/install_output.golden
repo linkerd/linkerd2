@@ -1347,6 +1347,7 @@ spec:
         - --default-policy=default-allow-policy
         - --log-level=log-level
         - --log-format=ControllerLogFormat
+        - --default-opaque-ports=25,443,587,3306,5432,11211
         - --probe-networks=1.0.0.0/0,2.0.0.0/0
         image: PolicyControllerImageName:PolicyControllerVersion
         imagePullPolicy: ImagePullPolicy
