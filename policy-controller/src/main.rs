@@ -183,7 +183,8 @@ async fn main() -> Result<()> {
             .instrument(info_span!("services")),
     );
 
-    // Create the lease manager used for trying to claim the status-controller lease.
+    // Create the lease manager used for trying to claim the policy
+    // controller write lease.
     let api = k8s::Api::namespaced(runtime.client(), &control_plane_namespace);
     // todo: Do we need to use LeaseManager::field_manager here?
     let lease = kubert::lease::LeaseManager::init(api, LEASE_NAME).await?;
@@ -195,17 +196,15 @@ async fn main() -> Result<()> {
     };
     let (claims, _task) = lease.spawn(hostname.clone(), params).await?;
 
-    // Build the status index which will be used to process updates to policy
-    // resources and send to the status controller.
+    // Build the status Index which will be used to process updates to policy
+    // resources and send to the status Controller.
     let (updates_tx, updates_rx) = mpsc::unbounded_channel();
     let status_index = status::Index::shared(hostname.clone(), claims.clone(), updates_tx);
 
-    // Spawn the status controller reconciliation.
-    tokio::spawn(
-        status::Index::run(status_index.clone()).instrument(info_span!("status_controller::Index")),
-    );
+    // Spawn the status Controller reconciliation.
+    tokio::spawn(status::Index::run(status_index.clone()).instrument(info_span!("status::Index")));
 
-    // Spawn resource indexers that update the status index.
+    // Spawn resource indexers that update the status Index.
     let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
     tokio::spawn(
         kubert::index::namespaced(status_index.clone(), http_routes)
@@ -231,7 +230,7 @@ async fn main() -> Result<()> {
     tokio::spawn(
         status_controller
             .run()
-            .instrument(info_span!("status_controller::Controller")),
+            .instrument(info_span!("status::Controller")),
     );
 
     let client = runtime.client();
