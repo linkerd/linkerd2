@@ -375,24 +375,30 @@ fn convert_backend(
 
 #[inline]
 fn is_parent_service(parent: &ParentReference) -> bool {
-    is_service(parent.group.as_deref(), parent.kind.as_deref())
+    parent
+        .kind
+        .as_deref()
+        .map(|k| is_service(parent.group.as_deref(), k))
+        // Parent refs require a `kind`.
+        .unwrap_or(false)
 }
 
 #[inline]
 fn is_backend_service(backend: &BackendObjectReference) -> bool {
-    is_service(backend.group.as_deref(), backend.kind.as_deref())
+    is_service(
+        backend.group.as_deref(),
+        // Backends default to `Service` if no kind is specified.
+        backend.kind.as_deref().unwrap_or("Service"),
+    )
 }
 
 #[inline]
-fn is_service(group: Option<&str>, kind: Option<&str>) -> bool {
+fn is_service(group: Option<&str>, kind: &str) -> bool {
+    // If the group is not specified or empty, assume it's 'core'.
     group
-        .map(|g| g.eq_ignore_ascii_case("core"))
-        // If the group is not specified, assume it's 'core'.
+        .map(|g| g.eq_ignore_ascii_case("core") || g.is_empty())
         .unwrap_or(true)
-        && kind
-            .map(|k| k.eq_ignore_ascii_case("Service"))
-            // If the kind is not specified, assume it's a Service.
-            .unwrap_or(true)
+        && kind.eq_ignore_ascii_case("Service")
 }
 
 impl ServiceRoutes {
