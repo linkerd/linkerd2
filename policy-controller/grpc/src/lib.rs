@@ -22,13 +22,10 @@ use linkerd2_proxy_api::{
     },
 };
 use linkerd_policy_controller_core::{
-    http_route::{
-        Backend, InboundFilter, InboundHttpRoute, InboundHttpRouteRule, OutboundHttpRouteRule,
-    },
+    http_route::{inbound as inbound_route, outbound as outbound_route},
     AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer,
-    DiscoverOutboundPolicy, IdentityMatch, InboundHttpRouteRef, InboundServer, InboundServerStream,
-    IpNet, NetworkMatch, OutboundHttpRoute, OutboundPolicy, OutboundPolicyStream, ProxyProtocol,
-    ServerRef,
+    DiscoverOutboundPolicy, IdentityMatch, InboundServer, InboundServerStream, IpNet, NetworkMatch,
+    OutboundPolicy, OutboundPolicyStream, ProxyProtocol, ServerRef,
 };
 use maplit::*;
 use std::{net::IpAddr, num::NonZeroU16, sync::Arc, time};
@@ -504,7 +501,12 @@ fn to_authz(
 }
 
 fn to_http_route_list<'r>(
-    routes: impl IntoIterator<Item = (&'r InboundHttpRouteRef, &'r InboundHttpRoute)>,
+    routes: impl IntoIterator<
+        Item = (
+            &'r inbound_route::HttpRouteRef,
+            &'r inbound_route::HttpRoute,
+        ),
+    >,
     cluster_networks: &[IpNet],
 ) -> Vec<proto::HttpRoute> {
     // Per the Gateway API spec:
@@ -538,24 +540,26 @@ fn to_http_route_list<'r>(
 }
 
 fn to_http_route(
-    reference: &InboundHttpRouteRef,
-    InboundHttpRoute {
+    reference: &inbound_route::HttpRouteRef,
+    inbound_route::HttpRoute {
         hostnames,
         rules,
         authorizations,
         creation_timestamp: _,
-    }: InboundHttpRoute,
+    }: inbound_route::HttpRoute,
     cluster_networks: &[IpNet],
 ) -> proto::HttpRoute {
     let metadata = Metadata {
         kind: Some(match reference {
-            InboundHttpRouteRef::Default(name) => metadata::Kind::Default(name.to_string()),
-            InboundHttpRouteRef::Linkerd(name) => metadata::Kind::Resource(api::meta::Resource {
-                group: "policy.linkerd.io".to_string(),
-                kind: "HTTPRoute".to_string(),
-                name: name.to_string(),
-                ..Default::default()
-            }),
+            inbound_route::HttpRouteRef::Default(name) => metadata::Kind::Default(name.to_string()),
+            inbound_route::HttpRouteRef::Linkerd(name) => {
+                metadata::Kind::Resource(api::meta::Resource {
+                    group: "policy.linkerd.io".to_string(),
+                    kind: "HTTPRoute".to_string(),
+                    name: name.to_string(),
+                    ..Default::default()
+                })
+            }
         }),
     };
 
@@ -567,7 +571,7 @@ fn to_http_route(
     let rules = rules
         .into_iter()
         .map(
-            |InboundHttpRouteRule { matches, filters }| proto::http_route::Rule {
+            |inbound_route::HttpRouteRule { matches, filters }| proto::http_route::Rule {
                 matches: matches.into_iter().map(http_route::convert_match).collect(),
                 filters: filters.into_iter().map(convert_filter).collect(),
             },
@@ -587,18 +591,18 @@ fn to_http_route(
     }
 }
 
-fn convert_filter(filter: InboundFilter) -> proto::http_route::Filter {
+fn convert_filter(filter: inbound_route::Filter) -> proto::http_route::Filter {
     use proto::http_route::filter::Kind;
 
     proto::http_route::Filter {
         kind: Some(match filter {
-            InboundFilter::FailureInjector(f) => {
+            inbound_route::Filter::FailureInjector(f) => {
                 Kind::FailureInjector(http_route::convert_failure_injector_filter(f))
             }
-            InboundFilter::RequestHeaderModifier(f) => {
+            inbound_route::Filter::RequestHeaderModifier(f) => {
                 Kind::RequestHeaderModifier(http_route::convert_header_modifier_filter(f))
             }
-            InboundFilter::RequestRedirect(f) => {
+            inbound_route::Filter::RequestRedirect(f) => {
                 Kind::Redirect(http_route::convert_redirect_filter(f))
             }
         }),
@@ -671,11 +675,11 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
 fn convert_outbound_http_route(
     namespace: String,
     name: String,
-    OutboundHttpRoute {
+    outbound_route::HttpRoute {
         hostnames,
         rules,
         creation_timestamp: _,
-    }: OutboundHttpRoute,
+    }: outbound_route::HttpRoute,
     default_backend: outbound::http_route::WeightedRouteBackend,
 ) -> outbound::HttpRoute {
     let metadata = Some(Metadata {
@@ -695,7 +699,7 @@ fn convert_outbound_http_route(
 
     let rules = rules
         .into_iter()
-        .map(|OutboundHttpRouteRule { matches, backends }| {
+        .map(|outbound_route::HttpRouteRule { matches, backends }| {
             let mut backends = backends
                 .into_iter()
                 .map(convert_http_backend)
@@ -722,9 +726,11 @@ fn convert_outbound_http_route(
     }
 }
 
-fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRouteBackend {
+fn convert_http_backend(
+    backend: outbound_route::Backend,
+) -> outbound::http_route::WeightedRouteBackend {
     match backend {
-        Backend::Addr(addr) => outbound::http_route::WeightedRouteBackend {
+        outbound_route::Backend::Addr(addr) => outbound::http_route::WeightedRouteBackend {
             backend: Some(outbound::http_route::RouteBackend {
                 backend: Some(outbound::Backend {
                     metadata: None,
@@ -741,7 +747,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
             }),
             weight: addr.weight,
         },
-        Backend::Dst(dst) => outbound::http_route::WeightedRouteBackend {
+        outbound_route::Backend::Dst(dst) => outbound::http_route::WeightedRouteBackend {
             backend: Some(outbound::http_route::RouteBackend {
                 backend: Some(outbound::Backend {
                     metadata: None,
@@ -763,7 +769,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
             }),
             weight: dst.weight,
         },
-        Backend::InvalidDst(dst) => outbound::http_route::WeightedRouteBackend {
+        outbound_route::Backend::InvalidDst(dst) => outbound::http_route::WeightedRouteBackend {
             backend: Some(outbound::http_route::RouteBackend {
                 backend: Some(outbound::Backend {
                     metadata: None,

@@ -1,8 +1,12 @@
-use crate::DefaultPolicy;
-use ahash::AHashMap as HashMap;
+use crate::{
+    AuthenticationNsIndex, ClusterInfo, DefaultPolicy, Entry, HashMap, InboundServer, PolicyIndex,
+};
 use anyhow::{bail, Context, Result};
-use linkerd_policy_controller_k8s_api as k8s;
+use linkerd_policy_controller_core::{ProxyProtocol, ServerRef};
+use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use std::{collections::BTreeSet, num::NonZeroU16};
+use tokio::sync::watch;
+use tracing::info_span;
 
 /// Holds pod metadata/config that can change.
 #[derive(Debug, PartialEq)]
@@ -20,6 +24,53 @@ pub(crate) struct Settings {
     pub require_id_ports: PortSet,
     pub opaque_ports: PortSet,
     pub default_policy: Option<DefaultPolicy>,
+}
+
+/// Holds all pod data for a single namespace.
+#[derive(Debug)]
+pub(crate) struct PodIndex {
+    pub(crate) namespace: String,
+    pub(crate) by_name: HashMap<String, Pod>,
+}
+
+/// Holds a single pod's data with the server watches for all known ports.
+///
+/// The set of ports/servers is updated as clients discover server configuration
+/// or as `Server` resources select a port.
+#[derive(Debug)]
+pub(crate) struct Pod {
+    pub(crate) meta: Meta,
+
+    /// The pod's named container ports. Used by `Server` port selectors.
+    ///
+    /// A pod may have multiple ports with the same name. E.g., each container
+    /// may have its own `admin-http` port.
+    pub(crate) port_names: HashMap<String, PortSet>,
+
+    /// All known TCP server ports. This may be updated by
+    /// `Namespace::reindex`--when a port is selected by a `Server`--or by
+    /// `Namespace::get_pod_server` when a client discovers a port that has no
+    /// configured server (and i.e. uses the default policy).
+    pub(crate) port_servers: PortMap<PodPortServer>,
+
+    /// The pod's probe ports and their respective paths.
+    ///
+    /// In order for the policy controller to authorize probes, it must be
+    /// aware of the probe ports and the expected paths on which probes are
+    /// expected.
+    pub(crate) probes: PortMap<BTreeSet<String>>,
+}
+
+/// Holds the state of a single port on a pod.
+#[derive(Debug)]
+pub(crate) struct PodPortServer {
+    /// The name of the server resource that matches this port. Unset when no
+    /// server resources match this pod/port (and, i.e., the default policy is
+    /// used).
+    name: Option<String>,
+
+    /// A sender used to broadcast pod port server updates.
+    pub(crate) watch: watch::Sender<InboundServer>,
 }
 
 /// A `HashSet` specialized for ports.
@@ -43,6 +94,318 @@ pub(crate) type PortMap<V> =
 /// Borrowed from the proxy.
 #[derive(Debug, Default)]
 pub struct PortHasher(u16);
+
+impl kubert::index::IndexNamespacedResource<k8s::Pod> for crate::Index {
+    fn apply(&mut self, pod: k8s::Pod) {
+        let namespace = pod.namespace().unwrap();
+        let name = pod.name_unchecked();
+        let _span = info_span!("apply", ns = %namespace, %name).entered();
+
+        let port_names = pod.spec.as_ref().map(tcp_ports_by_name).unwrap_or_default();
+        let probes = pod.spec.as_ref().map(pod_http_probes).unwrap_or_default();
+
+        let meta = Meta::from_metadata(pod.metadata);
+
+        // Add or update the pod. If the pod was not already present in the
+        // index with the same metadata, index it against the policy resources,
+        // updating its watches.
+        let ns = self.namespaces.get_or_default(namespace);
+        match ns.pods.update(name, meta, port_names, probes) {
+            Ok(None) => {}
+            Ok(Some(pod)) => pod.reindex_servers(&ns.policy, &self.authentications),
+            Err(error) => {
+                tracing::error!(%error, "Illegal pod update");
+            }
+        }
+    }
+
+    fn delete(&mut self, ns: String, name: String) {
+        tracing::debug!(%ns, %name, "delete");
+        if let Entry::Occupied(mut ns) = self.namespaces.by_ns.entry(ns) {
+            // Once the pod is removed, there's nothing else to update. Any open
+            // watches will complete.  No other parts of the index need to be
+            // updated.
+            if ns.get_mut().pods.by_name.remove(&name).is_some() && ns.get().is_empty() {
+                ns.remove();
+            }
+        }
+    }
+
+    // Since apply only reindexes a single pod at a time, there's no need to
+    // handle resets specially.
+}
+
+// === impl PodIndex ===
+
+impl PodIndex {
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.by_name.is_empty()
+    }
+
+    pub(crate) fn update(
+        &mut self,
+        name: String,
+        meta: Meta,
+        port_names: HashMap<String, PortSet>,
+        probes: PortMap<BTreeSet<String>>,
+    ) -> Result<Option<&mut Pod>> {
+        let pod = match self.by_name.entry(name.clone()) {
+            Entry::Vacant(entry) => entry.insert(Pod {
+                meta,
+                port_names,
+                port_servers: PortMap::default(),
+                probes,
+            }),
+
+            Entry::Occupied(entry) => {
+                let pod = entry.into_mut();
+
+                // Pod labels and annotations may change at runtime, but the
+                // port list may not
+                if pod.port_names != port_names {
+                    bail!("pod {} port names must not change", name);
+                }
+
+                // If there aren't meaningful changes, then don't bother doing
+                // any more work.
+                if pod.meta == meta {
+                    tracing::debug!(pod = %name, "No changes");
+                    return Ok(None);
+                }
+                tracing::debug!(pod = %name, "Updating");
+                pod.meta = meta;
+                pod
+            }
+        };
+        Ok(Some(pod))
+    }
+
+    pub(crate) fn reindex(&mut self, policy: &PolicyIndex, authns: &AuthenticationNsIndex) {
+        let _span = info_span!("reindex", ns = %self.namespace).entered();
+        for (name, pod) in self.by_name.iter_mut() {
+            let _span = info_span!("pod", pod = %name).entered();
+            pod.reindex_servers(policy, authns);
+        }
+    }
+}
+
+// === impl Pod ===
+
+impl Pod {
+    /// Determines the policies for ports on this pod.
+    fn reindex_servers(&mut self, policy: &PolicyIndex, authentications: &AuthenticationNsIndex) {
+        // Keep track of the ports that are already known in the pod so that, after applying server
+        // matches, we can ensure remaining ports are set to the default policy.
+        let mut unmatched_ports = self.port_servers.keys().copied().collect::<PortSet>();
+
+        // Keep track of which ports have been matched to servers to that we can detect when
+        // multiple servers match a single port.
+        //
+        // We start with capacity for the known ports on the pod; but this can grow if servers
+        // select additional ports.
+        let mut matched_ports = PortMap::with_capacity_and_hasher(
+            unmatched_ports.len(),
+            std::hash::BuildHasherDefault::<PortHasher>::default(),
+        );
+
+        for (srvname, server) in policy.servers.iter() {
+            if server.pod_selector.matches(&self.meta.labels) {
+                for port in self.select_ports(&server.port_ref).into_iter() {
+                    // If the port is already matched to a server, then log a warning and skip
+                    // updating it so it doesn't flap between servers.
+                    if let Some(prior) = matched_ports.get(&port) {
+                        tracing::warn!(
+                            port = %port,
+                            server = %prior,
+                            conflict = %srvname,
+                            "Port already matched by another server; skipping"
+                        );
+                        continue;
+                    }
+
+                    let s = policy.inbound_server(
+                        srvname.clone(),
+                        server,
+                        authentications,
+                        self.probes
+                            .get(&port)
+                            .into_iter()
+                            .flatten()
+                            .map(|p| p.as_str()),
+                    );
+                    self.update_server(port, srvname, s);
+
+                    matched_ports.insert(port, srvname.clone());
+                    unmatched_ports.remove(&port);
+                }
+            }
+        }
+
+        // Reset all remaining ports to the default policy.
+        for port in unmatched_ports.into_iter() {
+            self.set_default_server(port, &policy.cluster_info);
+        }
+    }
+
+    /// Updates a pod-port to use the given named server.
+    ///
+    /// The name is used explicity (and not derived from the `server` itself) to
+    /// ensure that we're not handling a default server.
+    fn update_server(&mut self, port: NonZeroU16, name: &str, server: InboundServer) {
+        match self.port_servers.entry(port) {
+            Entry::Vacant(entry) => {
+                tracing::trace!(port = %port, server = %name, "Creating server");
+                let (watch, _) = watch::channel(server);
+                entry.insert(PodPortServer {
+                    name: Some(name.to_string()),
+                    watch,
+                });
+            }
+
+            Entry::Occupied(mut entry) => {
+                let ps = entry.get_mut();
+
+                ps.watch.send_if_modified(|current| {
+                    if ps.name.as_deref() == Some(name) && *current == server {
+                        tracing::trace!(port = %port, server = %name, "Skipped redundant server update");
+                        tracing::trace!(?server);
+                        return false;
+                    }
+
+                    // If the port's server previously matched a different server,
+                    // this can either mean that multiple servers currently match
+                    // the pod:port, or that we're in the middle of an update. We
+                    // make the opportunistic choice to assume the cluster is
+                    // configured coherently so we take the update. The admission
+                    // controller should prevent conflicts.
+                    tracing::trace!(port = %port, server = %name, "Updating server");
+                    if ps.name.as_deref() != Some(name) {
+                        ps.name = Some(name.to_string());
+                    }
+
+                    *current = server;
+                    true
+                });
+            }
+        }
+
+        tracing::debug!(port = %port, server = %name, "Updated server");
+    }
+
+    /// Updates a pod-port to use the given named server.
+    fn set_default_server(&mut self, port: NonZeroU16, config: &ClusterInfo) {
+        let server = Self::default_inbound_server(
+            port,
+            &self.meta.settings,
+            self.probes
+                .get(&port)
+                .into_iter()
+                .flatten()
+                .map(|p| p.as_str()),
+            config,
+        );
+        match self.port_servers.entry(port) {
+            Entry::Vacant(entry) => {
+                tracing::debug!(%port, server = %config.default_policy, "Creating default server");
+                let (watch, _) = watch::channel(server);
+                entry.insert(PodPortServer { name: None, watch });
+            }
+
+            Entry::Occupied(mut entry) => {
+                let ps = entry.get_mut();
+                ps.watch.send_if_modified(|current| {
+                    // Avoid sending redundant updates.
+                    if *current == server {
+                        tracing::trace!(%port, server = %config.default_policy, "Default server already set");
+                        return false;
+                    }
+
+                    tracing::debug!(%port, server = %config.default_policy, "Setting default server");
+                    ps.name = None;
+                    *current = server;
+                    true
+                });
+            }
+        }
+    }
+
+    /// Enumerates ports.
+    ///
+    /// A named port may refer to an arbitrary number of port numbers.
+    fn select_ports(&mut self, port_ref: &Port) -> Vec<NonZeroU16> {
+        match port_ref {
+            Port::Number(p) => Some(*p).into_iter().collect(),
+            Port::Name(name) => self
+                .port_names
+                .get(name)
+                .into_iter()
+                .flatten()
+                .cloned()
+                .collect(),
+        }
+    }
+
+    pub(crate) fn port_server_or_default(
+        &mut self,
+        port: NonZeroU16,
+        config: &ClusterInfo,
+    ) -> &mut PodPortServer {
+        match self.port_servers.entry(port) {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => {
+                let (watch, _) = watch::channel(Self::default_inbound_server(
+                    port,
+                    &self.meta.settings,
+                    self.probes
+                        .get(&port)
+                        .into_iter()
+                        .flatten()
+                        .map(|p| p.as_str()),
+                    config,
+                ));
+                entry.insert(PodPortServer { name: None, watch })
+            }
+        }
+    }
+
+    fn default_inbound_server<'p>(
+        port: NonZeroU16,
+        settings: &Settings,
+        probe_paths: impl Iterator<Item = &'p str>,
+        config: &ClusterInfo,
+    ) -> InboundServer {
+        let protocol = if settings.opaque_ports.contains(&port) {
+            ProxyProtocol::Opaque
+        } else {
+            ProxyProtocol::Detect {
+                timeout: config.default_detect_timeout,
+            }
+        };
+
+        let mut policy = settings.default_policy.unwrap_or(config.default_policy);
+        if settings.require_id_ports.contains(&port) {
+            if let DefaultPolicy::Allow {
+                ref mut authenticated_only,
+                ..
+            } = policy
+            {
+                *authenticated_only = true;
+            }
+        }
+
+        let authorizations = policy.default_authzs(config);
+
+        let http_routes = crate::default_inbound_http_routes(config, probe_paths);
+
+        InboundServer {
+            reference: ServerRef::Default(policy.as_str()),
+            protocol,
+            authorizations,
+            http_routes,
+        }
+    }
+}
 
 /// Gets the set of named ports with `protocol: TCP` from a pod spec.
 pub(crate) fn tcp_ports_by_name(spec: &k8s::PodSpec) -> HashMap<String, PortSet> {

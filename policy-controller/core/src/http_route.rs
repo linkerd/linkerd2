@@ -12,69 +12,9 @@ use std::net::IpAddr;
 use std::num::NonZeroU16;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InboundHttpRoute {
-    pub hostnames: Vec<HostMatch>,
-    pub rules: Vec<InboundHttpRouteRule>,
-    pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
-
-    /// This is required for ordering returned `HttpRoute`s by their creation
-    /// timestamp.
-    pub creation_timestamp: Option<DateTime<Utc>>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OutboundHttpRoute {
-    pub hostnames: Vec<HostMatch>,
-    pub rules: Vec<OutboundHttpRouteRule>,
-
-    /// This is required for ordering returned `HttpRoute`s by their creation
-    /// timestamp.
-    pub creation_timestamp: Option<DateTime<Utc>>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HostMatch {
     Exact(String),
     Suffix { reverse_labels: Vec<String> },
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InboundHttpRouteRule {
-    pub matches: Vec<HttpRouteMatch>,
-    pub filters: Vec<InboundFilter>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OutboundHttpRouteRule {
-    pub matches: Vec<HttpRouteMatch>,
-    pub backends: Vec<Backend>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Backend {
-    Addr(WeightedAddr),
-    Dst(WeightedDst),
-    InvalidDst(WeightedDst),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct WeightedAddr {
-    pub weight: u32,
-    pub addr: IpAddr,
-    pub port: NonZeroU16,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct WeightedDst {
-    pub weight: u32,
-    pub authority: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum InboundFilter {
-    RequestHeaderModifier(RequestHeaderModifierFilter),
-    RequestRedirect(RequestRedirectFilter),
-    FailureInjector(FailureInjectorFilter),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -139,32 +79,6 @@ pub enum QueryParamMatch {
     Regex(String, Regex),
 }
 
-// === impl InboundHttpRoute ===
-
-/// The default `InboundHttpRoute` used for any `InboundServer` that
-/// does not have routes.
-impl Default for InboundHttpRoute {
-    fn default() -> Self {
-        Self {
-            hostnames: vec![],
-            rules: vec![InboundHttpRouteRule {
-                matches: vec![HttpRouteMatch {
-                    path: Some(PathMatch::Prefix("/".to_string())),
-                    headers: vec![],
-                    query_params: vec![],
-                    method: None,
-                }],
-                filters: vec![],
-            }],
-            // Default routes do not have authorizations; the default policy's
-            // authzs will be configured by the default `InboundServer`, not by
-            // the route.
-            authorizations: HashMap::new(),
-            creation_timestamp: None,
-        }
-    }
-}
-
 // === impl PathMatch ===
 
 impl PartialEq for PathMatch {
@@ -213,3 +127,124 @@ impl PartialEq for QueryParamMatch {
 }
 
 impl Eq for QueryParamMatch {}
+
+pub mod inbound {
+    pub use super::*;
+
+    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+    pub enum HttpRouteRef {
+        Default(&'static str),
+        Linkerd(String),
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct HttpRoute {
+        pub hostnames: Vec<HostMatch>,
+        pub rules: Vec<HttpRouteRule>,
+        pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
+
+        /// This is required for ordering returned `HttpRoute`s by their creation
+        /// timestamp.
+        pub creation_timestamp: Option<DateTime<Utc>>,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct HttpRouteRule {
+        pub matches: Vec<HttpRouteMatch>,
+        pub filters: Vec<Filter>,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub enum Filter {
+        RequestHeaderModifier(RequestHeaderModifierFilter),
+        RequestRedirect(RequestRedirectFilter),
+        FailureInjector(FailureInjectorFilter),
+    }
+
+    // === impl HttpRoute ===
+
+    /// The default `InboundHttpRoute` used for any `InboundServer` that
+    /// does not have routes.
+    impl Default for HttpRoute {
+        fn default() -> Self {
+            Self {
+                hostnames: vec![],
+                rules: vec![HttpRouteRule {
+                    matches: vec![HttpRouteMatch {
+                        path: Some(PathMatch::Prefix("/".to_string())),
+                        headers: vec![],
+                        query_params: vec![],
+                        method: None,
+                    }],
+                    filters: vec![],
+                }],
+                // Default routes do not have authorizations; the default policy's
+                // authzs will be configured by the default `InboundServer`, not by
+                // the route.
+                authorizations: HashMap::new(),
+                creation_timestamp: None,
+            }
+        }
+    }
+
+    // === impl HttpRouteRef ===
+
+    impl std::cmp::Ord for HttpRouteRef {
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            match (self, other) {
+                (Self::Default(a), Self::Default(b)) => a.cmp(b),
+                (Self::Linkerd(a), Self::Linkerd(b)) => a.cmp(b),
+                // Route resources are always preferred over default resources, so they should sort
+                // first in a list.
+                (Self::Linkerd(_), Self::Default(_)) => std::cmp::Ordering::Less,
+                (Self::Default(_), Self::Linkerd(_)) => std::cmp::Ordering::Greater,
+            }
+        }
+    }
+
+    impl std::cmp::PartialOrd for HttpRouteRef {
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+}
+
+pub mod outbound {
+    pub use super::*;
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct HttpRoute {
+        pub hostnames: Vec<HostMatch>,
+        pub rules: Vec<HttpRouteRule>,
+
+        /// This is required for ordering returned `HttpRoute`s by their creation
+        /// timestamp.
+        pub creation_timestamp: Option<DateTime<Utc>>,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct HttpRouteRule {
+        pub matches: Vec<HttpRouteMatch>,
+        pub backends: Vec<Backend>,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub enum Backend {
+        Addr(WeightedAddr),
+        Dst(WeightedDst),
+        InvalidDst(WeightedDst),
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct WeightedAddr {
+        pub weight: u32,
+        pub addr: IpAddr,
+        pub port: NonZeroU16,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct WeightedDst {
+        pub weight: u32,
+        pub authority: String,
+    }
+}

@@ -1,23 +1,20 @@
-use crate::pod::ports_annotation;
-use crate::{http_route::InboundRouteBinding, pod::PortSet};
+use crate::{
+    http_route::InboundRouteBinding,
+    pod::{ports_annotation, PortSet},
+};
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use k8s_gateway_api::HttpBackendRef;
 use linkerd_policy_controller_core::{
-    http_route::{Backend, OutboundHttpRoute, OutboundHttpRouteRule, WeightedDst},
+    http_route::outbound::{Backend, HttpRoute, HttpRouteRule, WeightedDst},
     OutboundPolicy,
 };
-use linkerd_policy_controller_k8s_api::{
-    policy::{httproute::HttpRouteRule, HttpRoute},
-    ResourceExt, Service, Time,
-};
+use linkerd_policy_controller_k8s_api::{self as k8s, policy as api, ResourceExt};
 use parking_lot::RwLock;
 use std::{net::IpAddr, num::NonZeroU16, sync::Arc};
 use tokio::sync::watch;
 
 use super::http_route::convert;
-
-pub type SharedIndex = Arc<RwLock<Index>>;
 
 #[derive(Debug)]
 pub struct Index {
@@ -25,6 +22,8 @@ pub struct Index {
     services: HashMap<IpAddr, ServiceRef>,
     default_opaque_ports: PortSet,
 }
+
+pub type SharedIndex = Arc<RwLock<Index>>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServiceRef {
@@ -59,13 +58,13 @@ struct ServicePort {
 
 #[derive(Debug)]
 struct ServiceRoutes {
-    routes: HashMap<String, OutboundHttpRoute>,
+    routes: HashMap<String, HttpRoute>,
     watch: watch::Sender<OutboundPolicy>,
     opaque: bool,
 }
 
-impl kubert::index::IndexNamespacedResource<HttpRoute> for Index {
-    fn apply(&mut self, route: HttpRoute) {
+impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
+    fn apply(&mut self, route: api::HttpRoute) {
         tracing::debug!(name = route.name_unchecked(), "indexing route");
         let ns = route.namespace().expect("HttpRoute must have a namespace");
         self.namespaces
@@ -87,8 +86,8 @@ impl kubert::index::IndexNamespacedResource<HttpRoute> for Index {
     }
 }
 
-impl kubert::index::IndexNamespacedResource<Service> for Index {
-    fn apply(&mut self, service: Service) {
+impl kubert::index::IndexNamespacedResource<k8s::Service> for Index {
+    fn apply(&mut self, service: k8s::Service) {
         let name = service.name_unchecked();
         let ns = service.namespace().expect("Service must have a namespace");
         if let Some(cluster_ip) = service
@@ -180,7 +179,7 @@ impl Index {
 }
 
 impl Namespace {
-    fn apply(&mut self, route: HttpRoute) {
+    fn apply(&mut self, route: api::HttpRoute) {
         tracing::debug!(?route);
         let name = route.name_unchecked();
         let outbound_route = match self.convert_route(route.clone()) {
@@ -263,7 +262,7 @@ impl Namespace {
             })
     }
 
-    fn convert_route(&self, route: HttpRoute) -> Result<OutboundHttpRoute> {
+    fn convert_route(&self, route: api::HttpRoute) -> Result<HttpRoute> {
         let hostnames = route
             .spec
             .hostnames
@@ -280,16 +279,16 @@ impl Namespace {
             .map(|r| self.convert_rule(r))
             .collect::<Result<_>>()?;
 
-        let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
+        let creation_timestamp = route.metadata.creation_timestamp.map(|k8s::Time(t)| t);
 
-        Ok(OutboundHttpRoute {
+        Ok(HttpRoute {
             hostnames,
             rules,
             creation_timestamp,
         })
     }
 
-    fn convert_rule(&self, rule: HttpRouteRule) -> Result<OutboundHttpRouteRule> {
+    fn convert_rule(&self, rule: api::httproute::HttpRouteRule) -> Result<HttpRouteRule> {
         let matches = rule
             .matches
             .into_iter()
@@ -303,7 +302,7 @@ impl Namespace {
             .flatten()
             .filter_map(|b| self.convert_backend(b))
             .collect();
-        Ok(OutboundHttpRouteRule { matches, backends })
+        Ok(HttpRouteRule { matches, backends })
     }
 
     fn convert_backend(&self, backend: HttpBackendRef) -> Option<Backend> {
@@ -329,7 +328,7 @@ impl Namespace {
 }
 
 impl ServiceRoutes {
-    fn apply(&mut self, name: String, route: OutboundHttpRoute) {
+    fn apply(&mut self, name: String, route: HttpRoute) {
         self.routes.insert(name, route);
         self.send_if_modified();
     }

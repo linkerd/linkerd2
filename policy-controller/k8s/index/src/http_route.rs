@@ -1,7 +1,7 @@
-use ahash::AHashMap as HashMap;
+use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Error, Result};
 use k8s_gateway_api as api;
-use linkerd_policy_controller_core::http_route;
+use linkerd_policy_controller_core::http_route::{self, inbound};
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
     policy::{httproute as policy, Server},
@@ -11,7 +11,7 @@ use std::num::NonZeroU16;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InboundRouteBinding {
     pub parents: Vec<InboundParentRef>,
-    pub route: http_route::InboundHttpRoute,
+    pub route: inbound::HttpRoute,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -32,6 +32,24 @@ pub enum InvalidParentRef {
 
     #[error("HTTPRoute resource may not reference a parent by section name")]
     SpecifiesSection,
+}
+
+impl kubert::index::IndexNamespacedResource<policy::HttpRoute> for crate::Index {
+    fn apply(&mut self, route: k8s::policy::HttpRoute) {
+        self.apply_route(route)
+    }
+
+    fn delete(&mut self, ns: String, name: String) {
+        self.delete_route(ns, name)
+    }
+
+    fn reset(
+        &mut self,
+        routes: Vec<k8s::policy::HttpRoute>,
+        deleted: HashMap<String, HashSet<String>>,
+    ) {
+        self.reset_route(routes, deleted)
+    }
 }
 
 impl TryFrom<api::HttpRoute> for InboundRouteBinding {
@@ -65,7 +83,7 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
 
         Ok(InboundRouteBinding {
             parents,
-            route: http_route::InboundHttpRoute {
+            route: inbound::HttpRoute {
                 hostnames,
                 rules,
                 authorizations: HashMap::default(),
@@ -104,7 +122,7 @@ impl TryFrom<policy::HttpRoute> for InboundRouteBinding {
 
         Ok(InboundRouteBinding {
             parents,
-            route: http_route::InboundHttpRoute {
+            route: inbound::HttpRoute {
                 hostnames,
                 rules,
                 authorizations: HashMap::default(),
@@ -160,8 +178,8 @@ impl InboundRouteBinding {
     fn try_rule<F>(
         matches: Option<Vec<api::HttpRouteMatch>>,
         filters: Option<Vec<F>>,
-        try_filter: impl Fn(F) -> Result<http_route::InboundFilter>,
-    ) -> Result<http_route::InboundHttpRouteRule> {
+        try_filter: impl Fn(F) -> Result<inbound::Filter>,
+    ) -> Result<inbound::HttpRouteRule> {
         let matches = matches
             .into_iter()
             .flatten()
@@ -174,21 +192,21 @@ impl InboundRouteBinding {
             .map(try_filter)
             .collect::<Result<_>>()?;
 
-        Ok(http_route::InboundHttpRouteRule { matches, filters })
+        Ok(inbound::HttpRouteRule { matches, filters })
     }
 
-    fn try_gateway_filter(filter: api::HttpRouteFilter) -> Result<http_route::InboundFilter> {
+    fn try_gateway_filter(filter: api::HttpRouteFilter) -> Result<inbound::Filter> {
         let filter = match filter {
             api::HttpRouteFilter::RequestHeaderModifier {
                 request_header_modifier,
             } => {
                 let filter = convert::req_header_modifier(request_header_modifier)?;
-                http_route::InboundFilter::RequestHeaderModifier(filter)
+                inbound::Filter::RequestHeaderModifier(filter)
             }
 
             api::HttpRouteFilter::RequestRedirect { request_redirect } => {
                 let filter = convert::req_redirect(request_redirect)?;
-                http_route::InboundFilter::RequestRedirect(filter)
+                inbound::Filter::RequestRedirect(filter)
             }
 
             api::HttpRouteFilter::RequestMirror { .. } => {
@@ -204,18 +222,18 @@ impl InboundRouteBinding {
         Ok(filter)
     }
 
-    fn try_policy_filter(filter: policy::HttpRouteFilter) -> Result<http_route::InboundFilter> {
+    fn try_policy_filter(filter: policy::HttpRouteFilter) -> Result<inbound::Filter> {
         let filter = match filter {
             policy::HttpRouteFilter::RequestHeaderModifier {
                 request_header_modifier,
             } => {
                 let filter = convert::req_header_modifier(request_header_modifier)?;
-                http_route::InboundFilter::RequestHeaderModifier(filter)
+                inbound::Filter::RequestHeaderModifier(filter)
             }
 
             policy::HttpRouteFilter::RequestRedirect { request_redirect } => {
                 let filter = convert::req_redirect(request_redirect)?;
-                http_route::InboundFilter::RequestRedirect(filter)
+                inbound::Filter::RequestRedirect(filter)
             }
         };
         Ok(filter)
