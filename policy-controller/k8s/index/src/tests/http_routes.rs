@@ -247,7 +247,29 @@ fn mk_route(
                 backend_refs: None,
             }]),
         },
-        status: None,
+        status: Some(k8s::policy::httproute::HttpRouteStatus {
+            inner: k8s::gateway::RouteStatus {
+                parents: vec![k8s::gateway::RouteParentStatus {
+                    parent_ref: k8s::gateway::ParentReference {
+                        group: Some(POLICY_API_GROUP.to_string()),
+                        kind: Some("Server".to_string()),
+                        namespace: None,
+                        name: server.to_string(),
+                        section_name: None,
+                        port: None,
+                    },
+                    controller_name: "policy.linkerd.io/status-controller".to_string(),
+                    conditions: vec![k8s::Condition {
+                        last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
+                        message: "".to_string(),
+                        observed_generation: None,
+                        reason: "Accepted".to_string(),
+                        status: "True".to_string(),
+                        type_: "Accepted".to_string(),
+                    }],
+                }],
+            },
+        }),
     }
 }
 fn mk_authorization_policy(

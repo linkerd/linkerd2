@@ -3,20 +3,40 @@ use anyhow::{anyhow, bail, Error, Result};
 use k8s_gateway_api as api;
 use linkerd_policy_controller_core::http_route;
 use linkerd_policy_controller_k8s_api::{
-    self as k8s,
+    self as k8s, gateway,
     policy::{httproute as policy, Server},
 };
-use std::num::NonZeroU16;
+use std::{fmt, num::NonZeroU16};
+
+const STATUS_CONTROLLER_NAME: &str = "policy.linkerd.io/status-controller";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InboundRouteBinding {
     pub parents: Vec<InboundParentRef>,
     pub route: http_route::InboundHttpRoute,
+    pub statuses: Vec<Status>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InboundParentRef {
     Server(String),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Status {
+    pub parent: InboundParentRef,
+    pub conditions: Vec<Condition>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Condition {
+    pub type_: ConditionType,
+    pub status: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ConditionType {
+    Accepted,
 }
 
 #[derive(Clone, Debug, thiserror::Error)]
@@ -63,6 +83,10 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
             )
             .collect::<Result<_>>()?;
 
+        let statuses = route
+            .status
+            .map_or_else(Vec::new, |status| Status::collect_from(status.inner));
+
         Ok(InboundRouteBinding {
             parents,
             route: http_route::InboundHttpRoute {
@@ -71,6 +95,7 @@ impl TryFrom<api::HttpRoute> for InboundRouteBinding {
                 authorizations: HashMap::default(),
                 creation_timestamp,
             },
+            statuses,
         })
     }
 }
@@ -102,6 +127,10 @@ impl TryFrom<policy::HttpRoute> for InboundRouteBinding {
             )
             .collect::<Result<_>>()?;
 
+        let statuses = route
+            .status
+            .map_or_else(Vec::new, |status| Status::collect_from(status.inner));
+
         Ok(InboundRouteBinding {
             parents,
             route: http_route::InboundHttpRoute {
@@ -110,6 +139,7 @@ impl TryFrom<policy::HttpRoute> for InboundRouteBinding {
                 authorizations: HashMap::default(),
                 creation_timestamp,
             },
+            statuses,
         })
     }
 }
@@ -120,6 +150,17 @@ impl InboundRouteBinding {
         self.parents
             .iter()
             .any(|p| matches!(p, InboundParentRef::Server(n) if n == name))
+    }
+
+    #[inline]
+    pub fn accepted_by_server(&self, name: &str) -> bool {
+        self.statuses.iter().any(|status| {
+            status.parent == InboundParentRef::Server(name.to_string())
+                && status
+                    .conditions
+                    .iter()
+                    .any(|condition| condition.type_ == ConditionType::Accepted && condition.status)
+        })
     }
 
     pub fn try_match(
@@ -270,6 +311,62 @@ impl InboundParentRef {
         }
 
         Some(Ok(InboundParentRef::Server(name)))
+    }
+}
+
+impl Status {
+    pub fn collect_from(status: gateway::RouteStatus) -> Vec<Self> {
+        status
+            .parents
+            .iter()
+            .filter(|status| status.controller_name == STATUS_CONTROLLER_NAME)
+            .filter_map(Self::from_parent_status)
+            .collect::<Vec<_>>()
+    }
+
+    fn from_parent_status(status: &gateway::RouteParentStatus) -> Option<Self> {
+        // Only match parent statuses that belong to resources of
+        // `kind: Server`.
+        match status.parent_ref.kind.as_deref() {
+            Some("Server") => (),
+            _ => return None,
+        }
+
+        let conditions = status
+            .conditions
+            .iter()
+            .filter_map(|condition| {
+                let type_ = match condition.type_.as_ref() {
+                    "Accepted" => ConditionType::Accepted,
+                    condition_type => {
+                        tracing::error!(%status.parent_ref.name, %condition_type, "Unexpected condition type found in parent status");
+                        return None;
+                    }
+                };
+                let status = match condition.status.as_ref() {
+                    "True" => true,
+                    "False" => false,
+                    condition_status => {
+                        tracing::error!(%status.parent_ref.name, %type_, %condition_status, "Unexpected condition status found in parent status");
+                        return None
+                    },
+                };
+                Some(Condition { type_, status })
+            })
+            .collect();
+
+        Some(Status {
+            parent: InboundParentRef::Server(status.parent_ref.name.to_string()),
+            conditions,
+        })
+    }
+}
+
+impl fmt::Display for ConditionType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Accepted => write!(f, "Accepted"),
+        }
     }
 }
 
