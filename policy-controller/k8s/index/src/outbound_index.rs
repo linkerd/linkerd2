@@ -165,10 +165,7 @@ impl Index {
                 cluster_domain: self.namespaces.cluster_domain.clone(),
                 services: Default::default(),
             });
-        let key = ServicePort {
-            service,
-            port,
-        };
+        let key = ServicePort { service, port };
         tracing::debug!(?key, "subscribing to service port");
         let routes = ns.service_routes_or_default(key);
         Ok(routes.watch.subscribe())

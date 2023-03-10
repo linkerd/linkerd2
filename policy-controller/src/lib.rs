@@ -71,11 +71,7 @@ impl DiscoverOutboundPolicy<(String, String, NonZeroU16)> for OutboundDiscover {
         &self,
         (namespace, service, port): (String, String, NonZeroU16),
     ) -> Result<Option<OutboundPolicy>> {
-        let rx = match self
-            .0
-            .write()
-            .outbound_policy_rx(namespace, service, port)
-        {
+        let rx = match self.0.write().outbound_policy_rx(namespace, service, port) {
             Ok(rx) => rx,
             Err(error) => {
                 tracing::error!(%error, "failed to get outbound policy rx");
@@ -90,11 +86,7 @@ impl DiscoverOutboundPolicy<(String, String, NonZeroU16)> for OutboundDiscover {
         &self,
         (namespace, service, port): (String, String, NonZeroU16),
     ) -> Result<Option<OutboundPolicyStream>> {
-        match self
-            .0
-            .write()
-            .outbound_policy_rx(namespace, service, port)
-        {
+        match self.0.write().outbound_policy_rx(namespace, service, port) {
             Ok(rx) => Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx)))),
             Err(_) => Ok(None),
         }
