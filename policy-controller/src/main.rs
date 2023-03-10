@@ -22,6 +22,7 @@ static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 const DETECT_TIMEOUT: Duration = Duration::from_secs(10);
 const LEASE_DURATION: Duration = Duration::from_secs(30);
+const LEASE_NAME: &str = "policy-controller-write";
 const RENEW_GRACE_PERIOD: Duration = Duration::from_secs(1);
 
 #[derive(Debug, Parser)]
@@ -185,7 +186,7 @@ async fn main() -> Result<()> {
     // Create the lease manager used for trying to claim the status-controller lease.
     let api = k8s::Api::namespaced(runtime.client(), &control_plane_namespace);
     // todo: Do we need to use LeaseManager::field_manager here?
-    let lease = kubert::lease::LeaseManager::init(api, status::STATUS_CONTROLLER_NAME).await?;
+    let lease = kubert::lease::LeaseManager::init(api, LEASE_NAME).await?;
     let hostname =
         std::env::var("HOSTNAME").expect("Failed to fetch `HOSTNAME` environment variable");
     let params = kubert::lease::ClaimParams {
