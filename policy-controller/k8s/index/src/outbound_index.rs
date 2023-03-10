@@ -12,7 +12,7 @@ use linkerd_policy_controller_k8s_api::{
     ResourceExt, Service, Time,
 };
 use parking_lot::RwLock;
-use std::{fmt, net::IpAddr, num::NonZeroU16, sync::Arc};
+use std::{net::IpAddr, num::NonZeroU16, sync::Arc};
 use tokio::sync::watch;
 
 use super::http_route::convert;
