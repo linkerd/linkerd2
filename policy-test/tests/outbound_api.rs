@@ -119,7 +119,7 @@ async fn service_with_http_routes_without_backends() {
         // There should be a route with the logical backend.
         detect_http_routes(&config, |routes| {
             let route = assert_singleton(routes);
-            let backends = route_backends_random_available(route);
+            let backends = route_backends_first_available(route);
             let backend = assert_singleton(backends);
             assert_backend_matches_service(backend, &svc, 4191);
         });
@@ -453,6 +453,23 @@ where
 }
 
 #[track_caller]
+fn route_backends_first_available(
+    route: &grpc::outbound::HttpRoute,
+) -> &[grpc::outbound::http_route::RouteBackend] {
+    let kind = assert_singleton(&route.rules)
+        .backends
+        .as_ref()
+        .expect("Rule must have backends")
+        .kind
+        .as_ref()
+        .expect("Backend must have kind");
+    match kind {
+        grpc::outbound::http_route::distribution::Kind::FirstAvailable(fa) => &fa.backends,
+        _ => panic!("Distribution must be FirstAvailable"),
+    }
+}
+
+#[track_caller]
 fn route_backends_random_available(
     route: &grpc::outbound::HttpRoute,
 ) -> &[grpc::outbound::http_route::WeightedRouteBackend] {
@@ -494,7 +511,7 @@ fn assert_backend_has_failure_filter(backend: &grpc::outbound::http_route::Weigh
 
 #[track_caller]
 fn assert_route_is_default(route: &grpc::outbound::HttpRoute, svc: &k8s::Service, port: u16) {
-    let backends = route_backends_random_available(route);
+    let backends = route_backends_first_available(route);
     let backend = assert_singleton(backends);
     assert_backend_matches_service(backend, svc, port);
 
@@ -509,20 +526,11 @@ fn assert_route_is_default(route: &grpc::outbound::HttpRoute, svc: &k8s::Service
 
 #[track_caller]
 fn assert_backend_matches_service(
-    backend: &grpc::outbound::http_route::WeightedRouteBackend,
+    backend: &grpc::outbound::http_route::RouteBackend,
     svc: &k8s::Service,
     port: u16,
 ) {
-    let kind = backend
-        .backend
-        .as_ref()
-        .unwrap()
-        .backend
-        .as_ref()
-        .unwrap()
-        .kind
-        .as_ref()
-        .unwrap();
+    let kind = backend.backend.as_ref().unwrap().kind.as_ref().unwrap();
     let dst = match kind {
         grpc::outbound::backend::Kind::Balancer(balance) => {
             let kind = balance.discovery.as_ref().unwrap().kind.as_ref().unwrap();
