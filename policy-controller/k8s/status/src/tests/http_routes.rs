@@ -13,7 +13,7 @@ use tokio::sync::{mpsc, watch};
 fn http_route_accepted_after_server_create() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
-        holder: "holder".to_string(),
+        holder: "test".to_string(),
         expiry: chrono::DateTime::<chrono::Utc>::MAX_UTC,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
@@ -66,7 +66,7 @@ fn http_route_accepted_after_server_create() {
 fn http_route_rejected_after_server_delete() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
-        holder: "holder".to_string(),
+        holder: "test".to_string(),
         expiry: chrono::DateTime::<chrono::Utc>::MAX_UTC,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
