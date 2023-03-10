@@ -6,6 +6,7 @@ use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 #[cfg(not(test))]
 use chrono::offset::Utc;
 use kubert::lease::Claim;
+use linkerd_policy_controller_core::POLICY_CONTROLLER_NAME;
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
 use parking_lot::RwLock;
 use std::{collections::hash_map::Entry, sync::Arc};
@@ -19,7 +20,6 @@ use tokio::{
 
 pub(crate) const POLICY_API_GROUP: &str = "policy.linkerd.io";
 const POLICY_API_VERSION: &str = "policy.linkerd.io/v1alpha1";
-pub const STATUS_CONTROLLER_NAME: &str = "status-controller";
 
 pub type SharedIndex = Arc<RwLock<Index>>;
 
@@ -217,7 +217,7 @@ impl Index {
                         section_name: None,
                         port: None,
                     },
-                    controller_name: format!("{}/{}", POLICY_API_GROUP, STATUS_CONTROLLER_NAME),
+                    controller_name: POLICY_CONTROLLER_NAME.to_string(),
                     conditions: vec![condition],
                 }
             })
