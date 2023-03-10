@@ -1,14 +1,12 @@
 use ahash::AHashMap as HashMap;
 use anyhow::{anyhow, bail, Error, Result};
 use k8s_gateway_api as api;
-use linkerd_policy_controller_core::http_route;
+use linkerd_policy_controller_core::{http_route, POLICY_CONTROLLER_NAME};
 use linkerd_policy_controller_k8s_api::{
     self as k8s, gateway,
     policy::{httproute as policy, Server},
 };
 use std::{fmt, num::NonZeroU16};
-
-const STATUS_CONTROLLER_NAME: &str = "policy.linkerd.io/status-controller";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InboundRouteBinding {
@@ -319,7 +317,7 @@ impl Status {
         status
             .parents
             .iter()
-            .filter(|status| status.controller_name == STATUS_CONTROLLER_NAME)
+            .filter(|status| status.controller_name == POLICY_CONTROLLER_NAME)
             .filter_map(Self::from_parent_status)
             .collect::<Vec<_>>()
     }

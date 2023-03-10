@@ -1,7 +1,7 @@
 use super::*;
 use linkerd_policy_controller_core::{
     http_route::{HttpRouteMatch, Method, PathMatch},
-    InboundHttpRouteRef,
+    InboundHttpRouteRef, POLICY_CONTROLLER_NAME,
 };
 
 const POLICY_API_GROUP: &str = "policy.linkerd.io";
@@ -258,7 +258,7 @@ fn mk_route(
                         section_name: None,
                         port: None,
                     },
-                    controller_name: "policy.linkerd.io/status-controller".to_string(),
+                    controller_name: POLICY_CONTROLLER_NAME.to_string(),
                     conditions: vec![k8s::Condition {
                         last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
                         message: "".to_string(),
