@@ -107,7 +107,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                     self.services.insert(addr, service_ref);
                 }
                 Err(error) => {
-                    tracing::error!(%error, service=name, "invalid cluster ip");
+                    tracing::error!(%error, service=name, cluster_ip, "invalid cluster ip");
                 }
             }
         }
@@ -150,23 +150,20 @@ impl Index {
 
     pub fn outbound_policy_rx(
         &mut self,
-        namespace: &str,
-        service: &str,
+        namespace: String,
+        service: String,
         port: NonZeroU16,
     ) -> Result<watch::Receiver<OutboundPolicy>> {
         let ns = self
             .namespaces
             .by_ns
-            .entry(namespace.to_string())
+            .entry(namespace.clone())
             .or_insert_with(|| Namespace {
                 service_routes: Default::default(),
                 namespace: Arc::new(namespace.to_string()),
                 services: Default::default(),
             });
-        let key = ServicePort {
-            service: service.to_string(),
-            port,
-        };
+        let key = ServicePort { service, port };
         tracing::debug!(?key, "subscribing to service port");
         let routes = ns.service_routes_or_default(key, &self.namespaces.cluster_info);
         Ok(routes.watch.subscribe())
@@ -244,33 +241,27 @@ impl Namespace {
 
     fn service_routes_or_default(
         &mut self,
-        service_port: ServicePort,
+        sp: ServicePort,
         cluster: &ClusterInfo,
     ) -> &mut ServiceRoutes {
-        let authority = cluster.service_dns_authority(
-            &self.namespace,
-            &service_port.service,
-            service_port.port,
-        );
-        self.service_routes
-            .entry(service_port.clone())
-            .or_insert_with(|| {
-                let opaque = match self.services.get(&service_port.service) {
-                    Some(svc) => svc.opaque_ports.contains(&service_port.port),
-                    None => false,
-                };
-                let (sender, _) = watch::channel(OutboundPolicy {
-                    http_routes: Default::default(),
-                    authority,
-                    namespace: self.namespace.to_string(),
-                    opaque,
-                });
-                ServiceRoutes {
-                    routes: Default::default(),
-                    watch: sender,
-                    opaque,
-                }
-            })
+        self.service_routes.entry(sp.clone()).or_insert_with(|| {
+            let authority = cluster.service_dns_authority(&self.namespace, &sp.service, sp.port);
+            let opaque = match self.services.get(&sp.service) {
+                Some(svc) => svc.opaque_ports.contains(&sp.port),
+                None => false,
+            };
+            let (sender, _) = watch::channel(OutboundPolicy {
+                http_routes: Default::default(),
+                authority,
+                namespace: self.namespace.to_string(),
+                opaque,
+            });
+            ServiceRoutes {
+                routes: Default::default(),
+                watch: sender,
+                opaque,
+            }
+        })
     }
 
     fn convert_route(&self, route: HttpRoute, cluster: &ClusterInfo) -> Result<OutboundHttpRoute> {

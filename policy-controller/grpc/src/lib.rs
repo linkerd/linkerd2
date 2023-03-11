@@ -3,19 +3,14 @@
 
 mod http_route;
 
-use api::{
-    destination,
-    net::{ip_address::Ip, IPv6, IpAddress},
-};
 use futures::prelude::*;
 use linkerd2_proxy_api::{
-    self as api,
+    self as api, destination,
     inbound::{
         self as proto,
         inbound_server_policies_server::{InboundServerPolicies, InboundServerPoliciesServer},
     },
     meta::{metadata, Metadata},
-    net::TcpAddress,
     outbound::{
         self,
         outbound_policies_server::{OutboundPolicies, OutboundPoliciesServer},
@@ -31,7 +26,7 @@ use linkerd_policy_controller_core::{
     ServerRef,
 };
 use maplit::*;
-use std::{net::IpAddr, num::NonZeroU16, sync::Arc, time};
+use std::{net::SocketAddr, num::NonZeroU16, sync::Arc, time};
 use tracing::trace;
 
 #[derive(Clone, Debug)]
@@ -157,8 +152,20 @@ where
 
     fn service_lookup(
         &self,
-        target: TcpAddress,
+        traffic_spec: outbound::TrafficSpec,
     ) -> Result<(String, String, NonZeroU16), tonic::Status> {
+        let target = traffic_spec
+            .target
+            .ok_or_else(|| tonic::Status::invalid_argument("target is required"))?;
+        let target = match target {
+            outbound::traffic_spec::Target::Addr(target) => target,
+            outbound::traffic_spec::Target::Authority(_) => {
+                return Err(tonic::Status::unimplemented(
+                    "getting policy by authority is not supported",
+                ))
+            }
+        };
+
         let port = target
             .port
             .try_into()
@@ -189,20 +196,7 @@ where
         &self,
         req: tonic::Request<outbound::TrafficSpec>,
     ) -> Result<tonic::Response<outbound::OutboundPolicy>, tonic::Status> {
-        let traffic_spec = req.into_inner();
-
-        let target = traffic_spec
-            .target
-            .ok_or_else(|| tonic::Status::invalid_argument("target is required"))?;
-        let target = match target {
-            outbound::traffic_spec::Target::Addr(target) => target,
-            outbound::traffic_spec::Target::Authority(_) => {
-                return Err(tonic::Status::unimplemented(
-                    "getting policy by authority is not supported",
-                ))
-            }
-        };
-        let service = self.service_lookup(target)?;
+        let service = self.service_lookup(req.into_inner())?;
 
         let policy = self
             .index
@@ -225,20 +219,7 @@ where
         &self,
         req: tonic::Request<outbound::TrafficSpec>,
     ) -> Result<tonic::Response<BoxWatchServiceStream>, tonic::Status> {
-        let traffic_spec = req.into_inner();
-
-        let target = traffic_spec
-            .target
-            .ok_or_else(|| tonic::Status::invalid_argument("target is required"))?;
-        let target = match target {
-            outbound::traffic_spec::Target::Addr(target) => target,
-            outbound::traffic_spec::Target::Authority(_) => {
-                return Err(tonic::Status::unimplemented(
-                    "getting policy by authority is not supported",
-                ))
-            }
-        };
-        let service = self.service_lookup(target)?;
+        let service = self.service_lookup(req.into_inner())?;
         let drain = self.drain.clone();
 
         let rx = self
@@ -676,7 +657,7 @@ fn convert_outbound_http_route(
         rules,
         creation_timestamp: _,
     }: OutboundHttpRoute,
-    default_backend: outbound::http_route::WeightedRouteBackend,
+    default_backend: outbound::http_route::RouteBackend,
 ) -> outbound::HttpRoute {
     let metadata = Some(Metadata {
         kind: Some(metadata::Kind::Resource(api::meta::Resource {
@@ -696,20 +677,24 @@ fn convert_outbound_http_route(
     let rules = rules
         .into_iter()
         .map(|OutboundHttpRouteRule { matches, backends }| {
-            let mut backends = backends
+            let backends = backends
                 .into_iter()
                 .map(convert_http_backend)
                 .collect::<Vec<_>>();
-            if backends.is_empty() {
-                backends = vec![default_backend.clone()];
-            }
+            let dist = if backends.is_empty() {
+                outbound::http_route::distribution::Kind::FirstAvailable(
+                    outbound::http_route::distribution::FirstAvailable {
+                        backends: vec![default_backend.clone()],
+                    },
+                )
+            } else {
+                outbound::http_route::distribution::Kind::RandomAvailable(
+                    outbound::http_route::distribution::RandomAvailable { backends },
+                )
+            };
             outbound::http_route::Rule {
                 matches: matches.into_iter().map(http_route::convert_match).collect(),
-                backends: Some(outbound::http_route::Distribution {
-                    kind: Some(outbound::http_route::distribution::Kind::RandomAvailable(
-                        outbound::http_route::distribution::RandomAvailable { backends },
-                    )),
-                }),
+                backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
                 filters: Default::default(),
             }
         })
@@ -724,23 +709,26 @@ fn convert_outbound_http_route(
 
 fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRouteBackend {
     match backend {
-        Backend::Addr(addr) => outbound::http_route::WeightedRouteBackend {
-            weight: addr.weight,
-            backend: Some(outbound::http_route::RouteBackend {
-                backend: Some(outbound::Backend {
-                    metadata: None,
-                    queue: Some(default_queue_config()),
-                    kind: Some(outbound::backend::Kind::Forward(
-                        destination::WeightedAddr {
-                            addr: Some(convert_tcp_address(addr.addr, addr.port)),
-                            weight: addr.weight,
-                            ..Default::default()
-                        },
-                    )),
+        Backend::Addr(addr) => {
+            let socket_addr = SocketAddr::new(addr.addr, addr.port.get());
+            outbound::http_route::WeightedRouteBackend {
+                weight: addr.weight,
+                backend: Some(outbound::http_route::RouteBackend {
+                    backend: Some(outbound::Backend {
+                        metadata: None,
+                        queue: Some(default_queue_config()),
+                        kind: Some(outbound::backend::Kind::Forward(
+                            destination::WeightedAddr {
+                                addr: Some(socket_addr.into()),
+                                weight: addr.weight,
+                                ..Default::default()
+                            },
+                        )),
+                    }),
+                    filters: Default::default(),
                 }),
-                filters: Default::default(),
-            }),
-        },
+            }
+        }
         Backend::Dst(dst) => outbound::http_route::WeightedRouteBackend {
             weight: dst.weight,
             backend: Some(outbound::http_route::RouteBackend {
@@ -781,36 +769,31 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
     }
 }
 
-fn default_http_backend(outbound: &OutboundPolicy) -> outbound::http_route::WeightedRouteBackend {
-    outbound::http_route::WeightedRouteBackend {
-        weight: 1,
-        backend: Some(outbound::http_route::RouteBackend {
-            backend: Some(outbound::Backend {
-                metadata: Some(Metadata {
-                    kind: Some(metadata::Kind::Default("default".to_string())),
-                }),
-                queue: Some(default_queue_config()),
-                kind: Some(outbound::backend::Kind::Balancer(
-                    outbound::backend::BalanceP2c {
-                        discovery: Some(outbound::backend::EndpointDiscovery {
-                            kind: Some(outbound::backend::endpoint_discovery::Kind::Dst(
-                                outbound::backend::endpoint_discovery::DestinationGet {
-                                    path: outbound.authority.clone(),
-                                },
-                            )),
-                        }),
-                        load: Some(default_balancer_config()),
-                    },
-                )),
+fn default_http_backend(outbound: &OutboundPolicy) -> outbound::http_route::RouteBackend {
+    outbound::http_route::RouteBackend {
+        backend: Some(outbound::Backend {
+            metadata: Some(Metadata {
+                kind: Some(metadata::Kind::Default("default".to_string())),
             }),
-            filters: Default::default(),
+            queue: Some(default_queue_config()),
+            kind: Some(outbound::backend::Kind::Balancer(
+                outbound::backend::BalanceP2c {
+                    discovery: Some(outbound::backend::EndpointDiscovery {
+                        kind: Some(outbound::backend::endpoint_discovery::Kind::Dst(
+                            outbound::backend::endpoint_discovery::DestinationGet {
+                                path: outbound.authority.clone(),
+                            },
+                        )),
+                    }),
+                    load: Some(default_balancer_config()),
+                },
+            )),
         }),
+        filters: Default::default(),
     }
 }
 
-fn default_outbound_http_route(
-    backend: outbound::http_route::WeightedRouteBackend,
-) -> outbound::HttpRoute {
+fn default_outbound_http_route(backend: outbound::http_route::RouteBackend) -> outbound::HttpRoute {
     let metadata = Some(Metadata {
         kind: Some(metadata::Kind::Default("default".to_string())),
     });
@@ -823,8 +806,8 @@ fn default_outbound_http_route(
             ..Default::default()
         }],
         backends: Some(outbound::http_route::Distribution {
-            kind: Some(outbound::http_route::distribution::Kind::RandomAvailable(
-                outbound::http_route::distribution::RandomAvailable {
+            kind: Some(outbound::http_route::distribution::Kind::FirstAvailable(
+                outbound::http_route::distribution::FirstAvailable {
                     backends: vec![backend],
                 },
             )),
@@ -861,42 +844,5 @@ fn default_queue_config() -> outbound::Queue {
                 .try_into()
                 .expect("failed to convert failfast_timeout to protobuf"),
         ),
-    }
-}
-
-// TODO(ver) this conversion should be made in the api crate.
-fn convert_tcp_address(ip_addr: IpAddr, port: NonZeroU16) -> TcpAddress {
-    let ip = match ip_addr {
-        IpAddr::V4(ipv4) => Ip::Ipv4(ipv4.into()),
-        IpAddr::V6(ipv6) => {
-            let first = [
-                ipv6.octets()[0],
-                ipv6.octets()[1],
-                ipv6.octets()[2],
-                ipv6.octets()[3],
-                ipv6.octets()[4],
-                ipv6.octets()[5],
-                ipv6.octets()[6],
-                ipv6.octets()[7],
-            ];
-            let last = [
-                ipv6.octets()[8],
-                ipv6.octets()[9],
-                ipv6.octets()[10],
-                ipv6.octets()[11],
-                ipv6.octets()[12],
-                ipv6.octets()[13],
-                ipv6.octets()[14],
-                ipv6.octets()[15],
-            ];
-            Ip::Ipv6(IPv6 {
-                first: u64::from_be_bytes(first),
-                last: u64::from_be_bytes(last),
-            })
-        }
-    };
-    TcpAddress {
-        ip: Some(IpAddress { ip: Some(ip) }),
-        port: port.get().into(),
     }
 }
