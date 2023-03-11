@@ -7,7 +7,7 @@ use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
 use linkerd_policy_controller_core::{
-    http_route::{Backend, OutboundHttpRoute, OutboundHttpRouteRule, WeightedDst},
+    http_route::{Backend, OutboundHttpRoute, OutboundHttpRouteRule, WeightedService},
     OutboundPolicy,
 };
 use linkerd_policy_controller_k8s_api::{
@@ -357,9 +357,11 @@ fn convert_backend(
             };
         }
 
-        Backend::Dst(WeightedDst {
+        Backend::Service(WeightedService {
             weight: weight.into(),
             authority: cluster.service_dns_authority(ns, &name, port),
+            name,
+            namespace: ns.to_string(),
         })
     })
 }
