@@ -1,10 +1,6 @@
-use crate::{
-    index,
-    index::{POLICY_API_GROUP, STATUS_CONTROLLER_NAME},
-    resource_id::ResourceId,
-    Index,
-};
+use crate::{index, index::POLICY_API_GROUP, resource_id::ResourceId, Index};
 use kubert::index::IndexNamespacedResource;
+use linkerd_policy_controller_core::POLICY_CONTROLLER_NAME;
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy::server::Port};
 use std::sync::Arc;
 use tokio::sync::{mpsc, watch};
@@ -221,7 +217,7 @@ fn make_parent_status(
             section_name: None,
             port: None,
         },
-        controller_name: format!("{}/{}", POLICY_API_GROUP, STATUS_CONTROLLER_NAME),
+        controller_name: POLICY_CONTROLLER_NAME.to_string(),
         conditions: vec![condition],
     }
 }

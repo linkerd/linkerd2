@@ -5,4 +5,4 @@ mod resource_id;
 #[cfg(test)]
 mod tests;
 
-pub use self::index::{Controller, Index, STATUS_CONTROLLER_NAME};
+pub use self::index::{Controller, Index};
