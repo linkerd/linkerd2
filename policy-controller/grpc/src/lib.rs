@@ -759,7 +759,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                 filters: Default::default(),
             }),
         },
-        Backend::InvalidDst { weight, message } => outbound::http_route::WeightedRouteBackend {
+        Backend::Invalid { weight, message } => outbound::http_route::WeightedRouteBackend {
             weight,
             backend: Some(outbound::http_route::RouteBackend {
                 backend: None,

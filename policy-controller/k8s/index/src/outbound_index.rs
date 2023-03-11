@@ -320,7 +320,7 @@ fn convert_backend(
 ) -> Option<Backend> {
     backend.backend_ref.map(|backend| {
         if !is_backend_service(&backend.inner) {
-            return Backend::InvalidDst {
+            return Backend::Invalid {
                 weight: backend.weight.unwrap_or(1).into(),
                 message: format!(
                     "unsupported backend type {group} {kind}",
@@ -343,7 +343,7 @@ fn convert_backend(
         {
             Some(port) => port,
             None => {
-                return Backend::InvalidDst {
+                return Backend::Invalid {
                     weight: weight.into(),
                     message: format!("missing port for backend Service {name}"),
                 }
@@ -351,7 +351,7 @@ fn convert_backend(
         };
 
         if !services.contains_key(&name) {
-            return Backend::InvalidDst {
+            return Backend::Invalid {
                 weight: weight.into(),
                 message: format!("Service not found {name}"),
             };
