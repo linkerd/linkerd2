@@ -27,7 +27,7 @@ type profileTranslator struct {
 func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32) *profileTranslator {
 	return &profileTranslator{
 		stream:             stream,
-		log:                log.WithField("component", "profile-translator").WithField("name", fqn),
+		log:                log.WithField("component", "profile-translator"),
 		fullyQualifiedName: fqn,
 		port:               port,
 	}
