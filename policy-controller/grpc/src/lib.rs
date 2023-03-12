@@ -587,12 +587,12 @@ fn convert_filter(filter: InboundFilter) -> proto::http_route::Filter {
 }
 
 fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
-    let backend = default_http_backend(&outbound);
+    let backend = default_backend(&outbound);
 
     let kind = if outbound.opaque {
         linkerd2_proxy_api::outbound::proxy_protocol::Kind::Opaque(
             outbound::proxy_protocol::Opaque {
-                routes: Default::default(),
+                routes: vec![default_outbound_opaq_route(backend)],
             },
         )
     } else {
@@ -621,7 +621,7 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
             .collect();
 
         if http_routes.is_empty() {
-            http_routes = vec![default_outbound_http_route(backend)];
+            http_routes = vec![default_outbound_http_route(backend.clone())];
         }
 
         linkerd2_proxy_api::outbound::proxy_protocol::Kind::Detect(
@@ -632,7 +632,7 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
                         .expect("failed to convert detect timeout to protobuf"),
                 ),
                 opaque: Some(outbound::proxy_protocol::Opaque {
-                    routes: Default::default(),
+                    routes: vec![default_outbound_opaq_route(backend)],
                 }),
                 http1: Some(outbound::proxy_protocol::Http1 {
                     routes: http_routes.clone(),
@@ -657,7 +657,7 @@ fn convert_outbound_http_route(
         rules,
         creation_timestamp: _,
     }: OutboundHttpRoute,
-    default_backend: outbound::http_route::RouteBackend,
+    backend: outbound::Backend,
 ) -> outbound::HttpRoute {
     let metadata = Some(Metadata {
         kind: Some(metadata::Kind::Resource(api::meta::Resource {
@@ -684,7 +684,10 @@ fn convert_outbound_http_route(
             let dist = if backends.is_empty() {
                 outbound::http_route::distribution::Kind::FirstAvailable(
                     outbound::http_route::distribution::FirstAvailable {
-                        backends: vec![default_backend.clone()],
+                        backends: vec![outbound::http_route::RouteBackend {
+                            backend: Some(backend.clone()),
+                            filters: vec![],
+                        }],
                     },
                 )
             } else {
@@ -769,35 +772,31 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
     }
 }
 
-fn default_http_backend(outbound: &OutboundPolicy) -> outbound::http_route::RouteBackend {
-    outbound::http_route::RouteBackend {
-        backend: Some(outbound::Backend {
-            metadata: Some(Metadata {
-                kind: Some(metadata::Kind::Default("default".to_string())),
-            }),
-            queue: Some(default_queue_config()),
-            kind: Some(outbound::backend::Kind::Balancer(
-                outbound::backend::BalanceP2c {
-                    discovery: Some(outbound::backend::EndpointDiscovery {
-                        kind: Some(outbound::backend::endpoint_discovery::Kind::Dst(
-                            outbound::backend::endpoint_discovery::DestinationGet {
-                                path: outbound.authority.clone(),
-                            },
-                        )),
-                    }),
-                    load: Some(default_balancer_config()),
-                },
-            )),
+fn default_backend(outbound: &OutboundPolicy) -> outbound::Backend {
+    outbound::Backend {
+        metadata: Some(Metadata {
+            kind: Some(metadata::Kind::Default("service".to_string())),
         }),
-        filters: Default::default(),
+        queue: Some(default_queue_config()),
+        kind: Some(outbound::backend::Kind::Balancer(
+            outbound::backend::BalanceP2c {
+                discovery: Some(outbound::backend::EndpointDiscovery {
+                    kind: Some(outbound::backend::endpoint_discovery::Kind::Dst(
+                        outbound::backend::endpoint_discovery::DestinationGet {
+                            path: outbound.authority.clone(),
+                        },
+                    )),
+                }),
+                load: Some(default_balancer_config()),
+            },
+        )),
     }
 }
 
-fn default_outbound_http_route(backend: outbound::http_route::RouteBackend) -> outbound::HttpRoute {
+fn default_outbound_http_route(backend: outbound::Backend) -> outbound::HttpRoute {
     let metadata = Some(Metadata {
-        kind: Some(metadata::Kind::Default("default".to_string())),
+        kind: Some(metadata::Kind::Default("http".to_string())),
     });
-
     let rules = vec![outbound::http_route::Rule {
         matches: vec![api::http_route::HttpRouteMatch {
             path: Some(api::http_route::PathMatch {
@@ -808,7 +807,10 @@ fn default_outbound_http_route(backend: outbound::http_route::RouteBackend) -> o
         backends: Some(outbound::http_route::Distribution {
             kind: Some(outbound::http_route::distribution::Kind::FirstAvailable(
                 outbound::http_route::distribution::FirstAvailable {
-                    backends: vec![backend],
+                    backends: vec![outbound::http_route::RouteBackend {
+                        backend: Some(backend),
+                        filters: vec![],
+                    }],
                 },
             )),
         }),
@@ -819,6 +821,24 @@ fn default_outbound_http_route(backend: outbound::http_route::RouteBackend) -> o
         rules,
         ..Default::default()
     }
+}
+
+fn default_outbound_opaq_route(backend: outbound::Backend) -> outbound::OpaqueRoute {
+    let metadata = Some(Metadata {
+        kind: Some(metadata::Kind::Default("opaq".to_string())),
+    });
+    let rules = vec![outbound::opaque_route::Rule {
+        backends: Some(outbound::opaque_route::Distribution {
+            kind: Some(outbound::opaque_route::distribution::Kind::FirstAvailable(
+                outbound::opaque_route::distribution::FirstAvailable {
+                    backends: vec![outbound::opaque_route::RouteBackend {
+                        backend: Some(backend),
+                    }],
+                },
+            )),
+        }),
+    }];
+    outbound::OpaqueRoute { metadata, rules }
 }
 
 fn default_balancer_config() -> outbound::backend::balance_p2c::Load {
