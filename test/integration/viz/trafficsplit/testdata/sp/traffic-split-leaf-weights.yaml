@@ -1,3 +1,4 @@
+---
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
@@ -8,4 +9,4 @@ spec:
     weight: 500m
   - authority: "failing-svc.linkerd-trafficsplit-test-sp.svc.cluster.local:8081"
     weight: 0m
----
+...
