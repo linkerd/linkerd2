@@ -1225,12 +1225,12 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 // SetToServerProtocol sets the address's OpaqueProtocol field based off any
 // Servers that select it and override the expected protocol.
 func SetToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
+	if address.Pod == nil {
+		return fmt.Errorf("endpoint not backed by Pod: %s:%d", address.IP, address.Port)
+	}
 	servers, err := k8sAPI.Srv().Lister().Servers("").List(labels.Everything())
 	if err != nil {
 		return fmt.Errorf("failed to list Servers: %w", err)
-	}
-	if address.Pod == nil {
-		return fmt.Errorf("endpoint not backed by Pod: %s:%d", address.IP, address.Port)
 	}
 	for _, server := range servers {
 		selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
