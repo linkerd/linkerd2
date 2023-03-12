@@ -27,7 +27,7 @@ type profileTranslator struct {
 func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32) *profileTranslator {
 	return &profileTranslator{
 		stream:             stream,
-		log:                log.WithField("component", "profile-translator"),
+		log:                log.WithField("component", "profile-translator").WithField("name", fqn),
 		fullyQualifiedName: fqn,
 		port:               port,
 	}
@@ -35,11 +35,13 @@ func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.E
 
 func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 	if profile == nil {
+		pt.log.Debugf("Sending default profile")
 		if err := pt.stream.Send(pt.defaultServiceProfile()); err != nil {
 			pt.log.Errorf("failed to send default service profile: %s", err)
 		}
 		return
 	}
+
 	destinationProfile, err := pt.createDestinationProfile(profile)
 	if err != nil {
 		pt.log.Error(err)

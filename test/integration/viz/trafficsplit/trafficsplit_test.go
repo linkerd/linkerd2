@@ -56,7 +56,7 @@ func parseStatRows(out string, expectedRowCount, expectedColumnCount int) ([]*te
 
 func TestServiceProfileDstOverrides(t *testing.T) {
 	ctx := context.Background()
-	TestHelper.WithDataPlaneNamespace(ctx, "trafficsplit-test-sp-dsts", map[string]string{}, t, func(t *testing.T, prefixedNs string) {
+	TestHelper.WithDataPlaneNamespace(ctx, "trafficsplit-test-sp", map[string]string{}, t, func(t *testing.T, prefixedNs string) {
 		// First, create a `ServiceProfile`.
 		initialSP := `---
 apiVersion: linkerd.io/v1alpha2
@@ -78,7 +78,7 @@ spec:
 
 		// Deploy an application that will route traffic to the `backend-svc`.
 		out, err = TestHelper.LinkerdRun("inject", "--manual",
-			"--proxy-log-level=linkerd=DEBUG,info",
+			"--proxy-log-level=linkerd=debug,linkerd_service_profiles::client=trace,info",
 			"testdata/applications-at-diff-ports.yaml")
 		if err != nil {
 			testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
@@ -181,7 +181,6 @@ spec:
 				}
 				return nil
 			})
-
 			if err != nil {
 				out, lerr := TestHelper.LinkerdRun("viz", "stat", "deploy", "-n", prefixedNs,
 					"--from", "deploy/slow-cooker", "-t", "30s")
@@ -189,8 +188,11 @@ spec:
 					fmt.Fprintf(os.Stderr, "----------- linkerd viz stat\n")
 					fmt.Fprintf(os.Stderr, "%s", out)
 				}
-				out, lerr = TestHelper.Kubectl("", "logs", "-n", prefixedNs, "-l", "app=slow-cooker", "-c", "linkerd-proxy", "--tail=100")
-				if lerr == nil {
+				out, lerr = TestHelper.Kubectl("", "logs", "--tail=1000", "-n", prefixedNs,
+					"-l", "app=slow-cooker", "-c", "linkerd-proxy")
+				if lerr != nil {
+					fmt.Fprintf(os.Stderr, "Failed to run kubectl logs: %s", lerr)
+				} else {
 					fmt.Fprintf(os.Stderr, "----------- kubectl logs\n")
 					fmt.Fprintf(os.Stderr, "%s", out)
 				}
