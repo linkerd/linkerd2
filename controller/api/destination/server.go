@@ -276,6 +276,8 @@ func (s *server) subscribeToServiceProfile(
 		WithField("svc", service.Name).
 		WithField("port", port)
 
+	canceled := stream.Context().Done()
+
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
@@ -295,38 +297,36 @@ func (s *server) subscribeToServiceProfile(
 	}
 	defer s.opaquePorts.Unsubscribe(service, opaquePortsAdaptor)
 
-	// Create a pair of listeners that forward to the underlying adapated
-	// translator. Updates published to the primary listener take precedence
-	// over those published to the backup listener. When the primary listener
-	// publishes 'nil', the backup listener is used.
+	// Ensure that (1) nil values are turned into a default policy and (2)
+	// subsequent updates that refer to same service profile object are
+	// deduplicated to prevent sending redundant updates.
 	dup := newDedupProfileListener(opaquePortsAdaptor, log)
-	listener := newDefaultProfileListener(&sp.ServiceProfile{}, dup, log)
+	defaultProfile := sp.ServiceProfile{}
+	listener := newDefaultProfileListener(&defaultProfile, dup, log)
 
 	// The primary lookup uses the context token to determine the requester's
 	// namespace. If there's no namespace in the token, start a single
 	// subscription.
 	tok := s.parseContextToken(token)
 	if tok.Ns == "" {
-		id, err := profileID(fqn, contextToken{}, s.clusterDomain)
-		if err != nil {
-			log.Debug("Invalid service")
-			return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
-		}
-		err = s.profiles.Subscribe(id, listener)
-		if err != nil {
-			log.Warnf("Failed to subscribe to profile: %s", err)
-			return err
-		}
-		defer s.profiles.Unsubscribe(id, listener)
-
-		select {
-		case <-s.shutdown:
-		case <-stream.Context().Done():
-			log.Debug("Cancelled")
-		}
-		return nil
+		return s.subscribeToServiceWithoutContext(fqn, listener, canceled, log)
 	}
+	return s.subscribeToServicesWithContext(fqn, tok, listener, canceled, log)
+}
 
+// subscribeToServiceWithContext establishes two profile watches: a "backup"
+// watch (ignoring the client namespace) and a preferred "primary" watch
+// assuming the client's context. Once updates are received for both watches, we
+// select over both watches to send profile updates to the stream. A nil update
+// may be sent if both the primary and backup watches are initialized with a nil
+// value.
+func (s *server) subscribeToServicesWithContext(
+	fqn string,
+	token contextToken,
+	listener watcher.ProfileUpdateListener,
+	canceled <-chan struct{},
+	log *logging.Entry,
+) error {
 	// We ned to support two subscriptions:
 	// - First, a backup subscription that assumes the context of the server
 	//   namespace.
@@ -348,7 +348,7 @@ func (s *server) subscribeToServiceProfile(
 	}
 	defer s.profiles.Unsubscribe(backupID, backup)
 
-	primaryID, err := profileID(fqn, tok, s.clusterDomain)
+	primaryID, err := profileID(fqn, token, s.clusterDomain)
 	if err != nil {
 		log.Debug("Invalid service")
 		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
@@ -362,11 +362,38 @@ func (s *server) subscribeToServiceProfile(
 
 	select {
 	case <-s.shutdown:
-	case <-stream.Context().Done():
+	case <-canceled:
 		log.Debug("Cancelled")
 	}
 	return nil
+}
 
+// subscribeToServiceWithoutContext establishes a single profile watch, assuming
+// no client context. All udpates are published to the provided listener.
+func (s *server) subscribeToServiceWithoutContext(
+	fqn string,
+	listener watcher.ProfileUpdateListener,
+	cancel <-chan struct{},
+	log *logging.Entry,
+) error {
+	id, err := profileID(fqn, contextToken{}, s.clusterDomain)
+	if err != nil {
+		log.Debug("Invalid service")
+		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
+	}
+	err = s.profiles.Subscribe(id, listener)
+	if err != nil {
+		log.Warnf("Failed to subscribe to profile: %s", err)
+		return err
+	}
+	defer s.profiles.Unsubscribe(id, listener)
+
+	select {
+	case <-s.shutdown:
+	case <-cancel:
+		log.Debug("Cancelled")
+	}
+	return nil
 }
 
 // Resolves a profile for a single endpoitn, sending updates to the provided
