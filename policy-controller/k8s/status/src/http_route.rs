@@ -1,5 +1,4 @@
 use crate::resource_id::ResourceId;
-use anyhow::Result;
 use linkerd_policy_controller_k8s_api::{gateway, policy};
 
 /// Represents an HTTPRoute's reference from its spec.

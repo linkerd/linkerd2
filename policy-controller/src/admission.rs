@@ -6,8 +6,9 @@ use crate::k8s::{
         NetworkAuthentication, NetworkAuthenticationSpec, Server, ServerAuthorization,
         ServerAuthorizationSpec, ServerSpec,
     },
+    Service,
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
@@ -477,6 +478,24 @@ impl Validate<HttpRouteSpec> for Admission {
 
             for f in filters.into_iter().flatten() {
                 validate_filter(f)?;
+            }
+        }
+
+        for parent in spec.inner.parent_refs.iter().flatten() {
+            if httproute::parent_ref_targets_kind::<Server>(parent) {
+                ensure!(
+                    parent.section_name.is_none(),
+                    "policy.linkerd.io HTTPRoutes Server parent references much not specify a section name"
+                );
+                ensure!(
+                    parent.port.is_none(),
+                    "policy.linkerd.io HTTPRoutes Server parent references much not specify a port"
+                );
+            } else if httproute::parent_ref_targets_kind::<Service>(parent) {
+                ensure!(
+                    parent.port.is_none(),
+                    "policy.linkerd.io HTTPRoutes Service parent references much not specify a section name"
+                );
             }
         }
 
