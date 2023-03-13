@@ -146,7 +146,7 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return service profile when using json token", func(t *testing.T) {
-		stream := profileStream(t, fullyQualifiedName, port, "ns:other")
+		stream := profileStream(t, fullyQualifiedName, port, `{"ns":"other"}`)
 		profile := assertSingleProfile(t, stream.updates)
 		if profile.FullyQualifiedName != fullyQualifiedName {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, profile.FullyQualifiedName)
@@ -156,23 +156,12 @@ func TestGetProfiles(t *testing.T) {
 		// there are no routes on the service profile in the "other" namespace.
 		routes := profile.GetRoutes()
 		if len(routes) != 0 {
-			t.Fatalf("Expected 1 route got %d: %v", len(routes), routes)
+			t.Fatalf("Expected 0 routes got %d: %v", len(routes), routes)
 		}
 	})
 
 	t.Run("Returns client profile", func(t *testing.T) {
-		stream := profileStream(t, fullyQualifiedName, port, "ns:other")
-		profile := assertSingleProfile(t, stream.updates)
-		routes := profile.GetRoutes()
-		if len(routes) != 1 {
-			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
-		}
-		if !routes[0].GetIsRetryable() {
-			t.Fatalf("Expected route to be retryable, but it was not")
-		}
-	})
-	t.Run("Returns client profile", func(t *testing.T) {
-		stream := profileStream(t, fullyQualifiedName, port, "ns:other")
+		stream := profileStream(t, fullyQualifiedName, port, `{"ns":"client-ns"}`)
 		profile := assertSingleProfile(t, stream.updates)
 		routes := profile.GetRoutes()
 		if len(routes) != 1 {
@@ -184,7 +173,7 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return profile when using cluster IP", func(t *testing.T) {
-		stream := profileStream(t, clusterIP, port, "ns:other")
+		stream := profileStream(t, clusterIP, port, "")
 		profile := assertSingleProfile(t, stream.updates)
 		if profile.FullyQualifiedName != fullyQualifiedName {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, profile.FullyQualifiedName)

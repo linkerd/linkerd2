@@ -11,6 +11,7 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
@@ -295,9 +296,12 @@ func (s *server) translateServiceProfile(
 	// translator. Updates published to the primary listener take precedence
 	// over those published to the secondary listener. When the primary listener
 	// publishes 'nil', the secondary listener is used.
-	primary, secondary := newFallbackProfileListener(opaquePortsAdaptor, log)
+	dup := newDedupProfileListener(opaquePortsAdaptor, log)
+	dpl := newDefaultProfileListener(&sp.ServiceProfile{}, dup, log)
+	primary, secondary := newFallbackProfileListener(dpl, log)
 
-	//
+	// The primary lookup uses the context token to determine the requester's
+	// namespace.
 	primaryID, err := profileID(fqn, s.parseContextToken(token), s.clusterDomain)
 	if err != nil {
 		log.Debug("Invalid service")
@@ -310,6 +314,8 @@ func (s *server) translateServiceProfile(
 	}
 	defer s.profiles.Unsubscribe(primaryID, primary)
 
+	// The secondary lookup ignores the context token to lookup any
+	// server-namespace-hosted profiles.
 	secondaryID, err := profileID(fqn, contextToken{}, s.clusterDomain)
 	if err != nil {
 		log.Debug("Invalid service")
