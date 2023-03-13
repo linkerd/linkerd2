@@ -199,8 +199,10 @@ impl TestConfig {
             networks: vec![cluster_net],
             control_plane_ns: "linkerd".to_string(),
             identity_domain: "cluster.example.com".into(),
+            dns_domain: "cluster.example.com".into(),
             default_policy,
             default_detect_timeout: detect_timeout,
+            default_opaque_ports: Default::default(),
             probe_networks,
         };
         let index = Index::shared(cluster.clone());

@@ -1297,6 +1297,7 @@ impl PolicyIndex {
             .http_routes
             .iter()
             .filter(|(_, route)| route.selects_server(server_name))
+            .filter(|(_, route)| route.accepted_by_server(server_name))
             .map(|(name, route)| {
                 let mut route = route.route.clone();
                 route.authorizations = self.route_client_authzs(name, authentications);

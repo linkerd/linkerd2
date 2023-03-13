@@ -15,6 +15,8 @@ use futures::prelude::*;
 pub use ipnet::{IpNet, Ipv4Net, Ipv6Net};
 use std::{hash::Hash, net::IpAddr, num::NonZeroU16, pin::Pin, time::Duration};
 
+pub const POLICY_CONTROLLER_NAME: &str = "linkerd.io/policy-controller";
+
 /// Models inbound server configuration discovery.
 #[async_trait::async_trait]
 pub trait DiscoverInboundServer<T> {

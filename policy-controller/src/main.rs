@@ -11,7 +11,7 @@ use linkerd_policy_controller::{
 };
 use linkerd_policy_controller_k8s_index::parse_portset;
 use linkerd_policy_controller_k8s_status::{self as status};
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 use tokio::{sync::mpsc, time::Duration};
 use tonic::transport::Server;
 use tracing::{info, info_span, instrument, Instrument};
@@ -22,6 +22,7 @@ static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 const DETECT_TIMEOUT: Duration = Duration::from_secs(10);
 const LEASE_DURATION: Duration = Duration::from_secs(30);
+const LEASE_NAME: &str = "policy-controller-write";
 const RENEW_GRACE_PERIOD: Duration = Duration::from_secs(1);
 
 #[derive(Debug, Parser)]
@@ -118,18 +119,21 @@ async fn main() -> Result<()> {
     let probe_networks = probe_networks.map(|IpNets(nets)| nets).unwrap_or_default();
 
     let default_opaque_ports = parse_portset(&default_opaque_ports)?;
-
-    // Build the index data structure, which will be used to process events from all watches
-    // The lookup handle is used by the gRPC server.
-    let index = Index::shared(ClusterInfo {
+    let cluster_info = Arc::new(ClusterInfo {
         networks: cluster_networks.clone(),
         identity_domain,
         control_plane_ns: control_plane_namespace.clone(),
+        dns_domain: cluster_domain,
         default_policy,
         default_detect_timeout: DETECT_TIMEOUT,
+        default_opaque_ports,
         probe_networks,
     });
-    let outbound_index = outbound_index::Index::shared(cluster_domain, default_opaque_ports);
+
+    // Build the index data structure, which will be used to process events from all watches
+    // The lookup handle is used by the gRPC server.
+    let index = Index::shared(cluster_info.clone());
+    let outbound_index = outbound_index::Index::shared(cluster_info);
     let indexes = IndexPair::shared(index.clone(), outbound_index.clone());
 
     // Spawn resource indexers that update the index and publish lookups for the gRPC server.
@@ -182,10 +186,11 @@ async fn main() -> Result<()> {
             .instrument(info_span!("services")),
     );
 
-    // Create the lease manager used for trying to claim the status-controller lease.
+    // Create the lease manager used for trying to claim the policy
+    // controller write lease.
     let api = k8s::Api::namespaced(runtime.client(), &control_plane_namespace);
     // todo: Do we need to use LeaseManager::field_manager here?
-    let lease = kubert::lease::LeaseManager::init(api, status::STATUS_CONTROLLER_NAME).await?;
+    let lease = kubert::lease::LeaseManager::init(api, LEASE_NAME).await?;
     let hostname =
         std::env::var("HOSTNAME").expect("Failed to fetch `HOSTNAME` environment variable");
     let params = kubert::lease::ClaimParams {
@@ -194,17 +199,15 @@ async fn main() -> Result<()> {
     };
     let (claims, _task) = lease.spawn(hostname.clone(), params).await?;
 
-    // Build the status index which will be used to process updates to policy
-    // resources and send to the status controller.
+    // Build the status Index which will be used to process updates to policy
+    // resources and send to the status Controller.
     let (updates_tx, updates_rx) = mpsc::unbounded_channel();
     let status_index = status::Index::shared(hostname.clone(), claims.clone(), updates_tx);
 
-    // Spawn the status controller reconciliation.
-    tokio::spawn(
-        status::Index::run(status_index.clone()).instrument(info_span!("status_controller::Index")),
-    );
+    // Spawn the status Controller reconciliation.
+    tokio::spawn(status::Index::run(status_index.clone()).instrument(info_span!("status::Index")));
 
-    // Spawn resource indexers that update the status index.
+    // Spawn resource indexers that update the status Index.
     let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
     tokio::spawn(
         kubert::index::namespaced(status_index.clone(), http_routes)
@@ -236,7 +239,7 @@ async fn main() -> Result<()> {
     tokio::spawn(
         status_controller
             .run()
-            .instrument(info_span!("status_controller::Controller")),
+            .instrument(info_span!("status::Controller")),
     );
 
     let client = runtime.client();
