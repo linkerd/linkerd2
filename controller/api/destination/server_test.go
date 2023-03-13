@@ -184,7 +184,7 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return profile when using cluster IP", func(t *testing.T) {
-		stream := profileStream(t, fullyQualifiedName, port, "ns:other")
+		stream := profileStream(t, clusterIP, port, "ns:other")
 		profile := assertSingleProfile(t, stream.updates)
 		if profile.FullyQualifiedName != fullyQualifiedName {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, profile.FullyQualifiedName)
