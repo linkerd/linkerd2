@@ -1,5 +1,5 @@
 use crate::{
-    http_route::{self, ParentReference},
+    http_route::{self, GetReferences, Reference},
     resource_id::ResourceId,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
@@ -7,7 +7,7 @@ use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use chrono::offset::Utc;
 use kubert::lease::Claim;
 use linkerd_policy_controller_core::POLICY_CONTROLLER_NAME;
-use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway, Condition, ResourceExt, Time};
 use parking_lot::RwLock;
 use std::{collections::hash_map::Entry, sync::Arc};
 use tokio::{
@@ -43,7 +43,7 @@ pub struct Index {
     claims: Receiver<Arc<Claim>>,
     updates: UnboundedSender<Update>,
 
-    http_routes: HashMap<ResourceId, Vec<ParentReference>>,
+    http_routes: HashMap<ResourceId, Vec<Reference>>,
     servers: HashSet<ResourceId>,
 }
 
@@ -151,7 +151,7 @@ impl Index {
 
     // If the route is new or its parents have changed, return true so that a
     // patch is generated; otherwise return false.
-    fn update_http_route(&mut self, id: ResourceId, parents: Vec<ParentReference>) -> bool {
+    fn update_http_route(&mut self, id: ResourceId, parents: Vec<Reference>) -> bool {
         match self.http_routes.entry(id) {
             Entry::Vacant(entry) => {
                 entry.insert(parents);
@@ -169,12 +169,12 @@ impl Index {
     fn make_http_route_patch(
         &self,
         id: &ResourceId,
-        parents: &[ParentReference],
+        parents: &[Reference],
     ) -> k8s::Patch<serde_json::Value> {
         let parent_statuses = parents
             .iter()
             .map(|parent| {
-                let ParentReference::Server(parent_reference_id) = parent;
+                let Reference { id, .. } = parent;
 
                 #[cfg(not(test))]
                 let timestamp = Utc::now();
@@ -183,35 +183,14 @@ impl Index {
 
                 // Is this parent in the list of parents which accept
                 // the route?
-                let accepted = self
-                    .servers
-                    .iter()
-                    .any(|server| server == parent_reference_id);
-                let condition = if accepted {
-                    k8s::Condition {
-                        last_transition_time: k8s::Time(timestamp),
-                        message: "".to_string(),
-                        observed_generation: None,
-                        reason: "Accepted".to_string(),
-                        status: "True".to_string(),
-                        type_: "Accepted".to_string(),
-                    }
-                } else {
-                    k8s::Condition {
-                        last_transition_time: k8s::Time(timestamp),
-                        message: "".to_string(),
-                        observed_generation: None,
-                        reason: "NoMatchingParent".to_string(),
-                        status: "False".to_string(),
-                        type_: "Accepted".to_string(),
-                    }
-                };
+                let accepted = self.servers.iter().any(|server| server == id);
+                let condition = make_accepted_condition(accepted, timestamp);
                 gateway::RouteParentStatus {
                     parent_ref: gateway::ParentReference {
                         group: Some(POLICY_API_GROUP.to_string()),
                         kind: Some("Server".to_string()),
-                        namespace: Some(parent_reference_id.namespace.clone()),
-                        name: parent_reference_id.name.clone(),
+                        namespace: Some(id.namespace.clone()),
+                        name: id.name.clone(),
                         section_name: None,
                         port: None,
                     },
@@ -252,7 +231,8 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         // Create the route parents and insert it into the index. If the
         // HTTPRoute is already in the index and it hasn't changed, skip
         // creating a patch.
-        let parents = match http_route::make_parents(resource) {
+        let parent_refs = resource.get_parents();
+        let parents = match http_route::make_parents(parent_refs, &namespace) {
             Ok(parents) => parents,
             Err(error) => {
                 tracing::info!(%namespace, %name, %error, "Ignoring HTTPRoute");
@@ -292,9 +272,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     fn apply(&mut self, resource: k8s::policy::Server) {
-        let namespace = resource
-            .namespace()
-            .expect("HTTPRoute must have a namespace");
+        let namespace = resource.namespace().expect("Server must have a namespace");
         let name = resource.name_unchecked();
         let id = ResourceId::new(namespace, name);
 
@@ -336,4 +314,25 @@ pub(crate) fn make_patch(
             "status": status,
     });
     k8s::Patch::Merge(value)
+}
+
+fn make_accepted_condition(accepted: bool, timestamp: chrono::DateTime<chrono::Utc>) -> Condition {
+    if !accepted {
+        return Condition {
+            last_transition_time: Time(timestamp),
+            message: "".to_string(),
+            observed_generation: None,
+            reason: "NoMatchingParent".to_string(),
+            status: "False".to_string(),
+            type_: "Accepted".to_string(),
+        };
+    }
+    Condition {
+        last_transition_time: Time(timestamp),
+        message: "".to_string(),
+        observed_generation: None,
+        reason: "Accepted".to_string(),
+        status: "True".to_string(),
+        type_: "Accepted".to_string(),
+    }
 }
