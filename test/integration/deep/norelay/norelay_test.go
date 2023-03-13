@@ -130,7 +130,10 @@ func getDeployments(t *testing.T) map[string]string {
 	}
 
 	// server-relay is injected in ingress mode, manually
-	deploys["server-relay"], err = TestHelper.LinkerdRun("inject", "--manual", "--ingress", "--proxy-log-level=linkerd=debug,info", "testdata/server-relay.yml")
+	deploys["server-relay"], err = TestHelper.LinkerdRun(
+		"inject", "--manual", "--ingress",
+		"--proxy-log-level=linkerd=debug,info",
+		"testdata/server-relay.yml")
 	if err != nil {
 		testutil.AnnotatedFatal(t, "unexpected error", err)
 	}
@@ -138,7 +141,8 @@ func getDeployments(t *testing.T) map[string]string {
 	// client is not injected
 	deploys["client"], err = testutil.ReadFile("testdata/client.yml")
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to read 'client.yml'", "failed to read 'client.yml': %s", err)
+		testutil.AnnotatedFatalf(t, "failed to read 'client.yml'",
+			"failed to read 'client.yml': %s", err)
 	}
 
 	return deploys
@@ -152,7 +156,7 @@ func getPodIp(t *testing.T, ns, selector string) string {
 	)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to retrieve pod IP",
-			"failed to retrieve pod IP: %s\n%s", err, ip)
+			"failed to retrieve pod IP: %s", err)
 	}
 	return strings.Trim(ip, "'")
 }
