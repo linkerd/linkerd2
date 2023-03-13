@@ -50,6 +50,7 @@ func (bpl *BufferingProfileListener) Update(profile *sp.ServiceProfile) {
 }
 
 func testCompare(t *testing.T, expected interface{}, actual interface{}) {
+	t.Helper()
 	if diff := deep.Equal(expected, actual); diff != nil {
 		t.Fatalf("%v", diff)
 	}

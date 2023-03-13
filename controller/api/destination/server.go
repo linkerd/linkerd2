@@ -11,6 +11,7 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
@@ -229,11 +230,11 @@ func (s *server) getProfileByIP(
 		if err != nil {
 			return fmt.Errorf("failed to create address: %w", err)
 		}
-		return s.translateEndpointProfile(&address, port, stream)
+		return s.subscribeToEndpointProfile(&address, port, stream)
 	}
 
 	fqn := fmt.Sprintf("%s.%s.svc.%s", svcID.Name, svcID.Namespace, s.clusterDomain)
-	return s.translateServiceProfile(*svcID, token, fqn, port, stream)
+	return s.subscribeToServiceProfile(*svcID, token, fqn, port, stream)
 }
 
 func (s *server) getProfileByName(
@@ -255,13 +256,16 @@ func (s *server) getProfileByName(
 		if err != nil {
 			return fmt.Errorf("failed to get pod for hostname %s: %w", hostname, err)
 		}
-		return s.translateEndpointProfile(address, port, stream)
+		return s.subscribeToEndpointProfile(address, port, stream)
 	}
 
-	return s.translateServiceProfile(service, token, host, port, stream)
+	return s.subscribeToServiceProfile(service, token, host, port, stream)
 }
 
-func (s *server) translateServiceProfile(
+// Resolves a profile for a service, sending updates to the provided stream.
+//
+// This function does not return until the stream is closed.
+func (s *server) subscribeToServiceProfile(
 	service watcher.ID,
 	token, fqn string,
 	port uint32,
@@ -271,6 +275,8 @@ func (s *server) translateServiceProfile(
 		WithField("ns", service.Namespace).
 		WithField("svc", service.Name).
 		WithField("port", port)
+
+	canceled := stream.Context().Done()
 
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
@@ -282,7 +288,8 @@ func (s *server) translateServiceProfile(
 	// split adaptor.
 	opaquePortsAdaptor := newOpaquePortsAdaptor(translator)
 
-	// Subscribe the adaptor to service updates.
+	// Create an adaptor that merges service-level opaque port configurations
+	// onto profile updates.
 	err := s.opaquePorts.Subscribe(service, opaquePortsAdaptor)
 	if err != nil {
 		log.Warnf("Failed to subscribe to service updates for %s: %s", service, err)
@@ -290,51 +297,110 @@ func (s *server) translateServiceProfile(
 	}
 	defer s.opaquePorts.Unsubscribe(service, opaquePortsAdaptor)
 
-	// The fallback accepts updates from a primary and secondary source and
-	// passes the appropriate profile updates to the adaptor.
-	primary, secondary := newFallbackProfileListener(opaquePortsAdaptor)
+	// Ensure that (1) nil values are turned into a default policy and (2)
+	// subsequent updates that refer to same service profile object are
+	// deduplicated to prevent sending redundant updates.
+	dup := newDedupProfileListener(opaquePortsAdaptor, log)
+	defaultProfile := sp.ServiceProfile{}
+	listener := newDefaultProfileListener(&defaultProfile, dup, log)
 
-	// If we have a context token, we create two subscriptions: one with the
-	// context token which sends updates to the primary listener and one without
-	// the context token which sends updates to the secondary listener.  It is
-	// up to the fallbackProfileListener to merge updates from the primary and
-	// secondary listeners and send the appropriate updates to the stream.
-	if token != "" {
-		ctxToken := s.parseContextToken(token)
-		profile, err := profileID(fqn, ctxToken, s.clusterDomain)
-		if err != nil {
-			log.Debug("Invalid service")
-			return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
-		}
-		err = s.profiles.Subscribe(profile, primary)
-		if err != nil {
-			log.Warnf("Failed to subscribe to profile: %s", err)
-			return err
-		}
-		defer s.profiles.Unsubscribe(profile, primary)
+	// The primary lookup uses the context token to determine the requester's
+	// namespace. If there's no namespace in the token, start a single
+	// subscription.
+	tok := s.parseContextToken(token)
+	if tok.Ns == "" {
+		return s.subscribeToServiceWithoutContext(fqn, listener, canceled, log)
 	}
+	return s.subscribeToServicesWithContext(fqn, tok, listener, canceled, log)
+}
 
-	profile, err := profileID(fqn, contextToken{}, s.clusterDomain)
+// subscribeToServiceWithContext establishes two profile watches: a "backup"
+// watch (ignoring the client namespace) and a preferred "primary" watch
+// assuming the client's context. Once updates are received for both watches, we
+// select over both watches to send profile updates to the stream. A nil update
+// may be sent if both the primary and backup watches are initialized with a nil
+// value.
+func (s *server) subscribeToServicesWithContext(
+	fqn string,
+	token contextToken,
+	listener watcher.ProfileUpdateListener,
+	canceled <-chan struct{},
+	log *logging.Entry,
+) error {
+	// We ned to support two subscriptions:
+	// - First, a backup subscription that assumes the context of the server
+	//   namespace.
+	// - And then, a primary subscription that assumes the context of the client
+	//   namespace.
+	primary, backup := newFallbackProfileListener(listener, log)
+
+	// The backup lookup ignores the context token to lookup any
+	// server-namespace-hosted profiles.
+	backupID, err := profileID(fqn, contextToken{}, s.clusterDomain)
 	if err != nil {
 		log.Debug("Invalid service")
 		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 	}
-	err = s.profiles.Subscribe(profile, secondary)
+	err = s.profiles.Subscribe(backupID, backup)
 	if err != nil {
 		log.Warnf("Failed to subscribe to profile: %s", err)
 		return err
 	}
-	defer s.profiles.Unsubscribe(profile, secondary)
+	defer s.profiles.Unsubscribe(backupID, backup)
+
+	primaryID, err := profileID(fqn, token, s.clusterDomain)
+	if err != nil {
+		log.Debug("Invalid service")
+		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
+	}
+	err = s.profiles.Subscribe(primaryID, primary)
+	if err != nil {
+		log.Warnf("Failed to subscribe to profile: %s", err)
+		return err
+	}
+	defer s.profiles.Unsubscribe(primaryID, primary)
 
 	select {
 	case <-s.shutdown:
-	case <-stream.Context().Done():
+	case <-canceled:
 		log.Debug("Cancelled")
 	}
 	return nil
 }
 
-func (s *server) translateEndpointProfile(
+// subscribeToServiceWithoutContext establishes a single profile watch, assuming
+// no client context. All udpates are published to the provided listener.
+func (s *server) subscribeToServiceWithoutContext(
+	fqn string,
+	listener watcher.ProfileUpdateListener,
+	cancel <-chan struct{},
+	log *logging.Entry,
+) error {
+	id, err := profileID(fqn, contextToken{}, s.clusterDomain)
+	if err != nil {
+		log.Debug("Invalid service")
+		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
+	}
+	err = s.profiles.Subscribe(id, listener)
+	if err != nil {
+		log.Warnf("Failed to subscribe to profile: %s", err)
+		return err
+	}
+	defer s.profiles.Unsubscribe(id, listener)
+
+	select {
+	case <-s.shutdown:
+	case <-cancel:
+		log.Debug("Cancelled")
+	}
+	return nil
+}
+
+// Resolves a profile for a single endpoitn, sending updates to the provided
+// stream.
+//
+// This function does not return until the stream is closed.
+func (s *server) subscribeToEndpointProfile(
 	address *watcher.Address,
 	port uint32,
 	stream pb.Destination_GetProfileServer,
@@ -355,7 +421,7 @@ func (s *server) translateEndpointProfile(
 	if err != nil {
 		return fmt.Errorf("failed to create endpoint: %w", err)
 	}
-	translator := newEndpointProfileTranslator(address.Pod, port, endpoint, stream, s.log)
+	translator := newEndpointProfileTranslator(address.Pod, port, endpoint, stream, log)
 
 	// If the endpoint's port is annotated as opaque, we don't need to
 	// subscribe for updates because it will always be opaque
@@ -613,6 +679,9 @@ type contextToken struct {
 
 func (s *server) parseContextToken(token string) contextToken {
 	ctxToken := contextToken{}
+	if token == "" {
+		return ctxToken
+	}
 	if err := json.Unmarshal([]byte(token), &ctxToken); err != nil {
 		// if json is invalid, means token can have ns:<namespace> form
 		parts := strings.Split(token, ":")
