@@ -5,6 +5,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
+	logging "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -98,7 +99,7 @@ func newListeners() (watcher.ProfileUpdateListener, watcher.ProfileUpdateListene
 		received: []*sp.ServiceProfile{},
 	}
 
-	primary, backup := newFallbackProfileListener(listener)
+	primary, backup := newFallbackProfileListener(listener, logging.WithField("listenr", "test"))
 	return primary, backup, listener
 }
 

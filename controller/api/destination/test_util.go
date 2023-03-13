@@ -369,6 +369,7 @@ spec:
 		t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
 	}
 	log := logging.WithField("test", t.Name())
+	logging.SetLevel(logging.DebugLevel)
 	defaultOpaquePorts := map[uint32]struct{}{
 		25:    {},
 		443:   {},

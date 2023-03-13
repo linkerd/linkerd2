@@ -5,16 +5,15 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
+	logging "github.com/sirupsen/logrus"
 )
 
 type fallbackProfileListener struct {
 	underlying watcher.ProfileUpdateListener
-
-	primary *primaryProfileListener
-
-	backup *backupProfileListener
-
-	mutex sync.Mutex
+	primary    *primaryProfileListener
+	backup     *backupProfileListener
+	log        *logging.Entry
+	mutex      sync.Mutex
 }
 
 type fallbackChildListener struct {
@@ -41,11 +40,14 @@ type backupProfileListener struct {
 // the primary and backup will propagate to the underlying with updates to
 // the primary always taking priority.  If the value in the primary is cleared,
 // the value from the backup is used.
-func newFallbackProfileListener(listener watcher.ProfileUpdateListener) (watcher.ProfileUpdateListener, watcher.ProfileUpdateListener) {
+func newFallbackProfileListener(
+	listener watcher.ProfileUpdateListener,
+	log *logging.Entry,
+) (watcher.ProfileUpdateListener, watcher.ProfileUpdateListener) {
 	// Primary and backup share a lock to ensure updates are atomic.
 	fallback := fallbackProfileListener{
-		mutex:      sync.Mutex{},
-		underlying: listener,
+		mutex: sync.Mutex{},
+		log:   log,
 	}
 
 	primary := primaryProfileListener{
@@ -54,14 +56,37 @@ func newFallbackProfileListener(listener watcher.ProfileUpdateListener) (watcher
 			parent: &fallback,
 		},
 	}
+
 	backup := backupProfileListener{
 		fallbackChildListener{
 			parent: &fallback,
 		},
 	}
+
+	fallback.underlying = listener
 	fallback.primary = &primary
 	fallback.backup = &backup
+
 	return &primary, &backup
+}
+
+func (f *fallbackProfileListener) publish() {
+	profile := &sp.ServiceProfile{}
+
+	if f.primary != nil && !f.primary.initialized {
+		f.log.Debug("Waiting for primary profile listener to be initialized")
+		return
+	}
+
+	if f.primary != nil && f.primary.state != nil {
+		f.log.Debug("Publishing primary profil")
+		profile = f.primary.state
+	} else if f.backup != nil && f.backup.state != nil {
+		f.log.Debug("Publishing backup profile")
+		profile = f.backup.state
+	}
+
+	f.underlying.Update(profile)
 }
 
 // Primary
@@ -72,12 +97,7 @@ func (p *primaryProfileListener) Update(profile *sp.ServiceProfile) {
 
 	p.state = profile
 	p.initialized = true
-
-	state := p.state
-	if state == nil && p.parent.backup != nil {
-		state = p.parent.backup.state
-	}
-	p.parent.underlying.Update(state)
+	p.parent.publish()
 }
 
 // Backup
@@ -87,20 +107,5 @@ func (b *backupProfileListener) Update(profile *sp.ServiceProfile) {
 	defer b.parent.mutex.Unlock()
 
 	b.state = profile
-
-	if !b.parent.primary.initialized {
-		// The primary has not been initialized yet. Wait for that.
-		return
-	}
-	if b.parent.primary != nil && b.parent.primary.state != nil {
-		// Primary has a value, so ignore this update.
-		return
-	}
-	if b.state != nil {
-		// We got a value; apply the update.
-		b.parent.underlying.Update(b.state)
-		return
-	}
-	// Our value was cleared and there is no primary value.
-	b.parent.underlying.Update(nil)
+	b.parent.publish()
 }

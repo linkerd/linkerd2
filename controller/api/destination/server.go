@@ -295,7 +295,7 @@ func (s *server) translateServiceProfile(
 	// translator. Updates published to the primary listener take precedence
 	// over those published to the secondary listener. When the primary listener
 	// publishes 'nil', the secondary listener is used.
-	primary, secondary := newFallbackProfileListener(opaquePortsAdaptor)
+	primary, secondary := newFallbackProfileListener(opaquePortsAdaptor, log)
 
 	//
 	primaryID, err := profileID(fqn, s.parseContextToken(token), s.clusterDomain)
