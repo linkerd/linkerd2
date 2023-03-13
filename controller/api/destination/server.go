@@ -230,11 +230,11 @@ func (s *server) getProfileByIP(
 		if err != nil {
 			return fmt.Errorf("failed to create address: %w", err)
 		}
-		return s.translateEndpointProfile(&address, port, stream)
+		return s.subscribeToEndpointProfile(&address, port, stream)
 	}
 
 	fqn := fmt.Sprintf("%s.%s.svc.%s", svcID.Name, svcID.Namespace, s.clusterDomain)
-	return s.translateServiceProfile(*svcID, token, fqn, port, stream)
+	return s.subscribeToServiceProfile(*svcID, token, fqn, port, stream)
 }
 
 func (s *server) getProfileByName(
@@ -256,13 +256,16 @@ func (s *server) getProfileByName(
 		if err != nil {
 			return fmt.Errorf("failed to get pod for hostname %s: %w", hostname, err)
 		}
-		return s.translateEndpointProfile(address, port, stream)
+		return s.subscribeToEndpointProfile(address, port, stream)
 	}
 
-	return s.translateServiceProfile(service, token, host, port, stream)
+	return s.subscribeToServiceProfile(service, token, host, port, stream)
 }
 
-func (s *server) translateServiceProfile(
+// Resolves a profile for a service, sending updates to the provided stream.
+//
+// This function does not return until the stream is closed.
+func (s *server) subscribeToServiceProfile(
 	service watcher.ID,
 	token, fqn string,
 	port uint32,
@@ -366,7 +369,11 @@ func (s *server) translateServiceProfile(
 
 }
 
-func (s *server) translateEndpointProfile(
+// Resolves a profile for a single endpoitn, sending updates to the provided
+// stream.
+//
+// This function does not return until the stream is closed.
+func (s *server) subscribeToEndpointProfile(
 	address *watcher.Address,
 	port uint32,
 	stream pb.Destination_GetProfileServer,
