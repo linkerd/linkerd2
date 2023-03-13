@@ -7,7 +7,7 @@ use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
 use linkerd_policy_controller_core::{
-    http_route::{Backend, OutboundHttpRoute, OutboundHttpRouteRule, WeightedDst},
+    http_route::{Backend, OutboundHttpRoute, OutboundHttpRouteRule, WeightedService},
     OutboundPolicy,
 };
 use linkerd_policy_controller_k8s_api::{
@@ -320,7 +320,7 @@ fn convert_backend(
 ) -> Option<Backend> {
     backend.backend_ref.map(|backend| {
         if !is_backend_service(&backend.inner) {
-            return Backend::InvalidDst {
+            return Backend::Invalid {
                 weight: backend.weight.unwrap_or(1).into(),
                 message: format!(
                     "unsupported backend type {group} {kind}",
@@ -343,7 +343,7 @@ fn convert_backend(
         {
             Some(port) => port,
             None => {
-                return Backend::InvalidDst {
+                return Backend::Invalid {
                     weight: weight.into(),
                     message: format!("missing port for backend Service {name}"),
                 }
@@ -351,15 +351,17 @@ fn convert_backend(
         };
 
         if !services.contains_key(&name) {
-            return Backend::InvalidDst {
+            return Backend::Invalid {
                 weight: weight.into(),
                 message: format!("Service not found {name}"),
             };
         }
 
-        Backend::Dst(WeightedDst {
+        Backend::Service(WeightedService {
             weight: weight.into(),
             authority: cluster.service_dns_authority(ns, &name, port),
+            name,
+            namespace: ns.to_string(),
         })
     })
 }
