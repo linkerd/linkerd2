@@ -123,7 +123,7 @@ async fn main() -> Result<()> {
         networks: cluster_networks.clone(),
         identity_domain,
         control_plane_ns: control_plane_namespace.clone(),
-        dns_domain: cluster_domain,
+        dns_domain: cluster_domain.clone(),
         default_policy,
         default_detect_timeout: DETECT_TIMEOUT,
         default_opaque_ports,
@@ -222,6 +222,7 @@ async fn main() -> Result<()> {
     // Run the gRPC server, serving results by looking up against the index handle.
     tokio::spawn(grpc(
         grpc_addr,
+        cluster_domain,
         cluster_networks,
         index,
         outbound_index,
@@ -264,6 +265,7 @@ impl std::str::FromStr for IpNets {
 #[instrument(skip_all, fields(port = %addr.port()))]
 async fn grpc(
     addr: SocketAddr,
+    cluster_domain: String,
     cluster_networks: Vec<IpNet>,
     inbound_index: SharedIndex,
     outbound_index: outbound_index::SharedIndex,
@@ -274,7 +276,8 @@ async fn grpc(
         grpc::InboundPolicyServer::new(inbound_discover, cluster_networks, drain.clone()).svc();
 
     let outbound_discover = OutboundDiscover::new(outbound_index);
-    let outbound_svc = grpc::OutboundPolicyServer::new(outbound_discover, drain.clone()).svc();
+    let outbound_svc =
+        grpc::OutboundPolicyServer::new(outbound_discover, cluster_domain, drain.clone()).svc();
 
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
     tokio::pin! {

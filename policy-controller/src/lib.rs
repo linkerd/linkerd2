@@ -92,11 +92,7 @@ impl DiscoverOutboundPolicy<(String, String, NonZeroU16)> for OutboundDiscover {
         }
     }
 
-    fn service_lookup(
-        &self,
-        addr: IpAddr,
-        port: NonZeroU16,
-    ) -> Option<(String, String, NonZeroU16)> {
+    fn lookup_ip(&self, addr: IpAddr, port: NonZeroU16) -> Option<(String, String, NonZeroU16)> {
         self.0
             .read()
             .lookup_service(addr)
