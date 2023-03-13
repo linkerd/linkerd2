@@ -282,7 +282,8 @@ func (s *server) translateServiceProfile(
 	// split adaptor.
 	opaquePortsAdaptor := newOpaquePortsAdaptor(translator)
 
-	// Subscribe the adaptor to service updates.
+	// Create an adaptor that merges service-level opaque port configurations
+	// onto profile updates.
 	err := s.opaquePorts.Subscribe(service, opaquePortsAdaptor)
 	if err != nil {
 		log.Warnf("Failed to subscribe to service updates for %s: %s", service, err)
@@ -290,41 +291,36 @@ func (s *server) translateServiceProfile(
 	}
 	defer s.opaquePorts.Unsubscribe(service, opaquePortsAdaptor)
 
-	// The fallback accepts updates from a primary and secondary source and
-	// passes the appropriate profile updates to the adaptor.
+	// Create a pair of listeners that forward to the underlying adapated
+	// translator. Updates published to the primary listener take precedence
+	// over those published to the secondary listener. When the primary listener
+	// publishes 'nil', the secondary listener is used.
 	primary, secondary := newFallbackProfileListener(opaquePortsAdaptor)
 
-	// If we have a context token, we create two subscriptions: one with the
-	// context token which sends updates to the primary listener and one without
-	// the context token which sends updates to the secondary listener.  It is
-	// up to the fallbackProfileListener to merge updates from the primary and
-	// secondary listeners and send the appropriate updates to the stream.
-	if token != "" {
-		ctxToken := s.parseContextToken(token)
-		profile, err := profileID(fqn, ctxToken, s.clusterDomain)
-		if err != nil {
-			log.Debug("Invalid service")
-			return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
-		}
-		err = s.profiles.Subscribe(profile, primary)
-		if err != nil {
-			log.Warnf("Failed to subscribe to profile: %s", err)
-			return err
-		}
-		defer s.profiles.Unsubscribe(profile, primary)
-	}
-
-	profile, err := profileID(fqn, contextToken{}, s.clusterDomain)
+	//
+	primaryID, err := profileID(fqn, s.parseContextToken(token), s.clusterDomain)
 	if err != nil {
 		log.Debug("Invalid service")
 		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 	}
-	err = s.profiles.Subscribe(profile, secondary)
+	err = s.profiles.Subscribe(primaryID, primary)
 	if err != nil {
 		log.Warnf("Failed to subscribe to profile: %s", err)
 		return err
 	}
-	defer s.profiles.Unsubscribe(profile, secondary)
+	defer s.profiles.Unsubscribe(primaryID, primary)
+
+	secondaryID, err := profileID(fqn, contextToken{}, s.clusterDomain)
+	if err != nil {
+		log.Debug("Invalid service")
+		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
+	}
+	err = s.profiles.Subscribe(secondaryID, secondary)
+	if err != nil {
+		log.Warnf("Failed to subscribe to profile: %s", err)
+		return err
+	}
+	defer s.profiles.Unsubscribe(secondaryID, secondary)
 
 	select {
 	case <-s.shutdown:
@@ -613,6 +609,9 @@ type contextToken struct {
 
 func (s *server) parseContextToken(token string) contextToken {
 	ctxToken := contextToken{}
+	if token == "" {
+		return ctxToken
+	}
 	if err := json.Unmarshal([]byte(token), &ctxToken); err != nil {
 		// if json is invalid, means token can have ns:<namespace> form
 		parts := strings.Split(token, ":")

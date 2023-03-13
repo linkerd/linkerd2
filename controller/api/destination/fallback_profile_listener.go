@@ -9,9 +9,12 @@ import (
 
 type fallbackProfileListener struct {
 	underlying watcher.ProfileUpdateListener
-	primary    *primaryProfileListener
-	backup     *backupProfileListener
-	mutex      sync.Mutex
+
+	primary *primaryProfileListener
+
+	backup *backupProfileListener
+
+	mutex sync.Mutex
 }
 
 type fallbackChildListener struct {
@@ -25,6 +28,7 @@ type fallbackChildListener struct {
 }
 
 type primaryProfileListener struct {
+	initialized bool
 	fallbackChildListener
 }
 
@@ -45,7 +49,8 @@ func newFallbackProfileListener(listener watcher.ProfileUpdateListener) (watcher
 	}
 
 	primary := primaryProfileListener{
-		fallbackChildListener{
+		initialized: false,
+		fallbackChildListener: fallbackChildListener{
 			parent: &fallback,
 		},
 	}
@@ -66,19 +71,13 @@ func (p *primaryProfileListener) Update(profile *sp.ServiceProfile) {
 	defer p.parent.mutex.Unlock()
 
 	p.state = profile
+	p.initialized = true
 
-	if p.state != nil {
-		// We got a value; apply the update.
-		p.parent.underlying.Update(p.state)
-		return
+	state := p.state
+	if state == nil && p.parent.backup != nil {
+		state = p.parent.backup.state
 	}
-	if p.parent.backup != nil {
-		// Our value was cleared; fall back to backup.
-		p.parent.underlying.Update(p.parent.backup.state)
-		return
-	}
-	// Our value was cleared and there is no backup value.
-	p.parent.underlying.Update(nil)
+	p.parent.underlying.Update(state)
 }
 
 // Backup
@@ -89,6 +88,10 @@ func (b *backupProfileListener) Update(profile *sp.ServiceProfile) {
 
 	b.state = profile
 
+	if !b.parent.primary.initialized {
+		// The primary has not been initialized yet. Wait for that.
+		return
+	}
 	if b.parent.primary != nil && b.parent.primary.state != nil {
 		// Primary has a value, so ignore this update.
 		return
