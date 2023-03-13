@@ -387,7 +387,7 @@ func (s *server) translateEndpointProfile(
 	if err != nil {
 		return fmt.Errorf("failed to create endpoint: %w", err)
 	}
-	translator := newEndpointProfileTranslator(address.Pod, port, endpoint, stream, s.log)
+	translator := newEndpointProfileTranslator(address.Pod, port, endpoint, stream, log)
 
 	// If the endpoint's port is annotated as opaque, we don't need to
 	// subscribe for updates because it will always be opaque
