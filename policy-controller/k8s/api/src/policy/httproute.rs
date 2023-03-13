@@ -213,10 +213,11 @@ where
     T: kube::Resource,
     T::DynamicType: Default,
 {
-    let kind = match backend_ref.inner.kind {
-        Some(ref kind) => kind,
-        None => return false,
-    };
-
-    super::targets_kind::<T>(backend_ref.inner.group.as_deref(), kind)
+    let kind = backend_ref
+        .inner
+        .kind
+        .as_ref()
+        .map(|s| s.to_owned())
+        .unwrap_or_else(|| "service".to_string());
+    super::targets_kind::<T>(backend_ref.inner.group.as_deref(), &kind)
 }

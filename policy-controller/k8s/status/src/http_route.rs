@@ -18,6 +18,11 @@ pub enum ParentReference {
     Server(ResourceId),
 }
 
+/// Represents an HTTPRoute's backend reference from its spec.
+///
+/// Each HTTP Route Rule may have a number of backend references that traffic
+/// should be sent to. BackendReference serves as a wrapper around an actual
+/// reference's concrete type and identifier (namespace and name).
 #[derive(Clone, Eq, PartialEq)]
 pub enum BackendReference {
     Service(ResourceId),
@@ -38,12 +43,13 @@ pub enum InvalidReference {
     InvalidBackendKind,
 }
 
+/// Map from Gateway API ParentReference shared type to internal representation
+/// of a parent reference.
 pub(crate) fn make_parents(
-    http_route: &policy::HttpRoute,
+    parent_refs: Vec<&gateway::ParentReference>,
     namespace: &str,
 ) -> Result<Vec<ParentReference>, InvalidReference> {
-    let route_parent_refs = http_route.get_parents()?;
-    let parents = route_parent_refs
+    let parents = parent_refs
         .into_iter()
         .filter_map(|parent| ParentReference::from_parent_ref(parent, namespace))
         .collect::<Result<Vec<_>, InvalidReference>>()?;
@@ -54,12 +60,13 @@ pub(crate) fn make_parents(
     Ok(parents)
 }
 
+/// Map from Gateway API BackendReference shared type to internal representation of a
+/// backend reference.
 pub(crate) fn make_backends(
-    http_route: &policy::HttpRoute,
+    backend_refs: Vec<&gateway::BackendRef>,
     namespace: &str,
 ) -> Result<Vec<BackendReference>> {
-    let route_backend_refs = http_route.get_backends()?;
-    let backends = route_backend_refs
+    let backends = backend_refs
         .into_iter()
         .map(|backend| BackendReference::from_backend_ref(backend, namespace))
         .collect::<Result<Vec<_>, InvalidReference>>()?;

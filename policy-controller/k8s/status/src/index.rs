@@ -1,5 +1,5 @@
 use crate::{
-    http_route::{self, BackendReference, ParentReference},
+    http_route::{self, BackendReference, HasReferences, ParentReference},
     resource_id::ResourceId,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
@@ -256,29 +256,50 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         let name = resource.name_unchecked();
         let id = ResourceId::new(namespace.clone(), name.clone());
 
-        // Create the route parents and insert it into the index. If the
-        // HTTPRoute is already in the index and it hasn't changed, skip
-        // creating a patch.
-        let route_refs = {
-            let parents = match http_route::make_parents(&resource, &namespace) {
+        // Create internal representation of parent references
+        let parents = {
+            let parent_refs = if let Ok(parent_refs) = resource
+                .get_parents()
+                .map_err(|error| tracing::info!(%namespace, %name, %error, "Ignoring HTTPRoute"))
+            {
+                parent_refs
+            } else {
+                return;
+            };
+
+            match http_route::make_parents(parent_refs, &namespace) {
                 Ok(parents) => parents,
                 Err(error) => {
                     tracing::info!(%namespace, %name, %error, "Ignoring HTTPRoute");
                     return;
                 }
+            }
+        };
+
+        // Create internal representation of backend references
+        let backends = {
+            let backend_refs = if let Ok(backend_refs) = resource
+                .get_backends()
+                .map_err(|error| tracing::info!(%namespace,%name, %error, "Ignoring HTTPRoute"))
+            {
+                backend_refs
+            } else {
+                return;
             };
 
-            let backends = match http_route::make_backends(&resource, &namespace) {
+            match http_route::make_backends(backend_refs, &namespace) {
                 Ok(backends) => backends,
                 Err(error) => {
                     tracing::info!(%namespace, %name, %error, "Ignoring HTTPRoute");
                     return;
                 }
-            };
-
-            RouteReference { parents, backends }
+            }
         };
 
+        let route_refs = RouteReference { parents, backends };
+
+        // Check if parents or backends have changed. If either has changed,
+        // trigger an update and insert in index, otherwise exit early
         if !self.update_http_route(id.clone(), route_refs.clone()) {
             return;
         }
