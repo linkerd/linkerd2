@@ -186,19 +186,8 @@ impl Index {
         let timestamp = chrono::DateTime::<chrono::Utc>::MIN_UTC;
 
         let RouteReference { parents, backends } = route_ref;
-
-        let backend_condition = {
-            let mut resolved_all = true;
-            for backend in backends.iter() {
-                let BackendReference::Service(backend_reference_id) = backend;
-                if !self.services.contains(backend_reference_id) {
-                    resolved_all = false;
-                    break;
-                }
-            }
-
-            BackendReference::into_status_condition(resolved_all, timestamp)
-        };
+        let backend_condition =
+            BackendReference::into_status_condition(backends, &self.services, timestamp);
 
         let parent_statuses = parents
             .iter()
@@ -278,22 +267,8 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
 
         // Create internal representation of backend references
         let backends = {
-            let backend_refs = if let Ok(backend_refs) = resource
-                .get_backends()
-                .map_err(|error| tracing::info!(%namespace,%name, %error, "Ignoring HTTPRoute"))
-            {
-                backend_refs
-            } else {
-                return;
-            };
-
-            match http_route::make_backends(backend_refs, &namespace) {
-                Ok(backends) => backends,
-                Err(error) => {
-                    tracing::info!(%namespace, %name, %error, "Ignoring HTTPRoute");
-                    return;
-                }
-            }
+            let backend_refs = resource.get_backends();
+            http_route::make_backends(backend_refs, &namespace)
         };
 
         let route_refs = RouteReference { parents, backends };

@@ -1,4 +1,3 @@
-use k8s_gateway_api::BackendRef;
 pub use k8s_gateway_api::{
     CommonRouteSpec, Hostname, HttpBackendRef, HttpHeader, HttpHeaderMatch, HttpHeaderName,
     HttpMethod, HttpPathMatch, HttpPathModifier, HttpQueryParamMatch, HttpRequestHeaderFilter,
@@ -208,16 +207,16 @@ where
     super::targets_kind::<T>(parent_ref.group.as_deref(), kind)
 }
 
-pub fn backend_ref_targets_kind<T>(backend_ref: &BackendRef) -> bool
+/// Type check specialized for BackendReference shared types where a missing
+/// "kind" is assumed to be Service.
+pub fn backend_ref_targets_kind<T>(kind: &Option<String>, group: &Option<String>) -> bool
 where
     T: kube::Resource,
     T::DynamicType: Default,
 {
-    let kind = backend_ref
-        .inner
-        .kind
-        .as_ref()
+    let kind = kind
+        .as_deref()
         .map(|s| s.to_owned())
         .unwrap_or_else(|| "service".to_string());
-    super::targets_kind::<T>(backend_ref.inner.group.as_deref(), &kind)
+    super::targets_kind::<T>(group.as_deref(), &kind)
 }

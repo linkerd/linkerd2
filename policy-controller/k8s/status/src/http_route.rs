@@ -24,12 +24,14 @@ pub enum ParentReference {
 /// should be sent to. BackendReference serves as a wrapper around an actual
 /// reference's concrete type and identifier (namespace and name).
 #[derive(Clone, Eq, PartialEq)]
-pub enum BackendReference {
-    Service(ResourceId),
+pub struct BackendReference {
+    id: ResourceId,
+    kind: Option<String>,
+    group: Option<String>,
 }
 
 #[derive(Clone, Debug, thiserror::Error)]
-pub enum InvalidReference {
+pub enum InvalidParentReference {
     #[error("HTTPRoute resource does not reference a Server resource")]
     DoesNotSelectServer,
 
@@ -38,9 +40,6 @@ pub enum InvalidReference {
 
     #[error("HTTPRoute resource may not reference a parent by section name")]
     SpecifiesSection,
-
-    #[error("HTTPRoute resource references backend with unsupported group or kind")]
-    InvalidBackendKind,
 }
 
 /// Map from Gateway API ParentReference shared type to internal representation
@@ -48,13 +47,13 @@ pub enum InvalidReference {
 pub(crate) fn make_parents(
     parent_refs: Vec<&gateway::ParentReference>,
     namespace: &str,
-) -> Result<Vec<ParentReference>, InvalidReference> {
+) -> Result<Vec<ParentReference>, InvalidParentReference> {
     let parents = parent_refs
         .into_iter()
         .filter_map(|parent| ParentReference::from_parent_ref(parent, namespace))
-        .collect::<Result<Vec<_>, InvalidReference>>()?;
+        .collect::<Result<Vec<_>, InvalidParentReference>>()?;
     if parents.is_empty() {
-        return Err(InvalidReference::DoesNotSelectServer);
+        return Err(InvalidParentReference::DoesNotSelectServer);
     }
 
     Ok(parents)
@@ -65,23 +64,21 @@ pub(crate) fn make_parents(
 pub(crate) fn make_backends(
     backend_refs: Vec<&gateway::BackendRef>,
     namespace: &str,
-) -> Result<Vec<BackendReference>> {
-    let backends = backend_refs
+) -> Vec<BackendReference> {
+    backend_refs
         .into_iter()
         .map(|backend| BackendReference::from_backend_ref(backend, namespace))
-        .collect::<Result<Vec<_>, InvalidReference>>()?;
-
-    Ok(backends)
+        .collect()
 }
 
 /// Convenience trait to get shared route reference types
 pub(crate) trait HasReferences {
-    fn get_parents(&self) -> Result<Vec<&gateway::ParentReference>, InvalidReference>;
-    fn get_backends(&self) -> Result<Vec<&gateway::BackendRef>, InvalidReference>;
+    fn get_parents(&self) -> Result<Vec<&gateway::ParentReference>, InvalidParentReference>;
+    fn get_backends(&self) -> Vec<&gateway::BackendRef>;
 }
 
 impl HasReferences for policy::HttpRoute {
-    fn get_parents(&self) -> Result<Vec<&gateway::ParentReference>, InvalidReference> {
+    fn get_parents(&self) -> Result<Vec<&gateway::ParentReference>, InvalidParentReference> {
         let mut parents = Vec::new();
         match &self.spec.inner.parent_refs {
             Some(parent_refs) => {
@@ -92,26 +89,26 @@ impl HasReferences for policy::HttpRoute {
                 Ok(parents)
             }
             // TODO: should perhaps move to 'DoesNotSelectParent' or something similar?
-            None => Err(InvalidReference::DoesNotSelectServer),
+            None => Err(InvalidParentReference::DoesNotSelectServer),
         }
     }
 
-    fn get_backends(&self) -> Result<Vec<&gateway::BackendRef>, InvalidReference> {
+    // TODO: we will need to consider inexistent backends when Service
+    // support is added. When we have no backend_refs, we will need to look
+    // at one (and only one) parentRef.
+    //   * If a rule does not have a backend, parentRef type is used.
+    //   * There may be only one parentRef when Service is used as a
+    //   parentRef kind
+    //   * Typecheck parentRef, if it's a Service, it should be used,
+    //   otherwise an invalid kind should be thrown.
+    fn get_backends(&self) -> Vec<&gateway::BackendRef> {
         let mut obj_refs = Vec::new();
         let rules = if let Some(rules) = &self.spec.rules {
             rules
         } else {
-            return Ok(obj_refs);
+            return obj_refs;
         };
 
-        // TODO: for now, this function is infallible
-        // when service support is added, we need to consider inexistent backends:
-        //    * if a rule does not have a backend, the parentReference is used
-        //    * there may be only one parent reference when a Service is used (according to GAMMA
-        //    spec)
-        //    * we will need to check only one parent ref exists, and typecheck it
-        // If no errors are returned, the parentRef information should be used as a BackendRef
-        // wherever we have 0 backendRefs defined.
         for rule in rules {
             let backends = rule
                 .backend_refs
@@ -121,7 +118,7 @@ impl HasReferences for policy::HttpRoute {
             obj_refs.extend(backends)
         }
 
-        Ok(obj_refs)
+        obj_refs
     }
 }
 
@@ -129,7 +126,7 @@ impl ParentReference {
     fn from_parent_ref(
         parent_ref: &gateway::ParentReference,
         default_namespace: &str,
-    ) -> Option<Result<Self, InvalidReference>> {
+    ) -> Option<Result<Self, InvalidParentReference>> {
         // todo: Allow parent references to target all kinds so that a status
         // is generated for invalid kinds
         if !policy::httproute::parent_ref_targets_kind::<Server>(parent_ref)
@@ -147,10 +144,10 @@ impl ParentReference {
             port,
         } = parent_ref;
         if port.is_some() {
-            return Some(Err(InvalidReference::SpecifiesPort));
+            return Some(Err(InvalidParentReference::SpecifiesPort));
         }
         if section_name.is_some() {
-            return Some(Err(InvalidReference::SpecifiesSection));
+            return Some(Err(InvalidParentReference::SpecifiesSection));
         }
 
         // If the parent reference does not have a namespace, default to using
@@ -198,29 +195,52 @@ impl BackendReference {
     fn from_backend_ref(
         backend_ref: &gateway::BackendRef,
         default_namespace: &str,
-    ) -> Result<BackendReference, InvalidReference> {
-        if !policy::httproute::backend_ref_targets_kind::<Service>(backend_ref) {
-            return Err(InvalidReference::InvalidBackendKind);
-        }
-
+    ) -> BackendReference {
         let namespace = backend_ref
             .inner
             .namespace
             .clone()
             .unwrap_or_else(|| default_namespace.to_owned());
-        Ok(BackendReference::Service(ResourceId::new(
-            namespace,
-            backend_ref.inner.name.to_owned(),
-        )))
+        let id = ResourceId::new(namespace, backend_ref.inner.name.to_owned());
+        let group = backend_ref.inner.group.clone();
+        let kind = backend_ref.inner.group.clone();
+        BackendReference { id, group, kind }
     }
 
-    /// BackendReferences are an all-or-nothing operation when converted into a status condition.
-    /// If all BackendReferences present on a route can be resolved (i.e exist in the cache) then
-    /// one status is set on each parent to inform the backends have been resolved successfully.
+    /// An all-or-nothing operation that produces a status condition based on a
+    /// route's BackendReferences and based on the internal Index Service cache.
+    ///
+    /// If all BackendReferences present on a route can be resolved (i.e exist
+    /// in the cache) then one status is set on each parent to inform the
+    /// backends have been resolved successfully. Each BackReference instance is
+    /// typechecked to ensure only allowed types may be used. Consequently, if a
+    /// BackendReference has an invalid type, an InvalidKind condition is set
+    /// for _all_ references.
     pub(crate) fn into_status_condition(
-        resolved_all: bool,
+        backend_refs: &[BackendReference],
+        services: &ahash::AHashSet<ResourceId>,
         timestamp: chrono::DateTime<chrono::Utc>,
     ) -> Condition {
+        let mut resolved_all = true;
+        for backend in backend_refs.iter() {
+            let BackendReference { id, group, kind } = backend;
+            if !services.contains(id) {
+                resolved_all = false;
+                break;
+            }
+
+            if !policy::httproute::backend_ref_targets_kind::<Service>(kind, group) {
+                return Condition {
+                    last_transition_time: Time(timestamp),
+                    type_: "ResolvedRefs".to_string(),
+                    status: "False".to_string(),
+                    reason: "InvalidKind".to_string(),
+                    observed_generation: None,
+                    message: "".to_string(),
+                };
+            }
+        }
+
         if resolved_all {
             Condition {
                 last_transition_time: Time(timestamp),
