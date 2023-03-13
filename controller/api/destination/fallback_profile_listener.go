@@ -35,11 +35,8 @@ type childListener struct {
 // Otherwise, if the backup listener has most recently been updated with a
 // non-nil value, its valeu is published to the parent listener.
 //
-// The primary child must receive at least *one* value--even if nil--before
-// values are published to the parent.
-//
-// A default ServiceProfile is published to the parent listener if both the
-// primary and backup have nil states.
+// A nil ServiceProfile is published only when both the primary and backup have
+// been initialized and have nil values.
 func newFallbackProfileListener(
 	parent watcher.ProfileUpdateListener,
 	log *logging.Entry,
@@ -73,10 +70,17 @@ func (f *fallbackProfileListener) publish() {
 		return
 	}
 
-	if f.primary.state == nil && f.backup.state != nil {
-		f.log.Debug("Publishing backup profile")
-		f.parent.Update(f.backup.state)
-		return
+	if f.primary.state == nil {
+		if !f.backup.initialized {
+			f.log.Debug("Waiting for backup profile listener to be initialized")
+			return
+		}
+
+		if f.backup.state != nil {
+			f.log.Debug("Publishing backup profile")
+			f.parent.Update(f.backup.state)
+			return
+		}
 	}
 
 	f.log.Debug("Publishing primary profile")

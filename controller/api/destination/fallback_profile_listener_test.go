@@ -55,7 +55,8 @@ func TestFallbackProfileListener(t *testing.T) {
 	})
 
 	t.Run("Primary cleared", func(t *testing.T) {
-		primary, _, listener := newListeners()
+		primary, backup, listener := newListeners()
+		backup.Update(nil)
 		primary.Update(&primaryProfile)
 		primary.Update(nil)
 		assertEq(t, listener.received, []*sp.ServiceProfile{&primaryProfile, nil})
