@@ -68,9 +68,6 @@ func newFallbackProfileListener(
 }
 
 func (f *fallbackProfileListener) publish() {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-
 	if !f.primary.initialized {
 		f.log.Debug("Waiting for primary profile listener to be initialized")
 		return
@@ -87,6 +84,9 @@ func (f *fallbackProfileListener) publish() {
 }
 
 func (p *childListener) Update(profile *sp.ServiceProfile) {
+	p.parent.mutex.Lock()
+	defer p.parent.mutex.Unlock()
+
 	p.state = profile
 	p.initialized = true
 	p.parent.publish()
