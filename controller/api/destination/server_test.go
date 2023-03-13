@@ -126,22 +126,17 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Returns server profile", func(t *testing.T) {
 		stream := profileStream(t, fullyQualifiedName, port, "ns:other")
-
-		firstUpdate := stream.updates[0]
-		if firstUpdate.FullyQualifiedName != fullyQualifiedName {
-			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, firstUpdate.FullyQualifiedName)
+		profile := assertSingleProfile(t, stream.updates)
+		if profile.FullyQualifiedName != fullyQualifiedName {
+			t.Fatalf("Expected fully qualified name '%s', but got '%s'",
+				fullyQualifiedName, profile.FullyQualifiedName)
 		}
-
-		lastUpdate := stream.updates[len(stream.updates)-1]
-		if lastUpdate.OpaqueProtocol {
+		if profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to not be an opaque protocol, but it was", port)
 		}
-		routes := lastUpdate.GetRoutes()
+		routes := profile.GetRoutes()
 		if len(routes) != 1 {
-			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
-		}
-		if routes[0].GetIsRetryable() {
-			t.Fatalf("Expected route to not be retryable, but it was")
+			t.Fatalf("Expected 0 routes but got %d: %v", len(routes), routes)
 		}
 	})
 
@@ -151,12 +146,9 @@ func TestGetProfiles(t *testing.T) {
 		if profile.FullyQualifiedName != fullyQualifiedName {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, profile.FullyQualifiedName)
 		}
-
-		// There are routes on the service in the target service profile, but
-		// there are no routes on the service profile in the "other" namespace.
 		routes := profile.GetRoutes()
-		if len(routes) != 0 {
-			t.Fatalf("Expected 0 routes got %d: %v", len(routes), routes)
+		if len(routes) != 1 {
+			t.Fatalf("Expected 1 route got %d: %v", len(routes), routes)
 		}
 	})
 
@@ -622,8 +614,8 @@ func assertSingleProfile(t *testing.T, updates []*pb.DestinationProfile) *pb.Des
 	// generate notifications that are discarded after the stream.Cancel() call,
 	// but very rarely those notifications might come after, in which case we'll
 	// get a second update.
-	if len(updates) == 0 || len(updates) > 2 {
-		t.Fatalf("Expected 1 or 2 profiles but got %d: %v", len(updates), updates)
+	if len(updates) != 1 {
+		t.Fatalf("Expected 1 profile update but got %d: %v", len(updates), updates)
 	}
 	return updates[0]
 }

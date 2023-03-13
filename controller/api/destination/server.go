@@ -294,15 +294,58 @@ func (s *server) translateServiceProfile(
 
 	// Create a pair of listeners that forward to the underlying adapated
 	// translator. Updates published to the primary listener take precedence
-	// over those published to the secondary listener. When the primary listener
-	// publishes 'nil', the secondary listener is used.
+	// over those published to the backup listener. When the primary listener
+	// publishes 'nil', the backup listener is used.
 	dup := newDedupProfileListener(opaquePortsAdaptor, log)
-	dpl := newDefaultProfileListener(&sp.ServiceProfile{}, dup, log)
-	primary, secondary := newFallbackProfileListener(dpl, log)
+	listener := newDefaultProfileListener(&sp.ServiceProfile{}, dup, log)
 
 	// The primary lookup uses the context token to determine the requester's
-	// namespace.
-	primaryID, err := profileID(fqn, s.parseContextToken(token), s.clusterDomain)
+	// namespace. If there's no namespace in the token, start a single
+	// subscription.
+	tok := s.parseContextToken(token)
+	if tok.Ns == "" {
+		id, err := profileID(fqn, contextToken{}, s.clusterDomain)
+		if err != nil {
+			log.Debug("Invalid service")
+			return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
+		}
+		err = s.profiles.Subscribe(id, listener)
+		if err != nil {
+			log.Warnf("Failed to subscribe to profile: %s", err)
+			return err
+		}
+		defer s.profiles.Unsubscribe(id, listener)
+
+		select {
+		case <-s.shutdown:
+		case <-stream.Context().Done():
+			log.Debug("Cancelled")
+		}
+		return nil
+	}
+
+	// We ned to support two subscriptions:
+	// - First, a backup subscription that assumes the context of the server
+	//   namespace.
+	// - And then, a primary subscription that assumes the context of the client
+	//   namespace.
+	primary, backup := newFallbackProfileListener(listener, log)
+
+	// The backup lookup ignores the context token to lookup any
+	// server-namespace-hosted profiles.
+	backupID, err := profileID(fqn, contextToken{}, s.clusterDomain)
+	if err != nil {
+		log.Debug("Invalid service")
+		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
+	}
+	err = s.profiles.Subscribe(backupID, backup)
+	if err != nil {
+		log.Warnf("Failed to subscribe to profile: %s", err)
+		return err
+	}
+	defer s.profiles.Unsubscribe(backupID, backup)
+
+	primaryID, err := profileID(fqn, tok, s.clusterDomain)
 	if err != nil {
 		log.Debug("Invalid service")
 		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
@@ -314,26 +357,13 @@ func (s *server) translateServiceProfile(
 	}
 	defer s.profiles.Unsubscribe(primaryID, primary)
 
-	// The secondary lookup ignores the context token to lookup any
-	// server-namespace-hosted profiles.
-	secondaryID, err := profileID(fqn, contextToken{}, s.clusterDomain)
-	if err != nil {
-		log.Debug("Invalid service")
-		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
-	}
-	err = s.profiles.Subscribe(secondaryID, secondary)
-	if err != nil {
-		log.Warnf("Failed to subscribe to profile: %s", err)
-		return err
-	}
-	defer s.profiles.Unsubscribe(secondaryID, secondary)
-
 	select {
 	case <-s.shutdown:
 	case <-stream.Context().Done():
 		log.Debug("Cancelled")
 	}
 	return nil
+
 }
 
 func (s *server) translateEndpointProfile(

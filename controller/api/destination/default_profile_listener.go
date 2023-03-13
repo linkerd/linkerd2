@@ -7,10 +7,9 @@ import (
 )
 
 type defaultProfileListener struct {
-	parent     watcher.ProfileUpdateListener
-	profile    *sp.ServiceProfile
-	wasDefault bool
-	log        *log.Entry
+	parent  watcher.ProfileUpdateListener
+	profile *sp.ServiceProfile
+	log     *log.Entry
 }
 
 func newDefaultProfileListener(
@@ -18,25 +17,13 @@ func newDefaultProfileListener(
 	parent watcher.ProfileUpdateListener,
 	log *log.Entry,
 ) watcher.ProfileUpdateListener {
-	wasNil := false
-	return &defaultProfileListener{parent, profile, wasNil, log}
+	return &defaultProfileListener{parent, profile, log}
 }
 
 func (p *defaultProfileListener) Update(profile *sp.ServiceProfile) {
 	if profile == nil {
+		log.Debug("Using default profile")
 		profile = p.profile
 	}
-
-	if profile == p.profile {
-		if p.wasDefault {
-			log.Debug("Skipping redundant default profile")
-			return
-		}
-		p.wasDefault = true
-		log.Debug("Using default profile")
-	} else {
-		p.wasDefault = false
-	}
-
 	p.parent.Update(profile)
 }

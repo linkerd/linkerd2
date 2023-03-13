@@ -76,18 +76,14 @@ func (f *fallbackProfileListener) publish() {
 		return
 	}
 
-	var state *sp.ServiceProfile
-	if f.primary.state != nil {
-		f.log.Debug("Publishing primary profile")
-		state = f.primary.state
-	} else if f.backup.state != nil {
+	if f.primary.state == nil && f.backup.state != nil {
 		f.log.Debug("Publishing backup profile")
-		state = f.backup.state
-	} else {
-		f.log.Debug("Publishing nil profile")
+		f.parent.Update(f.backup.state)
+		return
 	}
 
-	f.parent.Update(state)
+	f.log.Debug("Publishing primary profile")
+	f.parent.Update(f.primary.state)
 }
 
 func (p *childListener) Update(profile *sp.ServiceProfile) {
