@@ -224,11 +224,9 @@ impl BackendReference {
         let mut resolved_all = true;
         for backend in backend_refs.iter() {
             let BackendReference { id, group, kind } = backend;
-            if !services.contains(id) {
-                resolved_all = false;
-                break;
-            }
 
+            // First, check if the backend targets an invalid kind, since it is
+            // likely the kind won't be processed if it's not a service.
             if !policy::httproute::backend_ref_targets_kind::<Service>(kind, group) {
                 return Condition {
                     last_transition_time: Time(timestamp),
@@ -238,6 +236,13 @@ impl BackendReference {
                     observed_generation: None,
                     message: "".to_string(),
                 };
+            }
+
+            // Second, if the kind is supported but does not exist, it means we
+            // fail the whole condition.
+            if !services.contains(id) {
+                resolved_all = false;
+                break;
             }
         }
 

@@ -1,4 +1,5 @@
 use crate::{index, index::POLICY_API_GROUP, resource_id::ResourceId, Index};
+use k8s::{gateway::HttpBackendRef, Time};
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::POLICY_CONTROLLER_NAME;
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy::server::Port};
@@ -6,15 +7,202 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, watch};
 
 #[test]
-fn http_route_accepted_after_server_create() {
-    let hostname = "test";
-    let claim = kubert::lease::Claim {
-        holder: "test".to_string(),
-        expiry: chrono::DateTime::<chrono::Utc>::MAX_UTC,
+fn http_route_accepted_with_resolved_refs() {
+    let (index, mut updates_rx) = new_test_index();
+
+    // SharedIndex init
+    // TODO (matei): change to service when we introduce svc parentRef support
+    // Apply the server
+    let server = make_server(
+        "ns-0",
+        "srv-8080",
+        Port::Number(8080.try_into().unwrap()),
+        Some(("app", "app-0")),
+        Some(("app", "app-0")),
+        Some(k8s::policy::server::ProxyProtocol::Http1),
+    );
+    index.write().apply(server);
+
+    // Apply service
+    let svc = k8s::Service {
+        metadata: k8s::ObjectMeta {
+            namespace: Some("ns-0".to_string()),
+            name: Some("foo".to_string()),
+            creation_timestamp: Some(Time(chrono::Utc::now())),
+            ..Default::default()
+        },
+        ..Default::default()
     };
-    let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
-    let (updates_tx, mut updates_rx) = mpsc::unbounded_channel();
-    let index = Index::shared(hostname, claims_rx, updates_tx);
+    index.write().apply(svc);
+
+    // Apply the route.
+    let backend_ref = {
+        let backend_ref = gateway::BackendRef {
+            weight: None,
+            // Unspecified group & kind default to Service object
+            inner: gateway::BackendObjectReference {
+                name: "foo".to_string(),
+                namespace: Some("ns-0".to_string()),
+                port: Some(8080),
+                group: None,
+                kind: None,
+            },
+        };
+        HttpBackendRef {
+            backend_ref: Some(backend_ref),
+            filters: None,
+        }
+    };
+
+    let http_route =
+        make_route_with_backends("ns-0", "route-foo", "srv-8080", Some(vec![backend_ref]));
+    index.write().apply(http_route);
+
+    // Create the expected update.
+    let expected_id = ResourceId::new("ns-0".to_string(), "route-foo".to_string());
+    let backend_condition = make_backend_condition(true, false);
+    let parent_status = make_parent_status(
+        "ns-0",
+        "srv-8080",
+        "Accepted",
+        "True",
+        "Accepted",
+        backend_condition,
+    );
+    let status = make_status(vec![parent_status]);
+    let expected_patch = index::make_patch("route-foo", status);
+
+    let update = updates_rx.try_recv().unwrap();
+    assert_eq!(expected_id, update.id);
+    assert_eq!(expected_patch, update.patch);
+    assert!(updates_rx.try_recv().is_err())
+}
+
+#[test]
+fn http_backend_rejected_invalid_kind() {
+    let (index, mut updates_rx) = new_test_index();
+
+    // SharedIndex init
+    // TODO (matei): change to service when we introduce svc parentRef support
+    // Apply the server
+    let server = make_server(
+        "ns-0",
+        "srv-8080",
+        Port::Number(8080.try_into().unwrap()),
+        Some(("app", "app-0")),
+        Some(("app", "app-0")),
+        Some(k8s::policy::server::ProxyProtocol::Http1),
+    );
+    index.write().apply(server);
+
+    // Apply the route with an unsupported BackendReference
+    // In this case, we re-use the Server object
+    let backend_ref = {
+        let backend_ref = gateway::BackendRef {
+            weight: None,
+            inner: gateway::BackendObjectReference {
+                name: "srv-8080".to_string(),
+                namespace: Some("ns-0".to_string()),
+                port: None,
+                group: Some("policy.linkerd.io".to_string()),
+                kind: Some("Server".to_string()),
+            },
+        };
+        HttpBackendRef {
+            backend_ref: Some(backend_ref),
+            filters: None,
+        }
+    };
+
+    let http_route =
+        make_route_with_backends("ns-0", "route-foo", "srv-8080", Some(vec![backend_ref]));
+    index.write().apply(http_route);
+
+    // Create the expected update.
+    let expected_id = ResourceId::new("ns-0".to_string(), "route-foo".to_string());
+    let backend_condition = make_backend_condition(false, true);
+    let parent_status = make_parent_status(
+        "ns-0",
+        "srv-8080",
+        "Accepted",
+        "True",
+        "Accepted",
+        backend_condition,
+    );
+
+    let status = make_status(vec![parent_status]);
+    let expected_patch = index::make_patch("route-foo", status);
+
+    let update = updates_rx.try_recv().unwrap();
+    assert_eq!(expected_id, update.id);
+    assert_eq!(expected_patch, update.patch);
+    assert!(updates_rx.try_recv().is_err())
+}
+
+#[test]
+fn http_backend_rejected_not_found() {
+    let (index, mut updates_rx) = new_test_index();
+
+    // SharedIndex init
+    // TODO (matei): change to service when we introduce svc parentRef support
+    // Apply the server
+    let server = make_server(
+        "ns-0",
+        "srv-8080",
+        Port::Number(8080.try_into().unwrap()),
+        Some(("app", "app-0")),
+        Some(("app", "app-0")),
+        Some(k8s::policy::server::ProxyProtocol::Http1),
+    );
+    index.write().apply(server);
+
+    // Apply the route with an unsupported BackendReference
+    // In this case, we re-use the Server object
+    let backend_ref = {
+        let backend_ref = gateway::BackendRef {
+            weight: None,
+            inner: gateway::BackendObjectReference {
+                name: "404notfound".to_string(),
+                namespace: Some("ns-0".to_string()),
+                port: None,
+                group: None,
+                kind: Some("Service".to_string()),
+            },
+        };
+        HttpBackendRef {
+            backend_ref: Some(backend_ref),
+            filters: None,
+        }
+    };
+
+    let http_route =
+        make_route_with_backends("ns-0", "route-foo", "srv-8080", Some(vec![backend_ref]));
+    index.write().apply(http_route);
+
+    // Create the expected update.
+    let expected_id = ResourceId::new("ns-0".to_string(), "route-foo".to_string());
+    let backend_condition = make_backend_condition(false, false);
+    let parent_status = make_parent_status(
+        "ns-0",
+        "srv-8080",
+        "Accepted",
+        "True",
+        "Accepted",
+        backend_condition,
+    );
+
+    let status = make_status(vec![parent_status]);
+    let expected_patch = index::make_patch("route-foo", status);
+
+    let update = updates_rx.try_recv().unwrap();
+    assert_eq!(expected_id, update.id);
+    assert_eq!(expected_patch, update.patch);
+    assert!(updates_rx.try_recv().is_err())
+}
+
+#[test]
+fn http_route_accepted_after_server_create() {
+    let (index, mut updates_rx) = new_test_index();
 
     // Apply the route.
     let http_route = make_route("ns-0", "route-foo", "srv-8080");
@@ -22,10 +210,7 @@ fn http_route_accepted_after_server_create() {
 
     // Create the expected update.
     let id = ResourceId::new("ns-0".to_string(), "route-foo".to_string());
-    let backend_condition = crate::http_route::BackendReference::into_status_condition(
-        true,
-        chrono::DateTime::<chrono::Utc>::MIN_UTC,
-    );
+    let backend_condition = make_backend_condition(true, false);
     let parent_status = make_parent_status(
         "ns-0",
         "srv-8080",
@@ -56,10 +241,7 @@ fn http_route_accepted_after_server_create() {
 
     // Create the expected update.
     let id = ResourceId::new("ns-0".to_string(), "route-foo".to_string());
-    let backend_condition = crate::http_route::BackendReference::into_status_condition(
-        true,
-        chrono::DateTime::<chrono::Utc>::MIN_UTC,
-    );
+    let backend_condition = make_backend_condition(true, false);
     let parent_status = make_parent_status(
         "ns-0",
         "srv-8080",
@@ -81,14 +263,7 @@ fn http_route_accepted_after_server_create() {
 
 #[test]
 fn http_route_rejected_after_server_delete() {
-    let hostname = "test";
-    let claim = kubert::lease::Claim {
-        holder: "test".to_string(),
-        expiry: chrono::DateTime::<chrono::Utc>::MAX_UTC,
-    };
-    let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
-    let (updates_tx, mut updates_rx) = mpsc::unbounded_channel();
-    let index = Index::shared(hostname, claims_rx, updates_tx);
+    let (index, mut updates_rx) = new_test_index();
 
     let server = make_server(
         "ns-0",
@@ -108,10 +283,7 @@ fn http_route_rejected_after_server_delete() {
 
     // Create the expected update.
     let id = ResourceId::new("ns-0".to_string(), "route-foo".to_string());
-    let backend_condition = crate::http_route::BackendReference::into_status_condition(
-        true,
-        chrono::DateTime::<chrono::Utc>::MIN_UTC,
-    );
+    let backend_condition = make_backend_condition(true, false);
     let parent_status = make_parent_status(
         "ns-0",
         "srv-8080",
@@ -141,10 +313,7 @@ fn http_route_rejected_after_server_delete() {
     // Create the expected update.
     let id = ResourceId::new("ns-0".to_string(), "route-foo".to_string());
 
-    let backend_condition = crate::http_route::BackendReference::into_status_condition(
-        true,
-        chrono::DateTime::<chrono::Utc>::MIN_UTC,
-    );
+    let backend_condition = make_backend_condition(true, false);
     let parent_status = make_parent_status(
         "ns-0",
         "srv-8080",
@@ -162,6 +331,18 @@ fn http_route_rejected_after_server_delete() {
     assert_eq!(id, update.id);
     assert_eq!(patch, update.patch);
     assert!(updates_rx.try_recv().is_err());
+}
+
+// Helper to create shared index instances that have a leader election claim
+fn new_test_index() -> (index::SharedIndex, mpsc::UnboundedReceiver<index::Update>) {
+    let hostname = "test";
+    let claim = kubert::lease::Claim {
+        holder: "test".to_string(),
+        expiry: chrono::DateTime::<chrono::Utc>::MAX_UTC,
+    };
+    let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
+    let (updates_tx, updates_rx) = mpsc::unbounded_channel();
+    (Index::shared(hostname, claims_rx, updates_tx), updates_rx)
 }
 
 fn make_server(
@@ -197,8 +378,17 @@ fn make_route(
     name: impl ToString,
     server: impl ToString,
 ) -> k8s::policy::HttpRoute {
+    make_route_with_backends(namespace, name, server, None)
+}
+
+fn make_route_with_backends(
+    namespace: impl ToString,
+    name: impl ToString,
+    server: impl ToString,
+    backends: Option<Vec<gateway::HttpBackendRef>>,
+) -> k8s::policy::HttpRoute {
     use chrono::Utc;
-    use k8s::{policy::httproute::*, Time};
+    use k8s::policy::httproute::*;
 
     HttpRoute {
         metadata: k8s::ObjectMeta {
@@ -229,7 +419,7 @@ fn make_route(
                     method: Some("GET".to_string()),
                 }]),
                 filters: None,
-                backend_refs: None,
+                backend_refs: backends,
             }]),
         },
         status: None,
@@ -263,6 +453,39 @@ fn make_parent_status(
         },
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
         conditions: vec![condition, backend_condition],
+    }
+}
+
+fn make_backend_condition(resolved_all: bool, invalid_kind: bool) -> k8s::Condition {
+    if invalid_kind {
+        return k8s::Condition {
+            last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
+            type_: "ResolvedRefs".to_string(),
+            status: "False".to_string(),
+            reason: "InvalidKind".to_string(),
+            observed_generation: None,
+            message: "".to_string(),
+        };
+    }
+
+    if !resolved_all {
+        return k8s::Condition {
+            last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
+            type_: "ResolvedRefs".to_string(),
+            status: "False".to_string(),
+            reason: "BackendDoesNotExist".to_string(),
+            observed_generation: None,
+            message: "".to_string(),
+        };
+    }
+
+    k8s::Condition {
+        last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
+        type_: "ResolvedRefs".to_string(),
+        status: "True".to_string(),
+        reason: "ResolvedRefs".to_string(),
+        observed_generation: None,
+        message: "".to_string(),
     }
 }
 
