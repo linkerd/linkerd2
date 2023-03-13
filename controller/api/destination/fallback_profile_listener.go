@@ -5,99 +5,93 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
+	logging "github.com/sirupsen/logrus"
 )
 
 type fallbackProfileListener struct {
-	underlying watcher.ProfileUpdateListener
-	primary    *primaryProfileListener
-	backup     *backupProfileListener
-	mutex      sync.Mutex
+	primary, backup *childListener
+	parent          watcher.ProfileUpdateListener
+	log             *logging.Entry
+	mutex           sync.Mutex
 }
 
-type fallbackChildListener struct {
+type childListener struct {
 	// state is only referenced from the outer struct primaryProfileListener
 	// or backupProfileListener (e.g. listener.state where listener's type is
 	// _not_ this struct). structcheck issues a false positive for this field
 	// as it does not think it's used.
 	//nolint:structcheck
-	state  *sp.ServiceProfile
-	parent *fallbackProfileListener
+	state       *sp.ServiceProfile
+	initialized bool
+	parent      *fallbackProfileListener
 }
 
-type primaryProfileListener struct {
-	fallbackChildListener
-}
-
-type backupProfileListener struct {
-	fallbackChildListener
-}
-
-// newFallbackProfileListener takes an underlying profileUpdateListener and
-// returns two profileUpdateListeners: a primary and a backup.  Updates to
-// the primary and backup will propagate to the underlying with updates to
-// the primary always taking priority.  If the value in the primary is cleared,
-// the value from the backup is used.
-func newFallbackProfileListener(listener watcher.ProfileUpdateListener) (watcher.ProfileUpdateListener, watcher.ProfileUpdateListener) {
+// newFallbackProfileListener takes a parent ProfileUpdateListener and returns
+// two ProfileUpdateListeners: a primary and a backup.
+//
+// If the primary listener is updated with a non-nil value, it is published to
+// the parent listener.
+//
+// Otherwise, if the backup listener has most recently been updated with a
+// non-nil value, its valeu is published to the parent listener.
+//
+// A nil ServiceProfile is published only when both the primary and backup have
+// been initialized and have nil values.
+func newFallbackProfileListener(
+	parent watcher.ProfileUpdateListener,
+	log *logging.Entry,
+) (watcher.ProfileUpdateListener, watcher.ProfileUpdateListener) {
 	// Primary and backup share a lock to ensure updates are atomic.
 	fallback := fallbackProfileListener{
-		mutex:      sync.Mutex{},
-		underlying: listener,
+		mutex: sync.Mutex{},
+		log:   log,
 	}
 
-	primary := primaryProfileListener{
-		fallbackChildListener{
-			parent: &fallback,
-		},
+	primary := childListener{
+		initialized: false,
+		parent:      &fallback,
 	}
-	backup := backupProfileListener{
-		fallbackChildListener{
-			parent: &fallback,
-		},
+
+	backup := childListener{
+		initialized: false,
+		parent:      &fallback,
 	}
+
+	fallback.parent = parent
 	fallback.primary = &primary
 	fallback.backup = &backup
+
 	return &primary, &backup
 }
 
-// Primary
+func (f *fallbackProfileListener) publish() {
+	if !f.primary.initialized {
+		f.log.Debug("Waiting for primary profile listener to be initialized")
+		return
+	}
 
-func (p *primaryProfileListener) Update(profile *sp.ServiceProfile) {
+	if f.primary.state == nil {
+		if !f.backup.initialized {
+			f.log.Debug("Waiting for backup profile listener to be initialized")
+			return
+		}
+
+		if f.backup.state != nil {
+			f.log.Debug("Publishing backup profile")
+			f.parent.Update(f.backup.state)
+			return
+		}
+	}
+
+	f.log.Debug("Publishing primary profile")
+	f.parent.Update(f.primary.state)
+}
+
+func (p *childListener) Update(profile *sp.ServiceProfile) {
 	p.parent.mutex.Lock()
 	defer p.parent.mutex.Unlock()
 
 	p.state = profile
-
-	if p.state != nil {
-		// We got a value; apply the update.
-		p.parent.underlying.Update(p.state)
-		return
-	}
-	if p.parent.backup != nil {
-		// Our value was cleared; fall back to backup.
-		p.parent.underlying.Update(p.parent.backup.state)
-		return
-	}
-	// Our value was cleared and there is no backup value.
-	p.parent.underlying.Update(nil)
-}
-
-// Backup
-
-func (b *backupProfileListener) Update(profile *sp.ServiceProfile) {
-	b.parent.mutex.Lock()
-	defer b.parent.mutex.Unlock()
-
-	b.state = profile
-
-	if b.parent.primary != nil && b.parent.primary.state != nil {
-		// Primary has a value, so ignore this update.
-		return
-	}
-	if b.state != nil {
-		// We got a value; apply the update.
-		b.parent.underlying.Update(b.state)
-		return
-	}
-	// Our value was cleared and there is no primary value.
-	b.parent.underlying.Update(nil)
+	p.initialized = true
+	p.parent.publish()
 }
