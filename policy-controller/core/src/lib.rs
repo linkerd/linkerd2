@@ -104,7 +104,7 @@ pub trait DiscoverOutboundPolicy<T> {
 
     async fn watch_outbound_policy(&self, target: T) -> Result<Option<OutboundPolicyStream>>;
 
-    fn service_lookup(&self, addr: IpAddr, port: NonZeroU16) -> Option<T>;
+    fn lookup_ip(&self, addr: IpAddr, port: NonZeroU16) -> Option<T>;
 }
 
 pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send + Sync + 'static>>;
