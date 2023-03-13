@@ -79,7 +79,7 @@ func (f *fallbackProfileListener) publish() {
 	}
 
 	if f.primary != nil && f.primary.state != nil {
-		f.log.Debug("Publishing primary profil")
+		f.log.Debug("Publishing primary profile")
 		profile = f.primary.state
 	} else if f.backup != nil && f.backup.state != nil {
 		f.log.Debug("Publishing backup profile")
