@@ -176,6 +176,8 @@ impl Index {
             .map(|parent| {
                 let Reference { id, .. } = parent;
 
+                // todo: check group and kind here probably
+
                 #[cfg(not(test))]
                 let timestamp = Utc::now();
                 #[cfg(test)]
@@ -232,12 +234,10 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         // HTTPRoute is already in the index and it hasn't changed, skip
         // creating a patch.
         let parent_refs = resource.get_parents();
-        let parents = match http_route::make_parents(parent_refs, &namespace) {
-            Ok(parents) => parents,
-            Err(error) => {
-                tracing::info!(%namespace, %name, %error, "Ignoring HTTPRoute");
-                return;
-            }
+        let parents = http_route::make_parents(parent_refs, &namespace);
+        if parents.is_empty() {
+            tracing::info!(%namespace, %name, "Ignoring HTTPRoute: no parent references");
+            return;
         };
         if !self.update_http_route(id.clone(), parents.clone()) {
             return;
