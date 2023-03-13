@@ -69,18 +69,15 @@ func (f *fallbackProfileListener) publish() {
 		f.log.Debug("Waiting for primary profile listener to be initialized")
 		return
 	}
+	if !f.backup.initialized {
+		f.log.Debug("Waiting for backup profile listener to be initialized")
+		return
+	}
 
-	if f.primary.state == nil {
-		if !f.backup.initialized {
-			f.log.Debug("Waiting for backup profile listener to be initialized")
-			return
-		}
-
-		if f.backup.state != nil {
-			f.log.Debug("Publishing backup profile")
-			f.parent.Update(f.backup.state)
-			return
-		}
+	if f.primary.state == nil && f.backup.state != nil {
+		f.log.Debug("Publishing backup profile")
+		f.parent.Update(f.backup.state)
+		return
 	}
 
 	f.log.Debug("Publishing primary profile")

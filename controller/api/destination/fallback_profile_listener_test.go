@@ -42,8 +42,10 @@ func TestFallbackProfileListener(t *testing.T) {
 	}
 
 	t.Run("Primary updated", func(t *testing.T) {
-		primary, _, listener := newListeners()
+		primary, backup, listener := newListeners()
 		primary.Update(&primaryProfile)
+		assertEq(t, listener.received, []*sp.ServiceProfile{})
+		backup.Update(nil)
 		assertEq(t, listener.received, []*sp.ServiceProfile{&primaryProfile})
 	})
 
@@ -82,7 +84,7 @@ func TestFallbackProfileListener(t *testing.T) {
 		primary.Update(&primaryProfile)
 		backup.Update(&backupProfile)
 		backup.Update(nil)
-		assertEq(t, listener.received, []*sp.ServiceProfile{&primaryProfile, &primaryProfile, &primaryProfile})
+		assertEq(t, listener.received, []*sp.ServiceProfile{&primaryProfile, &primaryProfile})
 	})
 
 	t.Run("Fallback to backup", func(t *testing.T) {
@@ -90,7 +92,7 @@ func TestFallbackProfileListener(t *testing.T) {
 		primary.Update(&primaryProfile)
 		backup.Update(&backupProfile)
 		primary.Update(nil)
-		assertEq(t, listener.received, []*sp.ServiceProfile{&primaryProfile, &primaryProfile, &backupProfile})
+		assertEq(t, listener.received, []*sp.ServiceProfile{&primaryProfile, &backupProfile})
 	})
 
 }
