@@ -38,6 +38,7 @@ pub struct InboundPolicyServer<T> {
 
 #[derive(Clone, Debug)]
 pub struct OutboundPolicyServer<T> {
+    cluster_domain: Arc<str>,
     index: T,
     drain: drain::Watch,
 }
@@ -139,9 +140,10 @@ impl<T> OutboundPolicyServer<T>
 where
     T: DiscoverOutboundPolicy<(String, String, NonZeroU16)> + Send + Sync + 'static,
 {
-    pub fn new(discover: T, drain: drain::Watch) -> Self {
+    pub fn new(discover: T, cluster_domain: impl Into<Arc<str>>, drain: drain::Watch) -> Self {
         Self {
             index: discover,
+            cluster_domain: cluster_domain.into(),
             drain,
         }
     }
@@ -150,19 +152,17 @@ where
         OutboundPoliciesServer::new(self)
     }
 
-    fn service_lookup(
+    fn lookup(
         &self,
-        traffic_spec: outbound::TrafficSpec,
+        spec: outbound::TrafficSpec,
     ) -> Result<(String, String, NonZeroU16), tonic::Status> {
-        let target = traffic_spec
+        let target = spec
             .target
             .ok_or_else(|| tonic::Status::invalid_argument("target is required"))?;
         let target = match target {
             outbound::traffic_spec::Target::Addr(target) => target,
-            outbound::traffic_spec::Target::Authority(_) => {
-                return Err(tonic::Status::unimplemented(
-                    "getting policy by authority is not supported",
-                ))
+            outbound::traffic_spec::Target::Authority(auth) => {
+                return self.lookup_authority(&*auth)
             }
         };
 
@@ -182,8 +182,52 @@ where
             })?;
 
         self.index
-            .service_lookup(addr, port)
+            .lookup_ip(addr, port)
             .ok_or_else(|| tonic::Status::not_found("No such service"))
+    }
+
+    fn lookup_authority(
+        &self,
+        authority: &str,
+    ) -> Result<(String, String, NonZeroU16), tonic::Status> {
+        let auth = authority
+            .parse::<http::uri::Authority>()
+            .map_err(|_| tonic::Status::invalid_argument("invalid authority"))?;
+
+        let mut host = auth.host();
+        if host.is_empty() {
+            return Err(tonic::Status::invalid_argument(
+                "authority must have a host",
+            ));
+        }
+        if host.ends_with('.') {
+            host = &host[..host.len() - 1];
+        }
+        if host.ends_with(&*self.cluster_domain) {
+            host = &host[..host.len() - self.cluster_domain.len()];
+        }
+        let mut parts = host.split('.');
+        let invalid = {
+            let domain = &self.cluster_domain;
+            move || {
+                tonic::Status::invalid_argument(format!(
+                    "authority must be of the form <name>.<namespace>.svc.{}",
+                    domain
+                ))
+            }
+        };
+        let name = parts.next().ok_or_else(invalid)?;
+        let namespace = parts.next().ok_or_else(invalid)?;
+        if !matches!(parts.next(), Some("svc")) {
+            return Err(invalid());
+        };
+
+        let port = auth
+            .port_u16()
+            .and_then(|p| NonZeroU16::try_from(p).ok())
+            .unwrap_or_else(|| 80.try_into().unwrap());
+
+        Ok((name.to_string(), namespace.to_string(), port))
     }
 }
 
@@ -196,7 +240,7 @@ where
         &self,
         req: tonic::Request<outbound::TrafficSpec>,
     ) -> Result<tonic::Response<outbound::OutboundPolicy>, tonic::Status> {
-        let service = self.service_lookup(req.into_inner())?;
+        let service = self.lookup(req.into_inner())?;
 
         let policy = self
             .index
@@ -219,7 +263,7 @@ where
         &self,
         req: tonic::Request<outbound::TrafficSpec>,
     ) -> Result<tonic::Response<BoxWatchServiceStream>, tonic::Status> {
-        let service = self.service_lookup(req.into_inner())?;
+        let service = self.lookup(req.into_inner())?;
         let drain = self.drain.clone();
 
         let rx = self
