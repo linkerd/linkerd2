@@ -227,7 +227,7 @@ where
             .and_then(|p| NonZeroU16::try_from(p).ok())
             .unwrap_or_else(|| 80.try_into().unwrap());
 
-        Ok((name.to_string(), namespace.to_string(), port))
+        Ok((namespace.to_string(), name.to_string(), port))
     }
 }
 
