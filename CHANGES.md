@@ -1,5 +1,36 @@
 # Changes
 
+## edge-23.3.2
+
+This edge release continues to improve dynamic Policy statuses and
+introduces support for header-based routing.
+
+* Destination Controller
+  * Added OutboundPolices API, for use by `linkerd-proxy` to route
+    outbound traffic
+  * Improved diagnostic log messages
+  * Fixed sending of spurious profile updates
+
+* Proxy
+  * Utilize new OutboundPolices API, supporting Gateway API-style routes
+    in the outbound proxy
+  * Proxies in ingress and gateway configurations may now
+    discover policies by name instead of network address
+
+* Policy Controller
+  * Utilize `policy-controller-write` Lease to avoid multiple writers
+    when patching HTTPRoutes
+  * Consider the `status` field and filter out HTTPRoutes which have not
+    been accepted
+  * Controller name value has been renamed from
+    `policy.linkerd.io/status-controller` to `linkerd.io/policy-controller`
+
+* Added KubeAPI server ports to `ignoreOutboundPorts` of `proxy-injector`
+* Updated HTTPRoute version from `v1alpha1` to `v1beta2`
+* Updated `network-validator` helm charts to use `proxy-init` resources
+* Fixed Grafana regular expression, enabling monitoring of filesystem
+  usage (thanks @h-dav!)
+
 ## edge-23.3.1
 
 This edge release continues to build support under the hood for the upcoming
