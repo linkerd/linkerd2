@@ -12,7 +12,7 @@ introduces support for header-based routing.
   * Fixed sending of spurious profile updates
 
 * Proxy
-  * Utilize new OutboundPolices API, supporting Gateway API-style routes
+  * Use the new OutboundPolicies API, supporting Gateway API-style routes
     in the outbound proxy
 
 * Policy Controller
