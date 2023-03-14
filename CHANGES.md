@@ -6,7 +6,7 @@ This edge release continues to improve dynamic Policy statuses and
 introduces support for header-based routing.
 
 * Destination Controller
-  * Added OutboundPolices API, for use by `linkerd-proxy` to route
+  * Added OutboundPolicies API, for use by `linkerd-proxy` to route
     outbound traffic
   * Improved diagnostic log messages
   * Fixed sending of spurious profile updates
