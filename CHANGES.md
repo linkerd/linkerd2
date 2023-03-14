@@ -14,16 +14,12 @@ introduces support for header-based routing.
 * Proxy
   * Utilize new OutboundPolices API, supporting Gateway API-style routes
     in the outbound proxy
-  * Proxies in ingress and gateway configurations may now
-    discover policies by name instead of network address
 
 * Policy Controller
-  * Utilize `policy-controller-write` Lease to avoid multiple writers
-    when patching HTTPRoutes
+  * Support highly available Policy Controller by utilizing
+   `policy-controller-write` Lease when patching HTTPRoutes
   * Consider the `status` field and filter out HTTPRoutes which have not
     been accepted
-  * Controller name value has been renamed from
-    `policy.linkerd.io/status-controller` to `linkerd.io/policy-controller`
 
 * Added KubeAPI server ports to `ignoreOutboundPorts` of `proxy-injector`
 * Updated HTTPRoute version from `v1alpha1` to `v1beta2`
