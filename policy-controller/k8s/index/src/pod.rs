@@ -1,4 +1,4 @@
-use crate::DefaultPolicy;
+use crate::defaults::DefaultPolicy;
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Context, Result};
 use linkerd_policy_controller_k8s_api as k8s;

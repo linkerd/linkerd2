@@ -1,7 +1,8 @@
 use ahash::AHashMap as HashMap;
 use anyhow::{anyhow, Error, Result};
 use linkerd_policy_controller_core::{
-    AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, IpNet,
+    inbound::{AuthorizationRef, ClientAuthentication, ClientAuthorization},
+    IdentityMatch, IpNet,
 };
 use std::hash::Hash;
 
