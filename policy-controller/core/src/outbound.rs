@@ -44,8 +44,8 @@ pub struct HttpRouteRule {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Backend {
     Addr(WeightedAddr),
-    Dst(WeightedDst),
-    InvalidDst { weight: u32, message: String },
+    Service(WeightedService),
+    Invalid { weight: u32, message: String },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -56,7 +56,9 @@ pub struct WeightedAddr {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct WeightedDst {
+pub struct WeightedService {
     pub weight: u32,
     pub authority: String,
+    pub name: String,
+    pub namespace: String,
 }

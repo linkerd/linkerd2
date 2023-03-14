@@ -336,8 +336,8 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                 }),
             }
         }
-        Backend::Dst(dst) => outbound::http_route::WeightedRouteBackend {
-            weight: dst.weight,
+        Backend::Service(svc) => outbound::http_route::WeightedRouteBackend {
+            weight: svc.weight,
             backend: Some(outbound::http_route::RouteBackend {
                 backend: Some(outbound::Backend {
                     metadata: None,
@@ -347,7 +347,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                             discovery: Some(outbound::backend::EndpointDiscovery {
                                 kind: Some(outbound::backend::endpoint_discovery::Kind::Dst(
                                     outbound::backend::endpoint_discovery::DestinationGet {
-                                        path: dst.authority,
+                                        path: svc.authority,
                                     },
                                 )),
                             }),
@@ -358,7 +358,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                 filters: Default::default(),
             }),
         },
-        Backend::InvalidDst { weight, message } => outbound::http_route::WeightedRouteBackend {
+        Backend::Invalid { weight, message } => outbound::http_route::WeightedRouteBackend {
             weight,
             backend: Some(outbound::http_route::RouteBackend {
                 backend: None,
