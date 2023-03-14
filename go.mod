@@ -158,6 +158,7 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
-// Addresses https://github.com/linkerd/linkerd2/security/dependabot/37
-// (CVE-2022-23471)
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.14
+// Addresses
+// https://github.com/linkerd/linkerd2/security/dependabot/47
+// https://github.com/linkerd/linkerd2/security/dependabot/48
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.18
