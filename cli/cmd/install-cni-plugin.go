@@ -11,11 +11,13 @@ import (
 	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
+	// flagspkg "github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli/values"
 	"sigs.k8s.io/yaml"
 )
 
@@ -92,6 +94,8 @@ func (options *cniPluginOptions) pluginImage() cnicharts.Image {
 
 func newCmdInstallCNIPlugin() *cobra.Command {
 	options, err := newCNIInstallOptionsWithDefaults()
+	var option values.Options
+	
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -134,6 +138,7 @@ assumes that the 'linkerd install' command will be executed with the
 		"use-wait-flag",
 		options.useWaitFlag,
 		"Configures the CNI plugin to use the \"-w\" flag for the iptables command. (default false)")
+	flags.AddValueOptionsFlags(cmd.Flags(), &option)
 
 	return cmd
 }
