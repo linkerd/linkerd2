@@ -62,7 +62,7 @@ where
             .ok_or_else(|| tonic::Status::invalid_argument("traffic target must have an IP"))?
             .try_into()
             .map_err(|error| {
-                tonic::Status::invalid_argument(format!("failed to parse target addr: {}", error))
+                tonic::Status::invalid_argument(format!("failed to parse target addr: {error}"))
             })?;
 
         self.index
@@ -93,8 +93,7 @@ where
             let domain = &self.cluster_domain;
             move || {
                 tonic::Status::invalid_argument(format!(
-                    "authority must be of the form <name>.<namespace>.svc.{}",
-                    domain
+                    "authority must be of the form <name>.<namespace>.svc.{domain}",
                 ))
             }
         };
@@ -129,7 +128,7 @@ where
             .get_outbound_policy(service)
             .await
             .map_err(|error| {
-                tonic::Status::internal(format!("failed to get outbound policy: {}", error))
+                tonic::Status::internal(format!("failed to get outbound policy: {error}"))
             })?;
 
         if let Some(policy) = policy {
@@ -152,7 +151,7 @@ where
             .index
             .watch_outbound_policy(service)
             .await
-            .map_err(|e| tonic::Status::internal(format!("lookup failed: {}", e)))?
+            .map_err(|e| tonic::Status::internal(format!("lookup failed: {e}",)))?
             .ok_or_else(|| tonic::Status::not_found("unknown server"))?;
         Ok(tonic::Response::new(response_stream(drain, rx)))
     }
