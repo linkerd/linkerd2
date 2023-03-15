@@ -7,3 +7,6 @@ mod server;
 pub mod server_authorization;
 
 pub use index::{Index, SharedIndex};
+
+#[cfg(test)]
+mod tests;
