@@ -84,12 +84,10 @@ where
                 "authority must have a host",
             ));
         }
-        if host.ends_with('.') {
-            host = &host[..host.len() - 1];
-        }
-        if host.ends_with(&*self.cluster_domain) {
-            host = &host[..host.len() - self.cluster_domain.len()];
-        }
+
+        host = host.trim_end_matches('.');
+        host = host.trim_end_matches(&*self.cluster_domain);
+
         let mut parts = host.split('.');
         let invalid = {
             let domain = &self.cluster_domain;
