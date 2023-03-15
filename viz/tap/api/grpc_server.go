@@ -46,7 +46,7 @@ type GRPCTapServer struct {
 	k8sAPI              *k8s.API
 	controllerNamespace string
 	trustDomain         string
-	tapIgnoredHeaders   map[string]bool
+	ignoreHeaders       map[string]bool
 }
 
 var (
@@ -340,6 +340,7 @@ func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *pro
 				log.Errorf("[%s] encountered an error: %s", addr, err)
 				return
 			}
+
 			translatedEvent := s.translateEvent(ctx, event)
 
 			select {
@@ -421,7 +422,7 @@ func (s *GRPCTapServer) translateEvent(ctx context.Context, orig *proxy.TapEvent
 			var headers []*metricsPb.Headers_Header
 			for _, header := range orig.GetHeaders() {
 				n := header.GetName()
-				if (s.tapIgnoredHeaders[n]) {
+				if (s.ignoreHeaders[n]) {
 					continue
 				}
 				b := header.GetValue()
@@ -543,7 +544,7 @@ func NewGrpcTapServer(
 	controllerNamespace string,
 	trustDomain string,
 	k8sAPI *k8s.API,
-	tapIgnoredHeaders map[string]bool,
+	ignoreHeaders map[string]bool,
 ) (*GRPCTapServer, error) {
 	if err := k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{ipIndex: indexByIP}); err != nil {
 		return nil, err
@@ -552,7 +553,7 @@ func NewGrpcTapServer(
 		return nil, err
 	}
 
-	return newGRPCTapServer(tapPort, controllerNamespace, trustDomain, k8sAPI, tapIgnoredHeaders), nil
+	return newGRPCTapServer(tapPort, controllerNamespace, trustDomain, k8sAPI, ignoreHeaders), nil
 }
 
 func newGRPCTapServer(
@@ -560,14 +561,14 @@ func newGRPCTapServer(
 	controllerNamespace string,
 	trustDomain string,
 	k8sAPI *k8s.API,
-	tapIgnoredHeaders map[string]bool,
+	ignoreHeaders map[string]bool,
 ) *GRPCTapServer {
 	srv := &GRPCTapServer{
 		tapPort:             tapPort,
 		k8sAPI:              k8sAPI,
 		controllerNamespace: controllerNamespace,
 		trustDomain:         trustDomain,
-		tapIgnoredHeaders:   tapIgnoredHeaders,
+		ignoreHeaders:       ignoreHeaders,
 	}
 
 	s := prometheus.NewGrpcServer()
