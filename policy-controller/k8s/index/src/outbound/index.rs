@@ -1,24 +1,18 @@
 use crate::{
-    http_route::InboundRouteBinding,
-    pod::{ports_annotation, PortSet},
+    http_route,
+    ports::{ports_annotation, PortSet},
     ClusterInfo,
 };
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
-use linkerd_policy_controller_core::{
-    http_route::{Backend, OutboundHttpRoute, OutboundHttpRouteRule, WeightedService},
-    OutboundPolicy,
+use linkerd_policy_controller_core::outbound::{
+    Backend, HttpRoute, HttpRouteRule, OutboundPolicy, WeightedService,
 };
-use linkerd_policy_controller_k8s_api::{
-    policy::{httproute::HttpRouteRule, HttpRoute},
-    ResourceExt, Service, Time,
-};
+use linkerd_policy_controller_k8s_api::{policy as api, ResourceExt, Service, Time};
 use parking_lot::RwLock;
 use std::{net::IpAddr, num::NonZeroU16, sync::Arc};
 use tokio::sync::watch;
-
-use super::http_route::convert;
 
 #[derive(Debug)]
 pub struct Index {
@@ -61,13 +55,13 @@ struct ServicePort {
 
 #[derive(Debug)]
 struct ServiceRoutes {
-    routes: HashMap<String, OutboundHttpRoute>,
+    routes: HashMap<String, HttpRoute>,
     watch: watch::Sender<OutboundPolicy>,
     opaque: bool,
 }
 
-impl kubert::index::IndexNamespacedResource<HttpRoute> for Index {
-    fn apply(&mut self, route: HttpRoute) {
+impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
+    fn apply(&mut self, route: api::HttpRoute) {
         tracing::debug!(name = route.name_unchecked(), "indexing route");
         let ns = route.namespace().expect("HttpRoute must have a namespace");
         self.namespaces
@@ -175,7 +169,7 @@ impl Index {
 }
 
 impl Namespace {
-    fn apply(&mut self, route: HttpRoute, cluster_info: &ClusterInfo) {
+    fn apply(&mut self, route: api::HttpRoute, cluster_info: &ClusterInfo) {
         tracing::debug!(?route);
         let name = route.name_unchecked();
         let outbound_route = match self.convert_route(route.clone(), cluster_info) {
@@ -264,13 +258,13 @@ impl Namespace {
         })
     }
 
-    fn convert_route(&self, route: HttpRoute, cluster: &ClusterInfo) -> Result<OutboundHttpRoute> {
+    fn convert_route(&self, route: api::HttpRoute, cluster: &ClusterInfo) -> Result<HttpRoute> {
         let hostnames = route
             .spec
             .hostnames
             .into_iter()
             .flatten()
-            .map(convert::host_match)
+            .map(http_route::host_match)
             .collect();
 
         let rules = route
@@ -283,7 +277,7 @@ impl Namespace {
 
         let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
 
-        Ok(OutboundHttpRoute {
+        Ok(HttpRoute {
             hostnames,
             rules,
             creation_timestamp,
@@ -292,14 +286,14 @@ impl Namespace {
 
     fn convert_rule(
         &self,
-        rule: HttpRouteRule,
+        rule: api::httproute::HttpRouteRule,
         cluster: &ClusterInfo,
-    ) -> Result<OutboundHttpRouteRule> {
+    ) -> Result<HttpRouteRule> {
         let matches = rule
             .matches
             .into_iter()
             .flatten()
-            .map(InboundRouteBinding::try_match)
+            .map(http_route::try_match)
             .collect::<Result<_>>()?;
 
         let backends = rule
@@ -308,7 +302,7 @@ impl Namespace {
             .flatten()
             .filter_map(|b| convert_backend(&self.namespace, b, cluster, &self.services))
             .collect();
-        Ok(OutboundHttpRouteRule { matches, backends })
+        Ok(HttpRouteRule { matches, backends })
     }
 }
 
@@ -395,7 +389,7 @@ fn is_service(group: Option<&str>, kind: &str) -> bool {
 }
 
 impl ServiceRoutes {
-    fn apply(&mut self, name: String, route: OutboundHttpRoute) {
+    fn apply(&mut self, name: String, route: HttpRoute) {
         self.routes.insert(name, route);
         self.send_if_modified();
     }

@@ -1,81 +1,16 @@
-use crate::{AuthorizationRef, ClientAuthorization};
-use ahash::AHashMap as HashMap;
 use anyhow::Result;
-use chrono::{offset::Utc, DateTime};
 pub use http::{
     header::{HeaderName, HeaderValue},
     uri::Scheme,
     Method, StatusCode,
 };
 use regex::Regex;
-use std::{net::IpAddr, num::NonZeroU16};
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InboundHttpRoute {
-    pub hostnames: Vec<HostMatch>,
-    pub rules: Vec<InboundHttpRouteRule>,
-    pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
-
-    /// This is required for ordering returned `HttpRoute`s by their creation
-    /// timestamp.
-    pub creation_timestamp: Option<DateTime<Utc>>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OutboundHttpRoute {
-    pub hostnames: Vec<HostMatch>,
-    pub rules: Vec<OutboundHttpRouteRule>,
-
-    /// This is required for ordering returned `HttpRoute`s by their creation
-    /// timestamp.
-    pub creation_timestamp: Option<DateTime<Utc>>,
-}
+use std::num::NonZeroU16;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HostMatch {
     Exact(String),
     Suffix { reverse_labels: Vec<String> },
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InboundHttpRouteRule {
-    pub matches: Vec<HttpRouteMatch>,
-    pub filters: Vec<InboundFilter>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OutboundHttpRouteRule {
-    pub matches: Vec<HttpRouteMatch>,
-    pub backends: Vec<Backend>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Backend {
-    Addr(WeightedAddr),
-    Service(WeightedService),
-    Invalid { weight: u32, message: String },
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct WeightedAddr {
-    pub weight: u32,
-    pub addr: IpAddr,
-    pub port: NonZeroU16,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct WeightedService {
-    pub weight: u32,
-    pub authority: String,
-    pub name: String,
-    pub namespace: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum InboundFilter {
-    RequestHeaderModifier(RequestHeaderModifierFilter),
-    RequestRedirect(RequestRedirectFilter),
-    FailureInjector(FailureInjectorFilter),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -138,32 +73,6 @@ pub enum HeaderMatch {
 pub enum QueryParamMatch {
     Exact(String, String),
     Regex(String, Regex),
-}
-
-// === impl InboundHttpRoute ===
-
-/// The default `InboundHttpRoute` used for any `InboundServer` that
-/// does not have routes.
-impl Default for InboundHttpRoute {
-    fn default() -> Self {
-        Self {
-            hostnames: vec![],
-            rules: vec![InboundHttpRouteRule {
-                matches: vec![HttpRouteMatch {
-                    path: Some(PathMatch::Prefix("/".to_string())),
-                    headers: vec![],
-                    query_params: vec![],
-                    method: None,
-                }],
-                filters: vec![],
-            }],
-            // Default routes do not have authorizations; the default policy's
-            // authzs will be configured by the default `InboundServer`, not by
-            // the route.
-            authorizations: HashMap::new(),
-            creation_timestamp: None,
-        }
-    }
 }
 
 // === impl PathMatch ===

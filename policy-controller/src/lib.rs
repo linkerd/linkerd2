@@ -1,47 +1,43 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
-
-use anyhow::Result;
-use index::outbound_index::ServiceRef;
-use linkerd_policy_controller_core::{
-    DiscoverOutboundPolicy, OutboundPolicy, OutboundPolicyStream,
-};
-use std::{net::IpAddr, num::NonZeroU16};
-
 mod admission;
 mod index_pair;
 
 pub use self::admission::Admission;
 pub use self::index_pair::IndexPair;
-pub use linkerd_policy_controller_core::{
-    DiscoverInboundServer, InboundServer, InboundServerStream, IpNet,
+use anyhow::Result;
+use linkerd_policy_controller_core::inbound::{
+    DiscoverInboundServer, InboundServer, InboundServerStream,
 };
+use linkerd_policy_controller_core::outbound::{
+    DiscoverOutboundPolicy, OutboundPolicy, OutboundPolicyStream,
+};
+pub use linkerd_policy_controller_core::IpNet;
 pub use linkerd_policy_controller_grpc as grpc;
 pub use linkerd_policy_controller_k8s_api as k8s;
-pub use linkerd_policy_controller_k8s_index::{
-    self as index, outbound_index, ClusterInfo, DefaultPolicy, Index, SharedIndex,
-};
+pub use linkerd_policy_controller_k8s_index::{inbound, outbound, ClusterInfo, DefaultPolicy};
+use std::{net::IpAddr, num::NonZeroU16};
 
 #[derive(Clone, Debug)]
-pub struct IndexDiscover(SharedIndex);
+pub struct InboundDiscover(inbound::SharedIndex);
 
 #[derive(Clone, Debug)]
-pub struct OutboundDiscover(outbound_index::SharedIndex);
+pub struct OutboundDiscover(outbound::SharedIndex);
 
-impl IndexDiscover {
-    pub fn new(index: SharedIndex) -> Self {
+impl InboundDiscover {
+    pub fn new(index: inbound::SharedIndex) -> Self {
         Self(index)
     }
 }
 
 impl OutboundDiscover {
-    pub fn new(index: outbound_index::SharedIndex) -> Self {
+    pub fn new(index: outbound::SharedIndex) -> Self {
         Self(index)
     }
 }
 
 #[async_trait::async_trait]
-impl DiscoverInboundServer<(String, String, NonZeroU16)> for IndexDiscover {
+impl DiscoverInboundServer<(String, String, NonZeroU16)> for InboundDiscover {
     async fn get_inbound_server(
         &self,
         (namespace, pod, port): (String, String, NonZeroU16),
@@ -96,6 +92,6 @@ impl DiscoverOutboundPolicy<(String, String, NonZeroU16)> for OutboundDiscover {
         self.0
             .read()
             .lookup_service(addr)
-            .map(|ServiceRef { namespace, name }| (namespace, name, port))
+            .map(|outbound::ServiceRef { namespace, name }| (namespace, name, port))
     }
 }
