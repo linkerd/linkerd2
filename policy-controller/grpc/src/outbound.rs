@@ -100,7 +100,7 @@ where
         };
         let name = parts.next().ok_or_else(invalid)?;
         let namespace = parts.next().ok_or_else(invalid)?;
-        if !matches!(parts.next(), Some("svc")) {
+        if parts.next() != Some("svc") {
             return Err(invalid());
         };
 
