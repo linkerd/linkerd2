@@ -94,7 +94,7 @@ where
         let invalid = {
             let domain = &self.cluster_domain;
             move || {
-                tonic::Status::invalid_argument(format!(
+                tonic::Status::not_found(format!(
                     "authority must be of the form <name>.<namespace>.svc.{}",
                     domain
                 ))
