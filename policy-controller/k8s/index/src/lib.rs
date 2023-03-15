@@ -28,9 +28,8 @@ mod defaults;
 pub mod http_route;
 pub mod inbound;
 pub mod outbound;
-mod pod;
+pub mod ports;
 
 pub use cluster_info::ClusterInfo;
 pub use defaults::DefaultPolicy;
 pub use inbound::authorization_policy;
-pub use pod::parse_portset;

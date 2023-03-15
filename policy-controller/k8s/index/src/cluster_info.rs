@@ -1,6 +1,6 @@
 use std::num::NonZeroU16;
 
-use crate::{pod::PortSet, DefaultPolicy};
+use crate::{ports::PortSet, DefaultPolicy};
 use linkerd_policy_controller_core::IpNet;
 use tokio::time;
 

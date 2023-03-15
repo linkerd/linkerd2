@@ -1,6 +1,6 @@
 use crate::{
     http_route,
-    pod::{ports_annotation, PortSet},
+    ports::{ports_annotation, PortSet},
     ClusterInfo,
 };
 use ahash::AHashMap as HashMap;

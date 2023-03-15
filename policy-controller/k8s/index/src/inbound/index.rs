@@ -8,10 +8,10 @@
 
 use super::{
     authorization_policy, http_route::RouteBinding, meshtls_authentication, network_authentication,
-    server, server_authorization,
+    pod, server, server_authorization,
 };
 use crate::{
-    pod::{self, PortMap},
+    ports::{PortHasher, PortMap, PortSet},
     ClusterInfo, DefaultPolicy,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
@@ -88,20 +88,20 @@ struct Pod {
     ///
     /// A pod may have multiple ports with the same name. E.g., each container
     /// may have its own `admin-http` port.
-    port_names: HashMap<String, pod::PortSet>,
+    port_names: HashMap<String, PortSet>,
 
     /// All known TCP server ports. This may be updated by
     /// `Namespace::reindex`--when a port is selected by a `Server`--or by
     /// `Namespace::get_pod_server` when a client discovers a port that has no
     /// configured server (and i.e. uses the default policy).
-    port_servers: pod::PortMap<PodPortServer>,
+    port_servers: PortMap<PodPortServer>,
 
     /// The pod's probe ports and their respective paths.
     ///
     /// In order for the policy controller to authorize probes, it must be
     /// aware of the probe ports and the expected paths on which probes are
     /// expected.
-    probes: pod::PortMap<BTreeSet<String>>,
+    probes: PortMap<BTreeSet<String>>,
 }
 
 /// Holds the state of a single port on a pod.
@@ -830,14 +830,14 @@ impl PodIndex {
         &mut self,
         name: String,
         meta: pod::Meta,
-        port_names: HashMap<String, pod::PortSet>,
+        port_names: HashMap<String, PortSet>,
         probes: PortMap<BTreeSet<String>>,
     ) -> Result<Option<&mut Pod>> {
         let pod = match self.by_name.entry(name.clone()) {
             Entry::Vacant(entry) => entry.insert(Pod {
                 meta,
                 port_names,
-                port_servers: pod::PortMap::default(),
+                port_servers: PortMap::default(),
                 probes,
             }),
 
@@ -880,16 +880,16 @@ impl Pod {
     fn reindex_servers(&mut self, policy: &PolicyIndex, authentications: &AuthenticationNsIndex) {
         // Keep track of the ports that are already known in the pod so that, after applying server
         // matches, we can ensure remaining ports are set to the default policy.
-        let mut unmatched_ports = self.port_servers.keys().copied().collect::<pod::PortSet>();
+        let mut unmatched_ports = self.port_servers.keys().copied().collect::<PortSet>();
 
         // Keep track of which ports have been matched to servers to that we can detect when
         // multiple servers match a single port.
         //
         // We start with capacity for the known ports on the pod; but this can grow if servers
         // select additional ports.
-        let mut matched_ports = pod::PortMap::with_capacity_and_hasher(
+        let mut matched_ports = PortMap::with_capacity_and_hasher(
             unmatched_ports.len(),
-            std::hash::BuildHasherDefault::<pod::PortHasher>::default(),
+            std::hash::BuildHasherDefault::<PortHasher>::default(),
         );
 
         for (srvname, server) in policy.servers.iter() {

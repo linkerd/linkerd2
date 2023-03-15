@@ -9,7 +9,7 @@ use linkerd_policy_controller::{
     grpc, inbound, k8s, outbound, Admission, ClusterInfo, DefaultPolicy, InboundDiscover,
     IndexPair, IpNet, OutboundDiscover,
 };
-use linkerd_policy_controller_k8s_index::parse_portset;
+use linkerd_policy_controller_k8s_index::ports::parse_portset;
 use linkerd_policy_controller_k8s_status::{self as status};
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{sync::mpsc, time::Duration};
