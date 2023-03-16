@@ -6,7 +6,7 @@ use clap::Parser;
 use futures::prelude::*;
 use kube::api::ListParams;
 use linkerd_policy_controller::{
-    grpc, inbound, index_list, k8s, outbound, Admission, ClusterInfo, DefaultPolicy,
+    grpc, inbound, index_list::IndexList, k8s, outbound, Admission, ClusterInfo, DefaultPolicy,
     InboundDiscover, IpNet, OutboundDiscover,
 };
 use linkerd_policy_controller_k8s_index::ports::parse_portset;
@@ -162,7 +162,7 @@ async fn main() -> Result<()> {
     );
 
     let servers = runtime.watch_all::<k8s::policy::Server>(ListParams::default());
-    let servers_indexes = index_list::new(inbound_index.clone())
+    let servers_indexes = IndexList::new(inbound_index.clone())
         .push(status_index.clone())
         .shared();
     tokio::spawn(
@@ -198,7 +198,7 @@ async fn main() -> Result<()> {
     );
 
     let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
-    let http_routes_indexes = index_list::new(inbound_index.clone())
+    let http_routes_indexes = IndexList::new(inbound_index.clone())
         .push(outbound_index.clone())
         .push(status_index.clone())
         .shared();
