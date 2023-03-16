@@ -6,8 +6,8 @@ use clap::Parser;
 use futures::prelude::*;
 use kube::api::ListParams;
 use linkerd_policy_controller::{
-    grpc, inbound, k8s, outbound, Admission, ClusterInfo, DefaultPolicy, InboundDiscover,
-    IndexPair, IpNet, OutboundDiscover,
+    grpc, inbound, index_list, k8s, outbound, Admission, ClusterInfo, DefaultPolicy,
+    InboundDiscover, IpNet, OutboundDiscover,
 };
 use linkerd_policy_controller_k8s_index::ports::parse_portset;
 use linkerd_policy_controller_k8s_status::{self as status};
@@ -130,13 +130,31 @@ async fn main() -> Result<()> {
         probe_networks,
     });
 
-    // Build the index data structure, which will be used to process events from all watches
-    // The lookup handle is used by the gRPC server.
+    // Create the lease manager used for trying to claim the policy
+    // controller write lease.
+    let api = k8s::Api::namespaced(runtime.client(), &control_plane_namespace);
+    // todo: Do we need to use LeaseManager::field_manager here?
+    let lease = kubert::lease::LeaseManager::init(api, LEASE_NAME).await?;
+    let hostname =
+        std::env::var("HOSTNAME").expect("Failed to fetch `HOSTNAME` environment variable");
+    let params = kubert::lease::ClaimParams {
+        lease_duration: LEASE_DURATION,
+        renew_grace_period: RENEW_GRACE_PERIOD,
+    };
+    let (claims, _task) = lease.spawn(hostname.clone(), params).await?;
+
+    // Build the API index data structures which will maintain information
+    // necessary for serving the inbound policy and outbound policy gRPC APIs.
     let inbound_index = inbound::Index::shared(cluster_info.clone());
     let outbound_index = outbound::Index::shared(cluster_info);
-    let indexes = IndexPair::shared(inbound_index.clone(), outbound_index.clone());
 
-    // Spawn resource indexers that update the index and publish lookups for the gRPC server.
+    // Build the status index which will maintain information necessary for
+    // updating the status field of policy resources.
+    let (updates_tx, updates_rx) = mpsc::unbounded_channel();
+    let status_index = status::Index::shared(hostname.clone(), claims.clone(), updates_tx);
+
+    // Spawn resource watches.
+
     let pods =
         runtime.watch_all::<k8s::Pod>(ListParams::default().labels("linkerd.io/control-plane-ns"));
     tokio::spawn(
@@ -144,8 +162,11 @@ async fn main() -> Result<()> {
     );
 
     let servers = runtime.watch_all::<k8s::policy::Server>(ListParams::default());
+    let servers_indexes = index_list::new(inbound_index.clone())
+        .push(status_index.clone())
+        .shared();
     tokio::spawn(
-        kubert::index::namespaced(inbound_index.clone(), servers).instrument(info_span!("servers")),
+        kubert::index::namespaced(servers_indexes, servers).instrument(info_span!("servers")),
     );
 
     let server_authzs =
@@ -177,49 +198,23 @@ async fn main() -> Result<()> {
     );
 
     let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
+    let http_routes_indexes = index_list::new(inbound_index.clone())
+        .push(outbound_index.clone())
+        .push(status_index.clone())
+        .shared();
     tokio::spawn(
-        kubert::index::namespaced(indexes, http_routes).instrument(info_span!("httproutes")),
+        kubert::index::namespaced(http_routes_indexes, http_routes)
+            .instrument(info_span!("httproutes")),
     );
 
     let services = runtime.watch_all::<k8s::Service>(ListParams::default());
-
     tokio::spawn(
         kubert::index::namespaced(outbound_index.clone(), services)
             .instrument(info_span!("services")),
     );
 
-    // Create the lease manager used for trying to claim the policy
-    // controller write lease.
-    let api = k8s::Api::namespaced(runtime.client(), &control_plane_namespace);
-    // todo: Do we need to use LeaseManager::field_manager here?
-    let lease = kubert::lease::LeaseManager::init(api, LEASE_NAME).await?;
-    let hostname =
-        std::env::var("HOSTNAME").expect("Failed to fetch `HOSTNAME` environment variable");
-    let params = kubert::lease::ClaimParams {
-        lease_duration: LEASE_DURATION,
-        renew_grace_period: RENEW_GRACE_PERIOD,
-    };
-    let (claims, _task) = lease.spawn(hostname.clone(), params).await?;
-
-    // Build the status Index which will be used to process updates to policy
-    // resources and send to the status Controller.
-    let (updates_tx, updates_rx) = mpsc::unbounded_channel();
-    let status_index = status::Index::shared(hostname.clone(), claims.clone(), updates_tx);
-
     // Spawn the status Controller reconciliation.
     tokio::spawn(status::Index::run(status_index.clone()).instrument(info_span!("status::Index")));
-
-    // Spawn resource indexers that update the status Index.
-    let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
-    tokio::spawn(
-        kubert::index::namespaced(status_index.clone(), http_routes)
-            .instrument(info_span!("httproutes")),
-    );
-
-    let servers = runtime.watch_all::<k8s::policy::Server>(ListParams::default());
-    tokio::spawn(
-        kubert::index::namespaced(status_index.clone(), servers).instrument(info_span!("servers")),
-    );
 
     // Run the gRPC server, serving results by looking up against the index handle.
     tokio::spawn(grpc(
