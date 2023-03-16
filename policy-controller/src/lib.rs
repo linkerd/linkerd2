@@ -1,10 +1,8 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 mod admission;
-mod index_pair;
-
+pub mod index_list;
 pub use self::admission::Admission;
-pub use self::index_pair::IndexPair;
 use anyhow::Result;
 use linkerd_policy_controller_core::inbound::{
     DiscoverInboundServer, InboundServer, InboundServerStream,
