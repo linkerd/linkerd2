@@ -92,7 +92,7 @@ jobs:
           - controller
           - policy-controller
           - proxy
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
       - uses: ./.github/actions/docker-build
