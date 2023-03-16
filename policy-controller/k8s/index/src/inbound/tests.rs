@@ -3,13 +3,20 @@ mod authorization_policy;
 mod http_routes;
 mod server_authorization;
 
-use crate::{defaults::DefaultPolicy, index::*, server_authorization::ServerSelector, ClusterInfo};
+use crate::{
+    defaults::DefaultPolicy,
+    inbound::index::{Index, SharedIndex},
+    inbound::server_authorization::ServerSelector,
+    ClusterInfo,
+};
 use ahash::AHashMap as HashMap;
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{
-    AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundHttpRoute,
-    InboundHttpRouteRef, InboundServer, IpNet, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol,
-    ServerRef,
+    inbound::{
+        AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRoute, HttpRouteRef,
+        InboundServer, ProxyProtocol, ServerRef,
+    },
+    IdentityMatch, IpNet, Ipv4Net, Ipv6Net, NetworkMatch,
 };
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
@@ -174,13 +181,10 @@ fn mk_default_policy(
     .collect()
 }
 
-fn mk_default_routes() -> HashMap<InboundHttpRouteRef, InboundHttpRoute> {
-    Some((
-        InboundHttpRouteRef::Default("default"),
-        InboundHttpRoute::default(),
-    ))
-    .into_iter()
-    .collect()
+fn mk_default_routes() -> HashMap<HttpRouteRef, HttpRoute> {
+    Some((HttpRouteRef::Default("default"), HttpRoute::default()))
+        .into_iter()
+        .collect()
 }
 
 impl TestConfig {

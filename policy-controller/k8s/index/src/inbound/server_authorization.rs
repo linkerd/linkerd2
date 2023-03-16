@@ -1,7 +1,8 @@
 use crate::ClusterInfo;
 use anyhow::Result;
 use linkerd_policy_controller_core::{
-    ClientAuthentication, ClientAuthorization, IdentityMatch, NetworkMatch,
+    inbound::{ClientAuthentication, ClientAuthorization},
+    IdentityMatch, NetworkMatch,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server_authorization::MeshTls};
 

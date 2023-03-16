@@ -40,7 +40,7 @@ require (
 	golang.org/x/tools v0.7.0
 	google.golang.org/grpc v1.53.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
-	google.golang.org/protobuf v1.29.0
+	google.golang.org/protobuf v1.29.1
 	helm.sh/helm/v3 v3.11.2
 	k8s.io/api v0.26.2
 	k8s.io/apiextensions-apiserver v0.26.2
@@ -158,6 +158,7 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
-// Addresses https://github.com/linkerd/linkerd2/security/dependabot/37
-// (CVE-2022-23471)
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.14
+// Addresses
+// https://github.com/linkerd/linkerd2/security/dependabot/47
+// https://github.com/linkerd/linkerd2/security/dependabot/48
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.18

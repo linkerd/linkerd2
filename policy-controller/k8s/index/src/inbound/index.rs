@@ -6,20 +6,23 @@
 //! implements `kubert::index::IndexNamespacedResource` for the indexed
 //! kubernetes resources.
 
+use super::{
+    authorization_policy, http_route::RouteBinding, meshtls_authentication, network_authentication,
+    pod, server, server_authorization,
+};
 use crate::{
-    authorization_policy,
-    defaults::DefaultPolicy,
-    http_route::InboundRouteBinding,
-    meshtls_authentication, network_authentication,
-    pod::{self, PortMap},
-    server, server_authorization, ClusterInfo,
+    ports::{PortHasher, PortMap, PortSet},
+    ClusterInfo, DefaultPolicy,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
-    http_route::{HttpRouteMatch, InboundHttpRouteRule, Method, PathMatch},
-    AuthorizationRef, ClientAuthentication, ClientAuthorization, IdentityMatch, InboundHttpRoute,
-    InboundHttpRouteRef, InboundServer, Ipv4Net, Ipv6Net, NetworkMatch, ProxyProtocol, ServerRef,
+    http_route::{HttpRouteMatch, Method, PathMatch},
+    inbound::{
+        AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRoute, HttpRouteRef,
+        HttpRouteRule, InboundServer, ProxyProtocol, ServerRef,
+    },
+    IdentityMatch, Ipv4Net, Ipv6Net, NetworkMatch,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
 use parking_lot::RwLock;
@@ -85,20 +88,20 @@ struct Pod {
     ///
     /// A pod may have multiple ports with the same name. E.g., each container
     /// may have its own `admin-http` port.
-    port_names: HashMap<String, pod::PortSet>,
+    port_names: HashMap<String, PortSet>,
 
     /// All known TCP server ports. This may be updated by
     /// `Namespace::reindex`--when a port is selected by a `Server`--or by
     /// `Namespace::get_pod_server` when a client discovers a port that has no
     /// configured server (and i.e. uses the default policy).
-    port_servers: pod::PortMap<PodPortServer>,
+    port_servers: PortMap<PodPortServer>,
 
     /// The pod's probe ports and their respective paths.
     ///
     /// In order for the policy controller to authorize probes, it must be
     /// aware of the probe ports and the expected paths on which probes are
     /// expected.
-    probes: pod::PortMap<BTreeSet<String>>,
+    probes: PortMap<BTreeSet<String>>,
 }
 
 /// Holds the state of a single port on a pod.
@@ -123,7 +126,7 @@ struct PolicyIndex {
     server_authorizations: HashMap<String, server_authorization::ServerAuthz>,
 
     authorization_policies: HashMap<String, authorization_policy::Spec>,
-    http_routes: HashMap<String, InboundRouteBinding>,
+    http_routes: HashMap<String, RouteBinding>,
 }
 
 #[derive(Debug, Default)]
@@ -202,8 +205,8 @@ impl Index {
     fn apply_route<R>(&mut self, route: R)
     where
         R: ResourceExt,
-        InboundRouteBinding: TryFrom<R>,
-        <InboundRouteBinding as TryFrom<R>>::Error: std::fmt::Display,
+        RouteBinding: TryFrom<R>,
+        <RouteBinding as TryFrom<R>>::Error: std::fmt::Display,
     {
         let ns = route.namespace().expect("HttpRoute must have a namespace");
         let name = route.name_unchecked();
@@ -223,14 +226,14 @@ impl Index {
     fn reset_route<R>(&mut self, routes: Vec<R>, deleted: HashMap<String, HashSet<String>>)
     where
         R: ResourceExt,
-        InboundRouteBinding: TryFrom<R>,
-        <InboundRouteBinding as TryFrom<R>>::Error: std::fmt::Display,
+        RouteBinding: TryFrom<R>,
+        <RouteBinding as TryFrom<R>>::Error: std::fmt::Display,
     {
         let _span = info_span!("reset").entered();
 
         // Aggregate all of the updates by namespace so that we only reindex
         // once per namespace.
-        type Ns = NsUpdate<InboundRouteBinding>;
+        type Ns = NsUpdate<RouteBinding>;
         let mut updates_by_ns = HashMap::<String, Ns>::default();
         for route in routes.into_iter() {
             let namespace = route.namespace().expect("HttpRoute must be namespaced");
@@ -827,14 +830,14 @@ impl PodIndex {
         &mut self,
         name: String,
         meta: pod::Meta,
-        port_names: HashMap<String, pod::PortSet>,
+        port_names: HashMap<String, PortSet>,
         probes: PortMap<BTreeSet<String>>,
     ) -> Result<Option<&mut Pod>> {
         let pod = match self.by_name.entry(name.clone()) {
             Entry::Vacant(entry) => entry.insert(Pod {
                 meta,
                 port_names,
-                port_servers: pod::PortMap::default(),
+                port_servers: PortMap::default(),
                 probes,
             }),
 
@@ -877,16 +880,16 @@ impl Pod {
     fn reindex_servers(&mut self, policy: &PolicyIndex, authentications: &AuthenticationNsIndex) {
         // Keep track of the ports that are already known in the pod so that, after applying server
         // matches, we can ensure remaining ports are set to the default policy.
-        let mut unmatched_ports = self.port_servers.keys().copied().collect::<pod::PortSet>();
+        let mut unmatched_ports = self.port_servers.keys().copied().collect::<PortSet>();
 
         // Keep track of which ports have been matched to servers to that we can detect when
         // multiple servers match a single port.
         //
         // We start with capacity for the known ports on the pod; but this can grow if servers
         // select additional ports.
-        let mut matched_ports = pod::PortMap::with_capacity_and_hasher(
+        let mut matched_ports = PortMap::with_capacity_and_hasher(
             unmatched_ports.len(),
-            std::hash::BuildHasherDefault::<pod::PortHasher>::default(),
+            std::hash::BuildHasherDefault::<PortHasher>::default(),
         );
 
         for (srvname, server) in policy.servers.iter() {
@@ -1292,7 +1295,7 @@ impl PolicyIndex {
         server_name: &str,
         authentications: &AuthenticationNsIndex,
         probe_paths: impl Iterator<Item = &'p str>,
-    ) -> HashMap<InboundHttpRouteRef, InboundHttpRoute> {
+    ) -> HashMap<HttpRouteRef, HttpRoute> {
         let routes = self
             .http_routes
             .iter()
@@ -1301,7 +1304,7 @@ impl PolicyIndex {
             .map(|(name, route)| {
                 let mut route = route.route.clone();
                 route.authorizations = self.route_client_authzs(name, authentications);
-                (InboundHttpRouteRef::Linkerd(name.clone()), route)
+                (HttpRouteRef::Linkerd(name.clone()), route)
             })
             .collect::<HashMap<_, _>>();
         if !routes.is_empty() {
@@ -1415,7 +1418,7 @@ impl PolicyIndex {
         })
     }
 
-    fn update_http_route(&mut self, name: String, route: InboundRouteBinding) -> bool {
+    fn update_http_route(&mut self, name: String, route: RouteBinding) -> bool {
         match self.http_routes.entry(name) {
             Entry::Vacant(entry) => {
                 entry.insert(route);
@@ -1503,16 +1506,13 @@ impl ClusterInfo {
     fn default_inbound_http_routes<'p>(
         &self,
         probe_paths: impl Iterator<Item = &'p str>,
-    ) -> HashMap<InboundHttpRouteRef, InboundHttpRoute> {
+    ) -> HashMap<HttpRouteRef, HttpRoute> {
         let mut routes = HashMap::with_capacity(2);
 
         // If no routes are defined for the server, use a default route that
         // matches all requests. Default authorizations are instrumented on
         // the server.
-        routes.insert(
-            InboundHttpRouteRef::Default("default"),
-            InboundHttpRoute::default(),
-        );
+        routes.insert(HttpRouteRef::Default("default"), HttpRoute::default());
 
         // If there are no probe networks, there are no probe routes to
         // authorize.
@@ -1551,16 +1551,16 @@ impl ClusterInfo {
         ))
         .collect();
 
-        let probe_route = InboundHttpRoute {
+        let probe_route = HttpRoute {
             hostnames: Vec::new(),
-            rules: vec![InboundHttpRouteRule {
+            rules: vec![HttpRouteRule {
                 matches,
                 filters: Vec::new(),
             }],
             authorizations,
             creation_timestamp: None,
         };
-        routes.insert(InboundHttpRouteRef::Default("probe"), probe_route);
+        routes.insert(HttpRouteRef::Default("probe"), probe_route);
 
         routes
     }
