@@ -151,7 +151,7 @@ where
             .index
             .watch_outbound_policy(service)
             .await
-            .map_err(|e| tonic::Status::internal(format!("lookup failed: {e}",)))?
+            .map_err(|e| tonic::Status::internal(format!("lookup failed: {e}")))?
             .ok_or_else(|| tonic::Status::not_found("unknown server"))?;
         Ok(tonic::Response::new(response_stream(drain, rx)))
     }
