@@ -134,6 +134,30 @@ pub async fn await_pod_ip(client: &kube::Client, ns: &str, name: &str) -> std::n
         .expect("pod IP must be valid")
 }
 
+// Waits until an HttpRoute with the given namespace and name has a status set
+// on it, then returns the generic route status representation.
+pub async fn await_route_status(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+) -> k8s::policy::httproute::RouteStatus {
+    use k8s::policy::httproute as api;
+    fn get_status(route: &api::HttpRoute) -> Option<api::RouteStatus> {
+        let inner = &route.status.as_ref()?.inner;
+        Some(inner.clone())
+    }
+
+    let route = await_condition(client, ns, name, |obj: Option<&api::HttpRoute>| -> bool {
+        if let Some(route) = obj {
+            return get_status(route).is_some();
+        }
+        false
+    })
+    .await
+    .expect("must fetch route");
+    get_status(&route).expect("route must have a status")
+}
+
 #[tracing::instrument(skip_all, fields(%pod, %container))]
 pub async fn logs(client: &kube::Client, ns: &str, pod: &str, container: &str) {
     let params = kube::api::LogParams {
