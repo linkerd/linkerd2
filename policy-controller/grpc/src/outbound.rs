@@ -85,8 +85,9 @@ where
             ));
         }
 
-        host = host.trim_end_matches('.');
-        host = host.trim_end_matches(&*self.cluster_domain);
+        host = host
+            .trim_end_matches('.')
+            .trim_end_matches(&*self.cluster_domain);
 
         let mut parts = host.split('.');
         let invalid = {
