@@ -9,11 +9,14 @@ async fn inbound_accepted_parent() {
         let server = k8s::policy::Server {
             metadata: k8s::ObjectMeta {
                 namespace: Some(ns.to_string()),
-                name: Some("test-server".to_string()),
+                name: Some("test-accepted-server".to_string()),
                 ..Default::default()
             },
             spec: k8s::policy::ServerSpec {
-                pod_selector: k8s::labels::Selector::from_iter(Some(("app", "test-server"))),
+                pod_selector: k8s::labels::Selector::from_iter(Some((
+                    "app",
+                    "test-accepted-server",
+                ))),
                 port: k8s::policy::server::Port::Name("http".to_string()),
                 proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
             },
@@ -63,7 +66,86 @@ async fn inbound_accepted_parent() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn inbound_accepted_no_parent_ref() {
+async fn inbound_multiple_parents() {
+    with_temp_ns(|client, ns| async move {
+        // Exercise accepted test with a valid, and an invalid parent reference
+        let srv_refs = vec![
+            k8s::policy::httproute::ParentReference {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: Some("Server".to_string()),
+                namespace: Some(ns.clone()),
+                name: "test-valid-server".to_string(),
+                section_name: None,
+                port: None,
+            },
+            k8s::policy::httproute::ParentReference {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: Some("Server".to_string()),
+                namespace: Some(ns.clone()),
+                name: "test-invalid-server".to_string(),
+                section_name: None,
+                port: None,
+            },
+        ];
+
+        // Create only one of the parents
+        let server = k8s::policy::Server {
+            metadata: k8s::ObjectMeta {
+                namespace: Some(ns.to_string()),
+                name: Some("test-valid-server".to_string()),
+                ..Default::default()
+            },
+            spec: k8s::policy::ServerSpec {
+                pod_selector: k8s::labels::Selector::from_iter(Some(("app", "test-valid-server"))),
+                port: k8s::policy::server::Port::Name("http".to_string()),
+                proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
+            },
+        };
+        let _server = create(&client, server).await;
+
+        // Create a route that references both parents.
+        let _route = create(
+            &client,
+            mk_inbound_route(&ns, "test-multiple-parents-route", Some(srv_refs)),
+        )
+        .await;
+        // Wait until route is updated with a status
+        let parent_status = await_route_status(&client, &ns, "test-multiple-parents-route")
+            .await
+            .parents;
+
+        // Find status for invalid parent and extract the condition
+        let invalid_cond = parent_status
+            .iter()
+            .find(|route_status| route_status.parent_ref.name == "test-invalid-server")
+            .expect("must have a route status set for invalid server")
+            .conditions
+            .clone()
+            .into_iter()
+            .find(|cond| cond.type_ == "Accepted")
+            .expect("must have at least one 'Accepted' condition set for invalid parent");
+        // Route shouldn't be accepted
+        assert_eq!(invalid_cond.status, "False");
+        assert_eq!(invalid_cond.reason, "NoMatchingParent");
+
+        // Find status for valid parent and extract the condition
+        let valid_cond = parent_status
+            .iter()
+            .find(|route_status| route_status.parent_ref.name == "test-valid-server")
+            .expect("must have a route status set for valid server")
+            .conditions
+            .clone()
+            .into_iter()
+            .find(|cond| cond.type_ == "Accepted")
+            .expect("must have at least one 'Accepted' condition set for valid parent");
+        assert_eq!(valid_cond.status, "True");
+        assert_eq!(valid_cond.reason, "Accepted")
+    })
+    .await
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn inbound_no_parent_ref_patch() {
     with_temp_ns(|client, ns| async move {
         // A route may not include any parent references. When that's the case,
         // we expect the controller to simply ignore it.
@@ -77,8 +159,8 @@ async fn inbound_accepted_no_parent_ref() {
         // status condition watcher in a timeout.
         let api = kube::Api::namespaced(client.clone(), &ns);
         let resolved = tokio::time::timeout(
-            // 10 seconds should be enough for a route to be patched
-            tokio::time::Duration::from_secs(10),
+            // 5 seconds should be enough for a route to be patched
+            tokio::time::Duration::from_secs(5),
             kube::runtime::wait::await_condition(
                 api,
                 "test-no-parent-refs-route",
@@ -97,55 +179,6 @@ async fn inbound_accepted_no_parent_ref() {
     })
     .await
 }
-
-/*
-#[tokio::test(flavor = "current_thread")]
-async fn inbound_accepted_invalid_kind() {
-    with_temp_ns(|client, ns| async move {
-        // Create a route that targets an invalid parent kind. Invalid kinds are
-        // ignored, we expect the route not to be patched.
-        let invalid_ref = vec![k8s::policy::httproute::ParentReference {
-            group: Some("policy.linkerd.io".to_string()),
-            kind: Some("InvalidParent".to_string()),
-            namespace: Some(ns.to_string()),
-            name: "invalid-parent".to_string(),
-            section_name: None,
-            port: None,
-        }];
-
-        // Create the route. The parent reference does not have to exist in the
-        // cluster, since it will fail the typecheck, the existence of the
-        // resource will not factor into any perceived output.
-        let _route = create(
-            &client,
-            mk_inbound_route(&ns, "test-invalid-parent-refs-route", Some(invalid_ref)),
-        )
-        .await;
-
-        // Status may not be set straight away. To account for that, wrap a
-        // status condition watcher in a timeout.
-        let api = kube::Api::namespaced(client.clone(), &ns);
-        let resolved = tokio::time::timeout(
-            // 10 seconds should be enough for a route to be patched
-            tokio::time::Duration::from_secs(10),
-            kube::runtime::wait::await_condition(
-                api,
-                "test-invalid-parent-refs-route",
-                |obj: Option<&k8s::policy::HttpRoute>| -> bool {
-                    obj.and_then(|route| route.status.as_ref()).is_some()
-                },
-            ),
-        )
-        .await;
-
-        assert!(
-            resolved.is_err(),
-            "status condition should timeout when parent refs has invalid kind"
-        );
-    })
-    .await
-}
-*/
 
 #[tokio::test(flavor = "current_thread")]
 async fn inbound_accepted_no_parent() {
