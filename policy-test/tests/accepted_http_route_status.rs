@@ -35,29 +35,29 @@ async fn inbound_accepted_parent() {
         )
         .await;
         // Wait until route is updated with a status
-        let route_status = {
-            let status = await_route_status(&client, &ns, "test-accepted-route").await;
-            status
-                .parents
-                .get(0)
-                .expect("must have at least one parent status")
-                .clone()
-        };
+        let route_status = await_route_status(&client, &ns, "test-accepted-route")
+            .await
+            .parents
+            .get(0)
+            .expect("must have at least one parent status")
+            .clone();
 
         // Check status references to parent we have created
-        let parent_ref = &route_status.parent_ref;
-        assert_eq!(parent_ref.group, Some("policy.linkerd.io".to_string()));
-        assert_eq!(parent_ref.kind, Some("Server".to_string()));
-        assert_eq!(parent_ref.name, server.name_unchecked());
+        assert_eq!(
+            route_status.parent_ref.group.as_deref(),
+            Some("policy.linkerd.io")
+        );
+        assert_eq!(route_status.parent_ref.kind.as_deref(), Some("Server"));
+        assert_eq!(route_status.parent_ref.name, server.name_unchecked());
 
         // Check status is accepted with a status of 'True'
         let cond = route_status
             .conditions
             .iter()
-            .find(|cond| cond.type_ == "Accepted".to_string())
+            .find(|cond| cond.type_ == "Accepted")
             .expect("must have at least one 'Accepted' condition");
-        assert_eq!(cond.status, "True".to_string());
-        assert_eq!(cond.reason, "Accepted".to_string())
+        assert_eq!(cond.status, "True");
+        assert_eq!(cond.reason, "Accepted")
     })
     .await;
 }
@@ -81,23 +81,21 @@ async fn inbound_accepted_no_parent() {
             mk_inbound_route(&ns, "test-no-parent-route", Some(srv_ref)),
         )
         .await;
-        let route_status = {
-            let status = await_route_status(&client, &ns, "test-no-parent-route").await;
-            status
-                .parents
-                .get(0)
-                .expect("must have at least one parent status")
-                .clone()
-        };
+        let route_status = await_route_status(&client, &ns, "test-no-parent-route")
+            .await
+            .parents
+            .get(0)
+            .expect("must have at least one parent status")
+            .clone();
         let cond = route_status
             .conditions
             .iter()
-            .find(|cond| cond.type_ == "Accepted".to_string())
+            .find(|cond| cond.type_ == "Accepted")
             .expect("must have at least one 'Accepted' condition");
 
         // Route shouldn't be accepted
-        assert_eq!(cond.status, "False".to_string());
-        assert_eq!(cond.reason, "NoMatchingParent".to_string());
+        assert_eq!(cond.status, "False");
+        assert_eq!(cond.reason, "NoMatchingParent");
     })
     .await;
 }
@@ -120,21 +118,19 @@ async fn inbound_accepted_reconcile() {
             mk_inbound_route(&ns, "test-reconciled-route", Some(srv_ref)),
         )
         .await;
-        let route_status = {
-            let status = await_route_status(&client, &ns, "test-reconciled-route").await;
-            status
-                .parents
-                .get(0)
-                .expect("must have at least one parent status")
-                .clone()
-        };
-        let cond = route_status
+        let cond = await_route_status(&client, &ns, "test-reconciled-route")
+            .await
+            .parents
+            .get(0)
+            .expect("must have at least one parent status")
             .conditions
             .iter()
-            .find(|cond| cond.type_ == "Accepted".to_string())
-            .expect("must have at least one 'Accepted' condition");
-        assert_eq!(cond.status, "False".to_string());
-        assert_eq!(cond.reason, "NoMatchingParent".to_string());
+            .find(|cond| cond.type_ == "Accepted")
+            .expect("must have at least one 'Accepted' condition")
+            .clone();
+        assert_eq!(cond.status, "False");
+        assert_eq!(cond.reason, "NoMatchingParent");
+
         // Save create_timestamp to assert status has been updated.
         let create_timestamp = &cond.last_transition_time;
 
@@ -163,33 +159,30 @@ async fn inbound_accepted_reconcile() {
         // until create_timestamp and observed_timestamp are different.
         let cond = tokio::time::timeout(tokio::time::Duration::from_secs(60), async move {
             loop {
-                let route_status = {
-                    let status = await_route_status(&client, &ns, "test-reconciled-route").await;
-                    status
-                        .parents
-                        .get(0)
-                        .expect("must have at least one parent status")
-                        .clone()
-                };
-
-                let cond = route_status
+                let cond = await_route_status(&client, &ns, "test-reconciled-route")
+                    .await
+                    .parents
+                    .get(0)
+                    .expect("must have at least one parent status")
                     .conditions
                     .iter()
-                    .find(|cond| cond.type_ == "Accepted".to_string())
-                    .expect("must have at least one 'Accepted' condition");
-                // Get timestamp from status. If it differs from the previously
-                // recorded timestamp, then it means the underlying condition
-                // has been updated so we can check the message and status.
-                let update_timestamp = &cond.last_transition_time;
-                if update_timestamp > create_timestamp {
-                    return cond.clone();
+                    .find(|cond| cond.type_ == "Accepted")
+                    .expect("must have at least one 'Accepted' condition")
+                    .clone();
+
+                // Observe condition's current timestamp. If it differs from the
+                // previously recorded timestamp, then it means the underlying
+                // condition has been updated so we can check the message and
+                // status.
+                if &cond.last_transition_time > create_timestamp {
+                    return cond;
                 }
             }
         })
         .await
         .expect("Timed-out waiting for HTTPRoute status update");
-        assert_eq!(cond.status, "True".to_string());
-        assert_eq!(cond.reason, "Accepted".to_string());
+        assert_eq!(cond.status, "True");
+        assert_eq!(cond.reason, "Accepted");
     })
     .await;
 }
