@@ -142,20 +142,14 @@ pub async fn await_route_status(
     name: &str,
 ) -> k8s::policy::httproute::RouteStatus {
     use k8s::policy::httproute as api;
-    fn get_status(route: &api::HttpRoute) -> Option<api::RouteStatus> {
-        let inner = &route.status.as_ref()?.inner;
-        Some(inner.clone())
-    }
-
-    let route = await_condition(client, ns, name, |obj: Option<&api::HttpRoute>| -> bool {
-        if let Some(route) = obj {
-            return get_status(route).is_some();
-        }
-        false
+    await_condition(client, ns, name, |obj: Option<&api::HttpRoute>| -> bool {
+        obj.and_then(|route| route.status.as_ref()).is_some()
     })
     .await
-    .expect("must fetch route");
-    get_status(&route).expect("route must have a status")
+    .expect("must fetch route")
+    .status
+    .expect("route must contain a status representation")
+    .inner
 }
 
 #[tracing::instrument(skip_all, fields(%pod, %container))]
