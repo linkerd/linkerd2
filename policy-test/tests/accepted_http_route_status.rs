@@ -63,6 +63,91 @@ async fn inbound_accepted_parent() {
 }
 
 #[tokio::test(flavor = "current_thread")]
+async fn inbound_accepted_no_parent_ref() {
+    with_temp_ns(|client, ns| async move {
+        // A route may not include any parent references. When that's the case,
+        // we expect the controller to simply ignore it.
+        let _route = create(
+            &client,
+            mk_inbound_route(&ns, "test-no-parent-refs-route", None),
+        )
+        .await;
+
+        // Status may not be set straight away. To account for that, wrap a
+        // status condition watcher in a timeout.
+        let api = kube::Api::namespaced(client.clone(), &ns);
+        let resolved = tokio::time::timeout(
+            // 10 seconds should be enough for a route to be patched
+            tokio::time::Duration::from_secs(10),
+            kube::runtime::wait::await_condition(
+                api,
+                "test-no-parent-refs-route",
+                |obj: Option<&k8s::policy::HttpRoute>| -> bool {
+                    obj.and_then(|route| route.status.as_ref()).is_some()
+                },
+            ),
+        )
+        .await;
+
+        // If timeout has elapsed, then route did not receive a status patch
+        assert!(
+            resolved.is_err(),
+            "status condition should timeout when no parent refs are specified"
+        );
+    })
+    .await
+}
+
+/*
+#[tokio::test(flavor = "current_thread")]
+async fn inbound_accepted_invalid_kind() {
+    with_temp_ns(|client, ns| async move {
+        // Create a route that targets an invalid parent kind. Invalid kinds are
+        // ignored, we expect the route not to be patched.
+        let invalid_ref = vec![k8s::policy::httproute::ParentReference {
+            group: Some("policy.linkerd.io".to_string()),
+            kind: Some("InvalidParent".to_string()),
+            namespace: Some(ns.to_string()),
+            name: "invalid-parent".to_string(),
+            section_name: None,
+            port: None,
+        }];
+
+        // Create the route. The parent reference does not have to exist in the
+        // cluster, since it will fail the typecheck, the existence of the
+        // resource will not factor into any perceived output.
+        let _route = create(
+            &client,
+            mk_inbound_route(&ns, "test-invalid-parent-refs-route", Some(invalid_ref)),
+        )
+        .await;
+
+        // Status may not be set straight away. To account for that, wrap a
+        // status condition watcher in a timeout.
+        let api = kube::Api::namespaced(client.clone(), &ns);
+        let resolved = tokio::time::timeout(
+            // 10 seconds should be enough for a route to be patched
+            tokio::time::Duration::from_secs(10),
+            kube::runtime::wait::await_condition(
+                api,
+                "test-invalid-parent-refs-route",
+                |obj: Option<&k8s::policy::HttpRoute>| -> bool {
+                    obj.and_then(|route| route.status.as_ref()).is_some()
+                },
+            ),
+        )
+        .await;
+
+        assert!(
+            resolved.is_err(),
+            "status condition should timeout when parent refs has invalid kind"
+        );
+    })
+    .await
+}
+*/
+
+#[tokio::test(flavor = "current_thread")]
 async fn inbound_accepted_no_parent() {
     with_temp_ns(|client, ns| async move {
         // Create a reference to a Server that doesn't exist.
@@ -101,7 +186,7 @@ async fn inbound_accepted_no_parent() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn inbound_accepted_reconcile() {
+async fn inbound_accepted_reconcile_create_event() {
     with_temp_ns(|client, ns| async move {
         // Given a route with inexistent parentReference, we expect to have an
         // 'Accepted' condition with 'False' as a status.
@@ -109,16 +194,16 @@ async fn inbound_accepted_reconcile() {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("Server".to_string()),
             namespace: Some(ns.clone()),
-            name: "test-reconcile-server".to_string(),
+            name: "test-reconcile-create-server".to_string(),
             section_name: None,
             port: None,
         }];
         let _route = create(
             &client,
-            mk_inbound_route(&ns, "test-reconciled-route", Some(srv_ref)),
+            mk_inbound_route(&ns, "test-reconcile-create-route", Some(srv_ref)),
         )
         .await;
-        let cond = await_route_status(&client, &ns, "test-reconciled-route")
+        let cond = await_route_status(&client, &ns, "test-reconcile-create-route")
             .await
             .parents
             .get(0)
@@ -140,13 +225,13 @@ async fn inbound_accepted_reconcile() {
             let server = k8s::policy::Server {
                 metadata: k8s::ObjectMeta {
                     namespace: Some(ns.to_string()),
-                    name: Some("test-reconcile-server".to_string()),
+                    name: Some("test-reconcile-create-server".to_string()),
                     ..Default::default()
                 },
                 spec: k8s::policy::ServerSpec {
                     pod_selector: k8s::labels::Selector::from_iter(Some((
                         "app",
-                        "test-reconcile-server",
+                        "test-reconcile-create-server",
                     ))),
                     port: k8s::policy::server::Port::Name("http".to_string()),
                     proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
@@ -159,7 +244,7 @@ async fn inbound_accepted_reconcile() {
         // until create_timestamp and observed_timestamp are different.
         let cond = tokio::time::timeout(tokio::time::Duration::from_secs(60), async move {
             loop {
-                let cond = await_route_status(&client, &ns, "test-reconciled-route")
+                let cond = await_route_status(&client, &ns, "test-reconcile-create-route")
                     .await
                     .parents
                     .get(0)
@@ -183,6 +268,100 @@ async fn inbound_accepted_reconcile() {
         .expect("Timed-out waiting for HTTPRoute status update");
         assert_eq!(cond.status, "True");
         assert_eq!(cond.reason, "Accepted");
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn inbound_accepted_reconcile_delete_event() {
+    with_temp_ns(|client, ns| async move {
+        // Attach a route to a Server and expect the route to be patched with an
+        // Accepted status.
+        let _server = {
+            let server = k8s::policy::Server {
+                metadata: k8s::ObjectMeta {
+                    namespace: Some(ns.to_string()),
+                    name: Some("test-reconcile-delete-server".to_string()),
+                    ..Default::default()
+                },
+                spec: k8s::policy::ServerSpec {
+                    pod_selector: k8s::labels::Selector::from_iter(Some((
+                        "app",
+                        "test-reconcile-delete-server",
+                    ))),
+                    port: k8s::policy::server::Port::Name("http".to_string()),
+                    proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
+                },
+            };
+            create(&client, server).await
+        };
+        // Create parentReference and route
+        let srv_ref = vec![k8s::policy::httproute::ParentReference {
+            group: Some("policy.linkerd.io".to_string()),
+            kind: Some("Server".to_string()),
+            namespace: Some(ns.clone()),
+            name: "test-reconcile-delete-server".to_string(),
+            section_name: None,
+            port: None,
+        }];
+        let _route = create(
+            &client,
+            mk_inbound_route(&ns, "test-reconcile-delete-route", Some(srv_ref)),
+        )
+        .await;
+        let cond = await_route_status(&client, &ns, "test-reconcile-delete-route")
+            .await
+            .parents
+            .get(0)
+            .expect("must have at least one parent status")
+            .conditions
+            .iter()
+            .find(|cond| cond.type_ == "Accepted")
+            .expect("must have at least one 'Accepted' condition")
+            .clone();
+        assert_eq!(cond.status, "True");
+        assert_eq!(cond.reason, "Accepted");
+
+        // Save create_timestamp to assert status has been updated.
+        let create_timestamp = &cond.last_transition_time;
+
+        // Delete Server
+        let api: kube::Api<k8s::policy::Server> = kube::Api::namespaced(client.clone(), &ns);
+        api.delete(
+            "test-reconcile-delete-server",
+            &kube::api::DeleteParams::default(),
+        )
+        .await
+        .expect("API delete request failed");
+
+        // HTTPRoute may not be patched instantly, wrap with a timeout and loop
+        // until create_timestamp and observed_timestamp are different.
+        let cond = tokio::time::timeout(tokio::time::Duration::from_secs(60), async move {
+            loop {
+                let cond = await_route_status(&client, &ns, "test-reconcile-delete-route")
+                    .await
+                    .parents
+                    .get(0)
+                    .expect("must have at least one parent status")
+                    .conditions
+                    .iter()
+                    .find(|cond| cond.type_ == "Accepted")
+                    .expect("must have at least one 'Accepted' condition")
+                    .clone();
+
+                // Observe condition's current timestamp. If it differs from the
+                // previously recorded timestamp, then it means the underlying
+                // condition has been updated so we can check the message and
+                // status.
+                if &cond.last_transition_time > create_timestamp {
+                    return cond;
+                }
+            }
+        })
+        .await
+        .expect("Timed-out waiting for HTTPRoute status update");
+        assert_eq!(cond.status, "False");
+        assert_eq!(cond.reason, "NoMatchingParent");
     })
     .await;
 }
