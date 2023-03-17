@@ -175,10 +175,6 @@ impl Namespace {
         let outbound_route = match self.convert_route(route.clone(), cluster_info) {
             Ok(route) => route,
             Err(error) => {
-                // XXX(ver) This is likely to fire whenever we process routes
-                // that target servers, for instance. Ultimately, we should
-                // unify the handling. Either that or we should reduce the log
-                // level to avoid user-facing noise.
                 tracing::error!(%error, "failed to convert HttpRoute");
                 return;
             }
