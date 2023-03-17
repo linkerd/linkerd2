@@ -36,13 +36,11 @@ export class ResourceListBase extends React.Component {
           metrics={processedMetrics}
           title={<Trans>tableTitleHTTPMetrics</Trans>} />
 
-        {resource !== 'trafficsplit' &&
         <MetricsTable
           resource={resource}
           isTcpTable
           metrics={processedMetrics}
           title={<Trans>tableTitleTCPMetrics</Trans>} />
-        }
       </React.Fragment>
     );
   };
