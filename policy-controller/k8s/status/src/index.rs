@@ -183,10 +183,7 @@ impl Index {
 
                 // Is this parent in the list of parents which accept
                 // the route?
-                let accepted = self
-                    .servers
-                    .iter()
-                    .any(|server| server == parent_reference_id);
+                let accepted = self.servers.contains(parent_reference_id);
                 let condition = if accepted {
                     k8s::Condition {
                         last_transition_time: k8s::Time(timestamp),
