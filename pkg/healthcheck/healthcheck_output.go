@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/mattn/go-isatty"
+	utilsexec "k8s.io/utils/exec"
 )
 
 const (
@@ -46,6 +48,32 @@ var (
 
 	reStableVersion = regexp.MustCompile(`stable-(\d\.\d+)\.`)
 )
+
+// CheckCLIOutput contains the output of a check-cli command.
+type CheckCLIOutput struct {
+	Name string `json:"name"`
+}
+
+// suffix returns the last part of a CLI check name.
+// e.g. linkerd-foo => foo
+func (c CheckCLIOutput) suffix() string {
+	parts := strings.Split(c.Name, "-")
+	return parts[len(parts)-1]
+}
+
+// CLIChecks map a check-cli command to its full executable filepath.
+type CLIChecks map[CheckCLIOutput]string
+
+// Suffixes returns a map of the last parts of all CLI check names.
+// e.g. [linkerd-foo, linkerd-bar] => { foo: {}, bar: {} }
+func (c CLIChecks) Suffixes() map[string]struct{} {
+	suffixes := map[string]struct{}{}
+	for check := range c {
+		suffixes[check.suffix()] = struct{}{}
+	}
+
+	return suffixes
+}
 
 // CheckResults contains a slice of CheckResult structs.
 type CheckResults struct {
@@ -114,10 +142,101 @@ func PrintChecksResult(wout io.Writer, output string, success bool, warning bool
 	}
 }
 
-// RunExtensionsChecks runs checks for each extension name passed into the `extensions` parameter
+// Glob is satisfied by filepath.Glob.
+type Glob func(string) ([]string, error)
+
+// GetCLIChecks searches the path for all linkerd-* executables and returns a
+// mapping of CheckCLIOutput structs to executable filepaths.
+func GetCLIChecks(pathEnv string, glob Glob, exec utilsexec.Interface) CLIChecks {
+	checks := CLIChecks{}
+
+	for _, dir := range filepath.SplitList(pathEnv) {
+		matches, err := glob(filepath.Join(dir, "linkerd-*"))
+		if err != nil {
+			continue
+		}
+
+		for _, match := range matches {
+			path, err := exec.LookPath(match)
+			if err != nil {
+				continue
+			}
+
+			cmd := exec.Command(path, "check-cli")
+			var stdout, stderr bytes.Buffer
+			cmd.SetStdout(&stdout)
+			cmd.SetStderr(&stderr)
+			err = cmd.Run()
+			if err != nil {
+				continue
+			}
+
+			checkCLIOutput, err := parseJSONCheckCLIOutput(stdout.Bytes())
+			if err != nil {
+				continue
+			}
+
+			_, filename := filepath.Split(path)
+			if checkCLIOutput.Name != filename {
+				// output of check-cli must match the executable name
+				// i.e. linkerd-foo is allowed, linkerd-foo-v0.XX.X is not
+				continue
+			}
+
+			if _, ok := checks[checkCLIOutput]; ok {
+				// this check already found earlier in the path, skip it
+				continue
+			}
+
+			checks[checkCLIOutput] = path
+		}
+	}
+
+	return checks
+}
+
+// RunExtensionsChecks runs both CLI and cluster extension checks.
+func RunExtensionsChecks(
+	wout io.Writer, werr io.Writer, cliChecks CLIChecks, extensions []string, flags []string, output string,
+) (bool, bool) {
+	cliSuccess, cliWarning := runCLIChecks(wout, werr, cliChecks, flags, output)
+	extSuccess, extWarning := runExtensionsChecks(wout, werr, extensions, flags, output)
+
+	return cliSuccess && extSuccess, cliWarning || extWarning
+}
+
+func runCLIChecks(wout io.Writer, werr io.Writer, cliChecks CLIChecks, flags []string, output string) (bool, bool) {
+	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	spin.Writer = wout
+
+	success := true
+	warning := false
+	for c, path := range cliChecks {
+		args := append([]string{"check"}, flags...)
+		checkResults, checkSuccess := runCheck(path, args, c.suffix(), CategoryID(c.Name), spin)
+		if !checkSuccess {
+			success = false
+		}
+		results := CheckResults{
+			Results: checkResults,
+		}
+
+		extensionSuccess, extensionWarning := RunChecks(wout, werr, results, output)
+		if !extensionSuccess {
+			success = false
+		}
+		if extensionWarning {
+			warning = true
+		}
+	}
+
+	return success, warning
+}
+
+// runExtensionsChecks runs checks for each extension name passed into the `extensions` parameter
 // and handles formatting the output for each extension's check. This function also handles
 // finding the extension in the user's path and runs it.
-func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, flags []string, output string) (bool, bool) {
+func runExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, flags []string, output string) (bool, bool) {
 	if output == TableOutput {
 		PrintChecksHeader(wout, extensionsHeader)
 	}
@@ -160,47 +279,60 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 		}
 
 		if err == nil {
-			if isatty.IsTerminal(os.Stdout.Fd()) {
-				spin.Suffix = fmt.Sprintf(" Running %s extension check", extension)
-				spin.Color("bold") // this calls spin.Restart()
-			}
-			// Path is constructed from the switch statements above and will
-			// be a valid Linkerd subcommand.
-			//nolint:gosec
-			plugin := exec.Command(path, args...)
-			var stdout, stderr bytes.Buffer
-			plugin.Stdout = &stdout
-			plugin.Stderr = &stderr
-			plugin.Run()
-			extensionResults, err := parseJSONCheckOutput(stdout.Bytes())
-			spin.Stop()
-			if err != nil {
-				command := fmt.Sprintf("%s %s", path, strings.Join(args, " "))
-				if len(stderr.String()) > 0 {
-					err = errors.New(stderr.String())
-				} else {
-					err = fmt.Errorf("invalid extension check output from \"%s\" (JSON object expected):\n%s\n[%w]", command, stdout.String(), err)
-				}
-				results.Results = append(results.Results, CheckResult{
-					Category:    CategoryID(extensionCmd),
-					Description: fmt.Sprintf("Running: %s", command),
-					Err:         err,
-					HintURL:     HintBaseURL(version.Version) + "extensions",
-				})
+			checkResults, checkSuccess := runCheck(path, args, extension, CategoryID(extensionCmd), spin)
+			if !checkSuccess {
 				success = false
-			} else {
-				results.Results = append(results.Results, extensionResults.Results...)
 			}
+			results.Results = append(results.Results, checkResults...)
 		}
 
-		var extensionSuccess bool
-		extensionSuccess, warning = RunChecks(wout, werr, results, output)
+		extensionSuccess, extensionWarning := RunChecks(wout, werr, results, output)
 		if !extensionSuccess {
 			success = false
+		}
+		if extensionWarning {
+			warning = true
 		}
 	}
 
 	return success, warning
+}
+
+func runCheck(
+	path string, args []string, name string, category CategoryID, spin *spinner.Spinner,
+) ([]CheckResult, bool) {
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		spin.Suffix = fmt.Sprintf(" Running %s extension check", name)
+		spin.Color("bold") // this calls spin.Restart()
+	}
+
+	plugin := exec.Command(path, args...)
+	var stdout, stderr bytes.Buffer
+	plugin.Stdout = &stdout
+	plugin.Stderr = &stderr
+	plugin.Run()
+	extensionResults, err := parseJSONCheckOutput(stdout.Bytes())
+	spin.Stop()
+	if err == nil {
+		return extensionResults.Results, true
+	}
+
+	command := fmt.Sprintf("%s %s", path, strings.Join(args, " "))
+	if len(stderr.String()) > 0 {
+		err = errors.New(stderr.String())
+	} else {
+		err = fmt.Errorf("invalid extension check output from \"%s\" (JSON object expected):\n%s\n[%w]", command, stdout.String(), err)
+	}
+	results := []CheckResult{
+		{
+			Category:    category,
+			Description: fmt.Sprintf("Running: %s", command),
+			Err:         err,
+			HintURL:     HintBaseURL(version.Version) + "extensions",
+		},
+	}
+
+	return results, false
 }
 
 // RunChecks runs the checks that are part of hc
@@ -338,6 +470,17 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) (bool, bool) {
 		fmt.Fprintf(werr, "JSON serialization of the check result failed with %s", err)
 	}
 	return success, warning
+}
+
+// parseJSONCheckCLIOutput parses the output of a check-cli command. The data is
+// expected to be a CheckCLIOutput struct serialized to json.
+func parseJSONCheckCLIOutput(data []byte) (CheckCLIOutput, error) {
+	var cliOutput CheckCLIOutput
+	err := json.Unmarshal(data, &cliOutput)
+	if err != nil {
+		return CheckCLIOutput{}, err
+	}
+	return cliOutput, nil
 }
 
 // parseJSONCheckOutput parses the output of a check command run with json
