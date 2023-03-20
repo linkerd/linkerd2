@@ -14,7 +14,6 @@ import ServiceDetail from './ServiceDetail.jsx';
 import SimpleChip from './util/Chip.jsx';
 import Spinner from './util/Spinner.jsx';
 import TopRoutesTabs from './TopRoutesTabs.jsx';
-import TrafficSplitDetail from './TrafficSplitDetail.jsx';
 import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import _filter from 'lodash/filter';
@@ -266,7 +265,6 @@ export class ResourceDetailBase extends React.Component {
         this.setState({
           resourceMetrics,
           resourceIsMeshed,
-          resourceRsp,
           podMetrics: podMetricsForResource,
           upstreamMetrics,
           downstreamMetrics,
@@ -308,7 +306,6 @@ export class ResourceDetailBase extends React.Component {
     const {
       resourceName,
       resourceType,
-      resourceRsp,
       namespace,
       resourceMetrics,
       edges,
@@ -350,15 +347,6 @@ export class ResourceDetailBase extends React.Component {
 
     const showNoTrafficMsg = resourceIsMeshed && (Date.now() - lastMetricReceivedTime > showNoTrafficMsgDelayMs);
 
-    if (resourceType === 'trafficsplit') {
-      return (
-        <TrafficSplitDetail
-          resourceType={resourceType}
-          resourceName={resourceName}
-          resourceMetrics={resourceMetrics}
-          resourceRsp={resourceRsp} />
-      );
-    }
     if (resourceType === 'service') {
       return (
         <ServiceDetail

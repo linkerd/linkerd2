@@ -18,7 +18,7 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/imdario/mergo v0.3.13
+	github.com/imdario/mergo v0.3.14
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/linkerd/linkerd2-proxy-api v0.7.0
 	github.com/linkerd/linkerd2-proxy-init v1.6.2
@@ -40,7 +40,7 @@ require (
 	golang.org/x/tools v0.7.0
 	google.golang.org/grpc v1.53.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
-	google.golang.org/protobuf v1.29.1
+	google.golang.org/protobuf v1.30.0
 	helm.sh/helm/v3 v3.11.2
 	k8s.io/api v0.26.2
 	k8s.io/apiextensions-apiserver v0.26.2
