@@ -86,6 +86,13 @@ func (et *endpointTranslator) Add(set watcher.AddressSet) {
 	defer et.mu.Unlock()
 
 	for id, address := range set.Addresses {
+		// Two pods in the same address set may share the same IP (if one of
+		// them has failed or terminated). To dedupe, check if pod is running.
+		if address.Pod != nil && isTerminated(address.Pod) {
+			// Skip loop if terminated.
+			continue
+		}
+
 		et.availableEndpoints.Addresses[id] = address
 	}
 
@@ -121,6 +128,15 @@ func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 	}
 
 	et.filteredSnapshot = filtered
+}
+
+// isTerminated checks if a pod has terminated and no longer accepting traffic.
+func isTerminated(pod *corev1.Pod) bool {
+	phase := pod.Status.Phase
+	podTerminated := phase == corev1.PodSucceeded || phase == corev1.PodFailed
+	podTerminating := pod.DeletionTimestamp != nil
+
+	return podTerminating || podTerminated
 }
 
 // filterAddresses is responsible for filtering endpoints based on the node's

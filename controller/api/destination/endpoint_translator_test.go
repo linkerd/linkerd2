@@ -34,6 +34,9 @@ var (
 			Spec: corev1.PodSpec{
 				ServiceAccountName: "serviceaccount-name",
 			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+			},
 		},
 		OwnerKind: "replicationcontroller",
 		OwnerName: "rc-name",
@@ -51,6 +54,9 @@ var (
 					k8s.ProxyDeploymentLabel: "deployment-name",
 				},
 			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+			},
 		},
 	}
 
@@ -66,7 +72,54 @@ var (
 					k8s.ProxyDeploymentLabel: "deployment-name",
 				},
 			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+			},
 		},
+	}
+
+	pod4 = watcher.Address{
+		IP:   "1.1.1.4",
+		Port: 4,
+		Pod: &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod4",
+				Namespace: "ns",
+				Labels: map[string]string{
+
+					k8s.ControllerNSLabel:    "linkerd",
+					k8s.ProxyDeploymentLabel: "deployment-name",
+				},
+			},
+			Spec: corev1.PodSpec{},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+			},
+		},
+		OwnerKind: "replicationcontroller",
+		OwnerName: "rc-name",
+	}
+
+	pod5 = watcher.Address{
+		IP:   "1.1.1.5",
+		Port: 5,
+		Pod: &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod5",
+				Namespace: "ns",
+				Labels: map[string]string{
+
+					k8s.ControllerNSLabel:    "linkerd",
+					k8s.ProxyDeploymentLabel: "deployment-name",
+				},
+			},
+			Spec: corev1.PodSpec{},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+			},
+		},
+		OwnerKind: "replicationcontroller",
+		OwnerName: "rc-name",
 	}
 
 	remoteGateway1 = watcher.Address{
@@ -338,6 +391,29 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		actualTLSIdentity := addrs[0].GetTlsIdentity().GetDnsLikeIdentity()
 		if diff := deep.Equal(actualTLSIdentity, expectedTLSIdentity); diff != nil {
 			t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTLSIdentity, actualTLSIdentity)
+		}
+	})
+
+	t.Run("Does not send metrics and address when pod is not running", func(t *testing.T) {
+		mockGetServer, translator := makeEndpointTranslator(t)
+
+		translator.Add(mkAddressSetForPods(pod4, pod5))
+
+		actualGlobalMetricLabels := mockGetServer.updatesReceived[0].GetAdd().MetricLabels
+		expectedGlobalMetricLabels := map[string]string{"namespace": "service-ns", "service": "service-name"}
+		if diff := deep.Equal(actualGlobalMetricLabels, expectedGlobalMetricLabels); diff != nil {
+			t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", expectedGlobalMetricLabels, actualGlobalMetricLabels)
+		}
+
+		actualAddedAddress1MetricLabels := mockGetServer.updatesReceived[0].GetAdd().Addrs[0].MetricLabels
+		expectedAddedAddress1MetricLabels := map[string]string{
+			"pod":                   "pod5",
+			"replicationcontroller": "rc-name",
+			"serviceaccount":        "default",
+			"control_plane_ns":      "linkerd",
+		}
+		if diff := deep.Equal(actualAddedAddress1MetricLabels, expectedAddedAddress1MetricLabels); diff != nil {
+			t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", expectedAddedAddress1MetricLabels, actualAddedAddress1MetricLabels)
 		}
 	})
 }
