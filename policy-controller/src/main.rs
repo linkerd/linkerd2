@@ -168,12 +168,6 @@ async fn main() -> Result<()> {
     tokio::spawn(
         kubert::index::namespaced(servers_indexes, servers).instrument(info_span!("servers")),
     );
-    // TODO: We have several duplicated watches that we need to dedupe.
-    let services = runtime.watch_all::<k8s::Service>(ListParams::default());
-    tokio::spawn(
-        kubert::index::namespaced(status_index.clone(), services)
-            .instrument(info_span!("services")),
-    );
 
     let server_authzs =
         runtime.watch_all::<k8s::policy::ServerAuthorization>(ListParams::default());
@@ -214,9 +208,11 @@ async fn main() -> Result<()> {
     );
 
     let services = runtime.watch_all::<k8s::Service>(ListParams::default());
+    let services_indexes = IndexList::new(outbound_index.clone())
+        .push(status_index.clone())
+        .shared();
     tokio::spawn(
-        kubert::index::namespaced(outbound_index.clone(), services)
-            .instrument(info_span!("services")),
+        kubert::index::namespaced(services_indexes, services).instrument(info_span!("services")),
     );
 
     // Spawn the status Controller reconciliation.

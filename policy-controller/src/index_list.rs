@@ -46,7 +46,9 @@ impl<A, T> IndexList<A, T> {
     }
 }
 
-impl<A> IndexList<A, A> {
+impl<A> IndexList<A> {
+    /// Returns a new `IndexList`.
+    ///
     /// The second type parameter in the return value here can be anything that
     /// implements `IndexNamespacedResource<R>`, since it will just be `None`.
     /// Ideally, the type should be `!` (bottom) but `A` is conveniently available,
