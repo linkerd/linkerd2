@@ -40,6 +40,7 @@ async fn inbound_accepted_parent() {
         // Wait until route is updated with a status
         let route_status = await_route_status(&client, &ns, "test-accepted-route")
             .await
+            .expect("condition timed out")
             .parents
             .get(0)
             .expect("must have at least one parent status")
@@ -112,6 +113,7 @@ async fn inbound_multiple_parents() {
         // Wait until route is updated with a status
         let parent_status = await_route_status(&client, &ns, "test-multiple-parents-route")
             .await
+            .expect("condition timed out")
             .parents;
 
         // Find status for invalid parent and extract the condition
@@ -157,20 +159,7 @@ async fn inbound_no_parent_ref_patch() {
 
         // Status may not be set straight away. To account for that, wrap a
         // status condition watcher in a timeout.
-        let api = kube::Api::namespaced(client.clone(), &ns);
-        let resolved = tokio::time::timeout(
-            // 5 seconds should be enough for a route to be patched
-            tokio::time::Duration::from_secs(5),
-            kube::runtime::wait::await_condition(
-                api,
-                "test-no-parent-refs-route",
-                |obj: Option<&k8s::policy::HttpRoute>| -> bool {
-                    obj.and_then(|route| route.status.as_ref()).is_some()
-                },
-            ),
-        )
-        .await;
-
+        let resolved = await_route_status(&client, &ns, "test-no-parent-refs-route").await;
         // If timeout has elapsed, then route did not receive a status patch
         assert!(
             resolved.is_err(),
@@ -201,6 +190,7 @@ async fn inbound_accepted_no_parent() {
         .await;
         let route_status = await_route_status(&client, &ns, "test-no-parent-route")
             .await
+            .expect("condition timed out")
             .parents
             .get(0)
             .expect("must have at least one parent status")
@@ -219,6 +209,8 @@ async fn inbound_accepted_no_parent() {
 }
 
 #[tokio::test(flavor = "current_thread")]
+// Tests how route statuses are reconciled. Additionally, tests that routes
+// whose parentRefs don't exist are patched with an appropriate status.
 async fn inbound_accepted_reconcile_create_event() {
     with_temp_ns(|client, ns| async move {
         // Given a route with inexistent parentReference, we expect to have an
@@ -238,6 +230,7 @@ async fn inbound_accepted_reconcile_create_event() {
         .await;
         let cond = await_route_status(&client, &ns, "test-reconcile-create-route")
             .await
+            .expect("condition timed out")
             .parents
             .get(0)
             .expect("must have at least one parent status")
@@ -279,6 +272,7 @@ async fn inbound_accepted_reconcile_create_event() {
             loop {
                 let cond = await_route_status(&client, &ns, "test-reconcile-create-route")
                     .await
+                    .expect("condition timed out")
                     .parents
                     .get(0)
                     .expect("must have at least one parent status")
@@ -344,6 +338,7 @@ async fn inbound_accepted_reconcile_delete_event() {
         .await;
         let cond = await_route_status(&client, &ns, "test-reconcile-delete-route")
             .await
+            .expect("condition timed out")
             .parents
             .get(0)
             .expect("must have at least one parent status")
@@ -373,6 +368,7 @@ async fn inbound_accepted_reconcile_delete_event() {
             loop {
                 let cond = await_route_status(&client, &ns, "test-reconcile-delete-route")
                     .await
+                    .expect("condition timed out")
                     .parents
                     .get(0)
                     .expect("must have at least one parent status")
