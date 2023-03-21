@@ -69,6 +69,7 @@ where
 {
     let api = kube::Api::namespaced(client.clone(), ns);
     tokio::select! {
+        biased;
         obj  = kube::runtime::wait::await_condition(api, name, cond) => {
             let obj = obj.expect("API call failed");
             Ok(obj)
