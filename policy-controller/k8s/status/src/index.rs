@@ -83,7 +83,7 @@ impl Controller {
         loop {
             tokio::select! {
                 biased;
-                res = claims.changed() => {
+                res = self.claims.changed() => {
                     res.expect("Claims watch must not be dropped");
                     tracing::debug!("Lease holder has changed");
                     let claim = self.claims.borrow_and_update();
