@@ -189,11 +189,18 @@ func  buildValues(options *cniPluginOptions, valuesOverrides map[string]interfac
 		return nil, err
 	}
 
+	if val, exists := valuesOverrides["enablePSP"]; exists {
+        if enablePSP, ok := val.(bool); ok {
+            installValues.EnablePSP = enablePSP
+        } else {
+            return nil, fmt.Errorf("invalid type for enablePSP: %T", val)
+        }
+	}
+
 	portsToRedirect := []string{}
 	for _, p := range options.portsToRedirect {
 		portsToRedirect = append(portsToRedirect, fmt.Sprintf("%d", p))
 	}
-	installValues = valuesOverrides
 	installValues.Image = options.pluginImage()
 	installValues.LogLevel = options.logLevel
 	installValues.InboundProxyPort = options.inboundPort
@@ -206,6 +213,8 @@ func  buildValues(options *cniPluginOptions, valuesOverrides map[string]interfac
 	installValues.DestCNIBinDir = options.destCNIBinDir
 	installValues.UseWaitFlag = options.useWaitFlag
 	installValues.PriorityClassName = options.priorityClassName
+	// installValues.EnablePSP = valuesOverrides["enablePSP"]
+	// installValues.Resources = valuesOverrides["resources"]
 	return installValues, nil
 }
 

@@ -22,6 +22,19 @@ type Image struct {
 	PullPolicy interface{} `json:"pullPolicy"`
 }
 
+type Constraints struct {
+	Limit   string `json:"limit"`
+	Request string `json:"request"`
+}
+
+// Resources represents the computational resources setup for a given container
+type Resources struct {
+	CPU              Constraints `json:"cpu"`
+	Memory           Constraints `json:"memory"`
+	EphemeralStorage Constraints `json:"ephemeral-storage"`
+}
+
+
 // Values contains the top-level elements in the cni Helm chart
 type Values struct {
 	InboundProxyPort    uint          `json:"inboundProxyPort"`
@@ -40,6 +53,8 @@ type Values struct {
 	ProxyAdminPort      string        `json:"proxyAdminPort"`
 	ProxyControlPort    string        `json:"proxyControlPort"`
 	Tolerations         []interface{} `json:"tolerations"`
+	EnablePSP           bool          `json:"enablePSP"`
+	Resources           Resources     `json:"resources"`
 }
 
 // NewValues returns a new instance of the Values type.
