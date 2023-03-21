@@ -62,7 +62,7 @@ where
             .ok_or_else(|| tonic::Status::invalid_argument("traffic target must have an IP"))?
             .try_into()
             .map_err(|error| {
-                tonic::Status::invalid_argument(format!("failed to parse target addr: {}", error))
+                tonic::Status::invalid_argument(format!("failed to parse target addr: {error}"))
             })?;
 
         self.index
@@ -84,25 +84,23 @@ where
                 "authority must have a host",
             ));
         }
-        if host.ends_with('.') {
-            host = &host[..host.len() - 1];
-        }
-        if host.ends_with(&*self.cluster_domain) {
-            host = &host[..host.len() - self.cluster_domain.len()];
-        }
+
+        host = host
+            .trim_end_matches('.')
+            .trim_end_matches(&*self.cluster_domain);
+
         let mut parts = host.split('.');
         let invalid = {
             let domain = &self.cluster_domain;
             move || {
                 tonic::Status::not_found(format!(
-                    "authority must be of the form <name>.<namespace>.svc.{}",
-                    domain
+                    "authority must be of the form <name>.<namespace>.svc.{domain}",
                 ))
             }
         };
         let name = parts.next().ok_or_else(invalid)?;
         let namespace = parts.next().ok_or_else(invalid)?;
-        if !matches!(parts.next(), Some("svc")) {
+        if parts.next() != Some("svc") {
             return Err(invalid());
         };
 
@@ -131,7 +129,7 @@ where
             .get_outbound_policy(service)
             .await
             .map_err(|error| {
-                tonic::Status::internal(format!("failed to get outbound policy: {}", error))
+                tonic::Status::internal(format!("failed to get outbound policy: {error}"))
             })?;
 
         if let Some(policy) = policy {
@@ -154,7 +152,7 @@ where
             .index
             .watch_outbound_policy(service)
             .await
-            .map_err(|e| tonic::Status::internal(format!("lookup failed: {}", e)))?
+            .map_err(|e| tonic::Status::internal(format!("lookup failed: {e}")))?
             .ok_or_else(|| tonic::Status::not_found("unknown server"))?;
         Ok(tonic::Response::new(response_stream(drain, rx)))
     }
