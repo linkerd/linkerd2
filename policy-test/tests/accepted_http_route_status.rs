@@ -170,48 +170,10 @@ async fn inbound_no_parent_ref_patch() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn inbound_accepted_no_parent() {
-    with_temp_ns(|client, ns| async move {
-        // Create a reference to a Server that doesn't exist.
-        let srv_ref = vec![k8s::policy::httproute::ParentReference {
-            group: Some("policy.linkerd.io".to_string()),
-            kind: Some("Server".to_string()),
-            namespace: Some(ns.clone()),
-            name: "test-inexistent-server".to_string(),
-            section_name: None,
-            port: None,
-        }];
-
-        // Create the route
-        let _route = create(
-            &client,
-            mk_inbound_route(&ns, "test-no-parent-route", Some(srv_ref)),
-        )
-        .await;
-        let route_status = await_route_status(&client, &ns, "test-no-parent-route")
-            .await
-            .expect("condition timed out")
-            .parents
-            .get(0)
-            .expect("must have at least one parent status")
-            .clone();
-        let cond = route_status
-            .conditions
-            .iter()
-            .find(|cond| cond.type_ == "Accepted")
-            .expect("must have at least one 'Accepted' condition");
-
-        // Route shouldn't be accepted
-        assert_eq!(cond.status, "False");
-        assert_eq!(cond.reason, "NoMatchingParent");
-    })
-    .await;
-}
-
-#[tokio::test(flavor = "current_thread")]
-// Tests how route statuses are reconciled. Additionally, tests that routes
-// whose parentRefs don't exist are patched with an appropriate status.
-async fn inbound_accepted_reconcile_create_event() {
+// Tests that inbound routes (routes attached to a `Server`) are properly
+// reconciled when the parentReference changes. Additionally, tests that routes
+// whose parentRefs do not exist are patched with an appropriate status.
+async fn inbound_accepted_reconcile_no_parent() {
     with_temp_ns(|client, ns| async move {
         // Given a route with inexistent parentReference, we expect to have an
         // 'Accepted' condition with 'False' as a status.
@@ -239,6 +201,7 @@ async fn inbound_accepted_reconcile_create_event() {
             .find(|cond| cond.type_ == "Accepted")
             .expect("must have at least one 'Accepted' condition")
             .clone();
+        // Test when parent ref does not exist we get Accepted { False }.
         assert_eq!(cond.status, "False");
         assert_eq!(cond.reason, "NoMatchingParent");
 
@@ -300,7 +263,7 @@ async fn inbound_accepted_reconcile_create_event() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn inbound_accepted_reconcile_delete_event() {
+async fn inbound_accepted_reconcile_parent_delete() {
     with_temp_ns(|client, ns| async move {
         // Attach a route to a Server and expect the route to be patched with an
         // Accepted status.
