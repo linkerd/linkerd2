@@ -1,5 +1,16 @@
 # Changes
 
+## edge-23.3.3
+
+This edge release removes TrafficSplits from the Linkerd dashboard as well as
+fixing a number of issues in the policy controller.
+
+* Removed the TrafficSplit page from the Linkerd viz dashboard
+* Fixed an issue where the policy controller was not returning the correct
+  status for non-Service authorities
+* Fixed an issue where the policy controller could use large amounts of CPU
+  when lease API calls failed
+
 ## edge-23.3.2
 
 This edge release continues to improve dynamic Policy statuses and
