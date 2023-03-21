@@ -83,18 +83,12 @@ impl Controller {
         loop {
             tokio::select! {
                 biased;
-                res = self.claims.changed() => match res {
-                    Ok(()) => {
-                        let claim = self.claims.borrow_and_update();
-                        self.leader = claim.is_current_for(&self.name);
-                    },
-                    Err(error) => {
-                        tracing::error!(%error, "Failed to get lease status");
-                        // If we have lost the claims watch, we won't ever be
-                        // able to recover.
-                        panic!("Claims watch lost");
-                    },
-                },
+                res = claims.changed() => {
+                    res.expect("Claims watch must not be dropped");
+                    tracing::debug!("Lease holder has changed");
+                    let claim = self.claims.borrow_and_update();
+                    self.leader = claim.is_current_for(&self.name);
+                }
                 // If this policy controller is not the leader, it should
                 // process through the updates queue but not actually patch
                 // any resources.
