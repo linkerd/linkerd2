@@ -132,17 +132,10 @@ impl Index {
 
         loop {
             tokio::select! {
-                res = claims.changed() => match res {
-                    Ok(()) => {
-                        tracing::debug!("Lease holder has changed");
-                    },
-                    Err(error) => {
-                        tracing::error!(%error, "Failed to get lease status");
-                        // If we have lost the claims watch, we won't ever be
-                        // able to recover.
-                        panic!("Claims watch lost");
-                    },
-                },
+                res = claims.changed() => {
+                    res.expect("Claims watch must not be dropped");
+                    tracing::debug!("Lease holder has changed");
+                }
                 _ = time::sleep(Duration::from_secs(10)) => {}
             }
 
