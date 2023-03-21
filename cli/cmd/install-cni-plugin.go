@@ -112,7 +112,7 @@ assumes that the 'linkerd install' command will be executed with the
 '--linkerd-cni-enabled' flag. This command needs to be executed before the
 'linkerd install --linkerd-cni-enabled' command.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return renderCNIPlugin(os.Stdout, options)
+			return renderCNIPlugin(os.Stdout, option, options)
 		},
 	}
 
@@ -183,7 +183,7 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 	return &cniOptions, nil
 }
 
-func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
+func  buildValues(options *cniPluginOptions, valuesOverrides map[string]interface{}) (*cnicharts.Values, error) {
 	installValues, err := cnicharts.NewValues()
 	if err != nil {
 		return nil, err
@@ -193,7 +193,7 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 	for _, p := range options.portsToRedirect {
 		portsToRedirect = append(portsToRedirect, fmt.Sprintf("%d", p))
 	}
-
+	installValues = valuesOverrides
 	installValues.Image = options.pluginImage()
 	installValues.LogLevel = options.logLevel
 	installValues.InboundProxyPort = options.inboundPort
@@ -209,13 +209,23 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 	return installValues, nil
 }
 
-func renderCNIPlugin(w io.Writer, config *cniPluginOptions) error {
+func renderCNIPlugin(w io.Writer, option values.Options, config *cniPluginOptions) error {
 
 	if err := config.validate(); err != nil {
 		return err
 	}
 
-	values, err := config.buildValues()
+	// values, err := config.buildValues()
+	// if err != nil {
+	// 	return err
+	// }
+
+	valuesOverrides, err := option.MergeValues(nil)
+	if err != nil {
+		return err
+	}
+
+	values, err := buildValues(config, valuesOverrides)
 	if err != nil {
 		return err
 	}
