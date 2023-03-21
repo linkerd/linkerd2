@@ -83,9 +83,11 @@ impl Controller {
         loop {
             tokio::select! {
                 biased;
-                _ = self.claims.changed() => {
+                res = self.claims.changed() => {
+                    res.expect("Claims watch must not be dropped");
+                    tracing::debug!("Lease holder has changed");
                     let claim = self.claims.borrow_and_update();
-                    self.leader =  claim.is_current_for(&self.name)
+                    self.leader = claim.is_current_for(&self.name);
                 }
                 // If this policy controller is not the leader, it should
                 // process through the updates queue but not actually patch
@@ -130,8 +132,9 @@ impl Index {
 
         loop {
             tokio::select! {
-                _ = claims.changed() => {
-                    tracing::debug!("Lease holder has changed")
+                res = claims.changed() => {
+                    res.expect("Claims watch must not be dropped");
+                    tracing::debug!("Lease holder has changed");
                 }
                 _ = time::sleep(Duration::from_secs(10)) => {}
             }
