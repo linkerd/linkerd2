@@ -197,6 +197,14 @@ func  buildValues(options *cniPluginOptions, valuesOverrides map[string]interfac
         }
 	}
 
+	if val, exists := valuesOverrides["resources"]; exists {
+        if resources, ok := val.(cnicharts.Resources); ok {
+            installValues.Resources = resources
+        } else {
+            return nil, fmt.Errorf("invalid type for resources: %T", val)
+        }
+	}
+
 	portsToRedirect := []string{}
 	for _, p := range options.portsToRedirect {
 		portsToRedirect = append(portsToRedirect, fmt.Sprintf("%d", p))
