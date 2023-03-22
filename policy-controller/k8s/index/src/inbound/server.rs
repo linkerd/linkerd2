@@ -1,5 +1,5 @@
 use crate::ClusterInfo;
-use linkerd_policy_controller_core::ProxyProtocol;
+use linkerd_policy_controller_core::inbound::ProxyProtocol;
 use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port};
 
 /// The parts of a `Server` resource that can change.

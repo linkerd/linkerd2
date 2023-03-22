@@ -1,8 +1,8 @@
 use crate::resource_id::ResourceId;
-use anyhow::Result;
 use linkerd_policy_controller_k8s_api::{
     gateway,
     policy::{self, Server},
+    Service,
 };
 
 /// Represents an HTTPRoute's parent reference from its spec.
@@ -15,78 +15,43 @@ use linkerd_policy_controller_k8s_api::{
 #[derive(Clone, Eq, PartialEq)]
 pub enum ParentReference {
     Server(ResourceId),
+    Service(ResourceId, Option<u16>),
+    UnknownKind,
 }
 
-#[derive(Clone, Debug, thiserror::Error)]
-pub enum InvalidParentReference {
-    #[error("HTTPRoute resource does not reference a Server resource")]
-    DoesNotSelectServer,
-
-    #[error("HTTPRoute resource may not reference a parent by port")]
-    SpecifiesPort,
-
-    #[error("HTTPRoute resource may not reference a parent by section name")]
-    SpecifiesSection,
-}
-
-pub(crate) fn make_parents(http_route: policy::HttpRoute) -> Result<Vec<ParentReference>> {
+pub(crate) fn make_parents(http_route: policy::HttpRoute) -> Vec<ParentReference> {
     let namespace = http_route
         .metadata
         .namespace
         .expect("HTTPRoute must have a namespace");
-    let parents = ParentReference::collect_from(http_route.spec.inner.parent_refs, &namespace)?;
-    Ok(parents)
+    http_route
+        .spec
+        .inner
+        .parent_refs
+        .into_iter()
+        .flatten()
+        .map(|parent_ref| ParentReference::from_parent_ref(parent_ref, &namespace))
+        .collect()
 }
 
 impl ParentReference {
-    fn collect_from(
-        parent_refs: Option<Vec<gateway::ParentReference>>,
-        namespace: &str,
-    ) -> Result<Vec<Self>, InvalidParentReference> {
-        let parents = parent_refs
-            .into_iter()
-            .flatten()
-            .filter_map(|parent| Self::from_parent_ref(parent, namespace))
-            .collect::<Result<Vec<_>, InvalidParentReference>>()?;
-        if parents.is_empty() {
-            return Err(InvalidParentReference::DoesNotSelectServer);
+    fn from_parent_ref(parent_ref: gateway::ParentReference, default_namespace: &str) -> Self {
+        if policy::httproute::parent_ref_targets_kind::<Server>(&parent_ref) {
+            // If the parent reference does not have a namespace, default to using
+            // the HTTPRoute's namespace.
+            let namespace = parent_ref
+                .namespace
+                .unwrap_or_else(|| default_namespace.to_string());
+            ParentReference::Server(ResourceId::new(namespace, parent_ref.name))
+        } else if policy::httproute::parent_ref_targets_kind::<Service>(&parent_ref) {
+            // If the parent reference does not have a namespace, default to using
+            // the HTTPRoute's namespace.
+            let namespace = parent_ref
+                .namespace
+                .unwrap_or_else(|| default_namespace.to_string());
+            ParentReference::Service(ResourceId::new(namespace, parent_ref.name), parent_ref.port)
+        } else {
+            ParentReference::UnknownKind
         }
-
-        Ok(parents)
-    }
-
-    fn from_parent_ref(
-        parent_ref: gateway::ParentReference,
-        default_namespace: &str,
-    ) -> Option<Result<Self, InvalidParentReference>> {
-        // todo: Allow parent references to target all kinds so that a status
-        // is generated for invalid kinds
-        if !policy::httproute::parent_ref_targets_kind::<Server>(&parent_ref)
-            || parent_ref.name.is_empty()
-        {
-            return None;
-        }
-
-        let gateway::ParentReference {
-            group: _,
-            kind: _,
-            namespace: parent_namespace,
-            name,
-            section_name,
-            port,
-        } = parent_ref;
-        if port.is_some() {
-            return Some(Err(InvalidParentReference::SpecifiesPort));
-        }
-        if section_name.is_some() {
-            return Some(Err(InvalidParentReference::SpecifiesSection));
-        }
-
-        // If the parent reference does not have a namespace, default to using
-        // the HTTPRoute's namespace.
-        let namespace = parent_namespace.unwrap_or_else(|| default_namespace.to_string());
-        Some(Ok(ParentReference::Server(ResourceId::new(
-            namespace, name,
-        ))))
     }
 }

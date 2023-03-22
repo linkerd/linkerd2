@@ -23,24 +23,13 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-pub mod authorization_policy;
 mod cluster_info;
 mod defaults;
 pub mod http_route;
-mod index;
-mod meshtls_authentication;
-mod network_authentication;
-pub mod outbound_index;
-mod pod;
-mod server;
-mod server_authorization;
+pub mod inbound;
+pub mod outbound;
+pub mod ports;
 
-#[cfg(test)]
-mod tests;
-
-pub use self::{
-    cluster_info::ClusterInfo,
-    defaults::DefaultPolicy,
-    index::{Index, SharedIndex},
-    pod::{parse_portset, PortSet},
-};
+pub use cluster_info::ClusterInfo;
+pub use defaults::DefaultPolicy;
+pub use inbound::authorization_policy;

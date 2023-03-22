@@ -1,7 +1,7 @@
 use super::*;
 use linkerd_policy_controller_core::{
     http_route::{HttpRouteMatch, Method, PathMatch},
-    InboundHttpRouteRef, POLICY_CONTROLLER_NAME,
+    POLICY_CONTROLLER_NAME,
 };
 
 const POLICY_API_GROUP: &str = "policy.linkerd.io";
@@ -54,7 +54,7 @@ fn route_attaches_to_server() {
     assert!(rx
         .borrow_and_update()
         .http_routes
-        .contains_key(&InboundHttpRouteRef::Linkerd("route-foo".to_string())));
+        .contains_key(&HttpRouteRef::Linkerd("route-foo".to_string())));
 
     // Create authz policy.
     test.index.write().apply(mk_authorization_policy(
@@ -71,7 +71,7 @@ fn route_attaches_to_server() {
 
     assert!(rx.has_changed().unwrap());
     assert!(
-        rx.borrow().http_routes[&InboundHttpRouteRef::Linkerd("route-foo".to_string())]
+        rx.borrow().http_routes[&HttpRouteRef::Linkerd("route-foo".to_string())]
             .authorizations
             .contains_key(&AuthorizationRef::AuthorizationPolicy(
                 "authz-foo".to_string()
@@ -145,7 +145,7 @@ fn routes_created_for_probes() {
     let update = rx.borrow_and_update();
     let probes = update
         .http_routes
-        .get(&InboundHttpRouteRef::Default("probe"))
+        .get(&HttpRouteRef::Default("probe"))
         .unwrap();
     let probes_rules = probes.rules.get(0).unwrap();
     assert!(
@@ -177,7 +177,7 @@ fn routes_created_for_probes() {
     let update = rx.borrow_and_update();
     let probes = update
         .http_routes
-        .get(&InboundHttpRouteRef::Default("probe"))
+        .get(&HttpRouteRef::Default("probe"))
         .unwrap();
     let probes_rules = probes.rules.get(0).unwrap();
     assert!(
@@ -204,7 +204,7 @@ fn routes_created_for_probes() {
     assert!(!rx
         .borrow_and_update()
         .http_routes
-        .contains_key(&InboundHttpRouteRef::Default("probes")));
+        .contains_key(&HttpRouteRef::Default("probes")));
 }
 
 fn mk_route(

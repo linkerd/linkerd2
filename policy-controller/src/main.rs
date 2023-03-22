@@ -6,10 +6,10 @@ use clap::Parser;
 use futures::prelude::*;
 use kube::api::ListParams;
 use linkerd_policy_controller::{
-    grpc, index::outbound_index, k8s, Admission, ClusterInfo, DefaultPolicy, Index, IndexDiscover,
-    IndexPair, IpNet, OutboundDiscover, SharedIndex,
+    grpc, inbound, index_list::IndexList, k8s, outbound, Admission, ClusterInfo, DefaultPolicy,
+    InboundDiscover, IpNet, OutboundDiscover,
 };
-use linkerd_policy_controller_k8s_index::parse_portset;
+use linkerd_policy_controller_k8s_index::ports::parse_portset;
 use linkerd_policy_controller_k8s_status::{self as status};
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{sync::mpsc, time::Duration};
@@ -130,62 +130,6 @@ async fn main() -> Result<()> {
         probe_networks,
     });
 
-    // Build the index data structure, which will be used to process events from all watches
-    // The lookup handle is used by the gRPC server.
-    let index = Index::shared(cluster_info.clone());
-    let outbound_index = outbound_index::Index::shared(cluster_info);
-    let indexes = IndexPair::shared(index.clone(), outbound_index.clone());
-
-    // Spawn resource indexers that update the index and publish lookups for the gRPC server.
-    let pods =
-        runtime.watch_all::<k8s::Pod>(ListParams::default().labels("linkerd.io/control-plane-ns"));
-    tokio::spawn(kubert::index::namespaced(index.clone(), pods).instrument(info_span!("pods")));
-
-    let servers = runtime.watch_all::<k8s::policy::Server>(ListParams::default());
-    tokio::spawn(
-        kubert::index::namespaced(index.clone(), servers).instrument(info_span!("servers")),
-    );
-
-    let server_authzs =
-        runtime.watch_all::<k8s::policy::ServerAuthorization>(ListParams::default());
-    tokio::spawn(
-        kubert::index::namespaced(index.clone(), server_authzs)
-            .instrument(info_span!("serverauthorizations")),
-    );
-
-    let authz_policies =
-        runtime.watch_all::<k8s::policy::AuthorizationPolicy>(ListParams::default());
-    tokio::spawn(
-        kubert::index::namespaced(index.clone(), authz_policies)
-            .instrument(info_span!("authorizationpolicies")),
-    );
-
-    let mtls_authns =
-        runtime.watch_all::<k8s::policy::MeshTLSAuthentication>(ListParams::default());
-    tokio::spawn(
-        kubert::index::namespaced(index.clone(), mtls_authns)
-            .instrument(info_span!("meshtlsauthentications")),
-    );
-
-    let network_authns =
-        runtime.watch_all::<k8s::policy::NetworkAuthentication>(ListParams::default());
-    tokio::spawn(
-        kubert::index::namespaced(index.clone(), network_authns)
-            .instrument(info_span!("networkauthentications")),
-    );
-
-    let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
-    tokio::spawn(
-        kubert::index::namespaced(indexes, http_routes).instrument(info_span!("httproutes")),
-    );
-
-    let services = runtime.watch_all::<k8s::Service>(ListParams::default());
-
-    tokio::spawn(
-        kubert::index::namespaced(outbound_index.clone(), services)
-            .instrument(info_span!("services")),
-    );
-
     // Create the lease manager used for trying to claim the policy
     // controller write lease.
     let api = k8s::Api::namespaced(runtime.client(), &control_plane_namespace);
@@ -199,32 +143,87 @@ async fn main() -> Result<()> {
     };
     let (claims, _task) = lease.spawn(hostname.clone(), params).await?;
 
-    // Build the status Index which will be used to process updates to policy
-    // resources and send to the status Controller.
+    // Build the API index data structures which will maintain information
+    // necessary for serving the inbound policy and outbound policy gRPC APIs.
+    let inbound_index = inbound::Index::shared(cluster_info.clone());
+    let outbound_index = outbound::Index::shared(cluster_info);
+
+    // Build the status index which will maintain information necessary for
+    // updating the status field of policy resources.
     let (updates_tx, updates_rx) = mpsc::unbounded_channel();
     let status_index = status::Index::shared(hostname.clone(), claims.clone(), updates_tx);
 
-    // Spawn the status Controller reconciliation.
-    tokio::spawn(status::Index::run(status_index.clone()).instrument(info_span!("status::Index")));
+    // Spawn resource watches.
 
-    // Spawn resource indexers that update the status Index.
-    let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
+    let pods =
+        runtime.watch_all::<k8s::Pod>(ListParams::default().labels("linkerd.io/control-plane-ns"));
     tokio::spawn(
-        kubert::index::namespaced(status_index.clone(), http_routes)
-            .instrument(info_span!("httproutes")),
+        kubert::index::namespaced(inbound_index.clone(), pods).instrument(info_span!("pods")),
     );
 
     let servers = runtime.watch_all::<k8s::policy::Server>(ListParams::default());
+    let servers_indexes = IndexList::new(inbound_index.clone())
+        .push(status_index.clone())
+        .shared();
     tokio::spawn(
-        kubert::index::namespaced(status_index.clone(), servers).instrument(info_span!("servers")),
+        kubert::index::namespaced(servers_indexes, servers).instrument(info_span!("servers")),
     );
+
+    let server_authzs =
+        runtime.watch_all::<k8s::policy::ServerAuthorization>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(inbound_index.clone(), server_authzs)
+            .instrument(info_span!("serverauthorizations")),
+    );
+
+    let authz_policies =
+        runtime.watch_all::<k8s::policy::AuthorizationPolicy>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(inbound_index.clone(), authz_policies)
+            .instrument(info_span!("authorizationpolicies")),
+    );
+
+    let mtls_authns =
+        runtime.watch_all::<k8s::policy::MeshTLSAuthentication>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(inbound_index.clone(), mtls_authns)
+            .instrument(info_span!("meshtlsauthentications")),
+    );
+
+    let network_authns =
+        runtime.watch_all::<k8s::policy::NetworkAuthentication>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(inbound_index.clone(), network_authns)
+            .instrument(info_span!("networkauthentications")),
+    );
+
+    let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
+    let http_routes_indexes = IndexList::new(inbound_index.clone())
+        .push(outbound_index.clone())
+        .push(status_index.clone())
+        .shared();
+    tokio::spawn(
+        kubert::index::namespaced(http_routes_indexes, http_routes)
+            .instrument(info_span!("httproutes")),
+    );
+
+    let services = runtime.watch_all::<k8s::Service>(ListParams::default());
+    let services_indexes = IndexList::new(outbound_index.clone())
+        .push(status_index.clone())
+        .shared();
+    tokio::spawn(
+        kubert::index::namespaced(services_indexes, services).instrument(info_span!("services")),
+    );
+
+    // Spawn the status Controller reconciliation.
+    tokio::spawn(status::Index::run(status_index.clone()).instrument(info_span!("status::Index")));
 
     // Run the gRPC server, serving results by looking up against the index handle.
     tokio::spawn(grpc(
         grpc_addr,
         cluster_domain,
         cluster_networks,
-        index,
+        inbound_index,
         outbound_index,
         runtime.shutdown_handle(),
     ));
@@ -267,17 +266,19 @@ async fn grpc(
     addr: SocketAddr,
     cluster_domain: String,
     cluster_networks: Vec<IpNet>,
-    inbound_index: SharedIndex,
-    outbound_index: outbound_index::SharedIndex,
+    inbound_index: inbound::SharedIndex,
+    outbound_index: outbound::SharedIndex,
     drain: drain::Watch,
 ) -> Result<()> {
-    let inbound_discover = IndexDiscover::new(inbound_index);
+    let inbound_discover = InboundDiscover::new(inbound_index);
     let inbound_svc =
-        grpc::InboundPolicyServer::new(inbound_discover, cluster_networks, drain.clone()).svc();
+        grpc::inbound::InboundPolicyServer::new(inbound_discover, cluster_networks, drain.clone())
+            .svc();
 
     let outbound_discover = OutboundDiscover::new(outbound_index);
     let outbound_svc =
-        grpc::OutboundPolicyServer::new(outbound_discover, cluster_domain, drain.clone()).svc();
+        grpc::outbound::OutboundPolicyServer::new(outbound_discover, cluster_domain, drain.clone())
+            .svc();
 
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
     tokio::pin! {
