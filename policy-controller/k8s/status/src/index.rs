@@ -1,5 +1,5 @@
 use crate::{
-    http_route::{self, ParentReference},
+    http_route::{self, BackendReference, ParentReference},
     resource_id::ResourceId,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
@@ -45,9 +45,15 @@ pub struct Index {
 
     /// Maps HttpRoute ids to a list of their parent refs, regardless of if
     /// those parents have accepted the route.
-    http_route_parent_refs: HashMap<ResourceId, Vec<ParentReference>>,
+    http_route_parent_refs: HashMap<ResourceId, References>,
     servers: HashSet<ResourceId>,
     services: HashSet<ResourceId>,
+}
+
+#[derive(Clone, PartialEq)]
+struct References {
+    parents: Vec<ParentReference>,
+    backends: Vec<BackendReference>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -158,7 +164,7 @@ impl Index {
 
     // If the route is new or its parents have changed, return true so that a
     // patch is generated; otherwise return false.
-    fn update_http_route(&mut self, id: ResourceId, parents: Vec<ParentReference>) -> bool {
+    fn update_http_route(&mut self, id: ResourceId, parents: References) -> bool {
         match self.http_route_parent_refs.entry(id) {
             Entry::Vacant(entry) => {
                 entry.insert(parents);
@@ -173,7 +179,11 @@ impl Index {
         true
     }
 
-    fn parent_status(&self, parent_ref: &ParentReference) -> Option<gateway::RouteParentStatus> {
+    fn parent_status(
+        &self,
+        parent_ref: &ParentReference,
+        backend_condition: &k8s::Condition,
+    ) -> Option<gateway::RouteParentStatus> {
         match parent_ref {
             ParentReference::Server(server) => {
                 let condition = if self.servers.contains(server) {
@@ -181,6 +191,7 @@ impl Index {
                 } else {
                     no_matching_parent()
                 };
+
                 Some(gateway::RouteParentStatus {
                     parent_ref: gateway::ParentReference {
                         group: Some(POLICY_API_GROUP.to_string()),
@@ -191,7 +202,9 @@ impl Index {
                         port: None,
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![condition],
+                    // Servers may not have backend references so they
+                    // automatically get an invalid_backend_kind condition
+                    conditions: vec![condition, invalid_backend_kind()],
                 })
             }
             ParentReference::Service(service, port) => {
@@ -200,6 +213,7 @@ impl Index {
                 } else {
                     no_matching_parent()
                 };
+
                 Some(gateway::RouteParentStatus {
                     parent_ref: gateway::ParentReference {
                         group: None,
@@ -210,10 +224,36 @@ impl Index {
                         port: *port,
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    conditions: vec![condition],
+                    conditions: vec![condition, backend_condition.to_owned()],
                 })
             }
             ParentReference::UnknownKind => None,
+        }
+    }
+
+    fn backend_condition(&self, backend_refs: &[BackendReference]) -> k8s::Condition {
+        // If even one backend has a reference to an unknown / unsupported
+        // reference, return invalid backend condition
+        if backend_refs
+            .into_iter()
+            .any(|reference| matches!(reference, BackendReference::Unknown))
+        {
+            return invalid_backend_kind();
+        }
+
+        // If all references have been resolved (i.e exist in our services cache),
+        // return positive status, otherwise, one of them does not exist
+        if backend_refs
+            .into_iter()
+            .map(|backend_ref| match backend_ref {
+                BackendReference::Service(service) => self.services.contains(service),
+                _ => false,
+            })
+            .fold(true, |acc, v| acc && v)
+        {
+            resolved_refs()
+        } else {
+            backend_not_found()
         }
     }
 
@@ -221,10 +261,12 @@ impl Index {
         &self,
         id: &ResourceId,
         parents: &[ParentReference],
+        backends: &[BackendReference],
     ) -> k8s::Patch<serde_json::Value> {
+        let backend_condition = self.backend_condition(backends);
         let parent_statuses = parents
             .iter()
-            .filter_map(|parent_ref| self.parent_status(parent_ref))
+            .filter_map(|parent_ref| self.parent_status(parent_ref, &backend_condition))
             .collect();
         let status = gateway::HttpRouteStatus {
             inner: gateway::RouteStatus {
@@ -235,8 +277,8 @@ impl Index {
     }
 
     fn reconcile(&self) {
-        for (id, parents) in self.http_route_parent_refs.iter() {
-            let patch = self.make_http_route_patch(id, parents);
+        for (id, references) in self.http_route_parent_refs.iter() {
+            let patch = self.make_http_route_patch(id, &references.parents, &references.backends);
             if let Err(error) = self.updates.send(Update {
                 id: id.clone(),
                 patch,
@@ -255,11 +297,16 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         let name = resource.name_unchecked();
         let id = ResourceId::new(namespace, name);
 
-        // Create the route parents and insert it into the index. If the
-        // HTTPRoute is already in the index and it hasn't changed, skip
-        // creating a patch.
-        let parents = http_route::make_parents(resource);
-        if !self.update_http_route(id.clone(), parents.clone()) {
+        // Create the route parents
+        let parents = http_route::make_parents(resource.clone());
+
+        // Create the route backends
+        let backends = http_route::make_backends(resource);
+
+        // Construct references and insert into index; if HTTPRoute is already
+        // in the index and it hasn't changed, skip patch.
+        let references = References { parents, backends };
+        if !self.update_http_route(id.clone(), references.clone()) {
             return;
         }
 
@@ -272,7 +319,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
 
         // Create a patch for the HTTPRoute and send it to the Controller so
         // that it is applied.
-        let patch = self.make_http_route_patch(&id, &parents);
+        let patch = self.make_http_route_patch(&id, &references.parents, &references.backends);
         if let Err(error) = self.updates.send(Update {
             id: id.clone(),
             patch,
@@ -396,5 +443,38 @@ fn accepted() -> k8s::Condition {
         reason: "Accepted".to_string(),
         status: "True".to_string(),
         type_: "Accepted".to_string(),
+    }
+}
+
+fn resolved_refs() -> k8s::Condition {
+    k8s::Condition {
+        last_transition_time: k8s::Time(now()),
+        message: "".to_string(),
+        observed_generation: None,
+        reason: "ResolvedRefs".to_string(),
+        status: "True".to_string(),
+        type_: "ResolvedRefs".to_string(),
+    }
+}
+
+fn backend_not_found() -> k8s::Condition {
+    k8s::Condition {
+        last_transition_time: k8s::Time(now()),
+        message: "".to_string(),
+        observed_generation: None,
+        reason: "BackendNotFound".to_string(),
+        status: "False".to_string(),
+        type_: "ResolvedRefs".to_string(),
+    }
+}
+
+fn invalid_backend_kind() -> k8s::Condition {
+    k8s::Condition {
+        last_transition_time: k8s::Time(now()),
+        message: "".to_string(),
+        observed_generation: None,
+        reason: "InvalidKind".to_string(),
+        status: "False".to_string(),
+        type_: "ResolvedRefs".to_string(),
     }
 }

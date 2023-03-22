@@ -30,6 +30,9 @@ where
         t_group = "core";
     }
 
-    group.unwrap_or("core").eq_ignore_ascii_case(t_group)
+    group
+        .filter(|s| !s.is_empty())
+        .unwrap_or("core")
+        .eq_ignore_ascii_case(t_group)
         && kind.eq_ignore_ascii_case(&*T::kind(&dt))
 }
