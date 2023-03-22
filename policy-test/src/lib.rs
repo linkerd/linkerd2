@@ -70,9 +70,8 @@ where
     let api = kube::Api::namespaced(client.clone(), ns);
     tokio::select! {
         biased;
-        obj  = kube::runtime::wait::await_condition(api, name, cond) => {
-            let obj = obj.expect("API call failed");
-            Ok(obj)
+        obj = kube::runtime::wait::await_condition(api, name, cond) => {
+            Ok(obj.expect("API call failed"))
         },
 
     _ = time::sleep(time::Duration::from_secs(60)) => {
