@@ -247,11 +247,6 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 		nsLabels = append(nsLabels, ext)
 	}
 
-	// no extensions to check
-	if len(cliChecks) == 0 && len(nsLabels) == 0 {
-		return true, false, nil
-	}
-
 	extensionSuccess, extensionWarning := healthcheck.RunExtensionsChecks(
 		wout, werr, cliChecks, nsLabels, getExtensionCheckFlags(cmd.Flags()), opts.output,
 	)

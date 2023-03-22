@@ -206,6 +206,10 @@ func RunExtensionsChecks(
 }
 
 func runCLIChecks(wout io.Writer, werr io.Writer, cliChecks CLIChecks, flags []string, output string) (bool, bool) {
+	if len(cliChecks) == 0 {
+		return true, false
+	}
+
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	spin.Writer = wout
 
@@ -237,6 +241,10 @@ func runCLIChecks(wout io.Writer, werr io.Writer, cliChecks CLIChecks, flags []s
 // and handles formatting the output for each extension's check. This function also handles
 // finding the extension in the user's path and runs it.
 func runExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, flags []string, output string) (bool, bool) {
+	if len(extensions) == 0 {
+		return true, false
+	}
+
 	if output == TableOutput {
 		PrintChecksHeader(wout, extensionsHeader)
 	}
