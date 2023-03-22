@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
+
 	// flagspkg "github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
@@ -198,11 +200,17 @@ func  buildValues(options *cniPluginOptions, valuesOverrides map[string]interfac
 	}
 
 	if val, exists := valuesOverrides["resources"]; exists {
-        if resources, ok := val.(cnicharts.Resources); ok {
-            installValues.Resources = resources
-        } else {
-            return nil, fmt.Errorf("invalid type for resources: %T", val)
-        }
+		jsonVal, err := json.Marshal(val)
+		if err != nil {
+			return nil, err
+		}
+		
+		var resources cnicharts.Resources
+		if err := json.Unmarshal(jsonVal, &resources); err != nil {
+			return nil, fmt.Errorf("invalid type for resources: %v", err)
+		}
+	
+		installValues.Resources = resources
 	}
 
 	portsToRedirect := []string{}

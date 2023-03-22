@@ -23,8 +23,8 @@ type Image struct {
 }
 
 type Constraints struct {
-	Limit   string `json:"limit"`
-	Request string `json:"request"`
+	Limit   uint `json:"limit"`
+	Request uint `json:"request"`
 }
 
 // Resources represents the computational resources setup for a given container
