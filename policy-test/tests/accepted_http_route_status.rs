@@ -38,13 +38,16 @@ async fn inbound_accepted_parent() {
         )
         .await;
         // Wait until route is updated with a status
-        let route_status = await_route_status(&client, &ns, "test-accepted-route")
+        let statuses = await_route_status(&client, &ns, "test-accepted-route")
             .await
             .expect("condition timed out")
-            .parents
-            .get(0)
-            .expect("must have at least one parent status")
-            .clone();
+            .parents;
+
+        let route_status = statuses
+            .clone()
+            .into_iter()
+            .find(|route_status| route_status.parent_ref.name == server.name_unchecked())
+            .expect("must have at least one parent status");
 
         // Check status references to parent we have created
         assert_eq!(
@@ -52,14 +55,10 @@ async fn inbound_accepted_parent() {
             Some("policy.linkerd.io")
         );
         assert_eq!(route_status.parent_ref.kind.as_deref(), Some("Server"));
-        assert_eq!(route_status.parent_ref.name, server.name_unchecked());
 
         // Check status is accepted with a status of 'True'
-        let cond = route_status
-            .conditions
-            .iter()
-            .find(|cond| cond.type_ == "Accepted")
-            .expect("must have at least one 'Accepted' condition");
+        let cond = find_condition(statuses, &server.name_unchecked())
+            .expect("must have at least one 'Accepted' condition for accepted server");
         assert_eq!(cond.status, "True");
         assert_eq!(cond.reason, "Accepted")
     })
@@ -117,28 +116,14 @@ async fn inbound_multiple_parents() {
             .parents;
 
         // Find status for invalid parent and extract the condition
-        let invalid_cond = parent_status
-            .iter()
-            .find(|route_status| route_status.parent_ref.name == "test-invalid-server")
-            .expect("must have a route status set for invalid server")
-            .conditions
-            .clone()
-            .into_iter()
-            .find(|cond| cond.type_ == "Accepted")
+        let invalid_cond = find_condition(parent_status.clone(), "test-invalid-server")
             .expect("must have at least one 'Accepted' condition set for invalid parent");
         // Route shouldn't be accepted
         assert_eq!(invalid_cond.status, "False");
         assert_eq!(invalid_cond.reason, "NoMatchingParent");
 
         // Find status for valid parent and extract the condition
-        let valid_cond = parent_status
-            .iter()
-            .find(|route_status| route_status.parent_ref.name == "test-valid-server")
-            .expect("must have a route status set for valid server")
-            .conditions
-            .clone()
-            .into_iter()
-            .find(|cond| cond.type_ == "Accepted")
+        let valid_cond = find_condition(parent_status.clone(), "test-valid-server")
             .expect("must have at least one 'Accepted' condition set for valid parent");
         assert_eq!(valid_cond.status, "True");
         assert_eq!(valid_cond.reason, "Accepted")
@@ -181,26 +166,23 @@ async fn inbound_accepted_reconcile_no_parent() {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("Server".to_string()),
             namespace: Some(ns.clone()),
-            name: "test-reconcile-create-server".to_string(),
+            name: "test-reconcile-inbound-server".to_string(),
             section_name: None,
             port: None,
         }];
         let _route = create(
             &client,
-            mk_inbound_route(&ns, "test-reconcile-create-route", Some(srv_ref)),
+            mk_inbound_route(&ns, "test-reconcile-inbound-route", Some(srv_ref)),
         )
         .await;
-        let cond = await_route_status(&client, &ns, "test-reconcile-create-route")
-            .await
-            .expect("condition timed out")
-            .parents
-            .get(0)
-            .expect("must have at least one parent status")
-            .conditions
-            .iter()
-            .find(|cond| cond.type_ == "Accepted")
-            .expect("must have at least one 'Accepted' condition")
-            .clone();
+        let cond = find_condition(
+            await_route_status(&client, &ns, "test-reconcile-inbound-route")
+                .await
+                .expect("condition timed out")
+                .parents,
+            "test-reconcile-inbound-server",
+        )
+        .expect("must have at least one 'Accepted' condition set for parent");
         // Test when parent ref does not exist we get Accepted { False }.
         assert_eq!(cond.status, "False");
         assert_eq!(cond.reason, "NoMatchingParent");
@@ -210,17 +192,17 @@ async fn inbound_accepted_reconcile_no_parent() {
 
         // Create the 'Server' that route references and expect it to be picked up
         // by the index. Consequently, route will have its status reconciled.
-        let _server = {
+        let server = {
             let server = k8s::policy::Server {
                 metadata: k8s::ObjectMeta {
                     namespace: Some(ns.to_string()),
-                    name: Some("test-reconcile-create-server".to_string()),
+                    name: Some("test-reconcile-inbound-server".to_string()),
                     ..Default::default()
                 },
                 spec: k8s::policy::ServerSpec {
                     pod_selector: k8s::labels::Selector::from_iter(Some((
                         "app",
-                        "test-reconcile-create-server",
+                        "test-reconcile-inbound-server",
                     ))),
                     port: k8s::policy::server::Port::Name("http".to_string()),
                     proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
@@ -233,17 +215,14 @@ async fn inbound_accepted_reconcile_no_parent() {
         // until create_timestamp and observed_timestamp are different.
         let cond = tokio::time::timeout(tokio::time::Duration::from_secs(60), async move {
             loop {
-                let cond = await_route_status(&client, &ns, "test-reconcile-create-route")
-                    .await
-                    .expect("condition timed out")
-                    .parents
-                    .get(0)
-                    .expect("must have at least one parent status")
-                    .conditions
-                    .iter()
-                    .find(|cond| cond.type_ == "Accepted")
-                    .expect("must have at least one 'Accepted' condition")
-                    .clone();
+                let cond = find_condition(
+                    await_route_status(&client, &ns, "test-reconcile-inbound-route")
+                        .await
+                        .expect("condition timed out")
+                        .parents,
+                    &server.name_unchecked(),
+                )
+                .expect("must have least one 'Accepted' condition");
 
                 // Observe condition's current timestamp. If it differs from the
                 // previously recorded timestamp, then it means the underlying
@@ -267,7 +246,7 @@ async fn inbound_accepted_reconcile_parent_delete() {
     with_temp_ns(|client, ns| async move {
         // Attach a route to a Server and expect the route to be patched with an
         // Accepted status.
-        let _server = {
+        let server = {
             let server = k8s::policy::Server {
                 metadata: k8s::ObjectMeta {
                     namespace: Some(ns.to_string()),
@@ -299,17 +278,14 @@ async fn inbound_accepted_reconcile_parent_delete() {
             mk_inbound_route(&ns, "test-reconcile-delete-route", Some(srv_ref)),
         )
         .await;
-        let cond = await_route_status(&client, &ns, "test-reconcile-delete-route")
-            .await
-            .expect("condition timed out")
-            .parents
-            .get(0)
-            .expect("must have at least one parent status")
-            .conditions
-            .iter()
-            .find(|cond| cond.type_ == "Accepted")
-            .expect("must have at least one 'Accepted' condition")
-            .clone();
+        let cond = find_condition(
+            await_route_status(&client, &ns, "test-reconcile-delete-route")
+                .await
+                .expect("condition timed out")
+                .parents,
+            &server.name_unchecked(),
+        )
+        .expect("must have at least one 'Accepted' condition");
         assert_eq!(cond.status, "True");
         assert_eq!(cond.reason, "Accepted");
 
@@ -329,17 +305,14 @@ async fn inbound_accepted_reconcile_parent_delete() {
         // until create_timestamp and observed_timestamp are different.
         let cond = tokio::time::timeout(tokio::time::Duration::from_secs(60), async move {
             loop {
-                let cond = await_route_status(&client, &ns, "test-reconcile-delete-route")
-                    .await
-                    .expect("condition timed out")
-                    .parents
-                    .get(0)
-                    .expect("must have at least one parent status")
-                    .conditions
-                    .iter()
-                    .find(|cond| cond.type_ == "Accepted")
-                    .expect("must have at least one 'Accepted' condition")
-                    .clone();
+                let cond = find_condition(
+                    await_route_status(&client, &ns, "test-reconcile-delete-route")
+                        .await
+                        .expect("condition timed out")
+                        .parents,
+                    &server.name_unchecked(),
+                )
+                .expect("must have at least one 'Accepted' condition");
 
                 // Observe condition's current timestamp. If it differs from the
                 // previously recorded timestamp, then it means the underlying
@@ -377,4 +350,17 @@ fn mk_inbound_route(
         },
         status: None,
     }
+}
+
+fn find_condition(
+    statuses: impl IntoIterator<Item = k8s_gateway_api::RouteParentStatus>,
+    parent_name: &str,
+) -> Option<k8s::Condition> {
+    statuses
+        .into_iter()
+        .find(|route_status| route_status.parent_ref.name == parent_name)
+        .expect("route must have at least one status set")
+        .conditions
+        .into_iter()
+        .find(|cond| cond.type_ == "Accepted")
 }
