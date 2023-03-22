@@ -160,7 +160,7 @@ async fn inbound_no_parent_ref_patch() {
 // whose parentRefs do not exist are patched with an appropriate status.
 async fn inbound_accepted_reconcile_no_parent() {
     with_temp_ns(|client, ns| async move {
-        // Given a route with inexistent parentReference, we expect to have an
+        // Given a route with a nonexistent parentReference, we expect to have an
         // 'Accepted' condition with 'False' as a status.
         let srv_ref = vec![k8s::policy::httproute::ParentReference {
             group: Some("policy.linkerd.io".to_string()),
