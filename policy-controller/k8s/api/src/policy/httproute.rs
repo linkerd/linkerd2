@@ -214,6 +214,8 @@ where
     T::DynamicType: Default,
 {
     // Default kind is assumed to be service for backend ref objects
-    let kind = backend_ref.kind.as_deref().unwrap_or_else(|| "service");
-    super::targets_kind::<T>(backend_ref.group.as_deref(), kind)
+    super::targets_kind::<T>(
+        backend_ref.group.as_deref(),
+        backend_ref.kind.as_deref().unwrap_or("service"),
+    )
 }

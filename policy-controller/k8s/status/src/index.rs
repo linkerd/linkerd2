@@ -235,7 +235,7 @@ impl Index {
         // If even one backend has a reference to an unknown / unsupported
         // reference, return invalid backend condition
         if backend_refs
-            .into_iter()
+            .iter()
             .any(|reference| matches!(reference, BackendReference::Unknown))
         {
             return invalid_backend_kind();
@@ -244,12 +244,12 @@ impl Index {
         // If all references have been resolved (i.e exist in our services cache),
         // return positive status, otherwise, one of them does not exist
         if backend_refs
-            .into_iter()
+            .iter()
             .map(|backend_ref| match backend_ref {
                 BackendReference::Service(service) => self.services.contains(service),
                 _ => false,
             })
-            .fold(true, |acc, v| acc && v)
+            .all(|v| v)
         {
             resolved_refs()
         } else {
