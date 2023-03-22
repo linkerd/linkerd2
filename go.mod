@@ -18,7 +18,7 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/imdario/mergo v0.3.13
+	github.com/imdario/mergo v0.3.14
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/linkerd/linkerd2-proxy-api v0.7.0
 	github.com/linkerd/linkerd2-proxy-init v1.6.2
@@ -38,18 +38,18 @@ require (
 	go.opencensus.io v0.24.0
 	golang.org/x/net v0.8.0
 	golang.org/x/tools v0.7.0
-	google.golang.org/grpc v1.53.0
+	google.golang.org/grpc v1.54.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
-	google.golang.org/protobuf v1.29.1
+	google.golang.org/protobuf v1.30.0
 	helm.sh/helm/v3 v3.11.2
-	k8s.io/api v0.26.2
-	k8s.io/apiextensions-apiserver v0.26.2
-	k8s.io/apimachinery v0.26.2
-	k8s.io/client-go v0.26.2
-	k8s.io/code-generator v0.26.2
+	k8s.io/api v0.26.3
+	k8s.io/apiextensions-apiserver v0.26.3
+	k8s.io/apimachinery v0.26.3
+	k8s.io/client-go v0.26.3
+	k8s.io/code-generator v0.26.3
 	k8s.io/klog/v2 v2.90.1
 	k8s.io/kube-aggregator v0.26.2
-	sigs.k8s.io/gateway-api v0.6.1
+	sigs.k8s.io/gateway-api v0.6.2
 	sigs.k8s.io/yaml v1.3.0
 )
 
