@@ -74,7 +74,7 @@ where
             Ok(obj.expect("API call failed"))
         },
 
-    _ = time::sleep(time::Duration::from_secs(60)) => {
+         _ = time::sleep(time::Duration::from_secs(60)) => {
             Err(anyhow::anyhow!("condition timed out"))
         }
 
