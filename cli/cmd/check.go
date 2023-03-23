@@ -198,9 +198,6 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 		ChartValues:           values,
 	})
 
-	if options.output == tableOutput {
-		healthcheck.PrintChecksHeader(wout, healthcheck.CoreHeader)
-	}
 	success, warning := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	if !options.preInstallOnly && !options.crdsOnly {
