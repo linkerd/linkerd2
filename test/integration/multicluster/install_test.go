@@ -202,37 +202,6 @@ func TestLinkClusters(t *testing.T) {
 
 }
 
-// TestInstallViz will install the viz extension, needed to verify whether the
-// gateway probe succeeded.
-// TODO (matei): can the dependency on viz be removed?
-func TestInstallViz(t *testing.T) {
-	for _, ctx := range contexts {
-		cmd := []string{
-			"--context=" + ctx,
-			"viz",
-			"install",
-			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()),
-		}
-
-		out, err := TestHelper.LinkerdRun(cmd...)
-		if err != nil {
-			testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
-		}
-
-		out, err = TestHelper.KubectlApplyWithContext(out, ctx, "-f", "-")
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-				"'kubectl apply' command failed\n%s", out)
-		}
-
-	}
-
-	// Allow viz to be installed in parallel and then block until viz is ready.
-	for _, ctx := range contexts {
-		TestHelper.WaitRolloutWithContext(t, testutil.LinkerdVizDeployReplicas, ctx)
-	}
-}
-
 func TestCheckMulticluster(t *testing.T) {
 	// Check resources after link were created successfully in source cluster
 	ctx := contexts[testutil.SourceContextKey]
