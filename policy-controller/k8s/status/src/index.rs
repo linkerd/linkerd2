@@ -162,8 +162,8 @@ impl Index {
         }
     }
 
-    // If the route is new or its parents have changed, return true so that a
-    // patch is generated; otherwise return false.
+    // If the route is new or its parentRefs and/or backendRefs have changed, 
+    // return true, so that a patch is generated; otherwise return false.
     fn update_http_route(&mut self, id: ResourceId, parents: References) -> bool {
         match self.http_route_refs.entry(id) {
             Entry::Vacant(entry) => {
@@ -299,8 +299,8 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         // Create the route backends
         let backends = http_route::make_backends(resource);
 
-        // Construct references and insert into index; if HTTPRoute is already
-        // in the index and it hasn't changed, skip patch.
+        // Construct references and insert into the index; if the HTTPRoute is 
+        // already in the index and it hasn't changed, skip creating a patch.
         let references = References { parents, backends };
         if !self.update_http_route(id.clone(), references.clone()) {
             return;

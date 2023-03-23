@@ -123,7 +123,7 @@ mod test {
     }
 
     #[test]
-    fn test_backendrefs_from_route() {
+    fn backendrefs_from_route() {
         let http_route = policy::HttpRoute {
             metadata: ObjectMeta {
                 namespace: Some("foo".to_string()),
@@ -189,7 +189,7 @@ mod test {
     }
 
     #[test]
-    fn test_backendrefs_from_multiple_types() {
+    fn backendrefs_from_multiple_types() {
         let http_route = policy::HttpRoute {
             metadata: ObjectMeta {
                 namespace: Some("default".to_string()),
