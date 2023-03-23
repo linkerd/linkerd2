@@ -43,9 +43,9 @@ pub struct Index {
     claims: Receiver<Arc<Claim>>,
     updates: UnboundedSender<Update>,
 
-    /// Maps HttpRoute ids to a list of their parent refs, regardless of if
-    /// those parents have accepted the route.
-    http_route_parent_refs: HashMap<ResourceId, References>,
+    /// Maps HttpRoute ids to a list of their parent and backend refs,
+    /// regardless of if those parents have accepted the route.
+    http_route_refs: HashMap<ResourceId, References>,
     servers: HashSet<ResourceId>,
     services: HashSet<ResourceId>,
 }
@@ -122,7 +122,7 @@ impl Index {
             name: name.to_string(),
             claims,
             updates,
-            http_route_parent_refs: HashMap::new(),
+            http_route_refs: HashMap::new(),
             servers: HashSet::new(),
             services: HashSet::new(),
         }))
@@ -165,7 +165,7 @@ impl Index {
     // If the route is new or its parents have changed, return true so that a
     // patch is generated; otherwise return false.
     fn update_http_route(&mut self, id: ResourceId, parents: References) -> bool {
-        match self.http_route_parent_refs.entry(id) {
+        match self.http_route_refs.entry(id) {
             Entry::Vacant(entry) => {
                 entry.insert(parents);
             }
@@ -182,7 +182,7 @@ impl Index {
     fn parent_status(
         &self,
         parent_ref: &ParentReference,
-        backend_condition: &k8s::Condition,
+        backend_condition: k8s::Condition,
     ) -> Option<gateway::RouteParentStatus> {
         match parent_ref {
             ParentReference::Server(server) => {
@@ -204,7 +204,7 @@ impl Index {
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
                     // Servers may not have backend references so they
                     // automatically get an invalid_backend_kind condition
-                    conditions: vec![condition, invalid_backend_kind()],
+                    conditions: vec![condition],
                 })
             }
             ParentReference::Service(service, port) => {
@@ -243,14 +243,10 @@ impl Index {
 
         // If all references have been resolved (i.e exist in our services cache),
         // return positive status, otherwise, one of them does not exist
-        if backend_refs
-            .iter()
-            .map(|backend_ref| match backend_ref {
-                BackendReference::Service(service) => self.services.contains(service),
-                _ => false,
-            })
-            .all(|v| v)
-        {
+        if backend_refs.iter().any(|backend_ref| match backend_ref {
+            BackendReference::Service(service) => self.services.contains(service),
+            _ => false,
+        }) {
             resolved_refs()
         } else {
             backend_not_found()
@@ -266,7 +262,7 @@ impl Index {
         let backend_condition = self.backend_condition(backends);
         let parent_statuses = parents
             .iter()
-            .filter_map(|parent_ref| self.parent_status(parent_ref, &backend_condition))
+            .filter_map(|parent_ref| self.parent_status(parent_ref, backend_condition.clone()))
             .collect();
         let status = gateway::HttpRouteStatus {
             inner: gateway::RouteStatus {
@@ -277,7 +273,7 @@ impl Index {
     }
 
     fn reconcile(&self) {
-        for (id, references) in self.http_route_parent_refs.iter() {
+        for (id, references) in self.http_route_refs.iter() {
             let patch = self.make_http_route_patch(id, &references.parents, &references.backends);
             if let Err(error) = self.updates.send(Update {
                 id: id.clone(),
@@ -330,7 +326,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
 
     fn delete(&mut self, namespace: String, name: String) {
         let id = ResourceId::new(namespace, name);
-        self.http_route_parent_refs.remove(&id);
+        self.http_route_refs.remove(&id);
     }
 
     // Since apply only reindexes a single HTTPRoute at a time, there's no need

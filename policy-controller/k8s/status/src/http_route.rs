@@ -48,18 +48,11 @@ pub(crate) fn make_backends(http_route: policy::HttpRoute) -> Vec<BackendReferen
     http_route
         .spec
         .rules
-        .into_iter()
+        .iter()
         .flatten()
-        .fold(Vec::new(), |acc, rule| {
-            rule.backend_refs
-                .into_iter()
-                .flatten()
-                .flat_map(|http_match| http_match.backend_ref.into_iter())
-                .chain(acc)
-                .collect()
-        })
-        .into_iter()
-        .map(|backend_ref| BackendReference::from_backend_ref(backend_ref.inner, &namespace))
+        .flat_map(|rule| rule.backend_refs.iter().flatten())
+        .filter_map(|http_backend_ref| http_backend_ref.backend_ref.as_ref())
+        .map(|backend_ref| BackendReference::from_backend_ref(&backend_ref.inner, &namespace))
         .collect()
 }
 
@@ -87,16 +80,20 @@ impl ParentReference {
 
 impl BackendReference {
     fn from_backend_ref(
-        backend_ref: gateway::BackendObjectReference,
+        backend_ref: &gateway::BackendObjectReference,
         default_namespace: &str,
     ) -> Self {
         if policy::httproute::backend_ref_targets_kind::<linkerd_policy_controller_k8s_api::Service>(
-            &backend_ref,
+            backend_ref,
         ) {
             let namespace = backend_ref
                 .namespace
-                .unwrap_or_else(|| default_namespace.to_string());
-            BackendReference::Service(ResourceId::new(namespace, backend_ref.name))
+                .as_deref()
+                .unwrap_or_else(|| default_namespace);
+            BackendReference::Service(ResourceId::new(
+                namespace.to_string(),
+                backend_ref.name.clone(),
+            ))
         } else {
             BackendReference::Unknown
         }
