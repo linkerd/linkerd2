@@ -40,7 +40,6 @@ async fn inbound_accepted_parent() {
         // Wait until route is updated with a status
         let statuses = await_route_status(&client, &ns, "test-accepted-route")
             .await
-            .expect("condition timed out")
             .parents;
 
         let route_status = statuses
@@ -112,7 +111,6 @@ async fn inbound_multiple_parents() {
         // Wait until route is updated with a status
         let parent_status = await_route_status(&client, &ns, "test-multiple-parents-route")
             .await
-            .expect("condition timed out")
             .parents;
 
         // Find status for invalid parent and extract the condition
@@ -144,11 +142,11 @@ async fn inbound_no_parent_ref_patch() {
 
         // Status may not be set straight away. To account for that, wrap a
         // status condition watcher in a timeout.
-        let resolved = await_route_status(&client, &ns, "test-no-parent-refs-route").await;
+        let status = await_route_status(&client, &ns, "test-no-parent-refs-route").await;
         // If timeout has elapsed, then route did not receive a status patch
         assert!(
-            resolved.is_err(),
-            "status condition should timeout when no parent refs are specified"
+            status.parents.is_empty(),
+            "HTTPRoute Status shouldn't contain any parent statuses"
         );
     })
     .await
@@ -178,7 +176,6 @@ async fn inbound_accepted_reconcile_no_parent() {
         let cond = find_condition(
             await_route_status(&client, &ns, "test-reconcile-inbound-route")
                 .await
-                .expect("condition timed out")
                 .parents,
             "test-reconcile-inbound-server",
         )
@@ -218,7 +215,6 @@ async fn inbound_accepted_reconcile_no_parent() {
                 let cond = find_condition(
                     await_route_status(&client, &ns, "test-reconcile-inbound-route")
                         .await
-                        .expect("condition timed out")
                         .parents,
                     &server.name_unchecked(),
                 )
@@ -281,7 +277,6 @@ async fn inbound_accepted_reconcile_parent_delete() {
         let cond = find_condition(
             await_route_status(&client, &ns, "test-reconcile-delete-route")
                 .await
-                .expect("condition timed out")
                 .parents,
             &server.name_unchecked(),
         )
@@ -308,7 +303,6 @@ async fn inbound_accepted_reconcile_parent_delete() {
                 let cond = find_condition(
                     await_route_status(&client, &ns, "test-reconcile-delete-route")
                         .await
-                        .expect("condition timed out")
                         .parents,
                     &server.name_unchecked(),
                 )
