@@ -422,7 +422,7 @@ func (s *GRPCTapServer) translateEvent(ctx context.Context, orig *proxy.TapEvent
 			var headers []*metricsPb.Headers_Header
 			for _, header := range orig.GetHeaders() {
 				n := header.GetName()
-				if (s.ignoreHeaders[n]) {
+				if s.ignoreHeaders[n] {
 					continue
 				}
 				b := header.GetValue()
