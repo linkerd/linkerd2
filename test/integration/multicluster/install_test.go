@@ -211,7 +211,7 @@ func TestCheckMulticluster(t *testing.T) {
 	if err := TestHelper.SwitchContext(ctx); err != nil {
 		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", ctx, err)
 	}
-	if err := TestHelper.TestCheck("--context", ctx); err != nil {
+	if err := TestHelper.TestCheckMc("--context", ctx); err != nil {
 		t.Fatalf("'linkerd check' command failed: %s", err)
 	}
 }
