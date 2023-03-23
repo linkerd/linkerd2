@@ -6,12 +6,12 @@ import (
 	"path"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/engine"
+	"sigs.k8s.io/yaml"
 )
 
 const versionPlaceholder = "linkerdVersionValue"
