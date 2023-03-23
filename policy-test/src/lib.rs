@@ -61,24 +61,20 @@ pub async fn await_condition<T>(
     ns: &str,
     name: &str,
     cond: impl kube::runtime::wait::Condition<T>,
-) -> Result<Option<T>, anyhow::Error>
+) -> Option<T>
 where
     T: kube::Resource<Scope = kube::core::NamespaceResourceScope>,
     T: serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug + Send + 'static,
     T::DynamicType: Default,
 {
     let api = kube::Api::namespaced(client.clone(), ns);
-    tokio::select! {
-        biased;
-        obj = kube::runtime::wait::await_condition(api, name, cond) => {
-            Ok(obj.expect("API call failed"))
-        },
-
-         _ = time::sleep(time::Duration::from_secs(60)) => {
-            Err(anyhow::anyhow!("condition timed out"))
-        }
-
-    }
+    time::timeout(
+        time::Duration::from_secs(60),
+        kube::runtime::wait::await_condition(api, name, cond),
+    )
+    .await
+    .expect("condition timed out")
+    .expect("API call failed")
 }
 
 /// Creates a pod and waits for all of its containers to be ready.
@@ -102,7 +98,6 @@ pub async fn create_ready_pod(client: &kube::Client, pod: k8s::Pod) -> k8s::Pod 
         pod_ready,
     )
     .await
-    .expect("condition timed out")
     .unwrap();
 
     tracing::trace!(
@@ -132,7 +127,6 @@ pub async fn await_pod_ip(client: &kube::Client, ns: &str, name: &str) -> std::n
         false
     })
     .await
-    .expect("condition timed out")
     .expect("must fetch pod");
     get_ip(&pod)
         .expect("pod must have an IP")
@@ -146,18 +140,16 @@ pub async fn await_route_status(
     client: &kube::Client,
     ns: &str,
     name: &str,
-) -> Result<k8s::policy::httproute::RouteStatus, anyhow::Error> {
+) -> k8s::policy::httproute::RouteStatus {
     use k8s::policy::httproute as api;
-    let obj = await_condition(client, ns, name, |obj: Option<&api::HttpRoute>| -> bool {
+    await_condition(client, ns, name, |obj: Option<&api::HttpRoute>| -> bool {
         obj.and_then(|route| route.status.as_ref()).is_some()
     })
-    .await?;
-
-    Ok(obj
-        .expect("must fetch route")
-        .status
-        .expect("route must contain a status representation")
-        .inner)
+    .await
+    .expect("must fetch route")
+    .status
+    .expect("route must contain a status representation")
+    .inner
 }
 
 #[tracing::instrument(skip_all, fields(%pod, %container))]
