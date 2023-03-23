@@ -30,11 +30,6 @@ const (
 	// ShortOutput is used to specify the short output format
 	ShortOutput = "short"
 
-	// CoreHeader is used when printing core header checks
-	CoreHeader = "core"
-	// extensionsHeader is used when printing extensions header checks
-	extensionsHeader = "extensions"
-
 	// DefaultHintBaseURL is the default base URL on the linkerd.io website
 	// that all check hints for the latest linkerd version point to. Each
 	// check adds its own `hintAnchor` to specify a location on the page.
@@ -118,14 +113,6 @@ func (cr CheckResults) RunChecks(observer CheckObserver) (bool, bool) {
 		observer(&result)
 	}
 	return success, warning
-}
-
-// PrintChecksHeader writes the header text for a check.
-func PrintChecksHeader(wout io.Writer, header string) {
-	headerText := fmt.Sprintf("Linkerd %s checks", header)
-	fmt.Fprintln(wout, headerText)
-	fmt.Fprintln(wout, strings.Repeat("=", len(headerText)))
-	fmt.Fprintln(wout)
 }
 
 // PrintChecksResult writes the checks result.
@@ -243,10 +230,6 @@ func runCLIChecks(wout io.Writer, werr io.Writer, cliChecks CLIChecks, flags []s
 func runExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, flags []string, output string) (bool, bool) {
 	if len(extensions) == 0 {
 		return true, false
-	}
-
-	if output == TableOutput {
-		PrintChecksHeader(wout, extensionsHeader)
 	}
 
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
@@ -375,14 +358,12 @@ func runChecksTable(wout io.Writer, hc Runner, output string) (bool, bool) {
 		printResultDescription(wout, status, result)
 	}
 
-	var headerPrinted bool
 	prettyPrintResultsShort := func(result *CheckResult) {
 		// bail out early and skip printing if we've got an okStatus
 		if result.Err == nil {
 			return
 		}
 
-		headerPrinted = printHeader(wout, headerPrinted, hc)
 		lastCategory = printCategory(wout, lastCategory, result)
 
 		spin.Stop()
@@ -550,28 +531,6 @@ func restartSpinner(spin *spinner.Spinner, result *CheckResult) {
 		spin.Suffix = fmt.Sprintf(" %s", result.Err)
 		spin.Color("bold") // this calls spin.Restart()
 	}
-}
-
-// When running in short mode, we defer writing the header
-// until the first time we print a warning or error result.
-func printHeader(wout io.Writer, headerPrinted bool, hc Runner) bool {
-	if headerPrinted {
-		return headerPrinted
-	}
-
-	switch v := hc.(type) {
-	case *HealthChecker:
-		if v.IsMainCheckCommand {
-			PrintChecksHeader(wout, CoreHeader)
-			headerPrinted = true
-		}
-	// When RunExtensionChecks called
-	case CheckResults:
-		PrintChecksHeader(wout, extensionsHeader)
-		headerPrinted = true
-	}
-
-	return headerPrinted
 }
 
 func printCategory(wout io.Writer, lastCategory CategoryID, result *CheckResult) CategoryID {
