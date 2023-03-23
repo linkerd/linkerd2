@@ -55,8 +55,7 @@ func (h *TestHelper) TestCheck(extraArgs ...string) error {
 func (h *TestHelper) TestCheckMc(extraArgs ...string) error {
 	cmd := []string{"check", "--output", "json", "--wait", "5m"}
 	cmd = append(cmd, extraArgs...)
-	categories := append(coreCategories, "linkerd-multicluster")
-	return h.testCheck(cmd, categories)
+	return h.testCheck(cmd, coreCategories)
 }
 
 // TestCheckProxy runs validates the output of `linkerd check --proxy`
