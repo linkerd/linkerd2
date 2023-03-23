@@ -25,25 +25,27 @@ pub enum BackendReference {
     Unknown,
 }
 
-pub(crate) fn make_parents(http_route: policy::HttpRoute) -> Vec<ParentReference> {
+pub(crate) fn make_parents(http_route: &policy::HttpRoute) -> Vec<ParentReference> {
     let namespace = http_route
         .metadata
         .namespace
+        .as_deref()
         .expect("HTTPRoute must have a namespace");
     http_route
         .spec
         .inner
         .parent_refs
-        .into_iter()
+        .iter()
         .flatten()
-        .map(|parent_ref| ParentReference::from_parent_ref(parent_ref, &namespace))
+        .map(|parent_ref| ParentReference::from_parent_ref(parent_ref, namespace))
         .collect()
 }
 
-pub(crate) fn make_backends(http_route: policy::HttpRoute) -> Vec<BackendReference> {
+pub(crate) fn make_backends(http_route: &policy::HttpRoute) -> Vec<BackendReference> {
     let namespace = http_route
         .metadata
         .namespace
+        .as_deref()
         .expect("HTTPRoute must have a namespace");
     http_route
         .spec
@@ -52,26 +54,28 @@ pub(crate) fn make_backends(http_route: policy::HttpRoute) -> Vec<BackendReferen
         .flatten()
         .flat_map(|rule| rule.backend_refs.iter().flatten())
         .filter_map(|http_backend_ref| http_backend_ref.backend_ref.as_ref())
-        .map(|backend_ref| BackendReference::from_backend_ref(&backend_ref.inner, &namespace))
+        .map(|backend_ref| BackendReference::from_backend_ref(&backend_ref.inner, namespace))
         .collect()
 }
 
 impl ParentReference {
-    fn from_parent_ref(parent_ref: gateway::ParentReference, default_namespace: &str) -> Self {
-        if policy::httproute::parent_ref_targets_kind::<Server>(&parent_ref) {
+    fn from_parent_ref(parent_ref: &gateway::ParentReference, default_namespace: &str) -> Self {
+        if policy::httproute::parent_ref_targets_kind::<Server>(parent_ref) {
             // If the parent reference does not have a namespace, default to using
             // the HTTPRoute's namespace.
-            let namespace = parent_ref
-                .namespace
-                .unwrap_or_else(|| default_namespace.to_string());
-            ParentReference::Server(ResourceId::new(namespace, parent_ref.name))
-        } else if policy::httproute::parent_ref_targets_kind::<Service>(&parent_ref) {
+            let namespace = parent_ref.namespace.as_deref().unwrap_or(default_namespace);
+            ParentReference::Server(ResourceId::new(
+                namespace.to_string(),
+                parent_ref.name.clone(),
+            ))
+        } else if policy::httproute::parent_ref_targets_kind::<Service>(parent_ref) {
             // If the parent reference does not have a namespace, default to using
             // the HTTPRoute's namespace.
-            let namespace = parent_ref
-                .namespace
-                .unwrap_or_else(|| default_namespace.to_string());
-            ParentReference::Service(ResourceId::new(namespace, parent_ref.name), parent_ref.port)
+            let namespace = parent_ref.namespace.as_deref().unwrap_or(default_namespace);
+            ParentReference::Service(
+                ResourceId::new(namespace.to_string(), parent_ref.name.clone()),
+                parent_ref.port,
+            )
         } else {
             ParentReference::UnknownKind
         }
@@ -89,7 +93,7 @@ impl BackendReference {
             let namespace = backend_ref
                 .namespace
                 .as_deref()
-                .unwrap_or_else(|| default_namespace);
+                .unwrap_or(default_namespace);
             BackendReference::Service(ResourceId::new(
                 namespace.to_string(),
                 backend_ref.name.clone(),
@@ -177,7 +181,7 @@ mod test {
             status: None,
         };
 
-        let result = make_backends(http_route);
+        let result = make_backends(&http_route);
         assert_eq!(
             3,
             result.len(),
@@ -223,7 +227,7 @@ mod test {
             status: None,
         };
 
-        let result = make_backends(http_route);
+        let result = make_backends(&http_route);
         assert_eq!(
             2,
             result.len(),
