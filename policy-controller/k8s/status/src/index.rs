@@ -21,6 +21,19 @@ use tokio::{
 pub(crate) const POLICY_API_GROUP: &str = "policy.linkerd.io";
 const POLICY_API_VERSION: &str = "policy.linkerd.io/v1alpha1";
 
+// Condition types
+const RESOLVED_REFS: &str = "ResolvedRefs";
+const ACCEPTED: &str = "Accepted";
+
+// Condition reasons
+const BACKEND_NOT_FOUND: &str = "BackendNotFound";
+const INVALID_KIND: &str = "InvalidKind";
+const NO_MATCHING_PARENT: &str = "NoMatchingParent";
+
+// Condition status
+const STATUS_TRUE: &str = "True";
+const STATUS_FALSE: &str = "False";
+
 pub type SharedIndex = Arc<RwLock<Index>>;
 
 pub struct Controller {
@@ -162,7 +175,7 @@ impl Index {
         }
     }
 
-    // If the route is new or its parentRefs and/or backendRefs have changed, 
+    // If the route is new or its parentRefs and/or backendRefs have changed,
     // return true, so that a patch is generated; otherwise return false.
     fn update_http_route(&mut self, id: ResourceId, parents: References) -> bool {
         match self.http_route_refs.entry(id) {
@@ -299,7 +312,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         // Create the route backends
         let backends = http_route::make_backends(resource);
 
-        // Construct references and insert into the index; if the HTTPRoute is 
+        // Construct references and insert into the index; if the HTTPRoute is
         // already in the index and it hasn't changed, skip creating a patch.
         let references = References { parents, backends };
         if !self.update_http_route(id.clone(), references.clone()) {
@@ -425,9 +438,9 @@ fn no_matching_parent() -> k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
         observed_generation: None,
-        reason: "NoMatchingParent".to_string(),
-        status: "False".to_string(),
-        type_: "Accepted".to_string(),
+        reason: NO_MATCHING_PARENT.to_string(),
+        status: STATUS_FALSE.to_string(),
+        type_: ACCEPTED.to_string(),
     }
 }
 
@@ -436,9 +449,9 @@ fn accepted() -> k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
         observed_generation: None,
-        reason: "Accepted".to_string(),
-        status: "True".to_string(),
-        type_: "Accepted".to_string(),
+        reason: ACCEPTED.to_string(),
+        status: STATUS_TRUE.to_string(),
+        type_: ACCEPTED.to_string(),
     }
 }
 
@@ -447,9 +460,9 @@ fn resolved_refs() -> k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
         observed_generation: None,
-        reason: "ResolvedRefs".to_string(),
-        status: "True".to_string(),
-        type_: "ResolvedRefs".to_string(),
+        reason: RESOLVED_REFS.to_string(),
+        status: STATUS_TRUE.to_string(),
+        type_: RESOLVED_REFS.to_string(),
     }
 }
 
@@ -458,9 +471,9 @@ fn backend_not_found() -> k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
         observed_generation: None,
-        reason: "BackendNotFound".to_string(),
-        status: "False".to_string(),
-        type_: "ResolvedRefs".to_string(),
+        reason: BACKEND_NOT_FOUND.to_string(),
+        status: STATUS_FALSE.to_string(),
+        type_: RESOLVED_REFS.to_string(),
     }
 }
 
@@ -469,8 +482,8 @@ fn invalid_backend_kind() -> k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
         observed_generation: None,
-        reason: "InvalidKind".to_string(),
-        status: "False".to_string(),
-        type_: "ResolvedRefs".to_string(),
+        reason: INVALID_KIND.to_string(),
+        status: STATUS_FALSE.to_string(),
+        type_: RESOLVED_REFS.to_string(),
     }
 }
