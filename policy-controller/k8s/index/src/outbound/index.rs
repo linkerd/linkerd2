@@ -364,7 +364,7 @@ fn is_parent_service(parent: &ParentReference) -> bool {
 }
 
 #[inline]
-pub fn route_accepted_by_service(route: &api::HttpRoute, service: &str) -> bool {
+fn route_accepted_by_service(route: &api::HttpRoute, service: &str) -> bool {
     route
         .status
         .as_ref()
