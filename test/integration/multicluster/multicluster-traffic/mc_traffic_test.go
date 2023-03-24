@@ -17,6 +17,7 @@ import (
 var (
 	TestHelper *testutil.TestHelper
 	targetCtx  string
+	sourceCtx  string
 	contexts   map[string]string
 )
 
@@ -49,18 +50,26 @@ var (
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	// Before starting, get source context
+	// Before starting, initialize contexts
 	contexts = TestHelper.GetMulticlusterContexts()
+	sourceCtx = contexts[testutil.SourceContextKey]
 	targetCtx = contexts[testutil.TargetContextKey]
-	// Then, re-build clientset with context of target cluster instead of kube
-	// context inferred from environment.
+	// Then, re-build clientset with source cluster context instead of context
+	// inferred from environment.
+	if err := TestHelper.SwitchContext(sourceCtx); err != nil {
+		out := fmt.Sprintf("Error running test: failed to switch Kubernetes client to context [%s]: %s\n", sourceCtx, err)
+		os.Stderr.Write([]byte(out))
+		os.Exit(1)
+	}
+	// Block until gateway & service mirror deploys are running successfully in
+	// source cluster.
+	TestHelper.WaitUntilDeployReady(testutil.MulticlusterSourceReplicas)
+	// Switch back to target context to commence test
 	if err := TestHelper.SwitchContext(targetCtx); err != nil {
 		out := fmt.Sprintf("Error running test: failed to switch Kubernetes client to context [%s]: %s\n", targetCtx, err)
 		os.Stderr.Write([]byte(out))
 		os.Exit(1)
 	}
-	// Block until viz deploy is running successfully in target cluster.
-	TestHelper.WaitUntilDeployReady(testutil.LinkerdVizDeployReplicas)
 	os.Exit(m.Run())
 }
 
@@ -68,6 +77,7 @@ func TestMain(m *testing.M) {
 // three emojivoto services in target cluster and asserting the output against
 // the source cluster.
 func TestGateways(t *testing.T) {
+	t.Log("Starting")
 	t.Run("install resources in target cluster", func(t *testing.T) {
 		// Create namespace in source cluster
 		out, err := TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "create", "namespace", "linkerd-nginx-gateway-deploy")

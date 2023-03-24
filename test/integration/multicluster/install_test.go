@@ -109,6 +109,8 @@ func TestInstall(t *testing.T) {
 	cmd = []string{
 		"install",
 		"--controller-log-level", "debug",
+		"--set", "proxyInit.image.name=ghcr.io/linkerd/proxy-init",
+		"--set", "proxyInit.image.version=v2.2.0",
 		"--set", fmt.Sprintf("proxy.image.version=%s", TestHelper.GetVersion()),
 		"--set", "heartbeatSchedule=1 2 3 4 5",
 		"--identity-trust-anchors-file", rootPath,
