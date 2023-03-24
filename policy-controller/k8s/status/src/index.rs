@@ -215,8 +215,6 @@ impl Index {
                         port: None,
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
-                    // Servers may not have backend references so they
-                    // automatically get an invalid_backend_kind condition
                     conditions: vec![condition],
                 })
             }
