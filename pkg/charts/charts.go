@@ -124,6 +124,7 @@ func (c *Chart) RenderCNI() (bytes.Buffer, error) {
 		{Name: "charts/partials/templates/_metadata.tpl"},
 		{Name: "charts/partials/templates/_pull-secrets.tpl"},
 		{Name: "charts/partials/templates/_tolerations.tpl"},
+		{Name: "charts/partials/templates/_resources.tpl"},
 	}
 	return c.render(cniPartials)
 }
