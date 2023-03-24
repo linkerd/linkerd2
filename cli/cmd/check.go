@@ -221,9 +221,6 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 }
 
 func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts *checkOptions) (bool, bool, error) {
-	cliChecks := healthcheck.GetCLIChecks(os.Getenv("PATH"), filepath.Glob, utilsexec.New())
-	cliSuffixes := cliChecks.Suffixes()
-
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return false, false, err
@@ -236,16 +233,20 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 	nsLabels := []string{}
 	for _, ns := range namespaces {
 		ext := ns.Labels[k8s.LinkerdExtensionLabel]
-		if _, ok := cliSuffixes[ext]; ok {
-			// this extension will be run as a CLI check, skip it as a cluster check
-			continue
-		}
-
 		nsLabels = append(nsLabels, ext)
 	}
 
+	exec := utilsexec.New()
+
+	extensions, missing := healthcheck.FindExtensions(os.Getenv("PATH"), filepath.Glob, exec, nsLabels)
+
+	// no extensions to check
+	if len(extensions) == 0 && len(missing) == 0 {
+		return true, false, nil
+	}
+
 	extensionSuccess, extensionWarning := healthcheck.RunExtensionsChecks(
-		wout, werr, cliChecks, nsLabels, getExtensionCheckFlags(cmd.Flags()), opts.output,
+		wout, werr, extensions, missing, exec, getExtensionCheckFlags(cmd.Flags()), opts.output,
 	)
 	return extensionSuccess, extensionWarning, nil
 }
