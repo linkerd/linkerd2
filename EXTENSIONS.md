@@ -137,6 +137,5 @@ should be json of the form:
 Note that for `linkerd check` to validate which extensions are opting-in, it
 runs `linkerd-* check-cli` against executable in the PATH.
 
-
 The extension may also implement further commands in addition to the ones
 defined here.
