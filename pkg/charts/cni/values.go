@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	helmDefaultCNIChartDir = "linkerd2-cni"
+	HelmDefaultCNIChartDir = "linkerd2-cni"
 )
 
 // Image contains details about the location of the container image
@@ -21,6 +21,19 @@ type Image struct {
 	Version    string      `json:"version"`
 	PullPolicy interface{} `json:"pullPolicy"`
 }
+
+type Constraints struct {
+	Limit   uint `json:"limit"`
+	Request uint `json:"request"`
+}
+
+// Resources represents the computational resources setup for a given container
+type Resources struct {
+	CPU              Constraints `json:"cpu"`
+	Memory           Constraints `json:"memory"`
+	EphemeralStorage Constraints `json:"ephemeral-storage"`
+}
+
 
 // Values contains the top-level elements in the cni Helm chart
 type Values struct {
@@ -40,11 +53,13 @@ type Values struct {
 	ProxyAdminPort      string        `json:"proxyAdminPort"`
 	ProxyControlPort    string        `json:"proxyControlPort"`
 	Tolerations         []interface{} `json:"tolerations"`
+	EnablePSP           bool          `json:"enablePSP"`
+	Resources           Resources     `json:"resources"`
 }
 
 // NewValues returns a new instance of the Values type.
 func NewValues() (*Values, error) {
-	chartDir := fmt.Sprintf("%s/", helmDefaultCNIChartDir)
+	chartDir := fmt.Sprintf("%s/", HelmDefaultCNIChartDir)
 	v, err := readDefaults(chartDir)
 	if err != nil {
 		return nil, err
@@ -52,6 +67,22 @@ func NewValues() (*Values, error) {
 
 	v.CliVersion = k8s.CreatedByAnnotationValue()
 	return v, nil
+}
+
+// ToMap converts the Values intro a map[string]interface{}
+func (v *Values) ToMap() (map[string]interface{}, error) {
+	var valuesMap map[string]interface{}
+	rawValues, err := yaml.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal the values struct: %w", err)
+	}
+
+	err = yaml.Unmarshal(rawValues, &valuesMap)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to Unmarshal Values into a map: %w", err)
+	}
+
+	return valuesMap, nil
 }
 
 // readDefaults reads all the default variables from the values.yaml file.
