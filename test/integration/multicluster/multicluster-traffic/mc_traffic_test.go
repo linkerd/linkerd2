@@ -77,7 +77,6 @@ func TestMain(m *testing.M) {
 // three emojivoto services in target cluster and asserting the output against
 // the source cluster.
 func TestGateways(t *testing.T) {
-	t.Log("Starting")
 	t.Run("install resources in target cluster", func(t *testing.T) {
 		// Create namespace in source cluster
 		out, err := TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "create", "namespace", "linkerd-nginx-gateway-deploy")
