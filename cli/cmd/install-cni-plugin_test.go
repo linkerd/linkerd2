@@ -68,6 +68,13 @@ func TestRenderCNIPlugin(t *testing.T) {
 		priorityClassName:   "system-node-critical",
 	}
 
+	defaultValues := map[string]interface{}{
+		"resources": map[string]interface{}{
+			"limit": map[string]interface{}{
+				"cpu": 1,
+			},
+		},
+	}
 	defaultOptionsWithSkipPorts, err := newCNIInstallOptionsWithDefaults()
 	if err != nil {
 		t.Fatalf("Unexpected error from newCNIInstallOptionsWithDefaults(): %v", err)
@@ -81,11 +88,11 @@ func TestRenderCNIPlugin(t *testing.T) {
 		values         map[string]interface{}
 		goldenFileName string
 	}{
-		{defaultOptions, nil, "install-cni-plugin_default.golden"},
-		{fullyConfiguredOptions, nil,"install-cni-plugin_fully_configured.golden"},
-		{fullyConfiguredOptionsEqualDsts, nil, "install-cni-plugin_fully_configured_equal_dsts.golden"},
-		{fullyConfiguredOptionsNoNamespace,nil, "install-cni-plugin_fully_configured_no_namespace.golden"},
-		{defaultOptionsWithSkipPorts,nil, "install-cni-plugin_skip_ports.golden"},
+		{defaultOptions, defaultValues, "install-cni-plugin_default.golden"},
+		{fullyConfiguredOptions, defaultValues,"install-cni-plugin_fully_configured.golden"},
+		{fullyConfiguredOptionsEqualDsts, defaultValues, "install-cni-plugin_fully_configured_equal_dsts.golden"},
+		{fullyConfiguredOptionsNoNamespace, defaultValues, "install-cni-plugin_fully_configured_no_namespace.golden"},
+		{defaultOptionsWithSkipPorts, defaultValues, "install-cni-plugin_skip_ports.golden"},
 	}
 
 	for i, tc := range testCases {
