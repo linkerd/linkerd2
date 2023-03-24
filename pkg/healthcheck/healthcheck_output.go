@@ -218,25 +218,10 @@ func RunExtensionsChecks(
 // FindExtensions searches the path for all linkerd-* executables and returns a
 // slice of check commands, and a slice of missing checks.
 func FindExtensions(pathEnv string, glob Glob, exec utilsexec.Interface, nsLabels []string) ([]Extension, []string) {
-	executables := getExtensionExecutables(pathEnv, glob, exec)
-	extensions := []Extension{}
-
-	// keep track of which CLI Checks we've already seen, so we don't add them
-	// twice
-	cliChecksSeen := map[string]struct{}{}
+	cliExtensions := findCLIExtensionsOnPath(pathEnv, glob, exec)
 
 	// first, collect check-cli extensions
-	for _, e := range executables {
-		suffix := suffix(e)
-		if _, ok := cliChecksSeen[suffix]; ok {
-			continue
-		}
-
-		if isCLICheck(e, exec) {
-			extensions = append(extensions, Extension{path: e})
-			cliChecksSeen[suffix] = struct{}{}
-		}
-	}
+	extensions, cliChecksSeen := findCLIChecks(cliExtensions, exec)
 
 	labelMap := map[string]struct{}{}
 	for _, label := range nsLabels {
@@ -246,7 +231,7 @@ func FindExtensions(pathEnv string, glob Glob, exec utilsexec.Interface, nsLabel
 	}
 
 	// second, collect on-cluster extensions
-	for _, e := range executables {
+	for _, e := range cliExtensions {
 		suffix := suffix(e)
 		if _, ok := labelMap[suffix]; ok {
 			extensions = append(extensions, Extension{path: e})
@@ -513,9 +498,9 @@ func HintBaseURL(ver string) string {
 	return fmt.Sprintf("https://linkerd.io/%s/checks/#", stableVersion[1])
 }
 
-// getExtensionExecutables searches the path for all linkerd-* executables and
+// findCLIExtensionsOnPath searches the path for all linkerd-* executables and
 // returns a slice of unique filepaths.
-func getExtensionExecutables(pathEnv string, glob Glob, exec utilsexec.Interface) []string {
+func findCLIExtensionsOnPath(pathEnv string, glob Glob, exec utilsexec.Interface) []string {
 	executables := []string{}
 
 	for _, dir := range filepath.SplitList(pathEnv) {
@@ -536,6 +521,30 @@ func getExtensionExecutables(pathEnv string, glob Glob, exec utilsexec.Interface
 
 	sort.Strings(executables)
 	return executables
+}
+
+// findCLIChecks filters a slice of linkerd-* executables to only those support
+// the "check-cli" subcommand.
+func findCLIChecks(cliExtensions []string, exec utilsexec.Interface) ([]Extension, map[string]struct{}) {
+	extensions := []Extension{}
+
+	// keep track of which CLI Checks we've already seen, so we don't add them
+	// twice
+	cliChecksSeen := map[string]struct{}{}
+
+	for _, e := range cliExtensions {
+		suffix := suffix(e)
+		if _, ok := cliChecksSeen[suffix]; ok {
+			continue
+		}
+
+		if isCLICheck(e, exec) {
+			extensions = append(extensions, Extension{path: e})
+			cliChecksSeen[suffix] = struct{}{}
+		}
+	}
+
+	return extensions, cliChecksSeen
 }
 
 // isCLICheck executes a command with a `check-cli` subcommand, and returns true
