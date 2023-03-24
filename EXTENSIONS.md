@@ -117,9 +117,26 @@ instead of the output format described above.  E.g.
 ```
 
 In particular, the `linkerd check` command will invoke the check command for
-each extension installed in the cluster and will request json output.  To
-preserve forwards compatibility, it is recommended that the check command should
-ignore any unknown flags.
+each extension installed in the cluster and will request json output.
+`linkerd check` may optinally invoke your extension if not installed in the
+cluster (see `linkerd-name check-cli` below to opt-in).  To preserve forwards
+compatibility, it is recommended that the check command should ignore any
+unknown flags.
+
+### `linkerd-name check-cli`
+
+This subcommand is optional, and enables an extension to opt-in to being
+executed as part of `linkerd check`, even when there is no corresponding
+extension on the cluster. To opt-in, the output of `linkerd-name check-cli`
+should be json of the form:
+
+```json
+{ "name": "linkerd-name" }
+```
+
+Note that for `linkerd check` to validate which extensions are opting-in, it
+runs `linkerd-* check-cli` against executable in the PATH.
+
 
 The extension may also implement further commands in addition to the ones
 defined here.
