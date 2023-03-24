@@ -11,7 +11,6 @@ require (
 	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/fatih/color v1.15.0
 	github.com/fsnotify/fsnotify v1.6.0
-	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.20.8
 	github.com/go-test/deep v1.1.0
 	github.com/golang/protobuf v1.5.3
