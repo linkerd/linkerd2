@@ -10,79 +10,63 @@ import (
 	fakeexec "k8s.io/utils/exec/testing"
 )
 
-func TestSuffixes(t *testing.T) {
+func TestSuffix(t *testing.T) {
 	testCases := []*struct {
-		testName  string
-		cliChecks CLIChecks
-		exp       map[string]struct{}
+		testName string
+		input    string
+		exp      string
 	}{
 		{
 			"empty",
-			CLIChecks{},
-			map[string]struct{}{},
+			"",
+			"",
 		},
 		{
-			"empty name",
-			CLIChecks{
-				CheckCLIOutput{Name: ""}: "",
-			},
-			map[string]struct{}{
-				"": {},
-			},
+			"no path",
+			"linkerd-foo",
+			"foo",
 		},
 		{
-			"one check",
-			CLIChecks{
-				CheckCLIOutput{Name: "linkerd-foo"}: "filepath",
-			},
-			map[string]struct{}{
-				"foo": {},
-			},
+			"extra dash",
+			"linkerd-foo-bar",
+			"foo-bar",
 		},
 		{
-			"two checks",
-			CLIChecks{
-				CheckCLIOutput{Name: "linkerd-foo"}:    "filepath",
-				CheckCLIOutput{Name: "linker-bar-baz"}: "filepath",
-			},
-			map[string]struct{}{
-				"foo": {},
-				"baz": {},
-			},
+			"with path",
+			"/tmp/linkerd-foo",
+			"foo",
 		},
 	}
 	for _, tc := range testCases {
 		tc := tc // pin
 		t.Run(tc.testName, func(t *testing.T) {
-			result := tc.cliChecks.Suffixes()
+			result := suffix(tc.input)
 			if !reflect.DeepEqual(tc.exp, result) {
-				t.Fatalf("Expected [%+v] Got [%+v]", tc.exp, result)
+				t.Fatalf("Expected [%s] Got [%s]", tc.exp, result)
 			}
 		})
 	}
 }
 
-func TestGetCLIChecks(t *testing.T) {
+func TestFindExtensions(t *testing.T) {
 	fakeGlob := func(path string) ([]string, error) {
 		dir, _ := filepath.Split(path)
 		return []string{
-			filepath.Join(dir, "linkerd-foo"),
 			filepath.Join(dir, "linkerd-bar"),
 			filepath.Join(dir, "linkerd-baz"),
+			filepath.Join(dir, "linkerd-foo"),
 		}, nil
 	}
 
 	fcmd := fakeexec.FakeCmd{
 		RunScript: []fakeexec.FakeAction{
-			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-foo-no-match"}`), nil, nil },
 			func() ([]byte, []byte, error) {
 				return []byte(`{"name":"linkerd-bar"}`), nil, errors.New("fake-error")
 			},
 			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-baz"}`), nil, nil },
-
-			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-foo"}`), nil, nil },
+			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-foo-no-match"}`), nil, nil },
 			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-bar"}`), nil, nil },
-			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-baz"}`), nil, nil },
+			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-foo"}`), nil, nil },
 		},
 	}
 
@@ -98,15 +82,19 @@ func TestGetCLIChecks(t *testing.T) {
 		LookPathFunc: func(cmd string) (string, error) { return cmd, nil },
 	}
 
-	cliChecks := GetCLIChecks("/path1:/this/is/a/fake/path2", fakeGlob, fexec)
+	extensions, missing := FindExtensions("/path1:/this/is/a/fake/path2", fakeGlob, fexec, nil)
 
-	exp := CLIChecks{
-		CheckCLIOutput{Name: "linkerd-baz"}: "/path1/linkerd-baz",
-		CheckCLIOutput{Name: "linkerd-bar"}: "/this/is/a/fake/path2/linkerd-bar",
-		CheckCLIOutput{Name: "linkerd-foo"}: "/this/is/a/fake/path2/linkerd-foo",
+	expExtensions := []Extension{
+		{path: "/this/is/a/fake/path2/linkerd-bar"},
+		{path: "/path1/linkerd-baz"},
+		{path: "/this/is/a/fake/path2/linkerd-foo"},
 	}
+	expMissing := []string{}
 
-	if !reflect.DeepEqual(exp, cliChecks) {
-		t.Errorf("Expected [%+v] Got [%+v]", exp, cliChecks)
+	if !reflect.DeepEqual(expExtensions, extensions) {
+		t.Errorf("Expected [%+v] Got [%+v]", expExtensions, extensions)
+	}
+	if !reflect.DeepEqual(expMissing, missing) {
+		t.Errorf("Expected [%+v] Got [%+v]", expMissing, missing)
 	}
 }
