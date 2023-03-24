@@ -114,7 +114,7 @@ assumes that the 'linkerd install' command will be executed with the
 '--linkerd-cni-enabled' flag. This command needs to be executed before the
 'linkerd install --linkerd-cni-enabled' command.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return renderCNIPlugin(os.Stdout, option, options)
+			return install(os.Stdout, option, options)
 		},
 	}
 
@@ -229,24 +229,23 @@ func  buildValues(options *cniPluginOptions, valuesOverrides map[string]interfac
 	installValues.DestCNIBinDir = options.destCNIBinDir
 	installValues.UseWaitFlag = options.useWaitFlag
 	installValues.PriorityClassName = options.priorityClassName
-	// installValues.EnablePSP = valuesOverrides["enablePSP"]
-	// installValues.Resources = valuesOverrides["resources"]
 	return installValues, nil
 }
 
-func renderCNIPlugin(w io.Writer, option values.Options, config *cniPluginOptions) error {
+func install(w io.Writer, option values.Options, config *cniPluginOptions) error {
 
-	if err := config.validate(); err != nil {
+	// Create values override
+	valuesOverrides, err := option.MergeValues(nil)
+	if err != nil {
 		return err
 	}
 
-	// values, err := config.buildValues()
-	// if err != nil {
-	// 	return err
-	// }
+	return renderCNIPlugin(w, valuesOverrides, config)
+}
 
-	valuesOverrides, err := option.MergeValues(nil)
-	if err != nil {
+func renderCNIPlugin(w io.Writer, valuesOverrides map[string]interface{}, config *cniPluginOptions) error {
+
+	if err := config.validate(); err != nil {
 		return err
 	}
 

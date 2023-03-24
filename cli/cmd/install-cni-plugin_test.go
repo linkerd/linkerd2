@@ -78,20 +78,21 @@ func TestRenderCNIPlugin(t *testing.T) {
 
 	testCases := []struct {
 		*cniPluginOptions
+		values         map[string]interface{}
 		goldenFileName string
 	}{
-		{defaultOptions, "install-cni-plugin_default.golden"},
-		{fullyConfiguredOptions, "install-cni-plugin_fully_configured.golden"},
-		{fullyConfiguredOptionsEqualDsts, "install-cni-plugin_fully_configured_equal_dsts.golden"},
-		{fullyConfiguredOptionsNoNamespace, "install-cni-plugin_fully_configured_no_namespace.golden"},
-		{defaultOptionsWithSkipPorts, "install-cni-plugin_skip_ports.golden"},
+		{defaultOptions, nil, "install-cni-plugin_default.golden"},
+		{fullyConfiguredOptions, nil,"install-cni-plugin_fully_configured.golden"},
+		{fullyConfiguredOptionsEqualDsts, nil, "install-cni-plugin_fully_configured_equal_dsts.golden"},
+		{fullyConfiguredOptionsNoNamespace,nil, "install-cni-plugin_fully_configured_no_namespace.golden"},
+		{defaultOptionsWithSkipPorts,nil, "install-cni-plugin_skip_ports.golden"},
 	}
 
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
 			var buf bytes.Buffer
-			err := renderCNIPlugin(&buf, tc.cniPluginOptions)
+			err := renderCNIPlugin(&buf, tc.values , tc.cniPluginOptions)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
