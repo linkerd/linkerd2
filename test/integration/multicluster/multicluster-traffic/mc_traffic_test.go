@@ -64,12 +64,6 @@ func TestMain(m *testing.M) {
 	// Block until gateway & service mirror deploys are running successfully in
 	// source cluster.
 	TestHelper.WaitUntilDeployReady(testutil.MulticlusterSourceReplicas)
-	// Switch back to target context to commence test
-	if err := TestHelper.SwitchContext(targetCtx); err != nil {
-		out := fmt.Sprintf("Error running test: failed to switch Kubernetes client to context [%s]: %s\n", targetCtx, err)
-		os.Stderr.Write([]byte(out))
-		os.Exit(1)
-	}
 	os.Exit(m.Run())
 }
 
@@ -141,7 +135,7 @@ func TestCheckGatewayAfterRepairEndpoints(t *testing.T) {
 			contexts[testutil.SourceContextKey], err)
 	}
 	time.Sleep(time.Minute + 5*time.Second)
-	if err := TestHelper.TestCheck("--context", contexts[testutil.SourceContextKey]); err != nil {
+	if err := TestHelper.TestCheckMc("--context", contexts[testutil.SourceContextKey]); err != nil {
 		t.Fatalf("'linkerd check' command failed: %s", err)
 	}
 }
