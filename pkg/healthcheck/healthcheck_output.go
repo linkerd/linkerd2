@@ -524,6 +524,7 @@ func findCLIExtensionsOnPath(pathEnv string, glob Glob, exec utilsexec.Interface
 		if err != nil {
 			continue
 		}
+		sort.Strings(matches)
 
 		for _, match := range matches {
 			suffix := suffix(match)
@@ -541,7 +542,6 @@ func findCLIExtensionsOnPath(pathEnv string, glob Glob, exec utilsexec.Interface
 		}
 	}
 
-	sort.Strings(executables)
 	return executables
 }
 
