@@ -51,9 +51,24 @@ var (
 	}
 )
 
-// CheckCLIOutput contains the output of a check-cli command.
-type CheckCLIOutput struct {
-	Name string `json:"name"`
+// Checks describes the "checks" field on a CheckCLIOutput
+type Checks string
+
+const (
+	// Always run the check, regardless of cluster state
+	Always Checks = "always"
+	// // TODO:
+	// // Cluster informs "linkerd check" to only run this extension if there are
+	// // on-cluster resources.
+	// Cluster Checks = "cluster"
+	// // Never informs "linkerd check" to never run this extension.
+	// Never Checks = "never"
+)
+
+// ConfigOutput contains the output of a config subcommand.
+type ConfigOutput struct {
+	Name   string `json:"name"`
+	Checks Checks `json:"checks"`
 }
 
 // CheckResults contains a slice of CheckResult structs.
@@ -220,12 +235,12 @@ func RunExtensionsChecks(
 func FindExtensions(pathEnv string, glob Glob, exec utilsexec.Interface, nsLabels []string) ([]Extension, []string) {
 	cliExtensions := findCLIExtensionsOnPath(pathEnv, glob, exec)
 
-	// first, collect check-cli extensions
-	extensions, cliChecksSeen := findCLIChecks(cliExtensions, exec)
+	// first, collect config extensions that are "always" enabled
+	extensions, checksSeen := findAlwaysChecks(cliExtensions, exec)
 
 	labelMap := map[string]struct{}{}
 	for _, label := range nsLabels {
-		if _, ok := cliChecksSeen[label]; !ok {
+		if _, ok := checksSeen[label]; !ok {
 			labelMap[label] = struct{}{}
 		}
 	}
@@ -401,15 +416,15 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) (bool, bool) {
 	return success, warning
 }
 
-// parseJSONCheckCLIOutput parses the output of a check-cli command. The data is
-// expected to be a CheckCLIOutput struct serialized to json.
-func parseJSONCheckCLIOutput(data []byte) (CheckCLIOutput, error) {
-	var cliOutput CheckCLIOutput
-	err := json.Unmarshal(data, &cliOutput)
+// parseJSONConfigOutput parses the output of a config subcommand. The data is
+// expected to be a ConfigOutput struct serialized to json.
+func parseJSONConfigOutput(data []byte) (ConfigOutput, error) {
+	var config ConfigOutput
+	err := json.Unmarshal(data, &config)
 	if err != nil {
-		return CheckCLIOutput{}, err
+		return ConfigOutput{}, err
 	}
-	return cliOutput, nil
+	return config, nil
 }
 
 // parseJSONCheckOutput parses the output of a check command run with json
@@ -523,34 +538,34 @@ func findCLIExtensionsOnPath(pathEnv string, glob Glob, exec utilsexec.Interface
 	return executables
 }
 
-// findCLIChecks filters a slice of linkerd-* executables to only those support
-// the "check-cli" subcommand.
-func findCLIChecks(cliExtensions []string, exec utilsexec.Interface) ([]Extension, map[string]struct{}) {
+// findAlwaysChecks filters a slice of linkerd-* executables to only those that
+// support the "config" subcommand, and announce themselves to "always" run.
+func findAlwaysChecks(cliExtensions []string, exec utilsexec.Interface) ([]Extension, map[string]struct{}) {
 	extensions := []Extension{}
 
 	// keep track of which CLI Checks we've already seen, so we don't add them
 	// twice
-	cliChecksSeen := map[string]struct{}{}
+	checksSeen := map[string]struct{}{}
 
 	for _, e := range cliExtensions {
 		suffix := suffix(e)
-		if _, ok := cliChecksSeen[suffix]; ok {
+		if _, ok := checksSeen[suffix]; ok {
 			continue
 		}
 
-		if isCLICheck(e, exec) {
+		if isAlwaysCheck(e, exec) {
 			extensions = append(extensions, Extension{path: e})
-			cliChecksSeen[suffix] = struct{}{}
+			checksSeen[suffix] = struct{}{}
 		}
 	}
 
-	return extensions, cliChecksSeen
+	return extensions, checksSeen
 }
 
-// isCLICheck executes a command with a `check-cli` subcommand, and returns true
+// isAlwaysCheck executes a command with a `config` subcommand, and returns true
 // if the output is a valid CheckCLIOutput struct.
-func isCLICheck(path string, exec utilsexec.Interface) bool {
-	cmd := exec.Command(path, "check-cli")
+func isAlwaysCheck(path string, exec utilsexec.Interface) bool {
+	cmd := exec.Command(path, "config")
 	var stdout, stderr bytes.Buffer
 	cmd.SetStdout(&stdout)
 	cmd.SetStderr(&stderr)
@@ -559,15 +574,15 @@ func isCLICheck(path string, exec utilsexec.Interface) bool {
 		return false
 	}
 
-	checkCLIOutput, err := parseJSONCheckCLIOutput(stdout.Bytes())
+	configOutput, err := parseJSONConfigOutput(stdout.Bytes())
 	if err != nil {
 		return false
 	}
 
-	// output of check-cli must match the executable name
+	// output of config must match the executable name, and specific "always"
 	// i.e. linkerd-foo is allowed, linkerd-foo-v0.XX.X is not
 	_, filename := filepath.Split(path)
-	return checkCLIOutput.Name == filename
+	return configOutput.Name == filename && configOutput.Checks == Always
 }
 
 // suffix returns the last part of a CLI check name, e.g.:

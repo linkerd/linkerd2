@@ -61,12 +61,14 @@ func TestFindExtensions(t *testing.T) {
 	fcmd := fakeexec.FakeCmd{
 		RunScript: []fakeexec.FakeAction{
 			func() ([]byte, []byte, error) {
-				return []byte(`{"name":"linkerd-bar"}`), nil, errors.New("fake-error")
+				return []byte(`{"name":"linkerd-bar","checks":"always"}`), nil, errors.New("fake-error")
 			},
-			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-baz"}`), nil, nil },
-			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-foo-no-match"}`), nil, nil },
-			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-bar"}`), nil, nil },
-			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-foo"}`), nil, nil },
+			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-baz","checks":"always"}`), nil, nil },
+			func() ([]byte, []byte, error) {
+				return []byte(`{"name":"linkerd-foo-no-match","checks":"always"}`), nil, nil
+			},
+			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-bar","checks":"always"}`), nil, nil },
+			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-foo","checks":"always"}`), nil, nil },
 		},
 	}
 
