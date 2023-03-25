@@ -574,10 +574,13 @@ func isCLICheck(path string, exec utilsexec.Interface) bool {
 // linkerd-foo                => foo
 // linkerd-foo-bar            => foo-bar
 // /usr/local/bin/linkerd-foo => foo
+// s is assumed to be a filepath where the filename begins with "linkerd-"
 func suffix(s string) string {
-	idx := strings.LastIndex(s, "linkerd-")
-	if idx == -1 {
+	_, filename := filepath.Split(s)
+	suffix := strings.TrimPrefix(filename, "linkerd-")
+	if suffix == filename {
+		// we should never get here
 		return ""
 	}
-	return s[idx+len("linkerd-"):]
+	return suffix
 }
