@@ -517,6 +517,7 @@ func HintBaseURL(ver string) string {
 // returns a slice of unique filepaths.
 func findCLIExtensionsOnPath(pathEnv string, glob Glob, exec utilsexec.Interface) []string {
 	executables := []string{}
+	seen := map[string]struct{}{}
 
 	for _, dir := range filepath.SplitList(pathEnv) {
 		matches, err := glob(filepath.Join(dir, "linkerd-*"))
@@ -525,12 +526,18 @@ func findCLIExtensionsOnPath(pathEnv string, glob Glob, exec utilsexec.Interface
 		}
 
 		for _, match := range matches {
+			suffix := suffix(match)
+			if _, ok := seen[suffix]; ok {
+				continue
+			}
+
 			path, err := exec.LookPath(match)
 			if err != nil {
 				continue
 			}
 
 			executables = append(executables, path)
+			seen[suffix] = struct{}{}
 		}
 	}
 

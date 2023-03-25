@@ -61,37 +61,40 @@ func TestFindExtensions(t *testing.T) {
 	fcmd := fakeexec.FakeCmd{
 		RunScript: []fakeexec.FakeAction{
 			func() ([]byte, []byte, error) {
-				return []byte(`{"name":"linkerd-bar","checks":"always"}`), nil, errors.New("fake-error")
+				return []byte(`{"name":"linkerd-baz","checks":"always"}`), nil, nil
 			},
-			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-baz","checks":"always"}`), nil, nil },
 			func() ([]byte, []byte, error) {
 				return []byte(`{"name":"linkerd-foo-no-match","checks":"always"}`), nil, nil
 			},
 			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-bar","checks":"always"}`), nil, nil },
-			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-foo","checks":"always"}`), nil, nil },
 		},
 	}
+
+	lookPathSuccess := false
 
 	fexec := &fakeexec.FakeExec{
 		CommandScript: []fakeexec.FakeCommandAction{
 			func(cmd string, args ...string) exec.Cmd { return fakeexec.InitFakeCmd(&fcmd, cmd, args...) },
 			func(cmd string, args ...string) exec.Cmd { return fakeexec.InitFakeCmd(&fcmd, cmd, args...) },
 			func(cmd string, args ...string) exec.Cmd { return fakeexec.InitFakeCmd(&fcmd, cmd, args...) },
-			func(cmd string, args ...string) exec.Cmd { return fakeexec.InitFakeCmd(&fcmd, cmd, args...) },
-			func(cmd string, args ...string) exec.Cmd { return fakeexec.InitFakeCmd(&fcmd, cmd, args...) },
-			func(cmd string, args ...string) exec.Cmd { return fakeexec.InitFakeCmd(&fcmd, cmd, args...) },
 		},
-		LookPathFunc: func(cmd string) (string, error) { return cmd, nil },
+		LookPathFunc: func(cmd string) (string, error) {
+			if lookPathSuccess {
+				return cmd, nil
+			}
+			lookPathSuccess = true
+			return "", errors.New("fake-error")
+		},
 	}
 
-	extensions, missing := FindExtensions("/path1:/this/is/a/fake/path2", fakeGlob, fexec, nil)
+	extensions, missing := FindExtensions("/path1:/this/is/a/fake/path2", fakeGlob, fexec, []string{"foo", "missing-cli"})
 
 	expExtensions := []Extension{
 		{path: "/this/is/a/fake/path2/linkerd-bar"},
 		{path: "/path1/linkerd-baz"},
-		{path: "/this/is/a/fake/path2/linkerd-foo"},
+		{path: "/path1/linkerd-foo"},
 	}
-	expMissing := []string{}
+	expMissing := []string{"linkerd-missing-cli"}
 
 	if !reflect.DeepEqual(expExtensions, extensions) {
 		t.Errorf("Expected [%+v] Got [%+v]", expExtensions, extensions)
