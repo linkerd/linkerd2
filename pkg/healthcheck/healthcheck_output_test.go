@@ -49,13 +49,13 @@ func TestSuffix(t *testing.T) {
 }
 
 func TestFindExtensions(t *testing.T) {
-	fakeGlob := func(path string) ([]string, error) {
-		dir, _ := filepath.Split(path)
-		return []string{
-			filepath.Join(dir, "linkerd-bar"),
-			filepath.Join(dir, "linkerd-baz"),
-			filepath.Join(dir, "linkerd-foo"),
-		}, nil
+	paths := []string{
+		filepath.Join("/path1", "linkerd-bar"),
+		filepath.Join("/path1", "linkerd-baz"),
+		filepath.Join("/path1", "linkerd-foo"),
+		filepath.Join("/this/is/a/fake/path2", "linkerd-bar"),
+		filepath.Join("/this/is/a/fake/path2", "linkerd-baz"),
+		filepath.Join("/this/is/a/fake/path2", "linkerd-foo"),
 	}
 
 	fcmd := fakeexec.FakeCmd{
@@ -68,6 +68,7 @@ func TestFindExtensions(t *testing.T) {
 				return []byte(`{"name":"linkerd-foo-no-match","checks":"always"}`), nil, nil
 			},
 			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-bar","checks":"always"}`), nil, nil },
+			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-foo","checks":"always"}`), nil, nil },
 			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-foo","checks":"always"}`), nil, nil },
 		},
 	}
@@ -84,19 +85,15 @@ func TestFindExtensions(t *testing.T) {
 		LookPathFunc: func(cmd string) (string, error) { return cmd, nil },
 	}
 
-	extensions, missing := FindExtensions("/path1:/this/is/a/fake/path2", fakeGlob, fexec, nil)
+	extensions := ExtensionChecks(paths, fexec, nil)
 
-	expExtensions := []Extension{
-		{path: "/this/is/a/fake/path2/linkerd-bar"},
-		{path: "/path1/linkerd-baz"},
-		{path: "/this/is/a/fake/path2/linkerd-foo"},
+	expExtensions := []string{
+		"/this/is/a/fake/path2/linkerd-bar",
+		"/path1/linkerd-baz",
+		"/this/is/a/fake/path2/linkerd-foo",
 	}
-	expMissing := []string{}
 
 	if !reflect.DeepEqual(expExtensions, extensions) {
 		t.Errorf("Expected [%+v] Got [%+v]", expExtensions, extensions)
-	}
-	if !reflect.DeepEqual(expMissing, missing) {
-		t.Errorf("Expected [%+v] Got [%+v]", expMissing, missing)
 	}
 }

@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -230,25 +232,45 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 	if err != nil {
 		return false, false, err
 	}
-	nsLabels := []string{}
+	nsLabels := map[string]struct{}{}
 	for _, ns := range namespaces {
 		ext := ns.Labels[k8s.LinkerdExtensionLabel]
-		nsLabels = append(nsLabels, ext)
+		nsLabels[ext] = struct{}{}
 	}
 
 	exec := utilsexec.New()
 
-	extensions, missing := healthcheck.FindExtensions(os.Getenv("PATH"), filepath.Glob, exec, nsLabels)
+	cliExtensions := findCLIExtensionsOnPath()
+	extensions := healthcheck.ExtensionChecks(cliExtensions, exec, nsLabels)
 
-	// no extensions to check
-	if len(extensions) == 0 && len(missing) == 0 {
-		return true, false, nil
+	extensionSuccess, extensionWarning := healthcheck.RunExtensionsChecks(wout, werr, extensions, getExtensionCheckFlags(cmd.Flags()), opts.output)
+	return extensionSuccess, extensionWarning, nil
+}
+
+// findCLIExtensionsOnPath searches the path for all linkerd-* executables and
+// returns a slice of unique filepaths.
+func findCLIExtensionsOnPath() []string {
+	executables := []string{}
+
+	pathEnv := os.Getenv("PATH")
+	for _, dir := range filepath.SplitList(pathEnv) {
+		matches, err := filepath.Glob(filepath.Join(dir, "linkerd-*"))
+		if err != nil {
+			continue
+		}
+
+		for _, match := range matches {
+			path, err := exec.LookPath(match)
+			if err != nil {
+				continue
+			}
+
+			executables = append(executables, path)
+		}
 	}
 
-	extensionSuccess, extensionWarning := healthcheck.RunExtensionsChecks(
-		wout, werr, extensions, missing, exec, getExtensionCheckFlags(cmd.Flags()), opts.output,
-	)
-	return extensionSuccess, extensionWarning, nil
+	sort.Strings(executables)
+	return executables
 }
 
 func getExtensionCheckFlags(lf *pflag.FlagSet) []string {

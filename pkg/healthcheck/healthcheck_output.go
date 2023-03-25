@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 
@@ -43,12 +42,6 @@ var (
 	failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7")    // ×
 
 	reStableVersion = regexp.MustCompile(`stable-(\d\.\d+)\.`)
-
-	builtInChecks = map[string]struct{}{
-		"jaeger":       {},
-		"multicluster": {},
-		"viz":          {},
-	}
 )
 
 // Checks describes the "checks" field on a CheckCLIOutput
@@ -56,7 +49,9 @@ type Checks string
 
 const (
 	// Always run the check, regardless of cluster state
-	Always Checks = "always"
+	Always  Checks = "always"
+	Never   Checks = "never"
+	Cluster Checks = "cluster"
 	// // TODO:
 	// // Cluster informs "linkerd check" to only run this extension if there are
 	// // on-cluster resources.
@@ -97,16 +92,6 @@ type Check struct {
 	Result      CheckResultStr `json:"result"`
 }
 
-// Glob is satisfied by filepath.Glob.
-type Glob func(string) ([]string, error)
-
-// Extension contains the full path of an extension executable. If it's a
-// a built-in extension, the builtin field is populated with its name.
-type Extension struct {
-	path    string
-	builtin string
-}
-
 // RunChecks submits each of the individual CheckResult structs to the given
 // observer.
 func (cr CheckResults) RunChecks(observer CheckObserver) (bool, bool) {
@@ -140,145 +125,125 @@ func PrintChecksResult(wout io.Writer, output string, success bool, warning bool
 	}
 }
 
-// RunExtensionsChecks runs checks for each extension name passed into the
-// `extensions` parameter and handles formatting the output for each extension's
-// check. This function also prints check warnings for missing extensions.
-func RunExtensionsChecks(
-	wout io.Writer, werr io.Writer, extensions []Extension, missing []string, utilsexec utilsexec.Interface, flags []string, output string,
-) (bool, bool) {
+// RunExtensionsChecks runs checks for each extension name passed into the `extensions` parameter
+// and handles formatting the output for each extension's check. This function also handles
+// finding the extension in the user's path and runs it.
+func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, flags []string, output string) (bool, bool) {
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 	spin.Writer = wout
 
 	success := true
 	warning := false
 	for _, extension := range extensions {
+		var path string
 		args := append([]string{"check"}, flags...)
-		if extension.builtin != "" {
-			args = append([]string{extension.builtin}, args...)
-		}
-
-		if isatty.IsTerminal(os.Stdout.Fd()) {
-			name := suffix(extension.path)
-			if extension.builtin != "" {
-				name = extension.builtin
-			}
-
-			spin.Suffix = fmt.Sprintf(" Running %s extension check", name)
-			spin.Color("bold") // this calls spin.Restart()
-		}
-
-		plugin := utilsexec.Command(extension.path, args...)
-		var stdout, stderr bytes.Buffer
-		plugin.SetStdout(&stdout)
-		plugin.SetStderr(&stderr)
-		plugin.Run()
-		results, err := parseJSONCheckOutput(stdout.Bytes())
-		spin.Stop()
-		if err != nil {
-			success = false
-
-			command := fmt.Sprintf("%s %s", extension.path, strings.Join(args, " "))
-			if len(stderr.String()) > 0 {
-				err = errors.New(stderr.String())
-			} else {
-				err = fmt.Errorf("invalid extension check output from \"%s\" (JSON object expected):\n%s\n[%w]", command, stdout.String(), err)
-			}
-			_, filename := filepath.Split(extension.path)
-			results = CheckResults{
-				Results: []CheckResult{
-					{
-						Category:    CategoryID(filename),
-						Description: fmt.Sprintf("Running: %s", command),
-						Err:         err,
-						HintURL:     HintBaseURL(version.Version) + "extensions",
-					},
-				},
-			}
-		}
-
-		extensionSuccess, extensionWarning := RunChecks(wout, werr, results, output)
-		if !extensionSuccess {
-			success = false
-		}
-		if extensionWarning {
-			warning = true
-		}
-	}
-
-	for _, m := range missing {
+		var err error
 		results := CheckResults{
-			Results: []CheckResult{
+			Results: []CheckResult{},
+		}
+		extensionCmd := fmt.Sprintf("linkerd-%s", extension)
+
+		switch extension {
+		case "jaeger":
+			path = os.Args[0]
+			args = append([]string{"jaeger"}, args...)
+		case "viz":
+			path = os.Args[0]
+			args = append([]string{"viz"}, args...)
+		case "multicluster":
+			path = os.Args[0]
+			args = append([]string{"multicluster"}, args...)
+		default:
+			path, err = exec.LookPath(extensionCmd)
+			results.Results = []CheckResult{
 				{
-					Category:    CategoryID(m),
-					Description: fmt.Sprintf("Linkerd extension command %s exists", m),
-					Err:         &exec.Error{Name: m, Err: exec.ErrNotFound},
+					Category:    CategoryID(extensionCmd),
+					Description: fmt.Sprintf("Linkerd extension command %s exists", extensionCmd),
+					Err:         err,
 					HintURL:     HintBaseURL(version.Version) + "extensions",
 					Warning:     true,
 				},
-			},
+			}
 		}
 
-		extensionSuccess, extensionWarning := RunChecks(wout, werr, results, output)
+		if err == nil {
+			if isatty.IsTerminal(os.Stdout.Fd()) {
+				spin.Suffix = fmt.Sprintf(" Running %s extension check", extension)
+				spin.Color("bold") // this calls spin.Restart()
+			}
+			// Path is constructed from the switch statements above and will
+			// be a valid Linkerd subcommand.
+			//nolint:gosec
+			plugin := exec.Command(path, args...)
+			var stdout, stderr bytes.Buffer
+			plugin.Stdout = &stdout
+			plugin.Stderr = &stderr
+			plugin.Run()
+			extensionResults, err := parseJSONCheckOutput(stdout.Bytes())
+			spin.Stop()
+			if err != nil {
+				command := fmt.Sprintf("%s %s", path, strings.Join(args, " "))
+				if len(stderr.String()) > 0 {
+					err = errors.New(stderr.String())
+				} else {
+					err = fmt.Errorf("invalid extension check output from \"%s\" (JSON object expected):\n%s\n[%w]", command, stdout.String(), err)
+				}
+				results.Results = append(results.Results, CheckResult{
+					Category:    CategoryID(extensionCmd),
+					Description: fmt.Sprintf("Running: %s", command),
+					Err:         err,
+					HintURL:     HintBaseURL(version.Version) + "extensions",
+				})
+				success = false
+			} else {
+				results.Results = append(results.Results, extensionResults.Results...)
+			}
+		}
+
+		var extensionSuccess bool
+		extensionSuccess, warning = RunChecks(wout, werr, results, output)
 		if !extensionSuccess {
 			success = false
-		}
-		if extensionWarning {
-			warning = true
 		}
 	}
 
 	return success, warning
 }
 
-// FindExtensions searches the path for all linkerd-* executables and returns a
-// slice of check commands, and a slice of missing checks.
-func FindExtensions(pathEnv string, glob Glob, exec utilsexec.Interface, nsLabels []string) ([]Extension, []string) {
-	cliExtensions := findCLIExtensionsOnPath(pathEnv, glob, exec)
+func extensionsContains(extentionPaths []string, ext string) bool {
+	for _, path := range extentionPaths {
+		if suffix(path) == ext {
+			return true
+		}
+	}
+	return false
+}
 
-	// first, collect config extensions that are "always" enabled
-	extensions, checksSeen := findAlwaysChecks(cliExtensions, exec)
+// ExtensionChecks returns a list of extensions which should be run in extension
+// checks.
+func ExtensionChecks(cliExtensions []string, exec utilsexec.Interface, nsLabels map[string]struct{}) []string {
 
-	labelMap := map[string]struct{}{}
-	for _, label := range nsLabels {
-		if _, ok := checksSeen[label]; !ok {
-			labelMap[label] = struct{}{}
+	extensions := []string{}
+
+	for _, ext := range cliExtensions {
+		mode := getCheckMode(ext, exec)
+		if mode == Always {
+			extensions = append(extensions, ext)
+		} else if mode == Never {
+			// Noop
+		} else { // "cluster" is the default behavior.
+			if _, ok := nsLabels[suffix(ext)]; ok {
+				extensions = append(extensions, ext)
+			}
 		}
 	}
 
-	// second, collect on-cluster extensions
-	for _, e := range cliExtensions {
-		suffix := suffix(e)
-		if _, ok := labelMap[suffix]; ok {
-			extensions = append(extensions, Extension{path: e})
-			delete(labelMap, suffix)
+	for nsExt := range nsLabels {
+		if !extensionsContains(extensions, nsExt) {
+			extensions = append(extensions, nsExt)
 		}
 	}
-
-	// third, collect built-in extensions
-	for label := range labelMap {
-		if _, ok := builtInChecks[label]; ok {
-			extensions = append(extensions, Extension{path: os.Args[0], builtin: label})
-			delete(labelMap, label)
-		}
-	}
-
-	// anything left in labelMap is a missing executable
-	missing := []string{}
-	for label := range labelMap {
-		missing = append(missing, fmt.Sprintf("linkerd-%s", label))
-	}
-
-	sort.Slice(extensions, func(i, j int) bool {
-		if extensions[i].path != extensions[j].path {
-			_, filename1 := filepath.Split(extensions[i].path)
-			_, filename2 := filepath.Split(extensions[j].path)
-			return filename1 < filename2
-		}
-		return extensions[i].builtin < extensions[j].builtin
-	})
-	sort.Strings(missing)
-
-	return extensions, missing
+	return extensions
 }
 
 // RunChecks runs the checks that are part of hc
@@ -513,76 +478,30 @@ func HintBaseURL(ver string) string {
 	return fmt.Sprintf("https://linkerd.io/%s/checks/#", stableVersion[1])
 }
 
-// findCLIExtensionsOnPath searches the path for all linkerd-* executables and
-// returns a slice of unique filepaths.
-func findCLIExtensionsOnPath(pathEnv string, glob Glob, exec utilsexec.Interface) []string {
-	executables := []string{}
-
-	for _, dir := range filepath.SplitList(pathEnv) {
-		matches, err := glob(filepath.Join(dir, "linkerd-*"))
-		if err != nil {
-			continue
-		}
-
-		for _, match := range matches {
-			path, err := exec.LookPath(match)
-			if err != nil {
-				continue
-			}
-
-			executables = append(executables, path)
-		}
-	}
-
-	sort.Strings(executables)
-	return executables
-}
-
-// findAlwaysChecks filters a slice of linkerd-* executables to only those that
-// support the "config" subcommand, and announce themselves to "always" run.
-func findAlwaysChecks(cliExtensions []string, exec utilsexec.Interface) ([]Extension, map[string]struct{}) {
-	extensions := []Extension{}
-
-	// keep track of which CLI Checks we've already seen, so we don't add them
-	// twice
-	checksSeen := map[string]struct{}{}
-
-	for _, e := range cliExtensions {
-		suffix := suffix(e)
-		if _, ok := checksSeen[suffix]; ok {
-			continue
-		}
-
-		if isAlwaysCheck(e, exec) {
-			extensions = append(extensions, Extension{path: e})
-			checksSeen[suffix] = struct{}{}
-		}
-	}
-
-	return extensions, checksSeen
-}
-
 // isAlwaysCheck executes a command with a `config` subcommand, and returns true
 // if the output is a valid CheckCLIOutput struct.
-func isAlwaysCheck(path string, exec utilsexec.Interface) bool {
+func getCheckMode(path string, exec utilsexec.Interface) Checks {
 	cmd := exec.Command(path, "config")
 	var stdout, stderr bytes.Buffer
 	cmd.SetStdout(&stdout)
 	cmd.SetStderr(&stderr)
 	err := cmd.Run()
 	if err != nil {
-		return false
+		return Cluster
 	}
 
 	configOutput, err := parseJSONConfigOutput(stdout.Bytes())
 	if err != nil {
-		return false
+		return Cluster
 	}
 
 	// output of config must match the executable name, and specific "always"
 	// i.e. linkerd-foo is allowed, linkerd-foo-v0.XX.X is not
 	_, filename := filepath.Split(path)
-	return configOutput.Name == filename && configOutput.Checks == Always
+	if configOutput.Name != filename {
+		return Cluster
+	}
+	return configOutput.Checks
 }
 
 // suffix returns the last part of a CLI check name, e.g.:
