@@ -25,6 +25,7 @@ pub fn pod(ns: &str) -> k8s::Pod {
                     container_port: 8080,
                     ..Default::default()
                 }]),
+
                 ..Default::default()
             }],
             ..Default::default()
