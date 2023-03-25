@@ -208,9 +208,11 @@ async fn main() -> Result<()> {
     );
 
     let services = runtime.watch_all::<k8s::Service>(ListParams::default());
+    let services_indexes = IndexList::new(outbound_index.clone())
+        .push(status_index.clone())
+        .shared();
     tokio::spawn(
-        kubert::index::namespaced(outbound_index.clone(), services)
-            .instrument(info_span!("services")),
+        kubert::index::namespaced(services_indexes, services).instrument(info_span!("services")),
     );
 
     // Spawn the status Controller reconciliation.

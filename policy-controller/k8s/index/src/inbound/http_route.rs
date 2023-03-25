@@ -42,9 +42,6 @@ pub enum ConditionType {
 
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum InvalidParentRef {
-    #[error("HTTPRoute resource does not reference a Server resource")]
-    DoesNotSelectServer,
-
     #[error("HTTPRoute resource may not reference a parent Server in an other namespace")]
     ServerInAnotherNamespace,
 
@@ -271,11 +268,6 @@ impl ParentRef {
             .flatten()
             .filter_map(|parent_ref| Self::from_parent_ref(route_ns, parent_ref))
             .collect::<Result<Vec<_>, InvalidParentRef>>()?;
-
-        // If there are no valid parents, then the route is invalid.
-        if parents.is_empty() {
-            return Err(InvalidParentRef::DoesNotSelectServer);
-        }
 
         Ok(parents)
     }
