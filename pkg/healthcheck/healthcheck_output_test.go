@@ -61,15 +61,15 @@ func TestFindExtensions(t *testing.T) {
 	fcmd := fakeexec.FakeCmd{
 		RunScript: []fakeexec.FakeAction{
 			func() ([]byte, []byte, error) {
-				return []byte(`{"name":"linkerd-bar","checks":"always"}`), nil, errors.New("fake-error")
+				return []byte(`{"name":"linkerd-bar","checks":"always"}`), nil, errors.New("fake-error") // Rejected due to error
 			},
-			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-baz","checks":"always"}`), nil, nil },
+			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-baz","checks":"always"}`), nil, nil }, // Accepted
 			func() ([]byte, []byte, error) {
-				return []byte(`{"name":"linkerd-foo-no-match","checks":"always"}`), nil, nil
+				return []byte(`{"name":"linkerd-foo-no-match","checks":"always"}`), nil, nil // Rejected due to name mismatch
 			},
-			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-bar","checks":"always"}`), nil, nil },
-			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-foo","checks":"always"}`), nil, nil },
-			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-foo","checks":"always"}`), nil, nil },
+			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-bar","checks":"always"}`), nil, nil }, // Shadowed by earlier linkerd-bar
+			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-baz","checks":"always"}`), nil, nil }, // Shadowed by earlier linkerd-baz
+			func() ([]byte, []byte, error) { return []byte(`{"name":"linkerd-foo","checks":"always"}`), nil, nil }, // Shadowed by earlier linkerd-foo
 		},
 	}
 
@@ -88,9 +88,7 @@ func TestFindExtensions(t *testing.T) {
 	extensions := ExtensionChecks(paths, fexec, nil)
 
 	expExtensions := []string{
-		"/this/is/a/fake/path2/linkerd-bar",
-		"/path1/linkerd-baz",
-		"/this/is/a/fake/path2/linkerd-foo",
+		"baz",
 	}
 
 	if !reflect.DeepEqual(expExtensions, extensions) {

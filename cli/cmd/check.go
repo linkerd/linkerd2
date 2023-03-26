@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -247,10 +245,9 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 	return extensionSuccess, extensionWarning, nil
 }
 
-// findCLIExtensionsOnPath searches the path for all linkerd-* executables and
-// returns a slice of unique filepaths.
+// findCLIExtensionsOnPath finds all files named linkerd-* on the PATH.
 func findCLIExtensionsOnPath() []string {
-	executables := []string{}
+	paths := []string{}
 
 	pathEnv := os.Getenv("PATH")
 	for _, dir := range filepath.SplitList(pathEnv) {
@@ -258,19 +255,10 @@ func findCLIExtensionsOnPath() []string {
 		if err != nil {
 			continue
 		}
-
-		for _, match := range matches {
-			path, err := exec.LookPath(match)
-			if err != nil {
-				continue
-			}
-
-			executables = append(executables, path)
-		}
+		paths = append(paths, matches...)
 	}
 
-	sort.Strings(executables)
-	return executables
+	return paths
 }
 
 func getExtensionCheckFlags(lf *pflag.FlagSet) []string {

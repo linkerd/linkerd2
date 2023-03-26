@@ -155,14 +155,16 @@ func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, fl
 			args = append([]string{"multicluster"}, args...)
 		default:
 			path, err = exec.LookPath(extensionCmd)
-			results.Results = []CheckResult{
-				{
-					Category:    CategoryID(extensionCmd),
-					Description: fmt.Sprintf("Linkerd extension command %s exists", extensionCmd),
-					Err:         err,
-					HintURL:     HintBaseURL(version.Version) + "extensions",
-					Warning:     true,
-				},
+			if err != nil {
+				results.Results = []CheckResult{
+					{
+						Category:    CategoryID(extensionCmd),
+						Description: fmt.Sprintf("Linkerd extension command %s exists", extensionCmd),
+						Err:         err,
+						HintURL:     HintBaseURL(version.Version) + "extensions",
+						Warning:     true,
+					},
+				}
 			}
 		}
 
@@ -224,15 +226,22 @@ func extensionsContains(extentionPaths []string, ext string) bool {
 func ExtensionChecks(cliExtensions []string, exec utilsexec.Interface, nsLabels map[string]struct{}) []string {
 
 	extensions := []string{}
+	seen := map[string]struct{}{}
 
 	for _, ext := range cliExtensions {
+		suffix := suffix(ext)
+		if _, ok := seen[suffix]; ok {
+			continue
+		}
+		seen[suffix] = struct{}{}
+
 		mode := getCheckMode(ext, exec)
 		if mode == Always {
-			extensions = append(extensions, ext)
+			extensions = append(extensions, suffix)
 		} else if mode == Never {
 			// Noop
 		} else { // "cluster" is the default behavior.
-			if _, ok := nsLabels[suffix(ext)]; ok {
+			if _, ok := nsLabels[suffix]; ok {
 				extensions = append(extensions, ext)
 			}
 		}
@@ -478,8 +487,10 @@ func HintBaseURL(ver string) string {
 	return fmt.Sprintf("https://linkerd.io/%s/checks/#", stableVersion[1])
 }
 
-// isAlwaysCheck executes a command with a `config` subcommand, and returns true
-// if the output is a valid CheckCLIOutput struct.
+// getCheckMode executes a command with a `config` subcommand, and returns the
+// check mode. If we encounter any error, including if the `config` subcommand
+// is not supported or if the name field does not match the filename, then we
+// return "Cluster".
 func getCheckMode(path string, exec utilsexec.Interface) Checks {
 	cmd := exec.Command(path, "config")
 	var stdout, stderr bytes.Buffer
