@@ -546,12 +546,13 @@ func findCLIExtensionsOnPath(pathEnv string, glob Glob, exec utilsexec.Interface
 }
 
 // findAlwaysChecks filters a slice of linkerd-* executables to only those that
-// support the "config" subcommand, and announce themselves to "always" run.
+// support the "config" subcommand, and announce themselves to "always" run. the
+// checksSeen map returned informs the caller which extensions were identified
+// to always run, and therefore do not need to be evaluated for inclusion based
+// on on-cluster resources.
 func findAlwaysChecks(cliExtensions []string, exec utilsexec.Interface) ([]Extension, map[string]struct{}) {
 	extensions := []Extension{}
 
-	// keep track of which CLI Checks we've already seen, so we don't add them
-	// twice
 	checksSeen := map[string]struct{}{}
 
 	for _, e := range cliExtensions {
