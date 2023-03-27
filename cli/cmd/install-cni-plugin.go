@@ -139,7 +139,9 @@ A full list of configurable values can be found at https://artifacthub.io/packag
 		"use-wait-flag",
 		options.useWaitFlag,
 		"Configures the CNI plugin to use the \"-w\" flag for the iptables command. (default false)")
-		flags.AddValueOptionsFlags(cmd.Flags(), &option)	
+
+	flags.AddValueOptionsFlags(cmd.Flags(), &option)
+
 	return cmd
 }
 
@@ -190,11 +192,11 @@ func buildValues(options *cniPluginOptions, valuesOverrides map[string]interface
 	}
 
 	if val, exists := valuesOverrides["enablePSP"]; exists {
-        if enablePSP, ok := val.(bool); ok {
-            installValues.EnablePSP = enablePSP
-        } else {
-            return nil, fmt.Errorf("invalid type for enablePSP: %T", val)
-        }
+		if enablePSP, ok := val.(bool); ok {
+			installValues.EnablePSP = enablePSP
+		} else {
+			return nil, fmt.Errorf("invalid type for enablePSP: %T", val)
+		}
 	}
 
 	if val, exists := valuesOverrides["resources"]; exists {
@@ -202,12 +204,11 @@ func buildValues(options *cniPluginOptions, valuesOverrides map[string]interface
 		if err != nil {
 			return nil, err
 		}
-		
+
 		var resources cnicharts.Resources
 		if err := json.Unmarshal(jsonVal, &resources); err != nil {
-			return nil, fmt.Errorf("invalid type for resources: %v", err)
+			return nil, fmt.Errorf("invalid type for resources: %w", err)
 		}
-	
 		installValues.Resources = resources
 	}
 

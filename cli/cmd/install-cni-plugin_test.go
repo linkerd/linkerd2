@@ -90,7 +90,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 		goldenFileName string
 	}{
 		{defaultOptions, defaultValues, "install-cni-plugin_default.golden"},
-		{fullyConfiguredOptions, defaultValues,"install-cni-plugin_fully_configured.golden"},
+		{fullyConfiguredOptions, defaultValues, "install-cni-plugin_fully_configured.golden"},
 		{fullyConfiguredOptionsEqualDsts, defaultValues, "install-cni-plugin_fully_configured_equal_dsts.golden"},
 		{fullyConfiguredOptionsNoNamespace, defaultValues, "install-cni-plugin_fully_configured_no_namespace.golden"},
 		{defaultOptionsWithSkipPorts, defaultValues, "install-cni-plugin_skip_ports.golden"},
@@ -100,7 +100,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
 			var buf bytes.Buffer
-			err := renderCNIPlugin(&buf, tc.values , tc.cniPluginOptions)
+			err := renderCNIPlugin(&buf, tc.values, tc.cniPluginOptions)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
