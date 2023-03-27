@@ -368,7 +368,9 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
             weight,
             backend: Some(outbound::http_route::RouteBackend {
                 backend: Some(outbound::Backend {
-                    metadata: None,
+                    metadata: Some(Metadata {
+                        kind: Some(metadata::Kind::Default("invalid".to_string())),
+                    }),
                     queue: Some(default_queue_config()),
                     kind: None,
                 }),
