@@ -39,12 +39,18 @@ const (
 	linkerdTapAPIServiceName = "v1alpha1.tap.linkerd.io"
 )
 
+type VizOptions struct {
+	*healthcheck.Options
+	VizNamespaceOverride string
+}
+
 // HealthChecker wraps Linkerd's main healthchecker, adding extra fields for Viz
 type HealthChecker struct {
 	*healthcheck.HealthChecker
 	vizAPIClient          pb.ApiClient
 	vizNamespace          string
 	externalPrometheusURL string
+	vizNamespaceOverride  string
 }
 
 // NewHealthChecker returns an initialized HealthChecker for Viz
@@ -52,9 +58,12 @@ type HealthChecker struct {
 // are to be ran together with this instance
 // The returned instance does not contain any of the viz Categories and
 // to be explicitly added by using hc.AppendCategories
-func NewHealthChecker(parentCheckIDs []healthcheck.CategoryID, options *healthcheck.Options) *HealthChecker {
-	parentHC := healthcheck.NewHealthChecker(parentCheckIDs, options)
-	return &HealthChecker{HealthChecker: parentHC}
+func NewHealthChecker(parentCheckIDs []healthcheck.CategoryID, options *VizOptions) *HealthChecker {
+	parentHC := healthcheck.NewHealthChecker(parentCheckIDs, options.Options)
+	return &HealthChecker{
+		HealthChecker:        parentHC,
+		vizNamespaceOverride: options.VizNamespaceOverride,
+	}
 }
 
 // VizAPIClient returns a fully configured Viz API client
@@ -69,22 +78,57 @@ func (hc *HealthChecker) RunChecks(observer healthcheck.CheckObserver) (bool, bo
 
 // VizCategory returns a healthcheck.Category containing checkers
 // to verify the health of viz components
-func (hc *HealthChecker) VizCategory() *healthcheck.Category {
+// fullCheck parameter will decide to run a full or a smaller set of healthchecks.
+func (hc *HealthChecker) VizCategory(fullCheck bool) *healthcheck.Category {
 	vizSelector := fmt.Sprintf("%s=%s", k8s.LinkerdExtensionLabel, VizExtensionName)
-	return healthcheck.NewCategory(LinkerdVizExtensionCheck, []healthcheck.Checker{
+
+	checks := []healthcheck.Checker{
 		*healthcheck.NewChecker("linkerd-viz Namespace exists").
 			WithHintAnchor("l5d-viz-ns-exists").
 			Fatal().
 			WithCheck(func(ctx context.Context) error {
-				vizNs, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, "viz")
+				if hc.vizNamespaceOverride == "" {
+					vizNs, err := hc.KubeAPIClient().GetNamespaceWithExtensionLabel(ctx, "viz")
+					if err != nil {
+						return err
+					}
+
+					hc.vizNamespace = vizNs.Name
+					hc.externalPrometheusURL = vizNs.Annotations[labels.VizExternalPrometheus]
+					return nil
+				}
+
+				vizNs, err := hc.KubeAPIClient().GetNamespace(ctx, hc.vizNamespaceOverride)
 				if err != nil {
 					return err
+				}
+
+				if vizNs.Labels[k8s.LinkerdExtensionLabel] != "viz" {
+					return errors.New("This is not a linkerd-viz namespace")
 				}
 
 				hc.vizNamespace = vizNs.Name
 				hc.externalPrometheusURL = vizNs.Annotations[labels.VizExternalPrometheus]
 				return nil
+
 			}),
+		*healthcheck.NewChecker("can initialize the client").
+			WithHintAnchor("l5d-viz-existence-client").
+			Fatal().
+			WithCheck(func(ctx context.Context) (err error) {
+				if hc.APIAddr != "" {
+					hc.vizAPIClient, err = client.NewInternalClient(hc.APIAddr)
+				} else {
+					hc.vizAPIClient, err = client.NewExternalClient(ctx, hc.vizNamespace, hc.KubeAPIClient())
+				}
+				return
+			})}
+
+	if !fullCheck {
+		return healthcheck.NewCategory(LinkerdVizExtensionCheck, checks, true)
+	}
+
+	checks = append(checks,
 		*healthcheck.NewChecker("linkerd-viz ClusterRoles exist").
 			WithHintAnchor("l5d-viz-cr-exists").
 			Fatal().
@@ -245,17 +289,6 @@ func (hc *HealthChecker) VizCategory() *healthcheck.Category {
 
 				return healthcheck.CheckForPods(podList.Items, []string{"prometheus"})
 			}),
-		*healthcheck.NewChecker("can initialize the client").
-			WithHintAnchor("l5d-viz-existence-client").
-			Fatal().
-			WithCheck(func(ctx context.Context) (err error) {
-				if hc.APIAddr != "" {
-					hc.vizAPIClient, err = client.NewInternalClient(hc.APIAddr)
-				} else {
-					hc.vizAPIClient, err = client.NewExternalClient(ctx, hc.vizNamespace, hc.KubeAPIClient())
-				}
-				return
-			}),
 		*healthcheck.NewChecker("viz extension self-check").
 			WithHintAnchor("l5d-viz-metrics-api").
 			Fatal().
@@ -286,7 +319,9 @@ func (hc *HealthChecker) VizCategory() *healthcheck.Category {
 				errsStr := strings.Join(errs, "\n    ")
 				return errors.New(errsStr)
 			}),
-	}, true)
+	)
+
+	return healthcheck.NewCategory(LinkerdVizExtensionCheck, checks, true)
 }
 
 // VizDataPlaneCategory returns a healthcheck.Category containing checkers
