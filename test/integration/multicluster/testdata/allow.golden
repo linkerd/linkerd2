@@ -1,0 +1,69 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
+    pod-security.kubernetes.io/enforce: privileged
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .AccountName }}
+  namespace: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    linkerd.io/created-by: linkerd/cli {{ .Version }}
+rules:
+  - apiGroups: [""]
+    resources: ["services", "endpoints"]
+    verbs: ["list", "get", "watch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get"]
+    resourceNames: ["linkerd-config"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .AccountName }}
+  namespace: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    linkerd.io/created-by: linkerd/cli {{ .Version }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .AccountName }}-token
+  namespace: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    kubernetes.io/service-account.name: {{ .AccountName }}
+    linkerd.io/created-by: linkerd/cli {{ .Version }}
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .AccountName }}
+  namespace: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
+  annotations:
+    linkerd.io/created-by: linkerd/cli {{ .Version }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .AccountName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .AccountName }}
+    namespace: linkerd-multicluster
+---

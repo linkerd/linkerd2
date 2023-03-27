@@ -22,8 +22,9 @@ import (
 //////////////////////
 
 var (
-	TestHelper *testutil.TestHelper
-	contexts   map[string]string
+	TestHelper     *testutil.TestHelper
+	contexts       map[string]string
+	testDataDiffer testutil.TestDataDiffer
 )
 
 type (
@@ -245,6 +246,33 @@ func TestCheckMulticluster(t *testing.T) {
 	if err := TestHelper.TestCheck("--context", ctx); err != nil {
 		t.Fatalf("'linkerd check' command failed: %s", err)
 	}
+
+	t.Run("Outputs resources that allow service-mirror controllers to connect to target cluster", func(t *testing.T) {
+		if err := TestHelper.SwitchContext(contexts[testutil.TargetContextKey]); err != nil {
+			testutil.AnnotatedFatalf(t,
+				"failed to rebuild helper clientset with new context",
+				"failed to rebuild helper clientset with new context [%s]: %v",
+				contexts[testutil.TargetContextKey], err)
+		}
+		name := "foo"
+		out, err := TestHelper.LinkerdRun("mc", "allow", "--service-account-name", name)
+		if err != nil {
+			testutil.AnnotatedFatalf(t,
+				"failed to execute 'mc allow' command",
+				"failed to execute 'mc allow' command %s\n%s",
+				err.Error(), out)
+		}
+		params := map[string]string{
+			"Version":     TestHelper.GetVersion(),
+			"AccountName": name,
+		}
+		if err = testDataDiffer.DiffTestYAMLTemplate("allow.golden", out, params); err != nil {
+			testutil.AnnotatedFatalf(t,
+				"received unexpected output",
+				"received unexpected output\n%s",
+				err.Error())
+		}
+	})
 }
 
 //////////////////////
