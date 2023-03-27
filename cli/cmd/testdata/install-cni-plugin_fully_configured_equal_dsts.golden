@@ -157,6 +157,7 @@ spec:
         securityContext:
           readOnlyRootFilesystem: true
           privileged: 
+        resources:
       volumes:
       - name: cni-net-dir
         hostPath:

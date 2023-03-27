@@ -158,6 +158,7 @@ spec:
         securityContext:
           readOnlyRootFilesystem: true
           privileged: 
+        resources:
       volumes:
       - name: cni-bin-dir
         hostPath:

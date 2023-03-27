@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli/values"
 	"sigs.k8s.io/yaml"
 )
 
@@ -96,6 +98,7 @@ func newCmdInstallCNIPlugin() *cobra.Command {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	var option values.Options
 
 	cmd := &cobra.Command{
 		Use:   "install-cni [flags]",
@@ -108,7 +111,7 @@ assumes that the 'linkerd install' command will be executed with the
 '--linkerd-cni-enabled' flag. This command needs to be executed before the
 'linkerd install --linkerd-cni-enabled' command.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return renderCNIPlugin(os.Stdout, options)
+			return install(os.Stdout, option, options)
 		},
 	}
 
@@ -134,7 +137,7 @@ assumes that the 'linkerd install' command will be executed with the
 		"use-wait-flag",
 		options.useWaitFlag,
 		"Configures the CNI plugin to use the \"-w\" flag for the iptables command. (default false)")
-
+		flags.AddValueOptionsFlags(cmd.Flags(), &option)	
 	return cmd
 }
 
@@ -178,10 +181,32 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 	return &cniOptions, nil
 }
 
-func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
+func buildValues(options *cniPluginOptions, valuesOverrides map[string]interface{}) (*cnicharts.Values, error) {
 	installValues, err := cnicharts.NewValues()
 	if err != nil {
 		return nil, err
+	}
+
+	if val, exists := valuesOverrides["enablePSP"]; exists {
+        if enablePSP, ok := val.(bool); ok {
+            installValues.EnablePSP = enablePSP
+        } else {
+            return nil, fmt.Errorf("invalid type for enablePSP: %T", val)
+        }
+	}
+
+	if val, exists := valuesOverrides["resources"]; exists {
+		jsonVal, err := json.Marshal(val)
+		if err != nil {
+			return nil, err
+		}
+		
+		var resources cnicharts.Resources
+		if err := json.Unmarshal(jsonVal, &resources); err != nil {
+			return nil, fmt.Errorf("invalid type for resources: %v", err)
+		}
+	
+		installValues.Resources = resources
 	}
 
 	portsToRedirect := []string{}
@@ -204,13 +229,24 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 	return installValues, nil
 }
 
-func renderCNIPlugin(w io.Writer, config *cniPluginOptions) error {
+func install(w io.Writer, option values.Options, config *cniPluginOptions) error {
+
+	// Create values override
+	valuesOverrides, err := option.MergeValues(nil)
+	if err != nil {
+		return err
+	}
+
+	return renderCNIPlugin(w, valuesOverrides, config)
+}
+
+func renderCNIPlugin(w io.Writer, valuesOverrides map[string]interface{}, config *cniPluginOptions) error {
 
 	if err := config.validate(); err != nil {
 		return err
 	}
 
-	values, err := config.buildValues()
+	values, err := buildValues(config, valuesOverrides)
 	if err != nil {
 		return err
 	}
