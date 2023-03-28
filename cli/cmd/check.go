@@ -238,14 +238,14 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 
 	exec := utilsexec.New()
 
-	extensions, missing := healthcheck.FindExtensions(os.Getenv("PATH"), filepath.Glob, exec, nsLabels)
+	extensions, missing := findExtensions(os.Getenv("PATH"), filepath.Glob, exec, nsLabels)
 
 	// no extensions to check
 	if len(extensions) == 0 && len(missing) == 0 {
 		return true, false, nil
 	}
 
-	extensionSuccess, extensionWarning := healthcheck.RunExtensionsChecks(
+	extensionSuccess, extensionWarning := runExtensionsChecks(
 		wout, werr, extensions, missing, exec, getExtensionCheckFlags(cmd.Flags()), opts.output,
 	)
 	return extensionSuccess, extensionWarning, nil
