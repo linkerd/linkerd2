@@ -46,33 +46,35 @@ func findExtensions(pathEnv string, glob glob, exec utilsexec.Interface, nsLabel
 	// first, collect config extensions that are "always" enabled
 	extensions, checksSeen := findAlwaysChecks(cliExtensions, exec)
 
-	labelMap := map[string]struct{}{}
+	// nsLabelSet keeps track of the extension namespaces that we are still
+	// searching for an executable for.
+	nsLabelSet := map[string]struct{}{}
 	for _, label := range nsLabels {
 		if _, ok := checksSeen[label]; !ok {
-			labelMap[label] = struct{}{}
+			nsLabelSet[label] = struct{}{}
 		}
 	}
 
 	// second, collect on-cluster extensions
 	for _, e := range cliExtensions {
 		suffix := suffix(e)
-		if _, ok := labelMap[suffix]; ok {
+		if _, ok := nsLabelSet[suffix]; ok {
 			extensions = append(extensions, extension{path: e})
-			delete(labelMap, suffix)
+			delete(nsLabelSet, suffix)
 		}
 	}
 
 	// third, collect built-in extensions
-	for label := range labelMap {
+	for label := range nsLabelSet {
 		if _, ok := builtInChecks[label]; ok {
 			extensions = append(extensions, extension{path: os.Args[0], builtin: label})
-			delete(labelMap, label)
+			delete(nsLabelSet, label)
 		}
 	}
 
-	// anything left in labelMap is a missing executable
+	// anything left in nsLabelSet is a missing executable
 	missing := []string{}
-	for label := range labelMap {
+	for label := range nsLabelSet {
 		missing = append(missing, fmt.Sprintf("linkerd-%s", label))
 	}
 
@@ -90,7 +92,8 @@ func findExtensions(pathEnv string, glob glob, exec utilsexec.Interface, nsLabel
 }
 
 // findCLIExtensionsOnPath searches the path for all linkerd-* executables and
-// returns a slice of unique filepaths.
+// returns a slice of unique filepaths. if multiple executables have the same
+// name, only the one which comes earliest in the pathEnv is returned.
 func findCLIExtensionsOnPath(pathEnv string, glob glob, exec utilsexec.Interface) []string {
 	executables := []string{}
 	seen := map[string]struct{}{}
@@ -166,7 +169,7 @@ func isAlwaysCheck(path string, exec utilsexec.Interface) bool {
 	// output of config must match the executable name, and specific "always"
 	// i.e. linkerd-foo is allowed, linkerd-foo-v0.XX.X is not
 	_, filename := filepath.Split(path)
-	return configOutput.Name == filename && configOutput.Checks == healthcheck.Always
+	return strings.EqualFold(configOutput.Name, filename) && configOutput.Checks == healthcheck.Always
 }
 
 // parseJSONConfigOutput parses the output of a config subcommand. The data is

@@ -138,7 +138,7 @@ be json of the form:
 ```
 
 Note that for `linkerd check` to validate which extensions are opting-in, it
-runs `linkerd-* config` against executable in the PATH.
+runs `linkerd-* config` against every executable in the PATH.
 
 The extension may also implement further commands in addition to the ones
 defined here.
