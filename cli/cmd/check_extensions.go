@@ -45,13 +45,18 @@ func findExtensions(pathEnv string, glob glob, exec utilsexec.Interface, nsLabel
 	cliExtensions := findCLIExtensionsOnPath(pathEnv, glob, exec)
 
 	// first, collect config extensions that are "always" enabled
-	extensions, checksSeen := findAlwaysChecks(cliExtensions, exec)
+	extensions := findAlwaysChecks(cliExtensions, exec)
 
-	// nsLabelSet keeps track of the extension namespaces that we are still
-	// searching for an executable for.
+	alwaysSuffixSet := map[string]struct{}{}
+	for _, e := range extensions {
+		alwaysSuffixSet[suffix(e.path)] = struct{}{}
+	}
+
+	// nsLabelSet is the set of extension names which are installed on the cluster
+	// but are not "always" checks
 	nsLabelSet := map[string]struct{}{}
 	for _, label := range nsLabels {
-		if _, ok := checksSeen[label]; !ok {
+		if _, ok := alwaysSuffixSet[label]; !ok {
 			nsLabelSet[label] = struct{}{}
 		}
 	}
@@ -126,28 +131,17 @@ func findCLIExtensionsOnPath(pathEnv string, glob glob, exec utilsexec.Interface
 }
 
 // findAlwaysChecks filters a slice of linkerd-* executables to only those that
-// support the "config" subcommand, and announce themselves to "always" run. the
-// checksSeen map returned informs the caller which extensions were identified
-// to always run, and therefore do not need to be evaluated for inclusion based
-// on on-cluster resources.
-func findAlwaysChecks(cliExtensions []string, exec utilsexec.Interface) ([]extension, map[string]struct{}) {
+// support the "config" subcommand, and announce themselves to "always" run.
+func findAlwaysChecks(cliExtensions []string, exec utilsexec.Interface) []extension {
 	extensions := []extension{}
 
-	checksSeen := map[string]struct{}{}
-
 	for _, e := range cliExtensions {
-		suffix := suffix(e)
-		if _, ok := checksSeen[suffix]; ok {
-			continue
-		}
-
 		if isAlwaysCheck(e, exec) {
 			extensions = append(extensions, extension{path: e})
-			checksSeen[suffix] = struct{}{}
 		}
 	}
 
-	return extensions, checksSeen
+	return extensions
 }
 
 // isAlwaysCheck executes a command with a `config` subcommand, and returns true
