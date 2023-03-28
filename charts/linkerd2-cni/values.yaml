@@ -67,7 +67,7 @@ image:
 #
 # The pull secrets are applied to the respective service accounts
 # which will further orchestrate the deployments.
-imagePullSecrets:
+imagePullSecrets: []
 
 # -- Add additional initContainers to the daemonset
 extraInitContainers: []
@@ -90,16 +90,16 @@ extraInitContainers: []
 resources:
   cpu:
     # -- Maximum amount of CPU units that the cni container can use
-    limit: 
+    limit: ""
     # -- Amount of CPU units that the cni container requests
-    request: 
+    request: ""
   memory:
     # -- Maximum amount of memory that the cni container can use
-    limit: 
+    limit: ""
     # -- Amount of memory that the cni container requests
-    request: 
+    request: ""
   ephemeral-storage:
     # -- Maximum amount of ephemeral storage that the cni container can use
-    limit: 
+    limit: ""
     # -- Amount of ephemeral storage that the cni container requests
-    request: 
+    request: ""

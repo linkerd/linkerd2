@@ -23,8 +23,8 @@ type Image struct {
 }
 
 type Constraints struct {
-	Limit   uint `json:"limit"`
-	Request uint `json:"request"`
+	Limit   string `json:"limit"`
+	Request string `json:"request"`
 }
 
 // Resources represents the computational resources setup for a given container
@@ -36,24 +36,28 @@ type Resources struct {
 
 // Values contains the top-level elements in the cni Helm chart
 type Values struct {
-	InboundProxyPort    uint          `json:"inboundProxyPort"`
-	OutboundProxyPort   uint          `json:"outboundProxyPort"`
-	IgnoreInboundPorts  string        `json:"ignoreInboundPorts"`
-	IgnoreOutboundPorts string        `json:"ignoreOutboundPorts"`
-	CliVersion          string        `json:"cliVersion"`
-	Image               Image         `json:"image"`
-	LogLevel            string        `json:"logLevel"`
-	PortsToRedirect     string        `json:"portsToRedirect"`
-	ProxyUID            int64         `json:"proxyUID"`
-	DestCNINetDir       string        `json:"destCNINetDir"`
-	DestCNIBinDir       string        `json:"destCNIBinDir"`
-	UseWaitFlag         bool          `json:"useWaitFlag"`
-	PriorityClassName   string        `json:"priorityClassName"`
-	ProxyAdminPort      string        `json:"proxyAdminPort"`
-	ProxyControlPort    string        `json:"proxyControlPort"`
-	Tolerations         []interface{} `json:"tolerations"`
-	EnablePSP           bool          `json:"enablePSP"`
-	Resources           Resources     `json:"resources"`
+	InboundProxyPort    uint                `json:"inboundProxyPort"`
+	OutboundProxyPort   uint                `json:"outboundProxyPort"`
+	IgnoreInboundPorts  string              `json:"ignoreInboundPorts"`
+	IgnoreOutboundPorts string              `json:"ignoreOutboundPorts"`
+	CliVersion          string              `json:"cliVersion"`
+	Image               Image               `json:"image"`
+	LogLevel            string              `json:"logLevel"`
+	PortsToRedirect     string              `json:"portsToRedirect"`
+	ProxyUID            int64               `json:"proxyUID"`
+	DestCNINetDir       string              `json:"destCNINetDir"`
+	DestCNIBinDir       string              `json:"destCNIBinDir"`
+	UseWaitFlag         bool                `json:"useWaitFlag"`
+	PriorityClassName   string              `json:"priorityClassName"`
+	ProxyAdminPort      string              `json:"proxyAdminPort"`
+	ProxyControlPort    string              `json:"proxyControlPort"`
+	Tolerations         []interface{}       `json:"tolerations"`
+	PodLabels           map[string]string   `json:"podLabels"`
+	CommonLabels        map[string]string   `json:"commonLabels"`
+	ImagePullSecrets    []map[string]string `json:"imagePullSecrets"`
+	ExtraInitContainers []map[string]string `json:"extraInitContainers"`
+	EnablePSP           bool                `json:"enablePSP"`
+	Resources           Resources           `json:"resources"`
 }
 
 // NewValues returns a new instance of the Values type.

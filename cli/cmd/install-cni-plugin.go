@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -192,22 +191,34 @@ func buildValues(options *cniPluginOptions, valuesOverrides map[string]interface
 	}
 
 	if val, exists := valuesOverrides["enablePSP"]; exists {
-		if enablePSP, ok := val.(bool); ok {
-			installValues.EnablePSP = enablePSP
-		} else {
-			return nil, fmt.Errorf("invalid type for enablePSP: %T", val)
-		}
+		installValues.EnablePSP = val.(bool)
+	}
+
+	if val, exists := valuesOverrides["podLabel"]; exists {
+		installValues.PodLabels = val.(map[string]string)
+	}
+
+	if val, exists := valuesOverrides["commonLabels"]; exists {
+		installValues.CommonLabels = val.(map[string]string)
+	}
+
+	if val, exists := valuesOverrides["imagePullSecrets"]; exists {
+		installValues.ImagePullSecrets = val.([]map[string]string)
+	}
+
+	if val, exists := valuesOverrides["extraInitContainers"]; exists {
+		installValues.ExtraInitContainers = val.([]map[string]string)
 	}
 
 	if val, exists := valuesOverrides["resources"]; exists {
-		jsonVal, err := json.Marshal(val)
+		yamlVal, err := yaml.Marshal(val)
 		if err != nil {
 			return nil, err
 		}
 
 		var resources cnicharts.Resources
-		if err := json.Unmarshal(jsonVal, &resources); err != nil {
-			return nil, fmt.Errorf("invalid type for resources: %w", err)
+		if err := yaml.Unmarshal(yamlVal, &resources); err != nil {
+			return nil, err
 		}
 		installValues.Resources = resources
 	}
