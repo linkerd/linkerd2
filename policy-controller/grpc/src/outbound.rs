@@ -338,7 +338,15 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
             weight: svc.weight,
             backend: Some(outbound::http_route::RouteBackend {
                 backend: Some(outbound::Backend {
-                    metadata: None,
+                    metadata: Some(Metadata {
+                        kind: Some(metadata::Kind::Resource(api::meta::Resource {
+                            group: "core".to_string(),
+                            kind: "Service".to_string(),
+                            name: svc.name,
+                            namespace: svc.namespace,
+                            section: Default::default(),
+                        })),
+                    }),
                     queue: Some(default_queue_config()),
                     kind: Some(outbound::backend::Kind::Balancer(
                         outbound::backend::BalanceP2c {
@@ -359,7 +367,13 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
         Backend::Invalid { weight, message } => outbound::http_route::WeightedRouteBackend {
             weight,
             backend: Some(outbound::http_route::RouteBackend {
-                backend: None,
+                backend: Some(outbound::Backend {
+                    metadata: Some(Metadata {
+                        kind: Some(metadata::Kind::Default("invalid".to_string())),
+                    }),
+                    queue: Some(default_queue_config()),
+                    kind: None,
+                }),
                 filters: vec![outbound::http_route::Filter {
                     kind: Some(outbound::http_route::filter::Kind::FailureInjector(
                         api::http_route::HttpFailureInjector {
