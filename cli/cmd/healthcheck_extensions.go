@@ -296,7 +296,7 @@ func parseJSONCheckOutput(data []byte) (healthcheck.CheckResults, error) {
 			})
 		}
 	}
-	return healthcheck.CheckResults{results}, nil
+	return healthcheck.CheckResults{Results: results}, nil
 }
 
 // suffix returns the last part of a CLI check name, e.g.:
