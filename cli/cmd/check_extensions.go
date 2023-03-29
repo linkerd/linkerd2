@@ -44,7 +44,7 @@ var (
 func findExtensions(pathEnv string, glob glob, exec utilsexec.Interface, nsLabels []string) ([]extension, []string) {
 	cliExtensions := findCLIExtensionsOnPath(pathEnv, glob, exec)
 
-	// first, collect config extensions that are "always" enabled
+	// first, collect extensions that are "always" enabled
 	extensions := findAlwaysChecks(cliExtensions, exec)
 
 	alwaysSuffixSet := map[string]struct{}{}
@@ -131,7 +131,8 @@ func findCLIExtensionsOnPath(pathEnv string, glob glob, exec utilsexec.Interface
 }
 
 // findAlwaysChecks filters a slice of linkerd-* executables to only those that
-// support the "config" subcommand, and announce themselves to "always" run.
+// support the "_extension-metadata" subcommand, and announce themselves to
+// "always" run.
 func findAlwaysChecks(cliExtensions []string, exec utilsexec.Interface) []extension {
 	extensions := []extension{}
 
@@ -144,10 +145,10 @@ func findAlwaysChecks(cliExtensions []string, exec utilsexec.Interface) []extens
 	return extensions
 }
 
-// isAlwaysCheck executes a command with a `config` subcommand, and returns true
-// if the output is a valid CheckCLIOutput struct.
+// isAlwaysCheck executes a command with an "_extension-metadata" subcommand,
+// and returns true if the output is a valid ExtensionMetadataOutput struct.
 func isAlwaysCheck(path string, exec utilsexec.Interface) bool {
-	cmd := exec.Command(path, "config")
+	cmd := exec.Command(path, healthcheck.ExtensionMetadataSubcommand)
 	var stdout, stderr bytes.Buffer
 	cmd.SetStdout(&stdout)
 	cmd.SetStderr(&stderr)
@@ -156,26 +157,28 @@ func isAlwaysCheck(path string, exec utilsexec.Interface) bool {
 		return false
 	}
 
-	configOutput, err := parseJSONConfigOutput(stdout.Bytes())
+	metadataOutput, err := parseJSONMetadataOutput(stdout.Bytes())
 	if err != nil {
 		return false
 	}
 
-	// output of config must match the executable name, and specific "always"
+	// output of _extension-metadata must match the executable name, and specific
+	// "always"
 	// i.e. linkerd-foo is allowed, linkerd-foo-v0.XX.X is not
 	_, filename := filepath.Split(path)
-	return strings.EqualFold(configOutput.Name, filename) && configOutput.Checks == healthcheck.Always
+	return strings.EqualFold(metadataOutput.Name, filename) && metadataOutput.Checks == healthcheck.Always
 }
 
-// parseJSONConfigOutput parses the output of a config subcommand. The data is
-// expected to be a ConfigOutput struct serialized to json.
-func parseJSONConfigOutput(data []byte) (healthcheck.ConfigOutput, error) {
-	var config healthcheck.ConfigOutput
-	err := json.Unmarshal(data, &config)
+// parseJSONMetadataOutput parses the output of an _extension-metadata
+// subcommand. The data is expected to be a ExtensionMetadataOutput struct
+// serialized to json.
+func parseJSONMetadataOutput(data []byte) (healthcheck.ExtensionMetadataOutput, error) {
+	var metadata healthcheck.ExtensionMetadataOutput
+	err := json.Unmarshal(data, &metadata)
 	if err != nil {
-		return healthcheck.ConfigOutput{}, err
+		return healthcheck.ExtensionMetadataOutput{}, err
 	}
-	return config, nil
+	return metadata, nil
 }
 
 // runExtensionsChecks runs checks for each extension name passed into the

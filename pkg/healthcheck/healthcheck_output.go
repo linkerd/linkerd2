@@ -42,6 +42,10 @@ var (
 type Checks string
 
 const (
+	// ExtensionMetadataSubcommand is the subcommand name an extension must
+	// support in order to provide config metadata to the "linkerd" CLI.
+	ExtensionMetadataSubcommand = "_extension-metadata"
+
 	// Always run the check, regardless of cluster state
 	Always Checks = "always"
 	// // TODO:
@@ -52,8 +56,8 @@ const (
 	// Never Checks = "never"
 )
 
-// ConfigOutput contains the output of a config subcommand.
-type ConfigOutput struct {
+// ExtensionMetadataOutput contains the output of a _extension-metadata subcommand.
+type ExtensionMetadataOutput struct {
 	Name   string `json:"name"`
 	Checks Checks `json:"checks"`
 }
