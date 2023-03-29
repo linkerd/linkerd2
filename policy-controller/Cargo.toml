@@ -47,7 +47,7 @@ features = ["admission", "derive"]
 [dependencies.kubert]
 version = "0.15"
 default-features = false
-features = ["clap", "index", "lease", "runtime", "server"]
+features = ["clap", "index", "lease", "runtime", "server", "metrics"]
 
 [dependencies.tokio]
 version = "1"

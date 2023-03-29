@@ -64,7 +64,10 @@ skip = [
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-allow-git = ["https://github.com/linkerd/linkerd2-proxy-api"]
+allow-git = [
+    "https://github.com/linkerd/linkerd2-proxy-api",
+    "https://github.com/olix0r/kubert",
+]
 
 [sources.allow-org]
 github = []
