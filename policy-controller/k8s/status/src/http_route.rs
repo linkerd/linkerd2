@@ -37,7 +37,7 @@ pub(crate) fn make_parents(http_route: &policy::HttpRoute) -> Vec<ParentReferenc
         .parent_refs
         .iter()
         .flatten()
-        .map(|parent_ref| ParentReference::from_parent_ref(parent_ref, namespace))
+        .map(|pr| ParentReference::from_parent_ref(pr, namespace))
         .collect()
 }
 

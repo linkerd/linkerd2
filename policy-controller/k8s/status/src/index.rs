@@ -21,9 +21,10 @@ use tokio::{
 pub(crate) const POLICY_API_GROUP: &str = "policy.linkerd.io";
 const POLICY_API_VERSION: &str = "policy.linkerd.io/v1alpha1";
 
-// Condition types
-const RESOLVED_REFS: &str = "ResolvedRefs";
-const ACCEPTED: &str = "Accepted";
+mod conditions {
+    pub const RESOLVED_REFS: &str = "ResolvedRefs";
+    pub const ACCEPTED: &str = "Accepted";
+}
 
 // Condition reasons
 const BACKEND_NOT_FOUND: &str = "BackendNotFound";
