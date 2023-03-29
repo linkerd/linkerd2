@@ -1,20 +1,16 @@
 package healthcheck
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
-	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/mattn/go-isatty"
 )
 
@@ -27,11 +23,6 @@ const (
 	WideOutput = "wide"
 	// ShortOutput is used to specify the short output format
 	ShortOutput = "short"
-
-	// CoreHeader is used when printing core header checks
-	CoreHeader = "core"
-	// extensionsHeader is used when printing extensions header checks
-	extensionsHeader = "extensions"
 
 	// DefaultHintBaseURL is the default base URL on the linkerd.io website
 	// that all check hints for the latest linkerd version point to. Each
@@ -46,6 +37,30 @@ var (
 
 	reStableVersion = regexp.MustCompile(`stable-(\d\.\d+)\.`)
 )
+
+// Checks describes the "checks" field on a CheckCLIOutput
+type Checks string
+
+const (
+	// ExtensionMetadataSubcommand is the subcommand name an extension must
+	// support in order to provide config metadata to the "linkerd" CLI.
+	ExtensionMetadataSubcommand = "_extension-metadata"
+
+	// Always run the check, regardless of cluster state
+	Always Checks = "always"
+	// // TODO:
+	// // Cluster informs "linkerd check" to only run this extension if there are
+	// // on-cluster resources.
+	// Cluster Checks = "cluster"
+	// // Never informs "linkerd check" to never run this extension.
+	// Never Checks = "never"
+)
+
+// ExtensionMetadataOutput contains the output of a _extension-metadata subcommand.
+type ExtensionMetadataOutput struct {
+	Name   string `json:"name"`
+	Checks Checks `json:"checks"`
+}
 
 // CheckResults contains a slice of CheckResult structs.
 type CheckResults struct {
@@ -92,14 +107,6 @@ func (cr CheckResults) RunChecks(observer CheckObserver) (bool, bool) {
 	return success, warning
 }
 
-// PrintChecksHeader writes the header text for a check.
-func PrintChecksHeader(wout io.Writer, header string) {
-	headerText := fmt.Sprintf("Linkerd %s checks", header)
-	fmt.Fprintln(wout, headerText)
-	fmt.Fprintln(wout, strings.Repeat("=", len(headerText)))
-	fmt.Fprintln(wout)
-}
-
 // PrintChecksResult writes the checks result.
 func PrintChecksResult(wout io.Writer, output string, success bool, warning bool) {
 	if output == JSONOutput {
@@ -112,95 +119,6 @@ func PrintChecksResult(wout io.Writer, output string, success bool, warning bool
 	case false:
 		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
 	}
-}
-
-// RunExtensionsChecks runs checks for each extension name passed into the `extensions` parameter
-// and handles formatting the output for each extension's check. This function also handles
-// finding the extension in the user's path and runs it.
-func RunExtensionsChecks(wout io.Writer, werr io.Writer, extensions []string, flags []string, output string) (bool, bool) {
-	if output == TableOutput {
-		PrintChecksHeader(wout, extensionsHeader)
-	}
-
-	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-	spin.Writer = wout
-
-	success := true
-	warning := false
-	for _, extension := range extensions {
-		var path string
-		args := append([]string{"check"}, flags...)
-		var err error
-		results := CheckResults{
-			Results: []CheckResult{},
-		}
-		extensionCmd := fmt.Sprintf("linkerd-%s", extension)
-
-		switch extension {
-		case "jaeger":
-			path = os.Args[0]
-			args = append([]string{"jaeger"}, args...)
-		case "viz":
-			path = os.Args[0]
-			args = append([]string{"viz"}, args...)
-		case "multicluster":
-			path = os.Args[0]
-			args = append([]string{"multicluster"}, args...)
-		default:
-			path, err = exec.LookPath(extensionCmd)
-			results.Results = []CheckResult{
-				{
-					Category:    CategoryID(extensionCmd),
-					Description: fmt.Sprintf("Linkerd extension command %s exists", extensionCmd),
-					Err:         err,
-					HintURL:     HintBaseURL(version.Version) + "extensions",
-					Warning:     true,
-				},
-			}
-		}
-
-		if err == nil {
-			if isatty.IsTerminal(os.Stdout.Fd()) {
-				spin.Suffix = fmt.Sprintf(" Running %s extension check", extension)
-				spin.Color("bold") // this calls spin.Restart()
-			}
-			// Path is constructed from the switch statements above and will
-			// be a valid Linkerd subcommand.
-			//nolint:gosec
-			plugin := exec.Command(path, args...)
-			var stdout, stderr bytes.Buffer
-			plugin.Stdout = &stdout
-			plugin.Stderr = &stderr
-			plugin.Run()
-			extensionResults, err := parseJSONCheckOutput(stdout.Bytes())
-			spin.Stop()
-			if err != nil {
-				command := fmt.Sprintf("%s %s", path, strings.Join(args, " "))
-				if len(stderr.String()) > 0 {
-					err = errors.New(stderr.String())
-				} else {
-					err = fmt.Errorf("invalid extension check output from \"%s\" (JSON object expected):\n%s\n[%w]", command, stdout.String(), err)
-				}
-				results.Results = append(results.Results, CheckResult{
-					Category:    CategoryID(extensionCmd),
-					Description: fmt.Sprintf("Running: %s", command),
-					Err:         err,
-					HintURL:     HintBaseURL(version.Version) + "extensions",
-				})
-				success = false
-			} else {
-				results.Results = append(results.Results, extensionResults.Results...)
-			}
-		}
-
-		var extensionSuccess bool
-		extensionSuccess, warning = RunChecks(wout, werr, results, output)
-		if !extensionSuccess {
-			success = false
-		}
-	}
-
-	return success, warning
 }
 
 // RunChecks runs the checks that are part of hc
@@ -235,14 +153,12 @@ func runChecksTable(wout io.Writer, hc Runner, output string) (bool, bool) {
 		printResultDescription(wout, status, result)
 	}
 
-	var headerPrinted bool
 	prettyPrintResultsShort := func(result *CheckResult) {
 		// bail out early and skip printing if we've got an okStatus
 		if result.Err == nil {
 			return
 		}
 
-		headerPrinted = printHeader(wout, headerPrinted, hc)
 		lastCategory = printCategory(wout, lastCategory, result)
 
 		spin.Stop()
@@ -340,35 +256,6 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc Runner) (bool, bool) {
 	return success, warning
 }
 
-// parseJSONCheckOutput parses the output of a check command run with json
-// output mode. The data is expected to be a CheckOutput struct serialized
-// to json. In addition to deserializing, this function will convert the result
-// to a CheckResults struct.
-func parseJSONCheckOutput(data []byte) (CheckResults, error) {
-	var checks CheckOutput
-	err := json.Unmarshal(data, &checks)
-	if err != nil {
-		return CheckResults{}, err
-	}
-	results := []CheckResult{}
-	for _, category := range checks.Categories {
-		for _, check := range category.Checks {
-			var err error
-			if check.Error != "" {
-				err = errors.New(check.Error)
-			}
-			results = append(results, CheckResult{
-				Category:    category.Name,
-				Description: check.Description,
-				Err:         err,
-				HintURL:     check.Hint,
-				Warning:     check.Result == CheckWarn,
-			})
-		}
-	}
-	return CheckResults{results}, nil
-}
-
 func printResultDescription(wout io.Writer, status string, result *CheckResult) {
 	fmt.Fprintf(wout, "%s %s\n", status, result.Description)
 
@@ -399,28 +286,6 @@ func restartSpinner(spin *spinner.Spinner, result *CheckResult) {
 		spin.Suffix = fmt.Sprintf(" %s", result.Err)
 		spin.Color("bold") // this calls spin.Restart()
 	}
-}
-
-// When running in short mode, we defer writing the header
-// until the first time we print a warning or error result.
-func printHeader(wout io.Writer, headerPrinted bool, hc Runner) bool {
-	if headerPrinted {
-		return headerPrinted
-	}
-
-	switch v := hc.(type) {
-	case *HealthChecker:
-		if v.IsMainCheckCommand {
-			PrintChecksHeader(wout, CoreHeader)
-			headerPrinted = true
-		}
-	// When RunExtensionChecks called
-	case CheckResults:
-		PrintChecksHeader(wout, extensionsHeader)
-		headerPrinted = true
-	}
-
-	return headerPrinted
 }
 
 func printCategory(wout io.Writer, lastCategory CategoryID, result *CheckResult) CategoryID {
