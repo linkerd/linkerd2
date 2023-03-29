@@ -1,8 +1,8 @@
-use k8s_gateway_api::BackendObjectReference;
 pub use k8s_gateway_api::{
-    CommonRouteSpec, Hostname, HttpBackendRef, HttpHeader, HttpHeaderMatch, HttpHeaderName,
-    HttpMethod, HttpPathMatch, HttpPathModifier, HttpQueryParamMatch, HttpRequestHeaderFilter,
-    HttpRequestRedirectFilter, HttpRouteMatch, LocalObjectReference, ParentReference, RouteStatus,
+    BackendObjectReference, CommonRouteSpec, Hostname, HttpBackendRef, HttpHeader, HttpHeaderMatch,
+    HttpHeaderName, HttpMethod, HttpPathMatch, HttpPathModifier, HttpQueryParamMatch,
+    HttpRequestHeaderFilter, HttpRequestRedirectFilter, HttpRouteMatch, LocalObjectReference,
+    ParentReference, RouteStatus,
 };
 
 /// HTTPRoute provides a way to route HTTP requests. This includes the
