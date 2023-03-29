@@ -194,30 +194,41 @@ func buildValues(options *cniPluginOptions, valuesOverrides map[string]interface
 		installValues.EnablePSP = val.(bool)
 	}
 
-	if val, exists := valuesOverrides["podLabel"]; exists {
-		installValues.PodLabels = val.(map[string]string)
+	if val, exists := valuesOverrides["podLabels"]; exists {
+		var podLabels map[string]string
+		if err := parseYAMLValue(val, &podLabels); err != nil {
+			return nil, err
+		}
+		installValues.PodLabels = podLabels
 	}
 
 	if val, exists := valuesOverrides["commonLabels"]; exists {
-		installValues.CommonLabels = val.(map[string]string)
+		var commonLabels map[string]string
+		if err := parseYAMLValue(val, &commonLabels); err != nil {
+			return nil, err
+		}
+		installValues.CommonLabels = commonLabels
 	}
 
 	if val, exists := valuesOverrides["imagePullSecrets"]; exists {
-		installValues.ImagePullSecrets = val.([]map[string]string)
+		var imagePullSecrets []map[string]string
+		if err := parseYAMLValue(val, &imagePullSecrets); err != nil {
+			return nil, err
+		}
+		installValues.ImagePullSecrets = imagePullSecrets
 	}
 
 	if val, exists := valuesOverrides["extraInitContainers"]; exists {
-		installValues.ExtraInitContainers = val.([]map[string]string)
+		var extraInitContainers []map[string]string
+		if err := parseYAMLValue(val, &extraInitContainers); err != nil {
+			return nil, err
+		}
+		installValues.ExtraInitContainers = extraInitContainers
 	}
 
 	if val, exists := valuesOverrides["resources"]; exists {
-		yamlVal, err := yaml.Marshal(val)
-		if err != nil {
-			return nil, err
-		}
-
 		var resources cnicharts.Resources
-		if err := yaml.Unmarshal(yamlVal, &resources); err != nil {
+		if err := parseYAMLValue(val, &resources); err != nil {
 			return nil, err
 		}
 		installValues.Resources = resources
@@ -241,6 +252,17 @@ func buildValues(options *cniPluginOptions, valuesOverrides map[string]interface
 	installValues.UseWaitFlag = options.useWaitFlag
 	installValues.PriorityClassName = options.priorityClassName
 	return installValues, nil
+}
+
+func parseYAMLValue(val interface{}, target interface{}) error {
+	yamlVal, err := yaml.Marshal(val)
+	if err != nil {
+		return err
+	}
+	if err := yaml.Unmarshal(yamlVal, target); err != nil {
+		return err
+	}
+	return nil
 }
 
 func install(w io.Writer, option values.Options, config *cniPluginOptions) error {
