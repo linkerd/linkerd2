@@ -310,11 +310,7 @@ spec:
         - containerPort: 8090
           name: grpc
         - containerPort: 9990
-          {{- /*
-              Rename the port to `admin-http` once `/metrics` endpoint is supported
-              to include this in the prometheus scrapes.
-          */}}
-          name: admin
+          name: admin-http
         - containerPort: 9443
           name: policy-https
         readinessProbe:

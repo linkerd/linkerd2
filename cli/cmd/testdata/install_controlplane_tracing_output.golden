@@ -1387,7 +1387,7 @@ spec:
         - containerPort: 8090
           name: grpc
         - containerPort: 9990
-          name: admin
+          name: admin-http
         - containerPort: 9443
           name: policy-https
         readinessProbe:
