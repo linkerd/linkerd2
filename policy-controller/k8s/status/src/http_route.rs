@@ -54,7 +54,7 @@ pub(crate) fn make_backends(http_route: &policy::HttpRoute) -> Vec<BackendRefere
         .flatten()
         .flat_map(|rule| rule.backend_refs.iter().flatten())
         .filter_map(|http_backend_ref| http_backend_ref.backend_ref.as_ref())
-        .map(|backend_ref| BackendReference::from_backend_ref(&backend_ref.inner, namespace))
+        .map(|br| BackendReference::from_backend_ref(&br.inner, namespace))
         .collect()
 }
 

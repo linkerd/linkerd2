@@ -26,14 +26,17 @@ mod conditions {
     pub const ACCEPTED: &str = "Accepted";
 }
 
-// Condition reasons
-const BACKEND_NOT_FOUND: &str = "BackendNotFound";
-const INVALID_KIND: &str = "InvalidKind";
-const NO_MATCHING_PARENT: &str = "NoMatchingParent";
+mod reasons {
+    pub const RESOLVED_REFS: &str = "ResolvedRefs";
+    pub const BACKEND_NOT_FOUND: &str = "BackendNotFound";
+    pub const INVALID_KIND: &str = "InvalidKind";
+    pub const NO_MATCHING_PARENT: &str = "NoMatchingParent";
+}
 
-// Condition status
-const STATUS_TRUE: &str = "True";
-const STATUS_FALSE: &str = "False";
+mod cond_statuses {
+    pub const STATUS_TRUE: &str = "True";
+    pub const STATUS_FALSE: &str = "False";
+}
 
 pub type SharedIndex = Arc<RwLock<Index>>;
 
@@ -437,9 +440,9 @@ fn no_matching_parent() -> k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
         observed_generation: None,
-        reason: NO_MATCHING_PARENT.to_string(),
-        status: STATUS_FALSE.to_string(),
-        type_: ACCEPTED.to_string(),
+        reason: reasons::NO_MATCHING_PARENT.to_string(),
+        status: cond_statuses::STATUS_FALSE.to_string(),
+        type_: conditions::ACCEPTED.to_string(),
     }
 }
 
@@ -448,9 +451,9 @@ fn accepted() -> k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
         observed_generation: None,
-        reason: ACCEPTED.to_string(),
-        status: STATUS_TRUE.to_string(),
-        type_: ACCEPTED.to_string(),
+        reason: conditions::ACCEPTED.to_string(),
+        status: cond_statuses::STATUS_TRUE.to_string(),
+        type_: conditions::ACCEPTED.to_string(),
     }
 }
 
@@ -459,9 +462,9 @@ fn resolved_refs() -> k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
         observed_generation: None,
-        reason: RESOLVED_REFS.to_string(),
-        status: STATUS_TRUE.to_string(),
-        type_: RESOLVED_REFS.to_string(),
+        reason: reasons::RESOLVED_REFS.to_string(),
+        status: cond_statuses::STATUS_TRUE.to_string(),
+        type_: conditions::RESOLVED_REFS.to_string(),
     }
 }
 
@@ -470,9 +473,9 @@ fn backend_not_found() -> k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
         observed_generation: None,
-        reason: BACKEND_NOT_FOUND.to_string(),
-        status: STATUS_FALSE.to_string(),
-        type_: RESOLVED_REFS.to_string(),
+        reason: reasons::BACKEND_NOT_FOUND.to_string(),
+        status: cond_statuses::STATUS_FALSE.to_string(),
+        type_: conditions::RESOLVED_REFS.to_string(),
     }
 }
 
@@ -481,8 +484,8 @@ fn invalid_backend_kind() -> k8s::Condition {
         last_transition_time: k8s::Time(now()),
         message: "".to_string(),
         observed_generation: None,
-        reason: INVALID_KIND.to_string(),
-        status: STATUS_FALSE.to_string(),
-        type_: RESOLVED_REFS.to_string(),
+        reason: reasons::INVALID_KIND.to_string(),
+        status: cond_statuses::STATUS_FALSE.to_string(),
+        type_: conditions::RESOLVED_REFS.to_string(),
     }
 }
