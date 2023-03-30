@@ -484,7 +484,7 @@ mc-target-k3d-delete:
             k3d-delete
     fi
 
-_mc-load: _k3d-init linkerd-load linkerd-viz-load
+_mc-load: _k3d-init linkerd-load
 
 _mc-target-load:
     @{{ just_executable() }} \

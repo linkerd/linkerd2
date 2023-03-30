@@ -11,18 +11,17 @@ require (
 	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/fatih/color v1.15.0
 	github.com/fsnotify/fsnotify v1.6.0
-	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.20.8
 	github.com/go-test/deep v1.1.0
 	github.com/golang/protobuf v1.5.3
 	github.com/gorilla/websocket v1.5.0
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/imdario/mergo v0.3.14
+	github.com/imdario/mergo v0.3.15
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/linkerd/linkerd2-proxy-api v0.7.0
 	github.com/linkerd/linkerd2-proxy-init v1.6.2
-	github.com/mattn/go-isatty v0.0.17
+	github.com/mattn/go-isatty v0.0.18
 	github.com/mattn/go-runewidth v0.0.14
 	github.com/nsf/termbox-go v1.1.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -48,7 +47,7 @@ require (
 	k8s.io/client-go v0.26.3
 	k8s.io/code-generator v0.26.3
 	k8s.io/klog/v2 v2.90.1
-	k8s.io/kube-aggregator v0.26.2
+	k8s.io/kube-aggregator v0.26.3
 	sigs.k8s.io/gateway-api v0.6.2
 	sigs.k8s.io/yaml v1.3.0
 )

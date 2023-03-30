@@ -17,6 +17,7 @@ import (
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/metrics-api/util"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	hc "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 	pkgUtil "github.com/linkerd/linkerd2/viz/pkg/util"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
@@ -127,13 +128,16 @@ func NewCmdEdges() *cobra.Command {
 
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
 			// https://github.com/grpc/grpc-go/issues/682
-			client := api.CheckClientOrExit(healthcheck.Options{
-				ControlPlaneNamespace: controlPlaneNamespace,
-				KubeConfig:            kubeconfigPath,
-				Impersonate:           impersonate,
-				ImpersonateGroup:      impersonateGroup,
-				KubeContext:           kubeContext,
-				APIAddr:               apiAddr,
+			client := api.CheckClientOrExit(hc.VizOptions{
+				Options: &healthcheck.Options{
+					ControlPlaneNamespace: controlPlaneNamespace,
+					KubeConfig:            kubeconfigPath,
+					Impersonate:           impersonate,
+					ImpersonateGroup:      impersonateGroup,
+					KubeContext:           kubeContext,
+					APIAddr:               apiAddr,
+				},
+				VizNamespaceOverride: vizNamespace,
 			})
 
 			c := make(chan indexedEdgeResults, len(reqs))

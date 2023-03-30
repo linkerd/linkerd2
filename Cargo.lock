@@ -284,9 +284,9 @@ dependencies = [
 
 [[package]]
 name = "cxx"
-version = "1.0.92"
+version = "1.0.94"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a140f260e6f3f79013b8bfc65e7ce630c9ab4388c6a89c71e07226f49487b72"
+checksum = "f61f1b6389c3fe1c316bf8a4dccc90a38208354b330925bce1f74a6c4756eb93"
 dependencies = [
  "cc",
  "cxxbridge-flags",
@@ -296,9 +296,9 @@ dependencies = [
 
 [[package]]
 name = "cxx-build"
-version = "1.0.93"
+version = "1.0.94"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb8307ad413a98fff033c8545ecf133e3257747b3bae935e7602aab8aa92d4ca"
+checksum = "12cee708e8962df2aeb38f594aae5d827c022b6460ac71a7a3e2c3c2aae5a07b"
 dependencies = [
  "cc",
  "codespan-reporting",
@@ -311,19 +311,19 @@ dependencies = [
 
 [[package]]
 name = "cxxbridge-flags"
-version = "1.0.92"
+version = "1.0.94"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90201c1a650e95ccff1c8c0bb5a343213bdd317c6e600a93075bca2eff54ec97"
+checksum = "7944172ae7e4068c533afbb984114a56c46e9ccddda550499caa222902c7f7bb"
 
 [[package]]
 name = "cxxbridge-macro"
-version = "1.0.92"
+version = "1.0.94"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b75aed41bb2e6367cae39e6326ef817a851db13c13e4f3263714ca3cfb8de56"
+checksum = "2345488264226bf682893e25de0769f3360aac9957980ec49361b083ddaa5bc5"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.2",
 ]
 
 [[package]]
@@ -715,16 +715,16 @@ dependencies = [
 
 [[package]]
 name = "iana-time-zone"
-version = "0.1.53"
+version = "0.1.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64c122667b287044802d6ce17ee2ddf13207ed924c712de9a66a5814d5b64765"
+checksum = "0c17cc76786e99f8d2f055c11159e7f0091c42474dcc3189fbab96072e873e6d"
 dependencies = [
  "android_system_properties",
  "core-foundation-sys",
  "iana-time-zone-haiku",
  "js-sys",
  "wasm-bindgen",
- "winapi",
+ "windows",
 ]
 
 [[package]]
@@ -774,9 +774,9 @@ dependencies = [
 
 [[package]]
 name = "ipnet"
-version = "2.7.1"
+version = "2.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30e22bd8629359895450b59ea7a776c850561b96a3b1d31321c1949d9e6c9146"
+checksum = "12b6ee2129af8d4fb011108c73d99a1b83a85977f23b82460c0ae2e25bb4b57f"
 dependencies = [
  "schemars",
  "serde",
@@ -1325,9 +1325,9 @@ checksum = "b7e5500299e16ebb147ae15a00a942af264cf3688f47923b8fc2cd5858f23ad3"
 
 [[package]]
 name = "openssl"
-version = "0.10.46"
+version = "0.10.48"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd2523381e46256e40930512c7fd25562b9eae4812cb52078f155e87217c9d1e"
+checksum = "518915b97df115dd36109bfa429a48b8f737bd05508cf9588977b599648926d2"
 dependencies = [
  "bitflags",
  "cfg-if",
@@ -1366,9 +1366,9 @@ dependencies = [
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.82"
+version = "0.9.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a95792af3c4e0153c3914df2261bedd30a98476f94dc892b67dfe1d89d433a04"
+checksum = "666416d899cf077260dac8698d60a60b435a46d57e82acb1be3d0dad87284e5b"
 dependencies = [
  "autocfg",
  "cc",
@@ -1507,9 +1507,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.52"
+version = "1.0.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d0e1ae9e836cc3beddd63db0df682593d7e2d3d891ae8c9083d2113e1744224"
+checksum = "ba466839c78239c09faf015484e5cc04860f88242cff4d03eb038f04b4699b73"
 dependencies = [
  "unicode-ident",
 ]
@@ -1607,9 +1607,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.7.2"
+version = "1.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cce168fea28d3e05f158bda4576cf0c844d5045bc2cc3620fa0292ed5bb5814c"
+checksum = "8b1f693b24f6ac912f4893ef08244d70b6067480d2f1a46e950c9691e6749d1d"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -2520,6 +2520,15 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
+
+[[package]]
+name = "windows"
+version = "0.46.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdacb41e6a96a052c6cb63a144f24900236121c6f63f4f8219fef5977ecb0c25"
+dependencies = [
+ "windows-targets",
+]
 
 [[package]]
 name = "windows-sys"

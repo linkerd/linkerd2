@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ghodss/yaml"
+	"sigs.k8s.io/yaml"
 
 	"github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/pkg/k8s"
