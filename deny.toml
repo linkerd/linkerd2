@@ -59,7 +59,7 @@ skip = [
     # have diverged significantly.
     { name = "base64" },
     # syn v2 has been released and some libraries are slower to adopt it
-    { name = "syn", verison = "1.0" }
+    { name = "syn", version = "1.0" }
 ]
 
 [sources]
