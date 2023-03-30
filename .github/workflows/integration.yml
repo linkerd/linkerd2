@@ -372,7 +372,7 @@ jobs:
           bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
       - name: Load docker images
         run: |
-          for img in controller policy-controller proxy web metrics-api tap jaeger-webhook; do
+          for img in controller policy-controller proxy; do
             docker load <"image-archives/${img}.tar"
           done
       - run: docker image ls
