@@ -38,6 +38,9 @@ exceptions = [
         "Apache-2.0",
         "Unicode-DFS-2016",
     ], name = "unicode-ident" },
+    { allow = [
+        "Zlib",
+    ], name = "adler32" },
 ]
 
 [[licenses.clarify]]

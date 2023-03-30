@@ -1381,7 +1381,7 @@ spec:
         livenessProbe:
           httpGet:
             path: /live
-            port: admin
+            port: admin-http
         name: policy
         ports:
         - containerPort: 8090
@@ -1394,7 +1394,7 @@ spec:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: admin
+            port: admin-http
           initialDelaySeconds: 10
         resources:
         securityContext:
