@@ -7,9 +7,9 @@ route outbound traffic, and continues extending the HTTPRoute resource's Status
 field. It also starts integrating circuit-breaking functionality into the proxy,
 which will be configurable in a subsequent iteration.
 
-* Continued iterating over the HTTPRoute's Status field, by extending support
-  for routes parented to Services, and adding a ResolvedRefs condition
-  reflecting the status of BackendRefs
+* Continued iterating on the HTTPRoute's Status field, by extending support for
+  routes parented to Services, and adding a ResolvedRefs condition reflecting
+  the status of BackendRefs
 * Updated the OutboundPolicies API such that only HTTPRoutes with an Accepted
   status of `true` are considered when routing outbound requests
 * Improved handling of invalid backends, allowing the configuration of error
