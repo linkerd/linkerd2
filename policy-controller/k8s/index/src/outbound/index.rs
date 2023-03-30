@@ -7,7 +7,7 @@ use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
 use linkerd_policy_controller_core::outbound::{
-    Backend, HttpRoute, HttpRouteRule, OutboundPolicy, WeightedService,
+    Backend, FailureAccrual, HttpRoute, HttpRouteRule, OutboundPolicy, WeightedService,
 };
 use linkerd_policy_controller_k8s_api::{policy as api, ResourceExt, Service, Time};
 use parking_lot::RwLock;
@@ -45,6 +45,7 @@ struct Namespace {
 #[derive(Debug, Default)]
 struct ServiceInfo {
     opaque_ports: PortSet,
+    accrual_config: HashMap<String, String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -58,6 +59,7 @@ struct ServiceRoutes {
     routes: HashMap<String, HttpRoute>,
     watch: watch::Sender<OutboundPolicy>,
     opaque: bool,
+    accrual: FailureAccrual,
 }
 
 impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
@@ -237,6 +239,12 @@ impl Namespace {
                 Some(svc) => svc.opaque_ports.contains(&sp.port),
                 None => false,
             };
+
+            let accrual = match self.services.get(&sp.service) {
+                Some(svc) => convert_accrual_config(svc),
+                None => FailureAccrual::default(),
+            };
+
             let (sender, _) = watch::channel(OutboundPolicy {
                 http_routes: Default::default(),
                 authority,
@@ -247,6 +255,7 @@ impl Namespace {
                 routes: Default::default(),
                 watch: sender,
                 opaque,
+                accrual,
             }
         })
     }
@@ -351,6 +360,35 @@ fn convert_backend(
             namespace: ns.to_string(),
         })
     })
+}
+
+fn convert_accrual_config(service: &Service) -> FailureAccrual {
+    let annotations = service.annotations();
+    match annotations.get("balancer.linkerd.io/failure-accrual") {
+        Some(v) if v == "consecutive" => {
+            let max_failures = annotations
+                .get("balancer.linkerd.io/failure-accrual-consecutive-failures")
+                .and_then(|s| s.parse::<u32>().ok())
+                .unwrap_or(7);
+
+            let max_backoff = annotations
+                .get("balancer.linkerd.io/failure-accrual-max-penalty")
+                .and_then(|s| linkerd_policy_controller_core::outbound::parse_timeout(s).ok())
+                .unwrap_or_else(|| std::time::Duration::from_secs(60));
+
+            let min_backoff = annotations
+                .get("balancer.linkerd.io/failure-accrual-min-penalty")
+                .and_then(|s| linkerd_policy_controller_core::outbound::parse_timeout(s).ok())
+                .unwrap_or_else(|| std::time::Duration::from_secs(1));
+
+            FailureAccrual::ConsecutiveFailures {
+                max_failures,
+                max_backoff,
+                min_backoff,
+            }
+        }
+        _ => FailureAccrual::None,
+    }
 }
 
 #[inline]

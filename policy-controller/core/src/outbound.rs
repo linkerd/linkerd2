@@ -3,7 +3,7 @@ use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use chrono::{offset::Utc, DateTime};
 use futures::prelude::*;
-use std::{net::IpAddr, num::NonZeroU16, pin::Pin};
+use std::{net::IpAddr, num::NonZeroU16, pin::Pin, time};
 
 /// Models outbound policy discovery.
 #[async_trait::async_trait]
@@ -61,4 +61,48 @@ pub struct WeightedService {
     pub authority: String,
     pub name: String,
     pub namespace: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum FailureAccrual {
+    None,
+    ConsecutiveFailures {
+        max_failures: u32,
+        min_backoff: time::Duration,
+        max_backoff: time::Duration,
+        // TODO: jitter?
+    },
+}
+
+impl std::default::Default for FailureAccrual {
+    fn default() -> Self {
+        FailureAccrual::None
+    }
+}
+
+pub fn parse_timeout(s: &str) -> Result<time::Duration> {
+    let s = s.trim();
+    let offset = s
+        .rfind(|c: char| c.is_ascii_digit())
+        .ok_or_else(|| anyhow::anyhow!("{} does not contain a timeout duration value", s))?;
+    let (magnitude, unit) = s.split_at(offset + 1);
+    let magnitude = magnitude.parse::<u64>()?;
+
+    let mul = match unit {
+        "" if magnitude == 0 => 0,
+        "ms" => 1,
+        "s" => 1000,
+        "m" => 1000 * 60,
+        "h" => 1000 * 60 * 60,
+        "d" => 1000 * 60 * 60 * 24,
+        _ => anyhow::bail!(
+            "invalid duration unit {} (expected one of 'ms', 's', 'm', 'h', or 'd')",
+            unit
+        ),
+    };
+
+    let ms = magnitude
+        .checked_mul(mul)
+        .ok_or_else(|| anyhow::anyhow!("Timeout value {} overflows when converted to 'ms'", s))?;
+    Ok(time::Duration::from_millis(ms))
 }
