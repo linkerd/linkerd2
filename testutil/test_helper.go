@@ -98,6 +98,14 @@ var MulticlusterDeployReplicas = map[string]DeploySpec{
 	"linkerd-gateway": {"linkerd-multicluster", 1},
 }
 
+// MulticlusterSourceReplicas is a map containing the number of replicas for the
+// Gateway and Service Mirror component; components that we'd only expect in the
+// source cluster.
+var MulticlusterSourceReplicas = map[string]DeploySpec{
+	"linkerd-service-mirror-target": {Namespace: "linkerd-multicluster", Replicas: 1},
+	"linkerd-gateway":               {Namespace: "linkerd-multicluster", Replicas: 1},
+}
+
 // ExternalVizDeployReplicas has an external prometheus instance that's in a
 // separate namespace
 var ExternalVizDeployReplicas = map[string]DeploySpec{

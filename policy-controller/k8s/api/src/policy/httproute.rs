@@ -1,7 +1,8 @@
 pub use k8s_gateway_api::{
-    CommonRouteSpec, Hostname, HttpBackendRef, HttpHeader, HttpHeaderMatch, HttpHeaderName,
-    HttpMethod, HttpPathMatch, HttpPathModifier, HttpQueryParamMatch, HttpRequestHeaderFilter,
-    HttpRequestRedirectFilter, HttpRouteMatch, LocalObjectReference, ParentReference, RouteStatus,
+    BackendObjectReference, CommonRouteSpec, Hostname, HttpBackendRef, HttpHeader, HttpHeaderMatch,
+    HttpHeaderName, HttpMethod, HttpPathMatch, HttpPathModifier, HttpQueryParamMatch,
+    HttpRequestHeaderFilter, HttpRequestRedirectFilter, HttpRouteMatch, LocalObjectReference,
+    ParentReference, RouteStatus,
 };
 
 /// HTTPRoute provides a way to route HTTP requests. This includes the
@@ -205,4 +206,16 @@ where
     };
 
     super::targets_kind::<T>(parent_ref.group.as_deref(), kind)
+}
+
+pub fn backend_ref_targets_kind<T>(backend_ref: &BackendObjectReference) -> bool
+where
+    T: kube::Resource,
+    T::DynamicType: Default,
+{
+    // Default kind is assumed to be service for backend ref objects
+    super::targets_kind::<T>(
+        backend_ref.group.as_deref(),
+        backend_ref.kind.as_deref().unwrap_or("service"),
+    )
 }

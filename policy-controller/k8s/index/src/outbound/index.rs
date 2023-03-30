@@ -175,10 +175,6 @@ impl Namespace {
         let outbound_route = match self.convert_route(route.clone(), cluster_info) {
             Ok(route) => route,
             Err(error) => {
-                // XXX(ver) This is likely to fire whenever we process routes
-                // that target servers, for instance. Ultimately, we should
-                // unify the handling. Either that or we should reduce the log
-                // level to avoid user-facing noise.
                 tracing::error!(%error, "failed to convert HttpRoute");
                 return;
             }
@@ -187,12 +183,9 @@ impl Namespace {
 
         for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
             if !is_parent_service(parent_ref) {
-                // XXX(ver) This is likely to fire whenever we process routes
-                // that only target inbound resources.
-                tracing::warn!(
-                    parent_kind = parent_ref.kind.as_deref(),
-                    "ignoring parent_ref with non-Service kind"
-                );
+                continue;
+            }
+            if !route_accepted_by_service(&route, &parent_ref.name) {
                 continue;
             }
 
@@ -368,6 +361,23 @@ fn is_parent_service(parent: &ParentReference) -> bool {
         .map(|k| is_service(parent.group.as_deref(), k))
         // Parent refs require a `kind`.
         .unwrap_or(false)
+}
+
+#[inline]
+fn route_accepted_by_service(route: &api::HttpRoute, service: &str) -> bool {
+    route
+        .status
+        .as_ref()
+        .map(|status| status.inner.parents.as_slice())
+        .unwrap_or_default()
+        .iter()
+        .any(|parent_status| {
+            parent_status.parent_ref.name == service
+                && parent_status
+                    .conditions
+                    .iter()
+                    .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
+        })
 }
 
 #[inline]

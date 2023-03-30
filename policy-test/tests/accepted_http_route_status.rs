@@ -121,7 +121,7 @@ async fn inbound_multiple_parents() {
         assert_eq!(invalid_cond.reason, "NoMatchingParent");
 
         // Find status for valid parent and extract the condition
-        let valid_cond = find_condition(parent_status.clone(), "test-valid-server")
+        let valid_cond = find_condition(parent_status, "test-valid-server")
             .expect("must have at least one 'Accepted' condition set for valid parent");
         assert_eq!(valid_cond.status, "True");
         assert_eq!(valid_cond.reason, "Accepted")

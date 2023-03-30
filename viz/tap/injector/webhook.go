@@ -5,7 +5,6 @@ import (
 	"context"
 	"html/template"
 
-	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/webhook"
 	vizLabels "github.com/linkerd/linkerd2/viz/pkg/labels"
@@ -13,6 +12,7 @@ import (
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/yaml"
 )
 
 // Params holds the values used in the patch template.
