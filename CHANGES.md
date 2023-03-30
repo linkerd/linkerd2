@@ -1,5 +1,24 @@
 # Changes
 
+## edge-23.3.4
+
+This edge release further enhances the OutboundPolicies API used by the proxy to
+route outbound traffic, and continues extending the HTTPRoute resource's Status
+field. It also starts integrating circuit-breaking functionality into the proxy,
+which will be configurable in a subsequent iteration.
+
+* Continued iterating over the HTTPRoute's Status field, by extending support
+  for routes parented to Services, and adding a ResolvedRefs condition
+  reflecting the status of BackendRefs
+* Updated the OutboundPolicies API such that only HTTPRoutes with an Accepted
+  status of `true` are considered when routing outbound requests
+* Improved handling of invalid backends, allowing the configuration of error
+  responses
+* Added new flag `--viz-namespace` which avoids requiring permissions for
+  listing all namespaces in `linkerd viz` subcommands (thanks @danibaeyens!)
+* Among other dependency updates, the no-longer maintained ghodss/yaml library
+  was replaced with sigs.k8s.io/yaml (thanks @Juneezee!)
+
 ## edge-23.3.3
 
 This edge release removes TrafficSplits from the Linkerd dashboard as well as
