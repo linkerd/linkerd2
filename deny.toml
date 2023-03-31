@@ -61,6 +61,8 @@ skip = [
     # `rustls-pemfile` and `k8s-openapi` depend on versions of `base64` that
     # have diverged significantly.
     { name = "base64" },
+    # `metrics` depends on an old versoin of `ahash`.
+    { name = "ahash", version = "0.7" },
 ]
 
 [sources]
