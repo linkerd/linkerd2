@@ -241,6 +241,7 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
                 }),
                 http2: Some(outbound::proxy_protocol::Http2 {
                     routes: http_routes,
+                    accrual,
                 }),
             },
         )
