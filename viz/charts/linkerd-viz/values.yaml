@@ -204,6 +204,9 @@ tap:
       # -- Amount of ephemeral storage that the tap container requests
       request: ""
 
+  # List of headers that will be ignored for Linkerd Tap
+  ignoreHeaders: []
+
   proxy:
     # -- If set, overrides default proxy resources for the proxy injected
     # into the tap component

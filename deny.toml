@@ -63,6 +63,8 @@ skip = [
     { name = "base64" },
     # `metrics` depends on an old versoin of `ahash`.
     { name = "ahash", version = "0.7" },
+    # syn v2 has been released and some libraries are slower to adopt it
+    { name = "syn", version = "1.0" },
 ]
 
 [sources]
