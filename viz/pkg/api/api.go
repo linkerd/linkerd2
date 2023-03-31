@@ -13,7 +13,7 @@ import (
 // CheckClientOrExit builds a new Viz API client and executes default status
 // checks to determine if the client can successfully perform cli commands. If the
 // checks fail, then CLI will print an error and exit.
-func CheckClientOrExit(hcOptions healthcheck.Options) pb.ApiClient {
+func CheckClientOrExit(hcOptions vizHealthCheck.VizOptions) pb.ApiClient {
 	hcOptions.RetryDeadline = time.Time{}
 	return CheckClientOrRetryOrExit(hcOptions, false)
 }
@@ -22,7 +22,7 @@ func CheckClientOrExit(hcOptions healthcheck.Options) pb.ApiClient {
 // checks to determine if the client can successfully connect to the API. If the
 // checks fail, then CLI will print an error and exit. If the hcOptions.retryDeadline
 // param is specified, then the CLI will print a message to stderr and retry.
-func CheckClientOrRetryOrExit(hcOptions healthcheck.Options, apiChecks bool) pb.ApiClient {
+func CheckClientOrRetryOrExit(hcOptions vizHealthCheck.VizOptions, apiChecks bool) pb.ApiClient {
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 	}
@@ -33,7 +33,7 @@ func CheckClientOrRetryOrExit(hcOptions healthcheck.Options, apiChecks bool) pb.
 
 	hc := vizHealthCheck.NewHealthChecker(checks, &hcOptions)
 
-	hc.AppendCategories(hc.VizCategory())
+	hc.AppendCategories(hc.VizCategory(false))
 
 	hc.RunChecks(exitOnError)
 	return hc.VizAPIClient()
