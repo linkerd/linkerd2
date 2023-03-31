@@ -709,8 +709,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      securityContext:
-        fsGroup: 65534
       containers:
       - args:
         - --log.format=logfmt
@@ -756,6 +754,7 @@ spec:
           subPath: prometheus.yml
           readOnly: true
       securityContext:
+        fsGroup: 65534
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: prometheus
@@ -1196,6 +1195,7 @@ metadata:
     namespace: linkerd-viz
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    
     linkerd.io/inject: enabled
 spec:
   type: ClusterIP
