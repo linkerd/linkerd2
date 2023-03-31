@@ -1,6 +1,7 @@
 use crate::{
     http_route::{self, BackendReference, ParentReference},
     resource_id::ResourceId,
+    service::Service,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use chrono::offset::Utc;
@@ -64,7 +65,7 @@ pub struct Index {
     /// regardless of if those parents have accepted the route.
     http_route_refs: HashMap<ResourceId, References>,
     servers: HashSet<ResourceId>,
-    services: HashSet<ResourceId>,
+    services: HashMap<ResourceId, Service>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -141,7 +142,7 @@ impl Index {
             updates,
             http_route_refs: HashMap::new(),
             servers: HashSet::new(),
-            services: HashSet::new(),
+            services: HashMap::new(),
         }))
     }
 
@@ -223,7 +224,12 @@ impl Index {
                 })
             }
             ParentReference::Service(service, port) => {
-                let condition = if self.services.contains(service) {
+                // service is a valid parent if it exists and it has a cluster_ip.
+                let condition = if self
+                    .services
+                    .get(service)
+                    .map_or(false, |svc| svc.valid_parent_service())
+                {
                     accepted()
                 } else {
                     no_matching_parent()
@@ -259,7 +265,7 @@ impl Index {
         // If all references have been resolved (i.e exist in our services cache),
         // return positive status, otherwise, one of them does not exist
         if backend_refs.iter().any(|backend_ref| match backend_ref {
-            BackendReference::Service(service) => self.services.contains(service),
+            BackendReference::Service(service) => self.services.contains_key(service),
             _ => false,
         }) {
             resolved_refs()
@@ -387,7 +393,7 @@ impl kubert::index::IndexNamespacedResource<k8s::Service> for Index {
         let name = resource.name_unchecked();
         let id = ResourceId::new(namespace, name);
 
-        self.services.insert(id);
+        self.services.insert(id, resource.into());
 
         // If we're not the leader, skip reconciling the cluster.
         if !self.claims.borrow().is_current_for(&self.name) {
