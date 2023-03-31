@@ -109,6 +109,8 @@ func TestInstall(t *testing.T) {
 	cmd = []string{
 		"install",
 		"--controller-log-level", "debug",
+		"--set", "proxyInit.image.name=ghcr.io/linkerd/proxy-init",
+		"--set", "proxyInit.image.version=v2.2.0",
 		"--set", fmt.Sprintf("proxy.image.version=%s", TestHelper.GetVersion()),
 		"--set", "heartbeatSchedule=1 2 3 4 5",
 		"--identity-trust-anchors-file", rootPath,
@@ -202,37 +204,6 @@ func TestLinkClusters(t *testing.T) {
 
 }
 
-// TestInstallViz will install the viz extension, needed to verify whether the
-// gateway probe succeeded.
-// TODO (matei): can the dependency on viz be removed?
-func TestInstallViz(t *testing.T) {
-	for _, ctx := range contexts {
-		cmd := []string{
-			"--context=" + ctx,
-			"viz",
-			"install",
-			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()),
-		}
-
-		out, err := TestHelper.LinkerdRun(cmd...)
-		if err != nil {
-			testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
-		}
-
-		out, err = TestHelper.KubectlApplyWithContext(out, ctx, "-f", "-")
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-				"'kubectl apply' command failed\n%s", out)
-		}
-
-	}
-
-	// Allow viz to be installed in parallel and then block until viz is ready.
-	for _, ctx := range contexts {
-		TestHelper.WaitRolloutWithContext(t, testutil.LinkerdVizDeployReplicas, ctx)
-	}
-}
-
 func TestCheckMulticluster(t *testing.T) {
 	// Check resources after link were created successfully in source cluster
 	ctx := contexts[testutil.SourceContextKey]
@@ -242,7 +213,7 @@ func TestCheckMulticluster(t *testing.T) {
 	if err := TestHelper.SwitchContext(ctx); err != nil {
 		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", ctx, err)
 	}
-	if err := TestHelper.TestCheck("--context", ctx); err != nil {
+	if err := TestHelper.TestCheckMc("--context", ctx); err != nil {
 		t.Fatalf("'linkerd check' command failed: %s", err)
 	}
 }

@@ -58,6 +58,8 @@ skip = [
     # `rustls-pemfile` and `k8s-openapi` depend on versions of `base64` that
     # have diverged significantly.
     { name = "base64" },
+    # syn v2 has been released and some libraries are slower to adopt it
+    { name = "syn", version = "1.0" }
 ]
 
 [sources]

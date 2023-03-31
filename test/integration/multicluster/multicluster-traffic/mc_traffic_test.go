@@ -17,6 +17,7 @@ import (
 var (
 	TestHelper *testutil.TestHelper
 	targetCtx  string
+	sourceCtx  string
 	contexts   map[string]string
 )
 
@@ -49,18 +50,20 @@ var (
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	// Before starting, get source context
+	// Before starting, initialize contexts
 	contexts = TestHelper.GetMulticlusterContexts()
+	sourceCtx = contexts[testutil.SourceContextKey]
 	targetCtx = contexts[testutil.TargetContextKey]
-	// Then, re-build clientset with context of target cluster instead of kube
-	// context inferred from environment.
-	if err := TestHelper.SwitchContext(targetCtx); err != nil {
-		out := fmt.Sprintf("Error running test: failed to switch Kubernetes client to context [%s]: %s\n", targetCtx, err)
+	// Then, re-build clientset with source cluster context instead of context
+	// inferred from environment.
+	if err := TestHelper.SwitchContext(sourceCtx); err != nil {
+		out := fmt.Sprintf("Error running test: failed to switch Kubernetes client to context [%s]: %s\n", sourceCtx, err)
 		os.Stderr.Write([]byte(out))
 		os.Exit(1)
 	}
-	// Block until viz deploy is running successfully in target cluster.
-	TestHelper.WaitUntilDeployReady(testutil.LinkerdVizDeployReplicas)
+	// Block until gateway & service mirror deploys are running successfully in
+	// source cluster.
+	TestHelper.WaitUntilDeployReady(testutil.MulticlusterSourceReplicas)
 	os.Exit(m.Run())
 }
 
@@ -132,7 +135,7 @@ func TestCheckGatewayAfterRepairEndpoints(t *testing.T) {
 			contexts[testutil.SourceContextKey], err)
 	}
 	time.Sleep(time.Minute + 5*time.Second)
-	if err := TestHelper.TestCheck("--context", contexts[testutil.SourceContextKey]); err != nil {
+	if err := TestHelper.TestCheckMc("--context", contexts[testutil.SourceContextKey]); err != nil {
 		t.Fatalf("'linkerd check' command failed: %s", err)
 	}
 }
