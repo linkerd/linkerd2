@@ -7,11 +7,11 @@ use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
 use linkerd_policy_controller_core::outbound::{
-    Backend, FailureAccrual, HttpRoute, HttpRouteRule, OutboundPolicy, WeightedService,
+    Backend, Backoff, FailureAccrual, HttpRoute, HttpRouteRule, OutboundPolicy, WeightedService,
 };
 use linkerd_policy_controller_k8s_api::{policy as api, ResourceExt, Service, Time};
 use parking_lot::RwLock;
-use std::{net::IpAddr, num::NonZeroU16, sync::Arc};
+use std::{net::IpAddr, num::NonZeroU16, sync::Arc, time};
 use tokio::sync::watch;
 
 #[derive(Debug)]
@@ -45,7 +45,7 @@ struct Namespace {
 #[derive(Debug, Default)]
 struct ServiceInfo {
     opaque_ports: PortSet,
-    accrual_config: HashMap<String, String>,
+    accrual: Option<FailureAccrual>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -59,7 +59,7 @@ struct ServiceRoutes {
     routes: HashMap<String, HttpRoute>,
     watch: watch::Sender<OutboundPolicy>,
     opaque: bool,
-    accrual: FailureAccrual,
+    accrual: Option<FailureAccrual>,
 }
 
 impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
@@ -111,7 +111,11 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         let opaque_ports =
             ports_annotation(service.annotations(), "config.linkerd.io/opaque-ports")
                 .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
-        let service_info = ServiceInfo { opaque_ports };
+        let accrual = parse_accrual_config(service.annotations());
+        let service_info = ServiceInfo {
+            opaque_ports,
+            accrual,
+        };
 
         self.namespaces
             .by_ns
@@ -219,6 +223,7 @@ impl Namespace {
             let opaque = service.opaque_ports.contains(&svc_port.port);
             svc_routes.set_opaque(opaque);
         }
+        // TODO: send accrual update
         self.services.insert(name, service);
     }
 
@@ -235,14 +240,9 @@ impl Namespace {
     ) -> &mut ServiceRoutes {
         self.service_routes.entry(sp.clone()).or_insert_with(|| {
             let authority = cluster.service_dns_authority(&self.namespace, &sp.service, sp.port);
-            let opaque = match self.services.get(&sp.service) {
-                Some(svc) => svc.opaque_ports.contains(&sp.port),
-                None => false,
-            };
-
-            let accrual = match self.services.get(&sp.service) {
-                Some(svc) => convert_accrual_config(svc),
-                None => FailureAccrual::default(),
+            let (opaque, accrual) = match self.services.get(&sp.service) {
+                Some(svc) => (svc.opaque_ports.contains(&sp.port), svc.accrual.clone()),
+                None => (false, None),
             };
 
             let (sender, _) = watch::channel(OutboundPolicy {
@@ -250,6 +250,7 @@ impl Namespace {
                 authority,
                 namespace: self.namespace.to_string(),
                 opaque,
+                accrual: accrual.clone(),
             });
             ServiceRoutes {
                 routes: Default::default(),
@@ -362,35 +363,6 @@ fn convert_backend(
     })
 }
 
-fn convert_accrual_config(service: &Service) -> FailureAccrual {
-    let annotations = service.annotations();
-    match annotations.get("balancer.linkerd.io/failure-accrual") {
-        Some(v) if v == "consecutive" => {
-            let max_failures = annotations
-                .get("balancer.linkerd.io/failure-accrual-consecutive-failures")
-                .and_then(|s| s.parse::<u32>().ok())
-                .unwrap_or(7);
-
-            let max_backoff = annotations
-                .get("balancer.linkerd.io/failure-accrual-max-penalty")
-                .and_then(|s| linkerd_policy_controller_core::outbound::parse_timeout(s).ok())
-                .unwrap_or_else(|| std::time::Duration::from_secs(60));
-
-            let min_backoff = annotations
-                .get("balancer.linkerd.io/failure-accrual-min-penalty")
-                .and_then(|s| linkerd_policy_controller_core::outbound::parse_timeout(s).ok())
-                .unwrap_or_else(|| std::time::Duration::from_secs(1));
-
-            FailureAccrual::ConsecutiveFailures {
-                max_failures,
-                max_backoff,
-                min_backoff,
-            }
-        }
-        _ => FailureAccrual::None,
-    }
-}
-
 #[inline]
 fn is_parent_service(parent: &ParentReference) -> bool {
     parent
@@ -466,4 +438,94 @@ impl ServiceRoutes {
             modified
         });
     }
+}
+
+// TODO: could bubble up errors through `Result`
+fn parse_accrual_config(
+    annotations: &std::collections::BTreeMap<String, String>,
+) -> Result<Option<FailureAccrual>> {
+    match annotations.get("balancer.linkerd.io/mode") {
+        Some(v) if v == "consecutive" => {
+            // TODO (matei): value is kind of out of pocket, how do we establish what's good
+            // here.
+            let max_failures = annotations
+                .get("balancer.linkerd.io/failure-accrual-consecutive-failures")
+                .map(|s| {
+                    s.parse::<u32>()
+                        .map_err(|error| tracing::debug!(%error, "Invalid annotation value"))
+                }) // Option<Result<>
+                .transpose()?
+                .unwrap_or(7);
+
+            let max_penalty = annotations
+                .get("balancer.linkerd.io/max-penalty")
+                .and_then(|s| {
+                    parse_duration(s)
+                        .map_err(|error| tracing::debug!(%error, "Invalid annotation value"))
+                })
+                .unwrap_or_else(|| time::Duration::from_secs(60));
+
+            let min_penalty = annotations
+                .get("balancer.linkerd.io/min-penalty")
+                .and_then(|s| {
+                    parse_duration(s)
+                        .map_err(|error| tracing::debug!(%error, "Invalid annotation value"))
+                        .ok()
+                })?
+                .unwrap_or_else(|| time::Duration::from_secs(1));
+            let jitter = annotations
+                .get("balancer.linkerd.io/jitter")
+                .and_then(|s| {
+                    s.parse::<f64>()
+                        .map_err(|error| tracing::debug!(%error, "Invalid annotation value"))
+                        .ok()
+                })
+                .unwrap_or_default();
+            if min_penalty > max_penalty {
+                tracing::debug!(?min_penalty, ?max_penalty, "Invalid backoff configuration");
+                return Some(FailureAccrual::Consecutive {
+                    max_failures,
+                    backoff: Default::default(),
+                });
+            }
+
+            Some(FailureAccrual::Consecutive {
+                max_failures,
+                backoff: Backoff {
+                    min_penalty,
+                    max_penalty,
+                    jitter,
+                },
+            })
+        }
+        _ => None,
+    }
+}
+
+//TODO: check what we do in proxy for this.
+fn parse_duration(s: &str) -> Result<time::Duration> {
+    let s = s.trim();
+    let offset = s
+        .rfind(|c: char| c.is_ascii_digit())
+        .ok_or_else(|| anyhow::anyhow!("{} does not contain a timeout duration value", s))?;
+    let (magnitude, unit) = s.split_at(offset + 1);
+    let magnitude = magnitude.parse::<u64>()?;
+
+    let mul = match unit {
+        "" if magnitude == 0 => 0,
+        "ms" => 1,
+        "s" => 1000,
+        "m" => 1000 * 60,
+        "h" => 1000 * 60 * 60,
+        "d" => 1000 * 60 * 60 * 24,
+        _ => anyhow::bail!(
+            "invalid duration unit {} (expected one of 'ms', 's', 'm', 'h', or 'd')",
+            unit
+        ),
+    };
+
+    let ms = magnitude
+        .checked_mul(mul)
+        .ok_or_else(|| anyhow::anyhow!("Timeout value {} overflows when converted to 'ms'", s))?;
+    Ok(time::Duration::from_millis(ms))
 }
