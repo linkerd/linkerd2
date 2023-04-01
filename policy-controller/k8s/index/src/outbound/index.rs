@@ -240,6 +240,7 @@ impl Namespace {
             let (sender, _) = watch::channel(OutboundPolicy {
                 http_routes: Default::default(),
                 authority,
+                name: sp.service.clone(),
                 namespace: self.namespace.to_string(),
                 opaque,
             });
