@@ -1112,7 +1112,7 @@ dependencies = [
  "http",
  "hyper",
  "linkerd-policy-controller-core",
- "linkerd2-proxy-api 0.8.0 (git+https://github.com/linkerd/linkerd2-proxy-api?rev=afd13fc7d5a592acd31b4ba822f854e5590e9600)",
+ "linkerd2-proxy-api",
  "maplit",
  "tokio",
  "tonic",
@@ -1188,7 +1188,7 @@ dependencies = [
  "kube",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
- "linkerd2-proxy-api 0.8.0 (git+https://github.com/linkerd/linkerd2-proxy-api?rev=9efe50fd769cf8fbba4f0eedf95fa8ca896d7355)",
+ "linkerd2-proxy-api",
  "maplit",
  "rand",
  "schemars",
@@ -1199,19 +1199,6 @@ dependencies = [
  "tonic",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "linkerd2-proxy-api"
-version = "0.8.0"
-source = "git+https://github.com/linkerd/linkerd2-proxy-api?rev=9efe50fd769cf8fbba4f0eedf95fa8ca896d7355#9efe50fd769cf8fbba4f0eedf95fa8ca896d7355"
-dependencies = [
- "http",
- "ipnet",
- "prost",
- "prost-types",
- "thiserror",
- "tonic",
 ]
 
 [[package]]
