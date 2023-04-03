@@ -4,8 +4,8 @@ use futures::prelude::*;
 use kube::ResourceExt;
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
-    create, create_annotated_service, create_opaque_service, create_service, grpc, mk_service,
-    with_temp_ns,
+    assert_default_accrual_backoff, create, create_annotated_service, create_opaque_service,
+    create_service, grpc, mk_service, with_temp_ns,
 };
 use tokio::time;
 
@@ -280,14 +280,10 @@ async fn service_with_multiple_http_routes() {
 #[tokio::test(flavor = "current_thread")]
 async fn service_with_consecutive_failure_accrual() {
     with_temp_ns(|client, ns| async move {
-        // Create a few services:
-        // * 1 with full annotations
-        // * 1 with only mode
-        // * 1 with default backoff
         let svc = create_annotated_service(
             &client,
             &ns,
-            "my-svc",
+            "consecutive-accrual-svc",
             80,
             std::collections::BTreeMap::from([
                 (
@@ -323,33 +319,19 @@ async fn service_with_consecutive_failure_accrual() {
         tracing::trace!(?config);
 
         detect_failure_accrual(&config, |accrual| {
-            assert!(
-                accrual.is_some(),
-                "consecutive failure accrual must be configured on service"
-            );
-            let kind = accrual
-                .unwrap()
-                .kind
-                .as_ref()
-                .expect("failure accrual must have kind");
-
-            let grpc::outbound::failure_accrual::Kind::ConsecutiveFailures(
-                grpc::outbound::failure_accrual::ConsecutiveFailures {
-                    max_failures,
-                    backoff,
+            let consecutive = failure_accrual_consecutive(accrual);
+            assert_eq!(8, consecutive.max_failures);
+            assert_eq!(
+                &grpc::outbound::ExponentialBackoff {
+                    min_backoff: Some(Duration::from_secs(10).try_into().unwrap()),
+                    max_backoff: Some(Duration::from_secs(600).try_into().unwrap()),
+                    jitter_ratio: 1.0 as f32,
                 },
-            ) = kind;
-            assert_eq!(8, *max_failures);
-            let backoff = backoff
-                .as_ref()
-                .expect("failure accrual must have backoff configured");
-            let expected = grpc::outbound::ExponentialBackoff {
-                min_backoff: Some(Duration::from_secs(10).try_into().unwrap()),
-                max_backoff: Some(Duration::from_secs(600).try_into().unwrap()),
-                jitter_ratio: 1.0 as f32,
-            };
-
-            assert_eq!(&expected, backoff);
+                consecutive
+                    .backoff
+                    .as_ref()
+                    .expect("backoff must be configured")
+            );
         });
     })
     .await;
@@ -363,7 +345,7 @@ async fn service_with_consecutive_failure_accrual_defaults() {
         let svc = create_annotated_service(
             &client,
             &ns,
-            "default-consecutive-accrual",
+            "default-accrual-svc",
             80,
             std::collections::BTreeMap::from([(
                 "balancer.linkerd.io/failure-accrual".to_string(),
@@ -380,34 +362,97 @@ async fn service_with_consecutive_failure_accrual_defaults() {
             .expect("watch must return an initial config");
         tracing::trace!(?config);
 
+        // Expect default max_failures and default backoff
         detect_failure_accrual(&config, |accrual| {
-            assert!(
-                accrual.is_some(),
-                "consecutive failure accrual must be configured for service"
-            );
-            let kind = accrual
-                .unwrap()
-                .kind
+            let consecutive = failure_accrual_consecutive(accrual);
+            assert_eq!(7, consecutive.max_failures);
+            assert_default_accrual_backoff!(consecutive
+                .backoff
                 .as_ref()
-                .expect("failure accrual must have kind");
+                .expect("backoff must be configured"));
+        });
 
-            let grpc::outbound::failure_accrual::Kind::ConsecutiveFailures(
-                grpc::outbound::failure_accrual::ConsecutiveFailures {
-                    max_failures,
-                    backoff,
+        // Create a service configured to do consecutive failure accrual with
+        // max number of failures and with default backoff
+        let svc = create_annotated_service(
+            &client,
+            &ns,
+            "no-backoff-svc",
+            80,
+            std::collections::BTreeMap::from([
+                (
+                    "balancer.linkerd.io/failure-accrual".to_string(),
+                    "consecutive".to_string(),
+                ),
+                (
+                    "balancer.linkerd.io/failure-accrual-consecutive-max-failures".to_string(),
+                    "8".to_string(),
+                ),
+            ]),
+        )
+        .await;
+
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+
+        // Expect default backoff and overridden max_failures
+        detect_failure_accrual(&config, |accrual| {
+            let consecutive = failure_accrual_consecutive(accrual);
+            assert_eq!(8, consecutive.max_failures);
+            assert_default_accrual_backoff!(consecutive
+                .backoff
+                .as_ref()
+                .expect("backoff must be configured"));
+        });
+
+        // Create a service configured to do consecutive failure accrual with
+        // only the jitter ratio configured in the backoff
+        let svc = create_annotated_service(
+            &client,
+            &ns,
+            "only-jitter-svc",
+            80,
+            std::collections::BTreeMap::from([
+                (
+                    "balancer.linkerd.io/failure-accrual".to_string(),
+                    "consecutive".to_string(),
+                ),
+                (
+                    "balancer.linkerd.io/failure-accrual-consecutive-jitter-ratio".to_string(),
+                    "1.0".to_string(),
+                ),
+            ]),
+        )
+        .await;
+
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+
+        // Expect defaults for everything except for the jitter ratio
+        detect_failure_accrual(&config, |accrual| {
+            let consecutive = failure_accrual_consecutive(accrual);
+            assert_eq!(7, consecutive.max_failures);
+            assert_eq!(
+                &grpc::outbound::ExponentialBackoff {
+                    min_backoff: Some(Duration::from_secs(1).try_into().unwrap()),
+                    max_backoff: Some(Duration::from_secs(60).try_into().unwrap()),
+                    jitter_ratio: 1.0 as f32,
                 },
-            ) = kind;
-            assert_eq!(7, *max_failures);
-            let backoff = backoff
-                .as_ref()
-                .expect("failure accrual must have backoff configured");
-            let expected = grpc::outbound::ExponentialBackoff {
-                min_backoff: Some(Duration::from_secs(1).try_into().unwrap()),
-                max_backoff: Some(Duration::from_secs(60).try_into().unwrap()),
-                jitter_ratio: 0.0 as f32,
-            };
-
-            assert_eq!(&expected, backoff);
+                consecutive
+                    .backoff
+                    .as_ref()
+                    .expect("backoff must be configured")
+            );
         });
     })
     .await;
@@ -426,8 +471,8 @@ async fn service_with_default_failure_accrual() {
             .expect("watch must return an initial config");
         tracing::trace!(?config);
 
+        // Expect failure accrual config to be default (no failure accrual)
         detect_failure_accrual(&config, |accrual| {
-            // FailureAccrual should be none
             assert!(
                 accrual.is_none(),
                 "consecutive failure accrual should not be configured for service"
@@ -643,6 +688,23 @@ where
     } else {
         panic!("proxy protocol must be Detect; actually got:\n{kind:#?}")
     }
+}
+
+#[track_caller]
+fn failure_accrual_consecutive(
+    accrual: Option<&grpc::outbound::FailureAccrual>,
+) -> &grpc::outbound::failure_accrual::ConsecutiveFailures {
+    assert!(
+        accrual.is_some(),
+        "failure accrual must be configured for service"
+    );
+    let kind = accrual
+        .unwrap()
+        .kind
+        .as_ref()
+        .expect("failure accrual must have kind");
+    let grpc::outbound::failure_accrual::Kind::ConsecutiveFailures(accrual) = kind;
+    accrual
 }
 
 #[track_caller]
