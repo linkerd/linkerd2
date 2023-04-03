@@ -466,13 +466,13 @@ fn parse_accrual_config(
 
                 let max_penalty = annotations
                     .get("balancer.linkerd.io/failure-accrual-consecutive-max-penalty")
-                    .map(parse_duration)
+                    .map(|s| parse_duration(s))
                     .transpose()?
                     .unwrap_or_else(|| time::Duration::from_secs(60));
 
                 let min_penalty = annotations
                     .get("balancer.linkerd.io/failure-accrual-consecutive-min-penalty")
-                    .map(parse_duration)
+                    .map(|s| parse_duration(s))
                     .transpose()?
                     .unwrap_or_else(|| time::Duration::from_secs(1));
                 let jitter = annotations
@@ -502,7 +502,7 @@ fn parse_accrual_config(
 }
 
 //TODO: check what we do in proxy for this.
-fn parse_duration(s: &String) -> Result<time::Duration> {
+fn parse_duration(s: &str) -> Result<time::Duration> {
     let s = s.trim();
     let offset = s
         .rfind(|c: char| c.is_ascii_digit())
