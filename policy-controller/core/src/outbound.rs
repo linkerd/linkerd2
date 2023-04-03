@@ -73,7 +73,7 @@ pub enum FailureAccrual {
 pub struct Backoff {
     pub min_penalty: time::Duration,
     pub max_penalty: time::Duration,
-    pub jitter: f64,
+    pub jitter: f32,
 }
 
 impl std::default::Default for Backoff {

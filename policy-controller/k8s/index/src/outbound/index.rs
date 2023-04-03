@@ -453,7 +453,7 @@ fn parse_accrual_config(
     annotations: &std::collections::BTreeMap<String, String>,
 ) -> Result<Option<FailureAccrual>> {
     annotations
-        .get("balancer.linkerd.io/mode")
+        .get("balancer.linkerd.io/failure-accrual")
         .map(|mode| {
             if mode == "consecutive" {
                 let max_failures = annotations
@@ -475,7 +475,7 @@ fn parse_accrual_config(
                     .unwrap_or_else(|| time::Duration::from_secs(1));
                 let jitter = annotations
                     .get("balancer.linkerd.io/jitter")
-                    .map(|s| s.parse::<f64>())
+                    .map(|s| s.parse::<f32>())
                     .transpose()?
                     .unwrap_or_default();
                 if min_penalty > max_penalty {

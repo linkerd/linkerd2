@@ -252,7 +252,7 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
                                             tracing::error!(?error, "invalid max_backoff")
                                         })
                                         .ok(),
-                                    jitter_ratio: backoff.jitter as f32,
+                                    jitter_ratio: backoff.jitter,
                                 }),
                             },
                         ),
