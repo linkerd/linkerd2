@@ -8,7 +8,11 @@ pub(crate) struct Service {
 
 impl Service {
     pub(crate) fn valid_parent_service(&self) -> bool {
-        let cluster_ip = self.cluster_ip.is_some();
+        let cluster_ip = self
+            .cluster_ip
+            .as_ref()
+            .filter(|cip| !cip.eq_ignore_ascii_case("none"))
+            .is_some();
         let external_name = self.type_.as_deref() == Some("ExternalName");
         cluster_ip && !external_name
     }

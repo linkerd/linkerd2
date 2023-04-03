@@ -32,7 +32,7 @@ async fn accepted_parent() {
             namespace: svc.namespace(),
             name: svc.name_unchecked(),
             section_name: None,
-            port: None,
+            port: Some(80),
         }];
 
         // Create a route that references the Service resource.
@@ -70,7 +70,7 @@ async fn no_cluster_ip() {
                 ..Default::default()
             },
             spec: Some(k8s::ServiceSpec {
-                cluster_ip: None,
+                cluster_ip: Some("None".to_string()),
                 type_: Some("ClusterIP".to_string()),
                 ports: Some(vec![k8s::ServicePort {
                     port: 80,
@@ -87,7 +87,7 @@ async fn no_cluster_ip() {
             namespace: svc.namespace(),
             name: svc.name_unchecked(),
             section_name: None,
-            port: None,
+            port: Some(80),
         }];
 
         // Create a route that references the Service resource.
@@ -95,7 +95,7 @@ async fn no_cluster_ip() {
         // Wait until route is updated with a status
         let cond = find_route_condition(
             await_route_status(&client, &ns, "test-route").await.parents,
-            "test-server",
+            "test-service",
         )
         .expect("must have at least one 'Accepted' condition set for parent");
         // Parent with no ClusterIP should not match.
@@ -118,6 +118,7 @@ async fn external_name() {
             spec: Some(k8s::ServiceSpec {
                 cluster_ip: None,
                 type_: Some("ExternalName".to_string()),
+                external_name: Some("linkerd.io".to_string()),
                 ports: Some(vec![k8s::ServicePort {
                     port: 80,
                     ..Default::default()
@@ -133,7 +134,7 @@ async fn external_name() {
             namespace: svc.namespace(),
             name: svc.name_unchecked(),
             section_name: None,
-            port: None,
+            port: Some(80),
         }];
 
         // Create a route that references the Service resource.
@@ -141,7 +142,7 @@ async fn external_name() {
         // Wait until route is updated with a status
         let cond = find_route_condition(
             await_route_status(&client, &ns, "test-route").await.parents,
-            "test-server",
+            "test-service",
         )
         .expect("must have at least one 'Accepted' condition set for parent");
         // Parent with ExternalName should not match.
