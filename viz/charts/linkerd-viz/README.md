@@ -160,7 +160,7 @@ Kubernetes: `>=1.21.0-0`
 | tap.caBundle | string | `""` | Bundle of CA certificates for tap. If not provided nor injected with cert-manager, then Helm will use the certificate generated for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value, injectCaFrom, or injectCaFromSecret must be set, as no certificate will be generated. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information. |
 | tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided and not using an external secret then Helm will generate one. |
 | tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set or the ca bundle must injected with cert-manager ca injector using `tap.injectCaFrom` or `tap.injectCaFromSecret` (see below). |
-| tap.ignoreHeaders | list | `[]` |  |
+| tap.ignoreHeaders | list | `[]` | List of headers that will be ignored for Linkerd Tap |
 | tap.image.name | string | `"tap"` | Docker image name for the tap instance |
 | tap.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the tap component |
 | tap.image.registry | string | defaultRegistry | Docker registry for the tap instance |
