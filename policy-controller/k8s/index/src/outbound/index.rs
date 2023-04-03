@@ -457,24 +457,24 @@ fn parse_accrual_config(
         .map(|mode| {
             if mode == "consecutive" {
                 let max_failures = annotations
-                    .get("balancer.linkerd.io/failure-accrual-consecutive-failures")
+                    .get("balancer.linkerd.io/failure-accrual-consecutive-max-failures")
                     .map(|s| s.parse::<u32>())
                     .transpose()?
                     .unwrap_or(7);
 
                 let max_penalty = annotations
-                    .get("balancer.linkerd.io/max-penalty")
+                    .get("balancer.linkerd.io/failure-accrual-consecutive-max-penalty")
                     .map(|s| parse_duration(s))
                     .transpose()?
                     .unwrap_or_else(|| time::Duration::from_secs(60));
 
                 let min_penalty = annotations
-                    .get("balancer.linkerd.io/min-penalty")
+                    .get("balancer.linkerd.io/failure-accrual-consecutive-min-penalty")
                     .map(|s| parse_duration(s))
                     .transpose()?
                     .unwrap_or_else(|| time::Duration::from_secs(1));
                 let jitter = annotations
-                    .get("balancer.linkerd.io/jitter")
+                    .get("balancer.linkerd.io/failure-accrual-consecutive-jitter-ratio")
                     .map(|s| s.parse::<f32>())
                     .transpose()?
                     .unwrap_or_default();
