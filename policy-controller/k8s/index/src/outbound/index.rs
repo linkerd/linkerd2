@@ -4,7 +4,7 @@ use crate::{
     ClusterInfo,
 };
 use ahash::AHashMap as HashMap;
-use anyhow::Result;
+use anyhow::{bail, Result};
 use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
 use linkerd_policy_controller_core::outbound::{
     Backend, Backoff, FailureAccrual, HttpRoute, HttpRouteRule, OutboundPolicy, WeightedService,
@@ -88,6 +88,11 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
     fn apply(&mut self, service: Service) {
         let name = service.name_unchecked();
         let ns = service.namespace().expect("Service must have a namespace");
+        let accrual = parse_accrual_config(service.annotations()).map_err(|error| tracing::error!(%error, service=name, namespace=ns, "failed to parse accrual config")).unwrap_or_default();
+        let opaque_ports =
+            ports_annotation(service.annotations(), "config.linkerd.io/opaque-ports")
+                .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
+
         if let Some(cluster_ip) = service
             .spec
             .as_ref()
@@ -108,10 +113,6 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             }
         }
 
-        let opaque_ports =
-            ports_annotation(service.annotations(), "config.linkerd.io/opaque-ports")
-                .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
-        let accrual = parse_accrual_config(service.annotations());
         let service_info = ServiceInfo {
             opaque_ports,
             accrual,
@@ -220,10 +221,13 @@ impl Namespace {
     fn update_service(&mut self, name: String, service: ServiceInfo) {
         tracing::debug!(?name, ?service, "updating service");
         for (svc_port, svc_routes) in self.service_routes.iter_mut() {
+            if svc_port.service != name {
+                continue;
+            }
             let opaque = service.opaque_ports.contains(&svc_port.port);
-            svc_routes.set_opaque(opaque);
+
+            svc_routes.update_service(opaque, service.accrual.clone());
         }
-        // TODO: send accrual update
         self.services.insert(name, service);
     }
 
@@ -414,8 +418,9 @@ impl ServiceRoutes {
         self.send_if_modified();
     }
 
-    fn set_opaque(&mut self, opaque: bool) {
+    fn update_service(&mut self, opaque: bool, accrual: Option<FailureAccrual>) {
         self.opaque = opaque;
+        self.accrual = accrual;
         self.send_if_modified();
     }
 
@@ -435,71 +440,65 @@ impl ServiceRoutes {
                 policy.opaque = self.opaque;
                 modified = true;
             }
+            if self.accrual != policy.accrual {
+                policy.accrual = self.accrual.clone();
+                modified = true;
+            }
             modified
         });
     }
 }
 
-// TODO: could bubble up errors through `Result`
 fn parse_accrual_config(
     annotations: &std::collections::BTreeMap<String, String>,
 ) -> Result<Option<FailureAccrual>> {
-    match annotations.get("balancer.linkerd.io/mode") {
-        Some(v) if v == "consecutive" => {
-            // TODO (matei): value is kind of out of pocket, how do we establish what's good
-            // here.
-            let max_failures = annotations
-                .get("balancer.linkerd.io/failure-accrual-consecutive-failures")
-                .map(|s| {
-                    s.parse::<u32>()
-                        .map_err(|error| tracing::debug!(%error, "Invalid annotation value"))
-                }) // Option<Result<>
-                .transpose()?
-                .unwrap_or(7);
+    annotations
+        .get("balancer.linkerd.io/mode")
+        .map(|mode| {
+            if mode == "consecutive" {
+                let max_failures = annotations
+                    .get("balancer.linkerd.io/failure-accrual-consecutive-failures")
+                    .map(|s| s.parse::<u32>())
+                    .transpose()?
+                    .unwrap_or(7);
 
-            let max_penalty = annotations
-                .get("balancer.linkerd.io/max-penalty")
-                .and_then(|s| {
-                    parse_duration(s)
-                        .map_err(|error| tracing::debug!(%error, "Invalid annotation value"))
-                })
-                .unwrap_or_else(|| time::Duration::from_secs(60));
+                let max_penalty = annotations
+                    .get("balancer.linkerd.io/max-penalty")
+                    .map(|s| parse_duration(s))
+                    .transpose()?
+                    .unwrap_or_else(|| time::Duration::from_secs(60));
 
-            let min_penalty = annotations
-                .get("balancer.linkerd.io/min-penalty")
-                .and_then(|s| {
-                    parse_duration(s)
-                        .map_err(|error| tracing::debug!(%error, "Invalid annotation value"))
-                        .ok()
-                })?
-                .unwrap_or_else(|| time::Duration::from_secs(1));
-            let jitter = annotations
-                .get("balancer.linkerd.io/jitter")
-                .and_then(|s| {
-                    s.parse::<f64>()
-                        .map_err(|error| tracing::debug!(%error, "Invalid annotation value"))
-                        .ok()
-                })
-                .unwrap_or_default();
-            if min_penalty > max_penalty {
-                tracing::debug!(?min_penalty, ?max_penalty, "Invalid backoff configuration");
-                return Some(FailureAccrual::Consecutive {
+                let min_penalty = annotations
+                    .get("balancer.linkerd.io/min-penalty")
+                    .map(|s| parse_duration(s))
+                    .transpose()?
+                    .unwrap_or_else(|| time::Duration::from_secs(1));
+                let jitter = annotations
+                    .get("balancer.linkerd.io/jitter")
+                    .map(|s| s.parse::<f64>())
+                    .transpose()?
+                    .unwrap_or_default();
+                if min_penalty > max_penalty {
+                    bail!(
+                        "min_penalty ({:?}) cannot exceed max_penalty ({:?})",
+                        min_penalty,
+                        max_penalty,
+                    );
+                }
+
+                Ok(FailureAccrual::Consecutive {
                     max_failures,
-                    backoff: Default::default(),
-                });
+                    backoff: Backoff {
+                        min_penalty,
+                        max_penalty,
+                        jitter,
+                    },
+                })
+            } else {
+                bail!("unsupported failure accrual mode: {}", mode);
             }
-
-            Some(FailureAccrual::Consecutive {
-                max_failures,
-                backoff: Backoff {
-                    min_penalty,
-                    max_penalty,
-                    jitter,
-                },
-            })
-        }
-        _ => None,
-    }
+        })
+        .transpose()
 }
 
 //TODO: check what we do in proxy for this.

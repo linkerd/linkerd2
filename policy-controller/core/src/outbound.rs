@@ -71,9 +71,9 @@ pub enum FailureAccrual {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Backoff {
-    min_penalty: time::Duration,
-    max_penalty: time::Duration,
-    jitter: f64,
+    pub min_penalty: time::Duration,
+    pub max_penalty: time::Duration,
+    pub jitter: f64,
 }
 
 impl std::default::Default for Backoff {
