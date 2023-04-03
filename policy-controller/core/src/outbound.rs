@@ -64,12 +64,12 @@ pub struct WeightedService {
     pub namespace: String,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum FailureAccrual {
     Consecutive { max_failures: u32, backoff: Backoff },
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Backoff {
     pub min_penalty: time::Duration,
     pub max_penalty: time::Duration,

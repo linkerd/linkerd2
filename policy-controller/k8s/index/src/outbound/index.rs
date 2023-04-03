@@ -88,7 +88,9 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
     fn apply(&mut self, service: Service) {
         let name = service.name_unchecked();
         let ns = service.namespace().expect("Service must have a namespace");
-        let accrual = parse_accrual_config(service.annotations()).map_err(|error| tracing::error!(%error, service=name, namespace=ns, "failed to parse accrual config")).unwrap_or_default();
+        let accrual = parse_accrual_config(service.annotations())
+            .map_err(|error| tracing::error!(%error, service=name, namespace=ns, "failed to parse accrual config"))
+            .unwrap_or_default();
         let opaque_ports =
             ports_annotation(service.annotations(), "config.linkerd.io/opaque-ports")
                 .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
@@ -226,7 +228,7 @@ impl Namespace {
             }
             let opaque = service.opaque_ports.contains(&svc_port.port);
 
-            svc_routes.update_service(opaque, service.accrual.clone());
+            svc_routes.update_service(opaque, service.accrual);
         }
         self.services.insert(name, service);
     }
@@ -245,7 +247,7 @@ impl Namespace {
         self.service_routes.entry(sp.clone()).or_insert_with(|| {
             let authority = cluster.service_dns_authority(&self.namespace, &sp.service, sp.port);
             let (opaque, accrual) = match self.services.get(&sp.service) {
-                Some(svc) => (svc.opaque_ports.contains(&sp.port), svc.accrual.clone()),
+                Some(svc) => (svc.opaque_ports.contains(&sp.port), svc.accrual),
                 None => (false, None),
             };
 
@@ -254,7 +256,7 @@ impl Namespace {
                 authority,
                 namespace: self.namespace.to_string(),
                 opaque,
-                accrual: accrual.clone(),
+                accrual,
             });
             ServiceRoutes {
                 routes: Default::default(),
@@ -441,7 +443,7 @@ impl ServiceRoutes {
                 modified = true;
             }
             if self.accrual != policy.accrual {
-                policy.accrual = self.accrual.clone();
+                policy.accrual = self.accrual;
                 modified = true;
             }
             modified
@@ -464,13 +466,13 @@ fn parse_accrual_config(
 
                 let max_penalty = annotations
                     .get("balancer.linkerd.io/failure-accrual-consecutive-max-penalty")
-                    .map(|s| parse_duration(s))
+                    .map(parse_duration)
                     .transpose()?
                     .unwrap_or_else(|| time::Duration::from_secs(60));
 
                 let min_penalty = annotations
                     .get("balancer.linkerd.io/failure-accrual-consecutive-min-penalty")
-                    .map(|s| parse_duration(s))
+                    .map(parse_duration)
                     .transpose()?
                     .unwrap_or_else(|| time::Duration::from_secs(1));
                 let jitter = annotations
@@ -480,9 +482,7 @@ fn parse_accrual_config(
                     .unwrap_or(0.5);
                 if min_penalty > max_penalty {
                     bail!(
-                        "min_penalty ({:?}) cannot exceed max_penalty ({:?})",
-                        min_penalty,
-                        max_penalty,
+                        "min_penalty ({min_penalty:?}) cannot exceed max_penalty ({max_penalty:?})",
                     );
                 }
 
@@ -495,14 +495,14 @@ fn parse_accrual_config(
                     },
                 })
             } else {
-                bail!("unsupported failure accrual mode: {}", mode);
+                bail!("unsupported failure accrual mode: {mode}");
             }
         })
         .transpose()
 }
 
 //TODO: check what we do in proxy for this.
-fn parse_duration(s: &str) -> Result<time::Duration> {
+fn parse_duration(s: &String) -> Result<time::Duration> {
     let s = s.trim();
     let offset = s
         .rfind(|c: char| c.is_ascii_digit())
