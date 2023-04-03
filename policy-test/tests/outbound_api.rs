@@ -446,7 +446,7 @@ async fn service_with_consecutive_failure_accrual_defaults() {
                 &grpc::outbound::ExponentialBackoff {
                     min_backoff: Some(Duration::from_secs(1).try_into().unwrap()),
                     max_backoff: Some(Duration::from_secs(60).try_into().unwrap()),
-                    jitter_ratio: __f32,
+                    jitter_ratio: 1.0_f32,
                 },
                 consecutive
                     .backoff
