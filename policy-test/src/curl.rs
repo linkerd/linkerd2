@@ -1,4 +1,4 @@
-use super::{create, LinkerdInject};
+use super::{create, create_ready_pod, LinkerdInject};
 use kube::{api::LogParams, ResourceExt};
 use linkerd_policy_controller_k8s_api::{self as k8s};
 use maplit::{btreemap, convert_args};
@@ -16,6 +16,12 @@ pub struct Running {
     namespace: String,
     name: String,
     client: kube::Client,
+}
+
+#[derive(Clone)]
+pub struct Execable {
+    running: Running,
+    api: kube::Api<k8s::Pod>,
 }
 
 impl Runner {
@@ -85,6 +91,34 @@ impl Runner {
         }
     }
 
+    pub async fn run_execable(&self, name: &str, inject: LinkerdInject) -> Execable {
+        let pod = k8s::Pod {
+            metadata: Self::curl_meta(&self.namespace, name, inject),
+            spec: Some(k8s::PodSpec {
+                service_account: Some("curl".to_string()),
+                containers: vec![k8s::api::core::v1::Container {
+                    name: "curl".to_string(),
+                    image: Some("docker.io/curlimages/curl:latest".to_string()),
+                    command: Some(vec!["sh".to_string(), "-c".to_string()]),
+                    args: Some(vec!["while true; do sleep 60; done".to_string()]),
+                    ..Default::default()
+                }],
+                restart_policy: Some("Never".to_string()),
+                ..Default::default()
+            }),
+            ..k8s::Pod::default()
+        };
+        create_ready_pod(&self.client, pod).await;
+        let running = Running {
+            client: self.client.clone(),
+            namespace: self.namespace.clone(),
+            name: name.to_string(),
+        };
+        running.inits_complete().await;
+        let api = kube::Api::<k8s::Pod>::namespaced(running.client.clone(), &running.namespace);
+        Execable { running, api }
+    }
+
     /// Creates a service account and RBAC to allow curl pods to watch the
     /// curl-lock configmap.
     async fn create_rbac(&self) {
@@ -146,15 +180,7 @@ impl Runner {
 
     fn gen_pod(ns: &str, name: &str, target_url: &str, inject: LinkerdInject) -> k8s::Pod {
         k8s::Pod {
-            metadata: k8s::ObjectMeta {
-                namespace: Some(ns.to_string()),
-                name: Some(name.to_string()),
-                annotations: Some(convert_args!(btreemap!(
-                    "linkerd.io/inject" => inject.to_string(),
-                    "config.linkerd.io/proxy-log-level" => "linkerd=trace,info",
-                ))),
-                ..Default::default()
-            },
+            metadata: Self::curl_meta(ns, name, inject),
             spec: Some(k8s::PodSpec {
                 service_account: Some("curl".to_string()),
                 init_containers: Some(vec![k8s::api::core::v1::Container {
@@ -192,6 +218,18 @@ impl Runner {
                 ..Default::default()
             }),
             ..k8s::Pod::default()
+        }
+    }
+
+    fn curl_meta(ns: &str, name: &str, inject: LinkerdInject) -> k8s::ObjectMeta {
+        k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            annotations: Some(convert_args!(btreemap!(
+                "linkerd.io/inject" => inject.to_string(),
+                "config.linkerd.io/proxy-log-level" => "linkerd=trace,info",
+            ))),
+            ..Default::default()
         }
     }
 }
@@ -309,6 +347,49 @@ impl Running {
                 );
             }
         };
+    }
+}
+
+impl Execable {
+    pub async fn exec<I, T>(&self, command: I) -> kube::api::AttachedProcess
+    where
+        I: IntoIterator<Item = T> + std::fmt::Debug,
+        T: Into<String>,
+    {
+        self.api
+            .exec(
+                &self.running.name,
+                command,
+                &kube::api::AttachParams {
+                    container: Some("curl".to_string()),
+                    stdout: true,
+                    ..Default::default()
+                },
+            )
+            .await
+            .expect("must be able to exec")
+    }
+
+    pub async fn curl(&self, target_url: &str) -> Result<String, Box<dyn std::error::Error>> {
+        use tokio::io::AsyncReadExt;
+        let mut process = self
+            .exec([
+                "curl",
+                "-sf",
+                "-o",
+                "/dev/null",
+                "-w",
+                "%{http_code}",
+                "--max-time",
+                "10",
+                target_url,
+            ])
+            .await;
+        let mut stdout = process.stdout().expect("AttachParams should have stdout");
+        process.join().await?;
+        let mut buf = String::new();
+        stdout.read_to_string(&mut buf).await?;
+        Ok(buf)
     }
 }
 
