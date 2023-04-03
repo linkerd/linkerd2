@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::BTreeMap, time::Duration};
 
 use futures::prelude::*;
 use kube::ResourceExt;
@@ -285,7 +285,7 @@ async fn service_with_consecutive_failure_accrual() {
             &ns,
             "consecutive-accrual-svc",
             80,
-            std::collections::BTreeMap::from([
+            BTreeMap::from([
                 (
                     "balancer.linkerd.io/failure-accrual".to_string(),
                     "consecutive".to_string(),
@@ -325,7 +325,7 @@ async fn service_with_consecutive_failure_accrual() {
                 &grpc::outbound::ExponentialBackoff {
                     min_backoff: Some(Duration::from_secs(10).try_into().unwrap()),
                     max_backoff: Some(Duration::from_secs(600).try_into().unwrap()),
-                    jitter_ratio: 1.0 as f32,
+                    jitter_ratio: 1.0_f32,
                 },
                 consecutive
                     .backoff
@@ -347,7 +347,7 @@ async fn service_with_consecutive_failure_accrual_defaults() {
             &ns,
             "default-accrual-svc",
             80,
-            std::collections::BTreeMap::from([(
+            BTreeMap::from([(
                 "balancer.linkerd.io/failure-accrual".to_string(),
                 "consecutive".to_string(),
             )]),
@@ -379,7 +379,7 @@ async fn service_with_consecutive_failure_accrual_defaults() {
             &ns,
             "no-backoff-svc",
             80,
-            std::collections::BTreeMap::from([
+            BTreeMap::from([
                 (
                     "balancer.linkerd.io/failure-accrual".to_string(),
                     "consecutive".to_string(),
@@ -417,7 +417,7 @@ async fn service_with_consecutive_failure_accrual_defaults() {
             &ns,
             "only-jitter-svc",
             80,
-            std::collections::BTreeMap::from([
+            BTreeMap::from([
                 (
                     "balancer.linkerd.io/failure-accrual".to_string(),
                     "consecutive".to_string(),
@@ -446,7 +446,7 @@ async fn service_with_consecutive_failure_accrual_defaults() {
                 &grpc::outbound::ExponentialBackoff {
                     min_backoff: Some(Duration::from_secs(1).try_into().unwrap()),
                     max_backoff: Some(Duration::from_secs(60).try_into().unwrap()),
-                    jitter_ratio: 1.0 as f32,
+                    jitter_ratio: __f32,
                 },
                 consecutive
                     .backoff
@@ -461,6 +461,7 @@ async fn service_with_consecutive_failure_accrual_defaults() {
 #[tokio::test(flavor = "current_thread")]
 async fn service_with_default_failure_accrual() {
     with_temp_ns(|client, ns| async move {
+        // Default config for Service, no failure accrual
         let svc = create_service(&client, &ns, "default-failure-accrual", 80).await;
 
         let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
@@ -477,6 +478,36 @@ async fn service_with_default_failure_accrual() {
                 accrual.is_none(),
                 "consecutive failure accrual should not be configured for service"
             );
+        });
+
+        // Create Service with consecutive failure accrual config for
+        // max_failures but no mode
+        let svc = create_annotated_service(
+            &client,
+            &ns,
+            "default-max-failure-svc",
+            80,
+            BTreeMap::from([(
+                "balancer.linkerd.io/failure-accrual-consecutive-max-failures".to_string(),
+                "8".to_string(),
+            )]),
+        )
+        .await;
+
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+
+        // Expect failure accrual config to be default (no failure accrual)
+        detect_failure_accrual(&config, |accrual| {
+            assert!(
+                accrual.is_none(),
+                "consecutive failure accrual should not be configured for service"
+            )
         });
     })
     .await;

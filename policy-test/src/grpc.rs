@@ -65,7 +65,7 @@ macro_rules! assert_default_accrual_backoff {
         let default_backoff = outbound::ExponentialBackoff {
             min_backoff: Some(Duration::from_secs(1).try_into().unwrap()),
             max_backoff: Some(Duration::from_secs(60).try_into().unwrap()),
-            jitter_ratio: 0.0 as f32,
+            jitter_ratio: 0.5 as f32,
         };
         assert_eq!(&default_backoff, $backoff)
     }};
