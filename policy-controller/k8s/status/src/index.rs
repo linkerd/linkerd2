@@ -237,7 +237,7 @@ impl Index {
 
                 Some(gateway::RouteParentStatus {
                     parent_ref: gateway::ParentReference {
-                        group: None,
+                        group: Some("core".to_string()),
                         kind: Some("Service".to_string()),
                         namespace: Some(service.namespace.clone()),
                         name: service.name.clone(),
