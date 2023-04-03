@@ -477,7 +477,7 @@ fn parse_accrual_config(
                     .get("balancer.linkerd.io/failure-accrual-consecutive-jitter-ratio")
                     .map(|s| s.parse::<f32>())
                     .transpose()?
-                    .unwrap_or_default();
+                    .unwrap_or(0.5);
                 if min_penalty > max_penalty {
                     bail!(
                         "min_penalty ({:?}) cannot exceed max_penalty ({:?})",

@@ -75,13 +75,3 @@ pub struct Backoff {
     pub max_penalty: time::Duration,
     pub jitter: f32,
 }
-
-impl std::default::Default for Backoff {
-    fn default() -> Self {
-        Self {
-            min_penalty: time::Duration::from_secs(1),
-            max_penalty: time::Duration::from_secs(60),
-            jitter: 0.0,
-        }
-    }
-}
