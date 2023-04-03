@@ -181,7 +181,7 @@ impl Runner {
                     name: "curl".to_string(),
                     image: Some("docker.io/curlimages/curl:latest".to_string()),
                     args: Some(
-                        vec!["curl", "-sf", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "10", "--retry", "12", target_url]
+                        vec!["curl", "-sfv", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "10", "--retry", "10", "--retry-delay", "2", target_url]
                             .into_iter()
                             .map(Into::into)
                             .collect(),
