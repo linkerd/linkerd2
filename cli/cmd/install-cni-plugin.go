@@ -278,13 +278,13 @@ func install(w io.Writer, valOpts values.Options, config *cniPluginOptions) erro
 	return renderCNIPlugin(w, valuesOverrides, config)
 }
 
-func renderCNIPlugin(w io.Writer, ValuesOverrides map[string]interface{}, config *cniPluginOptions) error {
+func renderCNIPlugin(w io.Writer, valuesOverrides map[string]interface{}, config *cniPluginOptions) error {
 
 	if err := config.validate(); err != nil {
 		return err
 	}
 
-	plugin := &extCNIPluginOptions{valuesOverrides: ValuesOverrides, options: config}
+	plugin := &extCNIPluginOptions{valuesOverrides, config}
 	values, err := plugin.buildValues()
 	if err != nil {
 		return err

@@ -58,7 +58,7 @@ type Values struct {
 	ImagePullSecrets    []map[string]string `json:"imagePullSecrets"`
 	ExtraInitContainers []interface{}       `json:"extraInitContainers"`
 	EnablePSP           bool                `json:"enablePSP"`
-	Privileged    		bool				`json:"privileged"`
+	Privileged          bool                `json:"privileged"`
 	Resources           Resources           `json:"resources"`
 }
 

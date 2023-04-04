@@ -71,7 +71,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 	defaultValues := map[string]interface{}{
 		"resources": map[string]interface{}{
 			"cpu": map[string]string{
-				"limit": "100m",
+				"limit": "1m",
 			},
 		},
 	}
