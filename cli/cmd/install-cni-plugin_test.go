@@ -70,8 +70,8 @@ func TestRenderCNIPlugin(t *testing.T) {
 
 	defaultValues := map[string]interface{}{
 		"resources": map[string]interface{}{
-			"limit": map[string]interface{}{
-				"cpu": 1,
+			"cpu": map[string]string{
+				"limit": "100m",
 			},
 		},
 	}
@@ -90,10 +90,10 @@ func TestRenderCNIPlugin(t *testing.T) {
 		goldenFileName string
 	}{
 		{defaultOptions, defaultValues, "install-cni-plugin_default.golden"},
-		{fullyConfiguredOptions, defaultValues, "install-cni-plugin_fully_configured.golden"},
-		{fullyConfiguredOptionsEqualDsts, defaultValues, "install-cni-plugin_fully_configured_equal_dsts.golden"},
-		{fullyConfiguredOptionsNoNamespace, defaultValues, "install-cni-plugin_fully_configured_no_namespace.golden"},
-		{defaultOptionsWithSkipPorts, defaultValues, "install-cni-plugin_skip_ports.golden"},
+		{fullyConfiguredOptions, nil, "install-cni-plugin_fully_configured.golden"},
+		{fullyConfiguredOptionsEqualDsts, nil, "install-cni-plugin_fully_configured_equal_dsts.golden"},
+		{fullyConfiguredOptionsNoNamespace, nil, "install-cni-plugin_fully_configured_no_namespace.golden"},
+		{defaultOptionsWithSkipPorts, nil, "install-cni-plugin_skip_ports.golden"},
 	}
 
 	for i, tc := range testCases {

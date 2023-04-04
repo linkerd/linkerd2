@@ -22,6 +22,7 @@ type Image struct {
 	PullPolicy interface{} `json:"pullPolicy"`
 }
 
+// Constraints wraps the Limit and Request settings for computational resources
 type Constraints struct {
 	Limit   string `json:"limit"`
 	Request string `json:"request"`
@@ -55,8 +56,9 @@ type Values struct {
 	PodLabels           map[string]string   `json:"podLabels"`
 	CommonLabels        map[string]string   `json:"commonLabels"`
 	ImagePullSecrets    []map[string]string `json:"imagePullSecrets"`
-	ExtraInitContainers []map[string]string `json:"extraInitContainers"`
+	ExtraInitContainers []interface{}       `json:"extraInitContainers"`
 	EnablePSP           bool                `json:"enablePSP"`
+	Privileged    		bool				`json:"privileged"`
 	Resources           Resources           `json:"resources"`
 }
 

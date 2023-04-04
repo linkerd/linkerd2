@@ -50,6 +50,11 @@ type cniPluginOptions struct {
 	priorityClassName   string
 }
 
+type extCNIPluginOptions struct {
+	valuesOverrides map[string]interface{}
+	options         *cniPluginOptions
+}
+
 func (options *cniPluginOptions) validate() error {
 	if !alphaNumDashDot.MatchString(options.linkerdVersion) {
 		return fmt.Errorf("%s is not a valid version", options.linkerdVersion)
@@ -97,7 +102,7 @@ func newCmdInstallCNIPlugin() *cobra.Command {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	var option values.Options
+	var valOpts values.Options
 
 	cmd := &cobra.Command{
 		Use:   "install-cni [flags]",
@@ -112,7 +117,7 @@ assumes that the 'linkerd install' command will be executed with the
 Now the installation can be configured by using the --set, --values, --set-string and --set-file flags.
 A full list of configurable values can be found at https://artifacthub.io/packages/helm/linkerd2/linkerd2-cni#values`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return install(os.Stdout, option, options)
+			return install(os.Stdout, valOpts, options)
 		},
 	}
 
@@ -139,7 +144,7 @@ A full list of configurable values can be found at https://artifacthub.io/packag
 		options.useWaitFlag,
 		"Configures the CNI plugin to use the \"-w\" flag for the iptables command. (default false)")
 
-	flags.AddValueOptionsFlags(cmd.Flags(), &option)
+	flags.AddValueOptionsFlags(cmd.Flags(), &valOpts)
 
 	return cmd
 }
@@ -184,73 +189,71 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 	return &cniOptions, nil
 }
 
-func buildValues(options *cniPluginOptions, valuesOverrides map[string]interface{}) (*cnicharts.Values, error) {
+func (p *extCNIPluginOptions) buildValues() (*cnicharts.Values, error) {
 	installValues, err := cnicharts.NewValues()
 	if err != nil {
 		return nil, err
 	}
 
-	if val, exists := valuesOverrides["enablePSP"]; exists {
-		installValues.EnablePSP = val.(bool)
-	}
-
-	if val, exists := valuesOverrides["podLabels"]; exists {
-		var podLabels map[string]string
-		if err := parseYAMLValue(val, &podLabels); err != nil {
+	if val, ok := p.valuesOverrides["enablePSP"]; ok {
+		if err := parseYAMLValue(val, &installValues.EnablePSP); err != nil {
 			return nil, err
 		}
-		installValues.PodLabels = podLabels
 	}
 
-	if val, exists := valuesOverrides["commonLabels"]; exists {
-		var commonLabels map[string]string
-		if err := parseYAMLValue(val, &commonLabels); err != nil {
+	if val, ok := p.valuesOverrides["privileged"]; ok {
+		if err := parseYAMLValue(val, &installValues.Privileged); err != nil {
 			return nil, err
 		}
-		installValues.CommonLabels = commonLabels
 	}
 
-	if val, exists := valuesOverrides["imagePullSecrets"]; exists {
-		var imagePullSecrets []map[string]string
-		if err := parseYAMLValue(val, &imagePullSecrets); err != nil {
+	if val, ok := p.valuesOverrides["podLabels"]; ok {
+		if err := parseYAMLValue(val, &installValues.PodLabels); err != nil {
 			return nil, err
 		}
-		installValues.ImagePullSecrets = imagePullSecrets
 	}
 
-	if val, exists := valuesOverrides["extraInitContainers"]; exists {
-		var extraInitContainers []map[string]string
-		if err := parseYAMLValue(val, &extraInitContainers); err != nil {
+	if val, ok := p.valuesOverrides["commonLabels"]; ok {
+		if err := parseYAMLValue(val, &installValues.CommonLabels); err != nil {
 			return nil, err
 		}
-		installValues.ExtraInitContainers = extraInitContainers
 	}
 
-	if val, exists := valuesOverrides["resources"]; exists {
-		var resources cnicharts.Resources
-		if err := parseYAMLValue(val, &resources); err != nil {
+	if val, ok := p.valuesOverrides["imagePullSecrets"]; ok {
+		if err := parseYAMLValue(val, &installValues.ImagePullSecrets); err != nil {
 			return nil, err
 		}
-		installValues.Resources = resources
+	}
+
+	if val, ok := p.valuesOverrides["extraInitContainers"]; ok {
+		if err := parseYAMLValue(val, &installValues.ExtraInitContainers); err != nil {
+			return nil, err
+		}
+	}
+
+	if val, ok := p.valuesOverrides["resources"]; ok {
+		if err := parseYAMLValue(val, &installValues.Resources); err != nil {
+			return nil, err
+		}
 	}
 
 	portsToRedirect := []string{}
-	for _, p := range options.portsToRedirect {
+	for _, p := range p.options.portsToRedirect {
 		portsToRedirect = append(portsToRedirect, fmt.Sprintf("%d", p))
 	}
 
-	installValues.Image = options.pluginImage()
-	installValues.LogLevel = options.logLevel
-	installValues.InboundProxyPort = options.inboundPort
-	installValues.OutboundProxyPort = options.outboundPort
-	installValues.IgnoreInboundPorts = strings.Join(options.ignoreInboundPorts, ",")
-	installValues.IgnoreOutboundPorts = strings.Join(options.ignoreOutboundPorts, ",")
+	installValues.Image = p.options.pluginImage()
+	installValues.LogLevel = p.options.logLevel
+	installValues.InboundProxyPort = p.options.inboundPort
+	installValues.OutboundProxyPort = p.options.outboundPort
+	installValues.IgnoreInboundPorts = strings.Join(p.options.ignoreInboundPorts, ",")
+	installValues.IgnoreOutboundPorts = strings.Join(p.options.ignoreOutboundPorts, ",")
 	installValues.PortsToRedirect = strings.Join(portsToRedirect, ",")
-	installValues.ProxyUID = options.proxyUID
-	installValues.DestCNINetDir = options.destCNINetDir
-	installValues.DestCNIBinDir = options.destCNIBinDir
-	installValues.UseWaitFlag = options.useWaitFlag
-	installValues.PriorityClassName = options.priorityClassName
+	installValues.ProxyUID = p.options.proxyUID
+	installValues.DestCNINetDir = p.options.destCNINetDir
+	installValues.DestCNIBinDir = p.options.destCNIBinDir
+	installValues.UseWaitFlag = p.options.useWaitFlag
+	installValues.PriorityClassName = p.options.priorityClassName
 	return installValues, nil
 }
 
@@ -265,10 +268,9 @@ func parseYAMLValue(val interface{}, target interface{}) error {
 	return nil
 }
 
-func install(w io.Writer, option values.Options, config *cniPluginOptions) error {
-
+func install(w io.Writer, valOpts values.Options, config *cniPluginOptions) error {
 	// Create values override
-	valuesOverrides, err := option.MergeValues(nil)
+	valuesOverrides, err := valOpts.MergeValues(nil)
 	if err != nil {
 		return err
 	}
@@ -276,13 +278,14 @@ func install(w io.Writer, option values.Options, config *cniPluginOptions) error
 	return renderCNIPlugin(w, valuesOverrides, config)
 }
 
-func renderCNIPlugin(w io.Writer, valuesOverrides map[string]interface{}, config *cniPluginOptions) error {
+func renderCNIPlugin(w io.Writer, ValuesOverrides map[string]interface{}, config *cniPluginOptions) error {
 
 	if err := config.validate(); err != nil {
 		return err
 	}
 
-	values, err := buildValues(config, valuesOverrides)
+	plugin := &extCNIPluginOptions{valuesOverrides: ValuesOverrides, options: config}
+	values, err := plugin.buildValues()
 	if err != nil {
 		return err
 	}
