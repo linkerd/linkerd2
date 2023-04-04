@@ -18,6 +18,6 @@ jobs:
     container: ghcr.io/linkerd/dev:v39-go
     steps:
       - run: apt update && apt install -y unzip
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3
       - run: bin/protoc-diff
 

@@ -15,12 +15,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: linkerd/dev/actions/setup-tools@v39
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3
       - run: just-dev lint-actions
 
   devcontainer-versions:
     runs-on: ubuntu-latest
     steps:
       - uses: linkerd/dev/actions/setup-tools@v39
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3
       - run: just-dev check-action-images
