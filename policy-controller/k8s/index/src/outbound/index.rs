@@ -502,7 +502,6 @@ fn parse_accrual_config(
         .transpose()
 }
 
-//TODO: check what we do in proxy for this.
 fn parse_duration(s: &str) -> Result<time::Duration> {
     let s = s.trim();
     let offset = s
