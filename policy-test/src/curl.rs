@@ -18,6 +18,8 @@ pub struct Running {
     client: kube::Client,
 }
 
+/// A handle to a running `curl` container which can perform multiple requests
+/// using `kubectl exec`.
 #[derive(Clone)]
 pub struct Execable {
     running: Running,
@@ -25,6 +27,8 @@ pub struct Execable {
 }
 
 impl Runner {
+    const CURL_IMAGE: &str = "docker.io/curlimages/curl:latest";
+
     pub async fn init(client: &kube::Client, ns: &str) -> Runner {
         let runner = Runner {
             namespace: ns.to_string(),
@@ -91,6 +95,14 @@ impl Runner {
         }
     }
 
+    /// Runs a [`k8s::Pod`] with a `curl` container which can execute HTTP
+    /// requests using `kubectl exec`.
+    ///
+    /// The pod:
+    /// - has the `linkerd.io/inject` annotation set, based on the
+    ///   `linkerd_inject` parameter;
+    /// - does not execute any requests unless [`Execable::get`] or
+    ///   [`Execable::exec`] are called on the returned [`Execable`] handle.
     pub async fn run_execable(&self, name: &str, inject: LinkerdInject) -> Execable {
         let pod = k8s::Pod {
             metadata: Self::curl_meta(&self.namespace, name, inject),
@@ -98,7 +110,7 @@ impl Runner {
                 service_account: Some("curl".to_string()),
                 containers: vec![k8s::api::core::v1::Container {
                     name: "curl".to_string(),
-                    image: Some("docker.io/curlimages/curl:latest".to_string()),
+                    image: Some(Self::CURL_IMAGE.to_string()),
                     command: Some(vec!["sh".to_string(), "-c".to_string()]),
                     args: Some(vec!["while true; do sleep 60; done".to_string()]),
                     ..Default::default()
@@ -205,7 +217,7 @@ impl Runner {
                 }]),
                 containers: vec![k8s::api::core::v1::Container {
                     name: "curl".to_string(),
-                    image: Some("docker.io/curlimages/curl:latest".to_string()),
+                    image: Some(Self::CURL_IMAGE.to_string()),
                     args: Some(
                         vec!["curl", "-sf", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "10", "--retry", "10", "--retry-delay", "2", target_url]
                             .into_iter()
@@ -351,45 +363,70 @@ impl Running {
 }
 
 impl Execable {
-    pub async fn exec<I, T>(&self, command: I) -> kube::api::AttachedProcess
+    /// Execute the provided `command` in the `curl` pod, returning the process'
+    /// stdout as a `String`.
+    pub async fn exec<I, T>(&self, command: I) -> Result<String, Box<dyn std::error::Error>>
     where
         I: IntoIterator<Item = T> + std::fmt::Debug,
         T: Into<String>,
     {
-        self.api
+        use tokio::io::AsyncReadExt;
+        tracing::debug!(?command, "curl::exec");
+        let mut process = self
+            .api
             .exec(
                 &self.running.name,
                 command,
                 &kube::api::AttachParams {
                     container: Some("curl".to_string()),
                     stdout: true,
+                    stderr: true,
                     ..Default::default()
                 },
             )
             .await
-            .expect("must be able to exec")
+            .expect("must be able to exec");
+        let mut stdout = process.stdout().expect("AttachParams should have stdout");
+        let mut stderr = process.stderr().expect("AttachParams should have stderr");
+        process.join().await?;
+        let mut stdout_buf = String::new();
+        stdout.read_to_string(&mut stdout_buf).await?;
+        let mut stderr_buf = String::new();
+        match stderr.read_to_string(&mut stderr_buf).await {
+            Ok(_) => tracing::debug!("curl stderr:\n{stderr_buf}"),
+            Err(error) => tracing::warn!("failed to read curl stderr: {error}"),
+        }
+        Ok(stdout_buf)
     }
 
-    pub async fn curl(&self, target_url: &str) -> Result<String, Box<dyn std::error::Error>> {
-        use tokio::io::AsyncReadExt;
-        let mut process = self
-            .exec([
-                "curl",
-                "-sf",
-                "-o",
-                "/dev/null",
-                "-w",
-                "%{http_code}",
-                "--max-time",
-                "10",
-                target_url,
-            ])
-            .await;
-        let mut stdout = process.stdout().expect("AttachParams should have stdout");
-        process.join().await?;
-        let mut buf = String::new();
-        stdout.read_to_string(&mut buf).await?;
-        Ok(buf)
+    /// Execute an HTTP GET request for the provided `target_url` in the `curl` pod, returning the
+    /// status code.
+    #[tracing::instrument(
+        level = "debug",
+        name = "curl::get",
+        skip(self),
+        ret(Display),
+        err(Display)
+    )]
+    pub async fn get(
+        &self,
+        target_url: &str,
+    ) -> Result<hyper::StatusCode, Box<dyn std::error::Error>> {
+        let command = [
+            "curl",
+            "-sfv",
+            "-o",
+            "/dev/null",
+            "-w",
+            "%{http_code}",
+            "--max-time",
+            "10",
+            target_url,
+        ];
+        self.exec(command)
+            .await?
+            .parse::<hyper::StatusCode>()
+            .map_err(Into::into)
     }
 }
 

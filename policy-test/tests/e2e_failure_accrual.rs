@@ -1,51 +1,58 @@
-use kube::ResourceExt;
-use linkerd_policy_controller_k8s_api::{
-    self as k8s,
-    policy::{LocalTargetRef, NamespacedTargetRef},
+use linkerd_policy_test::{
+    annotate_service, bb, create, create_ready_pod, curl, with_temp_ns, LinkerdInject,
 };
-use linkerd_policy_test::{create, create_ready_pod, curl, web, with_temp_ns, LinkerdInject};
 
 #[tokio::test(flavor = "current_thread")]
 async fn consecutive_failures() {
     const MAX_FAILS: usize = 5;
+    const REQUESTS: usize = 20;
     with_temp_ns(|client, ns| async move {
-        // Create a web service with two pods, one of which always returns 204
-        // No Content, and the other of which always returns 500 Internal Server
-        // Error;
-        let good_pod = {
-            let mut pod = web::pod(&ns);
-            pod.metadata.name = Some("web-good".to_string());
-            pod
-        };
-        let bad_pod = {
-            let mut pod = web::pod(&ns);
-            pod.metadata.name = Some("web-bad".to_string());
-            pod.spec = Some(k8s::PodSpec {
-                containers: vec![k8s::api::core::v1::Container {
-                    // Always return 500s.
-                    args: Some(vec!["--status".to_string(), "500".to_string()]),
-                    ..web::hokay_container()
-                }],
-                ..Default::default()
-            });
-            pod
+        // Create a bb service with two pods, one of which always returns 200
+        // OK, and the other of which always returns 500 Internal Server Error.
+        let good_pod = bb::Terminus::new(&ns)
+            .named("bb-good")
+            .percent_failure(0)
+            .to_pod();
+        let bad_pod = bb::Terminus::new(&ns)
+            .named("bb-bad")
+            .percent_failure(100)
+            .to_pod();
+        let svc = {
+            let svc = bb::Terminus::service(&ns);
+            annotate_service(svc, maplit::btreemap!{
+                "balancer.linkerd.io/failure-accrual" => "consecutive".to_string(),
+                "balancer.linkerd.io/failure-accrual-consecutive-max-failures" => MAX_FAILS.to_string(),
+                "balancer.linkerd.io/failure-accrual-consecutive-min-penalty" => "5m".to_string(),
+                "balancer.linkerd.io/failure-accrual-consecutive-max-penalty" => "10m".to_string(),
+            })
         };
         tokio::join!(
-            create(&client, web::service(&ns)),
+            create(&client, svc),
             create_ready_pod(&client, good_pod),
-            // create_ready_pod(&client, bad_pod),
+            create_ready_pod(&client, bad_pod),
         );
 
         let curl = curl::Runner::init(&client, &ns)
             .await
             .run_execable("curl", LinkerdInject::Enabled)
             .await;
-        let status = curl
-            .curl("http://web")
-            .await
-            .expect("curl command should succeed");
-        tracing::info!(?status);
-        assert_eq!(status, "204")
+
+        let url = format!("http://{}", bb::Terminus::SERVICE_NAME);
+        let mut failures = 0;
+
+        for request in 0..REQUESTS {
+            tracing::info!("Sending request {request}...");
+            let status = curl
+                .get(&url)
+                .await
+                .expect("curl command should succeed");
+            tracing::info!(request, ?status, failures);
+            if status.is_server_error() {
+                failures += 1;
+            }
+        }
+
+        assert!(failures <= MAX_FAILS);
     })
     .await;
 }

@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 pub mod admission;
+pub mod bb;
 pub mod curl;
 pub mod grpc;
 pub mod web;
@@ -186,10 +187,10 @@ pub async fn create_opaque_service(
     name: &str,
     port: i32,
 ) -> k8s::Service {
-    let mut svc = mk_service(ns, name, port);
-    svc.annotations_mut().insert(
-        "config.linkerd.io/opaque-ports".to_string(),
-        format!("{}", port),
+    let svc = mk_service(ns, name, port);
+    let svc = annotate_service(
+        svc,
+        std::iter::once(("config.linkerd.io/opaque-ports", port)),
     );
 
     create(client, svc).await
@@ -203,9 +204,24 @@ pub async fn create_annotated_service(
     port: i32,
     annotations: std::collections::BTreeMap<String, String>,
 ) -> k8s::Service {
-    let mut svc = mk_service(ns, name, port);
-    svc.annotations_mut().extend(annotations);
+    let svc = annotate_service(mk_service(ns, name, port), annotations);
     create(client, svc).await
+}
+
+pub fn annotate_service<K, V>(
+    mut svc: k8s::Service,
+    annotations: impl IntoIterator<Item = (K, V)>,
+) -> k8s::Service
+where
+    K: ToString,
+    V: ToString,
+{
+    svc.annotations_mut().extend(
+        annotations
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+    );
+    svc
 }
 
 pub fn mk_service(ns: &str, name: &str, port: i32) -> k8s::Service {
