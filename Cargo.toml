@@ -13,4 +13,5 @@ members = [
 lto = "thin"
 
 [patch.crates-io]
+linkerd2-proxy-api = { git = "https://github.com/linkerd/linkerd2-proxy-api", branch = "main" }
 kubert = { git = "https://github.com/olix0r/kubert", rev = "8c582e42b6ae4aec76ac3af54e6742945d452207" }
