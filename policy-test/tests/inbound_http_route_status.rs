@@ -1,6 +1,8 @@
 use kube::ResourceExt;
 use linkerd_policy_controller_k8s_api as k8s;
-use linkerd_policy_test::{await_route_status, create, with_temp_ns};
+use linkerd_policy_test::{
+    await_route_status, create, find_route_condition, mk_route, with_temp_ns,
+};
 
 #[tokio::test(flavor = "current_thread")]
 async fn inbound_accepted_parent() {
@@ -32,11 +34,7 @@ async fn inbound_accepted_parent() {
         }];
 
         // Create a route that references the Server resource.
-        let _route = create(
-            &client,
-            mk_inbound_route(&ns, "test-accepted-route", Some(srv_ref)),
-        )
-        .await;
+        let _route = create(&client, mk_route(&ns, "test-accepted-route", Some(srv_ref))).await;
         // Wait until route is updated with a status
         let statuses = await_route_status(&client, &ns, "test-accepted-route")
             .await
@@ -56,7 +54,7 @@ async fn inbound_accepted_parent() {
         assert_eq!(route_status.parent_ref.kind.as_deref(), Some("Server"));
 
         // Check status is accepted with a status of 'True'
-        let cond = find_condition(statuses, &server.name_unchecked())
+        let cond = find_route_condition(statuses, &server.name_unchecked())
             .expect("must have at least one 'Accepted' condition for accepted server");
         assert_eq!(cond.status, "True");
         assert_eq!(cond.reason, "Accepted")
@@ -105,7 +103,7 @@ async fn inbound_multiple_parents() {
         // Create a route that references both parents.
         let _route = create(
             &client,
-            mk_inbound_route(&ns, "test-multiple-parents-route", Some(srv_refs)),
+            mk_route(&ns, "test-multiple-parents-route", Some(srv_refs)),
         )
         .await;
         // Wait until route is updated with a status
@@ -114,14 +112,14 @@ async fn inbound_multiple_parents() {
             .parents;
 
         // Find status for invalid parent and extract the condition
-        let invalid_cond = find_condition(parent_status.clone(), "test-invalid-server")
+        let invalid_cond = find_route_condition(parent_status.clone(), "test-invalid-server")
             .expect("must have at least one 'Accepted' condition set for invalid parent");
         // Route shouldn't be accepted
         assert_eq!(invalid_cond.status, "False");
         assert_eq!(invalid_cond.reason, "NoMatchingParent");
 
         // Find status for valid parent and extract the condition
-        let valid_cond = find_condition(parent_status, "test-valid-server")
+        let valid_cond = find_route_condition(parent_status, "test-valid-server")
             .expect("must have at least one 'Accepted' condition set for valid parent");
         assert_eq!(valid_cond.status, "True");
         assert_eq!(valid_cond.reason, "Accepted")
@@ -134,11 +132,7 @@ async fn inbound_no_parent_ref_patch() {
     with_temp_ns(|client, ns| async move {
         // A route may not include any parent references. When that's the case,
         // we expect the controller to simply ignore it.
-        let _route = create(
-            &client,
-            mk_inbound_route(&ns, "test-no-parent-refs-route", None),
-        )
-        .await;
+        let _route = create(&client, mk_route(&ns, "test-no-parent-refs-route", None)).await;
 
         // Status may not be set straight away. To account for that, wrap a
         // status condition watcher in a timeout.
@@ -170,10 +164,10 @@ async fn inbound_accepted_reconcile_no_parent() {
         }];
         let _route = create(
             &client,
-            mk_inbound_route(&ns, "test-reconcile-inbound-route", Some(srv_ref)),
+            mk_route(&ns, "test-reconcile-inbound-route", Some(srv_ref)),
         )
         .await;
-        let cond = find_condition(
+        let cond = find_route_condition(
             await_route_status(&client, &ns, "test-reconcile-inbound-route")
                 .await
                 .parents,
@@ -212,7 +206,7 @@ async fn inbound_accepted_reconcile_no_parent() {
         // until create_timestamp and observed_timestamp are different.
         let cond = tokio::time::timeout(tokio::time::Duration::from_secs(60), async move {
             loop {
-                let cond = find_condition(
+                let cond = find_route_condition(
                     await_route_status(&client, &ns, "test-reconcile-inbound-route")
                         .await
                         .parents,
@@ -271,10 +265,10 @@ async fn inbound_accepted_reconcile_parent_delete() {
         }];
         let _route = create(
             &client,
-            mk_inbound_route(&ns, "test-reconcile-delete-route", Some(srv_ref)),
+            mk_route(&ns, "test-reconcile-delete-route", Some(srv_ref)),
         )
         .await;
-        let cond = find_condition(
+        let cond = find_route_condition(
             await_route_status(&client, &ns, "test-reconcile-delete-route")
                 .await
                 .parents,
@@ -300,7 +294,7 @@ async fn inbound_accepted_reconcile_parent_delete() {
         // until create_timestamp and observed_timestamp are different.
         let cond = tokio::time::timeout(tokio::time::Duration::from_secs(60), async move {
             loop {
-                let cond = find_condition(
+                let cond = find_route_condition(
                     await_route_status(&client, &ns, "test-reconcile-delete-route")
                         .await
                         .parents,
@@ -323,38 +317,4 @@ async fn inbound_accepted_reconcile_parent_delete() {
         assert_eq!(cond.reason, "NoMatchingParent");
     })
     .await;
-}
-
-fn mk_inbound_route(
-    ns: &str,
-    name: &str,
-    parent_refs: Option<Vec<k8s::policy::httproute::ParentReference>>,
-) -> k8s::policy::HttpRoute {
-    use k8s::policy::httproute as api;
-    api::HttpRoute {
-        metadata: kube::api::ObjectMeta {
-            namespace: Some(ns.to_string()),
-            name: Some(name.to_string()),
-            ..Default::default()
-        },
-        spec: api::HttpRouteSpec {
-            inner: api::CommonRouteSpec { parent_refs },
-            hostnames: None,
-            rules: Some(vec![]),
-        },
-        status: None,
-    }
-}
-
-fn find_condition(
-    statuses: impl IntoIterator<Item = k8s_gateway_api::RouteParentStatus>,
-    parent_name: &str,
-) -> Option<k8s::Condition> {
-    statuses
-        .into_iter()
-        .find(|route_status| route_status.parent_ref.name == parent_name)
-        .expect("route must have at least one status set")
-        .conditions
-        .into_iter()
-        .find(|cond| cond.type_ == "Accepted")
 }

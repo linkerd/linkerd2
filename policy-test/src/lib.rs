@@ -226,6 +226,40 @@ pub fn mk_service(ns: &str, name: &str, port: i32) -> k8s::Service {
     }
 }
 
+pub fn mk_route(
+    ns: &str,
+    name: &str,
+    parent_refs: Option<Vec<k8s::policy::httproute::ParentReference>>,
+) -> k8s::policy::HttpRoute {
+    use k8s::policy::httproute as api;
+    api::HttpRoute {
+        metadata: kube::api::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: api::HttpRouteSpec {
+            inner: api::CommonRouteSpec { parent_refs },
+            hostnames: None,
+            rules: Some(vec![]),
+        },
+        status: None,
+    }
+}
+
+pub fn find_route_condition(
+    statuses: impl IntoIterator<Item = k8s_gateway_api::RouteParentStatus>,
+    parent_name: &str,
+) -> Option<k8s::Condition> {
+    statuses
+        .into_iter()
+        .find(|route_status| route_status.parent_ref.name == parent_name)
+        .expect("route must have at least one status set")
+        .conditions
+        .into_iter()
+        .find(|cond| cond.type_ == "Accepted")
+}
+
 /// Runs a test with a random namespace that is deleted on test completion
 pub async fn with_temp_ns<F, Fut>(test: F)
 where
