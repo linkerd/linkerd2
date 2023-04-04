@@ -15,8 +15,9 @@ use std::{net::SocketAddr, num::NonZeroU16, sync::Arc, time};
 
 #[derive(Clone, Debug)]
 pub struct OutboundPolicyServer<T> {
-    cluster_domain: Arc<str>,
     index: T,
+    // Used to parse named addresses into <svc>.<ns>.svc.<cluster-domain>.
+    cluster_domain: Arc<str>,
     drain: drain::Watch,
 }
 
@@ -281,7 +282,18 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
         )
     };
 
+    let metadata = Metadata {
+        kind: Some(metadata::Kind::Resource(api::meta::Resource {
+            group: "core".to_string(),
+            kind: "Service".to_string(),
+            namespace: outbound.namespace,
+            name: outbound.name,
+            ..Default::default()
+        })),
+    };
+
     outbound::OutboundPolicy {
+        metadata: Some(metadata),
         protocol: Some(outbound::ProxyProtocol { kind: Some(kind) }),
     }
 }

@@ -230,8 +230,6 @@ spec:
       {{- include "linkerd.tolerations" (dict "Values" .Values.prometheus) | nindent 6 }}
       {{- end -}}
       {{- include "linkerd.node-selector" (dict "Values" .Values.prometheus) | nindent 6 }}
-      securityContext:
-        fsGroup: 65534
       containers:
       {{- if .Values.prometheus.sidecarContainers -}}
       {{- toYaml .Values.prometheus.sidecarContainers | trim | nindent 6 }}
@@ -292,6 +290,7 @@ spec:
           subPath: prometheus.yml
           readOnly: true
       securityContext:
+        fsGroup: 65534
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: prometheus

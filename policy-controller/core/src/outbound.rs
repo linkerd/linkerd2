@@ -21,6 +21,7 @@ pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send
 pub struct OutboundPolicy {
     pub http_routes: HashMap<String, HttpRoute>,
     pub authority: String,
+    pub name: String,
     pub namespace: String,
     pub opaque: bool,
     pub accrual: Option<FailureAccrual>,
