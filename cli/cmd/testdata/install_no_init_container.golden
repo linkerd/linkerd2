@@ -599,7 +599,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v2.2.0
+        version: v2.2.1
       iptablesMode: legacy
       kubeAPIServerPorts: 443,6443
       logFormat: ""
