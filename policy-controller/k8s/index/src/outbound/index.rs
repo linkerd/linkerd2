@@ -4,14 +4,14 @@ use crate::{
     ClusterInfo,
 };
 use ahash::AHashMap as HashMap;
-use anyhow::Result;
+use anyhow::{bail, Result};
 use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
 use linkerd_policy_controller_core::outbound::{
-    Backend, HttpRoute, HttpRouteRule, OutboundPolicy, WeightedService,
+    Backend, Backoff, FailureAccrual, HttpRoute, HttpRouteRule, OutboundPolicy, WeightedService,
 };
 use linkerd_policy_controller_k8s_api::{policy as api, ResourceExt, Service, Time};
 use parking_lot::RwLock;
-use std::{net::IpAddr, num::NonZeroU16, sync::Arc};
+use std::{net::IpAddr, num::NonZeroU16, sync::Arc, time};
 use tokio::sync::watch;
 
 #[derive(Debug)]
@@ -45,6 +45,7 @@ struct Namespace {
 #[derive(Debug, Default)]
 struct ServiceInfo {
     opaque_ports: PortSet,
+    accrual: Option<FailureAccrual>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -58,6 +59,7 @@ struct ServiceRoutes {
     routes: HashMap<String, HttpRoute>,
     watch: watch::Sender<OutboundPolicy>,
     opaque: bool,
+    accrual: Option<FailureAccrual>,
 }
 
 impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
@@ -86,6 +88,13 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
     fn apply(&mut self, service: Service) {
         let name = service.name_unchecked();
         let ns = service.namespace().expect("Service must have a namespace");
+        let accrual = parse_accrual_config(service.annotations())
+            .map_err(|error| tracing::error!(%error, service=name, namespace=ns, "failed to parse accrual config"))
+            .unwrap_or_default();
+        let opaque_ports =
+            ports_annotation(service.annotations(), "config.linkerd.io/opaque-ports")
+                .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
+
         if let Some(cluster_ip) = service
             .spec
             .as_ref()
@@ -106,10 +115,10 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             }
         }
 
-        let opaque_ports =
-            ports_annotation(service.annotations(), "config.linkerd.io/opaque-ports")
-                .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
-        let service_info = ServiceInfo { opaque_ports };
+        let service_info = ServiceInfo {
+            opaque_ports,
+            accrual,
+        };
 
         self.namespaces
             .by_ns
@@ -214,8 +223,12 @@ impl Namespace {
     fn update_service(&mut self, name: String, service: ServiceInfo) {
         tracing::debug!(?name, ?service, "updating service");
         for (svc_port, svc_routes) in self.service_routes.iter_mut() {
+            if svc_port.service != name {
+                continue;
+            }
             let opaque = service.opaque_ports.contains(&svc_port.port);
-            svc_routes.set_opaque(opaque);
+
+            svc_routes.update_service(opaque, service.accrual);
         }
         self.services.insert(name, service);
     }
@@ -233,21 +246,24 @@ impl Namespace {
     ) -> &mut ServiceRoutes {
         self.service_routes.entry(sp.clone()).or_insert_with(|| {
             let authority = cluster.service_dns_authority(&self.namespace, &sp.service, sp.port);
-            let opaque = match self.services.get(&sp.service) {
-                Some(svc) => svc.opaque_ports.contains(&sp.port),
-                None => false,
+            let (opaque, accrual) = match self.services.get(&sp.service) {
+                Some(svc) => (svc.opaque_ports.contains(&sp.port), svc.accrual),
+                None => (false, None),
             };
+
             let (sender, _) = watch::channel(OutboundPolicy {
                 http_routes: Default::default(),
                 authority,
                 name: sp.service.clone(),
                 namespace: self.namespace.to_string(),
                 opaque,
+                accrual,
             });
             ServiceRoutes {
                 routes: Default::default(),
                 watch: sender,
                 opaque,
+                accrual,
             }
         })
     }
@@ -405,8 +421,9 @@ impl ServiceRoutes {
         self.send_if_modified();
     }
 
-    fn set_opaque(&mut self, opaque: bool) {
+    fn update_service(&mut self, opaque: bool, accrual: Option<FailureAccrual>) {
         self.opaque = opaque;
+        self.accrual = accrual;
         self.send_if_modified();
     }
 
@@ -426,7 +443,88 @@ impl ServiceRoutes {
                 policy.opaque = self.opaque;
                 modified = true;
             }
+            if self.accrual != policy.accrual {
+                policy.accrual = self.accrual;
+                modified = true;
+            }
             modified
         });
     }
+}
+
+fn parse_accrual_config(
+    annotations: &std::collections::BTreeMap<String, String>,
+) -> Result<Option<FailureAccrual>> {
+    annotations
+        .get("balancer.linkerd.io/failure-accrual")
+        .map(|mode| {
+            if mode == "consecutive" {
+                let max_failures = annotations
+                    .get("balancer.linkerd.io/failure-accrual-consecutive-max-failures")
+                    .map(|s| s.parse::<u32>())
+                    .transpose()?
+                    .unwrap_or(7);
+
+                let max_penalty = annotations
+                    .get("balancer.linkerd.io/failure-accrual-consecutive-max-penalty")
+                    .map(|s| parse_duration(s))
+                    .transpose()?
+                    .unwrap_or_else(|| time::Duration::from_secs(60));
+
+                let min_penalty = annotations
+                    .get("balancer.linkerd.io/failure-accrual-consecutive-min-penalty")
+                    .map(|s| parse_duration(s))
+                    .transpose()?
+                    .unwrap_or_else(|| time::Duration::from_secs(1));
+                let jitter = annotations
+                    .get("balancer.linkerd.io/failure-accrual-consecutive-jitter-ratio")
+                    .map(|s| s.parse::<f32>())
+                    .transpose()?
+                    .unwrap_or(0.5);
+                if min_penalty > max_penalty {
+                    bail!(
+                        "min_penalty ({min_penalty:?}) cannot exceed max_penalty ({max_penalty:?})",
+                    );
+                }
+
+                Ok(FailureAccrual::Consecutive {
+                    max_failures,
+                    backoff: Backoff {
+                        min_penalty,
+                        max_penalty,
+                        jitter,
+                    },
+                })
+            } else {
+                bail!("unsupported failure accrual mode: {mode}");
+            }
+        })
+        .transpose()
+}
+
+fn parse_duration(s: &str) -> Result<time::Duration> {
+    let s = s.trim();
+    let offset = s
+        .rfind(|c: char| c.is_ascii_digit())
+        .ok_or_else(|| anyhow::anyhow!("{} does not contain a timeout duration value", s))?;
+    let (magnitude, unit) = s.split_at(offset + 1);
+    let magnitude = magnitude.parse::<u64>()?;
+
+    let mul = match unit {
+        "" if magnitude == 0 => 0,
+        "ms" => 1,
+        "s" => 1000,
+        "m" => 1000 * 60,
+        "h" => 1000 * 60 * 60,
+        "d" => 1000 * 60 * 60 * 24,
+        _ => anyhow::bail!(
+            "invalid duration unit {} (expected one of 'ms', 's', 'm', 'h', or 'd')",
+            unit
+        ),
+    };
+
+    let ms = magnitude
+        .checked_mul(mul)
+        .ok_or_else(|| anyhow::anyhow!("Timeout value {} overflows when converted to 'ms'", s))?;
+    Ok(time::Duration::from_millis(ms))
 }

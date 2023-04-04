@@ -195,6 +195,19 @@ pub async fn create_opaque_service(
     create(client, svc).await
 }
 
+/// Creates a service resource with given annotations.
+pub async fn create_annotated_service(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+    port: i32,
+    annotations: std::collections::BTreeMap<String, String>,
+) -> k8s::Service {
+    let mut svc = mk_service(ns, name, port);
+    svc.annotations_mut().extend(annotations);
+    create(client, svc).await
+}
+
 pub fn mk_service(ns: &str, name: &str, port: i32) -> k8s::Service {
     k8s::Service {
         metadata: k8s::ObjectMeta {
