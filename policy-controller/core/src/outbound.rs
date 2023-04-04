@@ -23,6 +23,7 @@ pub struct OutboundPolicy {
     pub authority: String,
     pub name: String,
     pub namespace: String,
+    pub port: NonZeroU16,
     pub opaque: bool,
     pub accrual: Option<FailureAccrual>,
 }
@@ -63,6 +64,7 @@ pub struct WeightedService {
     pub authority: String,
     pub name: String,
     pub namespace: String,
+    pub port: NonZeroU16,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]

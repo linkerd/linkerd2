@@ -1152,7 +1152,7 @@ dependencies = [
 [[package]]
 name = "kubert"
 version = "0.15.0"
-source = "git+https://github.com/olix0r/kubert?rev=8c582e42b6ae4aec76ac3af54e6742945d452207#8c582e42b6ae4aec76ac3af54e6742945d452207"
+source = "git+https://github.com/olix0r/kubert?branch=main#8c582e42b6ae4aec76ac3af54e6742945d452207"
 dependencies = [
  "ahash 0.8.3",
  "chrono",
@@ -1393,7 +1393,7 @@ dependencies = [
 [[package]]
 name = "linkerd2-proxy-api"
 version = "0.8.0"
-source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=main#afca924a6df2434196e85a265ffb7c15a547a8fa"
+source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=main#ad750d839ceb18294406e0f118527122be56cf66"
 dependencies = [
  "http",
  "ipnet",
