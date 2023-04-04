@@ -48,8 +48,12 @@ async fn consecutive_failures() {
                 .await
                 .expect("curl command should succeed");
             tracing::info!(request, ?status, failures);
-            if status.is_server_error() {
-                failures += 1;
+
+            match status {
+                // An error was returned by the failing endpoint.
+                hyper::StatusCode::INTERNAL_SERVER_ERROR => failures += 1,
+                hyper::StatusCode::OK => {},
+                other => panic!("unexpected status code {other}"),
             }
         }
 
