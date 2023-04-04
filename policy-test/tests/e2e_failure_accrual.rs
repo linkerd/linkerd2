@@ -7,6 +7,7 @@ use linkerd_policy_test::{create, create_ready_pod, curl, web, with_temp_ns, Lin
 
 #[tokio::test(flavor = "current_thread")]
 async fn consecutive_failures() {
+    const MAX_FAILS: usize = 5;
     with_temp_ns(|client, ns| async move {
         // Create a web service with two pods, one of which always returns 204
         // No Content, and the other of which always returns 500 Internal Server
