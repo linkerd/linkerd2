@@ -22,7 +22,6 @@ async fn path_based_routing() {
                             kind: Some("Service".to_string()),
                             section_name: None,
                         }]),
-                        ..Default::default()
                     },
                     hostnames: None,
                     rules: Some(vec![
