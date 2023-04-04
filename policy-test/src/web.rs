@@ -17,23 +17,19 @@ pub fn pod(ns: &str) -> k8s::Pod {
             ..Default::default()
         },
         spec: Some(k8s::PodSpec {
-            containers: vec![hokay_container()],
+            containers: vec![k8s::api::core::v1::Container {
+                name: "hokay".to_string(),
+                image: Some("ghcr.io/olix0r/hokay:latest".to_string()),
+                ports: Some(vec![k8s::api::core::v1::ContainerPort {
+                    name: Some("http".to_string()),
+                    container_port: 8080,
+                    ..Default::default()
+                }]),
+                ..Default::default()
+            }],
             ..Default::default()
         }),
         ..k8s::Pod::default()
-    }
-}
-
-pub fn hokay_container() -> k8s::api::core::v1::Container {
-    k8s::api::core::v1::Container {
-        name: "hokay".to_string(),
-        image: Some("ghcr.io/olix0r/hokay:latest".to_string()),
-        ports: Some(vec![k8s::api::core::v1::ContainerPort {
-            name: Some("http".to_string()),
-            container_port: 8080,
-            ..Default::default()
-        }]),
-        ..Default::default()
     }
 }
 
