@@ -255,6 +255,7 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
             kind: "Service".to_string(),
             namespace: outbound.namespace,
             name: outbound.name,
+            port: u16::from(outbound.port).into(),
             ..Default::default()
         })),
     };
@@ -359,6 +360,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                             name: svc.name,
                             namespace: svc.namespace,
                             section: Default::default(),
+                            port: u16::from(svc.port).into(),
                         })),
                     }),
                     queue: Some(default_queue_config()),

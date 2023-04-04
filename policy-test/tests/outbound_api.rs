@@ -489,13 +489,7 @@ fn route_backends_random_available(
 #[track_caller]
 fn route_name(route: &grpc::outbound::HttpRoute) -> &str {
     match route.metadata.as_ref().unwrap().kind.as_ref().unwrap() {
-        grpc::meta::metadata::Kind::Resource(grpc::meta::Resource {
-            group: _,
-            kind: _,
-            ref name,
-            namespace: _,
-            section: _,
-        }) => name,
+        grpc::meta::metadata::Kind::Resource(grpc::meta::Resource { ref name, .. }) => name,
         _ => panic!("route must be a resource kind"),
     }
 }

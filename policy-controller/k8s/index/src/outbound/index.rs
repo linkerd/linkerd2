@@ -242,6 +242,7 @@ impl Namespace {
                 authority,
                 name: sp.service.clone(),
                 namespace: self.namespace.to_string(),
+                port: sp.port,
                 opaque,
             });
             ServiceRoutes {
@@ -350,6 +351,7 @@ fn convert_backend(
             authority: cluster.service_dns_authority(ns, &name, port),
             name,
             namespace: ns.to_string(),
+            port,
         })
     })
 }
