@@ -1354,20 +1354,20 @@ spec:
         livenessProbe:
           httpGet:
             path: /live
-            port: admin
+            port: admin-http
         name: policy
         ports:
         - containerPort: 8090
           name: grpc
         - containerPort: 9990
-          name: admin
+          name: admin-http
         - containerPort: 9443
           name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: admin
+            port: admin-http
           initialDelaySeconds: 10
         resources:
           limits:

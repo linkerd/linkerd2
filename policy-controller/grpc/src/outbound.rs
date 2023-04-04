@@ -15,8 +15,9 @@ use std::{net::SocketAddr, num::NonZeroU16, sync::Arc, time};
 
 #[derive(Clone, Debug)]
 pub struct OutboundPolicyServer<T> {
-    cluster_domain: Arc<str>,
     index: T,
+    // Used to parse named addresses into <svc>.<ns>.svc.<cluster-domain>.
+    cluster_domain: Arc<str>,
     drain: drain::Watch,
 }
 
@@ -226,6 +227,39 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
             http_routes = vec![default_outbound_http_route(backend.clone())];
         }
 
+        let accrual =
+            outbound
+                .accrual
+                .map(|accrual| linkerd2_proxy_api::outbound::FailureAccrual {
+                    kind: Some(match accrual {
+                        linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
+                            max_failures,
+                            backoff,
+                        } => outbound::failure_accrual::Kind::ConsecutiveFailures(
+                            outbound::failure_accrual::ConsecutiveFailures {
+                                max_failures,
+                                backoff: Some(outbound::ExponentialBackoff {
+                                    min_backoff: backoff
+                                        .min_penalty
+                                        .try_into()
+                                        .map_err(|error| {
+                                            tracing::error!(?error, "invalid min_backoff")
+                                        })
+                                        .ok(),
+                                    max_backoff: backoff
+                                        .max_penalty
+                                        .try_into()
+                                        .map_err(|error| {
+                                            tracing::error!(?error, "invalid max_backoff")
+                                        })
+                                        .ok(),
+                                    jitter_ratio: backoff.jitter,
+                                }),
+                            },
+                        ),
+                    }),
+                });
+
         linkerd2_proxy_api::outbound::proxy_protocol::Kind::Detect(
             outbound::proxy_protocol::Detect {
                 timeout: Some(
@@ -238,15 +272,29 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
                 }),
                 http1: Some(outbound::proxy_protocol::Http1 {
                     routes: http_routes.clone(),
+                    failure_accrual: accrual.clone(),
                 }),
                 http2: Some(outbound::proxy_protocol::Http2 {
                     routes: http_routes,
+                    failure_accrual: accrual,
                 }),
             },
         )
     };
 
+    let metadata = Metadata {
+        kind: Some(metadata::Kind::Resource(api::meta::Resource {
+            group: "core".to_string(),
+            kind: "Service".to_string(),
+            namespace: outbound.namespace,
+            name: outbound.name,
+            port: u16::from(outbound.port).into(),
+            ..Default::default()
+        })),
+    };
+
     outbound::OutboundPolicy {
+        metadata: Some(metadata),
         protocol: Some(outbound::ProxyProtocol { kind: Some(kind) }),
     }
 }
@@ -345,6 +393,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                             name: svc.name,
                             namespace: svc.namespace,
                             section: Default::default(),
+                            port: u16::from(svc.port).into(),
                         })),
                     }),
                     queue: Some(default_queue_config()),

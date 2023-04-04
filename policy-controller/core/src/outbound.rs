@@ -3,7 +3,7 @@ use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use chrono::{offset::Utc, DateTime};
 use futures::prelude::*;
-use std::{net::IpAddr, num::NonZeroU16, pin::Pin};
+use std::{net::IpAddr, num::NonZeroU16, pin::Pin, time};
 
 /// Models outbound policy discovery.
 #[async_trait::async_trait]
@@ -17,12 +17,15 @@ pub trait DiscoverOutboundPolicy<T> {
 
 pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send + Sync + 'static>>;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OutboundPolicy {
     pub http_routes: HashMap<String, HttpRoute>,
     pub authority: String,
+    pub name: String,
     pub namespace: String,
+    pub port: NonZeroU16,
     pub opaque: bool,
+    pub accrual: Option<FailureAccrual>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -61,4 +64,17 @@ pub struct WeightedService {
     pub authority: String,
     pub name: String,
     pub namespace: String,
+    pub port: NonZeroU16,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum FailureAccrual {
+    Consecutive { max_failures: u32, backoff: Backoff },
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Backoff {
+    pub min_penalty: time::Duration,
+    pub max_penalty: time::Duration,
+    pub jitter: f32,
 }

@@ -599,7 +599,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v2.2.0
+        version: v2.2.1
       iptablesMode: legacy
       kubeAPIServerPorts: 443,6443
       logFormat: ""
@@ -1372,20 +1372,20 @@ spec:
         livenessProbe:
           httpGet:
             path: /live
-            port: admin
+            port: admin-http
         name: policy
         ports:
         - containerPort: 8090
           name: grpc
         - containerPort: 9990
-          name: admin
+          name: admin-http
         - containerPort: 9443
           name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: admin
+            port: admin-http
           initialDelaySeconds: 10
         resources:
         securityContext:
