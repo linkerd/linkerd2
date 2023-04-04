@@ -15,6 +15,8 @@ impl Terminus {
     const APP: &str = "bb-terminus";
     pub const SERVICE_NAME: &str = Self::APP;
 
+    /// Builds a `bb-terminus` pod that can be configured to fail some (or all)
+    /// requests.
     pub fn new(ns: impl ToString) -> Self {
         Self {
             name: "bb-terminus".to_string(),
@@ -32,6 +34,7 @@ impl Terminus {
         }
     }
 
+    /// Sets the `bb-terminus` pod's name. By default, the name is "bb-terminus".
     pub fn named(self, name: impl ToString) -> Self {
         Self {
             name: name.to_string(),
@@ -39,6 +42,7 @@ impl Terminus {
         }
     }
 
+    /// Returns the constructed [`k8s::Pod`].
     pub fn to_pod(self) -> k8s::Pod {
         let args = [
             "terminus",
@@ -83,6 +87,8 @@ impl Terminus {
         }
     }
 
+    /// Returns a ClusterIP [`k8s::api::core::v1::Service`] that selects pods
+    /// with the label `app: bb-terminus`.
     pub fn service(ns: &str) -> k8s::api::core::v1::Service {
         k8s::api::core::v1::Service {
             metadata: k8s::ObjectMeta {

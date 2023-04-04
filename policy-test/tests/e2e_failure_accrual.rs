@@ -22,6 +22,7 @@ async fn consecutive_failures() {
             annotate_service(svc, maplit::btreemap!{
                 "balancer.linkerd.io/failure-accrual" => "consecutive".to_string(),
                 "balancer.linkerd.io/failure-accrual-consecutive-max-failures" => MAX_FAILS.to_string(),
+                // don't allow the failing pod to enter probation during the test.
                 "balancer.linkerd.io/failure-accrual-consecutive-min-penalty" => "5m".to_string(),
                 "balancer.linkerd.io/failure-accrual-consecutive-max-penalty" => "10m".to_string(),
             })
@@ -52,7 +53,7 @@ async fn consecutive_failures() {
             }
         }
 
-        assert!(failures <= MAX_FAILS);
+        assert!(failures <= MAX_FAILS, "no more than {MAX_FAILS} requests may fail");
     })
     .await;
 }
