@@ -15,7 +15,6 @@ async fn accepted_parent() {
                 ..Default::default()
             },
             spec: Some(k8s::ServiceSpec {
-                cluster_ip: Some("10.96.1.1".to_string()),
                 type_: Some("ClusterIP".to_string()),
                 ports: Some(vec![k8s::ServicePort {
                     port: 80,
@@ -116,7 +115,6 @@ async fn external_name() {
                 ..Default::default()
             },
             spec: Some(k8s::ServiceSpec {
-                cluster_ip: None,
                 type_: Some("ExternalName".to_string()),
                 external_name: Some("linkerd.io".to_string()),
                 ports: Some(vec![k8s::ServicePort {
