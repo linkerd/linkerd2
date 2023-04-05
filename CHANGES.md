@@ -1,5 +1,45 @@
 # Changes
 
+## edge-23.4.1
+
+This is a release candidate for stable-2.13.0 &mdash; we encourage you to help
+try it out!
+
+This edge release introduces request-level HTTP circuit-breaking
+using a consecutive failures failure accrual policy. Circuit breaking can be
+configured by adding failure accrual annotations to a Service. In addition, this
+release adds new `outbound_route_backend_http_requests_total` and
+`outbound_route_backend_grpc_requests_total` proxy metrics, which can be
+used to track how routing rules and backend distributions apply to
+requests. These metrics contain labels describing the route's parent
+(i.e. a Service), the route resource being used, and the backend
+resource being used by each request.
+
+* Proxy
+  * Added discovery of failure accrual policies from the OutboundPolicy API
+  * Implemented consecutive failures failure accrual policy
+  * Added INFO-level logging on failure accrual changes
+  * Added `outbound_route_backend_http_requests_total` and
+    `outbound_route_backend_grpc_requests_total` metrics
+
+* Policy Controller
+  * Added failure accrual configuration to the OutboundPolicy API
+  * Added Prometheus `/metrics` endpoint to the admin server, with process
+    metrics
+  * Changed the policy controller to only accept HTTPRoutes when the parentRef
+    is a ClusterIP Service
+  * Added ports to service references in the OutboundPolicy API
+
+* Viz
+  * Added `tap.ignoredHeaders` Helm value to the linkerd-viz chart. This value
+    allows users to specify a comma-separated list of header names which will be
+    ignored by Linkerd Tap (thanks @ryanhristovski!)
+  * Removed duplicate SecurityContext in Prometheus manifest
+
+* Multicluster
+  * Removed duplicate AuthorizationPolicy for probes from the multicluster
+    gateway Helm chart
+
 ## edge-23.3.4
 
 This edge release further enhances the OutboundPolicies API used by the proxy to
