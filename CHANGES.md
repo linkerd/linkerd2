@@ -33,8 +33,8 @@ resource being used by each request.
 * Viz
   * Added `tap.ignoredHeaders` Helm value to the linkerd-viz chart. This value
     allows users to specify a comma-separated list of header names which will be
-    ignored by Linkerd Tap
-  * Removed duplicate SecurityContext in Prometheus chart
+    ignored by Linkerd Tap (thanks @ryanhristovski!)
+  * Removed duplicate SecurityContext in Prometheus manifest
 
 * Multicluster
   * Removed duplicate AuthorizationPolicy for probes from the multicluster
