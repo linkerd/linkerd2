@@ -2,11 +2,13 @@
 
 ## edge-23.4.1
 
-This edge release introduces request-level HTTP circuit-breaking using a
-consecutive failures failure accrual policy. Circuit breaking can be configured
-by adding failure accrual annotations to a Service.
+This is a release candidate for stable-2.13.0 &mdash; we encourage you to help
+try it out!
 
-In addition, this release adds new `outbound_route_backend_http_requests_total` and
+This edge release introduces request-level HTTP circuit-breaking
+using a consecutive failures failure accrual policy. Circuit breaking can be
+configured by adding failure accrual annotations to a Service. In addition, this
+release adds new `outbound_route_backend_http_requests_total` and
 `outbound_route_backend_grpc_requests_total` proxy metrics, which can be
 used to track how routing rules and backend distributions apply to
 requests. These metrics contain labels describing the route's parent
