@@ -162,32 +162,6 @@ spec:
   - cidr: "0.0.0.0/0"
   - cidr: "::/0"
 ---
-apiVersion: policy.linkerd.io/v1alpha1
-kind: AuthorizationPolicy
-metadata:
-  namespace: linkerd-multicluster
-  name: linkerd-gateway-probe
-  labels:
-    linkerd.io/extension: multicluster
-    app: linkerd-gateway
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerdVersionValue
-spec:
-  targetRef:
-    group: policy.linkerd.io
-    kind: Server
-    name: linkerd-gateway
-  requiredAuthenticationRefs:
-    # allows probes from outside the cluster, as long as they have an identity
-    - group: policy.linkerd.io
-      kind: MeshTLSAuthentication
-      name: any-meshed
-      namespace: linkerd-multicluster
-    - group: policy.linkerd.io
-      kind: NetworkAuthentication
-      name: source-cluster
-      namespace: linkerd-multicluster
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
