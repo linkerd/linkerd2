@@ -111,8 +111,7 @@ impl Runner {
                 containers: vec![k8s::api::core::v1::Container {
                     name: "curl".to_string(),
                     image: Some(Self::CURL_IMAGE.to_string()),
-                    command: Some(vec!["sh".to_string(), "-c".to_string()]),
-                    args: Some(vec!["while true; do sleep 60; done".to_string()]),
+                    command: Some(vec!["sleep".to_string(), "infinite".to_string()]),
                     ..Default::default()
                 }],
                 restart_policy: Some("Never".to_string()),
