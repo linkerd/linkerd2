@@ -5,14 +5,8 @@ use linkerd_policy_test::{
 #[tokio::test(flavor = "current_thread")]
 async fn consecutive_failures() {
     const MAX_FAILS: usize = 5;
-    const REQUESTS: usize = 20;
     with_temp_ns(|client, ns| async move {
-        // Create a bb service with two pods, one of which always returns 200
-        // OK, and the other of which always returns 500 Internal Server Error.
-        let good_pod = bb::Terminus::new(&ns)
-            .named("bb-good")
-            .percent_failure(0)
-            .to_pod();
+        // Create a bb service with one pod that always returns 500s.
         let bad_pod = bb::Terminus::new(&ns)
             .named("bb-bad")
             .percent_failure(100)
@@ -29,7 +23,6 @@ async fn consecutive_failures() {
         };
         tokio::join!(
             create(&client, svc),
-            create_ready_pod(&client, good_pod),
             create_ready_pod(&client, bad_pod),
         );
 
@@ -39,25 +32,26 @@ async fn consecutive_failures() {
             .await;
 
         let url = format!("http://{}", bb::Terminus::SERVICE_NAME);
-        let mut failures = 0;
-
-        for request in 0..REQUESTS {
+        for request in 0..MAX_FAILS * 2 {
             tracing::info!("Sending request {request}...");
             let status = curl
                 .get(&url)
                 .await
                 .expect("curl command should succeed");
-            tracing::info!(request, ?status, failures);
-
-            match status {
-                // An error was returned by the failing endpoint.
-                hyper::StatusCode::INTERNAL_SERVER_ERROR => failures += 1,
-                hyper::StatusCode::OK => {},
-                other => panic!("unexpected status code {other}"),
+            tracing::info!(request, ?status);
+            if request < MAX_FAILS {
+                assert_eq!(status, hyper::StatusCode::INTERNAL_SERVER_ERROR);
+            } else {
+                // Once the circuit breaker has tripped, any in flight request
+                // will fail with a 504 due to failfast, and subsequent requests
+                // will fail with a 503 because the balancer has no available
+                // endpoints.
+                assert!(
+                    matches!(status, hyper::StatusCode::GATEWAY_TIMEOUT | hyper::StatusCode::SERVICE_UNAVAILABLE),
+                    "expected 503 or 504, got {status:?}"
+                );
             }
         }
-
-        assert!(failures <= MAX_FAILS, "no more than {MAX_FAILS} requests may fail");
     })
     .await;
 }
