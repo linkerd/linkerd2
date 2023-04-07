@@ -119,7 +119,6 @@ func init() {
 	RootCmd.AddCommand(newCmdUpgrade())
 	RootCmd.AddCommand(newCmdVersion())
 	RootCmd.AddCommand(newCmdUninstall())
-	RootCmd.AddCommand(newCmdPrune())
 
 	// Extension Sub Commands
 	RootCmd.AddCommand(jaeger.NewCmdJaeger())

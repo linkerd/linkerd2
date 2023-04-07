@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -17,9 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/tools/clientcmd"
-	"sigs.k8s.io/yaml"
 )
 
 // GetDefaultNamespace fetches the default namespace
@@ -63,66 +59,6 @@ func Uninstall(ctx context.Context, k8sAPI *k8s.KubernetesAPI, selector string) 
 		}
 	}
 	return nil
-}
-
-// Prune takes an install manifest and prints all resources on the cluster which
-// match the given label selector but are not in the given manifest. Users are
-// expected to pipe these resources to `kubectl delete` to clean up resources
-// left on the cluster which are no longer part of the install manifest.
-func Prune(ctx context.Context, k8sAPI *k8s.KubernetesAPI, expectedManifests string, selector string) error {
-	expectedResources := []resource.Kubernetes{}
-	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(strings.NewReader(expectedManifests), 4096))
-	for {
-		manifest, err := reader.Read()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return err
-		}
-		resource := resource.Kubernetes{}
-		err = yaml.Unmarshal(manifest, &resource)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error parsing manifest: %s", manifest)
-			os.Exit(1)
-		}
-		expectedResources = append(expectedResources, resource)
-	}
-
-	listOptions := metav1.ListOptions{
-		LabelSelector: selector,
-	}
-	resources, err := resource.FetchPrunableResources(ctx, k8sAPI, metav1.NamespaceAll, listOptions)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error fetching resources: %s\n", err)
-		os.Exit(1)
-	}
-
-	for _, resource := range resources {
-		// If the resource is not in the expected resource list, render it for
-		// pruning.
-		if !resourceListContains(expectedResources, resource) {
-			if err = resource.RenderResource(os.Stdout); err != nil {
-				return fmt.Errorf("error rendering Kubernetes resource: %w\n", err)
-			}
-		}
-	}
-	return nil
-}
-
-func resourceListContains(list []resource.Kubernetes, a resource.Kubernetes) bool {
-	for _, r := range list {
-		if resourceEquals(a, r) {
-			return true
-		}
-	}
-	return false
-}
-
-func resourceEquals(a resource.Kubernetes, b resource.Kubernetes) bool {
-	return a.GroupVersionKind().GroupKind() == b.GroupVersionKind().GroupKind() &&
-		a.GetName() == b.GetName() &&
-		a.GetNamespace() == b.GetNamespace()
 }
 
 // ConfigureNamespaceFlagCompletion sets up resource-aware completion for command

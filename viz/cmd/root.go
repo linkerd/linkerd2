@@ -92,7 +92,6 @@ func NewCmdViz() *cobra.Command {
 	vizCmd.AddCommand(NewCmdTop())
 	vizCmd.AddCommand(newCmdUninstall())
 	vizCmd.AddCommand(newCmdAllowScrapes())
-	vizCmd.AddCommand(newCmdPrune())
 
 	// resource-aware completion flag configurations
 	pkgcmd.ConfigureNamespaceFlagCompletion(
