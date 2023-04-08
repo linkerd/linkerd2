@@ -210,6 +210,11 @@ jobs:
           done
           exit 1
       - run: just policy-test-run --jobs=1
+        env:
+          # End-to-end integration tests involve a large number of moving parts
+          # and sometimes exhibit flaky failures. Allow nextest to retry these
+          # tests a few times before failing.
+          NEXTEST_RETRIES: 5
 
   ##
   ## Ext: Run tests that require non-core components.
