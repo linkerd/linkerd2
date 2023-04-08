@@ -166,7 +166,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: linkerd-service-mirror-remote-access-default
-  namespace: linkerd-multicluster
   labels:
     linkerd.io/extension: multicluster
   annotations:
@@ -209,7 +208,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: linkerd-service-mirror-remote-access-default
-  namespace: linkerd-multicluster
   labels:
     linkerd.io/extension: multicluster
   annotations:
