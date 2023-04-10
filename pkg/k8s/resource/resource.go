@@ -43,7 +43,7 @@ var prunableNamespaceResources []schema.GroupVersionResource = []schema.GroupVer
 	apps.SchemeGroupVersion.WithResource("deployments"),
 	batch.SchemeGroupVersion.WithResource("jobs"),
 	policy.SchemeGroupVersion.WithResource("meshtlsauthentications"),
-	policy.SchemeGroupVersion.WithResource("networkauthentication"),
+	policy.SchemeGroupVersion.WithResource("networkauthentications"),
 	core.SchemeGroupVersion.WithResource("replicationcontrollers"),
 	core.SchemeGroupVersion.WithResource("secrets"),
 	core.SchemeGroupVersion.WithResource("services"),
