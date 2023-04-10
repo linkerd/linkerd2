@@ -81,10 +81,10 @@ A full list of configurable values can be found at https://www.github.com/linker
 		Example: `  # Upgrade CRDs first
   linkerd upgrade --crds | kubectl apply -f -
 
-  # Then upgrade the controle-plane
+  # Then upgrade the control plane
   linkerd upgrade | kubectl apply -f -
 
-  # And lastly remove linkerd resources that no longer exist in the current version
+  # And lastly, remove linkerd resources that no longer exist in the current version
   linkerd prune | kubectl delete -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if crds {
