@@ -19,7 +19,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/imdario/mergo v0.3.15
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/linkerd/linkerd2-proxy-api v0.0.0-20230404142611-ad750d839ceb
+	github.com/linkerd/linkerd2-proxy-api v0.9.0
 	github.com/linkerd/linkerd2-proxy-init v1.6.2
 	github.com/mattn/go-isatty v0.0.18
 	github.com/mattn/go-runewidth v0.0.14
