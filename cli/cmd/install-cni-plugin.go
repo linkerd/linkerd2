@@ -48,11 +48,7 @@ type cniPluginOptions struct {
 	destCNIBinDir       string
 	useWaitFlag         bool
 	priorityClassName   string
-}
-
-type extCNIPluginOptions struct {
-	valuesOverrides map[string]interface{}
-	options         *cniPluginOptions
+	valuesOverrides     map[string]interface{}
 }
 
 func (options *cniPluginOptions) validate() error {
@@ -117,7 +113,7 @@ assumes that the 'linkerd install' command will be executed with the
 Now the installation can be configured by using the --set, --values, --set-string and --set-file flags.
 A full list of configurable values can be found at https://artifacthub.io/packages/helm/linkerd2/linkerd2-cni#values`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return install(os.Stdout, valOpts, options)
+			return renderCNIPlugin(os.Stdout, valOpts, options)
 		},
 	}
 
@@ -189,71 +185,71 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 	return &cniOptions, nil
 }
 
-func (p *extCNIPluginOptions) buildValues() (*cnicharts.Values, error) {
+func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 	installValues, err := cnicharts.NewValues()
 	if err != nil {
 		return nil, err
 	}
 
-	if val, ok := p.valuesOverrides["enablePSP"]; ok {
+	if val, ok := options.valuesOverrides["enablePSP"]; ok {
 		if err := parseYAMLValue(val, &installValues.EnablePSP); err != nil {
 			return nil, err
 		}
 	}
 
-	if val, ok := p.valuesOverrides["privileged"]; ok {
+	if val, ok := options.valuesOverrides["privileged"]; ok {
 		if err := parseYAMLValue(val, &installValues.Privileged); err != nil {
 			return nil, err
 		}
 	}
 
-	if val, ok := p.valuesOverrides["podLabels"]; ok {
+	if val, ok := options.valuesOverrides["podLabels"]; ok {
 		if err := parseYAMLValue(val, &installValues.PodLabels); err != nil {
 			return nil, err
 		}
 	}
 
-	if val, ok := p.valuesOverrides["commonLabels"]; ok {
+	if val, ok := options.valuesOverrides["commonLabels"]; ok {
 		if err := parseYAMLValue(val, &installValues.CommonLabels); err != nil {
 			return nil, err
 		}
 	}
 
-	if val, ok := p.valuesOverrides["imagePullSecrets"]; ok {
+	if val, ok := options.valuesOverrides["imagePullSecrets"]; ok {
 		if err := parseYAMLValue(val, &installValues.ImagePullSecrets); err != nil {
 			return nil, err
 		}
 	}
 
-	if val, ok := p.valuesOverrides["extraInitContainers"]; ok {
+	if val, ok := options.valuesOverrides["extraInitContainers"]; ok {
 		if err := parseYAMLValue(val, &installValues.ExtraInitContainers); err != nil {
 			return nil, err
 		}
 	}
 
-	if val, ok := p.valuesOverrides["resources"]; ok {
+	if val, ok := options.valuesOverrides["resources"]; ok {
 		if err := parseYAMLValue(val, &installValues.Resources); err != nil {
 			return nil, err
 		}
 	}
 
 	portsToRedirect := []string{}
-	for _, p := range p.options.portsToRedirect {
+	for _, p := range options.portsToRedirect {
 		portsToRedirect = append(portsToRedirect, fmt.Sprintf("%d", p))
 	}
 
-	installValues.Image = p.options.pluginImage()
-	installValues.LogLevel = p.options.logLevel
-	installValues.InboundProxyPort = p.options.inboundPort
-	installValues.OutboundProxyPort = p.options.outboundPort
-	installValues.IgnoreInboundPorts = strings.Join(p.options.ignoreInboundPorts, ",")
-	installValues.IgnoreOutboundPorts = strings.Join(p.options.ignoreOutboundPorts, ",")
+	installValues.Image = options.pluginImage()
+	installValues.LogLevel = options.logLevel
+	installValues.InboundProxyPort = options.inboundPort
+	installValues.OutboundProxyPort = options.outboundPort
+	installValues.IgnoreInboundPorts = strings.Join(options.ignoreInboundPorts, ",")
+	installValues.IgnoreOutboundPorts = strings.Join(options.ignoreOutboundPorts, ",")
 	installValues.PortsToRedirect = strings.Join(portsToRedirect, ",")
-	installValues.ProxyUID = p.options.proxyUID
-	installValues.DestCNINetDir = p.options.destCNINetDir
-	installValues.DestCNIBinDir = p.options.destCNIBinDir
-	installValues.UseWaitFlag = p.options.useWaitFlag
-	installValues.PriorityClassName = p.options.priorityClassName
+	installValues.ProxyUID = options.proxyUID
+	installValues.DestCNINetDir = options.destCNINetDir
+	installValues.DestCNIBinDir = options.destCNIBinDir
+	installValues.UseWaitFlag = options.useWaitFlag
+	installValues.PriorityClassName = options.priorityClassName
 	return installValues, nil
 }
 
@@ -268,24 +264,19 @@ func parseYAMLValue(val interface{}, target interface{}) error {
 	return nil
 }
 
-func install(w io.Writer, valOpts values.Options, config *cniPluginOptions) error {
-	// Create values override
-	valuesOverrides, err := valOpts.MergeValues(nil)
-	if err != nil {
-		return err
-	}
-
-	return renderCNIPlugin(w, valuesOverrides, config)
-}
-
-func renderCNIPlugin(w io.Writer, valuesOverrides map[string]interface{}, config *cniPluginOptions) error {
+func renderCNIPlugin(w io.Writer, valOpts values.Options, config *cniPluginOptions) error {
 
 	if err := config.validate(); err != nil {
 		return err
 	}
 
-	plugin := &extCNIPluginOptions{valuesOverrides, config}
-	values, err := plugin.buildValues()
+	valuesOverrides, err := valOpts.MergeValues(nil)
+	if err != nil {
+		return err
+	}
+
+	config.valuesOverrides = valuesOverrides
+	values, err := config.buildValues()
 	if err != nil {
 		return err
 	}

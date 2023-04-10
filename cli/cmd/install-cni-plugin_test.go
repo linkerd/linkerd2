@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
+
+	"helm.sh/helm/v3/pkg/cli/values"
 )
 
 func TestRenderCNIPlugin(t *testing.T) {
@@ -68,14 +70,6 @@ func TestRenderCNIPlugin(t *testing.T) {
 		priorityClassName:   "system-node-critical",
 	}
 
-	defaultValues := map[string]interface{}{
-		"resources": map[string]interface{}{
-			"cpu": map[string]string{
-				"limit": "1m",
-			},
-		},
-	}
-
 	defaultOptionsWithSkipPorts, err := newCNIInstallOptionsWithDefaults()
 	if err != nil {
 		t.Fatalf("Unexpected error from newCNIInstallOptionsWithDefaults(): %v", err)
@@ -86,21 +80,21 @@ func TestRenderCNIPlugin(t *testing.T) {
 
 	testCases := []struct {
 		*cniPluginOptions
-		values         map[string]interface{}
 		goldenFileName string
 	}{
-		{defaultOptions, defaultValues, "install-cni-plugin_default.golden"},
-		{fullyConfiguredOptions, nil, "install-cni-plugin_fully_configured.golden"},
-		{fullyConfiguredOptionsEqualDsts, nil, "install-cni-plugin_fully_configured_equal_dsts.golden"},
-		{fullyConfiguredOptionsNoNamespace, nil, "install-cni-plugin_fully_configured_no_namespace.golden"},
-		{defaultOptionsWithSkipPorts, nil, "install-cni-plugin_skip_ports.golden"},
+		{defaultOptions, "install-cni-plugin_default.golden"},
+		{fullyConfiguredOptions, "install-cni-plugin_fully_configured.golden"},
+		{fullyConfiguredOptionsEqualDsts, "install-cni-plugin_fully_configured_equal_dsts.golden"},
+		{fullyConfiguredOptionsNoNamespace, "install-cni-plugin_fully_configured_no_namespace.golden"},
+		{defaultOptionsWithSkipPorts, "install-cni-plugin_skip_ports.golden"},
 	}
 
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
 			var buf bytes.Buffer
-			err := renderCNIPlugin(&buf, tc.values, tc.cniPluginOptions)
+
+			err := renderCNIPlugin(&buf, values.Options{}, tc.cniPluginOptions)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
