@@ -43,7 +43,6 @@ and other smaller additions.
   * Improved diagnostic log messages
   * Fixed sending of spurious profile updates
   * Removed unnecessary Namespaces access from the destination controller RBAC
-  * Added Kubernetes metadata API in the destination controller for watching Nodes
     and ReplicaSets
   * Added the server_port_subscribers metric to track the number of subscribers
     to Server changes associated with a pod's port
