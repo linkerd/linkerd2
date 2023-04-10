@@ -13,8 +13,7 @@ olicy is also included in this release, including [new proxy metrics] and a new
 
 In addition, this release adds `network-validator`, a new init container to be
 used when CNI is enabled. `network-validator` ensures that local iptables rules
-are
-working as expected. It will validate this before linkerd-proxy starts.
+are working as expected. It will validate this before linkerd-proxy starts.
 `network-validator` replaces the `noop` container, runs as `nobody`, and drops
 all capabilities before starting.
 
@@ -147,7 +146,6 @@ and other smaller additions.
 
 * Among other dependency updates, the no-longer maintained ghodss/yaml library
   was replaced with sigs.k8s.io/yaml (thanks @Juneezee!)
-
 
 [dynamic request routing]: https://linkerd.io/2.13/tasks/configuring-dynamic-request-routing
 [circuit breaking]: https://linkerd.io/2.13/tasks/circuit-breaking
