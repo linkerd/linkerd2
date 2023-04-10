@@ -185,6 +185,7 @@ jobs:
       - run: find image-archives -ls
       - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - name: Setup deps
+        shell: bash
         run: |
           rm -rf "$HOME/.cargo"
           bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(cat rust-toolchain)"
@@ -367,6 +368,7 @@ jobs:
       - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: ls -l image-archives/linkerd
       - name: Setup deps
+        shell: bash
         run: |
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash

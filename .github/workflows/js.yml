@@ -21,6 +21,7 @@ jobs:
     steps:
     - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
     - name: Yarn setup
+      shell: bash
       run: |
         bin/scurl --retry=2 https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
         echo PATH="$HOME/.yarn/bin:$PATH" >> "$GITHUB_ENV"
