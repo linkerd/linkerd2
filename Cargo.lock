@@ -1151,8 +1151,9 @@ dependencies = [
 
 [[package]]
 name = "kubert"
-version = "0.15.0"
-source = "git+https://github.com/olix0r/kubert?branch=main#8c582e42b6ae4aec76ac3af54e6742945d452207"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02666a25673a963105bf8a395aff94b8f56a2e709b99e8503ed9262c2a81a7b9"
 dependencies = [
  "ahash 0.8.3",
  "chrono",
