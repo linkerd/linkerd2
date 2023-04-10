@@ -30,10 +30,8 @@ and other smaller additions.
   * Added a new `linkerd prune` command to the CLI (including extensions) to
     remove resources which are no longer part of Linkerd's manifests
   * Added additional shortnames for Linkerd policy resources (thanks @javaducky!)
-  * Expanded the `linkerd authz` command to display AuthorizationPolicy resources
-    that target namespaces (thanks @aatarasoff!)
-  * Added a `linkerd diagnostics policy` command to inspect Linkerd policy state
-  * Added a check that ClusterIP services are in the cluster networks
+  * The `linkerd diagnostics policy` command now displays outbound policy when
+    the target resource is a Service
 
 * Destination Controller
   * Lowered non-actionable error messages in the Destination log to debug-level
