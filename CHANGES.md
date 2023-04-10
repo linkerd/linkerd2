@@ -8,8 +8,9 @@ can now be used to configure policy for outbound (client) proxies as well as
 inbound (server) proxies, by creating HTTPRoutes with Service resources as their
 `parentRef`. See the Linkerd documentation for tutorials on [dynamic request
 routing] and [circuit breaking]. New functionality for debugging HTTPRoute-based
-policy is also included in this release, including [new proxy metrics] and a new
-`linkerd diagnostics policy` CLI command.
+policy is also included in this release, including [new proxy metrics] and the
+ability to display outbound policies in the `linkerd diagnostics policy` CLI
+command.
 
 In addition, this release adds `network-validator`, a new init container to be
 used when CNI is enabled. `network-validator` ensures that local iptables rules
@@ -86,7 +87,8 @@ and other smaller additions.
 * CNI
   * Added static and dynamic port overrides for CNI eBPF to work with socket-level
     load balancing
-  * Updated `network-validator` helm charts to use `proxy-init` resources
+  * Added `network-validator` init container to ensure that iptables rules are
+    working as expected
 
 * Viz
   * Added `tap.ignoredHeaders` Helm value to the linkerd-viz chart. This value
@@ -118,7 +120,6 @@ and other smaller additions.
   * No longer apply `waitBeforeExitSeconds` to control plane, viz and jaeger
     extension pods
   * Added support for the `internalTrafficPolicy` of a service (thanks @yc185050!)
-  * Added `limits` and `requests` to network-validator for ResourceQuota interop
   * Added block chomping to strip trailing new lines in ConfigMap (thanks @avdicl!)
   * Added protection against nil dereference in resources helm template
   * Added a `resources` field in the linkerd-cni chart (thanks @jcogilvie!)
