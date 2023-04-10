@@ -123,8 +123,6 @@ and other smaller additions.
   * Added block chomping to strip trailing new lines in ConfigMap (thanks @avdicl!)
   * Added protection against nil dereference in resources helm template
   * Added a `resources` field in the linkerd-cni chart (thanks @jcogilvie!)
-  * Added namespace to namespace-metadata resources in Helm (thanks
-    @joebowbeer!)
   * Added support for Pod Security Admission (Pod Security Policy resources are
     still supported but disabled by default)
 
