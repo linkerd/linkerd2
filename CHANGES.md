@@ -34,7 +34,24 @@ and other smaller additions.
   * The `linkerd diagnostics policy` command now displays outbound policy when
     the target resource is a Service
 
-* Destination Controller
+* Control Plane
+  * The policy controller now discovers outbound policy configurations from
+    HTTPRoutes that target Services.
+  * Added OutboundPolicies API, for use by `linkerd-proxy` to route
+    outbound traffic
+  * Added Prometheus `/metrics` endpoint to the admin server, with process
+    metrics
+  * Fixed QueryParamMatch parsing for HTTPRoutes
+  * Added the policy status controller which writes the `status` field to
+    HTTPRoutes when a parent reference Server accepts or rejects it
+  * Added KubeAPI server ports to `ignoreOutboundPorts` of `proxy-injector`
+  * No longer apply `waitBeforeExitSeconds` to control plane, viz and jaeger
+    extension pods
+  * Added support for the `internalTrafficPolicy` of a service (thanks @yc185050!)
+  * Added block chomping to strip trailing new lines in ConfigMap (thanks @avdicl!)
+  * Added protection against nil dereference in resources helm template
+  * Added support for Pod Security Admission (Pod Security Policy resources are
+    still supported but disabled by default)
   * Lowered non-actionable error messages in the Destination log to debug-level
     entries to avoid triggering false alarms (thanks @siddharthshubhampal!)
   * Fixed an issue with EndpointSlice endpoint reconciliation on slice deletion;
@@ -65,17 +82,6 @@ and other smaller additions.
     especially for proxy's pod local (i.e in the same network namespace)
     communication
 
-* Policy Controller
-  * The policy controller now discovers outbound policy configurations from
-    HTTPRoutes that target Services.
-  * Added OutboundPolicies API, for use by `linkerd-proxy` to route
-    outbound traffic
-  * Added Prometheus `/metrics` endpoint to the admin server, with process
-    metrics
-  * Fixed QueryParamMatch parsing for HTTPRoutes
-  * Added the policy status controller which writes the `status` field to
-    HTTPRoutes when a parent reference Server accepts or rejects it
-
 * linkerd-proxy-init
   * Changed `proxy-init` iptables rules to be idempotent upon init pod
     restart (thanks @jim-minter!)
@@ -88,6 +94,7 @@ and other smaller additions.
     load balancing
   * Added `network-validator` init container to ensure that iptables rules are
     working as expected
+  * Added a `resources` field in the linkerd-cni chart (thanks @jcogilvie!)
 
 * Viz
   * Added `tap.ignoredHeaders` Helm value to the linkerd-viz chart. This value
@@ -113,17 +120,6 @@ and other smaller additions.
     * `gateway.deploymentAnnotations`
     * `gateway.terminationGracePeriodSeconds` (thanks @bunnybilou!)
     * `gateway.loadBalancerSourceRanges` (thanks @Tyrion85!)
-
-* Helm
-  * Added KubeAPI server ports to `ignoreOutboundPorts` of `proxy-injector`
-  * No longer apply `waitBeforeExitSeconds` to control plane, viz and jaeger
-    extension pods
-  * Added support for the `internalTrafficPolicy` of a service (thanks @yc185050!)
-  * Added block chomping to strip trailing new lines in ConfigMap (thanks @avdicl!)
-  * Added protection against nil dereference in resources helm template
-  * Added a `resources` field in the linkerd-cni chart (thanks @jcogilvie!)
-  * Added support for Pod Security Admission (Pod Security Policy resources are
-    still supported but disabled by default)
 
 * Extensions
   * Removed dependency on the `curlimages/curl` 3rd-party image used to initialize
