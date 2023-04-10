@@ -8,7 +8,7 @@ can now be used to configure policy for outbound (client) proxies as well as
 inbound (server) proxies, by creating HTTPRoutes with Service resources as their
 `parentRef`. See the Linkerd documentation for tutorials on [dynamic request
 routing] and [circuit breaking]. New functionality for debugging HTTPRoute-based
-olicy is also included in this release, including [new proxy metrics] and a new
+policy is also included in this release, including [new proxy metrics] and a new
 `linkerd diagnostics policy` CLI command.
 
 In addition, this release adds `network-validator`, a new init container to be
@@ -17,7 +17,7 @@ are working as expected. It will validate this before linkerd-proxy starts.
 `network-validator` replaces the `noop` container, runs as `nobody`, and drops
 all capabilities before starting.
 
-Finally, this release includes an number of bugfixes, performance improvements,
+Finally, this release includes a number of bugfixes, performance improvements,
 and other smaller additions.
 
 **Upgrade notes**: Please see the [upgrade instructions][upgrade-2130].
@@ -96,7 +96,7 @@ and other smaller additions.
   * Removed duplicate SecurityContext in Prometheus manifest
   * Added new flag `--viz-namespace` which avoids requiring permissions for
     listing all namespaces in `linkerd viz` subcommands (thanks @danibaeyens!)
-  * Removed the TrafficSplit page from the Linkerd viz dashboa usage (thanks
+  * Removed the TrafficSplit page from the Linkerd viz dashboard (thanks
     @h-dav!)
   * Introduced new values in the `viz` chart to allow for arbitrary annotations
     on the `Service` objects (thanks @sgrzemski!)
