@@ -1,6 +1,6 @@
 # Changes
 
-## stable-2.12.0
+## stable-2.13.0
 
 This release introduces client-side policy to Linkerd, including dynamic routing
 and circuit breaking. [Gateway API](https://gateway-api.sigs.k8s.io/) HTTPRoutes
