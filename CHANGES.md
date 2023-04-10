@@ -150,7 +150,7 @@ and other smaller additions.
 
 
 [dynamic request routing]: https://linkerd.io/2.13/tasks/configuring-dynamic-request-routing
-[circuit breakers]: https://linkerd.io/2.13/tasks/circuit-breaking
+[circuit breaking]: https://linkerd.io/2.13/tasks/circuit-breaking
 [new proxy metrics]: https://linkerd.io/2.13/reference/proxy-metrics/#outbound-xroute-metrics
 [upgrade-2130]: https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2130
 
