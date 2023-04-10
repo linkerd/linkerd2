@@ -27,7 +27,7 @@ and other smaller additions.
   * Updated HTTPRoute version from `v1alpha1` to `v1beta2`
 
 * CLI
-  * Added a new `linkerd prune` command to the CLI (including extensions) to
+  * Added a new `linkerd prune` command to the CLI (including most extensions) to
     remove resources which are no longer part of Linkerd's manifests
   * Added additional shortnames for Linkerd policy resources (thanks @javaducky!)
   * The `linkerd diagnostics policy` command now displays outbound policy when
