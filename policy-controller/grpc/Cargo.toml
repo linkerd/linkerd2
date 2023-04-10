@@ -15,7 +15,7 @@ futures = { version = "0.3", default-features = false }
 linkerd-policy-controller-core = { path = "../core" }
 maplit = "1"
 tokio = { version = "1", features = ["macros"] }
-tonic = { version = "0.8", default-features = false }
+tonic = { version = "0.9", default-features = false }
 tracing = "0.1"
 
 [dependencies.linkerd2-proxy-api]

@@ -54,7 +54,7 @@ version = "1"
 features = ["macros", "parking_lot", "rt", "rt-multi-thread", "signal"]
 
 [dependencies.tonic]
-version = "0.8"
+version = "0.9"
 default-features = false
 features = ["transport"]
 
