@@ -19,7 +19,7 @@ tonic = { version = "0.8", default-features = false }
 tracing = "0.1"
 
 [dependencies.linkerd2-proxy-api]
-version = "0.8"
+version = "0.9"
 features = [
     "inbound",
     "outbound",
