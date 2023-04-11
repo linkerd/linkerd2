@@ -1,5 +1,187 @@
 # Changes
 
+## stable-2.13.0
+
+This release introduces client-side policy to Linkerd, including dynamic routing
+and circuit breaking. [Gateway API](https://gateway-api.sigs.k8s.io/) HTTPRoutes
+can now be used to configure policy for outbound (client) proxies as well as
+inbound (server) proxies, by creating HTTPRoutes with Service resources as their
+`parentRef`. See the Linkerd documentation for tutorials on [dynamic request
+routing] and [circuit breaking]. New functionality for debugging HTTPRoute-based
+policy is also included in this release, including [new proxy metrics] and the
+ability to display outbound policies in the `linkerd diagnostics policy` CLI
+command.
+
+In addition, this release adds `network-validator`, a new init container to be
+used when CNI is enabled. `network-validator` ensures that local iptables rules
+are working as expected. It will validate this before linkerd-proxy starts.
+`network-validator` replaces the `noop` container, runs as `nobody`, and drops
+all capabilities before starting.
+
+Finally, this release includes a number of bugfixes, performance improvements,
+and other smaller additions.
+
+**Upgrade notes**: Please see the [upgrade instructions][upgrade-2130].
+
+* CRDs
+  * HTTPRoutes may now have Service parents, to configure outbound policy
+  * Updated HTTPRoute version from `v1alpha1` to `v1beta2`
+
+* CLI
+  * Added a new `linkerd prune` command to the CLI (including most extensions) to
+    remove resources which are no longer part of Linkerd's manifests
+  * Added additional shortnames for Linkerd policy resources (thanks @javaducky!)
+  * The `linkerd diagnostics policy` command now displays outbound policy when
+    the target resource is a Service
+
+* Control Plane
+  * The policy controller now discovers outbound policy configurations from
+    HTTPRoutes that target Services.
+  * Added OutboundPolicies API, for use by `linkerd-proxy` to route
+    outbound traffic
+  * Added Prometheus `/metrics` endpoint to the admin server, with process
+    metrics
+  * Fixed QueryParamMatch parsing for HTTPRoutes
+  * Added the policy status controller which writes the `status` field to
+    HTTPRoutes when a parent reference Server accepts or rejects it
+  * Added KubeAPI server ports to `ignoreOutboundPorts` of `proxy-injector`
+  * No longer apply `waitBeforeExitSeconds` to control plane, viz and jaeger
+    extension pods
+  * Added support for the `internalTrafficPolicy` of a service (thanks @yc185050!)
+  * Added block chomping to strip trailing new lines in ConfigMap (thanks @avdicl!)
+  * Added protection against nil dereference in resources helm template
+  * Added support for Pod Security Admission (Pod Security Policy resources are
+    still supported but disabled by default)
+  * Lowered non-actionable error messages in the Destination log to debug-level
+    entries to avoid triggering false alarms (thanks @siddharthshubhampal!)
+  * Fixed an issue with EndpointSlice endpoint reconciliation on slice deletion;
+    when using more than one slice, a `NoEndpoints` event would be sent to the
+    proxy regardless of the amount of endpoints that were still available
+    (thanks @utay!)
+  * Improved diagnostic log messages
+  * Fixed sending of spurious profile updates
+  * Removed unnecessary Namespaces access from the destination controller RBAC
+  * Added the server_port_subscribers metric to track the number of subscribers
+    to Server changes associated with a pod's port
+  * Added the service_subscribers metric to track the number of subscribers to
+    Service changes
+  * Fixed a small memory leak in the opaque ports watcher
+
+* Proxy
+  * Use the new OutboundPolicies API, supporting Gateway API-style routes
+    in the outbound proxy
+  * Added support for dynamic request routing based on HTTPRoutes
+  * Added HTTP circuit breaking
+  * Added `outbound_route_backend_http_requests_total`,
+    `outbound_route_backend_grpc_requests_total`, and
+    `outbound_http_balancer_endpoints` metrics
+  * Changed the proxy's behavior when traffic splitting so that only services
+    that are not in failfast are used. This will enable the proxy to manage
+    failover without external coordination
+  * Updated tokio (async runtime) in the proxy which should reduce CPU usage,
+    especially for proxy's pod local (i.e in the same network namespace)
+    communication
+
+* linkerd-proxy-init
+  * Changed `proxy-init` iptables rules to be idempotent upon init pod
+    restart (thanks @jim-minter!)
+  * Improved logging in `proxy-init` and `linkerd-cni`
+  * Added a `proxyInit.privileged` setting to control whether the `proxy-init`
+    initContainer runs as a privileged process
+
+* CNI
+  * Added static and dynamic port overrides for CNI eBPF to work with socket-level
+    load balancing
+  * Added `network-validator` init container to ensure that iptables rules are
+    working as expected
+  * Added a `resources` field in the linkerd-cni chart (thanks @jcogilvie!)
+
+* Viz
+  * Added `tap.ignoredHeaders` Helm value to the linkerd-viz chart. This value
+    allows users to specify a comma-separated list of header names which will be
+    ignored by Linkerd Tap (thanks @ryanhristovski!)
+  * Removed duplicate SecurityContext in Prometheus manifest
+  * Added new flag `--viz-namespace` which avoids requiring permissions for
+    listing all namespaces in `linkerd viz` subcommands (thanks @danibaeyens!)
+  * Removed the TrafficSplit page from the Linkerd viz dashboard (thanks
+    @h-dav!)
+  * Introduced new values in the `viz` chart to allow for arbitrary annotations
+    on the `Service` objects (thanks @sgrzemski!)
+  * Added an optional AuthorizationPolicy to authorize Grafana to Prometheus
+    in the Viz extension
+
+* Multicluster
+  * Removed duplicate AuthorizationPolicy for probes from the multicluster
+    gateway Helm chart
+  * Updated wording for linkerd-multicluster cluster when it fails to probe a
+    remote gateway mirror
+  * Added multicluster gateway `nodeSelector` and `tolerations` helm parameters
+  * Added new configuration options for the multicluster gateway:
+    * `gateway.deploymentAnnotations`
+    * `gateway.terminationGracePeriodSeconds` (thanks @bunnybilou!)
+    * `gateway.loadBalancerSourceRanges` (thanks @Tyrion85!)
+
+* Extensions
+  * Removed dependency on the `curlimages/curl` 3rd-party image used to initialize
+    extensions namespaces metadata (so they are visible by `linkerd check`),
+    replaced by the new `extension-init` image
+  * Converted `ServerAuthorization` resources to `AuthorizationPolicy` resources
+    in Linkerd extensions
+  * Removed policy resources bound to admin servers in extensions (previously
+    these resources were used to authorize probes but now are authorized by
+    default)
+  * Fixed the link to the Jaeger dashboard the in viz dashboard (thanks
+    @eugenegoncharuk!)
+  * Updated linkerd-jaeger's collector to expose port 4318 in order support HTTP
+    alongside gRPC (thanks @uralsemih!)
+
+* Among other dependency updates, the no-longer maintained ghodss/yaml library
+  was replaced with sigs.k8s.io/yaml (thanks @Juneezee!)
+
+This release includes changes from a massive list of contributors! A special
+thank-you to everyone who helped make this release possible:
+
+* Andrew Pinkham [@jambonrose](https://github.com/jambonrose)
+* Arnaud Beun [@bunnybilou](https://github.com/bunnybilou)
+* Carlos Tadeu Panato Junior [@cpanato](https://github.com/cpanato)
+* Christian Segundo [@someone-stole-my-name](https://github.com/someone-stole-my-name)
+* Dani Baeyens [@danibaeyens](https://github.com/danibaeyens)
+* Duc Tran [@ductnn](https://github.com/ductnn)
+* Eng Zer Jun [@Juneezee](https://github.com/Juneezee)
+* Ivan Ivic [@Tyrion85](https://github.com/Tyrion85)
+* Joe Bowbeer [@joebowbeer](https://github.com/joebowbeer)
+* Jonathan Ogilvie [@jcogilvie](https://github.com/jcogilvie)
+* Jun [@junnplus](https://github.com/junnplus)
+* Loong Dai [@daixiang0](https://github.com/daixiang0)
+* María Teresa Rojas [@mtrojas](https://github.com/mtrojas)
+* Mo Sattler [@MoSattler](https://github.com/MoSattler)
+* Oleg Vorobev [@olegy2008](https://github.com/olegy2008)
+* Paul Balogh [@javaducky](https://github.com/javaducky)
+* Peter Smit [@psmit](https://github.com/psmit)
+* Ryan Hristovski [@ryanhristovski](https://github.com/ryanhristovski)
+* Semih Ural [@uralsemih](https://github.com/uralsemih)
+* Shubhodeep Mukherjee [@shubhodeep9](https://github.com/shubhodeep9)
+* Siddharth S Pal [@siddharthshubhampal](https://github.com/siddharthshubhampal)
+* Subhash Choudhary [@subhashchy](https://github.com/subhashchy)
+* Szymon Grzemski [@sgrzemski](https://github.com/sgrzemski)
+* Takumi Sue [@mikutas](https://github.com/mikutas)
+* Yannick Utard [@utay](https://github.com/utay)
+* Yu Cao [@yc185050](https://github.com/yc185050)
+* anoxape [@anoxape](https://github.com/anoxape)
+* bastienbosser [@bastienbosser](https://github.com/bastienbosser)
+* bitfactory-sem-denbroeder [@bitfactory-sem-denbroeder](https://github.com/bitfactory-sem-denbroeder)
+* cui fliter [@cuishuang](https://github.com/cuishuang)
+* eugenegoncharuk [@eugenegoncharuk](https://github.com/eugenegoncharuk)
+* h-dav @[h-dav](https://github.com/h-dav)
+* martinkubrak [@martinkubra](https://github.com/martinkubra)
+* verbotenj [@verbotenj](https://github.com/verbotenj)
+* ziollek [@ziollek](https://github.com/ziollek)
+
+[dynamic request routing]: https://linkerd.io/2.13/tasks/configuring-dynamic-request-routing
+[circuit breaking]: https://linkerd.io/2.13/tasks/circuit-breaking
+[new proxy metrics]: https://linkerd.io/2.13/reference/proxy-metrics/#outbound-xroute-metrics
+[upgrade-2130]: https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2130
+
 ## edge-23.4.1
 
 This is a release candidate for stable-2.13.0 &mdash; we encourage you to help
