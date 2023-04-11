@@ -159,6 +159,8 @@ spec:
           readOnlyRootFilesystem: true
           privileged: false
         resources:
+          limits:
+            cpu: "1m"
       volumes:
       - name: cni-bin-dir
         hostPath:
