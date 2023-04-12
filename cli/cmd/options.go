@@ -170,7 +170,7 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
 	if err != nil {
-		log.Errorf("Unable to parse version: %s", version.Version)
+		log.Errorf("Unable to parse version: %v", err)
 	}
 	if release {
 		installUpgradeFlags.MarkHidden("control-plane-version")
@@ -419,7 +419,7 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
 	if err != nil {
-		log.Errorf("Unable to parse version: %s", version.Version)
+		log.Errorf("Unable to parse version: %v", err)
 	}
 	if release {
 		proxyFlags.MarkHidden("proxy-image")

@@ -91,7 +91,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
 	if err != nil {
-		log.Errorf("Unable to parse version: %s", version.Version)
+		log.Errorf("Unable to parse version: %v", err)
 	}
 	if release {
 		cmd.Flags().MarkHidden("control-plane-version")
