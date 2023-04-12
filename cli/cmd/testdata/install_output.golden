@@ -1344,6 +1344,7 @@ spec:
         - --server-tls-certs=/var/run/linkerd/tls/tls.crt
         - --cluster-networks=ClusterNetworks
         - --identity-domain=cluster.local
+        - --cluster-domain=cluster.local
         - --default-policy=default-allow-policy
         - --log-level=log-level
         - --log-format=ControllerLogFormat
