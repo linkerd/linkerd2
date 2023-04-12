@@ -110,8 +110,8 @@ copies the necessary linkerd-cni plugin binaries and configs onto the host. It
 assumes that the 'linkerd install' command will be executed with the
 '--linkerd-cni-enabled' flag. This command needs to be executed before the
 'linkerd install --linkerd-cni-enabled' command. 
-Now the installation can be configured by using the --set, --values, --set-string and --set-file flags.
-A full list of configurable values can be found at https://artifacthub.io/packages/helm/linkerd2/linkerd2-cni#values`,
+
+The installation can be configured by using the --set, --values, --set-string and --set-file flags. A full list of configurable values can be found at https://artifacthub.io/packages/helm/linkerd2/linkerd2-cni#values`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return renderCNIPlugin(os.Stdout, valOpts, options)
 		},
