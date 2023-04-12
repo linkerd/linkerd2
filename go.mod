@@ -41,13 +41,13 @@ require (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
 	google.golang.org/protobuf v1.30.0
 	helm.sh/helm/v3 v3.11.2
-	k8s.io/api v0.26.3
+	k8s.io/api v0.27.0
 	k8s.io/apiextensions-apiserver v0.26.3
-	k8s.io/apimachinery v0.26.3
-	k8s.io/client-go v0.26.3
-	k8s.io/code-generator v0.26.3
+	k8s.io/apimachinery v0.27.0
+	k8s.io/client-go v0.27.0
+	k8s.io/code-generator v0.27.0
 	k8s.io/klog/v2 v2.90.1
-	k8s.io/kube-aggregator v0.26.3
+	k8s.io/kube-aggregator v0.27.0
 	sigs.k8s.io/gateway-api v0.6.2
 	sigs.k8s.io/yaml v1.3.0
 )
@@ -56,7 +56,7 @@ require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20220408101031-f1761e18c0c6
 	github.com/prometheus/client_model v0.3.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/utils v0.0.0-20221107191617-1a15be271d1d
+	k8s.io/utils v0.0.0-20230209194617-a36077c30491
 )
 
 require (
@@ -80,13 +80,12 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
-	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/emicklei/go-restful/v3 v3.10.1 // indirect
 	github.com/go-errors/errors v1.0.1 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
-	github.com/go-openapi/jsonpointer v0.19.5 // indirect
-	github.com/go-openapi/jsonreference v0.20.0 // indirect
-	github.com/go-openapi/swag v0.19.15 // indirect
+	github.com/go-openapi/jsonpointer v0.19.6 // indirect
+	github.com/go-openapi/jsonreference v0.20.1 // indirect
+	github.com/go-openapi/swag v0.22.3 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -106,7 +105,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
-	github.com/mailru/easyjson v0.7.6 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
@@ -149,9 +148,9 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/cli-runtime v0.26.0 // indirect
 	k8s.io/gengo v0.0.0-20220902162205-c0856e24416d // indirect
-	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 // indirect
+	k8s.io/kube-openapi v0.0.0-20230308215209-15aac26d736a // indirect
 	oras.land/oras-go v1.2.2 // indirect
-	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
+	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/kustomize/api v0.12.1 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.13.9 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
