@@ -74,6 +74,22 @@ func NewValues() (*Values, error) {
 	return v, nil
 }
 
+// ToMap converts Values into a map[string]interface{}
+func (v *Values) ToMap() (map[string]interface{}, error) {
+	var valuesMap map[string]interface{}
+	rawValues, err := yaml.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal the values struct: %w", err)
+	}
+
+	err = yaml.Unmarshal(rawValues, &valuesMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to Unmarshal Values into a map: %w", err)
+	}
+
+	return valuesMap, nil
+}
+
 // readDefaults reads all the default variables from the values.yaml file.
 // chartDir is the root directory of the Helm chart where values.yaml is.
 func readDefaults(chartDir string) (*Values, error) {

@@ -14,10 +14,10 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/values"
-	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -48,7 +48,6 @@ type cniPluginOptions struct {
 	destCNIBinDir       string
 	useWaitFlag         bool
 	priorityClassName   string
-	valuesOverrides     map[string]interface{}
 }
 
 func (options *cniPluginOptions) validate() error {
@@ -191,48 +190,6 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 		return nil, err
 	}
 
-	if val, ok := options.valuesOverrides["enablePSP"]; ok {
-		if err := parseYAMLValue(val, &installValues.EnablePSP); err != nil {
-			return nil, err
-		}
-	}
-
-	if val, ok := options.valuesOverrides["privileged"]; ok {
-		if err := parseYAMLValue(val, &installValues.Privileged); err != nil {
-			return nil, err
-		}
-	}
-
-	if val, ok := options.valuesOverrides["podLabels"]; ok {
-		if err := parseYAMLValue(val, &installValues.PodLabels); err != nil {
-			return nil, err
-		}
-	}
-
-	if val, ok := options.valuesOverrides["commonLabels"]; ok {
-		if err := parseYAMLValue(val, &installValues.CommonLabels); err != nil {
-			return nil, err
-		}
-	}
-
-	if val, ok := options.valuesOverrides["imagePullSecrets"]; ok {
-		if err := parseYAMLValue(val, &installValues.ImagePullSecrets); err != nil {
-			return nil, err
-		}
-	}
-
-	if val, ok := options.valuesOverrides["extraInitContainers"]; ok {
-		if err := parseYAMLValue(val, &installValues.ExtraInitContainers); err != nil {
-			return nil, err
-		}
-	}
-
-	if val, ok := options.valuesOverrides["resources"]; ok {
-		if err := parseYAMLValue(val, &installValues.Resources); err != nil {
-			return nil, err
-		}
-	}
-
 	portsToRedirect := []string{}
 	for _, p := range options.portsToRedirect {
 		portsToRedirect = append(portsToRedirect, fmt.Sprintf("%d", p))
@@ -253,17 +210,6 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 	return installValues, nil
 }
 
-func parseYAMLValue(val interface{}, target interface{}) error {
-	yamlVal, err := yaml.Marshal(val)
-	if err != nil {
-		return err
-	}
-	if err := yaml.Unmarshal(yamlVal, target); err != nil {
-		return err
-	}
-	return nil
-}
-
 func renderCNIPlugin(w io.Writer, valOpts values.Options, config *cniPluginOptions) error {
 
 	if err := config.validate(); err != nil {
@@ -275,14 +221,21 @@ func renderCNIPlugin(w io.Writer, valOpts values.Options, config *cniPluginOptio
 		return err
 	}
 
-	config.valuesOverrides = valuesOverrides
 	values, err := config.buildValues()
 	if err != nil {
 		return err
 	}
 
-	// Render raw values and create chart config
-	rawValues, err := yaml.Marshal(values)
+	mapValues, err := values.ToMap()
+	if err != nil {
+		return err
+	}
+
+	valuesWrapper := &chart.Chart{
+		Metadata: &chart.Metadata{Name: ""},
+		Values:   mapValues,
+	}
+	mergedValues, err := chartutil.CoalesceValues(valuesWrapper, valuesOverrides)
 	if err != nil {
 		return err
 	}
@@ -292,15 +245,16 @@ func renderCNIPlugin(w io.Writer, valOpts values.Options, config *cniPluginOptio
 		{Name: "templates/cni-plugin.yaml"},
 	}
 
-	chart := &charts.Chart{
+	ch := &charts.Chart{
 		Name:      helmCNIDefaultChartName,
 		Dir:       helmCNIDefaultChartDir,
 		Namespace: defaultCNINamespace,
-		RawValues: rawValues,
+		Values:    mergedValues,
 		Files:     files,
 		Fs:        static.Templates,
 	}
-	buf, err := chart.RenderCNI()
+
+	buf, err := ch.RenderCNI()
 	if err != nil {
 		return err
 	}

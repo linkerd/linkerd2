@@ -2,6 +2,7 @@ package charts
 
 import (
 	"bytes"
+	"errors"
 	"net/http"
 	"path"
 	"strings"
@@ -45,9 +46,17 @@ type Chart struct {
 	Name      string
 	Dir       string
 	Namespace string
+
+	// RawValues are yaml-formatted values entries. Either this or Values
+	// should be set, but not both
 	RawValues []byte
-	Files     []*loader.BufferedFile
-	Fs        http.FileSystem
+
+	// Values are the config key-value entries. Either this or RawValues should
+	// be set, but not both
+	Values map[string]any
+
+	Files []*loader.BufferedFile
+	Fs    http.FileSystem
 }
 
 func (c *Chart) render(partialsFiles []*loader.BufferedFile) (bytes.Buffer, error) {
@@ -73,13 +82,17 @@ func (c *Chart) render(partialsFiles []*loader.BufferedFile) (bytes.Buffer, erro
 		Namespace: c.Namespace,
 	}
 
-	var rawMapValues map[string]interface{}
-	err = yaml.Unmarshal(c.RawValues, &rawMapValues)
-	if err != nil {
-		return bytes.Buffer{}, err
+	if len(c.RawValues) > 0 {
+		if c.Values != nil {
+			return bytes.Buffer{}, errors.New("either RawValues or Values should be set, but not both")
+		}
+		err = yaml.Unmarshal(c.RawValues, &c.Values)
+		if err != nil {
+			return bytes.Buffer{}, err
+		}
 	}
 
-	valuesToRender, err := chartutil.ToRenderValues(chart, rawMapValues, releaseOptions, nil)
+	valuesToRender, err := chartutil.ToRenderValues(chart, c.Values, releaseOptions, nil)
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
