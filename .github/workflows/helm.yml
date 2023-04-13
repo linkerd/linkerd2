@@ -17,6 +17,6 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: linkerd/dev/actions/setup-tools@v39
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247
       - run: helm-docs
       - run: git diff --exit-code -- charts/**/README.md

@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+    - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247
     - uses: devblackops/github-action-psscriptanalyzer@854038567344559afaaa8ccb7a014452b99d86ee
       env:
         # https://github.com/devblackops/github-action-psscriptanalyzer/pull/3/files

@@ -19,7 +19,7 @@ jobs:
     env:
       NODE_ENV: test
     steps:
-    - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+    - uses: actions/checkout@83b7061638ee4956cf7545a6f7efe594e5ad0247
     - name: Yarn setup
       run: |
         bin/scurl --retry=2 https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
