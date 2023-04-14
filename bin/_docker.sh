@@ -52,7 +52,8 @@ docker_repo() {
 }
 
 docker_build() {
-    repo=$(docker_repo "$1")
+    name=$1
+    repo=$(docker_repo "$name")
     shift
 
     tag=$1
@@ -87,6 +88,7 @@ See https://github.com/docker/buildx/issues/59 for more details'
         $output_params \
         -t "$repo:$tag" \
         -f "$file" \
+        --metadata-file metadata-"$name".json \
         "$@"
 
     echo "$repo:$tag"

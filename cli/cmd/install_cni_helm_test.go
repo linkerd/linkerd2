@@ -35,7 +35,7 @@ func TestRenderCniHelm(t *testing.T) {
   			"logLevel": "debug",
 			"image": {
 				"name": "cr.l5d.io/linkerd/cni-plugin",
-				"version": "v1.0.0"
+				"version": "v1.1.0"
 			},
   			"proxyUID": 1111,
   			"destCNINetDir": "/etc/cni/net.d-test",

@@ -21,8 +21,8 @@ jobs:
   tag:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-      - run: echo "::set-output name=tag::$(CI_FORCE_CLEAN=1 bin/root-tag)"
+      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
         id: tag
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
@@ -39,6 +39,7 @@ jobs:
         - cli-bin
         - cni-plugin
         - controller
+        - policy-controller
         - debug
         - jaeger-webhook
         - metrics-api
@@ -47,7 +48,7 @@ jobs:
         - web
     timeout-minutes: 30
     steps:
-    - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
+    - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
     - name: Set tag
       run: echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
     - uses: ./.github/actions/docker-build
@@ -60,10 +61,10 @@ jobs:
         docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
         component: ${{ matrix.component }}
         tag: ${{ needs.tag.outputs.tag }}
-    - uses: sigstore/cosign-installer@v2
-    - run: cosign sign '${{ steps.build.outputs.image }}'
+    - uses: sigstore/cosign-installer@v3
+    - run: cosign sign '${{ steps.build.outputs.digest }}'
       env:
-        COSIGN_EXPERIMENTAL: 1
+        COSIGN_YES: true
     - name: Create artifact with CLI
       # windows_static_cli_tests below needs this because it can't create linux containers
       # inside windows
@@ -85,57 +86,6 @@ jobs:
         name: image-archives
         path: /home/runner/archives
 
-  policy_controller_build:
-    name: Policy controller build
-    needs: [tag]
-    runs-on: ubuntu-20.04
-    permissions:
-      id-token: write # needed for signing the images with GitHub OIDC Token
-    timeout-minutes: 30
-    strategy:
-      matrix:
-        arch:
-        - amd64
-        - arm
-        - arm64
-    steps:
-    - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-    - name: Set tag
-      run: echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
-    - uses: ./.github/actions/rust-docker-build
-      id: build
-      with:
-        docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
-        docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
-        component: policy-controller
-        component-path: ./policy-controller
-        arch: ${{ matrix.arch }}
-        tag: ${{ needs.tag.outputs.tag }}
-    - uses: sigstore/cosign-installer@v2
-    - run: cosign sign '${{ steps.build.outputs.image }}'
-      env:
-        COSIGN_EXPERIMENTAL: 1
-    - run: bin/docker-cache-prune
-      # changes generate new images while the existing ones don't get removed
-      # so we manually do that to avoid bloating the cache
-      env:
-        DOCKER_BUILDKIT_CACHE: "${{ runner.temp }}/.buildx-cache"
-
-  policy_controller_manifest:
-    name: Policy controller manifest
-    needs: [tag, policy_controller_build]
-    runs-on: ubuntu-20.04
-    timeout-minutes: 30
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-    - uses: ./.github/actions/rust-docker-manifest
-      with:
-        docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
-        docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
-        component: policy-controller
-        tag: ${{ needs.tag.outputs.tag }}
-
   windows_static_cli_tests:
     name: Static CLI tests (windows)
     timeout-minutes: 30
@@ -143,10 +93,10 @@ jobs:
     needs: [docker_build]
     steps:
     - name: Checkout code
-      uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-    - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568
+      uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+    - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9
       with:
-        go-version: '1.18'
+        go-version: '1.19'
     - name: Download image archives
       uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
       with:
@@ -157,7 +107,7 @@ jobs:
 
   integration_tests:
     name: Integration tests
-    needs: [tag, docker_build, policy_controller_manifest]
+    needs: [tag, docker_build]
     strategy:
       matrix:
         integration_test:
@@ -170,16 +120,16 @@ jobs:
         - rsa-ca
         - helm-upgrade
         - uninstall
-        - upgrade-edge
+      # - upgrade-edge
         - upgrade-stable
     timeout-minutes: 60
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-    - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568
+      uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+    - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9
       with:
-        go-version: '1.18'
+        go-version: '1.19'
     - name: Set environment variables from scripts
       run: |
         TAG='${{ needs.tag.outputs.tag }}'
@@ -196,15 +146,15 @@ jobs:
         bin/tests --images preload --name ${{ matrix.integration_test }} "$CMD"
 
   arm64_integration_tests:
-    needs: [tag, docker_build, policy_controller_manifest]
+    needs: [tag, docker_build]
     runs-on: [self-hosted, Linux, ARM64]
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
-      - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568
+      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9
         with:
-          go-version: '1.18'
-      - uses: docker/setup-buildx-action@f03ac48505955848960e80bbb68046aa35c7b9e7
+          go-version: '1.19'
+      - uses: docker/setup-buildx-action@4b4e9c3e2d4531116a6f8ba8e71fc6e2cb6e6c8c
       - name: Pull linkerd binary
         run: |
           TAG='${{ needs.tag.outputs.tag }}'
@@ -212,7 +162,7 @@ jobs:
           CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-arm64"
           echo "CMD=$CMD" >> "$GITHUB_ENV"
           "$CMD" version --client
-      - uses: extractions/setup-just@95b912dc5d3ed106a72907f2f9b91e76d60bdb76
+      - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: azure/setup-kubectl@901a10e89ea615cf61f57ac05cecdf23e7de06d8
@@ -247,7 +197,7 @@ jobs:
     steps:
     - name: Checkout code
       if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
+      uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
     - name: Chocolatey - update nuspec
       if: startsWith(github.ref, 'refs/tags/stable')
       run: |
@@ -277,7 +227,7 @@ jobs:
     permissions:
       contents: write
     steps:
-    - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
+    - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
     - name: Set environment variables
       run: |
         echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
@@ -332,7 +282,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
+    - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
     - name: Set install target for stable
       if: startsWith(github.ref, 'refs/tags/stable')
       run: echo "INSTALL=install" >> "$GITHUB_ENV"
@@ -359,7 +309,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
+      uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
     - name: Log into GCP
       uses: 'google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d'
       with:

@@ -18,6 +18,8 @@ import (
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/metrics-api/util"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	hc "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
+
 	pkgUtil "github.com/linkerd/linkerd2/viz/pkg/util"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -75,13 +77,16 @@ This command will only display traffic which is sent to a service that has a Ser
 			}
 
 			output, err := requestRouteStatsFromAPI(
-				api.CheckClientOrExit(healthcheck.Options{
-					ControlPlaneNamespace: controlPlaneNamespace,
-					KubeConfig:            kubeconfigPath,
-					Impersonate:           impersonate,
-					ImpersonateGroup:      impersonateGroup,
-					KubeContext:           kubeContext,
-					APIAddr:               apiAddr,
+				api.CheckClientOrExit(hc.VizOptions{
+					Options: &healthcheck.Options{
+						ControlPlaneNamespace: controlPlaneNamespace,
+						KubeConfig:            kubeconfigPath,
+						Impersonate:           impersonate,
+						ImpersonateGroup:      impersonateGroup,
+						KubeContext:           kubeContext,
+						APIAddr:               apiAddr,
+					},
+					VizNamespaceOverride: vizNamespace,
 				}),
 				req,
 				options,

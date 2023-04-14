@@ -26,6 +26,7 @@ type IPAddress struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Ip:
+	//
 	//	*IPAddress_Ipv4
 	//	*IPAddress_Ipv6
 	Ip isIPAddress_Ip `protobuf_oneof:"ip"`

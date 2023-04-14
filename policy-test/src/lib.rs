@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 pub mod admission;
+pub mod bb;
 pub mod curl;
 pub mod grpc;
 pub mod web;
@@ -134,6 +135,24 @@ pub async fn await_pod_ip(client: &kube::Client, ns: &str, name: &str) -> std::n
         .expect("pod IP must be valid")
 }
 
+// Waits until an HttpRoute with the given namespace and name has a status set
+// on it, then returns the generic route status representation.
+pub async fn await_route_status(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+) -> k8s::policy::httproute::RouteStatus {
+    use k8s::policy::httproute as api;
+    await_condition(client, ns, name, |obj: Option<&api::HttpRoute>| -> bool {
+        obj.and_then(|route| route.status.as_ref()).is_some()
+    })
+    .await
+    .expect("must fetch route")
+    .status
+    .expect("route must contain a status representation")
+    .inner
+}
+
 #[tracing::instrument(skip_all, fields(%pod, %container))]
 pub async fn logs(client: &kube::Client, ns: &str, pod: &str, container: &str) {
     let params = kube::api::LogParams {
@@ -147,6 +166,114 @@ pub async fn logs(client: &kube::Client, ns: &str, pod: &str, container: &str) {
     for message in log.lines() {
         tracing::trace!(%message);
     }
+}
+
+/// Creates a service resource.
+pub async fn create_service(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+    port: i32,
+) -> k8s::Service {
+    let svc = mk_service(ns, name, port);
+
+    create(client, svc).await
+}
+
+/// Creates a service resource.
+pub async fn create_opaque_service(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+    port: i32,
+) -> k8s::Service {
+    let svc = mk_service(ns, name, port);
+    let svc = annotate_service(
+        svc,
+        std::iter::once(("config.linkerd.io/opaque-ports", port)),
+    );
+
+    create(client, svc).await
+}
+
+/// Creates a service resource with given annotations.
+pub async fn create_annotated_service(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+    port: i32,
+    annotations: std::collections::BTreeMap<String, String>,
+) -> k8s::Service {
+    let svc = annotate_service(mk_service(ns, name, port), annotations);
+    create(client, svc).await
+}
+
+pub fn annotate_service<K, V>(
+    mut svc: k8s::Service,
+    annotations: impl IntoIterator<Item = (K, V)>,
+) -> k8s::Service
+where
+    K: ToString,
+    V: ToString,
+{
+    svc.annotations_mut().extend(
+        annotations
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+    );
+    svc
+}
+
+pub fn mk_service(ns: &str, name: &str, port: i32) -> k8s::Service {
+    k8s::Service {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: Some(k8s::ServiceSpec {
+            ports: Some(vec![k8s::ServicePort {
+                port,
+                ..Default::default()
+            }]),
+            ..Default::default()
+        }),
+        ..k8s::Service::default()
+    }
+}
+
+pub fn mk_route(
+    ns: &str,
+    name: &str,
+    parent_refs: Option<Vec<k8s::policy::httproute::ParentReference>>,
+) -> k8s::policy::HttpRoute {
+    use k8s::policy::httproute as api;
+    api::HttpRoute {
+        metadata: kube::api::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: api::HttpRouteSpec {
+            inner: api::CommonRouteSpec { parent_refs },
+            hostnames: None,
+            rules: Some(vec![]),
+        },
+        status: None,
+    }
+}
+
+pub fn find_route_condition(
+    statuses: impl IntoIterator<Item = k8s_gateway_api::RouteParentStatus>,
+    parent_name: &str,
+) -> Option<k8s::Condition> {
+    statuses
+        .into_iter()
+        .find(|route_status| route_status.parent_ref.name == parent_name)
+        .expect("route must have at least one status set")
+        .conditions
+        .into_iter()
+        .find(|cond| cond.type_ == "Accepted")
 }
 
 /// Runs a test with a random namespace that is deleted on test completion

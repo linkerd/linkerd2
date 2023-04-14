@@ -20,6 +20,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	hc "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 	vizutil "github.com/linkerd/linkerd2/viz/pkg/util"
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	"github.com/linkerd/linkerd2/viz/tap/pkg"
@@ -207,13 +208,16 @@ func NewCmdTap() *cobra.Command {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 			}
 
-			api.CheckClientOrExit(healthcheck.Options{
-				ControlPlaneNamespace: controlPlaneNamespace,
-				KubeConfig:            kubeconfigPath,
-				Impersonate:           impersonate,
-				ImpersonateGroup:      impersonateGroup,
-				KubeContext:           kubeContext,
-				APIAddr:               apiAddr,
+			api.CheckClientOrExit(hc.VizOptions{
+				Options: &healthcheck.Options{
+					ControlPlaneNamespace: controlPlaneNamespace,
+					KubeConfig:            kubeconfigPath,
+					Impersonate:           impersonate,
+					ImpersonateGroup:      impersonateGroup,
+					KubeContext:           kubeContext,
+					APIAddr:               apiAddr,
+				},
+				VizNamespaceOverride: vizNamespace,
 			})
 
 			requestParams := pkg.TapRequestParams{

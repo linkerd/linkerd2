@@ -4,7 +4,6 @@ use linkerd_policy_controller_k8s_api::{
     policy::{LocalTargetRef, NamespacedTargetRef},
 };
 use linkerd_policy_test::{create, create_ready_pod, curl, web, with_temp_ns, LinkerdInject};
-use std::num::NonZeroU16;
 
 #[tokio::test(flavor = "current_thread")]
 async fn meshtls() {
@@ -63,25 +62,10 @@ async fn targets_route() {
         );
         // Create a route which matches the /allowed path.
         let (root_route, _roux_route) = tokio::join!(
+            create(&client, http_route("root", &ns, &srv.name_unchecked(), "/"),),
             create(
                 &client,
-                http_route(
-                    "root",
-                    &ns,
-                    &srv.name_unchecked(),
-                    "/",
-                    NonZeroU16::new(80).unwrap(),
-                ),
-            ),
-            create(
-                &client,
-                http_route(
-                    "roux",
-                    &ns,
-                    &srv.name_unchecked(),
-                    "/roux",
-                    NonZeroU16::new(80).unwrap(),
-                )
+                http_route("roux", &ns, &srv.name_unchecked(), "/roux")
             )
         );
         // Create a policy which allows all authenticated clients
@@ -637,13 +621,7 @@ fn allow_ips(
     }
 }
 
-fn http_route(
-    name: &str,
-    ns: &str,
-    server_name: &str,
-    path: &str,
-    port: NonZeroU16,
-) -> k8s::policy::HttpRoute {
+fn http_route(name: &str, ns: &str, server_name: &str, path: &str) -> k8s::policy::HttpRoute {
     k8s::policy::HttpRoute {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
@@ -658,7 +636,7 @@ fn http_route(
                     namespace: Some(ns.to_string()),
                     name: server_name.to_string(),
                     section_name: None,
-                    port: Some(port.into()),
+                    port: None,
                 }]),
             },
             hostnames: None,
@@ -670,6 +648,7 @@ fn http_route(
                     ..Default::default()
                 }]),
                 filters: None,
+                backend_refs: None,
             }]),
         },
         status: None,

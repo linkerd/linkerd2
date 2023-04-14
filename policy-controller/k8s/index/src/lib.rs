@@ -23,63 +23,13 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-pub mod authorization_policy;
+mod cluster_info;
 mod defaults;
 pub mod http_route;
-mod index;
-mod meshtls_authentication;
-mod network_authentication;
-mod pod;
-mod server;
-mod server_authorization;
+pub mod inbound;
+pub mod outbound;
+pub mod ports;
 
-#[cfg(test)]
-mod tests;
-
-use linkerd_policy_controller_core::IpNet;
-use std::time;
-
-pub use self::{
-    defaults::DefaultPolicy,
-    index::{Index, SharedIndex},
-};
-
-/// Holds cluster metadata.
-#[derive(Clone, Debug)]
-pub struct ClusterInfo {
-    /// Networks including PodIPs in this cluster.
-    ///
-    /// Unfortunately, there's no way to discover this at runtime.
-    pub networks: Vec<IpNet>,
-
-    /// The namespace where the linkerd control plane is deployed
-    pub control_plane_ns: String,
-
-    /// The cluster's mesh identity trust domain.
-    pub identity_domain: String,
-
-    /// The cluster-wide default policy.
-    pub default_policy: DefaultPolicy,
-
-    /// The cluster-wide default protocol detection timeout.
-    pub default_detect_timeout: time::Duration,
-
-    /// The networks that probes are expected to be from.
-    pub probe_networks: Vec<IpNet>,
-}
-
-impl ClusterInfo {
-    fn service_account_identity(&self, ns: &str, sa: &str) -> String {
-        format!(
-            "{}.{}.serviceaccount.identity.{}.{}",
-            sa, ns, self.control_plane_ns, self.identity_domain
-        )
-    }
-
-    fn namespace_identity(&self, ns: &str) -> String {
-        format!(
-            "*.{}.serviceaccount.identity.{}.{}",
-            ns, self.control_plane_ns, self.identity_domain
-        )
-    }
-}
+pub use cluster_info::ClusterInfo;
+pub use defaults::DefaultPolicy;
+pub use inbound::authorization_policy;

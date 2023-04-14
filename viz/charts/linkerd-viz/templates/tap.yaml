@@ -14,6 +14,7 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    {{- with .Values.tap.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
     linkerd.io/inject: enabled
 spec:
   type: ClusterIP
@@ -93,6 +94,9 @@ spec:
         - -log-format={{.Values.tap.logFormat | default .Values.defaultLogFormat}}
         - -identity-trust-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
         - -enable-pprof={{.Values.enablePprof | default false}}
+        {{- if .Values.tap.ignoreHeaders }}
+        - -ignore-headers={{ .Values.tap.ignoreHeaders | join "," }}
+        {{- end }}
         image: {{.Values.tap.image.registry | default .Values.defaultRegistry}}/{{.Values.tap.image.name}}:{{.Values.tap.image.tag | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.tap.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:

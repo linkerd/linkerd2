@@ -38,6 +38,9 @@ exceptions = [
         "Apache-2.0",
         "Unicode-DFS-2016",
     ], name = "unicode-ident" },
+    { allow = [
+        "Zlib",
+    ], name = "adler32" },
 ]
 
 [[licenses.clarify]]
@@ -55,13 +58,22 @@ deny = []
 skip = [
     # Waiting on h2, tonic, etc
     { name = "tokio-util", version = "0.6" },
+    # `rustls-pemfile` and `k8s-openapi` depend on versions of `base64` that
+    # have diverged significantly.
+    { name = "base64" },
+    # `metrics` depends on an old versoin of `ahash`.
+    { name = "ahash", version = "0.7" },
+    # syn v2 has been released and some libraries are slower to adopt it
+    { name = "syn", version = "1.0" },
 ]
 
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-allow-git = []
+allow-git = [
+    "https://github.com/linkerd/linkerd2-proxy-api",
+]
 
 [sources.allow-org]
 github = []

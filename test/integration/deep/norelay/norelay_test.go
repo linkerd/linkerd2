@@ -2,6 +2,7 @@ package norelay
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -71,6 +72,10 @@ func TestNoRelay(t *testing.T) {
 // forcing an open relay by changing the value of
 // LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR from 127.0.0.1:4140 to 0.0.0.0:4140,
 // which is not possible without manually changing the injected proxy yaml
+//
+// We don't care if this behavior breaks--it's not a supported configuration.
+// However, this test is oddly useful in finding bugs in ingress-mode proxy
+// configurations, so we keep it around. ¯\_(ツ)_/¯
 func TestRelay(t *testing.T) {
 	ctx := context.Background()
 	deployments := getDeployments(t)
@@ -85,35 +90,27 @@ func TestRelay(t *testing.T) {
 				)
 			}
 		}
+		waitForPods(t, ctx, ns, deployments)
+		relayIP := getPodIp(t, ns, "app=server-relay")
 
-		for name := range deployments {
-			err := TestHelper.CheckPods(ctx, ns, name, 1)
-			if err != nil {
-				//nolint:errorlint
-				if rce, ok := err.(*testutil.RestartCountError); ok {
-					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
-				} else {
-					testutil.AnnotatedError(t, "CheckPods timed-out", err)
-				}
-			}
-		}
-
-		ip, err := TestHelper.Kubectl(
-			"", "-n", ns, "get", "po", "-l", "app=server-relay",
-			"-o", "jsonpath='{range .items[*]}{@.status.podIP}{end}'",
-		)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "failed to retrieve server-relay IP",
-				"failed to retrieve server-relay IP: %s\n%s", err, ip)
-		}
-		relayIP := strings.Trim(ip, "'")
+		// Send a request to the outbound proxy port with a header that should route internally.
 		o, err := TestHelper.Kubectl(
 			"", "-n", ns, "exec", "deploy/client",
-			"--", "curl", "-f", "-H", "l5d-dst-override: server-hello."+ns+".svc.cluster.local:8080", "http://"+relayIP+":4140",
+			"--", "curl", "-fsv", "-H", "l5d-dst-override: server-hello."+ns+".svc.cluster.local:8080", "http://"+relayIP+":4140",
 		)
 		if err != nil {
+			log, err := TestHelper.Kubectl(
+				"", "logs",
+				"-n", ns,
+				"-l", "app=server-relay",
+				"-c", "linkerd-proxy",
+				"--tail=1000",
+			)
+			if err != nil {
+				log = fmt.Sprintf("failed to retrieve server-relay logs: %s", err)
+			}
 			testutil.AnnotatedFatalf(t, "unexpected error returned",
-				"unexpected error returned: %s\n%s", o, err)
+				"unexpected error returned: %s\n%s\n---\n%s", o, err, log)
 		}
 		if !strings.Contains(o, "HELLO-FROM-SERVER") {
 			testutil.AnnotatedFatalf(t, "unexpected response returned",
@@ -133,7 +130,10 @@ func getDeployments(t *testing.T) map[string]string {
 	}
 
 	// server-relay is injected in ingress mode, manually
-	deploys["server-relay"], err = TestHelper.LinkerdRun("inject", "--manual", "--ingress", "testdata/server-relay.yml")
+	deploys["server-relay"], err = TestHelper.LinkerdRun(
+		"inject", "--manual", "--ingress",
+		"--proxy-log-level=linkerd=debug,info",
+		"testdata/server-relay.yml")
 	if err != nil {
 		testutil.AnnotatedFatal(t, "unexpected error", err)
 	}
@@ -141,8 +141,37 @@ func getDeployments(t *testing.T) map[string]string {
 	// client is not injected
 	deploys["client"], err = testutil.ReadFile("testdata/client.yml")
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to read 'client.yml'", "failed to read 'client.yml': %s", err)
+		testutil.AnnotatedFatalf(t, "failed to read 'client.yml'",
+			"failed to read 'client.yml': %s", err)
 	}
 
 	return deploys
+}
+
+func getPodIp(t *testing.T, ns, selector string) string {
+	t.Helper()
+	ip, err := TestHelper.Kubectl(
+		"", "-n", ns, "get", "po", "-l", selector,
+		"-o", "jsonpath='{range .items[*]}{@.status.podIP}{end}'",
+	)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to retrieve pod IP",
+			"failed to retrieve pod IP: %s", err)
+	}
+	return strings.Trim(ip, "'")
+}
+
+func waitForPods(t *testing.T, ctx context.Context, ns string, deployments map[string]string) {
+	t.Helper()
+	for name := range deployments {
+		err := TestHelper.CheckPods(ctx, ns, name, 1)
+		if err != nil {
+			//nolint:errorlint
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+			}
+		}
+	}
 }

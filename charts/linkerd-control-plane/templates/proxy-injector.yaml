@@ -119,6 +119,11 @@ spec:
       {{ if .Values.cniEnabled -}}
       - {{- include "partials.network-validator" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ else -}}
+      {{- /*
+        The controller needs to connect to the Kubernetes API. There's no reason
+        to put the proxy in the way of that.
+      */}}
+      {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" .Values.proxyInit.kubeAPIServerPorts -}}
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       {{- if .Values.priorityClassName -}}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	valuespkg "helm.sh/helm/v3/pkg/cli/values"
+	utilsexec "k8s.io/utils/exec"
 )
 
 type checkOptions struct {
@@ -196,9 +198,6 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 		ChartValues:           values,
 	})
 
-	if options.output == tableOutput {
-		healthcheck.PrintChecksHeader(wout, healthcheck.CoreHeader)
-	}
 	success, warning := healthcheck.RunChecks(wout, werr, hc, options.output)
 
 	if !options.preInstallOnly && !options.crdsOnly {
@@ -231,19 +230,24 @@ func runExtensionChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, opts
 	if err != nil {
 		return false, false, err
 	}
+	nsLabels := []string{}
+	for _, ns := range namespaces {
+		ext := ns.Labels[k8s.LinkerdExtensionLabel]
+		nsLabels = append(nsLabels, ext)
+	}
 
-	success := true
+	exec := utilsexec.New()
+
+	extensions, missing := findExtensions(os.Getenv("PATH"), filepath.Glob, exec, nsLabels)
+
 	// no extensions to check
-	if len(namespaces) == 0 {
-		return success, false, nil
+	if len(extensions) == 0 && len(missing) == 0 {
+		return true, false, nil
 	}
 
-	nsLabels := make([]string, len(namespaces))
-	for i, ns := range namespaces {
-		nsLabels[i] = ns.Labels[k8s.LinkerdExtensionLabel]
-	}
-
-	extensionSuccess, extensionWarning := healthcheck.RunExtensionsChecks(wout, werr, nsLabels, getExtensionCheckFlags(cmd.Flags()), opts.output)
+	extensionSuccess, extensionWarning := runExtensionsChecks(
+		wout, werr, extensions, missing, exec, getExtensionCheckFlags(cmd.Flags()), opts.output,
+	)
 	return extensionSuccess, extensionWarning, nil
 }
 

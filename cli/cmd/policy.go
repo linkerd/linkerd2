@@ -2,11 +2,16 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
-	pb "github.com/linkerd/linkerd2-proxy-api/go/inbound"
+	"sigs.k8s.io/yaml"
+
+	"github.com/linkerd/linkerd2-proxy-api/go/inbound"
+	"github.com/linkerd/linkerd2-proxy-api/go/outbound"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
@@ -22,20 +27,28 @@ const (
 
 func newCmdPolicy() *cobra.Command {
 	options := newEndpointsOptions()
-	var namespace = "default"
+	var (
+		namespace = "default"
+		output    = "yaml"
+	)
 
 	example := `  # get the inbound policy for pod emoji-6d66d87995-bvrnn on port 8080
-  linkerd diagnostics policy -n emojivoto emoji-6d66d87995-bvrnn 8080`
+  linkerd diagnostics policy -n emojivoto po/emoji-6d66d87995-bvrnn 8080
+
+  # get the outbound policy for Service emoji-svc on port 8080
+  linkerd diagnostics policy -n emojivoto svc/emoji-svc 8080`
 
 	cmd := &cobra.Command{
-		Use:   "policy [flags] pod port",
+		Use:   "policy [flags] resource port",
 		Short: "Introspect Linkerd's policy state",
 		Long: `Introspect Linkerd's policy state.
 
 This command provides debug information about the internal state of the
 control-plane's policy controller. It queries the same control-plane
-endpoint as the linkerd-proxy's, and returns the policies associated with that
-server.`,
+endpoint as the linkerd-proxy's, and returns the policies associated with the
+given resource. If the resource is a Pod, inbound policy for that Pod is
+displayed. If the resource is a Service, outbound policy for that Service is
+displayed.`,
 		Example: example,
 		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -45,11 +58,6 @@ server.`,
 			}
 
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-			if err != nil {
-				return err
-			}
-
-			port, err := strconv.ParseUint(args[1], 10, 32)
 			if err != nil {
 				return err
 			}
@@ -87,29 +95,79 @@ server.`,
 			}
 			defer conn.Close()
 
-			client := pb.NewInboundServerPoliciesClient(conn)
+			elems := strings.Split(args[0], "/")
 
-			server, err := client.GetPort(cmd.Context(), &pb.PortSpec{
-				Workload: fmt.Sprintf("%s:%s", namespace, args[0]),
-				Port:     uint32(port),
-			})
+			if len(elems) == 1 {
+				return errors.New("resource type and name are required")
+			}
+
+			if len(elems) != 2 {
+				return fmt.Errorf("invalid resource string: %s", args[0])
+			}
+			typ, err := k8s.CanonicalResourceNameFromFriendlyName(elems[0])
+			if err != nil {
+				return err
+			}
+			name := elems[1]
+
+			port, err := strconv.ParseUint(args[1], 10, 32)
 			if err != nil {
 				return err
 			}
 
-			out, err := json.MarshalIndent(server, "", "  ")
-			if err != nil {
-				fmt.Fprint(os.Stderr, err)
-				os.Exit(1)
-			}
-			_, err = fmt.Print(string(out))
+			var result interface{}
 
+			if typ == k8s.Pod {
+				client := inbound.NewInboundServerPoliciesClient(conn)
+
+				result, err = client.GetPort(cmd.Context(), &inbound.PortSpec{
+					Workload: fmt.Sprintf("%s:%s", namespace, name),
+					Port:     uint32(port),
+				})
+				if err != nil {
+					return err
+				}
+
+			} else if typ == k8s.Service {
+				client := outbound.NewOutboundPoliciesClient(conn)
+
+				result, err = client.Get(cmd.Context(), &outbound.TrafficSpec{
+					SourceWorkload: "diagnostics",
+					Target:         &outbound.TrafficSpec_Authority{Authority: fmt.Sprintf("%s.%s.svc:%d", name, namespace, port)},
+				})
+				if err != nil {
+					return err
+				}
+			} else {
+				return fmt.Errorf("invalid resource type %s; must be one of Pod or Service", args[0])
+			}
+
+			var out []byte
+			switch output {
+			case "json":
+				out, err = json.MarshalIndent(result, "", "  ")
+				if err != nil {
+					fmt.Fprint(os.Stderr, err)
+					os.Exit(1)
+				}
+			case "yaml":
+				out, err = yaml.Marshal(result)
+				if err != nil {
+					fmt.Fprint(os.Stderr, err)
+					os.Exit(1)
+				}
+			default:
+				return errors.New("output must be one of: yaml, json")
+			}
+
+			_, err = fmt.Print(string(out))
 			return err
 		},
 	}
 
 	cmd.PersistentFlags().StringVar(&options.destinationPod, "destination-pod", "", "Target a specific destination Pod when there are multiple running")
 	cmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", namespace, "Namespace of resource")
+	cmd.PersistentFlags().StringVarP(&output, "output", "o", output, "Output format. One of: yaml, json")
 
 	pkgcmd.ConfigureOutputFlagCompletion(cmd)
 

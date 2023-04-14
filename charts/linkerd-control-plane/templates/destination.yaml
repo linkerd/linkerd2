@@ -121,6 +121,16 @@ spec:
       linkerd.io/control-plane-component: destination
 {{- end }}
 ---
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  name: policy-controller-write
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+---
 {{- $tree := deepCopy . }}
 {{ $_ := set $tree.Values.proxy "workloadKind" "deployment" -}}
 {{ $_ := set $tree.Values.proxy "component" "linkerd-destination" -}}
@@ -282,9 +292,11 @@ spec:
         - --server-tls-certs=/var/run/linkerd/tls/tls.crt
         - --cluster-networks={{.Values.clusterNetworks}}
         - --identity-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
+        - --cluster-domain={{.Values.clusterDomain}}
         - --default-policy={{.Values.proxy.defaultInboundPolicy}}
         - --log-level={{.Values.policyController.logLevel | default "linkerd=info,warn"}}
         - --log-format={{.Values.controllerLogFormat}}
+        - --default-opaque-ports={{.Values.proxy.opaquePorts}}
         {{- if .Values.policyController.probeNetworks }}
         - --probe-networks={{.Values.policyController.probeNetworks | join ","}}
         {{- end}}
@@ -293,24 +305,20 @@ spec:
         livenessProbe:
           httpGet:
             path: /live
-            port: admin
+            port: admin-http
         name: policy
         ports:
         - containerPort: 8090
           name: grpc
         - containerPort: 9990
-          {{- /*
-              Rename the port to `admin-http` once `/metrics` endpoint is supported
-              to include this in the prometheus scrapes.
-          */}}
-          name: admin
+          name: admin-http
         - containerPort: 9443
           name: policy-https
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: admin
+            port: admin-http
           initialDelaySeconds: 10
         {{- $res := .Values.policyController.resources | default .Values.destinationResources }}
         {{- if $res }}

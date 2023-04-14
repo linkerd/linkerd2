@@ -65,11 +65,11 @@ identityTrustDomain: cluster.local
 namespaceMetadata:
   image:
     # -- Docker registry for the namespace-metadata instance
-    registry: curlimages
+    registry: cr.l5d.io/linkerd
     # -- Docker image name for the namespace-metadata instance
-    name: curl
+    name: extension-init
     # -- Docker image tag for the namespace-metadata instance
-    tag: 7.78.0
+    tag: v0.1.0
     # -- Pull policy for the namespace-metadata instance
     # @default -- imagePullPolicy
     pullPolicy: ""

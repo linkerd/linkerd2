@@ -32,10 +32,9 @@ func (opa *opaquePortsAdaptor) UpdateService(ports map[uint32]struct{}) {
 }
 
 func (opa *opaquePortsAdaptor) publish() {
-	merged := sp.ServiceProfile{}
 	if opa.profile != nil {
-		merged = *opa.profile
+		p := *opa.profile
+		p.Spec.OpaquePorts = opa.opaquePorts
+		opa.listener.Update(&p)
 	}
-	merged.Spec.OpaquePorts = opa.opaquePorts
-	opa.listener.Update(&merged)
 }

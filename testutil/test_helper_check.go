@@ -51,6 +51,15 @@ func (h *TestHelper) TestCheck(extraArgs ...string) error {
 	return h.testCheck(cmd, categories)
 }
 
+// TestCheckMc validates the output of `linkerd check` and `linkerd mc check`
+func (h *TestHelper) TestCheckMc(extraArgs ...string) error {
+	// TODO (matei): expose multicluster healthchecks in a public library so
+	// they can be consumed here, similar to what viz is doing.
+	cmd := []string{"check", "--output", "json", "--wait", "5m"}
+	cmd = append(cmd, extraArgs...)
+	return h.testCheck(cmd, coreCategories)
+}
+
 // TestCheckProxy runs validates the output of `linkerd check --proxy`
 func (h *TestHelper) TestCheckProxy(expectedVersion, namespace string) error {
 	cmd := []string{"check", "--proxy", "--expected-version", expectedVersion,

@@ -79,6 +79,7 @@ type TapRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Target:
+	//
 	//	*TapRequest_Pod
 	//	*TapRequest_Deployment
 	Target isTapRequest_Target `protobuf_oneof:"target"`
@@ -318,6 +319,7 @@ type TapEvent struct {
 	RouteMeta       *TapEvent_RouteMeta     `protobuf:"bytes,7,opt,name=route_meta,json=routeMeta,proto3" json:"route_meta,omitempty"`
 	ProxyDirection  TapEvent_ProxyDirection `protobuf:"varint,6,opt,name=proxy_direction,json=proxyDirection,proto3,enum=linkerd2.tap.TapEvent_ProxyDirection" json:"proxy_direction,omitempty"`
 	// Types that are assignable to Event:
+	//
 	//	*TapEvent_Http_
 	Event isTapEvent_Event `protobuf_oneof:"event"`
 }
@@ -426,6 +428,7 @@ type TapByResourceRequest_Match struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Match:
+	//
 	//	*TapByResourceRequest_Match_All
 	//	*TapByResourceRequest_Match_Any
 	//	*TapByResourceRequest_Match_Not
@@ -553,6 +556,7 @@ type TapByResourceRequest_Extract struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Extract:
+	//
 	//	*TapByResourceRequest_Extract_Http_
 	Extract isTapByResourceRequest_Extract_Extract `protobuf_oneof:"extract"`
 }
@@ -666,6 +670,7 @@ type TapByResourceRequest_Match_Http struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Match:
+	//
 	//	*TapByResourceRequest_Match_Http_Scheme
 	//	*TapByResourceRequest_Match_Http_Method
 	//	*TapByResourceRequest_Match_Http_Authority
@@ -774,6 +779,7 @@ type TapByResourceRequest_Extract_Http struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Extract:
+	//
 	//	*TapByResourceRequest_Extract_Http_Headers_
 	Extract isTapByResourceRequest_Extract_Http_Extract `protobuf_oneof:"extract"`
 }
@@ -972,6 +978,7 @@ type TapEvent_Http struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Event:
+	//
 	//	*TapEvent_Http_RequestInit_
 	//	*TapEvent_Http_ResponseInit_
 	//	*TapEvent_Http_ResponseEnd_

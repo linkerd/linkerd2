@@ -97,6 +97,8 @@ func toPartialObjectMetadata(obj runtime.Object) (*metav1.PartialObjectMetadata,
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       u.GetNamespace(),
 			Name:            u.GetName(),
+			Annotations:     u.GetAnnotations(),
+			Labels:          u.GetLabels(),
 			OwnerReferences: u.GetOwnerReferences(),
 		},
 	}, nil

@@ -84,7 +84,6 @@ func TestGet(t *testing.T) {
 			updates:          []*pb.Update{},
 			MockServerStream: util.NewMockServerStream(),
 		}
-
 		stream.Cancel()
 
 		path := fmt.Sprintf("%s:%d", fullyQualifiedNameSkipped, skippedPort)
@@ -96,13 +95,8 @@ func TestGet(t *testing.T) {
 			t.Fatalf("Got error: %s", err)
 		}
 
-		if len(stream.updates) == 0 || len(stream.updates) > 3 {
-			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
-		}
-
-		last := stream.updates[len(stream.updates)-1]
-
-		addrs := last.GetAdd().Addrs
+		update := assertSingleUpdate(t, stream.updates)
+		addrs := update.GetAdd().Addrs
 		if len(addrs) == 0 {
 			t.Fatalf("Expected len(addrs) to be > 0")
 		}
@@ -120,12 +114,10 @@ func TestGet(t *testing.T) {
 func TestGetProfiles(t *testing.T) {
 	t.Run("Returns error if not valid service name", func(t *testing.T) {
 		server := makeServer(t)
-
 		stream := &bufferingGetProfileStream{
 			updates:          []*pb.DestinationProfile{},
 			MockServerStream: util.NewMockServerStream(),
 		}
-
 		err := server.GetProfile(&pb.GetDestination{Scheme: "k8s", Path: "linkerd.io"}, stream)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
@@ -133,169 +125,37 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Returns server profile", func(t *testing.T) {
-		server := makeServer(t)
-
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
+		stream := profileStream(t, fullyQualifiedName, port, "ns:other")
+		profile := assertSingleProfile(t, stream.updates)
+		if profile.FullyQualifiedName != fullyQualifiedName {
+			t.Fatalf("Expected fully qualified name '%s', but got '%s'",
+				fullyQualifiedName, profile.FullyQualifiedName)
 		}
-
-		stream.Cancel() // See note above on pre-emptive cancellation.
-		err := server.GetProfile(&pb.GetDestination{
-			Scheme:       "k8s",
-			Path:         fmt.Sprintf("%s:%d", fullyQualifiedName, port),
-			ContextToken: "ns:other",
-		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// The number of updates we get depends on the order that the watcher
-		// gets updates about the server profile and the client profile.  The
-		// client profile takes priority so if we get that update first, it
-		// will only trigger one update to the stream.  However, if the watcher
-		// gets the server profile first, it will send an update with that
-		// profile to the stream and then a second update when it gets the
-		// client profile.
-		// Additionally, under normal conditions the creation of resources by
-		// the fake API will generate notifications that are discarded after the
-		// stream.Cancel() call, but very rarely those notifications might come
-		// after, in which case we'll get a third update.
-		if len(stream.updates) == 0 || len(stream.updates) > 3 {
-			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
-		}
-
-		firstUpdate := stream.updates[0]
-		if firstUpdate.FullyQualifiedName != fullyQualifiedName {
-			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, firstUpdate.FullyQualifiedName)
-		}
-
-		lastUpdate := stream.updates[len(stream.updates)-1]
-		if lastUpdate.OpaqueProtocol {
+		if profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to not be an opaque protocol, but it was", port)
 		}
-		routes := lastUpdate.GetRoutes()
+		routes := profile.GetRoutes()
 		if len(routes) != 1 {
-			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
-		}
-		if routes[0].GetIsRetryable() {
-			t.Fatalf("Expected route to not be retryable, but it was")
+			t.Fatalf("Expected 0 routes but got %d: %v", len(routes), routes)
 		}
 	})
 
 	t.Run("Return service profile when using json token", func(t *testing.T) {
-		server := makeServer(t)
-
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
+		stream := profileStream(t, fullyQualifiedName, port, `{"ns":"other"}`)
+		profile := assertSingleProfile(t, stream.updates)
+		if profile.FullyQualifiedName != fullyQualifiedName {
+			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, profile.FullyQualifiedName)
 		}
-
-		stream.Cancel() // see note above on pre-emptive cancelling
-		err := server.GetProfile(&pb.GetDestination{
-			Scheme:       "k8s",
-			Path:         fmt.Sprintf("%s:%d", fullyQualifiedName, port),
-			ContextToken: "{\"ns\":\"other\"}",
-		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// The number of updates we get depends on the order that the watcher
-		// gets updates about the server profile and the client profile.  The
-		// client profile takes priority so if we get that update first, it
-		// will only trigger one update to the stream.  However, if the watcher
-		// gets the server profile first, it will send an update with that
-		// profile to the stream and then a second update when it gets the
-		// client profile.
-		// Additionally, under normal conditions the creation of resources by
-		// the fake API will generate notifications that are discarded after the
-		// stream.Cancel() call, but very rarely those notifications might come
-		// after, in which case we'll get a third update.
-		if len(stream.updates) == 0 || len(stream.updates) > 3 {
-			t.Fatalf("Expected 1 to 3 updates but got: %d: %v", len(stream.updates), stream.updates)
-		}
-
-		firstUpdate := stream.updates[0]
-		if firstUpdate.FullyQualifiedName != fullyQualifiedName {
-			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, firstUpdate.FullyQualifiedName)
-		}
-
-		lastUpdate := stream.updates[len(stream.updates)-1]
-		routes := lastUpdate.GetRoutes()
+		routes := profile.GetRoutes()
 		if len(routes) != 1 {
 			t.Fatalf("Expected 1 route got %d: %v", len(routes), routes)
 		}
-		if routes[0].GetIsRetryable() {
-			t.Fatalf("Expected route to not be retryable, but it was")
-		}
 	})
 
 	t.Run("Returns client profile", func(t *testing.T) {
-		server := makeServer(t)
-
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
-		}
-
-		// See note about pre-emptive cancellation
-		stream.Cancel()
-		err := server.GetProfile(&pb.GetDestination{
-			Scheme:       "k8s",
-			Path:         fmt.Sprintf("%s:%d", fullyQualifiedName, port),
-			ContextToken: "{\"ns\":\"client-ns\"}",
-		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// The number of updates we get depends on if the watcher gets an update
-		// about the profile before or after the subscription.  If the subscription
-		// happens first, then we get a profile update during the subscription and
-		// then a second update when the watcher receives the update about that
-		// profile.  If the watcher event happens first, then we only get the
-		// update during subscription.
-		if len(stream.updates) != 1 && len(stream.updates) != 2 {
-			t.Fatalf("Expected 1 or 2 updates but got %d: %v", len(stream.updates), stream.updates)
-		}
-		routes := stream.updates[len(stream.updates)-1].GetRoutes()
-		if len(routes) != 1 {
-			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
-		}
-		if !routes[0].GetIsRetryable() {
-			t.Fatalf("Expected route to be retryable, but it was not")
-		}
-	})
-	t.Run("Returns client profile", func(t *testing.T) {
-		server := makeServer(t)
-
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
-		}
-
-		// See note above on pre-emptive cancellation.
-		stream.Cancel()
-		err := server.GetProfile(&pb.GetDestination{
-			Scheme:       "k8s",
-			Path:         fmt.Sprintf("%s:%d", fullyQualifiedName, port),
-			ContextToken: "ns:client-ns",
-		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// The number of updates we get depends on if the watcher gets an update
-		// about the profile before or after the subscription.  If the subscription
-		// happens first, then we get a profile update during the subscription and
-		// then a second update when the watcher receives the update about that
-		// profile.  If the watcher event happens first, then we only get the
-		// update during subscription.
-		if len(stream.updates) != 1 && len(stream.updates) != 2 {
-			t.Fatalf("Expected 1 or 2 updates but got %d: %v", len(stream.updates), stream.updates)
-		}
-		routes := stream.updates[len(stream.updates)-1].GetRoutes()
+		stream := profileStream(t, fullyQualifiedName, port, `{"ns":"client-ns"}`)
+		profile := assertSingleProfile(t, stream.updates)
+		routes := profile.GetRoutes()
 		if len(routes) != 1 {
 			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
 		}
@@ -305,57 +165,24 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return profile when using cluster IP", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
+		stream := profileStream(t, clusterIP, port, "")
+		profile := assertSingleProfile(t, stream.updates)
+		if profile.FullyQualifiedName != fullyQualifiedName {
+			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, profile.FullyQualifiedName)
 		}
-		stream.Cancel()
-		err := server.GetProfile(&pb.GetDestination{
-			Scheme: "k8s",
-			Path:   fmt.Sprintf("%s:%d", clusterIP, port),
-		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// An explanation for why we expect 1 to 3 updates is in test cases
-		// above
-		if len(stream.updates) == 0 || len(stream.updates) > 3 {
-			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
-		}
-
-		last := stream.updates[len(stream.updates)-1]
-		if last.FullyQualifiedName != fullyQualifiedName {
-			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, last.FullyQualifiedName)
-		}
-		if last.OpaqueProtocol {
+		if profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to not be an opaque protocol, but it was", port)
 		}
-		routes := last.GetRoutes()
+		routes := profile.GetRoutes()
 		if len(routes) != 1 {
 			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
 		}
 	})
 
 	t.Run("Return profile with endpoint when using pod DNS", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
-		}
-		stream.Cancel()
+		stream := profileStream(t, fullyQualifiedPodDNS, port, "ns:ns")
 
 		epAddr, err := toAddress(podIPStatefulSet, port)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		err = server.GetProfile(&pb.GetDestination{
-			Scheme:       "k8s",
-			Path:         fmt.Sprintf("%s:%d", fullyQualifiedPodDNS, port),
-			ContextToken: "ns:ns",
-		}, stream)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
 		}
@@ -389,22 +216,9 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return profile with endpoint when using pod IP", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
-		}
-		stream.Cancel()
+		stream := profileStream(t, podIP1, port, "ns:ns")
 
 		epAddr, err := toAddress(podIP1, port)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		err = server.GetProfile(&pb.GetDestination{
-			Scheme: "k8s",
-			Path:   fmt.Sprintf("%s:%d", podIP1, port),
-		}, stream)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
 		}
@@ -438,303 +252,126 @@ func TestGetProfiles(t *testing.T) {
 	})
 
 	t.Run("Return default profile when IP does not map to service or pod", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
-		}
-		stream.Cancel()
-		err := server.GetProfile(&pb.GetDestination{
-			Scheme: "k8s",
-			Path:   "172.0.0.0:1234",
-		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// An explanation for why we expect 1 to 3 updates is in test cases
-		// above
-		if len(stream.updates) == 0 || len(stream.updates) > 3 {
-			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
-		}
-
-		first := stream.updates[0]
-		if first.RetryBudget == nil {
+		stream := profileStream(t, "172.0.0.0", 1234, "")
+		profile := assertSingleProfile(t, stream.updates)
+		if profile.RetryBudget == nil {
 			t.Fatalf("Expected default profile to have a retry budget")
 		}
 	})
 
 	t.Run("Return profile with no protocol hint when pod does not have label", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
-		}
-		stream.Cancel()
-		err := server.GetProfile(&pb.GetDestination{
-			Scheme: "k8s",
-			Path:   podIP2,
-		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// An explanation for why we expect 1 to 3 updates is in test cases
-		// above
-		if len(stream.updates) == 0 || len(stream.updates) > 3 {
-			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
-		}
-
-		first := stream.updates[0]
-		if first.Endpoint == nil {
+		stream := profileStream(t, podIP2, port, "")
+		profile := assertSingleProfile(t, stream.updates)
+		if profile.Endpoint == nil {
 			t.Fatalf("Expected response to have endpoint field")
 		}
-		if first.Endpoint.GetProtocolHint().GetProtocol() != nil || first.Endpoint.GetProtocolHint().GetOpaqueTransport() != nil {
+		if profile.Endpoint.GetProtocolHint().GetProtocol() != nil || profile.Endpoint.GetProtocolHint().GetOpaqueTransport() != nil {
 			t.Fatalf("Expected no protocol hint but found one")
 		}
 	})
 
 	t.Run("Return non-opaque protocol profile when using cluster IP and opaque protocol port", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
+		stream := profileStream(t, clusterIPOpaque, opaquePort, "")
+		profile := assertSingleProfile(t, stream.updates)
+		if profile.FullyQualifiedName != fullyQualifiedNameOpaque {
+			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedNameOpaque, profile.FullyQualifiedName)
 		}
-		stream.Cancel()
-		err := server.GetProfile(&pb.GetDestination{
-			Scheme: "k8s",
-			Path:   fmt.Sprintf("%s:%d", clusterIPOpaque, opaquePort),
-		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// An explanation for why we expect 1 to 3 updates is in test cases
-		// above
-		if len(stream.updates) == 0 || len(stream.updates) > 3 {
-			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
-		}
-
-		last := stream.updates[len(stream.updates)-1]
-		if last.FullyQualifiedName != fullyQualifiedNameOpaque {
-			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedNameOpaque, last.FullyQualifiedName)
-		}
-		if last.OpaqueProtocol {
+		if profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to not be an opaque protocol, but it was", opaquePort)
 		}
 	})
 
 	t.Run("Return opaque protocol profile with endpoint when using pod IP and opaque protocol port", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
-		}
-		stream.Cancel()
+		stream := profileStream(t, podIPOpaque, opaquePort, "")
 
 		epAddr, err := toAddress(podIPOpaque, opaquePort)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
 		}
 
-		err = server.GetProfile(&pb.GetDestination{
-			Scheme: "k8s",
-			Path:   fmt.Sprintf("%s:%d", podIPOpaque, opaquePort),
-		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
 		// An explanation for why we expect 1 to 3 updates is in test cases
 		// above
 		if len(stream.updates) == 0 || len(stream.updates) > 3 {
 			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
 		}
 
-		first := stream.updates[0]
-		if first.Endpoint == nil {
+		profile := assertSingleProfile(t, stream.updates)
+		if profile.Endpoint == nil {
 			t.Fatalf("Expected response to have endpoint field")
 		}
-		if !first.OpaqueProtocol {
+		if !profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", opaquePort)
 		}
-		_, exists := first.Endpoint.MetricLabels["namespace"]
+		_, exists := profile.Endpoint.MetricLabels["namespace"]
 		if !exists {
 			t.Fatalf("Expected 'namespace' metric label to exist but it did not")
 		}
-		if first.Endpoint.ProtocolHint == nil {
+		if profile.Endpoint.ProtocolHint == nil {
 			t.Fatalf("Expected protocol hint but found none")
 		}
-		if first.Endpoint.ProtocolHint.GetOpaqueTransport().GetInboundPort() != 4143 {
+		if profile.Endpoint.ProtocolHint.GetOpaqueTransport().GetInboundPort() != 4143 {
 			t.Fatalf("Expected pod to support opaque traffic on port 4143")
 		}
-		if first.Endpoint.Addr.String() != epAddr.String() {
-			t.Fatalf("Expected endpoint IP port to be %d, but it was %d", epAddr.Port, first.Endpoint.Addr.Port)
+		if profile.Endpoint.Addr.String() != epAddr.String() {
+			t.Fatalf("Expected endpoint IP port to be %d, but it was %d", epAddr.Port, profile.Endpoint.Addr.Port)
 		}
 	})
 
 	t.Run("Return opaque protocol profile when using service name with opaque port annotation", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
+		stream := profileStream(t, fullyQualifiedNameOpaqueService, opaquePort, "")
+		profile := assertSingleProfile(t, stream.updates)
+		if profile.FullyQualifiedName != fullyQualifiedNameOpaqueService {
+			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedNameOpaqueService, profile.FullyQualifiedName)
 		}
-		stream.Cancel()
-		err := server.GetProfile(&pb.GetDestination{
-			Scheme: "k8s",
-			Path:   fmt.Sprintf("%s:%d", fullyQualifiedNameOpaqueService, opaquePort),
-		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-		if len(stream.updates) == 0 || len(stream.updates) > 3 {
-			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
-		}
-		last := stream.updates[len(stream.updates)-1]
-		if last.FullyQualifiedName != fullyQualifiedNameOpaqueService {
-			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedNameOpaqueService, last.FullyQualifiedName)
-		}
-		if !last.OpaqueProtocol {
+		if !profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", opaquePort)
 		}
 	})
 
 	t.Run("Return profile with unknown protocol hint and identity when pod contains skipped inbound port", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
-		}
-
-		stream.Cancel()
-
-		path := fmt.Sprintf("%s:%d", podIPSkipped, skippedPort)
-		err := server.GetProfile(&pb.GetDestination{
-			Scheme: "k8s",
-			Path:   path,
-		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		if len(stream.updates) == 0 || len(stream.updates) > 3 {
-			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
-		}
-
-		last := stream.updates[len(stream.updates)-1]
-
-		addr := last.GetEndpoint()
+		stream := profileStream(t, podIPSkipped, skippedPort, "")
+		profile := assertSingleProfile(t, stream.updates)
+		addr := profile.GetEndpoint()
 		if addr == nil {
 			t.Fatalf("Expected to not be nil")
 		}
-
 		if addr.GetProtocolHint().GetProtocol() != nil || addr.GetProtocolHint().GetOpaqueTransport() != nil {
-			t.Fatalf("Expected protocol hint for %s to be nil but got %+v", path, addr.ProtocolHint)
+			t.Fatalf("Expected protocol hint for %s to be nil but got %+v", podIPSkipped, addr.ProtocolHint)
 		}
-
 		if addr.TlsIdentity != nil {
-			t.Fatalf("Expected TLS identity for %s to be nil but got %+v", path, addr.TlsIdentity)
+			t.Fatalf("Expected TLS identity for %s to be nil but got %+v", podIPSkipped, addr.TlsIdentity)
 		}
 	})
 
 	t.Run("Return profile with opaque protocol when using Pod IP selected by a Server", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
-		}
-		stream.Cancel()
-
-		_, err := toAddress(podIPPolicy, 80)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-		err = server.GetProfile(&pb.GetDestination{
-			Scheme: "k8s",
-			Path:   fmt.Sprintf("%s:%d", podIPPolicy, 80),
-		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// Test that the first update has a destination profile with an
-		// opaque protocol and opaque transport.
-		if len(stream.updates) == 0 {
-			t.Fatalf("Expected at least 1 update but got 0")
-		}
-		update := stream.updates[0]
-		if update.Endpoint == nil {
+		stream := profileStream(t, podIPPolicy, 80, "")
+		profile := assertSingleProfile(t, stream.updates)
+		if profile.Endpoint == nil {
 			t.Fatalf("Expected response to have endpoint field")
 		}
-		if !update.OpaqueProtocol {
+		if !profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", 80)
 		}
-		if update.Endpoint.ProtocolHint == nil {
+		if profile.Endpoint.ProtocolHint == nil {
 			t.Fatalf("Expected protocol hint but found none")
 		}
-		if update.Endpoint.ProtocolHint.GetOpaqueTransport().GetInboundPort() != 4143 {
+		if profile.Endpoint.ProtocolHint.GetOpaqueTransport().GetInboundPort() != 4143 {
 			t.Fatalf("Expected pod to support opaque traffic on port 4143")
 		}
 	})
 
 	t.Run("Return profile with opaque protocol when using an opaque port with an external IP", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
-		}
-		stream.Cancel()
-
-		_, err := toAddress(externalIP, 3306)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-		err = server.GetProfile(&pb.GetDestination{
-			Scheme: "k8s",
-			Path:   fmt.Sprintf("%s:%d", externalIP, 3306),
-		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// Test that the first update has a destination profile with an
-		// opaque protocol and opaque transport.
-		if len(stream.updates) == 0 {
-			t.Fatalf("Expected at least 1 update but got 0")
-		}
-		update := stream.updates[0]
-		if !update.OpaqueProtocol {
+		stream := profileStream(t, externalIP, 3306, "")
+		profile := assertSingleProfile(t, stream.updates)
+		if !profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", 3306)
 		}
 	})
 
 	t.Run("Return profile with non-opaque protocol when using an arbitrary port with an external IP", func(t *testing.T) {
-		server := makeServer(t)
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
-		}
-		stream.Cancel()
-
-		_, err := toAddress(externalIP, 80)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-		err = server.GetProfile(&pb.GetDestination{
-			Scheme: "k8s",
-			Path:   fmt.Sprintf("%s:%d", externalIP, 80),
-		}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// Test that the first update has a destination profile with an
-		// opaque protocol and opaque transport.
-		if len(stream.updates) == 0 {
-			t.Fatalf("Expected at least 1 update but got 0")
-		}
-		update := stream.updates[0]
-		if update.OpaqueProtocol {
+		stream := profileStream(t, externalIP, 80, "")
+		profile := assertSingleProfile(t, stream.updates)
+		if profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be a non-opaque protocol, but it was opaque", 80)
 		}
 	})
@@ -969,4 +606,56 @@ status:
 			t.Fatalf("expected error to be pod IP address conflict, but got: %s", err)
 		}
 	})
+}
+
+func assertSingleProfile(t *testing.T, updates []*pb.DestinationProfile) *pb.DestinationProfile {
+	t.Helper()
+	// Under normal conditions the creation of resources by the fake API will
+	// generate notifications that are discarded after the stream.Cancel() call,
+	// but very rarely those notifications might come after, in which case we'll
+	// get a second update.
+	if len(updates) != 1 {
+		t.Fatalf("Expected 1 profile update but got %d: %v", len(updates), updates)
+	}
+	return updates[0]
+}
+
+func assertSingleUpdate(t *testing.T, updates []*pb.Update) *pb.Update {
+	t.Helper()
+	// Under normal conditions the creation of resources by the fake API will
+	// generate notifications that are discarded after the stream.Cancel() call,
+	// but very rarely those notifications might come after, in which case we'll
+	// get a second update.
+	if len(updates) == 0 || len(updates) > 2 {
+		t.Fatalf("Expected 1 or 2 updates but got %d: %v", len(updates), updates)
+	}
+	return updates[0]
+}
+
+func profileStream(t *testing.T, host string, port uint32, token string) *bufferingGetProfileStream {
+	t.Helper()
+
+	server := makeServer(t)
+	stream := &bufferingGetProfileStream{
+		updates:          []*pb.DestinationProfile{},
+		MockServerStream: util.NewMockServerStream(),
+	}
+
+	// We cancel the stream before even sending the request so that we don't
+	// need to call server.Get in a separate goroutine.  By preemptively
+	// cancelling, the behavior of Get becomes effectively synchronous and
+	// we will get only the initial update, which is what we want for this
+	// test.
+	stream.Cancel()
+
+	err := server.GetProfile(&pb.GetDestination{
+		Scheme:       "k8s",
+		Path:         fmt.Sprintf("%s:%d", host, port),
+		ContextToken: token,
+	}, stream)
+	if err != nil {
+		t.Fatalf("Got error: %s", err)
+	}
+
+	return stream
 }

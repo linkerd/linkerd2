@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ghodss/yaml"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -20,6 +19,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	hc "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 	vizutil "github.com/linkerd/linkerd2/viz/pkg/util"
 	pb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	"github.com/linkerd/linkerd2/viz/tap/pkg"
@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"sigs.k8s.io/yaml"
 )
 
 type profileOptions struct {
@@ -103,13 +104,16 @@ func newCmdProfile() *cobra.Command {
 			return results, cobra.ShellCompDirectiveDefault
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			api.CheckClientOrExit(healthcheck.Options{
-				ControlPlaneNamespace: controlPlaneNamespace,
-				KubeConfig:            kubeconfigPath,
-				Impersonate:           impersonate,
-				ImpersonateGroup:      impersonateGroup,
-				KubeContext:           kubeContext,
-				APIAddr:               apiAddr,
+			api.CheckClientOrExit(hc.VizOptions{
+				Options: &healthcheck.Options{
+					ControlPlaneNamespace: controlPlaneNamespace,
+					KubeConfig:            kubeconfigPath,
+					Impersonate:           impersonate,
+					ImpersonateGroup:      impersonateGroup,
+					KubeContext:           kubeContext,
+					APIAddr:               apiAddr,
+				},
+				VizNamespaceOverride: vizNamespace,
 			})
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)

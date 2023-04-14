@@ -159,7 +159,6 @@ class Namespaces extends React.Component {
             {Namespaces.renderResourceSection('replicationcontroller', metrics.replicationcontroller)}
             {Namespaces.renderResourceSection('statefulset', metrics.statefulset)}
             {Namespaces.renderResourceSection('job', metrics.job)}
-            {Namespaces.renderResourceSection('trafficsplit', metrics.trafficsplit)}
             {Namespaces.renderResourceSection('cronjob', metrics.cronjob)}
             {Namespaces.renderResourceSection('replicaset', metrics.replicaset)}
 

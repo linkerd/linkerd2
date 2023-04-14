@@ -70,6 +70,7 @@ func NewCmdJaeger() *cobra.Command {
 	jaegerCmd.AddCommand(newCmdInstall())
 	jaegerCmd.AddCommand(newCmdList())
 	jaegerCmd.AddCommand(newCmdUninstall())
+	jaegerCmd.AddCommand(newCmdPrune())
 
 	// resource-aware completion flag configurations
 	pkgcmd.ConfigureNamespaceFlagCompletion(

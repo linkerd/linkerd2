@@ -9,7 +9,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: {{.}}
-  namespace: {{$.Release.Namespace}}
   labels:
     linkerd.io/extension: multicluster
     {{- with $.Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
@@ -55,7 +54,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: {{.}}
-  namespace: {{$.Release.Namespace}}
   labels:
     linkerd.io/extension: multicluster
     {{- with $.Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}

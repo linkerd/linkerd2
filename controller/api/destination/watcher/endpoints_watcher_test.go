@@ -668,12 +668,18 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false)
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
 
 			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
 
 			listener := newBufferingEndpointListener()
 
@@ -1290,12 +1296,18 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), true)
+			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true)
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
 
 			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
 
 			listener := newBufferingEndpointListener()
 
@@ -1414,12 +1426,18 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false)
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
 
 			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
 
 			listener := newBufferingEndpointListener()
 
@@ -1502,33 +1520,77 @@ status:
   phase: Running
   podIP: 172.17.0.12`}
 
+	k8sConfigWithMultipleES := append(k8sConfigsWithES, []string{`
+addressType: IPv4
+apiVersion: discovery.k8s.io/v1
+endpoints:
+- addresses:
+  - 172.17.0.13
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: name1-2
+    namespace: ns
+  topology:
+    kubernetes.io/hostname: node-1
+kind: EndpointSlice
+metadata:
+  labels:
+    kubernetes.io/service-name: name1
+  name: name1-live
+  namespace: ns
+ports:
+- name: ""
+  port: 8989`, `apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-2
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.0.13`}...)
+
 	for _, tt := range []struct {
-		serviceType      string
-		k8sConfigs       []string
-		id               ServiceID
-		hostname         string
-		port             Port
-		objectToDelete   interface{}
-		deletingServices bool
-		hasSliceAccess   bool
+		serviceType       string
+		k8sConfigs        []string
+		id                ServiceID
+		hostname          string
+		port              Port
+		objectToDelete    interface{}
+		deletingServices  bool
+		hasSliceAccess    bool
+		noEndpointsCalled bool
 	}{
 		{
-			serviceType:    "can delete EndpointSlices",
-			k8sConfigs:     k8sConfigsWithES,
-			id:             ServiceID{Name: "name1", Namespace: "ns"},
-			port:           8989,
-			hostname:       "name1-1",
-			objectToDelete: createTestEndpointSlice(),
-			hasSliceAccess: true,
+			serviceType:       "can delete an EndpointSlice",
+			k8sConfigs:        k8sConfigsWithES,
+			id:                ServiceID{Name: "name1", Namespace: "ns"},
+			port:              8989,
+			hostname:          "name1-1",
+			objectToDelete:    createTestEndpointSlice(),
+			hasSliceAccess:    true,
+			noEndpointsCalled: true,
 		},
 		{
-			serviceType:    "can delete EndpointSlices when wrapped in a DeletedFinalStateUnknown",
-			k8sConfigs:     k8sConfigsWithES,
-			id:             ServiceID{Name: "name1", Namespace: "ns"},
-			port:           8989,
-			hostname:       "name1-1",
-			objectToDelete: createTestEndpointSlice(),
-			hasSliceAccess: true,
+			serviceType:       "can delete an EndpointSlice when wrapped in a DeletedFinalStateUnknown",
+			k8sConfigs:        k8sConfigsWithES,
+			id:                ServiceID{Name: "name1", Namespace: "ns"},
+			port:              8989,
+			hostname:          "name1-1",
+			objectToDelete:    createTestEndpointSlice(),
+			hasSliceAccess:    true,
+			noEndpointsCalled: true,
+		},
+		{
+			serviceType:       "can delete an EndpointSlice when there are multiple ones",
+			k8sConfigs:        k8sConfigWithMultipleES,
+			id:                ServiceID{Name: "name1", Namespace: "ns"},
+			port:              8989,
+			hostname:          "name1-1",
+			objectToDelete:    createTestEndpointSlice(),
+			hasSliceAccess:    true,
+			noEndpointsCalled: false,
 		},
 	} {
 		tt := tt // pin
@@ -1538,12 +1600,18 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), true)
+			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true)
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
 
 			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
 
 			listener := newBufferingEndpointListener()
 
@@ -1554,8 +1622,9 @@ status:
 
 			watcher.deleteEndpointSlice(tt.objectToDelete)
 
-			if !listener.endpointsAreNotCalled() {
-				t.Fatal("Expected NoEndpoints to be Called")
+			if listener.endpointsAreNotCalled() != tt.noEndpointsCalled {
+				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
+					tt.noEndpointsCalled, listener.endpointsAreNotCalled())
 			}
 		})
 	}
@@ -1768,12 +1837,18 @@ subsets:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), tt.enableEndpointSlices)
+			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), tt.enableEndpointSlices)
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
 
 			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
 
 			listener := newBufferingEndpointListener()
 
@@ -1931,12 +2006,18 @@ subsets:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false)
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
 
 			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
 
 			listener := newBufferingEndpointListener()
 
@@ -2057,12 +2138,18 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+			if err != nil {
+				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+			}
+
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false)
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
 
 			k8sAPI.Sync(nil)
+			metadataAPI.Sync(nil)
 
 			listener := newBufferingEndpointListenerWithResVersion()
 
@@ -2153,12 +2240,18 @@ status:
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
 
-	watcher, err := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), true)
+	metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+	if err != nil {
+		t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+	}
+
+	watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true)
 	if err != nil {
 		t.Fatalf("can't create Endpoints watcher: %s", err)
 	}
 
 	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
 
 	listener := newBufferingEndpointListener()
 

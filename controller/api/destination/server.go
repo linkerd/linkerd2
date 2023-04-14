@@ -11,6 +11,7 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
@@ -21,7 +22,6 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
-	coreinformers "k8s.io/client-go/informers/core/v1"
 )
 
 type (
@@ -32,7 +32,6 @@ type (
 		opaquePorts *watcher.OpaquePortsWatcher
 		profiles    *watcher.ProfileWatcher
 		servers     *watcher.ServerWatcher
-		nodes       coreinformers.NodeInformer
 
 		enableH2Upgrade     bool
 		controllerNS        string
@@ -40,9 +39,10 @@ type (
 		clusterDomain       string
 		defaultOpaquePorts  map[uint32]struct{}
 
-		k8sAPI   *k8s.API
-		log      *logging.Entry
-		shutdown <-chan struct{}
+		k8sAPI      *k8s.API
+		metadataAPI *k8s.MetadataAPI
+		log         *logging.Entry
+		shutdown    <-chan struct{}
 	}
 )
 
@@ -65,6 +65,7 @@ func NewServer(
 	enableH2Upgrade bool,
 	enableEndpointSlices bool,
 	k8sAPI *k8s.API,
+	metadataAPI *k8s.MetadataAPI,
 	clusterDomain string,
 	defaultOpaquePorts map[uint32]struct{},
 	shutdown <-chan struct{},
@@ -80,7 +81,7 @@ func NewServer(
 		return nil, err
 	}
 
-	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, log, enableEndpointSlices)
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, enableEndpointSlices)
 	if err != nil {
 		return nil, err
 	}
@@ -103,13 +104,13 @@ func NewServer(
 		opaquePorts,
 		profiles,
 		servers,
-		k8sAPI.Node(),
 		enableH2Upgrade,
 		controllerNS,
 		identityTrustDomain,
 		clusterDomain,
 		defaultOpaquePorts,
 		k8sAPI,
+		metadataAPI,
 		log,
 		shutdown,
 	}
@@ -141,7 +142,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		dest.GetPath(),
 		token.NodeName,
 		s.defaultOpaquePorts,
-		s.nodes,
+		s.metadataAPI,
 		stream,
 		log,
 	)
@@ -191,125 +192,91 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	if client != nil {
 		log = log.WithField("remote", client.Addr)
 	}
-	log.Debugf("GetProfile(%+v)", dest)
+	log.Debugf("Getting profile for %s with token %q", dest.GetPath(), dest.GetContextToken())
 
-	path := dest.GetPath()
 	// The host must be fully-qualified or be an IP address.
-	host, port, err := getHostAndPort(path)
+	host, port, err := getHostAndPort(dest.GetPath())
 	if err != nil {
-		log.Debugf("Invalid authority %s", path)
-		return status.Errorf(codes.InvalidArgument, "invalid authority: %s", err)
+		log.Debugf("Invalid address %q", dest.GetPath())
+		return status.Errorf(codes.InvalidArgument, "invalid authority: %q: %q", dest.GetPath(), err)
 	}
 
-	// The stream will subscribe to profile updates for `service`.
-	var service watcher.ServiceID
-	// If `host` is an IP, `fqn` must be constructed from the namespace and
-	// name of the service that the IP maps to.
-	var fqn string
-
 	if ip := net.ParseIP(host); ip != nil {
-		// Get the service that the IP currently maps to.
-		svcID, err := getSvcID(s.k8sAPI, ip.String(), log)
+		return s.getProfileByIP(dest.GetContextToken(), ip, port, stream)
+	}
+
+	return s.getProfileByName(dest.GetContextToken(), host, port, stream)
+}
+
+func (s *server) getProfileByIP(
+	token string,
+	ip net.IP,
+	port uint32,
+	stream pb.Destination_GetProfileServer,
+) error {
+	// Get the service that the IP currently maps to.
+	svcID, err := getSvcID(s.k8sAPI, ip.String(), s.log)
+	if err != nil {
+		return err
+	}
+
+	if svcID == nil {
+		// If the IP does not map to a service, check if it maps to a pod
+		pod, err := getPodByIP(s.k8sAPI, ip.String(), port, s.log)
 		if err != nil {
 			return err
 		}
-		if svcID != nil {
-			service = *svcID
-			fqn = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
-		} else {
-			// If the IP does not map to a service, check if it maps to a pod
-			pod, err := getPodByIP(s.k8sAPI, ip.String(), port, log)
-			if err != nil {
-				return err
-			}
-
-			opaquePorts, err := getAnnotatedOpaquePorts(pod, s.defaultOpaquePorts)
-			if err != nil {
-				return fmt.Errorf("failed to get opaque ports for pod: %w", err)
-			}
-			var address watcher.Address
-			var endpoint *pb.WeightedAddr
-			if pod != nil {
-				address, err = s.createAddress(pod, host, port)
-				if err != nil {
-					return fmt.Errorf("failed to create address: %w", err)
-				}
-				endpoint, err = s.createEndpoint(address, opaquePorts)
-				if err != nil {
-					return fmt.Errorf("failed to create endpoint: %w", err)
-				}
-			}
-			translator := newEndpointProfileTranslator(pod, port, endpoint, stream, s.log)
-
-			// If the endpoint's port is annotated as opaque, we don't need to
-			// subscribe for updates because it will always be opaque
-			// regardless of any Servers that may select it.
-			if _, ok := opaquePorts[port]; ok {
-				translator.UpdateProtocol(true)
-			} else if pod == nil {
-				translator.UpdateProtocol(false)
-			} else {
-				translator.UpdateProtocol(address.OpaqueProtocol)
-				s.servers.Subscribe(pod, port, translator)
-				defer s.servers.Unsubscribe(pod, port, translator)
-			}
-
-			select {
-			case <-s.shutdown:
-			case <-stream.Context().Done():
-				log.Debugf("GetProfile(%+v) cancelled", dest)
-			}
-			return nil
-		}
-	} else {
-		var hostname string
-		service, hostname, err = parseK8sServiceName(host, s.clusterDomain)
+		address, err := s.createAddress(pod, ip.String(), port)
 		if err != nil {
-			log.Debugf("Invalid service %s", path)
-			return status.Errorf(codes.InvalidArgument, "invalid service: %s", err)
+			return fmt.Errorf("failed to create address: %w", err)
 		}
-
-		// If the pod name (instance ID) is not empty, it means we parsed a DNS
-		// name. When we fetch the profile using a pod's DNS name, we want to
-		// return an endpoint in the profile response.
-		if hostname != "" {
-			address, err := s.getEndpointByHostname(s.k8sAPI, hostname, service, port)
-			if err != nil {
-				return fmt.Errorf("failed to get pod for hostname %s: %w", hostname, err)
-			}
-			opaquePorts, err := getAnnotatedOpaquePorts(address.Pod, s.defaultOpaquePorts)
-			if err != nil {
-				return fmt.Errorf("failed to get opaque ports for pod: %w", err)
-			}
-			var endpoint *pb.WeightedAddr
-			endpoint, err = s.createEndpoint(*address, opaquePorts)
-			if err != nil {
-				return fmt.Errorf("failed to create endpoint: %w", err)
-			}
-			translator := newEndpointProfileTranslator(address.Pod, port, endpoint, stream, s.log)
-
-			// If the endpoint's port is annotated as opaque, we don't need to
-			// subscribe for updates because it will always be opaque
-			// regardless of any Servers that may select it.
-			if _, ok := opaquePorts[port]; ok {
-				translator.UpdateProtocol(true)
-			} else if address.Pod == nil {
-				translator.UpdateProtocol(false)
-			} else {
-				translator.UpdateProtocol(address.OpaqueProtocol)
-				s.servers.Subscribe(address.Pod, port, translator)
-				defer s.servers.Unsubscribe(address.Pod, port, translator)
-			}
-			select {
-			case <-s.shutdown:
-			case <-stream.Context().Done():
-				log.Debugf("GetProfile(%+v) cancelled", dest)
-			}
-			return nil
-		}
-
-		fqn = host
+		return s.subscribeToEndpointProfile(&address, port, stream)
 	}
+
+	fqn := fmt.Sprintf("%s.%s.svc.%s", svcID.Name, svcID.Namespace, s.clusterDomain)
+	return s.subscribeToServiceProfile(*svcID, token, fqn, port, stream)
+}
+
+func (s *server) getProfileByName(
+	token, host string,
+	port uint32,
+	stream pb.Destination_GetProfileServer,
+) error {
+	service, hostname, err := parseK8sServiceName(host, s.clusterDomain)
+	if err != nil {
+		s.log.Debugf("Invalid service %s", host)
+		return status.Errorf(codes.InvalidArgument, "invalid service %q: %q", host, err)
+	}
+
+	// If the pod name (instance ID) is not empty, it means we parsed a DNS
+	// name. When we fetch the profile using a pod's DNS name, we want to
+	// return an endpoint in the profile response.
+	if hostname != "" {
+		address, err := s.getEndpointByHostname(s.k8sAPI, hostname, service, port)
+		if err != nil {
+			return fmt.Errorf("failed to get pod for hostname %s: %w", hostname, err)
+		}
+		return s.subscribeToEndpointProfile(address, port, stream)
+	}
+
+	return s.subscribeToServiceProfile(service, token, host, port, stream)
+}
+
+// Resolves a profile for a service, sending updates to the provided stream.
+//
+// This function does not return until the stream is closed.
+func (s *server) subscribeToServiceProfile(
+	service watcher.ID,
+	token, fqn string,
+	port uint32,
+	stream pb.Destination_GetProfileServer,
+) error {
+	log := s.log.
+		WithField("ns", service.Namespace).
+		WithField("svc", service.Name).
+		WithField("port", port)
+
+	canceled := stream.Context().Done()
 
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
@@ -321,58 +288,159 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// split adaptor.
 	opaquePortsAdaptor := newOpaquePortsAdaptor(translator)
 
-	// Subscribe the adaptor to service updates.
-	err = s.opaquePorts.Subscribe(service, opaquePortsAdaptor)
+	// Create an adaptor that merges service-level opaque port configurations
+	// onto profile updates.
+	err := s.opaquePorts.Subscribe(service, opaquePortsAdaptor)
 	if err != nil {
 		log.Warnf("Failed to subscribe to service updates for %s: %s", service, err)
 		return err
 	}
 	defer s.opaquePorts.Unsubscribe(service, opaquePortsAdaptor)
 
-	// The fallback accepts updates from a primary and secondary source and
-	// passes the appropriate profile updates to the adaptor.
-	primary, secondary := newFallbackProfileListener(opaquePortsAdaptor)
+	// Ensure that (1) nil values are turned into a default policy and (2)
+	// subsequent updates that refer to same service profile object are
+	// deduplicated to prevent sending redundant updates.
+	dup := newDedupProfileListener(opaquePortsAdaptor, log)
+	defaultProfile := sp.ServiceProfile{}
+	listener := newDefaultProfileListener(&defaultProfile, dup, log)
 
-	// If we have a context token, we create two subscriptions: one with the
-	// context token which sends updates to the primary listener and one without
-	// the context token which sends updates to the secondary listener.  It is
-	// up to the fallbackProfileListener to merge updates from the primary and
-	// secondary listeners and send the appropriate updates to the stream.
-	if dest.GetContextToken() != "" {
-		ctxToken := s.parseContextToken(dest.GetContextToken())
-
-		profile, err := profileID(fqn, ctxToken, s.clusterDomain)
-		if err != nil {
-			log.Debugf("Invalid service %s", path)
-			return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
-		}
-
-		err = s.profiles.Subscribe(profile, primary)
-		if err != nil {
-			log.Warnf("Failed to subscribe to profile %s: %s", path, err)
-			return err
-		}
-		defer s.profiles.Unsubscribe(profile, primary)
+	// The primary lookup uses the context token to determine the requester's
+	// namespace. If there's no namespace in the token, start a single
+	// subscription.
+	tok := s.parseContextToken(token)
+	if tok.Ns == "" {
+		return s.subscribeToServiceWithoutContext(fqn, listener, canceled, log)
 	}
+	return s.subscribeToServicesWithContext(fqn, tok, listener, canceled, log)
+}
 
-	profile, err := profileID(fqn, contextToken{}, s.clusterDomain)
+// subscribeToServiceWithContext establishes two profile watches: a "backup"
+// watch (ignoring the client namespace) and a preferred "primary" watch
+// assuming the client's context. Once updates are received for both watches, we
+// select over both watches to send profile updates to the stream. A nil update
+// may be sent if both the primary and backup watches are initialized with a nil
+// value.
+func (s *server) subscribeToServicesWithContext(
+	fqn string,
+	token contextToken,
+	listener watcher.ProfileUpdateListener,
+	canceled <-chan struct{},
+	log *logging.Entry,
+) error {
+	// We ned to support two subscriptions:
+	// - First, a backup subscription that assumes the context of the server
+	//   namespace.
+	// - And then, a primary subscription that assumes the context of the client
+	//   namespace.
+	primary, backup := newFallbackProfileListener(listener, log)
+
+	// The backup lookup ignores the context token to lookup any
+	// server-namespace-hosted profiles.
+	backupID, err := profileID(fqn, contextToken{}, s.clusterDomain)
 	if err != nil {
-		log.Debugf("Invalid service %s", path)
+		log.Debug("Invalid service")
 		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 	}
-	err = s.profiles.Subscribe(profile, secondary)
+	err = s.profiles.Subscribe(backupID, backup)
 	if err != nil {
-		log.Warnf("Failed to subscribe to profile %s: %s", path, err)
+		log.Warnf("Failed to subscribe to profile: %s", err)
 		return err
 	}
-	defer s.profiles.Unsubscribe(profile, secondary)
+	defer s.profiles.Unsubscribe(backupID, backup)
+
+	primaryID, err := profileID(fqn, token, s.clusterDomain)
+	if err != nil {
+		log.Debug("Invalid service")
+		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
+	}
+	err = s.profiles.Subscribe(primaryID, primary)
+	if err != nil {
+		log.Warnf("Failed to subscribe to profile: %s", err)
+		return err
+	}
+	defer s.profiles.Unsubscribe(primaryID, primary)
+
+	select {
+	case <-s.shutdown:
+	case <-canceled:
+		log.Debug("Cancelled")
+	}
+	return nil
+}
+
+// subscribeToServiceWithoutContext establishes a single profile watch, assuming
+// no client context. All udpates are published to the provided listener.
+func (s *server) subscribeToServiceWithoutContext(
+	fqn string,
+	listener watcher.ProfileUpdateListener,
+	cancel <-chan struct{},
+	log *logging.Entry,
+) error {
+	id, err := profileID(fqn, contextToken{}, s.clusterDomain)
+	if err != nil {
+		log.Debug("Invalid service")
+		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
+	}
+	err = s.profiles.Subscribe(id, listener)
+	if err != nil {
+		log.Warnf("Failed to subscribe to profile: %s", err)
+		return err
+	}
+	defer s.profiles.Unsubscribe(id, listener)
+
+	select {
+	case <-s.shutdown:
+	case <-cancel:
+		log.Debug("Cancelled")
+	}
+	return nil
+}
+
+// Resolves a profile for a single endpoitn, sending updates to the provided
+// stream.
+//
+// This function does not return until the stream is closed.
+func (s *server) subscribeToEndpointProfile(
+	address *watcher.Address,
+	port uint32,
+	stream pb.Destination_GetProfileServer,
+) error {
+	log := s.log
+	if address.Pod != nil {
+		log = log.WithField("ns", address.Pod.Namespace).WithField("pod", address.Pod.Name)
+	} else {
+		log = log.WithField("ip", address.IP)
+	}
+
+	opaquePorts, err := getAnnotatedOpaquePorts(address.Pod, s.defaultOpaquePorts)
+	if err != nil {
+		return fmt.Errorf("failed to get opaque ports for pod: %w", err)
+	}
+	var endpoint *pb.WeightedAddr
+	endpoint, err = s.createEndpoint(*address, opaquePorts)
+	if err != nil {
+		return fmt.Errorf("failed to create endpoint: %w", err)
+	}
+	translator := newEndpointProfileTranslator(address.Pod, port, endpoint, stream, log)
+
+	// If the endpoint's port is annotated as opaque, we don't need to
+	// subscribe for updates because it will always be opaque
+	// regardless of any Servers that may select it.
+	if _, ok := opaquePorts[port]; ok {
+		translator.UpdateProtocol(true)
+	} else if address.Pod == nil {
+		translator.UpdateProtocol(false)
+	} else {
+		translator.UpdateProtocol(address.OpaqueProtocol)
+		s.servers.Subscribe(address.Pod, port, translator)
+		defer s.servers.Unsubscribe(address.Pod, port, translator)
+	}
 
 	select {
 	case <-s.shutdown:
 	case <-stream.Context().Done():
-		log.Debugf("GetProfile(%+v) cancelled", dest)
+		log.Debugf("Cancelled")
 	}
-
 	return nil
 }
 
@@ -410,24 +478,38 @@ func (s *server) getPortForPod(pod *corev1.Pod, targetIP string, port uint32) (u
 }
 
 func (s *server) createAddress(pod *corev1.Pod, targetIP string, port uint32) (watcher.Address, error) {
-	ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
+	var ip, ownerKind, ownerName string
+	var err error
+	if pod != nil {
+		ownerKind, ownerName, err = s.metadataAPI.GetOwnerKindAndName(context.Background(), pod, true)
+		if err != nil {
+			return watcher.Address{}, err
+		}
 
-	port, err := s.getPortForPod(pod, targetIP, port)
-	if err != nil {
-		return watcher.Address{}, fmt.Errorf("failed to find Port for Pod: %w", err)
+		port, err = s.getPortForPod(pod, targetIP, port)
+		if err != nil {
+			return watcher.Address{}, fmt.Errorf("failed to find Port for Pod: %w", err)
+		}
+
+		ip = pod.Status.PodIP
+	} else {
+		ip = targetIP
 	}
 
 	address := watcher.Address{
-		IP:        pod.Status.PodIP,
+		IP:        ip,
 		Port:      port,
 		Pod:       pod,
 		OwnerName: ownerName,
 		OwnerKind: ownerKind,
 	}
 
-	if err := watcher.SetToServerProtocol(s.k8sAPI, &address, port); err != nil {
-		return watcher.Address{}, fmt.Errorf("failed to set address OpaqueProtocol: %w", err)
+	if address.Pod != nil {
+		if err := watcher.SetToServerProtocol(s.k8sAPI, &address, port); err != nil {
+			return watcher.Address{}, fmt.Errorf("failed to set address OpaqueProtocol: %w", err)
+		}
 	}
+
 	return address, nil
 }
 
@@ -597,6 +679,9 @@ type contextToken struct {
 
 func (s *server) parseContextToken(token string) contextToken {
 	ctxToken := contextToken{}
+	if token == "" {
+		return ctxToken
+	}
 	if err := json.Unmarshal([]byte(token), &ctxToken); err != nil {
 		// if json is invalid, means token can have ns:<namespace> form
 		parts := strings.Split(token, ":")

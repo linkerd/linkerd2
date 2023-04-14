@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ghodss/yaml"
 	"github.com/go-test/deep"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
@@ -16,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
+	"sigs.k8s.io/yaml"
 )
 
 const (

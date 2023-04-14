@@ -76,6 +76,7 @@
 - [ReliMail](https://relimail.com/)
 - [S&P Global Platts](https://www.spglobal.com/platts/en)
 - [Salt Security](https://salt.security/)
+- [Samarkand Global](https://www.samarkand.global/)
 - [SCA](https://sca.com.au)
 - [Search365](https://search365.ai/)
 - [Skit](https://skit.ai/)

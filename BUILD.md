@@ -165,6 +165,7 @@ bin/docker-build
 bin/image-load --k3d
 
 # install linkerd
+bin/linkerd install --crds | kubectl apply -f -
 bin/linkerd install | kubectl apply -f -
 
 # wait for the core components to be ready, then install linkerd-viz

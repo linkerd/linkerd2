@@ -6,12 +6,10 @@ use crate::k8s::{
         NetworkAuthentication, NetworkAuthenticationSpec, Server, ServerAuthorization,
         ServerAuthorizationSpec, ServerSpec,
     },
-    Service,
 };
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{anyhow, bail, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
-use k8s_gateway_api::ParentReference;
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_core as core;
@@ -317,11 +315,18 @@ impl Validate<ServerSpec> for Admission {
             .list(&kube::api::ListParams::default())
             .await?;
         for server in servers.items.into_iter() {
-            if server.name_unchecked() != name
+            let server_name = server.name_unchecked();
+            if server_name != name
                 && server.spec.port == spec.port
                 && Self::overlaps(&server.spec.pod_selector, &spec.pod_selector)
             {
-                bail!("identical server spec already exists");
+                let server_ns = server.namespace();
+                let server_ns = server_ns.as_deref().unwrap_or("default");
+                bail!(
+                    "Server spec '{server_ns}/{server_name}' already defines a policy \
+                    for port {}, and selects pods that would be selected by this Server",
+                    server.spec.port,
+                );
             }
         }
 
@@ -420,7 +425,7 @@ impl Validate<ServerAuthorizationSpec> for Admission {
 #[async_trait::async_trait]
 impl Validate<HttpRouteSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
-        use index::http_route::convert;
+        use index::http_route;
 
         fn validate_match(
             httproute::HttpRouteMatch {
@@ -430,18 +435,18 @@ impl Validate<HttpRouteSpec> for Admission {
                 method,
             }: httproute::HttpRouteMatch,
         ) -> Result<()> {
-            let _ = path.map(convert::path_match).transpose()?;
+            let _ = path.map(http_route::path_match).transpose()?;
             let _ = method
                 .as_deref()
                 .map(core::http_route::Method::try_from)
                 .transpose()?;
 
             for q in query_params.into_iter().flatten() {
-                convert::query_param_match(q)?;
+                http_route::query_param_match(q)?;
             }
 
             for h in headers.into_iter().flatten() {
-                convert::header_match(h)?;
+                http_route::header_match(h)?;
             }
 
             Ok(())
@@ -451,30 +456,21 @@ impl Validate<HttpRouteSpec> for Admission {
             match filter {
                 httproute::HttpRouteFilter::RequestHeaderModifier {
                     request_header_modifier,
-                } => convert::req_header_modifier(request_header_modifier).map(|_| ()),
+                } => http_route::req_header_modifier(request_header_modifier).map(|_| ()),
                 httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
-                    convert::req_redirect(request_redirect).map(|_| ())
+                    http_route::req_redirect(request_redirect).map(|_| ())
                 }
             }
         }
-
-        // Ensure that the `HTTPRoute` targets a `Server` or `Service` as its parent ref
-        let all_valid_targets = spec
-            .inner
-            .parent_refs
-            .iter()
-            .flatten()
-            .all(parent_ref_kind_is_valid);
-        ensure!(
-            all_valid_targets,
-            "policy.linkerd.io HTTPRoutes must target only Server or Service resources"
-        );
 
         // Validate the rules in this spec.
         // This is essentially equivalent to the indexer's conversion function
         // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
         // actually allocate stuff in order to return an `InboundRouteBinding`.
-        for httproute::HttpRouteRule { filters, matches } in spec.rules.into_iter().flatten() {
+        for httproute::HttpRouteRule {
+            filters, matches, ..
+        } in spec.rules.into_iter().flatten()
+        {
             for m in matches.into_iter().flatten() {
                 validate_match(m)?;
             }
@@ -486,9 +482,4 @@ impl Validate<HttpRouteSpec> for Admission {
 
         Ok(())
     }
-}
-
-fn parent_ref_kind_is_valid(parent_ref: &ParentReference) -> bool {
-    httproute::parent_ref_targets_kind::<Server>(parent_ref)
-        || httproute::parent_ref_targets_kind::<Service>(parent_ref)
 }

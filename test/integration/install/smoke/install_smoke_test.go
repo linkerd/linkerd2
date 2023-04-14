@@ -56,7 +56,7 @@ func TestSmoke(t *testing.T) {
 				"'kubectl apply' command failed\n%s", out)
 		}
 
-		// Wait for pods to in smoke-test dpeloyment to come up
+		// Wait for pods to in smoke-test deployment to come up
 		for _, deploy := range []string{"smoke-test-terminus", "smoke-test-gateway"} {
 			if err := TestHelper.CheckPods(ctx, ns, deploy, 1); err != nil {
 				//nolint:errorlint

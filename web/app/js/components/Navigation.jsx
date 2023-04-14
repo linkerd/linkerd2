@@ -44,7 +44,6 @@ import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { faCloud } from '@fortawesome/free-solid-svg-icons/faCloud';
 import { faDungeon } from '@fortawesome/free-solid-svg-icons/faDungeon';
 import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons/faExternalLinkAlt';
-import { faFilter } from '@fortawesome/free-solid-svg-icons/faFilter';
 import { faMicroscope } from '@fortawesome/free-solid-svg-icons/faMicroscope';
 import { faRandom } from '@fortawesome/free-solid-svg-icons/faRandom';
 import { faSmile } from '@fortawesome/free-regular-svg-icons/faSmile';
@@ -561,14 +560,6 @@ class NavigationBase extends React.Component {
           { this.menuItem(`/namespaces/${selectedNamespace}/statefulsets`, <Trans>menuItemStatefulSets</Trans>, statefulSetIcon) }
         </MenuList>
 
-        <MenuList>
-          <Typography variant="button" component="div" className={classes.sidebarHeading}>
-            <Trans>sidebarHeadingConfiguration</Trans>
-          </Typography>
-
-          { this.menuItem(`/namespaces/${selectedNamespace}/trafficsplits`, <Trans>menuItemTrafficSplits</Trans>, <FontAwesomeIcon icon={faFilter} className={classes.shrinkIcon} />) }
-
-        </MenuList>
         <Divider />
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>

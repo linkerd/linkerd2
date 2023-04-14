@@ -248,6 +248,16 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 	return newReport(conf), nil
 }
 
+// FromObject extracts the workload metadata and pod specs from the given
+// runtime.Object instance. The results are stored in the conf's fields.
+func (conf *ResourceConfig) FromObject(v runtime.Object) (*Report, error) {
+	if err := conf.populateMeta(v); err != nil {
+		return nil, err
+	}
+
+	return newReport(conf), nil
+}
+
 // GetValues returns the values used for rendering patches.
 func (conf *ResourceConfig) GetValues() *l5dcharts.Values {
 	return conf.values
@@ -512,6 +522,109 @@ func (conf *ResourceConfig) JSONToYAML(bytes []byte) ([]byte, error) {
 	return yaml.JSONToYAML(j)
 }
 
+func (conf *ResourceConfig) populateMeta(obj runtime.Object) error {
+	switch v := obj.(type) {
+	case *appsv1.Deployment:
+		conf.workload.obj = v
+		conf.workload.Meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyDeploymentLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
+		conf.complete(&v.Spec.Template)
+
+	case *corev1.ReplicationController:
+		conf.workload.obj = v
+		conf.workload.Meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyReplicationControllerLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
+		conf.complete(v.Spec.Template)
+
+	case *appsv1.ReplicaSet:
+		conf.workload.obj = v
+		conf.workload.Meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyReplicaSetLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
+		conf.complete(&v.Spec.Template)
+
+	case *batchv1.Job:
+		conf.workload.obj = v
+		conf.workload.Meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyJobLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
+		conf.complete(&v.Spec.Template)
+
+	case *appsv1.DaemonSet:
+		conf.workload.obj = v
+		conf.workload.Meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyDaemonSetLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
+		conf.complete(&v.Spec.Template)
+
+	case *appsv1.StatefulSet:
+		conf.workload.obj = v
+		conf.workload.Meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyStatefulSetLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
+		conf.complete(&v.Spec.Template)
+
+	case *corev1.Namespace:
+		conf.workload.obj = v
+		conf.workload.Meta = &v.ObjectMeta
+		if conf.workload.Meta.Annotations == nil {
+			conf.workload.Meta.Annotations = map[string]string{}
+		}
+
+	case *batchv1.CronJob:
+		conf.workload.obj = v
+		conf.workload.Meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyCronJobLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
+		conf.complete(&v.Spec.JobTemplate.Spec.Template)
+
+	case *corev1.Pod:
+		conf.workload.obj = v
+		conf.pod.spec = &v.Spec
+		conf.pod.meta = &v.ObjectMeta
+
+		if conf.ownerRetriever != nil {
+			kind, name, err := conf.ownerRetriever(v)
+			if err != nil {
+				return err
+			}
+			conf.workload.ownerRef = &metav1.OwnerReference{Kind: kind, Name: name}
+			switch kind {
+			case k8s.Deployment:
+				conf.pod.labels[k8s.ProxyDeploymentLabel] = name
+			case k8s.ReplicationController:
+				conf.pod.labels[k8s.ProxyReplicationControllerLabel] = name
+			case k8s.ReplicaSet:
+				conf.pod.labels[k8s.ProxyReplicaSetLabel] = name
+			case k8s.Job:
+				conf.pod.labels[k8s.ProxyJobLabel] = name
+			case k8s.DaemonSet:
+				conf.pod.labels[k8s.ProxyDaemonSetLabel] = name
+			case k8s.StatefulSet:
+				conf.pod.labels[k8s.ProxyStatefulSetLabel] = name
+			}
+		}
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
+		if conf.pod.meta.Annotations == nil {
+			conf.pod.meta.Annotations = map[string]string{}
+		}
+
+	case *corev1.Service:
+		conf.workload.obj = v
+		conf.workload.Meta = &v.ObjectMeta
+		if conf.workload.Meta.Annotations == nil {
+			conf.workload.Meta.Annotations = map[string]string{}
+		}
+
+	default:
+		return fmt.Errorf("unsupported type %T", v)
+	}
+
+	return nil
+}
+
 // parse parses the bytes payload, filling the gaps in ResourceConfig
 // depending on the workload kind
 func (conf *ResourceConfig) parse(bytes []byte) error {
@@ -546,136 +659,22 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 	obj := conf.getFreshWorkloadObj()
 
 	switch v := obj.(type) {
-	case *appsv1.Deployment:
+	case *appsv1.Deployment,
+		*corev1.ReplicationController,
+		*appsv1.ReplicaSet,
+		*batchv1.Job,
+		*appsv1.DaemonSet,
+		*appsv1.StatefulSet,
+		*corev1.Namespace,
+		*batchv1.CronJob,
+		*corev1.Pod,
+		*corev1.Service:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
 			return err
 		}
 
-		conf.workload.obj = v
-		conf.workload.Meta = &v.ObjectMeta
-		conf.pod.labels[k8s.ProxyDeploymentLabel] = v.Name
-		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
-		conf.complete(&v.Spec.Template)
-
-	case *corev1.ReplicationController:
-		if err := yaml.Unmarshal(bytes, v); err != nil {
+		if err := conf.populateMeta(v); err != nil {
 			return err
-		}
-
-		conf.workload.obj = v
-		conf.workload.Meta = &v.ObjectMeta
-		conf.pod.labels[k8s.ProxyReplicationControllerLabel] = v.Name
-		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
-		conf.complete(v.Spec.Template)
-
-	case *appsv1.ReplicaSet:
-		if err := yaml.Unmarshal(bytes, v); err != nil {
-			return err
-		}
-
-		conf.workload.obj = v
-		conf.workload.Meta = &v.ObjectMeta
-		conf.pod.labels[k8s.ProxyReplicaSetLabel] = v.Name
-		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
-		conf.complete(&v.Spec.Template)
-
-	case *batchv1.Job:
-		if err := yaml.Unmarshal(bytes, v); err != nil {
-			return err
-		}
-
-		conf.workload.obj = v
-		conf.workload.Meta = &v.ObjectMeta
-		conf.pod.labels[k8s.ProxyJobLabel] = v.Name
-		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
-		conf.complete(&v.Spec.Template)
-
-	case *appsv1.DaemonSet:
-		if err := yaml.Unmarshal(bytes, v); err != nil {
-			return err
-		}
-
-		conf.workload.obj = v
-		conf.workload.Meta = &v.ObjectMeta
-		conf.pod.labels[k8s.ProxyDaemonSetLabel] = v.Name
-		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
-		conf.complete(&v.Spec.Template)
-
-	case *appsv1.StatefulSet:
-		if err := yaml.Unmarshal(bytes, v); err != nil {
-			return err
-		}
-
-		conf.workload.obj = v
-		conf.workload.Meta = &v.ObjectMeta
-		conf.pod.labels[k8s.ProxyStatefulSetLabel] = v.Name
-		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
-		conf.complete(&v.Spec.Template)
-
-	case *corev1.Namespace:
-		if err := yaml.Unmarshal(bytes, v); err != nil {
-			return err
-		}
-		conf.workload.obj = v
-		conf.workload.Meta = &v.ObjectMeta
-		if conf.workload.Meta.Annotations == nil {
-			conf.workload.Meta.Annotations = map[string]string{}
-		}
-
-	case *batchv1.CronJob:
-		if err := yaml.Unmarshal(bytes, v); err != nil {
-			return err
-		}
-
-		conf.workload.obj = v
-		conf.workload.Meta = &v.ObjectMeta
-		conf.pod.labels[k8s.ProxyCronJobLabel] = v.Name
-		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
-		conf.complete(&v.Spec.JobTemplate.Spec.Template)
-
-	case *corev1.Pod:
-		if err := yaml.Unmarshal(bytes, v); err != nil {
-			return err
-		}
-
-		conf.workload.obj = v
-		conf.pod.spec = &v.Spec
-		conf.pod.meta = &v.ObjectMeta
-
-		if conf.ownerRetriever != nil {
-			kind, name, err := conf.ownerRetriever(v)
-			if err != nil {
-				return err
-			}
-			conf.workload.ownerRef = &metav1.OwnerReference{Kind: kind, Name: name}
-			switch kind {
-			case k8s.Deployment:
-				conf.pod.labels[k8s.ProxyDeploymentLabel] = name
-			case k8s.ReplicationController:
-				conf.pod.labels[k8s.ProxyReplicationControllerLabel] = name
-			case k8s.ReplicaSet:
-				conf.pod.labels[k8s.ProxyReplicaSetLabel] = name
-			case k8s.Job:
-				conf.pod.labels[k8s.ProxyJobLabel] = name
-			case k8s.DaemonSet:
-				conf.pod.labels[k8s.ProxyDaemonSetLabel] = name
-			case k8s.StatefulSet:
-				conf.pod.labels[k8s.ProxyStatefulSetLabel] = name
-			}
-		}
-		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
-		if conf.pod.meta.Annotations == nil {
-			conf.pod.meta.Annotations = map[string]string{}
-		}
-
-	case *corev1.Service:
-		if err := yaml.Unmarshal(bytes, v); err != nil {
-			return err
-		}
-		conf.workload.obj = v
-		conf.workload.Meta = &v.ObjectMeta
-		if conf.workload.Meta.Annotations == nil {
-			conf.workload.Meta.Annotations = map[string]string{}
 		}
 
 	default:

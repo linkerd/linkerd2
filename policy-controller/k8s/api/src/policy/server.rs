@@ -2,7 +2,7 @@ use super::super::labels;
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::num::NonZeroU16;
+use std::{fmt, num::NonZeroU16};
 
 /// Describes a server interface exposed by a set of pods.
 #[derive(Clone, Debug, PartialEq, Eq, CustomResource, Deserialize, Serialize, JsonSchema)]
@@ -41,4 +41,13 @@ pub enum ProxyProtocol {
     Opaque,
     #[serde(rename = "TLS")]
     Tls,
+}
+
+impl fmt::Display for Port {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Port::Number(n) => fmt::Display::fmt(n, f),
+            Port::Name(n) => fmt::Display::fmt(n, f),
+        }
+    }
 }

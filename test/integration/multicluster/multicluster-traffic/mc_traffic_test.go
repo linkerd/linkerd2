@@ -17,6 +17,7 @@ import (
 var (
 	TestHelper *testutil.TestHelper
 	targetCtx  string
+	sourceCtx  string
 	contexts   map[string]string
 )
 
@@ -49,18 +50,20 @@ var (
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	// Before starting, get source context
+	// Before starting, initialize contexts
 	contexts = TestHelper.GetMulticlusterContexts()
+	sourceCtx = contexts[testutil.SourceContextKey]
 	targetCtx = contexts[testutil.TargetContextKey]
-	// Then, re-build clientset with context of target cluster instead of kube
-	// context inferred from environment.
-	if err := TestHelper.SwitchContext(targetCtx); err != nil {
-		out := fmt.Sprintf("Error running test: failed to switch Kubernetes client to context [%s]: %s\n", targetCtx, err)
+	// Then, re-build clientset with source cluster context instead of context
+	// inferred from environment.
+	if err := TestHelper.SwitchContext(sourceCtx); err != nil {
+		out := fmt.Sprintf("Error running test: failed to switch Kubernetes client to context [%s]: %s\n", sourceCtx, err)
 		os.Stderr.Write([]byte(out))
 		os.Exit(1)
 	}
-	// Block until viz deploy is running successfully in target cluster.
-	TestHelper.WaitUntilDeployReady(testutil.LinkerdVizDeployReplicas)
+	// Block until gateway & service mirror deploys are running successfully in
+	// source cluster.
+	TestHelper.WaitUntilDeployReady(testutil.MulticlusterSourceReplicas)
 	os.Exit(m.Run())
 }
 
@@ -126,10 +129,13 @@ func TestGateways(t *testing.T) {
 func TestCheckGatewayAfterRepairEndpoints(t *testing.T) {
 	// Re-build the clientset with the source context
 	if err := TestHelper.SwitchContext(contexts[testutil.SourceContextKey]); err != nil {
-		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts[testutil.SourceContextKey], err)
+		testutil.AnnotatedFatalf(t,
+			"failed to rebuild helper clientset with new context",
+			"failed to rebuild helper clientset with new context [%s]: %v",
+			contexts[testutil.SourceContextKey], err)
 	}
 	time.Sleep(time.Minute + 5*time.Second)
-	if err := TestHelper.TestCheck("--context", contexts[testutil.SourceContextKey]); err != nil {
+	if err := TestHelper.TestCheckMc("--context", contexts[testutil.SourceContextKey]); err != nil {
 		t.Fatalf("'linkerd check' command failed: %s", err)
 	}
 }
@@ -143,12 +149,18 @@ func TestCheckGatewayAfterRepairEndpoints(t *testing.T) {
 // connections from the gateway pod to the web-svc?
 func TestTargetTraffic(t *testing.T) {
 	if err := TestHelper.SwitchContext(contexts[testutil.TargetContextKey]); err != nil {
-		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", contexts[testutil.TargetContextKey], err)
+		testutil.AnnotatedFatalf(t,
+			"failed to rebuild helper clientset with new context",
+			"failed to rebuild helper clientset with new context [%s]: %v",
+			contexts[testutil.TargetContextKey], err)
 	}
 
 	ctx := context.Background()
 	// Create emojivoto in target cluster, to be deleted at the end of the test.
-	TestHelper.WithDataPlaneNamespace(ctx, "emojivoto", map[string]string{}, t, func(t *testing.T, ns string) {
+	annotations := map[string]string{
+		// "config.linkerd.io/proxy-log-level": "linkerd=debug,info",
+	}
+	TestHelper.WithDataPlaneNamespace(ctx, "emojivoto", annotations, t, func(t *testing.T, ns string) {
 		t.Run("Deploy resources in source and target clusters", func(t *testing.T) {
 			// Deploy vote-bot client in source-cluster
 			o, err := TestHelper.KubectlApplyWithContext("", contexts[testutil.SourceContextKey], "-f", "testdata/vote-bot.yml")

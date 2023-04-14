@@ -30,6 +30,7 @@ var (
 		"templates/psp.yaml",
 		"templates/metrics-api.yaml",
 		"templates/metrics-api-policy.yaml",
+		"templates/admin-policy.yaml",
 		"templates/prometheus.yaml",
 		"templates/prometheus-policy.yaml",
 		"templates/tap.yaml",

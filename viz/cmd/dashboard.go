@@ -10,6 +10,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
+	hc "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
@@ -83,14 +84,17 @@ func NewCmdDashboard() *cobra.Command {
 			}
 
 			// ensure we can connect to the viz API before starting the proxy
-			api.CheckClientOrRetryOrExit(healthcheck.Options{
-				ControlPlaneNamespace: controlPlaneNamespace,
-				KubeConfig:            kubeconfigPath,
-				Impersonate:           impersonate,
-				ImpersonateGroup:      impersonateGroup,
-				KubeContext:           kubeContext,
-				APIAddr:               apiAddr,
-				RetryDeadline:         time.Now().Add(options.wait),
+			api.CheckClientOrRetryOrExit(hc.VizOptions{
+				Options: &healthcheck.Options{
+					ControlPlaneNamespace: controlPlaneNamespace,
+					KubeConfig:            kubeconfigPath,
+					Impersonate:           impersonate,
+					ImpersonateGroup:      impersonateGroup,
+					KubeContext:           kubeContext,
+					APIAddr:               apiAddr,
+					RetryDeadline:         time.Now().Add(options.wait),
+				},
+				VizNamespaceOverride: vizNamespace,
 			}, true)
 
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
