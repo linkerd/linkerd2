@@ -11,7 +11,8 @@ Additionally, this release updates a proxy dependency to fix CVE-2023-2694.
     denial-of-service vulnerability discovered in CVE-2023-26964
 
 * Control Plane
-  * Fixed an issue where the policy controller always used the default `cluster.local` domain
+  * Fixed an issue where the policy controller always used the default
+    `cluster.local` domain
 
 * Helm
   * Fixed an issue in the viz Helm chart where the namespace metadata template
