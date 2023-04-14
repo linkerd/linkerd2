@@ -1,5 +1,22 @@
 # Changes
 
+## stable-2.13.1
+
+This stable release fixes an issue in the policy controller where a non-default
+cluster domain would return incorrect authorities in the outbound policy API.
+Additionally, this release updates a proxy dependency to fix CVE-2023-2694.
+
+* Proxy
+  * Updated `h2` dependency to include a patch for a theoretical
+    denial-of-service vulnerability discovered in CVE-2023-26964
+
+* Control Plane
+  * Fixed an issue where the policy controller always used the default `cluster.local` domain
+
+* Helm
+  * Fixed an issue in the viz Helm chart where the namespace metadata template
+    would throw `unexpected argument found` errors
+
 ## stable-2.13.0
 
 This release introduces client-side policy to Linkerd, including dynamic routing
