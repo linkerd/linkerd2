@@ -133,6 +133,7 @@ var resourceNames = []resourceName{
 	{"srvauthz", "serverauthorization", "serverauthorizations"},
 	{"srv", "server", "servers"},
 	{"ap", "authorizationpolicy", "authorizationpolicies"},
+	{"httproute", "httproute", "httproutes"},
 	{"authzpolicy", "authorizationpolicy", "authorizationpolicies"},
 	{"sts", "statefulset", "statefulsets"},
 	{"ln", "link", "links"},

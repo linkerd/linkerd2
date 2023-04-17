@@ -77,8 +77,18 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 	}
 
 	// err if --from is added with policy resources
-	if req.GetFromResource() != nil && isPolicyResource(req.GetSelector().GetResource()) {
-		return statSummaryError(req, "'from' queries are not supported with policy resources, as they have inbound metrics only"), nil
+	if req.GetFromResource() != nil {
+		if isPolicyResource(req.GetSelector().GetResource()) ||
+			isPolicyResource(req.GetFromResource()) {
+			return statSummaryError(req, "'from' queries are not supported with policy resources, as they have inbound metrics only"), nil
+		}
+	}
+
+	if req.GetToResource() != nil {
+		if isPolicyResource(req.GetSelector().GetResource()) ||
+			isPolicyResource(req.GetToResource()) {
+			return statSummaryError(req, "'to' queries are not supported with policy resources, as they have inbound metrics only"), nil
+		}
 	}
 
 	switch ob := req.Outbound.(type) {
