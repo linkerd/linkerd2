@@ -32,7 +32,7 @@ spec:
       serviceAccountName: namespace-metadata
       containers:
       - name: namespace-metadata
-        image: {{.Values.namespaceMetadata.image.registry}}/{{.Values.namespaceMetadata.image.name}}:{{.Values.namespaceMetadata.image.tag}}
+        image: {{.Values.namespaceMetadata.image.registry | default .Values.defaultRegistry}}/{{.Values.namespaceMetadata.image.name}}:{{.Values.namespaceMetadata.image.tag}}
         imagePullPolicy: {{.Values.namespaceMetadata.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         securityContext:
           allowPrivilegeEscalation: false
