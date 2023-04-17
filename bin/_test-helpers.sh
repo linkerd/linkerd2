@@ -435,7 +435,7 @@ run_helm-upgrade_test() {
 
   setup_helm
   helm_viz_chart="$( cd "$bindir"/.. && pwd )"/viz/charts/linkerd-viz
-  run_test "$test_directory/install/install_test.go" --helm-path="$helm_path" --helm-charts="$helm_charts" \
+  run_test "$test_directory/install/..." --helm-path="$helm_path" --helm-charts="$helm_charts" \
   --viz-helm-chart="$helm_viz_chart" --viz-helm-stable-chart="linkerd/linkerd-viz" --helm-release="$helm_release_name" --upgrade-helm-from-version="$stable_version"
   helm_cleanup
 }
@@ -454,7 +454,7 @@ run_deep_test() {
 
 run_default-policy-deny_test() {
   export default_inbound_policy='deny'
-  run_test "$test_directory/install/install_test.go" 
+  run_test "$test_directory/install/..."
 }
 
 run_cni-calico-deep_test() {
