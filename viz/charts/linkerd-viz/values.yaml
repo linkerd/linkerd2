@@ -378,7 +378,8 @@ dashboard:
 namespaceMetadata:
   image:
     # -- Docker registry for the namespace-metadata instance
-    registry: cr.l5d.io/linkerd
+    # @default -- defaultRegistry
+    registry: ""
     # -- Docker image name for the namespace-metadata instance
     name: extension-init
     # -- Docker image tag for the namespace-metadata instance
