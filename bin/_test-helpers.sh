@@ -470,7 +470,7 @@ run_external_test() {
 }
 
 run_cluster-domain_test() {
-  run_test "$test_directory/install/install_test.go" --cluster-domain='custom.domain' 
+  run_test "$test_directory/install/..." --cluster-domain='custom.domain'
 }
 
 # exit_on_err should be called right after a command to check the result status
