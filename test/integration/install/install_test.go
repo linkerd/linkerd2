@@ -586,6 +586,11 @@ func TestOverridesSecret(t *testing.T) {
 			"proxyInit": tree.Tree{
 				"ignoreInboundPorts": skippedInboundPorts,
 			},
+			"proxy": tree.Tree{
+				"image": tree.Tree{
+					"version": TestHelper.GetVersion(),
+				},
+			},
 		}
 
 		if reg := os.Getenv(flags.EnvOverrideDockerRegistry); reg != "" {
