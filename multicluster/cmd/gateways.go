@@ -3,6 +3,8 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -21,6 +23,7 @@ import (
 type (
 	gatewaysOptions struct {
 		clusterName string
+		output      string
 		wait        time.Duration
 	}
 
@@ -31,10 +34,10 @@ type (
 	}
 
 	gatewayStatus struct {
-		clusterName      string
-		alive            bool
-		numberOfServices int
-		latency          uint64
+		ClusterName      string `json:"clusterName"`
+		Alive            bool   `json:"alive"`
+		NumberOfServices int    `json:"numberOfServices"`
+		Latency          uint64 `json:"latency"`
 	}
 )
 
@@ -83,7 +86,7 @@ func newGatewaysCommand() *cobra.Command {
 					continue
 				}
 				gatewayStatus := gatewayStatus{
-					clusterName: gateway.clusterName,
+					ClusterName: gateway.clusterName,
 				}
 
 				// Parse the gateway metrics so that we can extract liveness
@@ -102,7 +105,7 @@ func newGatewaysCommand() *cobra.Command {
 						continue
 					}
 					if metrics.GetGauge().GetValue() == 1 {
-						gatewayStatus.alive = true
+						gatewayStatus.Alive = true
 						break
 					}
 				}
@@ -118,7 +121,7 @@ func newGatewaysCommand() *cobra.Command {
 					fmt.Fprintf(os.Stderr, "Failed to list services for %s: %s\n", gateway.clusterName, err)
 					continue
 				}
-				gatewayStatus.numberOfServices = len(services.Items)
+				gatewayStatus.NumberOfServices = len(services.Items)
 
 				// Check the last observed latency by using the
 				// gateway_latency metric and ensuring the label the target
@@ -127,19 +130,34 @@ func newGatewaysCommand() *cobra.Command {
 					if !isTargetClusterMetric(metrics, gateway.clusterName) {
 						continue
 					}
-					gatewayStatus.latency = uint64(metrics.GetGauge().GetValue())
+					gatewayStatus.Latency = uint64(metrics.GetGauge().GetValue())
 					break
 				}
 
 				statuses = append(statuses, gatewayStatus)
 			}
-			renderGateways(statuses, stdout)
+
+			switch opts.output {
+			case "":
+				renderGateways(statuses, stdout)
+			case "json":
+				out, err := json.MarshalIndent(statuses, "", "  ")
+				if err != nil {
+					fmt.Fprint(os.Stderr, err)
+					os.Exit(1)
+				}
+				fmt.Printf("%s", out)
+			default:
+				return errors.New("output must be one of: json")
+			}
+
 			return nil
 		},
 	}
 
 	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "the name of the target cluster")
 	cmd.Flags().DurationVarP(&opts.wait, "wait", "w", opts.wait, "time allowed to fetch diagnostics")
+	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "used to print output in different format")
 
 	return cmd
 }
@@ -254,20 +272,20 @@ func buildGatewaysTable() table.Table {
 
 func gatewayStatusToTableRow(status gatewayStatus) []string {
 	valueOrPlaceholder := func(value string) string {
-		if status.alive {
+		if status.Alive {
 			return value
 		}
 		return "-"
 	}
 	alive := "False"
-	if status.alive {
+	if status.Alive {
 		alive = "True"
 	}
 	return []string{
-		status.clusterName,
+		status.ClusterName,
 		alive,
-		fmt.Sprint(status.numberOfServices),
-		valueOrPlaceholder(fmt.Sprintf("%dms", status.latency)),
+		fmt.Sprint(status.NumberOfServices),
+		valueOrPlaceholder(fmt.Sprintf("%dms", status.Latency)),
 	}
 
 }
