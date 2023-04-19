@@ -114,6 +114,7 @@ spec:
       - args:
         - service-mirror
         - -log-level={{.Values.logLevel}}
+        - -log-format={{.Values.logFormat}}
         - -event-requeue-limit={{.Values.serviceMirrorRetryLimit}}
         - -namespace={{.Release.Namespace}}
         {{- if .Values.enableHeadlessServices }}

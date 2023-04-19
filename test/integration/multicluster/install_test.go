@@ -184,6 +184,7 @@ func TestLinkClusters(t *testing.T) {
 	linkCmd := []string{
 		"--context=" + contexts[testutil.TargetContextKey],
 		"multicluster", "link",
+		"--log-format", "json",
 		"--log-level", "debug",
 		"--api-server-address", fmt.Sprintf("https://%s:6443", lbIP),
 		"--cluster-name", linkName, "--set", "enableHeadlessServices=true",

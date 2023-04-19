@@ -28,6 +28,7 @@ type Values struct {
 	ProxyOutboundPort              uint32   `json:"proxyOutboundPort"`
 	ServiceMirror                  bool     `json:"serviceMirror"`
 	LogLevel                       string   `json:"logLevel"`
+	LogFormat                      string   `json:"logFormat"`
 	ServiceMirrorRetryLimit        uint32   `json:"serviceMirrorRetryLimit"`
 	ServiceMirrorUID               int64    `json:"serviceMirrorUID"`
 	RemoteMirrorServiceAccount     bool     `json:"remoteMirrorServiceAccount"`
