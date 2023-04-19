@@ -167,6 +167,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: azure/setup-kubectl@901a10e89ea615cf61f57ac05cecdf23e7de06d8
       - name: Setup k3d
+        shell: bash
         run: |
           mkdir -p "$PWD/target/bin"
           PATH=$PATH:"$PWD/target/bin"
@@ -290,6 +291,7 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/edge')
       run: echo "INSTALL=install-edge" >> "$GITHUB_ENV"
     - name: Check published version
+      shell: bash
       run: |
         TAG='${{ needs.tag.outputs.tag }}'
         until RES=$(bin/scurl "https://run.linkerd.io/$INSTALL" | grep "LINKERD2_VERSION=\${LINKERD2_VERSION:-$TAG}") \
