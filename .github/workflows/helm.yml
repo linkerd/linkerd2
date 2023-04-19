@@ -19,4 +19,4 @@ jobs:
       - uses: linkerd/dev/actions/setup-tools@v39
       - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
       - run: helm-docs
-      - run: git diff --exit-code -- charts/**/README.md
+      - run: git diff --exit-code -- **/charts/**/README.md
