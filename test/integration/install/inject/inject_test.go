@@ -386,6 +386,8 @@ func TestInjectAutoPod(t *testing.T) {
 
 	truthy := true
 	falsy := false
+	initUser := int64(65534)
+	seccompProfile := &v1.SeccompProfile{Type: v1.SeccompProfileTypeRuntimeDefault}
 	reg := "cr.l5d.io/linkerd"
 	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
 		reg = override
@@ -404,11 +406,11 @@ func TestInjectAutoPod(t *testing.T) {
 		Resources: v1.ResourceRequirements{
 			Limits: v1.ResourceList{
 				v1.ResourceName("cpu"):    resource.MustParse("100m"),
-				v1.ResourceName("memory"): resource.MustParse("50Mi"),
+				v1.ResourceName("memory"): resource.MustParse("20Mi"),
 			},
 			Requests: v1.ResourceList{
-				v1.ResourceName("cpu"):    resource.MustParse("10m"),
-				v1.ResourceName("memory"): resource.MustParse("10Mi"),
+				v1.ResourceName("cpu"):    resource.MustParse("100m"),
+				v1.ResourceName("memory"): resource.MustParse("20Mi"),
 			},
 		},
 		VolumeMounts: []v1.VolumeMount{
@@ -432,6 +434,8 @@ func TestInjectAutoPod(t *testing.T) {
 			RunAsNonRoot:             &truthy,
 			AllowPrivilegeEscalation: &falsy,
 			ReadOnlyRootFilesystem:   &truthy,
+			RunAsUser:                &initUser,
+			SeccompProfile:           seccompProfile,
 		},
 		TerminationMessagePolicy: v1.TerminationMessagePolicy("FallbackToLogsOnError"),
 	}
