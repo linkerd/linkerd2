@@ -732,7 +732,7 @@ spec:
         - --log.level=debug
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
-        image: prom/prometheus:v2.30.3
+        image: prom/prometheus:v2.43.0
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
