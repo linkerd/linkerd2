@@ -127,7 +127,7 @@ Kubernetes: `>=1.21.0-0`
 | metricsAPI.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | namespaceMetadata.image.name | string | `"extension-init"` | Docker image name for the namespace-metadata instance |
 | namespaceMetadata.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the namespace-metadata instance |
-| namespaceMetadata.image.registry | string | `"cr.l5d.io/linkerd"` | Docker registry for the namespace-metadata instance |
+| namespaceMetadata.image.registry | string | defaultRegistry | Docker registry for the namespace-metadata instance |
 | namespaceMetadata.image.tag | string | `"v0.1.0"` | Docker image tag for the namespace-metadata instance |
 | nodeSelector | object | `{"kubernetes.io/os":"linux"}` | Default nodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | podLabels | object | `{}` | Additional labels to add to all pods |
