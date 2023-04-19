@@ -16,7 +16,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 
 	image := cniPluginImage{
 		name:       "my-docker-registry.io/awesome/cni-plugin-test-image",
-		version:    "v1.1.0",
+		version:    "v1.1.1",
 		pullPolicy: nil,
 	}
 	fullyConfiguredOptions := &cniPluginOptions{
