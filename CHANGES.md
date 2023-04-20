@@ -1,5 +1,24 @@
 # Changes
 
+## edge-23.4.2
+
+This edge release contains a number of bug fixes.
+
+* CRDs
+  * Fixed Helm uninstall issue for HttpRoute
+
+* CNI
+  * Fixed incompatibility issue with AWS CNI addon in EKS, that was
+    forbidding pods to acquire networking after scaling up nodes.
+  * Added --set flag to install-cni plugin
+
+* Control Plane
+  * Add `trust_dns=error` to default proxy log level 
+  * Send Opaque protocol hint for opaque ports in destination controller
+
+* Viz 
+  * Bump prometheus image to v2.43.0
+
 ## stable-2.13.1
 
 This stable release fixes an issue in the policy controller where a non-default

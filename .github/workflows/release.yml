@@ -120,8 +120,8 @@ jobs:
         - rsa-ca
         - helm-upgrade
         - uninstall
-      # - upgrade-edge
-        - upgrade-stable
+        - upgrade-edge
+      #  - upgrade-stable
     timeout-minutes: 60
     runs-on: ubuntu-20.04
     steps:
