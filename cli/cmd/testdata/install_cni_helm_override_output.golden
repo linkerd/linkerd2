@@ -151,7 +151,8 @@ spec:
           name: linkerd-tmp-dir
         securityContext:
           readOnlyRootFilesystem: true
-          privileged: 
+          privileged: false
+        resources:
       volumes:
       - name: cni-bin-dir
         hostPath:

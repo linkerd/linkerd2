@@ -32,7 +32,7 @@ Kubernetes: `>=1.21.0-0`
 | image.name | string | `"cr.l5d.io/linkerd/cni-plugin"` | Docker image for the CNI plugin |
 | image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the linkerd-cni container |
 | image.version | string | `"v1.1.0"` | Tag for the CNI container Docker image |
-| imagePullSecrets | string | `nil` |  |
+| imagePullSecrets | list | `[]` |  |
 | inboundProxyPort | int | `4143` | Inbound port for the proxy container |
 | logLevel | string | `"info"` | Log level for the CNI plugin |
 | outboundProxyPort | int | `4140` | Outbound port for the proxy container |

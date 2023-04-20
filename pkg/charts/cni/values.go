@@ -22,24 +22,44 @@ type Image struct {
 	PullPolicy interface{} `json:"pullPolicy"`
 }
 
+// Constraints wraps the Limit and Request settings for computational resources
+type Constraints struct {
+	Limit   string `json:"limit"`
+	Request string `json:"request"`
+}
+
+// Resources represents the computational resources setup for a given container
+type Resources struct {
+	CPU              Constraints `json:"cpu"`
+	Memory           Constraints `json:"memory"`
+	EphemeralStorage Constraints `json:"ephemeral-storage"`
+}
+
 // Values contains the top-level elements in the cni Helm chart
 type Values struct {
-	InboundProxyPort    uint          `json:"inboundProxyPort"`
-	OutboundProxyPort   uint          `json:"outboundProxyPort"`
-	IgnoreInboundPorts  string        `json:"ignoreInboundPorts"`
-	IgnoreOutboundPorts string        `json:"ignoreOutboundPorts"`
-	CliVersion          string        `json:"cliVersion"`
-	Image               Image         `json:"image"`
-	LogLevel            string        `json:"logLevel"`
-	PortsToRedirect     string        `json:"portsToRedirect"`
-	ProxyUID            int64         `json:"proxyUID"`
-	DestCNINetDir       string        `json:"destCNINetDir"`
-	DestCNIBinDir       string        `json:"destCNIBinDir"`
-	UseWaitFlag         bool          `json:"useWaitFlag"`
-	PriorityClassName   string        `json:"priorityClassName"`
-	ProxyAdminPort      string        `json:"proxyAdminPort"`
-	ProxyControlPort    string        `json:"proxyControlPort"`
-	Tolerations         []interface{} `json:"tolerations"`
+	InboundProxyPort    uint                `json:"inboundProxyPort"`
+	OutboundProxyPort   uint                `json:"outboundProxyPort"`
+	IgnoreInboundPorts  string              `json:"ignoreInboundPorts"`
+	IgnoreOutboundPorts string              `json:"ignoreOutboundPorts"`
+	CliVersion          string              `json:"cliVersion"`
+	Image               Image               `json:"image"`
+	LogLevel            string              `json:"logLevel"`
+	PortsToRedirect     string              `json:"portsToRedirect"`
+	ProxyUID            int64               `json:"proxyUID"`
+	DestCNINetDir       string              `json:"destCNINetDir"`
+	DestCNIBinDir       string              `json:"destCNIBinDir"`
+	UseWaitFlag         bool                `json:"useWaitFlag"`
+	PriorityClassName   string              `json:"priorityClassName"`
+	ProxyAdminPort      string              `json:"proxyAdminPort"`
+	ProxyControlPort    string              `json:"proxyControlPort"`
+	Tolerations         []interface{}       `json:"tolerations"`
+	PodLabels           map[string]string   `json:"podLabels"`
+	CommonLabels        map[string]string   `json:"commonLabels"`
+	ImagePullSecrets    []map[string]string `json:"imagePullSecrets"`
+	ExtraInitContainers []interface{}       `json:"extraInitContainers"`
+	EnablePSP           bool                `json:"enablePSP"`
+	Privileged          bool                `json:"privileged"`
+	Resources           Resources           `json:"resources"`
 }
 
 // NewValues returns a new instance of the Values type.
@@ -52,6 +72,22 @@ func NewValues() (*Values, error) {
 
 	v.CliVersion = k8s.CreatedByAnnotationValue()
 	return v, nil
+}
+
+// ToMap converts Values into a map[string]interface{}
+func (v *Values) ToMap() (map[string]interface{}, error) {
+	var valuesMap map[string]interface{}
+	rawValues, err := yaml.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal the values struct: %w", err)
+	}
+
+	err = yaml.Unmarshal(rawValues, &valuesMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to Unmarshal Values into a map: %w", err)
+	}
+
+	return valuesMap, nil
 }
 
 // readDefaults reads all the default variables from the values.yaml file.

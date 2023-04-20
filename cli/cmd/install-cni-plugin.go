@@ -14,9 +14,10 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
-	"sigs.k8s.io/yaml"
+	"helm.sh/helm/v3/pkg/cli/values"
 )
 
 const (
@@ -96,6 +97,7 @@ func newCmdInstallCNIPlugin() *cobra.Command {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	var valOpts values.Options
 
 	cmd := &cobra.Command{
 		Use:   "install-cni [flags]",
@@ -106,9 +108,11 @@ This command installs a DaemonSet into the Linkerd control plane. The DaemonSet
 copies the necessary linkerd-cni plugin binaries and configs onto the host. It
 assumes that the 'linkerd install' command will be executed with the
 '--linkerd-cni-enabled' flag. This command needs to be executed before the
-'linkerd install --linkerd-cni-enabled' command.`,
+'linkerd install --linkerd-cni-enabled' command. 
+
+The installation can be configured by using the --set, --values, --set-string and --set-file flags. A full list of configurable values can be found at https://artifacthub.io/packages/helm/linkerd2/linkerd2-cni#values`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return renderCNIPlugin(os.Stdout, options)
+			return renderCNIPlugin(os.Stdout, valOpts, options)
 		},
 	}
 
@@ -134,6 +138,8 @@ assumes that the 'linkerd install' command will be executed with the
 		"use-wait-flag",
 		options.useWaitFlag,
 		"Configures the CNI plugin to use the \"-w\" flag for the iptables command. (default false)")
+
+	flags.AddValueOptionsFlags(cmd.Flags(), &valOpts)
 
 	return cmd
 }
@@ -204,9 +210,14 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 	return installValues, nil
 }
 
-func renderCNIPlugin(w io.Writer, config *cniPluginOptions) error {
+func renderCNIPlugin(w io.Writer, valOpts values.Options, config *cniPluginOptions) error {
 
 	if err := config.validate(); err != nil {
+		return err
+	}
+
+	valuesOverrides, err := valOpts.MergeValues(nil)
+	if err != nil {
 		return err
 	}
 
@@ -215,8 +226,16 @@ func renderCNIPlugin(w io.Writer, config *cniPluginOptions) error {
 		return err
 	}
 
-	// Render raw values and create chart config
-	rawValues, err := yaml.Marshal(values)
+	mapValues, err := values.ToMap()
+	if err != nil {
+		return err
+	}
+
+	valuesWrapper := &chart.Chart{
+		Metadata: &chart.Metadata{Name: ""},
+		Values:   mapValues,
+	}
+	mergedValues, err := chartutil.CoalesceValues(valuesWrapper, valuesOverrides)
 	if err != nil {
 		return err
 	}
@@ -226,15 +245,16 @@ func renderCNIPlugin(w io.Writer, config *cniPluginOptions) error {
 		{Name: "templates/cni-plugin.yaml"},
 	}
 
-	chart := &charts.Chart{
+	ch := &charts.Chart{
 		Name:      helmCNIDefaultChartName,
 		Dir:       helmCNIDefaultChartDir,
 		Namespace: defaultCNINamespace,
-		RawValues: rawValues,
+		Values:    mergedValues,
 		Files:     files,
 		Fs:        static.Templates,
 	}
-	buf, err := chart.RenderCNI()
+
+	buf, err := ch.RenderCNI()
 	if err != nil {
 		return err
 	}
