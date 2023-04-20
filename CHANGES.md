@@ -4,7 +4,7 @@
 
 This edge release contains a number of bug fixes.
 
-* CRDs
+* CLI
   * Fixed Helm uninstall issue for HttpRoute
 
 * CNI
@@ -14,12 +14,13 @@ This edge release contains a number of bug fixes.
   * Added --set flag to install-cni plugin (thanks @amit-62!)
 
 * Control Plane
-  * Add `trust_dns=error` to default proxy log level
   * Send Opaque protocol hint for opaque ports in destination controller
 
 * Proxy
   * Bump h2 version to avoid panic issue in v.0.3.17
   * Handle Opaque protocol hints on endpoints
+  * Changed the proxy's default log level to silence warnings from
+    `trust_dns_proto` that are generally spurious.
 
 * Viz
   * Bump prometheus image to v2.43.0
