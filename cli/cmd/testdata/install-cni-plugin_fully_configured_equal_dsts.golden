@@ -1,10 +1,10 @@
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: linkerd-cni
-  labels:
-    linkerd.io/cni-resource: "true"
-    config.linkerd.io/admission-webhooks: disabled
+name: linkerd-cni
+labels:
+linkerd.io/cni-resource: "true"
+config.linkerd.io/admission-webhooks: disabled
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -116,7 +116,7 @@ spec:
       # script copies the files into place and then sleeps so
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
-        image: my-docker-registry.io/awesome/cni-plugin-test-image:v1.0.0
+        image: my-docker-registry.io/awesome/cni-plugin-test-image:v1.1.1
         imagePullPolicy: 
         env:
         - name: DEST_CNI_NET_DIR
