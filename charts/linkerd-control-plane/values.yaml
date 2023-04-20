@@ -119,7 +119,7 @@ proxy:
     # @default -- linkerdVersion
     version: ""
   # -- Log level for the proxy
-  logLevel: warn,linkerd=info
+  logLevel: warn,linkerd=info,trust_dns=error
   # -- Log format (`plain` or `json`) for the proxy
   logFormat: plain
   ports:
@@ -233,7 +233,7 @@ proxyInit:
   # capabilities and bypass any security limitations enforced by the kubelet.
   # When used with 'runAsRoot: true', the container will behave exactly as if
   # it was running as root on the host. May escape cgroup limits and see other
-  # processes and devices on the host. 
+  # processes and devices on the host.
   # @default -- false
   privileged: false
   # -- Allow overriding the runAsNonRoot behaviour (<https://github.com/linkerd/linkerd2/issues/7308>)
