@@ -147,7 +147,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
-      - uses: tj-actions/changed-files@e9b5807e928fc8eea705c90da5524fd44b183ba1
+      - uses: tj-actions/changed-files@7ecfc6730dff8072d1cc5215a24cc9478f55264d
         id: changed
         with:
           files: |
@@ -185,6 +185,7 @@ jobs:
       - run: find image-archives -ls
       - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - name: Setup deps
+        shell: bash
         run: |
           rm -rf "$HOME/.cargo"
           bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(cat rust-toolchain)"
@@ -286,7 +287,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
-      - uses: tj-actions/changed-files@e9b5807e928fc8eea705c90da5524fd44b183ba1
+      - uses: tj-actions/changed-files@7ecfc6730dff8072d1cc5215a24cc9478f55264d
         id: changed
         with:
           files: |
@@ -330,7 +331,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
-      - uses: tj-actions/changed-files@e9b5807e928fc8eea705c90da5524fd44b183ba1
+      - uses: tj-actions/changed-files@7ecfc6730dff8072d1cc5215a24cc9478f55264d
         id: changed
         with:
           files: |
@@ -367,6 +368,7 @@ jobs:
       - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: ls -l image-archives/linkerd
       - name: Setup deps
+        shell: bash
         run: |
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash

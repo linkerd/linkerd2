@@ -454,7 +454,7 @@ run_deep_test() {
 
 run_default-policy-deny_test() {
   export default_inbound_policy='deny'
-  run_test "$test_directory/install/install_test.go" 
+  run_test "$test_directory/install/..."
 }
 
 run_cni-calico-deep_test() {
@@ -470,7 +470,7 @@ run_external_test() {
 }
 
 run_cluster-domain_test() {
-  run_test "$test_directory/install/install_test.go" --cluster-domain='custom.domain' 
+  run_test "$test_directory/install/..." --cluster-domain='custom.domain'
 }
 
 # exit_on_err should be called right after a command to check the result status

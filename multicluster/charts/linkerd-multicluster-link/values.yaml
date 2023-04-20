@@ -3,6 +3,8 @@
 controllerImage: cr.l5d.io/linkerd/controller
 # -- Tag for the Service Mirror container Docker image
 controllerImageVersion: linkerdVersionValue
+# -- Additional annotations to add to all pods
+podAnnotations: {}
 # -- Additional labels to add to all pods
 podLabels: {}
 # -- Labels to apply to all resources
