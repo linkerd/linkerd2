@@ -165,7 +165,7 @@
         },
         {
           "name": "LINKERD2_PROXY_LOG",
-          "value": "warn,linkerd=info"
+          "value": "warn,linkerd=info,trust_dns=error"
         },
         {
           "name": "LINKERD2_PROXY_LOG_FORMAT",
