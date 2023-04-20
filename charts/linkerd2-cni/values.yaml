@@ -67,7 +67,7 @@ image:
 #
 # The pull secrets are applied to the respective service accounts
 # which will further orchestrate the deployments.
-imagePullSecrets:
+imagePullSecrets: []
 
 # -- Add additional initContainers to the daemonset
 extraInitContainers: []
