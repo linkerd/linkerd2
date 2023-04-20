@@ -6,6 +6,8 @@ This edge release contains a number of bug fixes.
 
 * CLI
   * Fixed Helm uninstall issue for HttpRoute
+  * The `linkerd diagnostics policy` command now displays outbound policy when
+    the target resource is a Service
 
 * CNI
   * Fixed incompatibility issue with AWS CNI addon in EKS, that was
@@ -14,16 +16,29 @@ This edge release contains a number of bug fixes.
   * Added --set flag to install-cni plugin (thanks @amit-62!)
 
 * Control Plane
+  * Fixed an issue where the policy controller always used the default
+    `cluster.local` domain
   * Send Opaque protocol hint for opaque ports in destination controller
 
+* Helm
+  * Fixed an issue in the viz Helm chart where the namespace metadata template
+    would throw `unexpected argument found` errors
+
 * Proxy
+  * Updated `h2` dependency to include a patch for a theoretical
+    denial-of-service vulnerability discovered in CVE-2023-26964
   * Bump h2 version to avoid panic issue in v.0.3.17
   * Handle Opaque protocol hints on endpoints
   * Changed the proxy's default log level to silence warnings from
     `trust_dns_proto` that are generally spurious.
+  * Added `outbound_http_balancer_endpoints` metric
+  * Fixed missing route_ metrics for requests with ServiceProfiles
 
 * Viz
   * Bump prometheus image to v2.43.0
+  * Add the `kubelet` NetworkAuthentication back since it is used by the 
+    `allow-scrapes` command.
+
 
 ## stable-2.13.1
 
