@@ -30,7 +30,6 @@ This edge release contains a number of bug fixes.
 * Proxy
   * Updated `h2` dependency to include a patch for a theoretical
     denial-of-service vulnerability discovered in CVE-2023-26964
-  * Bump h2 version to avoid panic issue in v.0.3.17
   * Handle Opaque protocol hints on endpoints
   * Changed the proxy's default log level to silence warnings from
     `trust_dns_proto` that are generally spurious.
