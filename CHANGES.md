@@ -10,6 +10,7 @@ This edge release contains a number of bug fixes.
 * CNI
   * Fixed incompatibility issue with AWS CNI addon in EKS, that was
     forbidding pods to acquire networking after scaling up nodes.
+    (thanks @frimik!)
   * Added --set flag to install-cni plugin
 
 * Control Plane
