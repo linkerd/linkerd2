@@ -16,6 +16,10 @@ This edge release contains a number of bug fixes.
   * Add `trust_dns=error` to default proxy log level
   * Send Opaque protocol hint for opaque ports in destination controller
 
+* Proxy
+  * Bump h2 version to avoid panic issue in v.0.3.17
+  * Handle Opaque protocol hints on endpoints
+
 * Viz
   * Bump prometheus image to v2.43.0
 
