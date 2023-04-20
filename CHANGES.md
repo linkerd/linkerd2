@@ -13,10 +13,10 @@ This edge release contains a number of bug fixes.
   * Added --set flag to install-cni plugin
 
 * Control Plane
-  * Add `trust_dns=error` to default proxy log level 
+  * Add `trust_dns=error` to default proxy log level
   * Send Opaque protocol hint for opaque ports in destination controller
 
-* Viz 
+* Viz
   * Bump prometheus image to v2.43.0
 
 ## stable-2.13.1
