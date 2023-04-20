@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"text/template"
 
 	"github.com/go-test/deep"
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -23,21 +24,39 @@ type TestDataDiffer struct {
 
 // DiffTestYAML compares a YAML structure to a fixture on the filestystem.
 func (td *TestDataDiffer) DiffTestYAML(path string, actualYAML string) error {
+	expectedYAML := ReadTestdata(path)
+	return td.diffTestYAML(path, actualYAML, expectedYAML)
+}
+
+// DiffTestYAMLTemplate compares a YAML structure to a parameterized fixture on the filestystem.
+func (td *TestDataDiffer) DiffTestYAMLTemplate(path string, actualYAML string, params any) error {
+	file := filepath.Join("testdata", path)
+	t, err := template.New(path).ParseFiles(file)
+	if err != nil {
+		return fmt.Errorf("Failed to read YAML template from %s: %w", path, err)
+	}
+	var buf bytes.Buffer
+	err = t.Execute(&buf, params)
+	if err != nil {
+		return fmt.Errorf("Failed to build YAML from template %s: %w", path, err)
+	}
+	return td.diffTestYAML(path, actualYAML, buf.String())
+}
+
+func (td *TestDataDiffer) diffTestYAML(path, actualYAML, expectedYAML string) error {
 	actual, err := unmarshalYAML([]byte(actualYAML))
 	if err != nil {
 		return fmt.Errorf("Failed to unmarshal generated YAML: %w", err)
 	}
-	expected, err := unmarshalYAML([]byte(ReadTestdata(path)))
+	expected, err := unmarshalYAML([]byte(expectedYAML))
 	if err != nil {
-		return fmt.Errorf("Failed to unmarshal generated YAML from %s: %w", path, err)
+		return fmt.Errorf("Failed to unmarshal expected YAML: %w", err)
 	}
 	diff := deep.Equal(expected, actual)
 	if diff == nil {
 		return nil
 	}
-
 	td.storeActual(path, []byte(actualYAML))
-
 	e := fmt.Sprintf("YAML mismatches %s:", path)
 	for _, d := range diff {
 		e += fmt.Sprintf("\n	%s", d)
