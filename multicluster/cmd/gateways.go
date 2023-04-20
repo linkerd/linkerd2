@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -138,17 +137,15 @@ func newGatewaysCommand() *cobra.Command {
 			}
 
 			switch opts.output {
-			case "":
-				renderGateways(statuses, stdout)
 			case "json":
 				out, err := json.MarshalIndent(statuses, "", "  ")
 				if err != nil {
 					fmt.Fprint(os.Stderr, err)
 					os.Exit(1)
 				}
-				fmt.Printf("%s", out)
+				fmt.Printf("%s\n", out)
 			default:
-				return errors.New("output must be one of: json")
+				renderGateways(statuses, stdout)
 			}
 
 			return nil
