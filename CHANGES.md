@@ -39,7 +39,7 @@ This edge release contains a number of bug fixes.
 * Viz
   * Bump prometheus image to v2.43.0
   * Add the `kubelet` NetworkAuthentication back since it is used by the
-    `allow-scrapes` command.
+`linkerd viz allow-scrapes` subcommand.
 
 ## stable-2.13.1
 
