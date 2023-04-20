@@ -5,7 +5,7 @@
 This edge release contains a number of bug fixes.
 
 * CLI
-  * Fixed Helm uninstall issue for HttpRoute
+  * Fixed `linkerd uninstall` issue for HttpRoute
   * The `linkerd diagnostics policy` command now displays outbound policy when
     the target resource is a Service
 
