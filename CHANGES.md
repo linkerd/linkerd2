@@ -23,6 +23,7 @@ This edge release contains a number of bug fixes.
 * Helm
   * Fixed an issue in the viz Helm chart where the namespace metadata template
     would throw `unexpected argument found` errors
+  * Fixed Jaeger chart installation failure
 
 * Multicluster
   * Remove namespace field from cluster scoped resources to fix pruning
