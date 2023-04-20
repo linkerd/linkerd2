@@ -24,6 +24,9 @@ This edge release contains a number of bug fixes.
   * Fixed an issue in the viz Helm chart where the namespace metadata template
     would throw `unexpected argument found` errors
 
+* Multicluster
+  * Remove namespace field from cluster scoped resources to fix pruning
+
 * Proxy
   * Updated `h2` dependency to include a patch for a theoretical
     denial-of-service vulnerability discovered in CVE-2023-26964
@@ -38,7 +41,6 @@ This edge release contains a number of bug fixes.
   * Bump prometheus image to v2.43.0
   * Add the `kubelet` NetworkAuthentication back since it is used by the 
     `allow-scrapes` command.
-
 
 ## stable-2.13.1
 
