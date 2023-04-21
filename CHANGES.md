@@ -1,5 +1,20 @@
 # Changes
 
+## stable-2.12.5
+
+This stable release fixes an incompatibility issue with the AWS CNI addon in EKS
+that was forbidding pods to acquire networking after scaling up nodes (thanks
+@frimik!). It also includes security updates for dependencies.
+
+* Detached the linkerd-cni plugin's version from linkerd's and bumped to v1.1.1
+  to fix incompatibility with EKS' AWS CNI addon
+* Bumped the memory limit for the no-op init container to 25Mi to address issues
+  on OKE environments
+* Updated `h2` dependency in the policy controller to include a patch for a
+  theoretical denial-of-service vulnerability discovered in CVE-2023-26964
+* Updated `openssl` dependency in the policy controller, addressing
+  RUSTSEC-2023-0022, RUSTSEC-2023-0023 and RUSTSEC-2023-0024
+
 ## stable-2.12.4
 
 This stable release fixes a memory leak in the Destination controller, and also
