@@ -1,10 +1,10 @@
 kind: Namespace
 apiVersion: v1
 metadata:
-name: linkerd-cni
-labels:
-linkerd.io/cni-resource: "true"
-config.linkerd.io/admission-webhooks: disabled
+  name: linkerd-cni
+  labels:
+    linkerd.io/cni-resource: "true"
+    config.linkerd.io/admission-webhooks: disabled
 ---
 apiVersion: v1
 kind: ServiceAccount
