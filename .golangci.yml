@@ -48,6 +48,14 @@ linters:
   disable:
   - structcheck
 
+linters-settings:
+  revive:
+    rules:
+    - name: package-comments
+      disabled: true
+  stylecheck:
+    checks: ["ST1019"]
+
 issues:
   exclude-use-default: false
   exclude-rules:
