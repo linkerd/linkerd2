@@ -1,5 +1,15 @@
 # Changes
 
+## stable-2.12.5
+
+This stable release contains a hotfix for a CNI issue in EKS.
+
+ * CNI
+   * Fixed incompatibility issue with AWS CNI addon in EKS, that was
+     forbidding pods to acquire networking after scaling up nodes.
+     (thanks @frimik!)
+
+
 ## stable-2.12.4
 
 This stable release fixes a memory leak in the Destination controller, and also
