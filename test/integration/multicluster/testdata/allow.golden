@@ -10,7 +10,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: {{ .AccountName }}
-  namespace: linkerd-multicluster
   labels:
     linkerd.io/extension: multicluster
   annotations:
@@ -53,7 +52,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: {{ .AccountName }}
-  namespace: linkerd-multicluster
   labels:
     linkerd.io/extension: multicluster
   annotations:
