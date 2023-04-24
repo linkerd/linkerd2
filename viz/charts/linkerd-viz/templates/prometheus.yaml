@@ -156,7 +156,7 @@ data:
 
     {{- if .Values.prometheus.remoteWrite }}
     remote_write:
-      {{- toYaml .Values.prometheus.remoteWrite | trim | nindent 4 }}
+      {{- toYaml .Values.prometheus.remoteWrite | trim | nindent 6 }}
     {{- end }}
 ---
 kind: Service
