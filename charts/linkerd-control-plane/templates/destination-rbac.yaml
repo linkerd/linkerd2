@@ -223,6 +223,7 @@ rules:
     resources:
       - leases
     verbs:
+      - create
       - get
       - patch
 ---
