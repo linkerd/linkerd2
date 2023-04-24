@@ -274,6 +274,7 @@ controller-image := DOCKER_REGISTRY + "/controller"
 proxy-image := DOCKER_REGISTRY + "/proxy"
 proxy-init-image := "ghcr.io/linkerd/proxy-init"
 policy-controller-image := DOCKER_REGISTRY + "/policy-controller"
+cni-plugin-image := DOCKER_REGISTRY + "/cni-plugin"
 
 linkerd *flags:
     {{ _linkerd }} {{ flags }}
@@ -312,6 +313,7 @@ linkerd-load: _linkerd-images _k3d-init
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ policy-controller-image }}:{{ linkerd-tag }}' \
         '{{ proxy-image }}:{{ linkerd-tag }}' \
+        "{{ cni-plugin-image }}:$(yq .image.version charts/linkerd2-cni/values.yaml)" \
         "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
 
 linkerd-build: _policy-controller-build
@@ -323,6 +325,7 @@ _linkerd-images:
     #!/usr/bin/env bash
     set -xeuo pipefail
     docker pull -q "{{ proxy-init-image }}:$(yq .proxyInit.image.version charts/linkerd-control-plane/values.yaml)"
+    docker pull -q "{{ cni-plugin-image }}:$(yq .image.version charts/linkerd2-cni/values.yaml)"
     for img in \
         '{{ controller-image }}:{{ linkerd-tag }}' \
         '{{ policy-controller-image }}:{{ linkerd-tag }}' \
@@ -367,6 +370,7 @@ _linkerd-init: && _linkerd-ready
             controller-image='{{ controller-image }}' \
             proxy-image='{{ proxy-image }}' \
             proxy-init-image='{{ proxy-init-image }}' \
+            cni-plugin-image='{{ cni-plugin-image }}'
             linkerd-exec='{{ linkerd-exec }}' \
             linkerd-install
     fi

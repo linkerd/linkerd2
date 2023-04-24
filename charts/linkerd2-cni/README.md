@@ -6,7 +6,7 @@ Linkerd [CNI plugin](https://linkerd.io/2/features/cni/) takes care of setting
 up your pod's network so  incoming and outgoing traffic is proxied through the
 data plane.
 
-![Version: 30.3.6](https://img.shields.io/badge/Version-30.3.6-informational?style=flat-square)
+![Version: 30.3.7](https://img.shields.io/badge/Version-30.3.7-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -22,14 +22,15 @@ Kubernetes: `>=1.21.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| cniPluginImage | string | `"cr.l5d.io/linkerd/cni-plugin"` | Docker image for the CNI plugin |
-| cniPluginVersion | string | `"linkerdVersionValue"` | Tag for the CNI container Docker image |
 | destCNIBinDir | string | `"/opt/cni/bin"` | Directory on the host where the CNI configuration will be placed |
 | destCNINetDir | string | `"/etc/cni/net.d"` | Directory on the host where the CNI plugin binaries reside |
 | enablePSP | bool | `false` | Add a PSP resource and bind it to the linkerd-cni ServiceAccounts. Note PSP has been deprecated since k8s v1.21 |
 | extraInitContainers | list | `[]` | Add additional initContainers to the daemonset |
 | ignoreInboundPorts | string | `""` | Default set of inbound ports to skip via iptables |
 | ignoreOutboundPorts | string | `""` | Default set of outbound ports to skip via iptables |
+| image.name | string | `"cr.l5d.io/linkerd/cni-plugin"` | Docker image for the CNI plugin |
+| image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the linkerd-cni container |
+| image.version | string | `"v1.1.1"` | Tag for the CNI container Docker image |
 | imagePullSecrets | string | `nil` |  |
 | inboundProxyPort | int | `4143` | Inbound port for the proxy container |
 | logLevel | string | `"info"` | Log level for the CNI plugin |
