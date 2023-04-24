@@ -565,7 +565,7 @@ data:
       isGateway: false
       isIngress: false
       logFormat: plain
-      logLevel: warn,linkerd=info
+      logLevel: warn,linkerd=info,trust_dns=error
       opaquePorts: 25,587,3306,4444,5432,6379,9300,11211
       outboundConnectTimeout: 1000ms
       podInboundPorts: ""
@@ -882,7 +882,7 @@ spec:
         - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_TLS
           value: "8080"
         - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info"
+          value: "warn,linkerd=info,trust_dns=error"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -1256,7 +1256,7 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info"
+          value: "warn,linkerd=info,trust_dns=error"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -1713,7 +1713,7 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info"
+          value: "warn,linkerd=info,trust_dns=error"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR

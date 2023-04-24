@@ -35,7 +35,7 @@ func TestRenderCniHelm(t *testing.T) {
   			"logLevel": "debug",
 			"image": {
 				"name": "cr.l5d.io/linkerd/cni-plugin",
-				"version": "v1.1.0"
+				"version": "v1.1.1"
 			},
   			"proxyUID": 1111,
   			"destCNINetDir": "/etc/cni/net.d-test",
@@ -110,6 +110,7 @@ func chartCniPlugin(t *testing.T) *chart.Chart {
 		"templates/_helpers.tpl",
 		"templates/_metadata.tpl",
 		"templates/_tolerations.tpl",
+		"templates/_resources.tpl",
 	})
 
 	cniChart := &chart.Chart{
