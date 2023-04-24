@@ -1,5 +1,29 @@
 # Changes
 
+## stable-2.13.2
+
+This stable release fixes an incompatibility issue with the AWS CNI addon in EKS
+that was forbidding pods to acquire networking after scaling up nodes (thanks
+@frimik!). It also includes security updates for dependencies.
+
+* CNI
+  * Fixed incompatibility issue with AWS CNI addon in EKS, that was forbidding
+    pods to acquire networking after scaling up nodes. (thanks @frimik!)
+
+* CLI
+  * Added a missing label to the HttpRoute CRD so that to ensure it can be
+    removed by the `linkerd uninstall` command
+
+* Proxy
+  * Updated the dependency on h2 to fix a potential crash in the HTTP/2
+    implementation.
+  * Changed the proxy's default log level to silence warnings from
+    `trust_dns_proto` that are generally spurious
+
+* Extensions
+  * Bumped Prometheus image to v2.43.0
+  * Fixed Jaeger Helm chart installation failure (CLI was unaffected).
+
 ## stable-2.13.1
 
 This stable release fixes an issue in the policy controller where a non-default
