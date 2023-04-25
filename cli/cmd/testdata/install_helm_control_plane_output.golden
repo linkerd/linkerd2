@@ -186,6 +186,12 @@ rules:
       - list
       - watch
   - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - get
+  - apiGroups:
       - policy.linkerd.io
     resources:
       - authorizationpolicies
