@@ -105,7 +105,7 @@ func TestNewValues(t *testing.T) {
 				Name:    "cr.l5d.io/linkerd/proxy",
 				Version: "",
 			},
-			LogLevel:  "warn,linkerd=info",
+			LogLevel:  "warn,linkerd=info,trust_dns=error",
 			LogFormat: "plain",
 			Ports: &Ports{
 				Admin:    4191,
