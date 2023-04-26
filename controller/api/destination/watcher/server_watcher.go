@@ -88,11 +88,10 @@ func (sw *ServerWatcher) Subscribe(pod *corev1.Pod, port Port, listener ServerUp
 	}
 	ppp, ok := sw.subscriptions[pp]
 	if !ok {
-		sw.subscriptions[pp] = podPortPublisher{
+		ppp = podPortPublisher{
 			pod:       pod,
-			listeners: []ServerUpdateListener{listener},
+			listeners: []ServerUpdateListener{},
 		}
-		return
 	}
 	ppp.listeners = append(ppp.listeners, listener)
 	sw.subscriptions[pp] = ppp
