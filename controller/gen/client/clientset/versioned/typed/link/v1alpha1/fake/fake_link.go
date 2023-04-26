@@ -24,7 +24,6 @@ import (
 	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,9 +35,9 @@ type FakeLinks struct {
 	ns   string
 }
 
-var linksResource = schema.GroupVersionResource{Group: "multicluster.linkerd.io", Version: "v1alpha1", Resource: "links"}
+var linksResource = v1alpha1.SchemeGroupVersion.WithResource("links")
 
-var linksKind = schema.GroupVersionKind{Group: "multicluster.linkerd.io", Version: "v1alpha1", Kind: "Link"}
+var linksKind = v1alpha1.SchemeGroupVersion.WithKind("Link")
 
 // Get takes name of the link, and returns the corresponding link object, and an error if there is any.
 func (c *FakeLinks) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Link, err error) {

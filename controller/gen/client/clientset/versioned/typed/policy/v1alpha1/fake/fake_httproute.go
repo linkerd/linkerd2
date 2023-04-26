@@ -24,7 +24,6 @@ import (
 	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,9 +35,9 @@ type FakeHTTPRoutes struct {
 	ns   string
 }
 
-var httproutesResource = schema.GroupVersionResource{Group: "policy.linkerd.io", Version: "v1alpha1", Resource: "httproutes"}
+var httproutesResource = v1alpha1.SchemeGroupVersion.WithResource("httproutes")
 
-var httproutesKind = schema.GroupVersionKind{Group: "policy.linkerd.io", Version: "v1alpha1", Kind: "HTTPRoute"}
+var httproutesKind = v1alpha1.SchemeGroupVersion.WithKind("HTTPRoute")
 
 // Get takes name of the hTTPRoute, and returns the corresponding hTTPRoute object, and an error if there is any.
 func (c *FakeHTTPRoutes) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.HTTPRoute, err error) {

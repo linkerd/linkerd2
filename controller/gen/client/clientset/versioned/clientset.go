@@ -41,8 +41,7 @@ type Interface interface {
 	LinkerdV1alpha2() linkerdv1alpha2.LinkerdV1alpha2Interface
 }
 
-// Clientset contains the clients for groups. Each group has exactly one
-// version included in a Clientset.
+// Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
 	linkV1alpha1               *linkv1alpha1.LinkV1alpha1Client
