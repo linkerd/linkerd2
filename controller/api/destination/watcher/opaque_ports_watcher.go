@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"fmt"
 	"strconv"
 	"sync"
 
@@ -23,18 +24,18 @@ type (
 		k8sAPI             *k8s.API
 		subscribersGauge   *prometheus.GaugeVec
 		log                *logging.Entry
-		defaultOpaquePorts map[uint32]struct{}
+		defaultOpaquePorts map[uint16]struct{}
 		sync.RWMutex
 	}
 
 	svcSubscriptions struct {
-		opaquePorts map[uint32]struct{}
+		opaquePorts map[uint16]struct{}
 		listeners   []OpaquePortsUpdateListener
 	}
 
 	// OpaquePortsUpdateListener is the interface that subscribers must implement.
 	OpaquePortsUpdateListener interface {
-		UpdateService(ports map[uint32]struct{})
+		UpdateService(ports map[uint16]struct{})
 	}
 )
 
@@ -48,7 +49,7 @@ var opaquePortsMetrics = promauto.NewGaugeVec(
 
 // NewOpaquePortsWatcher creates a OpaquePortsWatcher and begins watching for
 // k8sAPI for service changes.
-func NewOpaquePortsWatcher(k8sAPI *k8s.API, log *logging.Entry, opaquePorts map[uint32]struct{}) (*OpaquePortsWatcher, error) {
+func NewOpaquePortsWatcher(k8sAPI *k8s.API, log *logging.Entry, opaquePorts map[uint16]struct{}) (*OpaquePortsWatcher, error) {
 	opw := &OpaquePortsWatcher{
 		subscriptions:      make(map[ServiceID]*svcSubscriptions),
 		k8sAPI:             k8sAPI,
@@ -207,19 +208,19 @@ func (opw *OpaquePortsWatcher) deleteService(obj interface{}) {
 	}
 }
 
-func getServiceOpaquePortsAnnotation(svc *corev1.Service) (map[uint32]struct{}, bool, error) {
+func getServiceOpaquePortsAnnotation(svc *corev1.Service) (map[uint16]struct{}, bool, error) {
 	annotation, ok := svc.Annotations[labels.ProxyOpaquePortsAnnotation]
 	if !ok {
 		return nil, false, nil
 	}
-	opaquePorts := make(map[uint32]struct{})
+	opaquePorts := make(map[uint16]struct{})
 	if annotation != "" {
 		for _, portStr := range parseServiceOpaquePorts(annotation, svc.Spec.Ports) {
-			port, err := strconv.ParseUint(portStr, 10, 32)
+			port, err := util.ParsePort(portStr)
 			if err != nil {
 				return nil, true, err
 			}
-			opaquePorts[uint32(port)] = struct{}{}
+			opaquePorts[port] = struct{}{}
 		}
 	}
 	return opaquePorts, true, nil
@@ -239,7 +240,7 @@ func parseServiceOpaquePorts(annotation string, sps []corev1.ServicePort) []stri
 				continue
 			}
 			for i := pr.LowerBound; i <= pr.UpperBound; i++ {
-				values = append(values, strconv.Itoa(i))
+				values = append(values, fmt.Sprintf("%d", i))
 			}
 		}
 	}
@@ -258,7 +259,7 @@ func isNamed(pr string, sps []corev1.ServicePort) (int32, bool) {
 	return 0, false
 }
 
-func portsEqual(x, y map[uint32]struct{}) bool {
+func portsEqual(x, y map[uint16]struct{}) bool {
 	if len(x) != len(y) {
 		return false
 	}

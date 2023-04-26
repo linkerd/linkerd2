@@ -10,11 +10,11 @@ import (
 func TestParsePorts(t *testing.T) {
 	testCases := []struct {
 		ports  string
-		result map[uint32]struct{}
+		result map[uint16]struct{}
 	}{
 		{
 			"25,443,587,3306,5432,11211",
-			map[uint32]struct{}{
+			map[uint16]struct{}{
 				25:    {},
 				443:   {},
 				587:   {},
@@ -25,7 +25,7 @@ func TestParsePorts(t *testing.T) {
 		},
 		{
 			"25,443-447,3306,5432-5435,11211",
-			map[uint32]struct{}{
+			map[uint16]struct{}{
 				25:    {},
 				443:   {},
 				444:   {},

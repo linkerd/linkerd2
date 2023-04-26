@@ -9,7 +9,7 @@ import (
 func TestParsePort(t *testing.T) {
 	tests := []struct {
 		input  string
-		expect int
+		expect uint16
 	}{
 		{"0", 0},
 		{"8080", 8080},

@@ -37,7 +37,7 @@ type (
 		controllerNS        string
 		identityTrustDomain string
 		clusterDomain       string
-		defaultOpaquePorts  map[uint32]struct{}
+		defaultOpaquePorts  map[uint16]struct{}
 
 		k8sAPI      *k8s.API
 		metadataAPI *k8s.MetadataAPI
@@ -67,7 +67,7 @@ func NewServer(
 	k8sAPI *k8s.API,
 	metadataAPI *k8s.MetadataAPI,
 	clusterDomain string,
-	defaultOpaquePorts map[uint32]struct{},
+	defaultOpaquePorts map[uint16]struct{},
 	shutdown <-chan struct{},
 ) (*grpc.Server, error) {
 	log := logging.WithFields(logging.Fields{
@@ -423,7 +423,7 @@ func (s *server) subscribeToEndpointProfile(
 	// If the endpoint's port is annotated as opaque, we don't need to
 	// subscribe for updates because it will always be opaque
 	// regardless of any Servers that may select it.
-	if _, ok := opaquePorts[port]; ok {
+	if _, ok := opaquePorts[uint16(port)]; ok {
 		translator.UpdateProtocol(true)
 	} else if address.Pod == nil {
 		translator.UpdateProtocol(false)
@@ -510,7 +510,7 @@ func (s *server) createAddress(pod *corev1.Pod, targetIP string, port uint32) (w
 	return address, nil
 }
 
-func (s *server) createEndpoint(address watcher.Address, opaquePorts map[uint32]struct{}) (*pb.WeightedAddr, error) {
+func (s *server) createEndpoint(address watcher.Address, opaquePorts map[uint16]struct{}) (*pb.WeightedAddr, error) {
 	weightedAddr, err := createWeightedAddr(address, opaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
 	if err != nil {
 		return nil, err
@@ -781,7 +781,7 @@ func hasSuffix(slice []string, suffix []string) bool {
 	return true
 }
 
-func getAnnotatedOpaquePorts(pod *corev1.Pod, defaultPorts map[uint32]struct{}) map[uint32]struct{} {
+func getAnnotatedOpaquePorts(pod *corev1.Pod, defaultPorts map[uint16]struct{}) map[uint16]struct{} {
 	if pod == nil {
 		return defaultPorts
 	}
@@ -789,18 +789,18 @@ func getAnnotatedOpaquePorts(pod *corev1.Pod, defaultPorts map[uint32]struct{}) 
 	if !ok {
 		return defaultPorts
 	}
-	opaquePorts := make(map[uint32]struct{})
+	opaquePorts := make(map[uint16]struct{})
 	if annotation != "" {
 		for _, pr := range util.ParseContainerOpaquePorts(annotation, pod.Spec.Containers) {
 			for _, port := range pr.Ports() {
-				opaquePorts[uint32(port)] = struct{}{}
+				opaquePorts[port] = struct{}{}
 			}
 		}
 	}
 	return opaquePorts
 }
 
-func getPodSkippedInboundPortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, error) {
+func getPodSkippedInboundPortsAnnotations(pod *corev1.Pod) (map[uint16]struct{}, error) {
 	annotation, ok := pod.Annotations[labels.ProxyIgnoreInboundPortsAnnotation]
 	if !ok || annotation == "" {
 		return nil, nil

@@ -12,7 +12,7 @@ import (
 type opaquePortsAdaptor struct {
 	listener    watcher.ProfileUpdateListener
 	profile     *sp.ServiceProfile
-	opaquePorts map[uint32]struct{}
+	opaquePorts map[uint16]struct{}
 }
 
 func newOpaquePortsAdaptor(listener watcher.ProfileUpdateListener) *opaquePortsAdaptor {
@@ -26,7 +26,7 @@ func (opa *opaquePortsAdaptor) Update(profile *sp.ServiceProfile) {
 	opa.publish()
 }
 
-func (opa *opaquePortsAdaptor) UpdateService(ports map[uint32]struct{}) {
+func (opa *opaquePortsAdaptor) UpdateService(ports map[uint16]struct{}) {
 	opa.opaquePorts = ports
 	opa.publish()
 }

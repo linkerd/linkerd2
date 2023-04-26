@@ -104,7 +104,7 @@ func (pt *profileTranslator) createDestinationProfile(profile *sp.ServiceProfile
 	}
 	var opaqueProtocol bool
 	if profile.Spec.OpaquePorts != nil {
-		_, opaqueProtocol = profile.Spec.OpaquePorts[pt.port]
+		_, opaqueProtocol = profile.Spec.OpaquePorts[uint16(pt.port)]
 	}
 	return &pb.DestinationProfile{
 		Routes:             routes,

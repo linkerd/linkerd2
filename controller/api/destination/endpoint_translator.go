@@ -32,7 +32,7 @@ type endpointTranslator struct {
 	enableH2Upgrade     bool
 	nodeTopologyZone    string
 	nodeName            string
-	defaultOpaquePorts  map[uint32]struct{}
+	defaultOpaquePorts  map[uint16]struct{}
 
 	availableEndpoints watcher.AddressSet
 	filteredSnapshot   watcher.AddressSet
@@ -48,7 +48,7 @@ func newEndpointTranslator(
 	enableH2Upgrade bool,
 	service string,
 	srcNodeName string,
-	defaultOpaquePorts map[uint32]struct{},
+	defaultOpaquePorts map[uint16]struct{},
 	k8sAPI *k8s.MetadataAPI,
 	stream pb.Destination_GetServer,
 	log *logging.Entry,
@@ -253,7 +253,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 	for _, address := range set.Addresses {
 		var (
 			wa          *pb.WeightedAddr
-			opaquePorts map[uint32]struct{}
+			opaquePorts map[uint16]struct{}
 			err         error
 		)
 		if address.Pod != nil {
@@ -348,7 +348,7 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
-func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
+func createWeightedAddr(address watcher.Address, opaquePorts map[uint16]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
 
 	tcpAddr, err := toAddr(address)
 	if err != nil {
@@ -375,7 +375,7 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 	controllerNSLabel := address.Pod.Labels[pkgK8s.ControllerNSLabel]
 	sa, ns := pkgK8s.GetServiceAccountAndNS(address.Pod)
 	weightedAddr.MetricLabels = pkgK8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
-	_, isSkippedInboundPort := skippedInboundPorts[address.Port]
+	_, isSkippedInboundPort := skippedInboundPorts[uint16(address.Port)]
 
 	// If the pod is controlled by any Linkerd control plane, then it can be
 	// hinted that this destination knows H2 (and handles our orig-proto
@@ -386,7 +386,7 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 		// opaque by annotation or default value, then hint its proxy's
 		// inbound port, and set the hinted protocol to Opaque, so that the
 		// client proxy does not send a SessionProtocol.
-		_, opaquePort := opaquePorts[address.Port]
+		_, opaquePort := opaquePorts[uint16(address.Port)]
 		if address.OpaqueProtocol || opaquePort {
 			port, err := getInboundPort(&address.Pod.Spec)
 			if err != nil {

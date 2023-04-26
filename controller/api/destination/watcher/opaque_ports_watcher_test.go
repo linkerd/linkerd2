@@ -92,21 +92,21 @@ metadata:
 )
 
 type testOpaquePortsListener struct {
-	updates []map[uint32]struct{}
+	updates []map[uint16]struct{}
 }
 
 func newTestOpaquePortsListener() *testOpaquePortsListener {
 	return &testOpaquePortsListener{
-		updates: []map[uint32]struct{}{},
+		updates: []map[uint16]struct{}{},
 	}
 }
 
-func (bopl *testOpaquePortsListener) UpdateService(ports map[uint32]struct{}) {
+func (bopl *testOpaquePortsListener) UpdateService(ports map[uint16]struct{}) {
 	bopl.updates = append(bopl.updates, ports)
 }
 
 func TestOpaquePortsWatcher(t *testing.T) {
-	defaultOpaquePorts := map[uint32]struct{}{
+	defaultOpaquePorts := map[uint16]struct{}{
 		25:    {},
 		443:   {},
 		587:   {},
@@ -121,7 +121,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 		nsObject            interface{}
 		svcObject           interface{}
 		service             ServiceID
-		expectedOpaquePorts []map[uint32]struct{}
+		expectedOpaquePorts []map[uint16]struct{}
 	}{
 		{
 			name:         "namespace and service",
@@ -136,7 +136,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 			// 2. svc updated: no update
 			// 3. svc deleted: no update
 			// 4. svc created: ?
-			expectedOpaquePorts: []map[uint32]struct{}{{11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}},
+			expectedOpaquePorts: []map[uint16]struct{}{{11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}},
 		},
 		{
 			name:         "namespace with opaque service",
@@ -151,7 +151,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 			// 2: svc updated: no update
 			// 2: svc deleted: update with default ports
 			// 3. svc created: update with port 3306
-			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}}},
+			expectedOpaquePorts: []map[uint16]struct{}{{3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}}},
 		},
 		{
 			name:         "namespace with multi port opaque service",
@@ -166,7 +166,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 			// 2: svc updated: no update
 			// 2: svc deleted: update with default ports
 			// 3. svc created: update with port 3306, 665
-			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}, 665: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}, 665: {}}},
+			expectedOpaquePorts: []map[uint16]struct{}{{3306: {}, 665: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}, 665: {}}},
 		},
 		{
 			name:         "namespace and service, create opaque service",
@@ -181,7 +181,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 			// 2: svc updated: update with port 3306
 			// 3: svc deleted: update with default ports
 			// 4. svc created: update with port 3306
-			expectedOpaquePorts: []map[uint32]struct{}{{11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}}},
+			expectedOpaquePorts: []map[uint16]struct{}{{11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {3306: {}}},
 		},
 		{
 			name:         "namespace and opaque service, create base service",
@@ -196,7 +196,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 			// 2. svc updated: update with default ports
 			// 3. svc deleted: no update
 			// 4. svc added: no update
-			expectedOpaquePorts: []map[uint32]struct{}{{3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}},
+			expectedOpaquePorts: []map[uint16]struct{}{{3306: {}}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}},
 		},
 		{
 			name:         "namespace and explicitly not opaque service, create explicitly not opaque service",
@@ -211,7 +211,7 @@ func TestOpaquePortsWatcher(t *testing.T) {
 			// 2. svc updated: no update
 			// 3. svc deleted: update with default ports
 			// 4. svc added: update with no ports
-			expectedOpaquePorts: []map[uint32]struct{}{{}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {}},
+			expectedOpaquePorts: []map[uint16]struct{}{{}, {11211: {}, 25: {}, 3306: {}, 443: {}, 5432: {}, 587: {}}, {}},
 		},
 	} {
 		k8sAPI, err := k8s.NewFakeAPI(tt.initialState...)

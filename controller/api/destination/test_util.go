@@ -370,7 +370,7 @@ spec:
 	}
 	log := logging.WithField("test", t.Name())
 	logging.SetLevel(logging.DebugLevel)
-	defaultOpaquePorts := map[uint32]struct{}{
+	defaultOpaquePorts := map[uint16]struct{}{
 		25:    {},
 		443:   {},
 		587:   {},
@@ -500,7 +500,7 @@ metadata:
 		true,
 		"service-name.service-ns",
 		"test-123",
-		map[uint32]struct{}{},
+		map[uint16]struct{}{},
 		metadataAPI,
 		mockGetServer,
 		logging.WithField("test", t.Name()),

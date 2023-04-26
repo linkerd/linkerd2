@@ -9,8 +9,8 @@ import (
 
 // ParsePorts parses the given ports string into a map of ports;
 // this includes converting port ranges into separate ports
-func ParsePorts(portsString string) (map[uint32]struct{}, error) {
-	opaquePorts := make(map[uint32]struct{})
+func ParsePorts(portsString string) (map[uint16]struct{}, error) {
+	opaquePorts := make(map[uint16]struct{})
 	if portsString != "" {
 		portRanges := GetPortRanges(portsString)
 		for _, pr := range portRanges {
@@ -20,7 +20,7 @@ func ParsePorts(portsString string) (map[uint32]struct{}, error) {
 				continue
 			}
 			for i := portsRange.LowerBound; i <= portsRange.UpperBound; i++ {
-				opaquePorts[uint32(i)] = struct{}{}
+				opaquePorts[i] = struct{}{}
 			}
 
 		}
@@ -37,7 +37,12 @@ func ParseContainerOpaquePorts(override string, containers []corev1.Container) [
 	for _, pr := range portRanges {
 		port, named := isNamed(pr, containers)
 		if named {
-			values = append(values, PortRange{UpperBound: int(port), LowerBound: int(port)})
+			if port > 65535 || port < 0 {
+				log.Warnf("Invalid port number [%d]: must be a 16-bit unsigned integer", port)
+				continue
+			}
+			port := uint16(port)
+			values = append(values, PortRange{UpperBound: port, LowerBound: port})
 		} else {
 			pr, err := ParsePortRange(pr)
 			if err != nil {
