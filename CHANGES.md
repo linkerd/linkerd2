@@ -1,5 +1,21 @@
 # Changes
 
+## edge-23.4.3
+
+This edge release improves compatibility with ArgoCD by changing the Linkerd
+control plane to create Lease resources at runtime rather than including them
+in the Helm chart. It also addresses a CVE by upgrading an underlying
+dependency.
+
+* Upgraded `h2` dependency to address CVE-2023-26964
+* Fixed an issue where `server_port_subscribers` metric in the Destination 
+  controller was sometimes absent
+* Removed the policy-controller-write Lease from the control plane Helm chart in
+  favor of creating it runtime
+* Updated the proxy-injector to pass opaque port lists to the proxy as ranges
+  rather than individually, greatly reducing the size of proxy manifests when
+  large opaque port ranges are set
+
 ## edge-23.4.2
 
 This edge release contains a number of bug fixes.
