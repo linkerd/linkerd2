@@ -15,6 +15,9 @@ dependency.
 * Updated the proxy-injector to pass opaque port lists to the proxy as ranges
   rather than individually, greatly reducing the size of proxy manifests when
   large opaque port ranges are set
+* Fixed an issue where the proxy was performing protocol detection on ports
+  marked as opaque
+* Improved backwards compatibility between 2.13 proxies and 2.12 control planes
 
 ## edge-23.4.2
 
