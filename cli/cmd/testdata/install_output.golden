@@ -543,12 +543,14 @@ data:
         pullPolicy: ImagePullPolicy
         version: ProxyVersion
       inboundConnectTimeout: ""
+      inboundDiscoveryCacheUnusedTimeout: ""
       isGateway: false
       isIngress: false
       logFormat: plain
       logLevel: warn,linkerd=info
       opaquePorts: 25,443,587,3306,5432,11211
       outboundConnectTimeout: ""
+      outboundDiscoveryCacheUnusedTimeout: ""
       podInboundPorts: ""
       ports:
         admin: 4191

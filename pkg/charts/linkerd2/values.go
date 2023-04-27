@@ -94,27 +94,29 @@ type (
 	Proxy struct {
 		Capabilities *Capabilities `json:"capabilities"`
 		// This should match .Resources.CPU.Limit, but must be a whole number
-		Cores                         int64            `json:"cores,omitempty"`
-		EnableExternalProfiles        bool             `json:"enableExternalProfiles"`
-		Image                         *Image           `json:"image"`
-		LogLevel                      string           `json:"logLevel"`
-		LogFormat                     string           `json:"logFormat"`
-		SAMountPath                   *VolumeMountPath `json:"saMountPath"`
-		Ports                         *Ports           `json:"ports"`
-		Resources                     *Resources       `json:"resources"`
-		UID                           int64            `json:"uid"`
-		WaitBeforeExitSeconds         uint64           `json:"waitBeforeExitSeconds"`
-		IsGateway                     bool             `json:"isGateway"`
-		IsIngress                     bool             `json:"isIngress"`
-		RequireIdentityOnInboundPorts string           `json:"requireIdentityOnInboundPorts"`
-		OutboundConnectTimeout        string           `json:"outboundConnectTimeout"`
-		InboundConnectTimeout         string           `json:"inboundConnectTimeout"`
-		PodInboundPorts               string           `json:"podInboundPorts"`
-		OpaquePorts                   string           `json:"opaquePorts"`
-		Await                         bool             `json:"await"`
-		DefaultInboundPolicy          string           `json:"defaultInboundPolicy"`
-		AccessLog                     string           `json:"accessLog"`
-		ShutdownGracePeriod           string           `json:"shutdownGracePeriod"`
+		Cores                               int64            `json:"cores,omitempty"`
+		EnableExternalProfiles              bool             `json:"enableExternalProfiles"`
+		Image                               *Image           `json:"image"`
+		LogLevel                            string           `json:"logLevel"`
+		LogFormat                           string           `json:"logFormat"`
+		SAMountPath                         *VolumeMountPath `json:"saMountPath"`
+		Ports                               *Ports           `json:"ports"`
+		Resources                           *Resources       `json:"resources"`
+		UID                                 int64            `json:"uid"`
+		WaitBeforeExitSeconds               uint64           `json:"waitBeforeExitSeconds"`
+		IsGateway                           bool             `json:"isGateway"`
+		IsIngress                           bool             `json:"isIngress"`
+		RequireIdentityOnInboundPorts       string           `json:"requireIdentityOnInboundPorts"`
+		OutboundConnectTimeout              string           `json:"outboundConnectTimeout"`
+		InboundConnectTimeout               string           `json:"inboundConnectTimeout"`
+		OutboundDiscoveryCacheUnusedTimeout string           `json:"outboundDiscoveryCacheUnusedTimeout"`
+		InboundDiscoveryCacheUusedTimeout   string           `json:"inboundDiscoveryCacheUnusedTimeout"`
+		PodInboundPorts                     string           `json:"podInboundPorts"`
+		OpaquePorts                         string           `json:"opaquePorts"`
+		Await                               bool             `json:"await"`
+		DefaultInboundPolicy                string           `json:"defaultInboundPolicy"`
+		AccessLog                           string           `json:"accessLog"`
+		ShutdownGracePeriod                 string           `json:"shutdownGracePeriod"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container

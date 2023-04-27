@@ -494,12 +494,14 @@ data:
         pullPolicy: ""
         version: install-proxy-version
       inboundConnectTimeout: 100ms
+      inboundDiscoveryCacheUnusedTimeout: ""
       isGateway: false
       isIngress: false
       logFormat: plain
       logLevel: warn,linkerd=info,trust_dns=error
       opaquePorts: 25,587,3306,4444,5432,6379,9300,11211
       outboundConnectTimeout: 1000ms
+      outboundDiscoveryCacheUnusedTimeout: ""
       podInboundPorts: ""
       ports:
         admin: 4191
