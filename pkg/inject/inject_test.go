@@ -114,7 +114,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.RequireIdentityOnInboundPorts = "8888,9999"
 				values.Proxy.OutboundConnectTimeout = "6000ms"
 				values.Proxy.InboundConnectTimeout = "600ms"
-				values.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
+				values.Proxy.OpaquePorts = "4320-4325,3306"
 				values.Proxy.Await = true
 				values.Proxy.AccessLog = "apache"
 				values.Proxy.ShutdownGracePeriod = "30000ms"
@@ -201,7 +201,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.ProxyInit.IgnoreOutboundPorts = "8079,8080"
 				values.Proxy.OutboundConnectTimeout = "6000ms"
 				values.Proxy.InboundConnectTimeout = "600ms"
-				values.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
+				values.Proxy.OpaquePorts = "4320-4325,3306"
 				values.Proxy.Await = true
 				values.Proxy.AccessLog = "apache"
 				values.Proxy.IsIngress = true

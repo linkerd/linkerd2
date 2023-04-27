@@ -412,12 +412,9 @@ func (s *server) subscribeToEndpointProfile(
 		log = log.WithField("ip", address.IP)
 	}
 
-	opaquePorts, err := getAnnotatedOpaquePorts(address.Pod, s.defaultOpaquePorts)
-	if err != nil {
-		return fmt.Errorf("failed to get opaque ports for pod: %w", err)
-	}
+	opaquePorts := getAnnotatedOpaquePorts(address.Pod, s.defaultOpaquePorts)
 	var endpoint *pb.WeightedAddr
-	endpoint, err = s.createEndpoint(*address, opaquePorts)
+	endpoint, err := s.createEndpoint(*address, opaquePorts)
 	if err != nil {
 		return fmt.Errorf("failed to create endpoint: %w", err)
 	}
@@ -784,25 +781,23 @@ func hasSuffix(slice []string, suffix []string) bool {
 	return true
 }
 
-func getAnnotatedOpaquePorts(pod *corev1.Pod, defaultPorts map[uint32]struct{}) (map[uint32]struct{}, error) {
+func getAnnotatedOpaquePorts(pod *corev1.Pod, defaultPorts map[uint32]struct{}) map[uint32]struct{} {
 	if pod == nil {
-		return defaultPorts, nil
+		return defaultPorts
 	}
 	annotation, ok := pod.Annotations[labels.ProxyOpaquePortsAnnotation]
 	if !ok {
-		return defaultPorts, nil
+		return defaultPorts
 	}
 	opaquePorts := make(map[uint32]struct{})
 	if annotation != "" {
-		for _, portStr := range util.ParseContainerOpaquePorts(annotation, pod.Spec.Containers) {
-			port, err := strconv.ParseUint(portStr, 10, 32)
-			if err != nil {
-				return nil, err
+		for _, pr := range util.ParseContainerOpaquePorts(annotation, pod.Spec.Containers) {
+			for _, port := range pr.Ports() {
+				opaquePorts[uint32(port)] = struct{}{}
 			}
-			opaquePorts[uint32(port)] = struct{}{}
 		}
 	}
-	return opaquePorts, nil
+	return opaquePorts
 }
 
 func getPodSkippedInboundPortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, error) {
