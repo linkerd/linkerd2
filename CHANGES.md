@@ -11,7 +11,7 @@ dependency.
 * Fixed an issue where `server_port_subscribers` metric in the Destination
   controller was sometimes absent
 * Removed the policy-controller-write Lease from the control plane Helm chart in
-  favor of creating it runtime
+  favor of creating it at runtime
 * Updated the proxy-injector to pass opaque port lists to the proxy as ranges
   rather than individually, greatly reducing the size of proxy manifests when
   large opaque port ranges are set
