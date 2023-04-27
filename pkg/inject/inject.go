@@ -1051,8 +1051,15 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 	}
 
 	if override, ok := annotations[k8s.ProxyOpaquePortsAnnotation]; ok {
-		opaquePortsStrs := util.ParseContainerOpaquePorts(override, conf.pod.spec.Containers)
-		values.Proxy.OpaquePorts = strings.Join(opaquePortsStrs, ",")
+		var opaquePorts strings.Builder
+		for _, pr := range util.ParseContainerOpaquePorts(override, conf.pod.spec.Containers) {
+			if opaquePorts.Len() > 0 {
+				opaquePorts.WriteRune(',')
+			}
+			opaquePorts.WriteString(pr.ToString())
+		}
+
+		values.Proxy.OpaquePorts = opaquePorts.String()
 	}
 
 	if override, ok := annotations[k8s.DebugImageAnnotation]; ok {

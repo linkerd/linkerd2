@@ -1,7 +1,6 @@
 package util
 
 import (
-	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -29,25 +28,23 @@ func ParsePorts(portsString string) (map[uint32]struct{}, error) {
 	return opaquePorts, nil
 }
 
-// ParseContainerOpaquePorts parses the opaque ports annotation into a list of ports;
-// this includes converting port ranges into separate ports and named ports
+// ParseContainerOpaquePorts parses the opaque ports annotation into a list of
+// port ranges, including validating port ranges and converting named ports
 // into their port number equivalents.
-func ParseContainerOpaquePorts(override string, containers []corev1.Container) []string {
+func ParseContainerOpaquePorts(override string, containers []corev1.Container) []PortRange {
 	portRanges := GetPortRanges(override)
-	var values []string
+	var values []PortRange
 	for _, pr := range portRanges {
 		port, named := isNamed(pr, containers)
 		if named {
-			values = append(values, strconv.Itoa(int(port)))
+			values = append(values, PortRange{UpperBound: int(port), LowerBound: int(port)})
 		} else {
 			pr, err := ParsePortRange(pr)
 			if err != nil {
 				log.Warnf("Invalid port range [%v]: %s", pr, err)
 				continue
 			}
-			for i := pr.LowerBound; i <= pr.UpperBound; i++ {
-				values = append(values, strconv.Itoa(i))
-			}
+			values = append(values, pr)
 		}
 	}
 	return values
