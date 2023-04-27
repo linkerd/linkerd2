@@ -195,6 +195,12 @@ rules:
       - list
       - watch
   - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - get
+  - apiGroups:
       - policy.linkerd.io
     resources:
       - authorizationpolicies
@@ -218,6 +224,7 @@ rules:
     resources:
       - leases
     verbs:
+      - create
       - get
       - patch
 ---
@@ -1205,15 +1212,6 @@ spec:
   selector:
     matchLabels:
       linkerd.io/control-plane-component: destination
----
-apiVersion: coordination.k8s.io/v1
-kind: Lease
-metadata:
-  name: policy-controller-write
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: destination
-    linkerd.io/control-plane-ns: linkerd
 ---
 apiVersion: apps/v1
 kind: Deployment
