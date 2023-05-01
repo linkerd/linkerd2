@@ -1,7 +1,7 @@
 ARG BUILDPLATFORM=linux/amd64
 
 # Precompile key slow-to-build dependencies
-FROM --platform=$BUILDPLATFORM golang:1.19-alpine as go-deps
+FROM --platform=$BUILDPLATFORM golang:1.20-alpine as go-deps
 WORKDIR /linkerd-build
 COPY go.mod go.sum ./
 COPY bin/install-deps bin/
@@ -18,7 +18,8 @@ COPY cni-plugin cni-plugin
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /go/bin/linkerd-cni -v -mod=readonly ./cni-plugin/
 
-FROM debian:bullseye-slim
+## install script dependencies
+FROM debian:bullseye-slim as deps
 WORKDIR /linkerd
 RUN apt-get update && apt-get install -y --no-install-recommends \
     iptables \
@@ -27,10 +28,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     jq && \
     rm -rf /var/lib/apt/lists/*
 
-# We still rely on old iptables-legacy syntax.
-RUN update-alternatives --set iptables /usr/sbin/iptables-legacy \
-    && update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
-
+FROM scratch as runtime
+COPY --from=deps /usr/bin/inotifywait /usr/bin/inotifywait
+COPY --from=deps /usr/bin/pgrep /usr/bin/pgrep
+COPY --from=deps /usr/bin/jq /usr/bin/jq
+COPY --from=deps /usr/sbin/iptables-legacy /usr/sbin/iptables
+COPY --from=deps /usr/sbin/ip6tables-legacy /usr/sbin/ip6tables
 COPY --from=golang /go/bin/linkerd-cni /opt/cni/bin/
 COPY LICENSE .
 COPY cni-plugin/deployment/scripts/install-cni.sh .
