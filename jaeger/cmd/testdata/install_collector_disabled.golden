@@ -30,7 +30,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: c7e6fd0e7aad8fbcdf4f47b4d05c8e6b7e0e489cf9afc2026d4b6accd590ea71
+        checksum/config: c5d4d160a7fd2febef85a7a02d2df5b5575dec35abc84d696e9afa8d3f8423e6
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
@@ -197,6 +197,8 @@ apiVersion: v1
 metadata:
   name: jaeger-injector
   namespace: linkerd-jaeger
+  labels:
+    linkerd.io/extension: jaeger
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
@@ -230,6 +232,8 @@ apiVersion: v1
 metadata:
   name: jaeger
   namespace: linkerd-jaeger
+  labels:
+    linkerd.io/extension: jaeger
 ---
 ###
 ### Tracing Jaeger Service

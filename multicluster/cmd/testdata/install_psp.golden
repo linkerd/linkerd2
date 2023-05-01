@@ -36,6 +36,7 @@ spec:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         app: linkerd-gateway
+        linkerd.io/extension: multicluster
     spec:
       
       containers:
@@ -353,6 +354,7 @@ metadata:
   namespace: linkerd-multicluster
   name: service-mirror
   labels:
+    linkerd.io/extension: multicluster
     component: linkerd-service-mirror
 spec:
   podSelector:
@@ -367,6 +369,7 @@ metadata:
   namespace: linkerd-multicluster
   name: service-mirror
   labels:
+    linkerd.io/extension: multicluster
     component: linkerd-service-mirror
 spec:
   targetRef:

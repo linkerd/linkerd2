@@ -7,6 +7,7 @@ metadata:
     "helm.sh/hook-weight": "1"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
   labels:
+    linkerd.io/extension: viz
     app.kubernetes.io/name: namespace-metadata
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
@@ -20,6 +21,7 @@ spec:
         {{ include "partials.annotations.created-by" . }}
         linkerd.io/inject: disabled
       labels:
+        linkerd.io/extension: viz
         app.kubernetes.io/name: namespace-metadata
         app.kubernetes.io/part-of: Linkerd
         app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}

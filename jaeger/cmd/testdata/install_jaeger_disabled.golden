@@ -30,7 +30,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: d10abe745e0df2e543fb40fcfecf1df813afc2259991761174790f0735959752
+        checksum/config: b8ce5fb085b648e293a23ee74978b9bf316e40dacddd262c6877b2a7691be716
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
@@ -170,6 +170,8 @@ apiVersion: v1
 metadata:
   name: collector
   namespace: linkerd-jaeger
+  labels:
+    linkerd.io/extension: jaeger
 ---
 ###
 ### Jaeger Injector RBAC
@@ -206,6 +208,8 @@ apiVersion: v1
 metadata:
   name: jaeger-injector
   namespace: linkerd-jaeger
+  labels:
+    linkerd.io/extension: jaeger
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
