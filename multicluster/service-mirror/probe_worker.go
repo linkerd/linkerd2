@@ -66,6 +66,7 @@ func (pw *ProbeWorker) run() {
 	probeTickerPeriod := pw.probeSpec.Period
 	maxJitter := pw.probeSpec.Period / 10 // max jitter is 10% of period
 	probeTicker := NewTicker(probeTickerPeriod, maxJitter)
+	defer probeTicker.Stop()
 
 probeLoop:
 	for {
