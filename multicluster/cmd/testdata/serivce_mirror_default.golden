@@ -100,6 +100,7 @@ spec:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
       labels:
+        linkerd.io/extension: multicluster
         component: linkerd-service-mirror
         mirror.linkerd.io/cluster-name: test-cluster
     spec:
@@ -136,6 +137,7 @@ metadata:
   name: probe-gateway-test-cluster
   namespace: test
   labels:
+    linkerd.io/extension: multicluster
     mirror.linkerd.io/mirrored-gateway: "true"
     mirror.linkerd.io/cluster-name: test-cluster
 spec:

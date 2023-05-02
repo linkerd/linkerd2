@@ -38,6 +38,7 @@ spec:
         {{- with .Values.gateway.deploymentAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
         app: {{.Values.gateway.name}}
+        linkerd.io/extension: multicluster
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- $_ := set $tree "component" .Values.gateway.name -}}
@@ -77,6 +78,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: {{.Values.gateway.name}}
+    linkerd.io/extension: multicluster
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}

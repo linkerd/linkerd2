@@ -4,7 +4,10 @@
 use anyhow::{bail, Result};
 use clap::Parser;
 use futures::prelude::*;
-use kube::api::ListParams;
+use k8s::{api::apps::v1::Deployment, Client, ObjectMeta, Resource};
+use k8s_openapi::api::coordination::v1 as coordv1;
+use kube::api::{ListParams, PatchParams};
+use kubert::LeaseManager;
 use linkerd_policy_controller::{
     grpc, inbound, index_list::IndexList, k8s, outbound, Admission, ClusterInfo, DefaultPolicy,
     InboundDiscover, IpNet, OutboundDiscover,
@@ -72,6 +75,9 @@ struct Args {
     #[clap(long, default_value = "all-unauthenticated")]
     default_policy: DefaultPolicy,
 
+    #[clap(long, default_value = "linkerd-destination")]
+    policy_deployment_name: String,
+
     #[clap(long, default_value = "linkerd")]
     control_plane_namespace: String,
 
@@ -97,6 +103,7 @@ async fn main() -> Result<()> {
         cluster_domain,
         cluster_networks: IpNets(cluster_networks),
         default_policy,
+        policy_deployment_name,
         control_plane_namespace,
         probe_networks,
         default_opaque_ports,
@@ -133,17 +140,19 @@ async fn main() -> Result<()> {
         probe_networks,
     });
 
-    // Create the lease manager used for trying to claim the policy
-    // controller write lease.
-    let api = k8s::Api::namespaced(runtime.client(), &control_plane_namespace);
-    // todo: Do we need to use LeaseManager::field_manager here?
-    let lease = kubert::lease::LeaseManager::init(api, LEASE_NAME).await?;
     let hostname =
         std::env::var("HOSTNAME").expect("Failed to fetch `HOSTNAME` environment variable");
     let params = kubert::lease::ClaimParams {
         lease_duration: LEASE_DURATION,
         renew_grace_period: RENEW_GRACE_PERIOD,
     };
+
+    let lease = init_lease(
+        runtime.client(),
+        &control_plane_namespace,
+        &policy_deployment_name,
+    )
+    .await?;
     let (claims, _task) = lease.spawn(hostname.clone(), params).await?;
 
     // Build the API index data structures which will maintain information
@@ -297,4 +306,60 @@ async fn grpc(
         }
     }
     Ok(())
+}
+
+async fn init_lease(client: Client, ns: &str, deployment_name: &str) -> Result<LeaseManager> {
+    // Fetch the policy-controller deployment so that we can use it as an owner
+    // reference of the Lease.
+    let api = k8s::Api::<Deployment>::namespaced(client.clone(), ns);
+    let deployment = api.get(deployment_name).await?;
+
+    let api = k8s::Api::namespaced(client, ns);
+    let params = PatchParams {
+        field_manager: Some("policy-controller".to_string()),
+        ..Default::default()
+    };
+    match api
+        .patch(
+            LEASE_NAME,
+            &params,
+            &kube::api::Patch::Apply(coordv1::Lease {
+                metadata: ObjectMeta {
+                    name: Some(LEASE_NAME.to_string()),
+                    namespace: Some(ns.to_string()),
+                    // Specifying a resource version of "0" means that we will
+                    // only create the Lease if it does not already exist.
+                    resource_version: Some("0".to_string()),
+                    owner_references: Some(vec![deployment.controller_owner_ref(&()).unwrap()]),
+                    labels: Some(
+                        [
+                            (
+                                "linkerd.io/control-plane-component".to_string(),
+                                "destination".to_string(),
+                            ),
+                            ("linkerd.io/control-plane-ns".to_string(), ns.to_string()),
+                        ]
+                        .into_iter()
+                        .collect(),
+                    ),
+                    ..Default::default()
+                },
+                spec: None,
+            }),
+        )
+        .await
+    {
+        Ok(lease) => tracing::info!(?lease, "created Lease resource"),
+        Err(k8s::Error::Api(_)) => tracing::info!("Lease already exists, no need to create it"),
+        Err(error) => {
+            tracing::error!(%error, "error creating Lease resource");
+            return Err(error.into());
+        }
+    };
+    // Create the lease manager used for trying to claim the policy
+    // controller write lease.
+    // todo: Do we need to use LeaseManager::field_manager here?
+    kubert::lease::LeaseManager::init(api, LEASE_NAME)
+        .await
+        .map_err(Into::into)
 }

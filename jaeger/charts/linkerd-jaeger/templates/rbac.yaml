@@ -8,9 +8,9 @@ apiVersion: v1
 metadata:
   name: collector
   namespace: {{ .Release.Namespace }}
-  {{- with .Values.commonLabels }}
-  labels: {{ toYaml . | trim | nindent 4 }}
-  {{- end }}
+  labels:
+    linkerd.io/extension: jaeger
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{ end -}}
 ---
@@ -51,10 +51,9 @@ apiVersion: v1
 metadata:
   name: jaeger-injector
   namespace: {{ .Release.Namespace }}
-  {{- with .Values.commonLabels }}
   labels:
-    {{ toYaml . | trim | indent 4 }}
-  {{- end }}
+    linkerd.io/extension: jaeger
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
 {{- $host := printf "jaeger-injector.%s.svc" .Release.Namespace }}
@@ -65,9 +64,9 @@ apiVersion: v1
 metadata:
   name: jaeger-injector-k8s-tls
   namespace: {{ .Release.Namespace }}
-  {{- with .Values.commonLabels }}
-  labels: {{ toYaml . | trim | nindent 4 }}
-  {{- end }}
+  labels:
+    linkerd.io/extension: jaeger
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.webhook.crtPEM)) (empty .Values.webhook.crtPEM) }}
@@ -128,8 +127,8 @@ apiVersion: v1
 metadata:
   name: jaeger
   namespace: {{ .Release.Namespace }}
-  {{- with .Values.commonLabels }}
-  labels: {{ toYaml . | trim | nindent 4 }}
-  {{- end }}
+  labels:
+    linkerd.io/extension: jaeger
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{ end -}}
