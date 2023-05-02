@@ -63,3 +63,20 @@ func (pr PortRange) ToString() string {
 
 	return fmt.Sprintf("%d-%d", pr.LowerBound, pr.UpperBound)
 }
+
+// Ports returns an array of all the ports contained by this range.
+func (pr PortRange) Ports() []uint16 {
+	var ports []uint16
+	for i := pr.LowerBound; i <= pr.UpperBound; i++ {
+		ports = append(ports, uint16(i))
+	}
+	return ports
+}
+
+func (pr PortRange) ToString() string {
+	if pr.LowerBound == pr.UpperBound {
+		return strconv.Itoa(pr.LowerBound)
+	}
+
+	return fmt.Sprintf("%d-%d", pr.LowerBound, pr.UpperBound)
+}

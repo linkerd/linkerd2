@@ -107,6 +107,7 @@ spec:
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
+        linkerd.io/extension: multicluster
         component: linkerd-service-mirror
         mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}

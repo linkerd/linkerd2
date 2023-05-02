@@ -43,4 +43,4 @@ Moderators will issue a warning to users who don't follow the code of conduct. A
 second offense results in a temporary ban, a third warrants a permanent ban.
 It's at the moderator's discretion to un-ban a remorseful user, or immediately
 ban a toxic user without warning. Unjustified bans can be appealed by contacting
-banhammer@buoyant.io.
+<banhammer@buoyant.io>.

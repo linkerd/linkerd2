@@ -5,6 +5,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   name: service-mirror
   labels:
+    linkerd.io/extension: multicluster
     component: linkerd-service-mirror
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
@@ -20,6 +21,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   name: service-mirror
   labels:
+    linkerd.io/extension: multicluster
     component: linkerd-service-mirror
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
