@@ -111,10 +111,10 @@ proxy:
   inboundConnectTimeout: 100ms
   # -- Maximum time allowed before an unused outbound discovery result
   # is evicted from the cache, defaults to 5s if unspecified
-  outboundDiscoveryCacheUnusedTimeout: ""
+  outboundDiscoveryCacheUnusedTimeout: "5s"
   # -- Maximum time allowed before an unused inbound discovery result
   # is evicted from the cache, defaults to 90s if unspecified
-  inboundDiscoveryCacheUnusedTimeout: ""
+  inboundDiscoveryCacheUnusedTimeout: "90s"
   image:
     # -- Docker image for the proxy
     name: cr.l5d.io/linkerd/proxy

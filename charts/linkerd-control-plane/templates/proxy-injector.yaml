@@ -70,8 +70,8 @@ spec:
       */}}
       {{- $_ := set $tree.Values.proxy "defaultInboundPolicy" "all-unauthenticated" }}
       {{- $_ := set $tree.Values.proxy "capabilities" (dict "drop" (list "ALL")) }}
-      {{- $_ := set $tree.Values.proxy "outboundDiscoveryCacheUnusedTimeout" "" }}
-      {{- $_ := set $tree.Values.proxy "inboundDiscoveryCacheUnusedTimeout" "" }}
+      {{- $_ := set $tree.Values.proxy "outboundDiscoveryCacheUnusedTimeout" "5s" }}
+      {{- $_ := set $tree.Values.proxy "inboundDiscoveryCacheUnusedTimeout" "90s" }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       - args:
         - proxy-injector
