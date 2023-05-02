@@ -15,7 +15,7 @@ permissions:
 jobs:
   rust-version:
     runs-on: ubuntu-latest
-    container: ghcr.io/linkerd/dev:v39-rust
+    container: ghcr.io/linkerd/dev:v40-rust
     steps:
       - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
       - run: |
