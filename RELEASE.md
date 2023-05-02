@@ -320,8 +320,8 @@ linkerd dashboard
 
 ## 12. Send the announcement email
 
-Send an email to cncf-linkerd-dev@lists.cncf.io,
-cncf-linkerd-users@lists.cncf.io, and cncf-linkerd-announce@lists.cncf.io,
+Send an email to <cncf-linkerd-dev@lists.cncf.io>,
+<cncf-linkerd-users@lists.cncf.io>, and <cncf-linkerd-announce@lists.cncf.io>,
 announcing the release.
 
 Subscribe to these mailing lists if you aren't on them:
