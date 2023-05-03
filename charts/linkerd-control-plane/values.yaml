@@ -110,10 +110,10 @@ proxy:
   # connection
   inboundConnectTimeout: 100ms
   # -- Maximum time allowed before an unused outbound discovery result
-  # is evicted from the cache, defaults to 5s if unspecified
+  # is evicted from the cache
   outboundDiscoveryCacheUnusedTimeout: "5s"
   # -- Maximum time allowed before an unused inbound discovery result
-  # is evicted from the cache, defaults to 90s if unspecified
+  # is evicted from the cache
   inboundDiscoveryCacheUnusedTimeout: "90s"
   image:
     # -- Docker image for the proxy
