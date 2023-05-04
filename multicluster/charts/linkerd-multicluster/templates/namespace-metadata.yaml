@@ -27,6 +27,12 @@ spec:
         app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
+      {{- with .Values.namespaceMetadata.nodeSelector }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.namespaceMetadata.tolerations }}
+      tolerations: {{ toYaml . | nindent 6 }}
+      {{- end }}
       restartPolicy: Never
       securityContext:
         seccompProfile:
