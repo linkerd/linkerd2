@@ -16,7 +16,7 @@ var Version = undefinedVersion
 // https://github.com/linkerd/linkerd2-proxy-init This has to be kept in sync
 // with the default version in the control plane's values.yaml.
 var ProxyInitVersion = "v2.2.1"
-var LinkerdCNIVersion = "v1.1.2"
+var LinkerdCNIVersion = "v1.13"
 
 const (
 	// undefinedVersion should take the form `channel-version` to conform to
