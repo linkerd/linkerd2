@@ -44,6 +44,9 @@ func getResponse(url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// We don't handle errors on the deferred Body.Close(). It's unclear what
+	// useful action we could even take if Body.Close() fails.
+	//nolint:gosec
 	defer resp.Body.Close()
 	return io.ReadAll(resp.Body)
 }

@@ -25,7 +25,7 @@ where
 {
     let dt = Default::default();
 
-    let mut t_group = &*T::group(&dt);
+    let mut t_group = &T::group(&dt);
     if t_group.is_empty() {
         t_group = "core";
     }

@@ -262,6 +262,9 @@ func getEphemeralPort() (int, error) {
 		return 0, err
 	}
 
+	// We don't handle errors on the deferred Listener.Close(). It's unclear
+	// what useful action we could even take if Listener.Close() fails.
+	//nolint:gosec
 	defer ln.Close()
 
 	// get port

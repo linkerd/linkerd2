@@ -234,7 +234,12 @@ func send(client *http.Client, baseURL string, v url.Values) error {
 	if err != nil {
 		return fmt.Errorf("check URL [%s] request failed with: %w", req.URL.String(), err)
 	}
+
+	// We don't handle errors on the deferred Body.Close(). It's unclear what
+	// useful action we could even take if Body.Close() fails.
+	//nolint:gosec
 	defer resp.Body.Close()
+
 	body, err := util.ReadAllLimit(resp.Body, util.MB)
 	if err != nil {
 		return fmt.Errorf("failed to read response body: %w", err)
