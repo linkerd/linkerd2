@@ -8,8 +8,8 @@ in the Helm chart. It also addresses a CVE by upgrading an underlying
 dependency.
 
 * Upgraded the policy controller's `h2` dependency to address CVE-2023-26964
-* Fixed an issue where server_port_subscribers metric in the Destination
-controller was sometimes absent
+* Fixed an issue where the `server_port_subscribers` metric exposed by the
+Destination controller was sometimes absent
 * Removed the policy-controller-write Lease from the control plane Helm chart
 in favor of creating it at runtime
 * Updated the proxy-injector to pass opaque port lists to the proxy as ranges
