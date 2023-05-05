@@ -49,7 +49,7 @@ where
     };
     let api = obj
         .namespace()
-        .map(|ns| kube::Api::<T>::namespaced(client.clone(), &*ns))
+        .map(|ns| kube::Api::<T>::namespaced(client.clone(), &ns))
         .unwrap_or_else(|| kube::Api::<T>::default_namespaced(client.clone()));
     tracing::trace!(?obj, "Creating");
     api.create(&params, &obj)

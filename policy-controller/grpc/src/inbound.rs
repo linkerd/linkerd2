@@ -95,7 +95,7 @@ where
             .map_err(|e| tonic::Status::internal(format!("lookup failed: {}", e)))?
             .ok_or_else(|| tonic::Status::not_found("unknown server"))?;
 
-        Ok(tonic::Response::new(to_server(&s, &*self.cluster_networks)))
+        Ok(tonic::Response::new(to_server(&s, &self.cluster_networks)))
     }
 
     type WatchPortStream = BoxWatchStream;
@@ -138,7 +138,7 @@ fn response_stream(
                 // When the port is updated with a new server, update the server watch.
                 res = rx.next() => match res {
                     Some(s) => {
-                        yield to_server(&s, &*cluster_networks);
+                        yield to_server(&s, &cluster_networks);
                     }
                     None => return,
                 },

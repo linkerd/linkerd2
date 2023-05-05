@@ -25,7 +25,7 @@ where
 {
     let dt = Default::default();
 
-    let mut t_group = &T::group(&dt);
+    let mut t_group = &*T::group(&dt);
     if t_group.is_empty() {
         t_group = "core";
     }
@@ -34,5 +34,5 @@ where
         .filter(|s| !s.is_empty())
         .unwrap_or("core")
         .eq_ignore_ascii_case(t_group)
-        && kind.eq_ignore_ascii_case(&*T::kind(&dt))
+        && kind.eq_ignore_ascii_case(&T::kind(&dt))
 }

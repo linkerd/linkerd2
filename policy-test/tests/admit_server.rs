@@ -37,7 +37,7 @@ async fn accepts_server_updates() {
             },
         };
 
-        let api = kube::Api::namespaced(client, &*ns);
+        let api = kube::Api::namespaced(client, &ns);
         api.create(&kube::api::PostParams::default(), &test0)
             .await
             .expect("resource must apply");
@@ -62,7 +62,7 @@ async fn rejects_identitical_pod_selector() {
             proxy_protocol: None,
         };
 
-        let api = kube::Api::namespaced(client, &*ns);
+        let api = kube::Api::namespaced(client, &ns);
 
         let test0 = Server {
             metadata: api::ObjectMeta {
@@ -94,7 +94,7 @@ async fn rejects_identitical_pod_selector() {
 #[tokio::test(flavor = "current_thread")]
 async fn rejects_all_pods_selected() {
     with_temp_ns(|client, ns| async move {
-        let api = kube::Api::namespaced(client, &*ns);
+        let api = kube::Api::namespaced(client, &ns);
 
         let test0 = Server {
             metadata: api::ObjectMeta {
