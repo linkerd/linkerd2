@@ -7,7 +7,7 @@ control plane to create Lease resources at runtime rather than including them
 in the Helm chart. It also addresses a CVE by upgrading an underlying
 dependency.
 
-* Upgraded the policy controller's h2 dependency to address CVE-2023-26964
+* Upgraded the policy controller's `h2` dependency to address CVE-2023-26964
 * Fixed an issue where server_port_subscribers metric in the Destination
 controller was sometimes absent
 * Removed the policy-controller-write Lease from the control plane Helm chart
