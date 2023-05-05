@@ -20,7 +20,6 @@ marked as opaque
 * Improved backwards compatibility between 2.13 proxies and 2.12 control planes
 * Uses the updated the proxy initialization package leveraging a new base image
 
-
 ## stable-2.13.2
 
 This stable release fixes an incompatibility issue with the AWS CNI addon in EKS
