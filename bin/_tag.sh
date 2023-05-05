@@ -20,7 +20,7 @@ head_root_tag() {
     if clean_head ; then
         clean_head_root_tag
     else
-        name=${USER//[^[:alnum:].-]/}
+        name=${USER//[^[:alnum:].-]/:-nobody}
         echo "dev-$(git_sha_head)-$name"
     fi
 }
