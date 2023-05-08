@@ -488,6 +488,15 @@ fn parse_accrual_config(
                         "min_penalty ({min_penalty:?}) cannot exceed max_penalty ({max_penalty:?})",
                     );
                 }
+                if max_penalty == time::Duration::from_millis(0) {
+                    bail!("max_penalty cannot be zero");
+                }
+                if jitter < 0.0 {
+                    bail!("jitter cannot be negative");
+                }
+                if jitter > 100.0 {
+                    bail!("jitter cannot be greater than 100");
+                }
 
                 Ok(FailureAccrual::Consecutive {
                     max_failures,
