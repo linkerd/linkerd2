@@ -18,7 +18,7 @@ large opaque port ranges are set
 * Fixed an issue where the proxy was performing protocol detection on ports
 marked as opaque
 * Improved backwards compatibility between 2.13 proxies and 2.12 control planes
-* Uses the updated the proxy initialization package leveraging a new base image
+* Changed the CNI init container's base image from Debian to Alpine
 
 ## stable-2.13.2
 
