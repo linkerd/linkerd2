@@ -74,9 +74,9 @@ namespaceMetadata:
     # @default -- imagePullPolicy
     pullPolicy: ""
 
-  # -- Node selectors for the gateway pod
+  # -- Node selectors for the namespace-metadata job pod
   nodeSelector: {}
-  # -- Tolerations for the gateway pod
+  # -- Tolerations for the namespace-metadata job pod
   tolerations: []
 
 # -- Create Roles and RoleBindings to associate this extension's
