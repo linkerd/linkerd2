@@ -234,7 +234,9 @@ func send(client *http.Client, baseURL string, v url.Values) error {
 	if err != nil {
 		return fmt.Errorf("check URL [%s] request failed with: %w", req.URL.String(), err)
 	}
+
 	defer resp.Body.Close()
+
 	body, err := util.ReadAllLimit(resp.Body, util.MB)
 	if err != nil {
 		return fmt.Errorf("failed to read response body: %w", err)

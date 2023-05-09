@@ -71,6 +71,12 @@ issues:
     - errcheck
     text: Error return value of `.*\.Close` is not checked
 
+  # Ignore error values when closing file or HTTP response bodies. These
+  # generally happen as cleanup and are part of defer statements.
+  - linters:
+    - gosec
+    text: Deferring unsafe method "Close" on type
+
   # Ignore error checks for CLI output.
   - linters:
     - errcheck

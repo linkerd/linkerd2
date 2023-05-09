@@ -13,7 +13,7 @@ where
     T::DynamicType: Default,
 {
     with_temp_ns(|client, ns| async move {
-        let api = kube::Api::namespaced(client, &*ns);
+        let api = kube::Api::namespaced(client, &ns);
         let obj = f(ns);
         let res = api.create(&kube::api::PostParams::default(), &obj).await;
         res.expect("resource must apply");
@@ -34,7 +34,7 @@ where
     T::DynamicType: Default,
 {
     with_temp_ns(|client, ns| async move {
-        let api = kube::Api::namespaced(client, &*ns);
+        let api = kube::Api::namespaced(client, &ns);
         let obj = f(ns);
         let res = api.create(&kube::api::PostParams::default(), &obj).await;
         res.expect_err("resource must not apply");

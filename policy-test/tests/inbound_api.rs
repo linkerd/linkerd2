@@ -655,7 +655,6 @@ async fn retry_watch_server(
     }
 }
 
-#[track_caller]
 async fn next_config(rx: &mut tonic::Streaming<grpc::inbound::Server>) -> grpc::inbound::Server {
     let config = rx
         .next()

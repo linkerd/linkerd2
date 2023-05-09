@@ -46,9 +46,7 @@ where
             .ok_or_else(|| tonic::Status::invalid_argument("target is required"))?;
         let target = match target {
             outbound::traffic_spec::Target::Addr(target) => target,
-            outbound::traffic_spec::Target::Authority(auth) => {
-                return self.lookup_authority(&*auth)
-            }
+            outbound::traffic_spec::Target::Authority(auth) => return self.lookup_authority(&auth),
         };
 
         let port = target

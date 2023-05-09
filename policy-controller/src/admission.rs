@@ -160,8 +160,8 @@ where
     T::DynamicType: Default,
 {
     let dt = Default::default();
-    req.kind.group.eq_ignore_ascii_case(&*T::group(&dt))
-        && req.kind.kind.eq_ignore_ascii_case(&*T::kind(&dt))
+    req.kind.group.eq_ignore_ascii_case(&T::group(&dt))
+        && req.kind.kind.eq_ignore_ascii_case(&T::kind(&dt))
 }
 
 fn json_response(rsp: AdmissionReview) -> Result<Response<Body>, Error> {

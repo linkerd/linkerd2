@@ -42,17 +42,19 @@ jobs:
   fmt:
     timeout-minutes: 5
     runs-on: ubuntu-latest
-    container: ghcr.io/linkerd/dev:v39-rust
+    container: ghcr.io/linkerd/dev:v40-rust
     steps:
       - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just rs-check-fmt
 
   clippy:
     timeout-minutes: 10
     runs-on: ubuntu-latest
-    container: ghcr.io/linkerd/dev:v39-rust
+    container: ghcr.io/linkerd/dev:v40-rust
     steps:
       - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just rs-fetch
       - run: just rs-clippy
       - run: just rs-doc --no-deps
@@ -60,7 +62,7 @@ jobs:
   check:
     timeout-minutes: 20
     runs-on: ubuntu-latest
-    container: ghcr.io/linkerd/dev:v39-rust
+    container: ghcr.io/linkerd/dev:v40-rust
     steps:
       - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
       - run: just rs-fetch
@@ -70,7 +72,7 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    container: ghcr.io/linkerd/dev:v39-rust
+    container: ghcr.io/linkerd/dev:v40-rust
     steps:
       - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
       - run: just rs-fetch
