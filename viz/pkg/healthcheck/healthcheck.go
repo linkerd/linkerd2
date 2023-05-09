@@ -115,6 +115,7 @@ func (hc *HealthChecker) VizCategory(fullCheck bool) *healthcheck.Category {
 		*healthcheck.NewChecker("can initialize the client").
 			WithHintAnchor("l5d-viz-existence-client").
 			Fatal().
+			WithRetryDeadline(hc.RetryDeadline).
 			WithCheck(func(ctx context.Context) (err error) {
 				if hc.APIAddr != "" {
 					hc.vizAPIClient, err = client.NewInternalClient(hc.APIAddr)
