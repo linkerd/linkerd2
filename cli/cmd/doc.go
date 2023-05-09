@@ -245,6 +245,14 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Inbound TCP connection timeout in the proxy",
 		},
 		{
+			Name:        k8s.ProxyOutboundDiscoveryCacheTimeout,
+			Description: "Maximum time allowed before an unused outbound discovery result is evicted from the cache",
+		},
+		{
+			Name:        k8s.ProxyInboundDiscoveryCacheTimeout,
+			Description: "Maximum time allowed before an unused inbound discovery result is evicted from the cache",
+		},
+		{
 			Name:        k8s.ProxyWaitBeforeExitSecondsAnnotation,
 			Description: "The proxy sidecar will stay alive for at least the given period after receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. Defaults to `0`",
 		},
