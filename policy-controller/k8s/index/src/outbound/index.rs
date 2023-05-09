@@ -4,7 +4,7 @@ use crate::{
     ClusterInfo,
 };
 use ahash::AHashMap as HashMap;
-use anyhow::{bail, Result};
+use anyhow::{bail, ensure, Result};
 use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
 use linkerd_policy_controller_core::outbound::{
     Backend, Backoff, FailureAccrual, HttpRoute, HttpRouteRule, OutboundPolicy, WeightedService,
@@ -483,11 +483,16 @@ fn parse_accrual_config(
                     .map(|s| s.parse::<f32>())
                     .transpose()?
                     .unwrap_or(0.5);
-                if min_penalty > max_penalty {
-                    bail!(
-                        "min_penalty ({min_penalty:?}) cannot exceed max_penalty ({max_penalty:?})",
-                    );
-                }
+                ensure!(
+                    min_penalty <= max_penalty,
+                    "min_penalty ({min_penalty:?}) cannot exceed max_penalty ({max_penalty:?})"
+                );
+                ensure!(
+                    max_penalty > time::Duration::from_millis(0),
+                    "max_penalty cannot be zero"
+                );
+                ensure!(jitter >= 0.0, "jitter cannot be negative");
+                ensure!(jitter <= 100.0, "jitter cannot be greater than 100");
 
                 Ok(FailureAccrual::Consecutive {
                     max_failures,
