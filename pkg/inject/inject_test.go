@@ -70,6 +70,8 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxySkipSubnetsAnnotation:                   "172.17.0.0/16",
 							k8s.ProxyAccessLogAnnotation:                     "apache",
 							k8s.ProxyShutdownGracePeriodAnnotation:           "30s",
+							k8s.ProxyOutboundDiscoveryCacheTimeout:           "50000ms",
+							k8s.ProxyInboundDiscoveryCacheTimeout:            "900s",
 						},
 					},
 					Spec: corev1.PodSpec{},
@@ -118,6 +120,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.Await = true
 				values.Proxy.AccessLog = "apache"
 				values.Proxy.ShutdownGracePeriod = "30000ms"
+				values.Proxy.OutboundDiscoveryCacheUnusedTimeout = "50s"
+				values.Proxy.InboundDiscoveryCacheUnusedTimeout = "900s"
 				return values
 			},
 		},
@@ -162,6 +166,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				k8s.ProxyAwait:                            "enabled",
 				k8s.ProxyAccessLogAnnotation:              "apache",
 				k8s.ProxyInjectAnnotation:                 "ingress",
+				k8s.ProxyOutboundDiscoveryCacheTimeout:    "50s",
+				k8s.ProxyInboundDiscoveryCacheTimeout:     "6000ms",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -205,13 +211,17 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.Await = true
 				values.Proxy.AccessLog = "apache"
 				values.Proxy.IsIngress = true
+				values.Proxy.OutboundDiscoveryCacheUnusedTimeout = "50s"
+				values.Proxy.InboundDiscoveryCacheUnusedTimeout = "6s"
 				return values
 			},
 		},
-		{id: "use invalid duration for TCP connect timeouts",
+		{id: "use invalid duration for proxy timeouts",
 			nsAnnotations: map[string]string{
-				k8s.ProxyOutboundConnectTimeout: "6000",
-				k8s.ProxyInboundConnectTimeout:  "600",
+				k8s.ProxyOutboundConnectTimeout:        "6000",
+				k8s.ProxyInboundConnectTimeout:         "600",
+				k8s.ProxyOutboundDiscoveryCacheTimeout: "50",
+				k8s.ProxyInboundDiscoveryCacheTimeout:  "5000",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -224,11 +234,13 @@ func TestGetOverriddenValues(t *testing.T) {
 				return values
 			},
 		},
-		{id: "use valid duration for TCP connect timeouts",
+		{id: "use valid duration for proxy timeouts",
 			nsAnnotations: map[string]string{
 				// Validate we're converting time values into ms for the proxy to parse correctly.
-				k8s.ProxyOutboundConnectTimeout: "6s5ms",
-				k8s.ProxyInboundConnectTimeout:  "2s5ms",
+				k8s.ProxyOutboundConnectTimeout:        "6s5ms",
+				k8s.ProxyInboundConnectTimeout:         "2s5ms",
+				k8s.ProxyOutboundDiscoveryCacheTimeout: "6s5000ms",
+				k8s.ProxyInboundDiscoveryCacheTimeout:  "6s5000ms",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -240,6 +252,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				values, _ := l5dcharts.NewValues()
 				values.Proxy.OutboundConnectTimeout = "6005ms"
 				values.Proxy.InboundConnectTimeout = "2005ms"
+				values.Proxy.OutboundDiscoveryCacheUnusedTimeout = "11s"
+				values.Proxy.InboundDiscoveryCacheUnusedTimeout = "11s"
 				return values
 			},
 		},

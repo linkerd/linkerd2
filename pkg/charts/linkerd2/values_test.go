@@ -131,7 +131,7 @@ func TestNewValues(t *testing.T) {
 			Await:                               true,
 			DefaultInboundPolicy:                "all-unauthenticated",
 			OutboundDiscoveryCacheUnusedTimeout: "5s",
-			InboundDiscoveryCacheUusedTimeout:   "90s",
+			InboundDiscoveryCacheUnusedTimeout:  "90s",
 		},
 		ProxyInit: &ProxyInit{
 			IptablesMode:        "legacy",
