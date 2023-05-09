@@ -45,7 +45,7 @@ jobs:
     needs: [cleanup]
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       - run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
         id: tag
     outputs:
@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -94,7 +94,7 @@ jobs:
           - proxy
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -125,7 +125,7 @@ jobs:
       - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9
         with:
           go-version: '1.19'
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
         with:
           name: image-archives
@@ -146,7 +146,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       - uses: tj-actions/changed-files@b2d17f51244a144849c6b37a3a6791b98a51d86f
         id: changed
         with:
@@ -177,7 +177,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: olix0r/cargo-action-fmt/setup@9269f3aa1ff01775d95efc97037e2cbdb41d9684
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
         with:
           name: image-archives
@@ -228,7 +228,7 @@ jobs:
           - web
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -266,7 +266,7 @@ jobs:
       - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9
         with:
           go-version: '1.19'
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
         with:
           name: image-archives
@@ -286,7 +286,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       - uses: tj-actions/changed-files@b2d17f51244a144849c6b37a3a6791b98a51d86f
         id: changed
         with:
@@ -309,7 +309,7 @@ jobs:
       - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9
         with:
           go-version: '1.19'
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
         with:
           name: image-archives
@@ -330,7 +330,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       - uses: tj-actions/changed-files@b2d17f51244a144849c6b37a3a6791b98a51d86f
         id: changed
         with:
@@ -360,7 +360,7 @@ jobs:
       - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9
         with:
           go-version: '1.19'
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
         with:
           name: image-archives
