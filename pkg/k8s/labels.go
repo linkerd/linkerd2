@@ -231,11 +231,11 @@ const (
 	ProxyInboundConnectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-inbound-connect-timeout"
 
 	// ProxyOutboundDiscoveryCacheTimeout can be used to configure the timeout
-	// that will evict unused outbound discovery result
+	// that will evict unused outbound discovery results
 	ProxyOutboundDiscoveryCacheTimeout = ProxyConfigAnnotationsPrefix + "/proxy-outbound-discovery-cache-unused-timeout"
 
 	// ProxyInboundDiscoveryCacheUnusedTimeout can be used to configure the timeout
-	// that will evict unused inbound discovery result
+	// that will evict unused inbound discovery results
 	ProxyInboundDiscoveryCacheUnusedTimeout = ProxyConfigAnnotationsPrefix + "/proxy-inbound-discovery-cache-unused-timeout"
 
 	// ProxyEnableGatewayAnnotation can be used to configure the proxy
