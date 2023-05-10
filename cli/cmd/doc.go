@@ -245,12 +245,12 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Inbound TCP connection timeout in the proxy",
 		},
 		{
-			Name:        k8s.ProxyOutboundDiscoveryCacheTimeout,
-			Description: "Maximum time allowed before an unused outbound discovery result is evicted from the cache",
+			Name:        k8s.ProxyOutboundDiscoveryCacheUnusedTimeout,
+			Description: "Maximum time allowed before an unused outbound discovery result is evicted from the cache. Defaults to `5s`",
 		},
 		{
-			Name:        k8s.ProxyInboundDiscoveryCacheTimeout,
-			Description: "Maximum time allowed before an unused inbound discovery result is evicted from the cache",
+			Name:        k8s.ProxyInboundDiscoveryCacheUnusedTimeout,
+			Description: "Maximum time allowed before an unused inbound discovery result is evicted from the cache. Defaults to `90s`",
 		},
 		{
 			Name:        k8s.ProxyWaitBeforeExitSecondsAnnotation,

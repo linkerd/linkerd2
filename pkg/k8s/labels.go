@@ -232,7 +232,7 @@ const (
 
 	// ProxyOutboundDiscoveryCacheTimeout can be used to configure the timeout
 	// that will evict unused outbound discovery results
-	ProxyOutboundDiscoveryCacheTimeout = ProxyConfigAnnotationsPrefix + "/proxy-outbound-discovery-cache-unused-timeout"
+	ProxyOutboundDiscoveryCacheUnusedTimeout = ProxyConfigAnnotationsPrefix + "/proxy-outbound-discovery-cache-unused-timeout"
 
 	// ProxyInboundDiscoveryCacheUnusedTimeout can be used to configure the timeout
 	// that will evict unused inbound discovery results
