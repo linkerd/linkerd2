@@ -939,7 +939,7 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 	if override, ok := annotations[k8s.ProxyOutboundDiscoveryCacheUnusedTimeout]; ok {
 		duration, err := time.ParseDuration(override)
 		if err != nil {
-			log.Warnf("unrecognized proxy-outbound-discovery-unused-timeout duration value found on pod annotation: %s", err.Error())
+			log.Warnf("unrecognized duration value used on pod annotation %s: %s", k8s.ProxyOutboundDiscoveryCacheUnusedTimeout, err.Error())
 		} else {
 			values.Proxy.OutboundDiscoveryCacheUnusedTimeout = fmt.Sprintf("%ds", int(duration.Seconds()))
 		}
@@ -948,7 +948,7 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 	if override, ok := annotations[k8s.ProxyInboundDiscoveryCacheUnusedTimeout]; ok {
 		duration, err := time.ParseDuration(override)
 		if err != nil {
-			log.Warnf("unrecognized proxy-inbound-discovery-unused-timeout duration value found on pod annotation: %s", err.Error())
+			log.Warnf("unrecognized duration value used on pod annotation %s: %s", k8s.ProxyInboundDiscoveryCacheUnusedTimeout, err.Error())
 		} else {
 			values.Proxy.InboundDiscoveryCacheUnusedTimeout = fmt.Sprintf("%ds", int(duration.Seconds()))
 		}
