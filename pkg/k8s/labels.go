@@ -234,9 +234,9 @@ const (
 	// that will evict unused outbound discovery result
 	ProxyOutboundDiscoveryCacheTimeout = ProxyConfigAnnotationsPrefix + "/proxy-outbound-discovery-cache-unused-timeout"
 
-	// ProxyInboundDiscoveryCacheTimeout can be used to configure the timeout
+	// ProxyInboundDiscoveryCacheUnusedTimeout can be used to configure the timeout
 	// that will evict unused inbound discovery result
-	ProxyInboundDiscoveryCacheTimeout = ProxyConfigAnnotationsPrefix + "/proxy-inbound-discovery-cache-unused-timeout"
+	ProxyInboundDiscoveryCacheUnusedTimeout = ProxyConfigAnnotationsPrefix + "/proxy-inbound-discovery-cache-unused-timeout"
 
 	// ProxyEnableGatewayAnnotation can be used to configure the proxy
 	// to operate as a gateway, routing requests that target the inbound router.
