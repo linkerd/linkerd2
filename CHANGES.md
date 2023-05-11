@@ -1,5 +1,32 @@
 # Changes
 
+## edge-23.5.1
+
+The edge release introduces the ability to configure the proxy's discovery cache
+timeouts via annotations. While most users will not need to do this, it can be
+useful to improve the mesh's resilience to control plane failures. This release
+also includes a number of other important improvements and bug fixes.
+
+* Added -o json flag for the `linkerd multicluster gateways` command (thanks
+  @hiteshwani29)
+* Added missing label `linkerd.io/extension` to certain resources to ensure they
+  pruned when appropriate (thanks @Clement)
+* Fixed a memory leak in the service mirror controller
+* Improved validation of the `--to` and `--from` flags for the `linkerd viz stat`
+  command (thanks @pranoyk)
+* Fixed an issue with W3C trace context propagation which caused proxy spans to
+  be siblings rather than children of their original parent (thanks
+  @whiskeysierra)
+* Fixed a regression in the Linkerd CNI plugin where the CNI init script failed
+  without the `bash` executable
+* Fixed an issue where specifying a remote_write config would cause the
+  Prometheus config to be invalid (thanks @hiteshwani29)
+* Added the ability to configure the proxy's discovery cache timeouts
+* Fixed the `linkerd viz check` command so that it will wait until the viz
+  extension becomes ready
+* Fixed an issue where meshed pods could not communicate with themselves though
+  a ClusterIP Service
+
 ## edge-23.4.3
 
 This edge release improves compatibility with ArgoCD by changing the Linkerd
