@@ -74,9 +74,9 @@ namespaceMetadata:
     # @default -- imagePullPolicy
     pullPolicy: ""
 
-  # -- Node selectors for the namespace-metadata job pod
+  # -- Node selectors for the namespace-metadata instance
   nodeSelector: {}
-  # -- Tolerations for the namespace-metadata job pod
+  # -- Tolerations for the namespace-metadata instance
   tolerations: []
 
 # -- Create Roles and RoleBindings to associate this extension's
