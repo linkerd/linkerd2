@@ -2,7 +2,7 @@
 
 ## edge-23.5.1
 
-The edge release introduces the ability to configure the proxy's discovery cache
+This edge release introduces the ability to configure the proxy's discovery cache
 timeouts via annotations. While most users will not need to do this, it can be
 useful to improve the mesh's resilience to control plane failures. This release
 also includes a number of other important improvements and bug fixes.
