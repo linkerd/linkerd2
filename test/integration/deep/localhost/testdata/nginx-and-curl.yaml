@@ -18,7 +18,7 @@ spec:
       - name: nginx
         image: nginx:1.14.2
         ports:
-        - containerPort: 8080
+        - containerPort: 80
       - name: curl
         image: curlimages/curl
         command: ["sleep", "infinite"]
@@ -33,4 +33,4 @@ spec:
   ports:
     - name: http
       protocol: TCP
-      port: 8080
+      port: 80
