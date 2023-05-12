@@ -46,11 +46,13 @@ spec:
                     a domain. An identity string of `*` indicates that
                     all authentication clients are authorized.
                   type: array
+                  minItems: 1
                   items:
                     type: string
                     pattern: '^(\*|[a-z0-9]([-a-z0-9]*[a-z0-9])?)(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$'
                 identityRefs:
                   type: array
+                  minItems: 1
                   items:
                     type: object
                     required:
