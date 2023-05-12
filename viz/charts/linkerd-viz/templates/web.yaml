@@ -28,6 +28,7 @@ spec:
   - name: admin-http
     port: 9994
     targetPort: 9994
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -74,6 +75,7 @@ spec:
       {{- include "linkerd.tolerations" . | nindent 6 }}
       {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
+      {{- include "linkerd.affinity" . | nindent 6 }}
       containers:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}:8085
