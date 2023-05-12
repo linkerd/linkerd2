@@ -19,6 +19,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/prometheus/common/expfmt"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -625,9 +626,12 @@ func (hc *healthChecker) checkIfMirrorServicesHaveEndpoints(ctx context.Context)
 		return err
 	}
 	for _, svc := range mirrorServices.Items {
-		// Check if there is a relevant end-point
+		// have to use a new ctx for each call, otherwise we risk reaching the original context deadline
+		ctx, cancel := context.WithTimeout(context.Background(), healthcheck.RequestTimeout)
+		defer cancel()
 		endpoint, err := hc.KubeAPIClient().CoreV1().Endpoints(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
 		if err != nil || len(endpoint.Subsets) == 0 {
+			log.Debugf("error retrieving Endpoints: %s", err)
 			servicesWithNoEndpoints = append(servicesWithNoEndpoints, fmt.Sprintf("%s.%s mirrored from cluster [%s]", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel]))
 		}
 	}
