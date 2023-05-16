@@ -17,12 +17,13 @@ use tokio::sync::watch;
 #[derive(Debug)]
 pub struct Index {
     namespaces: NamespaceIndex,
-    services: HashMap<IpAddr, ServiceRef>,
+    services_by_ip: HashMap<IpAddr, ServiceRef>,
+    service_info: Arc<RwLock<HashMap<ServiceRef, ServiceInfo>>>,
 }
 
 pub type SharedIndex = Arc<RwLock<Index>>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ServiceRef {
     pub name: String,
     pub namespace: String,
@@ -39,7 +40,7 @@ struct NamespaceIndex {
 struct Namespace {
     service_routes: HashMap<ServicePort, ServiceRoutes>,
     namespace: Arc<String>,
-    services: HashMap<String, ServiceInfo>,
+    service_info: Arc<RwLock<HashMap<ServiceRef, ServiceInfo>>>,
 }
 
 #[derive(Debug, Default)]
@@ -72,7 +73,7 @@ impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
             .or_insert_with(|| Namespace {
                 service_routes: Default::default(),
                 namespace: Arc::new(ns),
-                services: Default::default(),
+                service_info: self.service_info.clone(),
             })
             .apply(route, &self.namespaces.cluster_info);
     }
@@ -107,7 +108,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                         name,
                         namespace: ns.clone(),
                     };
-                    self.services.insert(addr, service_ref);
+                    self.services_by_ip.insert(addr, service_ref);
                 }
                 Err(error) => {
                     tracing::error!(%error, service=name, cluster_ip, "invalid cluster ip");
@@ -126,17 +127,23 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             .or_insert_with(|| Namespace {
                 service_routes: Default::default(),
                 namespace: Arc::new(ns),
-                services: Default::default(),
+                service_info: self.service_info.clone(),
             })
-            .update_service(service.name_unchecked(), service_info);
+            .update_service(service.name_unchecked(), &service_info);
+
+        self.service_info.write().insert(
+            ServiceRef {
+                name: service.name_unchecked(),
+                namespace: service.namespace().expect("Service must have Namespace"),
+            },
+            service_info,
+        );
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        if let Some(ns) = self.namespaces.by_ns.get_mut(&namespace) {
-            ns.services.remove(&name);
-        }
         let service_ref = ServiceRef { name, namespace };
-        self.services.retain(|_, v| *v != service_ref);
+        self.service_info.write().remove(&service_ref);
+        self.services_by_ip.retain(|_, v| *v != service_ref);
     }
 }
 
@@ -147,7 +154,8 @@ impl Index {
                 by_ns: HashMap::default(),
                 cluster_info,
             },
-            services: HashMap::default(),
+            services_by_ip: HashMap::default(),
+            service_info: Arc::new(RwLock::new(HashMap::default())),
         }))
     }
 
@@ -164,7 +172,7 @@ impl Index {
             .or_insert_with(|| Namespace {
                 service_routes: Default::default(),
                 namespace: Arc::new(namespace.to_string()),
-                services: Default::default(),
+                service_info: self.service_info.clone(),
             });
         let key = ServicePort { service, port };
         tracing::debug!(?key, "subscribing to service port");
@@ -173,7 +181,7 @@ impl Index {
     }
 
     pub fn lookup_service(&self, addr: IpAddr) -> Option<ServiceRef> {
-        self.services.get(&addr).cloned()
+        self.services_by_ip.get(&addr).cloned()
     }
 }
 
@@ -220,7 +228,7 @@ impl Namespace {
         }
     }
 
-    fn update_service(&mut self, name: String, service: ServiceInfo) {
+    fn update_service(&mut self, name: String, service: &ServiceInfo) {
         tracing::debug!(?name, ?service, "updating service");
         for (svc_port, svc_routes) in self.service_routes.iter_mut() {
             if svc_port.service != name {
@@ -230,7 +238,6 @@ impl Namespace {
 
             svc_routes.update_service(opaque, service.accrual);
         }
-        self.services.insert(name, service);
     }
 
     fn delete(&mut self, name: String) {
@@ -246,7 +253,11 @@ impl Namespace {
     ) -> &mut ServiceRoutes {
         self.service_routes.entry(sp.clone()).or_insert_with(|| {
             let authority = cluster.service_dns_authority(&self.namespace, &sp.service, sp.port);
-            let (opaque, accrual) = match self.services.get(&sp.service) {
+            let service_ref = ServiceRef {
+                name: sp.service.clone(),
+                namespace: self.namespace.to_string(),
+            };
+            let (opaque, accrual) = match self.service_info.read().get(&service_ref) {
                 Some(svc) => (svc.opaque_ports.contains(&sp.port), svc.accrual),
                 None => (false, None),
             };
@@ -311,7 +322,7 @@ impl Namespace {
             .backend_refs
             .into_iter()
             .flatten()
-            .filter_map(|b| convert_backend(&self.namespace, b, cluster, &self.services))
+            .filter_map(|b| convert_backend(&self.namespace, b, cluster, &self.service_info.read()))
             .collect();
         Ok(HttpRouteRule { matches, backends })
     }
@@ -321,7 +332,7 @@ fn convert_backend(
     ns: &str,
     backend: HttpBackendRef,
     cluster: &ClusterInfo,
-    services: &HashMap<String, ServiceInfo>,
+    services: &HashMap<ServiceRef, ServiceInfo>,
 ) -> Option<Backend> {
     backend.backend_ref.map(|backend| {
         if !is_backend_service(&backend.inner) {
@@ -354,8 +365,11 @@ fn convert_backend(
                 }
             }
         };
-
-        if !services.contains_key(&name) {
+        let service_ref = ServiceRef {
+            name: name.clone(),
+            namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
+        };
+        if !services.contains_key(&service_ref) {
             return Backend::Invalid {
                 weight: weight.into(),
                 message: format!("Service not found {name}"),
@@ -364,7 +378,7 @@ fn convert_backend(
 
         Backend::Service(WeightedService {
             weight: weight.into(),
-            authority: cluster.service_dns_authority(ns, &name, port),
+            authority: cluster.service_dns_authority(&service_ref.namespace, &name, port),
             name,
             namespace: ns.to_string(),
             port,
