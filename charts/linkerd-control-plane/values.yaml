@@ -159,6 +159,8 @@ proxy:
       request: ""
   # -- User id under which the proxy runs
   uid: 2102
+  securityContext:
+    enabled: true
   # -- If set the injected proxy sidecars in the data plane will stay alive for
   # at least the given period before receiving the SIGTERM signal from
   # Kubernetes but no longer than the pod's `terminationGracePeriodSeconds`.
@@ -266,6 +268,16 @@ networkValidator:
   listenAddr: "0.0.0.0:4140"
   # -- Timeout before network-validator fails to validate the pod's network connectivity
   timeout: "10s"
+  securityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile:
+      type: RuntimeDefault
 
 # -- For Private docker registries, authentication is needed.
 #  Registry secrets are applied to the respective service accounts

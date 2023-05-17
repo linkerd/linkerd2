@@ -163,6 +163,7 @@ readinessProbe:
 {{- if .Values.proxy.resources }}
 {{ include "partials.resources" .Values.proxy.resources }}
 {{- end }}
+{{- if .Values.proxy.securityContext.enabled }}
 securityContext:
   allowPrivilegeEscalation: false
   {{- if .Values.proxy.capabilities -}}
@@ -173,6 +174,7 @@ securityContext:
   runAsUser: {{.Values.proxy.uid}}
   seccompProfile:
     type: RuntimeDefault
+{{- end }}
 terminationMessagePolicy: FallbackToLogsOnError
 {{- if or (.Values.proxy.await) (.Values.proxy.waitBeforeExitSeconds) }}
 lifecycle:
