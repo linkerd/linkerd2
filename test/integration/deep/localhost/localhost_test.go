@@ -25,9 +25,9 @@ var (
 	nginxPodRE  = regexp.MustCompile(`nginx.*`)
 	nginxLabels = prommatch.Labels{
 		"direction":             prommatch.Equals("outbound"),
-		"authority":             prommatch.Equals("nginx.linkerd-localhost-test.svc.cluster.local:8080"),
+		"authority":             prommatch.Equals("nginx.linkerd-localhost-server-test.svc.cluster.local:8080"),
 		"dst_deployment":        prommatch.Equals("nginx"),
-		"dst_namespace":         prommatch.Equals("linkerd-localhost-test"),
+		"dst_namespace":         prommatch.Equals("linkerd-localhost-server-test"),
 		"dst_pod":               prommatch.Like(nginxPodRE),
 		"dst_pod_template_hash": prommatch.Any(),
 		"dst_service":           prommatch.Equals("nginx"),
@@ -72,7 +72,7 @@ func TestLocalhostServer(t *testing.T) {
 		testutil.AnnotatedFatal(t, "unexpected error", err)
 	}
 
-	TestHelper.WithDataPlaneNamespace(ctx, "localhost-test", map[string]string{}, t, func(t *testing.T, ns string) {
+	TestHelper.WithDataPlaneNamespace(ctx, "localhost-server-test", map[string]string{}, t, func(t *testing.T, ns string) {
 
 		out, err := TestHelper.KubectlApply(nginx, ns)
 		if err != nil {
@@ -119,5 +119,69 @@ func TestLocalhostServer(t *testing.T) {
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "unexpected stat output", "unexpected stat output: %v", err)
 		}
+	})
+}
+
+// TestLocalhostRouting creates a pod with two containers: nginx and curl, and
+// tests traffic can be successfully routed when packets stay local. It will
+// test that the pod can send a request to itself successfully via its pod IP
+// (concrete address). And it will also test that a pod can send a request to
+// itself via its service IP (logical address).
+func TestLocalhostRouting(t *testing.T) {
+	ctx := context.Background()
+	nginx, err := TestHelper.LinkerdRun("inject", "testdata/nginx-and-curl.yaml")
+	if err != nil {
+		testutil.AnnotatedFatal(t, "unexpected error", err)
+	}
+
+	TestHelper.WithDataPlaneNamespace(ctx, "localhost-routing-test", map[string]string{}, t, func(t *testing.T, ns string) {
+		out, err := TestHelper.KubectlApply(nginx, ns)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
+		}
+
+		err = TestHelper.CheckPods(ctx, ns, "nginx", 1)
+		if err != nil {
+			//nolint:errorlint
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+			}
+		}
+
+		pods, err := TestHelper.GetPodsForDeployment(ctx, ns, "nginx")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v", err)
+		}
+
+		podName := pods[0].ObjectMeta.Name
+		execCommand := []string{"exec", "-n", ns, podName, "-c", "curl", "--", "curl", "-w", "%{http_code}", "-so", "/dev/null"}
+		t.Run("Route to Concrete Address Over Loopback", func(t *testing.T) {
+			podIP := pods[0].Status.PodIP
+			if podIP == "" {
+				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: no IP address found for %s/%s", ns, podName)
+			}
+
+			statusCode, err := TestHelper.Kubectl("", append(execCommand, podIP)...)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "unexpected error received when calling 'kubectl exec'", "unexpected error received when calling 'kubectl exec': %v", err)
+			}
+
+			if statusCode != "200" {
+				testutil.AnnotatedFatalf(t, "unexpected http status code received", "unexpected http status code received: expected: '200', got: '%s'", statusCode)
+			}
+		})
+
+		t.Run("Route to Logical Address Over Loopback", func(t *testing.T) {
+			statusCode, err := TestHelper.Kubectl("", append(execCommand, "http://nginx-svc:80")...)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "unexpected error received when calling 'kubectl exec'", "unexpected error received when calling 'kubectl exec': %v", err)
+			}
+
+			if statusCode != "200" {
+				testutil.AnnotatedFatalf(t, "unexpected http status code received", "unexpected http status code received: expected: '200', got: '%s'", statusCode)
+			}
+		})
 	})
 }
