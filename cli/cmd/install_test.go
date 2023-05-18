@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"k8s.io/utils/pointer"
 	"os"
 	"path/filepath"
 	"testing"
@@ -97,6 +98,7 @@ func TestRender(t *testing.T) {
 				Outbound: 4140,
 			},
 			UID:                  2102,
+			SecurityContext: &charts.SecurityContext{Enabled: true},
 			OpaquePorts:          "25,443,587,3306,5432,11211",
 			Await:                true,
 			DefaultInboundPolicy: "default-allow-policy",
@@ -132,6 +134,20 @@ func TestRender(t *testing.T) {
 			ConnectAddr: "1.1.1.1:20001",
 			ListenAddr:  "0.0.0.0:4140",
 			Timeout:     "10s",
+			SecurityContext: &charts.SecurityContext{
+				Enabled: true,
+				SecurityContext: corev1.SecurityContext{
+					AllowPrivilegeEscalation: pointer.Bool(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{"ALL"},
+					},
+					RunAsNonRoot: pointer.Bool(true),
+					RunAsUser:    pointer.Int64(65534),
+					SeccompProfile: &corev1.SeccompProfile{
+						Type: corev1.SeccompProfileTypeRuntimeDefault,
+					},
+				},
+			},
 		},
 		Configs: charts.ConfigJSONs{
 			Global:  "GlobalConfig",

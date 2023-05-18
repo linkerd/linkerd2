@@ -163,7 +163,7 @@ readinessProbe:
 {{- if .Values.proxy.resources }}
 {{ include "partials.resources" .Values.proxy.resources }}
 {{- end }}
-{{- if .Values.proxy.securityContext.enabled }}
+{{- if or (.Values.proxy.securityContext).enabled (not .Values.proxy.securityContext) }}
 securityContext:
   allowPrivilegeEscalation: false
   {{- if .Values.proxy.capabilities -}}

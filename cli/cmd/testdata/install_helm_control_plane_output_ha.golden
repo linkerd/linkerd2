@@ -498,6 +498,16 @@ data:
       listenAddr: 0.0.0.0:4140
       logFormat: plain
       logLevel: debug
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        enabled: true
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
       timeout: 10s
     nodeAffinity: null
     nodeSelector:
@@ -600,6 +610,8 @@ data:
           limit: 250Mi
           request: 20Mi
       saMountPath: null
+      securityContext:
+        enabled: true
       shutdownGracePeriod: ""
       uid: 2102
       waitBeforeExitSeconds: 0
