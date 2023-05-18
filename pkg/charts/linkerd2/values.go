@@ -117,6 +117,7 @@ type (
 		DefaultInboundPolicy                string           `json:"defaultInboundPolicy"`
 		AccessLog                           string           `json:"accessLog"`
 		ShutdownGracePeriod                 string           `json:"shutdownGracePeriod"`
+		SecurityContext                     *SecurityContext `json:"securityContext"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
@@ -140,11 +141,12 @@ type (
 	}
 
 	NetworkValidator struct {
-		LogLevel    string `json:"logLevel"`
-		LogFormat   string `json:"logFormat"`
-		ConnectAddr string `json:"connectAddr"`
-		ListenAddr  string `json:"listenAddr"`
-		Timeout     string `json:"timeout"`
+		LogLevel        string           `json:"logLevel"`
+		LogFormat       string           `json:"logFormat"`
+		ConnectAddr     string           `json:"connectAddr"`
+		ListenAddr      string           `json:"listenAddr"`
+		Timeout         string           `json:"timeout"`
+		SecurityContext *SecurityContext `json:"securityContext"`
 	}
 
 	// DebugContainer contains the fields to set the debugging sidecar
@@ -207,6 +209,11 @@ type (
 	Capabilities struct {
 		Add  []string `json:"add"`
 		Drop []string `json:"drop"`
+	}
+
+	SecurityContext struct {
+		corev1.SecurityContext
+		Enabled bool `json:"enabled"`
 	}
 
 	// VolumeMountPath contains the details for volume mounts

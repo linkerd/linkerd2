@@ -1,6 +1,8 @@
 package linkerd2
 
 import (
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -123,7 +125,10 @@ func TestNewValues(t *testing.T) {
 					Request: "",
 				},
 			},
-			UID:                                 2102,
+			UID: 2102,
+			SecurityContext: &SecurityContext{
+				Enabled: true,
+			},
 			WaitBeforeExitSeconds:               0,
 			OutboundConnectTimeout:              "1000ms",
 			InboundConnectTimeout:               "100ms",
@@ -167,6 +172,20 @@ func TestNewValues(t *testing.T) {
 			ConnectAddr: "1.1.1.1:20001",
 			ListenAddr:  "0.0.0.0:4140",
 			Timeout:     "10s",
+			SecurityContext: &SecurityContext{
+				Enabled: true,
+				SecurityContext: corev1.SecurityContext{
+					AllowPrivilegeEscalation: pointer.Bool(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{"ALL"},
+					},
+					RunAsNonRoot: pointer.Bool(true),
+					RunAsUser:    pointer.Int64(65534),
+					SeccompProfile: &corev1.SeccompProfile{
+						Type: corev1.SeccompProfileTypeRuntimeDefault,
+					},
+				},
+			},
 		},
 		Identity: &Identity{
 			ServiceAccountTokenProjection: true,

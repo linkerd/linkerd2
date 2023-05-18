@@ -1,6 +1,7 @@
 package inject
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -336,6 +337,49 @@ func TestWholeCPUCores(t *testing.T) {
 		}
 		if n != int64(c.n) {
 			t.Fatalf("Unexpected value: %v != %v", n, c.n)
+		}
+	}
+}
+
+func TestSecurityContext(t *testing.T) {
+	// this test uses input values to verify that the
+	// generated PodPatch contains the expected securityContext
+
+	valuesNoSec, _ := l5dcharts.NewValues()
+	valuesNoSec.Proxy.SecurityContext.Enabled = false
+	valuesNoSec.NetworkValidator.SecurityContext.Enabled = false
+	valuesNoSec.IdentityTrustAnchorsPEM = "IdentityTrustAnchorsPEM"
+	valuesNoSec.CNIEnabled = true
+
+	valuesSec, _ := l5dcharts.NewValues()
+	valuesSec.Proxy.SecurityContext.Enabled = true
+	valuesSec.NetworkValidator.SecurityContext.Enabled = true
+	valuesSec.IdentityTrustAnchorsPEM = "IdentityTrustAnchorsPEM"
+	valuesSec.CNIEnabled = true
+
+	for _, tt := range []struct {
+		values *l5dcharts.Values
+		ok     bool
+	}{
+		{
+			valuesNoSec,
+			false,
+		},
+		{
+			valuesSec,
+			true,
+		},
+	} {
+		conf := NewResourceConfig(tt.values, OriginUnknown, "")
+
+		patch, err := conf.GetPodPatch(true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log(string(patch))
+		containsSec := strings.Contains(string(patch), "securityContext")
+		if containsSec != tt.ok {
+			t.Fatalf("Unexpected value: %v != %v", containsSec, tt.ok)
 		}
 	}
 }
