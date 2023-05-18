@@ -625,7 +625,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::MeshTLSAuthentication> 
                 Ok(spec) => spec,
                 Err(error) => {
                     tracing::warn!(ns = %namespace, %name, %error, "Invalid MeshTLSAuthentication");
-                    return;
+                    continue;
                 }
             };
             changed = self.authentications.update_meshtls(namespace, name, spec) || changed;
