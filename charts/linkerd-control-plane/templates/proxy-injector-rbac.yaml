@@ -84,10 +84,10 @@ metadata:
   {{- if or (.Values.proxyInjector.injectCaFrom) (.Values.proxyInjector.injectCaFromSecret) }}
   annotations:
   {{- if .Values.proxyInjector.injectCaFrom }}
-    cert-manager.io/inject-ca-from: {{ .Values.proxyInjector.injectCaFrom }}
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ .Values.proxyInjector.injectCaFrom }}
   {{- end }}
   {{- if .Values.proxyInjector.injectCaFromSecret }}
-    cert-manager.io/inject-ca-from-secret: {{ .Values.proxyInjector.injectCaFromSecret }}
+    cert-manager.io/inject-ca-from-secret: {{ .Release.Namespace }}/{{ .Values.proxyInjector.injectCaFromSecret }}
   {{- end }}
   {{- end }}
   labels:

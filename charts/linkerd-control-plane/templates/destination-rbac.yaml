@@ -85,10 +85,10 @@ metadata:
   {{- if or (.Values.profileValidator.injectCaFrom) (.Values.profileValidator.injectCaFromSecret) }}
   annotations:
   {{- if .Values.profileValidator.injectCaFrom }}
-    cert-manager.io/inject-ca-from: {{ .Values.profileValidator.injectCaFrom }}
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ .Values.profileValidator.injectCaFrom }}
   {{- end }}
   {{- if .Values.profileValidator.injectCaFromSecret }}
-    cert-manager.io/inject-ca-from-secret: {{ .Values.profileValidator.injectCaFromSecret }}
+    cert-manager.io/inject-ca-from-secret: {{ .Release.Namespace }}/{{ .Values.profileValidator.injectCaFromSecret }}
   {{- end }}
   {{- end }}
   labels:
@@ -144,10 +144,10 @@ metadata:
   {{- if or (.Values.policyValidator.injectCaFrom) (.Values.policyValidator.injectCaFromSecret) }}
   annotations:
   {{- if .Values.policyValidator.injectCaFrom }}
-    cert-manager.io/inject-ca-from: {{ .Values.policyValidator.injectCaFrom }}
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ .Values.policyValidator.injectCaFrom }}
   {{- end }}
   {{- if .Values.policyValidator.injectCaFromSecret }}
-    cert-manager.io/inject-ca-from-secret: {{ .Values.policyValidator.injectCaFromSecret }}
+    cert-manager.io/inject-ca-from-secret: {{ .Release.Namespace }}/{{ .Values.policyValidator.injectCaFromSecret }}
   {{- end }}
   {{- end }}
   labels:
