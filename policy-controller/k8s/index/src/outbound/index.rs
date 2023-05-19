@@ -11,18 +11,19 @@ use linkerd_policy_controller_core::outbound::{
 };
 use linkerd_policy_controller_k8s_api::{policy as api, ResourceExt, Service, Time};
 use parking_lot::RwLock;
-use std::{net::IpAddr, num::NonZeroU16, sync::Arc, time};
+use std::{hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time};
 use tokio::sync::watch;
 
 #[derive(Debug)]
 pub struct Index {
     namespaces: NamespaceIndex,
-    services: HashMap<IpAddr, ServiceRef>,
+    services_by_ip: HashMap<IpAddr, ServiceRef>,
+    service_info: HashMap<ServiceRef, ServiceInfo>,
 }
 
 pub type SharedIndex = Arc<RwLock<Index>>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ServiceRef {
     pub name: String,
     pub namespace: String,
@@ -39,7 +40,6 @@ struct NamespaceIndex {
 struct Namespace {
     service_routes: HashMap<ServicePort, ServiceRoutes>,
     namespace: Arc<String>,
-    services: HashMap<String, ServiceInfo>,
 }
 
 #[derive(Debug, Default)]
@@ -72,9 +72,8 @@ impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
             .or_insert_with(|| Namespace {
                 service_routes: Default::default(),
                 namespace: Arc::new(ns),
-                services: Default::default(),
             })
-            .apply(route, &self.namespaces.cluster_info);
+            .apply(route, &self.namespaces.cluster_info, &self.service_info);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -107,7 +106,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                         name,
                         namespace: ns.clone(),
                     };
-                    self.services.insert(addr, service_ref);
+                    self.services_by_ip.insert(addr, service_ref);
                 }
                 Err(error) => {
                     tracing::error!(%error, service=name, cluster_ip, "invalid cluster ip");
@@ -126,17 +125,22 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             .or_insert_with(|| Namespace {
                 service_routes: Default::default(),
                 namespace: Arc::new(ns),
-                services: Default::default(),
             })
-            .update_service(service.name_unchecked(), service_info);
+            .update_service(service.name_unchecked(), &service_info);
+
+        self.service_info.insert(
+            ServiceRef {
+                name: service.name_unchecked(),
+                namespace: service.namespace().expect("Service must have Namespace"),
+            },
+            service_info,
+        );
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        if let Some(ns) = self.namespaces.by_ns.get_mut(&namespace) {
-            ns.services.remove(&name);
-        }
         let service_ref = ServiceRef { name, namespace };
-        self.services.retain(|_, v| *v != service_ref);
+        self.service_info.remove(&service_ref);
+        self.services_by_ip.retain(|_, v| *v != service_ref);
     }
 }
 
@@ -147,7 +151,8 @@ impl Index {
                 by_ns: HashMap::default(),
                 cluster_info,
             },
-            services: HashMap::default(),
+            services_by_ip: HashMap::default(),
+            service_info: HashMap::default(),
         }))
     }
 
@@ -164,24 +169,29 @@ impl Index {
             .or_insert_with(|| Namespace {
                 service_routes: Default::default(),
                 namespace: Arc::new(namespace.to_string()),
-                services: Default::default(),
             });
         let key = ServicePort { service, port };
         tracing::debug!(?key, "subscribing to service port");
-        let routes = ns.service_routes_or_default(key, &self.namespaces.cluster_info);
+        let routes =
+            ns.service_routes_or_default(key, &self.namespaces.cluster_info, &self.service_info);
         Ok(routes.watch.subscribe())
     }
 
     pub fn lookup_service(&self, addr: IpAddr) -> Option<ServiceRef> {
-        self.services.get(&addr).cloned()
+        self.services_by_ip.get(&addr).cloned()
     }
 }
 
 impl Namespace {
-    fn apply(&mut self, route: api::HttpRoute, cluster_info: &ClusterInfo) {
+    fn apply(
+        &mut self,
+        route: api::HttpRoute,
+        cluster_info: &ClusterInfo,
+        service_info: &HashMap<ServiceRef, ServiceInfo>,
+    ) {
         tracing::debug!(?route);
         let name = route.name_unchecked();
-        let outbound_route = match self.convert_route(route.clone(), cluster_info) {
+        let outbound_route = match self.convert_route(route.clone(), cluster_info, service_info) {
             Ok(route) => route,
             Err(error) => {
                 tracing::error!(%error, "failed to convert HttpRoute");
@@ -209,7 +219,8 @@ impl Namespace {
                         route = route.name_unchecked(),
                         "inserting route for service"
                     );
-                    let service_routes = self.service_routes_or_default(service_port, cluster_info);
+                    let service_routes =
+                        self.service_routes_or_default(service_port, cluster_info, service_info);
                     service_routes.apply(name.clone(), outbound_route.clone());
                 } else {
                     tracing::warn!(?parent_ref, "ignoring parent_ref with port 0");
@@ -220,7 +231,7 @@ impl Namespace {
         }
     }
 
-    fn update_service(&mut self, name: String, service: ServiceInfo) {
+    fn update_service(&mut self, name: String, service: &ServiceInfo) {
         tracing::debug!(?name, ?service, "updating service");
         for (svc_port, svc_routes) in self.service_routes.iter_mut() {
             if svc_port.service != name {
@@ -230,7 +241,6 @@ impl Namespace {
 
             svc_routes.update_service(opaque, service.accrual);
         }
-        self.services.insert(name, service);
     }
 
     fn delete(&mut self, name: String) {
@@ -243,10 +253,15 @@ impl Namespace {
         &mut self,
         sp: ServicePort,
         cluster: &ClusterInfo,
+        service_info: &HashMap<ServiceRef, ServiceInfo>,
     ) -> &mut ServiceRoutes {
         self.service_routes.entry(sp.clone()).or_insert_with(|| {
             let authority = cluster.service_dns_authority(&self.namespace, &sp.service, sp.port);
-            let (opaque, accrual) = match self.services.get(&sp.service) {
+            let service_ref = ServiceRef {
+                name: sp.service.clone(),
+                namespace: self.namespace.to_string(),
+            };
+            let (opaque, accrual) = match service_info.get(&service_ref) {
                 Some(svc) => (svc.opaque_ports.contains(&sp.port), svc.accrual),
                 None => (false, None),
             };
@@ -269,7 +284,12 @@ impl Namespace {
         })
     }
 
-    fn convert_route(&self, route: api::HttpRoute, cluster: &ClusterInfo) -> Result<HttpRoute> {
+    fn convert_route(
+        &self,
+        route: api::HttpRoute,
+        cluster: &ClusterInfo,
+        service_info: &HashMap<ServiceRef, ServiceInfo>,
+    ) -> Result<HttpRoute> {
         let hostnames = route
             .spec
             .hostnames
@@ -283,7 +303,7 @@ impl Namespace {
             .rules
             .into_iter()
             .flatten()
-            .map(|r| self.convert_rule(r, cluster))
+            .map(|r| self.convert_rule(r, cluster, service_info))
             .collect::<Result<_>>()?;
 
         let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
@@ -299,6 +319,7 @@ impl Namespace {
         &self,
         rule: api::httproute::HttpRouteRule,
         cluster: &ClusterInfo,
+        service_info: &HashMap<ServiceRef, ServiceInfo>,
     ) -> Result<HttpRouteRule> {
         let matches = rule
             .matches
@@ -311,7 +332,7 @@ impl Namespace {
             .backend_refs
             .into_iter()
             .flatten()
-            .filter_map(|b| convert_backend(&self.namespace, b, cluster, &self.services))
+            .filter_map(|b| convert_backend(&self.namespace, b, cluster, service_info))
             .collect();
         Ok(HttpRouteRule { matches, backends })
     }
@@ -321,7 +342,7 @@ fn convert_backend(
     ns: &str,
     backend: HttpBackendRef,
     cluster: &ClusterInfo,
-    services: &HashMap<String, ServiceInfo>,
+    services: &HashMap<ServiceRef, ServiceInfo>,
 ) -> Option<Backend> {
     backend.backend_ref.map(|backend| {
         if !is_backend_service(&backend.inner) {
@@ -354,8 +375,11 @@ fn convert_backend(
                 }
             }
         };
-
-        if !services.contains_key(&name) {
+        let service_ref = ServiceRef {
+            name: name.clone(),
+            namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
+        };
+        if !services.contains_key(&service_ref) {
             return Backend::Invalid {
                 weight: weight.into(),
                 message: format!("Service not found {name}"),
@@ -364,7 +388,7 @@ fn convert_backend(
 
         Backend::Service(WeightedService {
             weight: weight.into(),
-            authority: cluster.service_dns_authority(ns, &name, port),
+            authority: cluster.service_dns_authority(&service_ref.namespace, &name, port),
             name,
             namespace: ns.to_string(),
             port,
