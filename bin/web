@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+
+set -o errexit -o nounset -o pipefail
+
+ROOT=$( cd "${BASH_SOURCE[0]%/*}"/.. && pwd )
+
+DEV_PORT=8080
+export NODE_ENV=${NODE_ENV:=development}
+
+function -h {
+cat <<USAGE
+USAGE: web <command>
+
+  * build - build the assets
+  * dev - run a dev server (with live reloading). Options:
+      -p $DEV_PORT
+  * port-forward - setup a tunnel to a controller component and port
+      Example: port-forward linkerd controller 8085
+  * run - run a local server (sans. reloading)
+  * setup - get the environment setup for development
+      Note: any command line options are passed on to yarn
+  * test - run the unit tests
+      Note: any command line options are passed on to the test runner (jest)
+USAGE
+}; function --help { '-h' ;}
+
+check-for-linkerd-and-viz() {
+  metrics_api_pod=$(get-pod linkerd-viz metrics-api)
+
+  if [[ -z "${metrics_api_pod// }" ]]; then
+    err 'Metrics-api is not running. Have you installed Linkerd-Viz?'
+    exit 1
+  fi
+}
+
+dev() {
+  while getopts 'p:' opt; do
+    case "$opt" in
+      p) DEV_PORT=$OPTARG;;
+      *) ;;
+    esac
+  done
+
+  cd "$ROOT"/web/app && yarn webpack serve --port "$DEV_PORT" &
+  run ''
+}
+
+build() {
+  cd "$ROOT"/web/app
+  yarn lingui compile && yarn webpack
+}
+
+get-pod() {
+  if [ $# -ne 2 ]; then
+    echo "usage: bin/${0##*/} get-pod namespace component-name" >&2
+    exit 1
+  fi
+
+
+  selector="linkerd.io/control-plane-component=$2"
+  if [ "$1" = 'linkerd-viz' ]; then
+    selector="component=$2"
+  fi
+
+  kubectl --namespace="$1" get po \
+    --selector="$selector" \
+    --field-selector='status.phase==Running' \
+    -o jsonpath='{.items[*].metadata.name}'
+}
+
+port-forward() {
+  if [ $# -lt 3 ]; then
+    echo "usage: bin/${0##*/} port-forward namespace component-name local port-number [remote port-number]" >&2
+    exit 1
+  fi
+
+  port_from=''
+  port_to=''
+  if [ $# -eq 4 ]; then
+    port_from=$3
+    port_to=$4
+  else
+    port_from=$3
+    port_to=$3
+  fi
+
+  nc -z localhost "$3" || \
+    kubectl --namespace="$1" port-forward "$(get-pod "$1" "$2")" "$port_from:$port_to"
+}
+
+run() {
+  # Stop everything in the process group (in the background) whenever the
+  # parent process experiences an error and exits.
+  trap 'exit' INT TERM
+  trap 'kill 0' EXIT
+
+  build
+
+  check-for-linkerd-and-viz && (
+    port-forward linkerd-viz metrics-api 8085 &
+  )
+
+  cd "$ROOT"/web && \
+    ../bin/go-run . --addr=:7777 "$@"
+}
+
+setup() {
+  cd "$ROOT"/web/app
+  yarn "$@"
+}
+
+function test {
+  cd "$ROOT"/web/app
+  yarn jest "$@"
+}
+
+main() {
+  setup ''
+  build
+}
+
+msg() { out "$*" >&2 ;}
+err() { local x=$? ; msg "$*" ; return $(( x == 0 ? 1 : x )) ;}
+out() { printf '%s\n' "$*" ;}
+
+if [[ ${1:-} ]] && declare -F | cut -d' ' -f3 | grep -Fqx -- "${1:-}"
+then "$@"
+else main "$@"
+fi

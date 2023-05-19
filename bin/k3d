@@ -1,0 +1,32 @@
+#!/usr/bin/env sh
+
+set -eu
+
+K3D_VERSION=v5.4.3
+
+bindir=$( cd "${0%/*}" && pwd )
+
+# shellcheck source=_os.sh
+. "$bindir"/_os.sh
+
+targetbin=$( cd "$bindir"/.. && pwd )/target/bin
+k3dbin="$targetbin/k3d-${K3D_VERSION}"
+
+if [ ! -f "$k3dbin" ]; then
+  arch=$(architecture)
+
+  if [ "$(uname -s)" = Darwin ]; then
+    os=darwin
+  elif [ "$(uname -o)" = Msys ]; then
+    os=windows
+  else
+    os=linux
+  fi
+
+  mkdir -p "$targetbin"
+  "$bindir"/scurl -o "$k3dbin" "https://github.com/k3d-io/k3d/releases/download/${K3D_VERSION}/k3d-$os-$arch"
+  chmod +x "$k3dbin"
+fi
+
+"$k3dbin" "$@"
+

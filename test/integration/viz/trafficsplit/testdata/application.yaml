@@ -1,0 +1,116 @@
+# Two backend pods, one always failing
+# and another one returning OK response
+# Slowcooker is used to generate traffic
+# that will be routed via traffic split
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: buoyantio/bb:v0.0.6
+        args:
+        - terminus
+        - "--h1-server-port=8080"
+        - "--response-text=backend1"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-svc
+spec:
+  selector:
+    app: backend
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: failing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: failing
+  template:
+    metadata:
+      labels:
+        app: failing
+    spec:
+      containers:
+      - name: failing
+        image: buoyantio/bb:v0.0.6
+        args:
+        - terminus
+        - "--h1-server-port=8080"
+        - "--response-text=failing"
+        - "--percent-failure=100"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: failing-svc
+spec:
+  selector:
+    app: failing
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slow-cooker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: slow-cooker
+  template:
+    metadata:
+      labels:
+        app: slow-cooker
+    spec:
+      containers:
+      - name: slow-cooker
+        image: buoyantio/slow_cooker:1.3.0
+        command:
+        - "/bin/sh"
+        args:
+        - "-c"
+        - |
+          sleep 5 # wait for pods to start
+          /slow_cooker/slow_cooker http://backend-svc:8080
+        ports:
+        - containerPort: 9999
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: slow-cooker
+spec:
+  selector:
+    app: slow-cooker
+  ports:
+  - name: metrics
+    port: 9999
+    targetPort: 9999

@@ -1,0 +1,39 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+data:
+  linkerd-crds-chart-version: linkerd-crds-1.0.0-edge
+  values: |
+  {{- $values := deepCopy .Values }}
+  {{- /*
+    WARNING! All sensitive or private data such as TLS keys must be removed
+    here to avoid it being publicly readable.
+  */ -}}
+  {{- if kindIs "map" $values.identity.issuer.tls -}}
+    {{- $_ := unset $values.identity.issuer.tls "keyPEM"}}
+  {{- end -}}
+  {{- if kindIs "map" $values.profileValidator -}}
+    {{- $_ := unset $values.profileValidator "keyPEM"}}
+  {{- end -}}
+  {{- if kindIs "map" $values.proxyInjector -}}
+    {{- $_ := unset $values.proxyInjector "keyPEM"}}
+  {{- end -}}
+  {{- if kindIs "map" $values.policyValidator -}}
+    {{- $_ := unset $values.policyValidator "keyPEM"}}
+  {{- end -}}
+  {{- if (empty $values.identityTrustDomain) -}}
+  {{- $_ := set $values "identityTrustDomain" $values.clusterDomain}}
+  {{- end -}}
+  {{- $_ := unset $values "partials"}}
+  {{- $_ := unset $values "configs"}}
+  {{- $_ := unset $values "stage"}}
+  {{- toYaml $values | trim | nindent 4 }}

@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+set -eu -o pipefail
+
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+
+# shellcheck source=_test-helpers.sh
+. "$bindir"/_test-helpers.sh
+handle_cleanup_input "$@"
+
+check_linkerd_binary
+
+echo "cleaning up viz extension resources, if present [${k8s_context}]"
+"$linkerd_path" viz uninstall 2> /dev/null | kubectl --context="$k8s_context" delete -f -
+
+echo "cleaning up multicluster resources, if present [${k8s_context}]"
+"$linkerd_path" mc uninstall 2> /dev/null | kubectl --context="$k8s_context" delete -f -
+
+echo "cleaning up jaeger extension resources, if present [${k8s_context}]"
+"$linkerd_path" jaeger uninstall 2> /dev/null | kubectl --context="$k8s_context" delete -f -
+
+echo 'cleaning up the all namespaces labelled with test.linkerd.io/is-test-data-plane'
+kubectl --context="$k8s_context" delete ns -l test.linkerd.io/is-test-data-plane
+
+echo 'cleaning up cluster-scoped resources labelled with test.linkerd.io/is-test-data-plane'
+kubectl --context="$k8s_context" delete clusterRole,clusterRoleBindings,mutatingwebhookconfiguration -l test.linkerd.io/is-test-data-plane
+
+echo "cleaning up linkerd resources [${k8s_context}]"
+"$linkerd_path" uninstall | kubectl --context="$k8s_context" delete -f -
+
+# Helm cleanup. Just the entries in `helm ls` as the resources should have already been cleaned up by the code above.
+releases=$("$bindir/helm" ls -A -q)
+if [[ "${releases[*]}" =~ 'l5d-viz' ]]; then
+  "$bindir/helm" --kube-context="$k8s_context" --namespace linkerd-viz delete l5d-viz
+  kubectl delete ns linkerd-viz
+fi
+if [[ "${releases[*]}" =~ 'helm-test' ]]; then
+  "$bindir/helm" --kube-context="$k8s_context" --namespace linkerd delete helm-test-crds
+  "$bindir/helm" --kube-context="$k8s_context" --namespace linkerd delete helm-test-control-plane
+  kubectl delete ns linkerd
+fi
+if [[ "${releases[*]}" =~ 'multicluster-test' ]]; then
+  "$bindir/helm" --kube-context="$k8s_context" --namespace linkerd-multicluster delete multicluster-test
+  kubectl delete ns linkerd-multicluster
+fi
+

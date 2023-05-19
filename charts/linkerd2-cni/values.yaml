@@ -1,0 +1,105 @@
+# -- Inbound port for the proxy container
+inboundProxyPort: 4143
+# -- Outbound port for the proxy container
+outboundProxyPort: 4140
+# -- Default set of inbound ports to skip via iptables
+ignoreInboundPorts: ""
+# -- Default set of outbound ports to skip via iptables
+ignoreOutboundPorts: ""
+# -- Admin port for the proxy container
+proxyAdminPort: 4191
+# -- Control port for the proxy container
+proxyControlPort: 4190
+# -- Additional labels to add to all pods
+podLabels: {}
+# -- Labels to apply to all resources
+commonLabels: {}
+# -- Log level for the CNI plugin
+logLevel:         info
+# -- Ports to redirect to proxy
+portsToRedirect:  ""
+# -- User id under which the proxy shall be ran
+proxyUID:         2102
+# -- Directory on the host where the CNI plugin binaries reside
+destCNINetDir:    "/etc/cni/net.d"
+# -- Directory on the host where the CNI configuration will be placed
+destCNIBinDir:    "/opt/cni/bin"
+# -- Configures the CNI plugin to use the -w flag for the iptables command
+useWaitFlag:      false
+# -- Kubernetes priorityClassName for the CNI plugin's Pods
+priorityClassName: ""
+
+# -- Add a PSP resource and bind it to the linkerd-cni ServiceAccounts.
+# Note PSP has been deprecated since k8s v1.21
+enablePSP: false
+
+# -- Run the install-cni container in privileged mode
+privileged: false
+
+# -|- Tolerations section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+# for more information
+tolerations:
+  # -- toleration properties
+  - operator: Exists
+
+# -|- NodeAffinity section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
+# for more information
+#nodeAffinity:
+
+# -|- Image section
+image:
+  # -- Docker image for the CNI plugin
+  name: "cr.l5d.io/linkerd/cni-plugin"
+  # -- Tag for the CNI container Docker image
+  version: "v1.1.3"
+  # -- Pull policy for the linkerd-cni container
+  pullPolicy: IfNotPresent
+
+#
+## For Private docker registries, authentication is needed.
+# If the control plane service images are pulled from a
+# protected docker registry, define pull secrets as follows:
+#
+#imagePullSecrets:
+#    - name: my-private-docker-registry-login-secret
+#
+# The pull secrets are applied to the respective service accounts
+# which will further orchestrate the deployments.
+imagePullSecrets: []
+
+# -- Add additional initContainers to the daemonset
+extraInitContainers: []
+# - name: wait-for-other-cni
+#   image: busybox:1.33
+#   command:
+#     - /bin/sh
+#     - -xc
+#     - |
+#       for i in $(seq 1 180); do
+#         test -f /host/etc/cni/net.d/10-aws.conflist && exit 0
+#         sleep 1
+#       done
+#       exit 1
+#   volumeMounts:
+#     - mountPath: /host/etc/cni/net.d
+#       name: cni-net-dir
+
+# -- Resource requests and limits for linkerd-cni daemonset containers
+resources:
+  cpu:
+    # -- Maximum amount of CPU units that the cni container can use
+    limit: ""
+    # -- Amount of CPU units that the cni container requests
+    request: ""
+  memory:
+    # -- Maximum amount of memory that the cni container can use
+    limit: ""
+    # -- Amount of memory that the cni container requests
+    request: ""
+  ephemeral-storage:
+    # -- Maximum amount of ephemeral storage that the cni container can use
+    limit: ""
+    # -- Amount of ephemeral storage that the cni container requests
+    request: ""

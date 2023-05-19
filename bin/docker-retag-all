@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+set -eu
+
+if [ $# -ne 2 ]; then
+    echo "usage: ${0##*/} from-tag to-tag" >&2
+    exit 64
+fi
+from=$1
+to=$2
+
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+
+# shellcheck source=_docker.sh
+. "$bindir"/_docker.sh
+for img in "${DOCKER_IMAGES[@]}" ; do
+    docker_retag "$img" "$from" "$to"
+done

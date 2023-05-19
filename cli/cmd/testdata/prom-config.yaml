@@ -1,0 +1,59 @@
+prometheus:
+  image: linkedin.io/prom
+  args:
+    log.format: json
+  globalConfig:
+    evaluation_interval: 2m
+    external_labels:
+      cluster: cluster-1
+
+  scrapeConfigs:
+  - job_name: 'kubernetes-nodes'
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    kubernetes_sd_configs:
+    - role: node
+    relabel_configs:
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+  alertmanagers:
+  - scheme: http
+    static_configs:
+    - targets:
+      - "alertmanager.linkerd.svc:9093"
+  alertRelabelConfigs:
+  - action: labeldrop
+    regex: prometheus_replica
+  ruleConfigMapMounts:
+  - name: alerting-rules
+    subPath: alerting_rules.yml
+    configMap: linkerd-prometheus-rules
+  - name: recording-rules
+    subPath: recording_rules.yml
+    configMap: linkerd-prometheus-rules
+  remoteWrite:
+  - url: http://cortex-service.default:9009/api/prom/push
+  sidecarContainers:
+  - name: sidecar
+    lifecycle:
+      type: Sidecar
+    imagePullPolicy: always
+    command:
+    - /bin/sh
+    - -c
+    - |
+      exec /bin/stackdriver-prometheus-sidecar \
+        --stackdriver.project-id=myproject \
+        --stackdriver.kubernetes.location=us-central1 \
+        --stackdriver.kubernetes.cluster-name=mycluster \
+        --prometheus.wal-directory=/data/wal \
+        --log.level=info
+      volumeMounts:
+      - mountPath: /data
+        name: data
+    ports:
+    - name: foo
+      containerPort: 9091
+      protocol: TCP

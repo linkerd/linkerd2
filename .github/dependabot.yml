@@ -1,0 +1,65 @@
+# Dependabot are scheduled to avoid contention with normal workday CI usage. We
+# start running updates at 3AM UTC (7PM PST, 8AM IST) and stagger each
+# subsequent update by 30m.
+#
+# JS updates are run weekly.
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "03:00"
+      timezone: "UTC"
+
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: daily
+      time: "03:30"
+      timezone: "UTC"
+    allow:
+      - dependency-type: "all"
+    ignore:
+      # These dependencies will be updated via higher-level aggregator dependencies like `clap`,
+      # `futures`, `kube`, `prost`, and `tracing`:
+      - dependency-name: "clap_derive"
+      - dependency-name: "futures-channel"
+      - dependency-name: "futures-core"
+      - dependency-name: "futures-io"
+      - dependency-name: "futures-sink"
+      - dependency-name: "futures-task"
+      - dependency-name: "futures-util"
+      - dependency-name: "kube-client"
+      - dependency-name: "kube-core"
+      - dependency-name: "kube-derive"
+      - dependency-name: "kube-runtime"
+      - dependency-name: "prost-derive"
+      - dependency-name: "tracing-attributes"
+      - dependency-name: "tracing-core"
+      - dependency-name: "tracing-serde"
+      # These dependencies are for platforms that we don't support:
+      - dependency-name: "redox_syscall"
+      - dependency-name: "js-sys"
+      - dependency-name: "wasm-bindgen"
+      - dependency-name: "web-sys"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "04:00"
+      timezone: "UTC"
+
+  - package-ecosystem: "npm"
+    directory: "/web/app"
+    schedule:
+      # JS dependencies tend to be pretty noisy, so only check once per week.
+      interval: "weekly"
+      day: "sunday"
+    ignore:
+      # v6 is backwards-incompatible and requires lots of changes.
+      # A compatibility layer should come out at some point
+      # see https://reactrouter.com/docs/en/v6/upgrading/v5
+      - dependency-name: "react-router-dom"
+        update-types: ["version-update:semver-major"]

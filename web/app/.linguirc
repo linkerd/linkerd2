@@ -1,0 +1,5 @@
+{
+   "localeDir": "js/locales/",
+   "srcPathDirs": ["js/"],
+   "format": "minimal"
+}

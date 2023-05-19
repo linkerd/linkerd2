@@ -1,0 +1,4 @@
+tracing:
+  enabled: true
+  collector:
+    image: overwrite-collector-image

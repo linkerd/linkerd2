@@ -1,0 +1,46 @@
+#!/usr/bin/env sh
+
+# If the first argument to this script is "latest" or unset, it fetches the
+# latest proxy binary from the linkerd2-proxy github releases. If it's set to
+# a linkerd2-proxy version number (such as v2.76.0), it will fetch the binary
+# matching that version number instead.
+
+set -eu
+
+bindir=$( cd "${0%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+builddir="$rootdir/target/proxy"
+
+version=${1:-latest}
+if [ "$version" = latest ]; then
+  version=$("$bindir"/scurl https://api.github.com/repos/linkerd/linkerd2-proxy/releases/latest |jq -r .tag_name | sed 's,^release/,,')
+fi
+
+assetbase="https://github.com/linkerd/linkerd2-proxy/releases/download/release%2F${version}"
+arch=${2:-amd64}
+pkgname="linkerd2-proxy-${version}-${arch}"
+pkgfile="${pkgname}.tar.gz"
+shafile="${pkgname}.txt"
+
+mkdir -p "$builddir"
+cd "$builddir"
+"$bindir"/scurl -O "$assetbase/$pkgfile"
+"$bindir"/scurl -O "$assetbase/$shafile"
+
+tar -zxvf "$pkgfile" >&2
+expected=$(awk '{print $1}' "$shafile")
+if [ "$(uname)" = "Darwin" ]; then
+  computed=$(openssl dgst -sha256 "$pkgfile" | awk '{print $2}')
+else
+  computed=$(sha256sum "$pkgfile" | awk '{print $1}')
+fi
+if [ "$computed" != "$expected" ]; then
+  echo 'sha mismatch' >&2
+  exit 1
+fi
+
+mv "$pkgname/LICENSE" .
+mv "$pkgname/linkerd2-proxy" .
+rm -r "$pkgfile" "$pkgname"
+mv linkerd2-proxy "$pkgname"
+echo "$builddir/$pkgname"

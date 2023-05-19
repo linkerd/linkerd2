@@ -1,0 +1,5 @@
+SRC                DST                  SRC_NS      DST_NS      CLIENT_ID                  SERVER_ID                    SECURED
+vote-bot           web                  emojivoto   emojivoto   default.emojivoto          web.emojivoto                √      
+web                emoji                emojivoto   emojivoto   web.emojivoto              emoji.emojivoto              √      
+web                voting               emojivoto   emojivoto   web.emojivoto              voting.emojivoto             √      
+linkerd-identity   linkerd-prometheus   linkerd     linkerd     linkerd-identity.linkerd   linkerd-prometheus.linkerd   √      

@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>linkerd</id>
+    <version>LINKERD_VERSION</version>
+    
+    <title>Linkerd</title>
+    <authors>Linkerd</authors>
+    <summary>Ultralight service mesh for Kubernetes and beyond</summary>
+    <description>
+    Linkerd is an ultralight service mesh for Kubernetes. 
+    It gives you observability, reliability, and security without requiring any code changes.
+
+    Package Parameters
+    - `path`: Specify path for linkerd-cli installation. If not specified, uses environment variable `linkerdPath`. Uses default chocolatey install path if none provided. 
+    - `checksum`: Specify the checksum for linkerd-cli. If not specified, uses environment variable `linkerdCheckSum`. Defaults to `null` if no checksum provided and skips verification. Do ensure to use the correct checksum for the version of install. 
+    </description>
+
+    <projectUrl>https://github.com/linkerd/linkerd2</projectUrl>
+    <licenseUrl>https://github.com/linkerd/linkerd2/blob/main/LICENSE</licenseUrl>
+    <releaseNotes>https://github.com/linkerd/linkerd2/releases</releaseNotes>
+    <docsUrl>https://linkerd.io/docs</docsUrl>
+
+    <dependencies>
+      <dependency id="chocolatey-core.extension" version="1.1.0" />
+    </dependencies>
+  </metadata>
+
+  <files>
+    <file src="tools\**" target="tools" />
+    </files>
+</package>

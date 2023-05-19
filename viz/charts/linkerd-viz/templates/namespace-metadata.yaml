@@ -1,0 +1,63 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  labels:
+    linkerd.io/extension: viz
+    app.kubernetes.io/name: namespace-metadata
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  name: namespace-metadata
+  namespace: {{.Release.Namespace}}
+spec:
+  template:
+    metadata:
+      annotations:
+        {{ include "partials.annotations.created-by" . }}
+        linkerd.io/inject: disabled
+      labels:
+        linkerd.io/extension: viz
+        app.kubernetes.io/name: namespace-metadata
+        app.kubernetes.io/part-of: Linkerd
+        app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+    spec:
+      restartPolicy: Never
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: namespace-metadata
+      containers:
+      - name: namespace-metadata
+        image: {{.Values.namespaceMetadata.image.registry | default .Values.defaultRegistry}}/{{.Values.namespaceMetadata.image.name}}:{{.Values.namespaceMetadata.image.tag}}
+        imagePullPolicy: {{.Values.namespaceMetadata.image.pullPolicy | default .Values.defaultImagePullPolicy}}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          readOnlyRootFilesystem: true
+          runAsUser: {{.Values.defaultUID}}
+          seccompProfile:
+            type: RuntimeDefault
+        args:
+        - --log-format
+        - {{.Values.defaultLogFormat}}
+        - --log-level
+        - {{.Values.defaultLogLevel}}
+        - --extension
+        - viz
+        - --namespace
+        - {{.Release.Namespace}}
+        - --linkerd-namespace
+        - {{.Values.linkerdNamespace}}
+        {{- with .Values.prometheusUrl }}
+        - --prometheus-url
+        - {{.}}
+        {{- end }}

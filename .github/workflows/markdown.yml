@@ -1,0 +1,23 @@
+name: markdown
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/markdown.yml
+      - '**/*.md'
+
+jobs:
+  markdownlint:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: DavidAnson/markdownlint-cli2-action@bb4bb94c73936643d73d345b48fead3e96f90a5e
+        with:
+          globs: |
+            **/*.md
+            !**/node_modules/**
+            !target/**

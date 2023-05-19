@@ -1,0 +1,37 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server-relay
+  labels:
+    app: server-relay
+spec:
+  selector:
+    matchLabels:
+      app: server-relay
+  template:
+    metadata:
+      labels:
+        app: server-relay
+    spec:
+      containers:
+      - name: app
+        image: buoyantio/bb:v0.0.6
+        args:
+        - terminus
+        - "--h1-server-port=8080"
+        - "--response-text=HELLO-FROM-RELAY"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: server-relay
+spec:
+  selector:
+    app: server-relay
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080

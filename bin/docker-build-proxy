@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -eu
+
+if [ $# -ne 0 ]; then
+    echo "no arguments allowed for ${0##*/}, given: $*" >&2
+    exit 64
+fi
+
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+
+# shellcheck source=_docker.sh
+. "$bindir"/_docker.sh
+# shellcheck source=_tag.sh
+. "$bindir"/_tag.sh
+
+dockerfile=$rootdir/Dockerfile-proxy
+
+get_extra_options() {
+    options=
+    for var in http_proxy https_proxy no_proxy; do
+        [ -z "${!var:-}" ] || options="$options --build-arg '$var=${!var}'"
+    done
+    echo "$options"
+}
+
+# We want wordsplit for the extra options here:
+# shellcheck disable=SC2046
+docker_build proxy "${TAG:-$(head_root_tag)}" "$dockerfile" \
+  --build-arg "LINKERD_VERSION=${TAG:-$(head_root_tag)}" \
+  $(get_extra_options)

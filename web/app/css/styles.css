@@ -1,0 +1,34 @@
+/* material-ui uses Roboto */
+@import url("https://fonts.googleapis.com/css?family=Montserrat:400,700|Roboto:100,300,400|Roboto+Mono");
+
+:root {
+  --linkblue: #2196f3;
+  --font-stack: 'Roboto', 'Lato', helvetica, arial, sans-serif;
+}
+
+body {
+  font-family: var(--font-stack);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  text-decoration: none;
+  color: var(--linkblue);
+}
+a:focus, a:hover, a:visited, a:link, a:active {
+  text-decoration: none;
+}
+
+.breadcrumb-link a {
+  color: white;
+}
+
+.tapGrayed {
+  color: lightgray;
+}
+
+.errorMessage a {
+  color: white;
+}

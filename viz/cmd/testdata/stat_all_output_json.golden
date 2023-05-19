@@ -1,0 +1,28 @@
+[
+  {
+    "namespace": "emojivoto1",
+    "kind": "namespace",
+    "name": "emoji",
+    "success": 1,
+    "rps": 2.05,
+    "latency_ms_p50": 123,
+    "latency_ms_p95": 123,
+    "latency_ms_p99": 123,
+    "tcp_open_connections": 123,
+    "tcp_read_bytes_rate": 2.05,
+    "tcp_write_bytes_rate": 2.05
+  },
+  {
+    "namespace": "emojivoto2",
+    "kind": "namespace",
+    "name": "emoji",
+    "success": 1,
+    "rps": 2.05,
+    "latency_ms_p50": 123,
+    "latency_ms_p95": 123,
+    "latency_ms_p99": 123,
+    "tcp_open_connections": 123,
+    "tcp_read_bytes_rate": 2.05,
+    "tcp_write_bytes_rate": 2.05
+  }
+]

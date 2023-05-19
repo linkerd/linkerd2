@@ -1,0 +1,80 @@
+{
+  "ok": {
+    "statTables": [
+      {
+        "podGroup": {
+          "rows": [
+            {
+              "meshedPodCount": "1",
+              "resource": {
+                "name": "voting",
+                "namespace": "emojivoto",
+                "type": "deployment"
+              },
+              "stats": {
+                "failureCount": "10",
+                "latencyMsP50": "1",
+                "latencyMsP95": "1",
+                "latencyMsP99": "2",
+                "successCount": "56"
+              },
+              "timeWindow": "1m",
+              "runningPodCount": "1"
+            },
+            {
+              "meshedPodCount": "1",
+              "resource": {
+                "name": "emoji",
+                "namespace": "emojivoto",
+                "type": "deployment"
+              },
+              "stats": {
+                "failureCount": "0",
+                "latencyMsP50": "1",
+                "latencyMsP95": "1",
+                "latencyMsP99": "2",
+                "successCount": "124"
+              },
+              "timeWindow": "1m",
+              "runningPodCount": "1"
+            },
+            {
+              "meshedPodCount": "1",
+              "resource": {
+                "name": "vote-bot",
+                "namespace": "emojivoto",
+                "type": "deployment"
+              },
+              "stats": {
+                "failureCount": "0",
+                "latencyMsP50": "1",
+                "latencyMsP95": "1",
+                "latencyMsP99": "1",
+                "successCount": "6"
+              },
+              "timeWindow": "1m",
+              "runningPodCount": "1"
+            },
+            {
+              "meshedPodCount": "1",
+              "resource": {
+                "name": "web",
+                "namespace": "emojivoto",
+                "type": "deployment"
+              },
+              "stats": {
+                "failureCount": "11",
+                "latencyMsP50": "3",
+                "latencyMsP95": "10",
+                "latencyMsP99": "18",
+                "successCount": "113"
+              },
+              "timeWindow": "1m",
+              "runningPodCount": "1"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

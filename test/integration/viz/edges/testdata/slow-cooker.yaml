@@ -1,0 +1,27 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slow-cooker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: slow-cooker
+  template:
+    metadata:
+      labels:
+        app: slow-cooker
+    spec:
+      containers:
+      - name: slow-cooker
+        image: buoyantio/slow_cooker:1.3.0
+        command:
+        - "/bin/sh"
+        args:
+        - "-c"
+        - |
+          sleep 15 # wait for pods to start
+          /slow_cooker/slow_cooker -metric-addr 0.0.0.0:9999 http://___TERMINUS_POD_IP___:8080
+        ports:
+        - containerPort: 9999

@@ -1,0 +1,22 @@
+name: Shell
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/shell.yml
+      - '**/*.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  # For more information on shellcheck failures:
+  # https://github.com/koalaman/shellcheck/wiki/Checks
+  shellcheck:
+    timeout-minutes: 10
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: linkerd/dev/actions/setup-tools@v40
+      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - run: just sh-lint
+

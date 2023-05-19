@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -eu
+
+export RUST_LOG=${RUST_LOG:-}
+
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+
+docker build -f "$rootdir/proxy/Dockerfile" . \
+    --target build \
+    -t proxy-build \
+    --build-arg=PROXY_UNOPTIMIZED=1
+docker run --rm -it proxy-build env RUST_LOG="$RUST_LOG" cargo test "$@"

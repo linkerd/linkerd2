@@ -1,0 +1,165 @@
+# This file specifies which linters golangci-lint should run.
+#
+# For descriptions of all available linters, run:
+# ./.golangci-lint-1.17.1 linters
+# or browse to:
+# https://github.com/golangci/golangci-lint#supported-linters
+
+run:
+  deadline: 5m
+  skip-dirs:
+  - controller/gen
+
+linters:
+  enable:
+  - bodyclose
+  - deadcode
+  - depguard
+  - errcheck
+  - errorlint
+  - exportloopref
+  - goconst
+  - gocritic
+  - gosec
+  - gosimple
+  - govet
+  - ineffassign
+  - misspell
+  - nakedret
+  - revive
+  - staticcheck
+  - stylecheck
+  - typecheck
+  - unconvert
+  - unparam
+  - unused
+  - varcheck
+  # TODO: enable more linters!
+  # - dupl
+  # - gochecknoglobals
+  # - gochecknoinits
+  # - gocyclo
+  # - interfacer
+  # - lll
+  # - maligned
+  # - prealloc
+
+  disable:
+  # https://github.com/golangci/golangci-lint/issues/2649
+  - structcheck
+
+linters-settings:
+  revive:
+    rules:
+    - name: package-comments
+      disabled: true
+  stylecheck:
+    checks: ["ST1019"]
+
+issues:
+  exclude-use-default: false
+  exclude-rules:
+  # Ignore errors when performing the following file operations. If these are
+  # not handled separately already, they tend to be insignificant.
+  - linters:
+    - errcheck
+    text: Error return value of `.*\.(Copy|Flush|Write|WriteTo)` is not checked
+
+  # Ignore error values when closing file or HTTP response bodies. These
+  # generally happen as cleanup and are part of defer statements.
+  - linters:
+    - errcheck
+    text: Error return value of `.*\.Close` is not checked
+
+  # Ignore error values when closing file or HTTP response bodies. These
+  # generally happen as cleanup and are part of defer statements.
+  - linters:
+    - gosec
+    text: Deferring unsafe method "Close" on type
+
+  # Ignore error checks for CLI output.
+  - linters:
+    - errcheck
+    text: Error return value of `(plugin|spin|termbox)\.(Clear|Color|Flush|Run)` is not checked
+
+  # The errcheck linter catches these instances and we exclude them with the
+  # rule above; therefore we'll ignore redundant warnings through gosec.
+  - linters:
+    - gosec
+    text: "G104: Errors unhandled."
+
+  # This gives false negatives if a variable name is too close to the pattern
+  # used to determine if a variable is a credential.
+  - linters:
+    - gosec
+    text: "G101: Potential hardcoded credentials"
+
+  # Temporarily disable this check until the next golang-ci upgrade (greater
+  # than v1.50.1) which upgrades gosec from v2.13.1 to v2.14.0. The fix is in
+  # this commit, that refers to G404 but it seems it also affects G402:
+  # https://github.com/securego/gosec/commit/dfde579243e1bfe0856ddafc5fc6aebb29c0edf6
+  - linters:
+    - gosec
+    text: "G402: TLS MinVersion too low"
+
+  # Flag operations are fallible if the flag does not exist. We assume these
+  # exist as they are generally flags we are deprecating or use only for
+  # development.
+  - linters:
+    - errcheck
+    text: Error return value of `(.*)\.(MarkDeprecated|MarkHidden|Set)` is not checked
+
+  # Flag completion is not critical to the CLI and errors are ignored if
+  # registration fails.
+  - linters:
+    - errcheck
+    text: Error return value of `.*\.RegisterFlagCompletionFunc` is not checked
+
+  # Errors that occur when gracefully shutting down control plane components
+  # are insignificant.
+  - linters:
+    - errcheck
+    text: Error return value of `(adminServer|apiServer|server)\.Shutdown` is not checked
+
+  # Append should be able to assign to a different var/slice.
+  - linters:
+    - gocritic
+    text: "appendAssign: append result not assigned to the same slice"
+
+  # This does not always result in more readable code.
+  - linters:
+    - gocritic
+    text: "singleCaseSwitch: should rewrite switch statement to if statement"
+
+  # This does not always result in more readable code.
+  - linters:
+    - gocritic
+    text: "ifElseChain: rewrite if-else to switch statement"
+
+  # Test files do not need to be linted by gosec since all OS operations are
+  # not dynamic.
+  - linters:
+    - gosec
+    path: .*test.*
+    text: "G204: Subprocess launched with .*"
+
+  # Test/fuzzing do not need to be checked for file handle cleanup.
+  - linters:
+    - gosec
+    path: .*(test|fuzzer).*\.go
+    text: Deferring unsafe method \"Close\" on type \"\*os\.File\"
+
+  # In tests/fuzzing we are usually mocking components or have a good idea
+  # about the errors that we expect. For this reason, we ignore unchecked
+  # errors in all test files.
+  - path: .*(test|fuzzer).*\.go
+    text: Error return value of `.*` is not checked
+
+  # In tests we'll ignore unchecked filename operations because the values
+  # are not dynamic.
+  - path: (.*test.*\.go|fake)
+    text: "G304: Potential file inclusion via variable"
+
+  # This ignores the errors returned from AddToScheme operations.
+  - path: pkg/k8s/fake.go
+    text: Error return value is not checked

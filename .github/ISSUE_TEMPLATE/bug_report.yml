@@ -1,0 +1,76 @@
+name: "🐛 Bug Report"
+description: If you've found a reproducible bug
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report!
+
+        We're most likely to fix bugs that are easy to reproduce, so please try
+        to provide enough information for us to understand how to reproduce the
+        issue. Example Kubernetes manifests are encouraged!
+
+  - type: textarea
+    attributes:
+      label: What is the issue?
+      description: |
+        A clear and concise description of what Linkerd is doing and what you
+        would expect.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: How can it be reproduced?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Logs, error output, etc
+      description: |
+        If the output is long, please create a [gist](https://gist.github.com/)
+        and paste the link here.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: output of `linkerd check -o short`
+      placeholder: |
+        ```text
+        your output here ...
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Environment
+      placeholder: |
+        - Kubernetes Version:
+        - Cluster Environment: (GKE, AKS, kops, ...)
+        - Host OS:
+        - Linkerd version:
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Possible solution
+      description: "If you have suggestions on a fix for the bug."
+
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: "Add any other context about the problem here. Or a screenshot if applicable."
+
+  - type: dropdown
+    attributes:
+      label: Would you like to work on fixing this bug?
+      description: We are more than happy to help you through the process.
+      options:
+        - "yes"
+        - "no"
+        - "maybe"

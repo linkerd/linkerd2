@@ -1,0 +1,7 @@
+The Linkerd Multicluster extension was successfully installed 🎉
+
+To make sure everything works as expected, run the following:
+
+  linkerd multicluster check
+
+Looking for more? Visit https://linkerd.io/2/features/multicluster/

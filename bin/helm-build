@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+
+set -e
+
+setValues() {
+    sed -i "s/$1/$2/" charts/linkerd-control-plane/values.yaml
+    sed -i "s/$1/$2/" charts/linkerd2-cni/values.yaml
+    sed -i "s/$1/$2/" multicluster/charts/linkerd-multicluster/values.yaml
+    sed -i "s/$1/$2/" jaeger/charts/linkerd-jaeger/values.yaml
+    sed -i "s/$1/$2/" viz/charts/linkerd-viz/values.yaml
+}
+
+showErr() {
+  printf "Error on exit:\n  Exit code: %d\n  Failed command: \"%s\"\n" $? "$BASH_COMMAND"
+  setValues "$fullVersion" 'linkerdVersionValue'
+}
+
+# trap the last failed command
+trap 'showErr' ERR
+
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+
+# cleanup dependencies
+rm -f charts/linkerd-crds/charts/*
+rm -f charts/linkerd-control-plane/charts/*
+rm -f charts/linkerd2-cni/charts/*
+rm -f charts/patch/charts/*
+rm -f jaeger/charts/linkerd-jaeger/charts/*
+rm -f viz/charts/linkerd-viz/charts/*
+
+"$bindir"/helm dep up "$rootdir"/multicluster/charts/linkerd-multicluster
+"$bindir"/helm lint "$rootdir"/multicluster/charts/linkerd-multicluster
+"$bindir"/helm dep up "$rootdir"/multicluster/charts/linkerd-multicluster-link
+"$bindir"/helm lint "$rootdir"/multicluster/charts/linkerd-multicluster-link
+"$bindir"/helm lint "$rootdir"/charts/partials
+"$bindir"/helm dep up "$rootdir"/charts/linkerd2-cni
+"$bindir"/helm lint "$rootdir"/charts/linkerd2-cni
+"$bindir"/helm dep up "$rootdir"/charts/linkerd-crds
+"$bindir"/helm dep up "$rootdir"/charts/linkerd-control-plane
+"$bindir"/helm dep up "$rootdir"/charts/patch
+"$bindir"/helm lint "$rootdir"/charts/linkerd-crds
+"$bindir"/helm lint --set identityTrustAnchorsPEM="fake-trust" --set identity.issuer.tls.crtPEM="fake-cert" --set identity.issuer.tls.keyPEM="fake-key" "$rootdir"/charts/linkerd-control-plane
+"$bindir"/helm lint "$rootdir"/charts/linkerd2-cni
+"$bindir"/helm dep up "$rootdir"/jaeger/charts/linkerd-jaeger
+"$bindir"/helm lint "$rootdir"/jaeger/charts/linkerd-jaeger
+"$bindir"/helm dep up "$rootdir"/viz/charts/linkerd-viz
+"$bindir"/helm lint "$rootdir"/viz/charts/linkerd-viz
+
+# `bin/helm-build package` assumes the presence of "$rootdir"/target/helm/index-pre.yaml which is downloaded in the chart_deploy CI job
+if [ "$1" = package ]; then
+    # shellcheck source=_tag.sh
+    . "$bindir"/_tag.sh
+    tag=$(named_tag)
+    clean_head || { echo 'There are uncommitted changes'; exit 1; }
+
+    regex='(edge|stable)-([0-9]+\.[0-9]+\.[0-9]+(-.*)?)'
+    if [[ ! "$tag" =~ $regex ]]; then
+        echo 'Version tag is malformed'
+        exit 1
+    fi
+    fullVersion=${BASH_REMATCH[0]}
+    repo=${BASH_REMATCH[1]}
+    version=${BASH_REMATCH[2]}
+
+    # set version in Values files
+    setValues 'linkerdVersionValue' "$fullVersion"
+
+    "$bindir"/helm -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd-crds
+    "$bindir"/helm --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd-control-plane
+    "$bindir"/helm --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2-cni
+    "$bindir"/helm --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/multicluster/charts/linkerd-multicluster
+    "$bindir"/helm --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/jaeger/charts/linkerd-jaeger
+    "$bindir"/helm --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/viz/charts/linkerd-viz
+
+    mv "$rootdir"/target/helm/index-pre.yaml "$rootdir"/target/helm/index-pre-"$version".yaml
+    "$bindir"/helm repo index --url "https://helm.linkerd.io/$repo/" --merge "$rootdir"/target/helm/index-pre-"$version".yaml "$rootdir"/target/helm
+
+    # restore version in Values files
+    setValues "$fullVersion" 'linkerdVersionValue'
+fi

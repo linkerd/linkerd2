@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+
+set -eu
+cd "$(pwd -P)"
+
+bindir=$( cd "${0%/*}" && pwd )
+
+if [ $# -eq 0 ]; then
+  echo "Usage: bin/${0##*/} path/to/main [args]" >&2
+  exit 1
+fi
+
+version=$("$bindir"/root-tag)
+ldflags="-X github.com/linkerd/linkerd2/pkg/version.Version=$version"
+mkdir -p target
+GO111MODULE=on go build -v -mod=readonly -race -o ./target/go-run -ldflags "$ldflags" "./$1"
+shift
+exec ./target/go-run "$@"

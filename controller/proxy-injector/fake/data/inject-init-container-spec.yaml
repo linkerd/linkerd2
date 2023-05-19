@@ -1,0 +1,20 @@
+args:
+- --incoming-proxy-port
+- 4143
+- --outgoing-proxy-port
+- 4140
+- --proxy-uid
+- 2102
+- --inbound-ports-to-ignore
+- 4190,4191
+image: cr.l5d.io/linkerd/proxy-init:v18.8.4
+imagePullPolicy: IfNotPresent
+name: linkerd-init
+resources: {}
+securityContext:
+  capabilities:
+    add:
+    - NET_ADMIN
+  privileged: false
+  runAsNonRoot: true
+terminationMessagePolicy: FallbackToLogsOnError

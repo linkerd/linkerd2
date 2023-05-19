@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opaque-pod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opaque-pod
+  template:
+    metadata:
+      labels:
+        app: opaque-pod
+      annotations:
+        linkerd.io/inject: "enabled"
+        config.linkerd.io/opaque-ports: "8080"
+    spec:
+      containers:
+      - name: app
+        image: buoyantio/bb:v0.0.6
+        args:
+        - terminus
+        - "--h1-server-port=8080"
+        - "--response-text=opaque-pod"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-opaque-pod
+  labels:
+    app: svc-opaque-pod
+spec:
+  selector:
+    app: opaque-pod
+  clusterIP: None
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opaque-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opaque-service
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: "enabled"
+      labels:
+        app: opaque-service
+    spec:
+      containers:
+      - name: app
+        image: buoyantio/bb:v0.0.6
+        args:
+        - terminus
+        - "--h1-server-port=8080"
+        - "--response-text=opaque-service"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-opaque-service
+  labels:
+    app: svc-opaque-service
+  annotations:
+    config.linkerd.io/opaque-ports: "8080"
+spec:
+  selector:
+    app: opaque-service
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opaque-unmeshed-svc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opaque-unmeshed-svc
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: disabled
+      labels:
+        app: opaque-unmeshed-svc
+    spec:
+      containers:
+      - name: app
+        image: buoyantio/bb:v0.0.6
+        args:
+        - terminus
+        - "--h1-server-port=8080"
+        - "--response-text=opaque-unmeshed-svc"
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-opaque-unmeshed
+  labels:
+    app: svc-opaque-unmeshed
+  annotations:
+    config.linkerd.io/opaque-ports: "8080"
+spec:
+  selector:
+    app: opaque-unmeshed-svc
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080

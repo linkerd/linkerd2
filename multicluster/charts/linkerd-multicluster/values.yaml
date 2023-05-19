@@ -1,0 +1,91 @@
+gateway:
+  # -- If the gateway component should be installed
+  enabled: true
+  # -- Number of replicas for the gateway pod
+  replicas: 1
+  # -- The name of the gateway that will be installed
+  name: linkerd-gateway
+  # -- The port on which all the gateway will accept incoming traffic
+  port: 4143
+  # -- Service Type of gateway Service
+  serviceType: LoadBalancer
+  # nodePort -- Set the gateway nodePort (for LoadBalancer or NodePort) to a specific value
+  # nodePort:
+  probe:
+    # -- The path that will be used by remote clusters for determining whether the
+    # gateway is alive
+    path: /ready
+    # -- The port used for liveliness probing
+    port: 4191
+    # nodePort -- Set the probe nodePort (for LoadBalancer or NodePort) to a specific value
+    # nodePort:
+    # -- The interval (in seconds) between liveness probes
+    seconds: 3
+  # -- Annotations to add to the gateway service
+  serviceAnnotations: {}
+  # -- Annotations to add to the gateway deployment
+  deploymentAnnotations: {}
+  # -- Set loadBalancerIP on gateway service
+  loadBalancerIP: ""
+  # -- Set loadBalancerSourceRanges on gateway service
+  loadBalancerSourceRanges: []
+  # -- Set terminationGracePeriodSeconds on gateway deployment
+  terminationGracePeriodSeconds: ""
+  # -- Node selectors for the gateway pod
+  nodeSelector: {}
+  # -- Tolerations for the gateway pod
+  tolerations: []
+
+  # -- The pause container to use
+  pauseImage: "gcr.io/google_containers/pause:3.2"
+
+  # -- User id under which the gateway shall be ran
+  UID: 2103
+
+# -- Control plane version
+linkerdVersion: linkerdVersionValue
+# -- Additional labels to add to all pods
+podLabels: {}
+# -- Labels to apply to all resources
+commonLabels: {}
+# -- Docker imagePullPolicy for all multicluster components
+imagePullPolicy: IfNotPresent
+# -- The port on which the proxy accepts outbound traffic
+proxyOutboundPort: 4140
+# -- If the remote mirror service account should be installed
+remoteMirrorServiceAccount: true
+# -- The name of the service account used to allow remote clusters to mirror
+# local services
+remoteMirrorServiceAccountName: linkerd-service-mirror-remote-access-default
+# -- Namespace of linkerd installation
+linkerdNamespace: linkerd
+# -- Identity Trust Domain of the certificate authority
+identityTrustDomain: cluster.local
+
+namespaceMetadata:
+  image:
+    # -- Docker registry for the namespace-metadata instance
+    registry: cr.l5d.io/linkerd
+    # -- Docker image name for the namespace-metadata instance
+    name: extension-init
+    # -- Docker image tag for the namespace-metadata instance
+    tag: v0.1.0
+    # -- Pull policy for the namespace-metadata instance
+    # @default -- imagePullPolicy
+    pullPolicy: ""
+
+# -- Create Roles and RoleBindings to associate this extension's
+# ServiceAccounts to the control plane PSP resource. This requires that
+# `enabledPSP` is set to true on the control plane install. Note PSP has been
+# deprecated since k8s v1.21
+enablePSP: false
+
+# -- Enables Pod Anti Affinity logic to balance the placement of replicas
+# across hosts and zones for High Availability.
+# Enable this only when you have multiple replicas of components.
+enablePodAntiAffinity: false
+
+# -- NodeAffinity section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
+# for more information
+# nodeAffinity:

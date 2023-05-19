@@ -1,0 +1,125 @@
+{{- $podMonitor := .Values.podMonitor -}}
+{{- if and $podMonitor.enabled $podMonitor.controller.enabled }}
+---
+###
+### Prometheus Operator PodMonitor for Linkerd control-plane
+###
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: "linkerd-controller"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/control-plane-ns: {{ .Release.Namespace }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  namespaceSelector: {{ tpl .Values.podMonitor.controller.namespaceSelector . | nindent 4 }}
+  selector:
+    matchLabels: {}
+  podMetricsEndpoints:
+    - interval: {{ $podMonitor.scrapeInterval }}
+      scrapeTimeout: {{ $podMonitor.scrapeTimeout }}
+      relabelings:
+        - sourceLabels:
+            - __meta_kubernetes_pod_container_port_name
+          action: keep
+          regex: admin-http
+        - sourceLabels:
+            - __meta_kubernetes_pod_container_name
+          action: replace
+          targetLabel: component
+{{- end }}
+{{- if and $podMonitor.enabled $podMonitor.serviceMirror.enabled }}
+---
+###
+### Prometheus Operator PodMonitor for Linkerd Service Mirror (multi-cluster)
+###
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: "linkerd-service-mirror"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/control-plane-ns: {{ .Release.Namespace }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  namespaceSelector:
+    any: true
+  selector:
+    matchLabels: {}
+  podMetricsEndpoints:
+    - interval: {{ $podMonitor.scrapeInterval }}
+      scrapeTimeout: {{ $podMonitor.scrapeTimeout }}
+      relabelings:
+        - sourceLabels:
+            - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
+            - __meta_kubernetes_pod_container_port_name
+          action: keep
+          regex: linkerd-service-mirror;admin-http$
+        - sourceLabels:
+            - __meta_kubernetes_pod_container_name
+          action: replace
+          targetLabel: component
+{{- end }}
+{{- if and $podMonitor.enabled $podMonitor.proxy.enabled }}
+---
+###
+### Prometheus Operator PodMonitor Linkerd data-plane
+###
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: "linkerd-proxy"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/control-plane-ns: {{ .Release.Namespace }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  namespaceSelector:
+    any: true
+  selector:
+    matchLabels: {}
+  podMetricsEndpoints:
+    - interval: {{ $podMonitor.scrapeInterval }}
+      scrapeTimeout: {{ $podMonitor.scrapeTimeout }}
+      relabelings:
+        - sourceLabels:
+            - __meta_kubernetes_pod_container_name
+            - __meta_kubernetes_pod_container_port_name
+            - __meta_kubernetes_pod_label_linkerd_io_control_plane_ns
+          action: keep
+          regex: ^linkerd-proxy;linkerd-admin;{{ .Release.Namespace }}$
+        - sourceLabels: [ __meta_kubernetes_namespace ]
+          action: replace
+          targetLabel: namespace
+        - sourceLabels: [ __meta_kubernetes_pod_name ]
+          action: replace
+          targetLabel: pod
+        - sourceLabels: [ __meta_kubernetes_pod_label_linkerd_io_proxy_job ]
+          action: replace
+          targetLabel: k8s_job
+        - action: labeldrop
+          regex: __meta_kubernetes_pod_label_linkerd_io_proxy_job
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_linkerd_io_proxy_(.+)
+        - action: labeldrop
+          regex: __meta_kubernetes_pod_label_linkerd_io_proxy_(.+)
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_linkerd_io_(.+)
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_(.+)
+          replacement: __tmp_pod_label_$1
+        - action: labelmap
+          regex: __tmp_pod_label_linkerd_io_(.+)
+          replacement: __tmp_pod_label_$1
+        - action: labeldrop
+          regex: __tmp_pod_label_linkerd_io_(.+)
+        - action: labelmap
+          regex: __tmp_pod_label_(.+)
+{{- end }}

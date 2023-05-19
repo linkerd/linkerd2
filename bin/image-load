@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+kind=''
+k3d=''
+cluster=''
+archive=''
+preload=''
+images=()
+
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+# shellcheck source=_docker.sh
+. "$bindir"/_docker.sh
+
+usage() {
+  printf "Load into KinD/k3d the referred Linkerd images. If no images are specified all of them are loaded (%s)\n" "${DOCKER_IMAGES[*]}"
+  echo "
+Usage:
+    bin/image-load [--kind] [--k3d] [--cluster name] [--preload] [--archive] [image] [image]...
+
+Examples:
+
+    # Load all the images from the local docker instance into KinD
+    bin/image-load
+
+    # Load only the proxy and controller images into k3d
+    bin/image-load --k3d proxy controller
+
+    # Load all the images from tar files located under the 'image-archives' directory into k3d
+    bin/image-load --k3d --archive
+
+Available Commands:
+    --cluster: target cluster name (defaults to 'k3s-default' under k3d, and 'kind' under KinD).
+    --kind: use a KinD cluster (default).
+    --k3d: use a k3d cluster.
+    --preload: pull the docker images from a public registry prior to loading them into the cluster, which appears to be faster than having k3d pulling them itself.
+    --archive: load the images from local .tar files in the current directory."
+}
+
+while :
+do
+  case ${1:-} in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --cluster)
+      cluster=$2
+      shift
+      ;;
+    --kind)
+      kind=1
+      ;;
+    --k3d)
+      k3d=1
+      ;;
+    --preload)
+      preload=1
+      ;;
+    --archive)
+      archive=1
+      ;;
+    *)
+      if [ -z "${1:-}" ]; then
+        break
+      fi
+      if echo "$1" | grep -q '^-.*' ; then
+        echo "Unexpected flag: $1" >&2
+        usage
+        exit 1
+      fi
+      images+=("$1")
+  esac
+  shift
+done
+
+if [ ${#images[@]} -eq 0 ]; then
+  images=("${DOCKER_IMAGES[@]}")
+fi
+
+bindir=$( cd "${0%/*}" && pwd )
+
+if [ "$k3d" ]; then
+  if [ "$kind" ]; then
+    echo "$k3d"
+    echo "Error: --kind and --k3d can't be used simultaneously" >&2
+    usage
+    exit 1
+  fi
+  if [ -z "$cluster" ]; then
+    cluster=k3s-default
+  fi
+  bin="$bindir"/k3d
+  image_sub_cmd=(image import -c "$cluster")
+else
+  kind=1
+  bin="$bindir"/kind
+  if [ -z "$cluster" ]; then
+    cluster=kind
+  fi
+  if [ $archive ]; then
+    image_sub_cmd=(load image-archive --name "$cluster")
+  else
+    image_sub_cmd=(load docker-image --name "$cluster")
+  fi
+fi
+
+if [ -z "$archive" ]
+then
+  # shellcheck source=_tag.sh
+  . "$bindir"/_tag.sh
+  # shellcheck source=_docker.sh
+  . "$bindir"/_docker.sh
+  TAG=${TAG:-$(head_root_tag)}
+fi
+
+# This is really to load the binary synchronously, before
+# the parallel executions below attempt doing so
+"$bin" version
+
+rm -f load_fail
+for i in "${!images[@]}"; do
+  if [ $archive ]; then
+    param="image-archives/${images[$i]}.tar"
+  else
+    param="$DOCKER_REGISTRY/${images[$i]}:$TAG"
+    if [ $preload ]; then
+      docker pull -q "$param" || (echo "Error pulling image $param"; touch load_fail) &
+    fi
+  fi
+
+  if [ "$kind" ]; then
+    printf 'Importing %s...\n' "${images[$i]}"
+    "$bin" "${image_sub_cmd[@]}" "${param[@]}" || touch load_fail &
+  else
+    # "k3d image import" commands don't behave well when parallelized
+    # but all the images can be loaded in a single invocation
+    images[$i]=$param
+  fi
+done
+
+wait < <(jobs -p)
+if [ -f load_fail ]; then
+  echo 'Loading docker images into the cluster failed.'
+  rm load_fail
+  exit 1
+fi
+
+if [ "$k3d" ]; then
+  printf 'Importing %s...\n' "${images[@]}"
+  "$bin" "${image_sub_cmd[@]}" "${images[@]}" -m tools-node
+fi

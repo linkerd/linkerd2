@@ -1,0 +1,29 @@
+\[
+  \{
+    "src": "slow-cooker",
+    "src_namespace": "{{.Ns}}",
+    "dst": "terminus",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "default.{{.Ns}}",
+    "server_id": "default.{{.Ns}}",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "prometheus",
+    "src_namespace": "{{.VizNs}}",
+    "dst": "slow-cooker",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "prometheus.{{.VizNs}}",
+    "server_id": "default.{{.Ns}}",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "prometheus",
+    "src_namespace": "{{.VizNs}}",
+    "dst": "terminus",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "prometheus.{{.VizNs}}",
+    "server_id": "default.{{.Ns}}",
+    "no_tls_reason": ""
+  \}
+\]

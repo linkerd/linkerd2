@@ -1,0 +1,17 @@
+name: 'Lock Threads'
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+
+permissions:
+  issues: write
+
+jobs:
+  action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dessant/lock-threads@c1b35aecc5cdb1a34539d14196df55838bb2f836
+        with:
+          issue-inactive-days: '30'
+          process-only: 'issues'

@@ -1,0 +1,34 @@
+name: Devcontainer
+
+# When a pull request is opened that changes the Devcontainer configuration,
+# ensure that the container continues to build properly.
+on:
+  pull_request:
+    paths:
+      - .devcontainer/devcontainer.json
+      - .github/workflows/devcontainer.yml
+      - rust-toolchain
+
+permissions:
+  contents: read
+
+jobs:
+  rust-version:
+    runs-on: ubuntu-latest
+    container: ghcr.io/linkerd/dev:v40-rust
+    steps:
+      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - run: |
+          dev=$(cargo version | cut -d' ' -f2)
+          tc=$(cat rust-toolchain)
+          if [ "$dev" != "$tc" ]; then
+            echo "::error file=rust-toolchain,line=1::rust-toolchain ($tc) does not match devcontainer ($dev)"
+            exit 1
+          fi
+
+  devcontainer-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: linkerd/dev/actions/setup-tools@v40
+      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - run: just-dev pull-dev-image

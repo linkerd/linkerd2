@@ -1,0 +1,6 @@
+default: true
+line_length: 
+  code_blocks: false
+  tables: false
+headings:
+  siblings_only: true

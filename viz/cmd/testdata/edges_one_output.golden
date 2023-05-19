@@ -1,0 +1,5 @@
+SRC                DST                  SRC_NS      DST_NS      SECURED
+vote-bot           web                  emojivoto   emojivoto   √      
+web                emoji                emojivoto   emojivoto   √      
+web                voting               emojivoto   emojivoto   √      
+linkerd-identity   linkerd-prometheus   linkerd     linkerd     √      

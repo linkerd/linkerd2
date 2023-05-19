@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+# This script deletes all the files under the buildkit cache blob directory that
+# are not referred to in the cache manifest file.
+
+set -eu
+
+export DOCKER_BUILDKIT_CACHE=${DOCKER_BUILDKIT_CACHE:-}
+
+manifest_sha=$(jq -r .manifests[0].digest < "${DOCKER_BUILDKIT_CACHE}/index.json")
+manifest=${manifest_sha#"sha256:"}
+files=("$manifest")
+while IFS= read -r line; do files+=("$line"); done <<< "$(jq -r '.manifests[].digest | sub("^sha256:"; "")' < "${DOCKER_BUILDKIT_CACHE}/blobs/sha256/$manifest")"
+for file in "${DOCKER_BUILDKIT_CACHE}"/blobs/sha256/*; do
+  name=$(basename "$file")
+  # shellcheck disable=SC2199
+  if [[ ! "${files[@]}" =~ ${name} ]]; then
+    printf 'pruned from cache: %s\n' "$file"
+		rm -f "$file"
+  fi
+done

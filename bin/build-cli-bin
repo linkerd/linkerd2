@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+
+set -eu
+
+# Builds CLI binary for current platform only and outside docker to speed up things. Suitable for local development.
+# Note: This script is used by Brew when running `brew install linkerd`:
+# https://github.com/Homebrew/homebrew-core/pull/36957
+
+bindir=$( cd "${0%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+# shellcheck source=_tag.sh
+. "$bindir"/_tag.sh
+# shellcheck source=_os.sh
+. "$bindir"/_os.sh
+
+(
+    cd "$rootdir"
+    cd "$(pwd -P)"
+    target=target/cli/$(os)/linkerd
+     # TODO: `go generate` does not honor -mod=readonly
+    GO111MODULE=on go generate -mod=readonly ./pkg/charts/static
+    GO111MODULE=on go generate -mod=readonly ./jaeger/static
+    GO111MODULE=on go generate -mod=readonly ./multicluster/static
+    GO111MODULE=on go generate -mod=readonly ./viz/static
+    
+    root_tag=$("$bindir"/root-tag)
+    GO111MODULE=on CGO_ENABLED=0 go build -o "$target" -tags prod -mod=readonly -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$root_tag" ./cli
+    echo "$target"
+)

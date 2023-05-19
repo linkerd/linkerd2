@@ -1,0 +1,6 @@
+# HELP inbound_http_authz_allow_total The total number of inbound HTTP requests that were authorized
+# TYPE inbound_http_authz_allow_total counter
+inbound_http_authz_allow_total{target_addr="0.0.0.0:4191",target_ip="0.0.0.0",target_port="4191",srv_name="default:all-unauthenticated",saz_name="default:all-unauthenticated",tls="no_identity",no_tls_reason="no_tls_from_remote"} 1319
+inbound_http_authz_allow_total{target_addr="10.42.0.63:8080",target_ip="10.42.0.63",target_port="8080",srv_name="default:all-unauthenticated",saz_name="default:all-unauthenticated",tls="no_identity",no_tls_reason="no_tls_from_remote"} 7
+inbound_http_authz_allow_total{target_addr="10.42.0.63:8090",target_ip="10.42.0.63",target_port="8090",srv_name="default:all-unauthenticated",saz_name="default:all-unauthenticated",tls="no_identity",no_tls_reason="no_tls_from_remote"} 1
+inbound_http_authz_allow_total{target_addr="10.42.0.63:8090",target_ip="10.42.0.63",target_port="8090",srv_name="default:all-unauthenticated",saz_name="default:all-unauthenticated",tls="true",client_id="default.default.serviceaccount.identity.linkerd.cluster.local"} 3147

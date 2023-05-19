@@ -1,0 +1,38 @@
+[
+  {
+    "src": "vote-bot",
+    "src_namespace": "emojivoto",
+    "dst": "web",
+    "dst_namespace": "emojivoto",
+    "client_id": "default.emojivoto",
+    "server_id": "web.emojivoto",
+    "no_tls_reason": ""
+  },
+  {
+    "src": "web",
+    "src_namespace": "emojivoto",
+    "dst": "emoji",
+    "dst_namespace": "emojivoto",
+    "client_id": "web.emojivoto",
+    "server_id": "emoji.emojivoto",
+    "no_tls_reason": ""
+  },
+  {
+    "src": "web",
+    "src_namespace": "emojivoto",
+    "dst": "voting",
+    "dst_namespace": "emojivoto",
+    "client_id": "web.emojivoto",
+    "server_id": "voting.emojivoto",
+    "no_tls_reason": ""
+  },
+  {
+    "src": "linkerd-identity",
+    "src_namespace": "linkerd",
+    "dst": "linkerd-prometheus",
+    "dst_namespace": "linkerd",
+    "client_id": "linkerd-identity.linkerd",
+    "server_id": "linkerd-prometheus.linkerd",
+    "no_tls_reason": ""
+  }
+]

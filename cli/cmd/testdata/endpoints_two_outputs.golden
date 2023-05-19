@@ -1,0 +1,5 @@
+NAMESPACE    IP        PORT   POD                       SERVICE
+emojivoto    1.2.3.4   8080   emoji-6bf9f47bd5-jjcrl    emoji-svc.emojivoto
+
+NAMESPACE    IP        PORT   POD                       SERVICE
+emojivoto2   5.6.7.8   8080   voting-7bf9f47bd5-jjdrl   voting-svc.emojivoto2

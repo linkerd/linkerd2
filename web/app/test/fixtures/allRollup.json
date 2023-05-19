@@ -1,0 +1,97 @@
+{
+  "ok": {
+    "statTables": [
+      {
+        "podGroup": {
+          "rows": [
+            {
+              "meshedPodCount": "1",
+              "resource": {
+                "name": "voting",
+                "namespace": "emojivoto",
+                "type": "deployment"
+              },
+              "stats": {
+                "failureCount": "15",
+                "latencyMsP50": "1",
+                "latencyMsP95": "2",
+                "latencyMsP99": "7",
+                "successCount": "135"
+              },
+              "timeWindow": "1m",
+              "runningPodCount": "1",
+              "failedPodCount": null
+            }
+          ]
+        }
+      },
+      {
+        "podGroup": {
+          "rows": []
+        }
+      },
+      {
+        "podGroup": {
+          "rows": [
+            {
+              "resource": {
+                "namespace": "shiny-product",
+                "type": "pod",
+                "name": "web-5f97578cf6-597sr"
+              },
+              "timeWindow": "1m",
+              "meshedPodCount": "4",
+              "runningPodCount": "4",
+              "stats": {
+                "successCount": "6",
+                "failureCount": "0",
+                "latencyMsP50": "5",
+                "latencyMsP95": "9",
+                "latencyMsP99": "10"
+              }
+            },
+            {
+              "resource": {
+                "namespace": "shiny-product-other",
+                "type": "pod",
+                "name": "controller-795dd8df6-tjdt6"
+              },
+              "timeWindow": "1m",
+              "meshedPodCount": "4",
+              "runningPodCount": "4",
+              "stats": {
+                "successCount": "24",
+                "failureCount": "0",
+                "latencyMsP50": "7",
+                "latencyMsP95": "18",
+                "latencyMsP99": "20"
+              }
+            },
+            {
+              "resource": {
+                "namespace": "not-shiny-product",
+                "type": "pod",
+                "name": "prometheus-595785446-r7rlq"
+              },
+              "timeWindow": "1m",
+              "meshedPodCount": "4",
+              "runningPodCount": "4",
+              "stats": null
+            },
+            {
+              "resource": {
+                "namespace": "shiny-product-other",
+                "type": "pod",
+                "name": "grafana-78cdb656bf-v8lsj"
+              },
+              "timeWindow": "1m",
+              "meshedPodCount": "4",
+              "runningPodCount": "4",
+              "stats": null
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

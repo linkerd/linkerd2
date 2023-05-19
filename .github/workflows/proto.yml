@@ -1,0 +1,24 @@
+name: Proto
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/proto.yml
+      - bin/protoc*
+      - '**/*.proto'
+      - '**/gen/**/*.go'
+
+permissions:
+  contents: read
+
+jobs:
+  proto-diff:
+    timeout-minutes: 10
+    runs-on: ubuntu-20.04
+    container: ghcr.io/linkerd/dev:v40-go
+    steps:
+      - run: apt update && apt install -y unzip
+      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
+      - run: bin/protoc-diff
+

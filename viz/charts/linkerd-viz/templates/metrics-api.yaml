@@ -1,0 +1,126 @@
+---
+###
+### Metrics API
+###
+kind: Service
+apiVersion: v1
+metadata:
+  name: metrics-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/extension: viz
+    component: metrics-api
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+    {{- with .Values.metricsAPI.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    linkerd.io/inject: enabled
+spec:
+  type: ClusterIP
+  selector:
+    linkerd.io/extension: viz
+    component: metrics-api
+  ports:
+  - name: http
+    port: 8085
+    targetPort: 8085
+---
+{{- $tree := deepCopy . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+    linkerd.io/inject: enabled
+    config.linkerd.io/proxy-await: "enabled"
+  labels:
+    linkerd.io/extension: viz
+    app.kubernetes.io/name: metrics-api
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
+    component: metrics-api
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  name: metrics-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{.Values.metricsAPI.replicas}}
+  selector:
+    matchLabels:
+      linkerd.io/extension: viz
+      component: metrics-api
+  template:
+    metadata:
+      annotations:
+        {{- if empty .Values.cliVersion }}
+        checksum/config: {{ include (print $.Template.BasePath "/metrics-api-rbac.yaml") . | sha256sum }}
+        {{- end }}
+        {{ include "partials.annotations.created-by" . }}
+        {{- with .Values.metricsAPI.proxy }}
+        {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        linkerd.io/inject: enabled
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+      labels:
+        linkerd.io/extension: viz
+        component: metrics-api
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+    spec:
+      {{- if .Values.metricsAPI.tolerations -}}
+      {{- include "linkerd.tolerations" (dict "Values" .Values.metricsAPI) | nindent 6 }}
+      {{- end -}}
+      {{- include "linkerd.node-selector" (dict "Values" .Values.metricsAPI) | nindent 6 }}
+      {{- include "linkerd.affinity" (dict "Values" .Values.metricsAPI) | nindent 6 }}
+      {{- $_ := set $tree "component" "metrics-api" -}}
+      {{- $_ := set $tree "label" "component" -}}
+      {{/* Force a line break in case of empty component label*/}}
+      containers:
+      - args:
+        - -controller-namespace={{.Values.linkerdNamespace}}
+        - -log-level={{.Values.metricsAPI.logLevel | default .Values.defaultLogLevel}}
+        - -log-format={{.Values.metricsAPI.logFormat | default .Values.defaultLogFormat}}
+        - -cluster-domain={{.Values.clusterDomain}}
+        {{- if .Values.prometheusUrl }}
+        - -prometheus-url={{.Values.prometheusUrl}}
+        {{- else if .Values.prometheus.enabled }}
+        - -prometheus-url=http://prometheus.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}:9090
+        {{- else }}
+        {{ fail "Please enable `linkerd-prometheus` or provide `prometheusUrl` for the viz extension to function properly"}}
+        {{- end }}
+        - -enable-pprof={{.Values.enablePprof | default false}}
+        image: {{.Values.metricsAPI.image.registry | default .Values.defaultRegistry}}/{{.Values.metricsAPI.image.name}}:{{.Values.metricsAPI.image.tag | default .Values.linkerdVersion}}
+        imagePullPolicy: {{.Values.metricsAPI.image.pullPolicy | default .Values.defaultImagePullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        name: metrics-api
+        ports:
+        - containerPort: 8085
+          name: http
+        - containerPort: 9995
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9995
+        {{- if .Values.metricsAPI.resources -}}
+        {{- include "partials.resources" .Values.metricsAPI.resources | nindent 8 }}
+        {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          readOnlyRootFilesystem: true
+          runAsUser: {{.Values.metricsAPI.UID | default .Values.defaultUID}}
+          seccompProfile:
+            type: RuntimeDefault
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: metrics-api

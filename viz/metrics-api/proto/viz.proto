@@ -1,0 +1,393 @@
+syntax = "proto3";
+
+package linkerd2.viz;
+
+import "google/protobuf/duration.proto";
+
+option go_package = "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz";
+
+message Empty {}
+
+enum CheckStatus {
+    OK = 0;
+    FAIL = 1;
+    ERROR = 2;
+}
+
+message CheckResult {
+    string SubsystemName = 1;
+    string CheckDescription = 2;
+    CheckStatus Status = 3;
+    string FriendlyMessageToUser = 4;
+}
+
+message SelfCheckRequest {}
+
+message SelfCheckResponse {
+    repeated CheckResult results = 1;
+}
+
+message ListServicesRequest {
+  string namespace = 1;
+}
+message ListServicesResponse {
+  repeated Service services = 1;
+}
+message Service {
+  string name = 1;
+  string namespace = 2;
+}
+
+message ListPodsRequest {
+  ResourceSelection selector = 2;
+}
+message ListPodsResponse {
+  repeated Pod pods = 1;
+}
+
+message Pod {
+  string name = 1;
+  string podIP = 2;
+  oneof owner {
+    string deployment = 3;
+    string replica_set = 10;
+    string replication_controller = 11;
+    string stateful_set = 12;
+    string daemon_set = 13;
+    string job = 14;
+  }
+  string status = 4;
+  bool added = 5; // true if this pod has a proxy sidecar (data plane)
+  google.protobuf.Duration sinceLastReport = 6;
+  string controllerNamespace = 7; // namespace of controller this pod reports to
+  bool controlPlane = 8; // true if this pod is part of the control plane
+  google.protobuf.Duration uptime = 9; // uptime of this pod
+  bool proxyReady = 15; // true if this pod has proxy container and that one is in ready state
+  string proxyVersion = 16; // version of the proxy if present
+  string resourceVersion = 17; // resource version in the Kubernetes API
+}
+
+message HttpMethod {
+  enum Registered {
+    GET = 0;
+    POST = 1;
+    PUT = 2;
+    DELETE = 3;
+    PATCH = 4;
+    OPTIONS = 5;
+    CONNECT = 6;
+    HEAD = 7;
+    TRACE = 8;
+  }
+
+  oneof type {
+    Registered registered = 1;
+    string unregistered = 2;
+  }
+}
+
+message Scheme {
+  enum Registered {
+    HTTP = 0;
+    HTTPS = 1;
+  }
+
+  oneof type {
+    Registered registered = 1;
+    string unregistered = 2;
+  }
+}
+
+message Headers {
+  message Header {
+    // The name of a header in a request.
+    string name = 1;
+    // The value of a header in a request. If the value consists entirely of
+    // UTF-8 encodings, `value` will be set; otherwise a binary value is
+    // assumed and `value_bin` will be set.
+    oneof value {
+      string value_str = 2;
+      bytes value_bin = 3;
+    }
+  }
+
+  repeated Header headers = 1;
+}
+
+message Eos {
+  oneof end {
+    uint32 grpc_status_code = 1;
+    uint32 reset_error_code = 2;
+  }
+}
+
+message ApiError {
+  string error = 1;
+}
+
+message PodErrors {
+  repeated PodError errors = 1;
+
+  message PodError {
+    oneof error {
+      ContainerError container = 1;
+    }
+
+    // To report init-container and container failures
+    message ContainerError {
+      string message = 1;
+      string container = 2;
+      string image = 3;
+      string reason = 4;
+    }
+  }
+}
+
+message Resource {
+  // The namespace the resource is in.
+  //
+  // If empty, indicates all namespaces should be considered.
+  string namespace = 1;
+
+  // The type of resource.
+  //
+  // This can be:
+  // - "all" -- includes all Kubernetes resource types only
+  // - "authority" -- a special resource type derived from request `:authority` values
+  // - Otherwise, the resource type may be any Kubernetes resource (e.g. "namespace", "deployment").
+  string type = 2;
+
+  // An optional resource name.
+  string name = 3;
+}
+
+message ResourceSelection {
+  // Identifies a Kubernetes resource.
+  Resource resource = 1;
+
+  // A string-formatted Kubernetes label selector as passed to `kubectl get
+  // --selector`.
+  //
+  // XXX in the future this may be superseded by a data structure that more
+  // richly describes a parsed label selector.
+  string label_selector = 2;
+}
+
+message ResourceError {
+  Resource resource = 1;
+  string error = 2;
+}
+
+message StatSummaryRequest {
+  ResourceSelection selector = 1;
+  string time_window = 2;
+
+  oneof outbound {
+    Empty none = 3;
+    Resource to_resource   = 4;
+    Resource from_resource = 5;
+  }
+
+  bool skip_stats = 6;  // true if we want to skip stats from Prometheus
+  bool tcp_stats = 7;
+}
+
+message StatSummaryResponse {
+  oneof response {
+    Ok ok = 1;
+    ResourceError error = 2;
+  }
+
+  message Ok {
+    repeated StatTable stat_tables = 1;
+  }
+}
+
+message AuthzRequest {
+  Resource resource = 1;
+  string time_window = 2;
+}
+
+message AuthzResponse {
+  oneof response {
+    Ok ok = 1;
+    ResourceError error = 2;
+  }
+
+  message Ok {
+    StatTable stat_table = 1;
+  }
+}
+
+message BasicStats {
+  uint64 success_count = 1;
+  uint64 failure_count = 2;
+  uint64 latency_ms_p50 = 3;
+  uint64 latency_ms_p95 = 4;
+  uint64 latency_ms_p99 = 5;
+  uint64 actual_success_count = 6;
+  uint64 actual_failure_count = 7;
+}
+
+message TcpStats {
+  // number of currently open connections
+  uint64 open_connections = 1;
+  // total count of bytes read from peers
+  uint64 read_bytes_total = 2;
+  // total count of bytes written to peers
+  uint64 write_bytes_total = 3;
+}
+
+message TrafficSplitStats {
+  string apex = 2;
+  string leaf = 3;
+  string weight = 4;
+}
+
+message ServerStats {
+  uint64 allowed_count = 1;
+  uint64 denied_count = 2;
+  Resource srv = 3;
+  Resource route = 4;
+  Resource authz = 5;
+}
+
+message StatTable {
+  oneof table {
+    PodGroup pod_group = 1;
+  }
+
+  message PodGroup {
+    repeated Row rows = 1;
+
+    message Row {
+      Resource resource = 1;
+      string time_window = 2;
+
+      // pod status on Kubernetes
+      string status = 9;
+      // number of pending or running pods in this resource that have linkerd injected
+      uint64 meshed_pod_count = 3;
+      // number of pending or running pods in this resource
+      uint64 running_pod_count = 4;
+      // number of pods in this resource that have Phase PodFailed
+      uint64 failed_pod_count = 6;
+
+      BasicStats stats = 5;
+      TcpStats tcp_stats = 8;
+      TrafficSplitStats ts_stats = 10;
+      ServerStats srv_stats = 11;
+
+      // Stores a set of errors for each pod name. If a pod has no errors, it may be omitted.
+      map<string, PodErrors> errors_by_pod = 7;
+    }
+  }
+}
+
+message EdgesRequest {
+  ResourceSelection selector = 1;
+}
+
+message EdgesResponse {
+  oneof response {
+    Ok ok = 1;
+    ResourceError error = 2;
+  }
+
+  message Ok {
+    repeated Edge edges = 1;
+  }
+}
+
+message Edge {
+  Resource src = 1;
+  Resource dst = 2;
+  string client_id = 3;
+  string server_id = 4;
+  string no_identity_msg = 5;
+}
+
+message TopRoutesRequest {
+  ResourceSelection selector = 1;
+  string time_window = 2;
+
+  oneof outbound {
+    Empty none = 3;
+    Resource to_resource = 7;
+  }
+}
+
+message TopRoutesResponse {
+  oneof response {
+    ResourceError error = 2;
+    Ok ok = 3;
+  }
+
+  message Ok {
+    repeated RouteTable routes = 1;
+  }
+}
+
+message RouteTable {
+  repeated Row rows = 1;
+  string resource = 2;
+
+  message Row {
+    string route = 1;
+    string time_window = 2;
+    string authority = 6;
+
+    BasicStats stats = 5;
+  }
+}
+
+
+message GatewaysTable {
+  repeated Row rows = 1;
+
+  message Row {
+    string namespace = 1;
+    string name = 2;
+    string cluster_name = 3;
+    uint64 paired_services = 4;
+    bool alive = 5;
+    uint64 latency_ms_p50 = 6;
+    uint64 latency_ms_p95 = 7;
+    uint64 latency_ms_p99 = 8;
+  }
+}
+
+message GatewaysRequest {
+  string remote_cluster_name = 1;
+  string gateway_namespace = 2;
+  string time_window = 3;
+}
+
+message GatewaysResponse {
+  oneof response {
+    Ok ok = 1;
+    ResourceError error = 2;
+  }
+
+  message Ok {
+    GatewaysTable gateways_table = 1;
+  }
+}
+
+service Api {
+  rpc StatSummary(StatSummaryRequest) returns (StatSummaryResponse) {}
+
+  rpc Edges(EdgesRequest) returns (EdgesResponse) {}
+
+  rpc Gateways(GatewaysRequest) returns (GatewaysResponse) {}
+
+  rpc TopRoutes(TopRoutesRequest) returns (TopRoutesResponse) {}
+
+  rpc ListPods(ListPodsRequest) returns (ListPodsResponse) {}
+
+  rpc ListServices(ListServicesRequest) returns (ListServicesResponse) {}
+
+  rpc SelfCheck(SelfCheckRequest) returns (SelfCheckResponse) {}
+
+  rpc Authz(AuthzRequest) returns (AuthzResponse) {}
+}

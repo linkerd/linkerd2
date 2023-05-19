@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+
+set -eu
+
+if [ $# -ne 1 ]; then
+    echo "usage: ${0##*/} v2.N.P" >&2
+    exit 64
+fi
+new_proxy_version="v${1#v}"
+if [[ "$new_proxy_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then :; else
+    echo "Invalid version: $new_proxy_version" >&2
+    exit 1
+fi
+
+bindir=$( cd "${0%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+
+old_proxy_version="$(tr -d '\n' <"$rootdir/.proxy-version")"
+if [ -z "$old_proxy_version" ]; then
+    echo 'Missing .proxy-version' >&2
+    exit 1
+fi
+
+old_proxy_rev="release/$old_proxy_version"
+
+# Ensure the proxy version actually exists...
+if ! bin/fetch-proxy "$new_proxy_version" >/dev/null; then
+    echo "Failed to fetch proxy version $new_proxy_version"
+    exit 1
+fi
+new_proxy_rev="release/$new_proxy_version"
+
+# Checkout the linkerd2-proxy repo to resolve the new proxy version to a SHA
+# and obtain the commit log since the prior version.
+tmp=$(mktemp -d -t l2-proxy.XXX)
+git clone --depth=500 https://github.com/linkerd/linkerd2-proxy "$tmp"
+cd "$tmp"
+
+if ! git rev-parse --verify --quiet "${old_proxy_rev}" ; then
+    echo "The old proxy-version ${old_proxy_version} does not exist in the last 100 proxy commits." >&2
+    exit 2
+fi
+
+# Commit message
+(
+    echo "proxy: ${new_proxy_version}
+"
+    # Include the log message, stripping the version header and GPG trailer.
+    git tag -l --format='%(contents)' "$new_proxy_rev" | \
+        sed -e 1,2d -e '/^---*BEGIN /,$d'
+    echo ''
+    # Include the history, with references to pull requests.
+    echo "---
+"
+    refs="${old_proxy_rev}..${new_proxy_rev}"
+    git log --pretty=oneline --abbrev-commit --reverse "$refs" | \
+        sed -Ee 's,^[a-f0-9]{7} ,* ,' \
+            -e  's, \((#[0-9]+)\), (linkerd/linkerd2-proxy\1),'
+) >"$tmp/commit.txt"
+
+cd "$rootdir"
+echo "$new_proxy_version" >"$rootdir/.proxy-version"
+
+git commit --signoff --file="$tmp/commit.txt" --edit -- "$rootdir/.proxy-version"
+
+rm -rf "$tmp"
+
+git --no-pager show HEAD

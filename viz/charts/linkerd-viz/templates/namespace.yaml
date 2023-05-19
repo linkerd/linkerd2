@@ -1,0 +1,18 @@
+{{- if eq .Release.Service "CLI" -}}
+---
+###
+### Linkerd Viz Extension Namespace
+###
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: {{.Release.Namespace}}
+  labels:
+    linkerd.io/extension: viz
+    {{- /* linkerd-init requires extended capabilities and so requires priviledged mode */}}
+    pod-security.kubernetes.io/enforce: {{ if .Values.cniEnabled }}restricted{{ else }}privileged{{ end }}
+  annotations:
+    {{- if .Values.prometheusUrl }}
+    viz.linkerd.io/external-prometheus: {{.Values.prometheusUrl}}
+    {{- end }}
+{{ end -}}
