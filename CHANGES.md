@@ -1,5 +1,17 @@
 # Changes
 
+## edge-23.5.2
+
+This edge release adds some minor improvements in the MeshTLSAuthentication CRD
+and the extensions charts, and fixes an issue with `linkerd multicluster check`.
+
+* Added tolerations and nodeSelector support in extensions `namespace-metadata`
+  Jobs (thanks @pssalman!)
+* Patched the MeshTLSAuthentication CRD to force providing at least one
+  identity/identityRef
+* Fixed the `linkerd multicluster check` command failing in the presence of lots
+  of mirrored services
+
 ## edge-23.5.1
 
 This edge release introduces the ability to configure the proxy's discovery cache
