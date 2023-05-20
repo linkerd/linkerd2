@@ -1,5 +1,6 @@
 # Linkerd 2.x adopters
 
+- [Ada](http://www.ada.cx)
 - [Advance Latam](http://www.advlatam.com)
 - [Allotrac](https://allotrac.com.au)
 - [AlphaSights](https://www.alphasights.com)
