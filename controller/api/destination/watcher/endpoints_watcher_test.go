@@ -2308,3 +2308,115 @@ status:
 
 	listener.ExpectRemoved([]string{"172.17.0.12:8989"}, t)
 }
+
+// Test that when an endpointslice gets a hint added, then mark it as a change
+func TestEndpointSliceAddHints(t *testing.T) {
+	k8sConfigsWithES := []string{`
+kind: APIResourceList
+apiVersion: v1
+groupVersion: discovery.k8s.io/v1
+resources:
+- name: endpointslices
+  singularName: endpointslice
+  namespaced: true
+  kind: EndpointSlice
+  verbs:
+    - delete
+    - deletecollection
+    - get
+    - list
+    - patch
+    - create
+    - update
+    - watch
+`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`, `
+addressType: IPv4
+apiVersion: discovery.k8s.io/v1
+endpoints:
+- addresses:
+  - 172.17.0.12
+  conditions:
+  ready: true
+  targetRef:
+    kind: Pod
+    name: name1-1
+    namespace: ns
+  topology:
+  kubernetes.io/hostname: node-1
+kind: EndpointSlice
+metadata:
+  labels:
+    kubernetes.io/service-name: name1
+  name: name1-es
+  namespace: ns
+ports:
+- name: ""
+  port: 8989`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.0.12`}
+
+	// Create an EndpointSlice with one endpoint, backed by a pod.
+
+	k8sAPI, err := k8s.NewFakeAPI(k8sConfigsWithES...)
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
+
+	metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+	if err != nil {
+		t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
+	}
+
+	watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true)
+	if err != nil {
+		t.Fatalf("can't create Endpoints watcher: %s", err)
+	}
+
+	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
+
+	listener := newBufferingEndpointListener()
+
+	err = watcher.Subscribe(ServiceID{Name: "name1", Namespace: "ns"}, 8989, "", listener)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	k8sAPI.Sync(nil)
+
+	listener.ExpectAdded([]string{"172.17.0.12:8989"}, t)
+
+	// Add a hint to the EndpointSlice
+	es, err := k8sAPI.Client.DiscoveryV1().EndpointSlices("ns").Get(context.Background(), "name1-es", metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	es.Endpoints[0].Hints = &dv1.EndpointHints{
+		ForZones: []dv1.ForZone{{Name: "zone1"}},
+	}
+
+	es, err = k8sAPI.Client.DiscoveryV1().EndpointSlices("ns").Update(context.Background(), es, metav1.UpdateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	k8sAPI.Sync(nil)
+
+	listener.ExpectAdded([]string{"172.17.0.12:8989"}, t)
+}

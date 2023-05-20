@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -676,6 +677,16 @@ func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, 
 	}
 
 	add, remove := diffAddresses(pp.addresses, updatedAddressSet)
+	pp.log.Debugf("Editing endpoint-slice %v", oldSlice.Name)
+	pp.log.Debugf("Editing endpoint-slice %v - add %v - remove %v", oldSlice.Name, len(add.Addresses), len(remove.Addresses))
+	for _, address := range add.Addresses {
+		pp.log.Debugf("Add address %#v with zones %v", address.Pod.Name, address.ForZones)
+	}
+	for _, address := range remove.Addresses {
+		pp.log.Debugf("Remove address %#v with zones %v", address.Pod.Name, address.ForZones)
+	}
+	pp.log.Debugf("Done Editing endpoint-slice %v", oldSlice.Name)
+
 	for _, listener := range pp.listeners {
 		if len(remove.Addresses) > 0 {
 			listener.Remove(remove)
@@ -1152,6 +1163,26 @@ func addressChanged(oldAddress Address, newAddress Address) bool {
 		// identity and the service mirroring controller picks that and updates the
 		// identity
 		return true
+	}
+
+	// If the zone hints have changed, then the address has changed
+	if len(newAddress.ForZones) != len(oldAddress.ForZones) {
+		return true
+	}
+
+	// Sort the zone information so that we can compare them accurately
+	sort.Slice(oldAddress.ForZones, func(i, j int) bool {
+		return oldAddress.ForZones[i].Name < (oldAddress.ForZones[j].Name)
+	})
+	sort.Slice(newAddress.ForZones, func(i, j int) bool {
+		return newAddress.ForZones[i].Name < (newAddress.ForZones[j].Name)
+	})
+
+	// Both old and new addresses have the same number of zones, so we can just compare them directly
+	for k := range oldAddress.ForZones {
+		if oldAddress.ForZones[k].Name != newAddress.ForZones[k].Name {
+			return true
+		}
 	}
 
 	if oldAddress.Pod != nil && newAddress.Pod != nil {
