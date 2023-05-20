@@ -28,6 +28,10 @@ spec:
         app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
+      {{- if .Values.namespaceMetadata.tolerations -}}
+      {{- include "linkerd.tolerations" (dict "Values" .Values.namespaceMetadata) | nindent 6 }}
+      {{- end -}}
+      {{- include "linkerd.node-selector" (dict "Values" .Values.namespaceMetadata) | nindent 6 }}
       restartPolicy: Never
       securityContext:
         seccompProfile:

@@ -21,7 +21,7 @@ jobs:
   tag:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       - run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
         id: tag
     outputs:
@@ -48,7 +48,7 @@ jobs:
         - web
     timeout-minutes: 30
     steps:
-    - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+    - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
     - name: Set tag
       run: echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
     - uses: ./.github/actions/docker-build
@@ -93,7 +93,7 @@ jobs:
     needs: [docker_build]
     steps:
     - name: Checkout code
-      uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
     - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9
       with:
         go-version: '1.19'
@@ -126,7 +126,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
     - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9
       with:
         go-version: '1.19'
@@ -150,7 +150,7 @@ jobs:
     runs-on: [self-hosted, Linux, ARM64]
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
       - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9
         with:
           go-version: '1.19'
@@ -198,7 +198,7 @@ jobs:
     steps:
     - name: Checkout code
       if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
     - name: Chocolatey - update nuspec
       if: startsWith(github.ref, 'refs/tags/stable')
       run: |
@@ -228,7 +228,7 @@ jobs:
     permissions:
       contents: write
     steps:
-    - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+    - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
     - name: Set environment variables
       run: |
         echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
@@ -283,7 +283,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+    - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
     - name: Set install target for stable
       if: startsWith(github.ref, 'refs/tags/stable')
       run: echo "INSTALL=install" >> "$GITHUB_ENV"
@@ -311,7 +311,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f
+      uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
     - name: Log into GCP
       uses: 'google-github-actions/auth@35b0e87d162680511bf346c299f71c9c5c379033'
       with:

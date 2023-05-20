@@ -74,6 +74,11 @@ namespaceMetadata:
     # @default -- imagePullPolicy
     pullPolicy: ""
 
+  # -- Node selectors for the namespace-metadata instance
+  nodeSelector: {}
+  # -- Tolerations for the namespace-metadata instance
+  tolerations: []
+
 # -- Create Roles and RoleBindings to associate this extension's
 # ServiceAccounts to the control plane PSP resource. This requires that
 # `enabledPSP` is set to true on the control plane install. Note PSP has been
