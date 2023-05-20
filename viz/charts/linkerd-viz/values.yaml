@@ -38,6 +38,7 @@ nodeSelector: &default_node_selector
 # -- Default nodeAffinity section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity) for more information
 nodeAffinity: &default_node_affinity_selector
+  {}
 
 # -- For Private docker registries, authentication is needed.
 #  Registry secrets are applied to the respective service accounts
