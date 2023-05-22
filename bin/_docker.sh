@@ -91,7 +91,6 @@ See https://github.com/docker/buildx/issues/59 for more details'
     log_debug "  :; docker buildx $rootdir $cache_params $output_params -t $repo:$tag -f $file $*"
     # shellcheck disable=SC2086
     docker buildx build "$rootdir" $cache_params \
-        --builder=kube \
         $output_params \
         -t "$repo:$tag" \
         -f "$file" \
