@@ -50,6 +50,7 @@ func addressString(address Address) string {
 func (bel *bufferingEndpointListener) ExpectAdded(expected []string, t *testing.T) {
 	bel.Lock()
 	defer bel.Unlock()
+	t.Helper()
 	sort.Strings(bel.added)
 	testCompare(t, expected, bel.added)
 }
@@ -57,6 +58,7 @@ func (bel *bufferingEndpointListener) ExpectAdded(expected []string, t *testing.
 func (bel *bufferingEndpointListener) ExpectRemoved(expected []string, t *testing.T) {
 	bel.Lock()
 	defer bel.Unlock()
+	t.Helper()
 	sort.Strings(bel.removed)
 	testCompare(t, expected, bel.removed)
 }
@@ -2398,6 +2400,7 @@ status:
 	}
 
 	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
 
 	listener.ExpectAdded([]string{"172.17.0.12:8989"}, t)
 
@@ -2417,8 +2420,12 @@ status:
 	}
 
 	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
 
-	listener.ExpectAdded([]string{"172.17.0.12:8989"}, t)
+	// Wait for the update to be processed because there is no blocking call currently in k8s that we can wait on
+	time.Sleep(50 * time.Millisecond)
+
+	listener.ExpectAdded([]string{"172.17.0.12:8989", "172.17.0.12:8989"}, t)
 }
 
 // Test that when an endpointslice loses a hint, then mark it as a change
@@ -2457,6 +2464,9 @@ endpoints:
 - addresses:
   - 172.17.0.12
   conditions:
+  hints:
+    forZones:
+    - name: zone1
   ready: true
   targetRef:
     kind: Pod
@@ -2465,9 +2475,6 @@ endpoints:
   topology:
     kubernetes.io/hostname: node-1
 kind: EndpointSlice
-hints:
-  forZones:
-  - name: zone1
 metadata:
   labels:
     kubernetes.io/service-name: name1
@@ -2513,6 +2520,7 @@ status:
 	}
 
 	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
 
 	listener.ExpectAdded([]string{"172.17.0.12:8989"}, t)
 
@@ -2532,6 +2540,10 @@ status:
 	}
 
 	k8sAPI.Sync(nil)
+	metadataAPI.Sync(nil)
 
-	listener.ExpectAdded([]string{"172.17.0.12:8989"}, t)
+	// Wait for the update to be processed because there is no blocking call currently in k8s that we can wait on
+	time.Sleep(50 * time.Millisecond)
+
+	listener.ExpectAdded([]string{"172.17.0.12:8989", "172.17.0.12:8989"}, t)
 }
