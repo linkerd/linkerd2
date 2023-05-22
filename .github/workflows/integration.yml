@@ -122,7 +122,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9
+      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753
         with:
           go-version: '1.19'
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
@@ -263,7 +263,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9
+      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753
         with:
           go-version: '1.19'
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
@@ -306,7 +306,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9
+      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753
         with:
           go-version: '1.19'
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
@@ -357,7 +357,7 @@ jobs:
       - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9
+      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753
         with:
           go-version: '1.19'
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
