@@ -76,7 +76,7 @@
     "react-test-renderer": "16.14.0",
     "sinon": "15.0.4",
     "sinon-stub-promise": "4.0.0",
-    "style-loader": "^3.3.2",
+    "style-loader": "^3.3.3",
     "url-loader": "^4.1.1",
     "webpack": "^5.83.1",
     "webpack-bundle-analyzer": "4.8.0",
