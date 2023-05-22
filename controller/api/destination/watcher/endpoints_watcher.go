@@ -677,16 +677,6 @@ func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, 
 	}
 
 	add, remove := diffAddresses(pp.addresses, updatedAddressSet)
-	pp.log.Debugf("Editing endpoint-slice %v", oldSlice.Name)
-	pp.log.Debugf("Editing endpoint-slice %v - add %v - remove %v", oldSlice.Name, len(add.Addresses), len(remove.Addresses))
-	for _, address := range add.Addresses {
-		pp.log.Debugf("Add address %#v with zones %v", address.Pod.Name, address.ForZones)
-	}
-	for _, address := range remove.Addresses {
-		pp.log.Debugf("Remove address %#v with zones %v", address.Pod.Name, address.ForZones)
-	}
-	pp.log.Debugf("Done Editing endpoint-slice %v", oldSlice.Name)
-
 	for _, listener := range pp.listeners {
 		if len(remove.Addresses) > 0 {
 			listener.Remove(remove)
