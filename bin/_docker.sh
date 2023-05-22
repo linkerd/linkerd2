@@ -23,6 +23,8 @@ export DOCKER_TARGET=${DOCKER_TARGET:-$(os)}
 # When set together with DOCKER_TARGET=multi-arch, it will push the multi-arch images to the registry
 export DOCKER_PUSH=${DOCKER_PUSH:-}
 
+export DOCKER_BUILDER=${DOCKER_BUILDER:-}
+
 # Default supported docker image architectures
 export SUPPORTED_ARCHS=${SUPPORTED_ARCHS:-linux/amd64,linux/arm64,linux/arm/v7}
 
@@ -85,8 +87,8 @@ See https://github.com/docker/buildx/issues/59 for more details'
     # Allow for specifying docker builder engine
     # This is a great way to use k8s to build docker images on native hardware instead of emulated
     # See https://docs.docker.com/build/drivers/kubernetes/ for an example
-    if [ "$DOCKER_BUILDER" ] then
-        output_params+=" --builder=$DOCKER_BUILDER"
+    if [ "$DOCKER_BUILDER" ]; then
+            output_params+=" --builder=$DOCKER_BUILDER"
     fi
 
     log_debug "  :; docker buildx $rootdir $cache_params $output_params -t $repo:$tag -f $file $*"
