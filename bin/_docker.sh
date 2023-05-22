@@ -81,12 +81,6 @@ See https://github.com/docker/buildx/issues/59 for more details'
         exit 1
       fi
     fi
-    # Allow for specifying docker builder engine
-    # This is a great way to use k8s to build docker images on native hardware instead of emulated
-    # See https://docs.docker.com/build/drivers/kubernetes/ for an example
-    if [ "$DOCKER_BUILDER" ] then
-        output_params+=" --builder=$DOCKER_BUILDER"
-    fi
 
     log_debug "  :; docker buildx $rootdir $cache_params $output_params -t $repo:$tag -f $file $*"
     # shellcheck disable=SC2086
