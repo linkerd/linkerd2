@@ -74,10 +74,11 @@ fn container_http_probe_paths(
         .filter_map(|p| {
             let probe = p.http_get.as_ref()?;
             let port = get_port(&probe.port, container)?;
-            match http::Uri::try_from(probe.path.as_deref().unwrap_or("/")) {
+            let path = probe.path.as_deref().unwrap_or("/");
+            match http::Uri::try_from(path) {
                 Ok(uri) => Some((port, uri.path().to_string())),
                 Err(error) => {
-                    tracing::warn!(%error, "invalid probe path");
+                    tracing::warn!(%error, path, "invalid probe path");
                     None
                 }
             }
