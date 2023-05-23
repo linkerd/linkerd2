@@ -74,8 +74,14 @@ fn container_http_probe_paths(
         .filter_map(|p| {
             let probe = p.http_get.as_ref()?;
             let port = get_port(&probe.port, container)?;
-            let path = probe.path.clone().unwrap_or_else(|| "/".to_string());
-            Some((port, path))
+            let path = probe.path.as_deref().unwrap_or("/");
+            match http::Uri::try_from(path) {
+                Ok(uri) => Some((port, uri.path().to_string())),
+                Err(error) => {
+                    tracing::warn!(%error, path, "invalid probe path");
+                    None
+                }
+            }
         })
 }
 
@@ -312,5 +318,28 @@ mod tests {
         let paths = probes.get(&8080.try_into().unwrap()).unwrap();
         assert_eq!(paths.len(), 1);
         assert_eq!(paths.iter().next().unwrap(), "/");
+    }
+
+    #[test]
+    fn probe_with_params() {
+        let probes = pod_http_probes(&k8s::PodSpec {
+            containers: vec![k8s::Container {
+                liveness_probe: Some(k8s::Probe {
+                    http_get: Some(k8s::HTTPGetAction {
+                        path: Some("/liveness-container-1?foo=bar".to_string()),
+                        port: k8s::IntOrString::Int(5432),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }],
+            ..Default::default()
+        });
+
+        assert_eq!(probes.len(), 1);
+        let paths = probes.get(&5432.try_into().unwrap()).unwrap();
+        assert_eq!(paths.len(), 1);
+        assert_eq!(paths.iter().next().unwrap(), "/liveness-container-1");
     }
 }
