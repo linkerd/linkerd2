@@ -68,7 +68,7 @@
 - [Paybase](https://paybase.io/)
 - [Pento](https://pento.io/)
 - [Personio](https://www.personio.com/)
-- [PTIS Global Data Recovery Services](https://www.pitsdatarecovery.net/)
+- [PITS Global Data Recovery Services](https://www.pitsdatarecovery.net/)
 - [PlayStudios Asia](https://www.playstudios.asia)
 - [PlexTrac](https://plextrac.com)
 - [PriceKinetics (GVC Australia)](https://www.pricekinetics.com.au/)
