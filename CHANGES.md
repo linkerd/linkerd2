@@ -4,12 +4,12 @@
 
 This edge release includes fixes for several bugs related to HTTPRoute handling.
 
-- Fixed an issue where the `namespace` field on HTTPRoute `backendRef`s was
+* Fixed an issue where the `namespace` field on HTTPRoute `backendRef`s was
   ignored, and the backend Service would always be assumed to be in the
   namespace as the parent Service
-- Fixed an issue where default authorizations generated for readiness and
+* Fixed an issue where default authorizations generated for readiness and
   liveness probes would fail if the probe path included URI query parameters
-- Fixed the proxy not using gRPC response classification for gRPC requests to
+* Fixed the proxy not using gRPC response classification for gRPC requests to
   destinations without ServiceProfiles
 
 ## edge-23.5.2
