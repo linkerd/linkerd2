@@ -585,6 +585,33 @@ spec:
                         type: object
                       maxItems: 8
                       type: array
+                    timeouts:
+                      description: "Timeouts defines the timeouts that can be
+                        configured for an HTTP request.\nSupport: Core."
+                      properties:
+                        request:
+                          description: "Request specifies a timeout for the
+                            Gateway to send a response to a client HTTP request.
+                            Whether the gateway starts the timeout before or
+                            after the entire client request stream has been
+                            received, is implementation dependent. \n For example,
+                            setting the `rules.timeouts.request` field to the
+                            value `10s` in an `HTTPRoute` will cause a timeout
+                            if a client request is taking longer than 10 seconds
+                            to complete. \n Request timeouts are disabled by
+                            default.\n Support: Core"
+                          type: string
+                          default: ""
+                        backendRequest:
+                          description: "BackendRequest specifies a timeout for an
+                            individual request from the gateway to a backend
+                            service. Typically used in conjuction with retry
+                            configuration, if supported by an implementation. \n
+                            The value of BackendRequest defaults to and must be <=
+                            the value of Request timeout. \n Support: Extended"
+                          type: string
+                          default: ""
+                      type: Object
                   type: object
                 maxItems: 16
                 type: array
