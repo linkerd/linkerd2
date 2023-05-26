@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -1152,6 +1153,27 @@ func addressChanged(oldAddress Address, newAddress Address) bool {
 		// identity and the service mirroring controller picks that and updates the
 		// identity
 		return true
+	}
+
+	// If the zone hints have changed, then the address has changed
+	if len(newAddress.ForZones) != len(oldAddress.ForZones) {
+		return true
+	}
+
+	// Sort the zone information so that we can compare them accurately
+	// We can't use `sort.StringSlice` because these are arrays of structs and not just strings
+	sort.Slice(oldAddress.ForZones, func(i, j int) bool {
+		return oldAddress.ForZones[i].Name < (oldAddress.ForZones[j].Name)
+	})
+	sort.Slice(newAddress.ForZones, func(i, j int) bool {
+		return newAddress.ForZones[i].Name < (newAddress.ForZones[j].Name)
+	})
+
+	// Both old and new addresses have the same number of zones, so we can just compare them directly
+	for k := range oldAddress.ForZones {
+		if oldAddress.ForZones[k].Name != newAddress.ForZones[k].Name {
+			return true
+		}
 	}
 
 	if oldAddress.Pod != nil && newAddress.Pod != nil {
