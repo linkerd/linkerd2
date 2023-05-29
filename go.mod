@@ -48,7 +48,7 @@ require (
 	k8s.io/code-generator v0.27.2
 	k8s.io/klog/v2 v2.100.1
 	k8s.io/kube-aggregator v0.27.2
-	sigs.k8s.io/gateway-api v0.6.2
+	sigs.k8s.io/gateway-api v0.7.0
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -137,7 +137,7 @@ require (
 	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/term v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
-	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
+	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/api v0.100.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4 // indirect
