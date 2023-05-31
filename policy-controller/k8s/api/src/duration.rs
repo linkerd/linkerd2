@@ -1,10 +1,26 @@
-use std::{str::FromStr, time::Duration};
+use std::{str::FromStr, time::Duration, fmt};
+use serde::{Serialize, Serializer, Deserialize, Deserializer, de};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct K8sDuration {
     duration: Duration,
     is_negative: bool,
 }
+
+#[derive(Debug, thiserror::Error, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum ParseError {
+    #[error("invalid unit: {}", EXPECTED_UNITS)]
+    InvalidUnit,
+
+    #[error("missing a unit: {}", EXPECTED_UNITS)]
+    NoUnit,
+
+    #[error("invalid floating-point number: {}", .0)]
+    NotANumber(#[from] std::num::ParseFloatError),
+}
+
+const EXPECTED_UNITS: &str = "expected one of 'ns', 'us', '\u{00b5}s', 'ms', 's', 'm', or 'h'";
 
 impl From<Duration> for K8sDuration {
     fn from(duration: Duration) -> Self {
@@ -29,8 +45,25 @@ impl K8sDuration {
     }
 }
 
-#[derive(Debug)]
-pub struct ParseError(&'static str);
+impl fmt::Debug for K8sDuration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use std::fmt::Write;
+        if self.is_negative {
+            f.write_char('-')?;
+        }
+        fmt::Debug::fmt(&self.duration, f)
+    }
+}
+
+impl fmt::Display for K8sDuration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use std::fmt::Write;
+        if self.is_negative {
+            f.write_char('-')?;
+        }
+        fmt::Debug::fmt(&self.duration, f)
+    }
+}
 
 impl FromStr for K8sDuration {
     type Err = ParseError;
@@ -50,7 +83,7 @@ impl FromStr for K8sDuration {
                 "s" => Duration::from_secs(1),
                 "m" => MINUTE,
                 "h" => MINUTE * 60,
-                _ => return Err(ParseError("invalid unit")),
+                _ => return Err(ParseError::InvalidUnit),
             };
             Ok(base.mul_f64(val))
         }
@@ -64,7 +97,7 @@ impl FromStr for K8sDuration {
         while !s.is_empty() {
             if let Some(unit_start) = s.find(|c: char| c.is_alphabetic()) {
                 let (val, rest) = s.split_at(unit_start);
-                let val = val.parse::<f64>().map_err(|_| ParseError("invalid value"))?;
+                let val = val.parse::<f64>()?;
                 let unit = if let Some(next_numeric_start) = rest.find(|c: char| !c.is_alphabetic()) {
                     let (unit, rest) = rest.split_at(next_numeric_start);
                     s = rest;
@@ -77,7 +110,7 @@ impl FromStr for K8sDuration {
             } else if s == "0" {
                 return Ok(K8sDuration { duration: Duration::from_secs(0), is_negative });
             } else {
-                return Err(ParseError("expected a unit"));
+                return Err(ParseError::NoUnit);
             }
         }
 
@@ -86,6 +119,64 @@ impl FromStr for K8sDuration {
     }
 }
 
+impl Serialize for K8sDuration {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.collect_str(self)
+    }
+}
+
+impl<'de> Deserialize<'de> for K8sDuration {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>
+    {
+        struct Visitor;
+        impl<'de> de::Visitor<'de> for Visitor {
+            type Value = K8sDuration;
+
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("a string in Go `time.Duration.String()` format")
+            }
+
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                let val = value.parse::<K8sDuration>().map_err(de::Error::custom)?;
+                Ok(val)
+            }
+        }
+        deserializer.deserialize_str(Visitor)
+    }
+}
+
+impl schemars::JsonSchema for K8sDuration {
+    // see
+    // https://github.com/kubernetes/apimachinery/blob/756e2227bf3a486098f504af1a0ffb736ad16f4c/pkg/apis/meta/v1/duration.go#L61
+    fn schema_name() -> String {
+        "K8sDuration".to_owned()
+    }
+
+    fn is_referenceable() -> bool {
+        false
+    }
+
+    fn json_schema(_: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        schemars::schema::SchemaObject {
+            instance_type: Some(schemars::schema::InstanceType::String.into()),
+            // the format should *not* be "duration", because "duration" means
+            // the duration is formatted in ISO 8601, as described here:
+            // https://datatracker.ietf.org/doc/html/draft-handrews-json-schema-validation-02#section-7.3.1
+            format: None,
+            ..Default::default()
+        }
+        .into()
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

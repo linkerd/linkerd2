@@ -207,6 +207,7 @@ pub struct HttpRouteStatus {
 #[derive(
     Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
 )]
+#[serde(rename_all = "camelCase")]
 pub struct HttpRouteTimeouts {
     /// Request specifies a timeout for the Gateway to send a response to a client HTTP request.
     /// Whether the gateway starts the timeout before or after the entire client request stream
@@ -219,8 +220,7 @@ pub struct HttpRouteTimeouts {
     /// Request timeouts are disabled by default.
     ///
     /// Support: Core
-    pub request: Option<Duration>,
-
+    pub request: Option<crate::duration::K8sDuration>,
     /// BackendRequest specifies a timeout for an individual request from the gateway
     /// to a backend service. Typically used in conjuction with retry configuration,
     /// if supported by an implementation.
@@ -228,7 +228,7 @@ pub struct HttpRouteTimeouts {
     /// The value of BackendRequest defaults to and must be <= the value of Request timeout.
     ///
     /// Support: Extended
-    pub backend_request: Option<Duration>,
+    pub backend_request: Option<crate::duration::K8sDuration>,
 }
 
 pub fn parent_ref_targets_kind<T>(parent_ref: &ParentReference) -> bool
