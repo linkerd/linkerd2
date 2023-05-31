@@ -42,6 +42,7 @@ pub struct HttpRoute {
 pub struct HttpRouteRule {
     pub matches: Vec<HttpRouteMatch>,
     pub backends: Vec<Backend>,
+    pub request_timeout: Option<time::Duration>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -56,6 +57,7 @@ pub struct WeightedAddr {
     pub weight: u32,
     pub addr: IpAddr,
     pub port: NonZeroU16,
+    pub request_timeout: Option<time::Duration>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -65,6 +67,7 @@ pub struct WeightedService {
     pub name: String,
     pub namespace: String,
     pub port: NonZeroU16,
+    pub request_timeout: Option<time::Duration>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
