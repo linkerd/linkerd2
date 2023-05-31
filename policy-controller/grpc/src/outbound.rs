@@ -335,6 +335,7 @@ fn convert_outbound_http_route(
                         backends: vec![outbound::http_route::RouteBackend {
                             backend: Some(backend.clone()),
                             filters: vec![],
+                            request_timeout: None,
                         }],
                     },
                 )
@@ -347,6 +348,7 @@ fn convert_outbound_http_route(
                 matches: matches.into_iter().map(http_route::convert_match).collect(),
                 backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
                 filters: Default::default(),
+                request_timeout: None,
             }
         })
         .collect();
@@ -377,6 +379,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                         )),
                     }),
                     filters: Default::default(),
+                    request_timeout: None,
                 }),
             }
         }
@@ -409,6 +412,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                     )),
                 }),
                 filters: Default::default(),
+                request_timeout: None,
             }),
         },
         Backend::Invalid { weight, message } => outbound::http_route::WeightedRouteBackend {
@@ -430,6 +434,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                         },
                     )),
                 }],
+                request_timeout: None,
             }),
         },
     }
@@ -473,11 +478,13 @@ fn default_outbound_http_route(backend: outbound::Backend) -> outbound::HttpRout
                     backends: vec![outbound::http_route::RouteBackend {
                         backend: Some(backend),
                         filters: vec![],
+                        request_timeout: None,
                     }],
                 },
             )),
         }),
         filters: Default::default(),
+        request_timeout: None,
     }];
     outbound::HttpRoute {
         metadata,
