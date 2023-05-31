@@ -245,6 +245,7 @@ fn mk_route(
                 }]),
                 filters: None,
                 backend_refs: None,
+                timeouts: None,
             }]),
         },
         status: Some(k8s::policy::httproute::HttpRouteStatus {
