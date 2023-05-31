@@ -3,6 +3,7 @@
 
 pub mod labels;
 pub mod policy;
+pub mod duration;
 
 pub use self::labels::Labels;
 pub use k8s_gateway_api as gateway;
