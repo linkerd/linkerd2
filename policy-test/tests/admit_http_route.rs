@@ -39,6 +39,7 @@ async fn rejects_relative_path_match() {
                 }]),
                 filters: None,
                 backend_refs: None,
+                timeouts: None,
             }]),
         },
         status: None,
@@ -74,6 +75,7 @@ async fn rejects_relative_redirect_path() {
                     },
                 }]),
                 backend_refs: None,
+                timeouts: None,
             }]),
         },
         status: None,
@@ -110,5 +112,6 @@ fn rules() -> Vec<HttpRouteRule> {
         }]),
         filters: None,
         backend_refs: None,
+        timeouts: None,
     }]
 }

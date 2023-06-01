@@ -87,5 +87,6 @@ fn rule(path: String, backend: String) -> k8s::policy::httproute::HttpRouteRule 
             filters: None,
         }]),
         filters: None,
+        timeouts: None,
     }
 }
