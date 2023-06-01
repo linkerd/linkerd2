@@ -4,6 +4,7 @@ pub use k8s_gateway_api::{
     HttpRequestHeaderFilter, HttpRequestRedirectFilter, HttpRouteMatch, LocalObjectReference,
     ParentReference, RouteStatus,
 };
+use std::time::Duration;
 
 /// HTTPRoute provides a way to route HTTP requests. This includes the
 /// capability to match requests by hostname, path, header, or query param.
@@ -20,7 +21,7 @@ pub use k8s_gateway_api::{
 )]
 #[kube(
     group = "policy.linkerd.io",
-    version = "v1beta2",
+    version = "v1beta3",
     kind = "HTTPRoute",
     struct = "HttpRoute",
     status = "HttpRouteStatus",
@@ -155,6 +156,11 @@ pub struct HttpRouteRule {
     ///
     /// Support for weight: Core
     pub backend_refs: Option<Vec<HttpBackendRef>>,
+
+    /// Timeouts defines the timeouts that can be configured for an HTTP request.
+    ///
+    /// Support: Core
+    pub timeouts: Option<HttpRouteTimeouts>,
 }
 
 /// HTTPRouteFilter defines processing steps that must be completed during the
@@ -193,6 +199,36 @@ pub struct HttpRouteStatus {
     /// Common route status information.
     #[serde(flatten)]
     pub inner: RouteStatus,
+}
+
+/// HTTPRouteTimeouts defines timeouts that can be configured for an HTTPRoute.
+/// Timeout values are formatted like 1h/1m/1s/1ms as parsed by Golang time.ParseDuration
+/// and MUST BE >= 1ms.
+#[derive(
+    Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
+)]
+pub struct HttpRouteTimeouts {
+    /// Request specifies a timeout for the Gateway to send a response to a client HTTP request.
+    /// Whether the gateway starts the timeout before or after the entire client request stream
+    /// has been received, is implementation dependent.
+    ///
+    /// For example, setting the `rules.timeouts.request` field to the value `10s` in an
+    /// `HTTPRoute` will cause a timeout if a client request is taking longer than 10 seconds
+    /// to complete.
+    ///
+    /// Request timeouts are disabled by default.
+    ///
+    /// Support: Core
+    pub request: Option<Duration>,
+
+    /// BackendRequest specifies a timeout for an individual request from the gateway
+    /// to a backend service. Typically used in conjuction with retry configuration,
+    /// if supported by an implementation.
+    ///
+    /// The value of BackendRequest defaults to and must be <= the value of Request timeout.
+    ///
+    /// Support: Extended
+    pub backend_request: Option<Duration>,
 }
 
 pub fn parent_ref_targets_kind<T>(parent_ref: &ParentReference) -> bool

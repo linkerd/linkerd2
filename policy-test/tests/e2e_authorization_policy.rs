@@ -649,6 +649,7 @@ fn http_route(name: &str, ns: &str, server_name: &str, path: &str) -> k8s::polic
                 }]),
                 filters: None,
                 backend_refs: None,
+                timeouts: None,
             }]),
         },
         status: None,
