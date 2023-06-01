@@ -328,15 +328,33 @@ impl Namespace {
             .map(http_route::try_match)
             .collect::<Result<_>>()?;
 
-        let backend_request_timeout = rule.timeouts.as_ref().and_then(|timeouts| Some(time::Duration::from(timeouts.backend_request?)));
+        let backend_request_timeout = rule
+            .timeouts
+            .as_ref()
+            .and_then(|timeouts| Some(time::Duration::from(timeouts.backend_request?)));
         let backends = rule
             .backend_refs
             .into_iter()
             .flatten()
-            .filter_map(|b| convert_backend(&self.namespace, b, cluster, service_info, backend_request_timeout))
+            .filter_map(|b| {
+                convert_backend(
+                    &self.namespace,
+                    b,
+                    cluster,
+                    service_info,
+                    backend_request_timeout,
+                )
+            })
             .collect();
-        let request_timeout = rule.timeouts.as_ref().and_then(|timeouts| Some(time::Duration::from(timeouts.request?)));
-        Ok(HttpRouteRule { matches, backends, request_timeout })
+        let request_timeout = rule
+            .timeouts
+            .as_ref()
+            .and_then(|timeouts| Some(time::Duration::from(timeouts.request?)));
+        Ok(HttpRouteRule {
+            matches,
+            backends,
+            request_timeout,
+        })
     }
 }
 

@@ -237,8 +237,12 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
                             outbound::failure_accrual::ConsecutiveFailures {
                                 max_failures,
                                 backoff: Some(outbound::ExponentialBackoff {
-                                    min_backoff: convert_duration("min_backoff")(backoff.min_penalty),
-                                    max_backoff: convert_duration("max_backoff")(backoff.max_penalty),
+                                    min_backoff: convert_duration("min_backoff")(
+                                        backoff.min_penalty,
+                                    ),
+                                    max_backoff: convert_duration("max_backoff")(
+                                        backoff.max_penalty,
+                                    ),
                                     jitter_ratio: backoff.jitter,
                                 }),
                             },
@@ -312,33 +316,39 @@ fn convert_outbound_http_route(
 
     let rules = rules
         .into_iter()
-        .map(|HttpRouteRule { matches, backends, request_timeout }| {
-            let backends = backends
-                .into_iter()
-                .map(convert_http_backend)
-                .collect::<Vec<_>>();
-            let dist = if backends.is_empty() {
-                outbound::http_route::distribution::Kind::FirstAvailable(
-                    outbound::http_route::distribution::FirstAvailable {
-                        backends: vec![outbound::http_route::RouteBackend {
-                            backend: Some(backend.clone()),
-                            filters: vec![],
-                            request_timeout: None,
-                        }],
-                    },
-                )
-            } else {
-                outbound::http_route::distribution::Kind::RandomAvailable(
-                    outbound::http_route::distribution::RandomAvailable { backends },
-                )
-            };
-            outbound::http_route::Rule {
-                matches: matches.into_iter().map(http_route::convert_match).collect(),
-                backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
-                filters: Default::default(),
-                request_timeout: request_timeout.and_then(convert_duration("request timeout"))
-            }
-        })
+        .map(
+            |HttpRouteRule {
+                 matches,
+                 backends,
+                 request_timeout,
+             }| {
+                let backends = backends
+                    .into_iter()
+                    .map(convert_http_backend)
+                    .collect::<Vec<_>>();
+                let dist = if backends.is_empty() {
+                    outbound::http_route::distribution::Kind::FirstAvailable(
+                        outbound::http_route::distribution::FirstAvailable {
+                            backends: vec![outbound::http_route::RouteBackend {
+                                backend: Some(backend.clone()),
+                                filters: vec![],
+                                request_timeout: None,
+                            }],
+                        },
+                    )
+                } else {
+                    outbound::http_route::distribution::Kind::RandomAvailable(
+                        outbound::http_route::distribution::RandomAvailable { backends },
+                    )
+                };
+                outbound::http_route::Rule {
+                    matches: matches.into_iter().map(http_route::convert_match).collect(),
+                    backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
+                    filters: Default::default(),
+                    request_timeout: request_timeout.and_then(convert_duration("request timeout")),
+                }
+            },
+        )
         .collect();
 
     outbound::HttpRoute {
@@ -367,7 +377,9 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                         )),
                     }),
                     filters: Default::default(),
-                    request_timeout: addr.request_timeout.and_then(convert_duration("backend request timeout"))
+                    request_timeout: addr
+                        .request_timeout
+                        .and_then(convert_duration("backend request timeout")),
                 }),
             }
         }
@@ -400,7 +412,9 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                     )),
                 }),
                 filters: Default::default(),
-                request_timeout: svc.request_timeout.and_then(convert_duration("backend request timeout"))
+                request_timeout: svc
+                    .request_timeout
+                    .and_then(convert_duration("backend request timeout")),
             }),
         },
         Backend::Invalid { weight, message } => outbound::http_route::WeightedRouteBackend {
@@ -525,14 +539,19 @@ fn default_queue_config() -> outbound::Queue {
     }
 }
 
-fn convert_duration(name: &'static str) -> impl Fn(time::Duration) -> Option<prost_types::Duration> {
+fn convert_duration(
+    name: &'static str,
+) -> impl Fn(time::Duration) -> Option<prost_types::Duration> {
     move |duration| {
-        duration.try_into().map_err(|error| {
-            tracing::error!(%error, "Invalid {name} duration");
-            prost_types::Duration {
-                seconds: 315_576_000_000,
-                nanos: 999_999_999
-            }
-        }).ok()
+        duration
+            .try_into()
+            .map_err(|error| {
+                tracing::error!(%error, "Invalid {name} duration");
+                prost_types::Duration {
+                    seconds: 315_576_000_000,
+                    nanos: 999_999_999,
+                }
+            })
+            .ok()
     }
 }

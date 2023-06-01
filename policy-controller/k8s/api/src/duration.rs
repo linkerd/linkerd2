@@ -1,5 +1,5 @@
-use std::{str::FromStr, time::Duration, fmt};
-use serde::{Serialize, Serializer, Deserialize, Deserializer, de};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use std::{fmt, str::FromStr, time::Duration};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct K8sDuration {
@@ -26,13 +26,13 @@ impl From<Duration> for K8sDuration {
     fn from(duration: Duration) -> Self {
         Self {
             duration,
-            is_negative: false
+            is_negative: false,
         }
     }
 }
 
 impl From<K8sDuration> for Duration {
-    fn from(K8sDuration {duration, .. }: K8sDuration) -> Self {
+    fn from(K8sDuration { duration, .. }: K8sDuration) -> Self {
         duration
     }
 }
@@ -98,7 +98,8 @@ impl FromStr for K8sDuration {
             if let Some(unit_start) = s.find(|c: char| c.is_alphabetic()) {
                 let (val, rest) = s.split_at(unit_start);
                 let val = val.parse::<f64>()?;
-                let unit = if let Some(next_numeric_start) = rest.find(|c: char| !c.is_alphabetic()) {
+                let unit = if let Some(next_numeric_start) = rest.find(|c: char| !c.is_alphabetic())
+                {
                     let (unit, rest) = rest.split_at(next_numeric_start);
                     s = rest;
                     unit
@@ -108,14 +109,19 @@ impl FromStr for K8sDuration {
                 };
                 total += duration_from_units(val, unit)?;
             } else if s == "0" {
-                return Ok(K8sDuration { duration: Duration::from_secs(0), is_negative });
+                return Ok(K8sDuration {
+                    duration: Duration::from_secs(0),
+                    is_negative,
+                });
             } else {
                 return Err(ParseError::NoUnit);
             }
         }
 
-        Ok(K8sDuration { duration: total, is_negative })
-
+        Ok(K8sDuration {
+            duration: total,
+            is_negative,
+        })
     }
 }
 
@@ -131,7 +137,7 @@ impl Serialize for K8sDuration {
 impl<'de> Deserialize<'de> for K8sDuration {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>
+        D: Deserializer<'de>,
     {
         struct Visitor;
         impl<'de> de::Visitor<'de> for Visitor {
@@ -140,7 +146,6 @@ impl<'de> Deserialize<'de> for K8sDuration {
             fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.write_str("a string in Go `time.Duration.String()` format")
             }
-
 
             fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
             where
@@ -204,18 +209,33 @@ mod tests {
             ("1478s", Duration::from_secs(1478).into()),
             // 	// sign
             // 	{"-5s", -5 * Second},
-            ("-5s", K8sDuration {duration: Duration::from_secs(5), is_negative: true }),
+            (
+                "-5s",
+                K8sDuration {
+                    duration: Duration::from_secs(5),
+                    is_negative: true,
+                },
+            ),
             // 	{"+5s", 5 * Second},
             ("+5s", Duration::from_secs(5).into()),
             // 	{"-0", 0},
-            ("-0", K8sDuration { duration: Duration::from_secs(0), is_negative: true }),
+            (
+                "-0",
+                K8sDuration {
+                    duration: Duration::from_secs(0),
+                    is_negative: true,
+                },
+            ),
             // 	{"+0", 0},
             ("+0", Duration::from_secs(0).into()),
             // 	// decimal
             // 	{"5.0s", 5 * Second},
             ("5s", Duration::from_secs(5).into()),
             // 	{"5.6s", 5*Second + 600*Millisecond},
-            ("5.6s", (Duration::from_secs(5) + Duration::from_millis(600)).into()),
+            (
+                "5.6s",
+                (Duration::from_secs(5) + Duration::from_millis(600)).into(),
+            ),
             // 	{"5.s", 5 * Second},
             ("5.s", Duration::from_secs(5).into()),
             // 	{".5s", 500 * Millisecond},
@@ -225,11 +245,20 @@ mod tests {
             // 	{"1.00s", 1 * Second},
             ("1.00s", Duration::from_secs(1).into()),
             // 	{"1.004s", 1*Second + 4*Millisecond},
-            ("1.004s", (Duration::from_secs(1) + Duration::from_millis(4)).into()),
+            (
+                "1.004s",
+                (Duration::from_secs(1) + Duration::from_millis(4)).into(),
+            ),
             // 	{"1.0040s", 1*Second + 4*Millisecond},
-            ("1.0040s", (Duration::from_secs(1) + Duration::from_millis(4)).into()),
+            (
+                "1.0040s",
+                (Duration::from_secs(1) + Duration::from_millis(4)).into(),
+            ),
             // 	{"100.00100s", 100*Second + 1*Millisecond},
-            ("100.00100s", (Duration::from_secs(100) + Duration::from_millis(1)).into()),
+            (
+                "100.00100s",
+                (Duration::from_secs(100) + Duration::from_millis(1)).into(),
+            ),
             // 	// different units
             // 	{"10ns", 10 * Nanosecond},
             ("10ns", Duration::from_nanos(10).into()),
@@ -251,18 +280,34 @@ mod tests {
             // 	{"3h30m", 3*Hour + 30*Minute},
             ("3h30m", (3 * HOUR + 30 * MINUTE).into()),
             // 	{"10.5s4m", 4*Minute + 10*Second + 500*Millisecond},
-            ("10.5s4m", (4 * MINUTE + Duration::from_secs(10) + Duration::from_millis(500)).into()),
+            (
+                "10.5s4m",
+                (4 * MINUTE + Duration::from_secs(10) + Duration::from_millis(500)).into(),
+            ),
             // 	{"-2m3.4s", -(2*Minute + 3*Second + 400*Millisecond)},
-            ("-2m3.4s", K8sDuration { duration: 2 * MINUTE + Duration::from_secs(3) + Duration::from_millis(400), is_negative: true }),
+            (
+                "-2m3.4s",
+                K8sDuration {
+                    duration: 2 * MINUTE + Duration::from_secs(3) + Duration::from_millis(400),
+                    is_negative: true,
+                },
+            ),
             // 	{"1h2m3s4ms5us6ns", 1*Hour + 2*Minute + 3*Second + 4*Millisecond + 5*Microsecond + 6*Nanosecond},
             (
                 "1h2m3s4ms5us6ns",
-                (1 * HOUR + 2 * MINUTE + Duration::from_secs(3) + Duration::from_millis(4)
-                     + Duration::from_micros(5) + Duration::from_nanos(6)).into()),
+                (1 * HOUR
+                    + 2 * MINUTE
+                    + Duration::from_secs(3)
+                    + Duration::from_millis(4)
+                    + Duration::from_micros(5)
+                    + Duration::from_nanos(6))
+                .into(),
+            ),
             // 	{"39h9m14.425s", 39*Hour + 9*Minute + 14*Second + 425*Millisecond},
             (
                 "39h9m14.425s",
-                (39 * HOUR + 9 * MINUTE + Duration::from_secs(14) + Duration::from_millis(425)).into(),
+                (39 * HOUR + 9 * MINUTE + Duration::from_secs(14) + Duration::from_millis(425))
+                    .into(),
             ),
             // 	// large value
             // 	{"52763797000ns", 52763797000 * Nanosecond},
@@ -272,7 +317,10 @@ mod tests {
             ("0.3333333333333333333h", (20 * MINUTE).into()),
             // 	// 9007199254740993 = 1<<53+1 cannot be stored precisely in a float64
             // 	{"9007199254740993ns", (1<<53 + 1) * Nanosecond},
-            ("9007199254740993ns", Duration::from_nanos((1 << 53) + 1).into()),
+            (
+                "9007199254740993ns",
+                Duration::from_nanos((1 << 53) + 1).into(),
+            ),
             // Rust Durations can handle larger durations than Go's
             // representation, so skip these tests for their precision limits
 
@@ -292,11 +340,10 @@ mod tests {
 
             // 	// huge string; issue 15011.
             // 	{"0.100000000000000000000h", 6 * Minute},
-            ("0.100000000000000000000h", (6 * MINUTE).into())
-            // 	// This value tests the first overflow check in leadingFraction.
-            // 	{"0.830103483285477580700h", 49*Minute + 48*Second + 372539827*Nanosecond},
-            // }
-            // ```
+            ("0.100000000000000000000h", (6 * MINUTE).into()), // 	// This value tests the first overflow check in leadingFraction.
+                                                               // 	{"0.830103483285477580700h", 49*Minute + 48*Second + 372539827*Nanosecond},
+                                                               // }
+                                                               // ```
         ];
 
         for (input, expected) in cases {

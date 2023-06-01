@@ -1,9 +1,9 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
+pub mod duration;
 pub mod labels;
 pub mod policy;
-pub mod duration;
 
 pub use self::labels::Labels;
 pub use k8s_gateway_api as gateway;

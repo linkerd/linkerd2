@@ -467,7 +467,10 @@ impl Validate<HttpRouteSpec> for Admission {
             use std::time::Duration;
 
             if let Some(t) = timeouts.backend_request {
-                ensure!(!t.is_negative(), "backendRequest timeout must not be negative");
+                ensure!(
+                    !t.is_negative(),
+                    "backendRequest timeout must not be negative"
+                );
             }
 
             if let Some(t) = timeouts.request {
@@ -488,7 +491,10 @@ impl Validate<HttpRouteSpec> for Admission {
         // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
         // actually allocate stuff in order to return an `InboundRouteBinding`.
         for httproute::HttpRouteRule {
-            filters, matches, timeouts, ..
+            filters,
+            matches,
+            timeouts,
+            ..
         } in spec.rules.into_iter().flatten()
         {
             for m in matches.into_iter().flatten() {
