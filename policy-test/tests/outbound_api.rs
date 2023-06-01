@@ -4,9 +4,10 @@ use futures::prelude::*;
 use kube::ResourceExt;
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
-    assert_default_accrual_backoff, create, create_annotated_service, create_opaque_service,
-    create_service, grpc, mk_service, with_temp_ns,
+    assert_default_accrual_backoff, create, create_annotated_service, create_cluster_scoped,
+    create_opaque_service, create_service, delete_cluster_scoped, grpc, mk_service, with_temp_ns,
 };
+use maplit::{btreemap, convert_args};
 use tokio::time;
 
 #[tokio::test(flavor = "current_thread")]
@@ -108,7 +109,11 @@ async fn service_with_http_routes_without_backends() {
             assert_route_is_default(route, &svc, 4191);
         });
 
-        let _route = create(&client, mk_http_route(&ns, "foo-route", &svc, 4191, None)).await;
+        let _route = create(
+            &client,
+            mk_http_route(&ns, "foo-route", &svc, 4191, None, None),
+        )
+        .await;
 
         let config = rx
             .next()
@@ -149,11 +154,11 @@ async fn service_with_http_routes_with_backend() {
         });
 
         let backend_name = "backend";
-        let _backend_svc = create_service(&client, &ns, backend_name, 8888).await;
+        let backend_svc = create_service(&client, &ns, backend_name, 8888).await;
         let backends = [backend_name];
         let _route = create(
             &client,
-            mk_http_route(&ns, "foo-route", &svc, 4191, Some(&backends)),
+            mk_http_route(&ns, "foo-route", &svc, 4191, Some(&backends), None),
         )
         .await;
 
@@ -169,9 +174,83 @@ async fn service_with_http_routes_with_backend() {
             let route = assert_singleton(routes);
             let backends = route_backends_random_available(route);
             let backend = assert_singleton(backends);
+            assert_backend_matches_service(backend.backend.as_ref().unwrap(), &backend_svc, 8888);
             let filters = &backend.backend.as_ref().unwrap().filters;
             assert_eq!(filters.len(), 0);
         });
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn service_with_http_routes_with_cross_namespace_backend() {
+    with_temp_ns(|client, ns| async move {
+        // Create a service
+        let svc = create_service(&client, &ns, "my-svc", 4191).await;
+
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+
+        // There should be a default route.
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
+
+        let backend_ns_name = format!("{}-backend", ns);
+        let backend_ns = create_cluster_scoped(
+            &client,
+            k8s::Namespace {
+                metadata: k8s::ObjectMeta {
+                    name: Some(backend_ns_name.clone()),
+                    labels: Some(convert_args!(btreemap!(
+                        "linkerd-policy-test" => std::thread::current().name().unwrap_or(""),
+                    ))),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
+        .await;
+        let backend_name = "backend";
+        let backend_svc = create_service(&client, &backend_ns_name, backend_name, 8888).await;
+        let backends = [backend_name];
+        let _route = create(
+            &client,
+            mk_http_route(
+                &ns,
+                "foo-route",
+                &svc,
+                4191,
+                Some(&backends),
+                Some(backend_ns_name),
+            ),
+        )
+        .await;
+
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an updated config");
+        tracing::trace!(?config);
+
+        // There should be a route with a backend with no filters.
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            let backends = route_backends_random_available(route);
+            let backend = assert_singleton(backends);
+            assert_backend_matches_service(backend.backend.as_ref().unwrap(), &backend_svc, 8888);
+            let filters = &backend.backend.as_ref().unwrap().filters;
+            assert_eq!(filters.len(), 0);
+        });
+
+        delete_cluster_scoped(&client, backend_ns).await
     })
     .await;
 }
@@ -200,7 +279,7 @@ async fn service_with_http_routes_with_invalid_backend() {
         let backends = ["invalid-backend"];
         let _route = create(
             &client,
-            mk_http_route(&ns, "foo-route", &svc, 4191, Some(&backends)),
+            mk_http_route(&ns, "foo-route", &svc, 4191, Some(&backends), None),
         )
         .await;
 
@@ -247,7 +326,11 @@ async fn service_with_multiple_http_routes() {
         // Routes should be returned in sorted order by creation timestamp then
         // name. To ensure that this test isn't timing dependant, routes should
         // be created in alphabetical order.
-        let _a_route = create(&client, mk_http_route(&ns, "a-route", &svc, 4191, None)).await;
+        let _a_route = create(
+            &client,
+            mk_http_route(&ns, "a-route", &svc, 4191, None, None),
+        )
+        .await;
 
         // First route update.
         let config = rx
@@ -257,7 +340,11 @@ async fn service_with_multiple_http_routes() {
             .expect("watch must return an updated config");
         tracing::trace!(?config);
 
-        let _b_route = create(&client, mk_http_route(&ns, "b-route", &svc, 4191, None)).await;
+        let _b_route = create(
+            &client,
+            mk_http_route(&ns, "b-route", &svc, 4191, None, None),
+        )
+        .await;
 
         // Second route update.
         let config = rx
@@ -568,6 +655,7 @@ fn mk_http_route(
     svc: &k8s::Service,
     port: u16,
     backends: Option<&[&str]>,
+    backends_ns: Option<String>,
 ) -> k8s::policy::HttpRoute {
     use k8s::policy::httproute as api;
     let backend_refs = backends.map(|names| {
@@ -581,7 +669,7 @@ fn mk_http_route(
                         port: Some(8888),
                         group: None,
                         kind: None,
-                        namespace: None,
+                        namespace: backends_ns.clone(),
                     },
                 }),
                 filters: None,
