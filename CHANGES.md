@@ -1,5 +1,27 @@
 # Changes
 
+## stable-2.13.4
+
+This stable release fixes a few issues in the proxy and in the outbound policy
+API. Two new configuration options are also introduced to configure the
+outbound (and inbound) cache discovery idle period for proxies. The
+configuration is supported through annotations and through Helm values.
+
+* Control Plane
+  * Fixed an issue where an HTTPRoute backendRef's namespace would be ignored
+  * Fixed an issue where probe paths with query params would not be authorized
+    through the default route
+  * Introduced outbound/inbound discovery cache idle timeout configuration
+    values through annotations
+* Proxy
+  * Fixed an issue where pods wouldn't be able to communicate with themselves
+    using their logical (Service) address
+  * Changed W3C context propagation to send correct span IDs (thanks
+    @whiskeysierra!)
+* Helm
+  * Introduced outbound/inbound cache discovery cache idle timeout
+    configuration values
+
 ## stable-2.13.3
 
 This stable release improves compatibility with ArgoCD by changing the Linkerd
