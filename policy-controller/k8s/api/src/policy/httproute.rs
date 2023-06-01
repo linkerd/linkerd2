@@ -4,7 +4,6 @@ pub use k8s_gateway_api::{
     HttpRequestHeaderFilter, HttpRequestRedirectFilter, HttpRouteMatch, LocalObjectReference,
     ParentReference, RouteStatus,
 };
-use std::time::Duration;
 
 /// HTTPRoute provides a way to route HTTP requests. This includes the
 /// capability to match requests by hostname, path, header, or query param.

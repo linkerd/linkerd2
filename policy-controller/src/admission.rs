@@ -463,7 +463,7 @@ impl Validate<HttpRouteSpec> for Admission {
             }
         }
 
-        fn validate_timeouts(timeouts: httproute::Timeouts) -> Result<()> {
+        fn validate_timeouts(timeouts: httproute::HttpRouteTimeouts) -> Result<()> {
             use std::time::Duration;
 
             if let Some(t) = timeouts.backend_request {
