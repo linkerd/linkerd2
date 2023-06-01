@@ -8,16 +8,24 @@ outbound (and inbound) cache discovery idle period for proxies. The
 configuration is supported through annotations and through Helm values.
 
 * Control Plane
-  * Fixed an issue where an HTTPRoute backendRef's namespace would be ignored
-  * Fixed an issue where probe paths with query params would not be authorized
-    through the default route
-  * Introduced outbound/inbound discovery cache idle timeout configuration
-    values through annotations
+  * Fixed an issue where the `namespace` field on HTTPRoute `backendRef`s was
+    ignored, and the backend Service would always be assumed to be in the
+    namespace as the parent Service
+  * Fixed an issue where default authorizations generated for readiness and
+    liveness probes would fail if the probe path included URI query parameters
+  * Added the ability to configure the proxy's discovery cache timeouts with
+    the config.linkerd.io/proxy-outbound-discovery-cache-unused-timeout and
+    config.linkerd.io/proxy-inbound-discovery-cache-unused-timeout annotations
+  * Fixed bug where topology routing would not disable while service was under
+    load (thanks @MarkSRobinson!)
 * Proxy
-  * Fixed an issue where pods wouldn't be able to communicate with themselves
-    using their logical (Service) address
-  * Changed W3C context propagation to send correct span IDs (thanks
-    @whiskeysierra!)
+  * Fixed an issue where meshed pods could not communicate with themselves
+    through a ClusterIP Service
+  * Fixed an issue with W3C trace context propagation which caused proxy spans
+    to be siblings rather than children of their original parent (thanks
+    @whiskeysierra)
+  * Fixed the proxy not using gRPC response classification for gRPC requests to
+    destinations without ServiceProfiles
 * Helm
   * Introduced outbound/inbound cache discovery cache idle timeout
     configuration values
