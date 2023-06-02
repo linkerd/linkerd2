@@ -1,5 +1,21 @@
 # Changes
 
+## edge-23.6.1
+
+This edge release changes the behavior of the CNI plugin to run exclusively in
+"chained mode". Instead of creating its own configuration file, the CNI plugin
+will now wait until a `conf` file exists before appending its configuration.
+Additionally, this change includes a bug fix for topology aware service
+routing.
+
+* Changed CNI plugin installer to always run in 'chained' mode; the plugin will
+  now wait until another CNI plugin is installed before appending its
+  configuration
+* Added a timeout value to the HttpRoute CRD. The field is currently unused but
+  will be used eventually to allow for configuration of per-route timeouts
+* Fixed bug where topology routing would not disable while service was under
+  load (thanks @MarkSRobinson!)
+
 ## edge-23.5.3
 
 This edge release includes fixes for several bugs related to HTTPRoute handling.
