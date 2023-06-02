@@ -373,9 +373,8 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                         )),
                     }),
                     filters: Default::default(),
-                    request_timeout: addr
-                        .request_timeout
-                        .and_then(|d| convert_duration( "backend request timeout", d)),
+                    // Timeouts cannot currently be configured for endpoint backends.
+                    request_timeout: None,
                 }),
             }
         }

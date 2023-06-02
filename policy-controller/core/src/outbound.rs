@@ -57,7 +57,6 @@ pub struct WeightedAddr {
     pub weight: u32,
     pub addr: IpAddr,
     pub port: NonZeroU16,
-    pub request_timeout: Option<time::Duration>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
