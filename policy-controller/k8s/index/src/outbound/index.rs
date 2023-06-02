@@ -345,12 +345,30 @@ impl Namespace {
         let request_timeout = rule
             .timeouts
             .as_ref()
-            .and_then(|timeouts| Some(time::Duration::from(timeouts.request?)));
+            .and_then(|timeouts| {
+                let timeout = time::Duration::from(timeouts.request?);
+
+                // zero means "no timeout", per GEP-1742
+                if timeout == time::Duration::from_nanos(0) {
+                    return None;
+                }
+
+                Some(timeout)
+            });
 
         let backend_request_timeout = rule
             .timeouts
             .as_ref()
-            .and_then(|timeouts| Some(time::Duration::from(timeouts.backend_request?)));
+            .and_then(|timeouts: &api::httproute::HttpRouteTimeouts| {
+                let timeout = time::Duration::from(timeouts.backend_request?);
+
+                // zero means "no timeout", per GEP-1742
+                if timeout == time::Duration::from_nanos(0) {
+                    return None;
+                }
+
+                Some(timeout)
+            });
 
         Ok(HttpRouteRule {
             matches,
