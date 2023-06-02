@@ -237,8 +237,14 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
                             outbound::failure_accrual::ConsecutiveFailures {
                                 max_failures,
                                 backoff: Some(outbound::ExponentialBackoff {
-                                    min_backoff: convert_duration("min_backoff", backoff.min_penalty),
-                                    max_backoff: convert_duration("max_backoff", backoff.max_penalty),
+                                    min_backoff: convert_duration(
+                                        "min_backoff",
+                                        backoff.min_penalty,
+                                    ),
+                                    max_backoff: convert_duration(
+                                        "max_backoff",
+                                        backoff.max_penalty,
+                                    ),
                                     jitter_ratio: backoff.jitter,
                                 }),
                             },
@@ -344,7 +350,8 @@ fn convert_outbound_http_route(
                     matches: matches.into_iter().map(http_route::convert_match).collect(),
                     backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
                     filters: Default::default(),
-                    request_timeout: request_timeout.and_then(|d| convert_duration("request timeout", d)),
+                    request_timeout: request_timeout
+                        .and_then(|d| convert_duration("request timeout", d)),
                 }
             },
         )
@@ -357,7 +364,10 @@ fn convert_outbound_http_route(
     }
 }
 
-fn convert_http_backend(request_timeout: Option<prost_types::Duration>, backend: Backend) -> outbound::http_route::WeightedRouteBackend {
+fn convert_http_backend(
+    request_timeout: Option<prost_types::Duration>,
+    backend: Backend,
+) -> outbound::http_route::WeightedRouteBackend {
     match backend {
         Backend::Addr(addr) => {
             let socket_addr = SocketAddr::new(addr.addr, addr.port.get());
@@ -534,11 +544,8 @@ fn default_queue_config() -> outbound::Queue {
     }
 }
 
-fn convert_duration(
-    name: &'static str,
-    duration: time::Duration,
-) -> Option<prost_types::Duration> {
-        duration
+fn convert_duration(name: &'static str, duration: time::Duration) -> Option<prost_types::Duration> {
+    duration
         .try_into()
         .map_err(|error| {
             tracing::error!(%error, "Invalid {name} duration");
