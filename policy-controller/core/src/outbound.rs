@@ -42,6 +42,8 @@ pub struct HttpRoute {
 pub struct HttpRouteRule {
     pub matches: Vec<HttpRouteMatch>,
     pub backends: Vec<Backend>,
+    pub request_timeout: Option<time::Duration>,
+    pub backend_request_timeout: Option<time::Duration>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
