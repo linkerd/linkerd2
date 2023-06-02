@@ -328,10 +328,6 @@ impl Namespace {
             .map(http_route::try_match)
             .collect::<Result<_>>()?;
 
-        let backend_request_timeout = rule
-            .timeouts
-            .as_ref()
-            .and_then(|timeouts| Some(time::Duration::from(timeouts.backend_request?)));
         let backends = rule
             .backend_refs
             .into_iter()
@@ -342,18 +338,25 @@ impl Namespace {
                     b,
                     cluster,
                     service_info,
-                    backend_request_timeout,
                 )
             })
             .collect();
+
         let request_timeout = rule
             .timeouts
             .as_ref()
             .and_then(|timeouts| Some(time::Duration::from(timeouts.request?)));
+
+        let backend_request_timeout = rule
+            .timeouts
+            .as_ref()
+            .and_then(|timeouts| Some(time::Duration::from(timeouts.backend_request?)));
+
         Ok(HttpRouteRule {
             matches,
             backends,
             request_timeout,
+            backend_request_timeout
         })
     }
 }
@@ -363,7 +366,6 @@ fn convert_backend(
     backend: HttpBackendRef,
     cluster: &ClusterInfo,
     services: &HashMap<ServiceRef, ServiceInfo>,
-    request_timeout: Option<time::Duration>,
 ) -> Option<Backend> {
     backend.backend_ref.map(|backend| {
         if !is_backend_service(&backend.inner) {
@@ -413,7 +415,6 @@ fn convert_backend(
             name,
             namespace: ns.to_string(),
             port,
-            request_timeout,
         })
     })
 }

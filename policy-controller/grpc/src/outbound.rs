@@ -317,10 +317,13 @@ fn convert_outbound_http_route(
                  matches,
                  backends,
                  request_timeout,
+                 backend_request_timeout,
              }| {
+                let backend_request_timeout = backend_request_timeout
+                    .and_then(|d| convert_duration("backend request_timeout", d));
                 let backends = backends
                     .into_iter()
-                    .map(convert_http_backend)
+                    .map(|backend| convert_http_backend(backend_request_timeout.clone(), backend))
                     .collect::<Vec<_>>();
                 let dist = if backends.is_empty() {
                     outbound::http_route::distribution::Kind::FirstAvailable(
@@ -328,7 +331,7 @@ fn convert_outbound_http_route(
                             backends: vec![outbound::http_route::RouteBackend {
                                 backend: Some(backend.clone()),
                                 filters: vec![],
-                                request_timeout: None,
+                                request_timeout: backend_request_timeout,
                             }],
                         },
                     )
@@ -354,7 +357,7 @@ fn convert_outbound_http_route(
     }
 }
 
-fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRouteBackend {
+fn convert_http_backend(request_timeout: Option<prost_types::Duration>, backend: Backend) -> outbound::http_route::WeightedRouteBackend {
     match backend {
         Backend::Addr(addr) => {
             let socket_addr = SocketAddr::new(addr.addr, addr.port.get());
@@ -373,8 +376,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                         )),
                     }),
                     filters: Default::default(),
-                    // Timeouts cannot currently be configured for endpoint backends.
-                    request_timeout: None,
+                    request_timeout,
                 }),
             }
         }
@@ -407,9 +409,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                     )),
                 }),
                 filters: Default::default(),
-                request_timeout: svc
-                    .request_timeout
-                    .and_then(|d| convert_duration("backend request timeout", d)),
+                request_timeout,
             }),
         },
         Backend::Invalid { weight, message } => outbound::http_route::WeightedRouteBackend {
@@ -431,7 +431,7 @@ fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRoute
                         },
                     )),
                 }],
-                request_timeout: None,
+                request_timeout,
             }),
         },
     }
