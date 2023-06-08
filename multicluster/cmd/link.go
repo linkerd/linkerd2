@@ -41,6 +41,7 @@ type (
 		gatewayNamespace        string
 		serviceMirrorRetryLimit uint32
 		logLevel                string
+		logFormat               string
 		controlPlaneVersion     string
 		dockerRegistry          string
 		selector                string
@@ -280,6 +281,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", defaultMulticlusterNamespace, "The namespace of the gateway service")
 	cmd.Flags().Uint32Var(&opts.serviceMirrorRetryLimit, "service-mirror-retry-limit", opts.serviceMirrorRetryLimit, "The number of times a failed update from the target cluster is allowed to be retried")
 	cmd.Flags().StringVar(&opts.logLevel, "log-level", opts.logLevel, "Log level for the Multicluster components")
+	cmd.Flags().StringVar(&opts.logFormat, "log-format", opts.logFormat, "Log format for the Multicluster components")
 	cmd.Flags().StringVar(&opts.dockerRegistry, "registry", opts.dockerRegistry,
 		fmt.Sprintf("Docker registry to pull service mirror controller image from ($%s)", flags.EnvOverrideDockerRegistry))
 	cmd.Flags().StringVarP(&opts.selector, "selector", "l", opts.selector, "Selector (label query) to filter which services in the target cluster to mirror")
@@ -378,6 +380,7 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 		dockerRegistry:          defaultDockerRegistry,
 		serviceMirrorRetryLimit: defaults.ServiceMirrorRetryLimit,
 		logLevel:                defaults.LogLevel,
+		logFormat:               defaults.LogFormat,
 		selector:                fmt.Sprintf("%s=%s", k8s.DefaultExportedServiceSelector, "true"),
 		gatewayAddresses:        "",
 		gatewayPort:             0,
@@ -398,6 +401,10 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 		return nil, fmt.Errorf("--log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 
+	if opts.logFormat != "plain" && opts.logFormat != "json" {
+		return nil, fmt.Errorf("--log-format must be one of: plain, json")
+	}
+
 	defaults, err := multicluster.NewLinkValues()
 	if err != nil {
 		return nil, err
@@ -410,6 +417,7 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 	defaults.TargetClusterName = opts.clusterName
 	defaults.ServiceMirrorRetryLimit = opts.serviceMirrorRetryLimit
 	defaults.LogLevel = opts.logLevel
+	defaults.LogFormat = opts.logFormat
 	defaults.ControllerImageVersion = opts.controlPlaneVersion
 	defaults.ControllerImage = fmt.Sprintf("%s/controller", opts.dockerRegistry)
 

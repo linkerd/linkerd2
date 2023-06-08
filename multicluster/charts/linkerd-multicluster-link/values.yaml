@@ -17,6 +17,8 @@ gateway:
     port: 4191
 # -- Log level for the Multicluster components
 logLevel: info
+# -- Log format (`plain` or `json`)
+logFormat: plain
 # -- Node selectors for the Service mirror pod
 nodeSelector: {}
 # -- Resources for the Service mirror container
