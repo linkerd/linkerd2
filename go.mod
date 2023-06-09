@@ -17,17 +17,17 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/imdario/mergo v0.3.15
+	github.com/imdario/mergo v0.3.16
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/linkerd/linkerd2-proxy-api v0.9.0
+	github.com/linkerd/linkerd2-proxy-api v0.10.0
 	github.com/linkerd/linkerd2-proxy-init v1.6.2
-	github.com/mattn/go-isatty v0.0.18
+	github.com/mattn/go-isatty v0.0.19
 	github.com/mattn/go-runewidth v0.0.14
 	github.com/nsf/termbox-go v1.1.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
 	github.com/prometheus/client_golang v1.15.1
-	github.com/prometheus/common v0.43.0
+	github.com/prometheus/common v0.44.0
 	github.com/sergi/go-diff v1.3.1
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd
@@ -42,13 +42,13 @@ require (
 	google.golang.org/protobuf v1.30.0
 	helm.sh/helm/v3 v3.12.0
 	k8s.io/api v0.27.2
-	k8s.io/apiextensions-apiserver v0.27.1
+	k8s.io/apiextensions-apiserver v0.27.2
 	k8s.io/apimachinery v0.27.2
 	k8s.io/client-go v0.27.2
 	k8s.io/code-generator v0.27.2
 	k8s.io/klog/v2 v2.100.1
-	k8s.io/kube-aggregator v0.27.1
-	sigs.k8s.io/gateway-api v0.6.2
+	k8s.io/kube-aggregator v0.27.2
+	sigs.k8s.io/gateway-api v0.7.1
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -132,12 +132,12 @@ require (
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
-	golang.org/x/oauth2 v0.7.0 // indirect
+	golang.org/x/oauth2 v0.8.0 // indirect
 	golang.org/x/sync v0.2.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/term v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
-	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
+	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/api v0.100.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4 // indirect

@@ -30,7 +30,7 @@ default-features = false
 features = ["client", "openssl-tls", "runtime", "ws"]
 
 [dependencies.linkerd2-proxy-api]
-version = "0.9"
+version = "0.10"
 features = [
     "inbound",
     "outbound",

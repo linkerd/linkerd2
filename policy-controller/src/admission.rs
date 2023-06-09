@@ -7,7 +7,7 @@ use crate::k8s::{
         ServerAuthorizationSpec, ServerSpec,
     },
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
@@ -463,12 +463,38 @@ impl Validate<HttpRouteSpec> for Admission {
             }
         }
 
+        fn validate_timeouts(timeouts: httproute::HttpRouteTimeouts) -> Result<()> {
+            use std::time::Duration;
+
+            if let Some(t) = timeouts.backend_request {
+                ensure!(
+                    !t.is_negative(),
+                    "backendRequest timeout must not be negative"
+                );
+            }
+
+            if let Some(t) = timeouts.request {
+                ensure!(!t.is_negative(), "request timeout must not be negative");
+            }
+
+            if let (Some(req), Some(backend_req)) = (timeouts.request, timeouts.backend_request) {
+                ensure!(
+                    Duration::from(req) >= Duration::from(backend_req),
+                    "backendRequest timeout ({backend_req}) must not be greater than request timeout ({req})"
+                );
+            }
+            Ok(())
+        }
+
         // Validate the rules in this spec.
         // This is essentially equivalent to the indexer's conversion function
         // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
         // actually allocate stuff in order to return an `InboundRouteBinding`.
         for httproute::HttpRouteRule {
-            filters, matches, ..
+            filters,
+            matches,
+            timeouts,
+            ..
         } in spec.rules.into_iter().flatten()
         {
             for m in matches.into_iter().flatten() {
@@ -477,6 +503,10 @@ impl Validate<HttpRouteSpec> for Admission {
 
             for f in filters.into_iter().flatten() {
                 validate_filter(f)?;
+            }
+
+            if let Some(timeouts) = timeouts {
+                validate_timeouts(timeouts)?;
             }
         }
 
