@@ -11,8 +11,6 @@ routing.
 * Changed the CNI plugin installer to always run in 'chained' mode; the plugin will
   now wait until another CNI plugin is installed before appending its
   configuration
-* Added a timeout value to the HttpRoute CRD. The field is currently unused but
-  will be used eventually to allow for configuration of per-route timeouts
 * Fixed bug where topology routing would not disable while service was under
   load (thanks @MarkSRobinson!)
 * Introduced `logFormat` value to the multicluster `Link` Helm Chart (thanks
