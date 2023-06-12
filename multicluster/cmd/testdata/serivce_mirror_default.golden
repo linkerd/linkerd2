@@ -108,6 +108,7 @@ spec:
       - args:
         - service-mirror
         - -log-level=info
+        - -log-format=plain
         - -event-requeue-limit=3
         - -namespace=test
         - -enable-pprof=false
