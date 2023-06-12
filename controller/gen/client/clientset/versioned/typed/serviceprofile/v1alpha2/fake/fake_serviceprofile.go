@@ -24,7 +24,6 @@ import (
 	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,9 +35,9 @@ type FakeServiceProfiles struct {
 	ns   string
 }
 
-var serviceprofilesResource = schema.GroupVersionResource{Group: "linkerd.io", Version: "v1alpha2", Resource: "serviceprofiles"}
+var serviceprofilesResource = v1alpha2.SchemeGroupVersion.WithResource("serviceprofiles")
 
-var serviceprofilesKind = schema.GroupVersionKind{Group: "linkerd.io", Version: "v1alpha2", Kind: "ServiceProfile"}
+var serviceprofilesKind = v1alpha2.SchemeGroupVersion.WithKind("ServiceProfile")
 
 // Get takes name of the serviceProfile, and returns the corresponding serviceProfile object, and an error if there is any.
 func (c *FakeServiceProfiles) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha2.ServiceProfile, err error) {

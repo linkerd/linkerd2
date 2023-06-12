@@ -23,6 +23,7 @@ import (
 
 	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
+	v1alpha3 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha3"
 	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
@@ -73,6 +74,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Policy().V1alpha1().MeshTLSAuthentications().Informer()}, nil
 	case policyv1alpha1.SchemeGroupVersion.WithResource("networkauthentications"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Policy().V1alpha1().NetworkAuthentications().Informer()}, nil
+
+		// Group=policy, Version=v1alpha3
+	case v1alpha3.SchemeGroupVersion.WithResource("httproutes"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Policy().V1alpha3().HTTPRoutes().Informer()}, nil
 
 		// Group=server, Version=v1beta1
 	case v1beta1.SchemeGroupVersion.WithResource("servers"):
