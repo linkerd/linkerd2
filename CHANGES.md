@@ -15,6 +15,8 @@ routing.
   will be used eventually to allow for configuration of per-route timeouts
 * Fixed bug where topology routing would not disable while service was under
   load (thanks @MarkSRobinson!)
+* Introduced log-format value to the multicluster `Link` Helm Chart (thanks
+  @bunnybilou!)
 
 ## edge-23.5.3
 
