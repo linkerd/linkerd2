@@ -462,7 +462,7 @@ data:
         limit: 250Mi
         request: 50Mi
     heartbeatSchedule: 1 2 3 4 5
-    highAvailability: false
+    highAvailability: true
     identity:
       externalCA: false
       issuer:
