@@ -24,7 +24,6 @@ import (
 	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,9 +35,9 @@ type FakeServers struct {
 	ns   string
 }
 
-var serversResource = schema.GroupVersionResource{Group: "policy.linkerd.io", Version: "v1beta1", Resource: "servers"}
+var serversResource = v1beta1.SchemeGroupVersion.WithResource("servers")
 
-var serversKind = schema.GroupVersionKind{Group: "policy.linkerd.io", Version: "v1beta1", Kind: "Server"}
+var serversKind = v1beta1.SchemeGroupVersion.WithKind("Server")
 
 // Get takes name of the server, and returns the corresponding server object, and an error if there is any.
 func (c *FakeServers) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.Server, err error) {
