@@ -219,6 +219,7 @@ func TestNewValues(t *testing.T) {
 			},
 		}
 
+		expected.HighAvailability = true
 		expected.ControllerReplicas = 3
 		expected.EnablePodAntiAffinity = true
 		expected.EnablePodDisruptionBudget = true
