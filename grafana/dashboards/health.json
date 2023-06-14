@@ -131,14 +131,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_virtual_memory_bytes{job=\"linkerd/linkerd-proxy\"}",
+          "expr": "process_virtual_memory_bytes{job=\"linkerd-proxy\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}/virtual",
           "refId": "A"
         },
         {
-          "expr": "process_resident_memory_bytes{job=\"linkerd/linkerd-proxy\"}",
+          "expr": "process_resident_memory_bytes{job=\"linkerd-proxy\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}/resident",
@@ -227,7 +227,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(process_cpu_seconds_total{job=\"linkerd/linkerd-proxy\"}[$__rate_interval])) by (namespace, pod)",
+          "expr": "sum(irate(process_cpu_seconds_total{job=\"linkerd-proxy\"}[$__rate_interval])) by (namespace, pod)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}",
@@ -316,7 +316,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_open_fds{job=\"linkerd/linkerd-proxy\"}",
+          "expr": "process_open_fds{job=\"linkerd-proxy\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{namespace}}/{{pod}}",
@@ -1036,7 +1036,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_goroutines{job=\"linkerd/linkerd-controller\"}",
+          "expr": "go_goroutines{job=\"linkerd-controller\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{component}}",
@@ -1125,14 +1125,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_resident_memory_bytes{job=\"linkerd/linkerd-controller\"}",
+          "expr": "process_resident_memory_bytes{job=\"linkerd-controller\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{component}}/resident",
           "refId": "A"
         },
         {
-          "expr": "process_virtual_memory_bytes{job=\"linkerd/linkerd-controller\"}",
+          "expr": "process_virtual_memory_bytes{job=\"linkerd-controller\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{component}}/virtual",
@@ -1221,7 +1221,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_open_fds{job=\"linkerd/linkerd-controller\"}",
+          "expr": "process_open_fds{job=\"linkerd-controller\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{component}}",
@@ -1310,7 +1310,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_threads{job=\"linkerd/linkerd-controller\"}",
+          "expr": "go_threads{job=\"linkerd-controller\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{component}}",
@@ -1415,7 +1415,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(http_server_requests_total{job=\"linkerd/linkerd-controller\"}[$__rate_interval])) by (component, method, code)",
+          "expr": "sum(irate(http_server_requests_total{job=\"linkerd-controller\"}[$__rate_interval])) by (component, method, code)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{component}}/{{method}}/{{code}}",
@@ -1504,21 +1504,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(rate(http_server_request_latency_seconds_bucket{job=\"linkerd/linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
+          "expr": "histogram_quantile(0.5, sum(rate(http_server_request_latency_seconds_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P50 {{component}}/{{method}}/{{code}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_latency_seconds_bucket{job=\"linkerd/linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_request_latency_seconds_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P95 {{component}}/{{method}}/{{code}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_request_latency_seconds_bucket{job=\"linkerd/linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_request_latency_seconds_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P99 {{component}}/{{method}}/{{code}}",
@@ -1607,21 +1607,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(rate(http_server_response_size_bytes_bucket{job=\"linkerd/linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
+          "expr": "histogram_quantile(0.5, sum(rate(http_server_response_size_bytes_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P50 {{component}}/{{method}}/{{code}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_response_size_bytes_bucket{job=\"linkerd/linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_response_size_bytes_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P95 {{component}}/{{method}}/{{code}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_response_size_bytes_bucket{job=\"linkerd/linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_response_size_bytes_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P99 {{component}}/{{method}}/{{code}}",
@@ -1710,7 +1710,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(http_client_requests_total{job=\"linkerd/linkerd-controller\"}[$__rate_interval])) by (component, client, method, code)",
+          "expr": "sum(irate(http_client_requests_total{job=\"linkerd-controller\"}[$__rate_interval])) by (component, client, method, code)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{component}}/{{client}}/{{method}}/{{code}}",
@@ -1799,21 +1799,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(rate(http_client_request_latency_seconds_bucket{job=\"linkerd/linkerd-controller\"}[$__rate_interval])) by (le, component, client, method, code))",
+          "expr": "histogram_quantile(0.5, sum(rate(http_client_request_latency_seconds_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, client, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P50 {{component}}/{{client}}/{{method}}/{{code}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_client_request_latency_seconds_bucket{job=\"linkerd/linkerd-controller\"}[$__rate_interval])) by (le, component, client, method, code))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_client_request_latency_seconds_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, client, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P95 {{component}}/{{client}}/{{method}}/{{code}}",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_client_request_latency_seconds_bucket{job=\"linkerd/linkerd-controller\"}[$__rate_interval])) by (le, component, client, method, code))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_client_request_latency_seconds_bucket{job=\"linkerd-controller\"}[$__rate_interval])) by (le, component, client, method, code))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P99 {{component}}/{{client}}/{{method}}/{{code}}",
@@ -1902,7 +1902,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(http_client_in_flight_requests{job=\"linkerd/linkerd-controller\"}) by (component, client)",
+          "expr": "sum(http_client_in_flight_requests{job=\"linkerd-controller\"}) by (component, client)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{component}}/{{client}}",
@@ -2036,28 +2036,28 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_memstats_alloc_bytes{job=\"linkerd/linkerd-controller\", component=\"$component\"}",
+          "expr": "go_memstats_alloc_bytes{job=\"linkerd-controller\", component=\"$component\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "alloc/{{component}}",
           "refId": "A"
         },
         {
-          "expr": "irate(go_memstats_alloc_bytes_total{job=\"linkerd/linkerd-controller\", component=\"$component\"}[$__rate_interval])",
+          "expr": "irate(go_memstats_alloc_bytes_total{job=\"linkerd-controller\", component=\"$component\"}[$__rate_interval])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "alloc rate/{{component}}",
           "refId": "B"
         },
         {
-          "expr": "go_memstats_stack_inuse_bytes{job=\"linkerd/linkerd-controller\", component=\"$component\"}",
+          "expr": "go_memstats_stack_inuse_bytes{job=\"linkerd-controller\", component=\"$component\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "stack/{{component}}",
           "refId": "C"
         },
         {
-          "expr": "go_memstats_heap_inuse_bytes{job=\"linkerd/linkerd-controller\", component=\"$component\"}",
+          "expr": "go_memstats_heap_inuse_bytes{job=\"linkerd-controller\", component=\"$component\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "heap/{{component}}",
@@ -2151,21 +2151,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_gc_duration_seconds{job=\"linkerd/linkerd-controller\", quantile=\"0.5\", component=\"$component\"}",
+          "expr": "go_gc_duration_seconds{job=\"linkerd-controller\", quantile=\"0.5\", component=\"$component\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P50 {{component}}",
           "refId": "A"
         },
         {
-          "expr": "go_gc_duration_seconds{job=\"linkerd/linkerd-controller\", quantile=\"0.75\", component=\"$component\"}",
+          "expr": "go_gc_duration_seconds{job=\"linkerd-controller\", quantile=\"0.75\", component=\"$component\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "P75 {{component}}",
           "refId": "B"
         },
         {
-          "expr": "go_gc_duration_seconds{job=\"linkerd/linkerd-controller\", quantile=\"1\", component=\"$component\"}",
+          "expr": "go_gc_duration_seconds{job=\"linkerd-controller\", quantile=\"1\", component=\"$component\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "Max {{component}}",
@@ -2259,14 +2259,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "irate(grpc_server_msg_sent_total{job=\"linkerd/linkerd-controller\", component=\"$component\"}[$__rate_interval])",
+          "expr": "irate(grpc_server_msg_sent_total{job=\"linkerd-controller\", component=\"$component\"}[$__rate_interval])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "sent/{{component}}/{{grpc_method}}",
           "refId": "A"
         },
         {
-          "expr": "irate(grpc_server_msg_received_total{job=\"linkerd/linkerd-controller\", component=\"$component\"}[$__rate_interval])",
+          "expr": "irate(grpc_server_msg_received_total{job=\"linkerd-controller\", component=\"$component\"}[$__rate_interval])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "received/{{component}}/{{grpc_method}}",
