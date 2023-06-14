@@ -24,6 +24,7 @@ import (
 
 	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha1"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1alpha1"
+	policyv1beta3 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1beta3"
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta1"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serverauthorization/v1beta1"
 	linkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2"
@@ -36,17 +37,18 @@ type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	LinkV1alpha1() linkv1alpha1.LinkV1alpha1Interface
 	PolicyV1alpha1() policyv1alpha1.PolicyV1alpha1Interface
+	PolicyV1beta3() policyv1beta3.PolicyV1beta3Interface
 	ServerV1beta1() serverv1beta1.ServerV1beta1Interface
 	ServerauthorizationV1beta1() serverauthorizationv1beta1.ServerauthorizationV1beta1Interface
 	LinkerdV1alpha2() linkerdv1alpha2.LinkerdV1alpha2Interface
 }
 
-// Clientset contains the clients for groups. Each group has exactly one
-// version included in a Clientset.
+// Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
 	linkV1alpha1               *linkv1alpha1.LinkV1alpha1Client
 	policyV1alpha1             *policyv1alpha1.PolicyV1alpha1Client
+	policyV1beta3              *policyv1beta3.PolicyV1beta3Client
 	serverV1beta1              *serverv1beta1.ServerV1beta1Client
 	serverauthorizationV1beta1 *serverauthorizationv1beta1.ServerauthorizationV1beta1Client
 	linkerdV1alpha2            *linkerdv1alpha2.LinkerdV1alpha2Client
@@ -60,6 +62,11 @@ func (c *Clientset) LinkV1alpha1() linkv1alpha1.LinkV1alpha1Interface {
 // PolicyV1alpha1 retrieves the PolicyV1alpha1Client
 func (c *Clientset) PolicyV1alpha1() policyv1alpha1.PolicyV1alpha1Interface {
 	return c.policyV1alpha1
+}
+
+// PolicyV1beta3 retrieves the PolicyV1beta3Client
+func (c *Clientset) PolicyV1beta3() policyv1beta3.PolicyV1beta3Interface {
+	return c.policyV1beta3
 }
 
 // ServerV1beta1 retrieves the ServerV1beta1Client
@@ -129,6 +136,10 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 	if err != nil {
 		return nil, err
 	}
+	cs.policyV1beta3, err = policyv1beta3.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
 	cs.serverV1beta1, err = serverv1beta1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
@@ -164,6 +175,7 @@ func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.linkV1alpha1 = linkv1alpha1.New(c)
 	cs.policyV1alpha1 = policyv1alpha1.New(c)
+	cs.policyV1beta3 = policyv1beta3.New(c)
 	cs.serverV1beta1 = serverv1beta1.New(c)
 	cs.serverauthorizationV1beta1 = serverauthorizationv1beta1.New(c)
 	cs.linkerdV1alpha2 = linkerdv1alpha2.New(c)
