@@ -84,8 +84,7 @@ pub struct HttpRouteRule {
     ///
     /// Proxy or Load Balancer routing configuration generated from HTTPRoutes
     /// MUST prioritize rules based on the following criteria, continuing on
-    /// ties. Precedence must be given to the the Rule with the largest number
-    /// of:
+    /// ties. Precedence must be given to the Rule with the largest number of:
     ///
     /// * Characters in a matching non-wildcard hostname.
     /// * Characters in a matching hostname.
@@ -221,7 +220,7 @@ pub struct HttpRouteTimeouts {
     /// Support: Core
     pub request: Option<crate::duration::K8sDuration>,
     /// BackendRequest specifies a timeout for an individual request from the gateway
-    /// to a backend service. Typically used in conjuction with retry configuration,
+    /// to a backend service. Typically used in conjunction with retry configuration,
     /// if supported by an implementation.
     ///
     /// The value of BackendRequest defaults to and must be <= the value of Request timeout.

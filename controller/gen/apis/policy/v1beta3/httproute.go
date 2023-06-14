@@ -15,6 +15,8 @@ limitations under the License.
 package v1beta3
 
 import (
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayapiv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
@@ -194,6 +196,43 @@ type HTTPRouteRule struct {
 	// +optional
 	// +kubebuilder:validation:MaxItems=16
 	Filters []HTTPRouteFilter `json:"filters,omitempty"`
+
+	// BackendRefs defines the backend(s) where matching requests should be sent.
+	//
+	// A 500 status code MUST be returned if there are no BackendRefs or filters
+	// specified that would result in a response being sent.
+	//
+	// A BackendRef is considered invalid when it refers to:
+	//
+	// * an unknown or unsupported kind of resource
+	// * a resource that does not exist
+	// * a resource in another namespace when the reference has not been
+	//   explicitly allowed by a ReferencePolicy (or equivalent concept).
+	//
+	// When a BackendRef is invalid, 500 status codes MUST be returned for
+	// requests that would have otherwise been routed to an invalid backend. If
+	// multiple backends are specified, and some are invalid, the proportion of
+	// requests that would otherwise have been routed to an invalid backend
+	// MUST receive a 500 status code.
+	//
+	// When a BackendRef refers to a Service that has no ready endpoints, it is
+	// recommended to return a 503 status code.
+	//
+	// Support: Core for Kubernetes Service
+	// Support: Custom for any other resource
+	//
+	// Support for weight: Core
+	//
+	// +optional
+	// +kubebuilder:validation:MaxItems=16
+	BackendRefs []gatewayapiv1alpha2.HTTPBackendRef `json:"backendRefs,omitempty"`
+
+	// Timeouts defines the timeouts that can be configured for an HTTP request.
+	//
+	// Support: Core
+	//
+	// +optional
+	Timeouts HttpRouteTimeouts `json:"timeouts,omitempty"`
 }
 
 // PathMatchType specifies the semantics of how HTTP paths should be compared.
@@ -295,9 +334,9 @@ const (
 //
 // Invalid values include:
 //
-//   - ":method" - ":" is an invalid character. This means that HTTP/2 pseudo
-//     headers are not currently supported by this type.
-//   - "/invalid" - "/" is an invalid character
+// * ":method" - ":" is an invalid character. This means that HTTP/2 pseudo
+//   headers are not currently supported by this type.
+// * "/invalid" - "/" is an invalid character
 //
 // +kubebuilder:validation:MinLength=1
 // +kubebuilder:validation:MaxLength=256
@@ -441,13 +480,11 @@ const (
 //
 // ```
 // match:
-//
-//	path:
-//	  value: "/foo"
-//	headers:
-//	- name: "version"
-//	  value "v1"
-//
+//   path:
+//     value: "/foo"
+//   headers:
+//   - name: "version"
+//     value "v1"
 // ```
 type HTTPRouteMatch struct {
 	// Path specifies a HTTP request path matcher. If this field is not
@@ -774,4 +811,37 @@ type HTTPRequestRedirectFilter struct {
 // HTTPRouteStatus defines the observed state of HTTPRoute.
 type HTTPRouteStatus struct {
 	gatewayapiv1alpha2.RouteStatus `json:",inline"`
+}
+
+// HTTPRouteTimeouts defines timeouts that can be configured for an HTTPRoute.
+// Timeout values are formatted like 1h/1m/1s/1ms as parsed by Golang
+// time.ParseDuration and MUST BE >= 1ms.
+type HttpRouteTimeouts struct {
+	// Request specifies a timeout for the Gateway to send a response to a client
+	// HTTP request. Whether the gateway starts the timeout before or after the
+	// entire client request stream has been received, is implementation
+	// dependent.
+	//
+	// For example, setting the `rules.timeouts.request` field to the value `10s`
+	// in an `HTTPRoute` will cause a timeout if a client request is taking longer
+	// than 10 seconds to complete.
+	//
+	// Request timeouts are disabled by default.
+	//
+	// Support: Core
+	//
+	// +optional
+	Request *time.Duration `json:"request,omitempty"`
+
+	// BackendRequest specifies a timeout for an individual request from the
+	// gateway to a backend service. Typically used in conjunction with retry
+	// configuration, if supported by an implementation.
+	//
+	// The value of BackendRequest defaults to and must be <= the value of Request
+	// timeout.
+	//
+	// Support: Extended
+	//
+	// +optional
+	BackendRequest *time.Duration `json:"backendRequest,omitempty"`
 }
