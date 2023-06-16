@@ -108,7 +108,7 @@ specific language governing permissions and limitations under the License.
 
 <!-- refs -->
 [github-actions]: https://github.com/linkerd/linkerd2/actions
-[github-actions-badge]: https://github.com/linkerd/linkerd2/workflows/Cloud%20integration/badge.svg
+[github-actions-badge]: https://github.com/linkerd/linkerd2/actions/workflows/actions.yml/badge.svg
 [cncf]: https://www.cncf.io/
 [CoC]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 [getting-started]: https://linkerd.io/2/getting-started/
