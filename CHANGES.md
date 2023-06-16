@@ -10,7 +10,6 @@ This release also includes several small improvements and fixes:
 
 * A fix for HA validation checks when Linkerd is installed with Helm. Thanks
 @mikutas!!
-* Added code generation for HTTPRoute v1beta3
 * Build improvements for multi-arch build artifacts. Thanks @MarkSRobinson!!
 
 ## edge-23.6.1
