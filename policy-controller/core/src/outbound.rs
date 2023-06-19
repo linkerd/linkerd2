@@ -1,4 +1,4 @@
-use crate::http_route::{HostMatch, HttpRouteMatch};
+use crate::http_route::{GroupKindName, HostMatch, HttpRouteMatch};
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use chrono::{offset::Utc, DateTime};
@@ -19,7 +19,7 @@ pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OutboundPolicy {
-    pub http_routes: HashMap<String, HttpRoute>,
+    pub http_routes: HashMap<GroupKindName, HttpRoute>,
     pub authority: String,
     pub name: String,
     pub namespace: String,

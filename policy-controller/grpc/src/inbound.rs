@@ -387,10 +387,10 @@ fn to_http_route(
     let metadata = Metadata {
         kind: Some(match reference {
             HttpRouteRef::Default(name) => metadata::Kind::Default(name.to_string()),
-            HttpRouteRef::Linkerd(name) => metadata::Kind::Resource(api::meta::Resource {
-                group: "policy.linkerd.io".to_string(),
-                kind: "HTTPRoute".to_string(),
-                name: name.to_string(),
+            HttpRouteRef::Linkerd(gkn) => metadata::Kind::Resource(api::meta::Resource {
+                group: gkn.group.clone(),
+                kind: gkn.kind.clone(),
+                name: gkn.name.clone(),
                 ..Default::default()
             }),
         }),

@@ -7,6 +7,14 @@ pub use http::{
 use regex::Regex;
 use std::num::NonZeroU16;
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+
+pub struct GroupKindName {
+    pub group: String,
+    pub kind: String,
+    pub name: String,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HostMatch {
     Exact(String),
@@ -73,6 +81,24 @@ pub enum HeaderMatch {
 pub enum QueryParamMatch {
     Exact(String, String),
     Regex(String, Regex),
+}
+
+// === impl GroupKindName ===
+
+impl Ord for GroupKindName {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.name.cmp(&other.name).then(
+            self.group
+                .cmp(&other.group)
+                .then(self.kind.cmp(&other.kind)),
+        )
+    }
+}
+
+impl PartialOrd for GroupKindName {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 // === impl PathMatch ===
