@@ -21,6 +21,7 @@ import (
 	metricsPb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
 	hc "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/viz/pkg/jsonpath"
 	vizutil "github.com/linkerd/linkerd2/viz/pkg/util"
 	tapPb "github.com/linkerd/linkerd2/viz/tap/gen/tap"
 	"github.com/linkerd/linkerd2/viz/tap/pkg"
@@ -29,7 +30,7 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-type renderTapEventFunc func(*tapPb.TapEvent) string
+type renderTapEventFunc func(*tapPb.TapEvent, ...renderOptions) string
 
 type tapOptions struct {
 	namespace     string
@@ -124,8 +125,20 @@ func newTapOptions() *tapOptions {
 	}
 }
 
+type renderFilter struct {
+	JsonPath string
+}
+
+type renderOptions func(f *renderFilter)
+
+func WithJsonPath(jsonPath string) renderOptions {
+	return func(r *renderFilter) {
+		r.JsonPath = jsonPath
+	}
+}
+
 func (o *tapOptions) validate() error {
-	if o.output == "" || o.output == wideOutput || o.output == jsonOutput {
+	if o.output == "" || o.output == wideOutput || o.output == jsonOutput || strings.HasPrefix(o.output, jsonPathOutput) {
 		return nil
 	}
 
@@ -278,7 +291,7 @@ func NewCmdTap() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&options.path, "path", options.path,
 		"Display requests with paths that start with this prefix")
 	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output,
-		fmt.Sprintf("Output format. One of: \"%s\", \"%s\"", wideOutput, jsonOutput))
+		fmt.Sprintf("Output format. One of: \"%s\", \"%s\", \"%s\"", wideOutput, jsonOutput, jsonPathOutput))
 	cmd.PersistentFlags().StringVarP(&options.labelSelector, "selector", "l", options.labelSelector,
 		"Selector (label query) to filter on, supports '=', '==', and '!='")
 
@@ -299,19 +312,27 @@ func requestTapByResourceFromAPI(ctx context.Context, w io.Writer, k8sAPI *k8s.K
 }
 
 func writeTapEventsToBuffer(w io.Writer, tapByteStream *bufio.Reader, options *tapOptions) error {
-	switch options.output {
-	case "":
+	output := options.output
+
+	switch {
+	case output == "":
 		return renderTapEvents(tapByteStream, w, renderTapEvent)
-	case wideOutput:
+	case output == wideOutput:
 		return renderTapEvents(tapByteStream, w, renderTapEventWide)
-	case jsonOutput:
+	case output == jsonOutput:
 		return renderTapEvents(tapByteStream, w, renderTapEventJSON)
+	case strings.HasPrefix(output, jsonPathOutput):
+		jPathFilter, err := jsonpath.GetJsonPathFlagVal(output)
+		if err != nil {
+			return err
+		}
+		return renderTapEvents(tapByteStream, w, renderTapEventJSON, WithJsonPath(jPathFilter))
 	default:
 		return fmt.Errorf("unknown output format: %q", options.output)
 	}
 }
 
-func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapEventFunc) error {
+func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapEventFunc, opts ...renderOptions) error {
 	for {
 		log.Debug("Waiting for data...")
 		event := tapPb.TapEvent{}
@@ -323,7 +344,7 @@ func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapE
 			fmt.Fprintln(os.Stderr, err)
 			break
 		}
-		_, err = fmt.Fprintln(w, render(&event))
+		_, err = fmt.Fprintln(w, render(&event, opts...))
 		if err != nil {
 			return err
 		}
@@ -332,7 +353,7 @@ func renderTapEvents(tapByteStream *bufio.Reader, w io.Writer, render renderTapE
 	return nil
 }
 
-func renderTapEventWide(event *tapPb.TapEvent) string {
+func renderTapEventWide(event *tapPb.TapEvent, _ ...renderOptions) string {
 	dst := dst(event)
 	src := src(event)
 
@@ -344,7 +365,7 @@ func renderTapEventWide(event *tapPb.TapEvent) string {
 }
 
 // renderTapEvent renders a Public API TapEvent to a string.
-func renderTapEvent(event *tapPb.TapEvent) string {
+func renderTapEvent(event *tapPb.TapEvent, _ ...renderOptions) string {
 	dst := dst(event)
 	src := src(event)
 
@@ -428,8 +449,19 @@ func renderTapEvent(event *tapPb.TapEvent) string {
 }
 
 // renderTapEventJSON renders a Public API TapEvent to a string in JSON format.
-func renderTapEventJSON(event *tapPb.TapEvent) string {
+func renderTapEventJSON(event *tapPb.TapEvent, opts ...renderOptions) string {
+	filter := &renderFilter{}
+	for _, opt := range opts {
+		opt(filter)
+	}
 	m := mapPublicToDisplayTapEvent(event)
+	if filter.JsonPath != "" {
+		filteredJson, err := jsonpath.GetJsonFilteredByJPath(m, filter.JsonPath)
+		if err != nil {
+			return err.Error()
+		}
+		return filteredJson[0]
+	}
 	e, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		return fmt.Sprintf("{\"error marshalling JSON\": \"%s\"}", err)
