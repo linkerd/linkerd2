@@ -10,7 +10,7 @@ metadata:
 rules:
 - apiGroups: ["coordination.k8s.io"]
   resources: ["leases"]
-  verbs: ["get", "update", "patch"]
+  verbs: ["create", "get", "update", "patch"]
 - apiGroups: [""]
   resources: ["endpoints", "services"]
   verbs: ["list", "get", "watch", "create", "delete", "update"]

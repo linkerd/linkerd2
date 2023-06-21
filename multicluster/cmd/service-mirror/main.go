@@ -68,7 +68,6 @@ func Main(args []string) {
 	}()
 
 	rootCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -231,7 +230,6 @@ func Main(args []string) {
 		// point resources have been released.
 		case <-rootCtx.Done():
 			loop = false
-			break
 		default:
 			// Do nothing once a lease is lost, keeping spinning and don't block
 			// on shutdown signal
