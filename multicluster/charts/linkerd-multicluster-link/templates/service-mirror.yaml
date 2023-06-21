@@ -1,4 +1,3 @@
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -94,11 +93,16 @@ metadata:
   name: linkerd-service-mirror-{{.Values.targetClusterName}}
   namespace: {{ .Release.Namespace }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
       component: linkerd-service-mirror
       mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+  {{- if .Values.enablePodAntiAffinity }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  {{- end }}
   template:
     metadata:
       annotations:
@@ -151,3 +155,21 @@ spec:
       {{- with .Values.tolerations }}
       tolerations: {{ toYaml . | nindent 6 }}
       {{- end }}
+{{- if .Values.enablePodAntiAffinity }}
+---
+kind: PodDisruptionBudget
+apiVersion: policy/v1
+metadata:
+  name: linkerd-service-mirror-{{.Values.targetClusterName}}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    component: linkerd-service-mirror
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      component: linkerd-service-mirror
+      mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
+{{- end}}
