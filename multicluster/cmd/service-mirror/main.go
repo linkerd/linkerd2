@@ -215,7 +215,7 @@ func Main(args []string) {
 				},
 				OnNewLeader: func(identity string) {
 					if identity == hostname {
-						log.Info("%s acquired lease", hostname)
+						log.Infof("%s acquired lease", hostname)
 					}
 				},
 			},
