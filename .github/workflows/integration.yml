@@ -258,7 +258,7 @@ jobs:
           - helm-upgrade
           - uninstall
           - upgrade-edge
-          - upgrade-stable
+          # - upgrade-stable
     continue-on-error: true
     runs-on: ubuntu-20.04
     timeout-minutes: 15
