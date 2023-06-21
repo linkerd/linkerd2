@@ -184,6 +184,10 @@ func Main(args []string) {
 		LeaseMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("service-mirror-write-%s", linkName),
 			Namespace: *namespace,
+			Labels: map[string]string{
+				"component":                      "linkerd-service-mirror",
+				"mirror.linkerd.io/cluster-name": linkName,
+			},
 		},
 		Client: k8sAPI.CoordinationV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
