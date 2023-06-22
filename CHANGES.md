@@ -1,5 +1,15 @@
 # Changes
 
+## stable-2.13.5
+
+This stable release fixes a memory leak in the multicluster extension and fixes
+an issue where the proxy was failing certain requests when running in ingress
+mode.
+
+* Fixed a memory leak in the service mirror controller
+* Fixed an issue where the proxy would fail requests that were missing the
+  `l5d-dst-override` header when run in ingress mode
+
 ## stable-2.13.4
 
 This stable release fixes a few issues in the proxy and in the outbound policy
