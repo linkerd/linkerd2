@@ -43,6 +43,10 @@ enablePodDisruptionBudget: false
 # and the proxy-init container when injecting the proxy;
 # requires the linkerd-cni plugin to already be installed
 cniEnabled: false
+# -- setting validatorEnabled to false will eliminate the network validator when
+# using the linkerd-cni plugin. This will only take effect if you are using the
+# linkerd-cni plugin.
+validatorEnabled: true
 # -- Trust root certificate (ECDSA). It must be provided during install.
 identityTrustAnchorsPEM: |
 # -- Trust domain used for identity
