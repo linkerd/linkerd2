@@ -108,6 +108,7 @@ func Main(args []string) {
 
 	ready = true
 	run := func(ctx context.Context) {
+	main:
 		for {
 			// Start link watch
 			linkWatch, err := linkClient.Watch(ctx, metav1.ListOptions{})
@@ -118,7 +119,7 @@ func Main(args []string) {
 
 			// Each time the link resource is updated, reload the config and restart the
 			// cluster watcher.
-			for loop := true; loop; {
+			for {
 				select {
 				// ctx.Done() is a one-shot channel that will be closed once
 				// the context has been cancelled. Receiving from a closed
@@ -133,8 +134,7 @@ func Main(args []string) {
 				case event, ok := <-results:
 					if !ok {
 						log.Info("Link watch terminated; restarting watch")
-						loop = false
-						break
+						continue main
 					}
 					switch obj := event.Object.(type) {
 					case *dynamic.Unstructured:
@@ -194,10 +194,16 @@ func Main(args []string) {
 		},
 	}
 
-	for loop := true; loop; {
-		// RunOrDie will block until a lease is acquired. Once a lease is
-		// acquired, the main watcher loop will start a Link watch. If the lease
-		// is lost, clean-up watchers and re-attempt to acquire.
+election:
+	for {
+		// RunOrDie will block until the lease is lost.
+		//
+		// When a lease is acquired, the OnStartedLeading callback will be
+		// triggered, and a main watcher loop will be established to watch Link
+		// resources.
+		//
+		// When the lease is lost, all watchers will be cleaned-up and we will
+		// attempt to re-acquire the lease.
 		leaderelection.RunOrDie(rootCtx, leaderelection.LeaderElectionConfig{
 			// When runtime context is cancelled, lock will be released. Implies any
 			// code guarded by the least _must_ finish before cancelling.
@@ -208,8 +214,10 @@ func Main(args []string) {
 			RetryPeriod:     LEASE_RETRY_PERIOD,
 			Callbacks: leaderelection.LeaderCallbacks{
 				OnStartedLeading: func(ctx context.Context) {
-					// Rely on cancellation to be propagated from leader elector
-					// in the worker
+					// When a lease is lost, RunOrDie will cancel the context
+					// passed into the OnStartedLeading callback. This will in
+					// turn cause us to cancel the work in the run() function,
+					// effectively terminating and cleaning-up the watches.
 					log.Info("Starting controller loop")
 					run(ctx)
 				},
@@ -225,14 +233,14 @@ func Main(args []string) {
 		})
 
 		select {
-		// If we have just lost the lease, and we have received a shutdown
-		// signal, break the loop and gracefully exit. We can guarantee at this
-		// point resources have been released.
+		// If the lease has been lost, and we have received a shutdown signal,
+		// break the loop and gracefully exit. We can guarantee at this point
+		// resources have been released.
 		case <-rootCtx.Done():
-			loop = false
+			break election
+		// If the lease has been lost, loop and attempt to re-acquire it.
 		default:
-			// Do nothing once a lease is lost, keeping spinning and don't block
-			// on shutdown signal
+
 		}
 	}
 	log.Info("Shutting down")
