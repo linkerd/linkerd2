@@ -27,6 +27,7 @@ const (
 	jsonOutput  = healthcheck.JSONOutput
 	tableOutput = healthcheck.TableOutput
 	wideOutput  = healthcheck.WideOutput
+	jsonPathOutput = "jsonpath"
 )
 
 var (
