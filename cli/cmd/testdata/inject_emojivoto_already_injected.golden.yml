@@ -127,6 +127,7 @@ spec:
               command:
               - /usr/lib/linkerd/linkerd-await
               - --timeout=2m
+              - --port=4191
         livenessProbe:
           httpGet:
             path: /live
@@ -351,6 +352,7 @@ spec:
               command:
               - /usr/lib/linkerd/linkerd-await
               - --timeout=2m
+              - --port=4191
         livenessProbe:
           httpGet:
             path: /live
@@ -575,6 +577,7 @@ spec:
               command:
               - /usr/lib/linkerd/linkerd-await
               - --timeout=2m
+              - --port=4191
         livenessProbe:
           httpGet:
             path: /live
@@ -799,6 +802,7 @@ spec:
               command:
               - /usr/lib/linkerd/linkerd-await
               - --timeout=2m
+              - --port=4191
         livenessProbe:
           httpGet:
             path: /live
