@@ -147,7 +147,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
-      - uses: tj-actions/changed-files@fb20f4d24890fadc539505b1746d260504b213d0
+      - uses: tj-actions/changed-files@ec1e14cf27f4585783f463070881b2c499349a8a
         id: changed
         with:
           files: |
@@ -287,7 +287,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
-      - uses: tj-actions/changed-files@fb20f4d24890fadc539505b1746d260504b213d0
+      - uses: tj-actions/changed-files@ec1e14cf27f4585783f463070881b2c499349a8a
         id: changed
         with:
           files: |
@@ -331,7 +331,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
-      - uses: tj-actions/changed-files@fb20f4d24890fadc539505b1746d260504b213d0
+      - uses: tj-actions/changed-files@ec1e14cf27f4585783f463070881b2c499349a8a
         id: changed
         with:
           files: |
