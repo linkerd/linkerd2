@@ -37,7 +37,7 @@ require (
 	go.opencensus.io v0.24.0
 	golang.org/x/net v0.11.0
 	golang.org/x/tools v0.10.0
-	google.golang.org/grpc v1.55.0
+	google.golang.org/grpc v1.56.1
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
 	google.golang.org/protobuf v1.31.0
 	helm.sh/helm/v3 v3.12.1
@@ -140,7 +140,7 @@ require (
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/api v0.100.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4 // indirect
+	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/cli-runtime v0.27.2 // indirect
