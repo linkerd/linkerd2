@@ -518,6 +518,7 @@ data:
     linkerdVersion: install-control-plane-version
     networkValidator:
       connectAddr: 1.1.1.1:20001
+      enableSecurityContext: true
       listenAddr: 0.0.0.0:4140
       logFormat: plain
       logLevel: debug
