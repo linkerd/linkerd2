@@ -315,7 +315,8 @@
           "exec": {
             "command": [
               "/usr/lib/linkerd/linkerd-await",
-              "--timeout=2m"
+              "--timeout=2m",
+              "--port=4191"
             ]
           }
         }

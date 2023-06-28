@@ -1424,6 +1424,7 @@ spec:
               command:
                 - /usr/lib/linkerd/linkerd-await
                 - --timeout=2m
+                - --port=4191
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
@@ -1880,6 +1881,7 @@ spec:
               command:
                 - /usr/lib/linkerd/linkerd-await
                 - --timeout=2m
+                - --port=4191
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity

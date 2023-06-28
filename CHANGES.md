@@ -1,5 +1,17 @@
 # Changes
 
+## edge-23.6.2
+
+This edge release introduces timeout capabilities for HTTPRoutes in a manner
+compatible with the proposed changes to HTTPRoute in
+[kubernetes-sigs/gateway-api#1997](https://github.com/kubernetes-sigs/gateway-api/pull/1997).
+
+This release also includes several small improvements and fixes:
+
+* A fix for HA validation checks when Linkerd is installed with Helm. Thanks
+@mikutas!!
+* Build improvements for multi-arch build artifacts. Thanks @MarkSRobinson!!
+
 ## edge-23.6.1
 
 This edge release changes the behavior of the CNI plugin to run exclusively in

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/duration"
@@ -140,11 +141,13 @@ func busyTest(t *testing.T, output string) {
 	}
 
 	var goldenFilePath string
-	switch options.output {
-	case wideOutput:
+	switch {
+	case options.output == wideOutput:
 		goldenFilePath = "testdata/tap_busy_output_wide.golden"
-	case jsonOutput:
+	case options.output == jsonOutput:
 		goldenFilePath = "testdata/tap_busy_output_json.golden"
+	case strings.HasPrefix(options.output, jsonPathOutput):
+		goldenFilePath = "testdata/tap_busy_output_jsonpath.golden"
 	default:
 		goldenFilePath = "testdata/tap_busy_output.golden"
 	}
@@ -173,6 +176,10 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 
 	t.Run("Should render JSON busy response if everything went well", func(t *testing.T) {
 		busyTest(t, "json")
+	})
+
+	t.Run("Should render jsonpath busy response if everything went well", func(t *testing.T) {
+		busyTest(t, "jsonpath={.source}")
 	})
 
 	t.Run("Should render empty response if no events returned", func(t *testing.T) {
