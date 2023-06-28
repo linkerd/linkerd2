@@ -9,9 +9,6 @@ metadata:
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
-- apiGroups: ["coordination.k8s.io"]
-  resources: ["leases"]
-  verbs: ["create", "get", "update", "patch"]
 - apiGroups: [""]
   resources: ["endpoints", "services"]
   verbs: ["list", "get", "watch", "create", "delete", "update"]
@@ -55,6 +52,9 @@ rules:
   - apiGroups: ["multicluster.linkerd.io"]
     resources: ["links"]
     verbs: ["list", "get", "watch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["create", "get", "update", "patch"]
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
