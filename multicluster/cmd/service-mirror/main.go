@@ -206,7 +206,7 @@ election:
 		// loop then attempt to re-acquire the lease.
 		leaderelection.RunOrDie(rootCtx, leaderelection.LeaderElectionConfig{
 			// When runtime context is cancelled, lock will be released. Implies any
-			// code guarded by the least _must_ finish before cancelling.
+			// code guarded by the lease _must_ finish before cancelling.
 			ReleaseOnCancel: true,
 			Lock:            lock,
 			LeaseDuration:   LEASE_DURATION,
