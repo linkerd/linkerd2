@@ -4271,6 +4271,7 @@ metadata:
     api-approved.kubernetes.io: https://github.com/kubernetes-sigs/gateway-api/pull/1923
     gateway.networking.k8s.io/bundle-version: v0.7.1-dev
     gateway.networking.k8s.io/channel: experimental
+    linkerd.io/created-by: linkerd/helm linkerd-version
   labels:
     helm.sh/chart: linkerd-crds-
     linkerd.io/control-plane-ns: linkerd-dev

@@ -7,6 +7,7 @@ metadata:
     api-approved.kubernetes.io: https://github.com/kubernetes-sigs/gateway-api/pull/1923
     gateway.networking.k8s.io/bundle-version: v0.7.1-dev
     gateway.networking.k8s.io/channel: experimental
+    {{ include "partials.annotations.created-by" . }}
   labels:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
