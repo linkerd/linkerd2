@@ -182,6 +182,7 @@ lifecycle:
       command:
         - /usr/lib/linkerd/linkerd-await
         - --timeout=2m
+        - --port={{.Values.proxy.ports.admin}}
 {{- end }}
 {{- if .Values.proxy.waitBeforeExitSeconds }}
   preStop:
