@@ -1283,7 +1283,7 @@ impl PolicyIndex {
         for (name, spec) in &self.authorization_policies {
             // Skip the policy if it doesn't apply to the route.
             match &spec.target {
-                authorization_policy::Target::HttpRoute(n) if n == gkn => {}
+                authorization_policy::Target::HttpRoute(n) if n.eq_ignore_ascii_case(gkn) => {}
                 _ => {
                     tracing::trace!(
                         ns = %self.namespace,

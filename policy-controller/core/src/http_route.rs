@@ -7,7 +7,7 @@ pub use http::{
 use regex::Regex;
 use std::num::NonZeroU16;
 
-#[derive(Clone, Debug, Hash, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 
 pub struct GroupKindName {
     pub group: String,
@@ -101,8 +101,8 @@ impl PartialOrd for GroupKindName {
     }
 }
 
-impl PartialEq for GroupKindName {
-    fn eq(&self, other: &Self) -> bool {
+impl GroupKindName {
+    pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
         self.group.eq_ignore_ascii_case(&other.group)
             && self.kind.eq_ignore_ascii_case(&other.kind)
             && self.name.eq_ignore_ascii_case(&other.name)
