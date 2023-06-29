@@ -5,14 +5,14 @@ pub use http::{
     Method, StatusCode,
 };
 use regex::Regex;
-use std::num::NonZeroU16;
+use std::{borrow::Cow, num::NonZeroU16};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 
 pub struct GroupKindName {
-    pub group: String,
-    pub kind: String,
-    pub name: String,
+    pub group: Cow<'static, str>,
+    pub kind: Cow<'static, str>,
+    pub name: Cow<'static, str>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -209,28 +209,26 @@ fn path_modifier(path_modifier: api::HttpPathModifier) -> Result<http_route::Pat
 
 pub(crate) fn gkn_for_resource<T>(t: &T) -> GroupKindName
 where
-    T: kube::Resource,
-    T::DynamicType: Default,
+    T: kube::Resource<DynamicType = ()>,
 {
-    let dt = Default::default();
-    let kind = T::kind(&dt).to_string();
-    let group = T::group(&dt).to_string();
-    let name = t.name_unchecked();
+    let kind = T::kind(&());
+    let group = T::group(&());
+    let name = t.name_unchecked().into();
     GroupKindName { group, kind, name }
 }
 
 pub(crate) fn gkn_for_linkerd_http_route(name: String) -> GroupKindName {
     GroupKindName {
-        group: policy::HttpRoute::group(&()).to_string(),
-        kind: policy::HttpRoute::kind(&()).to_string(),
-        name,
+        group: policy::HttpRoute::group(&()),
+        kind: policy::HttpRoute::kind(&()),
+        name: name.into(),
     }
 }
 
 pub(crate) fn gkn_for_gateway_http_route(name: String) -> GroupKindName {
     GroupKindName {
-        group: api::HttpRoute::group(&()).to_string(),
-        kind: api::HttpRoute::kind(&()).to_string(),
-        name,
+        group: api::HttpRoute::group(&()),
+        kind: api::HttpRoute::kind(&()),
+        name: name.into(),
     }
 }

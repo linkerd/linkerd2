@@ -302,10 +302,10 @@ fn convert_outbound_http_route(
 ) -> outbound::HttpRoute {
     let metadata = Some(Metadata {
         kind: Some(metadata::Kind::Resource(api::meta::Resource {
-            group: gkn.group,
-            kind: gkn.kind,
+            group: gkn.group.to_string(),
+            kind: gkn.kind.to_string(),
             namespace,
-            name: gkn.name,
+            name: gkn.name.to_string(),
             ..Default::default()
         })),
     });

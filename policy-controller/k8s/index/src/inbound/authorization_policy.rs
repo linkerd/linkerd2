@@ -68,9 +68,9 @@ fn target(t: LocalTargetRef) -> Result<Target> {
             || t.targets_kind::<k8s_gateway_api::HttpRoute>() =>
         {
             Ok(Target::HttpRoute(GroupKindName {
-                group: t.group.unwrap_or_default(),
-                kind: t.kind,
-                name: t.name,
+                group: t.group.unwrap_or_default().into(),
+                kind: t.kind.into(),
+                name: t.name.into(),
             }))
         }
         _ => anyhow::bail!(

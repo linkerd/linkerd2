@@ -205,8 +205,7 @@ impl Index {
 
     fn apply_route<R>(&mut self, route: R)
     where
-        R: ResourceExt,
-        R::DynamicType: Default,
+        R: ResourceExt<DynamicType = ()>,
         RouteBinding: TryFrom<R>,
         <RouteBinding as TryFrom<R>>::Error: std::fmt::Display,
     {
@@ -228,8 +227,7 @@ impl Index {
 
     fn reset_route<R>(&mut self, routes: Vec<R>, deleted: HashMap<String, HashSet<String>>)
     where
-        R: ResourceExt,
-        R::DynamicType: Default,
+        R: ResourceExt<DynamicType = ()>,
         RouteBinding: TryFrom<R>,
         <RouteBinding as TryFrom<R>>::Error: std::fmt::Display,
     {
@@ -256,14 +254,13 @@ impl Index {
                 .added
                 .push((gkn, route_binding));
         }
-        let dt = Default::default();
         for (ns, names) in deleted.into_iter() {
             let removed = names
                 .into_iter()
                 .map(|name| GroupKindName {
-                    group: R::group(&dt).to_string(),
-                    kind: R::kind(&dt).to_string(),
-                    name,
+                    group: R::group(&()),
+                    kind: R::kind(&()),
+                    name: name.into(),
                 })
                 .collect();
             updates_by_ns.entry(ns).or_default().removed = removed;

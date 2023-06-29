@@ -323,9 +323,9 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         let id = NamespaceGroupKindName {
             namespace: namespace.clone(),
             gkn: GroupKindName {
-                group: k8s::policy::HttpRoute::group(&()).to_string(),
-                kind: k8s::policy::HttpRoute::kind(&()).to_string(),
-                name,
+                group: k8s::policy::HttpRoute::group(&()),
+                kind: k8s::policy::HttpRoute::kind(&()),
+                name: name.into(),
             },
         };
 
@@ -354,9 +354,9 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         let id = NamespaceGroupKindName {
             namespace,
             gkn: GroupKindName {
-                group: k8s::policy::HttpRoute::group(&()).to_string(),
-                kind: k8s::policy::HttpRoute::kind(&()).to_string(),
-                name,
+                group: k8s::policy::HttpRoute::group(&()),
+                kind: k8s::policy::HttpRoute::kind(&()),
+                name: name.into(),
             },
         };
         self.http_route_refs.remove(&id);
@@ -375,9 +375,9 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         let id = NamespaceGroupKindName {
             namespace: namespace.clone(),
             gkn: GroupKindName {
-                group: k8s_gateway_api::HttpRoute::group(&()).to_string(),
-                kind: k8s_gateway_api::HttpRoute::kind(&()).to_string(),
-                name,
+                group: k8s_gateway_api::HttpRoute::group(&()),
+                kind: k8s_gateway_api::HttpRoute::kind(&()),
+                name: name.into(),
             },
         };
 
@@ -406,9 +406,9 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         let id = NamespaceGroupKindName {
             namespace,
             gkn: GroupKindName {
-                group: k8s::policy::HttpRoute::group(&()).to_string(),
-                kind: k8s::policy::HttpRoute::kind(&()).to_string(),
-                name,
+                group: k8s::policy::HttpRoute::group(&()),
+                kind: k8s::policy::HttpRoute::kind(&()),
+                name: name.into(),
             },
         };
         self.http_route_refs.remove(&id);

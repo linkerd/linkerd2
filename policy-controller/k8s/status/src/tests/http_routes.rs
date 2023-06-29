@@ -25,9 +25,9 @@ fn http_route_accepted_after_server_create() {
     let id = NamespaceGroupKindName {
         namespace: "ns-0".to_string(),
         gkn: GroupKindName {
-            group: k8s::policy::HttpRoute::group(&()).to_string(),
-            kind: k8s::policy::HttpRoute::kind(&()).to_string(),
-            name: "route-foo".to_string(),
+            group: k8s::policy::HttpRoute::group(&()),
+            kind: k8s::policy::HttpRoute::kind(&()),
+            name: "route-foo".into(),
         },
     };
     let parent_status =
@@ -56,9 +56,9 @@ fn http_route_accepted_after_server_create() {
     let id = NamespaceGroupKindName {
         namespace: "ns-0".to_string(),
         gkn: GroupKindName {
-            group: k8s::policy::HttpRoute::group(&()).to_string(),
-            kind: k8s::policy::HttpRoute::kind(&()).to_string(),
-            name: "route-foo".to_string(),
+            group: k8s::policy::HttpRoute::group(&()),
+            kind: k8s::policy::HttpRoute::kind(&()),
+            name: "route-foo".into(),
         },
     };
     let parent_status = make_parent_status("ns-0", "srv-8080", "Accepted", "True", "Accepted");
@@ -104,9 +104,9 @@ fn http_route_rejected_after_server_delete() {
     let id = NamespaceGroupKindName {
         namespace: "ns-0".to_string(),
         gkn: GroupKindName {
-            group: k8s::policy::HttpRoute::group(&()).to_string(),
-            kind: k8s::policy::HttpRoute::kind(&()).to_string(),
-            name: "route-foo".to_string(),
+            group: k8s::policy::HttpRoute::group(&()),
+            kind: k8s::policy::HttpRoute::kind(&()),
+            name: "route-foo".into(),
         },
     };
     let parent_status = make_parent_status("ns-0", "srv-8080", "Accepted", "True", "Accepted");
@@ -132,9 +132,9 @@ fn http_route_rejected_after_server_delete() {
     let id = NamespaceGroupKindName {
         namespace: "ns-0".to_string(),
         gkn: GroupKindName {
-            group: k8s::policy::HttpRoute::group(&()).to_string(),
-            kind: k8s::policy::HttpRoute::kind(&()).to_string(),
-            name: "route-foo".to_string(),
+            group: k8s::policy::HttpRoute::group(&()),
+            kind: k8s::policy::HttpRoute::kind(&()),
+            name: "route-foo".into(),
         },
     };
     let parent_status =
