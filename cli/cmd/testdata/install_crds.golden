@@ -4257,7 +4257,7 @@ metadata:
     gateway.networking.k8s.io/channel: experimental
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.7.2-edge
+    helm.sh/chart: linkerd-crds-1.7.3-edge
     linkerd.io/control-plane-ns: linkerd
   creationTimestamp: null
   name: httproutes.gateway.networking.k8s.io
