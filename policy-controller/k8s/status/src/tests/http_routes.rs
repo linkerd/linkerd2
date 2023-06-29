@@ -1,9 +1,4 @@
-use crate::{
-    index,
-    index::POLICY_API_GROUP,
-    resource_id::{NamespaceGroupKindName, ResourceId},
-    Index,
-};
+use crate::{index, index::POLICY_API_GROUP, resource_id::NamespaceGroupKindName, Index};
 use k8s::Resource;
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{http_route::GroupKindName, POLICY_CONTROLLER_NAME};

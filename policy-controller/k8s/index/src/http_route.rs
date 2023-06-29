@@ -2,12 +2,13 @@ use anyhow::{anyhow, bail, Result};
 use k8s_gateway_api as api;
 use kube::{Resource, ResourceExt};
 use linkerd_policy_controller_core::http_route::{self, GroupKindName};
+use linkerd_policy_controller_k8s_api::policy;
 use std::num::NonZeroU16;
 
 #[derive(Debug, Clone)]
 pub(crate) enum HttpRouteResource {
     Linkerd(linkerd_policy_controller_k8s_api::policy::HttpRoute),
-    Gateway(k8s_gateway_api::HttpRoute),
+    Gateway(api::HttpRoute),
 }
 
 impl HttpRouteResource {
@@ -29,14 +30,14 @@ impl HttpRouteResource {
         }
     }
 
-    pub(crate) fn inner(&self) -> &k8s_gateway_api::CommonRouteSpec {
+    pub(crate) fn inner(&self) -> &api::CommonRouteSpec {
         match self {
             HttpRouteResource::Linkerd(route) => &route.spec.inner,
             HttpRouteResource::Gateway(route) => &route.spec.inner,
         }
     }
 
-    pub(crate) fn status(&self) -> Option<&k8s_gateway_api::RouteStatus> {
+    pub(crate) fn status(&self) -> Option<&api::RouteStatus> {
         match self {
             HttpRouteResource::Linkerd(route) => route.status.as_ref().map(|status| &status.inner),
             HttpRouteResource::Gateway(route) => route.status.as_ref().map(|status| &status.inner),
@@ -220,16 +221,16 @@ where
 
 pub(crate) fn gkn_for_linkerd_http_route(name: String) -> GroupKindName {
     GroupKindName {
-        group: api::HttpRoute::group(&()).to_string(),
-        kind: api::HttpRoute::kind(&()).to_string(),
+        group: policy::HttpRoute::group(&()).to_string(),
+        kind: policy::HttpRoute::kind(&()).to_string(),
         name,
     }
 }
 
 pub(crate) fn gkn_for_gateway_http_route(name: String) -> GroupKindName {
     GroupKindName {
-        group: k8s_gateway_api::HttpRoute::group(&()).to_string(),
-        kind: k8s_gateway_api::HttpRoute::kind(&()).to_string(),
+        group: api::HttpRoute::group(&()).to_string(),
+        kind: api::HttpRoute::kind(&()).to_string(),
         name,
     }
 }
