@@ -347,26 +347,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         // Construct references and insert into the index; if the HTTPRoute is
         // already in the index and it hasn't changed, skip creating a patch.
         let references = References { parents, backends };
-        if !self.update_http_route(id.clone(), &references) {
-            return;
-        }
-
-        // If we're not the leader, skip creating a patch and sending an
-        // update to the Controller.
-        if !self.claims.borrow().is_current_for(&self.name) {
-            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
-            return;
-        }
-
-        // Create a patch for the HTTPRoute and send it to the Controller so
-        // that it is applied.
-        let patch = self.make_http_route_patch(&id, &references.parents, &references.backends);
-        if let Err(error) = self.updates.send(Update {
-            id: id.clone(),
-            patch,
-        }) {
-            tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send HTTPRoute patch")
-        }
+        self.index_httproute(id, references);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -418,26 +399,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         // Construct references and insert into the index; if the HTTPRoute is
         // already in the index and it hasn't changed, skip creating a patch.
         let references = References { parents, backends };
-        if !self.update_http_route(id.clone(), &references) {
-            return;
-        }
-
-        // If we're not the leader, skip creating a patch and sending an
-        // update to the Controller.
-        if !self.claims.borrow().is_current_for(&self.name) {
-            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
-            return;
-        }
-
-        // Create a patch for the HTTPRoute and send it to the Controller so
-        // that it is applied.
-        let patch = self.make_http_route_patch(&id, &references.parents, &references.backends);
-        if let Err(error) = self.updates.send(Update {
-            id: id.clone(),
-            patch,
-        }) {
-            tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send HTTPRoute patch")
-        }
+        self.index_httproute(id, references);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -520,6 +482,33 @@ impl kubert::index::IndexNamespacedResource<k8s::Service> for Index {
 
     // Since apply only reindexes a single Service at a time, there's no need
     // to handle resets specially.
+}
+
+impl Index {
+    fn index_httproute(&mut self, id: NamespaceGroupKindName, references: References) {
+        // Insert into the index; if the HTTPRoute is already in the index and it hasn't
+        // changed, skip creating a patch.
+        if !self.update_http_route(id.clone(), &references) {
+            return;
+        }
+
+        // If we're not the leader, skip creating a patch and sending an
+        // update to the Controller.
+        if !self.claims.borrow().is_current_for(&self.name) {
+            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
+            return;
+        }
+
+        // Create a patch for the HTTPRoute and send it to the Controller so
+        // that it is applied.
+        let patch = self.make_http_route_patch(&id, &references.parents, &references.backends);
+        if let Err(error) = self.updates.send(Update {
+            id: id.clone(),
+            patch,
+        }) {
+            tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send HTTPRoute patch")
+        }
+    }
 }
 
 pub(crate) fn make_patch(
