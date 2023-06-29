@@ -4,7 +4,7 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "@babel/eslint-plugin": "7.19.1",
+    "@babel/eslint-plugin": "7.22.5",
     "@fortawesome/fontawesome-svg-core": "6.4.0",
     "@fortawesome/free-regular-svg-icons": "6.4.0",
     "@fortawesome/free-solid-svg-icons": "6.4.0",
@@ -41,12 +41,12 @@
     "whatwg-fetch": "3.6.2"
   },
   "devDependencies": {
-    "@babel/core": "^7.22.1",
+    "@babel/core": "^7.22.5",
     "@babel/eslint-parser": "^7.21.8",
     "@babel/plugin-proposal-class-properties": "^7.17.12",
     "@babel/preset-env": "^7.22.5",
-    "@babel/preset-react": "^7.22.3",
-    "@babel/runtime": "^7.21.5",
+    "@babel/preset-react": "^7.22.5",
+    "@babel/runtime": "^7.22.5",
     "@lingui/cli": "3.17.2",
     "babel-core": "^7.0.0-bridge.0",
     "babel-jest": "^29.5.0",
@@ -59,7 +59,7 @@
     "css-loader": "^6.7.4",
     "enzyme": "3.11.0",
     "enzyme-adapter-react-16": "^1.15.7",
-    "eslint": "^8.42.0",
+    "eslint": "^8.43.0",
     "eslint-config-airbnb": "^19.0.4",
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-jsx-a11y": "^6.7.1",
@@ -81,7 +81,7 @@
     "webpack": "^5.83.1",
     "webpack-bundle-analyzer": "4.9.0",
     "webpack-cli": "5.1.4",
-    "webpack-dev-server": "4.15.0"
+    "webpack-dev-server": "4.15.1"
   },
   "resolutions": {
     "@lingui/**/**/minimist": ">=1.2.5",
