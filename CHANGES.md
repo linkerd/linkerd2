@@ -1,5 +1,18 @@
 # Changes
 
+## edge-23.6.3
+
+This edge release adds leader-election capabilities to the service-mirror
+controller under the hood, as a precursor to HA mode in an upcoming release. It
+also includes a `linkerd viz tap` improvement and a proxy startup bugfix, both
+contributed by the community!
+
+* Added leader-election capabilities to the service-mirror controller
+* Added `-o jsonpath` flag to `linkerd viz tap` to allow filtering output fields
+  (thanks @hiteshwani29!)
+* Fixed proxy startup failure when using the `config.linkerd.io/admin-port`
+  annotation (thanks @jclegras!)
+
 ## edge-23.6.2
 
 This edge release introduces timeout capabilities for HTTPRoutes in a manner
