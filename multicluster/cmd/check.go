@@ -579,18 +579,18 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context,
 			continue
 		}
 
-		leases, err := hc.KubeAPIClient().CoordinationV1().Leases(multiclusterNs.Name).List(ctx, selector)
+		lease, err := hc.KubeAPIClient().CoordinationV1().Leases(multiclusterNs.Name).Get(ctx, fmt.Sprintf("service-mirror-write-%s", link.TargetClusterName), metav1.GetOptions{})
 		if err != nil {
 			errors = append(errors, fmt.Errorf("failed to get the service-mirror component Leases for target cluster %s: %w", link.TargetClusterName, err))
 			continue
 		}
+
 		// Build a simple lookup table to retrieve Lease object claimants.
 		// Metrics should only be pulled from claimants as they are the ones
 		// running probes.
 		leaders := make(map[string]struct{})
-		for _, lease := range leases.Items {
-			leaders[*lease.Spec.HolderIdentity] = struct{}{}
-		}
+		leaders[*lease.Spec.HolderIdentity] = struct{}{}
+
 		// Get and parse the gateway metrics so that we can extract liveness
 		// information.
 		gatewayMetrics := getGatewayMetrics(hc.KubeAPIClient(), pods.Items, leaders, wait)

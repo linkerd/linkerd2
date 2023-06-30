@@ -77,7 +77,7 @@ func newGatewaysCommand() *cobra.Command {
 				os.Exit(1)
 			}
 
-			leases, err := k8sAPI.CoordinationV1().Leases(multiclusterNs.Name).List(cmd.Context(), metav1.ListOptions{LabelSelector: selector})
+			leases, err := k8sAPI.CoordinationV1().Leases(multiclusterNs.Name).List(cmd.Context(), metav1.ListOptions{})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "failed to list pods in namespace %s: %s", multiclusterNs.Name, err)
 				os.Exit(1)
