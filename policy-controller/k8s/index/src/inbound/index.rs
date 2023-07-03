@@ -11,13 +11,14 @@ use super::{
     pod, server, server_authorization,
 };
 use crate::{
+    http_route::{gkn_for_gateway_http_route, gkn_for_linkerd_http_route, gkn_for_resource},
     ports::{PortHasher, PortMap, PortSet},
     ClusterInfo, DefaultPolicy,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
-    http_route::{HttpRouteMatch, Method, PathMatch},
+    http_route::{GroupKindName, HttpRouteMatch, Method, PathMatch},
     inbound::{
         AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRoute, HttpRouteRef,
         HttpRouteRule, InboundServer, ProxyProtocol, ServerRef,
@@ -126,7 +127,7 @@ struct PolicyIndex {
     server_authorizations: HashMap<String, server_authorization::ServerAuthz>,
 
     authorization_policies: HashMap<String, authorization_policy::Spec>,
-    http_routes: HashMap<String, RouteBinding>,
+    http_routes: HashMap<GroupKindName, RouteBinding>,
 }
 
 #[derive(Debug, Default)]
@@ -135,9 +136,9 @@ struct AuthenticationIndex {
     network: HashMap<String, network_authentication::Spec>,
 }
 
-struct NsUpdate<T> {
-    added: Vec<(String, T)>,
-    removed: HashSet<String>,
+struct NsUpdate<K, T> {
+    added: Vec<(K, T)>,
+    removed: HashSet<K>,
 }
 
 // === impl Index ===
@@ -204,12 +205,13 @@ impl Index {
 
     fn apply_route<R>(&mut self, route: R)
     where
-        R: ResourceExt,
+        R: ResourceExt<DynamicType = ()>,
         RouteBinding: TryFrom<R>,
         <RouteBinding as TryFrom<R>>::Error: std::fmt::Display,
     {
         let ns = route.namespace().expect("HttpRoute must have a namespace");
         let name = route.name_unchecked();
+        let gkn = gkn_for_resource(&route);
         let _span = info_span!("apply", %ns, %name).entered();
 
         let route_binding = match route.try_into() {
@@ -220,12 +222,12 @@ impl Index {
             }
         };
 
-        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_http_route(name, route_binding))
+        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_http_route(gkn, route_binding))
     }
 
     fn reset_route<R>(&mut self, routes: Vec<R>, deleted: HashMap<String, HashSet<String>>)
     where
-        R: ResourceExt,
+        R: ResourceExt<DynamicType = ()>,
         RouteBinding: TryFrom<R>,
         <RouteBinding as TryFrom<R>>::Error: std::fmt::Display,
     {
@@ -233,11 +235,12 @@ impl Index {
 
         // Aggregate all of the updates by namespace so that we only reindex
         // once per namespace.
-        type Ns = NsUpdate<RouteBinding>;
+        type Ns = NsUpdate<GroupKindName, RouteBinding>;
         let mut updates_by_ns = HashMap::<String, Ns>::default();
         for route in routes.into_iter() {
             let namespace = route.namespace().expect("HttpRoute must be namespaced");
             let name = route.name_unchecked();
+            let gkn = gkn_for_resource(&route);
             let route_binding = match route.try_into() {
                 Ok(binding) => binding,
                 Err(error) => {
@@ -249,10 +252,18 @@ impl Index {
                 .entry(namespace)
                 .or_default()
                 .added
-                .push((name, route_binding));
+                .push((gkn, route_binding));
         }
         for (ns, names) in deleted.into_iter() {
-            updates_by_ns.entry(ns).or_default().removed = names;
+            let removed = names
+                .into_iter()
+                .map(|name| GroupKindName {
+                    group: R::group(&()),
+                    kind: R::kind(&()),
+                    name: name.into(),
+                })
+                .collect();
+            updates_by_ns.entry(ns).or_default().removed = removed;
         }
 
         for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
@@ -271,11 +282,11 @@ impl Index {
                 // no actual data change.
                 self.ns_or_default_with_reindex(namespace, |ns| {
                     let mut changed = !removed.is_empty();
-                    for name in removed.into_iter() {
-                        ns.policy.http_routes.remove(&name);
+                    for gkn in removed.into_iter() {
+                        ns.policy.http_routes.remove(&gkn);
                     }
-                    for (name, route_binding) in added.into_iter() {
-                        changed = ns.policy.update_http_route(name, route_binding) || changed;
+                    for (gkn, route_binding) in added.into_iter() {
+                        changed = ns.policy.update_http_route(gkn, route_binding) || changed;
                     }
                     changed
                 });
@@ -283,9 +294,9 @@ impl Index {
         }
     }
 
-    fn delete_route(&mut self, ns: String, name: String) {
-        let _span = info_span!("delete", %ns, %name).entered();
-        self.ns_with_reindex(ns, |ns| ns.policy.http_routes.remove(&name).is_some())
+    fn delete_route(&mut self, ns: String, gkn: GroupKindName) {
+        let _span = info_span!("delete", %ns, route = ?gkn).entered();
+        self.ns_with_reindex(ns, |ns| ns.policy.http_routes.remove(&gkn).is_some())
     }
 }
 
@@ -357,7 +368,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
 
         // Aggregate all of the updates by namespace so that we only reindex
         // once per namespace.
-        type Ns = NsUpdate<server::Server>;
+        type Ns = NsUpdate<String, server::Server>;
         let mut updates_by_ns = HashMap::<String, Ns>::default();
         for srv in srvs.into_iter() {
             let namespace = srv.namespace().expect("server must be namespaced");
@@ -432,7 +443,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
 
         // Aggregate all of the updates by namespace so that we only reindex
         // once per namespace.
-        type Ns = NsUpdate<server_authorization::ServerAuthz>;
+        type Ns = NsUpdate<String, server_authorization::ServerAuthz>;
         let mut updates_by_ns = HashMap::<String, Ns>::default();
         for saz in sazs.into_iter() {
             let namespace = saz
@@ -516,7 +527,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> fo
 
         // Aggregate all of the updates by namespace so that we only reindex
         // once per namespace.
-        type Ns = NsUpdate<authorization_policy::Spec>;
+        type Ns = NsUpdate<String, authorization_policy::Spec>;
         let mut updates_by_ns = HashMap::<String, Ns>::default();
         for policy in policies.into_iter() {
             let namespace = policy
@@ -728,12 +739,32 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
     }
 
     fn delete(&mut self, ns: String, name: String) {
-        self.delete_route(ns, name)
+        let gkn = gkn_for_linkerd_http_route(name);
+        self.delete_route(ns, gkn)
     }
 
     fn reset(
         &mut self,
         routes: Vec<k8s::policy::HttpRoute>,
+        deleted: HashMap<String, HashSet<String>>,
+    ) {
+        self.reset_route(routes, deleted)
+    }
+}
+
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
+    fn apply(&mut self, route: k8s_gateway_api::HttpRoute) {
+        self.apply_route(route)
+    }
+
+    fn delete(&mut self, ns: String, name: String) {
+        let gkn = gkn_for_gateway_http_route(name);
+        self.delete_route(ns, gkn)
+    }
+
+    fn reset(
+        &mut self,
+        routes: Vec<k8s_gateway_api::HttpRoute>,
         deleted: HashMap<String, HashSet<String>>,
     ) {
         self.reset_route(routes, deleted)
@@ -1241,7 +1272,7 @@ impl PolicyIndex {
 
     fn route_client_authzs(
         &self,
-        route_name: &str,
+        gkn: &GroupKindName,
         authentications: &AuthenticationNsIndex,
     ) -> HashMap<AuthorizationRef, ClientAuthorization> {
         let mut authzs = HashMap::default();
@@ -1249,12 +1280,12 @@ impl PolicyIndex {
         for (name, spec) in &self.authorization_policies {
             // Skip the policy if it doesn't apply to the route.
             match &spec.target {
-                authorization_policy::Target::HttpRoute(n) if n == route_name => {}
+                authorization_policy::Target::HttpRoute(n) if n.eq_ignore_ascii_case(gkn) => {}
                 _ => {
                     tracing::trace!(
                         ns = %self.namespace,
                         authorizationpolicy = %name,
-                        route = %route_name,
+                        route = ?gkn,
                         target = ?spec.target,
                         "AuthorizationPolicy does not target HttpRoute",
                     );
@@ -1265,7 +1296,7 @@ impl PolicyIndex {
             tracing::trace!(
                 ns = %self.namespace,
                 authorizationpolicy = %name,
-                route = %route_name,
+                route = ?gkn,
                 "AuthorizationPolicy targets HttpRoute",
             );
             tracing::trace!(authns = ?spec.authentications);
@@ -1274,7 +1305,7 @@ impl PolicyIndex {
                 Ok(authz) => authz,
                 Err(error) => {
                     tracing::info!(
-                        route = %route_name,
+                        route = ?gkn,
                         authorizationpolicy = %name,
                         %error,
                         "Illegal AuthorizationPolicy; ignoring",
@@ -1301,10 +1332,10 @@ impl PolicyIndex {
             .iter()
             .filter(|(_, route)| route.selects_server(server_name))
             .filter(|(_, route)| route.accepted_by_server(server_name))
-            .map(|(name, route)| {
+            .map(|(gkn, route)| {
                 let mut route = route.route.clone();
-                route.authorizations = self.route_client_authzs(name, authentications);
-                (HttpRouteRef::Linkerd(name.clone()), route)
+                route.authorizations = self.route_client_authzs(gkn, authentications);
+                (HttpRouteRef::Linkerd(gkn.clone()), route)
             })
             .collect::<HashMap<_, _>>();
         if !routes.is_empty() {
@@ -1418,8 +1449,8 @@ impl PolicyIndex {
         })
     }
 
-    fn update_http_route(&mut self, name: String, route: RouteBinding) -> bool {
-        match self.http_routes.entry(name) {
+    fn update_http_route(&mut self, gkn: GroupKindName, route: RouteBinding) -> bool {
+        match self.http_routes.entry(gkn) {
             Entry::Vacant(entry) => {
                 entry.insert(route);
             }
@@ -1491,7 +1522,7 @@ impl AuthenticationIndex {
 
 // === imp NsUpdate ===
 
-impl<T> Default for NsUpdate<T> {
+impl<K, T> Default for NsUpdate<K, T> {
     fn default() -> Self {
         Self {
             added: vec![],

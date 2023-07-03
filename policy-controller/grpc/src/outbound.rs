@@ -8,8 +8,12 @@ use linkerd2_proxy_api::{
         outbound_policies_server::{OutboundPolicies, OutboundPoliciesServer},
     },
 };
-use linkerd_policy_controller_core::outbound::{
-    Backend, DiscoverOutboundPolicy, HttpRoute, HttpRouteRule, OutboundPolicy, OutboundPolicyStream,
+use linkerd_policy_controller_core::{
+    http_route::GroupKindName,
+    outbound::{
+        Backend, DiscoverOutboundPolicy, HttpRoute, HttpRouteRule, OutboundPolicy,
+        OutboundPolicyStream,
+    },
 };
 use std::{net::SocketAddr, num::NonZeroU16, sync::Arc, time};
 
@@ -206,18 +210,13 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
                 (Some(_), None) => return std::cmp::Ordering::Less,
                 (None, Some(_)) => return std::cmp::Ordering::Greater,
             };
-            by_ts.then_with(|| a_name.cmp(b_name))
+            by_ts.then_with(|| a_name.name.cmp(&b_name.name))
         });
 
         let mut http_routes: Vec<_> = http_routes
             .into_iter()
-            .map(|(name, route)| {
-                convert_outbound_http_route(
-                    outbound.namespace.clone(),
-                    name,
-                    route,
-                    backend.clone(),
-                )
+            .map(|(gkn, route)| {
+                convert_outbound_http_route(outbound.namespace.clone(), gkn, route, backend.clone())
             })
             .collect();
 
@@ -293,7 +292,7 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
 
 fn convert_outbound_http_route(
     namespace: String,
-    name: String,
+    gkn: GroupKindName,
     HttpRoute {
         hostnames,
         rules,
@@ -303,10 +302,10 @@ fn convert_outbound_http_route(
 ) -> outbound::HttpRoute {
     let metadata = Some(Metadata {
         kind: Some(metadata::Kind::Resource(api::meta::Resource {
-            group: "policy.linkerd.io".to_string(),
-            kind: "HTTPRoute".to_string(),
+            group: gkn.group.to_string(),
+            kind: gkn.kind.to_string(),
             namespace,
-            name,
+            name: gkn.name.to_string(),
             ..Default::default()
         })),
     });
