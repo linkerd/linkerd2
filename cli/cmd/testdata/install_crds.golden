@@ -446,12 +446,70 @@ spec:
                                 pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                                 type: string
                               path:
-                                description: "Path defines parameters used to modify
-                                  the path of the incoming request. The modified
-                                  path is then used to construct the Location header.
-                                  When empty, the request path is used as-is.
-                                  \n Support: Extended"
-                                type: string
+                                description: "Path defines parameters used to
+                                  modify the path of the incoming request. The
+                                  modified path is then used to construct the
+                                  `Location` header. When empty, the request
+                                  path is used as-is. \n Support: Extended"
+                                properties:
+                                  replaceFullPath:
+                                    description: ReplaceFullPath specifies the
+                                      value with which to replace the full path
+                                      of a request during a rewrite or redirect.
+                                    maxLength: 1024
+                                    type: string
+                                  replacePrefixMatch:
+                                    description: "ReplacePrefixMatch specifies
+                                      the value with which to replace the prefix
+                                      match of a request during a rewrite or
+                                      redirect. For example, a request to \"/foo/bar\"
+                                      with a prefix match of \"/foo\" and a
+                                      ReplacePrefixMatch of \"/xyz\" would be
+                                      modified to \"/xyz/bar\". \n Note that
+                                      this matches the behavior of the PathPrefix
+                                      match type. This matches full path elements.
+                                      A path element refers to the list of labels
+                                      in the path split by the `/` separator.
+                                      When specified, a trailing `/` is ignored.
+                                      For example, the paths `/abc`, `/abc/`,
+                                      and `/abc/def` would all match the prefix
+                                      `/abc`, but the path `/abcd` would not.
+                                      \n Request Path | Prefix Match | Replace
+                                      Prefix | Modified Path -------------|--------------|----------------|----------
+                                      /foo/bar     | /foo         | /xyz           |
+                                      /xyz/bar /foo/bar     | /foo         |
+                                      /xyz/          | /xyz/bar /foo/bar     |
+                                      /foo/        | /xyz           | /xyz/bar
+                                      /foo/bar     | /foo/        | /xyz/          |
+                                      /xyz/bar /foo         | /foo         |
+                                      /xyz           | /xyz /foo/        | /foo
+                                      \        | /xyz           | /xyz/ /foo/bar
+                                      \    | /foo         | <empty string> |
+                                      /bar /foo/        | /foo         | <empty
+                                      string> | / /foo         | /foo         |
+                                      <empty string> | / /foo/        | /foo
+                                      \        | /              | / /foo         |
+                                      /foo         | /              | /"
+                                    maxLength: 1024
+                                    type: string
+                                  type:
+                                    description: "Type defines the type of path
+                                      modifier. Additional types may be added
+                                      in a future release of the API. \n Note
+                                      that values may be added to this enum,
+                                      implementations must ensure that unknown
+                                      values will not cause a crash. \n Unknown
+                                      values here must result in the implementation
+                                      setting the Accepted Condition for the
+                                      Route to `status: False`, with a Reason
+                                      of `UnsupportedValue`."
+                                    enum:
+                                    - ReplaceFullPath
+                                    - ReplacePrefixMatch
+                                    type: string
+                                required:
+                                - type
+                                type: object
                               port:
                                 description: "Port is the port to be used in the value
                                   of the `Location` header in the response. When empty,
@@ -1223,12 +1281,70 @@ spec:
                                 pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                                 type: string
                               path:
-                                description: "Path defines parameters used to modify
-                                  the path of the incoming request. The modified
-                                  path is then used to construct the Location header.
-                                  When empty, the request path is used as-is.
-                                  \n Support: Extended"
-                                type: string
+                                description: "Path defines parameters used to
+                                  modify the path of the incoming request. The
+                                  modified path is then used to construct the
+                                  `Location` header. When empty, the request
+                                  path is used as-is. \n Support: Extended"
+                                properties:
+                                  replaceFullPath:
+                                    description: ReplaceFullPath specifies the
+                                      value with which to replace the full path
+                                      of a request during a rewrite or redirect.
+                                    maxLength: 1024
+                                    type: string
+                                  replacePrefixMatch:
+                                    description: "ReplacePrefixMatch specifies
+                                      the value with which to replace the prefix
+                                      match of a request during a rewrite or
+                                      redirect. For example, a request to \"/foo/bar\"
+                                      with a prefix match of \"/foo\" and a
+                                      ReplacePrefixMatch of \"/xyz\" would be
+                                      modified to \"/xyz/bar\". \n Note that
+                                      this matches the behavior of the PathPrefix
+                                      match type. This matches full path elements.
+                                      A path element refers to the list of labels
+                                      in the path split by the `/` separator.
+                                      When specified, a trailing `/` is ignored.
+                                      For example, the paths `/abc`, `/abc/`,
+                                      and `/abc/def` would all match the prefix
+                                      `/abc`, but the path `/abcd` would not.
+                                      \n Request Path | Prefix Match | Replace
+                                      Prefix | Modified Path -------------|--------------|----------------|----------
+                                      /foo/bar     | /foo         | /xyz           |
+                                      /xyz/bar /foo/bar     | /foo         |
+                                      /xyz/          | /xyz/bar /foo/bar     |
+                                      /foo/        | /xyz           | /xyz/bar
+                                      /foo/bar     | /foo/        | /xyz/          |
+                                      /xyz/bar /foo         | /foo         |
+                                      /xyz           | /xyz /foo/        | /foo
+                                      \        | /xyz           | /xyz/ /foo/bar
+                                      \    | /foo         | <empty string> |
+                                      /bar /foo/        | /foo         | <empty
+                                      string> | / /foo         | /foo         |
+                                      <empty string> | / /foo/        | /foo
+                                      \        | /              | / /foo         |
+                                      /foo         | /              | /"
+                                    maxLength: 1024
+                                    type: string
+                                  type:
+                                    description: "Type defines the type of path
+                                      modifier. Additional types may be added
+                                      in a future release of the API. \n Note
+                                      that values may be added to this enum,
+                                      implementations must ensure that unknown
+                                      values will not cause a crash. \n Unknown
+                                      values here must result in the implementation
+                                      setting the Accepted Condition for the
+                                      Route to `status: False`, with a Reason
+                                      of `UnsupportedValue`."
+                                    enum:
+                                    - ReplaceFullPath
+                                    - ReplacePrefixMatch
+                                    type: string
+                                required:
+                                - type
+                                type: object
                               port:
                                 description: "Port is the port to be used in the value
                                   of the `Location` header in the response. When empty,
@@ -2089,12 +2205,70 @@ spec:
                                 pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                                 type: string
                               path:
-                                description: "Path defines parameters used to modify
-                                  the path of the incoming request. The modified
-                                  path is then used to construct the Location header.
-                                  When empty, the request path is used as-is.
-                                  \n Suppor: Extended"
-                                type: string
+                                description: "Path defines parameters used to
+                                  modify the path of the incoming request. The
+                                  modified path is then used to construct the
+                                  `Location` header. When empty, the request
+                                  path is used as-is. \n Support: Extended"
+                                properties:
+                                  replaceFullPath:
+                                    description: ReplaceFullPath specifies the
+                                      value with which to replace the full path
+                                      of a request during a rewrite or redirect.
+                                    maxLength: 1024
+                                    type: string
+                                  replacePrefixMatch:
+                                    description: "ReplacePrefixMatch specifies
+                                      the value with which to replace the prefix
+                                      match of a request during a rewrite or
+                                      redirect. For example, a request to \"/foo/bar\"
+                                      with a prefix match of \"/foo\" and a
+                                      ReplacePrefixMatch of \"/xyz\" would be
+                                      modified to \"/xyz/bar\". \n Note that
+                                      this matches the behavior of the PathPrefix
+                                      match type. This matches full path elements.
+                                      A path element refers to the list of labels
+                                      in the path split by the `/` separator.
+                                      When specified, a trailing `/` is ignored.
+                                      For example, the paths `/abc`, `/abc/`,
+                                      and `/abc/def` would all match the prefix
+                                      `/abc`, but the path `/abcd` would not.
+                                      \n Request Path | Prefix Match | Replace
+                                      Prefix | Modified Path -------------|--------------|----------------|----------
+                                      /foo/bar     | /foo         | /xyz           |
+                                      /xyz/bar /foo/bar     | /foo         |
+                                      /xyz/          | /xyz/bar /foo/bar     |
+                                      /foo/        | /xyz           | /xyz/bar
+                                      /foo/bar     | /foo/        | /xyz/          |
+                                      /xyz/bar /foo         | /foo         |
+                                      /xyz           | /xyz /foo/        | /foo
+                                      \        | /xyz           | /xyz/ /foo/bar
+                                      \    | /foo         | <empty string> |
+                                      /bar /foo/        | /foo         | <empty
+                                      string> | / /foo         | /foo         |
+                                      <empty string> | / /foo/        | /foo
+                                      \        | /              | / /foo         |
+                                      /foo         | /              | /"
+                                    maxLength: 1024
+                                    type: string
+                                  type:
+                                    description: "Type defines the type of path
+                                      modifier. Additional types may be added
+                                      in a future release of the API. \n Note
+                                      that values may be added to this enum,
+                                      implementations must ensure that unknown
+                                      values will not cause a crash. \n Unknown
+                                      values here must result in the implementation
+                                      setting the Accepted Condition for the
+                                      Route to `status: False`, with a Reason
+                                      of `UnsupportedValue`."
+                                    enum:
+                                    - ReplaceFullPath
+                                    - ReplacePrefixMatch
+                                    type: string
+                                required:
+                                - type
+                                type: object
                               port:
                                 description: "Port is the port to be used in the value
                                   of the `Location` header in the response. When empty,
@@ -2955,12 +3129,70 @@ spec:
                                 pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                                 type: string
                               path:
-                                description: "Path defines parameters used to modify
-                                  the path of the incoming request. The modified
-                                  path is then used to construct the Location header.
-                                  When empty, the request path is used as-is.
-                                  \n Suppor: Extended"
-                                type: string
+                                description: "Path defines parameters used to
+                                  modify the path of the incoming request. The
+                                  modified path is then used to construct the
+                                  `Location` header. When empty, the request
+                                  path is used as-is. \n Support: Extended"
+                                properties:
+                                  replaceFullPath:
+                                    description: ReplaceFullPath specifies the
+                                      value with which to replace the full path
+                                      of a request during a rewrite or redirect.
+                                    maxLength: 1024
+                                    type: string
+                                  replacePrefixMatch:
+                                    description: "ReplacePrefixMatch specifies
+                                      the value with which to replace the prefix
+                                      match of a request during a rewrite or
+                                      redirect. For example, a request to \"/foo/bar\"
+                                      with a prefix match of \"/foo\" and a
+                                      ReplacePrefixMatch of \"/xyz\" would be
+                                      modified to \"/xyz/bar\". \n Note that
+                                      this matches the behavior of the PathPrefix
+                                      match type. This matches full path elements.
+                                      A path element refers to the list of labels
+                                      in the path split by the `/` separator.
+                                      When specified, a trailing `/` is ignored.
+                                      For example, the paths `/abc`, `/abc/`,
+                                      and `/abc/def` would all match the prefix
+                                      `/abc`, but the path `/abcd` would not.
+                                      \n Request Path | Prefix Match | Replace
+                                      Prefix | Modified Path -------------|--------------|----------------|----------
+                                      /foo/bar     | /foo         | /xyz           |
+                                      /xyz/bar /foo/bar     | /foo         |
+                                      /xyz/          | /xyz/bar /foo/bar     |
+                                      /foo/        | /xyz           | /xyz/bar
+                                      /foo/bar     | /foo/        | /xyz/          |
+                                      /xyz/bar /foo         | /foo         |
+                                      /xyz           | /xyz /foo/        | /foo
+                                      \        | /xyz           | /xyz/ /foo/bar
+                                      \    | /foo         | <empty string> |
+                                      /bar /foo/        | /foo         | <empty
+                                      string> | / /foo         | /foo         |
+                                      <empty string> | / /foo/        | /foo
+                                      \        | /              | / /foo         |
+                                      /foo         | /              | /"
+                                    maxLength: 1024
+                                    type: string
+                                  type:
+                                    description: "Type defines the type of path
+                                      modifier. Additional types may be added
+                                      in a future release of the API. \n Note
+                                      that values may be added to this enum,
+                                      implementations must ensure that unknown
+                                      values will not cause a crash. \n Unknown
+                                      values here must result in the implementation
+                                      setting the Accepted Condition for the
+                                      Route to `status: False`, with a Reason
+                                      of `UnsupportedValue`."
+                                    enum:
+                                    - ReplaceFullPath
+                                    - ReplacePrefixMatch
+                                    type: string
+                                required:
+                                - type
+                                type: object
                               port:
                                 description: "Port is the port to be used in the value
                                   of the `Location` header in the response. When empty,

@@ -9,7 +9,8 @@ use linkerd2_proxy_api::{
     },
 };
 use linkerd_policy_controller_core::outbound::{
-    Backend, DiscoverOutboundPolicy, HttpRoute, HttpRouteRule, OutboundPolicy, OutboundPolicyStream,
+    Backend, DiscoverOutboundPolicy, Filter, HttpRoute, HttpRouteRule, OutboundPolicy,
+    OutboundPolicyStream,
 };
 use std::{net::SocketAddr, num::NonZeroU16, sync::Arc, time};
 
@@ -324,6 +325,7 @@ fn convert_outbound_http_route(
                  backends,
                  request_timeout,
                  backend_request_timeout,
+                 filters,
              }| {
                 let backend_request_timeout = backend_request_timeout
                     .and_then(|d| convert_duration("backend request_timeout", d));
@@ -349,7 +351,7 @@ fn convert_outbound_http_route(
                 outbound::http_route::Rule {
                     matches: matches.into_iter().map(http_route::convert_match).collect(),
                     backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
-                    filters: Default::default(),
+                    filters: filters.into_iter().map(convert_filter).collect(),
                     request_timeout: request_timeout
                         .and_then(|d| convert_duration("request timeout", d)),
                 }
@@ -551,4 +553,20 @@ fn convert_duration(name: &'static str, duration: time::Duration) -> Option<pros
             tracing::error!(%error, "Invalid {name} duration");
         })
         .ok()
+}
+
+fn convert_filter(filter: Filter) -> outbound::http_route::Filter {
+    use outbound::http_route::filter::Kind;
+
+    outbound::http_route::Filter {
+        kind: Some(match filter {
+            Filter::FailureInjector(f) => {
+                Kind::FailureInjector(http_route::convert_failure_injector_filter(f))
+            }
+            Filter::RequestHeaderModifier(f) => {
+                Kind::RequestHeaderModifier(http_route::convert_header_modifier_filter(f))
+            }
+            Filter::RequestRedirect(f) => Kind::Redirect(http_route::convert_redirect_filter(f)),
+        }),
+    }
 }

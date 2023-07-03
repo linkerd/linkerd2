@@ -7,7 +7,8 @@ use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
 use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
 use linkerd_policy_controller_core::outbound::{
-    Backend, Backoff, FailureAccrual, HttpRoute, HttpRouteRule, OutboundPolicy, WeightedService,
+    Backend, Backoff, FailureAccrual, Filter, HttpRoute, HttpRouteRule, OutboundPolicy,
+    WeightedService,
 };
 use linkerd_policy_controller_k8s_api::{policy as api, ResourceExt, Service, Time};
 use parking_lot::RwLock;
@@ -335,6 +336,13 @@ impl Namespace {
             .filter_map(|b| convert_backend(&self.namespace, b, cluster, service_info))
             .collect();
 
+        let filters = rule
+            .filters
+            .into_iter()
+            .flatten()
+            .map(convert_filter)
+            .collect::<Result<_>>()?;
+
         let request_timeout = rule.timeouts.as_ref().and_then(|timeouts| {
             let timeout = time::Duration::from(timeouts.request?);
 
@@ -365,6 +373,7 @@ impl Namespace {
             backends,
             request_timeout,
             backend_request_timeout,
+            filters,
         })
     }
 }
@@ -425,6 +434,23 @@ fn convert_backend(
             port,
         })
     })
+}
+
+fn convert_filter(filter: api::httproute::HttpRouteFilter) -> Result<Filter> {
+    let filter = match filter {
+        api::httproute::HttpRouteFilter::RequestHeaderModifier {
+            request_header_modifier,
+        } => {
+            let filter = http_route::req_header_modifier(request_header_modifier)?;
+            Filter::RequestHeaderModifier(filter)
+        }
+
+        api::httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
+            let filter = http_route::req_redirect(request_redirect)?;
+            Filter::RequestRedirect(filter)
+        }
+    };
+    Ok(filter)
 }
 
 #[inline]
