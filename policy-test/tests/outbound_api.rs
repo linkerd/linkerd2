@@ -110,7 +110,7 @@ async fn service_with_http_routes_without_backends() {
 
         let _route = create(
             &client,
-            mk_http_route(&ns, "foo-route", &svc, 4191, None, None, None),
+            mk_http_route(&ns, "foo-route", &svc, 4191, None, None, None, None),
         )
         .await;
 
@@ -157,7 +157,16 @@ async fn service_with_http_routes_with_backend() {
         let backends = [backend_name];
         let _route = create(
             &client,
-            mk_http_route(&ns, "foo-route", &svc, 4191, Some(&backends), None, None),
+            mk_http_route(
+                &ns,
+                "foo-route",
+                &svc,
+                4191,
+                Some(&backends),
+                None,
+                None,
+                None,
+            ),
         )
         .await;
 
@@ -229,6 +238,7 @@ async fn service_with_http_routes_with_cross_namespace_backend() {
                 Some(&backends),
                 Some(backend_ns_name),
                 None,
+                None,
             ),
         )
         .await;
@@ -279,7 +289,16 @@ async fn service_with_http_routes_with_invalid_backend() {
         let backends = ["invalid-backend"];
         let _route = create(
             &client,
-            mk_http_route(&ns, "foo-route", &svc, 4191, Some(&backends), None, None),
+            mk_http_route(
+                &ns,
+                "foo-route",
+                &svc,
+                4191,
+                Some(&backends),
+                None,
+                None,
+                None,
+            ),
         )
         .await;
 
@@ -328,7 +347,7 @@ async fn service_with_multiple_http_routes() {
         // be created in alphabetical order.
         let _a_route = create(
             &client,
-            mk_http_route(&ns, "a-route", &svc, 4191, None, None, None),
+            mk_http_route(&ns, "a-route", &svc, 4191, None, None, None, None),
         )
         .await;
 
@@ -342,7 +361,7 @@ async fn service_with_multiple_http_routes() {
 
         let _b_route = create(
             &client,
-            mk_http_route(&ns, "b-route", &svc, 4191, None, None, None),
+            mk_http_route(&ns, "b-route", &svc, 4191, None, None, None, None),
         )
         .await;
 
@@ -680,6 +699,7 @@ async fn route_with_filters() {
                         },
                     },
                 ]),
+                None,
             ),
         )
         .await;
@@ -696,6 +716,131 @@ async fn route_with_filters() {
             let route = assert_singleton(routes);
             let rule = assert_singleton(&route.rules);
             let filters = &rule.filters;
+            assert_eq!(
+                *filters,
+                vec![
+                    grpc::outbound::http_route::Filter {
+                        kind: Some(
+                            grpc::outbound::http_route::filter::Kind::RequestHeaderModifier(
+                                grpc::http_route::RequestHeaderModifier {
+                                    add: Some(grpc::http_types::Headers {
+                                        headers: vec![grpc::http_types::headers::Header {
+                                            name: "add".to_string(),
+                                            value: "add-value".into(),
+                                        }]
+                                    }),
+                                    set: Some(grpc::http_types::Headers {
+                                        headers: vec![grpc::http_types::headers::Header {
+                                            name: "set".to_string(),
+                                            value: "set-value".into(),
+                                        }]
+                                    }),
+                                    remove: vec!["remove".to_string()],
+                                }
+                            )
+                        )
+                    },
+                    grpc::outbound::http_route::Filter {
+                        kind: Some(grpc::outbound::http_route::filter::Kind::Redirect(
+                            grpc::http_route::RequestRedirect {
+                                scheme: Some(grpc::http_types::Scheme {
+                                    r#type: Some(grpc::http_types::scheme::Type::Registered(
+                                        grpc::http_types::scheme::Registered::Http.into(),
+                                    ))
+                                }),
+                                host: "host".to_string(),
+                                path: Some(linkerd2_proxy_api::http_route::PathModifier { replace: Some(linkerd2_proxy_api::http_route::path_modifier::Replace::Prefix("/path".to_string())) }),
+                                port: 5555,
+                                status: 302,
+                            }
+                        ))
+                    }
+                ]
+            );
+        });
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn backend_with_filters() {
+    with_temp_ns(|client, ns| async move {
+        // Create a service
+        let svc = create_service(&client, &ns, "my-svc", 4191).await;
+
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+
+        // There should be a default route.
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
+
+        let backend_name = "backend";
+        let backend_svc = create_service(&client, &ns, backend_name, 8888).await;
+        let backends = [backend_name];
+        let _route = create(
+            &client,
+            mk_http_route(
+                &ns,
+                "foo-route",
+                &svc,
+                4191,
+                Some(&backends),
+                None,
+                None,
+                Some(vec![
+                    k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
+                        request_header_modifier: k8s_gateway_api::HttpRequestHeaderFilter {
+                            set: Some(vec![k8s_gateway_api::HttpHeader {
+                                name: "set".to_string(),
+                                value: "set-value".to_string(),
+                            }]),
+                            add: Some(vec![k8s_gateway_api::HttpHeader {
+                                name: "add".to_string(),
+                                value: "add-value".to_string(),
+                            }]),
+                            remove: Some(vec!["remove".to_string()]),
+                        },
+                    },
+                    k8s_gateway_api::HttpRouteFilter::RequestRedirect {
+                        request_redirect: k8s_gateway_api::HttpRequestRedirectFilter {
+                            scheme: Some("http".to_string()),
+                            hostname: Some("host".to_string()),
+                            path: Some(k8s_gateway_api::HttpPathModifier::ReplacePrefixMatch {
+                                replace_prefix_match: "/path".to_string(),
+                            }),
+                            port: Some(5555),
+                            status_code: Some(302),
+                        },
+                    },
+                ]),
+            ),
+        )
+        .await;
+
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an updated config");
+        tracing::trace!(?config);
+
+        // There should be a route without rule filters.
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            let rule = assert_singleton(&route.rules);
+            assert_eq!(rule.filters.len(), 0);
+            let backends = route_backends_random_available(route);
+            let backend = assert_singleton(backends);
+            assert_backend_matches_service(backend.backend.as_ref().unwrap(), &backend_svc, 8888);
+            let filters = &backend.backend.as_ref().unwrap().filters;
             assert_eq!(
                 *filters,
                 vec![
@@ -776,6 +921,7 @@ fn mk_http_route(
     backends: Option<&[&str]>,
     backends_ns: Option<String>,
     filters: Option<Vec<k8s::policy::httproute::HttpRouteFilter>>,
+    backend_filters: Option<Vec<k8s_gateway_api::HttpRouteFilter>>,
 ) -> k8s::policy::HttpRoute {
     use k8s::policy::httproute as api;
     let backend_refs = backends.map(|names| {
@@ -792,7 +938,7 @@ fn mk_http_route(
                         namespace: backends_ns.clone(),
                     },
                 }),
-                filters: None,
+                filters: backend_filters.clone(),
             })
             .collect()
     });

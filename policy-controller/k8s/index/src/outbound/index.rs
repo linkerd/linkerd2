@@ -384,56 +384,72 @@ fn convert_backend(
     cluster: &ClusterInfo,
     services: &HashMap<ServiceRef, ServiceInfo>,
 ) -> Option<Backend> {
-    backend.backend_ref.map(|backend| {
-        if !is_backend_service(&backend.inner) {
-            return Backend::Invalid {
-                weight: backend.weight.unwrap_or(1).into(),
-                message: format!(
-                    "unsupported backend type {group} {kind}",
-                    group = backend.inner.group.as_deref().unwrap_or("core"),
-                    kind = backend.inner.kind.as_deref().unwrap_or("<empty>"),
-                ),
-            };
-        }
+    let filters = backend.filters;
+    let backend = backend.backend_ref?;
+    if !is_backend_service(&backend.inner) {
+        return Some(Backend::Invalid {
+            weight: backend.weight.unwrap_or(1).into(),
+            message: format!(
+                "unsupported backend type {group} {kind}",
+                group = backend.inner.group.as_deref().unwrap_or("core"),
+                kind = backend.inner.kind.as_deref().unwrap_or("<empty>"),
+            ),
+        });
+    }
 
-        let name = backend.inner.name;
-        let weight = backend.weight.unwrap_or(1);
+    let name = backend.inner.name;
+    let weight = backend.weight.unwrap_or(1);
 
-        // The gateway API dictates:
-        //
-        // Port is required when the referent is a Kubernetes Service.
-        let port = match backend
-            .inner
-            .port
-            .and_then(|p| NonZeroU16::try_from(p).ok())
-        {
-            Some(port) => port,
-            None => {
-                return Backend::Invalid {
-                    weight: weight.into(),
-                    message: format!("missing port for backend Service {name}"),
-                }
-            }
-        };
-        let service_ref = ServiceRef {
-            name: name.clone(),
-            namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
-        };
-        if !services.contains_key(&service_ref) {
-            return Backend::Invalid {
+    // The gateway API dictates:
+    //
+    // Port is required when the referent is a Kubernetes Service.
+    let port = match backend
+        .inner
+        .port
+        .and_then(|p| NonZeroU16::try_from(p).ok())
+    {
+        Some(port) => port,
+        None => {
+            return Some(Backend::Invalid {
                 weight: weight.into(),
-                message: format!("Service not found {name}"),
-            };
+                message: format!("missing port for backend Service {name}"),
+            })
         }
-
-        Backend::Service(WeightedService {
+    };
+    let service_ref = ServiceRef {
+        name: name.clone(),
+        namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
+    };
+    if !services.contains_key(&service_ref) {
+        return Some(Backend::Invalid {
             weight: weight.into(),
-            authority: cluster.service_dns_authority(&service_ref.namespace, &name, port),
-            name,
-            namespace: ns.to_string(),
-            port,
-        })
-    })
+            message: format!("Service not found {name}"),
+        });
+    }
+
+    let filters = match filters
+        .into_iter()
+        .flatten()
+        .map(convert_gateway_filter)
+        .collect::<Result<_>>()
+    {
+        Ok(filters) => filters,
+        Err(error) => {
+            return Some(Backend::Invalid {
+                weight: backend.weight.unwrap_or(1).into(),
+                message: format!("unsupported backend filter: {error}", error = error),
+            });
+        }
+    };
+
+    Some(Backend::Service(WeightedService {
+        weight: weight.into(),
+        authority: cluster.service_dns_authority(&service_ref.namespace, &name, port),
+        name,
+        namespace: ns.to_string(),
+        port,
+        filters,
+    }))
 }
 
 fn convert_filter(filter: api::httproute::HttpRouteFilter) -> Result<Filter> {
@@ -448,6 +464,32 @@ fn convert_filter(filter: api::httproute::HttpRouteFilter) -> Result<Filter> {
         api::httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
             let filter = http_route::req_redirect(request_redirect)?;
             Filter::RequestRedirect(filter)
+        }
+    };
+    Ok(filter)
+}
+
+fn convert_gateway_filter(filter: k8s_gateway_api::HttpRouteFilter) -> Result<Filter> {
+    let filter = match filter {
+        k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
+            request_header_modifier,
+        } => {
+            let filter = http_route::req_header_modifier(request_header_modifier)?;
+            Filter::RequestHeaderModifier(filter)
+        }
+
+        k8s_gateway_api::HttpRouteFilter::RequestRedirect { request_redirect } => {
+            let filter = http_route::req_redirect(request_redirect)?;
+            Filter::RequestRedirect(filter)
+        }
+        k8s_gateway_api::HttpRouteFilter::RequestMirror { .. } => {
+            bail!("RequestMirror filter is not supported")
+        }
+        k8s_gateway_api::HttpRouteFilter::URLRewrite { .. } => {
+            bail!("URLRewrite filter is not supported")
+        }
+        k8s_gateway_api::HttpRouteFilter::ExtensionRef { .. } => {
+            bail!("ExtensionRef filter is not supported")
         }
     };
     Ok(filter)
