@@ -1,4 +1,5 @@
 use crate::resource_id::ResourceId;
+use gateway::{CommonRouteSpec, HttpBackendRef};
 use linkerd_policy_controller_k8s_api::{
     gateway,
     policy::{self, Server},
@@ -25,15 +26,8 @@ pub enum BackendReference {
     Unknown,
 }
 
-pub(crate) fn make_parents(http_route: &policy::HttpRoute) -> Vec<ParentReference> {
-    let namespace = http_route
-        .metadata
-        .namespace
-        .as_deref()
-        .expect("HTTPRoute must have a namespace");
-    http_route
-        .spec
-        .inner
+pub(crate) fn make_parents(namespace: &str, route: &CommonRouteSpec) -> Vec<ParentReference> {
+    route
         .parent_refs
         .iter()
         .flatten()
@@ -41,19 +35,12 @@ pub(crate) fn make_parents(http_route: &policy::HttpRoute) -> Vec<ParentReferenc
         .collect()
 }
 
-pub(crate) fn make_backends(http_route: &policy::HttpRoute) -> Vec<BackendReference> {
-    let namespace = http_route
-        .metadata
-        .namespace
-        .as_deref()
-        .expect("HTTPRoute must have a namespace");
-    http_route
-        .spec
-        .rules
-        .iter()
-        .flatten()
-        .flat_map(|rule| rule.backend_refs.iter().flatten())
-        .filter_map(|http_backend_ref| http_backend_ref.backend_ref.as_ref())
+pub(crate) fn make_backends(
+    namespace: &str,
+    backends: impl Iterator<Item = HttpBackendRef>,
+) -> Vec<BackendReference> {
+    backends
+        .filter_map(|http_backend_ref| http_backend_ref.backend_ref)
         .map(|br| BackendReference::from_backend_ref(&br.inner, namespace))
         .collect()
 }
@@ -184,7 +171,20 @@ mod test {
             status: None,
         };
 
-        let result = make_backends(&http_route);
+        let result = make_backends(
+            http_route
+                .metadata
+                .namespace
+                .as_deref()
+                .expect("HttpRoute must have namespace"),
+            http_route
+                .spec
+                .rules
+                .into_iter()
+                .flatten()
+                .flat_map(|rule| rule.backend_refs)
+                .flatten(),
+        );
         assert_eq!(
             3,
             result.len(),
@@ -231,7 +231,20 @@ mod test {
             status: None,
         };
 
-        let result = make_backends(&http_route);
+        let result = make_backends(
+            http_route
+                .metadata
+                .namespace
+                .as_deref()
+                .expect("HttpRoute must have namespace"),
+            http_route
+                .spec
+                .rules
+                .into_iter()
+                .flatten()
+                .flat_map(|rule| rule.backend_refs)
+                .flatten(),
+        );
         assert_eq!(
             2,
             result.len(),

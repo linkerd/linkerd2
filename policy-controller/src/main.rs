@@ -215,8 +215,15 @@ async fn main() -> Result<()> {
         .push(status_index.clone())
         .shared();
     tokio::spawn(
-        kubert::index::namespaced(http_routes_indexes, http_routes)
-            .instrument(info_span!("httproutes")),
+        kubert::index::namespaced(http_routes_indexes.clone(), http_routes)
+            .instrument(info_span!("httproutes.policy.linkerd.io")),
+    );
+
+    let gateway_http_routes =
+        runtime.watch_all::<k8s_gateway_api::HttpRoute>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(http_routes_indexes, gateway_http_routes)
+            .instrument(info_span!("httproutes.gateway.networking.k8s.io")),
     );
 
     let services = runtime.watch_all::<k8s::Service>(ListParams::default());

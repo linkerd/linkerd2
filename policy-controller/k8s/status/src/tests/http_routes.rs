@@ -1,6 +1,7 @@
-use crate::{index, index::POLICY_API_GROUP, resource_id::ResourceId, Index};
+use crate::{index, index::POLICY_API_GROUP, resource_id::NamespaceGroupKindName, Index};
+use k8s::Resource;
 use kubert::index::IndexNamespacedResource;
-use linkerd_policy_controller_core::POLICY_CONTROLLER_NAME;
+use linkerd_policy_controller_core::{http_route::GroupKindName, POLICY_CONTROLLER_NAME};
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy::server::Port};
 use std::sync::Arc;
 use tokio::sync::{mpsc, watch};
@@ -21,7 +22,14 @@ fn http_route_accepted_after_server_create() {
     index.write().apply(http_route);
 
     // Create the expected update.
-    let id = ResourceId::new("ns-0".to_string(), "route-foo".to_string());
+    let id = NamespaceGroupKindName {
+        namespace: "ns-0".to_string(),
+        gkn: GroupKindName {
+            group: k8s::policy::HttpRoute::group(&()),
+            kind: k8s::policy::HttpRoute::kind(&()),
+            name: "route-foo".into(),
+        },
+    };
     let parent_status =
         make_parent_status("ns-0", "srv-8080", "Accepted", "False", "NoMatchingParent");
     let status = make_status(vec![parent_status]);
@@ -45,7 +53,14 @@ fn http_route_accepted_after_server_create() {
     index.write().apply(server);
 
     // Create the expected update.
-    let id = ResourceId::new("ns-0".to_string(), "route-foo".to_string());
+    let id = NamespaceGroupKindName {
+        namespace: "ns-0".to_string(),
+        gkn: GroupKindName {
+            group: k8s::policy::HttpRoute::group(&()),
+            kind: k8s::policy::HttpRoute::kind(&()),
+            name: "route-foo".into(),
+        },
+    };
     let parent_status = make_parent_status("ns-0", "srv-8080", "Accepted", "True", "Accepted");
     let status = make_status(vec![parent_status]);
     let patch = index::make_patch("route-foo", status);
@@ -86,7 +101,14 @@ fn http_route_rejected_after_server_delete() {
     index.write().apply(http_route);
 
     // Create the expected update.
-    let id = ResourceId::new("ns-0".to_string(), "route-foo".to_string());
+    let id = NamespaceGroupKindName {
+        namespace: "ns-0".to_string(),
+        gkn: GroupKindName {
+            group: k8s::policy::HttpRoute::group(&()),
+            kind: k8s::policy::HttpRoute::kind(&()),
+            name: "route-foo".into(),
+        },
+    };
     let parent_status = make_parent_status("ns-0", "srv-8080", "Accepted", "True", "Accepted");
     let status = make_status(vec![parent_status]);
     let patch = index::make_patch("route-foo", status);
@@ -107,7 +129,14 @@ fn http_route_rejected_after_server_delete() {
     }
 
     // Create the expected update.
-    let id = ResourceId::new("ns-0".to_string(), "route-foo".to_string());
+    let id = NamespaceGroupKindName {
+        namespace: "ns-0".to_string(),
+        gkn: GroupKindName {
+            group: k8s::policy::HttpRoute::group(&()),
+            kind: k8s::policy::HttpRoute::kind(&()),
+            name: "route-foo".into(),
+        },
+    };
     let parent_status =
         make_parent_status("ns-0", "srv-8080", "Accepted", "False", "NoMatchingParent");
     let status = make_status(vec![parent_status]);

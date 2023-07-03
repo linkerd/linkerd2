@@ -5,7 +5,15 @@ pub use http::{
     Method, StatusCode,
 };
 use regex::Regex;
-use std::num::NonZeroU16;
+use std::{borrow::Cow, num::NonZeroU16};
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+
+pub struct GroupKindName {
+    pub group: Cow<'static, str>,
+    pub kind: Cow<'static, str>,
+    pub name: Cow<'static, str>,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HostMatch {
@@ -73,6 +81,32 @@ pub enum HeaderMatch {
 pub enum QueryParamMatch {
     Exact(String, String),
     Regex(String, Regex),
+}
+
+// === impl GroupKindName ===
+
+impl Ord for GroupKindName {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.name.cmp(&other.name).then(
+            self.group
+                .cmp(&other.group)
+                .then(self.kind.cmp(&other.kind)),
+        )
+    }
+}
+
+impl PartialOrd for GroupKindName {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl GroupKindName {
+    pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
+        self.group.eq_ignore_ascii_case(&other.group)
+            && self.kind.eq_ignore_ascii_case(&other.kind)
+            && self.name.eq_ignore_ascii_case(&other.name)
+    }
 }
 
 // === impl PathMatch ===

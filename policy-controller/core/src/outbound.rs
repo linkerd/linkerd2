@@ -1,5 +1,5 @@
 use crate::http_route::{
-    HostMatch, HttpRouteMatch, RequestHeaderModifierFilter, RequestRedirectFilter,
+    GroupKindName, HostMatch, HttpRouteMatch, RequestHeaderModifierFilter, RequestRedirectFilter,
 };
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
@@ -21,7 +21,7 @@ pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OutboundPolicy {
-    pub http_routes: HashMap<String, HttpRoute>,
+    pub http_routes: HashMap<GroupKindName, HttpRoute>,
     pub authority: String,
     pub name: String,
     pub namespace: String,

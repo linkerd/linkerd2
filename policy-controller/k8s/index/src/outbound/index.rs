@@ -1,14 +1,17 @@
 use crate::{
-    http_route,
+    http_route::{self, gkn_for_gateway_http_route, gkn_for_linkerd_http_route, HttpRouteResource},
     ports::{ports_annotation, PortSet},
     ClusterInfo,
 };
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
 use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
-use linkerd_policy_controller_core::outbound::{
-    Backend, Backoff, FailureAccrual, Filter, HttpRoute, HttpRouteRule, OutboundPolicy,
-    WeightedService,
+use linkerd_policy_controller_core::{
+    http_route::GroupKindName,
+    outbound::{
+        Backend, Backoff, FailureAccrual, Filter, HttpRoute, HttpRouteRule, OutboundPolicy,
+        WeightedService,
+    },
 };
 use linkerd_policy_controller_k8s_api::{policy as api, ResourceExt, Service, Time};
 use parking_lot::RwLock;
@@ -57,7 +60,7 @@ struct ServicePort {
 
 #[derive(Debug)]
 struct ServiceRoutes {
-    routes: HashMap<String, HttpRoute>,
+    routes: HashMap<GroupKindName, HttpRoute>,
     watch: watch::Sender<OutboundPolicy>,
     opaque: bool,
     accrual: Option<FailureAccrual>,
@@ -65,21 +68,26 @@ struct ServiceRoutes {
 
 impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
     fn apply(&mut self, route: api::HttpRoute) {
-        tracing::debug!(name = route.name_unchecked(), "indexing route");
-        let ns = route.namespace().expect("HttpRoute must have a namespace");
-        self.namespaces
-            .by_ns
-            .entry(ns.clone())
-            .or_insert_with(|| Namespace {
-                service_routes: Default::default(),
-                namespace: Arc::new(ns),
-            })
-            .apply(route, &self.namespaces.cluster_info, &self.service_info);
+        self.apply(HttpRouteResource::Linkerd(route))
     }
 
     fn delete(&mut self, namespace: String, name: String) {
         if let Some(ns_index) = self.namespaces.by_ns.get_mut(&namespace) {
-            ns_index.delete(name);
+            let gkn = gkn_for_linkerd_http_route(name);
+            ns_index.delete(gkn);
+        }
+    }
+}
+
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
+    fn apply(&mut self, route: k8s_gateway_api::HttpRoute) {
+        self.apply(HttpRouteResource::Gateway(route))
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        if let Some(ns_index) = self.namespaces.by_ns.get_mut(&namespace) {
+            let gkn = gkn_for_gateway_http_route(name);
+            ns_index.delete(gkn);
         }
     }
 }
@@ -181,17 +189,29 @@ impl Index {
     pub fn lookup_service(&self, addr: IpAddr) -> Option<ServiceRef> {
         self.services_by_ip.get(&addr).cloned()
     }
+
+    fn apply(&mut self, route: HttpRouteResource) {
+        tracing::debug!(name = route.name(), "indexing route");
+        let ns = route.namespace();
+        self.namespaces
+            .by_ns
+            .entry(ns.clone())
+            .or_insert_with(|| Namespace {
+                service_routes: Default::default(),
+                namespace: Arc::new(ns),
+            })
+            .apply(route, &self.namespaces.cluster_info, &self.service_info);
+    }
 }
 
 impl Namespace {
     fn apply(
         &mut self,
-        route: api::HttpRoute,
+        route: HttpRouteResource,
         cluster_info: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
     ) {
         tracing::debug!(?route);
-        let name = route.name_unchecked();
         let outbound_route = match self.convert_route(route.clone(), cluster_info, service_info) {
             Ok(route) => route,
             Err(error) => {
@@ -201,11 +221,11 @@ impl Namespace {
         };
         tracing::debug!(?outbound_route);
 
-        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
+        for parent_ref in route.inner().parent_refs.iter().flatten() {
             if !is_parent_service(parent_ref) {
                 continue;
             }
-            if !route_accepted_by_service(&route, &parent_ref.name) {
+            if !route_accepted_by_service(route.status(), &parent_ref.name) {
                 continue;
             }
 
@@ -217,12 +237,12 @@ impl Namespace {
                     };
                     tracing::debug!(
                         ?service_port,
-                        route = route.name_unchecked(),
+                        route = route.name(),
                         "inserting route for service"
                     );
                     let service_routes =
                         self.service_routes_or_default(service_port, cluster_info, service_info);
-                    service_routes.apply(name.clone(), outbound_route.clone());
+                    service_routes.apply(route.gkn(), outbound_route.clone());
                 } else {
                     tracing::warn!(?parent_ref, "ignoring parent_ref with port 0");
                 }
@@ -244,9 +264,9 @@ impl Namespace {
         }
     }
 
-    fn delete(&mut self, name: String) {
+    fn delete(&mut self, gkn: GroupKindName) {
         for service in self.service_routes.values_mut() {
-            service.delete(&name);
+            service.delete(&gkn);
         }
     }
 
@@ -287,36 +307,65 @@ impl Namespace {
 
     fn convert_route(
         &self,
-        route: api::HttpRoute,
+        route: HttpRouteResource,
         cluster: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
     ) -> Result<HttpRoute> {
-        let hostnames = route
-            .spec
-            .hostnames
-            .into_iter()
-            .flatten()
-            .map(http_route::host_match)
-            .collect();
+        match route {
+            HttpRouteResource::Linkerd(route) => {
+                let hostnames = route
+                    .spec
+                    .hostnames
+                    .into_iter()
+                    .flatten()
+                    .map(http_route::host_match)
+                    .collect();
 
-        let rules = route
-            .spec
-            .rules
-            .into_iter()
-            .flatten()
-            .map(|r| self.convert_rule(r, cluster, service_info))
-            .collect::<Result<_>>()?;
+                let rules = route
+                    .spec
+                    .rules
+                    .into_iter()
+                    .flatten()
+                    .map(|r| self.convert_linkerd_rule(r, cluster, service_info))
+                    .collect::<Result<_>>()?;
 
-        let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
+                let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
 
-        Ok(HttpRoute {
-            hostnames,
-            rules,
-            creation_timestamp,
-        })
+                Ok(HttpRoute {
+                    hostnames,
+                    rules,
+                    creation_timestamp,
+                })
+            }
+            HttpRouteResource::Gateway(route) => {
+                let hostnames = route
+                    .spec
+                    .hostnames
+                    .into_iter()
+                    .flatten()
+                    .map(http_route::host_match)
+                    .collect();
+
+                let rules = route
+                    .spec
+                    .rules
+                    .into_iter()
+                    .flatten()
+                    .map(|r| self.convert_gateway_rule(r, cluster, service_info))
+                    .collect::<Result<_>>()?;
+
+                let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
+
+                Ok(HttpRoute {
+                    hostnames,
+                    rules,
+                    creation_timestamp,
+                })
+            }
+        }
     }
 
-    fn convert_rule(
+    fn convert_linkerd_rule(
         &self,
         rule: api::httproute::HttpRouteRule,
         cluster: &ClusterInfo,
@@ -373,6 +422,42 @@ impl Namespace {
             backends,
             request_timeout,
             backend_request_timeout,
+            filters,
+        })
+    }
+
+    fn convert_gateway_rule(
+        &self,
+        rule: k8s_gateway_api::HttpRouteRule,
+        cluster: &ClusterInfo,
+        service_info: &HashMap<ServiceRef, ServiceInfo>,
+    ) -> Result<HttpRouteRule> {
+        let matches = rule
+            .matches
+            .into_iter()
+            .flatten()
+            .map(http_route::try_match)
+            .collect::<Result<_>>()?;
+
+        let backends = rule
+            .backend_refs
+            .into_iter()
+            .flatten()
+            .filter_map(|b| convert_backend(&self.namespace, b, cluster, service_info))
+            .collect();
+
+        let filters = rule
+            .filters
+            .into_iter()
+            .flatten()
+            .map(convert_gateway_filter)
+            .collect::<Result<_>>()?;
+
+        Ok(HttpRouteRule {
+            matches,
+            backends,
+            request_timeout: None,
+            backend_request_timeout: None,
             filters,
         })
     }
@@ -506,11 +591,13 @@ fn is_parent_service(parent: &ParentReference) -> bool {
 }
 
 #[inline]
-fn route_accepted_by_service(route: &api::HttpRoute, service: &str) -> bool {
-    route
-        .status
+fn route_accepted_by_service(
+    route_status: Option<&k8s_gateway_api::RouteStatus>,
+    service: &str,
+) -> bool {
+    route_status
         .as_ref()
-        .map(|status| status.inner.parents.as_slice())
+        .map(|status| status.parents.as_slice())
         .unwrap_or_default()
         .iter()
         .any(|parent_status| {
@@ -541,8 +628,8 @@ fn is_service(group: Option<&str>, kind: &str) -> bool {
 }
 
 impl ServiceRoutes {
-    fn apply(&mut self, name: String, route: HttpRoute) {
-        self.routes.insert(name, route);
+    fn apply(&mut self, gkn: GroupKindName, route: HttpRoute) {
+        self.routes.insert(gkn, route);
         self.send_if_modified();
     }
 
@@ -552,8 +639,8 @@ impl ServiceRoutes {
         self.send_if_modified();
     }
 
-    fn delete(&mut self, name: &String) {
-        self.routes.remove(name);
+    fn delete(&mut self, gkn: &GroupKindName) {
+        self.routes.remove(gkn);
         self.send_if_modified();
     }
 

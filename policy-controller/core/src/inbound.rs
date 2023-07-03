@@ -1,7 +1,7 @@
 use crate::{
     http_route::{
-        FailureInjectorFilter, HostMatch, HttpRouteMatch, PathMatch, RequestHeaderModifierFilter,
-        RequestRedirectFilter,
+        FailureInjectorFilter, GroupKindName, HostMatch, HttpRouteMatch, PathMatch,
+        RequestHeaderModifierFilter, RequestRedirectFilter,
     },
     identity_match::IdentityMatch,
     network_match::NetworkMatch,
@@ -28,7 +28,7 @@ pub enum AuthorizationRef {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum HttpRouteRef {
     Default(&'static str),
-    Linkerd(String),
+    Linkerd(GroupKindName),
 }
 
 /// Describes how a proxy should handle inbound connections.

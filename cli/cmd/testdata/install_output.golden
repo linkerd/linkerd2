@@ -211,7 +211,21 @@ rules:
       - list
       - watch
   - apiGroups:
+      - gateway.networking.k8s.io
+    resources:
+      - httproutes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
       - policy.linkerd.io
+    resources:
+      - httproutes/status
+    verbs:
+      - patch
+  - apiGroups:
+      - gateway.networking.k8s.io
     resources:
       - httproutes/status
     verbs:
