@@ -560,9 +560,6 @@ fn convert_filter(filter: Filter) -> outbound::http_route::Filter {
 
     outbound::http_route::Filter {
         kind: Some(match filter {
-            Filter::FailureInjector(f) => {
-                Kind::FailureInjector(http_route::convert_failure_injector_filter(f))
-            }
             Filter::RequestHeaderModifier(f) => {
                 Kind::RequestHeaderModifier(http_route::convert_header_modifier_filter(f))
             }
