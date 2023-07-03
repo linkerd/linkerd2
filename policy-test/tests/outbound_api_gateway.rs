@@ -10,11 +10,6 @@ use linkerd_policy_test::{
 use maplit::{btreemap, convert_args};
 use tokio::time;
 
-// These tests are copies of the tests in outbound_api_gateway.rs but using the
-// policy.linkerd.io HttpRoute kubernetes types instead of the Gateway API ones.
-// These two files should be kept in sync to ensure that Linkerd can read and
-// function correctly with both types of resources.
-
 #[tokio::test(flavor = "current_thread")]
 async fn service_does_not_exist() {
     with_temp_ns(|client, ns| async move {
@@ -679,7 +674,7 @@ async fn route_with_filters() {
                 Some(&backends),
                 None,
                 Some(vec![
-                    k8s::policy::httproute::HttpRouteFilter::RequestHeaderModifier {
+                    k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
                         request_header_modifier: k8s_gateway_api::HttpRequestHeaderFilter {
                             set: Some(vec![k8s_gateway_api::HttpHeader {
                                 name: "set".to_string(),
@@ -692,7 +687,7 @@ async fn route_with_filters() {
                             remove: Some(vec!["remove".to_string()]),
                         },
                     },
-                    k8s::policy::httproute::HttpRouteFilter::RequestRedirect {
+                    k8s_gateway_api::HttpRouteFilter::RequestRedirect {
                         request_redirect: k8s_gateway_api::HttpRequestRedirectFilter {
                             scheme: Some("http".to_string()),
                             hostname: Some("host".to_string()),
@@ -925,14 +920,13 @@ fn mk_http_route(
     port: u16,
     backends: Option<&[&str]>,
     backends_ns: Option<String>,
-    filters: Option<Vec<k8s::policy::httproute::HttpRouteFilter>>,
+    filters: Option<Vec<k8s_gateway_api::HttpRouteFilter>>,
     backend_filters: Option<Vec<k8s_gateway_api::HttpRouteFilter>>,
-) -> k8s::policy::HttpRoute {
-    use k8s::policy::httproute as api;
+) -> k8s_gateway_api::HttpRoute {
     let backend_refs = backends.map(|names| {
         names
             .iter()
-            .map(|name| api::HttpBackendRef {
+            .map(|name| k8s_gateway_api::HttpBackendRef {
                 backend_ref: Some(k8s_gateway_api::BackendRef {
                     weight: None,
                     inner: k8s_gateway_api::BackendObjectReference {
@@ -947,15 +941,15 @@ fn mk_http_route(
             })
             .collect()
     });
-    api::HttpRoute {
+    k8s_gateway_api::HttpRoute {
         metadata: kube::api::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
             ..Default::default()
         },
-        spec: api::HttpRouteSpec {
-            inner: api::CommonRouteSpec {
-                parent_refs: Some(vec![api::ParentReference {
+        spec: k8s_gateway_api::HttpRouteSpec {
+            inner: k8s_gateway_api::CommonRouteSpec {
+                parent_refs: Some(vec![k8s_gateway_api::ParentReference {
                     group: Some("core".to_string()),
                     kind: Some("Service".to_string()),
                     namespace: svc.namespace(),
@@ -965,9 +959,9 @@ fn mk_http_route(
                 }]),
             },
             hostnames: None,
-            rules: Some(vec![api::HttpRouteRule {
-                matches: Some(vec![api::HttpRouteMatch {
-                    path: Some(api::HttpPathMatch::Exact {
+            rules: Some(vec![k8s_gateway_api::HttpRouteRule {
+                matches: Some(vec![k8s_gateway_api::HttpRouteMatch {
+                    path: Some(k8s_gateway_api::HttpPathMatch::Exact {
                         value: "/foo".to_string(),
                     }),
                     headers: None,
@@ -976,7 +970,6 @@ fn mk_http_route(
                 }]),
                 filters,
                 backend_refs,
-                timeouts: None,
             }]),
         },
         status: None,
