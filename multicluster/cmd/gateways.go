@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -87,6 +88,12 @@ func newGatewaysCommand() *cobra.Command {
 			// running probes.
 			leaders := make(map[string]struct{})
 			for _, lease := range leases.Items {
+				// If the Lease is not used by the service-mirror, or if it does
+				// not have a claimant, then ignore it
+				if !strings.Contains(lease.Name, "service-mirror-write") || lease.Spec.HolderIdentity == nil {
+					continue
+				}
+
 				leaders[*lease.Spec.HolderIdentity] = struct{}{}
 			}
 
