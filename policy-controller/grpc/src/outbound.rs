@@ -562,7 +562,10 @@ fn convert_filter(filter: Filter) -> outbound::http_route::Filter {
     outbound::http_route::Filter {
         kind: Some(match filter {
             Filter::RequestHeaderModifier(f) => {
-                Kind::RequestHeaderModifier(http_route::convert_header_modifier_filter(f))
+                Kind::RequestHeaderModifier(http_route::convert_request_header_modifier_filter(f))
+            }
+            Filter::ResponseHeaderModifier(f) => {
+                Kind::ResponseHeaderModifier(http_route::convert_response_header_modifier_filter(f))
             }
             Filter::RequestRedirect(f) => Kind::Redirect(http_route::convert_redirect_filter(f)),
         }),

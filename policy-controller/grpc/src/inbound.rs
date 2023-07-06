@@ -432,7 +432,7 @@ fn convert_filter(filter: Filter) -> Option<proto::http_route::Filter> {
             http_route::convert_failure_injector_filter(f),
         )),
         Filter::RequestHeaderModifier(f) => Some(Kind::RequestHeaderModifier(
-            http_route::convert_header_modifier_filter(f),
+            http_route::convert_request_header_modifier_filter(f),
         )),
         Filter::ResponseHeaderModifier(_) => None,
         Filter::RequestRedirect(f) => Some(Kind::Redirect(http_route::convert_redirect_filter(f))),

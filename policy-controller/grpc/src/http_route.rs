@@ -86,10 +86,36 @@ pub(crate) fn convert_failure_injector_filter(
     }
 }
 
-pub(crate) fn convert_header_modifier_filter(
+pub(crate) fn convert_request_header_modifier_filter(
     HeaderModifierFilter { add, set, remove }: HeaderModifierFilter,
 ) -> proto::RequestHeaderModifier {
     proto::RequestHeaderModifier {
+        add: Some(http_types::Headers {
+            headers: add
+                .into_iter()
+                .map(|(n, v)| http_types::headers::Header {
+                    name: n.to_string(),
+                    value: v.as_bytes().to_owned(),
+                })
+                .collect(),
+        }),
+        set: Some(http_types::Headers {
+            headers: set
+                .into_iter()
+                .map(|(n, v)| http_types::headers::Header {
+                    name: n.to_string(),
+                    value: v.as_bytes().to_owned(),
+                })
+                .collect(),
+        }),
+        remove: remove.into_iter().map(|n| n.to_string()).collect(),
+    }
+}
+
+pub(crate) fn convert_response_header_modifier_filter(
+    HeaderModifierFilter { add, set, remove }: HeaderModifierFilter,
+) -> proto::ResponseHeaderModifier {
+    proto::ResponseHeaderModifier {
         add: Some(http_types::Headers {
             headers: add
                 .into_iter()
