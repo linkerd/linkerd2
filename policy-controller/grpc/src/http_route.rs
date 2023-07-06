@@ -1,7 +1,7 @@
 use linkerd2_proxy_api::{http_route as proto, http_types};
 use linkerd_policy_controller_core::http_route::{
-    FailureInjectorFilter, HeaderMatch, HostMatch, HttpRouteMatch, PathMatch, PathModifier,
-    QueryParamMatch, RequestHeaderModifierFilter, RequestRedirectFilter,
+    FailureInjectorFilter, HeaderMatch, HeaderModifierFilter, HostMatch, HttpRouteMatch, PathMatch,
+    PathModifier, QueryParamMatch, RequestRedirectFilter,
 };
 
 pub(crate) fn convert_host_match(h: HostMatch) -> proto::HostMatch {
@@ -87,7 +87,7 @@ pub(crate) fn convert_failure_injector_filter(
 }
 
 pub(crate) fn convert_header_modifier_filter(
-    RequestHeaderModifierFilter { add, set, remove }: RequestHeaderModifierFilter,
+    HeaderModifierFilter { add, set, remove }: HeaderModifierFilter,
 ) -> proto::RequestHeaderModifier {
     proto::RequestHeaderModifier {
         add: Some(http_types::Headers {

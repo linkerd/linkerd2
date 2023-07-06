@@ -142,10 +142,10 @@ pub fn query_param_match(
     }
 }
 
-pub fn req_header_modifier(
+pub fn header_modifier(
     api::HttpRequestHeaderFilter { set, add, remove }: api::HttpRequestHeaderFilter,
-) -> Result<http_route::RequestHeaderModifierFilter> {
-    Ok(http_route::RequestHeaderModifierFilter {
+) -> Result<http_route::HeaderModifierFilter> {
+    Ok(http_route::HeaderModifierFilter {
         add: add
             .into_iter()
             .flatten()

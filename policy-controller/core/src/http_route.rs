@@ -22,7 +22,7 @@ pub enum HostMatch {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RequestHeaderModifierFilter {
+pub struct HeaderModifierFilter {
     pub add: Vec<(HeaderName, HeaderValue)>,
     pub set: Vec<(HeaderName, HeaderValue)>,
     pub remove: Vec<HeaderName>,
