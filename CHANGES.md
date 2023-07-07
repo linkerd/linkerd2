@@ -3,8 +3,8 @@
 ## edge-23.7.1
 
 This edge release adds support for the upstream `gateway.networking.k8s.io`
-HTTPRoute resource (rather than the `policy.linkerd.io` CRD installed by
-Linkerd). In addition, it fixes a bug where the ingress-mode proxy would fail to
+HTTPRoute resource (in addition to the `policy.linkerd.io` CRD installed by
+Linkerd). Furthermore, it fixes a bug where the ingress-mode proxy would fail to
 fall back to ServiceProfiles for destinations without HTTPRoutes.
 
 * Added support for `gateway.networking.k8s.io` HTTPRoutes in the policy
