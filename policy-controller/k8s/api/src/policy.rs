@@ -1,4 +1,5 @@
 pub mod authorization_policy;
+pub mod http_retry_filter;
 pub mod httproute;
 pub mod meshtls_authentication;
 mod network;
@@ -9,6 +10,7 @@ pub mod target_ref;
 
 pub use self::{
     authorization_policy::{AuthorizationPolicy, AuthorizationPolicySpec},
+    http_retry_filter::HttpRetryFilter,
     httproute::{HttpRoute, HttpRouteSpec},
     meshtls_authentication::{MeshTLSAuthentication, MeshTLSAuthenticationSpec},
     network::Network,
