@@ -10,7 +10,7 @@ ahash = "0.8"
 anyhow = "1"
 futures = { version = "0.3", default-features = false }
 http = "0.2"
-k8s-gateway-api = "0.11"
+k8s-gateway-api = "0.12"
 kube = { version = "0.80", default-features = false, features = [
     "client",
     "derive",

@@ -1011,8 +1011,9 @@ dependencies = [
 
 [[package]]
 name = "k8s-gateway-api"
-version = "0.11.0"
-source = "git+https://github.com/linkerd/k8s-gateway-api-rs?branch=alex/response-filter#c4b3cf6af089aec483e05302c6ddb9c5ba41609d"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37bd504d56a3c7685f32b040eafb5c932b903762ce22d85faa8bfdd3530efb9c"
 dependencies = [
  "k8s-openapi",
  "kube",
@@ -1396,8 +1397,9 @@ dependencies = [
 
 [[package]]
 name = "linkerd2-proxy-api"
-version = "0.10.0"
-source = "git+https://github.com/linkerd/linkerd2-proxy-api?rev=f1598b46c179f5a981bfca7b660dc89903b18ab7#f1598b46c179f5a981bfca7b660dc89903b18ab7"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2348745f909668e6de2dbd175eeeac374887ffb33989a0e09766f1807b27cdfe"
 dependencies = [
  "http",
  "ipnet",

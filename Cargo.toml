@@ -11,7 +11,3 @@ members = [
 
 [profile.release]
 lto = "thin"
-
-[patch.crates-io]
-linkerd2-proxy-api = { git = "https://github.com/linkerd/linkerd2-proxy-api", rev = "f1598b46c179f5a981bfca7b660dc89903b18ab7" }
-k8s-gateway-api = { git = "https://github.com/linkerd/k8s-gateway-api-rs", branch = "alex/response-filter" }
