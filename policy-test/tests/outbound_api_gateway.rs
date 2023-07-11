@@ -156,7 +156,6 @@ async fn service_with_http_routes_with_backend() {
         let backend_name = "backend";
         let backend_svc = create_service(&client, &ns, backend_name, 8888).await;
         let backends = [backend_name];
-
         let route =
             mk_http_route(&ns, "foo-route", &svc, 4191).with_backends(Some(&backends), None, None);
         let _route = create(&client, route.build()).await;
@@ -219,7 +218,6 @@ async fn service_with_http_routes_with_cross_namespace_backend() {
         let backend_name = "backend";
         let backend_svc = create_service(&client, &backend_ns_name, backend_name, 8888).await;
         let backends = [backend_name];
-
         let route = mk_http_route(&ns, "foo-route", &svc, 4191).with_backends(
             Some(&backends),
             Some(backend_ns_name),
@@ -271,7 +269,6 @@ async fn service_with_http_routes_with_invalid_backend() {
         });
 
         let backends = ["invalid-backend"];
-
         let route =
             mk_http_route(&ns, "foo-route", &svc, 4191).with_backends(Some(&backends), None, None);
         let _route = create(&client, route.build()).await;
@@ -630,7 +627,6 @@ async fn route_with_filters() {
 
         let backend_name = "backend";
         let backends = [backend_name];
-
         let route = mk_http_route(&ns, "foo-route", &svc, 4191)
             .with_backends(Some(&backends), None, None)
             .with_filters(Some(vec![
@@ -742,7 +738,6 @@ async fn backend_with_filters() {
         let backend_name = "backend";
         let backend_svc = create_service(&client, &ns, backend_name, 8888).await;
         let backends = [backend_name];
-
         let route = mk_http_route(&ns, "foo-route", &svc, 4191)
             .with_backends(Some(&backends), None, Some(vec![
                 k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
@@ -872,7 +867,6 @@ fn mk_http_route(ns: &str, name: &str, svc: &k8s::Service, port: u16) -> HttpRou
             ..Default::default()
         },
         spec: api::HttpRouteSpec {
-            hostnames: None,
             inner: api::CommonRouteSpec {
                 parent_refs: Some(vec![api::ParentReference {
                     group: Some("core".to_string()),
@@ -883,6 +877,7 @@ fn mk_http_route(ns: &str, name: &str, svc: &k8s::Service, port: u16) -> HttpRou
                     port: Some(port),
                 }]),
             },
+            hostnames: None,
             rules: Some(vec![api::HttpRouteRule {
                 matches: Some(vec![api::HttpRouteMatch {
                     path: Some(api::HttpPathMatch::Exact {
