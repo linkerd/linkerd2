@@ -389,7 +389,7 @@ impl Namespace {
             .filters
             .into_iter()
             .flatten()
-            .map(convert_filter)
+            .map(convert_linkerd_filter)
             .collect::<Result<_>>()?;
 
         let request_timeout = rule.timeouts.as_ref().and_then(|timeouts| {
@@ -537,7 +537,7 @@ fn convert_backend(
     }))
 }
 
-fn convert_filter(filter: api::httproute::HttpRouteFilter) -> Result<Filter> {
+fn convert_linkerd_filter(filter: api::httproute::HttpRouteFilter) -> Result<Filter> {
     let filter = match filter {
         api::httproute::HttpRouteFilter::RequestHeaderModifier {
             request_header_modifier,
