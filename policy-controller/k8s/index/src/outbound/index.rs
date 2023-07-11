@@ -43,6 +43,10 @@ struct NamespaceIndex {
 #[derive(Debug)]
 struct Namespace {
     service_port_routes: HashMap<ServicePort, ServiceRoutes>,
+    // A map of Service name to all HttpRoutes that target that Service and do
+    // not specify a port. We keep track of these so that whenever a new entry
+    // is added to service_port_routes, we can copy in the HttpRoutes for that
+    // Service which apply to all ports.
     service_routes: HashMap<String, HashMap<GroupKindName, HttpRoute>>,
     namespace: Arc<String>,
 }
@@ -260,8 +264,8 @@ impl Namespace {
                         }
                     },
                 );
-                // Add the route to the list of routes that target the Service
-                // without specifying a port.
+                // Also add the route to the list of routes that target the
+                // Service without specifying a port.
                 self.service_routes
                     .entry(parent_ref.name.clone())
                     .or_default()
@@ -310,6 +314,9 @@ impl Namespace {
                     Some(svc) => (svc.opaque_ports.contains(&sp.port), svc.accrual),
                     None => (false, None),
                 };
+
+                // The HttpRoutes which target this Service but don't specify
+                // a port apply to all ports. Therefore we include them.
                 let routes = self
                     .service_routes
                     .get(&sp.service)
