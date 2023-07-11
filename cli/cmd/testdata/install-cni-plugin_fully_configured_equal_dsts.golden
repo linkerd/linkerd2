@@ -99,9 +99,9 @@ spec:
     metadata:
       labels:
         k8s-app: linkerd-cni
+        linkerd.io/cni-resource: "true"
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
-        linkerd.io/cni-resource: "true"
         linkerd.io/inject: disabled
     spec:
       tolerations:
