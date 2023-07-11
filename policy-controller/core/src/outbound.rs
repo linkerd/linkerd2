@@ -1,4 +1,6 @@
-use crate::http_route::{GroupKindName, HostMatch, HttpRouteMatch};
+use crate::http_route::{
+    GroupKindName, HostMatch, HttpRouteMatch, RequestHeaderModifierFilter, RequestRedirectFilter,
+};
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use chrono::{offset::Utc, DateTime};
@@ -44,6 +46,7 @@ pub struct HttpRouteRule {
     pub backends: Vec<Backend>,
     pub request_timeout: Option<time::Duration>,
     pub backend_request_timeout: Option<time::Duration>,
+    pub filters: Vec<Filter>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -67,6 +70,7 @@ pub struct WeightedService {
     pub name: String,
     pub namespace: String,
     pub port: NonZeroU16,
+    pub filters: Vec<Filter>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -79,4 +83,10 @@ pub struct Backoff {
     pub min_penalty: time::Duration,
     pub max_penalty: time::Duration,
     pub jitter: f32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Filter {
+    RequestHeaderModifier(RequestHeaderModifierFilter),
+    RequestRedirect(RequestRedirectFilter),
 }

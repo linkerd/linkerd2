@@ -11,7 +11,7 @@ use linkerd2_proxy_api::{
 use linkerd_policy_controller_core::{
     http_route::GroupKindName,
     outbound::{
-        Backend, DiscoverOutboundPolicy, HttpRoute, HttpRouteRule, OutboundPolicy,
+        Backend, DiscoverOutboundPolicy, Filter, HttpRoute, HttpRouteRule, OutboundPolicy,
         OutboundPolicyStream,
     },
 };
@@ -323,6 +323,7 @@ fn convert_outbound_http_route(
                  backends,
                  request_timeout,
                  backend_request_timeout,
+                 filters,
              }| {
                 let backend_request_timeout = backend_request_timeout
                     .and_then(|d| convert_duration("backend request_timeout", d));
@@ -348,7 +349,7 @@ fn convert_outbound_http_route(
                 outbound::http_route::Rule {
                     matches: matches.into_iter().map(http_route::convert_match).collect(),
                     backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
-                    filters: Default::default(),
+                    filters: filters.into_iter().map(convert_filter).collect(),
                     request_timeout: request_timeout
                         .and_then(|d| convert_duration("request timeout", d)),
                 }
@@ -389,38 +390,41 @@ fn convert_http_backend(
                 }),
             }
         }
-        Backend::Service(svc) => outbound::http_route::WeightedRouteBackend {
-            weight: svc.weight,
-            backend: Some(outbound::http_route::RouteBackend {
-                backend: Some(outbound::Backend {
-                    metadata: Some(Metadata {
-                        kind: Some(metadata::Kind::Resource(api::meta::Resource {
-                            group: "core".to_string(),
-                            kind: "Service".to_string(),
-                            name: svc.name,
-                            namespace: svc.namespace,
-                            section: Default::default(),
-                            port: u16::from(svc.port).into(),
-                        })),
+        Backend::Service(svc) => {
+            let filters = svc.filters.into_iter().map(convert_filter).collect();
+            outbound::http_route::WeightedRouteBackend {
+                weight: svc.weight,
+                backend: Some(outbound::http_route::RouteBackend {
+                    backend: Some(outbound::Backend {
+                        metadata: Some(Metadata {
+                            kind: Some(metadata::Kind::Resource(api::meta::Resource {
+                                group: "core".to_string(),
+                                kind: "Service".to_string(),
+                                name: svc.name,
+                                namespace: svc.namespace,
+                                section: Default::default(),
+                                port: u16::from(svc.port).into(),
+                            })),
+                        }),
+                        queue: Some(default_queue_config()),
+                        kind: Some(outbound::backend::Kind::Balancer(
+                            outbound::backend::BalanceP2c {
+                                discovery: Some(outbound::backend::EndpointDiscovery {
+                                    kind: Some(outbound::backend::endpoint_discovery::Kind::Dst(
+                                        outbound::backend::endpoint_discovery::DestinationGet {
+                                            path: svc.authority,
+                                        },
+                                    )),
+                                }),
+                                load: Some(default_balancer_config()),
+                            },
+                        )),
                     }),
-                    queue: Some(default_queue_config()),
-                    kind: Some(outbound::backend::Kind::Balancer(
-                        outbound::backend::BalanceP2c {
-                            discovery: Some(outbound::backend::EndpointDiscovery {
-                                kind: Some(outbound::backend::endpoint_discovery::Kind::Dst(
-                                    outbound::backend::endpoint_discovery::DestinationGet {
-                                        path: svc.authority,
-                                    },
-                                )),
-                            }),
-                            load: Some(default_balancer_config()),
-                        },
-                    )),
+                    filters,
+                    request_timeout,
                 }),
-                filters: Default::default(),
-                request_timeout,
-            }),
-        },
+            }
+        }
         Backend::Invalid { weight, message } => outbound::http_route::WeightedRouteBackend {
             weight,
             backend: Some(outbound::http_route::RouteBackend {
@@ -550,4 +554,17 @@ fn convert_duration(name: &'static str, duration: time::Duration) -> Option<pros
             tracing::error!(%error, "Invalid {name} duration");
         })
         .ok()
+}
+
+fn convert_filter(filter: Filter) -> outbound::http_route::Filter {
+    use outbound::http_route::filter::Kind;
+
+    outbound::http_route::Filter {
+        kind: Some(match filter {
+            Filter::RequestHeaderModifier(f) => {
+                Kind::RequestHeaderModifier(http_route::convert_header_modifier_filter(f))
+            }
+            Filter::RequestRedirect(f) => Kind::Redirect(http_route::convert_redirect_filter(f)),
+        }),
+    }
 }
