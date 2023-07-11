@@ -1,0 +1,45 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: httpretryfilters.policy.linkerd.io
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+  labels:
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+spec:
+  group: policy.linkerd.io
+  names:
+    kind: HTTPRetryFilter
+    plural: httpretryfilters
+    singular: httpretryfilter
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required: []
+              properties:
+                maxRetriesPerRequest:
+                  description: >-
+                    The maximum number of retries allowed per request. If this
+                    is zero or not present, no per-request limit is enforced.
+                  type: integer
+                  format: int32
+                retryStatuses:
+                  description: >-
+                    A list of HTTP status codes which will be retried. Status
+                    codes may be individual statuses (e.g. "500"), or ranges
+                    delimited by a hyphen (e.g. "500-503"). If this list is
+                    empty or not present, all 5xx status codes will be retried.
+                  type: array
+                  items:
+                    type: string
