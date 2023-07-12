@@ -333,7 +333,7 @@ impl Namespace {
                     accrual,
                 });
                 ServiceRoutes {
-                    routes: routes,
+                    routes,
                     watch: sender,
                     opaque,
                     accrual,
