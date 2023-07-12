@@ -41,6 +41,7 @@ type Values struct {
 // Gateway contains all options related to the Gateway Service
 type Gateway struct {
 	Enabled            bool              `json:"enabled"`
+	Replicas           uint32            `json:"replicas"`
 	Name               string            `json:"name"`
 	Port               uint32            `json:"port"`
 	NodePort           uint32            `json:"nodePort"`

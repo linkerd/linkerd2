@@ -119,6 +119,10 @@ spec:
         mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
+    {{- if .Values.enablePodAntiAffinity -}}
+    {{- $local := dict "label" "mirror.linkerd.io/cluster-name" "component" .Values.targetClusterName -}}
+    {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
+    {{- end }}
       containers:
       - args:
         - service-mirror
