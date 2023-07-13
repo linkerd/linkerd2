@@ -513,6 +513,7 @@ fn default_outbound_http_route(backend: outbound::Backend) -> outbound::HttpRout
         }),
         filters: Default::default(),
         request_timeout: None,
+        retry_policy: None,
     }];
     outbound::HttpRoute {
         metadata,
@@ -597,6 +598,9 @@ fn convert_filter(filter: Filter) -> outbound::http_route::Filter {
                 Kind::ResponseHeaderModifier(http_route::convert_response_header_modifier_filter(f))
             }
             Filter::RequestRedirect(f) => Kind::Redirect(http_route::convert_redirect_filter(f)),
+            Filter::FailureInjector(f) => {
+                Kind::FailureInjector(http_route::convert_failure_injector_filter(f))
+            }
         }),
     }
 }

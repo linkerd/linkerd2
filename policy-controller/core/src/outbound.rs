@@ -1,5 +1,6 @@
 use crate::http_route::{
-    GroupKindNamespaceName, HeaderModifierFilter, HostMatch, HttpRouteMatch, RequestRedirectFilter,
+    FailureInjectorFilter, GroupKindNamespaceName, HeaderModifierFilter, HostMatch, HttpRouteMatch,
+    RequestRedirectFilter,
 };
 use ahash::AHashMap as HashMap;
 use anyhow::{Context, Result};
@@ -60,6 +61,8 @@ pub struct HttpRouteRule {
     pub request_timeout: Option<time::Duration>,
     pub backend_request_timeout: Option<time::Duration>,
     pub filters: Vec<Filter>,
+    /// This is generic: it is either an `Option<RouteRetryPolicy>` when the
+    /// rule has resolved its retry policy, or an
     pub retry_policy: Option<RouteRetryPolicy>,
 }
 
@@ -104,6 +107,7 @@ pub enum Filter {
     RequestHeaderModifier(HeaderModifierFilter),
     ResponseHeaderModifier(HeaderModifierFilter),
     RequestRedirect(RequestRedirectFilter),
+    FailureInjector(FailureInjectorFilter),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

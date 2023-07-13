@@ -9,10 +9,10 @@ use k8s_gateway_api::{
     BackendObjectReference, HttpBackendRef, LocalObjectReference, ParentReference,
 };
 use linkerd_policy_controller_core::{
-    http_route::GroupKindNamespaceName,
+    http_route::{FailureInjectorFilter, GroupKindNamespaceName, Ratio},
     outbound::{
         Backend, Backoff, FailureAccrual, Filter, HttpRoute, HttpRouteRule, OutboundPolicy,
-        WeightedService,
+        RouteRetryPolicy, WeightedService,
     },
 };
 use linkerd_policy_controller_k8s_api::{
@@ -54,7 +54,7 @@ struct Namespace {
     /// Stores the route resources (by service name) that do not
     /// explicitly target a port.
     service_routes: HashMap<String, HashMap<GroupKindNamespaceName, HttpRoute>>,
-    retry_filters: HashMap<String, HttpRetryFilter>,
+    retry_filters: HashMap<String, RouteRetryPolicy>,
     namespace: Arc<String>,
 }
 
@@ -478,12 +478,19 @@ impl Namespace {
             .filter_map(|b| convert_backend(&self.namespace, b, cluster, service_info))
             .collect::<Result<_>>()?;
         let mut retry_policy = None;
-        let filters = rule
+        let mut filters = rule
             .filters
             .into_iter()
             .flatten()
             .filter_map(|filter| convert_linkerd_filter(filter, &mut retry_policy).transpose())
-            .collect::<Result<_>>()?;
+            .collect::<Result<Vec<Filter>>>()?;
+        let retry_policy = retry_policy.and_then(|r| match self.convert_retry_policy(r) {
+            Ok(policy) => Some(policy),
+            Err(error) => {
+                filters.push(Filter::FailureInjector(error));
+                None
+            }
+        });
 
         let request_timeout = rule.timeouts.as_ref().and_then(|timeouts| {
             let timeout = time::Duration::from(timeouts.request?);
@@ -516,7 +523,7 @@ impl Namespace {
             request_timeout,
             backend_request_timeout,
             filters,
-            retry_policy: todo!("eliza"),
+            retry_policy,
         })
     }
 
@@ -541,12 +548,19 @@ impl Namespace {
             .collect::<Result<_>>()?;
 
         let mut retry_policy = None;
-        let filters = rule
+        let mut filters = rule
             .filters
             .into_iter()
             .flatten()
             .filter_map(|filter| convert_gateway_filter(filter, &mut retry_policy).transpose())
-            .collect::<Result<_>>()?;
+            .collect::<Result<Vec<Filter>>>()?;
+        let retry_policy = retry_policy.and_then(|r| match self.convert_retry_policy(r) {
+            Ok(policy) => Some(policy),
+            Err(error) => {
+                filters.push(Filter::FailureInjector(error));
+                None
+            }
+        });
 
         Ok(HttpRouteRule {
             matches,
@@ -554,8 +568,32 @@ impl Namespace {
             request_timeout: None,
             backend_request_timeout: None,
             filters,
-            retry_policy: todo!("eliza"),
+            retry_policy,
         })
+    }
+
+    fn convert_retry_policy(
+        &self,
+        retry_ref: LocalObjectReference,
+    ) -> Result<RouteRetryPolicy, FailureInjectorFilter> {
+        self.retry_filters
+            .get(&retry_ref.name)
+            .cloned()
+            .ok_or_else(|| {
+                // > If a reference to a custom filter type cannot be resolved, the
+                // > filter MUST NOT be skipped. Instead, requests that would have been
+                // > processed by that filter MUST receive a HTTP error response.
+                // - https://gateway-api.sigs.k8s.io/v1alpha2/references/spec/#gateway.networking.k8s.io%2fv1beta1.HTTPRouteFilter
+                tracing::warn!("No HTTPRetryFilter respolved for {retry_ref:?}");
+                FailureInjectorFilter {
+                    status: http::StatusCode::INTERNAL_SERVER_ERROR,
+                    message: format!("No HTTPRetryFilter resolved for {retry_ref:?}"),
+                    ratio: Ratio {
+                        numerator: 1,
+                        denominator: 1,
+                    },
+                }
+            })
     }
 }
 
