@@ -198,6 +198,15 @@ pub enum HttpRouteFilter {
     RequestRedirect {
         request_redirect: HttpRequestRedirectFilter,
     },
+
+    /// ExtensionRef is an optional, implementation-specific extension to the
+    /// "filter" behavior.  For example, resource "myroutefilter" in group
+    /// "networking.example.net"). ExtensionRef MUST NOT be used for core and
+    /// extended filters.
+    ///
+    /// Support: Implementation-specific
+    #[serde(rename_all = "camelCase")]
+    ExtensionRef { extension_ref: LocalObjectReference },
 }
 
 /// HTTPRouteStatus defines the observed state of HTTPRoute.
@@ -261,4 +270,14 @@ where
         backend_ref.group.as_deref(),
         backend_ref.kind.as_deref().unwrap_or("service"),
     )
+}
+
+pub fn local_object_ref_targets_kind<T>(
+    LocalObjectReference { group, kind, .. }: &LocalObjectReference,
+) -> bool
+where
+    T: kube::Resource,
+    T::DynamicType: Default,
+{
+    super::targets_kind::<T>(Some(group), kind)
 }

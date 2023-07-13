@@ -113,12 +113,9 @@ pub struct RouteRetryPolicy {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum StatusRange {
-    Single(http::StatusCode),
-    Range {
-        min: http::StatusCode,
-        max: http::StatusCode,
-    },
+pub struct StatusRange {
+    pub min: http::StatusCode,
+    pub max: http::StatusCode,
 }
 
 impl FromStr for StatusRange {
@@ -140,10 +137,9 @@ impl FromStr for StatusRange {
                     .parse::<http::StatusCode>()
                     .with_context(|| format!("invalid status range maximum {max:?}"))
             })
-            .transpose()?;
-        match max {
-            Some(max) => Ok(StatusRange::Range { min, max }),
-            None => Ok(StatusRange::Single(min)),
-        }
+            .transpose()?
+            // if the range only specifies a minimum, set it as the max as well.
+            .unwrap_or(min);
+        Ok(Self { min, max })
     }
 }

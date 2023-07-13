@@ -12,10 +12,11 @@
     group = "policy.linkerd.io",
     version = "v1alpha1",
     kind = "HTTPRetryFilter",
+    struct = "HttpRetryFilter",
     namespaced
 )]
 #[serde(rename_all = "camelCase")]
-pub struct HttpRetryFilter {
+pub struct HttpRetryFilterSpec {
     /// The maximum number of retries allowed per request. If this
     /// is zero or not present, no per-request limit is enforced.
     pub max_retries_per_request: Option<u32>,

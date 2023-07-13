@@ -1,6 +1,7 @@
 use crate::http_route;
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Error, Result};
+use k8s::policy::{httproute::local_object_ref_targets_kind, HttpRetryFilter};
 use k8s_gateway_api as api;
 use linkerd_policy_controller_core::http_route::{HttpRouteMatch, Method};
 use linkerd_policy_controller_core::inbound::{Filter, HttpRoute, HttpRouteRule};
@@ -77,7 +78,7 @@ impl TryFrom<api::HttpRoute> for RouteBinding {
                      matches,
                      filters,
                      backend_refs: _,
-                 }| Self::try_rule(matches, filters, Self::try_gateway_filter),
+                 }| { Self::try_rule(matches, filters, Self::try_gateway_filter) },
             )
             .collect::<Result<_>>()?;
 
@@ -196,7 +197,7 @@ impl RouteBinding {
     fn try_rule<F>(
         matches: Option<Vec<api::HttpRouteMatch>>,
         filters: Option<Vec<F>>,
-        try_filter: impl Fn(F) -> Result<Filter>,
+        try_filter: impl Fn(F) -> Result<Option<Filter>>,
     ) -> Result<HttpRouteRule> {
         let matches = matches
             .into_iter()
@@ -207,31 +208,31 @@ impl RouteBinding {
         let filters = filters
             .into_iter()
             .flatten()
-            .map(try_filter)
+            .filter_map(|filter| try_filter(filter).transpose())
             .collect::<Result<_>>()?;
 
         Ok(HttpRouteRule { matches, filters })
     }
 
-    fn try_gateway_filter(filter: api::HttpRouteFilter) -> Result<Filter> {
+    fn try_gateway_filter(filter: api::HttpRouteFilter) -> Result<Option<Filter>> {
         let filter = match filter {
             api::HttpRouteFilter::RequestHeaderModifier {
                 request_header_modifier,
             } => {
                 let filter = http_route::header_modifier(request_header_modifier)?;
-                Filter::RequestHeaderModifier(filter)
+                Some(Filter::RequestHeaderModifier(filter))
             }
 
             api::HttpRouteFilter::ResponseHeaderModifier {
                 response_header_modifier,
             } => {
                 let filter = http_route::header_modifier(response_header_modifier)?;
-                Filter::ResponseHeaderModifier(filter)
+                Some(Filter::ResponseHeaderModifier(filter))
             }
 
             api::HttpRouteFilter::RequestRedirect { request_redirect } => {
                 let filter = http_route::req_redirect(request_redirect)?;
-                Filter::RequestRedirect(filter)
+                Some(Filter::RequestRedirect(filter))
             }
 
             api::HttpRouteFilter::RequestMirror { .. } => {
@@ -240,6 +241,15 @@ impl RouteBinding {
             api::HttpRouteFilter::URLRewrite { .. } => {
                 bail!("URLRewrite filter is not supported")
             }
+
+            // Retry filters may be present if an HTTPRoute has both inbound
+            // (Server) *and* outbound (Service) parentRefs
+            api::HttpRouteFilter::ExtensionRef { extension_ref }
+                if local_object_ref_targets_kind::<HttpRetryFilter>(&extension_ref) =>
+            {
+                None
+            }
+
             api::HttpRouteFilter::ExtensionRef { .. } => {
                 bail!("ExtensionRef filter is not supported")
             }
@@ -247,25 +257,37 @@ impl RouteBinding {
         Ok(filter)
     }
 
-    fn try_policy_filter(filter: policy::HttpRouteFilter) -> Result<Filter> {
+    fn try_policy_filter(filter: policy::HttpRouteFilter) -> Result<Option<Filter>> {
         let filter = match filter {
             policy::HttpRouteFilter::RequestHeaderModifier {
                 request_header_modifier,
             } => {
                 let filter = http_route::header_modifier(request_header_modifier)?;
-                Filter::RequestHeaderModifier(filter)
+                Some(Filter::RequestHeaderModifier(filter))
             }
 
             policy::HttpRouteFilter::ResponseHeaderModifier {
                 response_header_modifier,
             } => {
                 let filter = http_route::header_modifier(response_header_modifier)?;
-                Filter::ResponseHeaderModifier(filter)
+                Some(Filter::ResponseHeaderModifier(filter))
             }
 
             policy::HttpRouteFilter::RequestRedirect { request_redirect } => {
                 let filter = http_route::req_redirect(request_redirect)?;
-                Filter::RequestRedirect(filter)
+                Some(Filter::RequestRedirect(filter))
+            }
+
+            // Retry filters may be present if an HTTPRoute has both inbound
+            // (Server) *and* outbound (Service) parentRefs
+            policy::HttpRouteFilter::ExtensionRef { extension_ref }
+                if local_object_ref_targets_kind::<HttpRetryFilter>(&extension_ref) =>
+            {
+                None
+            }
+
+            policy::HttpRouteFilter::ExtensionRef { .. } => {
+                bail!("ExtensionRef filter is not supported")
             }
         };
         Ok(filter)

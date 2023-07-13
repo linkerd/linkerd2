@@ -5,7 +5,9 @@ use crate::{
 };
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
-use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
+use k8s_gateway_api::{
+    BackendObjectReference, HttpBackendRef, LocalObjectReference, ParentReference,
+};
 use linkerd_policy_controller_core::{
     http_route::GroupKindNamespaceName,
     outbound::{
@@ -14,7 +16,7 @@ use linkerd_policy_controller_core::{
     },
 };
 use linkerd_policy_controller_k8s_api::{
-    policy::{self as api, HttpRetryFilter},
+    policy::{self as api, httproute, HttpRetryFilter},
     ResourceExt, Service, Time,
 };
 use parking_lot::RwLock;
@@ -474,13 +476,13 @@ impl Namespace {
             .into_iter()
             .flatten()
             .filter_map(|b| convert_backend(&self.namespace, b, cluster, service_info))
-            .collect();
-
+            .collect::<Result<_>>()?;
+        let mut retry_policy = None;
         let filters = rule
             .filters
             .into_iter()
             .flatten()
-            .map(convert_linkerd_filter)
+            .filter_map(|filter| convert_linkerd_filter(filter, &mut retry_policy).transpose())
             .collect::<Result<_>>()?;
 
         let request_timeout = rule.timeouts.as_ref().and_then(|timeouts| {
@@ -514,6 +516,7 @@ impl Namespace {
             request_timeout,
             backend_request_timeout,
             filters,
+            retry_policy: todo!("eliza"),
         })
     }
 
@@ -535,13 +538,14 @@ impl Namespace {
             .into_iter()
             .flatten()
             .filter_map(|b| convert_backend(&self.namespace, b, cluster, service_info))
-            .collect();
+            .collect::<Result<_>>()?;
 
+        let mut retry_policy = None;
         let filters = rule
             .filters
             .into_iter()
             .flatten()
-            .map(convert_gateway_filter)
+            .filter_map(|filter| convert_gateway_filter(filter, &mut retry_policy).transpose())
             .collect::<Result<_>>()?;
 
         Ok(HttpRouteRule {
@@ -550,6 +554,7 @@ impl Namespace {
             request_timeout: None,
             backend_request_timeout: None,
             filters,
+            retry_policy: todo!("eliza"),
         })
     }
 }
@@ -559,18 +564,18 @@ fn convert_backend(
     backend: HttpBackendRef,
     cluster: &ClusterInfo,
     services: &HashMap<ServiceRef, ServiceInfo>,
-) -> Option<Backend> {
+) -> Option<Result<Backend>> {
     let filters = backend.filters;
     let backend = backend.backend_ref?;
     if !is_backend_service(&backend.inner) {
-        return Some(Backend::Invalid {
+        return Some(Ok(Backend::Invalid {
             weight: backend.weight.unwrap_or(1).into(),
             message: format!(
                 "unsupported backend type {group} {kind}",
                 group = backend.inner.group.as_deref().unwrap_or("core"),
                 kind = backend.inner.kind.as_deref().unwrap_or("<empty>"),
             ),
-        });
+        }));
     }
 
     let name = backend.inner.name;
@@ -586,10 +591,10 @@ fn convert_backend(
     {
         Some(port) => port,
         None => {
-            return Some(Backend::Invalid {
+            return Some(Ok(Backend::Invalid {
                 weight: weight.into(),
                 message: format!("missing port for backend Service {name}"),
-            })
+            }))
         }
     };
     let service_ref = ServiceRef {
@@ -597,38 +602,48 @@ fn convert_backend(
         namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
     };
     if !services.contains_key(&service_ref) {
-        return Some(Backend::Invalid {
+        return Some(Ok(Backend::Invalid {
             weight: weight.into(),
             message: format!("Service not found {name}"),
-        });
+        }));
     }
 
+    let mut retry_policy = None;
     let filters = match filters
         .into_iter()
         .flatten()
-        .map(convert_gateway_filter)
+        .filter_map(|filter| convert_gateway_filter(filter, &mut retry_policy).transpose())
         .collect::<Result<_>>()
     {
         Ok(filters) => filters,
         Err(error) => {
-            return Some(Backend::Invalid {
+            return Some(Ok(Backend::Invalid {
                 weight: backend.weight.unwrap_or(1).into(),
                 message: format!("unsupported backend filter: {error}", error = error),
-            });
+            }));
         }
     };
 
-    Some(Backend::Service(WeightedService {
+    if retry_policy.is_some() {
+        return Some(Err(anyhow::anyhow!(
+            "HTTPRetryFilters may only be applied to HTTPRoute rules, not to inidividual backends"
+        )));
+    }
+
+    Some(Ok(Backend::Service(WeightedService {
         weight: weight.into(),
         authority: cluster.service_dns_authority(&service_ref.namespace, &name, port),
         name,
         namespace: ns.to_string(),
         port,
         filters,
-    }))
+    })))
 }
 
-fn convert_linkerd_filter(filter: api::httproute::HttpRouteFilter) -> Result<Filter> {
+fn convert_linkerd_filter(
+    filter: api::httproute::HttpRouteFilter,
+    retry_policy: &mut Option<LocalObjectReference>,
+) -> Result<Option<Filter>> {
     let filter = match filter {
         api::httproute::HttpRouteFilter::RequestHeaderModifier {
             request_header_modifier,
@@ -648,11 +663,27 @@ fn convert_linkerd_filter(filter: api::httproute::HttpRouteFilter) -> Result<Fil
             let filter = http_route::req_redirect(request_redirect)?;
             Filter::RequestRedirect(filter)
         }
+
+        api::httproute::HttpRouteFilter::ExtensionRef { extension_ref } => {
+            // If this extensionRef doesn't target a filter type we care about,
+            // just ignore it.
+            if httproute::local_object_ref_targets_kind::<HttpRetryFilter>(&extension_ref) {
+                if retry_policy.is_some() {
+                    bail!("an HTTPRoute rule may not have more than one HTTPRetryFilter")
+                }
+                *retry_policy = Some(extension_ref);
+            }
+
+            return Ok(None);
+        }
     };
-    Ok(filter)
+    Ok(Some(filter))
 }
 
-fn convert_gateway_filter(filter: k8s_gateway_api::HttpRouteFilter) -> Result<Filter> {
+fn convert_gateway_filter(
+    filter: k8s_gateway_api::HttpRouteFilter,
+    retry_policy: &mut Option<LocalObjectReference>,
+) -> Result<Option<Filter>> {
     let filter = match filter {
         k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
             request_header_modifier,
@@ -678,11 +709,21 @@ fn convert_gateway_filter(filter: k8s_gateway_api::HttpRouteFilter) -> Result<Fi
         k8s_gateway_api::HttpRouteFilter::URLRewrite { .. } => {
             bail!("URLRewrite filter is not supported")
         }
-        k8s_gateway_api::HttpRouteFilter::ExtensionRef { .. } => {
-            bail!("ExtensionRef filter is not supported")
+
+        k8s_gateway_api::HttpRouteFilter::ExtensionRef { extension_ref } => {
+            // If this extensionRef doesn't target a filter type we care about,
+            // just ignore it.
+            if httproute::local_object_ref_targets_kind::<HttpRetryFilter>(&extension_ref) {
+                if retry_policy.is_some() {
+                    bail!("an HTTPRoute rule may not have more than one HTTPRetryFilter")
+                }
+                *retry_policy = Some(extension_ref);
+            }
+
+            return Ok(None);
         }
     };
-    Ok(filter)
+    Ok(Some(filter))
 }
 
 #[inline]

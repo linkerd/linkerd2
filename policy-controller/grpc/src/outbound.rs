@@ -12,7 +12,7 @@ use linkerd_policy_controller_core::{
     http_route::GroupKindNamespaceName,
     outbound::{
         Backend, DiscoverOutboundPolicy, Filter, HttpRoute, HttpRouteRule, OutboundDiscoverTarget,
-        OutboundPolicy, OutboundPolicyStream,
+        OutboundPolicy, OutboundPolicyStream, RouteRetryPolicy, StatusRange,
     },
 };
 use std::{net::SocketAddr, num::NonZeroU16, sync::Arc, time};
@@ -279,10 +279,12 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
                 http1: Some(outbound::proxy_protocol::Http1 {
                     routes: http_routes.clone(),
                     failure_accrual: accrual.clone(),
+                    retry_budget: Some(default_retry_budget()),
                 }),
                 http2: Some(outbound::proxy_protocol::Http2 {
                     routes: http_routes,
                     failure_accrual: accrual,
+                    retry_budget: Some(default_retry_budget()),
                 }),
             },
         )
@@ -367,7 +369,7 @@ fn convert_outbound_http_route(
                     filters: filters.into_iter().map(convert_filter).collect(),
                     request_timeout: request_timeout
                         .and_then(|d| convert_duration("request timeout", d)),
-                    retry,
+                    retry_policy: retry_policy.map(convert_http_retry_policy),
                 }
             },
         )
@@ -563,6 +565,17 @@ fn default_queue_config() -> outbound::Queue {
     }
 }
 
+fn default_retry_budget() -> destination::RetryBudget {
+    destination::RetryBudget {
+        retry_ratio: 0.2,
+        min_retries_per_second: 10,
+        ttl: Some(prost_types::Duration {
+            seconds: 10,
+            nanos: 0,
+        }),
+    }
+}
+
 fn convert_duration(name: &'static str, duration: time::Duration) -> Option<prost_types::Duration> {
     duration
         .try_into()
@@ -585,5 +598,25 @@ fn convert_filter(filter: Filter) -> outbound::http_route::Filter {
             }
             Filter::RequestRedirect(f) => Kind::Redirect(http_route::convert_redirect_filter(f)),
         }),
+    }
+}
+
+fn convert_http_retry_policy(
+    RouteRetryPolicy {
+        max_per_request,
+        statuses,
+    }: RouteRetryPolicy,
+) -> outbound::http_route::RetryPolicy {
+    let retry_statuses = statuses
+        .into_iter()
+        .map(|StatusRange { min, max }| destination::HttpStatusRange {
+            min: min.as_u16() as u32,
+            max: max.as_u16() as u32,
+        })
+        .collect();
+    let max_per_request = max_per_request.map(std::num::NonZeroU32::get).unwrap_or(0);
+    outbound::http_route::RetryPolicy {
+        retry_statuses,
+        max_per_request,
     }
 }
