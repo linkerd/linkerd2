@@ -154,7 +154,7 @@ jobs:
       - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753
         with:
           go-version: '1.19'
-      - uses: docker/setup-buildx-action@2a1a44ac4aa01993040736bd95bb470da1a38365
+      - uses: docker/setup-buildx-action@4c0219f9ac95b02789c1075625400b2acbff50b1
       - name: Pull linkerd binary
         run: |
           TAG='${{ needs.tag.outputs.tag }}'
