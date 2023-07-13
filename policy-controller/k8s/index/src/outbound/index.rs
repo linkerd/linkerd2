@@ -13,7 +13,10 @@ use linkerd_policy_controller_core::{
         WeightedService,
     },
 };
-use linkerd_policy_controller_k8s_api::{policy as api, ResourceExt, Service, Time};
+use linkerd_policy_controller_k8s_api::{
+    policy::{self as api, HttpRetryFilter},
+    ResourceExt, Service, Time,
+};
 use parking_lot::RwLock;
 use std::{hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time};
 use tokio::sync::watch;
@@ -49,6 +52,7 @@ struct Namespace {
     /// Stores the route resources (by service name) that do not
     /// explicitly target a port.
     service_routes: HashMap<String, HashMap<GroupKindNamespaceName, HttpRoute>>,
+    retry_filters: HashMap<String, HttpRetryFilter>,
     namespace: Arc<String>,
 }
 
@@ -148,11 +152,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         self.namespaces
             .by_ns
             .entry(ns.clone())
-            .or_insert_with(|| Namespace {
-                service_routes: Default::default(),
-                service_port_routes: Default::default(),
-                namespace: Arc::new(ns),
-            })
+            .or_insert_with(|| Namespace::new(ns))
             .update_service(service.name_unchecked(), &service_info);
 
         self.service_info.insert(
@@ -168,6 +168,16 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         let service_ref = ServiceRef { name, namespace };
         self.service_info.remove(&service_ref);
         self.services_by_ip.retain(|_, v| *v != service_ref);
+    }
+}
+
+impl kubert::index::IndexNamespacedResource<HttpRetryFilter> for Index {
+    fn apply(&mut self, resource: HttpRetryFilter) {
+        todo!("eliza")
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        todo!("eliza")
     }
 }
 
@@ -194,11 +204,7 @@ impl Index {
             .namespaces
             .by_ns
             .entry(service_namespace.clone())
-            .or_insert_with(|| Namespace {
-                service_routes: Default::default(),
-                service_port_routes: Default::default(),
-                namespace: Arc::new(service_namespace.to_string()),
-            });
+            .or_insert_with(|| Namespace::new(service_namespace));
         let key = ServicePort {
             service: service_name,
             port: service_port,
@@ -231,11 +237,7 @@ impl Index {
             self.namespaces
                 .by_ns
                 .entry(ns.clone())
-                .or_insert_with(|| Namespace {
-                    service_routes: Default::default(),
-                    service_port_routes: Default::default(),
-                    namespace: Arc::new(ns),
-                })
+                .or_insert_with(|| Namespace::new(ns))
                 .apply(
                     route.clone(),
                     parent_ref,
@@ -247,6 +249,15 @@ impl Index {
 }
 
 impl Namespace {
+    fn new(ns: String) -> Self {
+        Self {
+            service_routes: Default::default(),
+            service_port_routes: Default::default(),
+            retry_filters: Default::default(),
+            namespace: Arc::new(ns),
+        }
+    }
+
     fn apply(
         &mut self,
         route: HttpRouteResource,

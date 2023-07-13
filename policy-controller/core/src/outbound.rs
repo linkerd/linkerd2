@@ -2,10 +2,16 @@ use crate::http_route::{
     GroupKindNamespaceName, HeaderModifierFilter, HostMatch, HttpRouteMatch, RequestRedirectFilter,
 };
 use ahash::AHashMap as HashMap;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::{offset::Utc, DateTime};
 use futures::prelude::*;
-use std::{net::IpAddr, num::NonZeroU16, pin::Pin, time};
+use std::{
+    net::IpAddr,
+    num::{NonZeroU16, NonZeroU32},
+    pin::Pin,
+    str::FromStr,
+    time,
+};
 
 /// Models outbound policy discovery.
 #[async_trait::async_trait]
@@ -54,6 +60,7 @@ pub struct HttpRouteRule {
     pub request_timeout: Option<time::Duration>,
     pub backend_request_timeout: Option<time::Duration>,
     pub filters: Vec<Filter>,
+    pub retry_policy: Option<RouteRetryPolicy>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -97,4 +104,46 @@ pub enum Filter {
     RequestHeaderModifier(HeaderModifierFilter),
     ResponseHeaderModifier(HeaderModifierFilter),
     RequestRedirect(RequestRedirectFilter),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RouteRetryPolicy {
+    pub max_per_request: Option<NonZeroU32>,
+    pub statuses: Vec<StatusRange>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum StatusRange {
+    Single(http::StatusCode),
+    Range {
+        min: http::StatusCode,
+        max: http::StatusCode,
+    },
+}
+
+impl FromStr for StatusRange {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let s = s.trim();
+        let mut parts = s.split('-');
+        let min = parts
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("status range must be non-empty"))?;
+        let min = min
+            .trim()
+            .parse::<http::StatusCode>()
+            .with_context(|| format!("invalid status range minimum {min:?}"))?;
+        let max = parts
+            .next()
+            .map(|max| {
+                max.trim()
+                    .parse::<http::StatusCode>()
+                    .with_context(|| format!("invalid status range maximum {max:?}"))
+            })
+            .transpose()?;
+        match max {
+            Some(max) => Ok(StatusRange::Range { min, max }),
+            None => Ok(StatusRange::Single(min)),
+        }
+    }
 }

@@ -338,6 +338,7 @@ fn convert_outbound_http_route(
                  request_timeout,
                  backend_request_timeout,
                  filters,
+                 retry_policy,
              }| {
                 let backend_request_timeout = backend_request_timeout
                     .and_then(|d| convert_duration("backend request_timeout", d));
@@ -366,6 +367,7 @@ fn convert_outbound_http_route(
                     filters: filters.into_iter().map(convert_filter).collect(),
                     request_timeout: request_timeout
                         .and_then(|d| convert_duration("request timeout", d)),
+                    retry,
                 }
             },
         )
