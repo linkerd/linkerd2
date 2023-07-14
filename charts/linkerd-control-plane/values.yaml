@@ -266,6 +266,8 @@ networkValidator:
   listenAddr: "0.0.0.0:4140"
   # -- Timeout before network-validator fails to validate the pod's network connectivity
   timeout: "10s"
+  # -- Include a securityContext in the network-validator pod spec
+  enableSecurityContext: true
 
 # -- For Private docker registries, authentication is needed.
 #  Registry secrets are applied to the respective service accounts
