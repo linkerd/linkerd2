@@ -12,7 +12,7 @@ use linkerd_policy_controller_core::{
     http_route::{FailureInjectorFilter, GroupKindNamespaceName, Ratio},
     outbound::{
         Backend, Backoff, FailureAccrual, Filter, HttpRoute, HttpRouteRule, OutboundPolicy,
-        RouteRetryPolicy, WeightedService,
+        RetryPolicy, RetryPolicyState, RouteRetryPolicy, WeightedService,
     },
 };
 use linkerd_policy_controller_k8s_api::{
@@ -54,7 +54,7 @@ struct Namespace {
     /// Stores the route resources (by service name) that do not
     /// explicitly target a port.
     service_routes: HashMap<String, HashMap<GroupKindNamespaceName, HttpRoute>>,
-    retry_filters: HashMap<String, RouteRetryPolicy>,
+    retry_filters: HashMap<String, Arc<RetryPolicy>>,
     namespace: Arc<String>,
 }
 
@@ -174,12 +174,31 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
 }
 
 impl kubert::index::IndexNamespacedResource<HttpRetryFilter> for Index {
-    fn apply(&mut self, resource: HttpRetryFilter) {
-        todo!("eliza")
+    fn apply(&mut self, filter: HttpRetryFilter) {
+        let name = filter.name_unchecked();
+        let ns = filter
+            .namespace()
+            .expect("HttpRetryFilter must have a namespace");
+        let filter = match super::retry_filter(filter) {
+            Err(error) => {
+                tracing::warn!(?name, ?ns, %error, "invalid HTTPRetryFilter");
+                return;
+            }
+            Ok(filter) => filter,
+        };
+        self.namespaces
+            .by_ns
+            .entry(ns.clone())
+            .or_insert_with(|| Namespace::new(ns))
+            .update_retry_filter(name, Some(Arc::new(filter)));
     }
 
-    fn delete(&mut self, namespace: String, name: String) {
-        todo!("eliza")
+    fn delete(&mut self, ns: String, name: String) {
+        self.namespaces
+            .by_ns
+            .entry(ns.clone())
+            .or_insert_with(|| Namespace::new(ns))
+            .update_retry_filter(name, None);
     }
 }
 
@@ -331,6 +350,18 @@ impl Namespace {
         }
     }
 
+    fn update_retry_filter(&mut self, name: String, filter: Option<Arc<RetryPolicy>>) {
+        tracing::debug!(?name, ?filter, "updating retry filter");
+        for (_, svc) in self.service_port_routes.iter_mut() {
+            svc.update_retry_filter(&self.namespace, &name, filter.as_ref());
+        }
+        if let Some(filter) = filter {
+            self.retry_filters.insert(name, filter);
+        } else {
+            self.retry_filters.remove(&name);
+        }
+    }
+
     fn service_routes_or_default(
         &mut self,
         sp: ServicePort,
@@ -478,19 +509,13 @@ impl Namespace {
             .filter_map(|b| convert_backend(&self.namespace, b, cluster, service_info))
             .collect::<Result<_>>()?;
         let mut retry_policy = None;
-        let mut filters = rule
+        let filters = rule
             .filters
             .into_iter()
             .flatten()
             .filter_map(|filter| convert_linkerd_filter(filter, &mut retry_policy).transpose())
             .collect::<Result<Vec<Filter>>>()?;
-        let retry_policy = retry_policy.and_then(|r| match self.convert_retry_policy(r) {
-            Ok(policy) => Some(policy),
-            Err(error) => {
-                filters.push(Filter::FailureInjector(error));
-                None
-            }
-        });
+        let retry_policy = retry_policy.map(|r| self.convert_retry_policy(r));
 
         let request_timeout = rule.timeouts.as_ref().and_then(|timeouts| {
             let timeout = time::Duration::from(timeouts.request?);
@@ -548,19 +573,13 @@ impl Namespace {
             .collect::<Result<_>>()?;
 
         let mut retry_policy = None;
-        let mut filters = rule
+        let filters = rule
             .filters
             .into_iter()
             .flatten()
             .filter_map(|filter| convert_gateway_filter(filter, &mut retry_policy).transpose())
             .collect::<Result<Vec<Filter>>>()?;
-        let retry_policy = retry_policy.and_then(|r| match self.convert_retry_policy(r) {
-            Ok(policy) => Some(policy),
-            Err(error) => {
-                filters.push(Filter::FailureInjector(error));
-                None
-            }
-        });
+        let retry_policy = retry_policy.map(|r| self.convert_retry_policy(r));
 
         Ok(HttpRouteRule {
             matches,
@@ -574,26 +593,13 @@ impl Namespace {
 
     fn convert_retry_policy(
         &self,
-        retry_ref: LocalObjectReference,
-    ) -> Result<RouteRetryPolicy, FailureInjectorFilter> {
-        self.retry_filters
-            .get(&retry_ref.name)
-            .cloned()
-            .ok_or_else(|| {
-                // > If a reference to a custom filter type cannot be resolved, the
-                // > filter MUST NOT be skipped. Instead, requests that would have been
-                // > processed by that filter MUST receive a HTTP error response.
-                // - https://gateway-api.sigs.k8s.io/v1alpha2/references/spec/#gateway.networking.k8s.io%2fv1beta1.HTTPRouteFilter
-                tracing::warn!("No HTTPRetryFilter respolved for {retry_ref:?}");
-                FailureInjectorFilter {
-                    status: http::StatusCode::INTERNAL_SERVER_ERROR,
-                    message: format!("No HTTPRetryFilter resolved for {retry_ref:?}"),
-                    ratio: Ratio {
-                        numerator: 1,
-                        denominator: 1,
-                    },
-                }
-            })
+        LocalObjectReference { name, .. }: LocalObjectReference,
+    ) -> RouteRetryPolicy {
+        let state = match self.retry_filters.get(&name).cloned() {
+            Some(policy) => RetryPolicyState::Resolved(policy),
+            None => RetryPolicyState::NotResolved(invalid_retry_filter(&self.namespace, &name)),
+        };
+        RouteRetryPolicy { name, state }
     }
 }
 
@@ -872,6 +878,27 @@ impl ServiceRoutes {
         }
     }
 
+    fn update_retry_filter(&mut self, ns: &str, name: &str, filter: Option<&Arc<RetryPolicy>>) {
+        for watch in self.watches_by_ns.values_mut() {
+            let rules = watch.routes.values_mut().flat_map(|r| r.rules.iter_mut());
+            for HttpRouteRule {
+                ref mut retry_policy,
+                ..
+            } in rules
+            {
+                if let Some(ref mut policy) = retry_policy {
+                    if policy.name == name {
+                        policy.state = match filter {
+                            Some(filter) => RetryPolicyState::Resolved(filter.clone()),
+                            None => RetryPolicyState::NotResolved(invalid_retry_filter(ns, name)),
+                        }
+                    }
+                }
+            }
+            watch.send_if_modified()
+        }
+    }
+
     fn delete(&mut self, gknn: &GroupKindNamespaceName) {
         for watch in self.watches_by_ns.values_mut() {
             watch.routes.remove(gknn);
@@ -981,4 +1008,20 @@ fn parse_duration(s: &str) -> Result<time::Duration> {
         .checked_mul(mul)
         .ok_or_else(|| anyhow::anyhow!("Timeout value {} overflows when converted to 'ms'", s))?;
     Ok(time::Duration::from_millis(ms))
+}
+
+fn invalid_retry_filter(ns: &str, name: &str) -> FailureInjectorFilter {
+    // > If a reference to a custom filter type cannot be resolved, the
+    // > filter MUST NOT be skipped. Instead, requests that would have been
+    // > processed by that filter MUST receive a HTTP error response.
+    // - https://gateway-api.sigs.k8s.io/v1alpha2/references/spec/#gateway.networking.k8s.io%2fv1beta1.HTTPRouteFilter
+    tracing::warn!(%ns, %name, "No HTTPRetryFilter resolved");
+    FailureInjectorFilter {
+        status: http::StatusCode::INTERNAL_SERVER_ERROR,
+        message: format!("No HTTPRetryFilter resolved for {ns}/{name}"),
+        ratio: Ratio {
+            numerator: 1,
+            denominator: 1,
+        },
+    }
 }

@@ -11,6 +11,7 @@ use std::{
     num::{NonZeroU16, NonZeroU32},
     pin::Pin,
     str::FromStr,
+    sync::Arc,
     time,
 };
 
@@ -112,11 +113,23 @@ pub enum Filter {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RouteRetryPolicy {
+    pub name: String,
+    pub state: RetryPolicyState,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RetryPolicyState {
+    NotResolved(FailureInjectorFilter),
+    Resolved(Arc<RetryPolicy>),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RetryPolicy {
     pub max_per_request: Option<NonZeroU32>,
     pub statuses: Vec<StatusRange>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct StatusRange {
     pub min: http::StatusCode,
     pub max: http::StatusCode,

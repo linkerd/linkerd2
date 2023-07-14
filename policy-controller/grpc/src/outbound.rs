@@ -12,7 +12,7 @@ use linkerd_policy_controller_core::{
     http_route::GroupKindNamespaceName,
     outbound::{
         Backend, DiscoverOutboundPolicy, Filter, HttpRoute, HttpRouteRule, OutboundDiscoverTarget,
-        OutboundPolicy, OutboundPolicyStream, RouteRetryPolicy, StatusRange,
+        OutboundPolicy, OutboundPolicyStream, RetryPolicyState, RouteRetryPolicy, StatusRange,
     },
 };
 use std::{net::SocketAddr, num::NonZeroU16, sync::Arc, time};
@@ -363,13 +363,22 @@ fn convert_outbound_http_route(
                         outbound::http_route::distribution::RandomAvailable { backends },
                     )
                 };
+                let mut filters = filters.into_iter().map(convert_filter).collect::<Vec<_>>();
+                let retry_policy = retry_policy.and_then(|r| match convert_http_retry_policy(r) {
+                    Ok(policy) => Some(policy),
+                    Err(filter) => {
+                        filters.push(filter);
+                        None
+                    }
+                });
+
                 outbound::http_route::Rule {
                     matches: matches.into_iter().map(http_route::convert_match).collect(),
                     backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
-                    filters: filters.into_iter().map(convert_filter).collect(),
+                    filters,
                     request_timeout: request_timeout
                         .and_then(|d| convert_duration("request timeout", d)),
-                    retry_policy: retry_policy.map(convert_http_retry_policy),
+                    retry_policy,
                 }
             },
         )
@@ -606,21 +615,32 @@ fn convert_filter(filter: Filter) -> outbound::http_route::Filter {
 }
 
 fn convert_http_retry_policy(
-    RouteRetryPolicy {
-        max_per_request,
-        statuses,
-    }: RouteRetryPolicy,
-) -> outbound::http_route::RetryPolicy {
-    let retry_statuses = statuses
-        .into_iter()
-        .map(|StatusRange { min, max }| destination::HttpStatusRange {
-            min: min.as_u16() as u32,
-            max: max.as_u16() as u32,
-        })
-        .collect();
-    let max_per_request = max_per_request.map(std::num::NonZeroU32::get).unwrap_or(0);
-    outbound::http_route::RetryPolicy {
-        retry_statuses,
-        max_per_request,
+    policy: RouteRetryPolicy,
+) -> Result<outbound::http_route::RetryPolicy, outbound::http_route::Filter> {
+    use outbound::http_route::filter::Kind;
+    match policy.state {
+        RetryPolicyState::Resolved(policy) => {
+            let retry_statuses = policy
+                .statuses
+                .iter()
+                .map(|&StatusRange { min, max }| destination::HttpStatusRange {
+                    min: min.as_u16() as u32,
+                    max: max.as_u16() as u32,
+                })
+                .collect();
+            let max_per_request = policy
+                .max_per_request
+                .map(std::num::NonZeroU32::get)
+                .unwrap_or(0);
+            Ok(outbound::http_route::RetryPolicy {
+                retry_statuses,
+                max_per_request,
+            })
+        }
+        RetryPolicyState::NotResolved(f) => Err(outbound::http_route::Filter {
+            kind: Some(Kind::FailureInjector(
+                http_route::convert_failure_injector_filter(f),
+            )),
+        }),
     }
 }

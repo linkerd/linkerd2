@@ -1,10 +1,10 @@
 use crate::k8s::{
     labels,
     policy::{
-        httproute, AuthorizationPolicy, AuthorizationPolicySpec, HttpRoute, HttpRouteSpec,
-        LocalTargetRef, MeshTLSAuthentication, MeshTLSAuthenticationSpec, NamespacedTargetRef,
-        NetworkAuthentication, NetworkAuthenticationSpec, Server, ServerAuthorization,
-        ServerAuthorizationSpec, ServerSpec,
+        httproute, AuthorizationPolicy, AuthorizationPolicySpec, HttpRetryFilter, HttpRoute,
+        HttpRouteSpec, LocalTargetRef, MeshTLSAuthentication, MeshTLSAuthenticationSpec,
+        NamespacedTargetRef, NetworkAuthentication, NetworkAuthenticationSpec, Server,
+        ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
     },
 };
 use anyhow::{anyhow, bail, ensure, Result};
@@ -452,20 +452,6 @@ impl Validate<HttpRouteSpec> for Admission {
             Ok(())
         }
 
-        fn validate_filter(filter: httproute::HttpRouteFilter) -> Result<()> {
-            match filter {
-                httproute::HttpRouteFilter::RequestHeaderModifier {
-                    request_header_modifier,
-                } => http_route::header_modifier(request_header_modifier).map(|_| ()),
-                httproute::HttpRouteFilter::ResponseHeaderModifier {
-                    response_header_modifier,
-                } => http_route::header_modifier(response_header_modifier).map(|_| ()),
-                httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
-                    http_route::req_redirect(request_redirect).map(|_| ())
-                }
-            }
-        }
-
         fn validate_timeouts(timeouts: httproute::HttpRouteTimeouts) -> Result<()> {
             use std::time::Duration;
 
@@ -488,6 +474,36 @@ impl Validate<HttpRouteSpec> for Admission {
             }
             Ok(())
         }
+
+        let mut has_seen_retry_filter = false;
+        let mut validate_filter = move |filter: httproute::HttpRouteFilter| -> Result<()> {
+            match filter {
+                httproute::HttpRouteFilter::RequestHeaderModifier {
+                    request_header_modifier,
+                } => http_route::header_modifier(request_header_modifier).map(|_| ()),
+                httproute::HttpRouteFilter::ResponseHeaderModifier {
+                    response_header_modifier,
+                } => http_route::header_modifier(response_header_modifier).map(|_| ()),
+                httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
+                    http_route::req_redirect(request_redirect).map(|_| ())
+                }
+                httproute::HttpRouteFilter::ExtensionRef { extension_ref }
+                    if httproute::local_object_ref_targets_kind::<HttpRetryFilter>(
+                        &extension_ref,
+                    ) =>
+                {
+                    ensure!(
+                        !has_seen_retry_filter,
+                        "an HTTPRoute rule may not contain multiple HTTPRetryFilters"
+                    );
+                    has_seen_retry_filter = true;
+                    Ok(())
+                }
+                httproute::HttpRouteFilter::ExtensionRef { extension_ref } => {
+                    bail!("unsupported extensionRef filter: {extension_ref:?}",)
+                }
+            }
+        };
 
         // Validate the rules in this spec.
         // This is essentially equivalent to the indexer's conversion function
