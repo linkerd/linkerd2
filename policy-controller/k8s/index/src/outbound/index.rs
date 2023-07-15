@@ -208,15 +208,32 @@ impl Index {
 
     fn apply(&mut self, route: HttpRouteResource) {
         tracing::debug!(name = route.name(), "indexing route");
-        let ns = route.namespace();
-        self.namespaces
-            .by_ns
-            .entry(ns.clone())
-            .or_insert_with(|| Namespace {
-                service_routes: Default::default(),
-                namespace: Arc::new(ns),
-            })
-            .apply(route, &self.namespaces.cluster_info, &self.service_info);
+
+        for parent_ref in route.inner().parent_refs.iter().flatten() {
+            if !is_parent_service(parent_ref) {
+                continue;
+            }
+            if !route_accepted_by_service(route.status(), &parent_ref.name) {
+                continue;
+            }
+            let ns = parent_ref
+                .namespace
+                .clone()
+                .unwrap_or_else(|| route.namespace());
+            self.namespaces
+                .by_ns
+                .entry(ns.clone())
+                .or_insert_with(|| Namespace {
+                    service_routes: Default::default(),
+                    namespace: Arc::new(ns),
+                })
+                .apply(
+                    route.clone(),
+                    parent_ref,
+                    &self.namespaces.cluster_info,
+                    &self.service_info,
+                );
+        }
     }
 }
 
@@ -224,6 +241,7 @@ impl Namespace {
     fn apply(
         &mut self,
         route: HttpRouteResource,
+        parent_ref: &ParentReference,
         cluster_info: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
     ) {
@@ -237,34 +255,25 @@ impl Namespace {
         };
         tracing::debug!(?outbound_route);
 
-        for parent_ref in route.inner().parent_refs.iter().flatten() {
-            if !is_parent_service(parent_ref) {
-                continue;
-            }
-            if !route_accepted_by_service(route.status(), &parent_ref.name) {
-                continue;
-            }
-
-            if let Some(port) = parent_ref.port {
-                if let Some(port) = NonZeroU16::new(port) {
-                    let service_port = ServicePort {
-                        port,
-                        service: parent_ref.name.clone(),
-                    };
-                    tracing::debug!(
-                        ?service_port,
-                        route = route.name(),
-                        "inserting route for service"
-                    );
-                    let service_routes =
-                        self.service_routes_or_default(service_port, cluster_info, service_info);
-                    service_routes.apply(route.gknn(), outbound_route.clone());
-                } else {
-                    tracing::warn!(?parent_ref, "ignoring parent_ref with port 0");
-                }
+        if let Some(port) = parent_ref.port {
+            if let Some(port) = NonZeroU16::new(port) {
+                let service_port = ServicePort {
+                    port,
+                    service: parent_ref.name.clone(),
+                };
+                tracing::debug!(
+                    ?service_port,
+                    route = route.name(),
+                    "inserting route for service"
+                );
+                let service_routes =
+                    self.service_routes_or_default(service_port, cluster_info, service_info);
+                service_routes.apply(route.gknn(), outbound_route);
             } else {
-                tracing::warn!(?parent_ref, "ignoring parent_ref without port");
+                tracing::warn!(?parent_ref, "ignoring parent_ref with port 0");
             }
+        } else {
+            tracing::warn!(?parent_ref, "ignoring parent_ref without port");
         }
     }
 

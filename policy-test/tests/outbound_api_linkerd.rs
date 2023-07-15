@@ -842,6 +842,167 @@ async fn backend_with_filters() {
     .await;
 }
 
+#[tokio::test(flavor = "current_thread")]
+async fn producer_route() {
+    with_temp_ns(|client, ns| async move {
+        // Create a service
+        let svc = create_service(&client, &ns, "my-svc", 4191).await;
+
+        let mut producer_rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let producer_config = producer_rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?producer_config);
+
+        let mut consumer_rx = retry_watch_outbound_policy(&client, "consumer_ns", &svc).await;
+        let consumer_config = consumer_rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?consumer_config);
+
+        // There should be a default route.
+        detect_http_routes(&producer_config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
+        detect_http_routes(&consumer_config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
+
+        // A route created in the same namespace as its parent service is called
+        // a producer route. It should be returned in outbound policy requests
+        // for that service from ALL namespaces.
+        let _route = create(&client, mk_http_route(&ns, "foo-route", &svc, 4191).build()).await;
+
+        let producer_config = producer_rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an updated config");
+        tracing::trace!(?producer_config);
+        let consumer_config = consumer_rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?consumer_config);
+
+        // The route should be returned in queries from the producer namespace.
+        detect_http_routes(&producer_config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_name_eq(route, "foo-route");
+        });
+
+        // The route should be returned in queries from a consumer namespace.
+        detect_http_routes(&consumer_config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_name_eq(route, "foo-route");
+        });
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn consumer_route() {
+    with_temp_ns(|client, ns| async move {
+        // Create a service
+        let svc = create_service(&client, &ns, "my-svc", 4191).await;
+
+        let consumer_ns_name = format!("{}-consumer", ns);
+        let consumer_ns = create_cluster_scoped(
+            &client,
+            k8s::Namespace {
+                metadata: k8s::ObjectMeta {
+                    name: Some(consumer_ns_name.clone()),
+                    labels: Some(convert_args!(btreemap!(
+                        "linkerd-policy-test" => std::thread::current().name().unwrap_or(""),
+                    ))),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
+        .await;
+
+        let mut producer_rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let producer_config = producer_rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?producer_config);
+
+        let mut consumer_rx = retry_watch_outbound_policy(&client, &consumer_ns_name, &svc).await;
+        let consumer_config = consumer_rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?consumer_config);
+
+        let mut other_rx = retry_watch_outbound_policy(&client, "other_ns", &svc).await;
+        let other_config = other_rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?other_config);
+
+        // There should be a default route.
+        detect_http_routes(&producer_config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
+        detect_http_routes(&consumer_config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
+        detect_http_routes(&other_config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
+
+        // A route created in a different namespace as its parent service is
+        // called a consumer route. It should be returned in outbound policy
+        // requests for that service ONLY when the request comes from the
+        // consumer namespace.
+        let _route = create(
+            &client,
+            mk_http_route(&consumer_ns_name, "foo-route", &svc, 4191).build(),
+        )
+        .await;
+
+        // The route should NOT be returned in queries from the producer namespace.
+        // There should be a default route.
+        assert!(producer_rx.next().now_or_never().is_none());
+
+        // The route should be returned in queries from the same consumer
+        // namespace.
+        let consumer_config = consumer_rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?consumer_config);
+        detect_http_routes(&consumer_config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_name_eq(route, "foo-route");
+        });
+
+        // The route should NOT be returned in queries from a different consumer
+        // namespace.
+        assert!(other_rx.next().now_or_never().is_none());
+
+        delete_cluster_scoped(&client, consumer_ns).await;
+    })
+    .await;
+}
+
 /* Helpers */
 
 struct HttpRouteBuilder(k8s::policy::HttpRoute);
@@ -1172,4 +1333,13 @@ fn assert_backend_matches_service(
 fn assert_singleton<T>(ts: &[T]) -> &T {
     assert_eq!(ts.len(), 1);
     ts.get(0).unwrap()
+}
+
+#[track_caller]
+fn assert_route_name_eq(route: &grpc::outbound::HttpRoute, name: &str) {
+    let kind = route.metadata.as_ref().unwrap().kind.as_ref().unwrap();
+    match kind {
+        grpc::meta::metadata::Kind::Default(_) => panic!("route expected to not be default"),
+        grpc::meta::metadata::Kind::Resource(resource) => assert_eq!(resource.name, *name),
+    }
 }
