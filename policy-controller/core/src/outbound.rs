@@ -1,5 +1,6 @@
 use crate::http_route::{
-    GroupKindName, HostMatch, HttpRouteMatch, RequestHeaderModifierFilter, RequestRedirectFilter,
+    GroupKindNamespaceName, HostMatch, HttpRouteMatch, RequestHeaderModifierFilter,
+    RequestRedirectFilter,
 };
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
@@ -14,14 +15,20 @@ pub trait DiscoverOutboundPolicy<T> {
 
     async fn watch_outbound_policy(&self, target: T) -> Result<Option<OutboundPolicyStream>>;
 
-    fn lookup_ip(&self, addr: IpAddr, port: NonZeroU16) -> Option<T>;
+    fn lookup_ip(&self, addr: IpAddr, port: NonZeroU16, source_namespace: String) -> Option<T>;
 }
 
 pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send + Sync + 'static>>;
 
+pub struct OutboundDiscoverTarget {
+    pub service_name: String,
+    pub service_namespace: String,
+    pub service_port: NonZeroU16,
+    pub source_namespace: String,
+}
 #[derive(Clone, Debug, PartialEq)]
 pub struct OutboundPolicy {
-    pub http_routes: HashMap<GroupKindName, HttpRoute>,
+    pub http_routes: HashMap<GroupKindNamespaceName, HttpRoute>,
     pub authority: String,
     pub name: String,
     pub namespace: String,

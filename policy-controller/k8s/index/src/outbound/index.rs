@@ -7,7 +7,7 @@ use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
 use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
 use linkerd_policy_controller_core::{
-    http_route::GroupKindName,
+    http_route::GroupKindNamespaceName,
     outbound::{
         Backend, Backoff, FailureAccrual, Filter, HttpRoute, HttpRouteRule, OutboundPolicy,
         WeightedService,
@@ -60,10 +60,21 @@ struct ServicePort {
 
 #[derive(Debug)]
 struct ServiceRoutes {
-    routes: HashMap<GroupKindName, HttpRoute>,
-    watch: watch::Sender<OutboundPolicy>,
+    namespace: Arc<String>,
+    name: String,
+    port: NonZeroU16,
+    authority: String,
+    watches_by_ns: HashMap<String, RoutesWatch>,
     opaque: bool,
     accrual: Option<FailureAccrual>,
+}
+
+#[derive(Debug)]
+struct RoutesWatch {
+    opaque: bool,
+    accrual: Option<FailureAccrual>,
+    routes: HashMap<GroupKindNamespaceName, HttpRoute>,
+    watch: watch::Sender<OutboundPolicy>,
 }
 
 impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
@@ -72,9 +83,9 @@ impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        if let Some(ns_index) = self.namespaces.by_ns.get_mut(&namespace) {
-            let gkn = gkn_for_linkerd_http_route(name);
-            ns_index.delete(gkn);
+        let gknn = gkn_for_linkerd_http_route(name).namespaced(namespace);
+        for ns_index in self.namespaces.by_ns.values_mut() {
+            ns_index.delete(&gknn);
         }
     }
 }
@@ -85,9 +96,9 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        if let Some(ns_index) = self.namespaces.by_ns.get_mut(&namespace) {
-            let gkn = gkn_for_gateway_http_route(name);
-            ns_index.delete(gkn);
+        let gknn = gkn_for_gateway_http_route(name).namespaced(namespace);
+        for ns_index in self.namespaces.by_ns.values_mut() {
+            ns_index.delete(&gknn);
         }
     }
 }
@@ -167,23 +178,28 @@ impl Index {
 
     pub fn outbound_policy_rx(
         &mut self,
-        namespace: String,
-        service: String,
-        port: NonZeroU16,
+        service_name: String,
+        service_namespace: String,
+        service_port: NonZeroU16,
+        source_namespace: String,
     ) -> Result<watch::Receiver<OutboundPolicy>> {
         let ns = self
             .namespaces
             .by_ns
-            .entry(namespace.clone())
+            .entry(service_namespace.clone())
             .or_insert_with(|| Namespace {
                 service_routes: Default::default(),
-                namespace: Arc::new(namespace.to_string()),
+                namespace: Arc::new(service_namespace.to_string()),
             });
-        let key = ServicePort { service, port };
+        let key = ServicePort {
+            service: service_name,
+            port: service_port,
+        };
         tracing::debug!(?key, "subscribing to service port");
         let routes =
             ns.service_routes_or_default(key, &self.namespaces.cluster_info, &self.service_info);
-        Ok(routes.watch.subscribe())
+        let watch = routes.watch_for_ns_or_default(source_namespace);
+        Ok(watch.watch.subscribe())
     }
 
     pub fn lookup_service(&self, addr: IpAddr) -> Option<ServiceRef> {
@@ -242,7 +258,7 @@ impl Namespace {
                     );
                     let service_routes =
                         self.service_routes_or_default(service_port, cluster_info, service_info);
-                    service_routes.apply(route.gkn(), outbound_route.clone());
+                    service_routes.apply(route.gknn(), outbound_route.clone());
                 } else {
                     tracing::warn!(?parent_ref, "ignoring parent_ref with port 0");
                 }
@@ -264,9 +280,9 @@ impl Namespace {
         }
     }
 
-    fn delete(&mut self, gkn: GroupKindName) {
+    fn delete(&mut self, gknn: &GroupKindNamespaceName) {
         for service in self.service_routes.values_mut() {
-            service.delete(&gkn);
+            service.delete(gknn);
         }
     }
 
@@ -287,20 +303,14 @@ impl Namespace {
                 None => (false, None),
             };
 
-            let (sender, _) = watch::channel(OutboundPolicy {
-                http_routes: Default::default(),
-                authority,
-                name: sp.service.clone(),
-                namespace: self.namespace.to_string(),
-                port: sp.port,
-                opaque,
-                accrual,
-            });
             ServiceRoutes {
-                routes: Default::default(),
-                watch: sender,
                 opaque,
                 accrual,
+                authority,
+                namespace: self.namespace.clone(),
+                name: sp.service,
+                port: sp.port,
+                watches_by_ns: Default::default(),
             }
         })
     }
@@ -628,22 +638,69 @@ fn is_service(group: Option<&str>, kind: &str) -> bool {
 }
 
 impl ServiceRoutes {
-    fn apply(&mut self, gkn: GroupKindName, route: HttpRoute) {
-        self.routes.insert(gkn, route);
-        self.send_if_modified();
+    fn watch_for_ns_or_default(&mut self, namespace: String) -> &mut RoutesWatch {
+        // The routes from the producer namespace apply to watches in all
+        // namespaces so we copy them.
+        let routes = self
+            .watches_by_ns
+            .get(self.namespace.as_ref())
+            .map(|watch| watch.routes.clone())
+            .unwrap_or_default();
+        self.watches_by_ns.entry(namespace).or_insert_with(|| {
+            let (sender, _) = watch::channel(OutboundPolicy {
+                http_routes: Default::default(),
+                authority: self.authority.clone(),
+                name: self.name.to_string(),
+                namespace: self.namespace.to_string(),
+                port: self.port,
+                opaque: self.opaque,
+                accrual: self.accrual,
+            });
+            RoutesWatch {
+                opaque: self.opaque,
+                accrual: self.accrual,
+                routes,
+                watch: sender,
+            }
+        })
+    }
+
+    fn apply(&mut self, gknn: GroupKindNamespaceName, route: HttpRoute) {
+        if *gknn.namespace == *self.namespace {
+            // This is a producer namespace route and should apply to watches
+            // from all namespaces.
+            for watch in self.watches_by_ns.values_mut() {
+                watch.routes.insert(gknn.clone(), route.clone());
+                watch.send_if_modified();
+            }
+        } else {
+            // This is a consumer namespace route and should only apply to
+            // watches from that namespace.
+            let watch = self.watch_for_ns_or_default(gknn.namespace.to_string());
+            watch.routes.insert(gknn, route);
+            watch.send_if_modified();
+        }
     }
 
     fn update_service(&mut self, opaque: bool, accrual: Option<FailureAccrual>) {
         self.opaque = opaque;
         self.accrual = accrual;
-        self.send_if_modified();
+        for watch in self.watches_by_ns.values_mut() {
+            watch.opaque = opaque;
+            watch.accrual = accrual;
+            watch.send_if_modified();
+        }
     }
 
-    fn delete(&mut self, gkn: &GroupKindName) {
-        self.routes.remove(gkn);
-        self.send_if_modified();
+    fn delete(&mut self, gknn: &GroupKindNamespaceName) {
+        for watch in self.watches_by_ns.values_mut() {
+            watch.routes.remove(gknn);
+            watch.send_if_modified();
+        }
     }
+}
 
+impl RoutesWatch {
     fn send_if_modified(&mut self) {
         self.watch.send_if_modified(|policy| {
             let mut modified = false;

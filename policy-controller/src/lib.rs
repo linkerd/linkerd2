@@ -8,7 +8,7 @@ use linkerd_policy_controller_core::inbound::{
     DiscoverInboundServer, InboundServer, InboundServerStream,
 };
 use linkerd_policy_controller_core::outbound::{
-    DiscoverOutboundPolicy, OutboundPolicy, OutboundPolicyStream,
+    DiscoverOutboundPolicy, OutboundDiscoverTarget, OutboundPolicy, OutboundPolicyStream,
 };
 pub use linkerd_policy_controller_core::IpNet;
 pub use linkerd_policy_controller_grpc as grpc;
@@ -60,12 +60,22 @@ impl DiscoverInboundServer<(String, String, NonZeroU16)> for InboundDiscover {
 }
 
 #[async_trait::async_trait]
-impl DiscoverOutboundPolicy<(String, String, NonZeroU16)> for OutboundDiscover {
+impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
     async fn get_outbound_policy(
         &self,
-        (namespace, service, port): (String, String, NonZeroU16),
+        OutboundDiscoverTarget {
+            service_name,
+            service_namespace,
+            service_port,
+            source_namespace,
+        }: OutboundDiscoverTarget,
     ) -> Result<Option<OutboundPolicy>> {
-        let rx = match self.0.write().outbound_policy_rx(namespace, service, port) {
+        let rx = match self.0.write().outbound_policy_rx(
+            service_name,
+            service_namespace,
+            service_port,
+            source_namespace,
+        ) {
             Ok(rx) => rx,
             Err(error) => {
                 tracing::error!(%error, "failed to get outbound policy rx");
@@ -78,18 +88,40 @@ impl DiscoverOutboundPolicy<(String, String, NonZeroU16)> for OutboundDiscover {
 
     async fn watch_outbound_policy(
         &self,
-        (namespace, service, port): (String, String, NonZeroU16),
+        OutboundDiscoverTarget {
+            service_name,
+            service_namespace,
+            service_port,
+            source_namespace,
+        }: OutboundDiscoverTarget,
     ) -> Result<Option<OutboundPolicyStream>> {
-        match self.0.write().outbound_policy_rx(namespace, service, port) {
+        match self.0.write().outbound_policy_rx(
+            service_name,
+            service_namespace,
+            service_port,
+            source_namespace,
+        ) {
             Ok(rx) => Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx)))),
             Err(_) => Ok(None),
         }
     }
 
-    fn lookup_ip(&self, addr: IpAddr, port: NonZeroU16) -> Option<(String, String, NonZeroU16)> {
+    fn lookup_ip(
+        &self,
+        addr: IpAddr,
+        port: NonZeroU16,
+        source_namespace: String,
+    ) -> Option<OutboundDiscoverTarget> {
         self.0
             .read()
             .lookup_service(addr)
-            .map(|outbound::ServiceRef { namespace, name }| (namespace, name, port))
+            .map(
+                |outbound::ServiceRef { name, namespace }| OutboundDiscoverTarget {
+                    service_name: name,
+                    service_namespace: namespace,
+                    service_port: port,
+                    source_namespace,
+                },
+            )
     }
 }
