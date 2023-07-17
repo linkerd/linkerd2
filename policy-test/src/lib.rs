@@ -72,6 +72,42 @@ where
         .expect("failed to create resource")
 }
 
+/// Replace a namespace-scoped resource with a new one.
+pub async fn replace<T>(client: &kube::Client, mut prev: T, mut obj: T) -> T
+where
+    T: kube::Resource<Scope = kube::core::NamespaceResourceScope>,
+    T: serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug,
+    T::DynamicType: Default,
+{
+    let name = obj.name_unchecked();
+
+    assert_eq!(
+        name,
+        prev.name_unchecked(),
+        "cannot replace an object with an unrelated object"
+    );
+    assert_eq!(
+        obj.namespace(),
+        prev.namespace(),
+        "cannot replace an object with an object in a different namespace"
+    );
+
+    let params = kube::api::PostParams {
+        field_manager: Some("linkerd-policy-test".to_string()),
+        ..Default::default()
+    };
+    let api = obj
+        .namespace()
+        .map(|ns| kube::Api::<T>::namespaced(client.clone(), &ns))
+        .unwrap_or_else(|| kube::Api::<T>::default_namespaced(client.clone()));
+
+    obj.meta_mut().resource_version = prev.meta_mut().resource_version.take();
+    tracing::trace!(?obj, "Replacing");
+    api.replace(&name, &params, &obj)
+        .await
+        .expect("failed to replace resource")
+}
+
 pub async fn await_condition<T>(
     client: &kube::Client,
     ns: &str,
@@ -188,9 +224,9 @@ pub async fn create_service(
     client: &kube::Client,
     ns: &str,
     name: &str,
-    port: i32,
+    port: impl Into<i32>,
 ) -> k8s::Service {
-    let svc = mk_service(ns, name, port);
+    let svc = mk_service(ns, name, port.into());
 
     create(client, svc).await
 }
@@ -200,8 +236,9 @@ pub async fn create_opaque_service(
     client: &kube::Client,
     ns: &str,
     name: &str,
-    port: i32,
+    port: impl Into<i32>,
 ) -> k8s::Service {
+    let port = port.into();
     let svc = mk_service(ns, name, port);
     let svc = annotate_service(
         svc,
@@ -216,7 +253,7 @@ pub async fn create_annotated_service(
     client: &kube::Client,
     ns: &str,
     name: &str,
-    port: i32,
+    port: impl Into<i32>,
     annotations: std::collections::BTreeMap<String, String>,
 ) -> k8s::Service {
     let svc = annotate_service(mk_service(ns, name, port), annotations);
@@ -239,7 +276,7 @@ where
     svc
 }
 
-pub fn mk_service(ns: &str, name: &str, port: i32) -> k8s::Service {
+pub fn mk_service(ns: &str, name: &str, port: impl Into<i32>) -> k8s::Service {
     k8s::Service {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
@@ -248,7 +285,7 @@ pub fn mk_service(ns: &str, name: &str, port: i32) -> k8s::Service {
         },
         spec: Some(k8s::ServiceSpec {
             ports: Some(vec![k8s::ServicePort {
-                port,
+                port: port.into(),
                 ..Default::default()
             }]),
             ..Default::default()
