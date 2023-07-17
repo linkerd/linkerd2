@@ -42,6 +42,8 @@ struct NamespaceIndex {
 
 #[derive(Debug)]
 struct Namespace {
+    // A map of Service name and port to all HttpRoutes which target that
+    // Service and port specifically.
     service_port_routes: HashMap<ServicePort, ServiceRoutes>,
     // A map of Service name to all HttpRoutes that target that Service and do
     // not specify a port. We keep track of these so that whenever a new entry
@@ -237,8 +239,8 @@ impl Namespace {
                 continue;
             }
 
-            if let Some(port) = parent_ref.port {
-                if let Some(port) = NonZeroU16::new(port) {
+            let port = parent_ref.port.and_then(NonZeroU16::new);
+            if let Some(port) = port {
                     let service_port = ServicePort {
                         port,
                         service: parent_ref.name.clone(),
@@ -251,9 +253,6 @@ impl Namespace {
                     let service_routes =
                         self.service_routes_or_default(service_port, cluster_info, service_info);
                     service_routes.apply(route.gkn(), outbound_route.clone());
-                } else {
-                    tracing::warn!(?parent_ref, "ignoring parent_ref with port 0");
-                }
             } else {
                 // If the parent_ref doesn't include a port, apply this route
                 // to all ServiceRoutes which match the Service name.

@@ -1180,7 +1180,9 @@ fn assert_route_is_default(route: &grpc::outbound::HttpRoute, svc: &k8s::Service
     let kind = route.metadata.as_ref().unwrap().kind.as_ref().unwrap();
     match kind {
         grpc::meta::metadata::Kind::Default(_) => {}
-        grpc::meta::metadata::Kind::Resource(_) => panic!("route expected to be default"),
+        grpc::meta::metadata::Kind::Resource(r) => {
+            panic!("route expected to be default but got resource {r:?}")
+        }
     }
 
     let backends = route_backends_first_available(route);
@@ -1236,7 +1238,9 @@ fn assert_singleton<T>(ts: &[T]) -> &T {
 fn assert_route_name_eq(route: &grpc::outbound::HttpRoute, name: &str) {
     let kind = route.metadata.as_ref().unwrap().kind.as_ref().unwrap();
     match kind {
-        grpc::meta::metadata::Kind::Default(_) => panic!("route expected to not be default"),
+        grpc::meta::metadata::Kind::Default(d) => {
+            panic!("route expected to not be default, but got default {d:?}")
+        }
         grpc::meta::metadata::Kind::Resource(resource) => assert_eq!(resource.name, *name),
     }
 }
