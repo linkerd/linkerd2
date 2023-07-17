@@ -241,18 +241,18 @@ impl Namespace {
 
             let port = parent_ref.port.and_then(NonZeroU16::new);
             if let Some(port) = port {
-                    let service_port = ServicePort {
-                        port,
-                        service: parent_ref.name.clone(),
-                    };
-                    tracing::debug!(
-                        ?service_port,
-                        route = route.name(),
-                        "inserting route for service"
-                    );
-                    let service_routes =
-                        self.service_routes_or_default(service_port, cluster_info, service_info);
-                    service_routes.apply(route.gkn(), outbound_route.clone());
+                let service_port = ServicePort {
+                    port,
+                    service: parent_ref.name.clone(),
+                };
+                tracing::debug!(
+                    ?service_port,
+                    route = route.name(),
+                    "inserting route for service"
+                );
+                let service_routes =
+                    self.service_routes_or_default(service_port, cluster_info, service_info);
+                service_routes.apply(route.gkn(), outbound_route.clone());
             } else {
                 // If the parent_ref doesn't include a port, apply this route
                 // to all ServiceRoutes which match the Service name.
