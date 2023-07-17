@@ -31,6 +31,7 @@ type Values struct {
 	LogFormat                      string   `json:"logFormat"`
 	ServiceMirrorRetryLimit        uint32   `json:"serviceMirrorRetryLimit"`
 	ServiceMirrorUID               int64    `json:"serviceMirrorUID"`
+	Replicas                       uint32   `json:"replicas"`
 	RemoteMirrorServiceAccount     bool     `json:"remoteMirrorServiceAccount"`
 	RemoteMirrorServiceAccountName string   `json:"remoteMirrorServiceAccountName"`
 	TargetClusterName              string   `json:"targetClusterName"`
