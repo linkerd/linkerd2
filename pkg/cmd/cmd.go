@@ -22,6 +22,11 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+var (
+	// DefaultDockerRegistry specifies the default location for Linkerd's images.
+	DefaultDockerRegistry = "cr.l5d.io/linkerd"
+)
+
 // GetDefaultNamespace fetches the default namespace
 // used in the current KubeConfig context
 func GetDefaultNamespace(kubeconfigPath, kubeContext string) string {

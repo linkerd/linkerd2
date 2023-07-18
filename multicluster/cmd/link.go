@@ -389,7 +389,7 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 	return &linkOptions{
 		controlPlaneVersion:     version.Version,
 		namespace:               defaultMulticlusterNamespace,
-		dockerRegistry:          defaultDockerRegistry,
+		dockerRegistry:          pkgcmd.DefaultDockerRegistry,
 		serviceMirrorRetryLimit: defaults.ServiceMirrorRetryLimit,
 		logLevel:                defaults.LogLevel,
 		logFormat:               defaults.LogFormat,
