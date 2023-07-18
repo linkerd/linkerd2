@@ -234,6 +234,13 @@ async fn main() -> Result<()> {
         kubert::index::namespaced(services_indexes, services).instrument(info_span!("services")),
     );
 
+    let http_retry_filters =
+        runtime.watch_all::<k8s::policy::HttpRetryFilter>(ListParams::default());
+    tokio::spawn(
+        kubert::index::namespaced(outbound_index.clone(), http_retry_filters)
+            .instrument(info_span!("httpretryfilters")),
+    );
+
     // Spawn the status Controller reconciliation.
     tokio::spawn(status::Index::run(status_index.clone()).instrument(info_span!("status::Index")));
 
