@@ -20,7 +20,7 @@ pub use k8s_gateway_api::{
 )]
 #[kube(
     group = "policy.linkerd.io",
-    version = "v1beta3",
+    version = "v1beta4",
     kind = "HTTPRoute",
     struct = "HttpRoute",
     status = "HttpRouteStatus",
