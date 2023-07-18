@@ -126,7 +126,7 @@ async fn rejects_retry_filter_on_backend() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn accepts_retry_filter() {
-    admission::rejects(|ns| HttpRoute {
+    admission::accepts(|ns| HttpRoute {
         metadata: meta(&ns),
         spec: HttpRouteSpec {
             inner: CommonRouteSpec {
