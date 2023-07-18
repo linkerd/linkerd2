@@ -125,6 +125,54 @@ async fn rejects_retry_filter_on_backend() {
 }
 
 #[tokio::test(flavor = "current_thread")]
+async fn rejects_multiple_retry_filters() {
+    admission::rejects(|ns| HttpRoute {
+        metadata: meta(&ns),
+        spec: HttpRouteSpec {
+            inner: CommonRouteSpec {
+                parent_refs: Some(vec![server_parent_ref(ns)]),
+            },
+            hostnames: None,
+            rules: Some(vec![HttpRouteRule {
+                matches: Some(vec![HttpRouteMatch {
+                    path: Some(HttpPathMatch::Exact {
+                        value: "/foo".to_string(),
+                    }),
+                    ..HttpRouteMatch::default()
+                }]),
+                filters: Some(vec![
+                    HttpRouteFilter::ExtensionRef {
+                        extension_ref: retry_filter(),
+                    },
+                    HttpRouteFilter::ExtensionRef {
+                        extension_ref: LocalObjectReference {
+                            name: "some-other-filter".to_string(),
+                            ..retry_filter()
+                        },
+                    },
+                ]),
+                backend_refs: Some(vec![HttpBackendRef {
+                    backend_ref: Some(BackendRef {
+                        inner: BackendObjectReference {
+                            group: Some("core".to_string()),
+                            kind: Some("Service".to_string()),
+                            name: "foo".to_string(),
+                            namespace: Some("bar".to_string()),
+                            port: Some(666),
+                        },
+                        weight: Some(1),
+                    }),
+                    filters: None,
+                }]),
+                timeouts: None,
+            }]),
+        },
+        status: None,
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
 async fn accepts_retry_filter() {
     admission::accepts(|ns| HttpRoute {
         metadata: meta(&ns),
