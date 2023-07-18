@@ -639,6 +639,7 @@ spec:
                                     for the Route to `status: False`, with a Reason
                                     of `UnsupportedValue`."
                                   enum:
+                                  - ExtensionRef
                                   - RequestHeaderModifier
                                   - ResponseHeaderModifier
                                   - RequestRedirect
@@ -923,6 +924,7 @@ spec:
                               Core\" in this package, e.g. \"RequestHeaderModifier\".
                               All   implementations must support core filters. \n\n "
                             enum:
+                            - ExtensionRef
                             - RequestHeaderModifier
                             - RequestRedirect
                             type: string
