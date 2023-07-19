@@ -65,6 +65,10 @@ skip = [
     { name = "ahash", version = "0.7" },
     # syn v2 has been released and some libraries are slower to adopt it
     { name = "syn", version = "1.0" },
+    # `hyper-openssl` and `hyper-boring` depend on very different versions of
+    # this crate. this isn't a huge deal, as the features that enable
+    # `hyper-openssl` and `hyper-boring` are mutually exclusive.
+    { name = "foreign-types" },
 ]
 
 [sources]
