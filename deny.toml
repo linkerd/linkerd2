@@ -69,6 +69,7 @@ skip = [
     # this crate. this isn't a huge deal, as the features that enable
     # `hyper-openssl` and `hyper-boring` are mutually exclusive.
     { name = "foreign-types" },
+    { name = "foreign-types-shared" },
 ]
 
 [sources]
