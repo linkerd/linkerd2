@@ -11,3 +11,6 @@ members = [
 
 [profile.release]
 lto = "thin"
+
+[patch.crates-io]
+kubert = { git = "https://github.com/hawkw/kubert", branch = "eliza/custom-client" }

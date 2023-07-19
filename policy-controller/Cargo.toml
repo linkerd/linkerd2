@@ -11,6 +11,7 @@ openssl-tls = ["kube/openssl-tls"]
 # Vendor openssl to statically link lib
 openssl-vendored = ["openssl/vendored"]
 rustls-tls = ["kube/rustls-tls"]
+boring-tls = ["hyper-boring"]
 
 [dependencies]
 anyhow = "1"
@@ -20,6 +21,7 @@ futures = { version = "0.3", default-features = false }
 k8s-gateway-api = "0.11"
 k8s-openapi = { version = "0.17", features = ["v1_20"] }
 hyper = { version = "0.14", features = ["http1", "http2", "runtime", "server"] }
+hyper-boring = { version = "2.1.2", optional = true, default-features = false, features = ["runtime"] }
 ipnet = { version = "2", default-features = false }
 linkerd-policy-controller-core = { path = "./core" }
 linkerd-policy-controller-grpc = { path = "./grpc" }

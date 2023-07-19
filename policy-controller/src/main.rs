@@ -19,6 +19,14 @@ use tokio::{sync::mpsc, time::Duration};
 use tonic::transport::Server;
 use tracing::{info, info_span, instrument, Instrument};
 
+#[cfg(all(
+    feature = "boring-tls",
+    any(feature = "openssl-tls", feature = "rustls-tls")
+))]
+compile_error!(
+    "the `boring-tls`, `openssl-tls`, and `rustls-tls` feature flags are mutually exclusive"
+);
+
 #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
@@ -118,13 +126,23 @@ async fn main() -> Result<()> {
     let mut admin = admin.into_builder();
     admin.with_default_prometheus();
 
-    let mut runtime = kubert::Runtime::builder()
-        .with_log(log_level, log_format)
-        .with_admin(admin)
-        .with_client(client)
-        .with_optional_server(server)
-        .build()
-        .await?;
+    let mut runtime = {
+        let builder = kubert::Runtime::builder()
+            .with_log(log_level, log_format)
+            .with_admin(admin)
+            .with_client(client)
+            .with_optional_server(server);
+        #[cfg(feature = "boring-tls")]
+        {
+            let connector = hyper_boring::HttpsConnector::new()?;
+            let client = hyper::client::Client::builder().build(connector);
+            builder.build_with_client(client)
+        }
+
+        #[cfg(not(feature = "boring-tls"))]
+        builder.build()
+    }
+    .await?;
 
     let probe_networks = probe_networks.map(|IpNets(nets)| nets).unwrap_or_default();
 
