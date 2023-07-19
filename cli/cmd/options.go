@@ -397,7 +397,7 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 			}),
 	}
 
-	registryFlag := flag.NewStringFlag(proxyFlags, "registry", defaultDockerRegistry,
+	registryFlag := flag.NewStringFlag(proxyFlags, "registry", cmd.DefaultDockerRegistry,
 		fmt.Sprintf("Docker registry to pull images from ($%s)", flagspkg.EnvOverrideDockerRegistry),
 		func(values *l5dcharts.Values, value string) error {
 			values.ControllerImage = cmd.RegistryOverride(values.ControllerImage, value)

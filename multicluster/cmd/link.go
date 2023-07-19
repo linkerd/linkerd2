@@ -375,7 +375,7 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 	return &linkOptions{
 		controlPlaneVersion:     version.Version,
 		namespace:               defaultMulticlusterNamespace,
-		dockerRegistry:          defaultDockerRegistry,
+		dockerRegistry:          pkgcmd.DefaultDockerRegistry,
 		serviceMirrorRetryLimit: defaults.ServiceMirrorRetryLimit,
 		logLevel:                defaults.LogLevel,
 		selector:                fmt.Sprintf("%s=%s", k8s.DefaultExportedServiceSelector, "true"),
