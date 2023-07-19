@@ -42,13 +42,12 @@ struct NamespaceIndex {
 
 #[derive(Debug)]
 struct Namespace {
-    // A map of Service name and port to all HttpRoutes which target that
-    // Service and port specifically.
+    /// Stores an observable handle for each known service:port,
+    /// as well as any route resources in the cluster that specify
+    /// a port.
     service_port_routes: HashMap<ServicePort, ServiceRoutes>,
-    // A map of Service name to all HttpRoutes that target that Service and do
-    // not specify a port. We keep track of these so that whenever a new entry
-    // is added to service_port_routes, we can copy in the HttpRoutes for that
-    // Service which apply to all ports.
+    /// Stores the route resources (by service name) that do not
+    /// explicitly target a port.
     service_routes: HashMap<String, HashMap<GroupKindName, HttpRoute>>,
     namespace: Arc<String>,
 }
