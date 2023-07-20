@@ -38,7 +38,7 @@ async fn service_with_no_http_routes() {
         // Create a service
         let svc = create_service(&client, &ns, "my-svc", 4191).await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -61,7 +61,7 @@ async fn service_with_http_route_without_rules() {
         // Create a service
         let svc = create_service(&client, &ns, "my-svc", 4191).await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -99,7 +99,7 @@ async fn service_with_http_routes_without_backends() {
         // Create a service
         let svc = create_service(&client, &ns, "my-svc", 4191).await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -113,7 +113,11 @@ async fn service_with_http_routes_without_backends() {
             assert_route_is_default(route, &svc, 4191);
         });
 
-        let _route = create(&client, mk_http_route(&ns, "foo-route", &svc, 4191).build()).await;
+        let _route = create(
+            &client,
+            mk_http_route(&ns, "foo-route", &svc, Some(4191)).build(),
+        )
+        .await;
 
         let config = rx
             .next()
@@ -139,7 +143,7 @@ async fn service_with_http_routes_with_backend() {
         // Create a service
         let svc = create_service(&client, &ns, "my-svc", 4191).await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -156,8 +160,11 @@ async fn service_with_http_routes_with_backend() {
         let backend_name = "backend";
         let backend_svc = create_service(&client, &ns, backend_name, 8888).await;
         let backends = [backend_name];
-        let route =
-            mk_http_route(&ns, "foo-route", &svc, 4191).with_backends(Some(&backends), None, None);
+        let route = mk_http_route(&ns, "foo-route", &svc, Some(4191)).with_backends(
+            Some(&backends),
+            None,
+            None,
+        );
         let _route = create(&client, route.build()).await;
 
         let config = rx
@@ -186,7 +193,7 @@ async fn service_with_http_routes_with_cross_namespace_backend() {
         // Create a service
         let svc = create_service(&client, &ns, "my-svc", 4191).await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -218,7 +225,7 @@ async fn service_with_http_routes_with_cross_namespace_backend() {
         let backend_name = "backend";
         let backend_svc = create_service(&client, &backend_ns_name, backend_name, 8888).await;
         let backends = [backend_name];
-        let route = mk_http_route(&ns, "foo-route", &svc, 4191).with_backends(
+        let route = mk_http_route(&ns, "foo-route", &svc, Some(4191)).with_backends(
             Some(&backends),
             Some(backend_ns_name),
             None,
@@ -254,7 +261,7 @@ async fn service_with_http_routes_with_invalid_backend() {
         // Create a service
         let svc = create_service(&client, &ns, "my-svc", 4191).await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -269,8 +276,11 @@ async fn service_with_http_routes_with_invalid_backend() {
         });
 
         let backends = ["invalid-backend"];
-        let route =
-            mk_http_route(&ns, "foo-route", &svc, 4191).with_backends(Some(&backends), None, None);
+        let route = mk_http_route(&ns, "foo-route", &svc, Some(4191)).with_backends(
+            Some(&backends),
+            None,
+            None,
+        );
         let _route = create(&client, route.build()).await;
 
         let config = rx
@@ -299,7 +309,7 @@ async fn service_with_multiple_http_routes() {
         // Create a service
         let svc = create_service(&client, &ns, "my-svc", 4191).await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -316,7 +326,11 @@ async fn service_with_multiple_http_routes() {
         // Routes should be returned in sorted order by creation timestamp then
         // name. To ensure that this test isn't timing dependant, routes should
         // be created in alphabetical order.
-        let _a_route = create(&client, mk_http_route(&ns, "a-route", &svc, 4191).build()).await;
+        let _a_route = create(
+            &client,
+            mk_http_route(&ns, "a-route", &svc, Some(4191)).build(),
+        )
+        .await;
 
         // First route update.
         let config = rx
@@ -326,7 +340,11 @@ async fn service_with_multiple_http_routes() {
             .expect("watch must return an updated config");
         tracing::trace!(?config);
 
-        let _b_route = create(&client, mk_http_route(&ns, "b-route", &svc, 4191).build()).await;
+        let _b_route = create(
+            &client,
+            mk_http_route(&ns, "b-route", &svc, Some(4191)).build(),
+        )
+        .await;
 
         // Second route update.
         let config = rx
@@ -379,7 +397,7 @@ async fn service_with_consecutive_failure_accrual() {
         )
         .await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -423,7 +441,7 @@ async fn service_with_consecutive_failure_accrual_defaults() {
         )
         .await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -461,7 +479,7 @@ async fn service_with_consecutive_failure_accrual_defaults() {
         )
         .await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -499,7 +517,7 @@ async fn service_with_consecutive_failure_accrual_defaults() {
         )
         .await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -533,7 +551,7 @@ async fn service_with_default_failure_accrual() {
         // Default config for Service, no failure accrual
         let svc = create_service(&client, &ns, "default-failure-accrual", 80).await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -563,7 +581,7 @@ async fn service_with_default_failure_accrual() {
         )
         .await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -588,7 +606,7 @@ async fn opaque_service() {
         // Create a service
         let svc = create_opaque_service(&client, &ns, "my-svc", 4191).await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -611,7 +629,7 @@ async fn route_rule_with_filters() {
         // Create a service
         let svc = create_service(&client, &ns, "my-svc", 4191).await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -631,7 +649,8 @@ async fn route_rule_with_filters() {
             &ns,
             "foo-route",
             &svc,
-            4191).with_backends(Some(&backends), None, None).with_filters(                Some(vec![
+            Some(4191),
+        ).with_backends(Some(&backends), None, None).with_filters(Some(vec![
                 k8s::policy::httproute::HttpRouteFilter::RequestHeaderModifier {
                     request_header_modifier: k8s_gateway_api::HttpRequestHeaderFilter {
                         set: Some(vec![k8s_gateway_api::HttpHeader {
@@ -727,7 +746,7 @@ async fn backend_with_filters() {
         // Create a service
         let svc = create_service(&client, &ns, "my-svc", 4191).await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
             .next()
             .await
@@ -744,11 +763,12 @@ async fn backend_with_filters() {
         let backend_name = "backend";
         let backend_svc = create_service(&client, &ns, backend_name, 8888).await;
         let backends = [backend_name];
-        let route =             mk_http_route(
+        let route = mk_http_route(
             &ns,
             "foo-route",
             &svc,
-            4191).with_backends(Some(&backends), None, Some(vec![
+            Some(4191)
+        ).with_backends(Some(&backends), None, Some(vec![
                 k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
                     request_header_modifier: k8s_gateway_api::HttpRequestHeaderFilter {
                         set: Some(vec![k8s_gateway_api::HttpHeader {
@@ -774,10 +794,7 @@ async fn backend_with_filters() {
                     },
                 },
             ]));
-        let _route = create(
-            &client,
-            route.build(),
-        )
+        let _route = create(&client, route.build())
         .await;
 
         let config = rx
@@ -843,12 +860,64 @@ async fn backend_with_filters() {
 }
 
 #[tokio::test(flavor = "current_thread")]
+async fn http_route_with_no_port() {
+    with_temp_ns(|client, ns| async move {
+        // Create a service
+        let svc = create_service(&client, &ns, "my-svc", 4191).await;
+
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+
+        // There should be a default route.
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
+
+        let _route = create(&client, mk_http_route(&ns, "foo-route", &svc, None).build()).await;
+
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an updated config");
+        tracing::trace!(?config);
+
+        // The route should apply to the service.
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_name_eq(route, "foo-route");
+        });
+
+        // The route should apply to other ports too.
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 9999).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_name_eq(route, "foo-route");
+        });
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
 async fn producer_route() {
     with_temp_ns(|client, ns| async move {
         // Create a service
         let svc = create_service(&client, &ns, "my-svc", 4191).await;
 
-        let mut producer_rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut producer_rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let producer_config = producer_rx
             .next()
             .await
@@ -856,7 +925,7 @@ async fn producer_route() {
             .expect("watch must return an initial config");
         tracing::trace!(?producer_config);
 
-        let mut consumer_rx = retry_watch_outbound_policy(&client, "consumer_ns", &svc).await;
+        let mut consumer_rx = retry_watch_outbound_policy(&client, "consumer_ns", &svc, 4191).await;
         let consumer_config = consumer_rx
             .next()
             .await
@@ -877,7 +946,11 @@ async fn producer_route() {
         // A route created in the same namespace as its parent service is called
         // a producer route. It should be returned in outbound policy requests
         // for that service from ALL namespaces.
-        let _route = create(&client, mk_http_route(&ns, "foo-route", &svc, 4191).build()).await;
+        let _route = create(
+            &client,
+            mk_http_route(&ns, "foo-route", &svc, Some(4191)).build(),
+        )
+        .await;
 
         let producer_config = producer_rx
             .next()
@@ -929,7 +1002,7 @@ async fn consumer_route() {
         )
         .await;
 
-        let mut producer_rx = retry_watch_outbound_policy(&client, &ns, &svc).await;
+        let mut producer_rx = retry_watch_outbound_policy(&client, &ns, &svc, 4149).await;
         let producer_config = producer_rx
             .next()
             .await
@@ -937,7 +1010,8 @@ async fn consumer_route() {
             .expect("watch must return an initial config");
         tracing::trace!(?producer_config);
 
-        let mut consumer_rx = retry_watch_outbound_policy(&client, &consumer_ns_name, &svc).await;
+        let mut consumer_rx =
+            retry_watch_outbound_policy(&client, &consumer_ns_name, &svc, 4191).await;
         let consumer_config = consumer_rx
             .next()
             .await
@@ -945,7 +1019,7 @@ async fn consumer_route() {
             .expect("watch must return an initial config");
         tracing::trace!(?consumer_config);
 
-        let mut other_rx = retry_watch_outbound_policy(&client, "other_ns", &svc).await;
+        let mut other_rx = retry_watch_outbound_policy(&client, "other_ns", &svc, 4191).await;
         let other_config = other_rx
             .next()
             .await
@@ -973,7 +1047,7 @@ async fn consumer_route() {
         // consumer namespace.
         let _route = create(
             &client,
-            mk_http_route(&consumer_ns_name, "foo-route", &svc, 4191).build(),
+            mk_http_route(&consumer_ns_name, "foo-route", &svc, Some(4191)).build(),
         )
         .await;
 
@@ -1011,12 +1085,13 @@ async fn retry_watch_outbound_policy(
     client: &kube::Client,
     ns: &str,
     svc: &k8s::Service,
+    port: u16,
 ) -> tonic::Streaming<grpc::outbound::OutboundPolicy> {
     // Port-forward to the control plane and start watching the service's
     // outbound policy.
     let mut policy_api = grpc::OutboundPolicyClient::port_forwarded(client).await;
     loop {
-        match policy_api.watch(ns, svc, 4191).await {
+        match policy_api.watch(ns, svc, port).await {
             Ok(rx) => return rx,
             Err(error) => {
                 tracing::error!(
@@ -1031,7 +1106,7 @@ async fn retry_watch_outbound_policy(
     }
 }
 
-fn mk_http_route(ns: &str, name: &str, svc: &k8s::Service, port: u16) -> HttpRouteBuilder {
+fn mk_http_route(ns: &str, name: &str, svc: &k8s::Service, port: Option<u16>) -> HttpRouteBuilder {
     use k8s::policy::httproute as api;
 
     HttpRouteBuilder(api::HttpRoute {
@@ -1048,7 +1123,7 @@ fn mk_http_route(ns: &str, name: &str, svc: &k8s::Service, port: u16) -> HttpRou
                     namespace: svc.namespace(),
                     name: svc.name_unchecked(),
                     section_name: None,
-                    port: Some(port),
+                    port,
                 }]),
             },
             hostnames: None,
@@ -1286,6 +1361,14 @@ fn assert_backend_has_failure_filter(backend: &grpc::outbound::http_route::Weigh
 
 #[track_caller]
 fn assert_route_is_default(route: &grpc::outbound::HttpRoute, svc: &k8s::Service, port: u16) {
+    let kind = route.metadata.as_ref().unwrap().kind.as_ref().unwrap();
+    match kind {
+        grpc::meta::metadata::Kind::Default(_) => {}
+        grpc::meta::metadata::Kind::Resource(r) => {
+            panic!("route expected to be default but got resource {r:?}")
+        }
+    }
+
     let backends = route_backends_first_available(route);
     let backend = assert_singleton(backends);
     assert_backend_matches_service(backend, svc, port);
@@ -1339,7 +1422,9 @@ fn assert_singleton<T>(ts: &[T]) -> &T {
 fn assert_route_name_eq(route: &grpc::outbound::HttpRoute, name: &str) {
     let kind = route.metadata.as_ref().unwrap().kind.as_ref().unwrap();
     match kind {
-        grpc::meta::metadata::Kind::Default(_) => panic!("route expected to not be default"),
+        grpc::meta::metadata::Kind::Default(d) => {
+            panic!("route expected to not be default, but got default {d:?}")
+        }
         grpc::meta::metadata::Kind::Resource(resource) => assert_eq!(resource.name, *name),
     }
 }

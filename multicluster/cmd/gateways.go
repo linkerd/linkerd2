@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -77,8 +78,27 @@ func newGatewaysCommand() *cobra.Command {
 				os.Exit(1)
 			}
 
+			leases, err := k8sAPI.CoordinationV1().Leases(multiclusterNs.Name).List(cmd.Context(), metav1.ListOptions{})
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "failed to list pods in namespace %s: %s", multiclusterNs.Name, err)
+				os.Exit(1)
+			}
+			// Build a simple lookup table to retrieve Lease object claimants.
+			// Metrics should only be pulled from claimants as they are the ones
+			// running probes.
+			leaders := make(map[string]struct{})
+			for _, lease := range leases.Items {
+				// If the Lease is not used by the service-mirror, or if it does
+				// not have a claimant, then ignore it
+				if !strings.Contains(lease.Name, "service-mirror-write") || lease.Spec.HolderIdentity == nil {
+					continue
+				}
+
+				leaders[*lease.Spec.HolderIdentity] = struct{}{}
+			}
+
 			var statuses []gatewayStatus
-			gatewayMetrics := getGatewayMetrics(k8sAPI, pods.Items, opts.wait)
+			gatewayMetrics := getGatewayMetrics(k8sAPI, pods.Items, leaders, opts.wait)
 			for _, gateway := range gatewayMetrics {
 				if gateway.err != nil {
 					fmt.Fprintf(os.Stderr, "Failed to get gateway status for %s: %s\n", gateway.clusterName, gateway.err)
@@ -159,11 +179,15 @@ func newGatewaysCommand() *cobra.Command {
 	return cmd
 }
 
-func getGatewayMetrics(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, wait time.Duration) []gatewayMetrics {
+func getGatewayMetrics(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, leaders map[string]struct{}, wait time.Duration) []gatewayMetrics {
 	var metrics []gatewayMetrics
 	metricsChan := make(chan gatewayMetrics)
 	var activeRoutines int32
 	for _, pod := range pods {
+		if _, found := leaders[pod.Name]; !found {
+			continue
+		}
+
 		atomic.AddInt32(&activeRoutines, 1)
 		go func(p corev1.Pod) {
 			defer atomic.AddInt32(&activeRoutines, -1)

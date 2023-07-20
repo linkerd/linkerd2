@@ -11,6 +11,10 @@ podLabels: {}
 commonLabels: {}
 # -- Toggle support for mirroring headless services
 enableHeadlessServices: false
+# -- Enables Pod Anti Affinity logic to balance the placement of replicas
+# across hosts and zones for High Availability.
+# Enable this only when you have multiple replicas of components.
+enablePodAntiAffinity: false
 gateway:
   probe:
     # -- The port used for liveliness probing
@@ -21,6 +25,8 @@ logLevel: info
 logFormat: plain
 # -- Node selectors for the Service mirror pod
 nodeSelector: {}
+# -- Number of service mirror replicas to run
+replicas: 1
 # -- Resources for the Service mirror container
 resources: {}
 # -- Number of times update from the remote cluster is allowed to be requeued
