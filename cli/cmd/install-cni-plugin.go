@@ -60,7 +60,7 @@ func (options *cniPluginOptions) validate() error {
 	}
 
 	if _, err := log.ParseLevel(options.logLevel); err != nil {
-		return fmt.Errorf("--cni-log-level must be one of: panic, fatal, error, warn, info, debug")
+		return fmt.Errorf("--cni-log-level must be one of: panic, fatal, error, warn, info, debug, trace")
 	}
 
 	if err := validateRangeSlice(options.ignoreInboundPorts); err != nil {
