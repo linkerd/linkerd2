@@ -848,45 +848,56 @@ async fn http_route_with_no_port() {
         // Create a service
         let svc = create_service(&client, &ns, "my-svc", 4191).await;
 
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
-        let config = rx
+        let mut rx_4191 = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
+        let config_4191 = rx_4191
             .next()
             .await
             .expect("watch must not fail")
             .expect("watch must return an initial config");
-        tracing::trace!(?config);
+        tracing::trace!(?config_4191);
+
+        let mut rx_9999 = retry_watch_outbound_policy(&client, &ns, &svc, 9999).await;
+        let config_9999 = rx_9999
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config_9999);
 
         // There should be a default route.
-        detect_http_routes(&config, |routes| {
+        detect_http_routes(&config_4191, |routes| {
             let route = assert_singleton(routes);
             assert_route_is_default(route, &svc, 4191);
+        });
+        detect_http_routes(&config_9999, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 9999);
         });
 
         let _route = create(&client, mk_http_route(&ns, "foo-route", &svc, None).build()).await;
 
-        let config = rx
+        let config_4191 = rx_4191
             .next()
             .await
             .expect("watch must not fail")
             .expect("watch must return an updated config");
-        tracing::trace!(?config);
+        tracing::trace!(?config_4191);
 
         // The route should apply to the service.
-        detect_http_routes(&config, |routes| {
+        detect_http_routes(&config_4191, |routes| {
             let route = assert_singleton(routes);
             assert_route_name_eq(route, "foo-route");
         });
 
-        // The route should apply to other ports too.
-        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 9999).await;
-        let config = rx
+        let config_9999 = rx_9999
             .next()
             .await
             .expect("watch must not fail")
-            .expect("watch must return an initial config");
-        tracing::trace!(?config);
+            .expect("watch must return an updated config");
+        tracing::trace!(?config_9999);
 
-        detect_http_routes(&config, |routes| {
+        // The route should apply to other ports too.
+        detect_http_routes(&config_9999, |routes| {
             let route = assert_singleton(routes);
             assert_route_name_eq(route, "foo-route");
         });

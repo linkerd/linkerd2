@@ -356,19 +356,28 @@ impl Namespace {
                     watches_by_ns: Default::default(),
                 };
 
-                for (gknn, route) in routes.into_iter() {
-                    if *gknn.namespace == *self.namespace {
-                        // This is a producer namespace route and should apply to watches
-                        // from all namespaces.
-                        for watch in service_routes.watches_by_ns.values_mut() {
+                // Producer routes are routes in the same namespace as their
+                // parent service. Consumer routes are routes in other
+                // namespaces.
+                let (producer_routes, consumer_routes): (Vec<_>, Vec<_>) = routes
+                    .into_iter()
+                    .partition(|(gknn, _route)| *gknn.namespace == *self.namespace);
+                for (gknn, route) in consumer_routes {
+                    // Consumer routes should only apply to watches from the
+                    // consumer namespace.
+                    let watch = service_routes.watch_for_ns_or_default(gknn.namespace.to_string());
+                    watch.routes.insert(gknn, route);
+                }
+                for (gknn, route) in producer_routes {
+                    // Insert the route into the producer namespace.
+                    let watch = service_routes.watch_for_ns_or_default(gknn.namespace.to_string());
+                    watch.routes.insert(gknn.clone(), route.clone());
+                    // Producer routes apply to clients in all namespaces, so
+                    // apply it to watches for all other namespaces too.
+                    for (ns, watch) in service_routes.watches_by_ns.iter_mut() {
+                        if ns != &gknn.namespace {
                             watch.routes.insert(gknn.clone(), route.clone());
                         }
-                    } else {
-                        // This is a consumer namespace route and should only apply to
-                        // watches from that namespace.
-                        let watch =
-                            service_routes.watch_for_ns_or_default(gknn.namespace.to_string());
-                        watch.routes.insert(gknn, route);
                     }
                 }
 
@@ -728,11 +737,17 @@ impl ServiceRoutes {
 
     fn apply(&mut self, gknn: GroupKindNamespaceName, route: HttpRoute) {
         if *gknn.namespace == *self.namespace {
-            // This is a producer namespace route and should apply to watches
-            // from all namespaces.
-            for watch in self.watches_by_ns.values_mut() {
-                watch.routes.insert(gknn.clone(), route.clone());
-                watch.send_if_modified();
+            // This is a producer namespace route.
+            let watch = self.watch_for_ns_or_default(gknn.namespace.to_string());
+            watch.routes.insert(gknn.clone(), route.clone());
+            watch.send_if_modified();
+            // Producer routes apply to clients in all namespaces, so
+            // apply it to watches for all other namespaces too.
+            for (ns, watch) in self.watches_by_ns.iter_mut() {
+                if ns != &gknn.namespace {
+                    watch.routes.insert(gknn.clone(), route.clone());
+                    watch.send_if_modified();
+                }
             }
         } else {
             // This is a consumer namespace route and should only apply to

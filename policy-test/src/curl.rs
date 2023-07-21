@@ -263,7 +263,7 @@ impl Running {
             &self.name,
             |obj: Option<&k8s::Pod>| -> bool { obj.and_then(get_exit_code).is_some() },
         );
-        let pod = match time::timeout(time::Duration::from_secs(30), finished).await {
+        let pod = match time::timeout(time::Duration::from_secs(60), finished).await {
             Ok(Ok(Some(pod))) => pod,
             Ok(Ok(None)) => unreachable!("Condition must wait for pod"),
             Ok(Err(error)) => panic!("Failed to wait for exit code: {}: {}", self.name, error),

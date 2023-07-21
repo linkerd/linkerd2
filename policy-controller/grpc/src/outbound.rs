@@ -60,7 +60,7 @@ where
             outbound::traffic_spec::Target::Addr(target) => target,
             outbound::traffic_spec::Target::Authority(auth) => {
                 return self.lookup_authority(&auth).map(
-                    |(service_name, service_namespace, service_port)| OutboundDiscoverTarget {
+                    |(service_namespace, service_name, service_port)| OutboundDiscoverTarget {
                         service_name,
                         service_namespace,
                         service_port,
