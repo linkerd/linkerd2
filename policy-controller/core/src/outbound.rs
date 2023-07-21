@@ -26,6 +26,7 @@ pub struct OutboundDiscoverTarget {
     pub service_port: NonZeroU16,
     pub source_namespace: String,
 }
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct OutboundPolicy {
     pub http_routes: HashMap<GroupKindNamespaceName, HttpRoute>,
