@@ -67,7 +67,7 @@ func (options *checkOptions) checkFlagSet() *pflag.FlagSet {
 
 	flags.StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
 	flags.StringVar(&options.cliVersionOverride, "cli-version-override", "", "Used to override the version of the cli (mostly for testing)")
-	flags.StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json, short")
+	flags.StringVarP(&options.output, "output", "o", options.output, "Output format. One of: table, json, short")
 	flags.DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 
 	return flags

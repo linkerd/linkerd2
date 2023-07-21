@@ -79,7 +79,7 @@ following flags:
 
 * `--namespace`/`-n`: Namespace to use for –proxy checks (default: all
   namespaces)
-* `--output`/`-o`: Output format. One of: table, json
+* `--output`/`-o`: Output format. One of: table, json, short
 * `--pre`: Only run pre-installation checks, to determine if the extension can
   be installed
 * `--proxy`: Only run data-plane checks, to determine if the data plane is
