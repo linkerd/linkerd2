@@ -38,7 +38,7 @@
     "react-router-prop-types": "1.0.5",
     "regenerator-runtime": "^0.13.11",
     "use-query-params": "2.2.1",
-    "whatwg-fetch": "3.6.2"
+    "whatwg-fetch": "3.6.17"
   },
   "devDependencies": {
     "@babel/core": "^7.22.9",
