@@ -1,10 +1,16 @@
 /*
-Adapted from https://github.com/kubernetes-sigs/gateway-api/blob/main/apis/v1alpha2/httproute_types.go
+Adapted from:
+- https://github.com/kubernetes-sigs/gateway-api/blob/main/apis/v1alpha2/httproute_types.go
+- https://github.com/kubernetes-sigs/gateway-api/pull/2013
+
 Copyright 2020 The Kubernetes Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,8 +21,6 @@ limitations under the License.
 package v1beta3
 
 import (
-	"time"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayapiv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
@@ -229,10 +233,11 @@ type HTTPRouteRule struct {
 
 	// Timeouts defines the timeouts that can be configured for an HTTP request.
 	//
-	// Support: Core
+	// Support: Extended
 	//
 	// +optional
-	Timeouts HttpRouteTimeouts `json:"timeouts,omitempty"`
+	// <gateway:experimental>
+	Timeouts *HTTPRouteTimeouts `json:"timeouts,omitempty"`
 }
 
 // PathMatchType specifies the semantics of how HTTP paths should be compared.
@@ -485,6 +490,7 @@ const (
 //   headers:
 //   - name: "version"
 //     value "v1"
+//
 // ```
 type HTTPRouteMatch struct {
 	// Path specifies a HTTP request path matcher. If this field is not
@@ -814,34 +820,42 @@ type HTTPRouteStatus struct {
 }
 
 // HTTPRouteTimeouts defines timeouts that can be configured for an HTTPRoute.
-// Timeout values are formatted like 1h/1m/1s/1ms as parsed by Golang
-// time.ParseDuration and MUST BE >= 1ms.
-type HttpRouteTimeouts struct {
-	// Request specifies a timeout for the Gateway to send a response to a client
-	// HTTP request. Whether the gateway starts the timeout before or after the
-	// entire client request stream has been received, is implementation
-	// dependent.
+// Timeout values are formatted like 1h/1m/1s/1ms as parsed by Golang time.ParseDuration
+// and MUST BE >= 1ms or 0 to disable (no timeout).
+type HTTPRouteTimeouts struct {
+	// Request specifies the duration for processing an HTTP client request after which the
+	// gateway will time out if unable to send a response.
 	//
-	// For example, setting the `rules.timeouts.request` field to the value `10s`
-	// in an `HTTPRoute` will cause a timeout if a client request is taking longer
-	// than 10 seconds to complete.
+	// For example, setting this field to the value `10s` in an HTTPRoute will cause
+	// a timeout if a client request is taking longer than 10 seconds to complete.
 	//
-	// Request timeouts are disabled by default.
+	// This timeout is intended to cover as close to the whole request-response transaction
+	// as possible although an implementation MAY choose to start the timeout after the entire
+	// request stream has been received instead of immediately after the transaction is
+	// initiated by the client.
 	//
-	// Support: Core
-	//
-	// +optional
-	Request *time.Duration `json:"request,omitempty"`
-
-	// BackendRequest specifies a timeout for an individual request from the
-	// gateway to a backend service. Typically used in conjunction with retry
-	// configuration, if supported by an implementation.
-	//
-	// The value of BackendRequest defaults to and must be <= the value of Request
-	// timeout.
+	// When this field is unspecified, request timeout behavior is implementation-dependent.
 	//
 	// Support: Extended
 	//
 	// +optional
-	BackendRequest *time.Duration `json:"backendRequest,omitempty"`
+	// +kubebuilder:validation:Format=duration
+	Request *metav1.Duration `json:"request,omitempty"`
+
+	// BackendRequest specifies a timeout for an individual request from the gateway
+	// to a backend service. This covers the time from when the request first starts being
+	// sent from the gateway to when the full response has been received from the backend.
+	//
+	// An entire client HTTP transaction with a gateway, covered by the Request timeout,
+	// may result in more than one call from the gateway to the destination backend service,
+	// for example, if automatic retries are supported.
+	//
+	// Because the Request timeout encompasses the BackendRequest timeout,
+	// the value of BackendRequest defaults to and must be <= the value of Request timeout.
+	//
+	// Support: Extended
+	//
+	// +optional
+	// +kubebuilder:validation:Format=duration
+	BackendRequest *metav1.Duration `json:"backendRequest,omitempty"`
 }
