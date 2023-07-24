@@ -57,7 +57,6 @@ spec:
   {{- end }}
   fsGroup:
     rule: RunAsAny
-  
   runAsUser:
     rule: RunAsAny
   seLinux:
@@ -211,7 +210,6 @@ spec:
       affinity:
       {{- include "linkerd.node-affinity" . | nindent 8 }}
       {{- end }}
-     
       securityContext:
         seccompProfile:
           type: RuntimeDefault
