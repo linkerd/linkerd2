@@ -21,10 +21,11 @@ import (
 // update, it only sends updates to listeners if their endpoint's protocol
 // is changed by the Server.
 type ServerWatcher struct {
-	subscriptions    map[podPort]podPortPublisher
-	k8sAPI           *k8s.API
-	subscribersGauge *prometheus.GaugeVec
-	log              *logging.Entry
+	subscriptions       map[podPort]podPortPublisher
+	k8sAPI              *k8s.API
+	subscribesCounter   *prometheus.CounterVec
+	unsubscribesCounter *prometheus.CounterVec
+	log                 *logging.Entry
 	sync.RWMutex
 }
 
@@ -46,21 +47,31 @@ type ServerUpdateListener interface {
 	UpdateProtocol(bool)
 }
 
-var serverMetrics = promauto.NewGaugeVec(
-	prometheus.GaugeOpts{
-		Name: "server_port_subscribers",
-		Help: "Number of subscribers to Server changes associated with a pod's port.",
-	},
-	[]string{"namespace", "name", "port"},
+var (
+	serverSubscribeCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "server_port_subscribes",
+			Help: "Counter of subscribes to Server changes associated with a pod's port.",
+		},
+		[]string{"namespace", "name", "port"},
+	)
+	serverUnsubscribeCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "server_port_unsubscribes",
+			Help: "Counter of unsubscribes to Server changes associated with a pod's port.",
+		},
+		[]string{"namespace", "name", "port"},
+	)
 )
 
 // NewServerWatcher creates a new ServerWatcher.
 func NewServerWatcher(k8sAPI *k8s.API, log *logging.Entry) (*ServerWatcher, error) {
 	sw := &ServerWatcher{
-		subscriptions:    make(map[podPort]podPortPublisher),
-		k8sAPI:           k8sAPI,
-		subscribersGauge: serverMetrics,
-		log:              log,
+		subscriptions:       make(map[podPort]podPortPublisher),
+		k8sAPI:              k8sAPI,
+		subscribesCounter:   serverSubscribeCounter,
+		unsubscribesCounter: serverUnsubscribeCounter,
+		log:                 log,
 	}
 	_, err := k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    sw.addServer,
@@ -96,7 +107,7 @@ func (sw *ServerWatcher) Subscribe(pod *corev1.Pod, port Port, listener ServerUp
 	ppp.listeners = append(ppp.listeners, listener)
 	sw.subscriptions[pp] = ppp
 
-	sw.subscribersGauge.With(serverMetricLabels(pod, port)).Set(float64(len(ppp.listeners)))
+	sw.subscribesCounter.With(serverMetricLabels(pod, port)).Inc()
 }
 
 // Unsubscribe unsubcribes a listener from any Server updates.
@@ -124,16 +135,7 @@ func (sw *ServerWatcher) Unsubscribe(pod *corev1.Pod, port Port, listener Server
 		}
 	}
 
-	labels := serverMetricLabels(pod, port)
-	if len(ppp.listeners) > 0 {
-		sw.subscribersGauge.With(labels).Set(float64(len(ppp.listeners)))
-		sw.subscriptions[pp] = ppp
-	} else {
-		if !sw.subscribersGauge.Delete(labels) {
-			sw.log.Warnf("unable to delete server_port_subscribers metric with labels %s", labels)
-		}
-		delete(sw.subscriptions, pp)
-	}
+	sw.unsubscribesCounter.With(serverMetricLabels(pod, port)).Inc()
 }
 
 func (sw *ServerWatcher) addServer(obj interface{}) {
