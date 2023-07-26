@@ -485,7 +485,7 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 	}
 
 	if _, err := log.ParseLevel(values.ControllerLogLevel); err != nil {
-		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
+		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug, trace")
 	}
 
 	if values.Proxy.LogLevel == "" {
