@@ -411,7 +411,7 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 	}
 
 	if _, err := log.ParseLevel(opts.logLevel); err != nil {
-		return nil, fmt.Errorf("--log-level must be one of: panic, fatal, error, warn, info, debug")
+		return nil, fmt.Errorf("--log-level must be one of: panic, fatal, error, warn, info, debug, trace")
 	}
 
 	if opts.logFormat != "plain" && opts.logFormat != "json" {

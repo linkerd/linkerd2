@@ -34,7 +34,7 @@ func ConfigureAndParse(cmd *flag.FlagSet, args []string) {
 	flag.Set("log_file", "/dev/null")
 	flag.Set("v", "0")
 	logLevel := cmd.String("log-level", log.InfoLevel.String(),
-		"log level, must be one of: panic, fatal, error, warn, info, debug")
+		"log level, must be one of: panic, fatal, error, warn, info, debug, trace")
 	logFormat := cmd.String("log-format", "plain",
 		"log format, must be one of: plain, json")
 	printVersion := cmd.Bool("version", false, "print version and exit")
@@ -66,12 +66,16 @@ func setLogLevel(logLevel string) {
 	}
 	log.SetLevel(level)
 
-	if level == log.DebugLevel {
+	if level >= log.DebugLevel {
 		flag.Set("stderrthreshold", "INFO")
 		flag.Set("logtostderr", "true")
-		flag.Set("v", "12") // At 7 and higher, authorization tokens get logged.
+		flag.Set("v", "6")
 		// pipe klog entries to logrus
 		klog.SetOutput(log.StandardLogger().Writer())
+	}
+
+	if level >= log.TraceLevel {
+		flag.Set("v", "12") // At 7 and higher, authorization tokens get logged.
 	}
 }
 

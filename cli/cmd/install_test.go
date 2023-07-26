@@ -438,7 +438,7 @@ func TestValidate(t *testing.T) {
 		}
 
 		values.ControllerLogLevel = "super"
-		expected := "--controller-log-level must be one of: panic, fatal, error, warn, info, debug"
+		expected := "--controller-log-level must be one of: panic, fatal, error, warn, info, debug, trace"
 
 		err = validateValues(context.Background(), nil, values)
 		if err == nil {
