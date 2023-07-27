@@ -593,6 +593,9 @@ func (sp *servicePublisher) metricsLabels(port Port, hostname string) prometheus
 }
 
 func (sp *servicePublisher) updateServer(server *v1beta1.Server, isAdd bool) {
+	sp.Lock()
+	defer sp.Unlock()
+
 	selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
 	if err != nil {
 		sp.log.Errorf("failed to create Selector: %s", err)
