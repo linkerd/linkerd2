@@ -1,6 +1,5 @@
 use crate::http_route::{
-    GroupKindNamespaceName, HostMatch, HttpRouteMatch, RequestHeaderModifierFilter,
-    RequestRedirectFilter,
+    GroupKindNamespaceName, HeaderModifierFilter, HostMatch, HttpRouteMatch, RequestRedirectFilter,
 };
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
@@ -95,6 +94,7 @@ pub struct Backoff {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Filter {
-    RequestHeaderModifier(RequestHeaderModifierFilter),
+    RequestHeaderModifier(HeaderModifierFilter),
+    ResponseHeaderModifier(HeaderModifierFilter),
     RequestRedirect(RequestRedirectFilter),
 }

@@ -622,7 +622,14 @@ fn convert_linkerd_filter(filter: api::httproute::HttpRouteFilter) -> Result<Fil
         api::httproute::HttpRouteFilter::RequestHeaderModifier {
             request_header_modifier,
         } => {
-            let filter = http_route::req_header_modifier(request_header_modifier)?;
+            let filter = http_route::header_modifier(request_header_modifier)?;
+            Filter::RequestHeaderModifier(filter)
+        }
+
+        api::httproute::HttpRouteFilter::ResponseHeaderModifier {
+            response_header_modifier,
+        } => {
+            let filter = http_route::header_modifier(response_header_modifier)?;
             Filter::RequestHeaderModifier(filter)
         }
 
@@ -639,8 +646,15 @@ fn convert_gateway_filter(filter: k8s_gateway_api::HttpRouteFilter) -> Result<Fi
         k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
             request_header_modifier,
         } => {
-            let filter = http_route::req_header_modifier(request_header_modifier)?;
+            let filter = http_route::header_modifier(request_header_modifier)?;
             Filter::RequestHeaderModifier(filter)
+        }
+
+        k8s_gateway_api::HttpRouteFilter::ResponseHeaderModifier {
+            response_header_modifier,
+        } => {
+            let filter = http_route::header_modifier(response_header_modifier)?;
+            Filter::ResponseHeaderModifier(filter)
         }
 
         k8s_gateway_api::HttpRouteFilter::RequestRedirect { request_redirect } => {

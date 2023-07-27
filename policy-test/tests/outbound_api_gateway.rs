@@ -10,6 +10,11 @@ use linkerd_policy_test::{
 use maplit::{btreemap, convert_args};
 use tokio::time;
 
+// These tests are copies of the tests in outbound_api_gateway.rs but using the
+// policy.linkerd.io HttpRoute kubernetes types instead of the Gateway API ones.
+// These two files should be kept in sync to ensure that Linkerd can read and
+// function correctly with both types of resources.
+
 #[tokio::test(flavor = "current_thread")]
 async fn service_does_not_exist() {
     with_temp_ns(|client, ns| async move {
