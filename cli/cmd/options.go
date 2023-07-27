@@ -397,7 +397,7 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 			}),
 	}
 
-	registryFlag := flag.NewStringFlag(proxyFlags, "registry", defaultDockerRegistry,
+	registryFlag := flag.NewStringFlag(proxyFlags, "registry", cmd.DefaultDockerRegistry,
 		fmt.Sprintf("Docker registry to pull images from ($%s)", flagspkg.EnvOverrideDockerRegistry),
 		func(values *l5dcharts.Values, value string) error {
 			values.ControllerImage = cmd.RegistryOverride(values.ControllerImage, value)
@@ -485,7 +485,7 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 	}
 
 	if _, err := log.ParseLevel(values.ControllerLogLevel); err != nil {
-		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
+		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug, trace")
 	}
 
 	if values.Proxy.LogLevel == "" {

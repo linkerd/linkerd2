@@ -60,7 +60,7 @@ func (options *cniPluginOptions) validate() error {
 	}
 
 	if _, err := log.ParseLevel(options.logLevel); err != nil {
-		return fmt.Errorf("--cni-log-level must be one of: panic, fatal, error, warn, info, debug")
+		return fmt.Errorf("--cni-log-level must be one of: panic, fatal, error, warn, info, debug, trace")
 	}
 
 	if err := validateRangeSlice(options.ignoreInboundPorts); err != nil {
@@ -84,7 +84,7 @@ func (options *cniPluginOptions) pluginImage() cnicharts.Image {
 		image.Name = cmd.RegistryOverride(options.image.name, override)
 		return image
 	}
-	if options.dockerRegistry != defaultDockerRegistry {
+	if options.dockerRegistry != cmd.DefaultDockerRegistry {
 		image.Name = cmd.RegistryOverride(options.image.name, options.dockerRegistry)
 		return image
 	}
@@ -108,7 +108,7 @@ This command installs a DaemonSet into the Linkerd control plane. The DaemonSet
 copies the necessary linkerd-cni plugin binaries and configs onto the host. It
 assumes that the 'linkerd install' command will be executed with the
 '--linkerd-cni-enabled' flag. This command needs to be executed before the
-'linkerd install --linkerd-cni-enabled' command. 
+'linkerd install --linkerd-cni-enabled' command.
 
 The installation can be configured by using the --set, --values, --set-string and --set-file flags. A full list of configurable values can be found at https://artifacthub.io/packages/helm/linkerd2/linkerd2-cni#values`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -151,13 +151,13 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 	}
 
 	cniPluginImage := cniPluginImage{
-		name:    defaultDockerRegistry + "/cni-plugin",
+		name:    cmd.DefaultDockerRegistry + "/cni-plugin",
 		version: version.LinkerdCNIVersion,
 	}
 
 	cniOptions := cniPluginOptions{
 		linkerdVersion:      version.Version,
-		dockerRegistry:      defaultDockerRegistry,
+		dockerRegistry:      cmd.DefaultDockerRegistry,
 		proxyControlPort:    4190,
 		proxyAdminPort:      4191,
 		inboundPort:         defaults.InboundProxyPort,

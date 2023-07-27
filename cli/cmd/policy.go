@@ -132,7 +132,7 @@ displayed.`,
 				client := outbound.NewOutboundPoliciesClient(conn)
 
 				result, err = client.Get(cmd.Context(), &outbound.TrafficSpec{
-					SourceWorkload: "diagnostics",
+					SourceWorkload: "default:diagnostics",
 					Target:         &outbound.TrafficSpec_Authority{Authority: fmt.Sprintf("%s.%s.svc:%d", name, namespace, port)},
 				})
 				if err != nil {

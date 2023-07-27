@@ -22,7 +22,6 @@ const (
 	defaultLinkerdNamespace = "linkerd"
 	defaultCNINamespace     = "linkerd-cni"
 	defaultClusterDomain    = "cluster.local"
-	defaultDockerRegistry   = "cr.l5d.io/linkerd"
 
 	jsonOutput  = healthcheck.JSONOutput
 	tableOutput = healthcheck.TableOutput

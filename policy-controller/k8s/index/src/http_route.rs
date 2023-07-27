@@ -1,7 +1,7 @@
 use anyhow::{anyhow, bail, Result};
 use k8s_gateway_api as api;
 use kube::{Resource, ResourceExt};
-use linkerd_policy_controller_core::http_route::{self, GroupKindName};
+use linkerd_policy_controller_core::http_route::{self, GroupKindName, GroupKindNamespaceName};
 use linkerd_policy_controller_k8s_api::policy;
 use std::num::NonZeroU16;
 
@@ -44,10 +44,12 @@ impl HttpRouteResource {
         }
     }
 
-    pub(crate) fn gkn(&self) -> GroupKindName {
+    pub(crate) fn gknn(&self) -> GroupKindNamespaceName {
         match self {
-            HttpRouteResource::Linkerd(route) => gkn_for_resource(route),
-            HttpRouteResource::Gateway(route) => gkn_for_resource(route),
+            HttpRouteResource::Linkerd(route) => gkn_for_resource(route)
+                .namespaced(route.namespace().expect("Route must have namespace")),
+            HttpRouteResource::Gateway(route) => gkn_for_resource(route)
+                .namespaced(route.namespace().expect("Route must have namespace")),
         }
     }
 }

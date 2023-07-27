@@ -1,5 +1,19 @@
 # Changes
 
+## edge-23.7.2
+
+This edge release introduces support for HTTP filters configured through both
+`policy.linkerd.io` and `gateway.networking.k8s.io` HTTPRoute resources.
+Currently, RequestHeaderModifier and RequestRedirect HTTP filters are
+supported. Additionally, this release fixes an issue with the linkerd-cni
+chart.
+
+* Added support for RequestHeaderModifier and RequestRedirect HTTP filters in
+  outbound policy; filters may be added at the route or backend level
+* Fixed missing resource-cni labels on linkerd-cni, this blocked the
+  linkerd-cni pods from coming up when the injector was broken (thanks
+  @migueleliasweb!)
+
 ## edge-23.7.1
 
 This edge release adds support for the upstream `gateway.networking.k8s.io`

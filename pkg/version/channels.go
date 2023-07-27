@@ -17,7 +17,7 @@ type Channels struct {
 	array []channelVersion
 }
 
-const (
+var (
 	// CheckURL provides an online endpoint for Linkerd's version checks
 	CheckURL = "https://versioncheck.linkerd.io/version.json"
 )

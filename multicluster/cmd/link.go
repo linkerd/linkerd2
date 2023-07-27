@@ -47,6 +47,7 @@ type (
 		selector                string
 		gatewayAddresses        string
 		gatewayPort             uint32
+		ha                      bool
 	}
 )
 
@@ -255,6 +256,16 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				return err
 			}
 
+			if opts.ha {
+				if valuesOverrides, err = charts.OverrideFromFile(
+					valuesOverrides,
+					static.Templates,
+					helmMulticlusterLinkDefaultChartName,
+					"values-ha.yaml",
+				); err != nil {
+					return err
+				}
+			}
 			serviceMirrorOut, err := renderServiceMirror(values, valuesOverrides, opts.namespace)
 			if err != nil {
 				return err
@@ -287,6 +298,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().StringVarP(&opts.selector, "selector", "l", opts.selector, "Selector (label query) to filter which services in the target cluster to mirror")
 	cmd.Flags().StringVar(&opts.gatewayAddresses, "gateway-addresses", opts.gatewayAddresses, "If specified, overwrites gateway addresses when gateway service is not type LoadBalancer (comma separated list)")
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
+	cmd.Flags().BoolVar(&opts.ha, "ha", opts.ha, "Enable HA configuration for the service-mirror deployment (default false)")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"namespace", "gateway-namespace"},
@@ -377,13 +389,14 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 	return &linkOptions{
 		controlPlaneVersion:     version.Version,
 		namespace:               defaultMulticlusterNamespace,
-		dockerRegistry:          defaultDockerRegistry,
+		dockerRegistry:          pkgcmd.DefaultDockerRegistry,
 		serviceMirrorRetryLimit: defaults.ServiceMirrorRetryLimit,
 		logLevel:                defaults.LogLevel,
 		logFormat:               defaults.LogFormat,
 		selector:                fmt.Sprintf("%s=%s", k8s.DefaultExportedServiceSelector, "true"),
 		gatewayAddresses:        "",
 		gatewayPort:             0,
+		ha:                      false,
 	}, nil
 }
 
@@ -398,7 +411,7 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 	}
 
 	if _, err := log.ParseLevel(opts.logLevel); err != nil {
-		return nil, fmt.Errorf("--log-level must be one of: panic, fatal, error, warn, info, debug")
+		return nil, fmt.Errorf("--log-level must be one of: panic, fatal, error, warn, info, debug, trace")
 	}
 
 	if opts.logFormat != "plain" && opts.logFormat != "json" {
