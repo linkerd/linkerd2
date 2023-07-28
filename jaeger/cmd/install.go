@@ -42,6 +42,13 @@ func newCmdInstall() *cobra.Command {
 	var wait time.Duration
 	var options values.Options
 
+	// If LINKERD_DOCKER_REGISTRY is not null, use it as default registry path.
+	// If --registry option is provided, it will override the env variable.
+	defaultDockerRegistry := pkgcmd.DefaultDockerRegistry
+	if regOverride := os.Getenv(flags.EnvOverrideDockerRegistry); regOverride != "" {
+		defaultDockerRegistry = regOverride
+	}
+
 	cmd := &cobra.Command{
 		Use:   "install [flags]",
 		Args:  cobra.NoArgs,
@@ -75,7 +82,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 		},
 	}
 
-	cmd.Flags().StringVar(&registry, "registry", pkgcmd.DefaultDockerRegistry,
+	cmd.Flags().StringVar(&registry, "registry", defaultDockerRegistry,
 		fmt.Sprintf("Docker registry to pull jaeger-webhook image from ($%s)", flags.EnvOverrideDockerRegistry))
 	cmd.Flags().BoolVar(&skipChecks, "skip-checks", false, `Skip checks for linkerd core control-plane existence`)
 	cmd.Flags().BoolVar(&ignoreCluster, "ignore-cluster", false,
@@ -151,12 +158,13 @@ func render(w io.Writer, valuesOverrides map[string]interface{}, registry string
 	}
 
 	regOrig := vals["webhook"].(map[string]interface{})["image"].(map[string]interface{})["name"].(string)
+
+	// registry variable can never be empty. The precedence are as:
+	// 1. --registry
+	// 2. EnvOverrideDockerRegistry
+	// 3. DefaultDockerRegistry
 	if registry != "" {
 		vals["webhook"].(map[string]interface{})["image"].(map[string]interface{})["name"] = pkgcmd.RegistryOverride(regOrig, registry)
-	}
-	// env var overrides CLI flag
-	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
-		vals["webhook"].(map[string]interface{})["image"].(map[string]interface{})["name"] = pkgcmd.RegistryOverride(regOrig, override)
 	}
 
 	fullValues := map[string]interface{}{

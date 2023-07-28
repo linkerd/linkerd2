@@ -51,6 +51,13 @@ type (
 
 func newLinkCommand() *cobra.Command {
 	opts, err := newLinkOptionsWithDefault()
+
+	// Override the default value with env registry path.
+	// If cli cmd contains --registry flag, it will override env variable.
+	if registry := os.Getenv(flags.EnvOverrideDockerRegistry); registry != "" {
+		opts.dockerRegistry = registry
+	}
+
 	var valuesOptions valuespkg.Options
 
 	if err != nil {
@@ -401,10 +408,6 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 	defaults, err := multicluster.NewLinkValues()
 	if err != nil {
 		return nil, err
-	}
-
-	if reg := os.Getenv(flags.EnvOverrideDockerRegistry); reg != "" {
-		opts.dockerRegistry = reg
 	}
 
 	defaults.TargetClusterName = opts.clusterName
