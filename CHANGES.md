@@ -4,19 +4,19 @@
 
 This edge release improves Linkerd's support for HttpRoute by allowing
 `parent_ref` ports to be optional, allowing HttpRoutes to be defined in a
-consumer's namespace, and adding support for the ResposneHeaderModifier filter.
+consumer's namespace, and adding support for the `ResponseHeaderModifier` filter.
 It also fixes a panic in the destination controller.
 
 * Added an option for disabling the network validator's security context for
   environments that provide their own
 * Added high-availability (HA) mode for the multicluster service-mirror
-* Added support for HttpRoute `parents_refs` that do not specify a port
-* Fixed a grafana error caused by an incorrect datasource (thanks @albundy83)
+* Added support for HttpRoute `parent_refs` that do not specify a port
+* Fixed a Grafana error caused by an incorrect datasource (thanks @albundy83)
 * Added support for HttpRoutes defined in the consumer namespace
 * Improved the granularity of logging levels in the control plane
 * Fixed a race condition in the destination controller that could cause it to
   panic
-* Added support for the ResponseHeaderModifier HttpRoute filter
+* Added support for the `ResponseHeaderModifier` HttpRoute filter
 
 ## edge-23.7.2
 
