@@ -11,12 +11,15 @@ It also fixes a panic in the destination controller.
   environments that provide their own
 * Added high-availability (HA) mode for the multicluster service-mirror
 * Added support for HttpRoute `parent_refs` that do not specify a port
-* Fixed a Grafana error caused by an incorrect datasource (thanks @albundy83)
+* Fixed a Grafana error caused by an incorrect datasource (thanks @albundy83!)
 * Added support for HttpRoutes defined in the consumer namespace
 * Improved the granularity of logging levels in the control plane
 * Fixed a race condition in the destination controller that could cause it to
   panic
 * Added support for the `ResponseHeaderModifier` HttpRoute filter
+* Updated extension CLI commands to prefer the `--register` flag over the
+  `LINKERD_DOCKER_REGISTRY` environment variable, making the precedence more
+  consistent (thanks @harsh020!)
 
 ## edge-23.7.2
 
