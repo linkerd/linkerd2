@@ -406,7 +406,7 @@ fn to_http_route(
         .map(
             |HttpRouteRule { matches, filters }| proto::http_route::Rule {
                 matches: matches.into_iter().map(http_route::convert_match).collect(),
-                filters: filters.into_iter().map(convert_filter).collect(),
+                filters: filters.into_iter().filter_map(convert_filter).collect(),
             },
         )
         .collect();
@@ -424,18 +424,19 @@ fn to_http_route(
     }
 }
 
-fn convert_filter(filter: Filter) -> proto::http_route::Filter {
+fn convert_filter(filter: Filter) -> Option<proto::http_route::Filter> {
     use proto::http_route::filter::Kind;
 
-    proto::http_route::Filter {
-        kind: Some(match filter {
-            Filter::FailureInjector(f) => {
-                Kind::FailureInjector(http_route::convert_failure_injector_filter(f))
-            }
-            Filter::RequestHeaderModifier(f) => {
-                Kind::RequestHeaderModifier(http_route::convert_header_modifier_filter(f))
-            }
-            Filter::RequestRedirect(f) => Kind::Redirect(http_route::convert_redirect_filter(f)),
-        }),
-    }
+    let kind = match filter {
+        Filter::FailureInjector(f) => Some(Kind::FailureInjector(
+            http_route::convert_failure_injector_filter(f),
+        )),
+        Filter::RequestHeaderModifier(f) => Some(Kind::RequestHeaderModifier(
+            http_route::convert_request_header_modifier_filter(f),
+        )),
+        Filter::ResponseHeaderModifier(_) => None,
+        Filter::RequestRedirect(f) => Some(Kind::Redirect(http_route::convert_redirect_filter(f))),
+    };
+
+    kind.map(|kind| proto::http_route::Filter { kind: Some(kind) })
 }

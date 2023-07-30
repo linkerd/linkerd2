@@ -15,6 +15,14 @@ pub struct GroupKindName {
     pub name: Cow<'static, str>,
 }
 
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub struct GroupKindNamespaceName {
+    pub group: Cow<'static, str>,
+    pub kind: Cow<'static, str>,
+    pub namespace: Cow<'static, str>,
+    pub name: Cow<'static, str>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HostMatch {
     Exact(String),
@@ -22,7 +30,7 @@ pub enum HostMatch {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RequestHeaderModifierFilter {
+pub struct HeaderModifierFilter {
     pub add: Vec<(HeaderName, HeaderValue)>,
     pub set: Vec<(HeaderName, HeaderValue)>,
     pub remove: Vec<HeaderName>,
@@ -106,6 +114,15 @@ impl GroupKindName {
         self.group.eq_ignore_ascii_case(&other.group)
             && self.kind.eq_ignore_ascii_case(&other.kind)
             && self.name.eq_ignore_ascii_case(&other.name)
+    }
+
+    pub fn namespaced(self, namespace: String) -> GroupKindNamespaceName {
+        GroupKindNamespaceName {
+            group: self.group,
+            kind: self.kind,
+            namespace: namespace.into(),
+            name: self.name,
+        }
     }
 }
 

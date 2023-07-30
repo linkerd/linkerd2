@@ -181,6 +181,15 @@ pub enum HttpRouteFilter {
         request_header_modifier: HttpRequestHeaderFilter,
     },
 
+    /// ResponseHeaderModifier defines a schema for a filter that modifies response
+    /// headers.
+    ///
+    /// Support: Extended
+    #[serde(rename_all = "camelCase")]
+    ResponseHeaderModifier {
+        response_header_modifier: HttpRequestHeaderFilter,
+    },
+
     /// RequestRedirect defines a schema for a filter that responds to the
     /// request with an HTTP redirection.
     ///

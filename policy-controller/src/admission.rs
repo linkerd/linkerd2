@@ -456,7 +456,10 @@ impl Validate<HttpRouteSpec> for Admission {
             match filter {
                 httproute::HttpRouteFilter::RequestHeaderModifier {
                     request_header_modifier,
-                } => http_route::req_header_modifier(request_header_modifier).map(|_| ()),
+                } => http_route::header_modifier(request_header_modifier).map(|_| ()),
+                httproute::HttpRouteFilter::ResponseHeaderModifier {
+                    response_header_modifier,
+                } => http_route::header_modifier(response_header_modifier).map(|_| ()),
                 httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
                     http_route::req_redirect(request_redirect).map(|_| ())
                 }

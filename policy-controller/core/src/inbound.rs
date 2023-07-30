@@ -1,7 +1,7 @@
 use crate::{
     http_route::{
-        FailureInjectorFilter, GroupKindName, HostMatch, HttpRouteMatch, PathMatch,
-        RequestHeaderModifierFilter, RequestRedirectFilter,
+        FailureInjectorFilter, GroupKindName, HeaderModifierFilter, HostMatch, HttpRouteMatch,
+        PathMatch, RequestRedirectFilter,
     },
     identity_match::IdentityMatch,
     network_match::NetworkMatch,
@@ -111,7 +111,8 @@ pub struct HttpRouteRule {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Filter {
-    RequestHeaderModifier(RequestHeaderModifierFilter),
+    RequestHeaderModifier(HeaderModifierFilter),
+    ResponseHeaderModifier(HeaderModifierFilter),
     RequestRedirect(RequestRedirectFilter),
     FailureInjector(FailureInjectorFilter),
 }

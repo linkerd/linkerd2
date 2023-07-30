@@ -22,7 +22,7 @@ require (
 	github.com/linkerd/linkerd2-proxy-api v0.11.0
 	github.com/linkerd/linkerd2-proxy-init v1.6.2
 	github.com/mattn/go-isatty v0.0.19
-	github.com/mattn/go-runewidth v0.0.14
+	github.com/mattn/go-runewidth v0.0.15
 	github.com/nsf/termbox-go v1.1.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
@@ -41,13 +41,13 @@ require (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
 	google.golang.org/protobuf v1.31.0
 	helm.sh/helm/v3 v3.12.2
-	k8s.io/api v0.27.3
-	k8s.io/apiextensions-apiserver v0.27.3
-	k8s.io/apimachinery v0.27.3
-	k8s.io/client-go v0.27.3
-	k8s.io/code-generator v0.27.3
+	k8s.io/api v0.27.4
+	k8s.io/apiextensions-apiserver v0.27.4
+	k8s.io/apimachinery v0.27.4
+	k8s.io/client-go v0.27.4
+	k8s.io/code-generator v0.27.4
 	k8s.io/klog/v2 v2.100.1
-	k8s.io/kube-aggregator v0.27.3
+	k8s.io/kube-aggregator v0.27.4
 	sigs.k8s.io/gateway-api v0.7.1
 	sigs.k8s.io/yaml v1.3.0
 )

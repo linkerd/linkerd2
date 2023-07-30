@@ -218,8 +218,15 @@ impl RouteBinding {
             api::HttpRouteFilter::RequestHeaderModifier {
                 request_header_modifier,
             } => {
-                let filter = http_route::req_header_modifier(request_header_modifier)?;
+                let filter = http_route::header_modifier(request_header_modifier)?;
                 Filter::RequestHeaderModifier(filter)
+            }
+
+            api::HttpRouteFilter::ResponseHeaderModifier {
+                response_header_modifier,
+            } => {
+                let filter = http_route::header_modifier(response_header_modifier)?;
+                Filter::ResponseHeaderModifier(filter)
             }
 
             api::HttpRouteFilter::RequestRedirect { request_redirect } => {
@@ -245,8 +252,15 @@ impl RouteBinding {
             policy::HttpRouteFilter::RequestHeaderModifier {
                 request_header_modifier,
             } => {
-                let filter = http_route::req_header_modifier(request_header_modifier)?;
+                let filter = http_route::header_modifier(request_header_modifier)?;
                 Filter::RequestHeaderModifier(filter)
+            }
+
+            policy::HttpRouteFilter::ResponseHeaderModifier {
+                response_header_modifier,
+            } => {
+                let filter = http_route::header_modifier(response_header_modifier)?;
+                Filter::ResponseHeaderModifier(filter)
             }
 
             policy::HttpRouteFilter::RequestRedirect { request_redirect } => {

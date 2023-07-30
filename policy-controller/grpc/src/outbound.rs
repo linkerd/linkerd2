@@ -9,10 +9,10 @@ use linkerd2_proxy_api::{
     },
 };
 use linkerd_policy_controller_core::{
-    http_route::GroupKindName,
+    http_route::GroupKindNamespaceName,
     outbound::{
-        Backend, DiscoverOutboundPolicy, Filter, HttpRoute, HttpRouteRule, OutboundPolicy,
-        OutboundPolicyStream,
+        Backend, DiscoverOutboundPolicy, Filter, HttpRoute, HttpRouteRule, OutboundDiscoverTarget,
+        OutboundPolicy, OutboundPolicyStream,
     },
 };
 use std::{net::SocketAddr, num::NonZeroU16, sync::Arc, time};
@@ -27,7 +27,7 @@ pub struct OutboundPolicyServer<T> {
 
 impl<T> OutboundPolicyServer<T>
 where
-    T: DiscoverOutboundPolicy<(String, String, NonZeroU16)> + Send + Sync + 'static,
+    T: DiscoverOutboundPolicy<OutboundDiscoverTarget> + Send + Sync + 'static,
 {
     pub fn new(discover: T, cluster_domain: impl Into<Arc<str>>, drain: drain::Watch) -> Self {
         Self {
@@ -41,16 +41,33 @@ where
         OutboundPoliciesServer::new(self)
     }
 
-    fn lookup(
-        &self,
-        spec: outbound::TrafficSpec,
-    ) -> Result<(String, String, NonZeroU16), tonic::Status> {
+    fn lookup(&self, spec: outbound::TrafficSpec) -> Result<OutboundDiscoverTarget, tonic::Status> {
         let target = spec
             .target
             .ok_or_else(|| tonic::Status::invalid_argument("target is required"))?;
+        let source_namespace = spec
+            .source_workload
+            .split_once(':')
+            .ok_or_else(|| {
+                tonic::Status::invalid_argument(format!(
+                    "failed to parse source workload: {}",
+                    spec.source_workload
+                ))
+            })?
+            .0
+            .to_string();
         let target = match target {
             outbound::traffic_spec::Target::Addr(target) => target,
-            outbound::traffic_spec::Target::Authority(auth) => return self.lookup_authority(&auth),
+            outbound::traffic_spec::Target::Authority(auth) => {
+                return self.lookup_authority(&auth).map(
+                    |(service_namespace, service_name, service_port)| OutboundDiscoverTarget {
+                        service_name,
+                        service_namespace,
+                        service_port,
+                        source_namespace,
+                    },
+                )
+            }
         };
 
         let port = target
@@ -69,7 +86,7 @@ where
             })?;
 
         self.index
-            .lookup_ip(addr, port)
+            .lookup_ip(addr, port, source_namespace)
             .ok_or_else(|| tonic::Status::not_found("No such service"))
     }
 
@@ -119,7 +136,7 @@ where
 #[async_trait::async_trait]
 impl<T> OutboundPolicies for OutboundPolicyServer<T>
 where
-    T: DiscoverOutboundPolicy<(String, String, NonZeroU16)> + Send + Sync + 'static,
+    T: DiscoverOutboundPolicy<OutboundDiscoverTarget> + Send + Sync + 'static,
 {
     async fn get(
         &self,
@@ -215,9 +232,7 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
 
         let mut http_routes: Vec<_> = http_routes
             .into_iter()
-            .map(|(gkn, route)| {
-                convert_outbound_http_route(outbound.namespace.clone(), gkn, route, backend.clone())
-            })
+            .map(|(gknn, route)| convert_outbound_http_route(gknn, route, backend.clone()))
             .collect();
 
         if http_routes.is_empty() {
@@ -291,8 +306,7 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
 }
 
 fn convert_outbound_http_route(
-    namespace: String,
-    gkn: GroupKindName,
+    gknn: GroupKindNamespaceName,
     HttpRoute {
         hostnames,
         rules,
@@ -302,10 +316,10 @@ fn convert_outbound_http_route(
 ) -> outbound::HttpRoute {
     let metadata = Some(Metadata {
         kind: Some(metadata::Kind::Resource(api::meta::Resource {
-            group: gkn.group.to_string(),
-            kind: gkn.kind.to_string(),
-            namespace,
-            name: gkn.name.to_string(),
+            group: gknn.group.to_string(),
+            kind: gknn.kind.to_string(),
+            namespace: gknn.namespace.to_string(),
+            name: gknn.name.to_string(),
             ..Default::default()
         })),
     });
@@ -562,7 +576,10 @@ fn convert_filter(filter: Filter) -> outbound::http_route::Filter {
     outbound::http_route::Filter {
         kind: Some(match filter {
             Filter::RequestHeaderModifier(f) => {
-                Kind::RequestHeaderModifier(http_route::convert_header_modifier_filter(f))
+                Kind::RequestHeaderModifier(http_route::convert_request_header_modifier_filter(f))
+            }
+            Filter::ResponseHeaderModifier(f) => {
+                Kind::ResponseHeaderModifier(http_route::convert_response_header_modifier_filter(f))
             }
             Filter::RequestRedirect(f) => Kind::Redirect(http_route::convert_redirect_filter(f)),
         }),
