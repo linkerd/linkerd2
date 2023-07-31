@@ -464,7 +464,7 @@ _linkerd-viz-uninit:
 ## linkerd multicluster
 ## 
 
-_mc-target-k3d-flags := "--k3s-arg --disable='local-storage,metrics-server@server:*'"
+_mc-target-k3d-flags := "--k3s-arg --disable='local-storage,metrics-server@server:*' --k3s-arg '--cluster-cidr=10.23.0.0/24@server:*'"
 
 linkerd-mc-install: _linkerd-init
     {{ _linkerd }} mc install --set='linkerdVersion={{ linkerd-tag }}' \
@@ -502,10 +502,6 @@ _mc-target-load:
         _mc-load
 
 # Run the multicluster tests with cluster setup
-#
-# The multicluster test does its own installation of control planes/etc, so
-# we don't do any setup beyond ensuring the cluster is present with images
-# loaded.
 mc-test: mc-test-load mc-test-run
 
 mc-test-build:
@@ -513,6 +509,19 @@ mc-test-build:
         ./test/integration/multicluster/...
 
 mc-test-load: _mc-load _mc-target-load
+
+k3d-source-server := "k3d-" + k3d-name + "-server-0"
+k3d-target-server := "k3d-" + k3d-name + "-target-server-0"
+
+_mc-route-output-fmt := "-o jsonpath='ip route add {.spec.podCIDR} via {.status.addresses[?(.type==\"InternalIP\")].address}'"
+_mc-print-source-route := _kubectl + " " + "get node " + k3d-source-server + " " + _mc-route-output-fmt
+_mc-print-target-route := "kubectl --context=k3d-" + k3d-name + "-target "+ "get node " + k3d-target-server + " " + _mc-route-output-fmt
+
+# Allow two k3d server nodes to participate in a flat network
+mc-flat-network-init:
+	@docker exec -it k3d-{{k3d-name}}-server-0 `{{_mc-print-target-route}}`
+	@docker exec -it k3d-{{k3d-name}}-target-server-0 `{{_mc-print-source-route}}`
+
 
 # Run the multicluster tests without any setup
 mc-test-run:
