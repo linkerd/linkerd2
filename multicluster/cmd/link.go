@@ -31,6 +31,8 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+const clusterNameLabel = "multicluster.linkerd.io/cluster-name"
+
 type (
 	linkOptions struct {
 		namespace               string
@@ -178,6 +180,25 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				return err
 			}
 
+			destinationCreds := corev1.Secret{
+				Type:     k8s.MirrorSecretType,
+				TypeMeta: metav1.TypeMeta{Kind: "Secret", APIVersion: "v1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
+					Namespace: controlPlaneNamespace,
+					Labels: map[string]string{
+						clusterNameLabel: opts.clusterName,
+					},
+				},
+				Data: map[string][]byte{
+					k8s.ConfigKeyName: kubeconfig,
+				},
+			}
+			destinationCredsOut, err := yaml.Marshal(destinationCreds)
+			if err != nil {
+				return err
+			}
+
 			gateway, err := k.CoreV1().Services(opts.gatewayNamespace).Get(cmd.Context(), opts.gatewayName, metav1.GetOptions{})
 			if err != nil {
 				return err
@@ -279,6 +300,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 			}
 
 			stdout.Write(credsOut)
+			stdout.Write([]byte("---\n"))
+			stdout.Write(destinationCredsOut)
 			stdout.Write([]byte("---\n"))
 			stdout.Write(linkOut)
 			stdout.Write([]byte("---\n"))
