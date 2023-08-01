@@ -1,5 +1,5 @@
 use crate::k8s::{
-    labels,
+    gateway, labels,
     policy::{
         httproute, AuthorizationPolicy, AuthorizationPolicySpec, HttpRetryFilter, HttpRoute,
         HttpRouteSpec, LocalTargetRef, MeshTLSAuthentication, MeshTLSAuthenticationSpec,
@@ -475,6 +475,36 @@ impl Validate<HttpRouteSpec> for Admission {
             Ok(())
         }
 
+        fn validate_backend_filter(filter: gateway::HttpRouteFilter) -> Result<()> {
+            match filter {
+                gateway::HttpRouteFilter::RequestHeaderModifier {
+                    request_header_modifier,
+                } => http_route::header_modifier(request_header_modifier).map(|_| ()),
+                gateway::HttpRouteFilter::ResponseHeaderModifier {
+                    response_header_modifier,
+                } => http_route::header_modifier(response_header_modifier).map(|_| ()),
+                gateway::HttpRouteFilter::RequestRedirect { request_redirect } => {
+                    http_route::req_redirect(request_redirect).map(|_| ())
+                }
+                gateway::HttpRouteFilter::RequestMirror { .. } => {
+                    bail!("Linkerd does not support HTTPRoute RequestMirror filters")
+                }
+                gateway::HttpRouteFilter::URLRewrite { .. } => {
+                    bail!("Linkerd does not support HTTPRoute URLRewrite filters")
+                }
+                gateway::HttpRouteFilter::ExtensionRef { extension_ref }
+                    if httproute::local_object_ref_targets_kind::<HttpRetryFilter>(
+                        &extension_ref,
+                    ) =>
+                {
+                    bail!("HTTPRetryFilters are only permitted on HTTPRoute rules, not on backends")
+                }
+                gateway::HttpRouteFilter::ExtensionRef { extension_ref } => {
+                    bail!("unsupported extensionRef filter: {extension_ref:?}")
+                }
+            }
+        }
+
         let mut has_seen_retry_filter = false;
         let mut validate_filter = move |filter: httproute::HttpRouteFilter| -> Result<()> {
             match filter {
@@ -513,6 +543,7 @@ impl Validate<HttpRouteSpec> for Admission {
             filters,
             matches,
             timeouts,
+            backend_refs,
             ..
         } in spec.rules.into_iter().flatten()
         {
@@ -526,6 +557,12 @@ impl Validate<HttpRouteSpec> for Admission {
 
             if let Some(timeouts) = timeouts {
                 validate_timeouts(timeouts)?;
+            }
+
+            for httproute::HttpBackendRef { filters, .. } in backend_refs.into_iter().flatten() {
+                for filter in filters.into_iter().flatten() {
+                    validate_backend_filter(filter)?;
+                }
             }
         }
 
