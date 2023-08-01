@@ -18,6 +18,7 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/metadata"
 	"k8s.io/client-go/metadata/metadatainformer"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -55,6 +56,26 @@ func InitializeMetadataAPI(kubeConfig string, resources ...APIResource) (*Metada
 		}
 	}
 	return api, nil
+}
+
+func InitializeMetadataAPIForConfig(kubeConfig *rest.Config, resources ...APIResource) (*MetadataAPI, error) {
+	client, err := metadata.NewForConfig(kubeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	api, err := newClusterScopedMetadataAPI(client, resources...)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, gauge := range api.gauges {
+		if err := prometheus.Register(gauge); err != nil {
+			log.Warnf("failed to register Prometheus gauge %s: %s", gauge.Desc().String(), err)
+		}
+	}
+	return api, nil
+
 }
 
 func newClusterScopedMetadataAPI(
