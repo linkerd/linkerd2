@@ -62,8 +62,7 @@ pub struct HttpRouteRule {
     pub request_timeout: Option<time::Duration>,
     pub backend_request_timeout: Option<time::Duration>,
     pub filters: Vec<Filter>,
-    /// This is generic: it is either an `Option<RouteRetryPolicy>` when the
-    /// rule has resolved its retry policy, or an
+    /// The route rule's retry policy, if one was specified.
     pub retry_policy: Option<RouteRetryPolicy>,
 }
 
@@ -111,21 +110,49 @@ pub enum Filter {
     FailureInjector(FailureInjectorFilter),
 }
 
+/// A retry policy for an outbound HTTPRoute rule, as defined by a
+/// HTTPRetryFilter `extensionRef` filter.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RouteRetryPolicy {
+    /// The name of the referenced HTTPRetryFilter object.
     pub name: String,
+    /// The retry policy provided by the referenced HTTPRetryFilter object.
     pub state: RetryPolicyState,
 }
 
+/// An HTTPRoute rule's retry policy may be in one of two states:
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RetryPolicyState {
+    /// The referenced HTTPRetryFilter object was not resolved (no
+    /// HTTPRetryFilter with that name exists in the route's namespace).
+    ///
+    /// As specified in [the Gateway API spec][spec], routes which reference an
+    /// unresolved filter must fail all requests:
+    ///
+    /// > If a reference to a custom filter type cannot be resolved, the filter
+    /// > MUST NOT be skipped. Instead, requests that would have been processed
+    /// > by that filter MUST receive a HTTP error response.
+    ///
+    /// If an HTTPRetryFilter object that matches the reference is later created
+    /// in the HTTPRoute's namespace, we transition to [`RetryPolicyState::Resolved`].
+    ///
+    /// [spec]: https://gateway-api.sigs.k8s.io/references/spec/#gateway.networking.k8s.io%2fv1beta1.HTTPRouteFilter
     NotResolved(FailureInjectorFilter),
+    /// The referenced HTTPRetryFilter object exists in the route's namespace
+    /// and provides a valid retry policy.
+    ///
+    /// If the HTTPRetryFilter object that matches the reference is deleted, we
+    /// will transition back to [`RetryPolicyState::NotResolved`].
     Resolved(Arc<RetryPolicy>),
 }
 
+/// An HTTP retry policy for an HTTPRoute, as provided by a HTTPRetryFilter.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RetryPolicy {
+    /// An optional maximum number of retries allowed per request.
     pub max_per_request: Option<NonZeroU32>,
+
+    /// A list of HTTP status ranges for which retries are permitted.
     pub statuses: Vec<StatusRange>,
 }
 
