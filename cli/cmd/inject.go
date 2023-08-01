@@ -181,8 +181,10 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return bytes, []inject.Report{*report}, err
 	}
 	if conf.HasPodTemplate() {
-		conf.AppendPodAnnotations(rt.overrideAnnotations)
-		report.Annotated = true
+		if len(rt.overrideAnnotations) > 0 {
+			conf.AppendPodAnnotations(rt.overrideAnnotations)
+			report.Annotated = true
+		}
 	}
 
 	if ok, _ := report.Injectable(); !ok {
@@ -331,20 +333,19 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	}
 
 	for _, r := range reports {
-		injectable, _ := r.Injectable()
-		if r.Annotated && !injectable {
-			output.Write([]byte(fmt.Sprintf("%s \"%s\" annotated\n", r.Kind, r.Name)))
-		}
 		ok, _ := r.Injectable()
 		if ok {
 			output.Write([]byte(fmt.Sprintf("%s \"%s\" injected\n", r.Kind, r.Name)))
 		}
-		if !r.Annotated && !ok {
+		if !ok && !r.Annotated {
 			if r.Kind != "" {
 				output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.Kind, r.Name)))
 			} else {
 				output.Write([]byte(fmt.Sprintln("document missing \"kind\" field, skipped")))
 			}
+		}
+		if !ok && r.Annotated {
+			output.Write([]byte(fmt.Sprintf("%s \"%s\" annotated\n", r.Kind, r.Name)))
 		}
 	}
 
