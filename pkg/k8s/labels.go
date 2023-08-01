@@ -394,6 +394,10 @@ const (
 	// and types used by the service mirror component
 	SvcMirrorPrefix = "mirror.linkerd.io"
 
+	// MulticlusterPrefix is the prefix common to all labels and annotations
+	// used for multicluster services.
+	MulticlusterPrefix = "multicluster.linkerd.io"
+
 	// MirrorSecretType is the type of secret that is supposed to contain
 	// the access information for remote clusters.
 	MirrorSecretType = SvcMirrorPrefix + "/remote-kubeconfig"
@@ -416,6 +420,13 @@ const (
 	// RemoteClusterNameLabel put on a local mirrored service, it
 	// allows us to associate a mirrored service with a remote cluster
 	RemoteClusterNameLabel = SvcMirrorPrefix + "/cluster-name"
+
+	// RemoteDiscoveryLabel indicates that this service is a remote discovery
+	// service and the value of this label is the name of the remote cluster.
+	RemoteDiscoveryLabel = MulticlusterPrefix + "/remote-discovery"
+
+	// RemoteServiceLabel is the name of the service in the remote cluster.
+	RemoteServiceLabel = MulticlusterPrefix + "/remote-service"
 
 	// RemoteResourceVersionAnnotation is the last observed remote resource
 	// version of a mirrored resource. Useful when doing updates

@@ -43,6 +43,7 @@ type (
 		GatewayIdentity               string
 		ProbeSpec                     ProbeSpec
 		Selector                      metav1.LabelSelector
+		RemoteDiscoverySelector       metav1.LabelSelector
 	}
 )
 
@@ -135,6 +136,18 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		}
 	}
 
+	remoteDiscoverySelector := metav1.LabelSelector{}
+	if selectorObj, ok := specObj["remoteDiscoverySelector"]; ok {
+		bytes, err := json.Marshal(selectorObj)
+		if err != nil {
+			return Link{}, err
+		}
+		err = json.Unmarshal(bytes, &remoteDiscoverySelector)
+		if err != nil {
+			return Link{}, err
+		}
+	}
+
 	return Link{
 		Name:                          u.GetName(),
 		Namespace:                     u.GetNamespace(),
@@ -147,6 +160,7 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		GatewayIdentity:               gatewayIdentity,
 		ProbeSpec:                     probeSpec,
 		Selector:                      selector,
+		RemoteDiscoverySelector:       remoteDiscoverySelector,
 	}, nil
 }
 
