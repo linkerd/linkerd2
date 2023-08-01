@@ -171,6 +171,7 @@ webhooks:
     resources:
     - authorizationpolicies
     - httproutes
+    - httpretryfilters
     - networkauthentications
     - meshtlsauthentications
     - serverauthorizations
@@ -205,6 +206,7 @@ rules:
     resources:
       - authorizationpolicies
       - httproutes
+      - httpretryfilters
       - meshtlsauthentications
       - networkauthentications
       - servers
