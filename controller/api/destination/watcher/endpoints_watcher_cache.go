@@ -63,7 +63,9 @@ func NewEndpointsWatcherCache(k8sAPI *k8s.API, enableEndpointSlices bool) (*Endp
 				return
 			}
 
-			ewc.addWatcher(clusterName, secret)
+			if err := ewc.addWatcher(clusterName, secret); err != nil {
+				ewc.log.Errorf("Error processing 'Secret' object: %w", err)
+			}
 
 		},
 		DeleteFunc: func(obj interface{}) {
