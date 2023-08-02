@@ -44,6 +44,10 @@ type (
 		stopCh chan<- struct{}
 	}
 
+	// configDecoder is a function type that given a secret, decodes it and
+	// instantiates the API Server clients. Clients are dynamically created,
+	// configDecoder allows some degree of isolation between the cache and
+	// client bootstrapping.
 	configDecoder = func(secret *v1.Secret, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error)
 )
 
@@ -58,13 +62,6 @@ const (
 
 // NewEndpointsWatcherCache creates a new (empty) EndpointsWatcherCache. It
 // requires a Kubernetes API Server client instantiated for the local cluster.
-//
-// Upon creation, the EndpointsWatcherCache will trigger an informer that
-// watches multicluster specific Secrets (for remote service discovery).
-//
-// Valid secrets will create and start a new EndpointsWatcher for a remote
-// cluster. When a secret is removed, the watcher is automatically stopped and
-// cleaned-up.
 func NewEndpointsWatcherCache(k8sAPI *k8s.API, enableEndpointSlices bool) *EndpointsWatcherCache {
 	return &EndpointsWatcherCache{
 		store: make(map[string]watchStore),
@@ -76,6 +73,14 @@ func NewEndpointsWatcherCache(k8sAPI *k8s.API, enableEndpointSlices bool) *Endpo
 	}
 }
 
+// Start will register a pair of event handlers against a `Secret` informer.
+//
+// EndpointsWatcherCache will watch multicluster specific `Secret` objects (to
+// create watchers that allow for remote service discovery).
+//
+// Valid secrets will create and start a new EndpointsWatcher for a remote
+// cluster. When a secret is removed, the watcher is automatically stopped and
+// cleaned-up.
 func (ewc *EndpointsWatcherCache) Start() error {
 	return ewc.startWithDecoder(decodeK8sConfigFromSecret)
 }
@@ -256,6 +261,8 @@ func (ewc *EndpointsWatcherCache) addWatcher(clusterName string, secret *v1.Secr
 	return nil
 }
 
+// decodeK8sConfigFromSecret implements the decoder function type and creates
+// the necessary configuration from a secret.
 func decodeK8sConfigFromSecret(secret *v1.Secret, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
 	data, found := secret.Data[consts.ConfigKeyName]
 	if !found {
