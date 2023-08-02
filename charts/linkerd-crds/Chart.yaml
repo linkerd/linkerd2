@@ -1,4 +1,5 @@
 apiVersion: "v2"
+appVersion: edge-XX.X.X
 description: |
   Linkerd gives you observability, reliability, and security
   for your microservices — with no code change required.
