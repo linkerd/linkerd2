@@ -78,6 +78,18 @@ type (
 		log                  *logging.Entry
 		enableEndpointSlices bool
 		sync.RWMutex         // This mutex protects modification of the map itself.
+
+		informerHandlers
+	}
+
+	// informerHandlers holds a registration handle for each informer handler
+	// that has been registered for the EndpointsWatcher. The registration
+	// handles are used to re-deregister informer handlers when the
+	// EndpointsWatcher stops.
+	informerHandlers struct {
+		epHandle  cache.ResourceEventHandlerRegistration
+		svcHandle cache.ResourceEventHandlerRegistration
+		srvHandle cache.ResourceEventHandlerRegistration
 	}
 
 	// servicePublisher represents a service.  It keeps a map of portPublishers
@@ -149,7 +161,7 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *log
 		}),
 	}
 
-	_, err := k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	svcHandle, err := k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ew.addService,
 		DeleteFunc: ew.deleteService,
 		UpdateFunc: func(_, obj interface{}) { ew.addService(obj) },
@@ -157,8 +169,9 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *log
 	if err != nil {
 		return nil, err
 	}
+	ew.svcHandle = svcHandle
 
-	_, err = k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	srvHandle, err := k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ew.addServer,
 		DeleteFunc: ew.deleteServer,
 		UpdateFunc: func(_, obj interface{}) { ew.addServer(obj) },
@@ -166,10 +179,11 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *log
 	if err != nil {
 		return nil, err
 	}
+	ew.srvHandle = srvHandle
 
 	if ew.enableEndpointSlices {
 		ew.log.Debugf("Watching EndpointSlice resources")
-		_, err := k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		epHandle, err := k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    ew.addEndpointSlice,
 			DeleteFunc: ew.deleteEndpointSlice,
 			UpdateFunc: ew.updateEndpointSlice,
@@ -177,9 +191,11 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *log
 		if err != nil {
 			return nil, err
 		}
+
+		ew.epHandle = epHandle
 	} else {
 		ew.log.Debugf("Watching Endpoints resources")
-		_, err = k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		epHandle, err := k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    ew.addEndpoints,
 			DeleteFunc: ew.deleteEndpoints,
 			UpdateFunc: func(_, obj interface{}) { ew.addEndpoints(obj) },
@@ -187,6 +203,8 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *log
 		if err != nil {
 			return nil, err
 		}
+
+		ew.epHandle = epHandle
 	}
 	return ew, nil
 }
@@ -230,6 +248,35 @@ func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, hostname string
 		return
 	}
 	sp.unsubscribe(port, hostname, listener)
+}
+
+// Stop will terminate an EndpointsWatcher by shutting down its informers. It
+// uses the write half of the channel used to sync the informers to signal
+// shutdown. It additionally de-registers any event handlers used by its
+// informers.
+func (ew *EndpointsWatcher) Stop(stopCh chan<- struct{}) {
+	err := ew.k8sAPI.Svc().Informer().RemoveEventHandler(ew.svcHandle)
+	if err != nil {
+		ew.log.Errorf("Failed to remove Service informer event handlers: %s", err)
+	}
+
+	err = ew.k8sAPI.Srv().Informer().RemoveEventHandler(ew.srvHandle)
+	if err != nil {
+		ew.log.Errorf("Failed to remove Service informer event handlers: %s", err)
+	}
+
+	if ew.enableEndpointSlices {
+		err = ew.k8sAPI.ES().Informer().RemoveEventHandler(ew.epHandle)
+	} else {
+		err = ew.k8sAPI.Endpoint().Informer().RemoveEventHandler(ew.epHandle)
+	}
+
+	if err != nil {
+		ew.log.Errorf("Failed to remove Service informer event handlers: %s", err)
+	}
+
+	// Signal informers to stop
+	stopCh <- struct{}{}
 }
 
 func (ew *EndpointsWatcher) addService(obj interface{}) {
