@@ -15,7 +15,11 @@ func CreateMockDecoder() configDecoder {
 		if err != nil {
 			return nil, nil, err
 		}
+
 		metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+		if err != nil {
+			return nil, nil, err
+		}
 
 		return remoteAPI, metadataAPI, nil
 	}
@@ -109,9 +113,7 @@ func TestEndpointsWatcherCacheAddHandler(t *testing.T) {
 			}
 
 			ewc.AddLocalWatcher(nil, watcher, "cluster.local", "cluster.local")
-			ewc.RLock()
-			actualLen := len(ewc.store)
-			ewc.RUnlock()
+			actualLen := ewc.Len()
 
 			if actualLen != len(tt.expectedClusters) {
 				t.Fatalf("Unexpected error: expected to see %d cache entries, got: %d", len(tt.expectedClusters), actualLen)

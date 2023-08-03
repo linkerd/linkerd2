@@ -31,25 +31,24 @@ type (
 		enableEndpointSlices bool
 		log                  *logging.Entry
 
+		// Function used to parse a kubeconfig from a byte buffer. Based on the
+		// kubeconfig, it creates API Server clients
 		decodeFn configDecoder
 	}
 
-	// watchStore is a helper struct that represents a cache item.
+	// watchStore is a helper struct that represents a cache item
 	watchStore struct {
 		watcher       *EndpointsWatcher
 		trustDomain   string
 		clusterDomain string
 
-		// Used to signal shutdown to the watcher.
-		// Warning: it should be the same channel that was used to sync the
-		// informers, otherwise the informers won't stop.
+		// Used to signal shutdown to the associated watcher's informers
 		stopCh chan<- struct{}
 	}
 
-	// configDecoder is a function type that given a secret, decodes it and
-	// instantiates the API Server clients. Clients are dynamically created,
-	// configDecoder allows some degree of isolation between the cache and
-	// client bootstrapping.
+	// configDecoder is the type of a function that given a byte buffer, returns
+	// a pair of API Server clients. The cache uses this function to dynamically
+	// create clients after discovering a Secret.
 	configDecoder = func(data []byte, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error)
 )
 
@@ -64,19 +63,22 @@ const (
 
 // NewEndpointsWatcherCache creates a new (empty) EndpointsWatcherCache. It
 // requires a Kubernetes API Server client instantiated for the local cluster.
+//
+// Upon creation, a pair of event handlers will be registered against the API
+// Server client's Secret informer. The event handlers will add, or remove
+// watcher entries from the cache by watching Secrets in the namespace the
+// controller is running in.
+//
+// A new watcher is created for a remote cluster when its Secret is valid (contains
+// necessary configuration, including a kubeconfig file). When a Secret is
+// deleted from the cluster, if there is a corresponding watcher in the cache,
+// it will be gracefully shutdown to allow for the memory to be freed.
 func NewEndpointsWatcherCache(k8sAPI *k8s.API, enableEndpointSlices bool) (*EndpointsWatcherCache, error) {
 	return newWatcherCacheWithDecoder(k8sAPI, enableEndpointSlices, decodeK8sConfigFromSecret)
 }
 
-// Start will register a pair of event handlers against a `Secret` informer.
-//
-// EndpointsWatcherCache will watch multicluster specific `Secret` objects (to
-// create watchers that allow for remote service discovery).
-//
-// Valid secrets will create and start a new EndpointsWatcher for a remote
-// cluster. When a secret is removed, the watcher is automatically stopped and
-// cleaned-up.
-
+// newWatcherCacheWithDecoder is a helper function that allows the creation of a
+// cache with an arbitrary `configDecoder` function.
 func newWatcherCacheWithDecoder(k8sAPI *k8s.API, enableEndpointSlices bool, decodeFn configDecoder) (*EndpointsWatcherCache, error) {
 	ewc := &EndpointsWatcherCache{
 		store: make(map[string]watchStore),
@@ -91,7 +93,6 @@ func newWatcherCacheWithDecoder(k8sAPI *k8s.API, enableEndpointSlices bool, deco
 	_, err := ewc.k8sAPI.Secret().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			secret, ok := obj.(*v1.Secret)
-			ewc.log.Infof("GOT SECRET %s", secret.Name)
 			if !ok {
 				ewc.log.Errorf("Error processing 'Secret' object: got %#v, expected *corev1.Secret", secret)
 				return
@@ -199,24 +200,33 @@ func (ewc *EndpointsWatcherCache) AddLocalWatcher(stopCh chan<- struct{}, watche
 	}
 }
 
+// Len returns the number of entries in the cache
+func (ewc *EndpointsWatcherCache) Len() int {
+	ewc.RLock()
+	defer ewc.RUnlock()
+	return len(ewc.store)
+}
+
 // removeWatcher is triggered by the cache's Secret informer when a secret is
 // removed. Given a cluster name, it removes the entry from the cache after
 // stopping the associated watcher.
 func (ewc *EndpointsWatcherCache) removeWatcher(clusterName string) {
 	ewc.Lock()
 	defer ewc.Unlock()
-	if s, found := ewc.store[clusterName]; found {
-		// For good measure, close the channel after stopping to ensure
-		// informers are shut down.
-		defer close(s.stopCh)
-		s.watcher.Stop(s.stopCh)
-		delete(ewc.store, clusterName)
-		ewc.log.Infof("Removed cluster %s from EndpointsWatcherCache", clusterName)
+	s, found := ewc.store[clusterName]
+	if !found {
+		return
 	}
+	// For good measure, close the channel after stopping to ensure
+	// informers are shut down.
+	defer close(s.stopCh)
+	s.watcher.Stop(s.stopCh)
+	delete(ewc.store, clusterName)
+	ewc.log.Tracef("Removed cluster %s from EndpointsWatcherCache", clusterName)
 }
 
 // addWatcher is triggered by the cache's Secret informer when a secret is
-// added, or during the initial informer list. Given a cluster name and a Secret
+// discovered for the first time. Given a cluster name and a Secret
 // object, it creates an EndpointsWatcher for a remote cluster and syncs its
 // informers before returning.
 func (ewc *EndpointsWatcherCache) addWatcher(clusterName string, secret *v1.Secret) error {
@@ -271,10 +281,10 @@ func (ewc *EndpointsWatcherCache) addWatcher(clusterName string, secret *v1.Secr
 	return nil
 }
 
-// decodeK8sConfigFromSecret implements the decoder function type and creates
-// the necessary configuration from a secret.
+// decodeK8sConfigFromSecret implements the decoder function type. Given a byte
+// buffer, it attempts to parse it as a kubeconfig file. If successful, returns
+// a pair of API Server clients.
 func decodeK8sConfigFromSecret(data []byte, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
-
 	cfg, err := clientcmd.RESTConfigFromKubeConfig(data)
 	if err != nil {
 		return nil, nil, err
@@ -307,11 +317,4 @@ func decodeK8sConfigFromSecret(data []byte, enableEndpointSlices bool) (*k8s.API
 	}
 
 	return remoteAPI, metadataAPI, nil
-}
-
-func (ewc *EndpointsWatcherCache) len() int {
-	ewc.RLock()
-	defer ewc.RUnlock()
-	sz := len(ewc.store)
-	return sz
 }
