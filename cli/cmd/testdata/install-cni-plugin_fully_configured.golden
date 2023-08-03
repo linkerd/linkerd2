@@ -108,7 +108,6 @@ spec:
         - operator: Exists
       nodeSelector:
         kubernetes.io/os: linux
-      hostNetwork: true
       securityContext:
         seccompProfile:
           type: RuntimeDefault

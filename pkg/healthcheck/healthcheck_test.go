@@ -2418,7 +2418,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      hostNetwork: true
       serviceAccountName: linkerd-cni
       containers:
       - name: install-cni
