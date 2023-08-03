@@ -297,7 +297,7 @@ func decodeK8sConfigFromSecret(data []byte, enableEndpointSlices bool) (*k8s.API
 			ctx,
 			cfg,
 			true,
-			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
+			k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
 		)
 	} else {
 		remoteAPI, err = k8s.InitializeAPIForConfig(
