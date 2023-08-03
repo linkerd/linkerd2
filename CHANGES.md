@@ -1,5 +1,16 @@
 # Changes
 
+## edge-23.8.1
+
+This edge release restores a proxy setting for it to shed load less aggressively
+while under high load, which should result in lower error rates. It also removes
+the usage of host networking in the linkerd-cni extension.
+
+* Changed the default HTTP request queue capacities for the inbound and outbound
+  proxies back to 10,000 requests (#11198)
+* Lifted need of using host networking in the linkerd-cni Daemonset (#11141)
+  (thanks @abhijeetgauravm!)
+
 ## edge-23.7.3
 
 This edge release improves Linkerd's support for HttpRoute by allowing
