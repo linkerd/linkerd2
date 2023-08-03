@@ -30,6 +30,8 @@ type (
 		store                map[string]watchStore
 		enableEndpointSlices bool
 		log                  *logging.Entry
+
+		decodeFn configDecoder
 	}
 
 	// watchStore is a helper struct that represents a cache item.
@@ -48,7 +50,7 @@ type (
 	// instantiates the API Server clients. Clients are dynamically created,
 	// configDecoder allows some degree of isolation between the cache and
 	// client bootstrapping.
-	configDecoder = func(secret *v1.Secret, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error)
+	configDecoder = func(data []byte, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error)
 )
 
 const (
@@ -62,15 +64,8 @@ const (
 
 // NewEndpointsWatcherCache creates a new (empty) EndpointsWatcherCache. It
 // requires a Kubernetes API Server client instantiated for the local cluster.
-func NewEndpointsWatcherCache(k8sAPI *k8s.API, enableEndpointSlices bool) *EndpointsWatcherCache {
-	return &EndpointsWatcherCache{
-		store: make(map[string]watchStore),
-		log: logging.WithFields(logging.Fields{
-			"component": "endpoints-watcher-cache",
-		}),
-		enableEndpointSlices: enableEndpointSlices,
-		k8sAPI:               k8sAPI,
-	}
+func NewEndpointsWatcherCache(k8sAPI *k8s.API, enableEndpointSlices bool) (*EndpointsWatcherCache, error) {
+	return newWatcherCacheWithDecoder(k8sAPI, enableEndpointSlices, decodeK8sConfigFromSecret)
 }
 
 // Start will register a pair of event handlers against a `Secret` informer.
@@ -81,14 +76,22 @@ func NewEndpointsWatcherCache(k8sAPI *k8s.API, enableEndpointSlices bool) *Endpo
 // Valid secrets will create and start a new EndpointsWatcher for a remote
 // cluster. When a secret is removed, the watcher is automatically stopped and
 // cleaned-up.
-func (ewc *EndpointsWatcherCache) Start() error {
-	return ewc.startWithDecoder(decodeK8sConfigFromSecret)
-}
 
-func (ewc *EndpointsWatcherCache) startWithDecoder(decodeFn configDecoder) error {
+func newWatcherCacheWithDecoder(k8sAPI *k8s.API, enableEndpointSlices bool, decodeFn configDecoder) (*EndpointsWatcherCache, error) {
+	ewc := &EndpointsWatcherCache{
+		store: make(map[string]watchStore),
+		log: logging.WithFields(logging.Fields{
+			"component": "endpoints-watcher-cache",
+		}),
+		enableEndpointSlices: enableEndpointSlices,
+		k8sAPI:               k8sAPI,
+		decodeFn:             decodeFn,
+	}
+
 	_, err := ewc.k8sAPI.Secret().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			secret, ok := obj.(*v1.Secret)
+			ewc.log.Infof("GOT SECRET %s", secret.Name)
 			if !ok {
 				ewc.log.Errorf("Error processing 'Secret' object: got %#v, expected *corev1.Secret", secret)
 				return
@@ -106,7 +109,7 @@ func (ewc *EndpointsWatcherCache) startWithDecoder(decodeFn configDecoder) error
 				return
 			}
 
-			if err := ewc.addWatcher(clusterName, secret, decodeFn); err != nil {
+			if err := ewc.addWatcher(clusterName, secret); err != nil {
 				ewc.log.Errorf("Error adding watcher for cluster %s: %v", clusterName, err)
 			}
 
@@ -143,10 +146,10 @@ func (ewc *EndpointsWatcherCache) startWithDecoder(decodeFn configDecoder) error
 	})
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return err
+	return ewc, nil
 }
 
 // Get safely retrieves a watcher from the cache given a cluster name. It
@@ -208,7 +211,7 @@ func (ewc *EndpointsWatcherCache) removeWatcher(clusterName string) {
 		defer close(s.stopCh)
 		s.watcher.Stop(s.stopCh)
 		delete(ewc.store, clusterName)
-		ewc.log.Tracef("Removed cluster %s from EndpointsWatcherCache", clusterName)
+		ewc.log.Infof("Removed cluster %s from EndpointsWatcherCache", clusterName)
 	}
 }
 
@@ -216,7 +219,12 @@ func (ewc *EndpointsWatcherCache) removeWatcher(clusterName string) {
 // added, or during the initial informer list. Given a cluster name and a Secret
 // object, it creates an EndpointsWatcher for a remote cluster and syncs its
 // informers before returning.
-func (ewc *EndpointsWatcherCache) addWatcher(clusterName string, secret *v1.Secret, decodeFn configDecoder) error {
+func (ewc *EndpointsWatcherCache) addWatcher(clusterName string, secret *v1.Secret) error {
+	data, found := secret.Data[consts.ConfigKeyName]
+	if !found {
+		return errors.New("missing kubeconfig file")
+	}
+
 	clusterDomain, found := secret.GetAnnotations()[clusterDomainAnnotation]
 	if !found {
 		return fmt.Errorf("missing \"%s\" annotation", clusterDomainAnnotation)
@@ -227,10 +235,12 @@ func (ewc *EndpointsWatcherCache) addWatcher(clusterName string, secret *v1.Secr
 		return fmt.Errorf("missing \"%s\" annotation", trustDomainAnnotation)
 	}
 
-	remoteAPI, metadataAPI, err := decodeFn(secret, ewc.enableEndpointSlices)
+	remoteAPI, metadataAPI, err := ewc.decodeFn(data, ewc.enableEndpointSlices)
 	if err != nil {
 		return err
 	}
+
+	stopCh := make(chan struct{}, 1)
 
 	watcher, err := NewEndpointsWatcher(
 		remoteAPI,
@@ -245,17 +255,17 @@ func (ewc *EndpointsWatcherCache) addWatcher(clusterName string, secret *v1.Secr
 	}
 
 	ewc.Lock()
-	stopCh := make(chan struct{}, 1)
+	defer ewc.Unlock()
 	ewc.store[clusterName] = watchStore{
 		watcher,
 		trustDomain,
 		clusterDomain,
 		stopCh,
 	}
-	ewc.Unlock()
 
 	remoteAPI.Sync(stopCh)
 	metadataAPI.Sync(stopCh)
+
 	ewc.log.Tracef("Added cluster %s to EndpointsWatcherCache", clusterName)
 
 	return nil
@@ -263,11 +273,7 @@ func (ewc *EndpointsWatcherCache) addWatcher(clusterName string, secret *v1.Secr
 
 // decodeK8sConfigFromSecret implements the decoder function type and creates
 // the necessary configuration from a secret.
-func decodeK8sConfigFromSecret(secret *v1.Secret, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
-	data, found := secret.Data[consts.ConfigKeyName]
-	if !found {
-		return nil, nil, errors.New("missing kubeconfig file")
-	}
+func decodeK8sConfigFromSecret(data []byte, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
 
 	cfg, err := clientcmd.RESTConfigFromKubeConfig(data)
 	if err != nil {
@@ -306,5 +312,6 @@ func decodeK8sConfigFromSecret(secret *v1.Secret, enableEndpointSlices bool) (*k
 func (ewc *EndpointsWatcherCache) len() int {
 	ewc.RLock()
 	defer ewc.RUnlock()
-	return len(ewc.store)
+	sz := len(ewc.store)
+	return sz
 }
