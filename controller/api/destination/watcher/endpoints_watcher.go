@@ -261,18 +261,20 @@ func (ew *EndpointsWatcher) Stop(stopCh chan<- struct{}) {
 
 	if ew.srvHandle != nil {
 		if err := ew.k8sAPI.Srv().Informer().RemoveEventHandler(ew.srvHandle); err != nil {
-			ew.log.Errorf("Failed to remove Service informer event handlers: %s", err)
+			ew.log.Errorf("Failed to remove Server informer event handlers: %s", err)
 		}
 	}
 
-	if ew.enableEndpointSlices && ew.epHandle != nil {
-		if err := ew.k8sAPI.ES().Informer().RemoveEventHandler(ew.epHandle); err != nil {
+	if ew.epHandle != nil {
+		if ew.enableEndpointSlices {
+			if err := ew.k8sAPI.ES().Informer().RemoveEventHandler(ew.epHandle); err != nil {
 
-			ew.log.Errorf("Failed to remove Service informer event handlers: %s", err)
-		}
-	} else {
-		if err := ew.k8sAPI.Endpoint().Informer().RemoveEventHandler(ew.epHandle); err != nil {
-			ew.log.Errorf("Failed to remove Service informer event handlers: %s", err)
+				ew.log.Errorf("Failed to remove EndpointSlice informer event handlers: %s", err)
+			}
+		} else {
+			if err := ew.k8sAPI.Endpoint().Informer().RemoveEventHandler(ew.epHandle); err != nil {
+				ew.log.Errorf("Failed to remove Endpoints informer event handlers: %s", err)
+			}
 		}
 	}
 
