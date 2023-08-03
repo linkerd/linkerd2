@@ -437,22 +437,26 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ctx context.
 	rcsw.log.Infof("Updating mirror service %s/%s", ev.localService.Namespace, ev.localService.Name)
 
 	if rcsw.isRemoteDiscovery(ev.remoteUpdate) {
+		// The service is mirrored in remote discovery mode and any local
+		// endpoints for it should be deleted if they exist.
 		if ev.localEndpoints != nil {
 			err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ev.localService.Namespace).Delete(ctx, ev.localService.Name, metav1.DeleteOptions{})
 			if err != nil {
-				return fmt.Errorf("failed to delete mirror endpoints for %s/%s: %w", ev.localService.Namespace, ev.localService.Name, err)
+				return RetryableError{[]error{
+					fmt.Errorf("failed to delete mirror endpoints for %s/%s: %w", ev.localService.Namespace, ev.localService.Name, err),
+				}}
 			}
-			return RetryableError{[]error{err}}
 		}
-		return nil
-	}
-
-	if ev.localEndpoints == nil {
+	} else if ev.localEndpoints == nil {
+		// The service is mirrored in gateway mode and gateway endpoints should
+		// be created for it.
 		err := rcsw.createGatewayEndpoints(ctx, ev.remoteUpdate)
 		if err != nil {
 			return err
 		}
 	} else {
+		// The service is mirrored in gateway mode and gateway endpoints already
+		// exist for it but may need to be updated.
 		gatewayAddresses, err := rcsw.resolveGatewayAddress()
 		if err != nil {
 			return err
@@ -1206,6 +1210,11 @@ func (rcsw *RemoteClusterServiceWatcher) updateReadiness(endpoints *corev1.Endpo
 }
 
 func (rcsw *RemoteClusterServiceWatcher) isExported(l map[string]string) bool {
+	// Treat an empty selector as "Nothing" instead of "Everything" so that
+	// when the selector field is unset, we don't export all Services.
+	if len(rcsw.link.Selector.MatchExpressions)+len(rcsw.link.Selector.MatchLabels) == 0 {
+		return false
+	}
 	selector, err := metav1.LabelSelectorAsSelector(&rcsw.link.Selector)
 	if err != nil {
 		rcsw.log.Errorf("Invalid selector: %s", err)
@@ -1220,6 +1229,12 @@ func (rcsw *RemoteClusterServiceWatcher) isExported(l map[string]string) bool {
 }
 
 func (rcsw *RemoteClusterServiceWatcher) isRemoteDiscovery(svc *corev1.Service) bool {
+	// Treat an empty remoteDisocverySelector as "Nothing" instead of
+	// "Everything" so that when the remoteDiscoverySelector field is unset, we
+	// don't export all Services.
+	if len(rcsw.link.RemoteDiscoverySelector.MatchExpressions)+len(rcsw.link.RemoteDiscoverySelector.MatchLabels) == 0 {
+		return false
+	}
 	remoteDiscoverySelector, err := metav1.LabelSelectorAsSelector(&rcsw.link.RemoteDiscoverySelector)
 	if err != nil {
 		rcsw.log.Errorf("Invalid selector: %s", err)

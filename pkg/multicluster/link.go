@@ -193,6 +193,17 @@ func (l Link) ToUnstructured() (unstructured.Unstructured, error) {
 	}
 	spec["selector"] = selector
 
+	data, err = json.Marshal(l.RemoteDiscoverySelector)
+	if err != nil {
+		return unstructured.Unstructured{}, err
+	}
+	remoteDiscoverySelector := make(map[string]interface{})
+	err = json.Unmarshal(data, &remoteDiscoverySelector)
+	if err != nil {
+		return unstructured.Unstructured{}, err
+	}
+	spec["remoteDiscoverySelector"] = remoteDiscoverySelector
+
 	return unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": k8s.LinkAPIGroupVersion,
