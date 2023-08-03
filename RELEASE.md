@@ -163,6 +163,10 @@ requires bumping its `version` if there were changes in its templates files.
 
 On this branch, add the release notes for this version in `CHANGES.md`.
 
+Please include links/references to publicly reported bugs which are fixed by
+this release. The fix needs to be referenced whenever it is introduced into
+the corresponding release channel (edge or stable).
+
 Note: To see all of the changes since the previous release, run the command
 below in the `linkerd2` repo. If the last release was a stable release, be
 sure to use `stable-Y.Y.Y` instead of `edge-Y.Y.Y`.
