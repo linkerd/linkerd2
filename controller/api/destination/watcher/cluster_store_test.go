@@ -114,7 +114,10 @@ func TestClusterStoreHandlers(t *testing.T) {
 
 			// Wait for the update to be processed because there is no blocking call currently in k8s that we can wait on
 			time.Sleep(50 * time.Millisecond)
-			actualLen := cs.Len()
+
+			cs.RLock()
+			actualLen := len(cs.store)
+			defer cs.RUnlock()
 
 			if actualLen != len(tt.expectedClusters) {
 				t.Fatalf("Unexpected error: expected to see %d cache entries, got: %d", len(tt.expectedClusters), actualLen)

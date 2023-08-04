@@ -156,13 +156,6 @@ func (cs *ClusterStore) Get(clusterName string) (*EndpointsWatcher, clusterConfi
 	return cw.watcher, cw.config, found
 }
 
-// Len returns the number of entries in the cache
-func (cs *ClusterStore) Len() int {
-	cs.RLock()
-	defer cs.RUnlock()
-	return len(cs.store)
-}
-
 // removeCluster is triggered by the cache's Secret informer when a secret is
 // removed. Given a cluster name, it removes the entry from the cache after
 // stopping the associated watcher.
