@@ -158,7 +158,7 @@ webhooks:
   rules:
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["policy.linkerd.io"]
-    apiVersions: ["v1alpha1", "v1beta1", "v1beta2", "v1beta3"]
+    apiVersions: ["*"]
     resources:
     - authorizationpolicies
     - httproutes
