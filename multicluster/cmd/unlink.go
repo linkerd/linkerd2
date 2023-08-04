@@ -89,6 +89,17 @@ func newUnlinkCommand() *cobra.Command {
 				)
 			}
 
+			selector = fmt.Sprintf("%s=%s", clusterNameLabel, opts.clusterName)
+			destinationCredentials, err := k.CoreV1().Secrets(controlPlaneNamespace).List(cmd.Context(), metav1.ListOptions{LabelSelector: selector})
+			if err != nil {
+				return err
+			}
+			for _, secret := range destinationCredentials.Items {
+				resources = append(resources,
+					resource.NewNamespaced(corev1.SchemeGroupVersion.String(), "Secret", secret.Name, secret.Namespace),
+				)
+			}
+
 			for _, r := range resources {
 				if err := r.RenderResource(stdout); err != nil {
 					log.Errorf("failed to render resource %s: %s", r.Name, err)
