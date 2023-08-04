@@ -78,6 +78,18 @@ type (
 		log                  *logging.Entry
 		enableEndpointSlices bool
 		sync.RWMutex         // This mutex protects modification of the map itself.
+
+		informerHandlers
+	}
+
+	// informerHandlers holds a registration handle for each informer handler
+	// that has been registered for the EndpointsWatcher. The registration
+	// handles are used to re-deregister informer handlers when the
+	// EndpointsWatcher stops.
+	informerHandlers struct {
+		epHandle  cache.ResourceEventHandlerRegistration
+		svcHandle cache.ResourceEventHandlerRegistration
+		srvHandle cache.ResourceEventHandlerRegistration
 	}
 
 	// servicePublisher represents a service.  It keeps a map of portPublishers
@@ -149,7 +161,8 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *log
 		}),
 	}
 
-	_, err := k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	var err error
+	ew.svcHandle, err = k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ew.addService,
 		DeleteFunc: ew.deleteService,
 		UpdateFunc: func(_, obj interface{}) { ew.addService(obj) },
@@ -158,7 +171,7 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *log
 		return nil, err
 	}
 
-	_, err = k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	ew.srvHandle, err = k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ew.addServer,
 		DeleteFunc: ew.deleteServer,
 		UpdateFunc: func(_, obj interface{}) { ew.addServer(obj) },
@@ -169,7 +182,7 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *log
 
 	if ew.enableEndpointSlices {
 		ew.log.Debugf("Watching EndpointSlice resources")
-		_, err := k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		ew.epHandle, err = k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    ew.addEndpointSlice,
 			DeleteFunc: ew.deleteEndpointSlice,
 			UpdateFunc: ew.updateEndpointSlice,
@@ -177,9 +190,10 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *log
 		if err != nil {
 			return nil, err
 		}
+
 	} else {
 		ew.log.Debugf("Watching Endpoints resources")
-		_, err = k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		ew.epHandle, err = k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    ew.addEndpoints,
 			DeleteFunc: ew.deleteEndpoints,
 			UpdateFunc: func(_, obj interface{}) { ew.addEndpoints(obj) },
@@ -230,6 +244,37 @@ func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, hostname string
 		return
 	}
 	sp.unsubscribe(port, hostname, listener)
+}
+
+// removeHanders will de-register any event handlers used by the
+// EndpointsWatcher's informers.
+func (ew *EndpointsWatcher) removeHandlers() {
+	ew.Lock()
+	defer ew.Unlock()
+	if ew.svcHandle != nil {
+		if err := ew.k8sAPI.Svc().Informer().RemoveEventHandler(ew.svcHandle); err != nil {
+			ew.log.Errorf("Failed to remove Service informer event handlers: %s", err)
+		}
+	}
+
+	if ew.srvHandle != nil {
+		if err := ew.k8sAPI.Srv().Informer().RemoveEventHandler(ew.srvHandle); err != nil {
+			ew.log.Errorf("Failed to remove Server informer event handlers: %s", err)
+		}
+	}
+
+	if ew.epHandle != nil {
+		if ew.enableEndpointSlices {
+			if err := ew.k8sAPI.ES().Informer().RemoveEventHandler(ew.epHandle); err != nil {
+
+				ew.log.Errorf("Failed to remove EndpointSlice informer event handlers: %s", err)
+			}
+		} else {
+			if err := ew.k8sAPI.Endpoint().Informer().RemoveEventHandler(ew.epHandle); err != nil {
+				ew.log.Errorf("Failed to remove Endpoints informer event handlers: %s", err)
+			}
+		}
+	}
 }
 
 func (ew *EndpointsWatcher) addService(obj interface{}) {
