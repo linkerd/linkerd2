@@ -246,11 +246,9 @@ func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, hostname string
 	sp.unsubscribe(port, hostname, listener)
 }
 
-// Stop will terminate an EndpointsWatcher by shutting down its informers. It
-// uses the write half of the channel used to sync the informers to signal
-// shutdown. It additionally de-registers any event handlers used by its
-// informers.
-func (ew *EndpointsWatcher) Stop(stopCh chan<- struct{}) {
+// removeHanders will de-register any event handlers used by the
+// EndpointsWatcher's informers.
+func (ew *EndpointsWatcher) removeHandlers() {
 	ew.Lock()
 	defer ew.Unlock()
 	if ew.svcHandle != nil {
@@ -277,9 +275,6 @@ func (ew *EndpointsWatcher) Stop(stopCh chan<- struct{}) {
 			}
 		}
 	}
-
-	// Signal informers to stop
-	stopCh <- struct{}{}
 }
 
 func (ew *EndpointsWatcher) addService(obj interface{}) {

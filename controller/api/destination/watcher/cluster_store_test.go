@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
-	logging "github.com/sirupsen/logrus"
 )
 
 func CreateMockDecoder() configDecoder {
@@ -31,7 +30,7 @@ func TestClusterStoreHandlers(t *testing.T) {
 		name                 string
 		k8sConfigs           []string
 		enableEndpointSlices bool
-		expectedClusters     map[string]struct{}
+		expectedClusters     map[string]clusterConfig
 		deleteClusters       map[string]struct{}
 	}{
 		{
@@ -40,9 +39,11 @@ func TestClusterStoreHandlers(t *testing.T) {
 				validRemoteSecret,
 			},
 			enableEndpointSlices: true,
-			expectedClusters: map[string]struct{}{
-				"remote":        {},
-				LocalClusterKey: {},
+			expectedClusters: map[string]clusterConfig{
+				"remote": {
+					TrustDomain:   "identity.org",
+					ClusterDomain: "cluster.local",
+				},
 			},
 			deleteClusters: map[string]struct{}{
 				"remote": {},
@@ -55,10 +56,15 @@ func TestClusterStoreHandlers(t *testing.T) {
 				validTargetSecret,
 			},
 			enableEndpointSlices: false,
-			expectedClusters: map[string]struct{}{
-				"remote":        {},
-				LocalClusterKey: {},
-				"target":        {},
+			expectedClusters: map[string]clusterConfig{
+				"remote": {
+					TrustDomain:   "identity.org",
+					ClusterDomain: "cluster.local",
+				},
+				"target": {
+					TrustDomain:   "cluster.target.local",
+					ClusterDomain: "cluster.target.local",
+				},
 			},
 			deleteClusters: map[string]struct{}{
 				"remote": {},
@@ -74,9 +80,11 @@ func TestClusterStoreHandlers(t *testing.T) {
 				invalidTypeSecret,
 			},
 			enableEndpointSlices: true,
-			expectedClusters: map[string]struct{}{
-				"remote":        {},
-				LocalClusterKey: {},
+			expectedClusters: map[string]clusterConfig{
+				"remote": {
+					TrustDomain:   "identity.org",
+					ClusterDomain: "cluster.local",
+				},
 			},
 			deleteClusters: map[string]struct{}{
 				"remote": {},
@@ -106,34 +114,37 @@ func TestClusterStoreHandlers(t *testing.T) {
 
 			// Wait for the update to be processed because there is no blocking call currently in k8s that we can wait on
 			time.Sleep(50 * time.Millisecond)
-
-			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), tt.enableEndpointSlices)
-			if err != nil {
-				t.Fatalf("Unexpected error when creating local watcher: %s", err)
-			}
-
-			cs.AddLocalWatcher(nil, watcher, "cluster.local", "cluster.local")
 			actualLen := cs.Len()
 
 			if actualLen != len(tt.expectedClusters) {
 				t.Fatalf("Unexpected error: expected to see %d cache entries, got: %d", len(tt.expectedClusters), actualLen)
 			}
-			for k := range tt.expectedClusters {
-				if _, found := cs.GetWatcher(k); !found {
+
+			for k, expected := range tt.expectedClusters {
+				_, cfg, found := cs.Get(k)
+				if !found {
 					t.Fatalf("Unexpected error: cluster %s is missing from the cache", k)
+				}
+
+				if cfg.ClusterDomain != expected.ClusterDomain {
+					t.Fatalf("Unexpected error: expected cluster domain %s for cluster '%s', got: %s", expected.ClusterDomain, k, cfg.ClusterDomain)
+				}
+
+				if cfg.TrustDomain != expected.TrustDomain {
+					t.Fatalf("Unexpected error: expected cluster domain %s for cluster '%s', got: %s", expected.TrustDomain, k, cfg.TrustDomain)
 				}
 			}
 
 			// Handle delete events
 			if len(tt.deleteClusters) != 0 {
 				for k := range tt.deleteClusters {
-					watcher, found := cs.GetWatcher(k)
+					watcher, _, found := cs.Get(k)
 					if !found {
 						t.Fatalf("Unexpected error: watcher %s should exist in the cache", k)
 					}
 					// Unfortunately, mock k8s client does not propagate
 					// deletes, so we have to call remove directly.
-					cs.removeWatcher(k)
+					cs.removeCluster(k)
 					// Leave it to do its thing and gracefully shutdown
 					time.Sleep(50 * time.Millisecond)
 					var hasStopped bool
@@ -146,7 +157,7 @@ func TestClusterStoreHandlers(t *testing.T) {
 						t.Fatalf("Unexpected error: informers for watcher %s should be stopped", k)
 					}
 
-					if _, found := cs.GetWatcher(k); found {
+					if _, _, found := cs.Get(k); found {
 						t.Fatalf("Unexpected error: watcher %s should have been removed from the cache", k)
 					}
 
@@ -166,7 +177,7 @@ metadata:
   labels:
     multicluster.linkerd.io/cluster-name: remote
   annotations:
-    multicluster.linkerd.io/trust-domain: cluster.local
+    multicluster.linkerd.io/trust-domain: identity.org
     multicluster.linkerd.io/cluster-domain: cluster.local
 data:
   kubeconfig: dmVyeSB0b3Agc2VjcmV0IGluZm9ybWF0aW9uIGhlcmUK
@@ -182,8 +193,8 @@ metadata:
   labels:
     multicluster.linkerd.io/cluster-name: target
   annotations:
-    multicluster.linkerd.io/trust-domain: cluster.local
-    multicluster.linkerd.io/cluster-domain: cluster.local
+    multicluster.linkerd.io/trust-domain: cluster.target.local
+    multicluster.linkerd.io/cluster-domain: cluster.target.local
 data:
   kubeconfig: dmvyesb0b3agc2vjcmv0igluzm9ybwf0aw9uighlcmuk
 `

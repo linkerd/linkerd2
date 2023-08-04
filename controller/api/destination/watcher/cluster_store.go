@@ -16,18 +16,17 @@ import (
 )
 
 type (
-	// ClusterStore holds all EndpointsWatchers used by the destination
-	// service to perform service discovery. Each cluster (including the one the
-	// controller is running in) that may be looked-up for service discovery has
-	// an associated EndpointsWatcher in the cache, along with a set of
-	// immutable cluster configuration primitives (i.e. identity and cluster
-	// domains).
+	// ClusterStore indexes clusters in which remote service discovery may be
+	// performed. For each store item, an EndpointsWatcher is created to read
+	// state directly from the respective cluster's API Server. In addition,
+	// each store item has some associated and immutable configuration that is
+	// required for service discovery.
 	ClusterStore struct {
 		// Protects against illegal accesses
 		sync.RWMutex
 
 		k8sAPI               *k8s.API
-		store                map[string]cluster
+		store                map[string]remoteCluster
 		enableEndpointSlices bool
 		log                  *logging.Entry
 
@@ -36,14 +35,19 @@ type (
 		decodeFn configDecoder
 	}
 
-	// cluster is a helper struct that represents a cache item
-	cluster struct {
-		watcher       *EndpointsWatcher
-		trustDomain   string
-		clusterDomain string
+	// remoteCluster is a helper struct that represents a store item
+	remoteCluster struct {
+		watcher *EndpointsWatcher
+		config  clusterConfig
 
 		// Used to signal shutdown to the associated watcher's informers
 		stopCh chan<- struct{}
+	}
+
+	// clusterConfig holds immutable configuration for a given cluster
+	clusterConfig struct {
+		TrustDomain   string
+		ClusterDomain string
 	}
 
 	// configDecoder is the type of a function that given a byte buffer, returns
@@ -53,9 +57,6 @@ type (
 )
 
 const (
-	// LocalClusterKey represents the look-up key that returns an
-	// EndpointsWatcher associated with the "local" cluster.
-	LocalClusterKey         = "local"
 	clusterNameLabel        = "multicluster.linkerd.io/cluster-name"
 	trustDomainAnnotation   = "multicluster.linkerd.io/trust-domain"
 	clusterDomainAnnotation = "multicluster.linkerd.io/cluster-domain"
@@ -64,26 +65,20 @@ const (
 // NewClusterStore creates a new (empty) ClusterStore. It
 // requires a Kubernetes API Server client instantiated for the local cluster.
 //
-// Upon creation, a pair of event handlers will be registered against the API
-// Server client's Secret informer. The event handlers will add, or remove
-// watcher entries from the cache by watching Secrets in the namespace the
-// controller is running in.
-//
-// A new watcher is created for a remote cluster when its Secret is valid (contains
-// necessary configuration, including a kubeconfig file). When a Secret is
-// deleted from the cluster, if there is a corresponding watcher in the cache,
-// it will be gracefully shutdown to allow for the memory to be freed.
+// When created, a pair of event handlers are registered for the local cluster's
+// Secret informer. The event handlers are responsible for driving the discovery
+// of remote clusters and their configuration
 func NewClusterStore(k8sAPI *k8s.API, enableEndpointSlices bool) (*ClusterStore, error) {
 	return newClusterStoreWithDecoder(k8sAPI, enableEndpointSlices, decodeK8sConfigFromSecret)
 }
 
-// newWatcherCacheWithDecoder is a helper function that allows the creation of a
-// cache with an arbitrary `configDecoder` function.
+// newClusterStoreWithDecoder is a helper function that allows the creation of a
+// store with an arbitrary `configDecoder` function.
 func newClusterStoreWithDecoder(k8sAPI *k8s.API, enableEndpointSlices bool, decodeFn configDecoder) (*ClusterStore, error) {
 	cs := &ClusterStore{
-		store: make(map[string]cluster),
+		store: make(map[string]remoteCluster),
 		log: logging.WithFields(logging.Fields{
-			"component": "endpoints-watcher-cache",
+			"component": "cluster-store",
 		}),
 		enableEndpointSlices: enableEndpointSlices,
 		k8sAPI:               k8sAPI,
@@ -110,8 +105,8 @@ func newClusterStoreWithDecoder(k8sAPI *k8s.API, enableEndpointSlices bool, deco
 				return
 			}
 
-			if err := cs.addWatcher(clusterName, secret); err != nil {
-				cs.log.Errorf("Error adding watcher for cluster %s: %v", clusterName, err)
+			if err := cs.addCluster(clusterName, secret); err != nil {
+				cs.log.Errorf("Error adding cluster %s to store: %v", clusterName, err)
 			}
 
 		},
@@ -124,7 +119,7 @@ func newClusterStoreWithDecoder(k8sAPI *k8s.API, enableEndpointSlices bool, deco
 				// stale, so it should be cleaned-up.
 				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 				if !ok {
-					cs.log.Debugf("unable to get object from DeletedFinalStateUnknown %#v", obj)
+					cs.log.Debugf("Unable to get object from DeletedFinalStateUnknown %#v", obj)
 					return
 				}
 				// If the zombie object is a `Secret` we can delete it.
@@ -141,7 +136,7 @@ func newClusterStoreWithDecoder(k8sAPI *k8s.API, enableEndpointSlices bool, deco
 				return
 			}
 
-			cs.removeWatcher(clusterName)
+			cs.removeCluster(clusterName)
 
 		},
 	})
@@ -153,51 +148,12 @@ func newClusterStoreWithDecoder(k8sAPI *k8s.API, enableEndpointSlices bool, deco
 	return cs, nil
 }
 
-// Get safely retrieves a watcher from the cache given a cluster name. It
-// returns the watcher, cluster configuration, if the entry exists in the cache.
-func (cs *ClusterStore) Get(clusterName string) (*EndpointsWatcher, string, string, bool) {
+// Get safely retrieves a store item given a cluster name.
+func (cs *ClusterStore) Get(clusterName string) (*EndpointsWatcher, clusterConfig, bool) {
 	cs.RLock()
 	defer cs.RUnlock()
-	s, found := cs.store[clusterName]
-	return s.watcher, s.trustDomain, s.clusterDomain, found
-}
-
-// GetWatcher is a convenience method that given a cluster name only returns the
-// associated EndpointsWatcher if it exists in the cache.
-func (cs *ClusterStore) GetWatcher(clusterName string) (*EndpointsWatcher, bool) {
-	cs.RLock()
-	defer cs.RUnlock()
-	s, found := cs.store[clusterName]
-	return s.watcher, found
-}
-
-// GetLocalWatcher is a convenience method that retrieves the watcher associated
-// with the local cluster. Its existence is assumed.
-func (cs *ClusterStore) GetLocalWatcher() *EndpointsWatcher {
-	cs.RLock()
-	defer cs.RUnlock()
-	return cs.store[LocalClusterKey].watcher
-}
-
-// GetClusterConfig is a convenience method that given a cluster name retrieves
-// its associated configuration strings if the entry exists in the cache.
-func (cs *ClusterStore) GetClusterConfig(clusterName string) (string, string, bool) {
-	cs.RLock()
-	defer cs.RUnlock()
-	s, found := cs.store[clusterName]
-	return s.trustDomain, s.clusterDomain, found
-}
-
-// AddLocalWatcher adds a watcher to the cache using the local cluster key.
-func (cs *ClusterStore) AddLocalWatcher(stopCh chan<- struct{}, watcher *EndpointsWatcher, trustDomain, clusterDomain string) {
-	cs.Lock()
-	defer cs.Unlock()
-	cs.store[LocalClusterKey] = cluster{
-		watcher,
-		trustDomain,
-		clusterDomain,
-		stopCh,
-	}
+	cw, found := cs.store[clusterName]
+	return cw.watcher, cw.config, found
 }
 
 // Len returns the number of entries in the cache
@@ -207,29 +163,27 @@ func (cs *ClusterStore) Len() int {
 	return len(cs.store)
 }
 
-// removeWatcher is triggered by the cache's Secret informer when a secret is
+// removeCluster is triggered by the cache's Secret informer when a secret is
 // removed. Given a cluster name, it removes the entry from the cache after
 // stopping the associated watcher.
-func (cs *ClusterStore) removeWatcher(clusterName string) {
+func (cs *ClusterStore) removeCluster(clusterName string) {
 	cs.Lock()
 	defer cs.Unlock()
-	s, found := cs.store[clusterName]
+	r, found := cs.store[clusterName]
 	if !found {
 		return
 	}
-	// For good measure, close the channel after stopping to ensure
-	// informers are shut down.
-	defer close(s.stopCh)
-	s.watcher.Stop(s.stopCh)
+	r.watcher.removeHandlers()
+	close(r.stopCh)
 	delete(cs.store, clusterName)
 	cs.log.Tracef("Removed cluster %s from ClusterStore", clusterName)
 }
 
-// addWatcher is triggered by the cache's Secret informer when a secret is
+// addCluster is triggered by the cache's Secret informer when a secret is
 // discovered for the first time. Given a cluster name and a Secret
 // object, it creates an EndpointsWatcher for a remote cluster and syncs its
 // informers before returning.
-func (cs *ClusterStore) addWatcher(clusterName string, secret *v1.Secret) error {
+func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error {
 	data, found := secret.Data[consts.ConfigKeyName]
 	if !found {
 		return errors.New("missing kubeconfig file")
@@ -251,7 +205,6 @@ func (cs *ClusterStore) addWatcher(clusterName string, secret *v1.Secret) error 
 	}
 
 	stopCh := make(chan struct{}, 1)
-
 	watcher, err := NewEndpointsWatcher(
 		remoteAPI,
 		metadataAPI,
@@ -266,10 +219,12 @@ func (cs *ClusterStore) addWatcher(clusterName string, secret *v1.Secret) error 
 
 	cs.Lock()
 	defer cs.Unlock()
-	cs.store[clusterName] = cluster{
+	cs.store[clusterName] = remoteCluster{
 		watcher,
-		trustDomain,
-		clusterDomain,
+		clusterConfig{
+			trustDomain,
+			clusterDomain,
+		},
 		stopCh,
 	}
 
