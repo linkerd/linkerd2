@@ -221,8 +221,10 @@ func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error 
 		stopCh,
 	}
 
-	remoteAPI.Sync(stopCh)
-	metadataAPI.Sync(stopCh)
+	go func() {
+		remoteAPI.Sync(stopCh)
+		metadataAPI.Sync(stopCh)
+	}()
 
 	cs.log.Tracef("Added cluster %s to ClusterStore", clusterName)
 
