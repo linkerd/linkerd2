@@ -401,6 +401,11 @@ spec:
 		t.Fatalf("can't create Server watcher: %s", err)
 	}
 
+	clusterStore, err := watcher.NewClusterStore(k8sAPI, false)
+	if err != nil {
+		t.Fatalf("can't create cluster store: %s", err)
+	}
+
 	// Sync after creating watchers so that the the indexers added get updated
 	// properly
 	k8sAPI.Sync(nil)
@@ -412,6 +417,7 @@ spec:
 		opaquePorts,
 		profiles,
 		servers,
+		clusterStore,
 		true,
 		"linkerd",
 		"trust.domain",

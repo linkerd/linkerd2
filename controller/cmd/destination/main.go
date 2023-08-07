@@ -100,14 +100,14 @@ func Main(args []string) {
 			ctx,
 			*kubeConfigPath,
 			true,
-			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
+			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv, k8s.Secret,
 		)
 	} else {
 		k8sAPI, err = k8s.InitializeAPI(
 			ctx,
 			*kubeConfigPath,
 			true,
-			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
+			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv, k8s.Secret,
 		)
 	}
 	if err != nil {
