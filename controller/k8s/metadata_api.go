@@ -84,7 +84,7 @@ func newClusterScopedMetadataAPI(
 ) (*MetadataAPI, error) {
 	sharedInformers := metadatainformer.NewFilteredSharedInformerFactory(
 		metadataClient,
-		resyncTime,
+		ResyncTime,
 		metav1.NamespaceAll,
 		nil,
 	)

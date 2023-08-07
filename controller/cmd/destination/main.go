@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/linkerd/linkerd2/controller/api/destination"
+	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
@@ -100,14 +101,14 @@ func Main(args []string) {
 			ctx,
 			*kubeConfigPath,
 			true,
-			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv, k8s.Secret,
+			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
 		)
 	} else {
 		k8sAPI, err = k8s.InitializeAPI(
 			ctx,
 			*kubeConfigPath,
 			true,
-			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv, k8s.Secret,
+			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
 		)
 	}
 	if err != nil {
@@ -119,6 +120,11 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize Kubernetes metadata API: %s", err)
 	}
 
+	clusterStore, err := watcher.NewClusterStore(k8Client, *controllerNamespace, *enableEndpointSlices)
+	if err != nil {
+		log.Fatalf("Failed to initialize Cluster Store: %s", err)
+	}
+
 	server, err := destination.NewServer(
 		*addr,
 		*controllerNamespace,
@@ -127,6 +133,7 @@ func Main(args []string) {
 		*enableEndpointSlices,
 		k8sAPI,
 		metadataAPI,
+		clusterStore,
 		*clusterDomain,
 		opaquePorts,
 		done,
@@ -139,6 +146,7 @@ func Main(args []string) {
 	// blocks until caches are synced
 	k8sAPI.Sync(nil)
 	metadataAPI.Sync(nil)
+	clusterStore.Sync(nil)
 
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)

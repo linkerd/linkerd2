@@ -5,14 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
-
-	consts "github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 type (
@@ -25,7 +27,7 @@ type (
 		// Protects against illegal accesses
 		sync.RWMutex
 
-		k8sAPI               *k8s.API
+		secrets              cache.SharedIndexInformer
 		store                map[string]remoteCluster
 		enableEndpointSlices bool
 		log                  *logging.Entry
@@ -68,24 +70,42 @@ const (
 // When created, a pair of event handlers are registered for the local cluster's
 // Secret informer. The event handlers are responsible for driving the discovery
 // of remote clusters and their configuration
-func NewClusterStore(k8sAPI *k8s.API, enableEndpointSlices bool) (*ClusterStore, error) {
-	return newClusterStoreWithDecoder(k8sAPI, enableEndpointSlices, decodeK8sConfigFromSecret)
+func NewClusterStore(client kubernetes.Interface, namespace string, enableEndpointSlices bool) (*ClusterStore, error) {
+	return newClusterStoreWithDecoder(client, namespace, enableEndpointSlices, decodeK8sConfigFromSecret)
+}
+
+func (cs *ClusterStore) Sync(stopCh <-chan struct{}) {
+	go func() {
+		cs.secrets.Run(stopCh)
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	cs.log.Infof("waiting for cluster store to sync")
+	if !cache.WaitForCacheSync(ctx.Done(), cs.secrets.HasSynced) {
+		cs.log.Fatal("failed to cluster store")
+	}
+	cs.log.Infof("cluster store synced")
 }
 
 // newClusterStoreWithDecoder is a helper function that allows the creation of a
 // store with an arbitrary `configDecoder` function.
-func newClusterStoreWithDecoder(k8sAPI *k8s.API, enableEndpointSlices bool, decodeFn configDecoder) (*ClusterStore, error) {
+func newClusterStoreWithDecoder(client kubernetes.Interface, namespace string, enableEndpointSlices bool, decodeFn configDecoder) (*ClusterStore, error) {
+	secretsInformerFactory := informers.NewSharedInformerFactoryWithOptions(client, k8s.ResyncTime, informers.WithNamespace(namespace))
+	secrets := secretsInformerFactory.Core().V1().Secrets().Informer()
+
 	cs := &ClusterStore{
 		store: make(map[string]remoteCluster),
 		log: logging.WithFields(logging.Fields{
 			"component": "cluster-store",
 		}),
 		enableEndpointSlices: enableEndpointSlices,
-		k8sAPI:               k8sAPI,
+		secrets:              secrets,
 		decodeFn:             decodeFn,
 	}
 
-	_, err := cs.k8sAPI.Secret().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := cs.secrets.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			secret, ok := obj.(*v1.Secret)
 			if !ok {
@@ -93,7 +113,7 @@ func newClusterStoreWithDecoder(k8sAPI *k8s.API, enableEndpointSlices bool, deco
 				return
 			}
 
-			if secret.Type != consts.MirrorSecretType {
+			if secret.Type != pkgK8s.MirrorSecretType {
 				cs.log.Tracef("Skipping Add event for 'Secret' object %s/%s: invalid type %s", secret.Namespace, secret.Name, secret.Type)
 				return
 
@@ -177,7 +197,7 @@ func (cs *ClusterStore) removeCluster(clusterName string) {
 // object, it creates an EndpointsWatcher for a remote cluster and syncs its
 // informers before returning.
 func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error {
-	data, found := secret.Data[consts.ConfigKeyName]
+	data, found := secret.Data[pkgK8s.ConfigKeyName]
 	if !found {
 		return errors.New("missing kubeconfig file")
 	}

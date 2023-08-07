@@ -11,7 +11,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-const resyncTime = 10 * time.Minute
+const ResyncTime = 10 * time.Minute
 
 func waitForCacheSync(syncChecks []cache.InformerSynced) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)

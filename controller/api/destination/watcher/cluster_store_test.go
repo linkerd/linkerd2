@@ -93,24 +93,17 @@ func TestClusterStoreHandlers(t *testing.T) {
 	} {
 		tt := tt // Pin
 		t.Run(tt.name, func(t *testing.T) {
-			// TODO (matei): use namespace scoped API here
 			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs...)
 			if err != nil {
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
-			if err != nil {
-				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
-			}
-
-			cs, err := newClusterStoreWithDecoder(k8sAPI, tt.enableEndpointSlices, CreateMockDecoder())
+			cs, err := newClusterStoreWithDecoder(k8sAPI.Client, "linkerd", tt.enableEndpointSlices, CreateMockDecoder())
 			if err != nil {
 				t.Fatalf("Unexpected error when starting watcher cache: %s", err)
 			}
 
-			k8sAPI.Sync(nil)
-			metadataAPI.Sync(nil)
+			cs.Sync(nil)
 
 			// Wait for the update to be processed because there is no blocking call currently in k8s that we can wait on
 			time.Sleep(50 * time.Millisecond)

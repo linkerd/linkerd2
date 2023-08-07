@@ -69,6 +69,7 @@ func NewServer(
 	enableEndpointSlices bool,
 	k8sAPI *k8s.API,
 	metadataAPI *k8s.MetadataAPI,
+	clusterStore *watcher.ClusterStore,
 	clusterDomain string,
 	defaultOpaquePorts map[uint32]struct{},
 	shutdown <-chan struct{},
@@ -97,11 +98,6 @@ func NewServer(
 		return nil, err
 	}
 	servers, err := watcher.NewServerWatcher(k8sAPI, log)
-	if err != nil {
-		return nil, err
-	}
-
-	clusterStore, err := watcher.NewClusterStore(k8sAPI, enableEndpointSlices)
 	if err != nil {
 		return nil, err
 	}

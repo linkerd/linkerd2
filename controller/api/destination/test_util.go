@@ -401,7 +401,7 @@ spec:
 		t.Fatalf("can't create Server watcher: %s", err)
 	}
 
-	clusterStore, err := watcher.NewClusterStore(k8sAPI, false)
+	clusterStore, err := watcher.NewClusterStore(k8sAPI.Client, "linkerd", false)
 	if err != nil {
 		t.Fatalf("can't create cluster store: %s", err)
 	}
@@ -410,6 +410,7 @@ spec:
 	// properly
 	k8sAPI.Sync(nil)
 	metadataAPI.Sync(nil)
+	clusterStore.Sync(nil)
 
 	return &server{
 		pb.UnimplementedDestinationServer{},
