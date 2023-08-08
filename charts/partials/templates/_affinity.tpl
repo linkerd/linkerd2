@@ -8,7 +8,7 @@ podAntiAffinity:
           operator: In
           values:
           - {{ .component }}
-      topologyKey: failure-domain.beta.kubernetes.io/zone
+      topologyKey: topology.kubernetes.io/zone
     weight: 100
   requiredDuringSchedulingIgnoredDuringExecution:
   - labelSelector:

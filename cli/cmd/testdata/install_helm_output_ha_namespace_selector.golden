@@ -828,7 +828,7 @@ spec:
                   operator: In
                   values:
                   - identity
-              topologyKey: failure-domain.beta.kubernetes.io/zone
+              topologyKey: topology.kubernetes.io/zone
             weight: 100
           requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:
@@ -1250,7 +1250,7 @@ spec:
                   operator: In
                   values:
                   - destination
-              topologyKey: failure-domain.beta.kubernetes.io/zone
+              topologyKey: topology.kubernetes.io/zone
             weight: 100
           requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:
@@ -1712,7 +1712,7 @@ spec:
                   operator: In
                   values:
                   - proxy-injector
-              topologyKey: failure-domain.beta.kubernetes.io/zone
+              topologyKey: topology.kubernetes.io/zone
             weight: 100
           requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:
