@@ -259,7 +259,7 @@ func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceAnnotations(remoteSer
 
 	for key, value := range remoteService.ObjectMeta.Annotations {
 		// Topology aware hints are not multicluster aware.
-		if key == "service.kubernetes.io/topology-aware-hints" {
+		if key == "service.kubernetes.io/topology-aware-hints" || key == "service.kubernetes.io/topology-mode" {
 			continue
 		}
 		annotations[key] = value
