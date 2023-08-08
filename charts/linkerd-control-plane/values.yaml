@@ -530,6 +530,8 @@ podMonitor:
   scrapeInterval: 10s
   # -- Iimeout after which the scrape is ended
   scrapeTimeout: 10s
+  # -- Labels to apply to all pod Monitors
+  labels: {}
   controller:
     # -- Enables the creation of PodMonitor for the control-plane
     enabled: true
