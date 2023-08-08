@@ -235,6 +235,11 @@ func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceLabels(remoteService 
 		return labels
 	}
 
+	if rcsw.isRemoteDiscovery(remoteService) {
+		labels[consts.RemoteDiscoveryLabel] = rcsw.link.TargetClusterName
+		labels[consts.RemoteServiceLabel] = remoteService.GetName()
+	}
+
 	for key, value := range remoteService.ObjectMeta.Labels {
 		if strings.HasPrefix(key, consts.SvcMirrorPrefix) {
 			continue
@@ -430,27 +435,50 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.
 // new gateway being assigned or additional ports exposed. This method takes care of that.
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ctx context.Context, ev *RemoteServiceUpdated) error {
 	rcsw.log.Infof("Updating mirror service %s/%s", ev.localService.Namespace, ev.localService.Name)
-	gatewayAddresses, err := rcsw.resolveGatewayAddress()
-	if err != nil {
-		return err
-	}
 
-	copiedEndpoints := ev.localEndpoints.DeepCopy()
-	copiedEndpoints.Subsets = []corev1.EndpointSubset{
-		{
-			Addresses: gatewayAddresses,
-			Ports:     rcsw.getEndpointsPorts(ev.remoteUpdate),
-		},
-	}
+	if rcsw.isRemoteDiscovery(ev.remoteUpdate) {
+		// The service is mirrored in remote discovery mode and any local
+		// endpoints for it should be deleted if they exist.
+		if ev.localEndpoints != nil {
+			err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ev.localService.Namespace).Delete(ctx, ev.localService.Name, metav1.DeleteOptions{})
+			if err != nil {
+				return RetryableError{[]error{
+					fmt.Errorf("failed to delete mirror endpoints for %s/%s: %w", ev.localService.Namespace, ev.localService.Name, err),
+				}}
+			}
+		}
+	} else if ev.localEndpoints == nil {
+		// The service is mirrored in gateway mode and gateway endpoints should
+		// be created for it.
+		err := rcsw.createGatewayEndpoints(ctx, ev.remoteUpdate)
+		if err != nil {
+			return err
+		}
+	} else {
+		// The service is mirrored in gateway mode and gateway endpoints already
+		// exist for it but may need to be updated.
+		gatewayAddresses, err := rcsw.resolveGatewayAddress()
+		if err != nil {
+			return err
+		}
 
-	if copiedEndpoints.Annotations == nil {
-		copiedEndpoints.Annotations = make(map[string]string)
-	}
-	copiedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+		copiedEndpoints := ev.localEndpoints.DeepCopy()
+		copiedEndpoints.Subsets = []corev1.EndpointSubset{
+			{
+				Addresses: gatewayAddresses,
+				Ports:     rcsw.getEndpointsPorts(ev.remoteUpdate),
+			},
+		}
 
-	err = rcsw.updateMirrorEndpoints(ctx, copiedEndpoints)
-	if err != nil {
-		return RetryableError{[]error{err}}
+		if copiedEndpoints.Annotations == nil {
+			copiedEndpoints.Annotations = make(map[string]string)
+		}
+		copiedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
+
+		err = rcsw.updateMirrorEndpoints(ctx, copiedEndpoints)
+		if err != nil {
+			return RetryableError{[]error{err}}
+		}
 	}
 
 	ev.localService.Labels = rcsw.getMirroredServiceLabels(ev.remoteUpdate)
@@ -518,6 +546,10 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 		}
 	}
 
+	if rcsw.isRemoteDiscovery(remoteService) {
+		// For remote discovery services, skip creating gateway endpoints.
+		return nil
+	}
 	return rcsw.createGatewayEndpoints(ctx, remoteService)
 }
 
@@ -657,15 +689,19 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 		lastMirroredRemoteVersion, ok := localService.Annotations[consts.RemoteResourceVersionAnnotation]
 		if ok && lastMirroredRemoteVersion != service.ResourceVersion {
 			endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(service.Namespace).Get(localName)
-			if err == nil {
-				rcsw.eventsQueue.Add(&RemoteServiceUpdated{
-					localService:   localService,
-					localEndpoints: endpoints,
-					remoteUpdate:   service,
-				})
-				return nil
+			if err != nil {
+				if kerrors.IsNotFound(err) {
+					endpoints = nil
+				} else {
+					return RetryableError{[]error{err}}
+				}
 			}
-			return RetryableError{[]error{err}}
+			rcsw.eventsQueue.Add(&RemoteServiceUpdated{
+				localService:   localService,
+				localEndpoints: endpoints,
+				remoteUpdate:   service,
+			})
+			return nil
 		}
 
 		return nil
@@ -1174,10 +1210,35 @@ func (rcsw *RemoteClusterServiceWatcher) updateReadiness(endpoints *corev1.Endpo
 }
 
 func (rcsw *RemoteClusterServiceWatcher) isExported(l map[string]string) bool {
+	// Treat an empty selector as "Nothing" instead of "Everything" so that
+	// when the selector field is unset, we don't export all Services.
+	if len(rcsw.link.Selector.MatchExpressions)+len(rcsw.link.Selector.MatchLabels) == 0 {
+		return false
+	}
 	selector, err := metav1.LabelSelectorAsSelector(&rcsw.link.Selector)
 	if err != nil {
 		rcsw.log.Errorf("Invalid selector: %s", err)
 		return false
 	}
-	return selector.Matches(labels.Set(l))
+	remoteDiscoverySelector, err := metav1.LabelSelectorAsSelector(&rcsw.link.RemoteDiscoverySelector)
+	if err != nil {
+		rcsw.log.Errorf("Invalid selector: %s", err)
+		return false
+	}
+	return selector.Matches(labels.Set(l)) || remoteDiscoverySelector.Matches(labels.Set(l))
+}
+
+func (rcsw *RemoteClusterServiceWatcher) isRemoteDiscovery(svc *corev1.Service) bool {
+	// Treat an empty remoteDisocverySelector as "Nothing" instead of
+	// "Everything" so that when the remoteDiscoverySelector field is unset, we
+	// don't export all Services.
+	if len(rcsw.link.RemoteDiscoverySelector.MatchExpressions)+len(rcsw.link.RemoteDiscoverySelector.MatchLabels) == 0 {
+		return false
+	}
+	remoteDiscoverySelector, err := metav1.LabelSelectorAsSelector(&rcsw.link.RemoteDiscoverySelector)
+	if err != nil {
+		rcsw.log.Errorf("Invalid selector: %s", err)
+		return false
+	}
+	return remoteDiscoverySelector.Matches(labels.Set(svc.Labels))
 }

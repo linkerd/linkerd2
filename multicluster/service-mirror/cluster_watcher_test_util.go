@@ -32,7 +32,8 @@ var (
 		Port:   defaultProbePort,
 		Period: time.Duration(defaultProbePeriod) * time.Second,
 	}
-	defaultSelector, _ = metav1.ParseToLabelSelector(consts.DefaultExportedServiceSelector)
+	defaultSelector, _                = metav1.ParseToLabelSelector(consts.DefaultExportedServiceSelector + "=true")
+	defaultRemoteDiscoverySelector, _ = metav1.ParseToLabelSelector(consts.DefaultExportedServiceSelector + "=remote-discovery")
 )
 
 type testEnvironment struct {
@@ -107,13 +108,51 @@ var createExportedService = &testEnvironment{
 		namespaceAsYaml("ns1"),
 	},
 	link: multicluster.Link{
-		TargetClusterName:   clusterName,
-		TargetClusterDomain: clusterDomain,
-		GatewayIdentity:     "gateway-identity",
-		GatewayAddress:      "192.0.2.127",
-		GatewayPort:         888,
-		ProbeSpec:           defaultProbeSpec,
-		Selector:            *defaultSelector,
+		TargetClusterName:       clusterName,
+		TargetClusterDomain:     clusterDomain,
+		GatewayIdentity:         "gateway-identity",
+		GatewayAddress:          "192.0.2.127",
+		GatewayPort:             888,
+		ProbeSpec:               defaultProbeSpec,
+		Selector:                *defaultSelector,
+		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+	},
+}
+
+var createRemoteDiscoveryService = &testEnvironment{
+	events: []interface{}{
+		&RemoteServiceCreated{
+			service: remoteService("service-one", "ns1", "111", map[string]string{
+				consts.DefaultExportedServiceSelector: "remote-discovery",
+			}, []corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		},
+	},
+	remoteResources: []string{
+		endpointsAsYaml("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{}),
+	},
+	localResources: []string{
+		namespaceAsYaml("ns1"),
+	},
+	link: multicluster.Link{
+		TargetClusterName:       clusterName,
+		TargetClusterDomain:     clusterDomain,
+		GatewayIdentity:         "gateway-identity",
+		GatewayAddress:          "192.0.2.127",
+		GatewayPort:             888,
+		ProbeSpec:               defaultProbeSpec,
+		Selector:                *defaultSelector,
+		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -192,7 +231,8 @@ var createExportedHeadlessService = &testEnvironment{
 			Path:   "/probe1",
 			Period: 120,
 		},
-		Selector: *defaultSelector,
+		Selector:                *defaultSelector,
+		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -208,13 +248,14 @@ var deleteMirrorService = &testEnvironment{
 		endpointsAsYaml("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", "gateway-identity", nil),
 	},
 	link: multicluster.Link{
-		TargetClusterName:   clusterName,
-		TargetClusterDomain: clusterDomain,
-		GatewayIdentity:     "gateway-identity",
-		GatewayAddress:      "192.0.2.127",
-		GatewayPort:         888,
-		ProbeSpec:           defaultProbeSpec,
-		Selector:            *defaultSelector,
+		TargetClusterName:       clusterName,
+		TargetClusterDomain:     clusterDomain,
+		GatewayIdentity:         "gateway-identity",
+		GatewayAddress:          "192.0.2.127",
+		GatewayPort:             888,
+		ProbeSpec:               defaultProbeSpec,
+		Selector:                *defaultSelector,
+		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -301,13 +342,14 @@ var updateServiceWithChangedPorts = &testEnvironment{
 		}),
 	},
 	link: multicluster.Link{
-		TargetClusterName:   clusterName,
-		TargetClusterDomain: clusterDomain,
-		GatewayIdentity:     "gateway-identity",
-		GatewayAddress:      "192.0.2.127",
-		GatewayPort:         888,
-		ProbeSpec:           defaultProbeSpec,
-		Selector:            *defaultSelector,
+		TargetClusterName:       clusterName,
+		TargetClusterDomain:     clusterDomain,
+		GatewayIdentity:         "gateway-identity",
+		GatewayAddress:          "192.0.2.127",
+		GatewayPort:             888,
+		ProbeSpec:               defaultProbeSpec,
+		Selector:                *defaultSelector,
+		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -409,13 +451,14 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 			}),
 	},
 	link: multicluster.Link{
-		TargetClusterName:   clusterName,
-		TargetClusterDomain: clusterDomain,
-		GatewayIdentity:     "gateway-identity",
-		GatewayAddress:      "192.0.2.127",
-		GatewayPort:         888,
-		ProbeSpec:           defaultProbeSpec,
-		Selector:            *defaultSelector,
+		TargetClusterName:       clusterName,
+		TargetClusterDomain:     clusterDomain,
+		GatewayIdentity:         "gateway-identity",
+		GatewayAddress:          "192.0.2.127",
+		GatewayPort:             888,
+		ProbeSpec:               defaultProbeSpec,
+		Selector:                *defaultSelector,
+		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
 	},
 }
 var clusterUnregistered = &testEnvironment{
@@ -459,13 +502,14 @@ func onAddOrUpdateExportedSvc(isAdd bool) *testEnvironment {
 			}, nil)),
 		},
 		link: multicluster.Link{
-			TargetClusterName:   clusterName,
-			TargetClusterDomain: clusterDomain,
-			GatewayIdentity:     "gateway-identity",
-			GatewayAddress:      "192.0.2.127",
-			GatewayPort:         888,
-			ProbeSpec:           defaultProbeSpec,
-			Selector:            *defaultSelector,
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             888,
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                *defaultSelector,
+			RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
 		},
 	}
 
@@ -483,13 +527,14 @@ func onAddOrUpdateRemoteServiceUpdated(isAdd bool) *testEnvironment {
 			endpointsAsYaml("test-service-remote", "test-namespace", "0.0.0.0", "", nil),
 		},
 		link: multicluster.Link{
-			TargetClusterName:   clusterName,
-			TargetClusterDomain: clusterDomain,
-			GatewayIdentity:     "gateway-identity",
-			GatewayAddress:      "192.0.2.127",
-			GatewayPort:         888,
-			ProbeSpec:           defaultProbeSpec,
-			Selector:            *defaultSelector,
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             888,
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                *defaultSelector,
+			RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
 		},
 	}
 }
@@ -506,13 +551,14 @@ func onAddOrUpdateSameResVersion(isAdd bool) *testEnvironment {
 			endpointsAsYaml("test-service-remote", "test-namespace", "0.0.0.0", "", nil),
 		},
 		link: multicluster.Link{
-			TargetClusterName:   clusterName,
-			TargetClusterDomain: clusterDomain,
-			GatewayIdentity:     "gateway-identity",
-			GatewayAddress:      "192.0.2.127",
-			GatewayPort:         888,
-			ProbeSpec:           defaultProbeSpec,
-			Selector:            *defaultSelector,
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             888,
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                *defaultSelector,
+			RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
 		},
 	}
 }
@@ -527,13 +573,14 @@ func serviceNotExportedAnymore(isAdd bool) *testEnvironment {
 			endpointsAsYaml("test-service-remote", "test-namespace", "0.0.0.0", "", nil),
 		},
 		link: multicluster.Link{
-			TargetClusterName:   clusterName,
-			TargetClusterDomain: clusterDomain,
-			GatewayIdentity:     "gateway-identity",
-			GatewayAddress:      "192.0.2.127",
-			GatewayPort:         888,
-			ProbeSpec:           defaultProbeSpec,
-			Selector:            *defaultSelector,
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             888,
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                *defaultSelector,
+			RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
 		},
 	}
 }
@@ -547,13 +594,14 @@ var onDeleteExportedService = &testEnvironment{
 		},
 	},
 	link: multicluster.Link{
-		TargetClusterName:   clusterName,
-		TargetClusterDomain: clusterDomain,
-		GatewayIdentity:     "gateway-identity",
-		GatewayAddress:      "192.0.2.127",
-		GatewayPort:         888,
-		ProbeSpec:           defaultProbeSpec,
-		Selector:            *defaultSelector,
+		TargetClusterName:       clusterName,
+		TargetClusterDomain:     clusterDomain,
+		GatewayIdentity:         "gateway-identity",
+		GatewayAddress:          "192.0.2.127",
+		GatewayPort:             888,
+		ProbeSpec:               defaultProbeSpec,
+		Selector:                *defaultSelector,
+		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -564,13 +612,14 @@ var onDeleteNonExportedService = &testEnvironment{
 		},
 	},
 	link: multicluster.Link{
-		TargetClusterName:   clusterName,
-		TargetClusterDomain: clusterDomain,
-		GatewayIdentity:     "gateway-identity",
-		GatewayAddress:      "192.0.2.127",
-		GatewayPort:         888,
-		ProbeSpec:           defaultProbeSpec,
-		Selector:            *defaultSelector,
+		TargetClusterName:       clusterName,
+		TargetClusterDomain:     clusterDomain,
+		GatewayIdentity:         "gateway-identity",
+		GatewayAddress:          "192.0.2.127",
+		GatewayPort:             888,
+		ProbeSpec:               defaultProbeSpec,
+		Selector:                *defaultSelector,
+		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -819,6 +868,33 @@ func endpointMirrorService(hostname, rootName, namespace, resourceVersion string
 				consts.MirroredHeadlessSvcNameLabel: rootName,
 				consts.RemoteClusterNameLabel:       clusterName,
 				consts.MirroredResourceLabel:        "true",
+			},
+			Annotations: annotations,
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: ports,
+		},
+	}
+}
+
+func remoteDiscoveryMirrorService(name, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
+	annotations := make(map[string]string)
+	annotations[consts.RemoteResourceVersionAnnotation] = resourceVersion
+	annotations[consts.RemoteServiceFqName] = fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace)
+
+	return &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", name, clusterName),
+			Namespace: namespace,
+			Labels: map[string]string{
+				consts.RemoteClusterNameLabel: clusterName,
+				consts.MirroredResourceLabel:  "true",
+				consts.RemoteDiscoveryLabel:   clusterName,
+				consts.RemoteServiceLabel:     name,
 			},
 			Annotations: annotations,
 		},
