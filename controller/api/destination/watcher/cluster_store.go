@@ -267,21 +267,21 @@ func decodeK8sConfigFromSecret(data []byte, enableEndpointSlices bool) (*k8s.API
 			ctx,
 			cfg,
 			true,
-			k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
+			k8s.ES, k8s.Pod, k8s.Svc, k8s.Job, k8s.Srv,
 		)
 	} else {
 		remoteAPI, err = k8s.InitializeAPIForConfig(
 			ctx,
 			cfg,
 			true,
-			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
+			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.Job, k8s.Srv,
 		)
 	}
 	if err != nil {
 		return nil, nil, err
 	}
 
-	metadataAPI, err := k8s.InitializeMetadataAPIForConfig(cfg, k8s.Node, k8s.RS)
+	metadataAPI, err := k8s.InitializeMetadataAPIForConfig(cfg, k8s.RS)
 	if err != nil {
 		return nil, nil, err
 	}
