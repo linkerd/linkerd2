@@ -139,32 +139,30 @@ func TestClusterStoreHandlers(t *testing.T) {
 			}
 
 			// Handle delete events
-			if len(tt.deleteClusters) != 0 {
-				for k := range tt.deleteClusters {
-					watcher, _, found := cs.Get(k)
-					if !found {
-						t.Fatalf("Unexpected error: watcher %s should exist in the cache", k)
-					}
-					// Unfortunately, mock k8s client does not propagate
-					// deletes, so we have to call remove directly.
-					cs.removeCluster(k)
-					// Leave it to do its thing and gracefully shutdown
-					time.Sleep(50 * time.Millisecond)
-					var hasStopped bool
-					if tt.enableEndpointSlices {
-						hasStopped = watcher.k8sAPI.ES().Informer().IsStopped()
-					} else {
-						hasStopped = watcher.k8sAPI.Endpoint().Informer().IsStopped()
-					}
-					if !hasStopped {
-						t.Fatalf("Unexpected error: informers for watcher %s should be stopped", k)
-					}
-
-					if _, _, found := cs.Get(k); found {
-						t.Fatalf("Unexpected error: watcher %s should have been removed from the cache", k)
-					}
-
+			for k := range tt.deleteClusters {
+				watcher, _, found := cs.Get(k)
+				if !found {
+					t.Fatalf("Unexpected error: watcher %s should exist in the cache", k)
 				}
+				// Unfortunately, mock k8s client does not propagate
+				// deletes, so we have to call remove directly.
+				cs.removeCluster(k)
+				// Leave it to do its thing and gracefully shutdown
+				time.Sleep(50 * time.Millisecond)
+				var hasStopped bool
+				if tt.enableEndpointSlices {
+					hasStopped = watcher.k8sAPI.ES().Informer().IsStopped()
+				} else {
+					hasStopped = watcher.k8sAPI.Endpoint().Informer().IsStopped()
+				}
+				if !hasStopped {
+					t.Fatalf("Unexpected error: informers for watcher %s should be stopped", k)
+				}
+
+				if _, _, found := cs.Get(k); found {
+					t.Fatalf("Unexpected error: watcher %s should have been removed from the cache", k)
+				}
+
 			}
 		})
 	}

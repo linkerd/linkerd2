@@ -39,23 +39,7 @@ func InitializeMetadataAPI(kubeConfig string, resources ...APIResource) (*Metada
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %w", err)
 	}
-
-	client, err := metadata.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	api, err := newClusterScopedMetadataAPI(client, resources...)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, gauge := range api.gauges {
-		if err := prometheus.Register(gauge); err != nil {
-			log.Warnf("failed to register Prometheus gauge %s: %s", gauge.Desc().String(), err)
-		}
-	}
-	return api, nil
+	return InitializeMetadataAPIForConfig(config, resources...)
 }
 
 func InitializeMetadataAPIForConfig(kubeConfig *rest.Config, resources ...APIResource) (*MetadataAPI, error) {
