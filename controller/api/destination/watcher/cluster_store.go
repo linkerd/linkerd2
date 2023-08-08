@@ -84,7 +84,7 @@ func (cs *ClusterStore) Sync(stopCh <-chan struct{}) {
 
 	cs.log.Infof("waiting for cluster store to sync")
 	if !cache.WaitForCacheSync(ctx.Done(), cs.secrets.HasSynced) {
-		cs.log.Fatal("failed to cluster store")
+		cs.log.Fatal("failed to sync cluster store")
 	}
 	cs.log.Infof("cluster store synced")
 }

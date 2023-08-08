@@ -289,6 +289,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-destination-remote-discovery
+  namespace: {{.Release.Namespace}}
   labels:
     app.kubernetes.io/part-of: Linkerd
     linkerd.io/control-plane-component: destination
