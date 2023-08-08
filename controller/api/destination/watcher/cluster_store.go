@@ -189,7 +189,7 @@ func (cs *ClusterStore) removeCluster(clusterName string) {
 	r.watcher.removeHandlers()
 	close(r.stopCh)
 	delete(cs.store, clusterName)
-	cs.log.Tracef("Removed cluster %s from ClusterStore", clusterName)
+	cs.log.Infof("Removed cluster %s from ClusterStore", clusterName)
 }
 
 // addCluster is triggered by the cache's Secret informer when a secret is
@@ -246,7 +246,7 @@ func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error 
 		metadataAPI.Sync(stopCh)
 	}()
 
-	cs.log.Tracef("Added cluster %s to ClusterStore", clusterName)
+	cs.log.Infof("Added cluster %s to ClusterStore", clusterName)
 
 	return nil
 }

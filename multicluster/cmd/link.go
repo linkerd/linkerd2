@@ -31,7 +31,11 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const clusterNameLabel = "multicluster.linkerd.io/cluster-name"
+const (
+	clusterNameLabel        = "multicluster.linkerd.io/cluster-name"
+	trustDomainAnnotation   = "multicluster.linkerd.io/trust-domain"
+	clusterDomainAnnotation = "multicluster.linkerd.io/cluster-domain"
+)
 
 type (
 	linkOptions struct {
@@ -188,6 +192,10 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 					Namespace: controlPlaneNamespace,
 					Labels: map[string]string{
 						clusterNameLabel: opts.clusterName,
+					},
+					Annotations: map[string]string{
+						trustDomainAnnotation:   configMap.IdentityTrustDomain,
+						clusterDomainAnnotation: configMap.ClusterDomain,
 					},
 				},
 				Data: map[string][]byte{
