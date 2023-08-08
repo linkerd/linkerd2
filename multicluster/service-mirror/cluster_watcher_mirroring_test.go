@@ -199,6 +199,29 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 					}),
 			},
 		},
+		{
+			description: "remote discovery mirroring",
+			environment: createRemoteDiscoveryService,
+			expectedLocalServices: []*corev1.Service{
+				remoteDiscoveryMirrorService(
+					"service-one",
+					"ns1",
+					"111",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					}),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{},
+		},
 	} {
 		tc := tt // pin
 		tc.run(t)
@@ -226,13 +249,14 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 
 	watcher := RemoteClusterServiceWatcher{
 		link: &multicluster.Link{
-			TargetClusterName:   clusterName,
-			TargetClusterDomain: clusterDomain,
-			GatewayIdentity:     "gateway-identity",
-			GatewayAddress:      "192.0.2.127",
-			GatewayPort:         888,
-			ProbeSpec:           defaultProbeSpec,
-			Selector:            *defaultSelector,
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             888,
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                *defaultSelector,
+			RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
 		},
 		remoteAPIClient:         remoteAPI,
 		localAPIClient:          localAPI,
@@ -314,13 +338,14 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 	events := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	watcher := RemoteClusterServiceWatcher{
 		link: &multicluster.Link{
-			TargetClusterName:   clusterName,
-			TargetClusterDomain: clusterDomain,
-			GatewayIdentity:     "gateway-identity",
-			GatewayAddress:      "192.0.0.1",
-			GatewayPort:         888,
-			ProbeSpec:           defaultProbeSpec,
-			Selector:            *defaultSelector,
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.0.1",
+			GatewayPort:             888,
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                *defaultSelector,
+			RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
 		},
 		remoteAPIClient: remoteAPI,
 		localAPIClient:  localAPI,
@@ -461,13 +486,14 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 	events := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	watcher := RemoteClusterServiceWatcher{
 		link: &multicluster.Link{
-			TargetClusterName:   clusterName,
-			TargetClusterDomain: clusterDomain,
-			GatewayIdentity:     "gateway-identity",
-			GatewayAddress:      "192.0.0.1",
-			GatewayPort:         888,
-			ProbeSpec:           defaultProbeSpec,
-			Selector:            *defaultSelector,
+			TargetClusterName:       clusterName,
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.0.1",
+			GatewayPort:             888,
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                *defaultSelector,
+			RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
 		},
 		remoteAPIClient: remoteAPI,
 		localAPIClient:  localAPI,
