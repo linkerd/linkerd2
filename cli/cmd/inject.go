@@ -180,11 +180,9 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		report.Annotated = true
 		return bytes, []inject.Report{*report}, err
 	}
-	if conf.HasPodTemplate() {
-		if len(rt.overrideAnnotations) > 0 {
-			conf.AppendPodAnnotations(rt.overrideAnnotations)
-			report.Annotated = true
-		}
+	if conf.HasPodTemplate() && len(rt.overrideAnnotations) > 0 {
+		conf.AppendPodAnnotations(rt.overrideAnnotations)
+		report.Annotated = true
 	}
 
 	if ok, _ := report.Injectable(); !ok {
