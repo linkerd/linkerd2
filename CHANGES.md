@@ -1,5 +1,54 @@
 # Changes
 
+## stable-2.13.6
+
+This stable release fixes a regression introduced in stable-2.13.0 which
+resulted in proxies shedding load too aggressively while under moderate request
+load to a single service ([#11055]). In addition, it updates the base image for
+the `linkerd-cni` initcontainer to resolve a CVE in `libdb` ([#11196]), fixes a
+race condition in the Destination controller that could cause it to crash
+([#11163]), as well as fixing a number of other issues.
+
+* Control Plane
+  * Fixed a race condition in the destination controller that could cause it to
+    panic ([#11169]; fixes [#11163])
+  * Improved the granularity of logging levels in the control plane ([#11147])
+
+* Proxy
+  * Changed the default HTTP request queue capacities for the inbound and
+    outbound proxies back to 10,000 requests ([#11198]; fixes [#11055])
+
+* CLI
+  * Updated extension CLI commands to prefer the `--registry` flag over the
+    `LINKERD_DOCKER_REGISTRY` environment variable, making the precedence more
+    consistent (thanks @harsh020!) (see [#11144])
+
+* CNI
+  * Updated `linkerd-cni` base image to resolve [CVE-2019-8457] in `libdb`
+    ([#11196])
+  * Changed the CNI plugin installer to always run in 'chained' mode; the plugin
+    will now wait until another CNI plugin is installed before appending its
+    configuration ([#10849])
+  * Removed `hostNetwork: true` from linkerd-cni Helm chart templates
+    ([#11158]; fixes [#11141]) (thanks @abhijeetgauravm!)
+
+* Multicluster
+  * Fixed the `linkerd multicluster check` command failing in the presence of
+    lots of mirrored services ([#10764])
+
+[#10764]: https://github.com/linkerd/linkerd2/issues/10764
+[#10849]: https://github.com/linkerd/linkerd2/issues/10849
+[#11055]: https://github.com/linkerd/linkerd2/issues/11055
+[#11141]: https://github.com/linkerd/linkerd2/issues/11141
+[#11144]: https://github.com/linkerd/linkerd2/issues/11144
+[#11147]: https://github.com/linkerd/linkerd2/issues/11147
+[#11158]: https://github.com/linkerd/linkerd2/issues/11158
+[#11163]: https://github.com/linkerd/linkerd2/issues/11163
+[#11169]: https://github.com/linkerd/linkerd2/issues/11169
+[#11196]: https://github.com/linkerd/linkerd2/issues/11196
+[#11198]: https://github.com/linkerd/linkerd2/issues/11198
+[CVE-2019-8457]: https://avd.aquasec.com/nvd/2019/cve-2019-8457/
+
 ## stable-2.13.5
 
 This stable release fixes a memory leak in the multicluster extension and fixes
