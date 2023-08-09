@@ -68,6 +68,7 @@ spec:
           capabilities:
             drop:
             - ALL
+          readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.webhook.UID | default .Values.defaultUID}}
           seccompProfile:

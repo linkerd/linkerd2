@@ -132,6 +132,7 @@ spec:
           capabilities:
             drop:
             - ALL
+          readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.collector.UID | default .Values.defaultUID}}
           seccompProfile:
@@ -236,6 +237,7 @@ spec:
           capabilities:
             drop:
             - ALL
+          readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.jaeger.UID | default .Values.defaultUID}}
           seccompProfile:
