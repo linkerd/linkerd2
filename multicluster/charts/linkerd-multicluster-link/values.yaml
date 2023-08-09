@@ -16,6 +16,8 @@ enableHeadlessServices: false
 # Enable this only when you have multiple replicas of components.
 enablePodAntiAffinity: false
 gateway:
+  # -- Controls whether link will create a probe service for the gateway
+  enabled: true
   probe:
     # -- The port used for liveliness probing
     port: 4191

@@ -911,6 +911,11 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 
 	go rcsw.processEvents(ctx)
 
+	// If no gateway address is present, do not repair endpoints
+	if rcsw.link.GatewayAddress == "" {
+		return nil
+	}
+
 	// We need to issue a RepairEndpoints immediately to populate the gateway
 	// mirror endpoints.
 	ev := RepairEndpoints{}

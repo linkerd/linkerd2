@@ -288,8 +288,11 @@ func restartClusterWatcher(
 	if err != nil {
 		return fmt.Errorf("failed to create metrics for cluster watcher: %w", err)
 	}
-	probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
-	probeWorker.Start()
+
+	if link.ProbeSpec.Path != "" {
+		probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
+		probeWorker.Start()
+	}
 
 	// Start cluster watcher
 	cfg, err := clientcmd.RESTConfigFromKubeConfig(creds)

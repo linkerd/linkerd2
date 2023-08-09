@@ -1,3 +1,4 @@
+{{ if .Values.gateway.enabled -}}
 ---
 apiVersion: v1
 kind: Service
@@ -14,3 +15,4 @@ spec:
   - name: mc-probe
     port: {{.Values.gateway.probe.port}}
     protocol: TCP
+{{ end -}}

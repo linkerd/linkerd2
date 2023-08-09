@@ -222,6 +222,29 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 			},
 			expectedLocalEndpoints: []*corev1.Endpoints{},
 		},
+		{
+			description: "link with no gateway mirrors only remote discovery",
+			environment: noGatewayLink,
+			expectedLocalServices: []*corev1.Service{
+				remoteDiscoveryMirrorService(
+					"service-one",
+					"ns1",
+					"111",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					}),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{},
+		},
 	} {
 		tc := tt // pin
 		tc.run(t)
