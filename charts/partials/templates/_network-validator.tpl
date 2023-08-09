@@ -9,6 +9,7 @@ securityContext:
   capabilities:
     drop:
     - ALL
+  readOnlyRootFilesystem: true
   runAsNonRoot: true
   runAsUser: 65534
   seccompProfile:
