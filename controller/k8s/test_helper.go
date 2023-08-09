@@ -43,7 +43,7 @@ func NewFakeAPI(configs ...string) (*API, error) {
 
 // NewFakeMetadataAPI provides a mock Kubernetes API for testing.
 func NewFakeMetadataAPI(configs []string) (*MetadataAPI, error) {
-	sch := clientsetscheme.Scheme
+	sch := runtime.NewScheme()
 	metav1.AddMetaToScheme(sch)
 
 	var objs []runtime.Object
