@@ -124,6 +124,7 @@
   "menuItemReplicaSets": "Replica Sets",
   "menuItemReplicationControllers": "Replication Controllers",
   "menuItemRoutes": "Rutas",
+  "menuItemServices": "Services",
   "menuItemSlack": "Slack",
   "menuItemStatefulSets": "Stateful Sets",
   "menuItemTap": "Tap",
