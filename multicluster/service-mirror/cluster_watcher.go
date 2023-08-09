@@ -258,6 +258,10 @@ func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceAnnotations(remoteSer
 	}
 
 	for key, value := range remoteService.ObjectMeta.Annotations {
+		// Topology aware hints are not multicluster aware.
+		if key == "service.kubernetes.io/topology-aware-hints" || key == "service.kubernetes.io/topology-mode" {
+			continue
+		}
 		annotations[key] = value
 	}
 
@@ -1229,7 +1233,7 @@ func (rcsw *RemoteClusterServiceWatcher) isExported(l map[string]string) bool {
 }
 
 func (rcsw *RemoteClusterServiceWatcher) isRemoteDiscovery(svc *corev1.Service) bool {
-	// Treat an empty remoteDisocverySelector as "Nothing" instead of
+	// Treat an empty remoteDiscoverySelector as "Nothing" instead of
 	// "Everything" so that when the remoteDiscoverySelector field is unset, we
 	// don't export all Services.
 	if len(rcsw.link.RemoteDiscoverySelector.MatchExpressions)+len(rcsw.link.RemoteDiscoverySelector.MatchLabels) == 0 {
