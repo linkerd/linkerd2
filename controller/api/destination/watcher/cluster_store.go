@@ -5,13 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
@@ -27,7 +25,7 @@ type (
 		// Protects against illegal accesses
 		sync.RWMutex
 
-		secrets              cache.SharedIndexInformer
+		api                  *k8s.API
 		store                map[string]remoteCluster
 		enableEndpointSlices bool
 		log                  *logging.Entry
@@ -75,25 +73,13 @@ func NewClusterStore(client kubernetes.Interface, namespace string, enableEndpoi
 }
 
 func (cs *ClusterStore) Sync(stopCh <-chan struct{}) {
-	go func() {
-		cs.secrets.Run(stopCh)
-	}()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-
-	cs.log.Infof("waiting for cluster store to sync")
-	if !cache.WaitForCacheSync(ctx.Done(), cs.secrets.HasSynced) {
-		cs.log.Fatal("failed to sync cluster store")
-	}
-	cs.log.Infof("cluster store synced")
+	cs.api.Sync(stopCh)
 }
 
 // newClusterStoreWithDecoder is a helper function that allows the creation of a
 // store with an arbitrary `configDecoder` function.
 func NewClusterStoreWithDecoder(client kubernetes.Interface, namespace string, enableEndpointSlices bool, decodeFn configDecoder) (*ClusterStore, error) {
-	secretsInformerFactory := informers.NewSharedInformerFactoryWithOptions(client, k8s.ResyncTime, informers.WithNamespace(namespace))
-	secrets := secretsInformerFactory.Core().V1().Secrets().Informer()
+	api := k8s.NewNamespacedAPI(client, nil, nil, namespace, "local", k8s.Secret)
 
 	cs := &ClusterStore{
 		store: make(map[string]remoteCluster),
@@ -101,11 +87,11 @@ func NewClusterStoreWithDecoder(client kubernetes.Interface, namespace string, e
 			"component": "cluster-store",
 		}),
 		enableEndpointSlices: enableEndpointSlices,
-		secrets:              secrets,
+		api:                  api,
 		decodeFn:             decodeFn,
 	}
 
-	_, err := cs.secrets.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := cs.api.Secret().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			secret, ok := obj.(*v1.Secret)
 			if !ok {
