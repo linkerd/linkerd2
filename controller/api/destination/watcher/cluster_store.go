@@ -267,7 +267,7 @@ func decodeK8sConfigFromSecret(data []byte, cluster string, enableEndpointSlices
 			cfg,
 			true,
 			cluster,
-			k8s.ES, k8s.Pod, k8s.Svc, k8s.Job, k8s.Srv,
+			k8s.ES, k8s.Pod, k8s.Svc, k8s.Srv,
 		)
 	} else {
 		remoteAPI, err = k8s.InitializeAPIForConfig(
@@ -275,7 +275,7 @@ func decodeK8sConfigFromSecret(data []byte, cluster string, enableEndpointSlices
 			cfg,
 			true,
 			cluster,
-			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.Job, k8s.Srv,
+			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.Srv,
 		)
 	}
 	if err != nil {
