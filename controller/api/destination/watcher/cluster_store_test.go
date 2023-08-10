@@ -7,24 +7,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 )
 
-func CreateMockDecoder() configDecoder {
-	// Create a mock decoder with some random objs to satisfy client creation
-	return func(data []byte, cluster string, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
-		remoteAPI, err := k8s.NewFakeAPI([]string{}...)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return remoteAPI, metadataAPI, nil
-	}
-
-}
-
 func TestClusterStoreHandlers(t *testing.T) {
 	for _, tt := range []struct {
 		name                 string
@@ -98,7 +80,7 @@ func TestClusterStoreHandlers(t *testing.T) {
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			cs, err := newClusterStoreWithDecoder(k8sAPI.Client, "linkerd", tt.enableEndpointSlices, CreateMockDecoder())
+			cs, err := NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", tt.enableEndpointSlices, CreateMockDecoder())
 			if err != nil {
 				t.Fatalf("Unexpected error when starting watcher cache: %s", err)
 			}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-test/deep"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
+	"github.com/linkerd/linkerd2/controller/k8s"
 )
 
 // DeletingProfileListener implements ProfileUpdateListener and registers
@@ -40,6 +41,24 @@ func NewBufferingProfileListener() *BufferingProfileListener {
 	return &BufferingProfileListener{
 		Profiles: []*sp.ServiceProfile{},
 	}
+}
+
+func CreateMockDecoder(configs ...string) configDecoder {
+	// Create a mock decoder with some random objs to satisfy client creation
+	return func(data []byte, cluster string, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
+		remoteAPI, err := k8s.NewFakeAPI(configs...)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return remoteAPI, metadataAPI, nil
+	}
+
 }
 
 // Update stores the update in the internal buffer.

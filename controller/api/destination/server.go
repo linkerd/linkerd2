@@ -173,7 +173,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		remoteSvc, found := svc.Labels[labels.RemoteServiceLabel]
 		if !found {
 			log.Debugf("Remote discovery service missing remote service name %s", service)
-			return status.Errorf(codes.FailedPrecondition, "Remote disocvery service missing remote service name %s", dest.GetPath())
+			return status.Errorf(codes.FailedPrecondition, "Remote discovery service missing remote service name %s", dest.GetPath())
 		}
 		remoteWatcher, remoteConfig, found := s.clusterStore.Get(cluster)
 		if !found {

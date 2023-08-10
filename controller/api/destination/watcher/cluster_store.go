@@ -71,7 +71,7 @@ const (
 // Secret informer. The event handlers are responsible for driving the discovery
 // of remote clusters and their configuration
 func NewClusterStore(client kubernetes.Interface, namespace string, enableEndpointSlices bool) (*ClusterStore, error) {
-	return newClusterStoreWithDecoder(client, namespace, enableEndpointSlices, decodeK8sConfigFromSecret)
+	return NewClusterStoreWithDecoder(client, namespace, enableEndpointSlices, decodeK8sConfigFromSecret)
 }
 
 func (cs *ClusterStore) Sync(stopCh <-chan struct{}) {
@@ -91,7 +91,7 @@ func (cs *ClusterStore) Sync(stopCh <-chan struct{}) {
 
 // newClusterStoreWithDecoder is a helper function that allows the creation of a
 // store with an arbitrary `configDecoder` function.
-func newClusterStoreWithDecoder(client kubernetes.Interface, namespace string, enableEndpointSlices bool, decodeFn configDecoder) (*ClusterStore, error) {
+func NewClusterStoreWithDecoder(client kubernetes.Interface, namespace string, enableEndpointSlices bool, decodeFn configDecoder) (*ClusterStore, error) {
 	secretsInformerFactory := informers.NewSharedInformerFactoryWithOptions(client, k8s.ResyncTime, informers.WithNamespace(namespace))
 	secrets := secretsInformerFactory.Core().V1().Secrets().Informer()
 
