@@ -384,7 +384,7 @@ spec:
 		t.Fatalf("initializeIndexers returned an error: %s", err)
 	}
 
-	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, false)
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, false, "local")
 	if err != nil {
 		t.Fatalf("can't create Endpoints watcher: %s", err)
 	}

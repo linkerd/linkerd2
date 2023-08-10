@@ -101,6 +101,7 @@ func Main(args []string) {
 			ctx,
 			*kubeConfigPath,
 			true,
+			"local",
 			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
 		)
 	} else {
@@ -108,6 +109,7 @@ func Main(args []string) {
 			ctx,
 			*kubeConfigPath,
 			true,
+			"local",
 			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
 		)
 	}
@@ -115,7 +117,7 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
-	metadataAPI, err := k8s.InitializeMetadataAPI(*kubeConfigPath, k8s.Node, k8s.RS)
+	metadataAPI, err := k8s.InitializeMetadataAPI(*kubeConfigPath, "local", k8s.Node, k8s.RS)
 	if err != nil {
 		log.Fatalf("Failed to initialize Kubernetes metadata API: %s", err)
 	}

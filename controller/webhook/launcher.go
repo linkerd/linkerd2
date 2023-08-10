@@ -50,7 +50,7 @@ func Launch(
 		log.Fatalf("error configuring Kubernetes API client: %s", err)
 	}
 
-	metadataAPI, err := k8s.InitializeMetadataAPI(kubeconfig, apiresources...)
+	metadataAPI, err := k8s.InitializeMetadataAPI(kubeconfig, "local", apiresources...)
 	if err != nil {
 		//nolint:gocritic
 		log.Fatalf("failed to initialize Kubernetes API: %s", err)

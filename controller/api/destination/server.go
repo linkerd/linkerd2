@@ -85,7 +85,7 @@ func NewServer(
 		return nil, err
 	}
 
-	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, enableEndpointSlices)
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, enableEndpointSlices, "local")
 	if err != nil {
 		return nil, err
 	}
@@ -168,12 +168,11 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		return status.Errorf(codes.Internal, "Failed to get service %s", dest.GetPath())
 	}
 
-	// TODO: use a label name const here
-	if cluster, found := svc.Labels["multicluster.linkerd.io/remote-discovery"]; found {
+	if cluster, found := svc.Labels[labels.RemoteDiscoveryLabel]; found {
 		// Remote discovery
-		remoteSvc, found := svc.Labels["multicluster.linkerd.io/remote-svc"]
+		remoteSvc, found := svc.Labels[labels.RemoteServiceLabel]
 		if !found {
-			log.Debugf("Remote disocvery service missing remote service name %s", service)
+			log.Debugf("Remote discovery service missing remote service name %s", service)
 			return status.Errorf(codes.FailedPrecondition, "Remote disocvery service missing remote service name %s", dest.GetPath())
 		}
 		remoteWatcher, remoteConfig, found := s.clusterStore.Get(cluster)

@@ -94,6 +94,7 @@ func Main(args []string) {
 		rootCtx,
 		*kubeConfigPath,
 		false,
+		"local",
 		controllerK8s.NS,
 		controllerK8s.Svc,
 		controllerK8s.Endpoint,

@@ -75,6 +75,7 @@ type (
 		k8sAPI      *k8s.API
 		metadataAPI *k8s.MetadataAPI
 
+		cluster              string
 		log                  *logging.Entry
 		enableEndpointSlices bool
 		sync.RWMutex         // This mutex protects modification of the map itself.
@@ -108,6 +109,7 @@ type (
 		metadataAPI          *k8s.MetadataAPI
 		enableEndpointSlices bool
 		localTrafficPolicy   bool
+		cluster              string
 		ports                map[portAndHostname]*portPublisher
 		// All access to the servicePublisher and its portPublishers is explicitly synchronized by
 		// this mutex.
@@ -150,12 +152,13 @@ var undefinedEndpointPort = Port(0)
 // NewEndpointsWatcher creates an EndpointsWatcher and begins watching the
 // k8sAPI for pod, service, and endpoint changes. An EndpointsWatcher will
 // watch on Endpoints or EndpointSlice resources, depending on cluster configuration.
-func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.Entry, enableEndpointSlices bool) (*EndpointsWatcher, error) {
+func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.Entry, enableEndpointSlices bool, cluster string) (*EndpointsWatcher, error) {
 	ew := &EndpointsWatcher{
 		publishers:           make(map[ServiceID]*servicePublisher),
 		k8sAPI:               k8sAPI,
 		metadataAPI:          metadataAPI,
 		enableEndpointSlices: enableEndpointSlices,
+		cluster:              cluster,
 		log: log.WithFields(logging.Fields{
 			"component": "endpoints-watcher",
 		}),
@@ -438,6 +441,7 @@ func (ew *EndpointsWatcher) getOrNewServicePublisher(id ServiceID) *servicePubli
 			}),
 			k8sAPI:               ew.k8sAPI,
 			metadataAPI:          ew.metadataAPI,
+			cluster:              ew.cluster,
 			ports:                make(map[portAndHostname]*portPublisher),
 			enableEndpointSlices: ew.enableEndpointSlices,
 		}
@@ -634,7 +638,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 }
 
 func (sp *servicePublisher) metricsLabels(port Port, hostname string) prometheus.Labels {
-	return endpointsLabels(sp.id.Namespace, sp.id.Name, strconv.Itoa(int(port)), hostname)
+	return endpointsLabels(sp.cluster, sp.id.Namespace, sp.id.Name, strconv.Itoa(int(port)), hostname)
 }
 
 func (sp *servicePublisher) updateServer(server *v1beta1.Server, isAdd bool) {

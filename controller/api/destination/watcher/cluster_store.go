@@ -55,7 +55,7 @@ type (
 	// configDecoder is the type of a function that given a byte buffer, returns
 	// a pair of API Server clients. The cache uses this function to dynamically
 	// create clients after discovering a Secret.
-	configDecoder = func(data []byte, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error)
+	configDecoder = func(data []byte, cluster string, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error)
 )
 
 const (
@@ -212,7 +212,7 @@ func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error 
 		return fmt.Errorf("missing \"%s\" annotation", trustDomainAnnotation)
 	}
 
-	remoteAPI, metadataAPI, err := cs.decodeFn(data, cs.enableEndpointSlices)
+	remoteAPI, metadataAPI, err := cs.decodeFn(data, clusterName, cs.enableEndpointSlices)
 	if err != nil {
 		return err
 	}
@@ -225,6 +225,7 @@ func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error 
 			"remote-cluster": clusterName,
 		}),
 		cs.enableEndpointSlices,
+		clusterName,
 	)
 	if err != nil {
 		return err
@@ -252,7 +253,7 @@ func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error 
 // decodeK8sConfigFromSecret implements the decoder function type. Given a byte
 // buffer, it attempts to parse it as a kubeconfig file. If successful, returns
 // a pair of API Server clients.
-func decodeK8sConfigFromSecret(data []byte, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
+func decodeK8sConfigFromSecret(data []byte, cluster string, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
 	cfg, err := clientcmd.RESTConfigFromKubeConfig(data)
 	if err != nil {
 		return nil, nil, err
@@ -265,6 +266,7 @@ func decodeK8sConfigFromSecret(data []byte, enableEndpointSlices bool) (*k8s.API
 			ctx,
 			cfg,
 			true,
+			cluster,
 			k8s.ES, k8s.Pod, k8s.Svc, k8s.Job, k8s.Srv,
 		)
 	} else {
@@ -272,6 +274,7 @@ func decodeK8sConfigFromSecret(data []byte, enableEndpointSlices bool) (*k8s.API
 			ctx,
 			cfg,
 			true,
+			cluster,
 			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.Job, k8s.Srv,
 		)
 	}
@@ -279,7 +282,7 @@ func decodeK8sConfigFromSecret(data []byte, enableEndpointSlices bool) (*k8s.API
 		return nil, nil, err
 	}
 
-	metadataAPI, err := k8s.InitializeMetadataAPIForConfig(cfg, k8s.RS)
+	metadataAPI, err := k8s.InitializeMetadataAPIForConfig(cfg, cluster, k8s.RS)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -9,7 +9,7 @@ import (
 
 func CreateMockDecoder() configDecoder {
 	// Create a mock decoder with some random objs to satisfy client creation
-	return func(data []byte, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
+	return func(data []byte, cluster string, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
 		remoteAPI, err := k8s.NewFakeAPI([]string{}...)
 		if err != nil {
 			return nil, nil, err
