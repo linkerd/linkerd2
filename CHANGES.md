@@ -8,7 +8,7 @@ fixes an issue ([#10764]) where warnings about an invalid metric were logged
 frequently by the Destination controller.
 
 * Added a new `remoteDiscoverySelector` field to the multicluster `Link` CRD,
-  which enables a service mirroring mod where the control plane
+  which enables a service mirroring mode where the control plane
   performs discovery for the mirrored service from the remote cluster, rather
   than creating Endpoints for the mirrored service in the source cluster
   ([#11190], [#11201], [#11220], and [#11224])
