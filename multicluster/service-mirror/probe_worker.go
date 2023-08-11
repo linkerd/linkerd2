@@ -29,6 +29,8 @@ type ProbeWorker struct {
 
 // NewProbeWorker creates a new probe worker associated with a particular gateway
 func NewProbeWorker(localGatewayName string, spec *multicluster.ProbeSpec, metrics *ProbeMetrics, probekey string) *ProbeWorker {
+	// Mark gateway as enabled
+	metrics.enabled.Set(1)
 	return &ProbeWorker{
 		localGatewayName: localGatewayName,
 		Liveness:         make(chan bool, 10),
@@ -58,6 +60,7 @@ func (pw *ProbeWorker) Stop() {
 
 // Start this probe worker
 func (pw *ProbeWorker) Start() {
+
 	pw.log.Infof("Starting probe worker")
 	go pw.run()
 }

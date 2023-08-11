@@ -27,6 +27,7 @@ type ProbeMetricVecs struct {
 // ProbeMetrics stores metrics about about a specific gateway collected by a
 // probe worker.
 type ProbeMetrics struct {
+	enabled    prometheus.Gauge
 	alive      prometheus.Gauge
 	latency    prometheus.Gauge
 	latencies  prometheus.Observer
@@ -137,6 +138,7 @@ func (mv ProbeMetricVecs) NewWorkerMetrics(remoteClusterName string) (*ProbeMetr
 		return nil, err
 	}
 	return &ProbeMetrics{
+		enabled:   mv.enabled.With(labels),
 		alive:     mv.alive.With(labels),
 		latency:   mv.latency.With(labels),
 		latencies: mv.latencies.With(labels),
