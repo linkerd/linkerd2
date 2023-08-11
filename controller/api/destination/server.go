@@ -22,6 +22,7 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 type (
@@ -32,6 +33,8 @@ type (
 		opaquePorts *watcher.OpaquePortsWatcher
 		profiles    *watcher.ProfileWatcher
 		servers     *watcher.ServerWatcher
+
+		clusterStore *watcher.ClusterStore
 
 		enableH2Upgrade     bool
 		controllerNS        string
@@ -66,6 +69,7 @@ func NewServer(
 	enableEndpointSlices bool,
 	k8sAPI *k8s.API,
 	metadataAPI *k8s.MetadataAPI,
+	clusterStore *watcher.ClusterStore,
 	clusterDomain string,
 	defaultOpaquePorts map[uint32]struct{},
 	shutdown <-chan struct{},
@@ -81,7 +85,7 @@ func NewServer(
 		return nil, err
 	}
 
-	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, enableEndpointSlices)
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, enableEndpointSlices, "local")
 	if err != nil {
 		return nil, err
 	}
@@ -104,6 +108,7 @@ func NewServer(
 		opaquePorts,
 		profiles,
 		servers,
+		clusterStore,
 		enableH2Upgrade,
 		controllerNS,
 		identityTrustDomain,
@@ -135,18 +140,6 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		log.Debugf("Dest token: %v", token)
 	}
 
-	translator := newEndpointTranslator(
-		s.controllerNS,
-		s.identityTrustDomain,
-		s.enableH2Upgrade,
-		dest.GetPath(),
-		token.NodeName,
-		s.defaultOpaquePorts,
-		s.metadataAPI,
-		stream,
-		log,
-	)
-
 	// The host must be fully-qualified or be an IP address.
 	host, port, err := getHostAndPort(dest.GetPath())
 	if err != nil {
@@ -165,17 +158,77 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 	}
 
-	err = s.endpoints.Subscribe(service, port, instanceID, translator)
+	svc, err := s.k8sAPI.Svc().Lister().Services(service.Namespace).Get(service.Name)
 	if err != nil {
-		var ise watcher.InvalidService
-		if errors.As(err, &ise) {
-			log.Debugf("Invalid service %s", dest.GetPath())
-			return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+		if kerrors.IsNotFound(err) {
+			log.Debugf("Service not found %s", service)
+			return status.Errorf(codes.NotFound, "Service %s.%s not found", service.Name, service.Namespace)
 		}
-		log.Errorf("Failed to subscribe to %s: %s", dest.GetPath(), err)
-		return err
+		log.Debugf("Failed to get service %s: %v", service, err)
+		return status.Errorf(codes.Internal, "Failed to get service %s", dest.GetPath())
 	}
-	defer s.endpoints.Unsubscribe(service, port, instanceID, translator)
+
+	if cluster, found := svc.Labels[labels.RemoteDiscoveryLabel]; found {
+		// Remote discovery
+		remoteSvc, found := svc.Labels[labels.RemoteServiceLabel]
+		if !found {
+			log.Debugf("Remote discovery service missing remote service name %s", service)
+			return status.Errorf(codes.FailedPrecondition, "Remote discovery service missing remote service name %s", dest.GetPath())
+		}
+		remoteWatcher, remoteConfig, found := s.clusterStore.Get(cluster)
+		if !found {
+			log.Errorf("Failed to get remote cluster %s", cluster)
+			return status.Errorf(codes.NotFound, "Remote cluster not found: %s", cluster)
+		}
+		translator := newEndpointTranslator(
+			s.controllerNS,
+			remoteConfig.TrustDomain,
+			s.enableH2Upgrade,
+			fmt.Sprintf("%s.%s.svc.%s:%d", remoteSvc, service.Namespace, remoteConfig.ClusterDomain, port),
+			token.NodeName,
+			s.defaultOpaquePorts,
+			s.metadataAPI,
+			stream,
+			log,
+		)
+		err = remoteWatcher.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
+		if err != nil {
+			var ise watcher.InvalidService
+			if errors.As(err, &ise) {
+				log.Debugf("Invalid remote discovery service %s", dest.GetPath())
+				return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+			}
+			log.Errorf("Failed to subscribe to remote disocvery service %q in cluster %s: %s", dest.GetPath(), cluster, err)
+			return err
+		}
+		defer remoteWatcher.Unsubscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
+
+	} else {
+		// Local discovery
+		translator := newEndpointTranslator(
+			s.controllerNS,
+			s.identityTrustDomain,
+			s.enableH2Upgrade,
+			dest.GetPath(),
+			token.NodeName,
+			s.defaultOpaquePorts,
+			s.metadataAPI,
+			stream,
+			log,
+		)
+
+		err = s.endpoints.Subscribe(service, port, instanceID, translator)
+		if err != nil {
+			var ise watcher.InvalidService
+			if errors.As(err, &ise) {
+				log.Debugf("Invalid service %s", dest.GetPath())
+				return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+			}
+			log.Errorf("Failed to subscribe to %s: %s", dest.GetPath(), err)
+			return err
+		}
+		defer s.endpoints.Unsubscribe(service, port, instanceID, translator)
+	}
 
 	select {
 	case <-s.shutdown:

@@ -7,12 +7,12 @@ import (
 	"sync"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
-
-	consts "github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 type (
@@ -25,7 +25,7 @@ type (
 		// Protects against illegal accesses
 		sync.RWMutex
 
-		k8sAPI               *k8s.API
+		api                  *k8s.API
 		store                map[string]remoteCluster
 		enableEndpointSlices bool
 		log                  *logging.Entry
@@ -53,7 +53,7 @@ type (
 	// configDecoder is the type of a function that given a byte buffer, returns
 	// a pair of API Server clients. The cache uses this function to dynamically
 	// create clients after discovering a Secret.
-	configDecoder = func(data []byte, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error)
+	configDecoder = func(data []byte, cluster string, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error)
 )
 
 const (
@@ -68,24 +68,30 @@ const (
 // When created, a pair of event handlers are registered for the local cluster's
 // Secret informer. The event handlers are responsible for driving the discovery
 // of remote clusters and their configuration
-func NewClusterStore(k8sAPI *k8s.API, enableEndpointSlices bool) (*ClusterStore, error) {
-	return newClusterStoreWithDecoder(k8sAPI, enableEndpointSlices, decodeK8sConfigFromSecret)
+func NewClusterStore(client kubernetes.Interface, namespace string, enableEndpointSlices bool) (*ClusterStore, error) {
+	return NewClusterStoreWithDecoder(client, namespace, enableEndpointSlices, decodeK8sConfigFromSecret)
+}
+
+func (cs *ClusterStore) Sync(stopCh <-chan struct{}) {
+	cs.api.Sync(stopCh)
 }
 
 // newClusterStoreWithDecoder is a helper function that allows the creation of a
 // store with an arbitrary `configDecoder` function.
-func newClusterStoreWithDecoder(k8sAPI *k8s.API, enableEndpointSlices bool, decodeFn configDecoder) (*ClusterStore, error) {
+func NewClusterStoreWithDecoder(client kubernetes.Interface, namespace string, enableEndpointSlices bool, decodeFn configDecoder) (*ClusterStore, error) {
+	api := k8s.NewNamespacedAPI(client, nil, nil, namespace, "local", k8s.Secret)
+
 	cs := &ClusterStore{
 		store: make(map[string]remoteCluster),
 		log: logging.WithFields(logging.Fields{
 			"component": "cluster-store",
 		}),
 		enableEndpointSlices: enableEndpointSlices,
-		k8sAPI:               k8sAPI,
+		api:                  api,
 		decodeFn:             decodeFn,
 	}
 
-	_, err := cs.k8sAPI.Secret().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := cs.api.Secret().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			secret, ok := obj.(*v1.Secret)
 			if !ok {
@@ -93,7 +99,7 @@ func newClusterStoreWithDecoder(k8sAPI *k8s.API, enableEndpointSlices bool, deco
 				return
 			}
 
-			if secret.Type != consts.MirrorSecretType {
+			if secret.Type != pkgK8s.MirrorSecretType {
 				cs.log.Tracef("Skipping Add event for 'Secret' object %s/%s: invalid type %s", secret.Namespace, secret.Name, secret.Type)
 				return
 
@@ -169,7 +175,7 @@ func (cs *ClusterStore) removeCluster(clusterName string) {
 	r.watcher.removeHandlers()
 	close(r.stopCh)
 	delete(cs.store, clusterName)
-	cs.log.Tracef("Removed cluster %s from ClusterStore", clusterName)
+	cs.log.Infof("Removed cluster %s from ClusterStore", clusterName)
 }
 
 // addCluster is triggered by the cache's Secret informer when a secret is
@@ -177,7 +183,7 @@ func (cs *ClusterStore) removeCluster(clusterName string) {
 // object, it creates an EndpointsWatcher for a remote cluster and syncs its
 // informers before returning.
 func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error {
-	data, found := secret.Data[consts.ConfigKeyName]
+	data, found := secret.Data[pkgK8s.ConfigKeyName]
 	if !found {
 		return errors.New("missing kubeconfig file")
 	}
@@ -192,7 +198,7 @@ func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error 
 		return fmt.Errorf("missing \"%s\" annotation", trustDomainAnnotation)
 	}
 
-	remoteAPI, metadataAPI, err := cs.decodeFn(data, cs.enableEndpointSlices)
+	remoteAPI, metadataAPI, err := cs.decodeFn(data, clusterName, cs.enableEndpointSlices)
 	if err != nil {
 		return err
 	}
@@ -205,6 +211,7 @@ func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error 
 			"remote-cluster": clusterName,
 		}),
 		cs.enableEndpointSlices,
+		clusterName,
 	)
 	if err != nil {
 		return err
@@ -224,7 +231,7 @@ func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error 
 	go remoteAPI.Sync(stopCh)
 	go metadataAPI.Sync(stopCh)
 
-	cs.log.Tracef("Added cluster %s to ClusterStore", clusterName)
+	cs.log.Infof("Added cluster %s to ClusterStore", clusterName)
 
 	return nil
 }
@@ -232,7 +239,7 @@ func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error 
 // decodeK8sConfigFromSecret implements the decoder function type. Given a byte
 // buffer, it attempts to parse it as a kubeconfig file. If successful, returns
 // a pair of API Server clients.
-func decodeK8sConfigFromSecret(data []byte, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
+func decodeK8sConfigFromSecret(data []byte, cluster string, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
 	cfg, err := clientcmd.RESTConfigFromKubeConfig(data)
 	if err != nil {
 		return nil, nil, err
@@ -245,21 +252,23 @@ func decodeK8sConfigFromSecret(data []byte, enableEndpointSlices bool) (*k8s.API
 			ctx,
 			cfg,
 			true,
-			k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
+			cluster,
+			k8s.ES, k8s.Pod, k8s.Svc, k8s.Srv,
 		)
 	} else {
 		remoteAPI, err = k8s.InitializeAPIForConfig(
 			ctx,
 			cfg,
 			true,
-			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
+			cluster,
+			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.Srv,
 		)
 	}
 	if err != nil {
 		return nil, nil, err
 	}
 
-	metadataAPI, err := k8s.InitializeMetadataAPIForConfig(cfg, k8s.Node, k8s.RS)
+	metadataAPI, err := k8s.InitializeMetadataAPIForConfig(cfg, cluster, k8s.RS)
 	if err != nil {
 		return nil, nil, err
 	}

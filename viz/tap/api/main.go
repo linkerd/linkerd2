@@ -53,6 +53,7 @@ func Main(args []string) {
 		ctx,
 		*kubeConfigPath,
 		true,
+		"local",
 		k8s.CJ,
 		k8s.DS,
 		k8s.SS,

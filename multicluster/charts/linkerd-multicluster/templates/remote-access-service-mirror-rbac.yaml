@@ -15,8 +15,20 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" $ }}
 rules:
+- apiGroups: ["apps"]
+  resources: ["replicasets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["services", "endpoints"]
+  resources: ["pods", "endpoints", "services"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["policy.linkerd.io"]
+  resources: ["servers"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["configmaps"]

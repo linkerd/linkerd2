@@ -7,24 +7,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 )
 
-func CreateMockDecoder() configDecoder {
-	// Create a mock decoder with some random objs to satisfy client creation
-	return func(data []byte, enableEndpointSlices bool) (*k8s.API, *k8s.MetadataAPI, error) {
-		remoteAPI, err := k8s.NewFakeAPI([]string{}...)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return remoteAPI, metadataAPI, nil
-	}
-
-}
-
 func TestClusterStoreHandlers(t *testing.T) {
 	for _, tt := range []struct {
 		name                 string
@@ -93,24 +75,17 @@ func TestClusterStoreHandlers(t *testing.T) {
 	} {
 		tt := tt // Pin
 		t.Run(tt.name, func(t *testing.T) {
-			// TODO (matei): use namespace scoped API here
 			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs...)
 			if err != nil {
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
-			if err != nil {
-				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
-			}
-
-			cs, err := newClusterStoreWithDecoder(k8sAPI, tt.enableEndpointSlices, CreateMockDecoder())
+			cs, err := NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", tt.enableEndpointSlices, CreateMockDecoder())
 			if err != nil {
 				t.Fatalf("Unexpected error when starting watcher cache: %s", err)
 			}
 
-			k8sAPI.Sync(nil)
-			metadataAPI.Sync(nil)
+			cs.Sync(nil)
 
 			// Wait for the update to be processed because there is no blocking call currently in k8s that we can wait on
 			time.Sleep(50 * time.Millisecond)

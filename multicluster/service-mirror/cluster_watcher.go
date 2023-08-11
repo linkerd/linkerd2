@@ -168,7 +168,7 @@ func NewRemoteClusterServiceWatcher(
 	liveness chan bool,
 	enableHeadlessSvc bool,
 ) (*RemoteClusterServiceWatcher, error) {
-	remoteAPI, err := k8s.InitializeAPIForConfig(ctx, cfg, false, k8s.Svc, k8s.Endpoint)
+	remoteAPI, err := k8s.InitializeAPIForConfig(ctx, cfg, false, clusterName, k8s.Svc, k8s.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize api for target cluster %s: %w", clusterName, err)
 	}

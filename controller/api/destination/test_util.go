@@ -352,6 +352,87 @@ spec:
       name: nginx-7777`,
 	}
 
+	exportedServiceResources := []string{`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ns`,
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: foo
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80`,
+		`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: foo
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 172.17.55.1
+    targetRef:
+      kind: Pod
+      name: foo-1
+      namespace: ns
+  ports:
+  - port: 80`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  name: foo-1
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.55.1
+  podIPs:
+  - ip: 172.17.55.1
+spec:
+  containers:
+    - env:
+      - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+        value: 0.0.0.0:4143
+        name: linkerd-proxy`,
+	}
+
+	destinationCredentialsResources := []string{`
+apiVersion: v1
+data:
+  kubeconfig: V2UncmUgbm8gc3RyYW5nZXJzIHRvIGxvdmUKWW91IGtub3cgdGhlIHJ1bGVzIGFuZCBzbyBkbyBJIChkbyBJKQpBIGZ1bGwgY29tbWl0bWVudCdzIHdoYXQgSSdtIHRoaW5raW5nIG9mCllvdSB3b3VsZG4ndCBnZXQgdGhpcyBmcm9tIGFueSBvdGhlciBndXkKSSBqdXN0IHdhbm5hIHRlbGwgeW91IGhvdyBJJ20gZmVlbGluZwpHb3R0YSBtYWtlIHlvdSB1bmRlcnN0YW5kCk5ldmVyIGdvbm5hIGdpdmUgeW91IHVwCk5ldmVyIGdvbm5hIGxldCB5b3UgZG93bgpOZXZlciBnb25uYSBydW4gYXJvdW5kIGFuZCBkZXNlcnQgeW91Ck5ldmVyIGdvbm5hIG1ha2UgeW91IGNyeQpOZXZlciBnb25uYSBzYXkgZ29vZGJ5ZQpOZXZlciBnb25uYSB0ZWxsIGEgbGllIGFuZCBodXJ0IHlvdQpXZSd2ZSBrbm93biBlYWNoIG90aGVyIGZvciBzbyBsb25nCllvdXIgaGVhcnQncyBiZWVuIGFjaGluZywgYnV0IHlvdSdyZSB0b28gc2h5IHRvIHNheSBpdCAoc2F5IGl0KQpJbnNpZGUsIHdlIGJvdGgga25vdyB3aGF0J3MgYmVlbiBnb2luZyBvbiAoZ29pbmcgb24pCldlIGtub3cgdGhlIGdhbWUgYW5kIHdlJ3JlIGdvbm5hIHBsYXkgaXQKQW5kIGlmIHlvdSBhc2sgbWUgaG93IEknbSBmZWVsaW5nCkRvbid0IHRlbGwgbWUgeW91J3JlIHRvbyBibGluZCB0byBzZWUKTmV2ZXIgZ29ubmEgZ2l2ZSB5b3UgdXAKTmV2ZXIgZ29ubmEgbGV0IHlvdSBkb3duCk5ldmVyIGdvbm5hIHJ1biBhcm91bmQgYW5kIGRlc2VydCB5b3UKTmV2ZXIgZ29ubmEgbWFrZSB5b3UgY3J5Ck5ldmVyIGdvbm5hIHNheSBnb29kYnllCk5ldmVyIGdvbm5hIHRlbGwgYSBsaWUgYW5kIGh1cnQgeW91
+kind: Secret
+metadata:
+  annotations:
+    multicluster.linkerd.io/cluster-domain: cluster.local
+    multicluster.linkerd.io/trust-domain: cluster.local
+  labels:
+    multicluster.linkerd.io/cluster-name: target
+  name: cluster-credentials-target
+  namespace: linkerd
+type: mirror.linkerd.io/remote-kubeconfig`}
+
+	mirrorServiceResources := []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: foo-target
+  namespace: ns
+  labels:
+    multicluster.linkerd.io/remote-discovery: target
+    multicluster.linkerd.io/remote-service: foo
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80`,
+	}
+
 	res := append(meshedPodResources, clientSP...)
 	res = append(res, unmeshedPod)
 	res = append(res, meshedOpaquePodResources...)
@@ -360,6 +441,8 @@ spec:
 	res = append(res, meshedStatefulSetPodResource...)
 	res = append(res, policyResources...)
 	res = append(res, hostPortMapping...)
+	res = append(res, mirrorServiceResources...)
+	res = append(res, destinationCredentialsResources...)
 	k8sAPI, err := k8s.NewFakeAPI(res...)
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
@@ -384,7 +467,7 @@ spec:
 		t.Fatalf("initializeIndexers returned an error: %s", err)
 	}
 
-	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, false)
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, false, "local")
 	if err != nil {
 		t.Fatalf("can't create Endpoints watcher: %s", err)
 	}
@@ -401,10 +484,16 @@ spec:
 		t.Fatalf("can't create Server watcher: %s", err)
 	}
 
+	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", false, watcher.CreateMockDecoder(exportedServiceResources...))
+	if err != nil {
+		t.Fatalf("can't create cluster store: %s", err)
+	}
+
 	// Sync after creating watchers so that the the indexers added get updated
 	// properly
 	k8sAPI.Sync(nil)
 	metadataAPI.Sync(nil)
+	clusterStore.Sync(nil)
 
 	return &server{
 		pb.UnimplementedDestinationServer{},
@@ -412,6 +501,7 @@ spec:
 		opaquePorts,
 		profiles,
 		servers,
+		clusterStore,
 		true,
 		"linkerd",
 		"trust.domain",

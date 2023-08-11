@@ -32,6 +32,13 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+func init() {
+	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
+	apiextensionsv1.AddToScheme(scheme.Scheme)
+	apiregistrationv1.AddToScheme(scheme.Scheme)
+	spscheme.AddToScheme(scheme.Scheme)
+}
+
 // NewFakeAPI provides a mock KubernetesAPI backed by hard-coded resources
 func NewFakeAPI(configs ...string) (*KubernetesAPI, error) {
 	client, apiextClient, apiregClient, _, err := NewFakeClientSets(configs...)
@@ -193,10 +200,6 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (
 
 // ToRuntimeObject deserializes Kubernetes YAML into a Runtime Object
 func ToRuntimeObject(config string) (runtime.Object, error) {
-	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
-	apiextensionsv1.AddToScheme(scheme.Scheme)
-	apiregistrationv1.AddToScheme(scheme.Scheme)
-	spscheme.AddToScheme(scheme.Scheme)
 	decode := scheme.Codecs.UniversalDeserializer().Decode
 	obj, _, err := decode([]byte(config), nil, nil)
 	return obj, err

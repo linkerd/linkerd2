@@ -20,6 +20,7 @@ func NewFakeAPI(configs ...string) (*API, error) {
 		clientSet,
 		nil,
 		spClientSet,
+		"fake",
 		CJ,
 		CM,
 		Deploy,
@@ -63,6 +64,7 @@ func NewFakeMetadataAPI(configs []string) (*MetadataAPI, error) {
 
 	return newClusterScopedMetadataAPI(
 		metadataClient,
+		"fake",
 		CJ,
 		CM,
 		Deploy,
