@@ -1,5 +1,37 @@
 # Changes
 
+## edge-23.8.2
+
+This edge release adds improvements to Linkerd's multi-cluster features as part
+of the [flat network support] planned for Linkerd stable-2.14.0. In addition, it
+fixes an issue ([#10764]) where warnings about an invalid metric were logged
+frequently by the Destination controller.
+
+* Added a new `remoteDiscoverySelector` field to the multicluster `Link` CRD,
+  which enables a service mirroring mod where the control plane
+  performs discovery for the mirrored service from the remote cluster, rather
+  than creating Endpoints for the mirrored service in the source cluster
+  ([#11190], [#11201], [#11220], and [#11224])
+* Fixed missing "Services" menu item in the Spanish localization for the
+  `linkerd-viz` web dashboard ([#11229]) (thanks @mclavel!)
+* Replaced `server_port_subscribers` Destination controller gauge metric with
+  `server_port_subscribes` and `server_port_unsubscribes` counter metrics
+  ([#11206]; fixes [#10764])
+* Replaced deprecated `failure-domain.beta.kubernetes.io` labels in Helm charts
+  with `topology.kubernetes.io` labels ([#11148]; fixes [#11114]) (thanks @piyushsingariya!)
+
+[#10764]: https://github.com/linkerd/linkerd2/issues/10764
+[#11114]: https://github.com/linkerd/linkerd2/issues/11114
+[#11148]: https://github.com/linkerd/linkerd2/issues/11148
+[#11190]: https://github.com/linkerd/linkerd2/issues/11190
+[#11201]: https://github.com/linkerd/linkerd2/issues/11201
+[#11206]: https://github.com/linkerd/linkerd2/issues/11206
+[#11220]: https://github.com/linkerd/linkerd2/issues/11220
+[#11224]: https://github.com/linkerd/linkerd2/issues/11224
+[#11229]: https://github.com/linkerd/linkerd2/issues/11229
+[flat network support]: https://linkerd.io/2023/07/20/enterprise-multi-cluster-at-scale-supporting-flat-networks-in-linkerd/
+
+
 ## edge-23.8.1
 
 This edge release restores a proxy setting for it to shed load less aggressively
