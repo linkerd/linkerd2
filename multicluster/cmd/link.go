@@ -250,6 +250,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				if !ok || gatewayIdentity == "" {
 					return fmt.Errorf("Gateway %s.%s has no %s annotation", gateway.Name, gateway.Namespace, k8s.GatewayIdentity)
 				}
+				link.GatewayIdentity = gatewayIdentity
 
 				probeSpec, err := mc.ExtractProbeSpec(gateway)
 				if err != nil {
