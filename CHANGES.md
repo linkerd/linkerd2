@@ -17,8 +17,9 @@ frequently by the Destination controller.
 * Replaced `server_port_subscribers` Destination controller gauge metric with
   `server_port_subscribes` and `server_port_unsubscribes` counter metrics
   ([#11206]; fixes [#10764])
-* Replaced deprecated `failure-domain.beta.kubernetes.io` labels in Helm charts
-  with `topology.kubernetes.io` labels ([#11148]; fixes [#11114]) (thanks @piyushsingariya!)
+* Replaced deprecated `failure-domain.beta.kubernetes.io/zone` labels in Helm
+  charts  with `topology.kubernetes.io/zone` labels ([#11148]; fixes [#11114])
+  (thanks @piyushsingariya!)
 
 [#10764]: https://github.com/linkerd/linkerd2/issues/10764
 [#11114]: https://github.com/linkerd/linkerd2/issues/11114
