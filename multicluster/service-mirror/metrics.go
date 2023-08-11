@@ -86,7 +86,7 @@ func NewProbeMetricVecs() ProbeMetricVecs {
 	enabled :=
 		promauto.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Name: "gateway_disabled",
+				Name: "gateway_enabled",
 				Help: "A gauge which is 1 if the gateway is enabled, and 0 if it is not",
 			},
 			labelNames,
