@@ -117,6 +117,12 @@ func newGatewaysCommand() *cobra.Command {
 					continue
 				}
 
+				// If the Link resource does not specify a gateway, do not
+				// process metrics
+				if parsedMetrics["gateway_enabled"] == nil {
+					continue
+				}
+
 				// Check if the gateway is alive by using the gateway_alive
 				// metric and ensuring the label matches the target cluster.
 				for _, metrics := range parsedMetrics["gateway_alive"].GetMetric() {

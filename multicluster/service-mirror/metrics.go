@@ -15,6 +15,7 @@ const (
 // ProbeMetricVecs stores metrics about about gateways collected by probe
 // workers.
 type ProbeMetricVecs struct {
+	enabled   *prometheus.GaugeVec
 	alive     *prometheus.GaugeVec
 	latency   *prometheus.GaugeVec
 	latencies *prometheus.HistogramVec
@@ -81,6 +82,15 @@ func NewProbeMetricVecs() ProbeMetricVecs {
 		labelNames,
 	)
 
+	enabled :=
+		promauto.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "gateway_disabled",
+				Help: "A gauge which is 1 if the gateway is enabled, and 0 if it is not",
+			},
+			labelNames,
+		)
+
 	latency := promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "gateway_latency",
@@ -105,6 +115,7 @@ func NewProbeMetricVecs() ProbeMetricVecs {
 
 	return ProbeMetricVecs{
 		alive:     alive,
+		enabled:   enabled,
 		latency:   latency,
 		latencies: latencies,
 		enqueues:  enqueues,

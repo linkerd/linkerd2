@@ -51,7 +51,7 @@ type (
 		gatewayAddresses        string
 		gatewayPort             uint32
 		ha                      bool
-		disableGateway          bool
+		enableGateway           bool
 	}
 )
 
@@ -206,22 +206,21 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				return err
 			}
 
-			var link mc.Link
-			if opts.disableGateway {
-				// When multicluster has been installed without a gateway, and link
-				// has been explicitly invoked with `--no-gateway`, then build a
-				// link with no gateway information, and a "nothing" selector.
-				link = mc.Link{
-					Name:                          opts.clusterName,
-					Namespace:                     opts.namespace,
-					TargetClusterName:             opts.clusterName,
-					TargetClusterDomain:           configMap.ClusterDomain,
-					TargetClusterLinkerdNamespace: controlPlaneNamespace,
-					ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
-					RemoteDiscoverySelector:       *remoteDiscoverySelector,
-				}
-			} else {
-				// Otherwise, add gateway details to link
+			link := mc.Link{
+				Name:                          opts.clusterName,
+				Namespace:                     opts.namespace,
+				TargetClusterName:             opts.clusterName,
+				TargetClusterDomain:           configMap.ClusterDomain,
+				TargetClusterLinkerdNamespace: controlPlaneNamespace,
+				ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
+				RemoteDiscoverySelector:       *remoteDiscoverySelector,
+			}
+
+			// When multicluster has been installed without a gateway, and link
+			// has been explicitly invoked with `--no-gateway`, then build a
+			// link with no gateway information, and a "nothing" selector.
+			// Otherwise, add gateway details to link
+			if opts.enableGateway {
 				gateway, err := k.CoreV1().Services(opts.gatewayNamespace).Get(cmd.Context(), opts.gatewayName, metav1.GetOptions{})
 				if err != nil {
 					return err
@@ -247,6 +246,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				} else {
 					gatewayAddresses = opts.gatewayAddresses
 				}
+				link.GatewayAddress = gatewayAddresses
 
 				gatewayIdentity, ok := gateway.Annotations[k8s.GatewayIdentity]
 				if !ok || gatewayIdentity == "" {
@@ -257,6 +257,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				if err != nil {
 					return err
 				}
+				link.ProbeSpec = probeSpec
 
 				gatewayPort, err := extractGatewayPort(gateway)
 				if err != nil {
@@ -267,26 +268,14 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				if opts.gatewayPort != 0 {
 					gatewayPort = opts.gatewayPort
 				}
+				link.GatewayPort = gatewayPort
 
 				selector, err := metav1.ParseToLabelSelector(opts.selector)
 				if err != nil {
 					return err
 				}
 
-				link = mc.Link{
-					Name:                          opts.clusterName,
-					Namespace:                     opts.namespace,
-					TargetClusterName:             opts.clusterName,
-					TargetClusterDomain:           configMap.ClusterDomain,
-					TargetClusterLinkerdNamespace: controlPlaneNamespace,
-					ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
-					GatewayAddress:                gatewayAddresses,
-					GatewayPort:                   gatewayPort,
-					GatewayIdentity:               gatewayIdentity,
-					ProbeSpec:                     probeSpec,
-					Selector:                      *selector,
-					RemoteDiscoverySelector:       *remoteDiscoverySelector,
-				}
+				link.Selector = *selector
 			}
 
 			obj, err := link.ToUnstructured()
@@ -355,7 +344,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().StringVar(&opts.gatewayAddresses, "gateway-addresses", opts.gatewayAddresses, "If specified, overwrites gateway addresses when gateway service is not type LoadBalancer (comma separated list)")
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
 	cmd.Flags().BoolVar(&opts.ha, "ha", opts.ha, "Enable HA configuration for the service-mirror deployment (default false)")
-	cmd.Flags().BoolVar(&opts.disableGateway, "no-gateway", opts.disableGateway, "If specified, allows a link to be created against a cluster that does not have a gateway service")
+	cmd.Flags().BoolVar(&opts.enableGateway, "gateway", opts.enableGateway, "If false, allows a link to be created against a cluster that does not have a gateway service (default true)")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"namespace", "gateway-namespace"},
@@ -455,7 +444,7 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 		gatewayAddresses:        "",
 		gatewayPort:             0,
 		ha:                      false,
-		disableGateway:          false,
+		enableGateway:           true,
 	}, nil
 }
 
@@ -477,12 +466,18 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 		return nil, fmt.Errorf("--log-format must be one of: plain, json")
 	}
 
-	if opts.disableGateway {
-		if opts.selector == fmt.Sprintf("%s=%s", k8s.DefaultExportedServiceSelector, "true") {
-			opts.selector = ""
-		} else if opts.selector != "" {
-			return nil, fmt.Errorf("--selector and --no-gateway are mutually exclusive, received selector: %s", opts.selector)
+	if opts.selector != "" && opts.selector != fmt.Sprintf("%s=%s", k8s.DefaultExportedServiceSelector, "true") {
+		if !opts.enableGateway {
+			return nil, fmt.Errorf("--selector and --gateway=false are mutually exclusive, received selector: %s", opts.selector)
 		}
+	}
+
+	if opts.gatewayAddresses != "" && !opts.enableGateway {
+		return nil, fmt.Errorf("--gateway-addresses and --gateway=false are mutually exclusive, received selector: %s", opts.selector)
+	}
+
+	if opts.gatewayPort != 0 && !opts.enableGateway {
+		return nil, fmt.Errorf("--gateway-port and --gateway=false are mutually exclusive, received selector: %s", opts.selector)
 	}
 
 	defaults, err := multicluster.NewLinkValues()
@@ -490,7 +485,7 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 		return nil, err
 	}
 
-	defaults.Gateway.Enabled = !opts.disableGateway
+	defaults.Gateway.Enabled = opts.enableGateway
 	defaults.TargetClusterName = opts.clusterName
 	defaults.ServiceMirrorRetryLimit = opts.serviceMirrorRetryLimit
 	defaults.LogLevel = opts.logLevel
