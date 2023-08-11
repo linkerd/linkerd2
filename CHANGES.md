@@ -31,7 +31,6 @@ frequently by the Destination controller.
 [#11229]: https://github.com/linkerd/linkerd2/issues/11229
 [flat network support]: https://linkerd.io/2023/07/20/enterprise-multi-cluster-at-scale-supporting-flat-networks-in-linkerd/
 
-
 ## edge-23.8.1
 
 This edge release restores a proxy setting for it to shed load less aggressively
