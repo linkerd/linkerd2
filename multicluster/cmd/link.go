@@ -216,10 +216,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				RemoteDiscoverySelector:       *remoteDiscoverySelector,
 			}
 
-			// When multicluster has been installed without a gateway, and link
-			// has been explicitly invoked with `--no-gateway`, then build a
-			// link with no gateway information, and a "nothing" selector.
-			// Otherwise, add gateway details to link
+			// If there is a gateway in the exporting cluster, populate Link
+			// resource with gateway information
 			if opts.enableGateway {
 				gateway, err := k.CoreV1().Services(opts.gatewayNamespace).Get(cmd.Context(), opts.gatewayName, metav1.GetOptions{})
 				if err != nil {
