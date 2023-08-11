@@ -1,13 +1,7 @@
 import { StringParam, withQueryParams } from 'use-query-params';
-import { WS_ABNORMAL_CLOSURE, WS_NORMAL_CLOSURE, WS_POLICY_VIOLATION, emptyTapQuery, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
-import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
 
-import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import TapEnabledWarning from './TapEnabledWarning.jsx';
-import TapEventTable from './TapEventTable.jsx';
-import TapQueryForm from './TapQueryForm.jsx';
 import _cloneDeep from 'lodash/cloneDeep';
 import _each from 'lodash/each';
 import _isNil from 'lodash/isNil';
@@ -15,6 +9,12 @@ import _orderBy from 'lodash/orderBy';
 import _size from 'lodash/size';
 import _throttle from 'lodash/throttle';
 import _values from 'lodash/values';
+import TapQueryForm from './TapQueryForm.jsx';
+import TapEventTable from './TapEventTable.jsx';
+import TapEnabledWarning from './TapEnabledWarning.jsx';
+import ErrorBanner from './ErrorBanner.jsx';
+import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
+import { WS_ABNORMAL_CLOSURE, WS_NORMAL_CLOSURE, WS_POLICY_VIOLATION, emptyTapQuery, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 import { groupResourcesByNs } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 

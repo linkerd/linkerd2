@@ -1,10 +1,6 @@
-import { directionColumn, srcDstColumn } from './util/TapUtils.jsx';
-import { formatLatencySec, formatWithComma } from './util/Utils.js';
-
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import CircularProgress from '@material-ui/core/CircularProgress';
-import ExpandableTable from './ExpandableTable.jsx';
 import Grid from '@material-ui/core/Grid';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
@@ -16,9 +12,12 @@ import Typography from '@material-ui/core/Typography';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
 import _isNull from 'lodash/isNull';
+import { withStyles } from '@material-ui/core/styles';
 import { headersDisplay } from './TapEventHeadersTable.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { withStyles } from '@material-ui/core/styles';
+import ExpandableTable from './ExpandableTable.jsx';
+import { formatLatencySec, formatWithComma } from './util/Utils.js';
+import { directionColumn, srcDstColumn } from './util/TapUtils.jsx';
 
 // https://godoc.org/google.golang.org/grpc/codes#Code
 const grpcStatusCodes = {

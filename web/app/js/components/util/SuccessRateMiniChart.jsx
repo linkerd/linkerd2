@@ -1,8 +1,8 @@
 import Grid from '@material-ui/core/Grid';
 import PropTypes from 'prop-types';
 import React from 'react';
-import SuccessRateDot from './SuccessRateDot.jsx';
 import _isNil from 'lodash/isNil';
+import SuccessRateDot from './SuccessRateDot.jsx';
 import { metricToFormatter } from './Utils.js';
 
 const SuccessRateMiniChart = function({ sr }) {

@@ -3,9 +3,9 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
+import { withStyles } from '@material-ui/core/styles';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({
   version: {

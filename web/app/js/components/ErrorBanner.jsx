@@ -6,9 +6,9 @@ import Slide from '@material-ui/core/Slide';
 import Snackbar from '@material-ui/core/Snackbar';
 import WarningIcon from '@material-ui/icons/Warning';
 import _isEmpty from 'lodash/isEmpty';
-import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
+import { apiErrorPropType } from './util/ApiHelpers.jsx';
 
 const defaultMessage = 'An error has occurred.';
 

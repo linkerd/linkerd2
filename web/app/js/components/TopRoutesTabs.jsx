@@ -1,18 +1,18 @@
 import AppBar from '@material-ui/core/AppBar';
-import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
 import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
-import QueryToCliCmd from './QueryToCliCmd.jsx';
 import React from 'react';
 import Tab from '@material-ui/core/Tab';
 import Tabs from '@material-ui/core/Tabs';
-import TapEnabledWarning from './TapEnabledWarning.jsx';
-import TopModule from './TopModule.jsx';
-import TopRoutesModule from './TopRoutesModule.jsx';
 import { Trans } from '@lingui/macro';
 import _isEmpty from 'lodash/isEmpty';
 import _noop from 'lodash/noop';
 import { withStyles } from '@material-ui/core/styles';
+import TopRoutesModule from './TopRoutesModule.jsx';
+import TopModule from './TopModule.jsx';
+import TapEnabledWarning from './TapEnabledWarning.jsx';
+import QueryToCliCmd from './QueryToCliCmd.jsx';
+import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
 
 const styles = theme => ({
   root: {

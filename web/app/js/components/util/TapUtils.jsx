@@ -1,12 +1,8 @@
-import { podOwnerLookup, toShortResourceName } from './Utils.js';
-import BaseTable from '../BaseTable.jsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Grid from '@material-ui/core/Grid';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
-import Popover from '../Popover.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import TapLink from '../TapLink.jsx';
 import Tooltip from '@material-ui/core/Tooltip';
 import { Trans } from '@lingui/macro';
 import _each from 'lodash/each';
@@ -19,6 +15,10 @@ import _merge from 'lodash/merge';
 import _size from 'lodash/size';
 import _take from 'lodash/take';
 import { faLongArrowAltRight } from '@fortawesome/free-solid-svg-icons/faLongArrowAltRight';
+import TapLink from '../TapLink.jsx';
+import Popover from '../Popover.jsx';
+import BaseTable from '../BaseTable.jsx';
+import { podOwnerLookup, toShortResourceName } from './Utils.js';
 
 export const httpMethods = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH'];
 

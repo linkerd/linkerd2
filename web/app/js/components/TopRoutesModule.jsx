@@ -1,14 +1,14 @@
 import CardContent from '@material-ui/core/CardContent';
-import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
-import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import Spinner from './util/Spinner.jsx';
-import TopRoutesTable from './TopRoutesTable.jsx';
 import Typography from '@material-ui/core/Typography';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
 import _sortBy from 'lodash/sortBy';
+import TopRoutesTable from './TopRoutesTable.jsx';
+import Spinner from './util/Spinner.jsx';
+import ErrorBanner from './ErrorBanner.jsx';
+import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { processTopRoutesResults } from './util/MetricUtils.jsx';
 import withREST from './util/withREST.jsx';

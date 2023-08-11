@@ -6,8 +6,8 @@ import StepContent from '@material-ui/core/StepContent';
 import StepLabel from '@material-ui/core/StepLabel';
 import Stepper from '@material-ui/core/Stepper';
 import Typography from '@material-ui/core/Typography';
-import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 
 const styles = theme => ({
   instructions: {

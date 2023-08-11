@@ -6,18 +6,18 @@ import Dialog from '@material-ui/core/Dialog';
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import ErrorBanner from './ErrorBanner.jsx';
 import Grid from '@material-ui/core/Grid';
 import Paper from '@material-ui/core/Paper';
 import PriorityHigh from '@material-ui/icons/PriorityHigh';
 import PropTypes from 'prop-types';
 import React from 'react';
-import SimpleChip from './util/Chip.jsx';
 import Slide from '@material-ui/core/Slide';
 import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import withMobileDialog from '@material-ui/core/withMobileDialog';
 import { withStyles } from '@material-ui/core/styles';
+import SimpleChip from './util/Chip.jsx';
+import ErrorBanner from './ErrorBanner.jsx';
 
 const styles = theme => ({
   wrapper: {

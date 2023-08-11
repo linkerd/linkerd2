@@ -1,4 +1,3 @@
-import Percentage from './Percentage.js';
 import PropTypes from 'prop-types';
 import _compact from 'lodash/compact';
 import _each from 'lodash/each';
@@ -10,6 +9,7 @@ import _orderBy from 'lodash/orderBy';
 import _reduce from 'lodash/reduce';
 import _size from 'lodash/size';
 import _values from 'lodash/values';
+import Percentage from './Percentage.js';
 
 const srArcClassLabels = {
   good: 'good',

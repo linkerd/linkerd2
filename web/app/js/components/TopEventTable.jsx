@@ -1,13 +1,12 @@
-import { directionColumn, extractDisplayName, srcDstColumn, tapLink } from './util/TapUtils.jsx';
-import { formatLatencySec, toShortResourceName } from './util/Utils.js';
-
-import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
 import { Trans } from '@lingui/macro';
 import _isEmpty from 'lodash/isEmpty';
 import _isNil from 'lodash/isNil';
+import BaseTable from './BaseTable.jsx';
+import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
+import { formatLatencySec, toShortResourceName } from './util/Utils.js';
+import { directionColumn, extractDisplayName, srcDstColumn, tapLink } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 const topColumns = (resourceType, ResourceLink, PrefixedLink) => [

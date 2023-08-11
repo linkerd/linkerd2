@@ -1,4 +1,3 @@
-import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Tooltip from '@material-ui/core/Tooltip';
@@ -6,8 +5,9 @@ import { Trans } from '@lingui/macro';
 import _get from 'lodash/get';
 import _merge from 'lodash/merge';
 import classNames from 'classnames';
-import { statusClassNames } from './util/theme.js';
 import { withStyles } from '@material-ui/core/styles';
+import { statusClassNames } from './util/theme.js';
+import BaseTable from './BaseTable.jsx';
 
 const styles = theme => _merge({}, statusClassNames(theme), {
   statusTableDot: {

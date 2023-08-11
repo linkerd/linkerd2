@@ -1,13 +1,13 @@
 import Grid from '@material-ui/core/Grid';
-import MetricsTable from './MetricsTable.jsx';
-import Octopus from './Octopus.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
-import TopRoutesTabs, { topRoutesQueryPropType } from './TopRoutesTabs.jsx';
 import _isEmpty from 'lodash/isEmpty';
 import _filter from 'lodash/filter';
+import TopRoutesTabs, { topRoutesQueryPropType } from './TopRoutesTabs.jsx';
+import Octopus from './Octopus.jsx';
+import MetricsTable from './MetricsTable.jsx';
 
 const getResourceForService = (resourceMetrics, serviceName) => {
   if (resourceMetrics.length === 1) {
