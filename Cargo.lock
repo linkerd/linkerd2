@@ -1398,7 +1398,7 @@ dependencies = [
 [[package]]
 name = "linkerd2-proxy-api"
 version = "0.11.0"
-source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=eliza/retry-policy#0e2d93af31bcba858855f1ab7f645b170a6e7d40"
+source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=eliza/retry-policy#7790fa05aab1c3c11793852a6d571845b1b3ead9"
 dependencies = [
  "http",
  "ipnet",
