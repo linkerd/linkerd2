@@ -513,9 +513,19 @@ impl Namespace {
             .filters
             .into_iter()
             .flatten()
-            .filter_map(|filter| convert_linkerd_filter(filter, &mut retry_policy).transpose())
+            .filter_map(|filter| match convert_linkerd_filter(filter) {
+                Ok(ConvertFilter::Ignored) => None,
+                Ok(ConvertFilter::Retry(_)) if retry_policy.is_some() => Some(Err(
+                    anyhow::anyhow!("an HTTPRoute rule may only have zero or one `RetryFilter`s"),
+                )),
+                Ok(ConvertFilter::Retry(r)) => {
+                    retry_policy = Some(self.convert_retry_policy(r));
+                    None
+                }
+                Ok(ConvertFilter::Filter(filter)) => Some(Ok(filter)),
+                Err(e) => Some(Err(e)),
+            })
             .collect::<Result<Vec<Filter>>>()?;
-        let retry_policy = retry_policy.map(|r| self.convert_retry_policy(r));
 
         let request_timeout = rule.timeouts.as_ref().and_then(|timeouts| {
             let timeout = time::Duration::from(timeouts.request?);
@@ -577,9 +587,19 @@ impl Namespace {
             .filters
             .into_iter()
             .flatten()
-            .filter_map(|filter| convert_gateway_filter(filter, &mut retry_policy).transpose())
+            .filter_map(|filter| match convert_gateway_filter(filter) {
+                Ok(ConvertFilter::Ignored) => None,
+                Ok(ConvertFilter::Retry(_)) if retry_policy.is_some() => Some(Err(
+                    anyhow::anyhow!("an HTTPRoute rule may only have zero or one `RetryFilter`s"),
+                )),
+                Ok(ConvertFilter::Retry(r)) => {
+                    retry_policy = Some(self.convert_retry_policy(r));
+                    None
+                }
+                Ok(ConvertFilter::Filter(filter)) => Some(Ok(filter)),
+                Err(e) => Some(Err(e)),
+            })
             .collect::<Result<Vec<Filter>>>()?;
-        let retry_policy = retry_policy.map(|r| self.convert_retry_policy(r));
 
         Ok(HttpRouteRule {
             matches,
@@ -652,12 +672,19 @@ fn convert_backend(
         }));
     }
 
-    let mut retry_policy = None;
     let filters = match filters
         .into_iter()
         .flatten()
-        .filter_map(|filter| convert_gateway_filter(filter, &mut retry_policy).transpose())
-        .collect::<Result<_>>()
+        .filter_map(|filter| match convert_gateway_filter(filter) {
+            Ok(ConvertFilter::Ignored) => None,
+            Ok(ConvertFilter::Retry(_)) =>
+                Some(Err(anyhow::anyhow!(
+                    "HTTPRetryFilters may only be applied to HTTPRoute rules, not to inidividual backends"
+                ))),
+            Ok(ConvertFilter::Filter(filter)) => Some(Ok(filter)),
+            Err(e) => Some(Err(e)),
+        })
+        .collect::<Result<Vec<Filter>>>()
     {
         Ok(filters) => filters,
         Err(error) => {
@@ -667,12 +694,6 @@ fn convert_backend(
             }));
         }
     };
-
-    if retry_policy.is_some() {
-        return Some(Err(anyhow::anyhow!(
-            "HTTPRetryFilters may only be applied to HTTPRoute rules, not to inidividual backends"
-        )));
-    }
 
     Some(Ok(Backend::Service(WeightedService {
         weight: weight.into(),
@@ -684,10 +705,13 @@ fn convert_backend(
     })))
 }
 
-fn convert_linkerd_filter(
-    filter: api::httproute::HttpRouteFilter,
-    retry_policy: &mut Option<LocalObjectReference>,
-) -> Result<Option<Filter>> {
+enum ConvertFilter {
+    Filter(Filter),
+    Retry(LocalObjectReference),
+    Ignored,
+}
+
+fn convert_linkerd_filter(filter: api::httproute::HttpRouteFilter) -> Result<ConvertFilter> {
     let filter = match filter {
         api::httproute::HttpRouteFilter::RequestHeaderModifier {
             request_header_modifier,
@@ -712,22 +736,16 @@ fn convert_linkerd_filter(
             // If this extensionRef doesn't target a filter type we care about,
             // just ignore it.
             if httproute::local_object_ref_targets_kind::<HttpRetryFilter>(&extension_ref) {
-                if retry_policy.is_some() {
-                    bail!("an HTTPRoute rule may not have more than one HTTPRetryFilter")
-                }
-                *retry_policy = Some(extension_ref);
+                return Ok(ConvertFilter::Retry(extension_ref));
+            } else {
+                return Ok(ConvertFilter::Ignored);
             }
-
-            return Ok(None);
         }
     };
-    Ok(Some(filter))
+    Ok(ConvertFilter::Filter(filter))
 }
 
-fn convert_gateway_filter(
-    filter: k8s_gateway_api::HttpRouteFilter,
-    retry_policy: &mut Option<LocalObjectReference>,
-) -> Result<Option<Filter>> {
+fn convert_gateway_filter(filter: k8s_gateway_api::HttpRouteFilter) -> Result<ConvertFilter> {
     let filter = match filter {
         k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
             request_header_modifier,
@@ -758,16 +776,13 @@ fn convert_gateway_filter(
             // If this extensionRef doesn't target a filter type we care about,
             // just ignore it.
             if httproute::local_object_ref_targets_kind::<HttpRetryFilter>(&extension_ref) {
-                if retry_policy.is_some() {
-                    bail!("an HTTPRoute rule may not have more than one HTTPRetryFilter")
-                }
-                *retry_policy = Some(extension_ref);
-            }
-
-            return Ok(None);
+                return Ok(ConvertFilter::Retry(extension_ref));
+            } else {
+                return Ok(ConvertFilter::Ignored);
+            };
         }
     };
-    Ok(Some(filter))
+    Ok(ConvertFilter::Filter(filter))
 }
 
 #[inline]
