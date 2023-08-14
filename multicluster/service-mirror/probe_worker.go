@@ -29,8 +29,7 @@ type ProbeWorker struct {
 
 // NewProbeWorker creates a new probe worker associated with a particular gateway
 func NewProbeWorker(localGatewayName string, spec *multicluster.ProbeSpec, metrics *ProbeMetrics, probekey string) *ProbeWorker {
-	// Mark gateway as enabled
-	metrics.enabled.Set(1)
+	metrics.gatewayEnabled.Set(1)
 	return &ProbeWorker{
 		localGatewayName: localGatewayName,
 		Liveness:         make(chan bool, 10),

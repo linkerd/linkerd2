@@ -117,9 +117,19 @@ func newGatewaysCommand() *cobra.Command {
 					continue
 				}
 
-				// If the Link resource does not specify a gateway, do not
-				// process metrics
-				if parsedMetrics["gateway_enabled"] == nil {
+				skipGatewayMetrics := false
+				for _, metrics := range parsedMetrics["gateway_enabled"].GetMetric() {
+					if !isTargetClusterMetric(metrics, gateway.clusterName) {
+						continue
+					}
+
+					if metrics.GetGauge().GetValue() != 1 {
+						skipGatewayMetrics = true
+						break
+					}
+				}
+
+				if skipGatewayMetrics {
 					continue
 				}
 

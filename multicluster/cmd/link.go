@@ -467,16 +467,16 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 
 	if opts.selector != "" && opts.selector != fmt.Sprintf("%s=%s", k8s.DefaultExportedServiceSelector, "true") {
 		if !opts.enableGateway {
-			return nil, fmt.Errorf("--selector and --gateway=false are mutually exclusive, received selector: %s", opts.selector)
+			return nil, fmt.Errorf("--selector and --gateway=false are mutually exclusive")
 		}
 	}
 
 	if opts.gatewayAddresses != "" && !opts.enableGateway {
-		return nil, fmt.Errorf("--gateway-addresses and --gateway=false are mutually exclusive, received selector: %s", opts.selector)
+		return nil, fmt.Errorf("--gateway-addresses and --gateway=false are mutually exclusive")
 	}
 
 	if opts.gatewayPort != 0 && !opts.enableGateway {
-		return nil, fmt.Errorf("--gateway-port and --gateway=false are mutually exclusive, received selector: %s", opts.selector)
+		return nil, fmt.Errorf("--gateway-port and --gateway=false are mutually exclusive")
 	}
 
 	defaults, err := multicluster.NewLinkValues()
