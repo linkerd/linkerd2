@@ -8,6 +8,8 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	logging "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -91,6 +93,11 @@ func NewClusterStoreWithDecoder(client kubernetes.Interface, namespace string, e
 		decodeFn:             decodeFn,
 	}
 
+	promauto.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "cluster_store_size",
+		Help: "The number of linked clusters in the remote discovery cluster store",
+	}, func() float64 { return (float64)(len(cs.store)) })
+
 	_, err := cs.api.Secret().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			secret, ok := obj.(*v1.Secret)
@@ -102,7 +109,6 @@ func NewClusterStoreWithDecoder(client kubernetes.Interface, namespace string, e
 			if secret.Type != pkgK8s.MirrorSecretType {
 				cs.log.Tracef("Skipping Add event for 'Secret' object %s/%s: invalid type %s", secret.Namespace, secret.Name, secret.Type)
 				return
-
 			}
 
 			clusterName, found := secret.GetLabels()[clusterNameLabel]
@@ -114,7 +120,6 @@ func NewClusterStoreWithDecoder(client kubernetes.Interface, namespace string, e
 			if err := cs.addCluster(clusterName, secret); err != nil {
 				cs.log.Errorf("Error adding cluster %s to store: %v", clusterName, err)
 			}
-
 		},
 		DeleteFunc: func(obj interface{}) {
 			secret, ok := obj.(*v1.Secret)
