@@ -173,6 +173,8 @@ func (cs *ClusterStore) removeCluster(clusterName string) {
 		return
 	}
 	r.watcher.removeHandlers()
+	r.watcher.k8sAPI.UnregisterGauges()
+	r.watcher.metadataAPI.UnregisterGauges()
 	close(r.stopCh)
 	delete(cs.store, clusterName)
 	cs.log.Infof("Removed cluster %s from ClusterStore", clusterName)
