@@ -235,7 +235,7 @@ func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceLabels(remoteService 
 		return labels
 	}
 
-	if rcsw.isRemoteDiscovery(remoteService) {
+	if rcsw.isRemoteDiscovery(remoteService.Labels) {
 		labels[consts.RemoteDiscoveryLabel] = rcsw.link.TargetClusterName
 		labels[consts.RemoteServiceLabel] = remoteService.GetName()
 	}
@@ -440,7 +440,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ctx context.
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ctx context.Context, ev *RemoteServiceUpdated) error {
 	rcsw.log.Infof("Updating mirror service %s/%s", ev.localService.Namespace, ev.localService.Name)
 
-	if rcsw.isRemoteDiscovery(ev.remoteUpdate) {
+	if rcsw.isRemoteDiscovery(ev.remoteUpdate.Labels) {
 		// The service is mirrored in remote discovery mode and any local
 		// endpoints for it should be deleted if they exist.
 		if ev.localEndpoints != nil {
@@ -550,7 +550,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 		}
 	}
 
-	if rcsw.isRemoteDiscovery(remoteService) {
+	if rcsw.isRemoteDiscovery(remoteService.Labels) {
 		// For remote discovery services, skip creating gateway endpoints.
 		return nil
 	}
@@ -894,6 +894,10 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 					rcsw.log.Debugf("skipped processing endpoints object %s/%s: missing %s label", epNew.Namespace, epNew.Name, consts.DefaultExportedServiceSelector)
 					return
 				}
+				if rcsw.isRemoteDiscovery(epNew.Labels) {
+					rcsw.log.Debugf("skipped processing endpoints object %s/%s (not mirrored in remote-discovery mode)", epNew.Namespace, epNew.Name)
+					return
+				}
 				rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{epNew})
 			},
 		},
@@ -1023,6 +1027,11 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 		// the gateway, so they're skipped.
 		if svc.Spec.ClusterIP == corev1.ClusterIPNone {
 			rcsw.log.Debugf("Skipped repairing endpoints for headless mirror %s/%s", svc.Namespace, svc.Name)
+			continue
+		}
+
+		if rcsw.isRemoteDiscovery(svc.Labels) {
+			rcsw.log.Debugf("Skipped repairing endpoints for service in remote-discovery mode %s/%s", svc.Namespace, svc.Name)
 			continue
 		}
 
@@ -1237,7 +1246,14 @@ func (rcsw *RemoteClusterServiceWatcher) isExported(l map[string]string) bool {
 	return selector.Matches(labels.Set(l)) || remoteDiscoverySelector.Matches(labels.Set(l))
 }
 
-func (rcsw *RemoteClusterServiceWatcher) isRemoteDiscovery(svc *corev1.Service) bool {
+// isRemoteDiscovery returns true if the passed labels correspond to a local
+// mirror Service or a remote Service/Endpoints in remote-discovery mode
+func (rcsw *RemoteClusterServiceWatcher) isRemoteDiscovery(l map[string]string) bool {
+	_, ok := l[consts.RemoteDiscoveryLabel]
+	if ok {
+		return true
+	}
+
 	// Treat an empty remoteDiscoverySelector as "Nothing" instead of
 	// "Everything" so that when the remoteDiscoverySelector field is unset, we
 	// don't export all Services.
@@ -1249,5 +1265,6 @@ func (rcsw *RemoteClusterServiceWatcher) isRemoteDiscovery(svc *corev1.Service) 
 		rcsw.log.Errorf("Invalid selector: %s", err)
 		return false
 	}
-	return remoteDiscoverySelector.Matches(labels.Set(svc.Labels))
+
+	return remoteDiscoverySelector.Matches(labels.Set(l))
 }
