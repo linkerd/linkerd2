@@ -678,7 +678,7 @@ func (rcsw *RemoteClusterServiceWatcher) createGatewayEndpoints(ctx context.Cont
 func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.Service) error {
 	localName := rcsw.mirroredResourceName(service.Name)
 
-	if rcsw.isExported(service.Labels) {
+	if rcsw.isExported(service.Labels) || rcsw.isRemoteDiscovery(service) {
 		localService, err := rcsw.localAPIClient.Svc().Lister().Services(service.Namespace).Get(localName)
 		if err != nil {
 			if kerrors.IsNotFound(err) {
@@ -914,6 +914,11 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 	}
 
 	go rcsw.processEvents(ctx)
+
+	// If no gateway address is present, do not repair endpoints
+	if rcsw.link.GatewayAddress == "" {
+		return nil
+	}
 
 	// We need to issue a RepairEndpoints immediately to populate the gateway
 	// mirror endpoints.

@@ -494,6 +494,64 @@ var gcTriggered = &testEnvironment{
 	},
 }
 
+var noGatewayLink = &testEnvironment{
+	events: []interface{}{
+		&RemoteServiceCreated{
+			service: remoteService("service-one", "ns1", "111", map[string]string{
+				consts.DefaultExportedServiceSelector: "remote-discovery",
+			}, []corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		},
+		&RemoteServiceCreated{
+			service: remoteService("service-two", "ns1", "111", map[string]string{
+				consts.DefaultExportedServiceSelector: "true",
+			}, []corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		},
+	},
+	localResources: []string{
+		namespaceAsYaml("ns1"),
+	},
+	remoteResources: []string{
+		endpointsAsYaml("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{}),
+		endpointsAsYaml("service-two", "ns1", "192.0.2.128", "gateway-identity", []corev1.EndpointPort{}),
+	},
+	link: multicluster.Link{
+		TargetClusterName:   clusterName,
+		TargetClusterDomain: clusterDomain,
+		GatewayIdentity:     "",
+		GatewayAddress:      "",
+		GatewayPort:         0,
+		ProbeSpec: multicluster.ProbeSpec{
+			Path:   "",
+			Port:   0,
+			Period: time.Duration(0) * time.Second,
+		},
+		Selector:                metav1.LabelSelector{},
+		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+	},
+}
+
 func onAddOrUpdateExportedSvc(isAdd bool) *testEnvironment {
 	return &testEnvironment{
 		events: []interface{}{

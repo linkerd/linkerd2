@@ -117,6 +117,22 @@ func newGatewaysCommand() *cobra.Command {
 					continue
 				}
 
+				skipGatewayMetrics := false
+				for _, metrics := range parsedMetrics["gateway_enabled"].GetMetric() {
+					if !isTargetClusterMetric(metrics, gateway.clusterName) {
+						continue
+					}
+
+					if metrics.GetGauge().GetValue() != 1 {
+						skipGatewayMetrics = true
+						break
+					}
+				}
+
+				if skipGatewayMetrics {
+					continue
+				}
+
 				// Check if the gateway is alive by using the gateway_alive
 				// metric and ensuring the label matches the target cluster.
 				for _, metrics := range parsedMetrics["gateway_alive"].GetMetric() {

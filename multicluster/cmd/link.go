@@ -55,6 +55,7 @@ type (
 		gatewayAddresses        string
 		gatewayPort             uint32
 		ha                      bool
+		enableGateway           bool
 	}
 )
 
@@ -208,57 +209,6 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				return err
 			}
 
-			gateway, err := k.CoreV1().Services(opts.gatewayNamespace).Get(cmd.Context(), opts.gatewayName, metav1.GetOptions{})
-			if err != nil {
-				return err
-			}
-
-			gatewayAddresses := ""
-			gwAddresses := []string{}
-			for _, ingress := range gateway.Status.LoadBalancer.Ingress {
-				addr := ingress.IP
-				if addr == "" {
-					addr = ingress.Hostname
-				}
-				if addr == "" {
-					continue
-				}
-				gwAddresses = append(gwAddresses, addr)
-			}
-			if len(gwAddresses) == 0 && opts.gatewayAddresses == "" {
-				return fmt.Errorf("Gateway %s.%s has no ingress addresses", gateway.Name, gateway.Namespace)
-			}
-			if len(gwAddresses) > 0 {
-				gatewayAddresses = strings.Join(gwAddresses, ",")
-			} else {
-				gatewayAddresses = opts.gatewayAddresses
-			}
-
-			gatewayIdentity, ok := gateway.Annotations[k8s.GatewayIdentity]
-			if !ok || gatewayIdentity == "" {
-				return fmt.Errorf("Gateway %s.%s has no %s annotation", gateway.Name, gateway.Namespace, k8s.GatewayIdentity)
-			}
-
-			probeSpec, err := mc.ExtractProbeSpec(gateway)
-			if err != nil {
-				return err
-			}
-
-			gatewayPort, err := extractGatewayPort(gateway)
-			if err != nil {
-				return err
-			}
-
-			// Override with user provided gateway port if present
-			if opts.gatewayPort != 0 {
-				gatewayPort = opts.gatewayPort
-			}
-
-			selector, err := metav1.ParseToLabelSelector(opts.selector)
-			if err != nil {
-				return err
-			}
-
 			remoteDiscoverySelector, err := metav1.ParseToLabelSelector(opts.remoteDiscoverySelector)
 			if err != nil {
 				return err
@@ -271,12 +221,68 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				TargetClusterDomain:           configMap.ClusterDomain,
 				TargetClusterLinkerdNamespace: controlPlaneNamespace,
 				ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
-				GatewayAddress:                gatewayAddresses,
-				GatewayPort:                   gatewayPort,
-				GatewayIdentity:               gatewayIdentity,
-				ProbeSpec:                     probeSpec,
-				Selector:                      *selector,
 				RemoteDiscoverySelector:       *remoteDiscoverySelector,
+			}
+
+			// If there is a gateway in the exporting cluster, populate Link
+			// resource with gateway information
+			if opts.enableGateway {
+				gateway, err := k.CoreV1().Services(opts.gatewayNamespace).Get(cmd.Context(), opts.gatewayName, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+
+				gatewayAddresses := ""
+				gwAddresses := []string{}
+				for _, ingress := range gateway.Status.LoadBalancer.Ingress {
+					addr := ingress.IP
+					if addr == "" {
+						addr = ingress.Hostname
+					}
+					if addr == "" {
+						continue
+					}
+					gwAddresses = append(gwAddresses, addr)
+				}
+				if len(gwAddresses) == 0 && opts.gatewayAddresses == "" {
+					return fmt.Errorf("Gateway %s.%s has no ingress addresses", gateway.Name, gateway.Namespace)
+				}
+				if len(gwAddresses) > 0 {
+					gatewayAddresses = strings.Join(gwAddresses, ",")
+				} else {
+					gatewayAddresses = opts.gatewayAddresses
+				}
+				link.GatewayAddress = gatewayAddresses
+
+				gatewayIdentity, ok := gateway.Annotations[k8s.GatewayIdentity]
+				if !ok || gatewayIdentity == "" {
+					return fmt.Errorf("Gateway %s.%s has no %s annotation", gateway.Name, gateway.Namespace, k8s.GatewayIdentity)
+				}
+				link.GatewayIdentity = gatewayIdentity
+
+				probeSpec, err := mc.ExtractProbeSpec(gateway)
+				if err != nil {
+					return err
+				}
+				link.ProbeSpec = probeSpec
+
+				gatewayPort, err := extractGatewayPort(gateway)
+				if err != nil {
+					return err
+				}
+
+				// Override with user provided gateway port if present
+				if opts.gatewayPort != 0 {
+					gatewayPort = opts.gatewayPort
+				}
+				link.GatewayPort = gatewayPort
+
+				selector, err := metav1.ParseToLabelSelector(opts.selector)
+				if err != nil {
+					return err
+				}
+
+				link.Selector = *selector
 			}
 
 			obj, err := link.ToUnstructured()
@@ -345,6 +351,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().StringVar(&opts.gatewayAddresses, "gateway-addresses", opts.gatewayAddresses, "If specified, overwrites gateway addresses when gateway service is not type LoadBalancer (comma separated list)")
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
 	cmd.Flags().BoolVar(&opts.ha, "ha", opts.ha, "Enable HA configuration for the service-mirror deployment (default false)")
+	cmd.Flags().BoolVar(&opts.enableGateway, "gateway", opts.enableGateway, "If false, allows a link to be created against a cluster that does not have a gateway service (default true)")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"namespace", "gateway-namespace"},
@@ -444,6 +451,7 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 		gatewayAddresses:        "",
 		gatewayPort:             0,
 		ha:                      false,
+		enableGateway:           true,
 	}, nil
 }
 
@@ -465,11 +473,26 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 		return nil, fmt.Errorf("--log-format must be one of: plain, json")
 	}
 
+	if opts.selector != "" && opts.selector != fmt.Sprintf("%s=%s", k8s.DefaultExportedServiceSelector, "true") {
+		if !opts.enableGateway {
+			return nil, fmt.Errorf("--selector and --gateway=false are mutually exclusive")
+		}
+	}
+
+	if opts.gatewayAddresses != "" && !opts.enableGateway {
+		return nil, fmt.Errorf("--gateway-addresses and --gateway=false are mutually exclusive")
+	}
+
+	if opts.gatewayPort != 0 && !opts.enableGateway {
+		return nil, fmt.Errorf("--gateway-port and --gateway=false are mutually exclusive")
+	}
+
 	defaults, err := multicluster.NewLinkValues()
 	if err != nil {
 		return nil, err
 	}
 
+	defaults.Gateway.Enabled = opts.enableGateway
 	defaults.TargetClusterName = opts.clusterName
 	defaults.ServiceMirrorRetryLimit = opts.serviceMirrorRetryLimit
 	defaults.LogLevel = opts.logLevel

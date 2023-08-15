@@ -54,13 +54,12 @@ func newUnlinkCommand() *cobra.Command {
 				return err
 			}
 
-			_, err = mc.GetLink(cmd.Context(), k.DynamicClient, opts.namespace, opts.clusterName)
+			l, err := mc.GetLink(cmd.Context(), k.DynamicClient, opts.namespace, opts.clusterName)
 			if err != nil {
 				return err
 			}
 
 			secret := resource.NewNamespaced(corev1.SchemeGroupVersion.String(), "Secret", fmt.Sprintf("cluster-credentials-%s", opts.clusterName), opts.namespace)
-			gatewayMirror := resource.NewNamespaced(corev1.SchemeGroupVersion.String(), "Service", fmt.Sprintf("probe-gateway-%s", opts.clusterName), opts.namespace)
 			link := resource.NewNamespaced(k8s.LinkAPIGroupVersion, "Link", opts.clusterName, opts.namespace)
 			clusterRole := resource.New(rbac.SchemeGroupVersion.String(), "ClusterRole", fmt.Sprintf("linkerd-service-mirror-access-local-resources-%s", opts.clusterName))
 			clusterRoleBinding := resource.New(rbac.SchemeGroupVersion.String(), "ClusterRoleBinding", fmt.Sprintf("linkerd-service-mirror-access-local-resources-%s", opts.clusterName))
@@ -71,8 +70,13 @@ func newUnlinkCommand() *cobra.Command {
 			lease := resource.NewNamespaced(coordinationv1.SchemeGroupVersion.String(), "Lease", fmt.Sprintf("service-mirror-write-%s", opts.clusterName), opts.namespace)
 
 			resources := []resource.Kubernetes{
-				secret, gatewayMirror, link, clusterRole, clusterRoleBinding,
+				secret, link, clusterRole, clusterRoleBinding,
 				role, roleBinding, serviceAccount, serviceMirror, lease,
+			}
+
+			if l.ProbeSpec.Path != "" {
+				gatewayMirror := resource.NewNamespaced(corev1.SchemeGroupVersion.String(), "Service", fmt.Sprintf("probe-gateway-%s", opts.clusterName), opts.namespace)
+				resources = append(resources, gatewayMirror)
 			}
 
 			selector := fmt.Sprintf("%s=%s,%s=%s",

@@ -632,7 +632,7 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context,
 
 func (hc *healthChecker) checkIfMirrorServicesHaveEndpoints(ctx context.Context) error {
 	var servicesWithNoEndpoints []string
-	selector := fmt.Sprintf("%s, !%s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel)
+	selector := fmt.Sprintf("%s, !%s, !%s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel, k8s.RemoteDiscoveryLabel)
 	mirrorServices, err := hc.KubeAPIClient().CoreV1().Services(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		return err

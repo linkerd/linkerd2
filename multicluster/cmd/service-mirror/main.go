@@ -284,13 +284,19 @@ func restartClusterWatcher(
 
 	cleanupWorkers()
 
-	// Start probe worker
 	workerMetrics, err := metrics.NewWorkerMetrics(link.TargetClusterName)
 	if err != nil {
 		return fmt.Errorf("failed to create metrics for cluster watcher: %w", err)
 	}
-	probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
-	probeWorker.Start()
+
+	// If linked against a cluster that has a gateway, start a probe and
+	// initialise the liveness channel
+	var ch chan bool
+	if link.ProbeSpec.Path != "" {
+		probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
+		probeWorker.Start()
+		ch = probeWorker.Liveness
+	}
 
 	// Start cluster watcher
 	cfg, err := clientcmd.RESTConfigFromKubeConfig(creds)
@@ -305,7 +311,7 @@ func restartClusterWatcher(
 		&link,
 		requeueLimit,
 		repairPeriod,
-		probeWorker.Liveness,
+		ch,
 		enableHeadlessSvc,
 	)
 	if err != nil {
