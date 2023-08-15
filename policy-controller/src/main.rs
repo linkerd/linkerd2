@@ -6,7 +6,7 @@ use clap::Parser;
 use futures::prelude::*;
 use k8s::{api::apps::v1::Deployment, Client, ObjectMeta, Resource};
 use k8s_openapi::api::coordination::v1 as coordv1;
-use kube::api::{ListParams, PatchParams};
+use kube::{api::PatchParams, runtime::watcher};
 use kubert::LeaseManager;
 use linkerd_policy_controller::{
     grpc, inbound, index_list::IndexList, k8s, outbound, Admission, ClusterInfo, DefaultPolicy,
@@ -167,13 +167,13 @@ async fn main() -> Result<()> {
 
     // Spawn resource watches.
 
-    let pods =
-        runtime.watch_all::<k8s::Pod>(ListParams::default().labels("linkerd.io/control-plane-ns"));
+    let pods = runtime
+        .watch_all::<k8s::Pod>(watcher::Config::default().labels("linkerd.io/control-plane-ns"));
     tokio::spawn(
         kubert::index::namespaced(inbound_index.clone(), pods).instrument(info_span!("pods")),
     );
 
-    let servers = runtime.watch_all::<k8s::policy::Server>(ListParams::default());
+    let servers = runtime.watch_all::<k8s::policy::Server>(watcher::Config::default());
     let servers_indexes = IndexList::new(inbound_index.clone())
         .push(status_index.clone())
         .shared();
@@ -182,34 +182,34 @@ async fn main() -> Result<()> {
     );
 
     let server_authzs =
-        runtime.watch_all::<k8s::policy::ServerAuthorization>(ListParams::default());
+        runtime.watch_all::<k8s::policy::ServerAuthorization>(watcher::Config::default());
     tokio::spawn(
         kubert::index::namespaced(inbound_index.clone(), server_authzs)
             .instrument(info_span!("serverauthorizations")),
     );
 
     let authz_policies =
-        runtime.watch_all::<k8s::policy::AuthorizationPolicy>(ListParams::default());
+        runtime.watch_all::<k8s::policy::AuthorizationPolicy>(watcher::Config::default());
     tokio::spawn(
         kubert::index::namespaced(inbound_index.clone(), authz_policies)
             .instrument(info_span!("authorizationpolicies")),
     );
 
     let mtls_authns =
-        runtime.watch_all::<k8s::policy::MeshTLSAuthentication>(ListParams::default());
+        runtime.watch_all::<k8s::policy::MeshTLSAuthentication>(watcher::Config::default());
     tokio::spawn(
         kubert::index::namespaced(inbound_index.clone(), mtls_authns)
             .instrument(info_span!("meshtlsauthentications")),
     );
 
     let network_authns =
-        runtime.watch_all::<k8s::policy::NetworkAuthentication>(ListParams::default());
+        runtime.watch_all::<k8s::policy::NetworkAuthentication>(watcher::Config::default());
     tokio::spawn(
         kubert::index::namespaced(inbound_index.clone(), network_authns)
             .instrument(info_span!("networkauthentications")),
     );
 
-    let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(ListParams::default());
+    let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(watcher::Config::default());
     let http_routes_indexes = IndexList::new(inbound_index.clone())
         .push(outbound_index.clone())
         .push(status_index.clone())
@@ -219,7 +219,7 @@ async fn main() -> Result<()> {
             .instrument(info_span!("httproutes")),
     );
 
-    let services = runtime.watch_all::<k8s::Service>(ListParams::default());
+    let services = runtime.watch_all::<k8s::Service>(watcher::Config::default());
     let services_indexes = IndexList::new(outbound_index.clone())
         .push(status_index.clone())
         .shared();
