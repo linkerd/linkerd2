@@ -6,11 +6,11 @@ license = "Apache-2.0"
 publish = false
 
 [dependencies]
-k8s-openapi = { version = "0.17", default-features = false, features = [
+k8s-openapi = { version = "0.19", default-features = false, features = [
     "v1_20",
 ] }
-k8s-gateway-api = "0.12"
-kube = { version = "0.80", default-features = false, features = [
+k8s-gateway-api = "0.13"
+kube = { version = "0.85", default-features = false, features = [
     "client",
     "derive",
     "runtime",
@@ -19,7 +19,7 @@ ipnet = { version = "2.7", features = ["json"] }
 schemars = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_yaml = "0.8"
+serde_yaml = "0.9"
 thiserror = "1"
 tokio = { version = "1", features = ["time"] }
 tracing = "0.1"

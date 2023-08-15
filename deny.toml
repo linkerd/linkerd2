@@ -56,8 +56,6 @@ wildcards = "allow"
 highlight = "all"
 deny = []
 skip = [
-    # Waiting on h2, tonic, etc
-    { name = "tokio-util", version = "0.6" },
     # `rustls-pemfile` and `k8s-openapi` depend on versions of `base64` that
     # have diverged significantly.
     { name = "base64" },
@@ -65,6 +63,14 @@ skip = [
     { name = "ahash", version = "0.7" },
     # syn v2 has been released and some libraries are slower to adopt it
     { name = "syn", version = "1.0" },
+    # `tower-http` (a transitive dep via `kubert`) depends on v2.x of `bitflags`,
+    # while pretty much the entire rest of the world is still on v1.x
+    { name = "bitflags", version = "1.0" },
+]
+skip-tree = [
+    # `serde_json` and `h2` depend on diverged versions of `indexmap` (2.0.x and
+    # 1.9.x, respectively)
+    { name = "indexmap" },
 ]
 
 [sources]
