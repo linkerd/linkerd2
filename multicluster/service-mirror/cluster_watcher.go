@@ -678,7 +678,7 @@ func (rcsw *RemoteClusterServiceWatcher) createGatewayEndpoints(ctx context.Cont
 func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.Service) error {
 	localName := rcsw.mirroredResourceName(service.Name)
 
-	if rcsw.isExported(service.Labels) || rcsw.isRemoteDiscovery(service) {
+	if rcsw.isExported(service.Labels) || rcsw.isRemoteDiscovery(service.Labels) {
 		localService, err := rcsw.localAPIClient.Svc().Lister().Services(service.Namespace).Get(localName)
 		if err != nil {
 			if kerrors.IsNotFound(err) {
