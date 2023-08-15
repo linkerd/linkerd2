@@ -98,6 +98,7 @@ Kubernetes: `>=1.21.0-0`
 | defaultUID | int | `2103` | UID for all the viz components |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
+| enablePodDisruptionBudget | bool | `false` | enables the creation of pod disruption budgets for tap and tap-injector components |
 | grafana.externalUrl | string | `nil` | url of a Grafana instance hosted off-cluster. Cannot be set if grafana.url is set. The reverse proxy will not be used for this URL. |
 | grafana.uidPrefix | string | `nil` | prefix for Grafana dashboard UID's, used when grafana.externalUrl is set. |
 | grafana.url | string | `nil` | url of an in-cluster Grafana instance with reverse proxy configured, used by the Linkerd viz web dashboard to provide direct links to specific Grafana dashboards. Cannot be set if grafana.externalUrl is set. See the [Linkerd documentation](https://linkerd.io/2/tasks/grafana) for more information |
