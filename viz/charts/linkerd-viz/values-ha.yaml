@@ -3,6 +3,7 @@
 #   helm install -f values.yaml -f values-ha.yaml
 
 enablePodAntiAffinity: true
+enablePodDisruptionBudget: true
 
 # nodeAffinity:
 
