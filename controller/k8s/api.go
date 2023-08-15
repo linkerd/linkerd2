@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -135,7 +136,14 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 	api := NewClusterScopedAPI(k8sClient, dynamicClient, l5dCrdClient, cluster, resources...)
 	for _, gauge := range api.gauges {
 		if err := prometheus.Register(gauge); err != nil {
-			log.Warnf("failed to register Prometheus gauge %s: %s", gauge.Desc().String(), err)
+			msg := fmt.Sprintf("failed to register Prometheus gauge %s: %s", gauge.Desc().String(), err)
+			var dupe prometheus.AlreadyRegisteredError
+			if errors.As(err, &dupe) {
+				// This can happen when connecting to more than one target cluster and is innocuous
+				log.Debug(msg)
+			} else {
+				log.Warn(msg)
+			}
 		}
 	}
 	return api, nil
