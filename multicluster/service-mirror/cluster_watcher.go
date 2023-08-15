@@ -895,7 +895,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 					return
 				}
 				if rcsw.isRemoteDiscovery(epNew.Labels) {
-					rcsw.log.Debugf("skipped processing endpoints object %s/%s (not mirrored in remote-discovery mode)", epNew.Namespace, epNew.Name)
+					rcsw.log.Debugf("skipped processing endpoints object %s/%s (service labeled for remote-discovery mode)", epNew.Namespace, epNew.Name)
 					return
 				}
 				rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{epNew})
@@ -1030,7 +1030,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 			continue
 		}
 
-		if rcsw.isRemoteDiscovery(svc.Labels) {
+		if _, ok := svc.Labels[consts.RemoteDiscoveryLabel]; ok {
 			rcsw.log.Debugf("Skipped repairing endpoints for service in remote-discovery mode %s/%s", svc.Namespace, svc.Name)
 			continue
 		}
@@ -1246,14 +1246,7 @@ func (rcsw *RemoteClusterServiceWatcher) isExported(l map[string]string) bool {
 	return selector.Matches(labels.Set(l)) || remoteDiscoverySelector.Matches(labels.Set(l))
 }
 
-// isRemoteDiscovery returns true if the passed labels correspond to a local
-// mirror Service or a remote Service/Endpoints in remote-discovery mode
 func (rcsw *RemoteClusterServiceWatcher) isRemoteDiscovery(l map[string]string) bool {
-	_, ok := l[consts.RemoteDiscoveryLabel]
-	if ok {
-		return true
-	}
-
 	// Treat an empty remoteDiscoverySelector as "Nothing" instead of
 	// "Everything" so that when the remoteDiscoverySelector field is unset, we
 	// don't export all Services.
