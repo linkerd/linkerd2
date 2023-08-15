@@ -877,6 +877,7 @@ spec:
           capabilities:
             drop:
             - ALL
+          readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
@@ -1380,6 +1381,7 @@ spec:
           capabilities:
             drop:
             - ALL
+          readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
@@ -1412,6 +1414,7 @@ spec:
           capabilities:
             drop:
             - ALL
+          readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
@@ -1461,6 +1464,7 @@ spec:
           capabilities:
             drop:
             - ALL
+          readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
@@ -1586,6 +1590,7 @@ spec:
               capabilities:
                 drop:
                 - ALL
+              readOnlyRootFilesystem: true
               runAsNonRoot: true
               runAsUser: 2103
               allowPrivilegeEscalation: false
@@ -1795,6 +1800,7 @@ spec:
           capabilities:
             drop:
             - ALL
+          readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false

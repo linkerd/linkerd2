@@ -231,6 +231,7 @@ spec:
           capabilities:
             drop:
             - ALL
+          readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.controllerUID}}
           allowPrivilegeEscalation: false
@@ -266,6 +267,7 @@ spec:
           capabilities:
             drop:
             - ALL
+          readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.controllerUID}}
           allowPrivilegeEscalation: false
@@ -320,6 +322,7 @@ spec:
           capabilities:
             drop:
             - ALL
+          readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.controllerUID}}
           allowPrivilegeEscalation: false
