@@ -64,7 +64,7 @@ skip = [
     # syn v2 has been released and some libraries are slower to adopt it
     { name = "syn", version = "1.0" },
 ]
-skip_tree = [
+skip-tree = [
     # `serde_json` and `h2` depend on diverged versions of `indexmap` (2.0.x and
     # 1.9.x, respectively)
     { name = "indexmap"}
