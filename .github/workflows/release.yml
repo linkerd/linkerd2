@@ -46,7 +46,8 @@ jobs:
         - proxy
         - tap
         - web
-    timeout-minutes: 30
+    # policy-controller docker builds have occasionally hit a 30-minute timeout.
+    timeout-minutes: 45
     steps:
     - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
     - name: Set tag
