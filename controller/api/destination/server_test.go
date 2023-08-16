@@ -47,6 +47,8 @@ func TestGet(t *testing.T) {
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Returns endpoints", func(t *testing.T) {
@@ -77,6 +79,7 @@ func TestGet(t *testing.T) {
 			t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, stream.updates[0])[0])
 		}
 
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return endpoint with unknown protocol hint and identity when service name contains skipped inbound port", func(t *testing.T) {
@@ -109,6 +112,8 @@ func TestGet(t *testing.T) {
 		if addrs[0].TlsIdentity != nil {
 			t.Fatalf("Expected TLS identity for %s to be nil but got %+v", path, addrs[0].TlsIdentity)
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Remote discovery", func(t *testing.T) {
@@ -142,6 +147,7 @@ func TestGet(t *testing.T) {
 			t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, stream.updates[0])[0])
 		}
 
+		server.clusterStore.UnregisterGauges()
 	})
 }
 
@@ -156,10 +162,12 @@ func TestGetProfiles(t *testing.T) {
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Returns server profile", func(t *testing.T) {
-		stream := profileStream(t, fullyQualifiedName, port, "ns:other")
+		stream, server := profileStream(t, fullyQualifiedName, port, "ns:other")
 		profile := assertSingleProfile(t, stream.updates)
 		if profile.FullyQualifiedName != fullyQualifiedName {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'",
@@ -172,10 +180,12 @@ func TestGetProfiles(t *testing.T) {
 		if len(routes) != 1 {
 			t.Fatalf("Expected 0 routes but got %d: %v", len(routes), routes)
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return service profile when using json token", func(t *testing.T) {
-		stream := profileStream(t, fullyQualifiedName, port, `{"ns":"other"}`)
+		stream, server := profileStream(t, fullyQualifiedName, port, `{"ns":"other"}`)
 		profile := assertSingleProfile(t, stream.updates)
 		if profile.FullyQualifiedName != fullyQualifiedName {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, profile.FullyQualifiedName)
@@ -184,10 +194,12 @@ func TestGetProfiles(t *testing.T) {
 		if len(routes) != 1 {
 			t.Fatalf("Expected 1 route got %d: %v", len(routes), routes)
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Returns client profile", func(t *testing.T) {
-		stream := profileStream(t, fullyQualifiedName, port, `{"ns":"client-ns"}`)
+		stream, server := profileStream(t, fullyQualifiedName, port, `{"ns":"client-ns"}`)
 		profile := assertSingleProfile(t, stream.updates)
 		routes := profile.GetRoutes()
 		if len(routes) != 1 {
@@ -196,10 +208,12 @@ func TestGetProfiles(t *testing.T) {
 		if !routes[0].GetIsRetryable() {
 			t.Fatalf("Expected route to be retryable, but it was not")
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile when using cluster IP", func(t *testing.T) {
-		stream := profileStream(t, clusterIP, port, "")
+		stream, server := profileStream(t, clusterIP, port, "")
 		profile := assertSingleProfile(t, stream.updates)
 		if profile.FullyQualifiedName != fullyQualifiedName {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, profile.FullyQualifiedName)
@@ -211,10 +225,12 @@ func TestGetProfiles(t *testing.T) {
 		if len(routes) != 1 {
 			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile with endpoint when using pod DNS", func(t *testing.T) {
-		stream := profileStream(t, fullyQualifiedPodDNS, port, "ns:ns")
+		stream, server := profileStream(t, fullyQualifiedPodDNS, port, "ns:ns")
 
 		epAddr, err := toAddress(podIPStatefulSet, port)
 		if err != nil {
@@ -247,10 +263,12 @@ func TestGetProfiles(t *testing.T) {
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile with endpoint when using pod IP", func(t *testing.T) {
-		stream := profileStream(t, podIP1, port, "ns:ns")
+		stream, server := profileStream(t, podIP1, port, "ns:ns")
 
 		epAddr, err := toAddress(podIP1, port)
 		if err != nil {
@@ -283,18 +301,22 @@ func TestGetProfiles(t *testing.T) {
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return default profile when IP does not map to service or pod", func(t *testing.T) {
-		stream := profileStream(t, "172.0.0.0", 1234, "")
+		stream, server := profileStream(t, "172.0.0.0", 1234, "")
 		profile := assertSingleProfile(t, stream.updates)
 		if profile.RetryBudget == nil {
 			t.Fatalf("Expected default profile to have a retry budget")
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile with no protocol hint when pod does not have label", func(t *testing.T) {
-		stream := profileStream(t, podIP2, port, "")
+		stream, server := profileStream(t, podIP2, port, "")
 		profile := assertSingleProfile(t, stream.updates)
 		if profile.Endpoint == nil {
 			t.Fatalf("Expected response to have endpoint field")
@@ -302,10 +324,12 @@ func TestGetProfiles(t *testing.T) {
 		if profile.Endpoint.GetProtocolHint().GetProtocol() != nil || profile.Endpoint.GetProtocolHint().GetOpaqueTransport() != nil {
 			t.Fatalf("Expected no protocol hint but found one")
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return non-opaque protocol profile when using cluster IP and opaque protocol port", func(t *testing.T) {
-		stream := profileStream(t, clusterIPOpaque, opaquePort, "")
+		stream, server := profileStream(t, clusterIPOpaque, opaquePort, "")
 		profile := assertSingleProfile(t, stream.updates)
 		if profile.FullyQualifiedName != fullyQualifiedNameOpaque {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedNameOpaque, profile.FullyQualifiedName)
@@ -313,10 +337,12 @@ func TestGetProfiles(t *testing.T) {
 		if profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to not be an opaque protocol, but it was", opaquePort)
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return opaque protocol profile with endpoint when using pod IP and opaque protocol port", func(t *testing.T) {
-		stream := profileStream(t, podIPOpaque, opaquePort, "")
+		stream, server := profileStream(t, podIPOpaque, opaquePort, "")
 
 		epAddr, err := toAddress(podIPOpaque, opaquePort)
 		if err != nil {
@@ -349,10 +375,12 @@ func TestGetProfiles(t *testing.T) {
 		if profile.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP port to be %d, but it was %d", epAddr.Port, profile.Endpoint.Addr.Port)
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return opaque protocol profile when using service name with opaque port annotation", func(t *testing.T) {
-		stream := profileStream(t, fullyQualifiedNameOpaqueService, opaquePort, "")
+		stream, server := profileStream(t, fullyQualifiedNameOpaqueService, opaquePort, "")
 		profile := assertSingleProfile(t, stream.updates)
 		if profile.FullyQualifiedName != fullyQualifiedNameOpaqueService {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedNameOpaqueService, profile.FullyQualifiedName)
@@ -360,10 +388,12 @@ func TestGetProfiles(t *testing.T) {
 		if !profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", opaquePort)
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile with unknown protocol hint and identity when pod contains skipped inbound port", func(t *testing.T) {
-		stream := profileStream(t, podIPSkipped, skippedPort, "")
+		stream, server := profileStream(t, podIPSkipped, skippedPort, "")
 		profile := assertSingleProfile(t, stream.updates)
 		addr := profile.GetEndpoint()
 		if addr == nil {
@@ -375,10 +405,12 @@ func TestGetProfiles(t *testing.T) {
 		if addr.TlsIdentity != nil {
 			t.Fatalf("Expected TLS identity for %s to be nil but got %+v", podIPSkipped, addr.TlsIdentity)
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile with opaque protocol when using Pod IP selected by a Server", func(t *testing.T) {
-		stream := profileStream(t, podIPPolicy, 80, "")
+		stream, server := profileStream(t, podIPPolicy, 80, "")
 		profile := assertSingleProfile(t, stream.updates)
 		if profile.Endpoint == nil {
 			t.Fatalf("Expected response to have endpoint field")
@@ -392,22 +424,28 @@ func TestGetProfiles(t *testing.T) {
 		if profile.Endpoint.ProtocolHint.GetOpaqueTransport().GetInboundPort() != 4143 {
 			t.Fatalf("Expected pod to support opaque traffic on port 4143")
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile with opaque protocol when using an opaque port with an external IP", func(t *testing.T) {
-		stream := profileStream(t, externalIP, 3306, "")
+		stream, server := profileStream(t, externalIP, 3306, "")
 		profile := assertSingleProfile(t, stream.updates)
 		if !profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", 3306)
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile with non-opaque protocol when using an arbitrary port with an external IP", func(t *testing.T) {
-		stream := profileStream(t, externalIP, 80, "")
+		stream, server := profileStream(t, externalIP, 80, "")
 		profile := assertSingleProfile(t, stream.updates)
 		if profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be a non-opaque protocol, but it was opaque", 80)
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 }
 
@@ -424,6 +462,8 @@ func TestTokenStructure(t *testing.T) {
 		if token.NodeName != "node-1" {
 			t.Fatalf("Expected token nodeName to be %s got %s", "node-1", token.NodeName)
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("when JSON is invalid and old token format used", func(t *testing.T) {
@@ -433,6 +473,8 @@ func TestTokenStructure(t *testing.T) {
 		if token.Ns != "ns-2" {
 			t.Fatalf("Expected %s got %s", "ns-2", token.Ns)
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("when invalid JSON and invalid old format", func(t *testing.T) {
@@ -442,6 +484,8 @@ func TestTokenStructure(t *testing.T) {
 		if token.Ns != "" || token.NodeName != "" {
 			t.Fatalf("Expected context token to be empty, got %v", token)
 		}
+
+		server.clusterStore.UnregisterGauges()
 	})
 }
 
@@ -490,6 +534,8 @@ func TestHostPortMapping(t *testing.T) {
 	if address.Port != containerPort {
 		t.Fatalf("expected containerPort (%d) but received port (%d) instead", containerPort, address.Port)
 	}
+
+	server.clusterStore.UnregisterGauges()
 }
 
 func TestIpWatcherGetSvcID(t *testing.T) {
@@ -666,7 +712,7 @@ func assertSingleUpdate(t *testing.T, updates []*pb.Update) *pb.Update {
 	return updates[0]
 }
 
-func profileStream(t *testing.T, host string, port uint32, token string) *bufferingGetProfileStream {
+func profileStream(t *testing.T, host string, port uint32, token string) (*bufferingGetProfileStream, *server) {
 	t.Helper()
 
 	server := makeServer(t)
@@ -691,5 +737,5 @@ func profileStream(t *testing.T, host string, port uint32, token string) *buffer
 		t.Fatalf("Got error: %s", err)
 	}
 
-	return stream
+	return stream, server
 }

@@ -35,6 +35,8 @@ type (
 		// Function used to parse a kubeconfig from a byte buffer. Based on the
 		// kubeconfig, it creates API Server clients
 		decodeFn configDecoder
+
+		size_gauge prometheus.GaugeFunc
 	}
 
 	// remoteCluster is a helper struct that represents a store item
@@ -78,6 +80,10 @@ func (cs *ClusterStore) Sync(stopCh <-chan struct{}) {
 	cs.api.Sync(stopCh)
 }
 
+func (cs *ClusterStore) UnregisterGauges() {
+	prometheus.Unregister(cs.size_gauge)
+}
+
 // newClusterStoreWithDecoder is a helper function that allows the creation of a
 // store with an arbitrary `configDecoder` function.
 func NewClusterStoreWithDecoder(client kubernetes.Interface, namespace string, enableEndpointSlices bool, decodeFn configDecoder) (*ClusterStore, error) {
@@ -93,7 +99,7 @@ func NewClusterStoreWithDecoder(client kubernetes.Interface, namespace string, e
 		decodeFn:             decodeFn,
 	}
 
-	promauto.NewGaugeFunc(prometheus.GaugeOpts{
+	cs.size_gauge = promauto.NewGaugeFunc(prometheus.GaugeOpts{
 		Name: "cluster_store_size",
 		Help: "The number of linked clusters in the remote discovery cluster store",
 	}, func() float64 { return (float64)(len(cs.store)) })
