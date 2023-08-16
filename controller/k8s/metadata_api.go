@@ -100,6 +100,11 @@ func (api *MetadataAPI) Sync(stopCh <-chan struct{}) {
 	waitForCacheSync(api.syncChecks)
 }
 
+// UnregisterGauges unregisters all the prometheus cache gauges associated to this API
+func (api *MetadataAPI) UnregisterGauges() {
+	api.promGauges.unregister()
+}
+
 func (api *MetadataAPI) getLister(res APIResource) (cache.GenericLister, error) {
 	inf, ok := api.inf[res]
 	if !ok {
