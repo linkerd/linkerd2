@@ -744,8 +744,8 @@ gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b/go.mod h1:K4uyk7z7BCEPqu6E+C
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gotest.tools/v3 v3.4.0 h1:ZazjZUfuVeZGLAmlKKuyv3IKP5orXcwtOwDQH6YVr6o=
-helm.sh/helm/v3 v3.12.2 h1:kFyDBr/mgJUlyGzVTCieG4wW0zmo7fcNRWK0+FKkxqU=
-helm.sh/helm/v3 v3.12.2/go.mod h1:v1PMayudIfZAvec3Wp4wAErensvK/rv5fu/xCiE6t3I=
+helm.sh/helm/v3 v3.12.3 h1:5y1+Sbty12t48T/t/CGNYUIME5BJ0WKfmW/sobYqkFg=
+helm.sh/helm/v3 v3.12.3/go.mod h1:KPKQiX9IP5HX7o5YnnhViMnNuKiL/lJBVQ47GHe1R0k=
 honnef.co/go/tools v0.0.0-20190102054323-c2f93a96b099/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 honnef.co/go/tools v0.0.0-20190106161140-3f1c8253044a/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 honnef.co/go/tools v0.0.0-20190418001031-e561f6794a2a/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
@@ -758,8 +758,8 @@ k8s.io/apiextensions-apiserver v0.27.4 h1:ie1yZG4nY/wvFMIR2hXBeSVq+HfNzib60FjnBY
 k8s.io/apiextensions-apiserver v0.27.4/go.mod h1:KHZaDr5H9IbGEnSskEUp/DsdXe1hMQ7uzpQcYUFt2bM=
 k8s.io/apimachinery v0.27.4 h1:CdxflD4AF61yewuid0fLl6bM4a3q04jWel0IlP+aYjs=
 k8s.io/apimachinery v0.27.4/go.mod h1:XNfZ6xklnMCOGGFNqXG7bUrQCoR04dh/E7FprV6pb+E=
-k8s.io/cli-runtime v0.27.2 h1:9HI8gfReNujKXt16tGOAnb8b4NZ5E+e0mQQHKhFGwYw=
-k8s.io/cli-runtime v0.27.2/go.mod h1:9UecpyPDTkhiYY4d9htzRqN+rKomJgyb4wi0OfrmCjw=
+k8s.io/cli-runtime v0.27.3 h1:h592I+2eJfXj/4jVYM+tu9Rv8FEc/dyCoD80UJlMW2Y=
+k8s.io/cli-runtime v0.27.3/go.mod h1:LzXud3vFFuDFXn2LIrWnscPgUiEj7gQQcYZE2UPn9Kw=
 k8s.io/client-go v0.27.4 h1:vj2YTtSJ6J4KxaC88P4pMPEQECWMY8gqPqsTgUKzvjk=
 k8s.io/client-go v0.27.4/go.mod h1:ragcly7lUlN0SRPk5/ZkGnDjPknzb37TICq07WhI6Xc=
 k8s.io/code-generator v0.27.4 h1:bw2xFEBnthhCSC7Bt6FFHhPTfWX21IJ30GXxOzywsFE=
