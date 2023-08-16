@@ -141,9 +141,8 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 			filtered[k] = v
 		}
 		return watcher.AddressSet{
-			Addresses:          filtered,
-			Labels:             et.availableEndpoints.Labels,
-			LocalTrafficPolicy: et.availableEndpoints.LocalTrafficPolicy,
+			Addresses: filtered,
+			Labels:    et.availableEndpoints.Labels,
 		}
 	}
 
