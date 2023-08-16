@@ -211,7 +211,6 @@ func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error 
 			"remote-cluster": clusterName,
 		}),
 		cs.enableEndpointSlices,
-		false,
 		clusterName,
 	)
 	if err != nil {

@@ -675,7 +675,7 @@ status:
 				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false, true, "local")
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false, "local")
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
@@ -1303,7 +1303,7 @@ status:
 				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true, true, "local")
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true, "local")
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
@@ -1433,7 +1433,7 @@ status:
 				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false, true, "local")
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false, "local")
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
@@ -1607,7 +1607,7 @@ status:
 				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true, true, "local")
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true, "local")
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
@@ -1844,7 +1844,7 @@ subsets:
 				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), tt.enableEndpointSlices, true, "local")
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), tt.enableEndpointSlices, "local")
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
@@ -2013,7 +2013,7 @@ subsets:
 				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false, true, "local")
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false, "local")
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
@@ -2145,7 +2145,7 @@ status:
 				t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
 			}
 
-			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false, true, "local")
+			watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), false, "local")
 			if err != nil {
 				t.Fatalf("can't create Endpoints watcher: %s", err)
 			}
@@ -2247,7 +2247,7 @@ status:
 		t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
 	}
 
-	watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true, true, "local")
+	watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true, "local")
 	if err != nil {
 		t.Fatalf("can't create Endpoints watcher: %s", err)
 	}
@@ -2384,7 +2384,7 @@ status:
 		t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
 	}
 
-	watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true, true, "local")
+	watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true, "local")
 	if err != nil {
 		t.Fatalf("can't create Endpoints watcher: %s", err)
 	}
@@ -2504,7 +2504,7 @@ status:
 		t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
 	}
 
-	watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true, true, "local")
+	watcher, err := NewEndpointsWatcher(k8sAPI, metadataAPI, logging.WithField("test", t.Name()), true, "local")
 	if err != nil {
 		t.Fatalf("can't create Endpoints watcher: %s", err)
 	}

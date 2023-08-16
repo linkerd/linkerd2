@@ -75,11 +75,10 @@ type (
 		k8sAPI      *k8s.API
 		metadataAPI *k8s.MetadataAPI
 
-		cluster                  string
-		log                      *logging.Entry
-		enableEndpointSlices     bool
-		enableLocalTrafficPolicy bool
-		sync.RWMutex             // This mutex protects modification of the map itself.
+		cluster              string
+		log                  *logging.Entry
+		enableEndpointSlices bool
+		sync.RWMutex         // This mutex protects modification of the map itself.
 
 		informerHandlers
 	}
@@ -153,14 +152,13 @@ var undefinedEndpointPort = Port(0)
 // NewEndpointsWatcher creates an EndpointsWatcher and begins watching the
 // k8sAPI for pod, service, and endpoint changes. An EndpointsWatcher will
 // watch on Endpoints or EndpointSlice resources, depending on cluster configuration.
-func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.Entry, enableEndpointSlices bool, enableLocalTrafficPolicy bool, cluster string) (*EndpointsWatcher, error) {
+func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.Entry, enableEndpointSlices bool, cluster string) (*EndpointsWatcher, error) {
 	ew := &EndpointsWatcher{
-		publishers:               make(map[ServiceID]*servicePublisher),
-		k8sAPI:                   k8sAPI,
-		metadataAPI:              metadataAPI,
-		enableEndpointSlices:     enableEndpointSlices,
-		enableLocalTrafficPolicy: enableLocalTrafficPolicy,
-		cluster:                  cluster,
+		publishers:           make(map[ServiceID]*servicePublisher),
+		k8sAPI:               k8sAPI,
+		metadataAPI:          metadataAPI,
+		enableEndpointSlices: enableEndpointSlices,
+		cluster:              cluster,
 		log: log.WithFields(logging.Fields{
 			"component": "endpoints-watcher",
 		}),
@@ -287,10 +285,6 @@ func (ew *EndpointsWatcher) addService(obj interface{}) {
 	id := ServiceID{
 		Namespace: service.Namespace,
 		Name:      service.Name,
-	}
-
-	if !ew.enableLocalTrafficPolicy {
-		service.Spec.InternalTrafficPolicy = nil
 	}
 
 	sp := ew.getOrNewServicePublisher(id)

@@ -27,12 +27,13 @@ const (
 // endpointTranslator satisfies EndpointUpdateListener and translates updates
 // into Destination.Get messages.
 type endpointTranslator struct {
-	controllerNS        string
-	identityTrustDomain string
-	enableH2Upgrade     bool
-	nodeTopologyZone    string
-	nodeName            string
-	defaultOpaquePorts  map[uint32]struct{}
+	controllerNS            string
+	identityTrustDomain     string
+	enableH2Upgrade         bool
+	nodeTopologyZone        string
+	nodeName                string
+	defaultOpaquePorts      map[uint32]struct{}
+	enableEndpointFiltering bool
 
 	availableEndpoints watcher.AddressSet
 	filteredSnapshot   watcher.AddressSet
@@ -49,6 +50,7 @@ func newEndpointTranslator(
 	service string,
 	srcNodeName string,
 	defaultOpaquePorts map[uint32]struct{},
+	enableEndpointFiltering bool,
 	k8sAPI *k8s.MetadataAPI,
 	stream pb.Destination_GetServer,
 	log *logging.Entry,
@@ -73,6 +75,7 @@ func newEndpointTranslator(
 		nodeTopologyZone,
 		srcNodeName,
 		defaultOpaquePorts,
+		enableEndpointFiltering,
 		availableEndpoints,
 		filteredSnapshot,
 		stream,
@@ -131,6 +134,19 @@ func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 // Hints are not used.
 func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 	filtered := make(map[watcher.ID]watcher.Address)
+
+	// If endpoint filtering is disabled, return all available addresses.
+	if !et.enableEndpointFiltering {
+		for k, v := range et.availableEndpoints.Addresses {
+			filtered[k] = v
+		}
+		return watcher.AddressSet{
+			Addresses:          filtered,
+			Labels:             et.availableEndpoints.Labels,
+			LocalTrafficPolicy: et.availableEndpoints.LocalTrafficPolicy,
+		}
+	}
+
 	// If service.spec.internalTrafficPolicy is set to local, filter and return the addresses
 	// for local node only
 	if et.availableEndpoints.LocalTrafficPolicy {

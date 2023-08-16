@@ -85,7 +85,7 @@ func NewServer(
 		return nil, err
 	}
 
-	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, enableEndpointSlices, true, "local")
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, enableEndpointSlices, "local")
 	if err != nil {
 		return nil, err
 	}
@@ -187,6 +187,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			fmt.Sprintf("%s.%s.svc.%s:%d", remoteSvc, service.Namespace, remoteConfig.ClusterDomain, port),
 			token.NodeName,
 			s.defaultOpaquePorts,
+			false, // Disable endpoint filtering for remote discovery.
 			s.metadataAPI,
 			stream,
 			log,
@@ -212,6 +213,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			dest.GetPath(),
 			token.NodeName,
 			s.defaultOpaquePorts,
+			true,
 			s.metadataAPI,
 			stream,
 			log,
