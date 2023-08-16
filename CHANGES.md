@@ -1,5 +1,32 @@
 # Changes
 
+## edge-23.8.3
+
+This is a release candidate for stable-2.14.0; we encourage you to help trying
+it out!
+
+This edge release contains a number of improvements over the multi-cluster
+features introduced in the last edge release supporting flat networks. It also
+hardens the containers security stance by removing write access to the root
+filesystem.
+
+* Enhanced `linkerd multicluster link` to allow clusters to be linked without a
+  gateway ([#11226])
+* Added cluster store size gauge metric ([#11256])
+* Disabled local traffic policy for remote discovery ([#11257])
+* Fixed various innocuous multi-cluster warnings ([#11251], [#11246], [#11253])
+* Set `readOnlyRootFilesystem: true` in all the containers, as they don't
+  require write permissions ([#11221]; fixes [#11142]) (thanks @mikutas!)
+
+[#11226]: https://github.com/linkerd/linkerd2/pull/11226
+[#11256]: https://github.com/linkerd/linkerd2/pull/11256
+[#11257]: https://github.com/linkerd/linkerd2/pull/11257
+[#11251]: https://github.com/linkerd/linkerd2/pull/11251
+[#11246]: https://github.com/linkerd/linkerd2/pull/11246
+[#11253]: https://github.com/linkerd/linkerd2/pull/11253
+[#11221]: https://github.com/linkerd/linkerd2/pull/11221
+[#11142]: https://github.com/linkerd/linkerd2/issues/11142
+
 ## edge-23.8.2
 
 This edge release adds improvements to Linkerd's multi-cluster features as part
