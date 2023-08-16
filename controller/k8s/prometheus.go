@@ -20,3 +20,9 @@ func (p *promGauges) addInformerSize(kind string, labels prometheus.Labels, inf 
 		return float64(len(inf.GetStore().ListKeys()))
 	}))
 }
+
+func (p *promGauges) unregister() {
+	for _, gauge := range p.gauges {
+		prometheus.Unregister(gauge)
+	}
+}

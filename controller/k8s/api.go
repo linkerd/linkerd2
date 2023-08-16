@@ -288,6 +288,11 @@ func (api *API) Sync(stopCh <-chan struct{}) {
 	waitForCacheSync(api.syncChecks)
 }
 
+// UnregisterGauges unregisters all the prometheus cache gauges associated to this API
+func (api *API) UnregisterGauges() {
+	api.promGauges.unregister()
+}
+
 // NS provides access to a shared informer and lister for Namespaces.
 func (api *API) NS() coreinformers.NamespaceInformer {
 	if api.ns == nil {

@@ -974,6 +974,10 @@ func (rcsw *RemoteClusterServiceWatcher) Stop(cleanupState bool) {
 			rcsw.log.Warnf("error removing service informer handler: %s", err)
 		}
 	}
+
+	if rcsw.remoteAPIClient != nil {
+		rcsw.remoteAPIClient.UnregisterGauges()
+	}
 }
 
 func (rcsw *RemoteClusterServiceWatcher) resolveGatewayAddress() ([]corev1.EndpointAddress, error) {
