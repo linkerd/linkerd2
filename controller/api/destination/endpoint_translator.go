@@ -127,11 +127,11 @@ func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
 // topology zone. The client will only receive endpoints with the same
 // consumption zone as the node. An endpoints consumption zone is set
 // by its Hints field and can be different than its actual Topology zone.
-// when service.pec.internalTrafficPolicy is set to local, Topology Aware
+// when service.spec.internalTrafficPolicy is set to local, Topology Aware
 // Hints are not used.
 func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 	filtered := make(map[watcher.ID]watcher.Address)
-	// If service.pec.internalTrafficPolicy is set to local, filter and return the addresses
+	// If service.spec.internalTrafficPolicy is set to local, filter and return the addresses
 	// for local node only
 	if et.availableEndpoints.LocalTrafficPolicy {
 		et.log.Debugf("Filtering through addresses that should be consumed by node %s", et.nodeName)

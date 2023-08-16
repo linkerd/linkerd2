@@ -85,7 +85,7 @@ func NewServer(
 		return nil, err
 	}
 
-	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, enableEndpointSlices, "local")
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, enableEndpointSlices, true, "local")
 	if err != nil {
 		return nil, err
 	}
