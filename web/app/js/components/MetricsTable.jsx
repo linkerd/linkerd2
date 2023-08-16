@@ -1,18 +1,18 @@
-import { displayName, friendlyTitle, metricToFormatter } from './util/Utils.js';
-import BaseTable from './BaseTable.jsx';
-import ErrorModal from './ErrorModal.jsx';
-import GrafanaLink from './GrafanaLink.jsx';
 import Grid from '@material-ui/core/Grid';
-import JaegerLink from './JaegerLink.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
 import { Trans } from '@lingui/macro';
 import _cloneDeep from 'lodash/cloneDeep';
 import _each from 'lodash/each';
 import _some from 'lodash/some';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
+import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
+import JaegerLink from './JaegerLink.jsx';
+import GrafanaLink from './GrafanaLink.jsx';
+import ErrorModal from './ErrorModal.jsx';
+import BaseTable from './BaseTable.jsx';
+import { displayName, friendlyTitle, metricToFormatter } from './util/Utils.js';
 import { processedMetricsPropType } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 

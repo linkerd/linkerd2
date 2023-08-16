@@ -1,5 +1,4 @@
 import CloseIcon from '@material-ui/icons/Close';
-import EmptyCard from './EmptyCard.jsx';
 import FilterListIcon from '@material-ui/icons/FilterList';
 import Hidden from '@material-ui/core/Hidden';
 import Paper from '@material-ui/core/Paper';
@@ -20,8 +19,9 @@ import _get from 'lodash/get';
 import _isNil from 'lodash/isNil';
 import _orderBy from 'lodash/orderBy';
 import classNames from 'classnames';
-import { regexFilterString } from './util/Utils.js';
 import { withStyles } from '@material-ui/core/styles';
+import { regexFilterString } from './util/Utils.js';
+import EmptyCard from './EmptyCard.jsx';
 
 const styles = theme => ({
   root: {

@@ -1,13 +1,13 @@
-import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
-import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import TapEnabledWarning from './TapEnabledWarning.jsx';
-import TapQueryForm from './TapQueryForm.jsx';
-import TopModule from './TopModule.jsx';
 import _each from 'lodash/each';
 import _get from 'lodash/get';
 import _reduce from 'lodash/reduce';
+import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
+import ErrorBanner from './ErrorBanner.jsx';
+import TapEnabledWarning from './TapEnabledWarning.jsx';
+import TapQueryForm from './TapQueryForm.jsx';
+import TopModule from './TopModule.jsx';
 import { emptyTapQuery } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 

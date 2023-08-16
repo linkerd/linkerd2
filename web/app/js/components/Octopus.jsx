@@ -1,13 +1,9 @@
-import { OctopusArms, inboundAlignment } from './util/OctopusArms.jsx';
-import { displayName, metricToFormatter } from './util/Utils.js';
-
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import Grid from '@material-ui/core/Grid';
 import PropTypes from 'prop-types';
 import React from 'react';
 import RootRef from '@material-ui/core/RootRef';
-import { StyledProgress } from './util/Progress.jsx';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
@@ -20,8 +16,11 @@ import _size from 'lodash/size';
 import _slice from 'lodash/slice';
 import _sortBy from 'lodash/sortBy';
 import _take from 'lodash/take';
-import { getSuccessRateClassification } from './util/MetricUtils.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import { getSuccessRateClassification } from './util/MetricUtils.jsx';
+import { StyledProgress } from './util/Progress.jsx';
+import { displayName, metricToFormatter } from './util/Utils.js';
+import { OctopusArms, inboundAlignment } from './util/OctopusArms.jsx';
 
 const maxNumNeighbors = 6; // max number of neighbor nodes to show in the octopus graph
 

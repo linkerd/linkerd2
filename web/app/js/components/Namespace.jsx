@@ -1,17 +1,17 @@
 import 'whatwg-fetch';
 
-import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
-import ErrorBanner from './ErrorBanner.jsx';
-import MetricsTable from './MetricsTable.jsx';
-import NetworkGraph from './NetworkGraph.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import Spinner from './util/Spinner.jsx';
 import { Trans } from '@lingui/macro';
 import _filter from 'lodash/filter';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
 import _isEqual from 'lodash/isEqual';
+import Spinner from './util/Spinner.jsx';
+import NetworkGraph from './NetworkGraph.jsx';
+import MetricsTable from './MetricsTable.jsx';
+import ErrorBanner from './ErrorBanner.jsx';
+import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
 import { friendlyTitle } from './util/Utils.js';
 import { processMultiResourceRollup } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';

@@ -1,11 +1,10 @@
-import { friendlyTitle, isResource, singularResource } from './util/Utils.js';
-
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
 import { Trans } from '@lingui/macro';
 import _chunk from 'lodash/chunk';
 import _takeWhile from 'lodash/takeWhile';
+import { friendlyTitle, isResource, singularResource } from './util/Utils.js';
 import { withContext } from './util/AppContext.jsx';
 
 const routeToCrumbTitle = {

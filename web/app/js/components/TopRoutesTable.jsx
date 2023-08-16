@@ -1,8 +1,8 @@
-import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
 import { Trans } from '@lingui/macro';
+import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
+import BaseTable from './BaseTable.jsx';
 import { metricToFormatter } from './util/Utils.js';
 
 const routesColumns = [

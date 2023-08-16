@@ -1,12 +1,4 @@
 import { StringParam, withQueryParams } from 'use-query-params';
-import {
-  defaultMaxRps,
-  emptyTapQuery,
-  httpMethods,
-  tapQueryPropType,
-  tapQueryProps,
-  tapResourceTypes,
-} from './util/TapUtils.jsx';
 import Accordion from '@material-ui/core/Accordion';
 import AccordionDetails from '@material-ui/core/AccordionDetails';
 import AccordionSummary from '@material-ui/core/AccordionSummary';
@@ -20,7 +12,6 @@ import Grid from '@material-ui/core/Grid';
 import InputLabel from '@material-ui/core/InputLabel';
 import MenuItem from '@material-ui/core/MenuItem';
 import PropTypes from 'prop-types';
-import QueryToCliCmd from './QueryToCliCmd.jsx';
 import React from 'react';
 import Select from '@material-ui/core/Select';
 import TextField from '@material-ui/core/TextField';
@@ -39,6 +30,15 @@ import _some from 'lodash/some';
 import _uniq from 'lodash/uniq';
 import _values from 'lodash/values';
 import { withStyles } from '@material-ui/core/styles';
+import QueryToCliCmd from './QueryToCliCmd.jsx';
+import {
+  defaultMaxRps,
+  emptyTapQuery,
+  httpMethods,
+  tapQueryPropType,
+  tapQueryProps,
+  tapResourceTypes,
+} from './util/TapUtils.jsx';
 
 const getResourceList = (resourcesByNs, ns) => {
   return resourcesByNs[ns] || _uniq(_flatten(_values(resourcesByNs)));

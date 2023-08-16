@@ -1,10 +1,5 @@
-import { WS_ABNORMAL_CLOSURE, WS_NORMAL_CLOSURE, processNeighborData, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
-
-import ErrorBanner from './ErrorBanner.jsx';
-import Percentage from './util/Percentage.js';
 import PropTypes from 'prop-types';
 import React from 'react';
-import TopEventTable from './TopEventTable.jsx';
 import _cloneDeep from 'lodash/cloneDeep';
 import _each from 'lodash/each';
 import _get from 'lodash/get';
@@ -18,6 +13,10 @@ import _size from 'lodash/size';
 import _take from 'lodash/take';
 import _throttle from 'lodash/throttle';
 import _values from 'lodash/values';
+import TopEventTable from './TopEventTable.jsx';
+import ErrorBanner from './ErrorBanner.jsx';
+import Percentage from './util/Percentage.js';
+import { WS_ABNORMAL_CLOSURE, WS_NORMAL_CLOSURE, processNeighborData, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 // https://github.com/grpc/grpc/blob/master/doc/statuscodes.md

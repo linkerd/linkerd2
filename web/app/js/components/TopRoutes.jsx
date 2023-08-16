@@ -1,22 +1,17 @@
 import { StringParam, withQueryParams } from 'use-query-params';
-import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
 
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
-import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
 import Divider from '@material-ui/core/Divider';
-import ErrorBanner from './ErrorBanner.jsx';
 import FormControl from '@material-ui/core/FormControl';
 import FormHelperText from '@material-ui/core/FormHelperText';
 import Grid from '@material-ui/core/Grid';
 import InputLabel from '@material-ui/core/InputLabel';
 import MenuItem from '@material-ui/core/MenuItem';
 import PropTypes from 'prop-types';
-import QueryToCliCmd from './QueryToCliCmd.jsx';
 import React from 'react';
 import Select from '@material-ui/core/Select';
-import TopRoutesModule from './TopRoutesModule.jsx';
 import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import _get from 'lodash/get';
@@ -24,10 +19,15 @@ import _isEmpty from 'lodash/isEmpty';
 import _merge from 'lodash/merge';
 import _pick from 'lodash/pick';
 import _uniq from 'lodash/uniq';
+import { withStyles } from '@material-ui/core/styles';
 import { groupResourcesByNs } from './util/MetricUtils.jsx';
 import { tapResourceTypes } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
-import { withStyles } from '@material-ui/core/styles';
+import TopRoutesModule from './TopRoutesModule.jsx';
+import QueryToCliCmd from './QueryToCliCmd.jsx';
+import ErrorBanner from './ErrorBanner.jsx';
+import ConfigureProfilesMsg from './ConfigureProfilesMsg.jsx';
+import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
 
 const topRoutesQueryProps = {
   resource_name: PropTypes.string,

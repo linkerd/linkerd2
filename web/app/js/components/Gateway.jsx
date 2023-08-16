@@ -1,14 +1,14 @@
-import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
-import ErrorBanner from './ErrorBanner.jsx';
-import MetricsTable from './MetricsTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
-import Spinner from './util/Spinner.jsx';
 import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import _isEmpty from 'lodash/isEmpty';
+import Spinner from './util/Spinner.jsx';
+import MetricsTable from './MetricsTable.jsx';
+import ErrorBanner from './ErrorBanner.jsx';
+import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
 import { processGatewayResults } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 

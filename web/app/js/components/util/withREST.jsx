@@ -1,9 +1,9 @@
-import { handlePageVisibility, withPageVisibility } from './PageVisibility.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
 import _merge from 'lodash/merge';
+import { handlePageVisibility, withPageVisibility } from './PageVisibility.jsx';
 import { withContext } from './AppContext.jsx';
 
 /**

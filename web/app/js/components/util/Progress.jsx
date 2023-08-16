@@ -1,6 +1,6 @@
 import LinearProgress from '@material-ui/core/LinearProgress';
-import { dashboardTheme } from './theme.js';
 import { withStyles } from '@material-ui/core/styles';
+import { dashboardTheme } from './theme.js';
 
 const colorLookup = {
   good: {
