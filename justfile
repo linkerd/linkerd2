@@ -508,7 +508,7 @@ mc-test-build:
     go build --mod=readonly \
         ./test/integration/multicluster/...
 
-mc-test-load: _mc-load _mc-target-load
+mc-test-load: _mc-load _mc-target-load mc-flat-network-init
 
 k3d-source-server := "k3d-" + k3d-name + "-server-0"
 k3d-target-server := "k3d-" + k3d-name + "-target-server-0"

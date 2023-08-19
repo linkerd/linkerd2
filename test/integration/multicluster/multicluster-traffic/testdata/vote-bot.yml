@@ -1,10 +1,3 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    test.linkerd.io/is-test-data-plane: "true"
-  name: linkerd-emojivoto
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -13,7 +6,6 @@ metadata:
     app.kubernetes.io/part-of: emojivoto
     app.kubernetes.io/version: v10
   name: vote-bot
-  namespace: linkerd-emojivoto
 spec:
   replicas: 1
   selector:
@@ -39,4 +31,3 @@ spec:
         resources:
           requests:
             cpu: 10m
----
