@@ -12,13 +12,13 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-// TestTargetTraffic inspects the target cluster's web-svc pod to see if the
+// TestPodToPodTraffic inspects the target cluster's web-svc pod to see if the
 // source cluster's vote-bot has been able to hit it with requests. If it has
 // successfully issued requests, then we'll see log messages indicating that the
 // web-svc can't reach the voting-svc (because it's not running).
 //
-// TODO it may be clearer to invoke `linkerd diagnostics proxy-metrics` to check whether we see
-// connections from the gateway pod to the web-svc?
+// We verify that the service has been mirrored in remote discovery mode by
+// checking that it had no endpoints in the source cluster.
 func TestPodToPodTraffic(t *testing.T) {
 	if err := TestHelper.SwitchContext(contexts[testutil.TargetContextKey]); err != nil {
 		testutil.AnnotatedFatalf(t,
