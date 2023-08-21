@@ -519,8 +519,8 @@ _mc-print-target-route := "kubectl --context=k3d-" + k3d-name + "-target "+ "get
 
 # Allow two k3d server nodes to participate in a flat network
 mc-flat-network-init:
-	@docker exec -it k3d-{{k3d-name}}-server-0 `{{_mc-print-target-route}}`
-	@docker exec -it k3d-{{k3d-name}}-target-server-0 `{{_mc-print-source-route}}`
+	@docker exec k3d-{{k3d-name}}-server-0 `{{_mc-print-target-route}}`
+	@docker exec k3d-{{k3d-name}}-target-server-0 `{{_mc-print-source-route}}`
 
 
 # Run the multicluster tests without any setup
