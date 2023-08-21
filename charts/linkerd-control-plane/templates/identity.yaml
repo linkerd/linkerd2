@@ -148,7 +148,6 @@ spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- $_ := set $tree "component" "identity" -}}
       {{- include "linkerd.affinity" $tree | nindent 6 }}
-      containers:
       - args:
         - identity
         - -log-level={{.Values.controllerLogLevel}}
@@ -163,7 +162,7 @@ spec:
         env:
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"
-        image: {{.Values.controllerImage}}:{{.Values.containerImageVersion | default .Values.linkerdVersion}}
+        image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
