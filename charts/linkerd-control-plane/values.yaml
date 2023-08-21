@@ -286,6 +286,8 @@ webhookFailurePolicy: Ignore
 
 # controllerImage -- Docker image for the destination and identity components
 controllerImage: cr.l5d.io/linkerd/controller
+# controllerImageVersion -- Override the default image version. Empty by default
+controllerImageVersion: ""
 # -- Number of replicas for each control plane pod
 controllerReplicas: 1
 # -- User ID for the control plane components
