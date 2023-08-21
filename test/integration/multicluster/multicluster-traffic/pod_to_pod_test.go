@@ -84,12 +84,12 @@ func TestPodToPodTraffic(t *testing.T) {
 				if err != nil {
 					return err
 				}
-				remoteDisocvery, found := svc.Labels[k8s.RemoteDiscoveryLabel]
+				remoteDiscovery, found := svc.Labels[k8s.RemoteDiscoveryLabel]
 				if !found {
 					testutil.AnnotatedFatal(t, "mirror service missing label", "mirror service missing label: "+k8s.RemoteDiscoveryLabel)
 				}
-				if remoteDisocvery != "target" {
-					testutil.AnnotatedFatal(t, "mirror service has incorrect remote discovery", fmt.Sprintf("mirror service remote discovery was %s, expected %s", remoteDisocvery, "target"))
+				if remoteDiscovery != "target" {
+					testutil.AnnotatedFatal(t, "mirror service has incorrect remote discovery", fmt.Sprintf("mirror service remote discovery was %s, expected %s", remoteDiscovery, "target"))
 				}
 				remoteService, found := svc.Labels[k8s.RemoteServiceLabel]
 				if !found {
