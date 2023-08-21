@@ -54,7 +54,7 @@ spec:
           restartPolicy: Never
           containers:
           - name: heartbeat
-            image: {{.Values.controllerImage}}:{{.Values.linkerdVersion}}
+            image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion | default .Values.linkerdVersion}}
             imagePullPolicy: {{.Values.imagePullPolicy}}
             env:
             - name: LINKERD_DISABLED
