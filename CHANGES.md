@@ -8,7 +8,7 @@ services in a way where cross-cluster traffic does not need to go through the
 gateway. This enhances multicluster authentication and can reduce the need for
 provisioning public load balancers.
 
-In addtion, this release adds support for the
+In addition, this release adds support for the
 [Gateway API](https://gateway-api.sigs.k8s.io/) HTTPRoute resource (in the
 `gateway.networking.k8s.io` api group). This improves compatibility with other
 tools that use these resources such as [Flagger](https://flagger.app/) and
