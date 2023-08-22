@@ -141,8 +141,8 @@ and other smaller additions.
     (thanks @frimik!)
   * Added --set flag to install-cni plugin (thanks @amit-62!)
   * Updated the Linkerd CNI plugin base docker image from Debian to Alpine
-  * Changed the CNI plugin installer to always run in 'chained' mode; the plugin will
-    now wait until another CNI plugin is installed before appending its
+  * Changed the CNI plugin installer to always run in 'chained' mode; the plugin
+    will now wait until another CNI plugin is installed before appending its
     configuration
   * Fixed missing resource-cni labels on linkerd-cni, this blocked the
     linkerd-cni pods from coming up when the injector was broken (thanks
