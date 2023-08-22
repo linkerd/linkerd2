@@ -9,7 +9,7 @@ metadata:
     linkerd.io/extension: jaeger
     app.kubernetes.io/name: jaeger-injector
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.webhook.image.version .Values.cliVersion}}
+    app.kubernetes.io/version: {{default .Values.webhook.image.version .Values.linkerdVersion}}
     component: jaeger-injector
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: jaeger-injector
@@ -45,7 +45,7 @@ spec:
         - -cluster-domain={{.Values.clusterDomain}}
         - -linkerd-namespace={{.Values.linkerdNamespace}}
         - -enable-pprof={{.Values.enablePprof | default false}}
-        image: {{.Values.webhook.image.name}}:{{default .Values.webhook.image.version .Values.cliVersion}}
+        image: {{.Values.webhook.image.name}}:{{default .Values.webhook.image.version .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.webhook.image.pullPolicy}}
         livenessProbe:
           httpGet:

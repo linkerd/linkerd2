@@ -76,7 +76,7 @@ collector:
   # [Configuration docs](https://opentelemetry.io/docs/collector/configuration/)
   # for more information
   # @default -- see `value.yaml` for actual configuration
-  config: |
+  config:
     receivers:
       otlp:
         protocols:
@@ -106,6 +106,9 @@ collector:
           receivers: [otlp,opencensus,zipkin,jaeger]
           processors: [batch]
           exporters: [jaeger]
+
+  # -- Collector Deployment env
+  env: {}
 
 jaeger:
   # -- Set to false to exclude all-in-one Jaeger installation

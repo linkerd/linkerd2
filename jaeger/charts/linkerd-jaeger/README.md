@@ -74,8 +74,9 @@ Kubernetes: `>=1.21.0-0`
 |-----|------|---------|-------------|
 | clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use |
 | collector.UID | string | `nil` | UID for the collector resource |
-| collector.config | string | see `value.yaml` for actual configuration | OpenTelemetry Collector config, See the [Configuration docs](https://opentelemetry.io/docs/collector/configuration/) for more information |
+| collector.config | object | see `value.yaml` for actual configuration | OpenTelemetry Collector config, See the [Configuration docs](https://opentelemetry.io/docs/collector/configuration/) for more information |
 | collector.enabled | bool | `true` | Set to false to exclude collector installation |
+| collector.env | object | `{}` | Collector Deployment env |
 | collector.image.name | string | `"otel/opentelemetry-collector"` |  |
 | collector.image.pullPolicy | string | `"Always"` |  |
 | collector.image.version | string | `"0.59.0"` |  |

@@ -14,7 +14,7 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 data:
   collector-config: |
-    {{- .Values.collector.config | trim | nindent 4 }}
+    {{- toYaml .Values.collector.config | trim | nindent 4 }}
 ---
 apiVersion: v1
 kind: Service
@@ -99,11 +99,19 @@ spec:
         env:
         - name: GOGC
           value: "80"
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
         - name: POD_NAMESPACE
           valueFrom:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
+        {{- range $name, $value := .Values.collector.env }}
+        - name: {{ $name }}
+          {{- toYaml $value | nindent 10 }}
+        {{- end }}
         image: {{.Values.collector.image.name}}:{{.Values.collector.image.version}}
         imagePullPolicy: {{.Values.collector.image.pullPolicy}}
         livenessProbe:
