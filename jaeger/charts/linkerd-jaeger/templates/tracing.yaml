@@ -76,13 +76,14 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/inject: enabled
-        config.linkerd.io/proxy-await: "enabled"
+        checksum/config: {{ toYaml .Values.collector.config | trim | sha256sum }}
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
+        config.linkerd.io/proxy-await: "enabled"
+        linkerd.io/inject: enabled
         prometheus.io/path: /metrics
         prometheus.io/port: "8888"
         prometheus.io/scrape: "true"
-        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         linkerd.io/extension: jaeger
         component: collector
@@ -94,7 +95,7 @@ spec:
       {{- include "linkerd.node-selector" (dict "Values" .Values.collector) | nindent 6 }}
       containers:
       - command:
-        - /otelcol-contrib
+        - {{ .Values.collector.command }}
         - --config=/conf/collector-config.yaml
         env:
         - name: GOGC
