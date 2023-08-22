@@ -288,6 +288,15 @@ func (h *KubernetesHelper) GetService(ctx context.Context, namespace string, ser
 	return service, nil
 }
 
+// GetEndpoints gets endpoints that exist in a namespace.
+func (h *KubernetesHelper) GetEndpoints(ctx context.Context, namespace string, serviceName string) (*corev1.Endpoints, error) {
+	ep, err := h.clientset.CoreV1().Endpoints(namespace).Get(ctx, serviceName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return ep, nil
+}
+
 // GetPods returns all pods with the given labels
 func (h *KubernetesHelper) GetPods(ctx context.Context, namespace string, podLabels map[string]string) ([]corev1.Pod, error) {
 	podList, err := h.clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{

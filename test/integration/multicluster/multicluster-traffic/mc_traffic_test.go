@@ -163,16 +163,28 @@ func TestTargetTraffic(t *testing.T) {
 	TestHelper.WithDataPlaneNamespace(ctx, "emojivoto", annotations, t, func(t *testing.T, ns string) {
 		t.Run("Deploy resources in source and target clusters", func(t *testing.T) {
 			// Deploy vote-bot client in source-cluster
-			o, err := TestHelper.KubectlApplyWithContext("", contexts[testutil.SourceContextKey], "-f", "testdata/vote-bot.yml")
+			o, err := TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], "create", "ns", ns)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "failed to create ns", "failed to create ns: %s\n%s", err, o)
+			}
+			o, err = TestHelper.KubectlApplyWithContext("", contexts[testutil.SourceContextKey], "--namespace", ns, "-f", "testdata/vote-bot.yml")
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "failed to install vote-bot", "failed to install vote-bot: %s\n%s", err, o)
 			}
 
-			out, err := TestHelper.KubectlApplyWithContext("", contexts[testutil.TargetContextKey], "-f", "testdata/emojivoto-no-bot.yml")
+			out, err := TestHelper.KubectlApplyWithContext("", contexts[testutil.TargetContextKey], "--namespace", ns, "-f", "testdata/emojivoto-no-bot.yml")
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "failed to install emojivoto", "failed to install emojivoto: %s\n%s", err, out)
 			}
 
+			timeout := time.Minute
+			err = testutil.RetryFor(timeout, func() error {
+				out, err = TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], "--namespace", ns, "label", "service/web-svc", "mirror.linkerd.io/exported=true")
+				return err
+			})
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "failed to label web-svc", "%s\n%s", err, out)
+			}
 		})
 
 		t.Run("Wait until target workloads are ready", func(t *testing.T) {
