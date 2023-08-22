@@ -1,5 +1,179 @@
 # Changes
 
+## stable-2.14.0
+
+This release introduces direct pod-to-pod multicluster service mirroring. When
+clusters are deployed on a flat network, Linkerd can export multicluster
+services in a way where cross-cluster traffic does not need to go through the
+gateway. This enhances multicluster authentication and can reduce the need for
+provisioning public load balancers.
+
+In addtion, this release adds support for the
+[Gateway API](https://gateway-api.sigs.k8s.io/) HTTPRoute resource (in the
+`gateway.networking.k8s.io` api group). This improves compatibility with other
+tools that use these resources such as [Flagger](https://flagger.app/) and
+[Argo Rollouts](https://argoproj.github.io/rollouts/). The release also includes
+a large number of features and improvements to HTTPRoute including the ability
+to set timeouts and the ability to define consumer-namespace HTTPRoutes.
+
+Finally, this release includes a number of bugfixes, performance improvements,
+and other smaller additions.
+
+**Upgrade notes**: Please see the
+[upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2140).
+
+* Multicluster
+  * Remove namespace field from cluster scoped resources to fix pruning
+  * Fixed a memory leak in the service mirror controller
+  * Added -o json flag for the `linkerd multicluster gateways` command (thanks
+    @hiteshwani29)
+  * Fixed the `linkerd multicluster check` command failing in the presence of lots
+    of mirrored services
+  * Introduced `logFormat` value to the multicluster `Link` Helm Chart (thanks
+    @bunnybilou!)
+  * Added leader-election capabilities to the service-mirror controller
+  * Added high-availability (HA) mode for the multicluster service-mirror
+  * Added a new `remoteDiscoverySelector` field to the multicluster `Link` CRD,
+    which enables a service mirroring mode where the control plane
+    performs discovery for the mirrored service from the remote cluster, rather
+    than creating Endpoints for the mirrored service in the source cluster
+* HTTPRoute
+  * Fixed `linkerd uninstall` issue for HTTPRoute
+  * Fixed an issue where the `namespace` field on HTTPRoute `backendRef`s was
+    ignored, and the backend Service would always be assumed to be in the
+    namespace as the parent Service
+  * Added support for `gateway.networking.k8s.io` HTTPRoutes in the policy
+    controller
+  * Added support for RequestHeaderModifier and RequestRedirect HTTP filters in
+    outbound policy; filters may be added at the route or backend level
+  * Added support for the `ResponseHeaderModifier` HTTPRoute filter
+  * Added support for HTTPRoutes defined in the consumer namespace
+  * Added support for HTTPRoute `parent_refs` that do not specify a port
+* CRDs
+  * Patched the MeshTLSAuthentication CRD to force providing at least one
+    identity/identityRef
+* Control Plane
+  * Fixed an issue where the policy controller always used the default
+    `cluster.local` domain
+  * Send Opaque protocol hint for opaque ports in destination controller
+  * Upgraded `h2` dependency to address CVE-2023-26964
+  * Updated the proxy-injector to pass opaque port lists to the proxy as ranges
+    rather than individually, greatly reducing the size of proxy manifests when
+    large opaque port ranges are set
+  * Removed the policy-controller-write Lease from the control plane Helm chart in
+    favor of creating it at runtime
+  * Fixed an issue where `server_port_subscribers` metric in the Destination
+    controller was sometimes absent
+  * Fixed an issue where default authorizations generated for readiness and
+    liveness probes would fail if the probe path included URI query parameters
+  * Fixed bug where topology routing would not disable while service was under
+    load (thanks @MarkSRobinson!)
+  * Fixed a race condition in the destination controller that could cause it to
+    panic
+  * Improved the granularity of logging levels in the control plane
+  * Replaced deprecated `failure-domain.beta.kubernetes.io/zone` labels in Helm
+    charts  with `topology.kubernetes.io/zone` labels ([#11148]; fixes [#11114])
+    (thanks @piyushsingariya!)
+  * Replaced `server_port_subscribers` Destination controller gauge metric with
+    `server_port_subscribes` and `server_port_unsubscribes` counter metrics
+* Proxy
+  * Updated `h2` dependency to include a patch for a theoretical
+    denial-of-service vulnerability discovered in CVE-2023-26964
+  * Handle Opaque protocol hints on endpoints
+  * Changed the proxy's default log level to silence warnings from
+    `trust_dns_proto` that are generally spurious.
+  * Added `outbound_http_balancer_endpoints` metric
+  * Fixed missing route_ metrics for requests with ServiceProfiles
+  * Improved backwards compatibility between 2.13 proxies and 2.12 control planes
+  * Fixed an issue where the proxy was performing protocol detection on ports
+    marked as opaque
+  * Fixed an issue where meshed pods could not communicate with themselves through
+    a ClusterIP Service
+  * Added the ability to configure the proxy's discovery cache timeouts with the
+    `config.linkerd.io/proxy-outbound-discovery-cache-unused-timeout` and
+    `config.linkerd.io/proxy-inbound-discovery-cache-unused-timeout` annotations
+  * Fixed an issue with W3C trace context propagation which caused proxy spans to
+    be siblings rather than children of their original parent (thanks
+    @whiskeysierra)
+  * Fixed the proxy not using gRPC response classification for gRPC requests to
+    destinations without ServiceProfiles
+  * Fixed proxy startup failure when using the `config.linkerd.io/admin-port`
+    annotation (thanks @jclegras!)
+  * Fixed incorrect handling of `NotFound` client policies in ingress-mode proxies
+  * Added distinguishable version information to proxy logs and metrics
+* CLI
+  * The `linkerd diagnostics policy` command now displays outbound policy when
+    the target resource is a Service
+  * A fix for HA validation checks when Linkerd is installed with Helm. Thanks
+    @mikutas!!
+  * Updated extension CLI commands to prefer the `--register` flag over the
+    `LINKERD_DOCKER_REGISTRY` environment variable, making the precedence more
+    consistent (thanks @harsh020!)
+* Viz
+  * Bump prometheus image to v2.43.0
+  * Add the `kubelet` NetworkAuthentication back since it is used by the
+    `linkerd viz allow-scrapes` subcommand.
+  * Fixed the `linkerd viz check` command so that it will wait until the viz
+    extension becomes ready
+  * Fixed an issue where specifying a `remote_write` config would cause the
+    Prometheus config to be invalid (thanks @hiteshwani29)
+  * Improved validation of the `--to` and `--from` flags for the `linkerd viz stat`
+    command (thanks @pranoyk)
+  * Added `-o jsonpath` flag to `linkerd viz tap` to allow filtering output fields
+    (thanks @hiteshwani29!)
+  * Fixed a Grafana error caused by an incorrect datasource (thanks @albundy83!)
+  * Fixed missing "Services" menu item in the Spanish localization for the
+  `linkerd-viz` web dashboard (thanks @mclavel!)
+* Extensions
+  * Fixed Jaeger chart installation failure
+  * Fixed an issue in the viz Helm chart where the namespace metadata template
+    would throw `unexpected argument found` errors
+  * Added missing label `linkerd.io/extension` to certain resources to ensure they
+    pruned when appropriate (thanks @ClementRepo)
+  * Added tolerations and nodeSelector support in extensions `namespace-metadata`
+    Jobs (thanks @pssalman!)
+* Init Containers
+  * Added an option for disabling the network validator's security context for
+    environments that provide their own
+* CNI
+  * Fixed incompatibility issue with AWS CNI addon in EKS, that was
+    forbidding pods to acquire networking after scaling up nodes.
+    (thanks @frimik!)
+  * Added --set flag to install-cni plugin (thanks @amit-62!)
+  * Updated the Linkerd CNI plugin base docker image from Debian to Alpine
+  * Changed the CNI plugin installer to always run in 'chained' mode; the plugin will
+    now wait until another CNI plugin is installed before appending its
+    configuration
+  * Fixed missing resource-cni labels on linkerd-cni, this blocked the
+    linkerd-cni pods from coming up when the injector was broken (thanks
+    @migueleliasweb!)
+* Build
+  * Build improvements for multi-arch build artifacts. Thanks @MarkSRobinson!!
+
+This release includes changes from a massive list of contributors! A special
+thank-you to everyone who helped make this release possible:
+
+* Amir Karimi @AMK9978
+* Amit Kumar @amit-62
+* Andre Marcelo-Tanner @kzap
+* Andrew @andrew-gropyus
+* Arnaud Beun @bunnybilou
+* Clement @proxfly
+* Dima @krabradosty
+* Grégoire Bellon-Gervais @albundy83
+* Harsh Soni @harsh020
+* Jean-Charles Legras @jclegras
+* Loong Dai @daixiang0
+* Mark Robinson @MarkSRobinson
+* Miguel Elias dos Santos @migueleliasweb
+* Pranoy Kumar Kundu @pranoyk
+* Ryan Hristovski @ryanhristovski
+* Takumi Sue @mikutas
+* Zakhar Bessarab @zekker6
+* hiteshwani29 @hiteshwani29
+* pheianox
+* pssalman @pssalman
+
 ## edge-23.8.3
 
 This is a release candidate for stable-2.14.0; we encourage you to help trying
