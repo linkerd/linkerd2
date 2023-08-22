@@ -49,8 +49,7 @@ and other smaller additions.
 * Control Plane
   * Send Opaque protocol hint for opaque ports in destination controller
   * Replaced deprecated `failure-domain.beta.kubernetes.io/zone` labels in Helm
-    charts  with `topology.kubernetes.io/zone` labels ([#11148]; fixes [#11114])
-    (thanks @piyushsingariya!)
+    charts  with `topology.kubernetes.io/zone` labels (thanks @piyushsingariya!)
   * Replaced `server_port_subscribers` Destination controller gauge metric with
     `server_port_subscribes` and `server_port_unsubscribes` counter metrics
 * Proxy
