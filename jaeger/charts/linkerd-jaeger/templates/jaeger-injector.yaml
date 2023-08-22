@@ -46,7 +46,9 @@ spec:
         - -linkerd-namespace={{.Values.linkerdNamespace}}
         - -enable-pprof={{.Values.enablePprof | default false}}
         image: {{.Values.webhook.image.name}}:{{default .Values.webhook.image.version .Values.linkerdVersion}}
-        imagePullPolicy: {{.Values.webhook.image.pullPolicy}}
+        {{- with .Values.webhook.image.pullPolicy }}
+        imagePullPolicy: {{.}}
+        {{- end }}
         livenessProbe:
           httpGet:
             path: /ping

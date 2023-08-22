@@ -7,9 +7,6 @@ podLabels: {}
 # -- Labels to apply to all resources
 commonLabels: {}
 
-# -- Docker imagePullPolicy for all jaeger components
-imagePullPolicy: IfNotPresent
-
 # -- Default nodeSelector section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
 nodeSelector: &default_node_selector
@@ -41,8 +38,8 @@ collector:
   enabled: true
   image:
     name: otel/opentelemetry-collector
-    version: 0.59.0
-    pullPolicy: Always
+    version: 0.83.0
+    pullPolicy: ""
 
   resources:
     cpu:
@@ -116,7 +113,7 @@ jaeger:
   image:
     name: jaegertracing/all-in-one
     version: 1.31
-    pullPolicy: Always
+    pullPolicy: ""
 
   # -- CLI arguments for Jaeger, See [Jaeger AIO Memory CLI reference](https://www.jaegertracing.io/docs/1.24/cli/#jaeger-all-in-one-memory)
   args:
@@ -218,7 +215,7 @@ webhook:
   image:
     name: cr.l5d.io/linkerd/jaeger-webhook
     version: *linkerd_version
-    pullPolicy: IfNotPresent
+    pullPolicy: ""
   logLevel: info
 
   namespaceSelector:

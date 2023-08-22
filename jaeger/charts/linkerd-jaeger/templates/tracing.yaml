@@ -113,7 +113,9 @@ spec:
           {{- toYaml $value | nindent 10 }}
         {{- end }}
         image: {{.Values.collector.image.name}}:{{.Values.collector.image.version}}
-        imagePullPolicy: {{.Values.collector.image.pullPolicy}}
+        {{- with .Values.collector.image.pullPolicy }}
+        imagePullPolicy: {{.}}
+        {{- end }}
         livenessProbe:
           httpGet:
             path: /
@@ -226,7 +228,9 @@ spec:
         - {{ . -}}
         {{ end }}
         image: {{.Values.jaeger.image.name}}:{{.Values.jaeger.image.version}}
-        imagePullPolicy: {{.Values.jaeger.image.pullPolicy}}
+        {{- with .Values.jaeger.image.pullPolicy }}
+        imagePullPolicy: {{.}}
+        {{- end }}
         name: jaeger
         ports:
         - containerPort: 14269
