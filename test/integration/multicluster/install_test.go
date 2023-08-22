@@ -165,7 +165,10 @@ func TestMulticlusterResourcesPostInstall(t *testing.T) {
 		{Namespace: "linkerd-multicluster", Name: "linkerd-gateway"},
 	}
 
-	testutil.TestResourcesPostInstall(TestHelper.GetMulticlusterNamespace(), multiclusterSvcs, testutil.MulticlusterDeployReplicas, TestHelper, t)
+	for _, ctx := range contexts {
+		TestHelper.SwitchContext(ctx)
+		testutil.TestResourcesPostInstall(TestHelper.GetMulticlusterNamespace(), multiclusterSvcs, testutil.MulticlusterDeployReplicas, TestHelper, t)
+	}
 }
 
 func TestLinkClusters(t *testing.T) {
