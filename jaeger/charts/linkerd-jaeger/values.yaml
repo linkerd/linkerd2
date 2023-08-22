@@ -37,7 +37,7 @@ collector:
   # -- Set to false to exclude collector installation
   enabled: true
   image:
-    name: otel/opentelemetry-collector
+    name: otel/opentelemetry-collector-contrib
     version: 0.83.0
     pullPolicy: ""
 
