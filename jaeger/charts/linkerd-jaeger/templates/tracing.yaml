@@ -94,7 +94,7 @@ spec:
       {{- include "linkerd.node-selector" (dict "Values" .Values.collector) | nindent 6 }}
       containers:
       - command:
-        - /otelcol
+        - /otelcol-contrib
         - --config=/conf/collector-config.yaml
         env:
         - name: GOGC

@@ -362,7 +362,7 @@ spec:
         kubernetes.io/os: linux
       containers:
       - command:
-        - /otelcol
+        - /otelcol-contrib
         - --config=/conf/collector-config.yaml
         env:
         - name: GOGC
