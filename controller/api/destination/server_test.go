@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -12,7 +13,10 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
+	"github.com/linkerd/linkerd2/testutil"
 	logging "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const fullyQualifiedName = "name1.ns.svc.mycluster.local"
@@ -447,6 +451,84 @@ func TestGetProfiles(t *testing.T) {
 
 		server.clusterStore.UnregisterGauges()
 	})
+
+	t.Run("Return profile for host port pods", func(t *testing.T) {
+		hostPort := uint32(7777)
+		containerPort := uint32(80)
+		stream, server := profileStream(t, externalIP, hostPort, "")
+		profile := assertSingleProfile(t, stream.updates)
+		dstPod := profile.Endpoint.MetricLabels["pod"]
+		if dstPod != "hostport-mapping" {
+			t.Fatalf("Expected dst_pod to be %s got %s", "hostport-mapping", dstPod)
+		}
+		err := server.k8sAPI.Client.CoreV1().Pods("ns").Delete(context.Background(), "hostport-mapping", metav1.DeleteOptions{})
+		if err != nil {
+			t.Fatalf("Failed to delete pod: %s", err)
+		}
+		err = testutil.RetryFor(time.Second*10, func() error {
+			if len(stream.updates) < 2 {
+				return fmt.Errorf("expected 2 updates, got %d", len(stream.updates))
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		profile = stream.updates[1]
+		dstPod = profile.Endpoint.MetricLabels["pod"]
+		if dstPod != "" {
+			t.Fatalf("Expected no dst_pod but got %s", dstPod)
+		}
+		_, err = server.k8sAPI.Client.CoreV1().Pods("ns").Create(context.Background(), &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "hostport-mapping-2",
+				Namespace: "ns",
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name:  "nginx",
+						Image: "nginx",
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "nginx-7777",
+								ContainerPort: (int32)(containerPort),
+								HostPort:      (int32)(hostPort),
+							},
+						},
+					},
+				},
+			},
+			Status: corev1.PodStatus{
+				Phase:  "Running",
+				HostIP: externalIP,
+				PodIP:  "172.17.0.55",
+				PodIPs: []corev1.PodIP{{IP: "172.17.0.55"}},
+			},
+		}, metav1.CreateOptions{})
+		if err != nil {
+			t.Fatalf("Failed to create pod: %s", err)
+		}
+
+		err = testutil.RetryFor(time.Second*10, func() error {
+			if len(stream.updates) < 3 {
+				return fmt.Errorf("expected 3 updates, got %d", len(stream.updates))
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		profile = stream.updates[2]
+		dstPod = profile.Endpoint.MetricLabels["pod"]
+		if dstPod != "hostport-mapping-2" {
+			t.Fatalf("Expected dst_pod to be %s got %s", "hostport-mapping-2", dstPod)
+		}
+
+		server.clusterStore.UnregisterGauges()
+	})
+
 }
 
 func TestTokenStructure(t *testing.T) {
