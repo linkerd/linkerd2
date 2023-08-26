@@ -456,11 +456,15 @@ func TestGetProfiles(t *testing.T) {
 		hostPort := uint32(7777)
 		containerPort := uint32(80)
 		stream, server := profileStream(t, externalIP, hostPort, "")
+
+		// HostPort maps to pod.
 		profile := assertSingleProfile(t, stream.updates)
 		dstPod := profile.Endpoint.MetricLabels["pod"]
 		if dstPod != "hostport-mapping" {
 			t.Fatalf("Expected dst_pod to be %s got %s", "hostport-mapping", dstPod)
 		}
+
+		// HostPort pod is deleted.
 		err := server.k8sAPI.Client.CoreV1().Pods("ns").Delete(context.Background(), "hostport-mapping", metav1.DeleteOptions{})
 		if err != nil {
 			t.Fatalf("Failed to delete pod: %s", err)
@@ -479,6 +483,8 @@ func TestGetProfiles(t *testing.T) {
 		if dstPod != "" {
 			t.Fatalf("Expected no dst_pod but got %s", dstPod)
 		}
+
+		// New HostPort pod is created.
 		_, err = server.k8sAPI.Client.CoreV1().Pods("ns").Create(context.Background(), &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "hostport-mapping-2",
