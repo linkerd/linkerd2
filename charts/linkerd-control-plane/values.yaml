@@ -502,6 +502,9 @@ policyValidator:
   # for more information.
   injectCaFromSecret: ""
 
+# -|- CPU, Memory and Ephemeral Storage resources required by the policy controller 
+#policyControllerResources:
+
 # -- NodeSelector section, See the [K8S
 # documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector)
 # for more information
