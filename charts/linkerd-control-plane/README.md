@@ -156,6 +156,7 @@ Kubernetes: `>=1.21.0-0`
 | controllerLogLevel | string | `"info"` | Log level for the control plane components |
 | controllerReplicas | int | `1` | Number of replicas for each control plane pod |
 | controllerUID | int | `2103` | User ID for the control plane components |
+| controllerImageVersion | string | `"tag@digest"` | Image tag and digest for the destination and identity components |
 | debugContainer.image.name | string | `"cr.l5d.io/linkerd/debug"` | Docker image for the debug container |
 | debugContainer.image.pullPolicy | string | imagePullPolicy | Pull policy for the debug container Docker image |
 | debugContainer.image.version | string | linkerdVersion | Tag for the debug container Docker image |
