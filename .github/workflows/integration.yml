@@ -250,15 +250,19 @@ jobs:
     needs: [tag, build-cli, build-core, build-ext]
     strategy:
       matrix:
+        # the `upgrade-*` integration tests are disabled, since the current
+        # release version (stable-2.14 and newer) installs the `HTTPRoute` CRD
+        # with a newer API version (`v1beta3`) than the API version installed by
+        # stable-2.13.
         integration_test:
           - cluster-domain
           - default-policy-deny
           - external
           - rsa-ca
-          - helm-upgrade
+          # - helm-upgrade
           - uninstall
           # - upgrade-edge
-          - upgrade-stable
+          # - upgrade-stable
     continue-on-error: true
     runs-on: ubuntu-20.04
     timeout-minutes: 15
