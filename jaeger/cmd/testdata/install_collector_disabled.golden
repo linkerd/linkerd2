@@ -30,7 +30,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: c5d4d160a7fd2febef85a7a02d2df5b5575dec35abc84d696e9afa8d3f8423e6
+        checksum/config: 5718c80d1d4f55693ac04d829f42b9d44231dfb2d5e883002e8fb053da096c1b
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"

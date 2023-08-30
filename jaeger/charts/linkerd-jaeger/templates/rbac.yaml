@@ -11,8 +11,6 @@ metadata:
   labels:
     linkerd.io/extension: jaeger
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
-{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
-{{ end -}}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -47,6 +45,8 @@ roleRef:
   kind: ClusterRole
   name: collector
   apiGroup: rbac.authorization.k8s.io
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
+{{ end -}}
 ---
 ###
 ### Jaeger Injector RBAC

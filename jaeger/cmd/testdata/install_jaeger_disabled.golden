@@ -30,7 +30,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: b8ce5fb085b648e293a23ee74978b9bf316e40dacddd262c6877b2a7691be716
+        checksum/config: 33e744466fd4a94faf5e7cd42d65af7b75beedcdfdb5264667f97b0299e8724e
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
@@ -172,6 +172,38 @@ metadata:
   namespace: linkerd-jaeger
   labels:
     linkerd.io/extension: jaeger
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: collector
+  labels:
+    linkerd.io/extension: jaeger
+rules:
+- apiGroups: [""]
+  resources: ["pods", "namespaces"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["daemonsets", "replicasets", "statefulsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch"]
+  resources: ["cronjobs", "jobs"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: collector
+  labels:
+    linkerd.io/extension: jaeger
+subjects:
+- kind: ServiceAccount
+  name: collector
+  namespace: {{.Release.Namespace}}
+roleRef:
+  kind: ClusterRole
+  name: collector
+  apiGroup: rbac.authorization.k8s.io
 ---
 ###
 ### Jaeger Injector RBAC
