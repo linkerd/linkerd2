@@ -214,7 +214,6 @@ spec:
       {{- $_ := set $tree.Values.proxy "capabilities" (dict "drop" (list "ALL")) }}
       {{- $_ := set $tree.Values.proxy "outboundDiscoveryCacheUnusedTimeout" "5s" }}
       {{- $_ := set $tree.Values.proxy "inboundDiscoveryCacheUnusedTimeout" "90s" }}
-      - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       initContainers:
       {{ if .Values.cniEnabled -}}
       - {{- include "partials.network-validator" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
@@ -227,7 +226,8 @@ spec:
       {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" .Values.proxyInit.kubeAPIServerPorts -}}
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
-      {{- if .Values.priorityClassName -}}
+      - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ if .Values.priorityClassName -}}
       priorityClassName: {{ .Values.priorityClassName }}
       {{ end -}}
       securityContext:

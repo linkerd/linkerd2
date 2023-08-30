@@ -163,6 +163,7 @@ readinessProbe:
 {{- if .Values.proxy.resources }}
 {{ include "partials.resources" .Values.proxy.resources }}
 {{- end }}
+restartPolicy: Always
 securityContext:
   allowPrivilegeEscalation: false
   {{- if .Values.proxy.capabilities -}}
