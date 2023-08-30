@@ -88,7 +88,7 @@ collector:
             from_attribute: linkerd.io/workload-ns
             action: insert
       k8sattributes:
-        auth_type: "serviceAccount"
+        auth_type: serviceAccount
         pod_association:
         - sources:
           # - from: resource_attribute
