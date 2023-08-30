@@ -14,6 +14,40 @@ metadata:
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 {{ end -}}
 ---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: collector
+  labels:
+    linkerd.io/extension: jaeger
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+rules:
+- apiGroups: [""]
+  resources: ["pods", "namespaces"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["daemonsets", "replicasets", "statefulsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch"]
+  resources: ["cronjobs", "jobs"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: collector
+  labels:
+    linkerd.io/extension: jaeger
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+subjects:
+- kind: ServiceAccount
+  name: collector
+  namespace: {{.Release.Namespace}}
+roleRef:
+  kind: ClusterRole
+  name: collector
+  apiGroup: rbac.authorization.k8s.io
+---
 ###
 ### Jaeger Injector RBAC
 ###

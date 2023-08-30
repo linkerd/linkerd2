@@ -77,7 +77,7 @@ Kubernetes: `>=1.21.0-0`
 | collector.command | string | `"/otelcol-contrib"` |  |
 | collector.config | object | see `value.yaml` for actual configuration | OpenTelemetry Collector config, See the [Configuration docs](https://opentelemetry.io/docs/collector/configuration/) for more information |
 | collector.enabled | bool | `true` | Set to false to exclude collector installation |
-| collector.env | object | `{}` | Collector Deployment env |
+| collector.env | list | `[]` | Collector Deployment env |
 | collector.image.name | string | `"otel/opentelemetry-collector-contrib"` |  |
 | collector.image.pullPolicy | string | `""` |  |
 | collector.image.version | string | `"0.83.0"` |  |
