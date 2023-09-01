@@ -53,5 +53,8 @@ webhookFailurePolicy: Fail
 # service profile validator configuration
 spValidatorResources: *controller_resources
 
+# policy controller configuration
+policyControllerResources: *controller_resources
+
 # flag for linkerd check
 highAvailability: true
