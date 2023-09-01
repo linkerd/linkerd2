@@ -392,7 +392,7 @@ async fn await_service_account(client: &kube::Client, ns: &str, name: &str) {
     tokio::pin! {
         let sas = kube::runtime::watcher(
             kube::Api::<k8s::ServiceAccount>::namespaced(client.clone(), ns),
-            kube::api::ListParams::default(),
+            Default::default(),
         );
     }
     loop {

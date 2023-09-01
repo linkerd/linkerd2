@@ -10,8 +10,13 @@ ahash = "0.8"
 anyhow = "1"
 futures = { version = "0.3", default-features = false }
 http = "0.2"
-k8s-gateway-api = "0.11"
-kubert = { version = "0.16", default-features = false, features = ["index"] }
+k8s-gateway-api = "0.13"
+kube = { version = "0.85", default-features = false, features = [
+    "client",
+    "derive",
+    "runtime",
+] }
+kubert = { version = "0.18", default-features = false, features = ["index"] }
 linkerd-policy-controller-core = { path = "../../core" }
 linkerd-policy-controller-k8s-api = { path = "../api" }
 parking_lot = "0.12"

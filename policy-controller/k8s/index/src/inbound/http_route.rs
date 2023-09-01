@@ -227,6 +227,9 @@ impl RouteBinding {
                 Filter::RequestRedirect(filter)
             }
 
+            api::HttpRouteFilter::ResponseHeaderModifier { .. } => {
+                bail!("ResponseHeaderModifier filter is not supported in Linkerd 2.13")
+            }
             api::HttpRouteFilter::RequestMirror { .. } => {
                 bail!("RequestMirror filter is not supported")
             }
