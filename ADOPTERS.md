@@ -61,7 +61,6 @@
 - [Mythical Games](https://mythicalgames.com/)
 - [National Information Solutions Cooperative (NISC)](https://nisc.coop/)
 - [NAV](https://nav.no/)
-- [Nexxiot](https://www.nexxiot.com)
 - [Nordstrom](https://nordstrom.com/)
 - [Novolabs](https://novolabs.com)
 - [OLX Brasil](https://www.olx.com.br)
