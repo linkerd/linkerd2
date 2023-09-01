@@ -336,6 +336,7 @@ kind: Pod
 apiVersion: v1
 metadata:
   name: hostport-mapping
+  namespace: ns
 status:
   phase: Running
   hostIP: 192.168.1.20
