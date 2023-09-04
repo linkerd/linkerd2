@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"sync"
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
@@ -453,7 +454,7 @@ spec:
 		t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
 	}
 	log := logging.WithField("test", t.Name())
-	logging.SetLevel(logging.DebugLevel)
+	logging.SetLevel(logging.TraceLevel)
 	defaultOpaquePorts := map[uint32]struct{}{
 		25:    {},
 		443:   {},
@@ -468,6 +469,10 @@ spec:
 		t.Fatalf("initializeIndexers returned an error: %s", err)
 	}
 
+	pods, err := watcher.NewPodWatcher(k8sAPI, log)
+	if err != nil {
+		t.Fatalf("can't create Pods watcher: %s", err)
+	}
 	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, false, "local")
 	if err != nil {
 		t.Fatalf("can't create Endpoints watcher: %s", err)
@@ -498,6 +503,7 @@ spec:
 
 	return &server{
 		pb.UnimplementedDestinationServer{},
+		pods,
 		endpoints,
 		opaquePorts,
 		profiles,
@@ -528,11 +534,20 @@ func (bgs *bufferingGetStream) Send(update *pb.Update) error {
 type bufferingGetProfileStream struct {
 	updates []*pb.DestinationProfile
 	util.MockServerStream
+	mu sync.Mutex
 }
 
 func (bgps *bufferingGetProfileStream) Send(profile *pb.DestinationProfile) error {
+	bgps.mu.Lock()
+	defer bgps.mu.Unlock()
 	bgps.updates = append(bgps.updates, profile)
 	return nil
+}
+
+func (bgps *bufferingGetProfileStream) Updates() []*pb.DestinationProfile {
+	bgps.mu.Lock()
+	defer bgps.mu.Unlock()
+	return bgps.updates
 }
 
 type mockDestinationGetServer struct {

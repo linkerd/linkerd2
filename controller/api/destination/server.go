@@ -1,7 +1,6 @@
 package destination
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,6 +28,7 @@ type (
 	server struct {
 		pb.UnimplementedDestinationServer
 
+		pods        *watcher.PodWatcher
 		endpoints   *watcher.EndpointsWatcher
 		opaquePorts *watcher.OpaquePortsWatcher
 		profiles    *watcher.ProfileWatcher
@@ -85,6 +85,10 @@ func NewServer(
 		return nil, err
 	}
 
+	pods, err := watcher.NewPodWatcher(k8sAPI, log)
+	if err != nil {
+		return nil, err
+	}
 	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, enableEndpointSlices, "local")
 	if err != nil {
 		return nil, err
@@ -104,6 +108,7 @@ func NewServer(
 
 	srv := server{
 		pb.UnimplementedDestinationServer{},
+		pods,
 		endpoints,
 		opaquePorts,
 		profiles,
@@ -292,11 +297,11 @@ func (s *server) getProfileByIP(
 			}
 		}
 
-		address, err := s.createAddress(pod, targetIP, port)
+		address, err := watcher.CreateAddress(s.k8sAPI, s.metadataAPI, pod, targetIP, port)
 		if err != nil {
 			return fmt.Errorf("failed to create address: %w", err)
 		}
-		return s.subscribeToEndpointProfile(&address, port, stream)
+		return s.subscribeToEndpointProfile(&address, ip.String(), port, stream)
 	}
 
 	fqn := fmt.Sprintf("%s.%s.svc.%s", svcID.Name, svcID.Namespace, s.clusterDomain)
@@ -322,7 +327,7 @@ func (s *server) getProfileByName(
 		if err != nil {
 			return fmt.Errorf("failed to get pod for hostname %s: %w", hostname, err)
 		}
-		return s.subscribeToEndpointProfile(address, port, stream)
+		return s.subscribeToEndpointProfile(address, address.IP, port, stream)
 	}
 
 	return s.subscribeToServiceProfile(service, token, host, port, stream)
@@ -468,36 +473,33 @@ func (s *server) subscribeToServiceWithoutContext(
 // This function does not return until the stream is closed.
 func (s *server) subscribeToEndpointProfile(
 	address *watcher.Address,
+	ip string,
 	port uint32,
 	stream pb.Destination_GetProfileServer,
 ) error {
 	log := s.log
-	if address.Pod != nil {
-		log = log.WithField("ns", address.Pod.Namespace).WithField("pod", address.Pod.Name)
-	} else {
-		log = log.WithField("ip", address.IP)
-	}
+	translator := newEndpointProfileTranslator(port, stream, log)
+	adaptor := newHostPortAdaptor(
+		s.k8sAPI,
+		s.metadataAPI,
+		s.servers,
+		s.enableH2Upgrade,
+		s.controllerNS,
+		s.identityTrustDomain,
+		s.defaultOpaquePorts,
+		ip,
+		port,
+		translator,
+		address,
+		log,
+	)
+	s.pods.Subscribe(adaptor)
+	defer s.pods.Unsubscribe(adaptor)
 
-	opaquePorts := getAnnotatedOpaquePorts(address.Pod, s.defaultOpaquePorts)
-	var endpoint *pb.WeightedAddr
-	endpoint, err := s.createEndpoint(*address, opaquePorts)
-	if err != nil {
-		return fmt.Errorf("failed to create endpoint: %w", err)
+	if err := adaptor.Sync(); err != nil {
+		return err
 	}
-	translator := newEndpointProfileTranslator(address.Pod, port, endpoint, stream, log)
-
-	// If the endpoint's port is annotated as opaque, we don't need to
-	// subscribe for updates because it will always be opaque
-	// regardless of any Servers that may select it.
-	if _, ok := opaquePorts[port]; ok {
-		translator.UpdateProtocol(true)
-	} else if address.Pod == nil {
-		translator.UpdateProtocol(false)
-	} else {
-		translator.UpdateProtocol(address.OpaqueProtocol)
-		s.servers.Subscribe(address.Pod, port, translator)
-		defer s.servers.Unsubscribe(address.Pod, port, translator)
-	}
+	defer adaptor.Clean()
 
 	select {
 	case <-s.shutdown:
@@ -505,48 +507,6 @@ func (s *server) subscribeToEndpointProfile(
 		log.Debugf("Cancelled")
 	}
 	return nil
-}
-
-func (s *server) createAddress(pod *corev1.Pod, targetIP string, port uint32) (watcher.Address, error) {
-	var ownerKind, ownerName string
-	var err error
-	if pod != nil {
-		ownerKind, ownerName, err = s.metadataAPI.GetOwnerKindAndName(context.Background(), pod, true)
-		if err != nil {
-			return watcher.Address{}, err
-		}
-	}
-
-	address := watcher.Address{
-		IP:        targetIP,
-		Port:      port,
-		Pod:       pod,
-		OwnerName: ownerName,
-		OwnerKind: ownerKind,
-	}
-
-	if address.Pod != nil {
-		if err := watcher.SetToServerProtocol(s.k8sAPI, &address, port); err != nil {
-			return watcher.Address{}, fmt.Errorf("failed to set address OpaqueProtocol: %w", err)
-		}
-	}
-
-	return address, nil
-}
-
-func (s *server) createEndpoint(address watcher.Address, opaquePorts map[uint32]struct{}) (*pb.WeightedAddr, error) {
-	weightedAddr, err := createWeightedAddr(address, opaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, s.log)
-	if err != nil {
-		return nil, err
-	}
-
-	// `Get` doesn't include the namespace in the per-endpoint
-	// metadata, so it needs to be special-cased.
-	if address.Pod != nil {
-		weightedAddr.MetricLabels["namespace"] = address.Pod.Namespace
-	}
-
-	return weightedAddr, err
 }
 
 // getSvcID returns the service that corresponds to a Cluster IP address if one
@@ -600,7 +560,7 @@ func (s *server) getEndpointByHostname(k8sAPI *k8s.API, hostname string, svcID w
 					if err != nil {
 						return nil, err
 					}
-					address, err := s.createAddress(pod, addr.IP, port)
+					address, err := watcher.CreateAddress(s.k8sAPI, s.metadataAPI, pod, addr.IP, port)
 					if err != nil {
 						return nil, err
 					}

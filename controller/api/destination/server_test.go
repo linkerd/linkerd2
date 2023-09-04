@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -12,7 +13,10 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
+	"github.com/linkerd/linkerd2/testutil"
 	logging "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const fullyQualifiedName = "name1.ns.svc.mycluster.local"
@@ -157,6 +161,7 @@ func TestGetProfiles(t *testing.T) {
 			updates:          []*pb.DestinationProfile{},
 			MockServerStream: util.NewMockServerStream(),
 		}
+		defer stream.Cancel()
 		err := server.GetProfile(&pb.GetDestination{Scheme: "k8s", Path: "linkerd.io"}, stream)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
@@ -167,7 +172,8 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Returns server profile", func(t *testing.T) {
 		stream, server := profileStream(t, fullyQualifiedName, port, "ns:other")
-		profile := assertSingleProfile(t, stream.updates)
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
 		if profile.FullyQualifiedName != fullyQualifiedName {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'",
 				fullyQualifiedName, profile.FullyQualifiedName)
@@ -185,7 +191,8 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return service profile when using json token", func(t *testing.T) {
 		stream, server := profileStream(t, fullyQualifiedName, port, `{"ns":"other"}`)
-		profile := assertSingleProfile(t, stream.updates)
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
 		if profile.FullyQualifiedName != fullyQualifiedName {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, profile.FullyQualifiedName)
 		}
@@ -199,7 +206,8 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Returns client profile", func(t *testing.T) {
 		stream, server := profileStream(t, fullyQualifiedName, port, `{"ns":"client-ns"}`)
-		profile := assertSingleProfile(t, stream.updates)
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
 		routes := profile.GetRoutes()
 		if len(routes) != 1 {
 			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
@@ -213,7 +221,8 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile when using cluster IP", func(t *testing.T) {
 		stream, server := profileStream(t, clusterIP, port, "")
-		profile := assertSingleProfile(t, stream.updates)
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
 		if profile.FullyQualifiedName != fullyQualifiedName {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, profile.FullyQualifiedName)
 		}
@@ -230,6 +239,7 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with endpoint when using pod DNS", func(t *testing.T) {
 		stream, server := profileStream(t, fullyQualifiedPodDNS, port, "ns:ns")
+		defer stream.Cancel()
 
 		epAddr, err := toAddress(podIPStatefulSet, port)
 		if err != nil {
@@ -238,11 +248,12 @@ func TestGetProfiles(t *testing.T) {
 
 		// An explanation for why we expect 1 to 3 updates is in test cases
 		// above
-		if len(stream.updates) == 0 || len(stream.updates) > 3 {
-			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
+		updates := stream.Updates()
+		if len(updates) == 0 || len(updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(updates), updates)
 		}
 
-		first := stream.updates[0]
+		first := updates[0]
 		if first.Endpoint == nil {
 			t.Fatalf("Expected response to have endpoint field")
 		}
@@ -268,6 +279,7 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with endpoint when using pod IP", func(t *testing.T) {
 		stream, server := profileStream(t, podIP1, port, "ns:ns")
+		defer stream.Cancel()
 
 		epAddr, err := toAddress(podIP1, port)
 		if err != nil {
@@ -276,11 +288,12 @@ func TestGetProfiles(t *testing.T) {
 
 		// An explanation for why we expect 1 to 3 updates is in test cases
 		// above
-		if len(stream.updates) == 0 || len(stream.updates) > 3 {
-			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
+		updates := stream.Updates()
+		if len(updates) == 0 || len(updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(updates), updates)
 		}
 
-		first := stream.updates[0]
+		first := updates[0]
 		if first.Endpoint == nil {
 			t.Fatalf("Expected response to have endpoint field")
 		}
@@ -306,7 +319,8 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return default profile when IP does not map to service or pod", func(t *testing.T) {
 		stream, server := profileStream(t, "172.0.0.0", 1234, "")
-		profile := assertSingleProfile(t, stream.updates)
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
 		if profile.RetryBudget == nil {
 			t.Fatalf("Expected default profile to have a retry budget")
 		}
@@ -316,7 +330,8 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with no protocol hint when pod does not have label", func(t *testing.T) {
 		stream, server := profileStream(t, podIP2, port, "")
-		profile := assertSingleProfile(t, stream.updates)
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
 		if profile.Endpoint == nil {
 			t.Fatalf("Expected response to have endpoint field")
 		}
@@ -329,7 +344,8 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return non-opaque protocol profile when using cluster IP and opaque protocol port", func(t *testing.T) {
 		stream, server := profileStream(t, clusterIPOpaque, opaquePort, "")
-		profile := assertSingleProfile(t, stream.updates)
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
 		if profile.FullyQualifiedName != fullyQualifiedNameOpaque {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedNameOpaque, profile.FullyQualifiedName)
 		}
@@ -342,6 +358,7 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return opaque protocol profile with endpoint when using pod IP and opaque protocol port", func(t *testing.T) {
 		stream, server := profileStream(t, podIPOpaque, opaquePort, "")
+		defer stream.Cancel()
 
 		epAddr, err := toAddress(podIPOpaque, opaquePort)
 		if err != nil {
@@ -350,11 +367,12 @@ func TestGetProfiles(t *testing.T) {
 
 		// An explanation for why we expect 1 to 3 updates is in test cases
 		// above
-		if len(stream.updates) == 0 || len(stream.updates) > 3 {
-			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
+		updates := stream.Updates()
+		if len(updates) == 0 || len(updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(updates), updates)
 		}
 
-		profile := assertSingleProfile(t, stream.updates)
+		profile := assertSingleProfile(t, updates)
 		if profile.Endpoint == nil {
 			t.Fatalf("Expected response to have endpoint field")
 		}
@@ -380,7 +398,8 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return opaque protocol profile when using service name with opaque port annotation", func(t *testing.T) {
 		stream, server := profileStream(t, fullyQualifiedNameOpaqueService, opaquePort, "")
-		profile := assertSingleProfile(t, stream.updates)
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
 		if profile.FullyQualifiedName != fullyQualifiedNameOpaqueService {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedNameOpaqueService, profile.FullyQualifiedName)
 		}
@@ -393,7 +412,8 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with unknown protocol hint and identity when pod contains skipped inbound port", func(t *testing.T) {
 		stream, server := profileStream(t, podIPSkipped, skippedPort, "")
-		profile := assertSingleProfile(t, stream.updates)
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
 		addr := profile.GetEndpoint()
 		if addr == nil {
 			t.Fatalf("Expected to not be nil")
@@ -410,7 +430,8 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with opaque protocol when using Pod IP selected by a Server", func(t *testing.T) {
 		stream, server := profileStream(t, podIPPolicy, 80, "")
-		profile := assertSingleProfile(t, stream.updates)
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
 		if profile.Endpoint == nil {
 			t.Fatalf("Expected response to have endpoint field")
 		}
@@ -429,7 +450,8 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with opaque protocol when using an opaque port with an external IP", func(t *testing.T) {
 		stream, server := profileStream(t, externalIP, 3306, "")
-		profile := assertSingleProfile(t, stream.updates)
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
 		if !profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", 3306)
 		}
@@ -439,7 +461,8 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with non-opaque protocol when using an arbitrary port with an external IP", func(t *testing.T) {
 		stream, server := profileStream(t, externalIP, 80, "")
-		profile := assertSingleProfile(t, stream.updates)
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
 		if profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be a non-opaque protocol, but it was opaque", 80)
 		}
@@ -449,10 +472,12 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile for host port pods", func(t *testing.T) {
 		hostPort := uint32(7777)
+		containerPort := uint32(80)
 		stream, server := profileStream(t, externalIP, hostPort, "")
+		defer stream.Cancel()
 
 		// HostPort maps to pod.
-		profile := assertSingleProfile(t, stream.updates)
+		profile := assertSingleProfile(t, stream.Updates())
 		dstPod := profile.Endpoint.MetricLabels["pod"]
 		if dstPod != "hostport-mapping" {
 			t.Fatalf("Expected dst_pod to be %s got %s", "hostport-mapping", dstPod)
@@ -465,6 +490,82 @@ func TestGetProfiles(t *testing.T) {
 		addr := profile.Endpoint.Addr
 		if addr.Ip.String() != ip.String() && addr.Port != hostPort {
 			t.Fatalf("Expected endpoint addr to be %s port:%d got %s", ip, hostPort, addr)
+		}
+
+		// HostPort pod is deleted.
+		err = server.k8sAPI.Client.CoreV1().Pods("ns").Delete(context.Background(), "hostport-mapping", metav1.DeleteOptions{})
+		if err != nil {
+			t.Fatalf("Failed to delete pod: %s", err)
+		}
+		err = testutil.RetryFor(time.Second*10, func() error {
+			updates := stream.Updates()
+			if len(updates) < 2 {
+				return fmt.Errorf("expected 2 updates, got %d", len(updates))
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		profile = stream.Updates()[1]
+		dstPod = profile.Endpoint.MetricLabels["pod"]
+		if dstPod != "" {
+			t.Fatalf("Expected no dst_pod but got %s", dstPod)
+		}
+
+		// New HostPort pod is created.
+		_, err = server.k8sAPI.Client.CoreV1().Pods("ns").Create(context.Background(), &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "hostport-mapping-2",
+				Namespace: "ns",
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name:  "nginx",
+						Image: "nginx",
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "nginx-7777",
+								ContainerPort: (int32)(containerPort),
+								HostPort:      (int32)(hostPort),
+							},
+						},
+					},
+				},
+			},
+			Status: corev1.PodStatus{
+				Phase: "Running",
+				Conditions: []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue,
+					},
+				},
+				HostIP: externalIP,
+				PodIP:  "172.17.0.55",
+				PodIPs: []corev1.PodIP{{IP: "172.17.0.55"}},
+			},
+		}, metav1.CreateOptions{})
+		if err != nil {
+			t.Fatalf("Failed to create pod: %s", err)
+		}
+
+		err = testutil.RetryFor(time.Second*10, func() error {
+			updates := stream.Updates()
+			if len(updates) < 3 {
+				return fmt.Errorf("expected 3 updates, got %d", len(updates))
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		profile = stream.Updates()[2]
+		dstPod = profile.Endpoint.MetricLabels["pod"]
+		if dstPod != "hostport-mapping-2" {
+			t.Fatalf("Expected dst_pod to be %s got %s", "hostport-mapping-2", dstPod)
 		}
 
 		server.clusterStore.UnregisterGauges()
@@ -717,21 +818,18 @@ func profileStream(t *testing.T, host string, port uint32, token string) (*buffe
 		MockServerStream: util.NewMockServerStream(),
 	}
 
-	// We cancel the stream before even sending the request so that we don't
-	// need to call server.Get in a separate goroutine.  By preemptively
-	// cancelling, the behavior of Get becomes effectively synchronous and
-	// we will get only the initial update, which is what we want for this
-	// test.
-	stream.Cancel()
-
-	err := server.GetProfile(&pb.GetDestination{
-		Scheme:       "k8s",
-		Path:         fmt.Sprintf("%s:%d", host, port),
-		ContextToken: token,
-	}, stream)
-	if err != nil {
-		t.Fatalf("Got error: %s", err)
-	}
+	go func() {
+		err := server.GetProfile(&pb.GetDestination{
+			Scheme:       "k8s",
+			Path:         fmt.Sprintf("%s:%d", host, port),
+			ContextToken: token,
+		}, stream)
+		if err != nil {
+			logging.Fatalf("Got error: %s", err)
+		}
+	}()
+	// Give GetProfile some slack
+	time.Sleep(50 * time.Millisecond)
 
 	return stream, server
 }
