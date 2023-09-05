@@ -279,17 +279,16 @@ func (s *server) getProfileByIP(
 		// If the IP does not map to a service, check if it maps to a pod
 		var pod *corev1.Pod
 		targetIP := ip.String()
-		pod, err = getPodByHostIP(s.k8sAPI, ip.String(), port, s.log)
+		pod, err = getPodByPodIP(s.k8sAPI, ip.String(), port, s.log)
 		if err != nil {
 			return err
 		}
-		if pod == nil {
-			pod, err = getPodByPodIP(s.k8sAPI, ip.String(), port, s.log)
+		if pod != nil {
+			targetIP = pod.Status.PodIP
+		} else {
+			pod, err = getPodByHostIP(s.k8sAPI, ip.String(), port, s.log)
 			if err != nil {
 				return err
-			}
-			if pod != nil {
-				targetIP = pod.Status.PodIP
 			}
 		}
 
