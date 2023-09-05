@@ -14,7 +14,6 @@ type (
 	// it, and remain responsible to what events to take into account.
 	PodWatcher struct {
 		k8sAPI    *k8s.API
-		handle    cache.ResourceEventHandlerRegistration
 		listeners []PodUpdateListener
 		log       *logging.Entry
 
@@ -43,7 +42,7 @@ func NewPodWatcher(k8sAPI *k8s.API, log *logging.Entry) (*PodWatcher, error) {
 	}
 
 	var err error
-	pw.handle, err = k8sAPI.Pod().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = k8sAPI.Pod().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    pw.addPod,
 		DeleteFunc: pw.deletePod,
 		UpdateFunc: pw.updatePod,
@@ -86,7 +85,7 @@ func (pw *PodWatcher) addPod(obj any) {
 	defer pw.mu.RUnlock()
 
 	pod := obj.(*corev1.Pod)
-	pw.log.Tracef("Addded pod %s.%s", pod.Name, pod.Namespace)
+	pw.log.Tracef("Added pod %s.%s", pod.Name, pod.Namespace)
 	for _, l := range pw.listeners {
 		l.Update(pod)
 	}
@@ -96,7 +95,19 @@ func (pw *PodWatcher) deletePod(obj any) {
 	pw.mu.RLock()
 	defer pw.mu.RUnlock()
 
-	pod := obj.(*corev1.Pod)
+	pod, ok := obj.(*corev1.Pod)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			pw.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
+			return
+		}
+		pod, ok = tombstone.Obj.(*corev1.Pod)
+		if !ok {
+			pw.log.Errorf("DeletedFinalStateUnknown contained object that is not a Pod %#v", obj)
+			return
+		}
+	}
 	pw.log.Tracef("Deleted pod %s.%s", pod.Name, pod.Namespace)
 	for _, l := range pw.listeners {
 		l.Remove(pod)
