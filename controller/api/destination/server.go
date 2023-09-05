@@ -477,9 +477,7 @@ func (s *server) subscribeToEndpointProfile(
 	port uint32,
 	stream pb.Destination_GetProfileServer,
 ) error {
-	log := s.log
-	translator := newEndpointProfileTranslator(port, stream, log)
-	adaptor := newHostPortAdaptor(
+	translator := newEndpointProfileTranslator(
 		s.k8sAPI,
 		s.metadataAPI,
 		s.servers,
@@ -489,22 +487,22 @@ func (s *server) subscribeToEndpointProfile(
 		s.defaultOpaquePorts,
 		ip,
 		port,
-		translator,
+		stream,
 		address,
-		log,
+		s.log,
 	)
-	s.pods.Subscribe(adaptor)
-	defer s.pods.Unsubscribe(adaptor)
+	s.pods.Subscribe(translator)
+	defer s.pods.Unsubscribe(translator)
 
-	if err := adaptor.Sync(); err != nil {
+	if err := translator.Sync(); err != nil {
 		return err
 	}
-	defer adaptor.Clean()
+	defer translator.Clean()
 
 	select {
 	case <-s.shutdown:
 	case <-stream.Context().Done():
-		log.Debugf("Cancelled")
+		s.log.Debugf("Cancelled")
 	}
 	return nil
 }
