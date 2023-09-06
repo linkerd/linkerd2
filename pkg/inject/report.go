@@ -47,7 +47,7 @@ type Report struct {
 	HostNetwork                  bool
 	Sidecar                      bool
 	UDP                          bool // true if any port in any container has `protocol: UDP`
-	UnsupportedResource          bool
+	UnsupportedResource          bool // unsupported to inject
 	InjectDisabled               bool
 	InjectDisabledReason         string
 	InjectAnnotationAt           string
