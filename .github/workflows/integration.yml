@@ -1,7 +1,5 @@
 name: Integration tests
 
-# this comment changes this file, so all tests are triggered
-
 on:
   pull_request:
     paths:
