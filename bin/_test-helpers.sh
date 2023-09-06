@@ -244,7 +244,7 @@ setup_cluster() {
 
   test_setup
   if [ -z "$skip_cluster_create" ]; then
-    "$bindir"/k3d cluster create "$@"
+    "$bindir"/k3d cluster create --image='+v1.21' "$@"
     image_load "$name"
   fi
   check_cluster
@@ -386,13 +386,13 @@ latest_release_channel() {
 # Run the upgrade-edge test by upgrading the most-recent edge release to the
 # HEAD of this branch.
 run_upgrade-edge_test() {
-  run_test "$test_directory/upgrade-edge/..." 
+  run_test "$test_directory/upgrade-edge/..."
 }
 
 # Run the upgrade-stable test by upgrading the most-recent stable release to the
 # HEAD of this branch.
 run_upgrade-stable_test() {
-  run_test "$test_directory/upgrade-stable/..." 
+  run_test "$test_directory/upgrade-stable/..."
 }
 
 run_viz_test() {
@@ -448,7 +448,7 @@ run_uninstall_test() {
 }
 
 run_multicluster_test() {
-   run_test "$test_directory/multicluster/..." 
+   run_test "$test_directory/multicluster/..."
 }
 
 run_deep_test() {
@@ -457,7 +457,7 @@ run_deep_test() {
 
 run_default-policy-deny_test() {
   export default_inbound_policy='deny'
-  run_test "$test_directory/install/install_test.go" 
+  run_test "$test_directory/install/install_test.go"
 }
 
 run_cni-calico-deep_test() {
@@ -473,7 +473,7 @@ run_external_test() {
 }
 
 run_cluster-domain_test() {
-  run_test "$test_directory/install/install_test.go" --cluster-domain='custom.domain' 
+  run_test "$test_directory/install/install_test.go" --cluster-domain='custom.domain'
 }
 
 # exit_on_err should be called right after a command to check the result status
