@@ -461,7 +461,7 @@ action-lint:
 
 # Ensure all devcontainer versions are in sync
 action-dev-check:
-    just-dev check-action-images
+    action-dev-check
 
 ##
 ## Other tools...

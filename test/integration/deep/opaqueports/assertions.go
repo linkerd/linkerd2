@@ -29,15 +29,14 @@ func hasNoOutboundHTTPRequest(metrics, ns string) error {
 }
 
 // hasOutboundHTTPRequestWithTLS checks there is a series matching:
-//
-//	request_total{
-//	  direction="outbound",
-//	  target_addr=~"[0-9\.]+:[0-9]+",
-//	  target_ip=~"[0-9.]+",
-//	  tls="true",
-//	  dst_namespace="default.${ns}.serviceaccount.identity.linkerd.cluster.local",
-//	  dst_serviceaccount="default"
-//	}
+// request_total{
+//   direction="outbound",
+//   target_addr=~"[0-9\.]+:[0-9]+",
+//   target_ip=~"[0-9.]+",
+//   tls="true",
+//   dst_namespace="default.${ns}.serviceaccount.identity.linkerd.cluster.local",
+//   dst_serviceaccount="default"
+// }
 func hasOutboundHTTPRequestWithTLS(metrics, ns string) error {
 	m := prommatch.NewMatcher("request_total",
 		prommatch.Labels{
@@ -60,16 +59,15 @@ func hasOutboundHTTPRequestWithTLS(metrics, ns string) error {
 }
 
 // hasOutboundHTTPRequestNoTLS checks there is a series matching:
-//
-//	request_total{
-//	  direction="outbound",
-//	  target_addr=~"[0-9\.]+:[0-9]+",
-//	  target_ip=~"[0-9.]+",
-//	  tls="no_identity",
-//	  no_tls_reason="not_provided_by_service_discovery",
-//	  dst_namespace="default.${ns}.serviceaccount.identity.linkerd.cluster.local",
-//	  dst_serviceaccount="default"
-//	}
+// request_total{
+//   direction="outbound",
+//   target_addr=~"[0-9\.]+:[0-9]+",
+//   target_ip=~"[0-9.]+",
+//   tls="no_identity",
+//   no_tls_reason="not_provided_by_service_discovery",
+//   dst_namespace="default.${ns}.serviceaccount.identity.linkerd.cluster.local",
+//   dst_serviceaccount="default"
+// }
 func hasOutboundHTTPRequestNoTLS(metrics, ns string) error {
 	m := prommatch.NewMatcher("request_total",
 		prommatch.Labels{
@@ -92,17 +90,16 @@ func hasOutboundHTTPRequestNoTLS(metrics, ns string) error {
 }
 
 // hasInboundTCPTrafficWithTLS checks there is a series matching:
-//
-//	tcp_open_total{
-//	  direction="inbound",
-//	  peer="src",
-//	  tls="true",
-//	  client_id="default.${ns}.serviceaccount.identity.linkerd.cluster.local",
-//	  srv_kind="default",
-//	  srv_name="all-unauthenticated",
-//	  target_addr=~"[0-9\.]+:[0-9]+",
-//	  target_ip=~"[0-9\.]+"
-//	}
+// tcp_open_total{
+//   direction="inbound",
+//   peer="src",
+//   tls="true",
+//   client_id="default.${ns}.serviceaccount.identity.linkerd.cluster.local",
+//   srv_kind="default",
+//   srv_name="all-unauthenticated",
+//   target_addr=~"[0-9\.]+:[0-9]+",
+//   target_ip=~"[0-9\.]+"
+// }
 func hasInboundTCPTrafficWithTLS(metrics, ns string) error {
 	m := prommatch.NewMatcher(
 		"tcp_open_total",
@@ -128,14 +125,13 @@ func hasInboundTCPTrafficWithTLS(metrics, ns string) error {
 }
 
 // hasOutboundTCPWithAuthorityAndNoTLS checks there is a series matching:
-//
-//	tcp_open_total{
-//	  direction="outbound",
-//	  peer="dst",
-//	  tls="no_identity",
-//	  no_tls_reason="not_provided_by_service_discovery",
-//	  authority=~"[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+"
-//	}
+// tcp_open_total{
+//   direction="outbound",
+//   peer="dst",
+//   tls="no_identity",
+//   no_tls_reason="not_provided_by_service_discovery",
+//   authority=~"[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+"
+// }
 func hasOutboundTCPWithAuthorityAndNoTLS(metrics, ns string) error {
 	m := prommatch.NewMatcher("tcp_open_total",
 		prommatch.Labels{
@@ -157,14 +153,13 @@ func hasOutboundTCPWithAuthorityAndNoTLS(metrics, ns string) error {
 }
 
 // hasOutboundTCPWithNoTLSAndNoAuthority checks there is a series matching:
-//
-//	tcp_open_total{
-//	  direction="outbound",
-//	  peer="dst",
-//	  tls="no_identity",
-//	  no_tls_reason="not_provided_by_service_discovery",
-//	  authority=""
-//	}
+// tcp_open_total{
+//   direction="outbound",
+//   peer="dst",
+//   tls="no_identity",
+//   no_tls_reason="not_provided_by_service_discovery",
+//   authority=""
+// }
 func hasOutboundTCPWithNoTLSAndNoAuthority(metrics, ns string) error {
 	m := prommatch.NewMatcher("tcp_open_total",
 		prommatch.Labels{
@@ -185,14 +180,13 @@ func hasOutboundTCPWithNoTLSAndNoAuthority(metrics, ns string) error {
 }
 
 // hasOutboundTCPWithTLSAndAuthority checks there is a series matching:
-//
-//	tcp_open_total{
-//	  direction="outbound",
-//	  peer="dst",
-//	  tls="true",
-//	  target_addr=~"[0-9\.]+:[0-9]+",
-//	  authority=~"[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+"
-//	}
+// tcp_open_total{
+//   direction="outbound",
+//   peer="dst",
+//   tls="true",
+//   target_addr=~"[0-9\.]+:[0-9]+",
+//   authority=~"[a-zA-Z\-]+\.[a-zA-Z\-]+\.svc\.cluster\.local:[0-9]+"
+// }
 func hasOutboundTCPWithTLSAndAuthority(metrics, ns string) error {
 	m := prommatch.NewMatcher("tcp_open_total",
 		prommatch.Labels{
@@ -214,14 +208,13 @@ func hasOutboundTCPWithTLSAndAuthority(metrics, ns string) error {
 }
 
 // hasOutboundTCPWithTLSAndNoAuthority checks there is a series matching:
-//
-//	tcp_open_total{
-//	  direction="outbound",
-//	  peer="dst",
-//	  tls="true",
-//	  target_addr=~"[0-9\.]+:[0-9]+",
-//	  authority=""
-//	}
+// tcp_open_total{
+//   direction="outbound",
+//   peer="dst",
+//   tls="true",
+//   target_addr=~"[0-9\.]+:[0-9]+",
+//   authority=""
+// }
 func hasOutboundTCPWithTLSAndNoAuthority(metrics, ns string) error {
 	m := prommatch.NewMatcher("tcp_open_total",
 		prommatch.Labels{

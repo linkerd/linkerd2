@@ -628,7 +628,6 @@ type Pod struct {
 	Name  string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	PodIP string `protobuf:"bytes,2,opt,name=podIP,proto3" json:"podIP,omitempty"`
 	// Types that are assignable to Owner:
-	//
 	//	*Pod_Deployment
 	//	*Pod_ReplicaSet
 	//	*Pod_ReplicationController
@@ -851,7 +850,6 @@ type HttpMethod struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Type:
-	//
 	//	*HttpMethod_Registered_
 	//	*HttpMethod_Unregistered
 	Type isHttpMethod_Type `protobuf_oneof:"type"`
@@ -932,7 +930,6 @@ type Scheme struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Type:
-	//
 	//	*Scheme_Registered_
 	//	*Scheme_Unregistered
 	Type isScheme_Type `protobuf_oneof:"type"`
@@ -1060,7 +1057,6 @@ type Eos struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to End:
-	//
 	//	*Eos_GrpcStatusCode
 	//	*Eos_ResetErrorCode
 	End isEos_End `protobuf_oneof:"end"`
@@ -1426,7 +1422,6 @@ type StatSummaryRequest struct {
 	Selector   *ResourceSelection `protobuf:"bytes,1,opt,name=selector,proto3" json:"selector,omitempty"`
 	TimeWindow string             `protobuf:"bytes,2,opt,name=time_window,json=timeWindow,proto3" json:"time_window,omitempty"`
 	// Types that are assignable to Outbound:
-	//
 	//	*StatSummaryRequest_None
 	//	*StatSummaryRequest_ToResource
 	//	*StatSummaryRequest_FromResource
@@ -1551,7 +1546,6 @@ type StatSummaryResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Response:
-	//
 	//	*StatSummaryResponse_Ok_
 	//	*StatSummaryResponse_Error
 	Response isStatSummaryResponse_Response `protobuf_oneof:"response"`
@@ -1687,7 +1681,6 @@ type AuthzResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Response:
-	//
 	//	*AuthzResponse_Ok_
 	//	*AuthzResponse_Error
 	Response isAuthzResponse_Response `protobuf_oneof:"response"`
@@ -2071,7 +2064,6 @@ type StatTable struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Table:
-	//
 	//	*StatTable_PodGroup_
 	Table isStatTable_Table `protobuf_oneof:"table"`
 }
@@ -2185,7 +2177,6 @@ type EdgesResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Response:
-	//
 	//	*EdgesResponse_Ok_
 	//	*EdgesResponse_Error
 	Response isEdgesResponse_Response `protobuf_oneof:"response"`
@@ -2347,7 +2338,6 @@ type TopRoutesRequest struct {
 	Selector   *ResourceSelection `protobuf:"bytes,1,opt,name=selector,proto3" json:"selector,omitempty"`
 	TimeWindow string             `protobuf:"bytes,2,opt,name=time_window,json=timeWindow,proto3" json:"time_window,omitempty"`
 	// Types that are assignable to Outbound:
-	//
 	//	*TopRoutesRequest_None
 	//	*TopRoutesRequest_ToResource
 	Outbound isTopRoutesRequest_Outbound `protobuf_oneof:"outbound"`
@@ -2442,7 +2432,6 @@ type TopRoutesResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Response:
-	//
 	//	*TopRoutesResponse_Error
 	//	*TopRoutesResponse_Ok_
 	Response isTopRoutesResponse_Response `protobuf_oneof:"response"`
@@ -2691,7 +2680,6 @@ type GatewaysResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Response:
-	//
 	//	*GatewaysResponse_Ok_
 	//	*GatewaysResponse_Error
 	Response isGatewaysResponse_Response `protobuf_oneof:"response"`
@@ -2778,7 +2766,6 @@ type Headers_Header struct {
 	// assumed and `value_bin` will be set.
 	//
 	// Types that are assignable to Value:
-	//
 	//	*Headers_Header_ValueStr
 	//	*Headers_Header_ValueBin
 	Value isHeaders_Header_Value `protobuf_oneof:"value"`
@@ -2866,7 +2853,6 @@ type PodErrors_PodError struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Error:
-	//
 	//	*PodErrors_PodError_Container
 	Error isPodErrors_PodError_Error `protobuf_oneof:"error"`
 }
