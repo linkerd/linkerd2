@@ -279,14 +279,14 @@ func (s *server) getProfileByIP(
 		// If the IP does not map to a service, check if it maps to a pod
 		var pod *corev1.Pod
 		targetIP := ip.String()
-		pod, err = getPodByPodIP(s.k8sAPI, ip.String(), port, s.log)
+		pod, err = getPodByPodIP(s.k8sAPI, targetIP, port, s.log)
 		if err != nil {
 			return err
 		}
 		if pod != nil {
 			targetIP = pod.Status.PodIP
 		} else {
-			pod, err = getPodByHostIP(s.k8sAPI, ip.String(), port, s.log)
+			pod, err = getPodByHostIP(s.k8sAPI, targetIP, port, s.log)
 			if err != nil {
 				return err
 			}
@@ -620,14 +620,14 @@ func (s *server) getEndpointByHostname(k8sAPI *k8s.API, hostname string, svcID w
 
 // getPodByHostIP returns a pod that maps to the given IP address in the host
 // network. It must have a container port that exposes `port` as a host port.
-func getPodByHostIP(k8sAPI *k8s.API, podIP string, port uint32, log *logging.Entry) (*corev1.Pod, error) {
-	addr := net.JoinHostPort(podIP, fmt.Sprintf("%d", port))
+func getPodByHostIP(k8sAPI *k8s.API, hostIP string, port uint32, log *logging.Entry) (*corev1.Pod, error) {
+	addr := net.JoinHostPort(hostIP, fmt.Sprintf("%d", port))
 	hostIPPods, err := getIndexedPods(k8sAPI, watcher.HostIPIndex, addr)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	if len(hostIPPods) == 1 {
-		log.Debugf("found %s:%d on the host network", podIP, port)
+		log.Debugf("found %s:%d on the host network", hostIP, port)
 		return hostIPPods[0], nil
 	}
 	if len(hostIPPods) > 1 {
@@ -635,8 +635,8 @@ func getPodByHostIP(k8sAPI *k8s.API, podIP string, port uint32, log *logging.Ent
 		for _, pod := range hostIPPods {
 			conflictingPods = append(conflictingPods, fmt.Sprintf("%s:%s", pod.Namespace, pod.Name))
 		}
-		log.Warnf("found conflicting %s:%d endpoint on the host network: %s", podIP, port, strings.Join(conflictingPods, ","))
-		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with a conflicting host network endpoint %s:%d", len(hostIPPods), podIP, port)
+		log.Warnf("found conflicting %s:%d endpoint on the host network: %s", hostIP, port, strings.Join(conflictingPods, ","))
+		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with a conflicting host network endpoint %s:%d", len(hostIPPods), hostIP, port)
 	}
 
 	return nil, nil
