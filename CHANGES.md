@@ -1,5 +1,41 @@
 # Changes
 
+## edge-23.9.1
+
+This edge release introduces a fix for service discovery on endpoints that use
+hostPorts. Previously, the destination service would return the pod IP for the
+discovery request which could break connectivity on pod restart. To fix this,
+direct pod communication for a pod bound on a hostPort will always return the
+hostIP. In addition, this change fixes a security vulnerability (CVE-2023-2603)
+detected in the CNI plugin and proxy-init images and includes a number of other
+fixes and small improvements.
+
+* Addressed security vulnerability CVE-2023-2603 in proxy-init and CNI plugin
+  ([11296])
+* Introduced resource requests/limits for the policy controller resource in the
+  control plane helm chart ([11301])
+* Fixed an issue where an empty `remoteDiscoverySelector` field in a
+  multicluster link would cause all services to be mirrored ([11309])
+* Removed time out from `linkerd multicluster gateways` command; when no
+  metrics exist the command will return instantly ([11265])
+* Improved help messaging for `linkerd multicluster link` ([11265])
+* Changed hostPort lookup behaviour in the destination service; previously,
+  endpoint lookups for pods bound on a hostPort would return the Pod IP which
+  would result in loss of connectivity on pod restart, hostIPs are now always
+  returned when a pod uses a hostPort ([11328])
+* Updated HTTPRoute webhook rule to validate all apiVersions of the resource
+  (thanks @mikutas!) ([11149])
+* Fixed erroneous `skipped` messages when injecting namespaces with `linkerd
+  inject` (thanks @mikutas!) ([10231])
+
+[11309]: https://github.com/linkerd/linkerd2/issues/11309
+[11296]: https://github.com/linkerd/linkerd2/discussions/11296
+[11328]: https://github.com/linkerd/linkerd2/pull/11328
+[11301]: https://github.com/linkerd/linkerd2/issues/11301
+[11265]: https://github.com/linkerd/linkerd2/pull/11265
+[11149]: https://github.com/linkerd/linkerd2/pull/11149
+[10231]: https://github.com/linkerd/linkerd2/issues/10231
+
 ## stable-2.14.0
 
 This release introduces direct pod-to-pod multicluster service mirroring. When
