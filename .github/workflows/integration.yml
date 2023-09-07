@@ -71,7 +71,7 @@ jobs:
           docker cp "$id:/out/linkerd-linux-amd64" /home/runner/archives/linkerd
           v=$(/home/runner/archives/linkerd version --short --client)
           [[ "$v" == '${{ needs.tag.outputs.tag }}' ]] || exit 1
-      - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+      - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
         with:
           name: image-archives
           path: /home/runner/archives
@@ -106,7 +106,7 @@ jobs:
         run: |
           mkdir -p /home/runner/archives
           docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
-      - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+      - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
         with:
           name: image-archives
           path: /home/runner/archives
@@ -240,7 +240,7 @@ jobs:
         run: |
           mkdir -p /home/runner/archives
           docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
-      - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+      - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
         with:
           name: image-archives
           path: /home/runner/archives
