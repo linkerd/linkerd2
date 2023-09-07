@@ -1222,3 +1222,67 @@ func endpointMirrorEndpointsAsYaml(name, namespace, hostname, gatewayIP, gateway
 
 	return string(bytes)
 }
+
+// createEmptySelectorEnv will create a test environment with two services. It
+// accepts a default and a remote discovery selector which it will use for the
+// link creation. This function is used to create environments that differ only
+// in the selector used in the link.
+func createEnvWithSelector(defaultSelector, remoteSelector *metav1.LabelSelector) *testEnvironment {
+	return &testEnvironment{
+		events: []interface{}{
+			&OnAddCalled{
+				svc: remoteService("service-one", "ns1", "111", map[string]string{
+					consts.DefaultExportedServiceSelector: "true",
+				}, []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+			},
+			&OnAddCalled{
+				svc: remoteService("service-two", "ns1", "111", map[string]string{
+					consts.DefaultExportedServiceSelector: "remote-discovery",
+				}, []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+			},
+		},
+		localResources: []string{
+			namespaceAsYaml("ns1"),
+		},
+		remoteResources: []string{
+			endpointsAsYaml("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{}),
+			endpointsAsYaml("service-two", "ns1", "192.0.3.127", "gateway-identity", []corev1.EndpointPort{}),
+		},
+		link: multicluster.Link{
+			TargetClusterName:   clusterName,
+			TargetClusterDomain: clusterDomain,
+			GatewayIdentity:     "",
+			GatewayAddress:      "",
+			GatewayPort:         0,
+			ProbeSpec: multicluster.ProbeSpec{
+				Path:   "",
+				Port:   0,
+				Period: time.Duration(0) * time.Second,
+			},
+			Selector:                *defaultSelector,
+			RemoteDiscoverySelector: *remoteSelector,
+		},
+	}
+}

@@ -641,6 +641,64 @@ func TestRemoteServiceUpdatedMirroring(t *testing.T) {
 	}
 }
 
+// TestEmptyRemoteSelectors asserts that empty selectors do not introduce side
+// effects, such as mirroring unexported services. An empty label selector
+// functions as a catch-all (i.e. matches everything), the cluster watcher must
+// uphold an invariant whereby empty selectors do not export everything by
+// default.
+func TestEmptyRemoteSelectors(t *testing.T) {
+	for _, tt := range []mirroringTestCase{
+		{
+			description: "empty remote discovery selector does not result in exports",
+			environment: createEnvWithSelector(defaultSelector, &metav1.LabelSelector{}),
+			expectedEventsInQueue: []interface{}{&RemoteServiceCreated{
+				service: remoteService("service-one", "ns1", "111", map[string]string{
+					consts.DefaultExportedServiceSelector: "true",
+				}, []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+			},
+			},
+		},
+		{
+			description: "empty default selector does not result in exports",
+			environment: createEnvWithSelector(&metav1.LabelSelector{}, defaultRemoteDiscoverySelector),
+			expectedEventsInQueue: []interface{}{&RemoteServiceCreated{
+				service: remoteService("service-two", "ns1", "111", map[string]string{
+					consts.DefaultExportedServiceSelector: "remote-discovery",
+				}, []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+			}},
+		},
+		{
+			description: "no selector in link does not result in exports",
+			environment: createEnvWithSelector(&metav1.LabelSelector{}, &metav1.LabelSelector{}),
+		},
+	} {
+		tc := tt
+		tc.run(t)
+	}
+}
+
 func TestRemoteEndpointsUpdatedMirroring(t *testing.T) {
 	for _, tt := range []mirroringTestCase{
 		{
