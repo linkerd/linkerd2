@@ -739,7 +739,7 @@ func (rcsw *RemoteClusterServiceWatcher) getMirrorServices() (*corev1.ServiceLis
 }
 
 func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service) {
-	if rcsw.isExported(service.Labels) {
+	if rcsw.isExported(service.Labels) || rcsw.isRemoteDiscovery(service.Labels) {
 		rcsw.eventsQueue.Add(&RemoteServiceDeleted{
 			Name:      service.Name,
 			Namespace: service.Namespace,
@@ -1242,12 +1242,7 @@ func (rcsw *RemoteClusterServiceWatcher) isExported(l map[string]string) bool {
 		rcsw.log.Errorf("Invalid selector: %s", err)
 		return false
 	}
-	remoteDiscoverySelector, err := metav1.LabelSelectorAsSelector(&rcsw.link.RemoteDiscoverySelector)
-	if err != nil {
-		rcsw.log.Errorf("Invalid selector: %s", err)
-		return false
-	}
-	return selector.Matches(labels.Set(l)) || remoteDiscoverySelector.Matches(labels.Set(l))
+	return selector.Matches(labels.Set(l))
 }
 
 func (rcsw *RemoteClusterServiceWatcher) isRemoteDiscovery(l map[string]string) bool {
