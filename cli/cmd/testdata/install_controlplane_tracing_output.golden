@@ -660,7 +660,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v2.2.1
+        version: v2.2.2
       iptablesMode: legacy
       kubeAPIServerPorts: 443,6443
       logFormat: ""
@@ -1027,7 +1027,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy-init:v2.2.1
+        image: cr.l5d.io/linkerd/proxy-init:v2.2.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1488,7 +1488,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy-init:v2.2.1
+        image: cr.l5d.io/linkerd/proxy-init:v2.2.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1828,7 +1828,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy-init:v2.2.1
+        image: cr.l5d.io/linkerd/proxy-init:v2.2.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
