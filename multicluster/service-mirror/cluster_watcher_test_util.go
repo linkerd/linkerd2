@@ -1235,12 +1235,12 @@ func createEnvWithSelector(defaultSelector, remoteSelector *metav1.LabelSelector
 					consts.DefaultExportedServiceSelector: "true",
 				}, []corev1.ServicePort{
 					{
-						Name:     "port1",
+						Name:     "default1",
 						Protocol: "TCP",
 						Port:     555,
 					},
 					{
-						Name:     "port2",
+						Name:     "default2",
 						Protocol: "TCP",
 						Port:     666,
 					},
@@ -1251,14 +1251,14 @@ func createEnvWithSelector(defaultSelector, remoteSelector *metav1.LabelSelector
 					consts.DefaultExportedServiceSelector: "remote-discovery",
 				}, []corev1.ServicePort{
 					{
-						Name:     "port1",
+						Name:     "remote1",
 						Protocol: "TCP",
-						Port:     555,
+						Port:     777,
 					},
 					{
-						Name:     "port2",
+						Name:     "remote2",
 						Protocol: "TCP",
-						Port:     666,
+						Port:     888,
 					},
 				}),
 			},
