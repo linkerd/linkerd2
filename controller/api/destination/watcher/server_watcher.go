@@ -37,18 +37,22 @@ type ServerUpdateListener interface {
 }
 
 // NewServerWatcher creates a new ServerWatcher.
-func NewServerWatcher(k8sAPI *k8s.API, log *logging.Entry) *ServerWatcher {
+func NewServerWatcher(k8sAPI *k8s.API, log *logging.Entry) (*ServerWatcher, error) {
 	sw := &ServerWatcher{
 		subscriptions: make(map[podPort][]ServerUpdateListener),
 		k8sAPI:        k8sAPI,
 		log:           log,
 	}
-	k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    sw.addServer,
 		DeleteFunc: sw.deleteServer,
 		UpdateFunc: func(_, obj interface{}) { sw.addServer(obj) },
 	})
-	return sw
+	if err != nil {
+		return nil, err
+	}
+
+	return sw, nil
 }
 
 // Subscribe subscribes a listener for any Server updates that may select the
