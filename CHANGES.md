@@ -1,5 +1,15 @@
 # Changes
 
+## stable-2.12.6
+
+This stable release backports a service mirror memory leak fix. The service
+mirror previously had an issue where certain resources weren't cleaned up
+properly resulting in a memory leak.
+
+* Fixed a memory leak in the multicluster service mirror component ([10746])
+
+[10746]: https://github.com/linkerd/linkerd2/issues/10746
+
 ## stable-2.12.5
 
 This stable release fixes an incompatibility issue with the AWS CNI addon in EKS
