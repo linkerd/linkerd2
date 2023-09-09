@@ -1429,7 +1429,7 @@ func CheckProxyVersionsUpToDate(pods []corev1.Pod, versions version.Channels) er
 	outdatedPods := []string{}
 	for _, pod := range pods {
 		status := k8s.GetPodStatus(pod)
-		if status == string(corev1.PodRunning) && containsProxy(pod) {
+		if status == string(corev1.PodRunning) {
 			proxyVersion := k8s.GetProxyVersion(pod)
 			if proxyVersion == "" {
 				continue
@@ -1451,7 +1451,7 @@ func CheckProxyVersionsUpToDate(pods []corev1.Pod, versions version.Channels) er
 func CheckIfProxyVersionsMatchWithCLI(pods []corev1.Pod) error {
 	for _, pod := range pods {
 		status := k8s.GetPodStatus(pod)
-		if status == string(corev1.PodRunning) && containsProxy(pod) {
+		if status == string(corev1.PodRunning) {
 			proxyVersion := k8s.GetProxyVersion(pod)
 			if proxyVersion != "" && proxyVersion != version.Version {
 				return fmt.Errorf("%s running %s but cli running %s", pod.Name, proxyVersion, version.Version)
