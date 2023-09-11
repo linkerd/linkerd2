@@ -19,10 +19,12 @@ fixes and small improvements.
 * Removed time out from `linkerd multicluster gateways` command; when no
   metrics exist the command will return instantly ([#11265])
 * Improved help messaging for `linkerd multicluster link` ([#11265])
-* Changed hostPort lookup behaviour in the destination service; previously,
-  endpoint lookups for pods bound on a hostPort would return the Pod IP which
-  would result in loss of connectivity on pod restart, hostIPs are now always
-  returned when a pod uses a hostPort ([#11328])
+* Changed how hostPort lookups are handled in the destination service.
+  Previously, when doing service discovery for an endpoint bound on a hostPort,
+  the destination service would return the corresponding pod IP. On pod
+  restart, this could lead to loss of connectivity on the client's side. The
+  destination service now always returns host IPs for service discovery on an
+  endpoint that uses hostPorts ([#11328])
 * Updated HTTPRoute webhook rule to validate all apiVersions of the resource
   (thanks @mikutas!) ([#11149])
 * Fixed erroneous `skipped` messages when injecting namespaces with `linkerd
