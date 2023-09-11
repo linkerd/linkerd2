@@ -71,7 +71,7 @@ jobs:
           docker cp "$id:/out/linkerd-linux-amd64" /home/runner/archives/linkerd
           v=$(/home/runner/archives/linkerd version --short --client)
           [[ "$v" == '${{ needs.tag.outputs.tag }}' ]] || exit 1
-      - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+      - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
         with:
           name: image-archives
           path: /home/runner/archives
@@ -106,7 +106,7 @@ jobs:
         run: |
           mkdir -p /home/runner/archives
           docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
-      - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+      - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
         with:
           name: image-archives
           path: /home/runner/archives
@@ -122,7 +122,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753
+      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
         with:
           go-version: '1.19'
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
@@ -147,7 +147,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
-      - uses: tj-actions/changed-files@87697c0dca7dd44e37a2b79a79489332556ff1f3
+      - uses: tj-actions/changed-files@246636f5fa148b5ad8e65ca4c57b18af3123e5f6
         id: changed
         with:
           files: |
@@ -240,7 +240,7 @@ jobs:
         run: |
           mkdir -p /home/runner/archives
           docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
-      - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+      - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
         with:
           name: image-archives
           path: /home/runner/archives
@@ -263,7 +263,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753
+      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
         with:
           go-version: '1.19'
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
@@ -287,7 +287,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
-      - uses: tj-actions/changed-files@87697c0dca7dd44e37a2b79a79489332556ff1f3
+      - uses: tj-actions/changed-files@246636f5fa148b5ad8e65ca4c57b18af3123e5f6
         id: changed
         with:
           files: |
@@ -306,7 +306,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753
+      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
         with:
           go-version: '1.19'
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
@@ -331,7 +331,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
-      - uses: tj-actions/changed-files@87697c0dca7dd44e37a2b79a79489332556ff1f3
+      - uses: tj-actions/changed-files@246636f5fa148b5ad8e65ca4c57b18af3123e5f6
         id: changed
         with:
           files: |
@@ -357,7 +357,7 @@ jobs:
       - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753
+      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
         with:
           go-version: '1.19'
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9

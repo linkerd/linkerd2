@@ -24,7 +24,6 @@ const clusterIP = "172.17.12.0"
 const clusterIPOpaque = "172.17.12.1"
 const podIP1 = "172.17.0.12"
 const podIP2 = "172.17.0.13"
-const podIP3 = "172.17.0.17"
 const podIPOpaque = "172.17.0.14"
 const podIPSkipped = "172.17.0.15"
 const podIPPolicy = "172.17.0.16"
@@ -447,6 +446,29 @@ func TestGetProfiles(t *testing.T) {
 
 		server.clusterStore.UnregisterGauges()
 	})
+
+	t.Run("Return profile for host port pods", func(t *testing.T) {
+		hostPort := uint32(7777)
+		stream, server := profileStream(t, externalIP, hostPort, "")
+
+		// HostPort maps to pod.
+		profile := assertSingleProfile(t, stream.updates)
+		dstPod := profile.Endpoint.MetricLabels["pod"]
+		if dstPod != "hostport-mapping" {
+			t.Fatalf("Expected dst_pod to be %s got %s", "hostport-mapping", dstPod)
+		}
+
+		ip, err := addr.ParseProxyIPV4(externalIP)
+		if err != nil {
+			t.Fatalf("Error parsing IP: %s", err)
+		}
+		addr := profile.Endpoint.Addr
+		if addr.Ip.String() != ip.String() && addr.Port != hostPort {
+			t.Fatalf("Expected endpoint addr to be %s port:%d got %s", ip, hostPort, addr)
+		}
+
+		server.clusterStore.UnregisterGauges()
+	})
 }
 
 func TestTokenStructure(t *testing.T) {
@@ -510,32 +532,6 @@ func toAddress(path string, port uint32) (*net.TcpAddress, error) {
 		Ip:   ip,
 		Port: port,
 	}, nil
-}
-
-func TestHostPortMapping(t *testing.T) {
-	hostPort := uint32(7777)
-	containerPort := uint32(80)
-	server := makeServer(t)
-
-	pod, err := getPodByIP(server.k8sAPI, externalIP, hostPort, server.log)
-	if err != nil {
-		t.Fatalf("error retrieving pod by external IP %s", err)
-	}
-
-	address, err := server.createAddress(pod, externalIP, hostPort)
-	if err != nil {
-		t.Fatalf("error calling createAddress() %s", err)
-	}
-
-	if address.IP != podIP3 {
-		t.Fatalf("expected podIP (%s), received other IP (%s)", podIP3, address.IP)
-	}
-
-	if address.Port != containerPort {
-		t.Fatalf("expected containerPort (%d) but received port (%d) instead", containerPort, address.Port)
-	}
-
-	server.clusterStore.UnregisterGauges()
 }
 
 func TestIpWatcherGetSvcID(t *testing.T) {
@@ -646,7 +642,7 @@ status:
 
 		k8sAPI.Sync(nil)
 		// Get host IP pod that is mapped to the port `hostPort1`
-		pod, err := getPodByIP(k8sAPI, hostIP, hostPort1, logging.WithFields(nil))
+		pod, err := getPodByHostIP(k8sAPI, hostIP, hostPort1, logging.WithFields(nil))
 		if err != nil {
 			t.Fatalf("failed to get pod: %s", err)
 		}
@@ -659,7 +655,7 @@ status:
 		// Get host IP pod that is mapped to the port `hostPort2`; this tests
 		// that the indexer properly adds multiple containers from a single
 		// pod.
-		pod, err = getPodByIP(k8sAPI, hostIP, hostPort2, logging.WithFields(nil))
+		pod, err = getPodByHostIP(k8sAPI, hostIP, hostPort2, logging.WithFields(nil))
 		if err != nil {
 			t.Fatalf("failed to get pod: %s", err)
 		}
@@ -670,7 +666,7 @@ status:
 			t.Fatalf("expected pod name to be %s, but got %s", expectedPodName, pod.Name)
 		}
 		// Get host IP pod with unmapped host port
-		pod, err = getPodByIP(k8sAPI, hostIP, 12347, logging.WithFields(nil))
+		pod, err = getPodByHostIP(k8sAPI, hostIP, 12347, logging.WithFields(nil))
 		if err != nil {
 			t.Fatalf("expected no error when getting host IP pod with unmapped host port, but got: %s", err)
 		}
@@ -678,7 +674,7 @@ status:
 			t.Fatal("expected no pod to be found with unmapped host port")
 		}
 		// Get pod IP pod and expect an error
-		_, err = getPodByIP(k8sAPI, podIP, 12346, logging.WithFields(nil))
+		_, err = getPodByPodIP(k8sAPI, podIP, 12346, logging.WithFields(nil))
 		if err == nil {
 			t.Fatal("expected error when getting by pod IP and unmapped host port, but got none")
 		}

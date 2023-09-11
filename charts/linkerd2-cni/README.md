@@ -6,7 +6,7 @@ Linkerd [CNI plugin](https://linkerd.io/2/features/cni/) takes care of setting
 up your pod's network so  incoming and outgoing traffic is proxied through the
 data plane.
 
-![Version: 30.10.0-edge](https://img.shields.io/badge/Version-30.10.0--edge-informational?style=flat-square)
+![Version: 30.12.0-edge](https://img.shields.io/badge/Version-30.12.0--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -31,7 +31,7 @@ Kubernetes: `>=1.21.0-0`
 | ignoreOutboundPorts | string | `""` | Default set of outbound ports to skip via iptables |
 | image.name | string | `"cr.l5d.io/linkerd/cni-plugin"` | Docker image for the CNI plugin |
 | image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the linkerd-cni container |
-| image.version | string | `"v1.2.0"` | Tag for the CNI container Docker image |
+| image.version | string | `"v1.2.1"` | Tag for the CNI container Docker image |
 | imagePullSecrets | list | `[]` |  |
 | inboundProxyPort | int | `4143` | Inbound port for the proxy container |
 | logLevel | string | `"info"` | Log level for the CNI plugin |

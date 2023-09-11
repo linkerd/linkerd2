@@ -167,7 +167,7 @@ webhooks:
   rules:
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["policy.linkerd.io"]
-    apiVersions: ["v1alpha1", "v1beta1"]
+    apiVersions: ["*"]
     resources:
     - authorizationpolicies
     - httproutes
@@ -660,7 +660,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v2.2.1
+        version: v2.2.2
       iptablesMode: legacy
       kubeAPIServerPorts: 443,6443
       logFormat: ""
