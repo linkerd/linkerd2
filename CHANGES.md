@@ -1,5 +1,26 @@
 # Changes
 
+## edge-29.9.2
+
+This edge release updates the proxy's dependency on the `webpki` library to
+patch security vulnerability [RUSTSEC-2023-0052] (GHSA-8qv2-5vq6-g2g7), a
+potential CPU usage denial-of-service attack when accepting a TLS handshake from
+an untrusted peer with a maliciously-crafted certificate.
+
+* Addressed security vulnerability [RUSTSEC-2023-0052] in the proxy ([#11361])
+* Fixed `linkerd check --proxy` incorrectly checking the proxy version of pods
+  in the `completed` state (thanks @mikutas!) ([#11295]; fixes [#11280])
+* Removed unnecessary `linkerd.io/helm-release-version` annotation from the
+  `linkerd-control-plane` Helm chart (thanks @mikutas!) ([#11329]; fixes
+  [#10778])
+
+[RUSTSEC-2023-0052]: https://rustsec.org/advisories/RUSTSEC-2023-0052.html
+[#11295]: https://github.com/linkerd/linkerd2/pull/11295
+[#11280]: https://github.com/linkerd/linkerd2/issues/11280
+[#11361]: https://github.com/linkerd/linkerd2/pull/11361
+[#11329]: https://github.com/linkerd/linkerd2/pull/11329
+[#10778]: https://github.com/linkerd/linkerd2/issues/10778
+
 ## edge-23.9.1
 
 This edge release introduces a fix for service discovery on endpoints that use
