@@ -469,7 +469,7 @@ spec:
 		t.Fatalf("initializeIndexers returned an error: %s", err)
 	}
 
-	pods, err := watcher.NewPodWatcher(k8sAPI, log)
+	pods, err := watcher.NewPodWatcher(k8sAPI, metadataAPI, log, defaultOpaquePorts)
 	if err != nil {
 		t.Fatalf("can't create Pods watcher: %s", err)
 	}
@@ -484,10 +484,6 @@ spec:
 	profiles, err := watcher.NewProfileWatcher(k8sAPI, log)
 	if err != nil {
 		t.Fatalf("can't create profile watcher: %s", err)
-	}
-	servers, err := watcher.NewServerWatcher(k8sAPI, log)
-	if err != nil {
-		t.Fatalf("can't create Server watcher: %s", err)
 	}
 
 	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", false, watcher.CreateMockDecoder(exportedServiceResources...))
@@ -507,7 +503,6 @@ spec:
 		endpoints,
 		opaquePorts,
 		profiles,
-		servers,
 		clusterStore,
 		true,
 		"linkerd",

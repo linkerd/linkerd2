@@ -1296,39 +1296,6 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 	return true
 }
 
-func CreateAddress(
-	k8sAPI *k8s.API,
-	metadataAPI *k8s.MetadataAPI,
-	pod *corev1.Pod,
-	targetIP string,
-	port uint32,
-) (Address, error) {
-	var ownerKind, ownerName string
-	var err error
-	if pod != nil {
-		ownerKind, ownerName, err = metadataAPI.GetOwnerKindAndName(context.Background(), pod, true)
-		if err != nil {
-			return Address{}, err
-		}
-	}
-
-	address := Address{
-		IP:        targetIP,
-		Port:      port,
-		Pod:       pod,
-		OwnerName: ownerName,
-		OwnerKind: ownerKind,
-	}
-
-	if address.Pod != nil {
-		if err := SetToServerProtocol(k8sAPI, &address, port); err != nil {
-			return Address{}, fmt.Errorf("failed to set address OpaqueProtocol: %w", err)
-		}
-	}
-
-	return address, nil
-}
-
 // SetToServerProtocol sets the address's OpaqueProtocol field based off any
 // Servers that select it and override the expected protocol.
 func SetToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {

@@ -32,7 +32,6 @@ type (
 		endpoints   *watcher.EndpointsWatcher
 		opaquePorts *watcher.OpaquePortsWatcher
 		profiles    *watcher.ProfileWatcher
-		servers     *watcher.ServerWatcher
 
 		clusterStore *watcher.ClusterStore
 
@@ -85,7 +84,7 @@ func NewServer(
 		return nil, err
 	}
 
-	pods, err := watcher.NewPodWatcher(k8sAPI, log)
+	pods, err := watcher.NewPodWatcher(k8sAPI, metadataAPI, log, defaultOpaquePorts)
 	if err != nil {
 		return nil, err
 	}
@@ -101,10 +100,6 @@ func NewServer(
 	if err != nil {
 		return nil, err
 	}
-	servers, err := watcher.NewServerWatcher(k8sAPI, log)
-	if err != nil {
-		return nil, err
-	}
 
 	srv := server{
 		pb.UnimplementedDestinationServer{},
@@ -112,7 +107,6 @@ func NewServer(
 		endpoints,
 		opaquePorts,
 		profiles,
-		servers,
 		clusterStore,
 		enableH2Upgrade,
 		controllerNS,
@@ -297,11 +291,11 @@ func (s *server) getProfileByIP(
 			}
 		}
 
-		address, err := watcher.CreateAddress(s.k8sAPI, s.metadataAPI, pod, targetIP, port)
+		address, err := watcher.CreateAddress(s.k8sAPI, s.metadataAPI, s.defaultOpaquePorts, pod, targetIP, port)
 		if err != nil {
 			return fmt.Errorf("failed to create address: %w", err)
 		}
-		return s.subscribeToEndpointProfile(&address, ip.String(), port, stream)
+		return s.subscribeToEndpointProfile(&address, port, stream)
 	}
 
 	fqn := fmt.Sprintf("%s.%s.svc.%s", svcID.Name, svcID.Namespace, s.clusterDomain)
@@ -327,7 +321,7 @@ func (s *server) getProfileByName(
 		if err != nil {
 			return fmt.Errorf("failed to get pod for hostname %s: %w", hostname, err)
 		}
-		return s.subscribeToEndpointProfile(address, address.IP, port, stream)
+		return s.subscribeToEndpointProfile(address, port, stream)
 	}
 
 	return s.subscribeToServiceProfile(service, token, host, port, stream)
@@ -473,31 +467,28 @@ func (s *server) subscribeToServiceWithoutContext(
 // This function does not return until the stream is closed.
 func (s *server) subscribeToEndpointProfile(
 	address *watcher.Address,
-	ip string,
 	port uint32,
 	stream pb.Destination_GetProfileServer,
 ) error {
 	translator := newEndpointProfileTranslator(
-		s.k8sAPI,
-		s.metadataAPI,
-		s.servers,
 		s.enableH2Upgrade,
 		s.controllerNS,
 		s.identityTrustDomain,
 		s.defaultOpaquePorts,
-		ip,
+		address.IP,
 		port,
 		stream,
-		address,
+		s.k8sAPI,
+		s.metadataAPI,
 		s.log,
 	)
-	s.pods.Subscribe(translator)
-	defer s.pods.Unsubscribe(translator)
 
-	if err := translator.Sync(); err != nil {
+	if err := translator.Update(address); err != nil {
 		return err
 	}
-	defer translator.Clean()
+
+	s.pods.Subscribe(address.Pod, address.IP, port, translator)
+	defer s.pods.Unsubscribe(address.IP, port, translator)
 
 	select {
 	case <-s.shutdown:
@@ -558,7 +549,7 @@ func (s *server) getEndpointByHostname(k8sAPI *k8s.API, hostname string, svcID w
 					if err != nil {
 						return nil, err
 					}
-					address, err := watcher.CreateAddress(s.k8sAPI, s.metadataAPI, pod, addr.IP, port)
+					address, err := watcher.CreateAddress(s.k8sAPI, s.metadataAPI, s.defaultOpaquePorts, pod, addr.IP, port)
 					if err != nil {
 						return nil, err
 					}
@@ -761,25 +752,6 @@ func hasSuffix(slice []string, suffix []string) bool {
 		}
 	}
 	return true
-}
-
-func getAnnotatedOpaquePorts(pod *corev1.Pod, defaultPorts map[uint32]struct{}) map[uint32]struct{} {
-	if pod == nil {
-		return defaultPorts
-	}
-	annotation, ok := pod.Annotations[labels.ProxyOpaquePortsAnnotation]
-	if !ok {
-		return defaultPorts
-	}
-	opaquePorts := make(map[uint32]struct{})
-	if annotation != "" {
-		for _, pr := range util.ParseContainerOpaquePorts(annotation, pod.Spec.Containers) {
-			for _, port := range pr.Ports() {
-				opaquePorts[uint32(port)] = struct{}{}
-			}
-		}
-	}
-	return opaquePorts
 }
 
 func getPodSkippedInboundPortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, error) {

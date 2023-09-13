@@ -19,6 +19,12 @@ const (
 )
 
 type (
+	// IPPort holds the IP and port for some destination
+	IPPort struct {
+		IP   string
+		Port Port
+	}
+
 	// ID is a namespace-qualified name.
 	ID struct {
 		Namespace string
