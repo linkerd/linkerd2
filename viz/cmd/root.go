@@ -24,9 +24,9 @@ const (
 	defaultLinkerdNamespace = "linkerd"
 	maxRps                  = 100.0
 
-	jsonOutput  = healthcheck.JSONOutput
-	tableOutput = healthcheck.TableOutput
-	wideOutput  = healthcheck.WideOutput
+	jsonOutput     = healthcheck.JSONOutput
+	tableOutput    = healthcheck.TableOutput
+	wideOutput     = healthcheck.WideOutput
 	jsonPathOutput = "jsonpath"
 )
 
