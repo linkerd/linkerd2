@@ -64,6 +64,9 @@ enablePSP: false
 # -- url of external prometheus instance
 prometheusUrl: ""
 
+# -- annotations for the prometheus deployment
+prometheusAnnotations: {}
+
 # -- url of external jaeger instance
 # Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>:16686` if you plan to use jaeger extension
 jaegerUrl: ""

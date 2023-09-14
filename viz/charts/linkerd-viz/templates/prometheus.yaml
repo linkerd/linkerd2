@@ -189,6 +189,7 @@ metadata:
     {{ include "partials.annotations.created-by" . }}
     linkerd.io/inject: enabled
     config.linkerd.io/proxy-await: "enabled"
+    {{- with .Values.prometheusAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: prometheus
