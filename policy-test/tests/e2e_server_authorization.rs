@@ -90,8 +90,19 @@ async fn network() {
             create_ready_pod(&client, web::pod(&ns))
         );
 
-        tracing::info!("Unblocking curl");
+        // Wait for the endpoints controller to populate the Endpoints resource.
+        let endpoints_ready = |obj: Option<&k8s::Endpoints>| -> bool {
+            if let Some(ep) = obj {
+                return ep.subsets.iter().flatten().count() > 0;
+            }
+            false
+        };
+        await_condition(&client, &ns, "web", endpoints_ready).await;
+
+        // Once the web pod is ready, delete the `curl-lock` configmap to
+        // unblock curl from running.
         curl.delete_lock().await;
+        tracing::info!("unblocked curl");
 
         // The blessed pod should be able to connect to the web pod.
         let status = blessed.exit_code().await;
@@ -292,8 +303,19 @@ async fn either() {
             create_ready_pod(&client, web::pod(&ns)),
         );
 
-        tracing::info!("Unblocking curl");
+        // Wait for the endpoints controller to populate the Endpoints resource.
+        let endpoints_ready = |obj: Option<&k8s::Endpoints>| -> bool {
+            if let Some(ep) = obj {
+                return ep.subsets.iter().flatten().count() > 0;
+            }
+            false
+        };
+        await_condition(&client, &ns, "web", endpoints_ready).await;
+
+        // Once the web pod is ready, delete the `curl-lock` configmap to
+        // unblock curl from running.
         curl.delete_lock().await;
+        tracing::info!("unblocked curl");
 
         let (blessed_injected_status, blessed_uninjected_status) =
             tokio::join!(blessed_injected.exit_code(), blessed_uninjected.exit_code());
