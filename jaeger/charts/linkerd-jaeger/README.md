@@ -74,11 +74,13 @@ Kubernetes: `>=1.21.0-0`
 |-----|------|---------|-------------|
 | clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use |
 | collector.UID | string | `nil` | UID for the collector resource |
-| collector.config | string | see `value.yaml` for actual configuration | OpenTelemetry Collector config, See the [Configuration docs](https://opentelemetry.io/docs/collector/configuration/) for more information |
+| collector.command | string | `"/otelcol-contrib"` |  |
+| collector.config | object | see `value.yaml` for actual configuration | OpenTelemetry Collector config, See the [Configuration docs](https://opentelemetry.io/docs/collector/configuration/) for more information |
 | collector.enabled | bool | `true` | Set to false to exclude collector installation |
-| collector.image.name | string | `"otel/opentelemetry-collector"` |  |
-| collector.image.pullPolicy | string | `"Always"` |  |
-| collector.image.version | string | `"0.59.0"` |  |
+| collector.env | list | `[]` | Collector Deployment env |
+| collector.image.name | string | `"otel/opentelemetry-collector-contrib"` |  |
+| collector.image.pullPolicy | string | `""` |  |
+| collector.image.version | string | `"0.83.0"` |  |
 | collector.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | collector.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the collector container can use |
 | collector.resources.cpu.request | string | `nil` | Amount of CPU units that the collector container requests |
@@ -90,13 +92,12 @@ Kubernetes: `>=1.21.0-0`
 | commonLabels | object | `{}` | Labels to apply to all resources |
 | defaultUID | int | `2103` | Default UID for all the jaeger components |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
-| imagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all jaeger components |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | jaeger.UID | string | `nil` | UID for the jaeger resource |
 | jaeger.args | list | `["--query.base-path=/jaeger"]` | CLI arguments for Jaeger, See [Jaeger AIO Memory CLI reference](https://www.jaegertracing.io/docs/1.24/cli/#jaeger-all-in-one-memory) |
 | jaeger.enabled | bool | `true` | Set to false to exclude all-in-one Jaeger installation |
 | jaeger.image.name | string | `"jaegertracing/all-in-one"` |  |
-| jaeger.image.pullPolicy | string | `"Always"` |  |
+| jaeger.image.pullPolicy | string | `""` |  |
 | jaeger.image.version | float | `1.31` |  |
 | jaeger.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | jaeger.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the jaeger container can use |
@@ -125,7 +126,7 @@ Kubernetes: `>=1.21.0-0`
 | webhook.externalSecret | bool | `false` | Do not create a secret resource for the webhook. If this is set to `true`, the value `webhook.caBundle` must be set or the ca bundle must injected with cert-manager ca injector using `webhook.injectCaFrom` or `webhook.injectCaFromSecret` (see below). |
 | webhook.failurePolicy | string | `"Ignore"` |  |
 | webhook.image.name | string | `"cr.l5d.io/linkerd/jaeger-webhook"` |  |
-| webhook.image.pullPolicy | string | `"IfNotPresent"` |  |
+| webhook.image.pullPolicy | string | `""` |  |
 | webhook.image.version | string | `"linkerdVersionValue"` |  |
 | webhook.injectCaFrom | string | `""` | Inject the CA bundle from a cert-manager Certificate. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource) for more information. |
 | webhook.injectCaFromSecret | string | `""` | Inject the CA bundle from a Secret. If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook. The Secret must have the CA Bundle stored in the `ca.crt` key and have the `cert-manager.io/allow-direct-injection` annotation set to `true`. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource) for more information. |

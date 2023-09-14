@@ -50,7 +50,6 @@ spec:
         - -linkerd-namespace=linkerd
         - -enable-pprof=false
         image: cr.l5d.io/linkerd/jaeger-webhook:dev-undefined
-        imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
             path: /ping
@@ -293,7 +292,6 @@ spec:
       - args:
         - --query.base-path=/jaeger
         image: jaegertracing/all-in-one:1.31
-        imagePullPolicy: Always
         name: jaeger
         ports:
         - containerPort: 14269
