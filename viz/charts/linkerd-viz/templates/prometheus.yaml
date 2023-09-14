@@ -189,7 +189,7 @@ metadata:
     {{ include "partials.annotations.created-by" . }}
     linkerd.io/inject: enabled
     config.linkerd.io/proxy-await: "enabled"
-    {{- with .Values.prometheusAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.prometheus.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   labels:
     linkerd.io/extension: viz
     app.kubernetes.io/name: prometheus
@@ -219,7 +219,7 @@ spec:
         {{- include "partials.proxy.config.annotations" .resources | nindent 8 }}
         {{- end }}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
-        {{- with .Values.prometheusAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        {{- with .Values.prometheus.annotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
         linkerd.io/inject: enabled
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
       labels:

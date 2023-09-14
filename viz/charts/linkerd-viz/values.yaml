@@ -64,9 +64,6 @@ enablePSP: false
 # -- url of external prometheus instance
 prometheusUrl: ""
 
-# -- annotations for the prometheus deployment
-prometheusAnnotations: {}
-
 # -- url of external jaeger instance
 # Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>:16686` if you plan to use jaeger extension
 jaegerUrl: ""
@@ -443,6 +440,9 @@ prometheus:
     scrape_interval: 10s
     scrape_timeout: 10s
     evaluation_interval: 10s
+  
+  # -- annotations for the prometheus deployment
+  annotations: {}
 
   # -- Alert relabeling is applied to alerts before they are sent to the
   # Alertmanager.
