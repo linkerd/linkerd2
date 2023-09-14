@@ -2,7 +2,8 @@ use linkerd_policy_controller_k8s_api::{
     self as k8s, policy::server_authorization::Client as ClientAuthz, ResourceExt,
 };
 use linkerd_policy_test::{
-    await_condition, create, create_ready_pod, curl, web, with_temp_ns, LinkerdInject,
+    await_condition, create, create_ready_pod, curl, endpoints_ready, web, with_temp_ns,
+    LinkerdInject,
 };
 
 #[tokio::test(flavor = "current_thread")]
@@ -90,13 +91,6 @@ async fn network() {
             create_ready_pod(&client, web::pod(&ns))
         );
 
-        // Wait for the endpoints controller to populate the Endpoints resource.
-        let endpoints_ready = |obj: Option<&k8s::Endpoints>| -> bool {
-            if let Some(ep) = obj {
-                return ep.subsets.iter().flatten().count() > 0;
-            }
-            false
-        };
         await_condition(&client, &ns, "web", endpoints_ready).await;
 
         // Once the web pod is ready, delete the `curl-lock` configmap to
@@ -183,13 +177,6 @@ async fn both() {
             create_ready_pod(&client, web::pod(&ns))
         );
 
-        // Wait for the endpoints controller to populate the Endpoints resource.
-        let endpoints_ready = |obj: Option<&k8s::Endpoints>| -> bool {
-            if let Some(ep) = obj {
-                return ep.subsets.iter().flatten().count() > 0;
-            }
-            false
-        };
         await_condition(&client, &ns, "web", endpoints_ready).await;
 
         // Once the web pod is ready, delete the `curl-lock` configmap to
@@ -303,13 +290,6 @@ async fn either() {
             create_ready_pod(&client, web::pod(&ns)),
         );
 
-        // Wait for the endpoints controller to populate the Endpoints resource.
-        let endpoints_ready = |obj: Option<&k8s::Endpoints>| -> bool {
-            if let Some(ep) = obj {
-                return ep.subsets.iter().flatten().count() > 0;
-            }
-            false
-        };
         await_condition(&client, &ns, "web", endpoints_ready).await;
 
         // Once the web pod is ready, delete the `curl-lock` configmap to
