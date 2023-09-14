@@ -14,7 +14,7 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 data:
   collector-config: |
-    {{- .Values.collector.config | trim | nindent 4 }}
+    {{- toYaml .Values.collector.config | trim | nindent 4 }}
 ---
 apiVersion: v1
 kind: Service
@@ -76,13 +76,14 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/inject: enabled
-        config.linkerd.io/proxy-await: "enabled"
+        checksum/config: {{ toYaml .Values.collector.config | trim | sha256sum }}
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
+        config.linkerd.io/proxy-await: "enabled"
+        linkerd.io/inject: enabled
         prometheus.io/path: /metrics
         prometheus.io/port: "8888"
         prometheus.io/scrape: "true"
-        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
       labels:
         linkerd.io/extension: jaeger
         component: collector
@@ -94,18 +95,27 @@ spec:
       {{- include "linkerd.node-selector" (dict "Values" .Values.collector) | nindent 6 }}
       containers:
       - command:
-        - /otelcol
+        - {{ .Values.collector.command }}
         - --config=/conf/collector-config.yaml
         env:
         - name: GOGC
           value: "80"
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
         - name: POD_NAMESPACE
           valueFrom:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
+        {{- with .Values.collector.env }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
         image: {{.Values.collector.image.name}}:{{.Values.collector.image.version}}
-        imagePullPolicy: {{.Values.collector.image.pullPolicy}}
+        {{- with .Values.collector.image.pullPolicy }}
+        imagePullPolicy: {{.}}
+        {{- end }}
         livenessProbe:
           httpGet:
             path: /
@@ -218,7 +228,9 @@ spec:
         - {{ . -}}
         {{ end }}
         image: {{.Values.jaeger.image.name}}:{{.Values.jaeger.image.version}}
-        imagePullPolicy: {{.Values.jaeger.image.pullPolicy}}
+        {{- with .Values.jaeger.image.pullPolicy }}
+        imagePullPolicy: {{.}}
+        {{- end }}
         name: jaeger
         ports:
         - containerPort: 14269
