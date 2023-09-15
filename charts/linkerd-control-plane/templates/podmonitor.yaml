@@ -12,6 +12,7 @@ metadata:
   labels:
     linkerd.io/control-plane-ns: {{ .Release.Namespace }}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.podMonitor.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -44,6 +45,7 @@ metadata:
   labels:
     linkerd.io/control-plane-ns: {{ .Release.Namespace }}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.podMonitor.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
@@ -78,6 +80,7 @@ metadata:
   labels:
     linkerd.io/control-plane-ns: {{ .Release.Namespace }}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.podMonitor.labels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:

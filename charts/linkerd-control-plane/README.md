@@ -197,6 +197,7 @@ Kubernetes: `>=1.21.0-0`
 | podMonitor.controller.enabled | bool | `true` | Enables the creation of PodMonitor for the control-plane |
 | podMonitor.controller.namespaceSelector | string | `"matchNames:\n  - {{ .Release.Namespace }}\n  - linkerd-viz\n  - linkerd-jaeger\n"` | Selector to select which namespaces the Endpoints objects are discovered from |
 | podMonitor.enabled | bool | `false` | Enables the creation of Prometheus Operator [PodMonitor](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.PodMonitor) |
+| podMonitor.labels | object | `{}` | Labels to apply to all pod Monitors |
 | podMonitor.proxy.enabled | bool | `true` | Enables the creation of PodMonitor for the data-plane |
 | podMonitor.scrapeInterval | string | `"10s"` | Interval at which metrics should be scraped |
 | podMonitor.scrapeTimeout | string | `"10s"` | Iimeout after which the scrape is ended |
