@@ -1,13 +1,17 @@
 package util
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"sigs.k8s.io/yaml"
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -173,4 +177,50 @@ func HTTPMethodToString(method *pb.HttpMethod) string {
 		return method.GetUnregistered()
 	}
 	return method.GetRegistered().String()
+}
+
+type PrometheusConfig struct {
+	Global map[string]string
+}
+
+// ValidateScrapeInterval returns an error if the Prometheus scrape interval
+// is longer than the query time window. This is an opportunistic, best-effort
+// validation: if we cannot determine the Prometheus scrape interval for any
+// reason, we do not return an error.
+func ValidateScrapeInterval(ctx context.Context, k8sAPI *k8s.KubernetesAPI, namespace string, window string) error {
+	config, err := k8sAPI.CoreV1().ConfigMaps(namespace).Get(ctx, "prometheus-config", metav1.GetOptions{})
+	if err != nil {
+		return nil
+	}
+
+	data, found := config.Data["prometheus.yml"]
+	if !found {
+		return nil
+	}
+
+	var prom PrometheusConfig
+	err = yaml.Unmarshal([]byte(data), &prom)
+	if err != nil {
+		return nil
+	}
+
+	scrape_interval_str, found := prom.Global["scrape_interval"]
+	if !found {
+		return nil
+	}
+
+	scrape_interval, err := time.ParseDuration(scrape_interval_str)
+	if err != nil {
+		return nil
+	}
+
+	t, err := time.ParseDuration(window)
+	if err != nil {
+		return nil
+	}
+
+	if t < scrape_interval {
+		return fmt.Errorf("Time window (%s) must be at least as long as the Prometheus scrape interval (%s)", t, scrape_interval)
+	}
+	return nil
 }
