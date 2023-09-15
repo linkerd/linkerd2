@@ -290,8 +290,8 @@ controllerImage: cr.l5d.io/linkerd/controller
 controllerReplicas: 1
 # -- User ID for the control plane components
 controllerUID: 2103
-# -- Tag for the controllerImage if SHA is required
-#controllerImageVersion: tag@sha:123
+# -- Optionally allow a specific container image Tag (or SHA) to be specified for the controllerImage.
+controllerImageVersion: ""
 
 # destination configuration
 # set resources for the sp-validator and its linkerd proxy respectively
