@@ -88,13 +88,13 @@ func TestGetLatestVersions(t *testing.T) {
 }
 
 func channelsEqual(c1, c2 Channels) bool {
-	if len(c1.array) != len(c2.array) {
+	if len(c1.Array) != len(c2.Array) {
 		return false
 	}
 
-	for _, cv1 := range c1.array {
+	for _, cv1 := range c1.Array {
 		found := false
-		for _, cv2 := range c2.array {
+		for _, cv2 := range c2.Array {
 			if cv1 == cv2 {
 				found = true
 				break

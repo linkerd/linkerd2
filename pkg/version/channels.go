@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/linkerd/linkerd2/pkg/util"
@@ -14,12 +15,14 @@ import (
 // This module is also responsible for online retrieval of the latest release
 // versions.
 type Channels struct {
-	array []channelVersion
+	Array []channelVersion
 }
 
 var (
 	// CheckURL provides an online endpoint for Linkerd's version checks
 	CheckURL = "https://versioncheck.linkerd.io/version.json"
+	// DnsError is used for identifying DNS errors when fetching the latest version channels
+	DnsError *net.DNSError
 )
 
 // NewChannels is used primarily for testing, it returns a Channels struct that
@@ -31,7 +34,7 @@ func NewChannels(channel string) (Channels, error) {
 	}
 
 	return Channels{
-		array: []channelVersion{cv},
+		Array: []channelVersion{cv},
 	}, nil
 }
 
@@ -44,12 +47,16 @@ func (c Channels) Match(actualVersion string) error {
 		return errors.New("actual version is empty")
 	}
 
+	if len(c.Array) == 0 {
+		return errors.New("unable to determine version channel")
+	}
+
 	actual, err := parseChannelVersion(actualVersion)
 	if err != nil {
 		return fmt.Errorf("failed to parse actual version: %w", err)
 	}
 
-	for _, cv := range c.array {
+	for _, cv := range c.Array {
 		if cv.channel == actual.channel {
 			return match(cv.String(), actualVersion)
 		}
@@ -73,6 +80,9 @@ func getLatestVersions(ctx context.Context, client *http.Client, url string) (Ch
 
 	rsp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
+		if errors.As(err, &DnsError) {
+			return Channels{}, fmt.Errorf("failed to resolve version check server: %s", url)
+		}
 		return Channels{}, err
 	}
 	defer rsp.Body.Close()
@@ -103,7 +113,7 @@ func getLatestVersions(ctx context.Context, client *http.Client, url string) (Ch
 			return Channels{}, fmt.Errorf("unexpected versioncheck response: channel in %s does not match %s", cv, c)
 		}
 
-		channels.array = append(channels.array, cv)
+		channels.Array = append(channels.Array, cv)
 	}
 
 	return channels, nil
