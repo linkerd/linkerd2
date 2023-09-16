@@ -168,6 +168,14 @@ pub async fn await_route_status(
     .inner
 }
 
+// Wait for the endpoints controller to populate the Endpoints resource.
+pub fn endpoints_ready(obj: Option<&k8s::Endpoints>) -> bool {
+    if let Some(ep) = obj {
+        return ep.subsets.iter().flatten().count() > 0;
+    }
+    false
+}
+
 #[tracing::instrument(skip_all, fields(%pod, %container))]
 pub async fn logs(client: &kube::Client, ns: &str, pod: &str, container: &str) {
     let params = kube::api::LogParams {

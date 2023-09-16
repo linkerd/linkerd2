@@ -12,8 +12,8 @@ pub use k8s_openapi::{
         self,
         coordination::v1::Lease,
         core::v1::{
-            Container, ContainerPort, HTTPGetAction, Namespace, Node, NodeSpec, Pod, PodSpec,
-            PodStatus, Probe, Service, ServiceAccount, ServicePort, ServiceSpec,
+            Container, ContainerPort, Endpoints, HTTPGetAction, Namespace, Node, NodeSpec, Pod,
+            PodSpec, PodStatus, Probe, Service, ServiceAccount, ServicePort, ServiceSpec,
         },
     },
     apimachinery::{
