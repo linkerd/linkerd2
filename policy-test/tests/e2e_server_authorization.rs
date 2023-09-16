@@ -1,7 +1,10 @@
 use linkerd_policy_controller_k8s_api::{
     self as k8s, policy::server_authorization::Client as ClientAuthz, ResourceExt,
 };
-use linkerd_policy_test::{create, create_ready_pod, curl, web, with_temp_ns, LinkerdInject};
+use linkerd_policy_test::{
+    await_condition, create, create_ready_pod, curl, endpoints_ready, web, with_temp_ns,
+    LinkerdInject,
+};
 
 #[tokio::test(flavor = "current_thread")]
 async fn meshtls() {
@@ -88,8 +91,12 @@ async fn network() {
             create_ready_pod(&client, web::pod(&ns))
         );
 
-        tracing::info!("Unblocking curl");
+        await_condition(&client, &ns, "web", endpoints_ready).await;
+
+        // Once the web pod is ready, delete the `curl-lock` configmap to
+        // unblock curl from running.
         curl.delete_lock().await;
+        tracing::info!("unblocked curl");
 
         // The blessed pod should be able to connect to the web pod.
         let status = blessed.exit_code().await;
@@ -170,10 +177,12 @@ async fn both() {
             create_ready_pod(&client, web::pod(&ns))
         );
 
+        await_condition(&client, &ns, "web", endpoints_ready).await;
+
         // Once the web pod is ready, delete the `curl-lock` configmap to
         // unblock curl from running.
-        tracing::info!("Unblocking curl");
         curl.delete_lock().await;
+        tracing::info!("unblocked curl");
 
         let (blessed_injected_status, blessed_uninjected_status) =
             tokio::join!(blessed_injected.exit_code(), blessed_uninjected.exit_code());
@@ -281,8 +290,12 @@ async fn either() {
             create_ready_pod(&client, web::pod(&ns)),
         );
 
-        tracing::info!("Unblocking curl");
+        await_condition(&client, &ns, "web", endpoints_ready).await;
+
+        // Once the web pod is ready, delete the `curl-lock` configmap to
+        // unblock curl from running.
         curl.delete_lock().await;
+        tracing::info!("unblocked curl");
 
         let (blessed_injected_status, blessed_uninjected_status) =
             tokio::join!(blessed_injected.exit_code(), blessed_uninjected.exit_code());
