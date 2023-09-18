@@ -102,6 +102,11 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		}
 	}
 
+	err := s.validateTimeWindow(ctx, req.TimeWindow)
+	if err != nil {
+		return statSummaryError(req, fmt.Sprintf("invalid time window: %s", err)), nil
+	}
+
 	statTables := make([]*pb.StatTable, 0)
 
 	var resourcesToQuery []string

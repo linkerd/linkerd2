@@ -223,21 +223,6 @@ If no resource name is specified, displays stats about all resources of the spec
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 			}
 
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
-				os.Exit(1)
-			}
-			ns, err := k8sAPI.GetNamespaceWithExtensionLabel(cmd.Context(), "viz")
-			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
-				os.Exit(1)
-			}
-			err = pkgUtil.ValidateScrapeInterval(cmd.Context(), k8sAPI, ns.Name, options.timeWindow)
-			if err != nil {
-				return err
-			}
-
 			reqs, err := buildStatSummaryRequests(args, options)
 			if err != nil {
 				return fmt.Errorf("error creating metrics request while making stats request: %w", err)

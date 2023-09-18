@@ -55,21 +55,6 @@ func NewCmdAuthz() *cobra.Command {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 			}
 
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
-				os.Exit(1)
-			}
-			ns, err := k8sAPI.GetNamespaceWithExtensionLabel(cmd.Context(), "viz")
-			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
-				os.Exit(1)
-			}
-			err = pkgUtil.ValidateScrapeInterval(cmd.Context(), k8sAPI, ns.Name, options.timeWindow)
-			if err != nil {
-				return err
-			}
-
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
 			// https://github.com/grpc/grpc-go/issues/682
 			client := api.CheckClientOrExit(hc.VizOptions{

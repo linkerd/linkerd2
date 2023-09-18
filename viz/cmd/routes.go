@@ -72,21 +72,6 @@ This command will only display traffic which is sent to a service that has a Ser
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 			}
 
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
-				os.Exit(1)
-			}
-			ns, err := k8sAPI.GetNamespaceWithExtensionLabel(cmd.Context(), "viz")
-			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
-				os.Exit(1)
-			}
-			err = pkgUtil.ValidateScrapeInterval(cmd.Context(), k8sAPI, ns.Name, options.timeWindow)
-			if err != nil {
-				return err
-			}
-
 			req, err := buildTopRoutesRequest(args[0], options)
 			if err != nil {
 				return fmt.Errorf("error creating metrics request while making routes request: %w", err)
