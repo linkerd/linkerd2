@@ -275,27 +275,7 @@ func (s *server) getProfileByIP(
 	}
 
 	if svcID == nil {
-		// If the IP does not map to a service, check if it maps to a pod
-		var pod *corev1.Pod
-		targetIP := ip.String()
-		pod, err = getPodByPodIP(s.k8sAPI, targetIP, port, s.log)
-		if err != nil {
-			return err
-		}
-		if pod != nil {
-			targetIP = pod.Status.PodIP
-		} else {
-			pod, err = getPodByHostIP(s.k8sAPI, targetIP, port, s.log)
-			if err != nil {
-				return err
-			}
-		}
-
-		address, err := watcher.CreateAddress(s.k8sAPI, s.metadataAPI, s.defaultOpaquePorts, pod, targetIP, port)
-		if err != nil {
-			return fmt.Errorf("failed to create address: %w", err)
-		}
-		return s.subscribeToEndpointProfile(&address, port, stream)
+		return s.subscribeToEndpointProfile(nil, "", ip.String(), port, stream)
 	}
 
 	fqn := fmt.Sprintf("%s.%s.svc.%s", svcID.Name, svcID.Namespace, s.clusterDomain)
@@ -317,11 +297,7 @@ func (s *server) getProfileByName(
 	// name. When we fetch the profile using a pod's DNS name, we want to
 	// return an endpoint in the profile response.
 	if hostname != "" {
-		address, err := s.getEndpointByHostname(s.k8sAPI, hostname, service, port)
-		if err != nil {
-			return fmt.Errorf("failed to get pod for hostname %s: %w", hostname, err)
-		}
-		return s.subscribeToEndpointProfile(address, port, stream)
+		return s.subscribeToEndpointProfile(&service, hostname, "", port, stream)
 	}
 
 	return s.subscribeToServiceProfile(service, token, host, port, stream)
@@ -466,7 +442,9 @@ func (s *server) subscribeToServiceWithoutContext(
 //
 // This function does not return until the stream is closed.
 func (s *server) subscribeToEndpointProfile(
-	address *watcher.Address,
+	service *watcher.ServiceID,
+	hostname,
+	ip string,
 	port uint32,
 	stream pb.Destination_GetProfileServer,
 ) error {
@@ -475,20 +453,17 @@ func (s *server) subscribeToEndpointProfile(
 		s.controllerNS,
 		s.identityTrustDomain,
 		s.defaultOpaquePorts,
-		address.IP,
-		port,
 		stream,
 		s.k8sAPI,
 		s.metadataAPI,
-		s.log,
 	)
 
-	if err := translator.Update(address); err != nil {
+	var err error
+	ip, err = s.pods.Subscribe(service, hostname, ip, port, translator)
+	if err != nil {
 		return err
 	}
-
-	s.pods.Subscribe(address.Pod, address.IP, port, translator)
-	defer s.pods.Unsubscribe(address.IP, port, translator)
+	defer s.pods.Unsubscribe(ip, port, translator)
 
 	select {
 	case <-s.shutdown:
@@ -526,116 +501,6 @@ func getSvcID(k8sAPI *k8s.API, clusterIP string, log *logging.Entry) (*watcher.S
 		Name:      services[0].Name,
 	}
 	return service, nil
-}
-
-// getEndpointByHostname returns a pod that maps to the given hostname (or an
-// instanceID). The hostname is generally the prefix of the pod's DNS name;
-// since it may be arbitrary we need to look at the corresponding service's
-// Endpoints object to see whether the hostname matches a pod.
-func (s *server) getEndpointByHostname(k8sAPI *k8s.API, hostname string, svcID watcher.ServiceID, port uint32) (*watcher.Address, error) {
-	ep, err := k8sAPI.Endpoint().Lister().Endpoints(svcID.Namespace).Get(svcID.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, subset := range ep.Subsets {
-		for _, addr := range subset.Addresses {
-
-			if hostname == addr.Hostname {
-				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
-					podName := addr.TargetRef.Name
-					podNamespace := addr.TargetRef.Namespace
-					pod, err := k8sAPI.Pod().Lister().Pods(podNamespace).Get(podName)
-					if err != nil {
-						return nil, err
-					}
-					address, err := watcher.CreateAddress(s.k8sAPI, s.metadataAPI, s.defaultOpaquePorts, pod, addr.IP, port)
-					if err != nil {
-						return nil, err
-					}
-					return &address, nil
-				}
-				return &watcher.Address{
-					IP:   addr.IP,
-					Port: port,
-				}, nil
-
-			}
-		}
-	}
-
-	return nil, fmt.Errorf("no pod found in Endpoints %s/%s for hostname %s", svcID.Namespace, svcID.Name, hostname)
-}
-
-// getPodByHostIP returns a pod that maps to the given IP address in the host
-// network. It must have a container port that exposes `port` as a host port.
-func getPodByHostIP(k8sAPI *k8s.API, hostIP string, port uint32, log *logging.Entry) (*corev1.Pod, error) {
-	addr := net.JoinHostPort(hostIP, fmt.Sprintf("%d", port))
-	hostIPPods, err := getIndexedPods(k8sAPI, watcher.HostIPIndex, addr)
-	if err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
-	}
-	if len(hostIPPods) == 1 {
-		log.Debugf("found %s:%d on the host network", hostIP, port)
-		return hostIPPods[0], nil
-	}
-	if len(hostIPPods) > 1 {
-		conflictingPods := []string{}
-		for _, pod := range hostIPPods {
-			conflictingPods = append(conflictingPods, fmt.Sprintf("%s:%s", pod.Namespace, pod.Name))
-		}
-		log.Warnf("found conflicting %s:%d endpoint on the host network: %s", hostIP, port, strings.Join(conflictingPods, ","))
-		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with a conflicting host network endpoint %s:%d", len(hostIPPods), hostIP, port)
-	}
-
-	return nil, nil
-}
-
-// getPodByPodIP returns a pod that maps to the given IP address in the pod network
-func getPodByPodIP(k8sAPI *k8s.API, podIP string, port uint32, log *logging.Entry) (*corev1.Pod, error) {
-	podIPPods, err := getIndexedPods(k8sAPI, watcher.PodIPIndex, podIP)
-	if err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
-	}
-	if len(podIPPods) == 1 {
-		log.Debugf("found %s on the pod network", podIP)
-		return podIPPods[0], nil
-	}
-	if len(podIPPods) > 1 {
-		conflictingPods := []string{}
-		for _, pod := range podIPPods {
-			conflictingPods = append(conflictingPods, fmt.Sprintf("%s:%s", pod.Namespace, pod.Name))
-		}
-		log.Warnf("found conflicting %s IP on the pod network: %s", podIP, strings.Join(conflictingPods, ","))
-		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with a conflicting pod network IP %s", len(podIPPods), podIP)
-	}
-
-	log.Debugf("no pod found for %s:%d", podIP, port)
-	return nil, nil
-}
-
-func getIndexedPods(k8sAPI *k8s.API, indexName string, podIP string) ([]*corev1.Pod, error) {
-	objs, err := k8sAPI.Pod().Informer().GetIndexer().ByIndex(indexName, podIP)
-	if err != nil {
-		return nil, fmt.Errorf("failed getting %s indexed pods: %w", indexName, err)
-	}
-	pods := make([]*corev1.Pod, 0)
-	for _, obj := range objs {
-		pod := obj.(*corev1.Pod)
-		if !podReceivingTraffic(pod) {
-			continue
-		}
-		pods = append(pods, pod)
-	}
-	return pods, nil
-}
-
-func podReceivingTraffic(pod *corev1.Pod) bool {
-	phase := pod.Status.Phase
-	podTerminated := phase == corev1.PodSucceeded || phase == corev1.PodFailed
-	podTerminating := pod.DeletionTimestamp != nil
-
-	return !podTerminating && !podTerminated
 }
 
 ////////////

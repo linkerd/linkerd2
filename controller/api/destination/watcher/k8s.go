@@ -123,3 +123,27 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 
 	return nil
 }
+
+func getIndexedPods(k8sAPI *k8s.API, indexName string, podIP string) ([]*corev1.Pod, error) {
+	objs, err := k8sAPI.Pod().Informer().GetIndexer().ByIndex(indexName, podIP)
+	if err != nil {
+		return nil, fmt.Errorf("failed getting %s indexed pods: %w", indexName, err)
+	}
+	pods := make([]*corev1.Pod, 0)
+	for _, obj := range objs {
+		pod := obj.(*corev1.Pod)
+		if !podReceivingTraffic(pod) {
+			continue
+		}
+		pods = append(pods, pod)
+	}
+	return pods, nil
+}
+
+func podReceivingTraffic(pod *corev1.Pod) bool {
+	phase := pod.Status.Phase
+	podTerminated := phase == corev1.PodSucceeded || phase == corev1.PodFailed
+	podTerminating := pod.DeletionTimestamp != nil
+
+	return !podTerminating && !podTerminated
+}

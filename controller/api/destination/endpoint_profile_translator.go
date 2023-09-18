@@ -6,7 +6,7 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type endpointProfileTranslator struct {
@@ -14,13 +14,12 @@ type endpointProfileTranslator struct {
 	controllerNS        string
 	identityTrustDomain string
 	defaultOpaquePorts  map[uint32]struct{}
-	ip                  string
-	port                uint32
 	stream              pb.Destination_GetProfileServer
+	lastMessage         string
 
 	k8sAPI      *k8s.API
 	metadataAPI *k8s.MetadataAPI
-	log         *logrus.Entry
+	log         *log.Entry
 }
 
 // newEndpointProfileTranslator translates pod updates and protocol updates to
@@ -30,20 +29,15 @@ func newEndpointProfileTranslator(
 	controllerNS,
 	identityTrustDomain string,
 	defaultOpaquePorts map[uint32]struct{},
-	ip string,
-	port uint32,
 	stream pb.Destination_GetProfileServer,
 	k8sAPI *k8s.API,
 	metadataAPI *k8s.MetadataAPI,
-	log *logrus.Entry,
 ) *endpointProfileTranslator {
 	return &endpointProfileTranslator{
 		enableH2Upgrade:     enableH2Upgrade,
 		controllerNS:        controllerNS,
 		identityTrustDomain: identityTrustDomain,
 		defaultOpaquePorts:  defaultOpaquePorts,
-		ip:                  ip,
-		port:                port,
 		stream:              stream,
 		k8sAPI:              k8sAPI,
 		metadataAPI:         metadataAPI,
@@ -51,11 +45,13 @@ func newEndpointProfileTranslator(
 	}
 }
 
-func (ept *endpointProfileTranslator) Update(address *watcher.Address) error {
+// Update sends a DestinationProfile message into the stream, if the same
+// message hasn't been sent already. If it has, false is returned.
+func (ept *endpointProfileTranslator) Update(address *watcher.Address) (bool, error) {
 	opaquePorts := watcher.GetAnnotatedOpaquePorts(address.Pod, ept.defaultOpaquePorts)
 	endpoint, err := ept.createEndpoint(*address, opaquePorts)
 	if err != nil {
-		return fmt.Errorf("failed to create endpoint: %w", err)
+		return false, fmt.Errorf("failed to create endpoint: %w", err)
 	}
 
 	// The protocol for an endpoint should only be updated if there is a pod,
@@ -68,7 +64,7 @@ func (ept *endpointProfileTranslator) Update(address *watcher.Address) error {
 		} else if endpoint.ProtocolHint.OpaqueTransport == nil {
 			port, err := getInboundPort(&address.Pod.Spec)
 			if err != nil {
-				return err
+				return false, err
 			}
 
 			endpoint.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
@@ -82,12 +78,17 @@ func (ept *endpointProfileTranslator) Update(address *watcher.Address) error {
 		Endpoint:       endpoint,
 		OpaqueProtocol: address.OpaqueProtocol,
 	}
+	msg := profile.String()
+	if msg == ept.lastMessage {
+		return false, nil
+	}
+	ept.lastMessage = msg
 	ept.log.Debugf("sending protocol update: %+v", profile)
 	if err := ept.stream.Send(profile); err != nil {
-		return fmt.Errorf("failed to send protocol update: %w", err)
+		return false, fmt.Errorf("failed to send protocol update: %w", err)
 	}
 
-	return nil
+	return true, nil
 }
 
 func (ept *endpointProfileTranslator) createEndpoint(address watcher.Address, opaquePorts map[uint32]struct{}) (*pb.WeightedAddr, error) {

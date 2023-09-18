@@ -3,18 +3,19 @@ package watcher
 import (
 	"context"
 	"fmt"
+	"net"
 	"strconv"
+	"strings"
 	"sync"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -35,19 +36,22 @@ type (
 	// It keeps a list of listeners to be notified whenever the pod or the
 	// associated opaque protocol config changes.
 	podPublisher struct {
-		ip        string
-		port      Port
-		pod       *corev1.Pod
-		listeners []PodUpdateListener
-		metrics   metrics
-		log       *logging.Entry
+		defaultOpaquePorts map[uint32]struct{}
+		k8sAPI             *k8s.API
+		metadataAPI        *k8s.MetadataAPI
+		ip                 string
+		port               Port
+		pod                *corev1.Pod
+		listeners          []PodUpdateListener
+		metrics            metrics
+		log                *logging.Entry
 
 		mu sync.RWMutex
 	}
 
 	// PodUpdateListener is the interface subscribers must implement.
 	PodUpdateListener interface {
-		Update(*Address) error
+		Update(*Address) (bool, error)
 	}
 )
 
@@ -86,11 +90,38 @@ func NewPodWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.E
 }
 
 // Subscribe notifies the listener on changes on any pod backing the passed
-// ip:port or its associated opaque protocol config
-func (pw *PodWatcher) Subscribe(pod *corev1.Pod, ip string, port Port, listener PodUpdateListener) {
-	pw.log.Debugf("Establishing watch on %s:%d", ip, port)
-	pp := pw.getOrNewPodPublisher(pod, ip, port)
+// host/ip:port or changes to its associated opaque protocol config. If service
+// and hostname are empty then ip should be set and vice-versa. If ip is empty,
+// the corresponding ip is found for the given service/hostname, and returned.
+func (pw *PodWatcher) Subscribe(service *ServiceID, hostname, ip string, port Port, listener PodUpdateListener) (string, error) {
+	if hostname != "" {
+		pw.log.Debugf("Establishing watch on %s.%s.%s:%d", hostname, service.Name, service.Namespace, port)
+	} else if service != nil {
+		pw.log.Debugf("Establishing watch on %s.%s:%d", service.Name, service.Namespace, port)
+	} else {
+		pw.log.Debugf("Establishing watch on %s:%d", ip, port)
+	}
+	pp, err := pw.getOrNewPodPublisher(service, hostname, ip, port)
+	if err != nil {
+		return "", err
+	}
+
 	pp.subscribe(listener)
+
+	address, err := pp.createAddress()
+	if err != nil {
+		return "", err
+	}
+
+	sent, err := listener.Update(&address)
+	if err != nil {
+		return "", err
+	}
+	if sent {
+		pp.metrics.incUpdates()
+	}
+
+	return pp.ip, nil
 }
 
 // Subscribe stops notifying the listener on chages on any pod backing the
@@ -162,12 +193,12 @@ func (pw *PodWatcher) submitPodUpdate(pod *corev1.Pod, remove bool) {
 		for _, containerPort := range container.Ports {
 			if containerPort.ContainerPort != 0 {
 				if pp, ok := pw.getPodPublisher(pod.Status.PodIP, Port(containerPort.ContainerPort)); ok {
-					pp.updatePod(pw.k8sAPI, pw.metadataAPI, pw.defaultOpaquePorts, submitPod)
+					pp.updatePod(submitPod)
 				}
 			}
 			if containerPort.HostPort != 0 {
 				if pp, ok := pw.getPodPublisher(pod.Status.HostIP, Port(containerPort.HostPort)); ok {
-					pp.updatePod(pw.k8sAPI, pw.metadataAPI, pw.defaultOpaquePorts, submitPod)
+					pp.updatePod(submitPod)
 				}
 			}
 		}
@@ -177,16 +208,9 @@ func (pw *PodWatcher) submitPodUpdate(pod *corev1.Pod, remove bool) {
 // updateServer triggers an Update() call to the listeners of the podPublishers
 // whose pod matches the Server's selector. This function is an event handler
 // so it cannot block.
-func (pw *PodWatcher) updateServer(obj any) {
+func (pw *PodWatcher) updateServer(_ any) {
 	pw.mu.RLock()
 	defer pw.mu.RUnlock()
-
-	server := obj.(*v1beta1.Server)
-	selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
-	if err != nil {
-		pw.log.Errorf("failed to create Selector: %s", err)
-		return
-	}
 
 	for _, pp := range pw.publishers {
 		if pp.pod == nil {
@@ -195,22 +219,26 @@ func (pw *PodWatcher) updateServer(obj any) {
 		opaquePorts := GetAnnotatedOpaquePorts(pp.pod, pw.defaultOpaquePorts)
 		_, isOpaque := opaquePorts[pp.port]
 		// if port is annotated to be always opaque we can disregard Server updates
-		if isOpaque || !selector.Matches(labels.Set(pp.pod.Labels)) {
+		if isOpaque {
 			continue
 		}
 
 		go func(pp *podPublisher) {
 			updated := false
 			for _, listener := range pp.listeners {
-				addr, err := CreateAddress(pw.k8sAPI, pw.metadataAPI, pw.defaultOpaquePorts, pp.pod, pp.ip, pp.port)
+				// the Server in question doesn't carry information about other
+				// Servers that might target this podPublisher; createAddress()
+				// queries all the relevant Servers to determine the full state
+				addr, err := pp.createAddress()
 				if err != nil {
 					pw.log.Errorf("Error creating address for pod: %s", err)
 					continue
 				}
-				if err := listener.Update(&addr); err != nil {
+				sent, err := listener.Update(&addr)
+				if err != nil {
 					pw.log.Errorf("Error calling pod watcher listener for server update: %s", err)
 				}
-				updated = true
+				updated = updated || sent
 			}
 			if updated {
 				pp.metrics.incUpdates()
@@ -221,17 +249,41 @@ func (pw *PodWatcher) updateServer(obj any) {
 
 // getOrNewPodPublisher returns the podPublisher for the given target if it
 // exists. Otherwise, it creates a new one and returns it.
-func (pw *PodWatcher) getOrNewPodPublisher(pod *corev1.Pod, ip string, port Port) *podPublisher {
+func (pw *PodWatcher) getOrNewPodPublisher(service *ServiceID, hostname, ip string, port Port) (*podPublisher, error) {
 	pw.mu.Lock()
 	defer pw.mu.Unlock()
+
+	var pod *corev1.Pod
+	var err error
+	if hostname != "" {
+		pod, err = pw.getEndpointByHostname(hostname, service)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get pod for hostname %s: %w", hostname, err)
+		}
+		ip = pod.Status.PodIP
+	} else {
+		pod, err = pw.getPodByPodIP(ip, port)
+		if err != nil {
+			return nil, err
+		}
+		if pod == nil {
+			pod, err = pw.getPodByHostIP(ip, port)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	ipPort := IPPort{ip, port}
 	pp, ok := pw.publishers[ipPort]
 	if !ok {
 		pp = &podPublisher{
-			ip:   ip,
-			port: port,
-			pod:  pod,
+			defaultOpaquePorts: pw.defaultOpaquePorts,
+			k8sAPI:             pw.k8sAPI,
+			metadataAPI:        pw.metadataAPI,
+			ip:                 ip,
+			port:               port,
+			pod:                pod,
 			metrics: ipPortVecs.newMetrics(prometheus.Labels{
 				"ip":   ip,
 				"port": strconv.FormatUint(uint64(port), 10),
@@ -244,13 +296,91 @@ func (pw *PodWatcher) getOrNewPodPublisher(pod *corev1.Pod, ip string, port Port
 		}
 		pw.publishers[ipPort] = pp
 	}
-	return pp
+	return pp, nil
 }
 
 func (pw *PodWatcher) getPodPublisher(ip string, port Port) (pp *podPublisher, ok bool) {
 	ipPort := IPPort{ip, port}
 	pp, ok = pw.publishers[ipPort]
 	return
+}
+
+// getPodByPodIP returns a pod that maps to the given IP address in the pod network
+func (pw *PodWatcher) getPodByPodIP(podIP string, port uint32) (*corev1.Pod, error) {
+	podIPPods, err := getIndexedPods(pw.k8sAPI, PodIPIndex, podIP)
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	if len(podIPPods) == 1 {
+		pw.log.Debugf("found %s on the pod network", podIP)
+		return podIPPods[0], nil
+	}
+	if len(podIPPods) > 1 {
+		conflictingPods := []string{}
+		for _, pod := range podIPPods {
+			conflictingPods = append(conflictingPods, fmt.Sprintf("%s:%s", pod.Namespace, pod.Name))
+		}
+		pw.log.Warnf("found conflicting %s IP on the pod network: %s", podIP, strings.Join(conflictingPods, ","))
+		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with a conflicting pod network IP %s", len(podIPPods), podIP)
+	}
+
+	pw.log.Debugf("no pod found for %s:%d", podIP, port)
+	return nil, nil
+}
+
+// getPodByHostIP returns a pod that maps to the given IP address in the host
+// network. It must have a container port that exposes `port` as a host port.
+func (pw *PodWatcher) getPodByHostIP(hostIP string, port uint32) (*corev1.Pod, error) {
+	addr := net.JoinHostPort(hostIP, fmt.Sprintf("%d", port))
+	hostIPPods, err := getIndexedPods(pw.k8sAPI, HostIPIndex, addr)
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	if len(hostIPPods) == 1 {
+		pw.log.Debugf("found %s:%d on the host network", hostIP, port)
+		return hostIPPods[0], nil
+	}
+	if len(hostIPPods) > 1 {
+		conflictingPods := []string{}
+		for _, pod := range hostIPPods {
+			conflictingPods = append(conflictingPods, fmt.Sprintf("%s:%s", pod.Namespace, pod.Name))
+		}
+		pw.log.Warnf("found conflicting %s:%d endpoint on the host network: %s", hostIP, port, strings.Join(conflictingPods, ","))
+		return nil, status.Errorf(codes.FailedPrecondition, "found %d pods with a conflicting host network endpoint %s:%d", len(hostIPPods), hostIP, port)
+	}
+
+	return nil, nil
+}
+
+// getEndpointByHostname returns a pod that maps to the given hostname (or an
+// instanceID). The hostname is generally the prefix of the pod's DNS name;
+// since it may be arbitrary we need to look at the corresponding service's
+// Endpoints object to see whether the hostname matches a pod.
+func (pw *PodWatcher) getEndpointByHostname(hostname string, svcID *ServiceID) (*corev1.Pod, error) {
+	ep, err := pw.k8sAPI.Endpoint().Lister().Endpoints(svcID.Namespace).Get(svcID.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, subset := range ep.Subsets {
+		for _, addr := range subset.Addresses {
+
+			if hostname == addr.Hostname {
+				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" {
+					podName := addr.TargetRef.Name
+					podNamespace := addr.TargetRef.Namespace
+					pod, err := pw.k8sAPI.Pod().Lister().Pods(podNamespace).Get(podName)
+					if err != nil {
+						return nil, err
+					}
+					return pod, nil
+				}
+				return nil, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("no pod found in Endpoints %s/%s for hostname %s", svcID.Namespace, svcID.Name, hostname)
 }
 
 func (pp *podPublisher) subscribe(listener PodUpdateListener) {
@@ -282,7 +412,7 @@ func (pp *podPublisher) unsubscribe(listener PodUpdateListener) {
 // the listener's Update() method, only if the pod's readiness state has
 // changed. If the passed pod is nil, it means the pod (still referred to in
 // pp.pod) has been deleted.
-func (pp *podPublisher) updatePod(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, defaultOpaquePorts map[uint32]struct{}, pod *corev1.Pod) {
+func (pp *podPublisher) updatePod(pod *corev1.Pod) {
 	pp.mu.Lock()
 	defer pp.mu.Unlock()
 
@@ -302,15 +432,16 @@ func (pp *podPublisher) updatePod(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI,
 		pp.pod = pod
 		updated := false
 		for _, l := range pp.listeners {
-			addr, err := CreateAddress(k8sAPI, metadataAPI, defaultOpaquePorts, pp.pod, pp.ip, pp.port)
+			addr, err := pp.createAddress()
 			if err != nil {
 				pp.log.Errorf("Error creating address for pod: %s", err)
 				continue
 			}
-			if err := l.Update(&addr); err != nil {
+			sent, err := l.Update(&addr)
+			if err != nil {
 				pp.log.Errorf("Error calling pod watcher listener for pod update: %s", err)
 			}
-			updated = true
+			updated = updated || sent
 		}
 		if updated {
 			pp.metrics.incUpdates()
@@ -324,15 +455,16 @@ func (pp *podPublisher) updatePod(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI,
 		pp.pod = nil
 		updated := false
 		for _, l := range pp.listeners {
-			addr, err := CreateAddress(k8sAPI, metadataAPI, defaultOpaquePorts, nil, pp.ip, pp.port)
+			addr, err := pp.createAddress()
 			if err != nil {
 				pp.log.Errorf("Error creating address for pod: %s", err)
 				continue
 			}
-			if err := l.Update(&addr); err != nil {
+			sent, err := l.Update(&addr)
+			if err != nil {
 				pp.log.Errorf("Error calling pod watcher listener for pod deletion: %s", err)
 			}
-			updated = true
+			updated = updated || sent
 		}
 		if updated {
 			pp.metrics.incUpdates()
@@ -343,32 +475,32 @@ func (pp *podPublisher) updatePod(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI,
 	pp.log.Tracef("Ignored event on pod %s.%s", pod.Name, pod.Namespace)
 }
 
-// CreateAddress returns an Address instance for the given ip, port and pod. It
+// createAddress returns an Address instance for the given ip, port and pod. It
 // completes the ownership and opaque protocol information
-func CreateAddress(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, defaultOpaquePorts map[uint32]struct{}, pod *corev1.Pod, ip string, port Port) (Address, error) {
+func (pp *podPublisher) createAddress() (Address, error) {
 	var ownerKind, ownerName string
 	var err error
-	if pod != nil {
-		ownerKind, ownerName, err = metadataAPI.GetOwnerKindAndName(context.Background(), pod, true)
+	if pp.pod != nil {
+		ownerKind, ownerName, err = pp.metadataAPI.GetOwnerKindAndName(context.Background(), pp.pod, true)
 		if err != nil {
 			return Address{}, err
 		}
 	}
 
 	address := Address{
-		IP:        ip,
-		Port:      port,
-		Pod:       pod,
+		IP:        pp.ip,
+		Port:      pp.port,
+		Pod:       pp.pod,
 		OwnerName: ownerName,
 		OwnerKind: ownerKind,
 	}
 
 	// Override opaqueProtocol if the endpoint's port is annotated as opaque
-	opaquePorts := GetAnnotatedOpaquePorts(pod, defaultOpaquePorts)
-	if _, ok := opaquePorts[port]; ok {
+	opaquePorts := GetAnnotatedOpaquePorts(pp.pod, pp.defaultOpaquePorts)
+	if _, ok := opaquePorts[pp.port]; ok {
 		address.OpaqueProtocol = true
-	} else if pod != nil {
-		if err := SetToServerProtocol(k8sAPI, &address, port); err != nil {
+	} else if pp.pod != nil {
+		if err := SetToServerProtocol(pp.k8sAPI, &address, pp.port); err != nil {
 			return Address{}, fmt.Errorf("failed to set address OpaqueProtocol: %w", err)
 		}
 	}
