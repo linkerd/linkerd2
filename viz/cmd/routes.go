@@ -71,7 +71,6 @@ This command will only display traffic which is sent to a service that has a Ser
 			if options.namespace == "" {
 				options.namespace = pkgcmd.GetDefaultNamespace(kubeconfigPath, kubeContext)
 			}
-
 			req, err := buildTopRoutesRequest(args[0], options)
 			if err != nil {
 				return fmt.Errorf("error creating metrics request while making routes request: %w", err)
