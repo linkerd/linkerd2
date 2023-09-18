@@ -48,7 +48,7 @@ require (
 	k8s.io/code-generator v0.28.2
 	k8s.io/klog/v2 v2.100.1
 	k8s.io/kube-aggregator v0.28.2
-	sigs.k8s.io/gateway-api v0.7.1
+	sigs.k8s.io/gateway-api v0.8.1
 	sigs.k8s.io/yaml v1.3.0
 )
 
