@@ -502,7 +502,7 @@ policyValidator:
   # for more information.
   injectCaFromSecret: ""
 
-# -|- CPU, Memory and Ephemeral Storage resources required by the policy controller 
+# -|- CPU, Memory and Ephemeral Storage resources required by the policy controller
 #policyControllerResources:
 
 # -- NodeSelector section, See the [K8S
@@ -524,6 +524,9 @@ nodeSelector:
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
 # for more information
 #nodeAffinity:
+
+# -- url of external prometheus instance (used for the heartbeat)
+prometheusUrl: ""
 
 # Prometheus Operator PodMonitor configuration
 podMonitor:
