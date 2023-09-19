@@ -15,14 +15,12 @@ import (
 // This module is also responsible for online retrieval of the latest release
 // versions.
 type Channels struct {
-	Array []channelVersion
+	array []channelVersion
 }
 
 var (
 	// CheckURL provides an online endpoint for Linkerd's version checks
 	CheckURL = "https://versioncheck.linkerd.io/version.json"
-	// DnsError is used for identifying DNS errors when fetching the latest version channels
-	DnsError *net.DNSError
 )
 
 // NewChannels is used primarily for testing, it returns a Channels struct that
@@ -34,7 +32,7 @@ func NewChannels(channel string) (Channels, error) {
 	}
 
 	return Channels{
-		Array: []channelVersion{cv},
+		array: []channelVersion{cv},
 	}, nil
 }
 
@@ -47,7 +45,7 @@ func (c Channels) Match(actualVersion string) error {
 		return errors.New("actual version is empty")
 	}
 
-	if len(c.Array) == 0 {
+	if len(c.array) == 0 {
 		return errors.New("unable to determine version channel")
 	}
 
@@ -56,13 +54,18 @@ func (c Channels) Match(actualVersion string) error {
 		return fmt.Errorf("failed to parse actual version: %w", err)
 	}
 
-	for _, cv := range c.Array {
+	for _, cv := range c.array {
 		if cv.channel == actual.channel {
 			return match(cv.String(), actualVersion)
 		}
 	}
 
 	return fmt.Errorf("unsupported version channel: %s", actualVersion)
+}
+
+// Determines whether there are any release channels stored in the struct.
+func (c Channels) Empty() bool {
+	return len(c.array) == 0
 }
 
 // GetLatestVersions performs an online request to check for the latest Linkerd
@@ -80,6 +83,7 @@ func getLatestVersions(ctx context.Context, client *http.Client, url string) (Ch
 
 	rsp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
+		var DnsError *net.DNSError
 		if errors.As(err, &DnsError) {
 			return Channels{}, fmt.Errorf("failed to resolve version check server: %s", url)
 		}
@@ -113,7 +117,7 @@ func getLatestVersions(ctx context.Context, client *http.Client, url string) (Ch
 			return Channels{}, fmt.Errorf("unexpected versioncheck response: channel in %s does not match %s", cv, c)
 		}
 
-		channels.Array = append(channels.Array, cv)
+		channels.array = append(channels.array, cv)
 	}
 
 	return channels, nil
