@@ -8,7 +8,7 @@ require (
 	github.com/clarketm/json v1.15.7
 	github.com/containernetworking/cni v1.1.2
 	github.com/emicklei/proto v1.12.1
-	github.com/evanphx/json-patch v5.6.0+incompatible
+	github.com/evanphx/json-patch v5.7.0+incompatible
 	github.com/fatih/color v1.15.0
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/go-openapi/spec v0.20.9
