@@ -2,7 +2,7 @@
 
 ## stable-2.13.7
 
-This stable releases addresses backports two fixes that address security
+This stable releases backports two fixes that address security
 vulnerabilities. The proxy's dependency on the webpki library has been updated
 to patch [RUSTSEC-2023-0052], a potential CPU usage denial-of-service attack
 when accepting a TLS handshake from an untrusted peer. In addition, the CNI and
