@@ -17,14 +17,14 @@ disrupt connections on pod restarts.
     hostPort, the destination service would return the corresponding pod IP. On
     pod restart, this could lead to loss of connectivity on the client's side.
     The destination service now always returns host IPs for service discovery
-    on an endpoint that uses hostPorts [#11328]
+    on an endpoint that uses hostPorts ([#11328])
 
 * Proxy
-  * Addressed security vulnerability [RUSTSEC-2023-0052] [#11389]
+  * Addressed security vulnerability [RUSTSEC-2023-0052] ([#11389])
 
 * CNI
   * Addressed security vulnerability [CVE-2023-2603] in proxy-init and CNI
-    plugin [#11348]
+    plugin ([#11348])
 
 [#11328]: https://github.com/linkerd/linkerd2/pull/11328
 [#11348]: https://github.com/linkerd/linkerd2/pull/11348
