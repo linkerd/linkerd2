@@ -1,5 +1,37 @@
 # Changes
 
+## stable-2.13.7
+
+This stable releases addresses backports two fixes that address security
+vulnerabilities. The proxy's dependency on the webpki library has been updated
+to patch [RUSTSEC-2023-0052], a potential CPU usage denial-of-service attack
+when accepting a TLS handshake from an untrusted peer. In addition, the CNI and
+proxy-init images have been updated to patch [CVE-2023-2603] surfaced in the
+runtime image's libcap library. Finally, the release contains a backported fix
+for service discovery on endpoints that use hostPorts which could potentially
+disrupt connections on pod restarts.
+
+* Control Plane
+  * Changed how hostPort lookups are handled in the destination service.
+    Previously, when doing service discovery for an endpoint bound on a
+    hostPort, the destination service would return the corresponding pod IP. On
+    pod restart, this could lead to loss of connectivity on the client's side.
+    The destination service now always returns host IPs for service discovery
+    on an endpoint that uses hostPorts [#11328]
+
+* Proxy
+  * Addressed security vulnerability [RUSTSEC-2023-0052] [#11389]
+
+* CNI
+  * Addressed security vulnerability [CVE-2023-2603] in proxy-init and CNI
+    plugin [#11348]
+
+[#11328]: https://github.com/linkerd/linkerd2/pull/11328
+[#11348]: https://github.com/linkerd/linkerd2/pull/11348
+[#11389]: https://github.com/linkerd/linkerd2/pull/11389
+[RUSTSEC-2023-0052]: https://rustsec.org/advisories/RUSTSEC-2023-0052.html
+[CVE-2023-2603]: https://github.com/advisories/GHSA-wp54-pwvg-rqq5
+
 ## stable-2.13.6
 
 This stable release fixes a regression introduced in stable-2.13.0 which
