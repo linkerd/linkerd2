@@ -7,7 +7,7 @@ vulnerabilities. The proxy's dependency on the webpki library has been updated
 to patch [RUSTSEC-2023-0052], a potential CPU usage denial-of-service attack
 when accepting a TLS handshake from an untrusted peer. In addition, the CNI and
 proxy-init images have been updated to patch [CVE-2023-2603] surfaced in the
-runtime image's libcap library. Finally, the release contains a backported fix
+runtime image's `libcap` library. Finally, the release contains a backported fix
 for service discovery on endpoints that use hostPorts which could potentially
 disrupt connections on pod restarts.
 
