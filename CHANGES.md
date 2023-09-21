@@ -1,5 +1,71 @@
 # Changes
 
+## stable-2.14.1
+
+This stable release introduces a fix for service discovery on endpoints that
+use hostPorts. Previously, the destination service would return the pod IP
+associated with the endpoint which could break connectivity on pod restarts.
+Discovery responses have been changed to instead return the host IP. This
+release also fixes an issue in the multicluster extension where an empty
+`remoteDiscoverySelector` field in the `Link` resource would cause all services
+to be exported. Finally, this release addresses two security vulnerabilities,
+[CVE-2023-2603] and [RUSTSEC-2023-0052] respectively, and includes numerous
+other fixes and enhancements.
+
+* CLI
+  * Fixed `linkerd check --proxy` incorrectly checking the proxy version of
+    pods in the `completed` state (thanks @mikutas!) ([#11295]; fixes [#11280])
+  * Fixed erroneous `skipped` messages when injecting namespaces with `linkerd
+    inject` (thanks @mikutas!) ([#10231])
+
+* CNI
+  * Addressed security vulnerability [CVE-2023-2603] in proxy-init and CNI
+    plugin ([#11296])
+
+* Control Plane
+  * Changed how hostPort lookups are handled in the destination service.
+    Previously, when doing service discovery for an endpoint bound on a
+    hostPort, the destination service would return the corresponding pod IP. On
+    pod restart, this could lead to loss of connectivity on the client's side.
+    The destination service now always returns host IPs for service discovery
+    on an endpoint that uses hostPorts ([#11328])
+  * Updated HTTPRoute webhook rule to validate all apiVersions of the resource
+    (thanks @mikutas!) ([#11149])
+
+* Helm
+  * Removed unnecessary `linkerd.io/helm-release-version` annotation from the
+    `linkerd-control-plane` Helm chart (thanks @mikutas!) ([#11329]; fixes
+    [#10778])
+  * Introduced resource requests/limits for the policy controller resource in
+    the control plane helm chart ([#11301])
+
+
+* Multicluster
+  * Fixed an issue where an empty `remoteDiscoverySelector` field in a
+    multicluster link would cause all services to be mirrored ([#11309])
+  * Removed time out from `linkerd multicluster gateways` command; when no
+    metrics exist the command will return instantly ([#11265])
+  * Improved help messaging for `linkerd multicluster link` ([#11265])
+
+* Proxy
+  * Addressed security vulnerability [RUSTSEC-2023-0052] in the proxy
+    ([#11361])
+
+[CVE-2023-2603]: https://github.com/advisories/GHSA-wp54-pwvg-rqq5
+[RUSTSEC-2023-0052]: https://rustsec.org/advisories/RUSTSEC-2023-0052.html
+[#11295]: https://github.com/linkerd/linkerd2/pull/11295
+[#11280]: https://github.com/linkerd/linkerd2/issues/11280
+[#11361]: https://github.com/linkerd/linkerd2/pull/11361
+[#11329]: https://github.com/linkerd/linkerd2/pull/11329
+[#10778]: https://github.com/linkerd/linkerd2/issues/10778
+[#11309]: https://github.com/linkerd/linkerd2/issues/11309
+[#11296]: https://github.com/linkerd/linkerd2/discussions/11296
+[#11328]: https://github.com/linkerd/linkerd2/pull/11328
+[#11301]: https://github.com/linkerd/linkerd2/issues/11301
+[#11265]: https://github.com/linkerd/linkerd2/pull/11265
+[#11149]: https://github.com/linkerd/linkerd2/pull/11149
+[#10231]: https://github.com/linkerd/linkerd2/issues/10231
+
 ## edge-29.9.2
 
 This edge release updates the proxy's dependency on the `webpki` library to
