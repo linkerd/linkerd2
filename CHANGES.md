@@ -39,7 +39,6 @@ other fixes and enhancements.
   * Introduced resource requests/limits for the policy controller resource in
     the control plane helm chart ([#11301])
 
-
 * Multicluster
   * Fixed an issue where an empty `remoteDiscoverySelector` field in a
     multicluster link would cause all services to be mirrored ([#11309])
@@ -52,19 +51,6 @@ other fixes and enhancements.
     ([#11361])
 
 [CVE-2023-2603]: https://github.com/advisories/GHSA-wp54-pwvg-rqq5
-[RUSTSEC-2023-0052]: https://rustsec.org/advisories/RUSTSEC-2023-0052.html
-[#11295]: https://github.com/linkerd/linkerd2/pull/11295
-[#11280]: https://github.com/linkerd/linkerd2/issues/11280
-[#11361]: https://github.com/linkerd/linkerd2/pull/11361
-[#11329]: https://github.com/linkerd/linkerd2/pull/11329
-[#10778]: https://github.com/linkerd/linkerd2/issues/10778
-[#11309]: https://github.com/linkerd/linkerd2/issues/11309
-[#11296]: https://github.com/linkerd/linkerd2/discussions/11296
-[#11328]: https://github.com/linkerd/linkerd2/pull/11328
-[#11301]: https://github.com/linkerd/linkerd2/issues/11301
-[#11265]: https://github.com/linkerd/linkerd2/pull/11265
-[#11149]: https://github.com/linkerd/linkerd2/pull/11149
-[#10231]: https://github.com/linkerd/linkerd2/issues/10231
 
 ## edge-29.9.2
 
