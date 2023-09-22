@@ -3,11 +3,11 @@
 ## edge-29.9.3
 
 This edge release updates the proxy's dependency on the `rustls` library to
-patch security vulnerability [RUSTSEC-2023-0052]  (GHSA-8qv2-5vq6-g2g7), a
-potential CPU usage denial-of-service attack when acceting a TLS handshake from
-an untrusted peer with a maliciously-crafted certificate. Furthermore, this
-edge release contains a few improvements to the control plane and jaeger
-extension Helm charts.
+patch security vulnerability [RUSTSEC-2023-0052][RUSTSEC-2023-0052-0]
+(GHSA-8qv2-5vq6-g2g7), a potential CPU usage denial-of-service attack when
+acceting a TLS handshake from an untrusted peer with a maliciously-crafted
+certificate. Furthermore, this edge release contains a few improvements to the
+control plane and jaeger extension Helm charts.
 
 * Addressed security vulnerability [RUSTSEC-2023-0052] in the proxy by updating
   its dependency on the `rustls` library
@@ -24,6 +24,7 @@ extension Helm charts.
 [#11175]: https://github.com/linkerd/linkerd2/issues/11175
 [#11343]: https://github.com/linkerd/linkerd2/pull/11343
 [#11342]: https://github.com/linkerd/linkerd2/issues/11342
+[RUSTSEC-2023-0052-0]: https://rustsec.org/advisories/RUSTSEC-2023-0052.html
 
 ## edge-29.9.2
 
