@@ -9,8 +9,8 @@ acceting a TLS handshake from an untrusted peer with a maliciously-crafted
 certificate. Furthermore, this edge release contains a few improvements to the
 control plane and jaeger extension Helm charts.
 
-* Addressed security vulnerability [RUSTSEC-2023-0052] in the proxy by updating
-  its dependency on the `rustls` library
+* Addressed security vulnerability [RUSTSEC-2023-0052][RUSTSEC-2023-0052-0] in
+  the proxy by updating its dependency on the `rustls` library
 * Added a `prometheusUrl` field for the heartbeat job in the control plane Helm
   chart (thanks @david972!) ([#11343]; fixes [#11342])
 * Introduced support for arbitrary labels in the `podMonitors` field in the
