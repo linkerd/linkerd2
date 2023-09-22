@@ -275,7 +275,7 @@ func (s *grpcServer) validateTimeWindow(ctx context.Context, window string) erro
 	}
 
 	if t < scrape_interval {
-		return fmt.Errorf("Time window (%s) must be at least as long as the Prometheus scrape interval (%s)", window, scrape_interval)
+		return fmt.Errorf("time window (%s) must be at least as long as the Prometheus scrape interval (%s)", window, scrape_interval)
 	}
 	return nil
 }
