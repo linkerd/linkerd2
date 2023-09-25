@@ -8,9 +8,12 @@ associated with the endpoint which could break connectivity on pod restarts.
 Discovery responses have been changed to instead return the host IP. This
 release also fixes an issue in the multicluster extension where an empty
 `remoteDiscoverySelector` field in the `Link` resource would cause all services
-to be exported. Finally, this release addresses two security vulnerabilities,
-[CVE-2023-2603] and [RUSTSEC-2023-0052] respectively, and includes numerous
-other fixes and enhancements.
+to be exported. Finally, this release includes numerous other fixes and
+enhancements and addresses two security vulnerabilities,
+[CVE-2023-2603][CVE-2023-2603-stable] detected in the proxy-init runtime
+image's libcap library and [RUSTSEC-2023-0052][RUSTSEC-2023-0052-stable], a
+potential CPU usage denial-of-service attack in the proxy's `webpki` library
+dependency.
 
 * CLI
   * Fixed `linkerd check --proxy` incorrectly checking the proxy version of
@@ -19,7 +22,7 @@ other fixes and enhancements.
     inject` (thanks @mikutas!) ([#10231])
 
 * CNI
-  * Addressed security vulnerability [CVE-2023-2603] in proxy-init and CNI
+  * Addressed security vulnerability [CVE-2023-2603][CVE-2023-2603-stable] in proxy-init and CNI
     plugin ([#11296])
 
 * Control Plane
@@ -47,10 +50,11 @@ other fixes and enhancements.
   * Improved help messaging for `linkerd multicluster link` ([#11265])
 
 * Proxy
-  * Addressed security vulnerability [RUSTSEC-2023-0052] in the proxy
+  * Addressed security vulnerability [RUSTSEC-2023-0052][RUSTSEC-2023-0052-stable] in the proxy
     ([#11361])
 
-[CVE-2023-2603]: https://github.com/advisories/GHSA-wp54-pwvg-rqq5
+[CVE-2023-2603-stable]: https://github.com/advisories/GHSA-wp54-pwvg-rqq5
+[RUSTSEC-2023-0052-stable]: https://rustsec.org/advisories/RUSTSEC-2023-0052.html
 
 ## edge-29.9.2
 
