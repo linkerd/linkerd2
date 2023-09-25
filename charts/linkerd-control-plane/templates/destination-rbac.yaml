@@ -181,7 +181,7 @@ webhooks:
     - servers
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["gateway.networking.k8s.io"]
-    apiVersions: ["v1alpha2", "v1beta1"]
+    apiVersions: ["*"]
     resources:
     - httproutes
   sideEffects: None
