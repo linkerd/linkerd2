@@ -22,8 +22,8 @@ dependency.
     inject` (thanks @mikutas!) ([#10231])
 
 * CNI
-  * Addressed security vulnerability [CVE-2023-2603][CVE-2023-2603-stable] in proxy-init and CNI
-    plugin ([#11296])
+  * Addressed security vulnerability [CVE-2023-2603][CVE-2023-2603-stable] in
+    proxy-init and CNI plugin ([#11296])
 
 * Control Plane
   * Changed how hostPort lookups are handled in the destination service.
@@ -50,8 +50,8 @@ dependency.
   * Improved help messaging for `linkerd multicluster link` ([#11265])
 
 * Proxy
-  * Addressed security vulnerability [RUSTSEC-2023-0052][RUSTSEC-2023-0052-stable] in the proxy
-    ([#11361])
+  * Addressed security vulnerability
+    [RUSTSEC-2023-0052][RUSTSEC-2023-0052-stable] in the proxy ([#11361])
 
 [CVE-2023-2603-stable]: https://github.com/advisories/GHSA-wp54-pwvg-rqq5
 [RUSTSEC-2023-0052-stable]: https://rustsec.org/advisories/RUSTSEC-2023-0052.html
