@@ -44,15 +44,15 @@ const (
 )
 
 type checkOptions struct {
-	wait   time.Duration
-	output string
+	wait    time.Duration
+	output  string
 	timeout time.Duration
 }
 
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
-		wait:   300 * time.Second,
-		output: healthcheck.TableOutput,
+		wait:    300 * time.Second,
+		output:  healthcheck.TableOutput,
 		timeout: 10 * time.Second,
 	}
 }
