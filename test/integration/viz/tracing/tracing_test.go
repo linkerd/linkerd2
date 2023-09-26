@@ -80,7 +80,11 @@ func TestTracing(t *testing.T) {
 		}
 
 		tpl := template.Must(template.ParseFiles("testdata" + "/" + golden))
-		versionErr := healthcheck.CheckProxyVersionsUpToDate(pods, version.Channels{})
+		chs, err := version.NewChannels("test-99.88.77")
+		if err != nil {
+			panic(err.Error())
+		}
+		versionErr := healthcheck.CheckProxyVersionsUpToDate(pods, chs)
 		versionErrMsg := ""
 		if versionErr != nil {
 			versionErrMsg = versionErr.Error()
