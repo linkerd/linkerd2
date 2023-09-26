@@ -97,7 +97,7 @@ See https://github.com/docker/buildx/issues/59 for more details'
         $output_params \
         -t "$repo:$tag" \
         -f "$file" \
-        --metadata-file metadata-"$name".json \
+        --metadata-file target/metadata-"$name".json \
         "$@"
 
     echo "$repo:$tag"
