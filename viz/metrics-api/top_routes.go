@@ -63,6 +63,11 @@ func (s *grpcServer) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest) (*
 		return topRoutesError(req, "Authority cannot be the target of a routes query; try using an authority in the --to flag instead"), nil
 	}
 
+	err = s.validateTimeWindow(ctx, req.TimeWindow)
+	if err != nil {
+		return topRoutesError(req, fmt.Sprintf("invalid time window: %s", err)), nil
+	}
+
 	// Non-authority resource
 	objects, err := s.k8sAPI.GetObjects(targetResource.Namespace, targetResource.Type, targetResource.Name, labelSelector)
 	if err != nil {
