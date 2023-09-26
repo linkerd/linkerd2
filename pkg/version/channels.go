@@ -45,7 +45,7 @@ func (c Channels) Match(actualVersion string) error {
 		return errors.New("actual version is empty")
 	}
 
-	if len(c.array) == 0 {
+	if c.Empty() {
 		return errors.New("unable to determine version channel")
 	}
 
@@ -83,8 +83,8 @@ func getLatestVersions(ctx context.Context, client *http.Client, url string) (Ch
 
 	rsp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
-		var DnsError *net.DNSError
-		if errors.As(err, &DnsError) {
+		var dnsError *net.DNSError
+		if errors.As(err, &dnsError) {
 			return Channels{}, fmt.Errorf("failed to resolve version check server: %s", url)
 		}
 		return Channels{}, err
