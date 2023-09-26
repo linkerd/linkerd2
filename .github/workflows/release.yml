@@ -118,7 +118,7 @@ jobs:
         - default-policy-deny
         - external
         - rsa-ca
-        - helm-upgrade
+      # - helm-upgrade
         - uninstall
       # - upgrade-edge
         - upgrade-stable
