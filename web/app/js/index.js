@@ -29,8 +29,8 @@ import ServiceMesh from './components/ServiceMesh.jsx';
 import Tap from './components/Tap.jsx';
 import Top from './components/Top.jsx';
 import TopRoutes from './components/TopRoutes.jsx';
-import catalogEn from './locales/en/messages.js';
-import catalogEs from './locales/es/messages.js';
+import catalogEn from './locales/en/messages.json';
+import catalogEs from './locales/es/messages.json';
 import { dashboardTheme } from './components/util/theme.js';
 
 const appMain = document.getElementById('main');
@@ -49,8 +49,8 @@ const pathArray = window.location.pathname.split('/');
 // defaultNamespace
 if (pathArray[0] === '' && pathArray[1] === 'namespaces' && pathArray[2]) {
   defaultNamespace = pathArray[2];
-// if the current URL path is a legacy path such as `/daemonsets`, the
-// defaultNamespace should be "_all", unless the path is `/namespaces`
+  // if the current URL path is a legacy path such as `/daemonsets`, the
+  // defaultNamespace should be "_all", unless the path is `/namespaces`
 } else if (pathArray.length === 2 && pathArray[1] !== '' && pathArray[1] !== 'namespaces') {
   defaultNamespace = '_all';
 }
@@ -70,7 +70,7 @@ const langOptions = {
   },
 };
 const selectedLocale =
-    _find(detectedLocales, l => !_isEmpty(langOptions[l])) || 'en';
+  _find(detectedLocales, l => !_isEmpty(langOptions[l])) || 'en';
 const selectedLangOptions = langOptions[selectedLocale] || langOptions.en;
 
 i18n.loadLocaleData(selectedLocale, { plurals: selectedLangOptions.plurals });
