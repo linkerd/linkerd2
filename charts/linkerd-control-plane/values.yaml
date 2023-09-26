@@ -286,12 +286,13 @@ webhookFailurePolicy: Ignore
 
 # controllerImage -- Docker image for the destination and identity components
 controllerImage: cr.l5d.io/linkerd/controller
+# -- Optionally allow a specific container image Tag (or SHA) to be specified for the controllerImage.
+controllerImageVersion: ""
+
 # -- Number of replicas for each control plane pod
 controllerReplicas: 1
 # -- User ID for the control plane components
 controllerUID: 2103
-# -- Optionally allow a specific container image Tag (or SHA) to be specified for the controllerImage.
-controllerImageVersion: ""
 
 # destination configuration
 # set resources for the sp-validator and its linkerd proxy respectively
