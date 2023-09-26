@@ -286,56 +286,54 @@ func writeEdgesToBuffer(rows []*pb.Edge, w *tabwriter.Writer, options *edgesOpti
 	maxMsgLength := len(msgHeader)
 
 	edgeRows := []edgeRow{}
-	if len(rows) != 0 {
-		for _, r := range rows {
-			clientID := r.ClientId
-			serverID := r.ServerId
-			msg := r.NoIdentityMsg
-			if msg == "" && options.outputFormat != jsonOutput {
-				msg = okStatus
-			}
-			if len(clientID) > 0 {
-				parts := strings.Split(clientID, ".")
-				clientID = parts[0] + "." + parts[1]
-			}
-			if len(serverID) > 0 {
-				parts := strings.Split(serverID, ".")
-				serverID = parts[0] + "." + parts[1]
-			}
+	for _, r := range rows {
+		clientID := r.ClientId
+		serverID := r.ServerId
+		msg := r.NoIdentityMsg
+		if msg == "" && options.outputFormat != jsonOutput {
+			msg = okStatus
+		}
+		if len(clientID) > 0 {
+			parts := strings.Split(clientID, ".")
+			clientID = parts[0] + "." + parts[1]
+		}
+		if len(serverID) > 0 {
+			parts := strings.Split(serverID, ".")
+			serverID = parts[0] + "." + parts[1]
+		}
 
-			row := edgeRow{
-				client:       clientID,
-				server:       serverID,
-				msg:          msg,
-				src:          r.Src.Name,
-				srcNamespace: r.Src.Namespace,
-				dst:          r.Dst.Name,
-				dstNamespace: r.Dst.Namespace,
-			}
+		row := edgeRow{
+			client:       clientID,
+			server:       serverID,
+			msg:          msg,
+			src:          r.Src.Name,
+			srcNamespace: r.Src.Namespace,
+			dst:          r.Dst.Name,
+			dstNamespace: r.Dst.Namespace,
+		}
 
-			edgeRows = append(edgeRows, row)
+		edgeRows = append(edgeRows, row)
 
-			if len(r.Src.Name) > maxSrcLength {
-				maxSrcLength = len(r.Src.Name)
-			}
-			if len(r.Src.Namespace) > maxSrcNamespaceLength {
-				maxSrcNamespaceLength = len(r.Src.Namespace)
-			}
-			if len(r.Dst.Name) > maxDstLength {
-				maxDstLength = len(r.Dst.Name)
-			}
-			if len(r.Dst.Namespace) > maxDstNamespaceLength {
-				maxDstNamespaceLength = len(r.Dst.Namespace)
-			}
-			if len(clientID) > maxClientLength {
-				maxClientLength = len(clientID)
-			}
-			if len(serverID) > maxServerLength {
-				maxServerLength = len(serverID)
-			}
-			if len(msg) > maxMsgLength {
-				maxMsgLength = len(msg)
-			}
+		if len(r.Src.Name) > maxSrcLength {
+			maxSrcLength = len(r.Src.Name)
+		}
+		if len(r.Src.Namespace) > maxSrcNamespaceLength {
+			maxSrcNamespaceLength = len(r.Src.Namespace)
+		}
+		if len(r.Dst.Name) > maxDstLength {
+			maxDstLength = len(r.Dst.Name)
+		}
+		if len(r.Dst.Namespace) > maxDstNamespaceLength {
+			maxDstNamespaceLength = len(r.Dst.Namespace)
+		}
+		if len(clientID) > maxClientLength {
+			maxClientLength = len(clientID)
+		}
+		if len(serverID) > maxServerLength {
+			maxServerLength = len(serverID)
+		}
+		if len(msg) > maxMsgLength {
+			maxMsgLength = len(msg)
 		}
 	}
 
