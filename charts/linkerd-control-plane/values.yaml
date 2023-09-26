@@ -64,10 +64,10 @@ policyController:
   image:
     # -- Docker image for the policy controller
     name: cr.l5d.io/linkerd/policy-controller
-    # -- Pull policy for the proxy container Docker image
+    # -- Pull policy for the policy controller container image
     # @default -- imagePullPolicy
     pullPolicy: ""
-    # -- Tag for the proxy container Docker image
+    # -- Tag for the policy controller container image
     # @default -- linkerdVersion
     version: ""
 
@@ -118,10 +118,10 @@ proxy:
   image:
     # -- Docker image for the proxy
     name: cr.l5d.io/linkerd/proxy
-    # -- Pull policy for the proxy container Docker image
+    # -- Pull policy for the proxy container image
     # @default -- imagePullPolicy
     pullPolicy: ""
-    # -- Tag for the proxy container Docker image
+    # -- Tag for the proxy container image
     # @default -- linkerdVersion
     version: ""
   # -- Log level for the proxy
@@ -213,10 +213,10 @@ proxyInit:
   image:
     # -- Docker image for the proxy-init container
     name: cr.l5d.io/linkerd/proxy-init
-    # -- Pull policy for the proxy-init container Docker image
+    # -- Pull policy for the proxy-init container image
     # @default -- imagePullPolicy
     pullPolicy: ""
-    # -- Tag for the proxy-init container Docker image
+    # -- Tag for the proxy-init container image
     version: v2.2.3
   resources:
     cpu:
@@ -299,8 +299,7 @@ controllerUID: 2103
 # see proxy.resources for details.
 # destinationResources -- CPU, Memory and Ephemeral Storage resources required by destination (see `proxy.resources` for sub-fields)
 #destinationResources:
-#destinationProxyResources -- CPU, Memory and Ephemeral Storage resources required by proxy
-# injected into destination pod (see `proxy.resources` for sub-fields)
+# destinationProxyResources -- CPU, Memory and Ephemeral Storage resources required by proxy injected into destination pod (see `proxy.resources` for sub-fields)
 #destinationProxyResources:
 
 # debug configuration
@@ -308,10 +307,10 @@ debugContainer:
   image:
     # -- Docker image for the debug container
     name: cr.l5d.io/linkerd/debug
-    # -- Pull policy for the debug container Docker image
+    # -- Pull policy for the debug container image
     # @default -- imagePullPolicy
     pullPolicy: ""
-    # -- Tag for the debug container Docker image
+    # -- Tag for the debug container image
     # @default -- linkerdVersion
     version: ""
 
