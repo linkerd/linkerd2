@@ -1162,7 +1162,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleCreateOrUpdateEndpoints(
 	}
 
 	// Sync a copy of remote endpoints if SyncRemoteEndpoints is enabled for flat network architectures.
-	// This is necessary for environments in which service CIDR doesn't overlap network addressing.
+	// This is necessary for environments in which service CIDR doesn't overlap POD CIDR.
 	// For example: Azure AKS with Azure CNI.
 	if rcsw.link.SyncRemoteEndpoints {
 		return rcsw.createOrUpdateEndpoints(ctx, exportedEndpoints)

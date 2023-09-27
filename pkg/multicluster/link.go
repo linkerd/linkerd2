@@ -44,6 +44,7 @@ type (
 		ProbeSpec                     ProbeSpec
 		Selector                      metav1.LabelSelector
 		RemoteDiscoverySelector       metav1.LabelSelector
+		SyncRemoteEndpoints           bool
 	}
 )
 
@@ -148,6 +149,11 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		}
 	}
 
+	var syncRemoteEndpoints bool
+	if syncRemoteEndpoints, ok = specObj["syncRemoteEndpoints"].(bool); !ok {
+		return Link{}, err
+	}
+
 	return Link{
 		Name:                          u.GetName(),
 		Namespace:                     u.GetNamespace(),
@@ -161,6 +167,7 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		ProbeSpec:                     probeSpec,
 		Selector:                      selector,
 		RemoteDiscoverySelector:       remoteDiscoverySelector,
+		SyncRemoteEndpoints:           syncRemoteEndpoints,
 	}, nil
 }
 
@@ -180,6 +187,7 @@ func (l Link) ToUnstructured() (unstructured.Unstructured, error) {
 			"port":   fmt.Sprintf("%d", l.ProbeSpec.Port),
 			"period": l.ProbeSpec.Period.String(),
 		},
+		"syncRemoteEndpoints": l.SyncRemoteEndpoints,
 	}
 
 	data, err := json.Marshal(l.Selector)
