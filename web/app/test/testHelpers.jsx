@@ -6,7 +6,7 @@ import { Route, Router } from 'react-router-dom';
 import { I18nProvider } from '@lingui/react';
 import { i18n } from '@lingui/core';
 import { en } from 'make-plural/plurals'
-import catalogEn from './../js/locales/en/messages.js';
+import catalogEn from './../js/locales/en/messages.json';
 
 const componentDefaultProps = {
   api: ApiHelpers(''),
@@ -17,10 +17,10 @@ const componentDefaultProps = {
 
 i18n.loadLocaleData('en', { plurals: en })
 i18n.loadLocaleData('en');
-i18n.load('en', catalogEn.messages);
+i18n.load('en', catalogEn);
 i18n.activate('en');
 
-export function routerWrap(Component, extraProps={}, route="/", currentLoc="/") {
+export function routerWrap(Component, extraProps = {}, route = "/", currentLoc = "/") {
   const createElement = (ComponentToWrap, props) => (
     <ComponentToWrap {...(_merge({}, componentDefaultProps, props, extraProps))} />
   );
@@ -39,4 +39,4 @@ export function i18nWrap(Component) {
   );
 }
 
-export function i18nAndRouterWrap(component, props) { return i18nWrap(routerWrap(component, props))};
+export function i18nAndRouterWrap(component, props) { return i18nWrap(routerWrap(component, props)) };
