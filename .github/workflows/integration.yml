@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/integration.yml
+      - .github/actions/**
       - .proxy-version
       - '**/*.go'
       - '**/Dockerfile*'
