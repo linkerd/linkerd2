@@ -890,12 +890,12 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 					rcsw.log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", epNew)
 					return
 				}
-				if !rcsw.isExported(epNew.Labels) {
+				if !rcsw.isExported(epNew.Labels) && !rcsw.link.SyncRemoteEndpoints {
 					rcsw.log.Debugf("skipped processing endpoints object %s/%s: missing %s label", epNew.Namespace, epNew.Name, consts.DefaultExportedServiceSelector)
 					return
 				}
-				if rcsw.isRemoteDiscovery(epNew.Labels) {
-					rcsw.log.Debugf("skipped processing endpoints object %s/%s (service labeled for remote-discovery mode)", epNew.Namespace, epNew.Name)
+				if rcsw.isRemoteDiscovery(epNew.Labels) && !rcsw.link.SyncRemoteEndpoints {
+					rcsw.log.Debugf("skipped processing endpoints object %s/%s (service labeled for remote-discovery mode and sync-remote-endpoints no activated)", epNew.Namespace, epNew.Name)
 					return
 				}
 				rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{epNew})
@@ -1161,6 +1161,13 @@ func (rcsw *RemoteClusterServiceWatcher) handleCreateOrUpdateEndpoints(
 		return nil
 	}
 
+	// Sync a copy of remote endpoints if SyncRemoteEndpoints is enabled for flat network architectures.
+	// This is necessary for environments in which service CIDR doesn't overlap network addressing.
+	// For example: Azure AKS with Azure CNI.
+	if rcsw.link.SyncRemoteEndpoints {
+		return rcsw.createOrUpdateEndpoints(ctx, exportedEndpoints)
+	}
+
 	localServiceName := rcsw.mirroredResourceName(exportedEndpoints.Name)
 	ep, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(exportedEndpoints.Namespace).Get(localServiceName)
 	if err != nil {
@@ -1193,6 +1200,28 @@ func (rcsw *RemoteClusterServiceWatcher) handleCreateOrUpdateEndpoints(
 			},
 		}
 	}
+	return rcsw.updateMirrorEndpoints(ctx, ep)
+}
+
+func (rcsw *RemoteClusterServiceWatcher) createOrUpdateEndpoints(
+	ctx context.Context,
+	exportedEndpoints *corev1.Endpoints,
+) error {
+	localServiceName := rcsw.mirroredResourceName(exportedEndpoints.Name)
+	ep, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(exportedEndpoints.Namespace).Get(localServiceName)
+	if err != nil {
+		endpointToCreate := corev1.Endpoints{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      localServiceName,
+				Namespace: exportedEndpoints.ObjectMeta.Namespace,
+			},
+			Subsets: exportedEndpoints.Subsets,
+		}
+		err = rcsw.createMirrorEndpoints(ctx, &endpointToCreate)
+		return err
+	}
+
+	ep.Subsets = exportedEndpoints.Subsets
 	return rcsw.updateMirrorEndpoints(ctx, ep)
 }
 

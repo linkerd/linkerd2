@@ -56,6 +56,7 @@ type (
 		gatewayPort             uint32
 		ha                      bool
 		enableGateway           bool
+		syncRemoteEndpoints     bool
 	}
 )
 
@@ -222,6 +223,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				TargetClusterLinkerdNamespace: controlPlaneNamespace,
 				ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
 				RemoteDiscoverySelector:       *remoteDiscoverySelector,
+				SyncRemoteEndpoints:           opts.syncRemoteEndpoints,
 			}
 
 			// If there is a gateway in the exporting cluster, populate Link
@@ -352,6 +354,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
 	cmd.Flags().BoolVar(&opts.ha, "ha", opts.ha, "Enable HA configuration for the service-mirror deployment (default false)")
 	cmd.Flags().BoolVar(&opts.enableGateway, "gateway", opts.enableGateway, "If false, allows a link to be created against a cluster that does not have a gateway service")
+	cmd.Flags().BoolVar(&opts.syncRemoteEndpoints, "sync-remote-endpoints", opts.syncRemoteEndpoints, "If true, it sync remote endpoints associated to mirrored service for flat network architectures")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"namespace", "gateway-namespace"},
@@ -452,6 +455,7 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 		gatewayPort:             0,
 		ha:                      false,
 		enableGateway:           true,
+		syncRemoteEndpoints:     false,
 	}, nil
 }
 
@@ -485,6 +489,10 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 
 	if opts.gatewayPort != 0 && !opts.enableGateway {
 		return nil, fmt.Errorf("--gateway-port and --gateway=false are mutually exclusive")
+	}
+
+	if opts.enableGateway && opts.syncRemoteEndpoints {
+		return nil, fmt.Errorf("--sync-remote-endpoints only has sense when --gateway=false")
 	}
 
 	defaults, err := multicluster.NewLinkValues()
