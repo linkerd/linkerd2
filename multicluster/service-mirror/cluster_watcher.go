@@ -906,7 +906,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 					return
 				}
 				if rcsw.isRemoteDiscovery(epNew.Labels) {
-					rcsw.log.Debugf("skipped processing endpoints object %s/%s (service labeled for remote-discovery mode and sync-remote-endpoints no activated)", epNew.Namespace, epNew.Name)
+					rcsw.log.Debugf("skipped processing endpoints object %s/%s (service labeled for remote-discovery mode)", epNew.Namespace, epNew.Name)
 					return
 				}
 				rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{epNew})
