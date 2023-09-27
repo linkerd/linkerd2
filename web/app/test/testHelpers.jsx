@@ -5,7 +5,6 @@ import React from 'react';
 import { Route, Router } from 'react-router-dom';
 import { I18nProvider } from '@lingui/react';
 import { i18n } from '@lingui/core';
-import { en } from 'make-plural/plurals'
 import catalogEn from './../js/locales/en/messages.json';
 
 const componentDefaultProps = {
@@ -15,7 +14,6 @@ const componentDefaultProps = {
   releaseVersion: ''
 };
 
-i18n.loadLocaleData('en', { plurals: en })
 i18n.loadLocaleData('en');
 i18n.load('en', catalogEn);
 i18n.activate('en');
