@@ -872,6 +872,12 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 					return
 				}
 
+				if rcsw.isRemoteDiscovery(ep.Labels) && rcsw.link.SyncRemoteEndpoints {
+					rcsw.log.Debugf("processing endpoints object %s/%s as it contains %s label and syncRemoteEndpoints is true", ep.Namespace, ep.Name, consts.DefaultExportedServiceSelector)
+					rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{ep})
+					return
+				}
+
 				if !rcsw.isExported(ep.Labels) {
 					rcsw.log.Debugf("skipped processing endpoints object %s/%s: missing %s label", ep.Namespace, ep.Name, consts.DefaultExportedServiceSelector)
 					return
@@ -890,11 +896,16 @@ func (rcsw *RemoteClusterServiceWatcher) Start(ctx context.Context) error {
 					rcsw.log.Errorf("error processing endpoints object: got %#v, expected *corev1.Endpoints", epNew)
 					return
 				}
-				if !rcsw.isExported(epNew.Labels) && !rcsw.link.SyncRemoteEndpoints {
+				if rcsw.isRemoteDiscovery(epNew.Labels) && rcsw.link.SyncRemoteEndpoints {
+					rcsw.log.Debugf("processing endpoints object %s/%s as it contains %s label and syncRemoteEndpoints is true", epNew.Namespace, epNew.Name, consts.DefaultExportedServiceSelector)
+					rcsw.eventsQueue.Add(&OnUpdateEndpointsCalled{epNew})
+					return
+				}
+				if !rcsw.isExported(epNew.Labels) {
 					rcsw.log.Debugf("skipped processing endpoints object %s/%s: missing %s label", epNew.Namespace, epNew.Name, consts.DefaultExportedServiceSelector)
 					return
 				}
-				if rcsw.isRemoteDiscovery(epNew.Labels) && !rcsw.link.SyncRemoteEndpoints {
+				if rcsw.isRemoteDiscovery(epNew.Labels) {
 					rcsw.log.Debugf("skipped processing endpoints object %s/%s (service labeled for remote-discovery mode and sync-remote-endpoints no activated)", epNew.Namespace, epNew.Name)
 					return
 				}

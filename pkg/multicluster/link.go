@@ -149,8 +149,8 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		}
 	}
 
-	var syncRemoteEndpoints bool
-	if syncRemoteEndpoints, ok = specObj["syncRemoteEndpoints"].(bool); !ok {
+	syncRemoteEndpoints, err := strconv.ParseBool(specObj["syncRemoteEndpoints"].(string))
+	if err != nil {
 		return Link{}, err
 	}
 
