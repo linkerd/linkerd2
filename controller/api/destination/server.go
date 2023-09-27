@@ -458,7 +458,6 @@ func (s *server) subscribeToEndpointProfile(
 		s.metadataAPI,
 	)
 
-	var err error
 	ip, err := s.pods.Subscribe(service, hostname, ip, port, translator)
 	if err != nil {
 		return err

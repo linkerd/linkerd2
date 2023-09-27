@@ -224,6 +224,9 @@ func (pw *PodWatcher) updateServer(_ any) {
 		}
 
 		go func(pp *podPublisher) {
+			pp.mu.RLock()
+			defer pp.mu.RUnlock()
+
 			updated := false
 			for _, listener := range pp.listeners {
 				// the Server in question doesn't carry information about other
