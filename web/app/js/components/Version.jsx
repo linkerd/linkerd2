@@ -40,13 +40,19 @@ class Version extends React.Component {
     if (!latestVersion) {
       return (
         <Typography className={classes.versionMsg}>
-          <Trans>Version check failed{error ? `: ${error.statusText}` : ''}.</Trans>
+          {
+            error ? (
+              <Trans id="Version check failed: {msg}." values={{ msg: error.statusText }} />
+            ) : (
+              <Trans id="Version check failed." />
+            )
+          }
         </Typography>
       );
     }
 
     if (isLatest) {
-      return <Typography className={classes.versionMsg}><Trans>LinkerdIsUpToDateMsg</Trans></Typography>;
+      return <Typography className={classes.versionMsg}><Trans id="LinkerdIsUpToDateMsg" /></Typography>;
     }
 
     const versionText = Version.numericVersion(latestVersion);
@@ -64,7 +70,7 @@ class Version extends React.Component {
           color="primary"
           target="_blank"
           href="https://versioncheck.linkerd.io/update">
-          <Trans>Update Now</Trans>
+          <Trans id="Update Now" />
         </Button>
       </div>
     );
@@ -82,7 +88,7 @@ class Version extends React.Component {
 
     return (
       <div className={classes.version}>
-        <Typography className={classes.versionMsg}><Trans>Running</Trans>{message}</Typography>
+        <Typography className={classes.versionMsg}><Trans id="Running" />{message}</Typography>
         {this.renderVersionCheck()}
       </div>
     );

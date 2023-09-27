@@ -255,12 +255,12 @@ class CheckModal extends React.Component {
               color="primary"
               disabled={running}
               onClick={this.runCheck}>
-              <Trans>buttonRunLinkerdCheck</Trans>
+              <Trans id="buttonRunLinkerdCheck" />
             </Button>
           </Grid>
         </Grid>
 
-        { error !== undefined && <ErrorBanner message={error} /> }
+        {error !== undefined && <ErrorBanner message={error} />}
 
         <Dialog
           className={classes.dialog}
@@ -285,7 +285,7 @@ class CheckModal extends React.Component {
               {success !== undefined &&
                 <Grid item>
                   <SimpleChip
-                    label={success ? <Trans>labelSuccess</Trans> : <Trans>labelError</Trans>}
+                    label={success ? <Trans id="labelSuccess" /> : <Trans id="labelError" />}
                     type={success ? 'good' : 'bad'} />
                 </Grid>
               }
@@ -295,7 +295,7 @@ class CheckModal extends React.Component {
           <DialogContent className={classes.dialogContent}>
             <Paper className={classes.contentWrapper} elevation={3}>
               <div className={classes.content}>
-                { running ? (
+                {running ? (
                   <CircularProgress size={80} className={classes.spinner} />
                 ) : (
                   <React.Fragment>
@@ -316,11 +316,11 @@ class CheckModal extends React.Component {
 
           <DialogActions>
             <Button onClick={this.runCheck} color="primary">
-              <Trans>buttonReRunCheck</Trans>
+              <Trans id="buttonReRunCheck" />
             </Button>
 
             <Button onClick={this.handleOpenChange} color="primary">
-              <Trans>buttonClose</Trans>
+              <Trans id="buttonClose" />
             </Button>
           </DialogActions>
         </Dialog>

@@ -229,9 +229,9 @@ export const processTapEvent = jsonString => {
 
 const displayLimit = 3; // how many upstreams/downstreams to display in the popover table
 const popoverSrcDstColumns = [
-  { title: <Trans>columnTitleSource</Trans>, dataIndex: 'source' },
+  { title: <Trans id="columnTitleSource" />, dataIndex: 'source' },
   { title: '', key: 'arrow', render: () => <FontAwesomeIcon icon={faLongArrowAltRight} /> },
-  { title: <Trans>columnTitleDestination</Trans>, dataIndex: 'destination' },
+  { title: <Trans id="columnTitleDestination" />, dataIndex: 'destination' },
 ];
 
 const getPodOwner = (labels, ResourceLink) => {
@@ -242,7 +242,7 @@ const getPodOwner = (labels, ResourceLink) => {
     const [labelName] = podOwner.split('/');
     return (
       <div className="popover-td">
-        { resourceShortLink(labelName, labels, ResourceLink) }
+        {resourceShortLink(labelName, labels, ResourceLink)}
       </div>
     );
   }
@@ -266,7 +266,7 @@ const getPodList = (endpoint, display, labels, ResourceLink) => {
             }
           })
         }
-        { (_size(display.pods) > displayLimit ? '...' : '') }
+        {(_size(display.pods) > displayLimit ? '...' : '')}
       </React.Fragment>
     );
   }
@@ -311,8 +311,8 @@ const popoverResourceTable = (d, ResourceLink) => { // eslint-disable-line no-un
 };
 
 export const directionColumn = d => (
-  <Tooltip title={d === 'INBOUND' ? <Trans>tooltipInbound</Trans> : <Trans>tooltipOutbound</Trans>} placement="right">
-    <span>{d === 'INBOUND' ? <Trans>columnTitleFrom</Trans> : <Trans>columnTitleTo</Trans>}</span>
+  <Tooltip title={d === 'INBOUND' ? <Trans id="tooltipInbound" /> : <Trans id="tooltipOutbound" />} placement="right">
+    <span>{d === 'INBOUND' ? <Trans id="columnTitleFrom" /> : <Trans id="columnTitleTo" />}</span>
   </Tooltip>
 );
 

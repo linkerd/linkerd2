@@ -235,7 +235,7 @@ class TapQueryForm extends React.Component {
 
     return (
       <React.Fragment>
-        <InputLabel htmlFor={resourceKey}>{resourceKey === 'resource' ? <Trans>formResource</Trans> : <Trans>formToResource</Trans>}</InputLabel>
+        <InputLabel htmlFor={resourceKey}>{resourceKey === 'resource' ? <Trans id="formResource" /> : <Trans id="formToResource" />}</InputLabel>
         <Select
           value={!nsEmpty && resourceOptions.includes(query[resourceKey]) ? query[resourceKey] : ''}
           onChange={this.handleFormChange(resourceKey)}
@@ -280,13 +280,13 @@ class TapQueryForm extends React.Component {
     if (tapIsClosing) {
       return (
         <Button variant="outlined" color="primary" className="tap-ctrl tap-stop" disabled>
-          <Trans>buttonStop</Trans>
+          <Trans id="buttonStop" />
         </Button>
       );
     } else if (tapInProgress) {
       return (
         <Button variant="outlined" color="primary" className="tap-ctrl tap-stop" onClick={handleTapStop}>
-          <Trans>buttonStop</Trans>
+          <Trans id="buttonStop" />
         </Button>
       );
     } else {
@@ -297,7 +297,7 @@ class TapQueryForm extends React.Component {
           className="tap-ctrl tap-start"
           disabled={!query.namespace || !query.resource}
           onClick={handleTapStart}>
-          <Trans>buttonStart</Trans>
+          <Trans id="buttonStart" />
         </Button>
       );
     }
@@ -329,7 +329,7 @@ class TapQueryForm extends React.Component {
         <Grid container spacing={3}>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
             <FormControl className={classes.formControl}>
-              {this.renderNamespaceSelect(<Trans>formToNamespace</Trans>, 'toNamespace', 'toResource')}
+              {this.renderNamespaceSelect(<Trans id="formToNamespace" />, 'toNamespace', 'toResource')}
             </FormControl>
           </Grid>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
@@ -342,7 +342,7 @@ class TapQueryForm extends React.Component {
         <Grid container spacing={3}>
           <Grid item xs={6} md={3} classes={{ item: classes.formControlWrapper }}>
             <FormControl className={classes.formControl}>
-              <InputLabel htmlFor="authority"><Trans>formAuthority</Trans></InputLabel>
+              <InputLabel htmlFor="authority"><Trans id="formAuthority" /></InputLabel>
               <Select
                 value={query.authority}
                 onChange={this.handleFormChange('authority')}
@@ -354,24 +354,24 @@ class TapQueryForm extends React.Component {
                   ))
                 }
               </Select>
-              <FormHelperText><Trans>formAuthorityHelpText</Trans></FormHelperText>
+              <FormHelperText><Trans id="formAuthorityHelpText" /></FormHelperText>
             </FormControl>
           </Grid>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
-            {this.renderTextInput(<Trans>formPath</Trans>, 'path', <Trans>formPathHelpText</Trans>)}
+            {this.renderTextInput(<Trans id="formPath" />, 'path', <Trans id="formPathHelpText" />)}
           </Grid>
         </Grid>
 
         <Grid container spacing={3}>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
-            {this.renderTextInput(<Trans>formScheme</Trans>, 'scheme', <Trans>formSchemeHelpText</Trans>)}
+            {this.renderTextInput(<Trans id="formScheme" />, 'scheme', <Trans id="formSchemeHelpText" />)}
           </Grid>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
-            {this.renderTextInput(<Trans>formMaxRPS</Trans>, 'maxRps', <Trans>formMaxRPSHelpText {defaultMaxRps}</Trans>)}
+            {this.renderTextInput(<Trans id="formMaxRPS" />, 'maxRps', <Trans id="formMaxRPSHelpText {defaultMaxRps}" values={{ defaultMaxRps }} />)}
           </Grid>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
             <FormControl className={classes.formControl}>
-              <InputLabel htmlFor="method"><Trans>formHTTPMethod</Trans></InputLabel>
+              <InputLabel htmlFor="method"><Trans id="formHTTPMethod" /></InputLabel>
               <Select
                 value={query.method}
                 onChange={this.handleFormChange('method')}
@@ -383,7 +383,7 @@ class TapQueryForm extends React.Component {
                   ))
                 }
               </Select>
-              <FormHelperText><Trans>formHTTPMethodHelpText</Trans></FormHelperText>
+              <FormHelperText><Trans id="formHTTPMethodHelpText" /></FormHelperText>
             </FormControl>
           </Grid>
         </Grid>
@@ -399,7 +399,7 @@ class TapQueryForm extends React.Component {
       <Accordion expanded={advancedFormExpanded} onChange={this.handleAdvancedFormExpandClick} elevation={3}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Typography variant="caption" gutterBottom>
-            {advancedFormExpanded ? <Trans>formHideFilters</Trans> : <Trans>formShowFilters</Trans>}
+            {advancedFormExpanded ? <Trans id="formHideFilters" /> : <Trans id="formShowFilters" />}
           </Typography>
         </AccordionSummary>
 
@@ -420,7 +420,7 @@ class TapQueryForm extends React.Component {
           <Grid container spacing={3}>
             <Grid item xs={6} md="auto" className={classes.formControlWrapper}>
               <FormControl className={classes.formControl} fullWidth>
-                {this.renderNamespaceSelect(<Trans>formNamespace</Trans>, 'namespace', 'resource')}
+                {this.renderNamespaceSelect(<Trans id="formNamespace" />, 'namespace', 'resource')}
               </FormControl>
             </Grid>
 
@@ -433,7 +433,7 @@ class TapQueryForm extends React.Component {
             <Grid item>
               {this.renderTapButton(tapRequestInProgress, tapIsClosing)}
               <Button onClick={this.resetTapForm} disabled={tapRequestInProgress} className={classes.resetButton}>
-                <Trans>buttonReset</Trans>
+                <Trans id="buttonReset" />
               </Button>
             </Grid>
           </Grid>

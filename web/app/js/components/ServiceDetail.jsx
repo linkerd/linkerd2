@@ -58,16 +58,16 @@ const ServiceDetail = function({
       {_isEmpty(upstreams) ? null :
       <MetricsTable
         resource="multi_resource"
-        title={<Trans>tableTitleInbound</Trans>}
+        title={<Trans id="tableTitleInbound" />}
         metrics={upstreamDisplayMetrics} />
       }
 
       {resourceMetrics.length <= 1 ? null :
       <MetricsTable
         resource="service"
-        title={<Trans>tableTitleOutbound</Trans>}
+        title={<Trans id="tableTitleOutbound" />}
         metrics={resourceMetrics} />
-       }
+      }
 
     </div>
   );

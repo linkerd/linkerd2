@@ -16,7 +16,7 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     render: d => directionColumn(d.direction),
   },
   {
-    title: <Trans>columnTitleName</Trans>,
+    title: <Trans id="columnTitleName" />,
     filter: d => {
       const [labels, display] = extractDisplayName(d);
       return _isEmpty(labels[resourceType]) ?
@@ -27,33 +27,33 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     render: d => srcDstColumn(d, resourceType, ResourceLink),
   },
   {
-    title: <Trans>columnTitleMethod</Trans>,
+    title: <Trans id="columnTitleMethod" />,
     dataIndex: 'httpMethod',
     filter: d => d.httpMethod,
     sorter: d => d.httpMethod,
   },
   {
-    title: <Trans>columnTitlePath</Trans>,
+    title: <Trans id="columnTitlePath" />,
     dataIndex: 'path',
     filter: d => d.path,
     sorter: d => d.path,
   },
   {
-    title: <Trans>columnTitleCount</Trans>,
+    title: <Trans id="columnTitleCount" />,
     dataIndex: 'count',
     isNumeric: true,
     defaultSortOrder: 'desc',
     sorter: d => d.count,
   },
   {
-    title: <Trans>columnTitleBest</Trans>,
+    title: <Trans id="columnTitleBest" />,
     dataIndex: 'best',
     isNumeric: true,
     render: d => formatLatencySec(d.best),
     sorter: d => d.best,
   },
   {
-    title: <Trans>columnTitleWorst</Trans>,
+    title: <Trans id="columnTitleWorst" />,
     dataIndex: 'worst',
     isNumeric: true,
     defaultSortOrder: 'desc',
@@ -61,14 +61,14 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     sorter: d => d.worst,
   },
   {
-    title: <Trans>columnTitleLast</Trans>,
+    title: <Trans id="columnTitleLast" />,
     dataIndex: 'last',
     isNumeric: true,
     render: d => formatLatencySec(d.last),
     sorter: d => d.last,
   },
   {
-    title: <Trans>columnTitleSuccessRate</Trans>,
+    title: <Trans id="columnTitleSuccessRate" />,
     dataIndex: 'successRate',
     isNumeric: true,
     render: d => _isNil(d) || _isNil(d.successRate) ? '---' :
@@ -76,7 +76,7 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     sorter: d => d.successRate.get(),
   },
   {
-    title: <Trans>columnTitleTap</Trans>,
+    title: <Trans id="columnTitleTap" />,
     key: 'tap',
     isNumeric: true,
     render: d => tapLink(d, resourceType, PrefixedLink),

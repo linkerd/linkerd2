@@ -17,7 +17,7 @@ const EmptyCard = function({ classes }) {
     <Card className={classes.card} elevation={3}>
       <CardContent>
         <Typography>
-          <Trans>NoDataToDisplayMsg</Trans>
+          <Trans id="NoDataToDisplayMsg" />
         </Typography>
       </CardContent>
     </Card>

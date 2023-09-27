@@ -2,18 +2,18 @@ import '../css/styles.css';
 import '../img/favicon.png'; // needs to be referenced somewhere so webpack bundles it
 
 import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
-import { DETECTORS, LocaleResolver, TRANSFORMERS } from 'locales-detector';
+// import { DETECTORS, LocaleResolver, TRANSFORMERS } from 'locales-detector';
 import { MuiThemeProvider, createTheme } from '@material-ui/core/styles';
 
 import CssBaseline from '@material-ui/core/CssBaseline';
 import { I18nProvider } from '@lingui/react';
 import { i18n } from '@lingui/core';
-import { en, es } from 'make-plural/plurals';
+// import { en, es } from 'make-plural/plurals';
 import { QueryParamProvider } from 'use-query-params';
 import React from 'react';
 import ReactDOM from 'react-dom';
-import _find from 'lodash/find';
-import _isEmpty from 'lodash/isEmpty';
+// import _find from 'lodash/find';
+// import _isEmpty from 'lodash/isEmpty';
 import { ReactRouter5Adapter } from 'use-query-params/adapters/react-router-5';
 import ApiHelpers from './components/util/ApiHelpers.jsx';
 import AppContext from './components/util/AppContext.jsx';
@@ -32,6 +32,8 @@ import TopRoutes from './components/TopRoutes.jsx';
 import catalogEn from './locales/en/messages.json';
 import catalogEs from './locales/es/messages.json';
 import { dashboardTheme } from './components/util/theme.js';
+
+import { Trans } from '@lingui/macro';
 
 const appMain = document.getElementById('main');
 const appData = !appMain ? {} : appMain.dataset;
@@ -55,27 +57,27 @@ if (pathArray[0] === '' && pathArray[1] === 'namespaces' && pathArray[2]) {
   defaultNamespace = '_all';
 }
 
-const detectedLocales = new LocaleResolver(
-  [new DETECTORS.NavigatorDetector()],
-  [new TRANSFORMERS.FallbacksTransformer()],
-).getLocales();
-const langOptions = {
-  en: {
-    catalog: catalogEn,
-    plurals: en,
-  },
-  es: {
-    catalog: catalogEs,
-    plurals: es,
-  },
+// const detectedLocales = new LocaleResolver(
+//   [new DETECTORS.NavigatorDetector()],
+//   [new TRANSFORMERS.FallbacksTransformer()],
+// ).getLocales();
+const langCatalogs = {
+  en: catalogEn,
+  es: catalogEs,
 };
-const selectedLocale =
-  _find(detectedLocales, l => !_isEmpty(langOptions[l])) || 'en';
-const selectedLangOptions = langOptions[selectedLocale] || langOptions.en;
 
-i18n.loadLocaleData(selectedLocale, { plurals: selectedLangOptions.plurals });
-i18n.load(selectedLocale, selectedLangOptions.catalog.messages);
-i18n.activate(selectedLocale);
+const locale = 'en';
+// _find(detectedLocales, l => !_isEmpty(langOptions[l])) || 'en';
+const langCatalog = langCatalogs[locale] || langCatalogs.en;
+// eslint-disable-next-line no-console
+console.log('Loaded catalog:', langCatalog);
+i18n.load(locale, langCatalog);
+i18n.activate(locale);
+// eslint-disable-next-line no-console
+console.log('Active locale:', i18n.locale);
+// eslint-disable-next-line no-console
+console.log(i18n._('columnTitleNoTraffic'));
+i18n.debug = true;
 
 class App extends React.Component {
   constructor(props) {
@@ -107,6 +109,8 @@ class App extends React.Component {
     return (
       <AppContext.Provider value={this.state}>
         <I18nProvider i18n={i18n}>
+          <Trans id="404Msg">404Msg</Trans>
+
           <AppHTML />
         </I18nProvider>
       </AppContext.Provider>

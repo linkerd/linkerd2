@@ -21,14 +21,14 @@ const getClassification = (meshedPodCount, failedPodCount) => {
 
 const namespacesColumns = PrefixedLink => [
   {
-    title: <Trans>columnTitleNamespace</Trans>,
+    title: <Trans id="columnTitleNamespace" />,
     dataIndex: 'namespace',
     sorter: d => d.namespace,
     render: d => {
       return (
         <Grid container alignItems="center" spacing={1}>
           <Grid item><PrefixedLink to={`/namespaces/${d.namespace}`}>{d.namespace}</PrefixedLink></Grid>
-          { _isEmpty(d.errors) ? null :
+          {_isEmpty(d.errors) ? null :
           <Grid item><ErrorModal errors={d.errors} resourceName={d.namespace} resourceType="namespace" /></Grid>
           }
         </Grid>
@@ -36,12 +36,12 @@ const namespacesColumns = PrefixedLink => [
     },
   },
   {
-    title: <Trans>columnTitleMeshedPods</Trans>,
+    title: <Trans id="columnTitleMeshedPods" />,
     dataIndex: 'meshedPodsStr',
     isNumeric: true,
   },
   {
-    title: <Trans>columnTitleMeshedStatus</Trans>,
+    title: <Trans id="columnTitleMeshedStatus" />,
     key: 'meshification',
     render: row => {
       const percent = row.meshedPercent.get();
@@ -60,9 +60,9 @@ const namespacesColumns = PrefixedLink => [
               <div>
                 {`${row.meshedPods} out of ${row.totalPods} running or pending pods are in the mesh ${percentMeshedMsg}`}
               </div>
-              {row.failedPods === 0 ? null : <div>{ `${row.failedPods} failed pods` }</div>}
+              {row.failedPods === 0 ? null : <div>{`${row.failedPods} failed pods`}</div>}
             </div>
-            )}>
+          )}>
           <Progress variant="determinate" value={Math.round(percent * 100)} />
         </Tooltip>
       );

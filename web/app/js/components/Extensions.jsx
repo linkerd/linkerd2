@@ -65,7 +65,7 @@ class Extensions extends React.Component {
       <Grid container direction="column" spacing={3} justifyContent="center" alignItems="center">
         <Grid item xs={12}>
           <Typography variant="h6">
-            <Trans>extensionsPageMsg</Trans>
+            <Trans id="extensionsPageMsg" />
           </Typography>
         </Grid>
         {extensions.map(ext => (
@@ -80,7 +80,7 @@ class Extensions extends React.Component {
                       color="primary"
                       href={ext.docLink}
                       target="_blank">
-                      <Trans>buttonLearnMore</Trans>
+                      <Trans id="buttonLearnMore" />
                     </Button>
                   </Grid>
                 </Grid>

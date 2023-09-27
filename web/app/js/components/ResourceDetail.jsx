@@ -368,11 +368,11 @@ export class ResourceDetailBase extends React.Component {
           <Grid item><Typography variant="h5">{resourceType}/{resourceName}</Typography></Grid>
           <Grid item>
             <Grid container spacing={1}>
-              {showNoTrafficMsg ? <Grid item><SimpleChip label={<Trans>columnTitleNoTraffic</Trans>} type="warning" /></Grid> : null}
+              {showNoTrafficMsg ? <Grid item><SimpleChip label={<Trans id="columnTitleNoTraffic" />} type="warning" /></Grid> : null}
               <Grid item>
                 {resourceIsMeshed ?
-                  <SimpleChip label={<Trans>columnTitleMeshed</Trans>} type="good" /> :
-                  <SimpleChip label={<Trans>columnTitleUnmeshed</Trans>} type="bad" />
+                  <SimpleChip label={<Trans id="columnTitleMeshed" />} type="good" /> :
+                  <SimpleChip label={<Trans id="columnTitleUnmeshed" />} type="bad" />
                 }
               </Grid>
             </Grid>
@@ -402,14 +402,14 @@ export class ResourceDetailBase extends React.Component {
         {_isEmpty(upstreams) ? null :
         <MetricsTable
           resource="multi_resource"
-          title={<Trans>tableTitleInbound</Trans>}
+          title={<Trans id="tableTitleInbound" />}
           metrics={upstreamDisplayMetrics} />
         }
 
         {_isEmpty(downstreamDisplayMetrics) ? null :
         <MetricsTable
           resource="multi_resource"
-          title={<Trans>tableTitleOutbound</Trans>}
+          title={<Trans id="tableTitleOutbound" />}
           metrics={downstreamDisplayMetrics} />
         }
 
@@ -417,13 +417,13 @@ export class ResourceDetailBase extends React.Component {
           resourceType === 'pod' || isTcpOnly ? null :
           <MetricsTable
             resource="pod"
-            title={<Trans>tableTitlePods</Trans>}
+            title={<Trans id="tableTitlePods" />}
             metrics={podMetrics} />
         }
 
         <MetricsTable
           resource="pod"
-          title={<Trans>tableTitleTCP</Trans>}
+          title={<Trans id="tableTitleTCP" />}
           isTcpTable
           metrics={podMetrics} />
 

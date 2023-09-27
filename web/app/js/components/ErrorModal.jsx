@@ -151,7 +151,7 @@ class ErrorModal extends React.Component {
 
     if (showInit) {
       return (
-        <Tooltip title={<Trans>podsAreInitializingMsg</Trans>}>
+        <Tooltip title={<Trans id="podsAreInitializingMsg" />}>
           <CircularProgress size={20} thickness={4} />
         </Tooltip>
       );

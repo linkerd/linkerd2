@@ -191,11 +191,11 @@ class TopRoutes extends React.Component {
         <Grid container direction="column" spacing={2}>
           <Grid item container spacing={4} alignItems="center" justifyContent="flex-start">
             <Grid item>
-              {this.renderNamespaceDropdown(<Trans>formNamespace</Trans>, 'namespace', <Trans>formNamespaceHelpText</Trans>)}
+              {this.renderNamespaceDropdown(<Trans id="formNamespace" />, 'namespace', <Trans id="formNamespaceHelpText" />)}
             </Grid>
 
             <Grid item>
-              {this.renderResourceDropdown(<Trans>formResource</Trans>, 'resource_name', 'resource_type', <Trans>formResourceHelpText</Trans>)}
+              {this.renderResourceDropdown(<Trans id="formResource" />, 'resource_name', 'resource_type', <Trans id="formResourceHelpText" />)}
             </Grid>
 
             <Grid item>
@@ -204,7 +204,7 @@ class TopRoutes extends React.Component {
                 variant="outlined"
                 disabled={requestInProgress || !query.namespace || !query.resource_type}
                 onClick={this.handleBtnClick(true)}>
-                <Trans>buttonStart</Trans>
+                <Trans id="buttonStart" />
               </Button>
             </Grid>
 
@@ -214,23 +214,23 @@ class TopRoutes extends React.Component {
                 variant="outlined"
                 disabled={!requestInProgress}
                 onClick={this.handleBtnClick(false)}>
-                <Trans>buttonStop</Trans>
+                <Trans id="buttonStop" />
               </Button>
             </Grid>
           </Grid>
 
           <Grid item container spacing={4} alignItems="center" justifyContent="flex-start">
             <Grid item>
-              {this.renderNamespaceDropdown(<Trans>formToNamespace</Trans>, 'to_namespace', <Trans>formToNamespaceHelpText</Trans>)}
+              {this.renderNamespaceDropdown(<Trans id="formToNamespace" />, 'to_namespace', <Trans id="formToNamespaceHelpText" />)}
             </Grid>
 
             <Grid item>
-              {this.renderResourceDropdown(<Trans>formToResource</Trans>, 'to_name', 'to_type', <Trans>formToResourceHelpText</Trans>)}
+              {this.renderResourceDropdown(<Trans id="formToResource" />, 'to_name', 'to_type', <Trans id="formToResourceHelpText" />)}
             </Grid>
           </Grid>
         </Grid>
         <Divider light className={classes.root} />
-        <Typography variant="caption"><Trans>createNewProfileMsg</Trans> <ConfigureProfilesMsg showAsIcon /></Typography>
+        <Typography variant="caption"><Trans id="createNewProfileMsg" /> <ConfigureProfilesMsg showAsIcon /></Typography>
       </CardContent>
     );
   };

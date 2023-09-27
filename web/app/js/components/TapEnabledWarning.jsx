@@ -24,7 +24,9 @@ const TapEnabledWarning = function({ resource, cardComponent, namespace, classes
     <Grid className={classes.container} container spacing={1} alignItems="center">
       <Grid item><Warning className={classes.iconWarning} /></Grid>
       <Grid item>
-        <Trans>Pods under the resource {resource} in the {namespace} namespace are missing tap configurations (restart these pods to enable tap)</Trans>
+        <Trans
+          id="Pods under the resource {resource} in the {namespace} namespace are missing tap configurations (restart these pods to enable tap)"
+          values={{ resource, namespace }} />
       </Grid>
     </Grid>
   );

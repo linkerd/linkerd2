@@ -132,7 +132,7 @@ class ConfigureProfilesMsg extends React.Component {
           color="primary"
           size="small"
           onClick={this.handleClickOpen}>
-          <Trans>buttonCreateServiceProfile</Trans>
+          <Trans id="buttonCreateServiceProfile" />
         </Button>
       );
     }
@@ -144,7 +144,7 @@ class ConfigureProfilesMsg extends React.Component {
         disabled={disableDownloadButton}
         onClick={() => this.handleClose(downloadUrl)}
         color="primary">
-        <Trans>buttonDownload</Trans>
+        <Trans id="buttonDownload" />
       </Button>
     );
 
@@ -156,11 +156,11 @@ class ConfigureProfilesMsg extends React.Component {
           onClose={this.handleClose}
           aria-labelledby="form-dialog-title">
           <DialogTitle id="form-dialog-title">
-            <Trans>New service profile</Trans>
+            <Trans id="New service profile" />
           </DialogTitle>
           <DialogContent>
             <DialogContentText>
-              <Trans>formCreateServiceProfileHelpText</Trans>
+              <Trans id="formCreateServiceProfileHelpText" />
             </DialogContentText>
             <FormControl
               className={classes.textField}
@@ -174,7 +174,7 @@ class ConfigureProfilesMsg extends React.Component {
                 aria-describedby="component-error-text" />
               {error.service && (
                 <FormHelperText id="component-error-text">
-                  <Trans>formServiceNameErrorText</Trans>
+                  <Trans id="formServiceNameErrorText" />
                 </FormHelperText>
               )}
             </FormControl>
@@ -190,14 +190,14 @@ class ConfigureProfilesMsg extends React.Component {
                 aria-describedby="component-error-text" />
               {error.namespace && (
                 <FormHelperText id="component-error-text">
-                  <Trans>formNamespaceErrorText</Trans>
+                  <Trans id="formNamespaceErrorText" />
                 </FormHelperText>
               )}
             </FormControl>
           </DialogContent>
           <DialogActions>
             <Button onClick={this.handleClose} color="primary">
-              <Trans>buttonCancel</Trans>
+              <Trans id="buttonCancel" />
             </Button>
             {disableDownloadButton ?
               downloadButton :
@@ -220,7 +220,7 @@ class ConfigureProfilesMsg extends React.Component {
       return (
         <CardContent>
           <Typography component="div">
-            <Trans>formNoNamedRouteTrafficFound</Trans>
+            <Trans id="formNoNamedRouteTrafficFound" />
             {this.renderDownloadProfileForm()}
           </Typography>
         </CardContent>

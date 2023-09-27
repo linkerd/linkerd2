@@ -18,9 +18,9 @@ const styles = theme => ({
 
 function getSteps(numResources, resource) {
   return [
-    { label: <Trans>controllerInstalledMsg</Trans>, key: 'installedMsg' },
+    { label: <Trans id="controllerInstalledMsg" />, key: 'installedMsg' },
     { label: <Plural value={numResources} zero={resource} one={resource} other={resource} />, key: 'resourceMsg' },
-    { label: <Trans>connectResourceMsg {resource}</Trans>, content: incompleteMeshMessage(), key: 'connectMsg' },
+    { label: <Trans id="connectResourceMsg {resource}" />, content: incompleteMeshMessage(), key: 'connectMsg' },
   ];
 }
 
@@ -30,7 +30,7 @@ const CallToAction = function({ resource, numResources, classes }) {
 
   return (
     <React.Fragment>
-      <Typography><Trans>serviceMeshInstalledMsg</Trans></Typography>
+      <Typography><Trans id="serviceMeshInstalledMsg" /></Typography>
       <Stepper
         activeStep={lastStep}
         className={classes.instructions}

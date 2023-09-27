@@ -18,21 +18,21 @@ import { withContext } from './util/AppContext.jsx';
 
 const tcpStatColumns = [
   {
-    title: <Trans>columnTitleOpenConnections</Trans>,
+    title: <Trans id="columnTitleOpenConnections" />,
     dataIndex: 'tcp.openConnections',
     isNumeric: true,
     render: d => metricToFormatter.NO_UNIT(d.tcp.openConnections),
     sorter: d => d.tcp.openConnections,
   },
   {
-    title: <Trans>columnTitleReadRate</Trans>,
+    title: <Trans id="columnTitleReadRate" />,
     dataIndex: 'tcp.readRate',
     isNumeric: true,
     render: d => metricToFormatter.BYTES(d.tcp.readRate),
     sorter: d => d.tcp.readRate,
   },
   {
-    title: <Trans>columnTitleWriteRate</Trans>,
+    title: <Trans id="columnTitleWriteRate" />,
     dataIndex: 'tcp.writeRate',
     isNumeric: true,
     render: d => metricToFormatter.BYTES(d.tcp.writeRate),
@@ -42,35 +42,35 @@ const tcpStatColumns = [
 
 const httpStatColumns = [
   {
-    title: <Trans>columnTitleSuccessRate</Trans>,
+    title: <Trans id="columnTitleSuccessRate" />,
     dataIndex: 'successRate',
     isNumeric: true,
     render: d => <SuccessRateMiniChart sr={d.successRate} />,
     sorter: d => d.successRate,
   },
   {
-    title: <Trans>columnTitleRPS</Trans>,
+    title: <Trans id="columnTitleRPS" />,
     dataIndex: 'requestRate',
     isNumeric: true,
     render: d => metricToFormatter.NO_UNIT(d.requestRate),
     sorter: d => d.requestRate,
   },
   {
-    title: <Trans>columnTitleP50Latency</Trans>,
+    title: <Trans id="columnTitleP50Latency" />,
     dataIndex: 'P50',
     isNumeric: true,
     render: d => metricToFormatter.LATENCY(d.P50),
     sorter: d => d.P50,
   },
   {
-    title: <Trans>columnTitleP95Latency</Trans>,
+    title: <Trans id="columnTitleP95Latency" />,
     dataIndex: 'P95',
     isNumeric: true,
     render: d => metricToFormatter.LATENCY(d.P95),
     sorter: d => d.P95,
   },
   {
-    title: <Trans>columnTitleP99Latency</Trans>,
+    title: <Trans id="columnTitleP99Latency" />,
     dataIndex: 'P99',
     isNumeric: true,
     render: d => metricToFormatter.LATENCY(d.P99),
@@ -80,7 +80,7 @@ const httpStatColumns = [
 ];
 
 const trafficSplitWeightColumn = {
-  title: <Trans>columnTitleWeight</Trans>,
+  title: <Trans id="columnTitleWeight" />,
   dataIndex: 'weight',
   isNumeric: true,
   filter: d => !d.tsStats ? null : d.tsStats.weight,
@@ -97,7 +97,7 @@ const trafficSplitWeightColumn = {
 
 const serviceDetailsColumns = PrefixedLink => [
   {
-    title: <Trans>columnTitleDestination</Trans>,
+    title: <Trans id="columnTitleDestination" />,
     dataIndex: 'DST',
     isNumeric: false,
     filter: d => !d.tsStats ? null : d.tsStats.leaf,
@@ -124,42 +124,42 @@ const serviceDetailsColumns = PrefixedLink => [
 
 const gatewayColumns = [
   {
-    title: <Trans>columnTitleClusterName</Trans>,
+    title: <Trans id="columnTitleClusterName" />,
     dataIndex: 'clusterName',
     isNumeric: false,
     render: d => !d.clusterName ? '---' : d.clusterName,
     sorter: d => !d.clusterName ? '---' : d.clusterName,
   },
   {
-    title: <Trans>columnTitleAlive</Trans>,
+    title: <Trans id="columnTitleAlive" />,
     dataIndex: 'alive',
     isNumeric: false,
     render: d => !d.alive ? 'FALSE' : 'TRUE',
     sorter: d => d.alive,
   },
   {
-    title: <Trans>columnTitlePairedServices</Trans>,
+    title: <Trans id="columnTitlePairedServices" />,
     dataIndex: 'pairedServices',
     isNumeric: false,
     render: d => d.pairedServices,
     sorter: d => d.pairedServices,
   },
   {
-    title: <Trans>columnTitleP50Latency</Trans>,
+    title: <Trans id="columnTitleP50Latency" />,
     dataIndex: 'P50',
     isNumeric: true,
     render: d => metricToFormatter.LATENCY(d.P50),
     sorter: d => d.P50,
   },
   {
-    title: <Trans>columnTitleP95Latency</Trans>,
+    title: <Trans id="columnTitleP95Latency" />,
     dataIndex: 'P95',
     isNumeric: true,
     render: d => metricToFormatter.LATENCY(d.P95),
     sorter: d => d.P95,
   },
   {
-    title: <Trans>columnTitleP99Latency</Trans>,
+    title: <Trans id="columnTitleP99Latency" />,
     dataIndex: 'P99',
     isNumeric: true,
     render: d => metricToFormatter.LATENCY(d.P99),
@@ -176,7 +176,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
 
   const nsColumn = [
     {
-      title: <Trans>columnTitleNamespace</Trans>,
+      title: <Trans id="columnTitleNamespace" />,
       dataIndex: 'namespace',
       filter: d => d.namespace,
       isNumeric: false,
@@ -186,7 +186,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
   ];
 
   const meshedColumn = {
-    title: <Trans>columnTitleMeshed</Trans>,
+    title: <Trans id="columnTitleMeshed" />,
     dataIndex: 'pods.totalPods',
     isNumeric: true,
     render: d => !d.pods ? null : `${d.pods.meshedPods}/${d.pods.totalPods}`,
@@ -194,7 +194,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
   };
 
   const grafanaColumn = {
-    title: <Trans>columnTitleGrafana</Trans>,
+    title: <Trans id="columnTitleGrafana" />,
     key: 'grafanaDashboard',
     isNumeric: true,
     render: row => {
@@ -215,7 +215,7 @@ const columnDefinitions = (resource, showNamespaceColumn, PrefixedLink, isTcpTab
   };
 
   const jaegerColumn = {
-    title: <Trans>columnTitleJaeger</Trans>,
+    title: <Trans id="columnTitleJaeger" />,
     key: 'JaegerDashboard',
     isNumeric: true,
     render: row => {

@@ -92,24 +92,24 @@ class ExpandableTable extends React.Component {
             </TableRow>
           </TableHead>
           <TableBody>
-            { tableRows.length > 0 && (
+            {tableRows.length > 0 && (
               <React.Fragment>
-                { tableRows.map(d => {
+                {tableRows.map(d => {
                   return (
                     <React.Fragment key={`frag-${d.key}`}>
                       <TableRow
                         key={d.key}
                         onClick={this.handleClick}>
                         {
-                            columns.map(c => (
-                              <TableCell
-                                key={`table-${d.key}-${c.key}`}
-                                className={classes.denseTable}
-                                align={c.isNumeric ? 'right' : 'left'}>
-                                {c.render(d)}
-                              </TableCell>
-                            ))
-                          }
+                          columns.map(c => (
+                            <TableCell
+                              key={`table-${d.key}-${c.key}`}
+                              className={classes.denseTable}
+                              align={c.isNumeric ? 'right' : 'left'}>
+                              {c.render(d)}
+                            </TableCell>
+                          ))
+                        }
                       </TableRow>
                     </React.Fragment>
                   );
@@ -119,7 +119,7 @@ class ExpandableTable extends React.Component {
           </TableBody>
         </Table>
 
-        { tableRows.length === 0 && (
+        {tableRows.length === 0 && (
           <EmptyCard />
         )}
 
@@ -129,7 +129,7 @@ class ExpandableTable extends React.Component {
           open={open}
           onClose={this.handleDialogClose}
           aria-labelledby="form-dialog-title">
-          <DialogTitle id="form-dialog-title"><Trans>tableTitleRequestDetails</Trans></DialogTitle>
+          <DialogTitle id="form-dialog-title"><Trans id="tableTitleRequestDetails" /></DialogTitle>
           <DialogContent>
             {expandedRowRender(datum, classes.expandedWrap)}
           </DialogContent>

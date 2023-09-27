@@ -473,7 +473,7 @@ class NavigationBase extends React.Component {
 
     const drawer = (
       <div>
-        { !mobileSidebarOpen &&
+        {!mobileSidebarOpen &&
           <div className={classes.navToolbar}>
             <div className={classes.linkerdNavLogo}>
               <Link to="/namespaces">{linkerdWordLogo}</Link>
@@ -483,21 +483,21 @@ class NavigationBase extends React.Component {
         <Divider />
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
-            <Trans>sidebarHeadingCluster</Trans>
+            <Trans id="sidebarHeadingCluster" />
           </Typography>
-          { this.menuItem('/namespaces', <Trans>menuItemNamespaces</Trans>, namespaceIcon) }
+          {this.menuItem('/namespaces', <Trans id="menuItemNamespaces" />, namespaceIcon)}
 
-          { this.menuItem(
+          {this.menuItem(
             '/controlplane',
-            <Trans>menuItemControlPlane</Trans>,
+            <Trans id="menuItemControlPlane" />,
             <FontAwesomeIcon icon={faCloud} className={classes.shrinkCloudIcon} />,
-          ) }
+          )}
 
-          { showGatewayLink && this.menuItem(
+          {showGatewayLink && this.menuItem(
             '/gateways',
-            <Trans>menuItemGateway</Trans>,
+            <Trans id="menuItemGateway" />,
             <FontAwesomeIcon icon={faDungeon} className={classes.shrinkIcon} />,
-          ) }
+          )}
 
         </MenuList>
 
@@ -538,44 +538,44 @@ class NavigationBase extends React.Component {
 
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
-            <Trans>sidebarHeadingWorkloads</Trans>
+            <Trans id="sidebarHeadingWorkloads" />
           </Typography>
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/cronjobs`, <Trans>menuItemCronJobs</Trans>, cronJobIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/cronjobs`, <Trans id="menuItemCronJobs" />, cronJobIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/daemonsets`, <Trans>menuItemDaemonSets</Trans>, daemonsetIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/daemonsets`, <Trans id="menuItemDaemonSets" />, daemonsetIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/deployments`, <Trans>menuItemDeployments</Trans>, deploymentIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/deployments`, <Trans id="menuItemDeployments" />, deploymentIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/services`, <Trans>menuItemServices</Trans>, serviceIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/services`, <Trans id="menuItemServices" />, serviceIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/jobs`, <Trans>menuItemJobs</Trans>, jobIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/jobs`, <Trans id="menuItemJobs" />, jobIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/pods`, <Trans>menuItemPods</Trans>, podIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/pods`, <Trans id="menuItemPods" />, podIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/replicasets`, <Trans>menuItemReplicaSets</Trans>, replicaSetIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/replicasets`, <Trans id="menuItemReplicaSets" />, replicaSetIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/replicationcontrollers`, <Trans>menuItemReplicationControllers</Trans>, replicaSetIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/replicationcontrollers`, <Trans id="menuItemReplicationControllers" />, replicaSetIcon)}
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/statefulsets`, <Trans>menuItemStatefulSets</Trans>, statefulSetIcon) }
+          {this.menuItem(`/namespaces/${selectedNamespace}/statefulsets`, <Trans id="menuItemStatefulSets" />, statefulSetIcon)}
         </MenuList>
 
         <Divider />
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
-            <Trans>sidebarHeadingTools</Trans>
+            <Trans id="sidebarHeadingTools" />
           </Typography>
 
-          { this.menuItem('/tap', <Trans>menuItemTap</Trans>, <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />) }
-          { this.menuItem('/top', <Trans>menuItemTop</Trans>, <FontAwesomeIcon icon={faStream} className={classes.shrinkIcon} />) }
-          { this.menuItem('/routes', <Trans>menuItemRoutes</Trans>, <FontAwesomeIcon icon={faRandom} className={classes.shrinkIcon} />) }
+          {this.menuItem('/tap', <Trans id="menuItemTap" />, <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />)}
+          {this.menuItem('/top', <Trans id="menuItemTop" />, <FontAwesomeIcon icon={faStream} className={classes.shrinkIcon} />)}
+          {this.menuItem('/routes', <Trans id="menuItemRoutes" />, <FontAwesomeIcon icon={faRandom} className={classes.shrinkIcon} />)}
 
         </MenuList>
         <Divider />
         <MenuList>
-          { this.menuItem(
+          {this.menuItem(
             '/community',
-            <Trans>menuItemCommunity</Trans>,
+            <Trans id="menuItemCommunity" />,
             <Badge
               classes={{ badge: classes.badge }}
               invisible={hideUpdateBadge}
@@ -583,36 +583,36 @@ class NavigationBase extends React.Component {
               <FontAwesomeIcon icon={faSmile} className={classes.shrinkIcon} />
             </Badge>,
             this.handleCommunityClick,
-          ) }
+          )}
 
-          { this.menuItem(
+          {this.menuItem(
             '/extensions',
-            <Trans>menuItemExtension</Trans>,
+            <Trans id="menuItemExtension" />,
             <Badge classes={{ badge: classes.badge }}><FontAwesomeIcon icon={faPuzzlePiece} className={classes.shrinkIcon} /></Badge>,
           )
           }
 
           <MenuItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon><LibraryBooksIcon className={classes.shrinkIcon} /></ListItemIcon>
-            <ListItemText primary={<Trans>menuItemDocumentation</Trans>} />
+            <ListItemText primary={<Trans id="menuItemDocumentation" />} />
             <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
           </MenuItem>
 
           <MenuItem component="a" href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon>{githubIcon}</ListItemIcon>
-            <ListItemText primary={<Trans>menuItemGitHub</Trans>} />
+            <ListItemText primary={<Trans id="menuItemGitHub" />} />
             <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
           </MenuItem>
 
           <MenuItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon><EmailIcon className={classes.shrinkIcon} /></ListItemIcon>
-            <ListItemText primary={<Trans>menuItemMailingList</Trans>} />
+            <ListItemText primary={<Trans id="menuItemMailingList" />} />
             <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
           </MenuItem>
 
           <MenuItem component="a" href="https://slack.linkerd.io" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon>{slackIcon}</ListItemIcon>
-            <ListItemText primary={<Trans>menuItemSlack</Trans>} />
+            <ListItemText primary={<Trans id="menuItemSlack" />} />
             <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
           </MenuItem>
 
@@ -653,7 +653,7 @@ class NavigationBase extends React.Component {
               <div className={classes.linkerdMobileLogo}>
                 {linkerdWordLogo}
               </div>
-              { !mobileSidebarOpen && // mobile view but no sidebar
+              {!mobileSidebarOpen && // mobile view but no sidebar
                 <IconButton onClick={this.handleDrawerClick} className={classes.bars}>
                   <FontAwesomeIcon icon={faBars} />
                 </IconButton>

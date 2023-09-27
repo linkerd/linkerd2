@@ -26,7 +26,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       render: d => directionColumn(d.direction),
     },
     {
-      title: <Trans>columnTitleNamespace</Trans>,
+      title: <Trans id="columnTitleNamespace" />,
       dataIndex: 'namespace',
       isNumeric: false,
       filter: d => d.namespace,
@@ -38,7 +38,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       sorter: d => d.namespace,
     },
     {
-      title: <Trans>columnTitleName</Trans>,
+      title: <Trans id="columnTitleName" />,
       dataIndex: 'name',
       isNumeric: false,
       filter: d => d.name,
@@ -57,7 +57,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       sorter: d => d.name,
     },
     {
-      title: <Trans>columnTitleIdentity</Trans>,
+      title: <Trans id="columnTitleIdentity" />,
       dataIndex: 'identity',
       isNumeric: false,
       filter: d => d.identity,
@@ -65,7 +65,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       sorter: d => d.identity,
     },
     {
-      title: <Trans>columnTitleSecured</Trans>,
+      title: <Trans id="columnTitleSecured" />,
       dataIndex: 'message',
       isNumeric: true,
       render: d => {
@@ -84,12 +84,12 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
 };
 
 const generateEdgesTableTitle = edges => {
-  let title = <Trans>tableTitleEdgesEmpty</Trans>;
+  let title = <Trans id="tableTitleEdgesEmpty" />;
   if (edges.length > 0) {
     let identity = edges[0].direction === 'INBOUND' ? edges[0].serverId : edges[0].clientId;
     if (identity) {
       identity = `${identity.split('.')[0]}.${identity.split('.')[1]}`;
-      title = <Trans>tableTitleEdgesWithIdentity {identity}</Trans>;
+      title = <Trans id="tableTitleEdgesWithIdentity {identity}" />;
     }
   }
   return title;

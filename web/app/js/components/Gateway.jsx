@@ -116,19 +116,19 @@ class Gateways extends React.Component {
           <Spinner />
         ) : (
           <div>
-            {noMetrics && multiclusterExists ? <div><Trans>noResourcesDetectedMsg</Trans></div> : null}
+            {noMetrics && multiclusterExists ? <div><Trans id="noResourcesDetectedMsg" /></div> : null}
             {(noMetrics && !multiclusterExists) &&
-            <Card>
-              <CardContent>
-                <Typography><Trans>installMulticlusterMsg</Trans></Typography>
-                <br />
-                <code>linkerd multicluster install | kubectl apply -f -</code>
-              </CardContent>
-            </Card>}
+              <Card>
+                <CardContent>
+                  <Typography><Trans id="installMulticlusterMsg" /></Typography>
+                  <br />
+                  <code>linkerd multicluster install | kubectl apply -f -</code>
+                </CardContent>
+              </Card>}
             {noMetrics ? null : (
               <div className="page-section">
                 <MetricsTable
-                  title={<Trans>tableTitleGateways</Trans>}
+                  title={<Trans id="tableTitleGateways" />}
                   resource="gateway"
                   metrics={metrics} />
               </div>

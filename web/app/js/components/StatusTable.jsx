@@ -25,18 +25,18 @@ const columnConfig = {
     width: 200,
     wrapDotsAt: 7, // dots take up more than one line in the table; space them out
     dotExplanation: status => {
-      return status.value === 'good' ? <Trans>statusExplanationGood</Trans> : <Trans>statusExplanationNotStarted</Trans>;
+      return status.value === 'good' ? <Trans id="statusExplanationGood" /> : <Trans id="statusExplanationNotStarted" />;
     },
   },
   'Proxy Status': {
     width: 250,
     wrapDotsAt: 9,
     dotExplanation: pod => {
-      const addedStatus = !pod.added ? <Trans>statusExplanationNotInMesh</Trans> : <Trans>statusExplanationInMesh</Trans>;
+      const addedStatus = !pod.added ? <Trans id="statusExplanationNotInMesh" /> : <Trans id="statusExplanationInMesh" />;
 
       return (
         <React.Fragment>
-          <div><Trans>Pod status: {pod.status}</Trans></div>
+          <div><Trans id="Pod status: {pod.status}" /></div>
           <div>{addedStatus}</div>
         </React.Fragment>
       );
@@ -54,7 +54,7 @@ const StatusDot = function({ status, columnName, classes }) {
           <div>{_get(columnConfig, [columnName, 'dotExplanation'])(status)}</div>
           <div>Uptime: {status.uptime} ({status.uptimeSec}s)</div>
         </div>
-    )}>
+      )}>
       <div
         className={classNames(
           classes.statusTableDot,
@@ -78,18 +78,18 @@ StatusDot.propTypes = {
 
 const columns = {
   resourceName: {
-    title: <Trans>columnTitleDeployment</Trans>,
+    title: <Trans id="columnTitleDeployment" />,
     dataIndex: 'name',
   },
   pods: {
-    title: <Trans>columnTitlePods</Trans>,
+    title: <Trans id="columnTitlePods" />,
     key: 'numEntities',
     isNumeric: true,
     render: d => d.pods.length,
   },
   status: (name, classes) => {
     return {
-      title: <Trans>columnTitlePodStatus</Trans>,
+      title: <Trans id="columnTitlePodStatus" />,
       key: 'status',
       render: d => {
         return d.pods.map(status => (

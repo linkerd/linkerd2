@@ -96,8 +96,8 @@ class TopRoutesTabs extends React.Component {
             onChange={this.handleChange}
             indicatorColor="primary"
             textColor="primary">
-            <Tab label={<Trans>tabLiveCalls</Trans>} />
-            <Tab label={<Trans>tabRouteMetrics</Trans>} />
+            <Tab label={<Trans id="tabLiveCalls" />} />
+            <Tab label={<Trans id="tabRouteMetrics" />} />
           </Tabs>
         </AppBar>
         {value === 0 && this.renderTopComponent()}

@@ -34,13 +34,13 @@ export class ResourceListBase extends React.Component {
         <MetricsTable
           resource={resource}
           metrics={processedMetrics}
-          title={<Trans>tableTitleHTTPMetrics</Trans>} />
+          title={<Trans id="tableTitleHTTPMetrics" />} />
 
         <MetricsTable
           resource={resource}
           isTcpTable
           metrics={processedMetrics}
-          title={<Trans>tableTitleTCPMetrics</Trans>} />
+          title={<Trans id="tableTitleTCPMetrics" />} />
       </React.Fragment>
     );
   };

@@ -8,13 +8,13 @@ import { friendlyTitle, isResource, singularResource } from './util/Utils.js';
 import { withContext } from './util/AppContext.jsx';
 
 const routeToCrumbTitle = {
-  controlplane: <Trans>menuItemControlPlane</Trans>,
-  tap: <Trans>menuItemTap</Trans>,
-  top: <Trans>menuItemTop</Trans>,
-  routes: <Trans>menuItemRoutes</Trans>,
-  community: <Trans>menuItemCommunity</Trans>,
-  gateways: <Trans>menuItemGateway</Trans>,
-  extensions: <Trans>menuItemExtension</Trans>,
+  controlplane: <Trans id="menuItemControlPlane" />,
+  tap: <Trans id="menuItemTap" />,
+  top: <Trans id="menuItemTop" />,
+  routes: <Trans id="menuItemRoutes" />,
+  community: <Trans id="menuItemCommunity" />,
+  gateways: <Trans id="menuItemGateway" />,
+  extensions: <Trans id="menuItemExtension" />,
 };
 
 class BreadcrumbHeader extends React.Component {
@@ -87,7 +87,7 @@ class BreadcrumbHeader extends React.Component {
       return (
         <span key={pathSegment.segment}>
           {BreadcrumbHeader.renderBreadcrumbSegment(pathSegment.segment, breadcrumbs.length, index)}
-          { index < breadcrumbs.length - 1 ? ' > ' : null }
+          {index < breadcrumbs.length - 1 ? ' > ' : null}
         </span>
       );
     });

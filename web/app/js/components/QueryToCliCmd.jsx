@@ -39,17 +39,17 @@ class QueryToCliCmd extends React.Component {
       _isEmpty(resource) ? null :
       <CardContent>
         <Typography variant="caption" gutterBottom>
-          <Trans>Current {cmdNameDisplay} query</Trans>
+          <Trans id="Current {cmdNameDisplay} query" values={{ cmdNameDisplay }} />
         </Typography>
 
         <br />
 
         <code>
           linkerd viz {cmdName} {resource}
-          { displayOrder(cmdName, query).map(item => {
+          {displayOrder(cmdName, query).map(item => {
             return !toCliParam[item] ? null : QueryToCliCmd.renderCliItem(toCliParam[item], query[item]);
           })}
-          { controllerNamespace === 'linkerd' ? null : ` --linkerd-namespace ${controllerNamespace}`}
+          {controllerNamespace === 'linkerd' ? null : ` --linkerd-namespace ${controllerNamespace}`}
         </code>
       </CardContent>
     );

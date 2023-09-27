@@ -35,22 +35,22 @@ const styles = {
 
 const installedExtensionsColumn = [
   {
-    title: <Trans>columnTitleName</Trans>,
+    title: <Trans id="columnTitleName" />,
     dataIndex: 'name',
   },
   {
-    title: <Trans>columnTitleNamespace</Trans>,
+    title: <Trans id="columnTitleNamespace" />,
     dataIndex: 'namespace',
   },
 ];
 
 const serviceMeshDetailsColumns = [
   {
-    title: <Trans>columnTitleName</Trans>,
+    title: <Trans id="columnTitleName" />,
     dataIndex: 'name',
   },
   {
-    title: <Trans>columnTitleValue</Trans>,
+    title: <Trans id="columnTitleValue" />,
     dataIndex: 'value',
     isNumeric: true,
   },
@@ -114,10 +114,10 @@ class ServiceMesh extends React.Component {
     const { productName, releaseVersion, controllerNamespace } = this.props;
 
     return [
-      { key: 1, name: <Trans>{productName} version</Trans>, value: releaseVersion },
-      { key: 2, name: <Trans>{productName} namespace</Trans>, value: controllerNamespace },
-      { key: 3, name: <Trans>Control plane components</Trans>, value: components.length },
-      { key: 4, name: <Trans>Data plane proxies</Trans>, value: this.proxyCount() },
+      { key: 1, name: <Trans id="{productName} version" values={{ productName }} />, value: releaseVersion },
+      { key: 2, name: <Trans id="{productName} namespace" values={{ productName }} />, value: controllerNamespace },
+      { key: 3, name: <Trans id="Control plane components" />, value: components.length },
+      { key: 4, name: <Trans id="Data plane proxies" />, value: this.proxyCount() },
     ];
   }
 
@@ -250,10 +250,10 @@ class ServiceMesh extends React.Component {
       <React.Fragment>
         <Grid container justifyContent="space-between">
           <Grid item xs={3}>
-            <Typography variant="h6"><Trans>Control plane</Trans></Typography>
+            <Typography variant="h6"><Trans id="Control plane" /></Typography>
           </Grid>
           <Grid item xs={3}>
-            <Typography align="right"><Trans>componentsMsg</Trans></Typography>
+            <Typography align="right"><Trans id="componentsMsg" /></Typography>
             <Typography align="right">{components.length}</Typography>
           </Grid>
         </Grid>
@@ -271,7 +271,7 @@ class ServiceMesh extends React.Component {
       <React.Fragment>
         <Grid container justifyContent="space-between">
           <Grid item xs={3}>
-            <Typography variant="h6"><Trans>Installed Extensions</Trans></Typography>
+            <Typography variant="h6"><Trans id="Installed Extensions" /></Typography>
           </Grid>
         </Grid>
         <BaseTable
@@ -286,7 +286,7 @@ class ServiceMesh extends React.Component {
   renderServiceMeshDetails() {
     return (
       <React.Fragment>
-        <Typography variant="h6"><Trans>Service mesh details</Trans></Typography>
+        <Typography variant="h6"><Trans id="Service mesh details" /></Typography>
 
         <BaseTable
           tableClassName="metric-table"
@@ -306,14 +306,14 @@ class ServiceMesh extends React.Component {
     let numUnadded = 0;
 
     if (_isEmpty(nsStatuses)) {
-      message = <Trans>noNamespacesDetectedMsg</Trans>;
+      message = <Trans id="noNamespacesDetectedMsg" />;
     } else {
       const unmeshedNamespaces = nsStatuses
         .filter(pod => pod.meshedPercent.get() <= 0)
         .filter(pod => pod.totalPods > 0)
         .filter(pod => pod.namespace !== 'kube-system');
       numUnadded = unmeshedNamespaces.length ?? 0;
-      message = numUnadded === 0 ? <Trans>All namespaces have a {productName} install.</Trans> : (
+      message = numUnadded === 0 ? <Trans id="All namespaces have a {productName} install." values={{ productName }} /> : (
         <Plural
           value={numUnadded}
           one="# namespace has no meshed resources"

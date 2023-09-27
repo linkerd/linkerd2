@@ -148,7 +148,7 @@ class Namespaces extends React.Component {
         {!error ? null : <ErrorBanner message={error} />}
         {!loaded ? <Spinner /> : (
           <div>
-            {noMetrics ? <div><Trans>noResourcesDetectedMsg</Trans></div> : null}
+            {noMetrics ? <div><Trans id="noResourcesDetectedMsg" /></div> : null}
             {
               _isEmpty(deploymentsWithMetrics) ? null :
               <NetworkGraph namespace={ns} deployments={metrics.deployment} />
@@ -166,7 +166,7 @@ class Namespaces extends React.Component {
               noMetrics ? null :
               <div className="page-section">
                 <MetricsTable
-                  title={<Trans>tableTitleTCP</Trans>}
+                  title={<Trans id="tableTitleTCP" />}
                   resource="pod"
                   metrics={metrics.pod}
                   isTcpTable />
