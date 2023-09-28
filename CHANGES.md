@@ -20,6 +20,7 @@ This edge release makes Linkerd even better.
 [#11150]: https://github.com/linkerd/linkerd2/pull/11150
 [#11334]: https://github.com/linkerd/linkerd2/pull/11334
 [#11376]: https://github.com/linkerd/linkerd2/pull/11376
+[#11377]: https://github.com/linkerd/linkerd2/pull/11377
 [#11406]: https://github.com/linkerd/linkerd2/pull/11406
 
 ## edge-29.9.3
