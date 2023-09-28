@@ -9,6 +9,8 @@ This edge release makes Linkerd even better.
   @cromulentbanana!) ([#11406])
 * Improved `linkerd viz check` to attempt to validate that the Prometheus scrape
   interval will work well with the CLI and Web query parameters ([#11376])
+* Improved CLI error handling to print differentiated error information when
+  versioncheck.linkerd.io cannot be resolved (thanks @dtaskai) ([#11377])
 * Fixed an issue where the destination controller would not update pod metadata
   for profile resolutions for a pod accessed via the host network (e.g.
   HostPort endpoints) ([#11334]).
