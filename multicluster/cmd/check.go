@@ -109,7 +109,7 @@ non-zero exit code.`,
 	}
 	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: table, json, short")
 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
-	cmd.Flags().DurationVar(&options.timeout, "timeout", options.timeout, "timeout duration between running checks")
+	cmd.Flags().DurationVar(&options.timeout, "timeout", options.timeout, "Timeout for calls to the Kubernetes API")
 	cmd.Flags().Bool("proxy", false, "")
 	cmd.Flags().MarkHidden("proxy")
 	cmd.Flags().StringP("namespace", "n", "", "")
