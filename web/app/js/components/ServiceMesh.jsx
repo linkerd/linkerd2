@@ -316,8 +316,8 @@ class ServiceMesh extends React.Component {
       message = numUnadded === 0 ? <Trans id="All namespaces have a {productName} install." values={{ productName }} /> : (
         <Plural
           value={numUnadded}
-          one="# namespace has no meshed resources"
-          other="# namespaces have no meshed resources" />
+          one="# namespace has no meshed resources."
+          other="# namespaces have no meshed resources." />
       );
     }
 

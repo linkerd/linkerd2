@@ -67,7 +67,6 @@ const locale =
   _find(detectedLocales, l => !_isEmpty(langCatalogs[l])) || 'en';
 i18n.load(locale, langCatalogs[locale] || catalogEn);
 i18n.activate(locale);
-i18n.debug = true;
 
 class App extends React.Component {
   constructor(props) {
@@ -106,7 +105,7 @@ class App extends React.Component {
   }
 }
 
-const AppHTML = function() {
+const AppHTML = function () {
   const theme = createTheme(dashboardTheme);
 
   return (
