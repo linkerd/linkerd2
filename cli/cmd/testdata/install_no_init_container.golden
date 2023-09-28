@@ -1200,6 +1200,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: 6c6be36634a1edea1ebcad1c3981959c48eb6b78684e7093058a50eca6ba2f97
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: install-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1618,6 +1619,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: d0a59489b5026951c56c51a6307d7dbab88c3b2fae24a84d2a115fbf5ac75db4
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: install-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
