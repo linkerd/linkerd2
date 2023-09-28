@@ -552,6 +552,86 @@ var noGatewayLink = &testEnvironment{
 	},
 }
 
+var createRemoteDiscoveryServiceWithEndpoints = &testEnvironment{
+	events: []interface{}{
+		&RemoteServiceCreated{
+			service: remoteService("service-one", "ns1", "111", map[string]string{
+				consts.DefaultExportedServiceSelector: "remote-discovery",
+			}, []corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		},
+		&OnUpdateEndpointsCalled{
+			ep: remoteEndpoints("service-one", "ns1", "112", "192.0.0.1", []corev1.EndpointPort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		},
+	},
+	remoteResources: []string{
+		remoteServiceAsYaml("service-one", "ns1", "111",
+			[]corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		remoteEndpointsAsYaml("service-one", "ns1", "112", "192.0.0.1", []corev1.EndpointPort{
+			{
+				Name:     "port1",
+				Protocol: "TCP",
+				Port:     555,
+			},
+			{
+				Name:     "port2",
+				Protocol: "TCP",
+				Port:     666,
+			},
+		}),
+	},
+	localResources: []string{
+		namespaceAsYaml("ns1"),
+	},
+	link: multicluster.Link{
+		TargetClusterName:   clusterName,
+		TargetClusterDomain: clusterDomain,
+		GatewayIdentity:     "",
+		GatewayAddress:      "",
+		GatewayPort:         0,
+		ProbeSpec: multicluster.ProbeSpec{
+			Port:   0,
+			Path:   "",
+			Period: 0,
+		},
+		Selector:                *defaultSelector,
+		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+		SyncRemoteEndpoints:     true,
+	},
+}
+
 func onAddOrUpdateExportedSvc(isAdd bool) *testEnvironment {
 	return &testEnvironment{
 		events: []interface{}{
@@ -772,6 +852,33 @@ func remoteHeadlessService(name, namespace, resourceVersion string, labels map[s
 	}
 }
 
+func remoteEndpoints(name, namespace, resourceVersion, address string, ports []corev1.EndpointPort) *corev1.Endpoints {
+	return &corev1.Endpoints{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Endpoints",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            name,
+			Namespace:       namespace,
+			ResourceVersion: resourceVersion,
+			Labels: map[string]string{
+				consts.DefaultExportedServiceSelector: "remote-discovery",
+			},
+		},
+		Subsets: []corev1.EndpointSubset{
+			{
+				Addresses: []corev1.EndpointAddress{
+					{
+						IP: address,
+					},
+				},
+				Ports: ports,
+			},
+		},
+	}
+}
+
 func remoteHeadlessEndpoints(name, namespace, resourceVersion, address string, ports []corev1.EndpointPort) *corev1.Endpoints {
 	return &corev1.Endpoints{
 		TypeMeta: metav1.TypeMeta{
@@ -868,6 +975,16 @@ func remoteHeadlessSvcAsYaml(name, namespace, resourceVersion string, ports []co
 	return string(bytes)
 }
 
+func remoteEndpointsAsYaml(name, namespace, resourceVersion, address string, ports []corev1.EndpointPort) string {
+	ep := remoteEndpoints(name, namespace, resourceVersion, address, ports)
+
+	bytes, err := yaml.Marshal(ep)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return string(bytes)
+}
+
 func remoteHeadlessEndpointsAsYaml(name, namespace, resourceVersion, address string, ports []corev1.EndpointPort) string {
 	ep := remoteHeadlessEndpoints(name, namespace, resourceVersion, address, ports)
 
@@ -877,6 +994,7 @@ func remoteHeadlessEndpointsAsYaml(name, namespace, resourceVersion, address str
 	}
 	return string(bytes)
 }
+
 func mirrorService(name, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
 	annotations := make(map[string]string)
 	annotations[consts.RemoteResourceVersionAnnotation] = resourceVersion
@@ -1080,6 +1198,34 @@ func endpoints(name, namespace, gatewayIP string, gatewayIdentity string, ports 
 
 	if gatewayIdentity != "" {
 		endpoints.Annotations[consts.RemoteGatewayIdentity] = gatewayIdentity
+	}
+
+	return endpoints
+}
+
+func remoteDiscoveryMirrorEndpoint(name string, namespace string, ips []string, ports []corev1.EndpointPort) *corev1.Endpoints {
+	var subsets []corev1.EndpointSubset
+	for _, ip := range ips {
+		subsets = append(subsets, corev1.EndpointSubset{
+			Addresses: []corev1.EndpointAddress{
+				{
+					IP: ip,
+				},
+			},
+			Ports: ports,
+		})
+	}
+
+	endpoints := &corev1.Endpoints{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Endpoints",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", name, clusterName),
+			Namespace: namespace,
+		},
+		Subsets: subsets,
 	}
 
 	return endpoints

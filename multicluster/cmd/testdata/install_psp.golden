@@ -374,6 +374,9 @@ spec:
                           type: array
                           items:
                             type: string
+              syncRemoteEndpoints:
+                description: If remote Endpoint associated to mirrored Service has to be synced
+                type: string
               targetClusterName:
                 description: Name of target cluster to link to
                 type: string

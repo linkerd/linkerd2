@@ -251,6 +251,58 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 	}
 }
 
+func TestRemoteServiceAndEndpointCreatedMirroring(t *testing.T) {
+	for _, tt := range []mirroringTestCase{
+		{
+			description: "create service and endpoints for flat networks when syncRemoteEndpoints is true",
+			environment: createRemoteDiscoveryServiceWithEndpoints,
+			expectedLocalServices: []*corev1.Service{
+				remoteDiscoveryMirrorService(
+					"service-one",
+					"ns1",
+					"111",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					},
+				),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{
+				remoteDiscoveryMirrorEndpoint(
+					"service-one",
+					"ns1",
+					[]string{
+						"192.0.0.1",
+					},
+					[]corev1.EndpointPort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					},
+				),
+			},
+		},
+	} {
+		tc := tt // pin
+		tc.run(t)
+	}
+}
+
 func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 	remoteAPI, err := k8s.NewFakeAPI(
 		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),

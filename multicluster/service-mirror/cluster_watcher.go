@@ -1218,6 +1218,9 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateEndpoints(
 	ctx context.Context,
 	exportedEndpoints *corev1.Endpoints,
 ) error {
+	if rcsw.isEmptyEndpoints(exportedEndpoints) {
+		exportedEndpoints.Subsets = []corev1.EndpointSubset{}
+	}
 	localServiceName := rcsw.mirroredResourceName(exportedEndpoints.Name)
 	ep, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(exportedEndpoints.Namespace).Get(localServiceName)
 	if err != nil {
