@@ -1,5 +1,25 @@
 # Changes
 
+## edge-29.9.4
+
+This edge release makes Linkerd even better.
+
+* Added a controlPlaneVersion override to the `linkerd-control-plane` Helm chart
+  to support including SHA256 image digests in Linkerd manifests (thanks
+  @cromulentbanana!) ([#11406])
+* Improved `linkerd viz check` to attempt to validate that the Prometheus scrape
+  interval will work well with the CLI and Web query parameters ([#11376])
+* Fixed an issue where the destination controller would not update pod metadata
+  for profile resolutions for a pod accessed via the host network (e.g.
+  HostPort endpoints) ([#11334]).
+* Added a validating webhook config for httproutes.gateway.networking.k8s.io
+  resources (thanks @mikutas!) ([#11150])
+
+[#11150]: https://github.com/linkerd/linkerd2/pull/11150
+[#11334]: https://github.com/linkerd/linkerd2/pull/11334
+[#11376]: https://github.com/linkerd/linkerd2/pull/11376
+[#11406]: https://github.com/linkerd/linkerd2/pull/11406
+
 ## edge-29.9.3
 
 This edge release updates the proxy's dependency on the `rustls` library to
