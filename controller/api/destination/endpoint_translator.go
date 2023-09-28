@@ -273,7 +273,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			err         error
 		)
 		if address.Pod != nil {
-			opaquePorts = getAnnotatedOpaquePorts(address.Pod, et.defaultOpaquePorts)
+			opaquePorts = watcher.GetAnnotatedOpaquePorts(address.Pod, et.defaultOpaquePorts)
 			wa, err = createWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {
 			var authOverride *pb.AuthorityOverride
