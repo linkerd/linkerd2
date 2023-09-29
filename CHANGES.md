@@ -1,6 +1,6 @@
 # Changes
 
-## edge-29.9.4
+## edge-23.9.4
 
 This edge release makes Linkerd even better.
 
@@ -26,7 +26,7 @@ This edge release makes Linkerd even better.
 [#11406]: https://github.com/linkerd/linkerd2/pull/11406
 [#11420]: https://github.com/linkerd/linkerd2/pull/11420
 
-## edge-29.9.3
+## edge-23.9.3
 
 This edge release updates the proxy's dependency on the `rustls` library to
 patch security vulnerability [RUSTSEC-2023-0052][RUSTSEC-2023-0052-0]
@@ -52,7 +52,7 @@ control plane and jaeger extension Helm charts.
 [#11342]: https://github.com/linkerd/linkerd2/issues/11342
 [RUSTSEC-2023-0052-0]: https://rustsec.org/advisories/RUSTSEC-2023-0052.html
 
-## edge-29.9.2
+## edge-23.9.2
 
 This edge release updates the proxy's dependency on the `webpki` library to
 patch security vulnerability [RUSTSEC-2023-0052] (GHSA-8qv2-5vq6-g2g7), a
