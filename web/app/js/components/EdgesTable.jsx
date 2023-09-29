@@ -89,7 +89,7 @@ const generateEdgesTableTitle = edges => {
     let identity = edges[0].direction === 'INBOUND' ? edges[0].serverId : edges[0].clientId;
     if (identity) {
       identity = `${identity.split('.')[0]}.${identity.split('.')[1]}`;
-      title = <Trans id="tableTitleEdgesWithIdentity {identity}" />;
+      title = <Trans id="tableTitleEdgesWithIdentity {identity}" values={{ identity }} />;
     }
   }
   return title;

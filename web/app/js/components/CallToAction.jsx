@@ -20,7 +20,7 @@ function getSteps(numResources, resource) {
   return [
     { label: <Trans id="controllerInstalledMsg" />, key: 'installedMsg' },
     { label: <Plural value={numResources} zero={resource} one={resource} other={resource} />, key: 'resourceMsg' },
-    { label: <Trans id="connectResourceMsg {resource}" />, content: incompleteMeshMessage(), key: 'connectMsg' },
+    { label: <Trans id="connectResourceMsg {resource}" values={{ resource }} />, content: incompleteMeshMessage(), key: 'connectMsg' },
   ];
 }
 
