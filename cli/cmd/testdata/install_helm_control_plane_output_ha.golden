@@ -166,6 +166,11 @@ webhooks:
     - meshtlsauthentications
     - serverauthorizations
     - servers
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["gateway.networking.k8s.io"]
+    apiVersions: ["*"]
+    resources:
+    - httproutes
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1

@@ -1439,6 +1439,9 @@ func CheckProxyVersionsUpToDate(pods []corev1.Pod, versions version.Channels) er
 			}
 		}
 	}
+	if versions.Empty() {
+		return errors.New("unable to determine version channel")
+	}
 	if len(outdatedPods) > 0 {
 		podList := strings.Join(outdatedPods, "\n")
 		return fmt.Errorf("some proxies are not running the current version:\n%s", podList)
