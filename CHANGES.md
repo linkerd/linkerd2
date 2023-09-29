@@ -16,12 +16,15 @@ This edge release makes Linkerd even better.
   HostPort endpoints) ([#11334]).
 * Added a validating webhook config for httproutes.gateway.networking.k8s.io
   resources (thanks @mikutas!) ([#11150])
+* Introduced a new `multicluster check --timeout` flag to limit the time
+  allowed for Kubernetes API calls (thanks @moki1202) ([#11420])
 
 [#11150]: https://github.com/linkerd/linkerd2/pull/11150
 [#11334]: https://github.com/linkerd/linkerd2/pull/11334
 [#11376]: https://github.com/linkerd/linkerd2/pull/11376
 [#11377]: https://github.com/linkerd/linkerd2/pull/11377
 [#11406]: https://github.com/linkerd/linkerd2/pull/11406
+[#11420]: https://github.com/linkerd/linkerd2/pull/11420
 
 ## edge-29.9.3
 
