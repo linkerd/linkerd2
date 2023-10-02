@@ -549,9 +549,21 @@ podMonitor:
         - {{ .Release.Namespace }}
         - linkerd-viz
         - linkerd-jaeger
+    # -- Relabelings to be applied before scraping
+    relabelings:
+    # -- Relabelings to be applied before ingestion
+    metricRelabelings:
   serviceMirror:
     # -- Enables the creation of PodMonitor for the Service Mirror component
     enabled: true
+    # -- Relabelings to be applied before scraping
+    relabelings:
+    # -- Relabelings to be applied before ingestion
+    metricRelabelings:
   proxy:
     # -- Enables the creation of PodMonitor for the data-plane
     enabled: true
+    # -- Relabelings to be applied before scraping
+    relabelings:
+    # -- Relabelings to be applied before ingestion
+    metricRelabelings:
