@@ -7,11 +7,17 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/api/util"
+	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
 )
 
 func makeServer(t *testing.T) *server {
+	srv, _ := getServerWithClient(t)
+	return srv
+}
+
+func getServerWithClient(t *testing.T) (*server, *l5dcrdclient.Interface) {
 	meshedPodResources := []string{`
 apiVersion: v1
 kind: Namespace
@@ -445,9 +451,9 @@ spec:
 	res = append(res, hostPortMapping...)
 	res = append(res, mirrorServiceResources...)
 	res = append(res, destinationCredentialsResources...)
-	k8sAPI, err := k8s.NewFakeAPI(res...)
+	k8sAPI, l5dClient, err := k8s.NewFakeAPIWithL5dClient(res...)
 	if err != nil {
-		t.Fatalf("NewFakeAPI returned an error: %s", err)
+		t.Fatalf("NewFakeAPIWithL5dClient returned an error: %s", err)
 	}
 	metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
 	if err != nil {
@@ -513,7 +519,7 @@ spec:
 		metadataAPI,
 		log,
 		make(<-chan struct{}),
-	}
+	}, l5dClient
 }
 
 type bufferingGetStream struct {
