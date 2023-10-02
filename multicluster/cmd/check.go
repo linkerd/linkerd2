@@ -555,6 +555,13 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context,
 	links := []string{}
 	errors := []error{}
 	for _, link := range hc.links {
+		// When linked against a cluster without a gateway, there will be no
+		// gateway address and no probe spec initialised. In such cases, skip
+		// the check
+		if link.GatewayAddress == "" || link.ProbeSpec.Path == "" {
+			continue
+		}
+
 		// Check that each gateway probe service has endpoints.
 		selector := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s,%s=%s", k8s.MirroredGatewayLabel, k8s.RemoteClusterNameLabel, link.TargetClusterName)}
 		gatewayMirrors, err := hc.KubeAPIClient().CoreV1().Services(metav1.NamespaceAll).List(ctx, selector)
