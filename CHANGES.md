@@ -1,6 +1,58 @@
 # Changes
 
-## edge-29.9.2
+## edge-23.9.4
+
+This edge release makes Linkerd even better.
+
+* Added a controlPlaneVersion override to the `linkerd-control-plane` Helm chart
+  to support including SHA256 image digests in Linkerd manifests (thanks
+  @cromulentbanana!) ([#11406])
+* Improved `linkerd viz check` to attempt to validate that the Prometheus scrape
+  interval will work well with the CLI and Web query parameters ([#11376])
+* Improved CLI error handling to print differentiated error information when
+  versioncheck.linkerd.io cannot be resolved (thanks @dtaskai) ([#11377])
+* Fixed an issue where the destination controller would not update pod metadata
+  for profile resolutions for a pod accessed via the host network (e.g.
+  HostPort endpoints) ([#11334]).
+* Added a validating webhook config for httproutes.gateway.networking.k8s.io
+  resources (thanks @mikutas!) ([#11150])
+* Introduced a new `multicluster check --timeout` flag to limit the time
+  allowed for Kubernetes API calls (thanks @moki1202) ([#11420])
+
+[#11150]: https://github.com/linkerd/linkerd2/pull/11150
+[#11334]: https://github.com/linkerd/linkerd2/pull/11334
+[#11376]: https://github.com/linkerd/linkerd2/pull/11376
+[#11377]: https://github.com/linkerd/linkerd2/pull/11377
+[#11406]: https://github.com/linkerd/linkerd2/pull/11406
+[#11420]: https://github.com/linkerd/linkerd2/pull/11420
+
+## edge-23.9.3
+
+This edge release updates the proxy's dependency on the `rustls` library to
+patch security vulnerability [RUSTSEC-2023-0052][RUSTSEC-2023-0052-0]
+(GHSA-8qv2-5vq6-g2g7), a potential CPU usage denial-of-service attack when
+acceting a TLS handshake from an untrusted peer with a maliciously-crafted
+certificate. Furthermore, this edge release contains a few improvements to the
+control plane and jaeger extension Helm charts.
+
+* Addressed security vulnerability [RUSTSEC-2023-0052][RUSTSEC-2023-0052-0] in
+  the proxy by updating its dependency on the `rustls` library
+* Added a `prometheusUrl` field for the heartbeat job in the control plane Helm
+  chart (thanks @david972!) ([#11343]; fixes [#11342])
+* Introduced support for arbitrary labels in the `podMonitors` field in the
+  control plane Helm chart (thanks @jseiser!) ([#11222]; fixes [#11175])
+* Added support for config merge and Deployment environment to
+  `opentelemetry-collector` in the jaeger extension (thanks @iAnomaly!)
+  ([#11283])
+
+[#11283]: https://github.com/linkerd/linkerd2/pull/11283
+[#11222]: https://github.com/linkerd/linkerd2/pull/11222
+[#11175]: https://github.com/linkerd/linkerd2/issues/11175
+[#11343]: https://github.com/linkerd/linkerd2/pull/11343
+[#11342]: https://github.com/linkerd/linkerd2/issues/11342
+[RUSTSEC-2023-0052-0]: https://rustsec.org/advisories/RUSTSEC-2023-0052.html
+
+## edge-23.9.2
 
 This edge release updates the proxy's dependency on the `webpki` library to
 patch security vulnerability [RUSTSEC-2023-0052] (GHSA-8qv2-5vq6-g2g7), a

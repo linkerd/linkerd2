@@ -44,14 +44,16 @@ const (
 )
 
 type checkOptions struct {
-	wait   time.Duration
-	output string
+	wait    time.Duration
+	output  string
+	timeout time.Duration
 }
 
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
-		wait:   300 * time.Second,
-		output: healthcheck.TableOutput,
+		wait:    300 * time.Second,
+		output:  healthcheck.TableOutput,
+		timeout: 10 * time.Second,
 	}
 }
 
@@ -107,6 +109,7 @@ non-zero exit code.`,
 	}
 	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: table, json, short")
 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
+	cmd.Flags().DurationVar(&options.timeout, "timeout", options.timeout, "Timeout for calls to the Kubernetes API")
 	cmd.Flags().Bool("proxy", false, "")
 	cmd.Flags().MarkHidden("proxy")
 	cmd.Flags().StringP("namespace", "n", "", "")
@@ -151,7 +154,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	}
 
 	hc := newHealthChecker(linkerdHC)
-	category := multiclusterCategory(hc, options.wait)
+	category := multiclusterCategory(hc, options.timeout)
 	hc.AppendCategories(category)
 	success, warning := healthcheck.RunChecks(wout, werr, hc, options.output)
 	healthcheck.PrintChecksResult(wout, options.output, success, warning)

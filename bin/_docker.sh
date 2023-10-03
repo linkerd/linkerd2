@@ -92,12 +92,13 @@ See https://github.com/docker/buildx/issues/59 for more details'
     fi
 
     log_debug "  :; docker buildx $rootdir $cache_params $output_params -t $repo:$tag -f $file $*"
+    mkdir -p target
     # shellcheck disable=SC2086
     docker buildx build "$rootdir" $cache_params \
         $output_params \
         -t "$repo:$tag" \
         -f "$file" \
-        --metadata-file metadata-"$name".json \
+        --metadata-file target/metadata-"$name".json \
         "$@"
 
     echo "$repo:$tag"

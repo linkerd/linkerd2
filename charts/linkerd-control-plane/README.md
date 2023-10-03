@@ -3,7 +3,7 @@
 Linkerd gives you observability, reliability, and security
 for your microservices — with no code change required.
 
-![Version: 1.16.1-edge](https://img.shields.io/badge/Version-1.16.1--edge-informational?style=flat-square)
+![Version: 1.17.1-edge](https://img.shields.io/badge/Version-1.17.1--edge-informational?style=flat-square)
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -152,13 +152,14 @@ Kubernetes: `>=1.21.0-0`
 | controlPlaneTracing | bool | `false` | enables control plane tracing |
 | controlPlaneTracingNamespace | string | `"linkerd-jaeger"` | namespace to send control plane traces to |
 | controllerImage | string | `"cr.l5d.io/linkerd/controller"` | Docker image for the destination and identity components |
+| controllerImageVersion | string | `""` | Optionally allow a specific container image Tag (or SHA) to be specified for the controllerImage. |
 | controllerLogFormat | string | `"plain"` | Log format for the control plane components |
 | controllerLogLevel | string | `"info"` | Log level for the control plane components |
 | controllerReplicas | int | `1` | Number of replicas for each control plane pod |
 | controllerUID | int | `2103` | User ID for the control plane components |
 | debugContainer.image.name | string | `"cr.l5d.io/linkerd/debug"` | Docker image for the debug container |
-| debugContainer.image.pullPolicy | string | imagePullPolicy | Pull policy for the debug container Docker image |
-| debugContainer.image.version | string | linkerdVersion | Tag for the debug container Docker image |
+| debugContainer.image.pullPolicy | string | imagePullPolicy | Pull policy for the debug container image |
+| debugContainer.image.version | string | linkerdVersion | Tag for the debug container image |
 | deploymentStrategy | object | `{"rollingUpdate":{"maxSurge":"25%","maxUnavailable":"25%"}}` | default kubernetes deployment strategy |
 | disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob |
 | enableEndpointSlices | bool | `true` | enables the use of EndpointSlice informers for the destination service; enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on |
@@ -192,13 +193,14 @@ Kubernetes: `>=1.21.0-0`
 | podMonitor.controller.enabled | bool | `true` | Enables the creation of PodMonitor for the control-plane |
 | podMonitor.controller.namespaceSelector | string | `"matchNames:\n  - {{ .Release.Namespace }}\n  - linkerd-viz\n  - linkerd-jaeger\n"` | Selector to select which namespaces the Endpoints objects are discovered from |
 | podMonitor.enabled | bool | `false` | Enables the creation of Prometheus Operator [PodMonitor](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.PodMonitor) |
+| podMonitor.labels | object | `{}` | Labels to apply to all pod Monitors |
 | podMonitor.proxy.enabled | bool | `true` | Enables the creation of PodMonitor for the data-plane |
 | podMonitor.scrapeInterval | string | `"10s"` | Interval at which metrics should be scraped |
 | podMonitor.scrapeTimeout | string | `"10s"` | Iimeout after which the scrape is ended |
 | podMonitor.serviceMirror.enabled | bool | `true` | Enables the creation of PodMonitor for the Service Mirror component |
 | policyController.image.name | string | `"cr.l5d.io/linkerd/policy-controller"` | Docker image for the policy controller |
-| policyController.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy container Docker image |
-| policyController.image.version | string | linkerdVersion | Tag for the proxy container Docker image |
+| policyController.image.pullPolicy | string | imagePullPolicy | Pull policy for the policy controller container image |
+| policyController.image.version | string | linkerdVersion | Tag for the policy controller container image |
 | policyController.logLevel | string | `"info"` | Log level for the policy controller |
 | policyController.probeNetworks | list | `["0.0.0.0/0"]` | The networks from which probes are performed.  By default, all networks are allowed so that all probes are authorized. |
 | policyController.resources | object | destinationResources | policy controller resource requests & limits |
@@ -223,13 +225,14 @@ Kubernetes: `>=1.21.0-0`
 | profileValidator.injectCaFromSecret | string | `""` | Inject the CA bundle from a Secret. If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook. The Secret must have the CA Bundle stored in the `ca.crt` key and have the `cert-manager.io/allow-direct-injection` annotation set to `true`. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource) for more information. |
 | profileValidator.keyPEM | string | `""` | Certificate key for the service profile validator. If not provided and not using an external secret then Helm will generate one. |
 | profileValidator.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]}]}` | Namespace selector used by admission webhook |
+| prometheusUrl | string | `""` | url of external prometheus instance (used for the heartbeat) |
 | proxy.await | bool | `true` | If set, the application container will not start until the proxy is ready |
 | proxy.cores | int | `0` | The `cpu.limit` and `cores` should be kept in sync. The value of `cores` must be an integer and should typically be set by rounding up from the limit. E.g. if cpu.limit is '1500m', cores should be 2. |
 | proxy.defaultInboundPolicy | string | "all-unauthenticated" | The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny" |
 | proxy.enableExternalProfiles | bool | `false` | Enable service profiles for non-Kubernetes services |
 | proxy.image.name | string | `"cr.l5d.io/linkerd/proxy"` | Docker image for the proxy |
-| proxy.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy container Docker image |
-| proxy.image.version | string | linkerdVersion | Tag for the proxy container Docker image |
+| proxy.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy container image |
+| proxy.image.version | string | linkerdVersion | Tag for the proxy container image |
 | proxy.inboundConnectTimeout | string | `"100ms"` | Maximum time allowed for the proxy to establish an inbound TCP connection |
 | proxy.inboundDiscoveryCacheUnusedTimeout | string | `"90s"` | Maximum time allowed before an unused inbound discovery result is evicted from the cache |
 | proxy.logFormat | string | `"plain"` | Log format (`plain` or `json`) for the proxy |
@@ -255,8 +258,8 @@ Kubernetes: `>=1.21.0-0`
 | proxyInit.ignoreInboundPorts | string | `"4567,4568"` | Default set of inbound ports to skip via iptables - Galera (4567,4568) |
 | proxyInit.ignoreOutboundPorts | string | `"4567,4568"` | Default set of outbound ports to skip via iptables - Galera (4567,4568) |
 | proxyInit.image.name | string | `"cr.l5d.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
-| proxyInit.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy-init container Docker image |
-| proxyInit.image.version | string | `"v2.2.2"` | Tag for the proxy-init container Docker image |
+| proxyInit.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy-init container image |
+| proxyInit.image.version | string | `"v2.2.3"` | Tag for the proxy-init container image |
 | proxyInit.iptablesMode | string | `"legacy"` | Variant of iptables that will be used to configure routing. Currently, proxy-init can be run either in 'nft' or in 'legacy' mode. The mode will control which utility binary will be called. The host must support whichever mode will be used |
 | proxyInit.kubeAPIServerPorts | string | `"443,6443"` | Default set of ports to skip via iptables for control plane components so they can communicate with the Kubernetes API Server |
 | proxyInit.logFormat | string | plain | Log format (`plain` or `json`) for the proxy-init |

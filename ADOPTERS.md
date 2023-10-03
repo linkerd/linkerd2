@@ -65,6 +65,7 @@
 - [Novolabs](https://novolabs.com)
 - [OLX Brasil](https://www.olx.com.br)
 - [p3r](https://www.p3r.one/)
+- [Pangea](https://pangea.cloud)
 - [Parklab](https://parklab.app/)
 - [Paybase](https://paybase.io/)
 - [Pento](https://pento.io/)

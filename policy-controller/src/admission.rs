@@ -123,6 +123,10 @@ impl Admission {
             return self.admit_spec::<HttpRouteSpec>(req).await;
         }
 
+        if is_kind::<k8s_gateway_api::HttpRoute>(&req) {
+            return self.admit_spec::<k8s_gateway_api::HttpRouteSpec>(req).await;
+        }
+
         AdmissionResponse::invalid(format_args!(
             "unsupported resource type: {}.{}.{}",
             req.kind.group, req.kind.version, req.kind.kind
@@ -422,36 +426,35 @@ impl Validate<ServerAuthorizationSpec> for Admission {
     }
 }
 
+use index::http_route;
+fn validate_match(
+    httproute::HttpRouteMatch {
+        path,
+        headers,
+        query_params,
+        method,
+    }: httproute::HttpRouteMatch,
+) -> Result<()> {
+    let _ = path.map(http_route::path_match).transpose()?;
+    let _ = method
+        .as_deref()
+        .map(core::http_route::Method::try_from)
+        .transpose()?;
+
+    for q in query_params.into_iter().flatten() {
+        http_route::query_param_match(q)?;
+    }
+
+    for h in headers.into_iter().flatten() {
+        http_route::header_match(h)?;
+    }
+
+    Ok(())
+}
+
 #[async_trait::async_trait]
 impl Validate<HttpRouteSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
-        use index::http_route;
-
-        fn validate_match(
-            httproute::HttpRouteMatch {
-                path,
-                headers,
-                query_params,
-                method,
-            }: httproute::HttpRouteMatch,
-        ) -> Result<()> {
-            let _ = path.map(http_route::path_match).transpose()?;
-            let _ = method
-                .as_deref()
-                .map(core::http_route::Method::try_from)
-                .transpose()?;
-
-            for q in query_params.into_iter().flatten() {
-                http_route::query_param_match(q)?;
-            }
-
-            for h in headers.into_iter().flatten() {
-                http_route::header_match(h)?;
-            }
-
-            Ok(())
-        }
-
         fn validate_filter(filter: httproute::HttpRouteFilter) -> Result<()> {
             match filter {
                 httproute::HttpRouteFilter::RequestHeaderModifier {
@@ -510,6 +513,52 @@ impl Validate<HttpRouteSpec> for Admission {
 
             if let Some(timeouts) = timeouts {
                 validate_timeouts(timeouts)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
+    async fn validate(
+        self,
+        _ns: &str,
+        _name: &str,
+        spec: k8s_gateway_api::HttpRouteSpec,
+    ) -> Result<()> {
+        fn validate_filter(filter: k8s_gateway_api::HttpRouteFilter) -> Result<()> {
+            match filter {
+                k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
+                    request_header_modifier,
+                } => http_route::header_modifier(request_header_modifier).map(|_| ()),
+                k8s_gateway_api::HttpRouteFilter::ResponseHeaderModifier {
+                    response_header_modifier,
+                } => http_route::header_modifier(response_header_modifier).map(|_| ()),
+                k8s_gateway_api::HttpRouteFilter::RequestRedirect { request_redirect } => {
+                    http_route::req_redirect(request_redirect).map(|_| ())
+                }
+                k8s_gateway_api::HttpRouteFilter::RequestMirror { .. } => Ok(()),
+                k8s_gateway_api::HttpRouteFilter::URLRewrite { .. } => Ok(()),
+                k8s_gateway_api::HttpRouteFilter::ExtensionRef { .. } => Ok(()),
+            }
+        }
+
+        // Validate the rules in this spec.
+        // This is essentially equivalent to the indexer's conversion function
+        // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
+        // actually allocate stuff in order to return an `InboundRouteBinding`.
+        for k8s_gateway_api::HttpRouteRule {
+            filters, matches, ..
+        } in spec.rules.into_iter().flatten()
+        {
+            for m in matches.into_iter().flatten() {
+                validate_match(m)?;
+            }
+
+            for f in filters.into_iter().flatten() {
+                validate_filter(f)?;
             }
         }
 

@@ -175,6 +175,11 @@ webhooks:
     - meshtlsauthentications
     - serverauthorizations
     - servers
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["gateway.networking.k8s.io"]
+    apiVersions: ["*"]
+    resources:
+    - httproutes
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -660,7 +665,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v2.2.2
+        version: v2.2.3
       iptablesMode: legacy
       kubeAPIServerPorts: 443,6443
       logFormat: ""
