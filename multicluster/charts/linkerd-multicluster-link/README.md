@@ -33,6 +33,7 @@ Kubernetes: `>=1.21.0-0`
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
 | gateway.enabled | bool | `true` | Controls whether link will create a probe service for the gateway |
 | gateway.probe.port | int | `4191` | The port used for liveliness probing |
+| imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | logFormat | string | `"plain"` | Log format (`plain` or `json`) |
 | logLevel | string | `"info"` | Log level for the Multicluster components |
 | nodeSelector | object | `{}` | Node selectors for the Service mirror pod |
