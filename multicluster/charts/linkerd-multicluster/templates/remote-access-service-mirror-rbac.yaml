@@ -48,6 +48,7 @@ metadata:
     {{- with $.Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" $ }}
+{{- include "partials.image-pull-secrets" $.Values.imagePullSecrets }}
 ---
 apiVersion: v1
 kind: Secret

@@ -84,6 +84,7 @@ metadata:
     component: service-mirror
     mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
 apiVersion: apps/v1
 kind: Deployment
