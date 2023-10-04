@@ -1,5 +1,18 @@
 # Changes
 
+## edge-23.10.1
+
+This edge release adds additional configurability to Linkerd's viz and
+multicluster extensions.
+
+* Added a `podAnnotations` Helm value to allow adding additional annotations to
+  the Linkerd-Viz Prometheus Deployment ([#11365]) (thanks @cemenson)
+* Added `imagePullSecrets` Helm values to the multicluster chart so that it can
+  be installed in an air-gapped environment. ([#11285]) (thanks @lhaussknecht)
+
+[#11365]: https://github.com/linkerd/linkerd2/issues/11365
+[#11285]: https://github.com/linkerd/linkerd2/issues/11285
+
 ## edge-23.9.4
 
 This edge release makes Linkerd even better.
