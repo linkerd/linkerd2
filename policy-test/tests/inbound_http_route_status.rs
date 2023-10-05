@@ -192,6 +192,8 @@ async fn inbound_accepted_reconcile_no_parent() {
         };
         create(&client, server).await;
 
+        // HTTPRoute may not be patched instantly, await the condition where
+        // create_timestamp and observed_timestamp are different.
         let route_status = await_condition(
             &client,
             &ns,
@@ -276,6 +278,8 @@ async fn inbound_accepted_reconcile_parent_delete() {
         .await
         .expect("API delete request failed");
 
+        // HTTPRoute may not be patched instantly, await the condition where
+        // create_timestamp and observed_timestamp are different.
         let route_status = await_condition(
             &client,
             &ns,
