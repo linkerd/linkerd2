@@ -22,6 +22,11 @@ imagePullSecrets: []
 # for more information
 tolerations: &default_tolerations
 
+# -- NodeAffinity section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
+# for more information
+#nodeAffinity:
+
 # -- Create Roles and RoleBindings to associate this extension's
 # ServiceAccounts to the control plane PSP resource. This requires that
 # `enabledPSP` is set to true on the control plane install. Note PSP has been

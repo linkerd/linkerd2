@@ -29,6 +29,7 @@ spec:
     port: 9994
     targetPort: 9994
 ---
+{{- $tree := deepCopy . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -74,6 +75,9 @@ spec:
       {{- include "linkerd.tolerations" . | nindent 6 }}
       {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
+      {{- $_ := set $tree "component" "web" -}}
+      {{- $_ := set $tree "label" "component" -}}
+      {{- include "linkerd.affinity" . | nindent 6 }}
       containers:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}:8085
