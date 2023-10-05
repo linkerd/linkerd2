@@ -74,7 +74,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "lodash-webpack-plugin": "^0.11.6",
     "react-test-renderer": "16.14.0",
-    "sinon": "15.1.0",
+    "sinon": "16.0.0",
     "sinon-stub-promise": "4.0.0",
     "style-loader": "^3.3.3",
     "url-loader": "^4.1.1",
@@ -95,7 +95,7 @@
       "<rootDir>/setupTests.js"
     ],
     "transformIgnorePatterns": [
-      "/node_modules/(?!d3-.*)"
+      "/node_modules/(?!(d3-.*|sinon))"
     ],
     "moduleNameMapper": {
       "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/__mocks__/fileMock.js",
