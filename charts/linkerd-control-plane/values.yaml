@@ -198,11 +198,20 @@ proxy:
   # "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny"
   # @default -- "all-unauthenticated"
   defaultInboundPolicy: "all-unauthenticated"
+<<<<<<< HEAD
   # -- Enable KEP-753 native sidecars
   # This is an experimental feature. It requires Kubernetes >= 1.29.
   # If enabled, .proxy.waitBeforeExitSeconds should not be used.
   nativeSidecar: false
   # -- Native sidecar proxy startup probe parameters.
+  # -- LivenessProbe timeout and delay configuration
+  livenessProbe:
+    initialDelaySeconds: 10
+    timeoutSeconds: 30
+  # -- ReadinessProbe timeout and delay configuration
+  readinessProbe:
+    initialDelaySeconds: 2
+    timeoutSeconds: 5
   startupProbe:
     initialDelaySeconds: 0
     periodSeconds: 1
