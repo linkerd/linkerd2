@@ -441,6 +441,12 @@ func makeInjectFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 	injectFlags := pflag.NewFlagSet("inject", pflag.ExitOnError)
 
 	flags := []flag.Flag{
+		flag.NewBoolFlag(injectFlags, "native-sidecar", false, "Enable native sidecar",
+			func(values *l5dcharts.Values, value bool) error {
+				values.Proxy.NativeSidecar = value
+				return nil
+			}),
+
 		flag.NewInt64Flag(injectFlags, "wait-before-exit-seconds", int64(defaults.Proxy.WaitBeforeExitSeconds),
 			"The period during which the proxy sidecar must stay alive while its pod is terminating. "+
 				"Must be smaller than terminationGracePeriodSeconds for the pod (default 0)",

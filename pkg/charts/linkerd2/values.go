@@ -119,6 +119,7 @@ type (
 		DefaultInboundPolicy                 string           `json:"defaultInboundPolicy"`
 		AccessLog                            string           `json:"accessLog"`
 		ShutdownGracePeriod                  string           `json:"shutdownGracePeriod"`
+		NativeSidecar                        bool             `json:"nativeSidecar"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container

@@ -212,4 +212,7 @@ volumeMounts:
   name: {{.Values.proxy.saMountPath.name}}
   readOnly: {{.Values.proxy.saMountPath.readOnly}}
 {{- end -}}
+{{- if .Values.proxy.nativeSidecar }}
+restartPolicy: Always
+{{- end -}}
 {{- end }}

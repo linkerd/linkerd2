@@ -614,6 +614,7 @@ data:
       isIngress: false
       logFormat: plain
       logLevel: warn,linkerd=info
+      nativeSidecar: false
       opaquePorts: 25,443,587,3306,5432,11211
       outboundConnectTimeout: ""
       outboundDiscoveryCacheUnusedTimeout: ""

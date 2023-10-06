@@ -103,7 +103,9 @@
   {{- end }}
   {
     "op": "add",
-  {{- if .Values.proxy.await }}
+  {{- if .Values.proxy.nativeSidecar }}
+    "path": "{{$prefix}}/spec/initContainers/-",
+  {{- else if .Values.proxy.await }}
     "path": "{{$prefix}}/spec/containers/0",
   {{- else }}
     "path": "{{$prefix}}/spec/containers/-",
