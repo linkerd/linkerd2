@@ -40,6 +40,15 @@ impl DiscoverInboundServer<(String, String, NonZeroU16)> for InboundDiscover {
         &self,
         (namespace, pod, port): (String, String, NonZeroU16),
     ) -> Result<Option<InboundServer>> {
+        let rx = match self.0.write().workload_server_rx(&namespace, &pod, port) {
+            Ok(rx) => Some(rx),
+            Err(_) => None,
+        };
+        if let Some(rx) = rx {
+            let server = (*rx.borrow()).clone();
+            return Ok(Some(server));
+        }
+
         let rx = match self.0.write().pod_server_rx(&namespace, &pod, port) {
             Ok(rx) => rx,
             Err(_) => return Ok(None),
@@ -52,6 +61,15 @@ impl DiscoverInboundServer<(String, String, NonZeroU16)> for InboundDiscover {
         &self,
         (namespace, pod, port): (String, String, NonZeroU16),
     ) -> Result<Option<InboundServerStream>> {
+        let rx = match self.0.write().workload_server_rx(&namespace, &pod, port) {
+            Ok(rx) => Some(rx),
+            Err(_) => None,
+        };
+
+        if let Some(rx) = rx {
+            return Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx))));
+        }
+
         match self.0.write().pod_server_rx(&namespace, &pod, port) {
             Ok(rx) => Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx)))),
             Err(_) => Ok(None),

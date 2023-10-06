@@ -67,6 +67,7 @@ struct AuthenticationNsIndex {
 #[derive(Debug)]
 struct Namespace {
     pods: PodIndex,
+    external: ExternalIndex,
     policy: PolicyIndex,
 }
 
@@ -75,6 +76,27 @@ struct Namespace {
 struct PodIndex {
     namespace: String,
     by_name: HashMap<String, Pod>,
+}
+
+/// Holds external workload information for a single namespace
+#[derive(Debug)]
+struct ExternalIndex {
+    by_name: HashMap<String, ExternalWorkload>,
+}
+
+#[derive(Debug)]
+struct ExternalWorkload {
+    // TODO: prototype, labels?
+    meta: WorkloadMeta,
+
+    ports: Vec<NonZeroU16>,
+    port_servers: PortMap<WorkloadPortServer>,
+}
+
+#[derive(Debug, PartialEq)]
+pub(crate) struct WorkloadMeta {
+    /// The workload's labels. Used by `Server` pod selectors.
+    pub labels: k8s::Labels,
 }
 
 /// Holds a single pod's data with the server watches for all known ports.
@@ -117,6 +139,15 @@ struct PodPortServer {
     watch: watch::Sender<InboundServer>,
 }
 
+#[derive(Debug)]
+struct WorkloadPortServer {
+    // Name of server matching pod
+    name: Option<String>,
+
+    // Sender used to broadcast server updates
+    watch: watch::Sender<InboundServer>,
+}
+
 /// Holds the state of policy resources for a single namespace.
 #[derive(Debug)]
 struct PolicyIndex {
@@ -154,6 +185,27 @@ impl Index {
             },
             authentications: AuthenticationNsIndex::default(),
         }))
+    }
+
+    pub fn workload_server_rx(
+        &mut self,
+        namespace: &str,
+        name: &str,
+        port: NonZeroU16,
+    ) -> Result<watch::Receiver<InboundServer>> {
+        let ns = self
+            .namespaces
+            .by_ns
+            .get_mut(namespace)
+            .ok_or_else(|| anyhow::anyhow!("namespace not found: {}", namespace))?;
+        let w = ns
+            .external
+            .by_name
+            .get_mut(name)
+            .ok_or_else(|| anyhow::anyhow!("workload {}.{} not found", name, namespace))?;
+        Ok(w.port_server_or_default(port, &self.cluster_info)
+            .watch
+            .subscribe())
     }
 
     /// Obtains a pod:port's server receiver.
@@ -346,6 +398,44 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
 
     // Since apply only reindexes a single pod at a time, there's no need to
     // handle resets specially.
+}
+
+impl kubert::index::IndexNamespacedResource<k8s::external::ExternalWorkload> for Index {
+    fn apply(&mut self, workload: k8s::external::ExternalWorkload) {
+        let ns = workload.namespace().expect("workload must have namespace");
+        let name = workload.name_unchecked();
+        let _span = info_span!("apply", %ns, %name).entered();
+        tracing::info!(%ns, %name, "Applying workload");
+
+        let meta = WorkloadMeta {
+            labels: workload
+                .metadata
+                .labels
+                .unwrap_or_else(|| Default::default())
+                .into(),
+        };
+        let namespace = self.namespaces.get_or_default(ns);
+        let ports = workload
+            .spec
+            .ports
+            .into_iter()
+            .map(|spec| spec.port)
+            .collect();
+        match namespace.external.update(name, meta, ports) {
+            Ok(None) => {}
+            Ok(Some(w)) => w.reindex_servers(&namespace.policy, &self.authentications),
+            Err(_) => todo!(),
+        }
+    }
+
+    fn delete(&mut self, ns: String, name: String) {
+        tracing::info!(%ns, %name, "delete");
+        if let Entry::Occupied(mut ns) = self.namespaces.by_ns.entry(ns) {
+            if ns.get_mut().external.by_name.remove(&name).is_some() && ns.get().is_empty() {
+                ns.remove();
+            }
+        }
+    }
 }
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
@@ -826,6 +916,9 @@ impl Namespace {
                 namespace: namespace.clone(),
                 by_name: HashMap::default(),
             },
+            external: ExternalIndex {
+                by_name: HashMap::default(),
+            },
             policy: PolicyIndex {
                 namespace,
                 cluster_info,
@@ -846,6 +939,40 @@ impl Namespace {
     #[inline]
     fn reindex(&mut self, authns: &AuthenticationNsIndex) {
         self.pods.reindex(&self.policy, authns);
+    }
+}
+
+// === impl ExternalIndex ===
+impl ExternalIndex {
+    fn update(
+        &mut self,
+        name: String,
+        meta: WorkloadMeta,
+        ports: Vec<NonZeroU16>,
+    ) -> Result<Option<&mut ExternalWorkload>> {
+        let workload = match self.by_name.entry(name.clone()) {
+            Entry::Occupied(entry) => {
+                let workload = entry.into_mut();
+                if workload.ports != ports {
+                    bail!("workload {} port must not change", name);
+                }
+
+                if workload.meta == meta {
+                    tracing::info!(workload = %name, "No changes");
+                    return Ok(None);
+                }
+
+                tracing::info!(workload = %name, "Updating");
+                workload.meta = meta;
+                workload
+            }
+            Entry::Vacant(entry) => entry.insert(ExternalWorkload {
+                meta,
+                ports,
+                port_servers: PortMap::default(),
+            }),
+        };
+        Ok(Some(workload))
     }
 }
 
@@ -900,6 +1027,122 @@ impl PodIndex {
         for (name, pod) in self.by_name.iter_mut() {
             let _span = info_span!("pod", pod = %name).entered();
             pod.reindex_servers(policy, authns);
+        }
+    }
+}
+
+// === impl ExternalWorkload ===
+impl ExternalWorkload {
+    fn reindex_servers(&mut self, policy: &PolicyIndex, authentications: &AuthenticationNsIndex) {
+        // unmatched ports will get a default policy
+        let mut unmatched_ports = self.port_servers.keys().copied().collect::<PortSet>();
+
+        let mut matched_ports = PortMap::with_capacity_and_hasher(
+            unmatched_ports.len(),
+            std::hash::BuildHasherDefault::<PortHasher>::default(),
+        );
+
+        for (srvname, server) in policy.servers.iter() {
+            if server.pod_selector.matches(&self.meta.labels) {
+                for port in self.ports.clone().into_iter() {
+                    if let Some(prior) = matched_ports.get(&port) {
+                        tracing::warn!(
+                            port = %port,
+                            server = %prior,
+                            conflict = %srvname,
+                            "Port already matched by another server; skipping"
+                        );
+                        continue;
+                    }
+
+                    let s = policy.inbound_server(
+                        srvname.clone(),
+                        server,
+                        authentications,
+                        Vec::new().into_iter(),
+                    );
+                    self.update_server(port, srvname, s);
+
+                    matched_ports.insert(port, srvname.clone());
+                    unmatched_ports.remove(&port);
+                }
+            }
+        }
+
+        // TODO (matei): here we'd think of default policies
+        //for port in unmatched_ports.into_iter() {
+        // Umm default policy for VMs? Based on cluster info? Good or not?
+        //self.set_default_server(port, &policy.cluster_info);
+        // SKIP defaults for now
+        //}
+    }
+
+    fn update_server(&mut self, port: NonZeroU16, name: &str, server: InboundServer) {
+        match self.port_servers.entry(port) {
+            Entry::Vacant(entry) => {
+                tracing::info!(port = %port, server = %name, "Creating server");
+                let (watch, _) = watch::channel(server);
+                entry.insert(WorkloadPortServer {
+                    name: Some(name.to_string()),
+                    watch,
+                });
+            }
+
+            Entry::Occupied(mut entry) => {
+                let ps = entry.get_mut();
+
+                // TODO (matei): look at this
+                ps.watch.send_if_modified(|current| {
+                    if ps.name.as_deref() == Some(name) && *current == server {
+                        tracing::trace!(port = %port, server = %name, "Skipped redundant server update");
+                        tracing::trace!(?server);
+                        return false;
+                    }
+
+                    // If the port's server previously matched a different server,
+                    // this can either mean that multiple servers currently match
+                    // the pod:port, or that we're in the middle of an update. We
+                    // make the opportunistic choice to assume the cluster is
+                    // configured coherently so we take the update. The admission
+                    // controller should prevent conflicts.
+                    tracing::trace!(port = %port, server = %name, "Updating server");
+                    if ps.name.as_deref() != Some(name) {
+                        ps.name = Some(name.to_string());
+                    }
+
+                    *current = server;
+                    true
+                });
+            }
+        }
+
+        tracing::info!(port = %port, server = %name, "Updated server");
+    }
+
+    fn port_server_or_default(
+        &mut self,
+        port: NonZeroU16,
+        config: &ClusterInfo,
+    ) -> &mut WorkloadPortServer {
+        match self.port_servers.entry(port) {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => {
+                let (watch, _) = watch::channel(Self::default_server(port, config));
+                entry.insert(WorkloadPortServer { name: None, watch })
+            }
+        }
+    }
+
+    fn default_server(_port: NonZeroU16, config: &ClusterInfo) -> InboundServer {
+        let policy = config.default_policy;
+        let authorizations = policy.default_authzs(config);
+        let http_routes = config.default_inbound_http_routes(Vec::new().into_iter());
+        // TODO (matei): this is all a bit hacky
+        InboundServer {
+            reference: ServerRef::Default(policy.as_str()),
+            protocol: ProxyProtocol::Http1,
+            authorizations,
+            http_routes,
         }
     }
 }
