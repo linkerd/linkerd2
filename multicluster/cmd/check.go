@@ -35,7 +35,7 @@ const (
 	MulticlusterLegacyExtension = "linkerd-multicluster"
 
 	// linkerdMulticlusterExtensionCheck adds checks related to the multicluster extension
-	linkerdMulticlusterExtensionCheck healthcheck.CategoryID = "linkerd-multicluster"
+	LinkerdMulticlusterExtensionCheck healthcheck.CategoryID = "linkerd-multicluster"
 
 	linkerdServiceMirrorServiceAccountName = "linkerd-service-mirror-%s"
 	linkerdServiceMirrorComponentName      = "service-mirror"
@@ -129,7 +129,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		return fmt.Errorf("Validation error when executing check command: %w", err)
 	}
 	checks := []healthcheck.CategoryID{
-		linkerdMulticlusterExtensionCheck,
+		LinkerdMulticlusterExtensionCheck,
 	}
 	linkerdHC := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
@@ -290,7 +290,7 @@ func multiclusterCategory(hc *healthChecker, wait time.Duration) *healthcheck.Ca
 				return healthcheck.CheckIfProxyVersionsMatchWithCLI(pods)
 			}))
 
-	return healthcheck.NewCategory(linkerdMulticlusterExtensionCheck, checkers, true)
+	return healthcheck.NewCategory(LinkerdMulticlusterExtensionCheck, checkers, true)
 }
 
 func (hc *healthChecker) checkLinkCRD(ctx context.Context) error {

@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	mcHealthcheck "github.com/linkerd/linkerd2/multicluster/cmd"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -218,7 +220,9 @@ func TestCheckMulticluster(t *testing.T) {
 	if err := TestHelper.SwitchContext(ctx); err != nil {
 		testutil.AnnotatedFatalf(t, "failed to rebuild helper clientset with new context", "failed to rebuild helper clientset with new context [%s]: %v", ctx, err)
 	}
-	if err := TestHelper.TestCheckMc("--context", ctx); err != nil {
+
+	err := TestHelper.TestCheckWith([]healthcheck.CategoryID{mcHealthcheck.LinkerdMulticlusterExtensionCheck}, "--context", ctx)
+	if err != nil {
 		t.Fatalf("'linkerd check' command failed: %s", err)
 	}
 
