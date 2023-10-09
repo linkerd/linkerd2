@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
     namespaced
 )]
 pub struct ExternalWorkloadSpec {
+    pub address: String,
     pub ports: Vec<PortSpec>,
 }
 
