@@ -62,14 +62,14 @@
   },
   {
     "op": "add",
-    "path": "{{$prefix}}/spec/initContainers/-",
+    "path": "{{$prefix}}/spec/initContainers/0",
     "value":
       {{- include "partials.proxy-init" . | fromYaml | toPrettyJson | nindent 6 }}
   },
   {{- else if and .Values.proxy .Values.cniEnabled }}
   {
     "op": "add",
-    "path": "{{$prefix}}/spec/initContainers/-",
+    "path": "{{$prefix}}/spec/initContainers/0",
     "value":
       {{- include "partials.network-validator" . | fromYaml | toPrettyJson | nindent 6 }}
   },
@@ -103,8 +103,10 @@
   {{- end }}
   {
     "op": "add",
-  {{- if .Values.proxy.nativeSidecar }}
-    "path": "{{$prefix}}/spec/initContainers/-",
+  {{- if and .Values.proxy.nativeSidecar (not .Values.proxyInit) }}
+    "path": "{{$prefix}}/spec/initContainers/0",
+  {{- else if and .Values.proxy.nativeSidecar .Values.proxyInit }}
+    "path": "{{$prefix}}/spec/initContainers/1",
   {{- else if .Values.proxy.await }}
     "path": "{{$prefix}}/spec/containers/0",
   {{- else }}
