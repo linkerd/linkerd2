@@ -27,7 +27,7 @@ const (
 
 // Params holds the values used in the patch template
 type Params struct {
-	ProxyIndex          int
+	ProxyPath           string
 	CollectorSvcAddr    string
 	CollectorSvcAccount string
 	ClusterDomain       string
@@ -59,13 +59,13 @@ func Mutate(collectorSvcAddr, collectorSvcAccount, clusterDomain, linkerdNamespa
 			return nil, err
 		}
 		params := Params{
-			ProxyIndex:          webhook.GetProxyContainerIndex(pod.Spec.Containers),
+			ProxyPath:           webhook.GetProxyContainerPath(pod.Spec),
 			CollectorSvcAddr:    collectorSvcAddr,
 			CollectorSvcAccount: collectorSvcAccount,
 			ClusterDomain:       clusterDomain,
 			LinkerdNamespace:    linkerdNamespace,
 		}
-		if params.ProxyIndex < 0 || labels.IsTracingEnabled(pod) {
+		if params.ProxyPath == "notfound" || labels.IsTracingEnabled(pod) {
 			return admissionResponse, nil
 		}
 

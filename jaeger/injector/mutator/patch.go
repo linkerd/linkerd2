@@ -8,7 +8,7 @@ const tpl = `[
   },
   {
     "op": "add",
-    "path": "/spec/containers/{{.ProxyIndex}}/env/-",
+    "path": "/spec/{{.ProxyPath}}/env/-",
     "value": {
       "name": "LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH",
       "value": "/var/run/linkerd/podinfo/labels"
@@ -16,7 +16,7 @@ const tpl = `[
   },
   {
     "op": "add",
-    "path": "/spec/containers/{{.ProxyIndex}}/env/-",
+    "path": "/spec/{{.ProxyPath}}/env/-",
     "value": {
       "name": "LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR",
       "value": "{{.CollectorSvcAddr}}"
@@ -24,7 +24,7 @@ const tpl = `[
   },
   {
     "op": "add",
-    "path": "/spec/containers/{{.ProxyIndex}}/env/-",
+    "path": "/spec/{{.ProxyPath}}/env/-",
     "value": {
       "name": "LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME",
       "value": "{{.CollectorSvcAccount}}.serviceaccount.identity.{{.LinkerdNamespace}}.{{.ClusterDomain}}"
@@ -32,7 +32,7 @@ const tpl = `[
   },
   {
     "op": "add",
-    "path": "/spec/containers/{{.ProxyIndex}}/volumeMounts/-",
+    "path": "/spec/{{.ProxyPath}}/volumeMounts/-",
     "value": {
       "mountPath": "var/run/linkerd/podinfo",
       "name": "podinfo"
@@ -44,13 +44,13 @@ const tpl = `[
     "value": {
        "downwardAPI": {
          "items": [
-	   {
+     {
              "fieldRef": {
                "fieldPath": "metadata.labels"
-	     },
+       },
              "path": "labels"
-	   }
-	 ]
+     }
+   ]
        },
        "name": "podinfo"
      }

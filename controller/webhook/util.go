@@ -1,17 +1,24 @@
 package webhook
 
 import (
+	"fmt"
+
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
 )
 
-// GetProxyContainerIndex gets the proxy container index of a pod; the index
-// is required in webhooks because of how patches are created.
-func GetProxyContainerIndex(containers []corev1.Container) int {
-	for i, c := range containers {
+// GetProxyContainerPath gets the proxy container jsonpath of a pod relative to spec;
+// this path is required in webhooks because of how patches are created.
+func GetProxyContainerPath(spec corev1.PodSpec) string {
+	for i, c := range spec.Containers {
 		if c.Name == labels.ProxyContainerName {
-			return i
+			return fmt.Sprintf("containers/%d", i)
 		}
 	}
-	return -1
+	for i, c := range spec.InitContainers {
+		if c.Name == labels.ProxyContainerName {
+			return fmt.Sprintf("initContainers/%d", i)
+		}
+	}
+	return "notfound"
 }

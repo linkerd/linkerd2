@@ -17,7 +17,7 @@ import (
 
 // Params holds the values used in the patch template.
 type Params struct {
-	ProxyIndex      int
+	ProxyPath       string
 	ProxyTapSvcName string
 }
 
@@ -41,10 +41,10 @@ func Mutate(tapSvcName string) webhook.Handler {
 			return nil, err
 		}
 		params := Params{
-			ProxyIndex:      webhook.GetProxyContainerIndex(pod.Spec.Containers),
+			ProxyPath:       webhook.GetProxyContainerPath(pod.Spec),
 			ProxyTapSvcName: tapSvcName,
 		}
-		if params.ProxyIndex < 0 || vizLabels.IsTapEnabled(pod) {
+		if params.ProxyPath == "notfound" || vizLabels.IsTapEnabled(pod) {
 			return admissionResponse, nil
 		}
 		namespace, err := k8sAPI.Get(k8s.NS, request.Namespace)
