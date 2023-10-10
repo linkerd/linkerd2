@@ -25,11 +25,15 @@ struct Args {
 
     #[clap(flatten)]
     client: kubert::ClientArgs,
+
+    #[clap(flatten)]
+    admin: kubert::AdminArgs,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let Args {
+        admin,
         client,
         log_level,
         log_format,
@@ -38,6 +42,7 @@ async fn main() -> Result<()> {
     let runtime = kubert::Runtime::builder()
         .with_log(log_level, log_format)
         .with_client(client)
+        .with_admin(admin)
         .build()
         .await?;
 
@@ -129,8 +134,8 @@ async fn scale_up_down(max: usize, base_name: String, k8s: kube::Client) -> Resu
             )
             .await;
             tracing::info!(
-                pod.name = pod.name_unchecked(),
-                pod.ip = pod
+                pod.name = %pod.name_unchecked(),
+                pod.ip = %pod
                     .status
                     .as_ref()
                     .expect("pod must have a status")
@@ -149,16 +154,33 @@ async fn scale_up_down(max: usize, base_name: String, k8s: kube::Client) -> Resu
         time::sleep(time::Duration::from_secs(10)).await;
 
         while let Some(pod) = pods.pop() {
+            let pod_ip = pod
+                .status
+                .as_ref()
+                .expect("pod must have a status")
+                .pod_ips
+                .as_ref()
+                .unwrap()[0]
+                .ip
+                .as_deref()
+                .expect("pod ip must be set");
             match delete_pod(&k8s, &pod).await {
                 Ok(()) => {
                     tracing::info!(
-                        pod.name = pod.name_unchecked(),
+                        pod.name = %pod.name_unchecked(),
+                        pod.ip = %pod_ip,
                         pods = pods.len(),
                         "Deleted"
                     );
                 }
                 Err(error) => {
-                    tracing::info!(?error, "Deletion failed");
+                    tracing::info!(
+                        %error,
+                        pod.name = %pod.name_unchecked(),
+                        pod.ip = %pod_ip,
+                        pods = pods.len(),
+                        "Deletion failed"
+                    );
                 }
             }
         }
@@ -173,14 +195,14 @@ async fn observe(mut dst: tonic::Streaming<linkerd2_proxy_api::destination::Upda
                 for a in addrs.addrs.into_iter() {
                     let addr = std::net::SocketAddr::try_from(a.addr.unwrap())?;
                     endpoints.insert(addr);
-                    tracing::info!(ep.addr = %addr, endpoints = endpoints.len(), "Added");
+                    tracing::info!(ep.ip = %addr.ip(), endpoints = endpoints.len(), "Added");
                 }
             }
             linkerd2_proxy_api::destination::update::Update::Remove(addrs) => {
                 for a in addrs.addrs.into_iter() {
                     let addr = std::net::SocketAddr::try_from(a)?;
                     endpoints.remove(&addr);
-                    tracing::info!(ep.addr = %addr, endpoints = endpoints.len(), "Removed");
+                    tracing::info!(ep.ip = %addr.ip(), endpoints = endpoints.len(), "Removed");
                 }
             }
             linkerd2_proxy_api::destination::update::Update::NoEndpoints(_) => {
@@ -198,7 +220,7 @@ async fn cleanup(base_name: String, k8s: kube::Client) -> Result<()> {
         .await?;
 
     let pods = kube::Api::<corev1::Pod>::namespaced(k8s.clone(), "default")
-        .list_metadata(&kube::api::ListParams::default().labels(&format!("app={base_name}")))
+        .list_metadata(&kube::api::ListParams::default().labels(&format!("svc={base_name}")))
         .await?;
     for pod in pods {
         kube::Api::<corev1::Pod>::namespaced(k8s.clone(), "default")
