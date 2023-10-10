@@ -25,26 +25,18 @@ struct Args {
 
     #[clap(flatten)]
     client: kubert::ClientArgs,
-
-    #[clap(flatten)]
-    admin: kubert::AdminArgs,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let Args {
-        admin,
         client,
         log_level,
         log_format,
     } = Args::parse();
 
-    let mut admin = admin.into_builder();
-    admin.with_default_prometheus();
-
     let runtime = kubert::Runtime::builder()
         .with_log(log_level, log_format)
-        .with_admin(admin)
         .with_client(client)
         .build()
         .await?;
@@ -138,6 +130,16 @@ async fn scale_up_down(max: usize, base_name: String, k8s: kube::Client) -> Resu
             .await;
             tracing::info!(
                 pod.name = pod.name_unchecked(),
+                pod.ip = pod
+                    .status
+                    .as_ref()
+                    .expect("pod must have a status")
+                    .pod_ips
+                    .as_ref()
+                    .unwrap()[0]
+                    .ip
+                    .as_deref()
+                    .expect("pod ip must be set"),
                 pods = pods.len() + 1,
                 "Created"
             );
@@ -146,12 +148,12 @@ async fn scale_up_down(max: usize, base_name: String, k8s: kube::Client) -> Resu
 
         time::sleep(time::Duration::from_secs(10)).await;
 
-        for (i, pod) in pods.drain(..).enumerate() {
+        while let Some(pod) = pods.pop() {
             match delete_pod(&k8s, &pod).await {
                 Ok(()) => {
                     tracing::info!(
                         pod.name = pod.name_unchecked(),
-                        pods = max - i - 1,
+                        pods = pods.len(),
                         "Deleted"
                     );
                 }

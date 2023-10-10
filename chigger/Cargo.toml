@@ -25,7 +25,7 @@ tracing = "0.1"
 [dependencies.clap]
 version = "4"
 default-features = false
-features = ["derive", "env", "usage", "std"]
+features = ["derive", "help", "env", "usage", "std"]
 
 [dependencies.kube]
 version = "0.85"
@@ -37,7 +37,6 @@ version = "0.18"
 default-features = false
 features = [
     "clap",
-    "metrics",
     "runtime",
 ]
 

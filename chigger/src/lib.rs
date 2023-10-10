@@ -1,6 +1,5 @@
 use k8s_openapi::api::core::v1 as corev1;
 use kube::ResourceExt;
-use tokio::time;
 
 mod destination;
 
@@ -59,13 +58,9 @@ where
     T::DynamicType: Default,
 {
     let api = kube::Api::namespaced(client.clone(), ns);
-    time::timeout(
-        time::Duration::from_secs(60),
-        kube::runtime::wait::await_condition(api, name, cond),
-    )
-    .await
-    .expect("condition timed out")
-    .expect("API call failed")
+    kube::runtime::wait::await_condition(api, name, cond)
+        .await
+        .expect("API call failed")
 }
 
 pub async fn create_ready_pod(k8s: &kube::Client, pod: corev1::Pod) -> corev1::Pod {
