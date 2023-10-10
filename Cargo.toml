@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "chigger",
     "policy-controller",
     "policy-controller/core",
     "policy-controller/grpc",
