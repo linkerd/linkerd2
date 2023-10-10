@@ -201,10 +201,10 @@ func TestLinkClusters(t *testing.T) {
 		var lbIP string
 		var err error
 		if k == testutil.SourceContextKey {
-			linkCmd = append(linkCmd, "--context="+contexts[testutil.TargetContextKey], "--set", "enableHeadlessServices=true", "--cluster-name", contexts[testutil.TargetContextKey])
+			linkCmd = append(linkCmd, "--context="+contexts[testutil.TargetContextKey], "--set", "enableHeadlessServices=true", "--cluster-name", "target")
 			lbIP, err = TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], lbCmd...)
 		} else {
-			linkCmd = append(linkCmd, "--context="+contexts[testutil.TargetContextKey], "--gateway=false", "--cluster-name", contexts[testutil.SourceContextKey])
+			linkCmd = append(linkCmd, "--context="+contexts[testutil.SourceContextKey], "--gateway=false", "--cluster-name", "source")
 			lbIP, err = TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], lbCmd...)
 		}
 
