@@ -28,6 +28,9 @@ struct Args {
 
     #[clap(flatten)]
     admin: kubert::AdminArgs,
+
+    #[clap(long, default_value = "100")]
+    endpoints: usize,
 }
 
 #[tokio::main]
@@ -35,6 +38,7 @@ async fn main() -> Result<()> {
     let Args {
         admin,
         client,
+        endpoints,
         log_level,
         log_format,
     } = Args::parse();
@@ -48,7 +52,7 @@ async fn main() -> Result<()> {
 
     let k8s = runtime.client();
 
-    let base_name = format!("chigger-{}", random_suffix(8));
+    let base_name = format!("chigger-{}", random_suffix(5));
     let svc = kube::Api::<corev1::Service>::namespaced(k8s.clone(), "default")
         .create(
             &kube::api::PostParams::default(),
@@ -90,7 +94,7 @@ async fn main() -> Result<()> {
 
     tokio::spawn(observe(dst).instrument(tracing::info_span!("observer")));
     tokio::spawn(
-        scale_up_down(100, base_name.clone(), k8s.clone())
+        scale_up_down(endpoints, base_name.clone(), k8s.clone())
             .instrument(tracing::info_span!("controller")),
     );
 
@@ -113,7 +117,7 @@ async fn scale_up_down(max: usize, base_name: String, k8s: kube::Client) -> Resu
                 &k8s,
                 corev1::Pod {
                     metadata: kube::core::ObjectMeta {
-                        name: Some(format!("{base_name}-{}", random_suffix(8))),
+                        name: Some(format!("{base_name}-{}", random_suffix(6))),
                         namespace: Some("default".into()),
                         labels: Some(convert_args!(btreemap!(
                             "app" => "chigger",
