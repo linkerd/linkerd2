@@ -1,3 +1,7 @@
+use k8s_openapi::api::core::v1 as corev1;
+use kube::ResourceExt;
+use tokio::time;
+
 mod destination;
 
 pub use destination::DestinationClient;
@@ -41,4 +45,79 @@ pub fn random_suffix(len: usize) -> String {
         .take(len)
         .map(char::from)
         .collect()
+}
+
+pub async fn await_condition<T>(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+    cond: impl kube::runtime::wait::Condition<T>,
+) -> Option<T>
+where
+    T: kube::Resource<Scope = kube::core::NamespaceResourceScope>,
+    T: serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug + Send + 'static,
+    T::DynamicType: Default,
+{
+    let api = kube::Api::namespaced(client.clone(), ns);
+    time::timeout(
+        time::Duration::from_secs(60),
+        kube::runtime::wait::await_condition(api, name, cond),
+    )
+    .await
+    .expect("condition timed out")
+    .expect("API call failed")
+}
+
+pub async fn create_ready_pod(k8s: &kube::Client, pod: corev1::Pod) -> corev1::Pod {
+    let pod_ready = |obj: Option<&corev1::Pod>| -> bool {
+        if let Some(pod) = obj {
+            if let Some(status) = &pod.status {
+                if let Some(containers) = &status.container_statuses {
+                    return containers.iter().all(|c| c.ready);
+                }
+            }
+        }
+        false
+    };
+
+    let pod = kube::Api::<corev1::Pod>::namespaced(k8s.clone(), "default")
+        .create(&kube::api::PostParams::default(), &pod)
+        .await
+        .expect("failed to create Pod");
+    let pod = await_condition(
+        k8s,
+        &pod.namespace().unwrap(),
+        &pod.name_unchecked(),
+        pod_ready,
+    )
+    .await
+    .unwrap();
+
+    tracing::trace!(
+        pod = %pod.name_any(),
+        ip = %pod
+            .status.as_ref().expect("pod must have a status")
+            .pod_ips.as_ref().unwrap()[0]
+            .ip.as_deref().expect("pod ip must be set"),
+        containers = ?pod
+            .spec.as_ref().expect("pod must have a spec")
+            .containers.iter().map(|c| &*c.name).collect::<Vec<_>>(),
+        "Ready",
+    );
+
+    pod
+}
+
+pub async fn delete_pod(k8s: &kube::Client, pod: &corev1::Pod) -> Result<(), kube::Error> {
+    let pod_deleted = |obj: Option<&corev1::Pod>| -> bool { obj.is_none() };
+
+    let ns = pod.namespace().unwrap();
+    let name = pod.name_unchecked();
+    kube::Api::<corev1::Pod>::namespaced(k8s.clone(), &ns)
+        .delete(&name, &kube::api::DeleteParams::default())
+        .await?;
+
+    await_condition(k8s, &ns, &name, pod_deleted).await;
+
+    Ok(())
 }

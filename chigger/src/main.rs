@@ -1,14 +1,12 @@
-use std::collections::HashSet;
-
-use ::chigger::DestinationClient;
+use ::chigger::{create_ready_pod, delete_pod, DestinationClient};
 use anyhow::{bail, Result};
 use chigger::random_suffix;
 use clap::Parser;
-use either::Either;
 use futures::prelude::*;
 use k8s_openapi::api::core::v1 as corev1;
 use kube::ResourceExt;
 use maplit::{btreemap, convert_args};
+use std::collections::HashSet;
 use tokio::time;
 use tracing::Instrument;
 
@@ -114,57 +112,51 @@ async fn scale_up_down(max: usize, base_name: String, k8s: kube::Client) -> Resu
     let mut pods = Vec::with_capacity(max);
     loop {
         for _ in 0..max {
-            let pod = kube::Api::<corev1::Pod>::namespaced(k8s.clone(), "default")
-                .create(
-                    &kube::api::PostParams::default(),
-                    &corev1::Pod {
-                        metadata: kube::core::ObjectMeta {
-                            name: Some(format!("{base_name}-{}", random_suffix(8))),
-                            namespace: Some("default".into()),
-                            labels: Some(convert_args!(btreemap!(
-                                "app" => "chigger",
-                                "svc" => &base_name,
-                            ))),
-                            ..Default::default()
-                        },
-                        spec: Some(corev1::PodSpec {
-                            containers: vec![corev1::Container {
-                                name: "chigger".into(),
-                                image: Some("gcr.io/google_containers/pause:3.2".into()),
-                                ..Default::default()
-                            }],
-                            ..Default::default()
-                        }),
-                        status: None,
+            let pod = create_ready_pod(
+                &k8s,
+                corev1::Pod {
+                    metadata: kube::core::ObjectMeta {
+                        name: Some(format!("{base_name}-{}", random_suffix(8))),
+                        namespace: Some("default".into()),
+                        labels: Some(convert_args!(btreemap!(
+                            "app" => "chigger",
+                            "svc" => &base_name,
+                        ))),
+                        ..Default::default()
                     },
-                )
-                .await?;
+                    spec: Some(corev1::PodSpec {
+                        containers: vec![corev1::Container {
+                            name: "chigger".into(),
+                            image: Some("gcr.io/google_containers/pause:3.2".into()),
+                            ..Default::default()
+                        }],
+                        ..Default::default()
+                    }),
+                    status: None,
+                },
+            )
+            .await;
             tracing::info!(
                 pod.name = pod.name_unchecked(),
                 pods = pods.len() + 1,
                 "Created"
             );
             pods.push(pod);
-            tokio::time::sleep(time::Duration::from_secs(1)).await;
         }
 
         time::sleep(time::Duration::from_secs(10)).await;
 
         for (i, pod) in pods.drain(..).enumerate() {
-            let res = kube::Api::<corev1::Pod>::namespaced(k8s.clone(), "default")
-                .delete(&pod.name_unchecked(), &kube::api::DeleteParams::default())
-                .await?;
-            match res {
-                Either::Left(pod) => {
+            match delete_pod(&k8s, &pod).await {
+                Ok(()) => {
                     tracing::info!(
                         pod.name = pod.name_unchecked(),
                         pods = max - i - 1,
                         "Deleted"
                     );
                 }
-                Either::Right(status) => {
-                    tokio::time::sleep(time::Duration::from_secs(1)).await;
-                    tracing::info!(?status, "Deletion failed");
+                Err(error) => {
+                    tracing::info!(?error, "Deletion failed");
                 }
             }
         }
@@ -211,5 +203,6 @@ async fn cleanup(base_name: String, k8s: kube::Client) -> Result<()> {
             .delete(&pod.name_unchecked(), &kube::api::DeleteParams::default())
             .await?;
     }
+
     Ok(())
 }
