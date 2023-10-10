@@ -157,7 +157,7 @@ async fn inbound_accepted_reconcile_no_parent() {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("Server".to_string()),
             namespace: Some(ns.clone()),
-            name: "test-reconcile-inbound-server".to_string(),
+            name: server_name.to_string(),
             section_name: None,
             port: None,
         }];
