@@ -8,8 +8,8 @@ use kube::ResourceExt;
 use maplit::{btreemap, convert_args};
 use rand::seq::SliceRandom;
 use std::collections::HashSet;
-use tokio::{task::JoinHandle, time};
-use tracing::{info, info_span, Instrument};
+use tokio::time;
+use tracing::{error, info, info_span, Instrument};
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
 #[global_allocator]
@@ -30,10 +30,16 @@ struct Args {
     #[clap(flatten)]
     admin: kubert::AdminArgs,
 
+    #[clap(long, default_value = "50")]
+    min_endpoints: usize,
+
     #[clap(long, default_value = "100")]
     max_endpoints: usize,
 
     #[clap(long, default_value = "10")]
+    min_observer_lifetime: f64,
+
+    #[clap(long, default_value = "60")]
     max_observer_lifetime: f64,
 
     #[clap(long, default_value = "100")]
@@ -47,8 +53,10 @@ async fn main() -> Result<()> {
         client,
         log_level,
         log_format,
+        min_endpoints,
         max_endpoints,
         observers,
+        min_observer_lifetime,
         max_observer_lifetime,
     } = Args::parse();
 
@@ -93,24 +101,23 @@ async fn main() -> Result<()> {
         .await?;
     info!(svc.name = svc.name_unchecked(), "Created");
 
-    let mut dst_client = DestinationClient::port_forwarded(&k8s).await;
+    let mut dst = DestinationClient::port_forwarded(&k8s).await;
 
-    let mut dst = dst_client.watch(&svc, 80).await?;
-    let init = dst.next().await;
-    info!(?init);
+    info!(init = ?dst.watch(&svc, 80).await?.next().await);
 
     // Start a task that runs a fixed number of observers, restarting the watches
     // randomly within the max lifetime.
     spawn_observers(
         observers,
+        time::Duration::from_secs_f64(min_observer_lifetime),
         time::Duration::from_secs_f64(max_observer_lifetime),
         svc,
-        dst_client,
+        dst,
     );
 
     //
     tokio::spawn(
-        scale_endpoints(max_endpoints, base_name.clone(), k8s.clone())
+        scale_endpoints(min_endpoints, max_endpoints, base_name.clone(), k8s.clone())
             .instrument(info_span!("endpoints")),
     );
 
@@ -125,34 +132,38 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn scale_endpoints(max: usize, base_name: String, k8s: kube::Client) -> Result<()> {
+async fn scale_endpoints(
+    min: usize,
+    max: usize,
+    base_name: String,
+    k8s: kube::Client,
+) -> Result<()> {
     let mut pods = Vec::with_capacity(max);
+
+    let mk_pod = move || corev1::Pod {
+        metadata: kube::core::ObjectMeta {
+            name: Some(format!("{base_name}-{}", random_suffix(6))),
+            namespace: Some("default".into()),
+            labels: Some(convert_args!(btreemap!(
+                "app" => "chigger",
+                "svc" => &base_name,
+            ))),
+            ..Default::default()
+        },
+        spec: Some(corev1::PodSpec {
+            containers: vec![corev1::Container {
+                name: "pause".into(),
+                image: Some("gcr.io/google_containers/pause:3.2".into()),
+                ..Default::default()
+            }],
+            ..Default::default()
+        }),
+        status: None,
+    };
+
     loop {
-        for _ in 0..max {
-            let pod = create_ready_pod(
-                &k8s,
-                corev1::Pod {
-                    metadata: kube::core::ObjectMeta {
-                        name: Some(format!("{base_name}-{}", random_suffix(6))),
-                        namespace: Some("default".into()),
-                        labels: Some(convert_args!(btreemap!(
-                            "app" => "chigger",
-                            "svc" => &base_name,
-                        ))),
-                        ..Default::default()
-                    },
-                    spec: Some(corev1::PodSpec {
-                        containers: vec![corev1::Container {
-                            name: "chigger".into(),
-                            image: Some("gcr.io/google_containers/pause:3.2".into()),
-                            ..Default::default()
-                        }],
-                        ..Default::default()
-                    }),
-                    status: None,
-                },
-            )
-            .await;
+        while pods.len() < max {
+            let pod = create_ready_pod(&k8s, mk_pod()).await;
             info!(
                 pod.name = %pod.name_unchecked(),
                 pod.ip = %pod
@@ -175,7 +186,8 @@ async fn scale_endpoints(max: usize, base_name: String, k8s: kube::Client) -> Re
         tokio::task::yield_now().await;
 
         pods.shuffle(&mut rand::thread_rng());
-        while let Some(pod) = pods.pop() {
+        while pods.len() > min {
+            let Some(pod) = pods.pop() else { break; };
             let pod_ip = pod
                 .status
                 .as_ref()
@@ -206,35 +218,37 @@ async fn scale_endpoints(max: usize, base_name: String, k8s: kube::Client) -> Re
 }
 
 fn spawn_observers(
-    max: usize,
+    count: usize,
+    min_lifetime: time::Duration,
     max_lifetime: time::Duration,
     svc: corev1::Service,
     dst: DestinationClient,
-) -> Vec<JoinHandle<Result<()>>> {
-    let mut handles = Vec::with_capacity(max);
-    for id in 0..max {
-        handles.push(tokio::spawn(
-            client(svc.clone(), dst.clone(), max_lifetime).instrument(info_span!("client", %id)),
-        ));
-    }
-    handles
-}
-
-async fn client(
-    svc: corev1::Service,
-    mut dst: DestinationClient,
-    max_lifetime: time::Duration,
-) -> Result<()> {
+) {
     use rand::Rng;
 
-    loop {
-        let lifetime = time::Duration::from_secs_f64(
-            rand::thread_rng().gen_range(0.0..=max_lifetime.as_secs_f64()),
+    for id in 0..count {
+        let svc = svc.clone();
+        let mut dst = dst.clone();
+        tokio::spawn(
+            async move {
+                loop {
+                    let lifetime = time::Duration::from_secs_f64(
+                        rand::thread_rng()
+                            .gen_range(min_lifetime.as_secs_f64()..=max_lifetime.as_secs_f64()),
+                    );
+                    info!(?lifetime, "Resetting");
+                    let rx = match dst.watch(&svc, 80).await {
+                        Ok(rx) => rx,
+                        Err(error) => {
+                            error!(%error, "Watch failed");
+                            return Err::<(), anyhow::Error>(error.into());
+                        }
+                    };
+                    let _ = time::timeout(lifetime, observe(rx)).await;
+                }
+            }
+            .instrument(info_span!("observer", id)),
         );
-        info!(?lifetime, "Resetting");
-
-        let rx = dst.watch(&svc, 80).await?;
-        let _ = time::timeout(lifetime, observe(rx)).await;
     }
 }
 
