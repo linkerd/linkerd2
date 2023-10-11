@@ -79,6 +79,17 @@ async fn main() -> Result<()> {
         .build()
         .await?;
 
+    info!(
+        min_endpoints,
+        max_endpoints,
+        min_endpoints_stabletime,
+        max_endpoints_stabletime,
+        observers,
+        min_observer_lifetime,
+        max_observer_lifetime,
+        "Starting",
+    );
+
     let k8s = runtime.client();
 
     let name = format!("chigger-{}", random_suffix(5));
