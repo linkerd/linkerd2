@@ -6,9 +6,10 @@ use futures::prelude::*;
 use k8s_openapi::api::core::v1 as corev1;
 use kube::ResourceExt;
 use maplit::{btreemap, convert_args};
+use rand::seq::SliceRandom;
 use std::collections::HashSet;
-use tokio::time;
-use tracing::Instrument;
+use tokio::{task::JoinHandle, time};
+use tracing::{info, info_span, Instrument};
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
 #[global_allocator]
@@ -20,7 +21,7 @@ struct Args {
     #[clap(long, default_value = "chigger=info,warn", env = "CHIGGER_LOG")]
     log_level: kubert::LogFilter,
 
-    #[clap(long, default_value = "plain")]
+    #[clap(long, default_value = "json")]
     log_format: kubert::LogFormat,
 
     #[clap(flatten)]
@@ -30,7 +31,13 @@ struct Args {
     admin: kubert::AdminArgs,
 
     #[clap(long, default_value = "100")]
-    endpoints: usize,
+    max_endpoints: usize,
+
+    #[clap(long, default_value = "10")]
+    max_observer_lifetime: f64,
+
+    #[clap(long, default_value = "100")]
+    observers: usize,
 }
 
 #[tokio::main]
@@ -38,9 +45,11 @@ async fn main() -> Result<()> {
     let Args {
         admin,
         client,
-        endpoints,
         log_level,
         log_format,
+        max_endpoints,
+        observers,
+        max_observer_lifetime,
     } = Args::parse();
 
     let runtime = kubert::Runtime::builder()
@@ -82,20 +91,27 @@ async fn main() -> Result<()> {
             },
         )
         .await?;
-    tracing::info!(svc.name = svc.name_unchecked(), "Created");
+    info!(svc.name = svc.name_unchecked(), "Created");
 
-    let mut dst = DestinationClient::port_forwarded(&k8s)
-        .await
-        .watch(&svc, 80)
-        .await?;
+    let mut dst_client = DestinationClient::port_forwarded(&k8s).await;
 
+    let mut dst = dst_client.watch(&svc, 80).await?;
     let init = dst.next().await;
-    tracing::info!(?init);
+    info!(?init);
 
-    tokio::spawn(observe(dst).instrument(tracing::info_span!("observer")));
+    // Start a task that runs a fixed number of observers, restarting the watches
+    // randomly within the max lifetime.
+    spawn_observers(
+        observers,
+        time::Duration::from_secs_f64(max_observer_lifetime),
+        svc,
+        dst_client,
+    );
+
+    //
     tokio::spawn(
-        scale_up_down(endpoints, base_name.clone(), k8s.clone())
-            .instrument(tracing::info_span!("controller")),
+        scale_endpoints(max_endpoints, base_name.clone(), k8s.clone())
+            .instrument(info_span!("endpoints")),
     );
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
@@ -109,7 +125,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn scale_up_down(max: usize, base_name: String, k8s: kube::Client) -> Result<()> {
+async fn scale_endpoints(max: usize, base_name: String, k8s: kube::Client) -> Result<()> {
     let mut pods = Vec::with_capacity(max);
     loop {
         for _ in 0..max {
@@ -137,7 +153,7 @@ async fn scale_up_down(max: usize, base_name: String, k8s: kube::Client) -> Resu
                 },
             )
             .await;
-            tracing::info!(
+            info!(
                 pod.name = %pod.name_unchecked(),
                 pod.ip = %pod
                     .status
@@ -155,8 +171,10 @@ async fn scale_up_down(max: usize, base_name: String, k8s: kube::Client) -> Resu
             pods.push(pod);
         }
 
-        time::sleep(time::Duration::from_secs(10)).await;
+        // Give the observer(s) a chance to observe.
+        tokio::task::yield_now().await;
 
+        pods.shuffle(&mut rand::thread_rng());
         while let Some(pod) = pods.pop() {
             let pod_ip = pod
                 .status
@@ -168,26 +186,55 @@ async fn scale_up_down(max: usize, base_name: String, k8s: kube::Client) -> Resu
                 .ip
                 .as_deref()
                 .expect("pod ip must be set");
-            match delete_pod(&k8s, &pod).await {
-                Ok(()) => {
-                    tracing::info!(
-                        pod.name = %pod.name_unchecked(),
-                        pod.ip = %pod_ip,
-                        pods = pods.len(),
-                        "Deleted"
-                    );
-                }
-                Err(error) => {
-                    tracing::info!(
-                        %error,
-                        pod.name = %pod.name_unchecked(),
-                        pod.ip = %pod_ip,
-                        pods = pods.len(),
-                        "Deletion failed"
-                    );
-                }
+            info!(
+                pod.name = %pod.name_unchecked(),
+                pod.ip = %pod_ip,
+                pods = pods.len(),
+                "Deleting"
+            );
+            if let Err(error) = delete_pod(&k8s, &pod).await {
+                info!(
+                    %error,
+                    pod.name = %pod.name_unchecked(),
+                    pod.ip = %pod_ip,
+                    pods = pods.len(),
+                    "Deletion failed"
+                );
             }
         }
+    }
+}
+
+fn spawn_observers(
+    max: usize,
+    max_lifetime: time::Duration,
+    svc: corev1::Service,
+    dst: DestinationClient,
+) -> Vec<JoinHandle<Result<()>>> {
+    let mut handles = Vec::with_capacity(max);
+    for id in 0..max {
+        handles.push(tokio::spawn(
+            client(svc.clone(), dst.clone(), max_lifetime).instrument(info_span!("client", %id)),
+        ));
+    }
+    handles
+}
+
+async fn client(
+    svc: corev1::Service,
+    mut dst: DestinationClient,
+    max_lifetime: time::Duration,
+) -> Result<()> {
+    use rand::Rng;
+
+    loop {
+        let lifetime = time::Duration::from_secs_f64(
+            rand::thread_rng().gen_range(0.0..=max_lifetime.as_secs_f64()),
+        );
+        info!(?lifetime, "Resetting");
+
+        let rx = dst.watch(&svc, 80).await?;
+        let _ = time::timeout(lifetime, observe(rx)).await;
     }
 }
 
@@ -199,19 +246,19 @@ async fn observe(mut dst: tonic::Streaming<linkerd2_proxy_api::destination::Upda
                 for a in addrs.addrs.into_iter() {
                     let addr = std::net::SocketAddr::try_from(a.addr.unwrap())?;
                     endpoints.insert(addr);
-                    tracing::info!(ep.ip = %addr.ip(), endpoints = endpoints.len(), "Added");
+                    info!(ep.ip = %addr.ip(), endpoints = endpoints.len(), "Added");
                 }
             }
             linkerd2_proxy_api::destination::update::Update::Remove(addrs) => {
                 for a in addrs.addrs.into_iter() {
                     let addr = std::net::SocketAddr::try_from(a)?;
                     endpoints.remove(&addr);
-                    tracing::info!(ep.ip = %addr.ip(), endpoints = endpoints.len(), "Removed");
+                    info!(ep.ip = %addr.ip(), endpoints = endpoints.len(), "Removed");
                 }
             }
             linkerd2_proxy_api::destination::update::Update::NoEndpoints(_) => {
                 endpoints.clear();
-                tracing::info!(endpoints = endpoints.len(), "Cleared");
+                info!(endpoints = endpoints.len(), "Cleared");
             }
         }
     }

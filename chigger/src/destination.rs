@@ -7,11 +7,12 @@ use anyhow::Result;
 use k8s_openapi::api::core::v1 as corev1;
 use kube::api::ResourceExt;
 use linkerd2_proxy_api::destination as api;
-use tokio::io;
+use std::sync::Arc;
+use tokio::{io, sync::Mutex};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct DestinationClient {
-    client: api::destination_client::DestinationClient<GrpcHttp>,
+    client: Arc<Mutex<api::destination_client::DestinationClient<GrpcHttp>>>,
     pod: corev1::Pod,
 }
 
@@ -58,7 +59,9 @@ impl DestinationClient {
             .await
             .expect("failed to connect to the gRPC server");
         Self {
-            client: api::destination_client::DestinationClient::new(http),
+            client: Arc::new(Mutex::new(api::destination_client::DestinationClient::new(
+                http,
+            ))),
             pod,
         }
     }
@@ -79,8 +82,8 @@ impl DestinationClient {
             .clone()
             .unwrap_or_else(|| "default".to_string());
         let node_name = self.pod.spec.as_ref().unwrap().node_name.as_ref().unwrap();
-        let rsp = self
-            .client
+        let mut client = self.client.lock().await;
+        let rsp = client
             .get(tonic::Request::new(api::GetDestination {
                 path: format!("{name}.{ns}.svc.cluster.local:{port}"),
                 context_token: format!("{{\"ns\":\"{ns}\",\"nodeName\":\"{node_name}\"}}"),
