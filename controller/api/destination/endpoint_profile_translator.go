@@ -83,9 +83,9 @@ func (ept *endpointProfileTranslator) Update(address *watcher.Address) (bool, er
 		return false, nil
 	}
 	ept.lastMessage = msg
-	ept.log.Debugf("sending protocol update: %+v", profile)
+	ept.log.Debugf("sending profile update: %+v", profile)
 	if err := ept.stream.Send(profile); err != nil {
-		return false, fmt.Errorf("failed to send protocol update: %w", err)
+		return false, fmt.Errorf("failed to send profile update: %w", err)
 	}
 
 	return true, nil
