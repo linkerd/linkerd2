@@ -1,12 +1,16 @@
-use ::chigger::{create_ready_pod, delete_pod, DestinationClient};
+use ::chigger::{random_suffix, scale_replicaset, DestinationClient};
+use chigger::delete_replicaset;
+
 use anyhow::{bail, Result};
-use chigger::random_suffix;
 use clap::Parser;
 use futures::prelude::*;
-use k8s_openapi::api::core::v1 as corev1;
+use k8s_openapi::{
+    api::{apps::v1 as appsv1, core::v1 as corev1},
+    apimachinery::pkg::apis::meta::v1 as metav1,
+};
 use kube::ResourceExt;
 use maplit::{btreemap, convert_args};
-use rand::seq::SliceRandom;
+use rand::Rng;
 use std::collections::HashSet;
 use tokio::time;
 use tracing::{error, info, info_span, Instrument};
@@ -36,10 +40,16 @@ struct Args {
     #[clap(long, default_value = "100")]
     max_endpoints: usize,
 
+    #[clap(long, default_value = "1")]
+    min_endpoints_stabletime: f64,
+
+    #[clap(long, default_value = "300")]
+    max_endpoints_stabletime: f64,
+
     #[clap(long, default_value = "10")]
     min_observer_lifetime: f64,
 
-    #[clap(long, default_value = "60")]
+    #[clap(long, default_value = "300")]
     max_observer_lifetime: f64,
 
     #[clap(long, default_value = "100")]
@@ -55,6 +65,8 @@ async fn main() -> Result<()> {
         log_format,
         min_endpoints,
         max_endpoints,
+        min_endpoints_stabletime,
+        max_endpoints_stabletime,
         observers,
         min_observer_lifetime,
         max_observer_lifetime,
@@ -69,13 +81,13 @@ async fn main() -> Result<()> {
 
     let k8s = runtime.client();
 
-    let base_name = format!("chigger-{}", random_suffix(5));
+    let name = format!("chigger-{}", random_suffix(5));
     let svc = kube::Api::<corev1::Service>::namespaced(k8s.clone(), "default")
         .create(
             &kube::api::PostParams::default(),
             &corev1::Service {
                 metadata: kube::core::ObjectMeta {
-                    name: Some(base_name.clone()),
+                    name: Some(name.clone()),
                     namespace: Some("default".into()),
                     labels: Some(convert_args!(btreemap!(
                         "app" => "chigger",
@@ -86,7 +98,7 @@ async fn main() -> Result<()> {
                     type_: Some("ClusterIP".into()),
                     selector: Some(convert_args!(btreemap!(
                         "app" => "chigger",
-                        "svc" => &base_name,
+                        "svc" => &name,
                     ))),
                     ports: Some(vec![corev1::ServicePort {
                         port: 80,
@@ -117,8 +129,15 @@ async fn main() -> Result<()> {
 
     //
     tokio::spawn(
-        scale_endpoints(min_endpoints, max_endpoints, base_name.clone(), k8s.clone())
-            .instrument(info_span!("endpoints")),
+        scale_endpoints(
+            min_endpoints,
+            max_endpoints,
+            time::Duration::from_secs_f64(min_endpoints_stabletime),
+            time::Duration::from_secs_f64(max_endpoints_stabletime),
+            name.clone(),
+            k8s.clone(),
+        )
+        .instrument(info_span!("endpoints")),
     );
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
@@ -127,7 +146,7 @@ async fn main() -> Result<()> {
         bail!("Aborted");
     }
 
-    cleanup(base_name, k8s).await?;
+    cleanup(&k8s, &name).await?;
 
     Ok(())
 }
@@ -135,85 +154,71 @@ async fn main() -> Result<()> {
 async fn scale_endpoints(
     min: usize,
     max: usize,
-    base_name: String,
+    min_stable: time::Duration,
+    max_stable: time::Duration,
+    name: String,
     k8s: kube::Client,
 ) -> Result<()> {
-    let mut pods = Vec::with_capacity(max);
+    kube::Api::namespaced(k8s.clone(), "default")
+        .create(
+            &kube::api::PostParams::default(),
+            &appsv1::ReplicaSet {
+                metadata: kube::core::ObjectMeta {
+                    name: Some(name.clone()),
+                    namespace: Some("default".into()),
+                    labels: Some(convert_args!(btreemap!(
+                        "app" => "chigger",
+                        "svc" => &name,
+                    ))),
+                    ..Default::default()
+                },
+                spec: Some(appsv1::ReplicaSetSpec {
+                    replicas: Some(0),
+                    min_ready_seconds: Some(0),
+                    selector: metav1::LabelSelector {
+                        match_labels: Some(convert_args!(btreemap!(
+                            "app" => "chigger",
+                            "svc" => &name,
+                        ))),
+                        ..Default::default()
+                    },
+                    template: Some(corev1::PodTemplateSpec {
+                        metadata: Some(kube::core::ObjectMeta {
+                            labels: Some(convert_args!(btreemap!(
+                                "app" => "chigger",
+                                "svc" => &name,
+                            ))),
+                            ..Default::default()
+                        }),
+                        spec: Some(corev1::PodSpec {
+                            containers: vec![corev1::Container {
+                                name: "pause".into(),
+                                image: Some("gcr.io/google_containers/pause:3.2".into()),
+                                ..Default::default()
+                            }],
+                            ..Default::default()
+                        }),
+                    }),
+                }),
+                status: None,
+            },
+        )
+        .await?;
 
-    let mk_pod = move || corev1::Pod {
-        metadata: kube::core::ObjectMeta {
-            name: Some(format!("{base_name}-{}", random_suffix(6))),
-            namespace: Some("default".into()),
-            labels: Some(convert_args!(btreemap!(
-                "app" => "chigger",
-                "svc" => &base_name,
-            ))),
-            ..Default::default()
-        },
-        spec: Some(corev1::PodSpec {
-            containers: vec![corev1::Container {
-                name: "pause".into(),
-                image: Some("gcr.io/google_containers/pause:3.2".into()),
-                ..Default::default()
-            }],
-            ..Default::default()
-        }),
-        status: None,
-    };
-
+    let mut replicas = 0;
     loop {
-        while pods.len() < max {
-            let pod = create_ready_pod(&k8s, mk_pod()).await;
-            info!(
-                pod.name = %pod.name_unchecked(),
-                pod.ip = %pod
-                    .status
-                    .as_ref()
-                    .expect("pod must have a status")
-                    .pod_ips
-                    .as_ref()
-                    .unwrap()[0]
-                    .ip
-                    .as_deref()
-                    .expect("pod ip must be set"),
-                pods = pods.len() + 1,
-                "Created"
-            );
-            pods.push(pod);
-        }
+        let stable = time::Duration::from_secs_f64(
+            rand::thread_rng().gen_range(min_stable.as_secs_f64()..=max_stable.as_secs_f64()),
+        );
 
-        // Give the observer(s) a chance to observe.
-        tokio::task::yield_now().await;
+        let desired = rand::thread_rng().gen_range(min..=max);
+        info!(rs.ready = replicas, rs.replicas = desired, "Scaling");
 
-        pods.shuffle(&mut rand::thread_rng());
-        while pods.len() > min {
-            let Some(pod) = pods.pop() else { break; };
-            let pod_ip = pod
-                .status
-                .as_ref()
-                .expect("pod must have a status")
-                .pod_ips
-                .as_ref()
-                .unwrap()[0]
-                .ip
-                .as_deref()
-                .expect("pod ip must be set");
-            info!(
-                pod.name = %pod.name_unchecked(),
-                pod.ip = %pod_ip,
-                pods = pods.len(),
-                "Deleting"
-            );
-            if let Err(error) = delete_pod(&k8s, &pod).await {
-                info!(
-                    %error,
-                    pod.name = %pod.name_unchecked(),
-                    pod.ip = %pod_ip,
-                    pods = pods.len(),
-                    "Deletion failed"
-                );
-            }
-        }
+        scale_replicaset(&k8s, "default", &name, desired).await?;
+        replicas = desired;
+        info!(rs.ready = %replicas, ?stable, "Scaled");
+
+        time::sleep(stable).await;
     }
 }
 
@@ -224,7 +229,34 @@ fn spawn_observers(
     svc: corev1::Service,
     dst: DestinationClient,
 ) {
-    use rand::Rng;
+    async fn observe(
+        mut dst: tonic::Streaming<linkerd2_proxy_api::destination::Update>,
+    ) -> Result<()> {
+        let mut endpoints = HashSet::new();
+        while let Some(up) = dst.try_next().await? {
+            match up.update.unwrap() {
+                linkerd2_proxy_api::destination::update::Update::Add(addrs) => {
+                    for a in addrs.addrs.into_iter() {
+                        let addr = std::net::SocketAddr::try_from(a.addr.unwrap())?;
+                        endpoints.insert(addr);
+                        info!(ep.ip = %addr.ip(), endpoints = endpoints.len(), "Added");
+                    }
+                }
+                linkerd2_proxy_api::destination::update::Update::Remove(addrs) => {
+                    for a in addrs.addrs.into_iter() {
+                        let addr = std::net::SocketAddr::try_from(a)?;
+                        endpoints.remove(&addr);
+                        info!(ep.ip = %addr.ip(), endpoints = endpoints.len(), "Removed");
+                    }
+                }
+                linkerd2_proxy_api::destination::update::Update::NoEndpoints(_) => {
+                    endpoints.clear();
+                    info!(endpoints = endpoints.len(), "Cleared");
+                }
+            }
+        }
+        Ok(())
+    }
 
     for id in 0..count {
         let svc = svc.clone();
@@ -252,46 +284,12 @@ fn spawn_observers(
     }
 }
 
-async fn observe(mut dst: tonic::Streaming<linkerd2_proxy_api::destination::Update>) -> Result<()> {
-    let mut endpoints = HashSet::new();
-    while let Some(up) = dst.try_next().await? {
-        match up.update.unwrap() {
-            linkerd2_proxy_api::destination::update::Update::Add(addrs) => {
-                for a in addrs.addrs.into_iter() {
-                    let addr = std::net::SocketAddr::try_from(a.addr.unwrap())?;
-                    endpoints.insert(addr);
-                    info!(ep.ip = %addr.ip(), endpoints = endpoints.len(), "Added");
-                }
-            }
-            linkerd2_proxy_api::destination::update::Update::Remove(addrs) => {
-                for a in addrs.addrs.into_iter() {
-                    let addr = std::net::SocketAddr::try_from(a)?;
-                    endpoints.remove(&addr);
-                    info!(ep.ip = %addr.ip(), endpoints = endpoints.len(), "Removed");
-                }
-            }
-            linkerd2_proxy_api::destination::update::Update::NoEndpoints(_) => {
-                endpoints.clear();
-                info!(endpoints = endpoints.len(), "Cleared");
-            }
-        }
-    }
-    Ok(())
-}
-
-async fn cleanup(base_name: String, k8s: kube::Client) -> Result<()> {
+async fn cleanup(k8s: &kube::Client, name: &str) -> Result<()> {
     kube::Api::<corev1::Service>::namespaced(k8s.clone(), "default")
-        .delete(&base_name, &kube::api::DeleteParams::default())
+        .delete(name, &kube::api::DeleteParams::default())
         .await?;
 
-    let pods = kube::Api::<corev1::Pod>::namespaced(k8s.clone(), "default")
-        .list_metadata(&kube::api::ListParams::default().labels(&format!("svc={base_name}")))
-        .await?;
-    for pod in pods {
-        kube::Api::<corev1::Pod>::namespaced(k8s.clone(), "default")
-            .delete(&pod.name_unchecked(), &kube::api::DeleteParams::default())
-            .await?;
-    }
+    delete_replicaset(k8s, "default", name).await?;
 
     Ok(())
 }

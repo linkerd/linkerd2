@@ -1,4 +1,4 @@
-use k8s_openapi::api::core::v1 as corev1;
+use k8s_openapi::api::{apps::v1 as appsv1, core::v1 as corev1};
 use kube::ResourceExt;
 
 mod destination;
@@ -63,6 +63,42 @@ where
         .expect("API call failed")
 }
 
+pub async fn scale_replicaset(
+    k8s: &kube::Client,
+    ns: &str,
+    name: &str,
+    replicas: usize,
+) -> Result<appsv1::ReplicaSet, kube::Error> {
+    let rs = kube::Api::<appsv1::ReplicaSet>::namespaced(k8s.clone(), ns)
+        .patch(
+            name,
+            &kube::api::PatchParams::default(),
+            &kube::api::Patch::Merge(serde_json::json!({"spec": { "replicas": replicas }})),
+        )
+        .await?;
+
+    tracing::debug!(replicas, %ns, %name, ?rs);
+
+    Ok(rs)
+}
+
+pub async fn await_ready_replicaset(
+    k8s: &kube::Client,
+    ns: &str,
+    name: &str,
+) -> Option<appsv1::ReplicaSet> {
+    let replicaset_ready = |obj: Option<&appsv1::ReplicaSet>| -> bool {
+        if let Some(replicaset) = obj {
+            if let Some(status) = &replicaset.status {
+                return status.ready_replicas == Some(status.replicas);
+            }
+        }
+        false
+    };
+
+    await_condition(k8s, ns, name, replicaset_ready).await
+}
+
 pub async fn create_ready_pod(k8s: &kube::Client, pod: corev1::Pod) -> corev1::Pod {
     let pod_ready = |obj: Option<&corev1::Pod>| -> bool {
         if let Some(pod) = obj {
@@ -113,6 +149,22 @@ pub async fn delete_pod(k8s: &kube::Client, pod: &corev1::Pod) -> Result<(), kub
         .await?;
 
     await_condition(k8s, &ns, &name, pod_deleted).await;
+
+    Ok(())
+}
+
+pub async fn delete_replicaset(
+    k8s: &kube::Client,
+    ns: &str,
+    name: &str,
+) -> Result<(), kube::Error> {
+    let rs_deleted = |obj: Option<&appsv1::ReplicaSet>| -> bool { obj.is_none() };
+
+    kube::Api::<appsv1::ReplicaSet>::namespaced(k8s.clone(), ns)
+        .delete(name, &kube::api::DeleteParams::default())
+        .await?;
+
+    await_condition(k8s, ns, name, rs_deleted).await;
 
     Ok(())
 }
