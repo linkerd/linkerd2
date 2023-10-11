@@ -170,7 +170,6 @@ func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
 			for k, v := range et.availableEndpoints.Addresses {
 				filtered[k] = v
 			}
-			et.log.Debugf("Hints not available on endpointslice. Zone Filtering disabled. Falling back to routing to all pods")
 			return watcher.AddressSet{
 				Addresses:          filtered,
 				Labels:             et.availableEndpoints.Labels,
