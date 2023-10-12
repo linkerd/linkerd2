@@ -126,7 +126,8 @@ async fn main() -> Result<()> {
 
     let mut dst = DestinationClient::port_forwarded(&k8s).await;
 
-    info!(init = ?dst.watch(&svc, 80).await?.next().await);
+    let mut idle_observation = dst.watch(&svc, 80).await?;
+    info!(init = ?idle_observation.next().await);
 
     // Start a task that runs a fixed number of observers, restarting the watches
     // randomly within the max lifetime.
@@ -158,6 +159,8 @@ async fn main() -> Result<()> {
     }
 
     cleanup(&k8s, &name).await?;
+
+    drop(idle_observation);
 
     Ok(())
 }
