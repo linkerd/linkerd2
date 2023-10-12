@@ -213,7 +213,7 @@ func TestLinkClusters(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'linkerd multicluster link' command failed", "'linkerd multicluster link' command failed: %s\n%s", out, err)
 	}
 
-	out, err = TestHelper.KubectlApplyWithContext(out, testutil.SourceContextKey, "-f", "-")
+	out, err = TestHelper.KubectlApplyWithContext(out, contexts[testutil.SourceContextKey], "-f", "-")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
@@ -242,7 +242,7 @@ func TestLinkClusters(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'linkerd multicluster link' command failed", "'linkerd multicluster link' command failed: %s\n%s", out, err)
 	}
 
-	out, err = TestHelper.KubectlApplyWithContext(out, testutil.TargetContextKey, "-f", "-")
+	out, err = TestHelper.KubectlApplyWithContext(out, contexts[testutil.TargetContextKey], "-f", "-")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
