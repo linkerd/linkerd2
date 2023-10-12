@@ -1,5 +1,20 @@
 # Changes
 
+## edge-23.10.2
+
+This edge release includes a fix addressing an issue during upgrades for
+instances not relying on automated webhook certificate management (like
+cert-manager provides).
+
+* Added a `checksum/config` annotation to the destination and proxy injector
+  deployment manifests to force restarting those workloads whenever their
+  webhook secrets change during upgrade (thanks @iAnomaly!) ([#11440])
+* Fixed policy controller error when deleting a gateway API HTTPRoute resource
+  ([#11471])
+
+[#11440]: https://github.com/linkerd/linkerd2/pull/11440
+[#11471]: https://github.com/linkerd/linkerd2/pull/11471
+
 ## edge-23.10.1
 
 This edge release adds additional configurability to Linkerd's viz and
