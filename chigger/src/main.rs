@@ -125,7 +125,6 @@ async fn main() -> Result<()> {
     info!(svc.name = svc.name_unchecked(), "Created");
 
     let mut dst = DestinationClient::port_forwarded(&k8s).await;
-
     let mut idle_observation = dst.watch(&svc, 80).await?;
     info!(init = ?idle_observation.next().await);
 
@@ -136,7 +135,7 @@ async fn main() -> Result<()> {
         time::Duration::from_secs_f64(min_observer_lifetime),
         time::Duration::from_secs_f64(max_observer_lifetime),
         svc,
-        dst,
+        &k8s,
     );
 
     //
@@ -241,7 +240,7 @@ fn spawn_observers(
     min_lifetime: time::Duration,
     max_lifetime: time::Duration,
     svc: corev1::Service,
-    dst: DestinationClient,
+    k8s: &kube::Client,
 ) {
     async fn observe(
         mut dst: tonic::Streaming<linkerd2_proxy_api::destination::Update>,
@@ -271,12 +270,12 @@ fn spawn_observers(
         }
         Ok(())
     }
-
     for id in 0..count {
         let svc = svc.clone();
-        let mut dst = dst.clone();
+        let k8s = k8s.clone();
         tokio::spawn(
             async move {
+                let mut dst = DestinationClient::port_forwarded(&k8s).await;
                 loop {
                     let lifetime = time::Duration::from_secs_f64(
                         rand::thread_rng()
@@ -287,7 +286,8 @@ fn spawn_observers(
                         Ok(rx) => rx,
                         Err(error) => {
                             error!(%error, "Watch failed");
-                            return Err::<(), anyhow::Error>(error.into());
+                            dst = DestinationClient::port_forwarded(&k8s).await;
+                            continue;
                         }
                     };
                     let _ = time::timeout(lifetime, observe(rx)).await;
