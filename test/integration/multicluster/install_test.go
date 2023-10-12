@@ -178,56 +178,74 @@ func TestMulticlusterResourcesPostInstall(t *testing.T) {
 }
 
 func TestLinkClusters(t *testing.T) {
-	linkCmds := make(map[string][]string)
-
-	// For each context construct the link command arguments
-	//  Source cluster will be linked against a target cluster without a gateway
-	//  Target cluster will be linked against a source cluster with a gateway and
-	//  with headless services
-	for k, ctx := range contexts {
-		// Get gateway IP from target cluster
-		lbCmd := []string{
-			"get", "node",
-			"-n", " -l=node-role.kubernetes.io/control-plane=true",
-			"-o", "go-template={{ (index (index .items 0).status.addresses 0).address }}",
-		}
-
-		linkCmd := []string{
-			"multicluster", "link",
-			"--log-format", "json",
-			"--log-level", "debug",
-		}
-
-		var lbIP string
-		var err error
-		if k == testutil.SourceContextKey {
-			linkCmd = append(linkCmd, "--context="+contexts[testutil.TargetContextKey], "--set", "enableHeadlessServices=true", "--cluster-name", "target")
-			lbIP, err = TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], lbCmd...)
-		} else {
-			linkCmd = append(linkCmd, "--context="+contexts[testutil.SourceContextKey], "--gateway=false", "--cluster-name", "source")
-			lbIP, err = TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], lbCmd...)
-		}
-
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
-				"'kubectl get' command failed\n%s", lbIP)
-		}
-		linkCmd = append(linkCmd, "--api-server-address", fmt.Sprintf("https://%s:6443", lbIP))
-		linkCmds[ctx] = linkCmd
+	// Get the control plane node IP, this is used to communicate with the
+	// API Server address.
+	// k3s runs an API server on the control plane node, the docker
+	// container IP suffices for a connection between containers to happen
+	// since they run on a shared network.
+	lbCmd := []string{
+		"get", "node",
+		"-n", " -l=node-role.kubernetes.io/control-plane=true",
+		"-o", "go-template={{ (index (index .items 0).status.addresses 0).address }}",
 	}
 
-	// Create and apply links
-	for ctx, linkCmd := range linkCmds {
-		out, err := TestHelper.LinkerdRun(linkCmd...)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'linkerd multicluster link' command failed", "'linkerd multicluster link' command failed: %s\n%s", out, err)
-		}
+	// Link target cluster to source
+	// * source cluster should support headless services
+	linkName := "target"
+	lbIP, err := TestHelper.KubectlWithContext("", contexts[testutil.TargetContextKey], lbCmd...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
+			"'kubectl get' command failed\n%s", lbIP)
+	}
 
-		out, err = TestHelper.KubectlApplyWithContext(out, ctx, "-f", "-")
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-				"'kubectl apply' command failed\n%s", out)
-		}
+	linkCmd := []string{
+		"--context=" + contexts[testutil.TargetContextKey],
+		"--cluster-name", linkName,
+		"--api-server-address", fmt.Sprintf("https://%s:6443", lbIP),
+		"--set", "enableHeadlessServices=true",
+		"multicluster", "link",
+		"--log-format", "json",
+		"--log-level", "debug",
+	}
+
+	out, err := TestHelper.LinkerdRun(linkCmd...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd multicluster link' command failed", "'linkerd multicluster link' command failed: %s\n%s", out, err)
+	}
+
+	out, err = TestHelper.KubectlApplyWithContext(out, testutil.SourceContextKey, "-f", "-")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
+	}
+
+	// Link source cluster to target
+	// * source cluster does not have a gateway, so the link will reflect that
+	linkName = "source"
+	lbIP, err = TestHelper.KubectlWithContext("", contexts[testutil.SourceContextKey], lbCmd...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
+			"'kubectl get' command failed\n%s", lbIP)
+	}
+
+	linkCmd = []string{
+		"--context=" + contexts[testutil.SourceContextKey],
+		"--cluster-name", linkName, "--gateway=false",
+		"--api-server-address", fmt.Sprintf("https://%s:6443", lbIP),
+		"multicluster", "link",
+		"--log-format", "json",
+		"--log-level", "debug",
+	}
+
+	out, err = TestHelper.LinkerdRun(linkCmd...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd multicluster link' command failed", "'linkerd multicluster link' command failed: %s\n%s", out, err)
+	}
+
+	out, err = TestHelper.KubectlApplyWithContext(out, testutil.TargetContextKey, "-f", "-")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
 	}
 
 }
