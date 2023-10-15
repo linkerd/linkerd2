@@ -9,6 +9,7 @@ use k8s_openapi::{
     apimachinery::pkg::apis::meta::v1 as metav1,
 };
 use kube::ResourceExt;
+use linkerd2_proxy_api::destination as api;
 use maplit::{btreemap, convert_args};
 use rand::Rng;
 use std::collections::HashSet;
@@ -125,8 +126,7 @@ async fn main() -> Result<()> {
     info!(svc.name = svc.name_unchecked(), "Created");
 
     let mut dst = DestinationClient::port_forwarded(&k8s).await;
-    let mut idle_observation = dst.watch(&svc, 80).await?;
-    info!(init = ?idle_observation.next().await);
+    let idle_observation = dst.watch(&svc, 80).await?;
 
     // Start a task that runs a fixed number of observers, restarting the watches
     // randomly within the max lifetime.
@@ -157,9 +157,9 @@ async fn main() -> Result<()> {
         bail!("Aborted");
     }
 
-    cleanup(&k8s, &name).await?;
-
     drop(idle_observation);
+
+    cleanup(&k8s, &name).await?;
 
     Ok(())
 }
@@ -242,27 +242,25 @@ fn spawn_observers(
     svc: corev1::Service,
     k8s: &kube::Client,
 ) {
-    async fn observe(
-        mut dst: tonic::Streaming<linkerd2_proxy_api::destination::Update>,
-    ) -> Result<()> {
+    async fn observe(mut dst: tonic::Streaming<api::Update>) -> Result<()> {
         let mut endpoints = HashSet::new();
         while let Some(up) = dst.try_next().await? {
             match up.update.unwrap() {
-                linkerd2_proxy_api::destination::update::Update::Add(addrs) => {
+                api::update::Update::Add(addrs) => {
                     for a in addrs.addrs.into_iter() {
                         let addr = std::net::SocketAddr::try_from(a.addr.unwrap())?;
                         endpoints.insert(addr);
                         info!(ep.ip = %addr.ip(), endpoints = endpoints.len(), "Added");
                     }
                 }
-                linkerd2_proxy_api::destination::update::Update::Remove(addrs) => {
+                api::update::Update::Remove(addrs) => {
                     for a in addrs.addrs.into_iter() {
                         let addr = std::net::SocketAddr::try_from(a)?;
                         endpoints.remove(&addr);
                         info!(ep.ip = %addr.ip(), endpoints = endpoints.len(), "Removed");
                     }
                 }
-                linkerd2_proxy_api::destination::update::Update::NoEndpoints(_) => {
+                api::update::Update::NoEndpoints(_) => {
                     endpoints.clear();
                     info!(endpoints = endpoints.len(), "Cleared");
                 }
