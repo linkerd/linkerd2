@@ -34,7 +34,7 @@ const (
 	// prior to stable-2.10.0 when the linkerd prefix was removed.
 	MulticlusterLegacyExtension = "linkerd-multicluster"
 
-	// linkerdMulticlusterExtensionCheck adds checks related to the multicluster extension
+	// LinkerdMulticlusterExtensionCheck adds checks related to the multicluster extension
 	LinkerdMulticlusterExtensionCheck healthcheck.CategoryID = "linkerd-multicluster"
 
 	linkerdServiceMirrorServiceAccountName = "linkerd-service-mirror-%s"
