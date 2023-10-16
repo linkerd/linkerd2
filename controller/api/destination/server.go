@@ -133,6 +133,8 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	}
 	log.Debugf("Get %s", dest.GetPath())
 
+	streamEnd := make(chan struct{})
+
 	var token contextToken
 	if dest.GetContextToken() != "" {
 		token = s.parseContextToken(dest.GetContextToken())
@@ -189,8 +191,12 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			false, // Disable endpoint filtering for remote discovery.
 			s.metadataAPI,
 			stream,
+			streamEnd,
 			log,
 		)
+		translator.Start()
+		defer translator.Stop()
+
 		err = remoteWatcher.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
 		if err != nil {
 			var ise watcher.InvalidService
@@ -215,8 +221,11 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			true,
 			s.metadataAPI,
 			stream,
+			streamEnd,
 			log,
 		)
+		translator.Start()
+		defer translator.Stop()
 
 		err = s.endpoints.Subscribe(service, port, instanceID, translator)
 		if err != nil {
@@ -235,6 +244,8 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	case <-s.shutdown:
 	case <-stream.Context().Done():
 		log.Debugf("Get %s cancelled", dest.GetPath())
+	case <-streamEnd:
+		log.Errorf("Get %s stream ended", dest.GetPath())
 	}
 
 	return nil

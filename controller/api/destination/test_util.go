@@ -611,6 +611,7 @@ metadata:
 		true,
 		metadataAPI,
 		mockGetServer,
+		nil,
 		logging.WithField("test", t.Name()),
 	)
 	return mockGetServer, translator
