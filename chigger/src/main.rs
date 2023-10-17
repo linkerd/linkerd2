@@ -212,8 +212,8 @@ async fn ready_client(id: String, k8s: kube::Client) -> Result<()> {
                         annotations: Some(convert_args!(btreemap!(
                             "linkerd.io/inject" => "enabled",
                             "config.linkerd.io/proxy-image" => "ghcr.io/olix0r/l2-proxy",
-                            "config.linkerd.io/proxy-version" => "ver.repro.68e6c1160",
-                            "config.linkerd.io/proxy-log-level" => "debug,h2=trace",
+                            "config.linkerd.io/proxy-version" => "ver.repro.78ac7fb87",
+                            "config.linkerd.io/proxy-log-level" => "debug,h2=trace,trust_dns=warn",
                         ))),
                         ..Default::default()
                     }),
