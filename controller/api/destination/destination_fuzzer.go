@@ -54,7 +54,7 @@ func FuzzGet(data []byte) int {
 	server := makeServer(t)
 
 	stream := &bufferingGetStream{
-		updates:          []*pb.Update{},
+		updates:          make(chan *pb.Update, 50),
 		MockServerStream: util.NewMockServerStream(),
 	}
 	_ = server.Get(dest1, stream)

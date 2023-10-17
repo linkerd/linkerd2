@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
@@ -13,6 +12,8 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -23,7 +24,7 @@ const (
 	// listening address for the proxy container.
 	envInboundListenAddr = "LINKERD2_PROXY_INBOUND_LISTEN_ADDR"
 
-	updateQueueCapacity = 10
+	updateQueueCapacity = 100
 )
 
 // endpointTranslator satisfies EndpointUpdateListener and translates updates
@@ -41,12 +42,12 @@ type (
 		availableEndpoints watcher.AddressSet
 		filteredSnapshot   watcher.AddressSet
 		stream             pb.Destination_GetServer
-		endStream          chan<- struct{}
+		endStream          chan struct{}
 		log                *logging.Entry
+		overflowCounter    prometheus.Counter
 
 		updates chan interface{}
 		stop    chan struct{}
-		mu      sync.Mutex
 	}
 
 	addUpdate struct {
@@ -62,6 +63,16 @@ type (
 	}
 )
 
+var updatesQueueOverflowCounter = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "endpoint_updates_queue_overflow",
+		Help: "A counter incremeneted whenever the endpoint updates queue overflows",
+	},
+	[]string{
+		"service",
+	},
+)
+
 func newEndpointTranslator(
 	controllerNS string,
 	identityTrustDomain string,
@@ -72,7 +83,7 @@ func newEndpointTranslator(
 	enableEndpointFiltering bool,
 	k8sAPI *k8s.MetadataAPI,
 	stream pb.Destination_GetServer,
-	endStream chan<- struct{},
+	endStream chan struct{},
 	log *logging.Entry,
 ) *endpointTranslator {
 	log = log.WithFields(logging.Fields{
@@ -101,9 +112,9 @@ func newEndpointTranslator(
 		stream,
 		endStream,
 		log,
+		updatesQueueOverflowCounter.With(prometheus.Labels{"service": service}),
 		make(chan interface{}, updateQueueCapacity),
 		make(chan struct{}),
-		sync.Mutex{},
 	}
 }
 
@@ -125,25 +136,23 @@ func (et *endpointTranslator) NoEndpoints(exists bool) {
 // does not block, we first check to see if there is capacity in the buffered
 // channel. If there is not, we drop the update and signal to the stream that
 // it has fallen too far behind and should be closed.
-// This function is protected by a mutex to ensure that the queue does not
-// become full after we detect that it has capacity. Since this guarantees that
-// sending to the channel will not block, the amount of time the mutex will be
-// held is small and will not substantially block the informer callback.
 func (et *endpointTranslator) enqueueUpdate(update interface{}) {
-	et.mu.Lock()
-	defer et.mu.Unlock()
-	if len(et.updates) == cap(et.updates) {
-		// Ensure that we send the end stream signal only once. If the signal
-		// has alread been sent, the stream is closing and we do not need to
-		// signal again.
-		if et.endStream != nil {
+	select {
+	case et.updates <- update:
+		// Update has been successfully enqueued.
+	default:
+		// We are unable to enqueue because the channel does not have capacity.
+		// The stream has fallen too far behind and should be closed.
+		et.overflowCounter.Inc()
+		select {
+		case <-et.endStream:
+			// The endStream channel has already been closed so no action is
+			// necessary.
+		default:
 			et.log.Error("endpoint update queue full; ending stream")
-			et.endStream <- struct{}{}
-			et.endStream = nil
+			close(et.endStream)
 		}
-		return
 	}
-	et.updates <- update
 }
 
 // Start initiates a goroutine which processes update events off of the

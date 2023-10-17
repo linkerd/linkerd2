@@ -179,23 +179,30 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 		translator.Remove(mkAddressSetForServices(remoteGateway2))
 
 		expectedNumUpdates := 2
-		actualNumUpdates := len(mockGetServer.updatesReceived)
-		if actualNumUpdates != expectedNumUpdates {
-			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
+		<-mockGetServer.updatesReceived // Add
+		<-mockGetServer.updatesReceived // Remove
+
+		if len(mockGetServer.updatesReceived) != 0 {
+			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
 		}
 	})
 
 	t.Run("Recovers after emptying address et", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(remoteGateway1))
 		translator.Remove(mkAddressSetForServices(remoteGateway1))
 		translator.Add(mkAddressSetForServices(remoteGateway1))
 
 		expectedNumUpdates := 3
-		actualNumUpdates := len(mockGetServer.updatesReceived)
-		if actualNumUpdates != expectedNumUpdates {
-			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
+		<-mockGetServer.updatesReceived // Add
+		<-mockGetServer.updatesReceived // Remove
+		<-mockGetServer.updatesReceived // Add
+
+		if len(mockGetServer.updatesReceived) != 0 {
+			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
 		}
 	})
 
@@ -306,9 +313,11 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		translator.Remove(mkAddressSetForPods(pod2))
 
 		expectedNumUpdates := 2
-		actualNumUpdates := len(mockGetServer.updatesReceived)
-		if actualNumUpdates != expectedNumUpdates {
-			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
+		<-mockGetServer.updatesReceived // Add
+		<-mockGetServer.updatesReceived // Remove
+
+		if len(mockGetServer.updatesReceived) != 0 {
+			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
 		}
 	})
 
@@ -432,9 +441,10 @@ func TestEndpointTranslatorForZonedAddresses(t *testing.T) {
 		// that when we try to remove the address meant for west-1b there
 		// should be no remove update.
 		expectedNumUpdates := 1
-		actualNumUpdates := len(mockGetServer.updatesReceived)
-		if actualNumUpdates != expectedNumUpdates {
-			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
+		<-mockGetServer.updatesReceived // Add
+
+		if len(mockGetServer.updatesReceived) != 0 {
+			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
 		}
 	})
 }
@@ -453,9 +463,10 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 		// that when we try to remove the address meant for AddressNotOnTest123Node there
 		// should be no remove update.
 		expectedNumUpdates := 1
-		actualNumUpdates := len(mockGetServer.updatesReceived)
-		if actualNumUpdates != expectedNumUpdates {
-			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
+		<-mockGetServer.updatesReceived // Add
+
+		if len(mockGetServer.updatesReceived) != 0 {
+			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
 		}
 	})
 }
@@ -463,6 +474,8 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 // TestConcurrency, to be triggered with `go test -race`, shouldn't report a race condition
 func TestConcurrency(t *testing.T) {
 	_, translator := makeEndpointTranslator(t)
+	translator.Start()
+	defer translator.Stop()
 
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {

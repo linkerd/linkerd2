@@ -76,15 +76,14 @@ func TestGet(t *testing.T) {
 			t.Fatalf("Got error: %s", err)
 		}
 
-		if len(stream.updates) != 1 {
-			t.Fatalf("Expected 1 update but got %d: %v", len(stream.updates), stream.updates)
-		}
-
 		update := <-stream.updates
 		if updateAddAddress(t, update)[0] != fmt.Sprintf("%s:%d", podIP1, port) {
 			t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, update)[0])
 		}
 
+		if len(stream.updates) != 0 {
+			t.Fatalf("Expected 1 update but got %d: %v", 1+len(stream.updates), stream.updates)
+		}
 	})
 
 	t.Run("Return endpoint with unknown protocol hint and identity when service name contains skipped inbound port", func(t *testing.T) {
@@ -146,13 +145,13 @@ func TestGet(t *testing.T) {
 			t.Fatalf("Got error: %s", err)
 		}
 
-		if len(stream.updates) != 1 {
-			t.Fatalf("Expected 1 update but got %d: %v", len(stream.updates), stream.updates)
-		}
-
 		update := <-stream.updates
 		if updateAddAddress(t, update)[0] != fmt.Sprintf("%s:%d", "172.17.55.1", 80) {
 			t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, update)[0])
+		}
+
+		if len(stream.updates) != 0 {
+			t.Fatalf("Expected 1 update but got %d: %v", 1+len(stream.updates), stream.updates)
 		}
 	})
 }
