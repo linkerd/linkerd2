@@ -77,7 +77,7 @@ pub async fn scale_replicaset(
         )
         .await?;
 
-    tracing::debug!(replicas, %ns, %name, ?rs);
+    tracing::trace!(replicas, %ns, %name, ?rs);
 
     Ok(rs)
 }

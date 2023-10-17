@@ -9,6 +9,7 @@ use kube::api::ResourceExt;
 use linkerd2_proxy_api::destination as api;
 use std::sync::Arc;
 use tokio::{io, sync::Mutex};
+use tracing::Instrument;
 
 #[derive(Clone, Debug)]
 pub struct DestinationClient {
@@ -103,9 +104,21 @@ impl GrpcHttp {
     {
         let (tx, conn) = hyper::client::conn::Builder::new()
             .http2_only(true)
+            .http2_initial_connection_window_size(64 * 1024 * 16 - 1)
+            .http2_initial_stream_window_size(64 * 1024 - 1)
+            // .http2_keep_alive_timeout(time::Duration::from_secs(10))
+            // .http2_keep_alive_interval(time::Duration::from_secs(3))
+            // .http2_keep_alive_while_idle(true)
             .handshake(io)
             .await?;
-        tokio::spawn(conn);
+        tokio::spawn(
+            async move {
+                let res = conn.await;
+                tracing::debug!(?res, "Connection closed");
+                res
+            }
+            .in_current_span(),
+        );
         Ok(Self { tx })
     }
 }

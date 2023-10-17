@@ -1,5 +1,5 @@
 use ::chigger::{random_suffix, scale_replicaset, DestinationClient};
-use chigger::delete_replicaset;
+use chigger::{await_condition, delete_replicaset};
 
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -93,16 +93,17 @@ async fn main() -> Result<()> {
 
     let k8s = runtime.client();
 
-    let name = format!("chigger-{}", random_suffix(5));
+    let id = random_suffix(5);
     let svc = kube::Api::<corev1::Service>::namespaced(k8s.clone(), "default")
         .create(
             &kube::api::PostParams::default(),
             &corev1::Service {
                 metadata: kube::core::ObjectMeta {
-                    name: Some(name.clone()),
+                    name: Some(format!("chigger-{id}")),
                     namespace: Some("default".into()),
                     labels: Some(convert_args!(btreemap!(
                         "app" => "chigger",
+                        "id" => &id,
                     ))),
                     ..Default::default()
                 },
@@ -110,10 +111,11 @@ async fn main() -> Result<()> {
                     type_: Some("ClusterIP".into()),
                     selector: Some(convert_args!(btreemap!(
                         "app" => "chigger",
-                        "svc" => &name,
+                        "role" => "server",
+                        "id" => &id,
                     ))),
                     ports: Some(vec![corev1::ServicePort {
-                        port: 80,
+                        port: 4444,
                         protocol: Some("TCP".into()),
                         ..Default::default()
                     }]),
@@ -125,8 +127,10 @@ async fn main() -> Result<()> {
         .await?;
     info!(svc.name = svc.name_unchecked(), "Created");
 
-    let mut dst = DestinationClient::port_forwarded(&k8s).await;
-    let idle_observation = dst.watch(&svc, 80).await?;
+    let mut dst = DestinationClient::port_forwarded(&k8s)
+        .instrument(info_span!("idle"))
+        .await;
+    let idle_observation = dst.watch(&svc, 4444).instrument(info_span!("idle")).await?;
 
     // Start a task that runs a fixed number of observers, restarting the watches
     // randomly within the max lifetime.
@@ -138,17 +142,24 @@ async fn main() -> Result<()> {
         &k8s,
     );
 
-    //
+    ready_stable_endpoints(1, id.clone(), k8s.clone())
+        .instrument(info_span!("eps.serve"))
+        .await?;
+
+    ready_client(id.clone(), k8s.clone())
+        .instrument(info_span!("client"))
+        .await?;
+
     tokio::spawn(
         scale_endpoints(
             min_endpoints,
             max_endpoints,
             time::Duration::from_secs_f64(min_endpoints_stabletime),
             time::Duration::from_secs_f64(max_endpoints_stabletime),
-            name.clone(),
+            id.clone(),
             k8s.clone(),
         )
-        .instrument(info_span!("endpoints")),
+        .instrument(info_span!("eps.scale")),
     );
 
     // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
@@ -159,7 +170,117 @@ async fn main() -> Result<()> {
 
     drop(idle_observation);
 
-    cleanup(&k8s, &name).await?;
+    cleanup(&k8s, &id).await?;
+
+    Ok(())
+}
+
+async fn ready_client(id: String, k8s: kube::Client) -> Result<()> {
+    let name = format!("chigger-client-{id}");
+    let api = kube::Api::namespaced(k8s, "default");
+    api.create(
+        &kube::api::PostParams::default(),
+        &appsv1::ReplicaSet {
+            metadata: kube::core::ObjectMeta {
+                name: Some(name.clone()),
+                namespace: Some("default".into()),
+                labels: Some(convert_args!(btreemap!(
+                    "app" => "chigger",
+                    "role" => "client",
+                    "id" => &id,
+                ))),
+                ..Default::default()
+            },
+            spec: Some(appsv1::ReplicaSetSpec {
+                replicas: Some(1),
+                min_ready_seconds: Some(0),
+                selector: metav1::LabelSelector {
+                    match_labels: Some(convert_args!(btreemap!(
+                        "app" => "chigger",
+                        "role" => "client",
+                        "id" => &id,
+                    ))),
+                    ..Default::default()
+                },
+                template: Some(corev1::PodTemplateSpec {
+                    metadata: Some(kube::core::ObjectMeta {
+                        labels: Some(convert_args!(btreemap!(
+                            "app" => "chigger",
+                            "role" => "client",
+                            "id" => &id,
+                        ))),
+                        annotations: Some(convert_args!(btreemap!(
+                            "linkerd.io/inject" => "enabled",
+                            "config.linkerd.io/proxy-image" => "ghcr.io/olix0r/l2-proxy",
+                            "config.linkerd.io/proxy-version" => "ver.repro.68e6c1160",
+                            "config.linkerd.io/proxy-log-level" => "debug,h2=trace",
+                        ))),
+                        ..Default::default()
+                    }),
+                    spec: Some(corev1::PodSpec {
+                        containers: vec![corev1::Container {
+                            name: "main".into(),
+                            image: Some("ghcr.io/olix0r/tcp-echo:v15".into()),
+                            env: Some(vec![corev1::EnvVar {
+                                name: "RUST_LOG".into(),
+                                value: Some("debug".into()),
+                                ..Default::default()
+                            }]),
+                            args: Some(vec![
+                                "client".into(),
+                                "--message".into(),
+                                "beep\r\n\r\n".into(),
+                                "--concurrency=1".into(),
+                                format!("--messages-per-connection={}", std::usize::MAX),
+                                format!("chigger-{id}.default.svc.cluster.local:4444"),
+                            ]),
+                            ..Default::default()
+                        }],
+                        ..Default::default()
+                    }),
+                }),
+            }),
+            status: None,
+        },
+    )
+    .await?;
+
+    // Wait until the replicaset is ready.
+    kube::runtime::wait::await_condition(api, &name, |obj: Option<&appsv1::ReplicaSet>| -> bool {
+        if let Some(rs) = obj {
+            return rs
+                .status
+                .as_ref()
+                .map_or(false, |s| s.ready_replicas == Some(s.replicas));
+        }
+        false
+    })
+    .await?;
+
+    Ok(())
+}
+
+async fn ready_stable_endpoints(replicas: usize, id: String, k8s: kube::Client) -> Result<()> {
+    let rs = create_servers(&id, "stable", &k8s).await?;
+    if replicas != 0 {
+        scale_replicaset(&k8s, "default", &rs.name_unchecked(), replicas).await?;
+    }
+
+    // Wait for all endpoints to be ready.
+    await_condition(
+        &k8s,
+        "default",
+        &rs.name_unchecked(),
+        |obj: Option<&appsv1::ReplicaSet>| -> bool {
+            if let Some(rs) = obj {
+                if let Some(status) = &rs.status {
+                    return status.ready_replicas == Some(status.replicas);
+                }
+            }
+            false
+        },
+    )
+    .await;
 
     Ok(())
 }
@@ -169,54 +290,10 @@ async fn scale_endpoints(
     max: usize,
     min_stable: time::Duration,
     max_stable: time::Duration,
-    name: String,
+    id: String,
     k8s: kube::Client,
 ) -> Result<()> {
-    kube::Api::namespaced(k8s.clone(), "default")
-        .create(
-            &kube::api::PostParams::default(),
-            &appsv1::ReplicaSet {
-                metadata: kube::core::ObjectMeta {
-                    name: Some(name.clone()),
-                    namespace: Some("default".into()),
-                    labels: Some(convert_args!(btreemap!(
-                        "app" => "chigger",
-                        "svc" => &name,
-                    ))),
-                    ..Default::default()
-                },
-                spec: Some(appsv1::ReplicaSetSpec {
-                    replicas: Some(0),
-                    min_ready_seconds: Some(0),
-                    selector: metav1::LabelSelector {
-                        match_labels: Some(convert_args!(btreemap!(
-                            "app" => "chigger",
-                            "svc" => &name,
-                        ))),
-                        ..Default::default()
-                    },
-                    template: Some(corev1::PodTemplateSpec {
-                        metadata: Some(kube::core::ObjectMeta {
-                            labels: Some(convert_args!(btreemap!(
-                                "app" => "chigger",
-                                "svc" => &name,
-                            ))),
-                            ..Default::default()
-                        }),
-                        spec: Some(corev1::PodSpec {
-                            containers: vec![corev1::Container {
-                                name: "pause".into(),
-                                image: Some("gcr.io/google_containers/pause:3.2".into()),
-                                ..Default::default()
-                            }],
-                            ..Default::default()
-                        }),
-                    }),
-                }),
-                status: None,
-            },
-        )
-        .await?;
+    let rs = create_servers(&id, "scale", &k8s).await?;
 
     let mut replicas = 0;
     loop {
@@ -227,12 +304,72 @@ async fn scale_endpoints(
         let desired = rand::thread_rng().gen_range(min..=max);
         info!(rs.ready = replicas, rs.replicas = desired, "Scaling");
 
-        scale_replicaset(&k8s, "default", &name, desired).await?;
+        scale_replicaset(&k8s, "default", &rs.name_unchecked(), desired).await?;
         replicas = desired;
-        info!(rs.ready = %replicas, ?stable, "Scaled");
+        info!(rs.ready = replicas, stable = stable.as_secs_f64(), "Scaled");
 
         time::sleep(stable).await;
     }
+}
+
+async fn create_servers(id: &str, role: &str, k8s: &kube::Client) -> Result<appsv1::ReplicaSet> {
+    kube::Api::namespaced(k8s.clone(), "default")
+        .create(
+            &kube::api::PostParams::default(),
+            &appsv1::ReplicaSet {
+                metadata: kube::core::ObjectMeta {
+                    name: Some(format!("chigger-srv-{role}-{id}")),
+                    namespace: Some("default".into()),
+                    labels: Some(convert_args!(btreemap!(
+                        "app" => "chigger",
+                        "role" => "server",
+                        "srv" => role,
+                        "id" => id,
+                    ))),
+                    ..Default::default()
+                },
+                spec: Some(appsv1::ReplicaSetSpec {
+                    replicas: Some(0),
+                    min_ready_seconds: Some(0),
+                    selector: metav1::LabelSelector {
+                        match_labels: Some(convert_args!(btreemap!(
+                            "app" => "chigger",
+                            "role" => "server",
+                            "srv" => role,
+                            "id" => id,
+                        ))),
+                        ..Default::default()
+                    },
+                    template: Some(corev1::PodTemplateSpec {
+                        metadata: Some(kube::core::ObjectMeta {
+                            labels: Some(convert_args!(btreemap!(
+                                "app" => "chigger",
+                                "role" => "server",
+                                "srv" => role,
+                                "id" => id,
+                            ))),
+                            ..Default::default()
+                        }),
+                        spec: Some(corev1::PodSpec {
+                            containers: vec![corev1::Container {
+                                name: "main".into(),
+                                image: Some("ghcr.io/olix0r/tcp-echo:v15".into()),
+                                args: Some(vec![
+                                    "server".into(),
+                                    "--port=4444".into(),
+                                    "--message=boop".into(),
+                                ]),
+                                ..Default::default()
+                            }],
+                            ..Default::default()
+                        }),
+                    }),
+                }),
+                status: None,
+            },
+        )
+        .await
+        .map_err(Into::into)
 }
 
 fn spawn_observers(
@@ -244,25 +381,27 @@ fn spawn_observers(
 ) {
     async fn observe(mut dst: tonic::Streaming<api::Update>) -> Result<()> {
         let mut endpoints = HashSet::new();
+        let mut updates = 0;
         while let Some(up) = dst.try_next().await? {
+            updates += 1;
             match up.update.unwrap() {
                 api::update::Update::Add(addrs) => {
                     for a in addrs.addrs.into_iter() {
                         let addr = std::net::SocketAddr::try_from(a.addr.unwrap())?;
                         endpoints.insert(addr);
-                        info!(ep.ip = %addr.ip(), endpoints = endpoints.len(), "Added");
+                        info!(ep.ip = %addr.ip(), updates, endpoints = endpoints.len(), "Added");
                     }
                 }
                 api::update::Update::Remove(addrs) => {
                     for a in addrs.addrs.into_iter() {
                         let addr = std::net::SocketAddr::try_from(a)?;
                         endpoints.remove(&addr);
-                        info!(ep.ip = %addr.ip(), endpoints = endpoints.len(), "Removed");
+                        info!(ep.ip = %addr.ip(), updates, endpoints = endpoints.len(), "Removed");
                     }
                 }
                 api::update::Update::NoEndpoints(_) => {
                     endpoints.clear();
-                    info!(endpoints = endpoints.len(), "Cleared");
+                    info!(updates, endpoints = endpoints.len(), "Cleared");
                 }
             }
         }
@@ -280,7 +419,7 @@ fn spawn_observers(
                             .gen_range(min_lifetime.as_secs_f64()..=max_lifetime.as_secs_f64()),
                     );
                     info!(?lifetime, "Resetting");
-                    let rx = match dst.watch(&svc, 80).await {
+                    let rx = match dst.watch(&svc, 4444).await {
                         Ok(rx) => rx,
                         Err(error) => {
                             error!(%error, "Watch failed");
@@ -296,12 +435,24 @@ fn spawn_observers(
     }
 }
 
-async fn cleanup(k8s: &kube::Client, name: &str) -> Result<()> {
+async fn cleanup(k8s: &kube::Client, id: &str) -> Result<()> {
     kube::Api::<corev1::Service>::namespaced(k8s.clone(), "default")
-        .delete(name, &kube::api::DeleteParams::default())
+        .delete(
+            &format!("chigger-{id}"),
+            &kube::api::DeleteParams::default(),
+        )
         .await?;
 
-    delete_replicaset(k8s, "default", name).await?;
+    let objs = kube::Api::<appsv1::ReplicaSet>::namespaced(k8s.clone(), "default")
+        .list_metadata(&kube::api::ListParams::default().labels(&format!("app=chigger,id={id}")))
+        .await?;
+    for obj in objs.into_iter() {
+        if let Some(name) = obj.metadata.name.as_ref() {
+            if let Err(error) = delete_replicaset(k8s, "default", name).await {
+                error!(%error, %name, "Failed to delete ReplicaSet");
+            }
+        }
+    }
 
     Ok(())
 }
