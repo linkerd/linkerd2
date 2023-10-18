@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sort"
 	"strings"
 	"time"
 
@@ -1002,6 +1003,10 @@ func (rcsw *RemoteClusterServiceWatcher) resolveGatewayAddress() ([]corev1.Endpo
 	if len(gatewayEndpoints) == 0 {
 		return nil, RetryableError{errors}
 	}
+
+	sort.SliceStable(gatewayEndpoints, func(i, j int) bool {
+		return gatewayEndpoints[i].IP < gatewayEndpoints[j].IP
+	})
 	return gatewayEndpoints, nil
 }
 
