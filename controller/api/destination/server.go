@@ -245,7 +245,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	case <-stream.Context().Done():
 		log.Debugf("Get %s cancelled", dest.GetPath())
 	case <-streamEnd:
-		log.Errorf("Get %s stream ended", dest.GetPath())
+		log.Errorf("Get %s stream aborted", dest.GetPath())
 	}
 
 	return nil

@@ -66,7 +66,7 @@ type (
 var updatesQueueOverflowCounter = promauto.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "endpoint_updates_queue_overflow",
-		Help: "A counter incremeneted whenever the endpoint updates queue overflows",
+		Help: "A counter incremented whenever the endpoint updates queue overflows",
 	},
 	[]string{
 		"service",
@@ -149,7 +149,7 @@ func (et *endpointTranslator) enqueueUpdate(update interface{}) {
 			// The endStream channel has already been closed so no action is
 			// necessary.
 		default:
-			et.log.Error("endpoint update queue full; ending stream")
+			et.log.Error("endpoint update queue full; aborting stream")
 			close(et.endStream)
 		}
 	}
