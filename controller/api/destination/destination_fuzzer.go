@@ -25,6 +25,8 @@ func FuzzAdd(data []byte) int {
 	}
 	t := &testing.T{}
 	_, translator := makeEndpointTranslator(t)
+	translator.Start()
+	defer translator.Stop()
 	translator.Add(set)
 	translator.Remove(set)
 	return 1
@@ -52,7 +54,7 @@ func FuzzGet(data []byte) int {
 	server := makeServer(t)
 
 	stream := &bufferingGetStream{
-		updates:          []*pb.Update{},
+		updates:          make(chan *pb.Update, 50),
 		MockServerStream: util.NewMockServerStream(),
 	}
 	_ = server.Get(dest1, stream)

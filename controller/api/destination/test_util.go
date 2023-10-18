@@ -523,12 +523,12 @@ spec:
 }
 
 type bufferingGetStream struct {
-	updates []*pb.Update
+	updates chan *pb.Update
 	util.MockServerStream
 }
 
 func (bgs *bufferingGetStream) Send(update *pb.Update) error {
-	bgs.updates = append(bgs.updates, update)
+	bgs.updates <- update
 	return nil
 }
 
@@ -553,11 +553,11 @@ func (bgps *bufferingGetProfileStream) Updates() []*pb.DestinationProfile {
 
 type mockDestinationGetServer struct {
 	util.MockServerStream
-	updatesReceived []*pb.Update
+	updatesReceived chan *pb.Update
 }
 
 func (m *mockDestinationGetServer) Send(update *pb.Update) error {
-	m.updatesReceived = append(m.updatesReceived, update)
+	m.updatesReceived <- update
 	return nil
 }
 
@@ -600,7 +600,7 @@ metadata:
 	}
 	metadataAPI.Sync(nil)
 
-	mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
+	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
 	translator := newEndpointTranslator(
 		"linkerd",
 		"trust.domain",
@@ -611,6 +611,7 @@ metadata:
 		true,
 		metadataAPI,
 		mockGetServer,
+		nil,
 		logging.WithField("test", t.Name()),
 	)
 	return mockGetServer, translator

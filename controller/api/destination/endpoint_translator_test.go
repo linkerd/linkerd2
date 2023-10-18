@@ -172,28 +172,37 @@ var (
 func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(remoteGateway1, remoteGateway2))
 		translator.Remove(mkAddressSetForServices(remoteGateway2))
 
 		expectedNumUpdates := 2
-		actualNumUpdates := len(mockGetServer.updatesReceived)
-		if actualNumUpdates != expectedNumUpdates {
-			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
+		<-mockGetServer.updatesReceived // Add
+		<-mockGetServer.updatesReceived // Remove
+
+		if len(mockGetServer.updatesReceived) != 0 {
+			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
 		}
 	})
 
 	t.Run("Recovers after emptying address et", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(remoteGateway1))
 		translator.Remove(mkAddressSetForServices(remoteGateway1))
 		translator.Add(mkAddressSetForServices(remoteGateway1))
 
 		expectedNumUpdates := 3
-		actualNumUpdates := len(mockGetServer.updatesReceived)
-		if actualNumUpdates != expectedNumUpdates {
-			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
+		<-mockGetServer.updatesReceived // Add
+		<-mockGetServer.updatesReceived // Remove
+		<-mockGetServer.updatesReceived // Add
+
+		if len(mockGetServer.updatesReceived) != 0 {
+			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
 		}
 	})
 
@@ -209,10 +218,12 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 		}
 
 		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(remoteGateway2))
 
-		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}
@@ -244,10 +255,12 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 		}
 
 		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(remoteGatewayAuthOverride))
 
-		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}
@@ -270,10 +283,12 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 
 	t.Run("Does not send TlsIdentity when not present", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(remoteGateway1))
 
-		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}
@@ -291,31 +306,37 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Add(mkAddressSetForPods(pod1, pod2))
 		translator.Remove(mkAddressSetForPods(pod2))
 
 		expectedNumUpdates := 2
-		actualNumUpdates := len(mockGetServer.updatesReceived)
-		if actualNumUpdates != expectedNumUpdates {
-			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
+		<-mockGetServer.updatesReceived // Add
+		<-mockGetServer.updatesReceived // Remove
+
+		if len(mockGetServer.updatesReceived) != 0 {
+			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
 		}
 	})
 
 	t.Run("Sends addresses as removed or added", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Add(mkAddressSetForPods(pod1, pod2, pod3))
 		translator.Remove(mkAddressSetForPods(pod3))
 
-		addressesAdded := mockGetServer.updatesReceived[0].GetAdd().Addrs
+		addressesAdded := (<-mockGetServer.updatesReceived).GetAdd().Addrs
 		actualNumberOfAdded := len(addressesAdded)
 		expectedNumberOfAdded := 3
 		if actualNumberOfAdded != expectedNumberOfAdded {
 			t.Fatalf("Expecting [%d] addresses to be added, got [%d]: %v", expectedNumberOfAdded, actualNumberOfAdded, addressesAdded)
 		}
 
-		addressesRemoved := mockGetServer.updatesReceived[1].GetRemove().Addrs
+		addressesRemoved := (<-mockGetServer.updatesReceived).GetRemove().Addrs
 		actualNumberOfRemoved := len(addressesRemoved)
 		expectedNumberOfRemoved := 1
 		if actualNumberOfRemoved != expectedNumberOfRemoved {
@@ -332,16 +353,20 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 	t.Run("Sends metric labels with added addresses", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Add(mkAddressSetForPods(pod1))
 
-		actualGlobalMetricLabels := mockGetServer.updatesReceived[0].GetAdd().MetricLabels
+		update := <-mockGetServer.updatesReceived
+
+		actualGlobalMetricLabels := update.GetAdd().MetricLabels
 		expectedGlobalMetricLabels := map[string]string{"namespace": "service-ns", "service": "service-name"}
 		if diff := deep.Equal(actualGlobalMetricLabels, expectedGlobalMetricLabels); diff != nil {
 			t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", expectedGlobalMetricLabels, actualGlobalMetricLabels)
 		}
 
-		actualAddedAddress1MetricLabels := mockGetServer.updatesReceived[0].GetAdd().Addrs[0].MetricLabels
+		actualAddedAddress1MetricLabels := update.GetAdd().Addrs[0].MetricLabels
 		expectedAddedAddress1MetricLabels := map[string]string{
 			"pod":                   "pod1",
 			"replicationcontroller": "rc-name",
@@ -359,10 +384,12 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		}
 
 		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Add(mkAddressSetForPods(pod1))
 
-		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}
@@ -384,10 +411,12 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		}
 
 		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(podOpaque))
 
-		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
 			t.Fatalf("Expected [1] address returned, got %v", addrs)
 		}
@@ -402,6 +431,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 func TestEndpointTranslatorForZonedAddresses(t *testing.T) {
 	t.Run("Sends one update for add and none for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Add(mkAddressSetForServices(west1aAddress, west1bAddress))
 		translator.Remove(mkAddressSetForServices(west1bAddress))
@@ -410,9 +441,10 @@ func TestEndpointTranslatorForZonedAddresses(t *testing.T) {
 		// that when we try to remove the address meant for west-1b there
 		// should be no remove update.
 		expectedNumUpdates := 1
-		actualNumUpdates := len(mockGetServer.updatesReceived)
-		if actualNumUpdates != expectedNumUpdates {
-			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
+		<-mockGetServer.updatesReceived // Add
+
+		if len(mockGetServer.updatesReceived) != 0 {
+			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
 		}
 	})
 }
@@ -420,6 +452,8 @@ func TestEndpointTranslatorForZonedAddresses(t *testing.T) {
 func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 	t.Run("Sends one update for add and none for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
 		addressSet := mkAddressSetForServices(AddressOnTest123Node, AddressNotOnTest123Node)
 		addressSet.LocalTrafficPolicy = true
 		translator.Add(addressSet)
@@ -429,9 +463,10 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 		// that when we try to remove the address meant for AddressNotOnTest123Node there
 		// should be no remove update.
 		expectedNumUpdates := 1
-		actualNumUpdates := len(mockGetServer.updatesReceived)
-		if actualNumUpdates != expectedNumUpdates {
-			t.Fatalf("Expecting [%d] updates, got [%d]. Updates: %v", expectedNumUpdates, actualNumUpdates, mockGetServer.updatesReceived)
+		<-mockGetServer.updatesReceived // Add
+
+		if len(mockGetServer.updatesReceived) != 0 {
+			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
 		}
 	})
 }
@@ -439,6 +474,8 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 // TestConcurrency, to be triggered with `go test -race`, shouldn't report a race condition
 func TestConcurrency(t *testing.T) {
 	_, translator := makeEndpointTranslator(t)
+	translator.Start()
+	defer translator.Stop()
 
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
