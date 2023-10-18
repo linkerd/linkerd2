@@ -789,19 +789,6 @@ func assertSingleProfile(t *testing.T, updates []*pb.DestinationProfile) *pb.Des
 	return updates[0]
 }
 
-func assertSingleUpdate(t *testing.T, updates chan *pb.Update) *pb.Update {
-	t.Helper()
-	update := <-updates
-	// Under normal conditions the creation of resources by the fake API will
-	// generate notifications that are discarded after the stream.Cancel() call,
-	// but very rarely those notifications might come after, in which case we'll
-	// get a second update.
-	if len(updates) > 1 {
-		t.Fatalf("Expected at most 1 update remaining but got %d: %v", len(updates), updates)
-	}
-	return update
-}
-
 func profileStream(t *testing.T, server *server, host string, port uint32, token string) *bufferingGetProfileStream {
 	t.Helper()
 
