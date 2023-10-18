@@ -63,26 +63,29 @@ func TestGet(t *testing.T) {
 			updates:          make(chan *pb.Update, 50),
 			MockServerStream: util.NewMockServerStream(),
 		}
+		defer stream.Cancel()
+		errs := make(chan error)
 
-		// We cancel the stream before even sending the request so that we don't
-		// need to call server.Get in a separate goroutine.  By preemptively
-		// cancelling, the behavior of Get becomes effectively synchronous and
-		// we will get only the initial update, which is what we want for this
-		// test.
-		stream.Cancel()
+		// server.Get blocks until the grpc stream is complete so we call it
+		// in a goroutine and watch stream.updates for updates.
+		go func() {
+			err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", fullyQualifiedName, port)}, stream)
+			if err != nil {
+				errs <- err
+			}
+		}()
 
-		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", fullyQualifiedName, port)}, stream)
-		if err != nil {
+		select {
+		case update := <-stream.updates:
+			if updateAddAddress(t, update)[0] != fmt.Sprintf("%s:%d", podIP1, port) {
+				t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, update)[0])
+			}
+
+			if len(stream.updates) != 0 {
+				t.Fatalf("Expected 1 update but got %d: %v", 1+len(stream.updates), stream.updates)
+			}
+		case err := <-errs:
 			t.Fatalf("Got error: %s", err)
-		}
-
-		update := <-stream.updates
-		if updateAddAddress(t, update)[0] != fmt.Sprintf("%s:%d", podIP1, port) {
-			t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, update)[0])
-		}
-
-		if len(stream.updates) != 0 {
-			t.Fatalf("Expected 1 update but got %d: %v", 1+len(stream.updates), stream.updates)
 		}
 	})
 
@@ -95,30 +98,39 @@ func TestGet(t *testing.T) {
 			MockServerStream: util.NewMockServerStream(),
 		}
 		stream.Cancel()
+		errs := make(chan error)
 
 		path := fmt.Sprintf("%s:%d", fullyQualifiedNameSkipped, skippedPort)
-		err := server.Get(&pb.GetDestination{
-			Scheme: "k8s",
-			Path:   path,
-		}, stream)
-		if err != nil {
+
+		// server.Get blocks until the grpc stream is complete so we call it
+		// in a goroutine and watch stream.updates for updates.
+		go func() {
+			err := server.Get(&pb.GetDestination{
+				Scheme: "k8s",
+				Path:   path,
+			}, stream)
+			if err != nil {
+				errs <- err
+			}
+		}()
+
+		select {
+		case update := <-stream.updates:
+			addrs := update.GetAdd().Addrs
+			if len(addrs) == 0 {
+				t.Fatalf("Expected len(addrs) to be > 0")
+			}
+
+			if addrs[0].GetProtocolHint().GetProtocol() != nil || addrs[0].GetProtocolHint().GetOpaqueTransport() != nil {
+				t.Fatalf("Expected protocol hint for %s to be nil but got %+v", path, addrs[0].ProtocolHint)
+			}
+
+			if addrs[0].TlsIdentity != nil {
+				t.Fatalf("Expected TLS identity for %s to be nil but got %+v", path, addrs[0].TlsIdentity)
+			}
+		case err := <-errs:
 			t.Fatalf("Got error: %s", err)
 		}
-
-		update := assertSingleUpdate(t, stream.updates)
-		addrs := update.GetAdd().Addrs
-		if len(addrs) == 0 {
-			t.Fatalf("Expected len(addrs) to be > 0")
-		}
-
-		if addrs[0].GetProtocolHint().GetProtocol() != nil || addrs[0].GetProtocolHint().GetOpaqueTransport() != nil {
-			t.Fatalf("Expected protocol hint for %s to be nil but got %+v", path, addrs[0].ProtocolHint)
-		}
-
-		if addrs[0].TlsIdentity != nil {
-			t.Fatalf("Expected TLS identity for %s to be nil but got %+v", path, addrs[0].TlsIdentity)
-		}
-
 	})
 
 	t.Run("Remote discovery", func(t *testing.T) {
@@ -132,26 +144,30 @@ func TestGet(t *testing.T) {
 			updates:          make(chan *pb.Update, 50),
 			MockServerStream: util.NewMockServerStream(),
 		}
+		defer stream.Cancel()
+		errs := make(chan error)
 
-		// We cancel the stream before even sending the request so that we don't
-		// need to call server.Get in a separate goroutine.  By preemptively
-		// cancelling, the behavior of Get becomes effectively synchronous and
-		// we will get only the initial update, which is what we want for this
-		// test.
-		stream.Cancel()
+		// server.Get blocks until the grpc stream is complete so we call it
+		// in a goroutine and watch stream.updates for updates.
+		go func() {
+			err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", "foo-target.ns.svc.mycluster.local", 80)}, stream)
+			if err != nil {
+				errs <- err
+			}
+		}()
 
-		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", "foo-target.ns.svc.mycluster.local", 80)}, stream)
-		if err != nil {
+		select {
+		case update := <-stream.updates:
+			if updateAddAddress(t, update)[0] != fmt.Sprintf("%s:%d", "172.17.55.1", 80) {
+				t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, update)[0])
+			}
+
+			if len(stream.updates) != 0 {
+				t.Fatalf("Expected 1 update but got %d: %v", 1+len(stream.updates), stream.updates)
+			}
+
+		case err := <-errs:
 			t.Fatalf("Got error: %s", err)
-		}
-
-		update := <-stream.updates
-		if updateAddAddress(t, update)[0] != fmt.Sprintf("%s:%d", "172.17.55.1", 80) {
-			t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, update)[0])
-		}
-
-		if len(stream.updates) != 0 {
-			t.Fatalf("Expected 1 update but got %d: %v", 1+len(stream.updates), stream.updates)
 		}
 	})
 }
