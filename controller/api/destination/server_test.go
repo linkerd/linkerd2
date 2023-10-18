@@ -42,9 +42,10 @@ const skippedPort uint32 = 24224
 func TestGet(t *testing.T) {
 	t.Run("Returns error if not valid service name", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
 
 		stream := &bufferingGetStream{
-			updates:          []*pb.Update{},
+			updates:          make(chan *pb.Update, 50),
 			MockServerStream: util.NewMockServerStream(),
 		}
 
@@ -52,113 +53,130 @@ func TestGet(t *testing.T) {
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Returns endpoints", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
 
 		stream := &bufferingGetStream{
-			updates:          []*pb.Update{},
+			updates:          make(chan *pb.Update, 50),
 			MockServerStream: util.NewMockServerStream(),
 		}
+		defer stream.Cancel()
+		errs := make(chan error)
 
-		// We cancel the stream before even sending the request so that we don't
-		// need to call server.Get in a separate goroutine.  By preemptively
-		// cancelling, the behavior of Get becomes effectively synchronous and
-		// we will get only the initial update, which is what we want for this
-		// test.
-		stream.Cancel()
+		// server.Get blocks until the grpc stream is complete so we call it
+		// in a goroutine and watch stream.updates for updates.
+		go func() {
+			err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", fullyQualifiedName, port)}, stream)
+			if err != nil {
+				errs <- err
+			}
+		}()
 
-		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", fullyQualifiedName, port)}, stream)
-		if err != nil {
+		select {
+		case update := <-stream.updates:
+			if updateAddAddress(t, update)[0] != fmt.Sprintf("%s:%d", podIP1, port) {
+				t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, update)[0])
+			}
+
+			if len(stream.updates) != 0 {
+				t.Fatalf("Expected 1 update but got %d: %v", 1+len(stream.updates), stream.updates)
+			}
+		case err := <-errs:
 			t.Fatalf("Got error: %s", err)
 		}
-
-		if len(stream.updates) != 1 {
-			t.Fatalf("Expected 1 update but got %d: %v", len(stream.updates), stream.updates)
-		}
-
-		if updateAddAddress(t, stream.updates[0])[0] != fmt.Sprintf("%s:%d", podIP1, port) {
-			t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, stream.updates[0])[0])
-		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return endpoint with unknown protocol hint and identity when service name contains skipped inbound port", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := &bufferingGetStream{
-			updates:          []*pb.Update{},
+			updates:          make(chan *pb.Update, 50),
 			MockServerStream: util.NewMockServerStream(),
 		}
-		stream.Cancel()
+		defer stream.Cancel()
+		errs := make(chan error)
 
 		path := fmt.Sprintf("%s:%d", fullyQualifiedNameSkipped, skippedPort)
-		err := server.Get(&pb.GetDestination{
-			Scheme: "k8s",
-			Path:   path,
-		}, stream)
-		if err != nil {
+
+		// server.Get blocks until the grpc stream is complete so we call it
+		// in a goroutine and watch stream.updates for updates.
+		go func() {
+			err := server.Get(&pb.GetDestination{
+				Scheme: "k8s",
+				Path:   path,
+			}, stream)
+			if err != nil {
+				errs <- err
+			}
+		}()
+
+		select {
+		case update := <-stream.updates:
+			addrs := update.GetAdd().Addrs
+			if len(addrs) == 0 {
+				t.Fatalf("Expected len(addrs) to be > 0")
+			}
+
+			if addrs[0].GetProtocolHint().GetProtocol() != nil || addrs[0].GetProtocolHint().GetOpaqueTransport() != nil {
+				t.Fatalf("Expected protocol hint for %s to be nil but got %+v", path, addrs[0].ProtocolHint)
+			}
+
+			if addrs[0].TlsIdentity != nil {
+				t.Fatalf("Expected TLS identity for %s to be nil but got %+v", path, addrs[0].TlsIdentity)
+			}
+		case err := <-errs:
 			t.Fatalf("Got error: %s", err)
 		}
-
-		update := assertSingleUpdate(t, stream.updates)
-		addrs := update.GetAdd().Addrs
-		if len(addrs) == 0 {
-			t.Fatalf("Expected len(addrs) to be > 0")
-		}
-
-		if addrs[0].GetProtocolHint().GetProtocol() != nil || addrs[0].GetProtocolHint().GetOpaqueTransport() != nil {
-			t.Fatalf("Expected protocol hint for %s to be nil but got %+v", path, addrs[0].ProtocolHint)
-		}
-
-		if addrs[0].TlsIdentity != nil {
-			t.Fatalf("Expected TLS identity for %s to be nil but got %+v", path, addrs[0].TlsIdentity)
-		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Remote discovery", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
 
 		// Wait for cluster store to be synced.
 		time.Sleep(50 * time.Millisecond)
 
 		stream := &bufferingGetStream{
-			updates:          []*pb.Update{},
+			updates:          make(chan *pb.Update, 50),
 			MockServerStream: util.NewMockServerStream(),
 		}
+		defer stream.Cancel()
+		errs := make(chan error)
 
-		// We cancel the stream before even sending the request so that we don't
-		// need to call server.Get in a separate goroutine.  By preemptively
-		// cancelling, the behavior of Get becomes effectively synchronous and
-		// we will get only the initial update, which is what we want for this
-		// test.
-		stream.Cancel()
+		// server.Get blocks until the grpc stream is complete so we call it
+		// in a goroutine and watch stream.updates for updates.
+		go func() {
+			err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", "foo-target.ns.svc.mycluster.local", 80)}, stream)
+			if err != nil {
+				errs <- err
+			}
+		}()
 
-		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", "foo-target.ns.svc.mycluster.local", 80)}, stream)
-		if err != nil {
+		select {
+		case update := <-stream.updates:
+			if updateAddAddress(t, update)[0] != fmt.Sprintf("%s:%d", "172.17.55.1", 80) {
+				t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, update)[0])
+			}
+
+			if len(stream.updates) != 0 {
+				t.Fatalf("Expected 1 update but got %d: %v", 1+len(stream.updates), stream.updates)
+			}
+
+		case err := <-errs:
 			t.Fatalf("Got error: %s", err)
 		}
-
-		if len(stream.updates) != 1 {
-			t.Fatalf("Expected 1 update but got %d: %v", len(stream.updates), stream.updates)
-		}
-
-		if updateAddAddress(t, stream.updates[0])[0] != fmt.Sprintf("%s:%d", "172.17.55.1", 80) {
-			t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, stream.updates[0])[0])
-		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 }
 
 func TestGetProfiles(t *testing.T) {
 	t.Run("Returns error if not valid service name", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := &bufferingGetProfileStream{
 			updates:          []*pb.DestinationProfile{},
 			MockServerStream: util.NewMockServerStream(),
@@ -168,12 +186,12 @@ func TestGetProfiles(t *testing.T) {
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Returns server profile", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, fullyQualifiedName, port, "ns:other")
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
@@ -188,12 +206,12 @@ func TestGetProfiles(t *testing.T) {
 		if len(routes) != 1 {
 			t.Fatalf("Expected 0 routes but got %d: %v", len(routes), routes)
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return service profile when using json token", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, fullyQualifiedName, port, `{"ns":"other"}`)
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
@@ -204,12 +222,12 @@ func TestGetProfiles(t *testing.T) {
 		if len(routes) != 1 {
 			t.Fatalf("Expected 1 route got %d: %v", len(routes), routes)
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Returns client profile", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, fullyQualifiedName, port, `{"ns":"client-ns"}`)
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
@@ -220,12 +238,12 @@ func TestGetProfiles(t *testing.T) {
 		if !routes[0].GetIsRetryable() {
 			t.Fatalf("Expected route to be retryable, but it was not")
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile when using cluster IP", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, clusterIP, port, "")
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
@@ -239,12 +257,12 @@ func TestGetProfiles(t *testing.T) {
 		if len(routes) != 1 {
 			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile with endpoint when using pod DNS", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, fullyQualifiedPodDNS, port, "ns:ns")
 		defer stream.Cancel()
 
@@ -280,12 +298,12 @@ func TestGetProfiles(t *testing.T) {
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile with endpoint when using pod IP", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, podIP1, port, "ns:ns")
 		defer stream.Cancel()
 
@@ -321,24 +339,24 @@ func TestGetProfiles(t *testing.T) {
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return default profile when IP does not map to service or pod", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, "172.0.0.0", 1234, "")
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
 		if profile.RetryBudget == nil {
 			t.Fatalf("Expected default profile to have a retry budget")
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile with no protocol hint when pod does not have label", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, podIP2, port, "")
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
@@ -348,12 +366,12 @@ func TestGetProfiles(t *testing.T) {
 		if profile.Endpoint.GetProtocolHint().GetProtocol() != nil || profile.Endpoint.GetProtocolHint().GetOpaqueTransport() != nil {
 			t.Fatalf("Expected no protocol hint but found one")
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return non-opaque protocol profile when using cluster IP and opaque protocol port", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, clusterIPOpaque, opaquePort, "")
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
@@ -363,12 +381,12 @@ func TestGetProfiles(t *testing.T) {
 		if profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to not be an opaque protocol, but it was", opaquePort)
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return opaque protocol profile with endpoint when using pod IP and opaque protocol port", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, podIPOpaque, opaquePort, "")
 		defer stream.Cancel()
 
@@ -404,12 +422,12 @@ func TestGetProfiles(t *testing.T) {
 		if profile.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP port to be %d, but it was %d", epAddr.Port, profile.Endpoint.Addr.Port)
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return opaque protocol profile when using service name with opaque port annotation", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, fullyQualifiedNameOpaqueService, opaquePort, "")
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
@@ -419,12 +437,12 @@ func TestGetProfiles(t *testing.T) {
 		if !profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", opaquePort)
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile with unknown protocol hint and identity when pod contains skipped inbound port", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, podIPSkipped, skippedPort, "")
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
@@ -438,12 +456,12 @@ func TestGetProfiles(t *testing.T) {
 		if addr.TlsIdentity != nil {
 			t.Fatalf("Expected TLS identity for %s to be nil but got %+v", podIPSkipped, addr.TlsIdentity)
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile with opaque protocol when using Pod IP selected by a Server", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, podIPPolicy, 80, "")
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
@@ -459,12 +477,12 @@ func TestGetProfiles(t *testing.T) {
 		if profile.Endpoint.ProtocolHint.GetOpaqueTransport().GetInboundPort() != 4143 {
 			t.Fatalf("Expected pod to support opaque traffic on port 4143")
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile with opaque protocol when using an opaque port with an external IP", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, externalIP, 3306, "")
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
@@ -472,25 +490,26 @@ func TestGetProfiles(t *testing.T) {
 			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", 3306)
 		}
 
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile with non-opaque protocol when using an arbitrary port with an external IP", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, externalIP, 80, "")
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
 		if profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be a non-opaque protocol, but it was opaque", 80)
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("Return profile for host port pods", func(t *testing.T) {
 		hostPort := uint32(7777)
 		containerPort := uint32(80)
 		server, l5dClient := getServerWithClient(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		stream := profileStream(t, server, externalIP, hostPort, "")
 		defer stream.Cancel()
 
@@ -637,14 +656,14 @@ func TestGetProfiles(t *testing.T) {
 		if !profile.OpaqueProtocol {
 			t.Fatal("Expected OpaqueProtocol=true")
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 }
 
 func TestTokenStructure(t *testing.T) {
 	t.Run("when JSON is valid", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		dest := &pb.GetDestination{ContextToken: "{\"ns\":\"ns-1\",\"nodeName\":\"node-1\"}\n"}
 		token := server.parseContextToken(dest.ContextToken)
 
@@ -655,30 +674,28 @@ func TestTokenStructure(t *testing.T) {
 		if token.NodeName != "node-1" {
 			t.Fatalf("Expected token nodeName to be %s got %s", "node-1", token.NodeName)
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("when JSON is invalid and old token format used", func(t *testing.T) {
 		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
 		dest := &pb.GetDestination{ContextToken: "ns:ns-2"}
 		token := server.parseContextToken(dest.ContextToken)
 		if token.Ns != "ns-2" {
 			t.Fatalf("Expected %s got %s", "ns-2", token.Ns)
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 
 	t.Run("when invalid JSON and invalid old format", func(t *testing.T) {
 		server := makeServer(t)
+		server.clusterStore.UnregisterGauges()
+
 		dest := &pb.GetDestination{ContextToken: "123fa-test"}
 		token := server.parseContextToken(dest.ContextToken)
 		if token.Ns != "" || token.NodeName != "" {
 			t.Fatalf("Expected context token to be empty, got %v", token)
 		}
-
-		server.clusterStore.UnregisterGauges()
 	})
 }
 
@@ -768,18 +785,6 @@ func assertSingleProfile(t *testing.T, updates []*pb.DestinationProfile) *pb.Des
 	// get a second update.
 	if len(updates) != 1 {
 		t.Fatalf("Expected 1 profile update but got %d: %v", len(updates), updates)
-	}
-	return updates[0]
-}
-
-func assertSingleUpdate(t *testing.T, updates []*pb.Update) *pb.Update {
-	t.Helper()
-	// Under normal conditions the creation of resources by the fake API will
-	// generate notifications that are discarded after the stream.Cancel() call,
-	// but very rarely those notifications might come after, in which case we'll
-	// get a second update.
-	if len(updates) == 0 || len(updates) > 2 {
-		t.Fatalf("Expected 1 or 2 updates but got %d: %v", len(updates), updates)
 	}
 	return updates[0]
 }
