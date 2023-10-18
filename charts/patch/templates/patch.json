@@ -1,4 +1,5 @@
 {{ $prefix := .Values.pathPrefix -}}
+{{ $initIndex := ternary "0" "-" (dig "proxy" "nativeSidecar" false (merge (dict) .Values)) -}}
 [
   {{- if .Values.addRootMetadata }}
   {
@@ -62,14 +63,14 @@
   },
   {
     "op": "add",
-    "path": "{{$prefix}}/spec/initContainers/0",
+    "path": "{{$prefix}}/spec/initContainers/{{$initIndex}}{{$initIndex = add1 $initIndex}}",
     "value":
       {{- include "partials.proxy-init" . | fromYaml | toPrettyJson | nindent 6 }}
   },
   {{- else if and .Values.proxy .Values.cniEnabled }}
   {
     "op": "add",
-    "path": "{{$prefix}}/spec/initContainers/0",
+    "path": "{{$prefix}}/spec/initContainers/{{$initIndex}}{{$initIndex = add1 $initIndex}}",
     "value":
       {{- include "partials.network-validator" . | fromYaml | toPrettyJson | nindent 6 }}
   },
@@ -103,10 +104,8 @@
   {{- end }}
   {
     "op": "add",
-  {{- if and .Values.proxy.nativeSidecar (not .Values.proxyInit) }}
-    "path": "{{$prefix}}/spec/initContainers/0",
-  {{- else if and .Values.proxy.nativeSidecar .Values.proxyInit }}
-    "path": "{{$prefix}}/spec/initContainers/1",
+  {{- if .Values.proxy.nativeSidecar }}
+    "path": "{{$prefix}}/spec/initContainers/{{$initIndex}}",
   {{- else if .Values.proxy.await }}
     "path": "{{$prefix}}/spec/containers/0",
   {{- else }}
