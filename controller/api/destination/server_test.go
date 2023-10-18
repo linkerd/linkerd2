@@ -97,7 +97,7 @@ func TestGet(t *testing.T) {
 			updates:          make(chan *pb.Update, 50),
 			MockServerStream: util.NewMockServerStream(),
 		}
-		stream.Cancel()
+		defer stream.Cancel()
 		errs := make(chan error)
 
 		path := fmt.Sprintf("%s:%d", fullyQualifiedNameSkipped, skippedPort)
