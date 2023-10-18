@@ -168,6 +168,14 @@ readinessProbe:
     path: /ready
     port: {{.Values.proxy.ports.admin}}
   initialDelaySeconds: 2
+{{- if .Values.proxy.nativeSidecar }}
+startupProbe:
+  httpGet:
+    path: /ready
+    port: {{.Values.proxy.ports.admin}}
+  initialDelaySeconds: 0
+  periodSeconds: 1
+{{- end }}
 {{- if .Values.proxy.resources }}
 {{ include "partials.resources" .Values.proxy.resources }}
 {{- end }}
@@ -182,9 +190,9 @@ securityContext:
   seccompProfile:
     type: RuntimeDefault
 terminationMessagePolicy: FallbackToLogsOnError
-{{- if or (.Values.proxy.await) (.Values.proxy.waitBeforeExitSeconds) }}
+{{- if or .Values.proxy.await .Values.proxy.waitBeforeExitSeconds .Values.proxy.nativeSidecar }}
 lifecycle:
-{{- if .Values.proxy.await }}
+{{- if and .Values.proxy.await (not .Values.proxy.nativeSidecar) }}
   postStart:
     exec:
       command:
@@ -192,12 +200,18 @@ lifecycle:
         - --timeout=2m
         - --port={{.Values.proxy.ports.admin}}
 {{- end }}
-{{- if .Values.proxy.waitBeforeExitSeconds }}
+{{- if or .Values.proxy.waitBeforeExitSeconds .Values.proxy.nativeSidecar }}
   preStop:
     exec:
       command:
+        {{- if .Values.proxy.nativeSidecar }}
+        - /usr/lib/linkerd/linkerd-await
+        - --timeout=1s
+        - --port={{.Values.proxy.ports.admin}}
+        - --shutdown
+        {{- end }}
         - /bin/sleep
-        - {{.Values.proxy.waitBeforeExitSeconds | quote}}
+        - {{.Values.proxy.waitBeforeExitSeconds | default 0 | quote}}
 {{- end }}
 {{- end }}
 volumeMounts:
