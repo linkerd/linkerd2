@@ -984,22 +984,25 @@ func (rcsw *RemoteClusterServiceWatcher) resolveGatewayAddress() ([]corev1.Endpo
 	var gatewayEndpoints []corev1.EndpointAddress
 	var errors []error
 	for _, addr := range strings.Split(rcsw.link.GatewayAddress, ",") {
-		ipAddr, err := net.ResolveIPAddr("ip", addr)
-		if err == nil {
-			gatewayEndpoints = append(gatewayEndpoints, corev1.EndpointAddress{
-				IP: ipAddr.String(),
-			})
-		} else {
+		ipAddrs, err := net.LookupIP(addr)
+		if err != nil {
 			err = fmt.Errorf("Error resolving '%s': %w", addr, err)
 			rcsw.log.Warn(err)
 			errors = append(errors, err)
+			continue
+		}
+
+		for _, ipAddr := range ipAddrs {
+			gatewayEndpoints = append(gatewayEndpoints, corev1.EndpointAddress{
+				IP: ipAddr.String(),
+			})
 		}
 	}
-	// one resolved address is enough
-	if len(gatewayEndpoints) > 0 {
-		return gatewayEndpoints, nil
+
+	if len(gatewayEndpoints) == 0 {
+		return nil, RetryableError{errors}
 	}
-	return nil, RetryableError{errors}
+	return gatewayEndpoints, nil
 }
 
 func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) error {
