@@ -1,5 +1,49 @@
 # Changes
 
+## edge-23.10.3
+
+This edge release fixes issues in the proxy and destination controller which can
+result in Linkerd proxies sending traffic to stale endpoints. In addition, it
+contains other bugfixes and updates dependencies to include patches for the
+security advisories [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3 and GHSA-c827-hfw6-qwvm.
+
+* Fixed an issue where the Destination controller could stop processing
+  changes in the endpoints of a destination, if a proxy subscribed to that
+  destination stops reading service discovery updates. This issue results in
+  proxies attempting to send traffic for that destination to stale endpoints
+  ([#11483], fixes [#11480], [#11279], and [#10590])
+* Fixed a regression introduced in stable-2.13.0 where proxies would not
+  terminate unused service discovery watches, exerting backpressure on the
+  Destination controller which could cause it to become stuck
+  ([linkerd2-proxy#2484] and [linkerd2-proxy#2486])
+* Added `INFO`-level logging to the proxy when endpoints are added or removed
+  from a load balancer. These logs are enabled by default, and can be disabled
+  by [setting the proxy log level][proxy-log-level] to
+  `warn,linkerd=info,linkerd_proxy_balance=warn` or similar
+  ([linkerd2-proxy#2486])
+* Fixed a regression where the proxy rendered `grpc_status` metric labels as a
+  string rather than as the numeric status code ([linkerd2-proxy#2480]; fixes
+  [#11449])
+* Added missing `imagePullSecrets` to `linkerd-jaeger` ServiceAccount ([#11504])
+* Updated the control plane's dependency on the `golang.google.org/grpc` Go
+  package to include patches for [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3 ([#11496])
+* Updated dependencies on `rustix` to include patches for GHSA-c827-hfw6-qwvm
+  ([linkerd2-proxy#2488] and [#11512]).
+
+[#10590]: https://github.com/linkerd/linkerd2/issues/10590
+[#11279]: https://github.com/linkerd/linkerd2/issues/11279
+[#11483]: https://github.com/linkerd/linkerd2/issues/11483
+[#11449]: https://github.com/linkerd/linkerd2/issues/11449
+[#11480]: https://github.com/linkerd/linkerd2/issues/11480
+[#11504]: https://github.com/linkerd/linkerd2/issues/11504
+[#11504]: https://github.com/linkerd/linkerd2/issues/11512
+[linkerd2-proxy#2480]: https://github.com/linkerd/linkerd2-proxy/pull/2480
+[linkerd2-proxy#2484]: https://github.com/linkerd/linkerd2-proxy/pull/2484
+[linkerd2-proxy#2486]: https://github.com/linkerd/linkerd2-proxy/pull/2486
+[linkerd2-proxy#2488]: https://github.com/linkerd/linkerd2-proxy/pull/2488
+[proxy-log-level]: https://linkerd.io/2.14/tasks/modifying-proxy-log-level/
+[CVE-2023-44487]: https://github.com/advisories/GHSA-qppj-fm5r-hxr3
+
 ## edge-23.10.2
 
 This edge release includes a fix addressing an issue during upgrades for
