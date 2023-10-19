@@ -36,7 +36,7 @@ security advisories [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3 and GHSA-c827-hfw6-qwvm
 [#11449]: https://github.com/linkerd/linkerd2/issues/11449
 [#11480]: https://github.com/linkerd/linkerd2/issues/11480
 [#11504]: https://github.com/linkerd/linkerd2/issues/11504
-[#11504]: https://github.com/linkerd/linkerd2/issues/11512
+[#11512]: https://github.com/linkerd/linkerd2/issues/11512
 [linkerd2-proxy#2480]: https://github.com/linkerd/linkerd2-proxy/pull/2480
 [linkerd2-proxy#2484]: https://github.com/linkerd/linkerd2-proxy/pull/2484
 [linkerd2-proxy#2486]: https://github.com/linkerd/linkerd2-proxy/pull/2486
