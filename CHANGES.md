@@ -2,7 +2,7 @@
 
 ## edge-23.10.3
 
-This edge release fixes issues in the proxy and destination controller which can
+This edge release fixes issues in the proxy and Destination controller which can
 result in Linkerd proxies sending traffic to stale endpoints. In addition, it
 contains other bugfixes and updates dependencies to include patches for the
 security advisories [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3 and GHSA-c827-hfw6-qwvm.
