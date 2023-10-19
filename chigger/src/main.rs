@@ -55,6 +55,15 @@ struct Args {
 
     #[clap(long, default_value = "100")]
     observers: usize,
+
+    #[clap(long, default_value = "ghcr.io/olix0r/l2-proxy")]
+    proxy_repo: String,
+
+    #[clap(long, default_value = "ver.repro.78ac7fb87")]
+    proxy_version: String,
+
+    #[clap(long, default_value = "debug,h2=trace,trust_dns=info,linkerd_dns=info")]
+    proxy_log_level: String,
 }
 
 #[tokio::main]
@@ -71,6 +80,9 @@ async fn main() -> Result<()> {
         observers,
         min_observer_lifetime,
         max_observer_lifetime,
+        proxy_repo,
+        proxy_version,
+        proxy_log_level,
     } = Args::parse();
 
     let runtime = kubert::Runtime::builder()
@@ -127,11 +139,6 @@ async fn main() -> Result<()> {
         .await?;
     info!(svc.name = svc.name_unchecked(), "Created");
 
-    let mut dst = DestinationClient::port_forwarded(&k8s)
-        .instrument(info_span!("idle"))
-        .await;
-    let idle_observation = dst.watch(&svc, 4444).instrument(info_span!("idle")).await?;
-
     // Start a task that runs a fixed number of observers, restarting the watches
     // randomly within the max lifetime.
     spawn_observers(
@@ -146,9 +153,15 @@ async fn main() -> Result<()> {
         .instrument(info_span!("eps.serve"))
         .await?;
 
-    ready_client(id.clone(), k8s.clone())
-        .instrument(info_span!("client"))
-        .await?;
+    ready_client(
+        id.clone(),
+        k8s.clone(),
+        proxy_repo,
+        proxy_version,
+        proxy_log_level,
+    )
+    .instrument(info_span!("client"))
+    .await?;
 
     tokio::spawn(
         scale_endpoints(
@@ -168,14 +181,18 @@ async fn main() -> Result<()> {
         bail!("Aborted");
     }
 
-    drop(idle_observation);
-
     cleanup(&k8s, &id).await?;
 
     Ok(())
 }
 
-async fn ready_client(id: String, k8s: kube::Client) -> Result<()> {
+async fn ready_client(
+    id: String,
+    k8s: kube::Client,
+    proxy_repo: String,
+    proxy_version: String,
+    proxy_log_level: String,
+) -> Result<()> {
     let name = format!("chigger-client-{id}");
     let api = kube::Api::namespaced(k8s, "default");
     api.create(
@@ -211,9 +228,9 @@ async fn ready_client(id: String, k8s: kube::Client) -> Result<()> {
                         ))),
                         annotations: Some(convert_args!(btreemap!(
                             "linkerd.io/inject" => "enabled",
-                            "config.linkerd.io/proxy-image" => "ghcr.io/olix0r/l2-proxy",
-                            "config.linkerd.io/proxy-version" => "ver.repro.78ac7fb87",
-                            "config.linkerd.io/proxy-log-level" => "debug,h2=trace,trust_dns=warn",
+                            "config.linkerd.io/proxy-image" => proxy_repo,
+                            "config.linkerd.io/proxy-version" => proxy_version,
+                            "config.linkerd.io/proxy-log-level" => proxy_log_level,
                         ))),
                         ..Default::default()
                     }),
