@@ -24,7 +24,8 @@ security advisories [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3 and GHSA-c827-hfw6-qwvm
 * Fixed a regression where the proxy rendered `grpc_status` metric labels as a
   string rather than as the numeric status code ([linkerd2-proxy#2480]; fixes
   [#11449])
-* Added missing `imagePullSecrets` to `linkerd-jaeger` ServiceAccount ([#11504])
+* Extended `linkerd-jaeger`'s `imagePullSecrets` Helm value to also apply to
+the `namespace-metadata` ServiceAccount ([#11504])
 * Updated the control plane's dependency on the `golang.google.org/grpc` Go
   package to include patches for [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3 ([#11496])
 * Updated dependencies on `rustix` to include patches for GHSA-c827-hfw6-qwvm
