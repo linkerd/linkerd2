@@ -563,18 +563,20 @@ func profileID(authority string, ctxToken contextToken, clusterDomain string) (w
 }
 
 func getHostAndPort(authority string) (string, watcher.Port, error) {
-	hostPort := strings.Split(authority, ":")
-	if len(hostPort) > 2 {
-		return "", 0, fmt.Errorf("invalid destination %s", authority)
+	if !strings.Contains(authority, ":") {
+		return authority, watcher.Port(80), nil
 	}
-	host := hostPort[0]
-	port := 80
-	if len(hostPort) == 2 {
-		var err error
-		port, err = strconv.Atoi(hostPort[1])
-		if err != nil || port <= 0 || port > 65535 {
-			return "", 0, fmt.Errorf("invalid port %s", hostPort[1])
-		}
+
+	host, sport, err := net.SplitHostPort(authority)
+	if err != nil {
+		return "", 0, fmt.Errorf("invalid destination: %w", err)
+	}
+	port, err := strconv.Atoi(sport)
+	if err != nil {
+		return "", 0, fmt.Errorf("invalid port %s: %w", sport, err)
+	}
+	if port <= 0 || port > 65535 {
+		return "", 0, fmt.Errorf("invalid port %d", port)
 	}
 	return host, watcher.Port(port), nil
 }
