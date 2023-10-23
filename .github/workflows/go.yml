@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-20.04
     container: ghcr.io/linkerd/dev:v40-go
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just go-lint --verbose --timeout=10m
 
@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-20.04
     container: ghcr.io/linkerd/dev:v40-go
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just go-fmt
 
@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-20.04
     container: ghcr.io/linkerd/dev:v40-go
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just go-fetch
       - run: just go-test

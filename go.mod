@@ -10,7 +10,7 @@ require (
 	github.com/emicklei/proto v1.12.1
 	github.com/evanphx/json-patch v5.7.0+incompatible
 	github.com/fatih/color v1.15.0
-	github.com/fsnotify/fsnotify v1.6.0
+	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-openapi/spec v0.20.9
 	github.com/go-test/deep v1.1.0
 	github.com/golang/protobuf v1.5.3
@@ -21,7 +21,7 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/linkerd/linkerd2-proxy-api v0.11.0
 	github.com/linkerd/linkerd2-proxy-init v1.6.2
-	github.com/mattn/go-isatty v0.0.19
+	github.com/mattn/go-isatty v0.0.20
 	github.com/mattn/go-runewidth v0.0.15
 	github.com/nsf/termbox-go v1.1.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -41,13 +41,13 @@ require (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
 	google.golang.org/protobuf v1.31.0
 	helm.sh/helm/v3 v3.13.1
-	k8s.io/api v0.28.2
-	k8s.io/apiextensions-apiserver v0.28.2
-	k8s.io/apimachinery v0.28.2
-	k8s.io/client-go v0.28.2
-	k8s.io/code-generator v0.28.2
+	k8s.io/api v0.28.3
+	k8s.io/apiextensions-apiserver v0.28.3
+	k8s.io/apimachinery v0.28.3
+	k8s.io/client-go v0.28.3
+	k8s.io/code-generator v0.28.3
 	k8s.io/klog/v2 v2.100.1
-	k8s.io/kube-aggregator v0.28.2
+	k8s.io/kube-aggregator v0.28.3
 	sigs.k8s.io/gateway-api v0.8.1
 	sigs.k8s.io/yaml v1.3.0
 )
