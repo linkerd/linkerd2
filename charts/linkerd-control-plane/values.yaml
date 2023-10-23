@@ -207,11 +207,11 @@ proxy:
   # -- LivenessProbe timeout and delay configuration
   livenessProbe:
     initialDelaySeconds: 10
-    timeoutSeconds: 30
+    timeoutSeconds: 1
   # -- ReadinessProbe timeout and delay configuration
   readinessProbe:
     initialDelaySeconds: 2
-    timeoutSeconds: 5
+    timeoutSeconds: 1
   startupProbe:
     initialDelaySeconds: 0
     periodSeconds: 1
