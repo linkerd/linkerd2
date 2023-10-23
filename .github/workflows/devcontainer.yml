@@ -18,9 +18,19 @@ jobs:
     container: ghcr.io/linkerd/dev:v40-rust
     steps:
       - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
-      - run: |
+      - shell: bash
+        run: |
+          # Extract current Rust version from the toolchain file.
+          version_regex='channel = "([0-9]+\.[0-9]+\.[0-9]+)"'
+          toolchain=$(cat rust-toolchain.toml)
+          if [[ $toolchain =~ $version_regex ]]; then
+            tc=${BASH_REMATCH[1]}
+          else
+            echo "::error file=rust-toolchain.toml::failed to parse rust-toolchain.toml"
+            exit 1
+          fi
+
           dev=$(cargo version | cut -d' ' -f2)
-          tc=$(cat rust-toolchain)
           if [ "$dev" != "$tc" ]; then
             echo "::error file=rust-toolchain,line=1::rust-toolchain ($tc) does not match devcontainer ($dev)"
             exit 1
