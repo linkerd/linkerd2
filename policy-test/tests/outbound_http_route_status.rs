@@ -8,10 +8,11 @@ use linkerd_policy_test::{
 async fn accepted_parent() {
     with_temp_ns(|client, ns| async move {
         // Create a parent Service
+        let svc_name = "test-service";
         let svc = k8s::Service {
             metadata: k8s::ObjectMeta {
                 namespace: Some(ns.clone()),
-                name: Some("test-service".to_string()),
+                name: Some(svc_name.to_string()),
                 ..Default::default()
             },
             spec: Some(k8s::ServiceSpec {
@@ -42,7 +43,7 @@ async fn accepted_parent() {
         let route_status = statuses
             .clone()
             .into_iter()
-            .find(|route_status| route_status.parent_ref.name == svc.name_unchecked())
+            .find(|route_status| route_status.parent_ref.name == svc_name)
             .expect("must have at least one parent status");
 
         // Check status references to parent we have created
@@ -50,7 +51,7 @@ async fn accepted_parent() {
         assert_eq!(route_status.parent_ref.kind.as_deref(), Some("Service"));
 
         // Check status is accepted with a status of 'True'
-        let cond = find_route_condition(statuses, &svc.name_unchecked())
+        let cond = find_route_condition(&statuses, svc_name)
             .expect("must have at least one 'Accepted' condition for accepted servuce");
         assert_eq!(cond.status, "True");
         assert_eq!(cond.reason, "Accepted")
@@ -92,11 +93,9 @@ async fn no_cluster_ip() {
         // Create a route that references the Service resource.
         let _route = create(&client, mk_route(&ns, "test-route", Some(svc_ref))).await;
         // Wait until route is updated with a status
-        let cond = find_route_condition(
-            await_route_status(&client, &ns, "test-route").await.parents,
-            "test-service",
-        )
-        .expect("must have at least one 'Accepted' condition set for parent");
+        let status = await_route_status(&client, &ns, "test-route").await;
+        let cond = find_route_condition(&status.parents, "test-service")
+            .expect("must have at least one 'Accepted' condition set for parent");
         // Parent with no ClusterIP should not match.
         assert_eq!(cond.status, "False");
         assert_eq!(cond.reason, "NoMatchingParent");
@@ -138,11 +137,9 @@ async fn external_name() {
         // Create a route that references the Service resource.
         let _route = create(&client, mk_route(&ns, "test-route", Some(svc_ref))).await;
         // Wait until route is updated with a status
-        let cond = find_route_condition(
-            await_route_status(&client, &ns, "test-route").await.parents,
-            "test-service",
-        )
-        .expect("must have at least one 'Accepted' condition set for parent");
+        let status = await_route_status(&client, &ns, "test-route").await;
+        let cond = find_route_condition(&status.parents, "test-service")
+            .expect("must have at least one 'Accepted' condition set for parent");
         // Parent with ExternalName should not match.
         assert_eq!(cond.status, "False");
         assert_eq!(cond.reason, "NoMatchingParent");

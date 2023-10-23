@@ -1,24 +1,22 @@
 use kube::ResourceExt;
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
-    await_route_status, create, find_route_condition, mk_route, with_temp_ns,
+    await_condition, await_route_status, create, find_route_condition, mk_route, with_temp_ns,
 };
 
 #[tokio::test(flavor = "current_thread")]
 async fn inbound_accepted_parent() {
     with_temp_ns(|client, ns| async move {
         // Create a test 'Server'
+        let server_name = "test-accepted-server";
         let server = k8s::policy::Server {
             metadata: k8s::ObjectMeta {
                 namespace: Some(ns.to_string()),
-                name: Some("test-accepted-server".to_string()),
+                name: Some(server_name.to_string()),
                 ..Default::default()
             },
             spec: k8s::policy::ServerSpec {
-                pod_selector: k8s::labels::Selector::from_iter(Some((
-                    "app",
-                    "test-accepted-server",
-                ))),
+                pod_selector: k8s::labels::Selector::from_iter(Some(("app", server_name))),
                 port: k8s::policy::server::Port::Name("http".to_string()),
                 proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
             },
@@ -43,7 +41,7 @@ async fn inbound_accepted_parent() {
         let route_status = statuses
             .clone()
             .into_iter()
-            .find(|route_status| route_status.parent_ref.name == server.name_unchecked())
+            .find(|route_status| route_status.parent_ref.name == server_name)
             .expect("must have at least one parent status");
 
         // Check status references to parent we have created
@@ -54,7 +52,7 @@ async fn inbound_accepted_parent() {
         assert_eq!(route_status.parent_ref.kind.as_deref(), Some("Server"));
 
         // Check status is accepted with a status of 'True'
-        let cond = find_route_condition(statuses, &server.name_unchecked())
+        let cond = find_route_condition(&statuses, server_name)
             .expect("must have at least one 'Accepted' condition for accepted server");
         assert_eq!(cond.status, "True");
         assert_eq!(cond.reason, "Accepted")
@@ -112,14 +110,14 @@ async fn inbound_multiple_parents() {
             .parents;
 
         // Find status for invalid parent and extract the condition
-        let invalid_cond = find_route_condition(parent_status.clone(), "test-invalid-server")
+        let invalid_cond = find_route_condition(&parent_status, "test-invalid-server")
             .expect("must have at least one 'Accepted' condition set for invalid parent");
         // Route shouldn't be accepted
         assert_eq!(invalid_cond.status, "False");
         assert_eq!(invalid_cond.reason, "NoMatchingParent");
 
         // Find status for valid parent and extract the condition
-        let valid_cond = find_route_condition(parent_status, "test-valid-server")
+        let valid_cond = find_route_condition(&parent_status, "test-valid-server")
             .expect("must have at least one 'Accepted' condition set for valid parent");
         assert_eq!(valid_cond.status, "True");
         assert_eq!(valid_cond.reason, "Accepted")
@@ -154,11 +152,12 @@ async fn inbound_accepted_reconcile_no_parent() {
     with_temp_ns(|client, ns| async move {
         // Given a route with a nonexistent parentReference, we expect to have an
         // 'Accepted' condition with 'False' as a status.
+        let server_name = "test-reconcile-inbound-server";
         let srv_ref = vec![k8s::policy::httproute::ParentReference {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("Server".to_string()),
             namespace: Some(ns.clone()),
-            name: "test-reconcile-inbound-server".to_string(),
+            name: server_name.to_string(),
             section_name: None,
             port: None,
         }];
@@ -167,13 +166,9 @@ async fn inbound_accepted_reconcile_no_parent() {
             mk_route(&ns, "test-reconcile-inbound-route", Some(srv_ref)),
         )
         .await;
-        let cond = find_route_condition(
-            await_route_status(&client, &ns, "test-reconcile-inbound-route")
-                .await
-                .parents,
-            "test-reconcile-inbound-server",
-        )
-        .expect("must have at least one 'Accepted' condition set for parent");
+        let route_status = await_route_status(&client, &ns, "test-reconcile-inbound-route").await;
+        let cond = find_route_condition(&route_status.parents, server_name)
+            .expect("must have at least one 'Accepted' condition set for parent");
         // Test when parent ref does not exist we get Accepted { False }.
         assert_eq!(cond.status, "False");
         assert_eq!(cond.reason, "NoMatchingParent");
@@ -183,48 +178,48 @@ async fn inbound_accepted_reconcile_no_parent() {
 
         // Create the 'Server' that route references and expect it to be picked up
         // by the index. Consequently, route will have its status reconciled.
-        let server = {
-            let server = k8s::policy::Server {
-                metadata: k8s::ObjectMeta {
-                    namespace: Some(ns.to_string()),
-                    name: Some("test-reconcile-inbound-server".to_string()),
-                    ..Default::default()
-                },
-                spec: k8s::policy::ServerSpec {
-                    pod_selector: k8s::labels::Selector::from_iter(Some((
-                        "app",
-                        "test-reconcile-inbound-server",
-                    ))),
-                    port: k8s::policy::server::Port::Name("http".to_string()),
-                    proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
-                },
-            };
-            create(&client, server).await
+        let server = k8s::policy::Server {
+            metadata: k8s::ObjectMeta {
+                namespace: Some(ns.to_string()),
+                name: Some(server_name.to_string()),
+                ..Default::default()
+            },
+            spec: k8s::policy::ServerSpec {
+                pod_selector: k8s::labels::Selector::from_iter(Some(("app", server_name))),
+                port: k8s::policy::server::Port::Name("http".to_string()),
+                proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
+            },
         };
+        create(&client, server).await;
+
+        // HTTPRoute may not be patched instantly, await the condition where
+        // create_timestamp and observed_timestamp are different.
+        let route_status = await_condition(
+            &client,
+            &ns,
+            "test-reconcile-inbound-route",
+            |obj: Option<&k8s::policy::httproute::HttpRoute>| -> bool {
+                tracing::trace!(?obj, "got route status");
+                let status = match obj.and_then(|route| route.status.as_ref()) {
+                    Some(status) => status,
+                    None => return false,
+                };
+                let cond = match find_route_condition(&status.inner.parents, server_name) {
+                    Some(cond) => cond,
+                    None => return false,
+                };
+                &cond.last_transition_time > create_timestamp
+            },
+        )
+        .await
+        .expect("must fetch route")
+        .status
+        .expect("route must contain a status representation");
 
         // HTTPRoute may not be patched instantly, wrap with a timeout and loop
         // until create_timestamp and observed_timestamp are different.
-        let cond = tokio::time::timeout(tokio::time::Duration::from_secs(60), async move {
-            loop {
-                let cond = find_route_condition(
-                    await_route_status(&client, &ns, "test-reconcile-inbound-route")
-                        .await
-                        .parents,
-                    &server.name_unchecked(),
-                )
-                .expect("must have least one 'Accepted' condition");
-
-                // Observe condition's current timestamp. If it differs from the
-                // previously recorded timestamp, then it means the underlying
-                // condition has been updated so we can check the message and
-                // status.
-                if &cond.last_transition_time > create_timestamp {
-                    return cond;
-                }
-            }
-        })
-        .await
-        .expect("Timed-out waiting for HTTPRoute status update");
+        let cond = find_route_condition(&route_status.inner.parents, server_name)
+            .expect("route must have a route condition");
         assert_eq!(cond.status, "True");
         assert_eq!(cond.reason, "Accepted");
     })
@@ -236,30 +231,27 @@ async fn inbound_accepted_reconcile_parent_delete() {
     with_temp_ns(|client, ns| async move {
         // Attach a route to a Server and expect the route to be patched with an
         // Accepted status.
-        let server = {
-            let server = k8s::policy::Server {
-                metadata: k8s::ObjectMeta {
-                    namespace: Some(ns.to_string()),
-                    name: Some("test-reconcile-delete-server".to_string()),
-                    ..Default::default()
-                },
-                spec: k8s::policy::ServerSpec {
-                    pod_selector: k8s::labels::Selector::from_iter(Some((
-                        "app",
-                        "test-reconcile-delete-server",
-                    ))),
-                    port: k8s::policy::server::Port::Name("http".to_string()),
-                    proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
-                },
-            };
-            create(&client, server).await
+        let server_name = "test-reconcile-delete-server";
+        let server = k8s::policy::Server {
+            metadata: k8s::ObjectMeta {
+                namespace: Some(ns.to_string()),
+                name: Some(server_name.to_string()),
+                ..Default::default()
+            },
+            spec: k8s::policy::ServerSpec {
+                pod_selector: k8s::labels::Selector::from_iter(Some(("app", server_name))),
+                port: k8s::policy::server::Port::Name("http".to_string()),
+                proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
+            },
         };
+        create(&client, server).await;
+
         // Create parentReference and route
         let srv_ref = vec![k8s::policy::httproute::ParentReference {
             group: Some("policy.linkerd.io".to_string()),
             kind: Some("Server".to_string()),
             namespace: Some(ns.clone()),
-            name: "test-reconcile-delete-server".to_string(),
+            name: server_name.to_string(),
             section_name: None,
             port: None,
         }];
@@ -268,13 +260,9 @@ async fn inbound_accepted_reconcile_parent_delete() {
             mk_route(&ns, "test-reconcile-delete-route", Some(srv_ref)),
         )
         .await;
-        let cond = find_route_condition(
-            await_route_status(&client, &ns, "test-reconcile-delete-route")
-                .await
-                .parents,
-            &server.name_unchecked(),
-        )
-        .expect("must have at least one 'Accepted' condition");
+        let route_status = await_route_status(&client, &ns, "test-reconcile-delete-route").await;
+        let cond = find_route_condition(&route_status.parents, server_name)
+            .expect("must have at least one 'Accepted' condition");
         assert_eq!(cond.status, "True");
         assert_eq!(cond.reason, "Accepted");
 
@@ -290,29 +278,32 @@ async fn inbound_accepted_reconcile_parent_delete() {
         .await
         .expect("API delete request failed");
 
-        // HTTPRoute may not be patched instantly, wrap with a timeout and loop
-        // until create_timestamp and observed_timestamp are different.
-        let cond = tokio::time::timeout(tokio::time::Duration::from_secs(60), async move {
-            loop {
-                let cond = find_route_condition(
-                    await_route_status(&client, &ns, "test-reconcile-delete-route")
-                        .await
-                        .parents,
-                    &server.name_unchecked(),
-                )
-                .expect("must have at least one 'Accepted' condition");
-
-                // Observe condition's current timestamp. If it differs from the
-                // previously recorded timestamp, then it means the underlying
-                // condition has been updated so we can check the message and
-                // status.
-                if &cond.last_transition_time > create_timestamp {
-                    return cond;
-                }
-            }
-        })
+        // HTTPRoute may not be patched instantly, await the condition where
+        // create_timestamp and observed_timestamp are different.
+        let route_status = await_condition(
+            &client,
+            &ns,
+            "test-reconcile-delete-route",
+            |obj: Option<&k8s::policy::httproute::HttpRoute>| -> bool {
+                tracing::trace!(?obj, "got route status");
+                let status = match obj.and_then(|route| route.status.as_ref()) {
+                    Some(status) => status,
+                    None => return false,
+                };
+                let cond = match find_route_condition(&status.inner.parents, server_name) {
+                    Some(cond) => cond,
+                    None => return false,
+                };
+                &cond.last_transition_time > create_timestamp
+            },
+        )
         .await
-        .expect("Timed-out waiting for HTTPRoute status update");
+        .expect("must fetch route")
+        .status
+        .expect("route must contain a status representation");
+
+        let cond = find_route_condition(&route_status.inner.parents, server_name)
+            .expect("route must have a route condition");
         assert_eq!(cond.status, "False");
         assert_eq!(cond.reason, "NoMatchingParent");
     })
