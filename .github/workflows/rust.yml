@@ -49,7 +49,7 @@ jobs:
       - run: just rs-check-fmt
 
   clippy:
-    timeout-minutes: 10
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     container: ghcr.io/linkerd/dev:v40-rust
     steps:
