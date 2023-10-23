@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"errors"
 	"fmt"
 	"net"
 
@@ -70,7 +71,7 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 	err := k8sAPI.Svc().Informer().AddIndexers(cache.Indexers{PodIPIndex: func(obj interface{}) ([]string, error) {
 		svc, ok := obj.(*corev1.Service)
 		if !ok {
-			return nil, fmt.Errorf("object is not a service")
+			return nil, errors.New("object is not a service")
 		}
 
 		if len(svc.Spec.ClusterIPs) != 0 {
@@ -118,7 +119,7 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 	err = k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{HostIPIndex: func(obj interface{}) ([]string, error) {
 		pod, ok := obj.(*corev1.Pod)
 		if !ok {
-			return nil, fmt.Errorf("object is not a pod")
+			return nil, errors.New("object is not a pod")
 		}
 
 		ips := []string{}
