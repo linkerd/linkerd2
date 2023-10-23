@@ -3,6 +3,7 @@ package destination
 import (
 	"context"
 	"fmt"
+	gonet "net"
 	"testing"
 	"time"
 
@@ -27,14 +28,17 @@ const fullyQualifiedNameOpaqueService = "name4.ns.svc.mycluster.local"
 const fullyQualifiedNameSkipped = "name5.ns.svc.mycluster.local"
 const fullyQualifiedPodDNS = "pod-0.statefulset-svc.ns.svc.mycluster.local"
 const clusterIP = "172.17.12.0"
+const clusterIPv6 = "2001:db8::88"
 const clusterIPOpaque = "172.17.12.1"
 const podIP1 = "172.17.0.12"
+const podIP1v6 = "2001:db8::68"
 const podIP2 = "172.17.0.13"
 const podIPOpaque = "172.17.0.14"
 const podIPSkipped = "172.17.0.15"
 const podIPPolicy = "172.17.0.16"
 const podIPStatefulSet = "172.17.13.15"
 const externalIP = "192.168.1.20"
+const externalIPv6 = "2001:db8::78"
 const port uint32 = 8989
 const opaquePort uint32 = 4242
 const skippedPort uint32 = 24224
@@ -259,6 +263,25 @@ func TestGetProfiles(t *testing.T) {
 		}
 	})
 
+	t.Run("Return profile when using secondary cluster IP", func(t *testing.T) {
+		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := profileStream(t, server, clusterIPv6, port, "")
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
+		if profile.FullyQualifiedName != fullyQualifiedName {
+			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, profile.FullyQualifiedName)
+		}
+		if profile.OpaqueProtocol {
+			t.Fatalf("Expected port %d to not be an opaque protocol, but it was", port)
+		}
+		routes := profile.GetRoutes()
+		if len(routes) != 1 {
+			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
+		}
+	})
+
 	t.Run("Return profile with endpoint when using pod DNS", func(t *testing.T) {
 		server := makeServer(t)
 		defer server.clusterStore.UnregisterGauges()
@@ -308,6 +331,47 @@ func TestGetProfiles(t *testing.T) {
 		defer stream.Cancel()
 
 		epAddr, err := toAddress(podIP1, port)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// An explanation for why we expect 1 to 3 updates is in test cases
+		// above
+		updates := stream.Updates()
+		if len(updates) == 0 || len(updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(updates), updates)
+		}
+
+		first := updates[0]
+		if first.Endpoint == nil {
+			t.Fatalf("Expected response to have endpoint field")
+		}
+		if first.OpaqueProtocol {
+			t.Fatalf("Expected port %d to not be an opaque protocol, but it was", port)
+		}
+		_, exists := first.Endpoint.MetricLabels["namespace"]
+		if !exists {
+			t.Fatalf("Expected 'namespace' metric label to exist but it did not")
+		}
+		if first.GetEndpoint().GetProtocolHint() == nil {
+			t.Fatalf("Expected protocol hint but found none")
+		}
+		if first.GetEndpoint().GetProtocolHint().GetOpaqueTransport() != nil {
+			t.Fatalf("Expected pod to not support opaque traffic on port %d", port)
+		}
+		if first.Endpoint.Addr.String() != epAddr.String() {
+			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
+		}
+	})
+
+	t.Run("Return profile with endpoint when using pod secondary IP", func(t *testing.T) {
+		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := profileStream(t, server, podIP1v6, port, "ns:ns")
+		defer stream.Cancel()
+
+		epAddr, err := toAddress(podIP1v6, port)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
 		}
@@ -591,9 +655,10 @@ func TestGetProfiles(t *testing.T) {
 						Status: corev1.ConditionTrue,
 					},
 				},
-				HostIP: externalIP,
-				PodIP:  "172.17.0.55",
-				PodIPs: []corev1.PodIP{{IP: "172.17.0.55"}},
+				HostIP:  externalIP,
+				HostIPs: []corev1.HostIP{{IP: externalIP}, {IP: externalIPv6}},
+				PodIP:   "172.17.0.55",
+				PodIPs:  []corev1.PodIP{{IP: "172.17.0.55"}},
 			},
 		}, metav1.CreateOptions{})
 		if err != nil {
@@ -725,19 +790,22 @@ func toAddress(path string, port uint32) (*net.TcpAddress, error) {
 func TestIpWatcherGetSvcID(t *testing.T) {
 	name := "service"
 	namespace := "test"
-	clusterIP := "10.256.0.1"
-	var port uint32 = 1234
-	k8sConfigs := fmt.Sprintf(`
+	clusterIP := "10.245.0.1"
+	clusterIPv6 := "2001:db8::68"
+	k8sConfigs := `
 apiVersion: v1
 kind: Service
 metadata:
-  name: %s
-  namespace: %s
+  name: service
+  namespace: test
 spec:
   type: ClusterIP
-  clusterIP: %s
+  clusterIP: 10.245.0.1
+  clusterIPs:
+  - 10.245.0.1
+  - 2001:db8::68
   ports:
-  - port: %d`, name, namespace, clusterIP, port)
+  - port: 1234`
 
 	t.Run("get services IDs by IP address", func(t *testing.T) {
 		k8sAPI, err := k8s.NewFakeAPI(k8sConfigs)
@@ -758,6 +826,20 @@ spec:
 		}
 		if svc == nil {
 			t.Fatalf("Expected to find service mapped to [%s]", clusterIP)
+		}
+		if svc.Name != name {
+			t.Fatalf("Expected service name to be [%s], but got [%s]", name, svc.Name)
+		}
+		if svc.Namespace != namespace {
+			t.Fatalf("Expected service namespace to be [%s], but got [%s]", namespace, svc.Namespace)
+		}
+
+		svc6, err := getSvcID(k8sAPI, clusterIPv6, logging.WithFields(nil))
+		if err != nil {
+			t.Fatalf("Error getting service: %s", err)
+		}
+		if svc6 == nil {
+			t.Fatalf("Expected to find service mapped to [%s]", clusterIPv6)
 		}
 		if svc.Name != name {
 			t.Fatalf("Expected service name to be [%s], but got [%s]", name, svc.Name)
@@ -800,7 +882,7 @@ func profileStream(t *testing.T, server *server, host string, port uint32, token
 	go func() {
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
-			Path:         fmt.Sprintf("%s:%d", host, port),
+			Path:         gonet.JoinHostPort(host, fmt.Sprintf("%d", port)),
 			ContextToken: token,
 		}, stream)
 		if err != nil {

@@ -32,6 +32,9 @@ metadata:
 spec:
   type: LoadBalancer
   clusterIP: 172.17.12.0
+  clusterIPs:
+  - 172.17.12.0
+  - 2001:db8::88
   ports:
   - port: 8989`,
 		`
@@ -62,6 +65,7 @@ status:
   podIP: 172.17.0.12
   podIPs:
   - ip: 172.17.0.12
+  - ip: 2001:db8::68
 spec:
   containers:
     - env:

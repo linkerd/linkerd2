@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"errors"
 	"fmt"
 	"net"
 
@@ -68,10 +69,20 @@ func (i ID) String() string {
 // InitializeIndexers is used to initialize indexers on k8s informers, to be used across watchers
 func InitializeIndexers(k8sAPI *k8s.API) error {
 	err := k8sAPI.Svc().Informer().AddIndexers(cache.Indexers{PodIPIndex: func(obj interface{}) ([]string, error) {
-		if svc, ok := obj.(*corev1.Service); ok {
+		svc, ok := obj.(*corev1.Service)
+		if !ok {
+			return nil, errors.New("object is not a service")
+		}
+
+		if len(svc.Spec.ClusterIPs) != 0 {
+			return svc.Spec.ClusterIPs, nil
+		}
+
+		if svc.Spec.ClusterIP != "" {
 			return []string{svc.Spec.ClusterIP}, nil
 		}
-		return nil, fmt.Errorf("object is not a service")
+
+		return nil, nil
 	}})
 
 	if err != nil {
@@ -87,7 +98,16 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 			if pod.Spec.HostNetwork {
 				return nil, nil
 			}
-			return []string{pod.Status.PodIP}, nil
+			ips := []string{}
+			for _, pip := range pod.Status.PodIPs {
+				if pip.IP != "" {
+					ips = append(ips, pip.IP)
+				}
+			}
+			if len(ips) == 0 && pod.Status.PodIP != "" {
+				ips = append(ips, pod.Status.PodIP)
+			}
+			return ips, nil
 		}
 		return nil, fmt.Errorf("object is not a pod")
 	}})
@@ -97,24 +117,37 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 	}
 
 	err = k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{HostIPIndex: func(obj interface{}) ([]string, error) {
-		if pod, ok := obj.(*corev1.Pod); ok {
-			var hostIPPods []string
-			if pod.Status.HostIP != "" {
-				// If the pod is reachable from the host network, then for
-				// each of its containers' ports that exposes a host port, add
-				// that hostIP:hostPort endpoint to the indexer.
-				for _, c := range pod.Spec.Containers {
-					for _, p := range c.Ports {
-						if p.HostPort != 0 {
-							addr := net.JoinHostPort(pod.Status.HostIP, fmt.Sprintf("%d", p.HostPort))
-							hostIPPods = append(hostIPPods, addr)
-						}
-					}
+		pod, ok := obj.(*corev1.Pod)
+		if !ok {
+			return nil, errors.New("object is not a pod")
+		}
+
+		ips := []string{}
+		for _, hip := range pod.Status.HostIPs {
+			ips = append(ips, hip.IP)
+		}
+		if len(ips) == 0 && pod.Status.HostIP != "" {
+			ips = append(ips, pod.Status.HostIP)
+		}
+		if len(ips) == 0 {
+			return []string{}, nil
+		}
+
+		// If the pod is reachable from the host network, then for
+		// each of its containers' ports that exposes a host port, add
+		// that hostIP:hostPort endpoint to the indexer.
+		addrs := []string{}
+		for _, c := range pod.Spec.Containers {
+			for _, p := range c.Ports {
+				if p.HostPort == 0 {
+					continue
+				}
+				for _, ip := range ips {
+					addrs = append(addrs, net.JoinHostPort(ip, fmt.Sprintf("%d", p.HostPort)))
 				}
 			}
-			return hostIPPods, nil
 		}
-		return nil, fmt.Errorf("object is not a pod")
+		return addrs, nil
 	}})
 
 	if err != nil {
@@ -124,15 +157,15 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 	return nil
 }
 
-func getIndexedPods(k8sAPI *k8s.API, indexName string, podIP string) ([]*corev1.Pod, error) {
-	objs, err := k8sAPI.Pod().Informer().GetIndexer().ByIndex(indexName, podIP)
+func getIndexedPods(k8sAPI *k8s.API, indexName string, key string) ([]*corev1.Pod, error) {
+	objs, err := k8sAPI.Pod().Informer().GetIndexer().ByIndex(indexName, key)
 	if err != nil {
 		return nil, fmt.Errorf("failed getting %s indexed pods: %w", indexName, err)
 	}
 	pods := make([]*corev1.Pod, 0)
 	for _, obj := range objs {
 		pod := obj.(*corev1.Pod)
-		if !podReceivingTraffic(pod) {
+		if !podNotTerminating(pod) {
 			continue
 		}
 		pods = append(pods, pod)
@@ -140,10 +173,9 @@ func getIndexedPods(k8sAPI *k8s.API, indexName string, podIP string) ([]*corev1.
 	return pods, nil
 }
 
-func podReceivingTraffic(pod *corev1.Pod) bool {
+func podNotTerminating(pod *corev1.Pod) bool {
 	phase := pod.Status.Phase
 	podTerminated := phase == corev1.PodSucceeded || phase == corev1.PodFailed
 	podTerminating := pod.DeletionTimestamp != nil
-
 	return !podTerminating && !podTerminated
 }

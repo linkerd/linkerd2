@@ -95,11 +95,11 @@ func NewPodWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.E
 // the corresponding ip is found for the given service/hostname, and returned.
 func (pw *PodWatcher) Subscribe(service *ServiceID, hostname, ip string, port Port, listener PodUpdateListener) (string, error) {
 	if hostname != "" {
-		pw.log.Debugf("Establishing watch on %s.%s.%s:%d", hostname, service.Name, service.Namespace, port)
+		pw.log.Debugf("Establishing watch on pod %s.%s.%s:%d", hostname, service.Name, service.Namespace, port)
 	} else if service != nil {
-		pw.log.Debugf("Establishing watch on %s.%s:%d", service.Name, service.Namespace, port)
+		pw.log.Debugf("Establishing watch on pod %s.%s:%d", service.Name, service.Namespace, port)
 	} else {
-		pw.log.Debugf("Establishing watch on %s:%d", ip, port)
+		pw.log.Debugf("Establishing watch on pod %s:%d", ip, port)
 	}
 	pp, err := pw.getOrNewPodPublisher(service, hostname, ip, port)
 	if err != nil {
@@ -189,16 +189,32 @@ func (pw *PodWatcher) submitPodUpdate(pod *corev1.Pod, remove bool) {
 	if remove {
 		submitPod = nil
 	}
+
 	for _, container := range pod.Spec.Containers {
 		for _, containerPort := range container.Ports {
 			if containerPort.ContainerPort != 0 {
-				if pp, ok := pw.getPodPublisher(pod.Status.PodIP, Port(containerPort.ContainerPort)); ok {
-					pp.updatePod(submitPod)
+				for _, pip := range pod.Status.PodIPs {
+					if pp, ok := pw.getPodPublisher(pip.IP, Port(containerPort.ContainerPort)); ok {
+						pp.updatePod(submitPod)
+					}
+				}
+				if len(pod.Status.PodIPs) == 0 && pod.Status.PodIP != "" {
+					if pp, ok := pw.getPodPublisher(pod.Status.PodIP, Port(containerPort.ContainerPort)); ok {
+						pp.updatePod(submitPod)
+					}
 				}
 			}
+
 			if containerPort.HostPort != 0 {
-				if pp, ok := pw.getPodPublisher(pod.Status.HostIP, Port(containerPort.HostPort)); ok {
-					pp.updatePod(submitPod)
+				for _, hip := range pod.Status.HostIPs {
+					if pp, ok := pw.getPodPublisher(hip.IP, Port(containerPort.HostPort)); ok {
+						pp.updatePod(submitPod)
+					}
+				}
+				if len(pod.Status.HostIPs) == 0 && pod.Status.HostIP != "" {
+					if pp, ok := pw.getPodPublisher(pod.Status.HostIP, Port(containerPort.HostPort)); ok {
+						pp.updatePod(submitPod)
+					}
 				}
 			}
 		}
