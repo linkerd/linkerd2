@@ -32,7 +32,7 @@ jobs:
 
           dev=$(cargo version | cut -d' ' -f2)
           if [ "$dev" != "$tc" ]; then
-            echo "::error file=rust-toolchain,line=1::rust-toolchain ($tc) does not match devcontainer ($dev)"
+            echo "::error file=rust-toolchain.toml,line=2::rust-toolchain ($tc) does not match devcontainer ($dev)"
             exit 1
           fi
 
