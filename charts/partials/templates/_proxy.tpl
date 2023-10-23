@@ -170,7 +170,7 @@ livenessProbe:
     path: /live
     port: {{.Values.proxy.ports.admin}}
   initialDelaySeconds: {{.Values.proxy.livenessProbe.initialDelaySeconds | default 10}}
-  timeoutSeconds: {{.Values.proxy.livenessProbe.timeoutSeconds | default 30}}
+  timeoutSeconds: {{.Values.proxy.livenessProbe.timeoutSeconds | default 1}}
 name: linkerd-proxy
 ports:
 - containerPort: {{.Values.proxy.ports.inbound}}
