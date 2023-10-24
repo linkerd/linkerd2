@@ -345,7 +345,7 @@ func TestUninjectAndInject(t *testing.T) {
 			}(),
 		},
 		{
-			inputFileName:  "inject_emojivoto_deployment_native_sidecar.input.yml",
+			inputFileName:  "inject_emojivoto_deployment.input.yml",
 			goldenFileName: "inject_emojivoto_deployment_native_sidecar.golden.yml",
 			reportFileName: "inject_emojivoto_deployment_native_sidecar.report",
 			injectProxy:    true,
