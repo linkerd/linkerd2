@@ -158,7 +158,7 @@ webhooks:
   rules:
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["policy.linkerd.io"]
-    apiVersions: ["v1alpha1", "v1beta1"]
+    apiVersions: ["*"]
     resources:
     - authorizationpolicies
     - httproutes
@@ -166,6 +166,11 @@ webhooks:
     - meshtlsauthentications
     - serverauthorizations
     - servers
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["gateway.networking.k8s.io"]
+    apiVersions: ["*"]
+    resources:
+    - httproutes
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1176,7 +1181,7 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/helm-release-version: "0"
+        checksum/config: 387ff1ed65e66e400e556c47490d20187adcb885526d44d9f0aa75dc97f23223
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1605,7 +1610,7 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/helm-release-version: "0"
+        checksum/config: 27486d27c2df3e0123d3ae33c32dd419e9dedb66f03495501f4e8127961b299e
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"

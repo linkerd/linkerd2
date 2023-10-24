@@ -1,5 +1,189 @@
 # Changes
 
+## edge-23.10.3
+
+This edge release fixes issues in the proxy and Destination controller which can
+result in Linkerd proxies sending traffic to stale endpoints. In addition, it
+contains other bugfixes and updates dependencies to include patches for the
+security advisories [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3 and GHSA-c827-hfw6-qwvm.
+
+* Fixed an issue where the Destination controller could stop processing
+  changes in the endpoints of a destination, if a proxy subscribed to that
+  destination stops reading service discovery updates. This issue results in
+  proxies attempting to send traffic for that destination to stale endpoints
+  ([#11483], fixes [#11480], [#11279], and [#10590])
+* Fixed a regression introduced in stable-2.13.0 where proxies would not
+  terminate unused service discovery watches, exerting backpressure on the
+  Destination controller which could cause it to become stuck
+  ([linkerd2-proxy#2484] and [linkerd2-proxy#2486])
+* Added `INFO`-level logging to the proxy when endpoints are added or removed
+  from a load balancer. These logs are enabled by default, and can be disabled
+  by [setting the proxy log level][proxy-log-level] to
+  `warn,linkerd=info,linkerd_proxy_balance=warn` or similar
+  ([linkerd2-proxy#2486])
+* Fixed a regression where the proxy rendered `grpc_status` metric labels as a
+  string rather than as the numeric status code ([linkerd2-proxy#2480]; fixes
+  [#11449])
+* Extended `linkerd-jaeger`'s `imagePullSecrets` Helm value to also apply to
+the `namespace-metadata` ServiceAccount ([#11504])
+* Updated the control plane's dependency on the `golang.google.org/grpc` Go
+  package to include patches for [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3 ([#11496])
+* Updated dependencies on `rustix` to include patches for GHSA-c827-hfw6-qwvm
+  ([linkerd2-proxy#2488] and [#11512]).
+
+[#10590]: https://github.com/linkerd/linkerd2/issues/10590
+[#11279]: https://github.com/linkerd/linkerd2/issues/11279
+[#11483]: https://github.com/linkerd/linkerd2/issues/11483
+[#11449]: https://github.com/linkerd/linkerd2/issues/11449
+[#11480]: https://github.com/linkerd/linkerd2/issues/11480
+[#11504]: https://github.com/linkerd/linkerd2/issues/11504
+[#11512]: https://github.com/linkerd/linkerd2/issues/11512
+[linkerd2-proxy#2480]: https://github.com/linkerd/linkerd2-proxy/pull/2480
+[linkerd2-proxy#2484]: https://github.com/linkerd/linkerd2-proxy/pull/2484
+[linkerd2-proxy#2486]: https://github.com/linkerd/linkerd2-proxy/pull/2486
+[linkerd2-proxy#2488]: https://github.com/linkerd/linkerd2-proxy/pull/2488
+[proxy-log-level]: https://linkerd.io/2.14/tasks/modifying-proxy-log-level/
+[CVE-2023-44487]: https://github.com/advisories/GHSA-qppj-fm5r-hxr3
+
+## edge-23.10.2
+
+This edge release includes a fix addressing an issue during upgrades for
+instances not relying on automated webhook certificate management (like
+cert-manager provides).
+
+* Added a `checksum/config` annotation to the destination and proxy injector
+  deployment manifests, to force restarting those workloads whenever their
+  webhook secrets change during upgrade (thanks @iAnomaly!) ([#11440])
+* Fixed policy controller error when deleting a Gateway API HTTPRoute resource
+  ([#11471])
+
+[#11440]: https://github.com/linkerd/linkerd2/pull/11440
+[#11471]: https://github.com/linkerd/linkerd2/pull/11471
+
+## edge-23.10.1
+
+This edge release adds additional configurability to Linkerd's viz and
+multicluster extensions.
+
+* Added a `podAnnotations` Helm value to allow adding additional annotations to
+  the Linkerd-Viz Prometheus Deployment ([#11365]) (thanks @cemenson)
+* Added `imagePullSecrets` Helm values to the multicluster chart so that it can
+  be installed in an air-gapped environment. ([#11285]) (thanks @lhaussknecht)
+
+[#11365]: https://github.com/linkerd/linkerd2/issues/11365
+[#11285]: https://github.com/linkerd/linkerd2/issues/11285
+
+## edge-23.9.4
+
+This edge release makes Linkerd even better.
+
+* Added a controlPlaneVersion override to the `linkerd-control-plane` Helm chart
+  to support including SHA256 image digests in Linkerd manifests (thanks
+  @cromulentbanana!) ([#11406])
+* Improved `linkerd viz check` to attempt to validate that the Prometheus scrape
+  interval will work well with the CLI and Web query parameters ([#11376])
+* Improved CLI error handling to print differentiated error information when
+  versioncheck.linkerd.io cannot be resolved (thanks @dtaskai) ([#11377])
+* Fixed an issue where the destination controller would not update pod metadata
+  for profile resolutions for a pod accessed via the host network (e.g.
+  HostPort endpoints) ([#11334]).
+* Added a validating webhook config for httproutes.gateway.networking.k8s.io
+  resources (thanks @mikutas!) ([#11150])
+* Introduced a new `multicluster check --timeout` flag to limit the time
+  allowed for Kubernetes API calls (thanks @moki1202) ([#11420])
+
+[#11150]: https://github.com/linkerd/linkerd2/pull/11150
+[#11334]: https://github.com/linkerd/linkerd2/pull/11334
+[#11376]: https://github.com/linkerd/linkerd2/pull/11376
+[#11377]: https://github.com/linkerd/linkerd2/pull/11377
+[#11406]: https://github.com/linkerd/linkerd2/pull/11406
+[#11420]: https://github.com/linkerd/linkerd2/pull/11420
+
+## edge-23.9.3
+
+This edge release updates the proxy's dependency on the `rustls` library to
+patch security vulnerability [RUSTSEC-2023-0052][RUSTSEC-2023-0052-0]
+(GHSA-8qv2-5vq6-g2g7), a potential CPU usage denial-of-service attack when
+acceting a TLS handshake from an untrusted peer with a maliciously-crafted
+certificate. Furthermore, this edge release contains a few improvements to the
+control plane and jaeger extension Helm charts.
+
+* Addressed security vulnerability [RUSTSEC-2023-0052][RUSTSEC-2023-0052-0] in
+  the proxy by updating its dependency on the `rustls` library
+* Added a `prometheusUrl` field for the heartbeat job in the control plane Helm
+  chart (thanks @david972!) ([#11343]; fixes [#11342])
+* Introduced support for arbitrary labels in the `podMonitors` field in the
+  control plane Helm chart (thanks @jseiser!) ([#11222]; fixes [#11175])
+* Added support for config merge and Deployment environment to
+  `opentelemetry-collector` in the jaeger extension (thanks @iAnomaly!)
+  ([#11283])
+
+[#11283]: https://github.com/linkerd/linkerd2/pull/11283
+[#11222]: https://github.com/linkerd/linkerd2/pull/11222
+[#11175]: https://github.com/linkerd/linkerd2/issues/11175
+[#11343]: https://github.com/linkerd/linkerd2/pull/11343
+[#11342]: https://github.com/linkerd/linkerd2/issues/11342
+[RUSTSEC-2023-0052-0]: https://rustsec.org/advisories/RUSTSEC-2023-0052.html
+
+## edge-23.9.2
+
+This edge release updates the proxy's dependency on the `webpki` library to
+patch security vulnerability [RUSTSEC-2023-0052] (GHSA-8qv2-5vq6-g2g7), a
+potential CPU usage denial-of-service attack when accepting a TLS handshake from
+an untrusted peer with a maliciously-crafted certificate.
+
+* Addressed security vulnerability [RUSTSEC-2023-0052] in the proxy ([#11361])
+* Fixed `linkerd check --proxy` incorrectly checking the proxy version of pods
+  in the `completed` state (thanks @mikutas!) ([#11295]; fixes [#11280])
+* Removed unnecessary `linkerd.io/helm-release-version` annotation from the
+  `linkerd-control-plane` Helm chart (thanks @mikutas!) ([#11329]; fixes
+  [#10778])
+
+[RUSTSEC-2023-0052]: https://rustsec.org/advisories/RUSTSEC-2023-0052.html
+[#11295]: https://github.com/linkerd/linkerd2/pull/11295
+[#11280]: https://github.com/linkerd/linkerd2/issues/11280
+[#11361]: https://github.com/linkerd/linkerd2/pull/11361
+[#11329]: https://github.com/linkerd/linkerd2/pull/11329
+[#10778]: https://github.com/linkerd/linkerd2/issues/10778
+
+## edge-23.9.1
+
+This edge release introduces a fix for service discovery on endpoints that use
+hostPorts. Previously, the destination service would return the pod IP for the
+discovery request which could break connectivity on pod restart. To fix this,
+direct pod communication for a pod bound on a hostPort will always return the
+hostIP. In addition, this release fixes a security vulnerability (CVE-2023-2603)
+detected in the CNI plugin and proxy-init images, and includes a number of other
+fixes and small improvements.
+
+* Addressed security vulnerability CVE-2023-2603 in proxy-init and CNI plugin
+  ([#11296])
+* Introduced resource requests/limits for the policy controller resource in the
+  control plane helm chart ([#11301])
+* Fixed an issue where an empty `remoteDiscoverySelector` field in a
+  multicluster link would cause all services to be mirrored ([#11309])
+* Removed time out from `linkerd multicluster gateways` command; when no
+  metrics exist the command will return instantly ([#11265])
+* Improved help messaging for `linkerd multicluster link` ([#11265])
+* Changed how hostPort lookups are handled in the destination service.
+  Previously, when doing service discovery for an endpoint bound on a hostPort,
+  the destination service would return the corresponding pod IP. On pod
+  restart, this could lead to loss of connectivity on the client's side. The
+  destination service now always returns host IPs for service discovery on an
+  endpoint that uses hostPorts ([#11328])
+* Updated HTTPRoute webhook rule to validate all apiVersions of the resource
+  (thanks @mikutas!) ([#11149])
+* Fixed erroneous `skipped` messages when injecting namespaces with `linkerd
+  inject` (thanks @mikutas!) ([#10231])
+
+[#11309]: https://github.com/linkerd/linkerd2/issues/11309
+[#11296]: https://github.com/linkerd/linkerd2/discussions/11296
+[#11328]: https://github.com/linkerd/linkerd2/pull/11328
+[#11301]: https://github.com/linkerd/linkerd2/issues/11301
+[#11265]: https://github.com/linkerd/linkerd2/pull/11265
+[#11149]: https://github.com/linkerd/linkerd2/pull/11149
+[#10231]: https://github.com/linkerd/linkerd2/issues/10231
+
 ## stable-2.14.0
 
 This release introduces direct pod-to-pod multicluster service mirroring. When

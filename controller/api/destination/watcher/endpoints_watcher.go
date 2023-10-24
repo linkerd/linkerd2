@@ -1321,7 +1321,8 @@ func SetToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
 			case intstr.String:
 				for _, c := range address.Pod.Spec.Containers {
 					for _, p := range c.Ports {
-						if p.ContainerPort == int32(port) && p.Name == server.Spec.Port.StrVal {
+						if (p.ContainerPort == int32(port) || p.HostPort == int32(port)) &&
+							p.Name == server.Spec.Port.StrVal {
 							portMatch = true
 						}
 					}

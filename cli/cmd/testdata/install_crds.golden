@@ -5980,10 +5980,8 @@ spec:
                                   type: object
                                   x-kubernetes-preserve-unknown-fields: true
                               not:
-                                type: array
-                                items:
-                                  type: object
-                                  x-kubernetes-preserve-unknown-fields: true
+                                type: object
+                                x-kubernetes-preserve-unknown-fields: true
                               status:
                                 type: object
                                 description: Range describes a range of integers (e.g. status codes).
@@ -6106,10 +6104,8 @@ spec:
                                   type: object
                                   x-kubernetes-preserve-unknown-fields: true
                               not:
-                                type: array
-                                items:
-                                  type: object
-                                  x-kubernetes-preserve-unknown-fields: true
+                                type: object
+                                x-kubernetes-preserve-unknown-fields: true
                               status:
                                 type: object
                                 description: Range describes a range of integers (e.g. status codes).

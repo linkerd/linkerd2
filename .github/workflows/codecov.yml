@@ -16,7 +16,7 @@ jobs:
     container:
       image: golang:1.19
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - run: go install gotest.tools/gotestsum@v0.4.2
       - run: gotestsum -- -cover -coverprofile=coverage.out -v -mod=readonly ./...
       - uses: codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d
@@ -29,9 +29,9 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-20.04
     container:
-      image: node:14-stretch
+      image: node:20-stretch
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - name: Yarn setup
         shell: bash
         run: bin/scurl -o- https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
@@ -54,7 +54,7 @@ jobs:
       image: docker://rust:1.69.0
       options: --security-opt seccomp=unconfined
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - shell: bash
         run: mkdir -p target && cd target && bin/scurl -v https://github.com/xd009642/tarpaulin/releases/download/0.18.0/cargo-tarpaulin-0.18.0-travis.tar.gz | tar zxvf - && chmod 755 cargo-tarpaulin
       - run: target/cargo-tarpaulin tarpaulin --workspace --out Xml

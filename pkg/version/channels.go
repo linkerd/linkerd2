@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/linkerd/linkerd2/pkg/util"
@@ -44,6 +45,10 @@ func (c Channels) Match(actualVersion string) error {
 		return errors.New("actual version is empty")
 	}
 
+	if c.Empty() {
+		return errors.New("unable to determine version channel")
+	}
+
 	actual, err := parseChannelVersion(actualVersion)
 	if err != nil {
 		return fmt.Errorf("failed to parse actual version: %w", err)
@@ -56,6 +61,11 @@ func (c Channels) Match(actualVersion string) error {
 	}
 
 	return fmt.Errorf("unsupported version channel: %s", actualVersion)
+}
+
+// Determines whether there are any release channels stored in the struct.
+func (c Channels) Empty() bool {
+	return len(c.array) == 0
 }
 
 // GetLatestVersions performs an online request to check for the latest Linkerd
@@ -73,6 +83,10 @@ func getLatestVersions(ctx context.Context, client *http.Client, url string) (Ch
 
 	rsp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
+		var dnsError *net.DNSError
+		if errors.As(err, &dnsError) {
+			return Channels{}, fmt.Errorf("failed to resolve version check server: %s", url)
+		}
 		return Channels{}, err
 	}
 	defer rsp.Body.Close()

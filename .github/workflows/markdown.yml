@@ -14,8 +14,8 @@ jobs:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
-      - uses: DavidAnson/markdownlint-cli2-action@8f3516061301755c97ff833a8e933f09282cc5b5
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: DavidAnson/markdownlint-cli2-action@ed4dec634fd2ef689c7061d5647371d8248064f1
         with:
           globs: |
             **/*.md

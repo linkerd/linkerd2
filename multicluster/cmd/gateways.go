@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 	"strings"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/linkerd/linkerd2/cli/table"
@@ -198,15 +198,15 @@ func newGatewaysCommand() *cobra.Command {
 func getGatewayMetrics(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, leaders map[string]struct{}, wait time.Duration) []gatewayMetrics {
 	var metrics []gatewayMetrics
 	metricsChan := make(chan gatewayMetrics)
-	var activeRoutines int32
+	var wg sync.WaitGroup
 	for _, pod := range pods {
 		if _, found := leaders[pod.Name]; !found {
 			continue
 		}
 
-		atomic.AddInt32(&activeRoutines, 1)
+		wg.Add(1)
 		go func(p corev1.Pod) {
-			defer atomic.AddInt32(&activeRoutines, -1)
+			defer wg.Done()
 			name := p.Labels[k8s.RemoteClusterNameLabel]
 			container, err := getServiceMirrorContainer(p)
 			if err != nil {
@@ -224,20 +224,29 @@ func getGatewayMetrics(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, leaders map
 			}
 		}(pod)
 	}
+
+	go func() {
+		wg.Wait()
+		close(metricsChan)
+	}()
+
 	timeout := time.NewTimer(wait)
 	defer timeout.Stop()
+
 wait:
 	for {
 		select {
 		case metric := <-metricsChan:
+			if metric.clusterName == "" {
+				// channel closed
+				break wait
+			}
 			metrics = append(metrics, metric)
 		case <-timeout.C:
 			break wait
 		}
-		if atomic.LoadInt32(&activeRoutines) == 0 {
-			break
-		}
 	}
+
 	return metrics
 }
 

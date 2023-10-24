@@ -406,8 +406,8 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         let id = NamespaceGroupKindName {
             namespace,
             gkn: GroupKindName {
-                group: k8s::policy::HttpRoute::group(&()),
-                kind: k8s::policy::HttpRoute::kind(&()),
+                group: k8s_gateway_api::HttpRoute::group(&()),
+                kind: k8s_gateway_api::HttpRoute::kind(&()),
                 name: name.into(),
             },
         };

@@ -167,7 +167,7 @@ webhooks:
   rules:
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["policy.linkerd.io"]
-    apiVersions: ["v1alpha1", "v1beta1"]
+    apiVersions: ["*"]
     resources:
     - authorizationpolicies
     - httproutes
@@ -175,6 +175,11 @@ webhooks:
     - meshtlsauthentications
     - serverauthorizations
     - servers
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["gateway.networking.k8s.io"]
+    apiVersions: ["*"]
+    resources:
+    - httproutes
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -660,7 +665,7 @@ data:
       image:
         name: my.custom.registry/linkerd-io/proxy-init
         pullPolicy: ""
-        version: v2.2.1
+        version: v2.2.3
       iptablesMode: legacy
       kubeAPIServerPorts: 443,6443
       logFormat: ""
@@ -1026,7 +1031,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: my.custom.registry/linkerd-io/proxy-init:v2.2.1
+        image: my.custom.registry/linkerd-io/proxy-init:v2.2.3
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1201,6 +1206,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: 6c6be36634a1edea1ebcad1c3981959c48eb6b78684e7093058a50eca6ba2f97
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: install-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1486,7 +1492,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: my.custom.registry/linkerd-io/proxy-init:v2.2.1
+        image: my.custom.registry/linkerd-io/proxy-init:v2.2.3
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1625,6 +1631,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: d0a59489b5026951c56c51a6307d7dbab88c3b2fae24a84d2a115fbf5ac75db4
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: install-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1826,7 +1833,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: my.custom.registry/linkerd-io/proxy-init:v2.2.1
+        image: my.custom.registry/linkerd-io/proxy-init:v2.2.3
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

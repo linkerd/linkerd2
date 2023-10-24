@@ -21,7 +21,7 @@ jobs:
   tag:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
         id: tag
     outputs:
@@ -49,7 +49,7 @@ jobs:
     # policy-controller docker builds have occasionally hit a 30-minute timeout.
     timeout-minutes: 45
     steps:
-    - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
     - name: Set tag
       run: echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
     - uses: ./.github/actions/docker-build
@@ -82,7 +82,7 @@ jobs:
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact
       if: matrix.component == 'cli-bin'
-      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+      uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
       with:
         name: image-archives
         path: /home/runner/archives
@@ -94,8 +94,8 @@ jobs:
     needs: [docker_build]
     steps:
     - name: Checkout code
-      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
-    - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+    - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
       with:
         go-version: '1.19'
     - name: Download image archives
@@ -127,8 +127,8 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
-    - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+    - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
       with:
         go-version: '1.19'
     - name: Set environment variables from scripts
@@ -151,11 +151,11 @@ jobs:
     runs-on: [self-hosted, Linux, ARM64]
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
-      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
         with:
           go-version: '1.19'
-      - uses: docker/setup-buildx-action@4c0219f9ac95b02789c1075625400b2acbff50b1
+      - uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226
       - name: Pull linkerd binary
         run: |
           TAG='${{ needs.tag.outputs.tag }}'
@@ -199,7 +199,7 @@ jobs:
     steps:
     - name: Checkout code
       if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
     - name: Chocolatey - update nuspec
       if: startsWith(github.ref, 'refs/tags/stable')
       run: |
@@ -207,12 +207,12 @@ jobs:
         (Get-Content bin\win\linkerd.nuspec).replace('LINKERD_VERSION', "$LINKERD_VERSION") | Set-Content bin\win\linkerd.nuspec
     - name: Chocolatey - pack
       if: startsWith(github.ref, 'refs/tags/stable')
-      uses: crazy-max/ghaction-chocolatey@5a5864861ce2c988001531e48993aa687c51f6c8
+      uses: crazy-max/ghaction-chocolatey@0e015857dd851f84fcb7fb53380eb5c4c8202333
       with:
         args: pack bin/win/linkerd.nuspec
     - name: Chocolatey - upload package
       if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+      uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
       with:
         name: choco
         path: ./linkerd.*.nupkg
@@ -229,7 +229,7 @@ jobs:
     permissions:
       contents: write
     steps:
-    - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
     - name: Set environment variables
       run: |
         echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
@@ -271,7 +271,7 @@ jobs:
       contents: write
     steps:
     - name: Create linkerd/website repository dispatch event
-      uses: peter-evans/repository-dispatch@26b39ed245ab8f31526069329e112ab2fb224588
+      uses: peter-evans/repository-dispatch@bf47d102fdb849e755b0b0023ea3e81a44b6f570
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
         repository: linkerd/website
@@ -284,7 +284,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
     - name: Set install target for stable
       if: startsWith(github.ref, 'refs/tags/stable')
       run: echo "INSTALL=install" >> "$GITHUB_ENV"
@@ -312,7 +312,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
     - name: Log into GCP
       uses: 'google-github-actions/auth@35b0e87d162680511bf346c299f71c9c5c379033'
       with:

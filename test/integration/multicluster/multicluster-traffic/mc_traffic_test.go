@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	mcHealthcheck "github.com/linkerd/linkerd2/multicluster/cmd"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/testutil"
 	"github.com/linkerd/linkerd2/testutil/prommatch"
@@ -135,7 +137,8 @@ func TestCheckGatewayAfterRepairEndpoints(t *testing.T) {
 			contexts[testutil.SourceContextKey], err)
 	}
 	time.Sleep(time.Minute + 5*time.Second)
-	if err := TestHelper.TestCheckMc("--context", contexts[testutil.SourceContextKey]); err != nil {
+	err := TestHelper.TestCheckWith([]healthcheck.CategoryID{mcHealthcheck.LinkerdMulticlusterExtensionCheck}, "--context", contexts[testutil.SourceContextKey])
+	if err != nil {
 		t.Fatalf("'linkerd check' command failed: %s", err)
 	}
 }

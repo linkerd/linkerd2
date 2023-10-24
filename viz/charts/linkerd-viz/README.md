@@ -3,7 +3,7 @@
 The Linkerd-Viz extension contains observability and visualization
 components for Linkerd.
 
-![Version: 30.11.0](https://img.shields.io/badge/Version-30.11.0-informational?style=flat-square)
+![Version: 30.13.3-edge](https://img.shields.io/badge/Version-30.13.3--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -141,10 +141,11 @@ Kubernetes: `>=1.21.0-0`
 | prometheus.image.name | string | `"prometheus"` | Docker image name for the prometheus instance |
 | prometheus.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the prometheus instance |
 | prometheus.image.registry | string | `"prom"` | Docker registry for the prometheus instance |
-| prometheus.image.tag | string | `"v2.43.0"` | Docker image tag for the prometheus instance |
+| prometheus.image.tag | string | `"v2.47.0"` | Docker image tag for the prometheus instance |
 | prometheus.logFormat | string | defaultLogLevel | log format (plain, json) of the prometheus instance |
 | prometheus.logLevel | string | defaultLogLevel | log level of the prometheus instance |
 | prometheus.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
+| prometheus.podAnnotations | object | `{}` | annotations for the prometheus pod |
 | prometheus.proxy | string | `nil` |  |
 | prometheus.remoteWrite | string | `nil` | Allows transparently sending samples to an endpoint. Mostly used for long term storage. |
 | prometheus.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the prometheus container can use |
