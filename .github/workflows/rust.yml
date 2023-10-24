@@ -49,7 +49,7 @@ jobs:
       - run: just rs-check-fmt
 
   clippy:
-    timeout-minutes: 10
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     container: ghcr.io/linkerd/dev:v40-rust
     steps:
@@ -85,13 +85,23 @@ jobs:
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - run: |
-          ex=0
+      - shell: bash
+        run: |
+          # Extract current Rust version from the toolchain file.
+          version_regex='channel = "([0-9]+\.[0-9]+\.[0-9]+)"'
+          toolchain=$(cat rust-toolchain.toml)
+          if [[ $toolchain =~ $version_regex ]]; then
+            toolchain_version=${BASH_REMATCH[1]}
+          else
+            echo "::error file=rust-toolchain.toml::failed to parse rust-toolchain.toml"
+            exit 1
+          fi
 
+          ex=0
           # Check this workflow against the version in rust-toolchain.
           versions=$(sed -nE 's|.*docker://(.*/)?rust:([^ #]+).*|\2|p' .github/workflows/*)
-          for mismatch in $(echo "$versions" | grep -vF "$(cat rust-toolchain)" || true) ; do
-            echo "::error file=.github/workflows/rust.yml::Workflow uses incorrect rust version(s): $mismatch"
+          for mismatch in $(echo "$versions" | grep -vF "$toolchain_version" || true) ; do
+            echo "::error file=.github/workflows/rust.yml::Workflow uses incorrect rust version(s): $mismatch (expected '$toolchain_version)')"
             ex=$((ex + 1))
           done
 
