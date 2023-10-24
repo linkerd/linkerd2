@@ -103,7 +103,17 @@
       "image": "cr.l5d.io/linkerd/debug:dev-undefined",
       "imagePullPolicy": "IfNotPresent",
       "name": "linkerd-debug",
-      "terminationMessagePolicy": "FallbackToLogsOnError"
+      "terminationMessagePolicy": "FallbackToLogsOnError",
+      "livenessProbe": {
+          "exec": {
+              "command": ["true"]
+          }
+      },
+      "readinessProbe": {
+          "exec": {
+              "command": ["true"]
+          }
+      }
     }
   },
   {

@@ -177,14 +177,12 @@ spec:
         livenessProbe:
           exec:
             command:
-            - touch
-            - /tmp/healthy
+            - "true"
         name: linkerd-debug
         readinessProbe:
           exec:
             command:
-            - touch
-            - /tmp/healthy
+            - "true"
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
       - args:

@@ -3,14 +3,13 @@ image: {{.Values.debugContainer.image.name}}:{{.Values.debugContainer.image.vers
 imagePullPolicy: {{.Values.debugContainer.image.pullPolicy | default .Values.imagePullPolicy}}
 name: linkerd-debug
 terminationMessagePolicy: FallbackToLogsOnError
+# some environments require probes, so we provide some infallible ones
 livenessProbe:
     exec:
       command:
-      - touch
-      - /tmp/healthy
+      - "true"
 readinessProbe:
     exec:
       command:
-      - touch
-      - /tmp/healthy
+      - "true"
 {{- end -}}
