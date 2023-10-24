@@ -5,12 +5,12 @@ name: linkerd-debug
 terminationMessagePolicy: FallbackToLogsOnError
 livenessProbe:
     exec:
-    command:
-    - touch
-    - /tmp/healthy
+      command:
+      - touch
+      - /tmp/healthy
 readinessProbe:
     exec:
-    command:
-    - touch
-    - /tmp/healthy
+      command:
+      - touch
+      - /tmp/healthy
 {{- end -}}

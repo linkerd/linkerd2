@@ -174,7 +174,17 @@ spec:
           name: http
       - image: cr.l5d.io/linkerd/debug:test-inject-debug-version
         imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - touch
+            - /tmp/healthy
         name: linkerd-debug
+        readinessProbe:
+          exec:
+            command:
+            - touch
+            - /tmp/healthy
         terminationMessagePolicy: FallbackToLogsOnError
       initContainers:
       - args:
