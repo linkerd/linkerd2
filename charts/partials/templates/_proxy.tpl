@@ -92,7 +92,7 @@ env:
 {{ end -}}
 - name: LINKERD2_PROXY_DESTINATION_CONTEXT
   value: |
-    {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+    {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)", "pod":"$(_pod_name)"}
 - name: _pod_sa
   valueFrom:
     fieldRef:
