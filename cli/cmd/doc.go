@@ -280,5 +280,9 @@ func generateAnnotationsDocs() []annotationDoc {
 			Name:        k8s.ProxyShutdownGracePeriodAnnotation,
 			Description: "Grace period for graceful proxy shutdowns. If this timeout elapses before all open connections have completed, the proxy will terminate forcefully, closing any remaining connections.",
 		},
+		{
+			Name:        k8s.ProxyEnableNativeSidecarAnnotation,
+			Description: "Enables native sidecars as init containers. Requires Kubernetes >=1.28, SidecarContainers feature gate, and disables waitBeforeExitSeconds.",
+		},
 	}
 }
