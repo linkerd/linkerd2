@@ -82,6 +82,7 @@ Kubernetes: `>=1.21.0-0`
 | collector.image.pullPolicy | string | `""` |  |
 | collector.image.version | string | `"0.83.0"` |  |
 | collector.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
+| collector.replicas | int | `1` | Number of collector component replicas |
 | collector.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the collector container can use |
 | collector.resources.cpu.request | string | `nil` | Amount of CPU units that the collector container requests |
 | collector.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the collector container can use |
@@ -92,6 +93,7 @@ Kubernetes: `>=1.21.0-0`
 | commonLabels | object | `{}` | Labels to apply to all resources |
 | defaultUID | int | `2103` | Default UID for all the jaeger components |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
+| enablePodAntiAffinity | bool | `false` | enables pod anti affinity creation on deployments for high availability |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | jaeger.UID | string | `nil` | UID for the jaeger resource |
 | jaeger.args | list | `["--query.base-path=/jaeger"]` | CLI arguments for Jaeger, See [Jaeger AIO Memory CLI reference](https://www.jaegertracing.io/docs/1.24/cli/#jaeger-all-in-one-memory) |
@@ -107,6 +109,7 @@ Kubernetes: `>=1.21.0-0`
 | jaeger.resources.memory.limit | string | `nil` | Maximum amount of memory that jaeger container can use |
 | jaeger.resources.memory.request | string | `nil` | Amount of memory that the jaeger container requests |
 | jaeger.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
+| jaegerInjector.replicas | int | `1` | Number of jaeger-injector component replicas |
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` |  |
 | namespaceMetadata.image.name | string | `"extension-init"` | Docker image name for the namespace-metadata instance |

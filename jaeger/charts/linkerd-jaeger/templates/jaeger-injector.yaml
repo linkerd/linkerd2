@@ -16,11 +16,16 @@ metadata:
   name: jaeger-injector
   namespace: {{ .Release.Namespace }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.jaegerInjector.replicas }}
   selector:
     matchLabels:
       linkerd.io/extension: jaeger
       component: jaeger-injector
+  {{- if .Values.enablePodAntiAffinity }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  {{- end }}
   template:
     metadata:
       annotations:

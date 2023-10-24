@@ -68,10 +68,15 @@ metadata:
   name: collector
   namespace: {{ .Release.Namespace }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.collector.replicas }}
   selector:
     matchLabels:
       component: collector
+  {{- if .Values.enablePodAntiAffinity }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  {{- end }}
   minReadySeconds: 5
   progressDeadlineSeconds: 120
   template:
@@ -209,6 +214,11 @@ spec:
   selector:
     matchLabels:
       component: jaeger
+  {{- if .Values.enablePodAntiAffinity }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  {{- end }}
   template:
     metadata:
       annotations:

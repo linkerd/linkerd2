@@ -22,6 +22,11 @@ imagePullSecrets: []
 # for more information
 tolerations: &default_tolerations
 
+# -- Enables Pod Anti Affinity logic to balance the placement of replicas
+# across hosts and zones for High Availability.
+# Enable this only when you have multiple replicas of components.
+enablePodAntiAffinity: false
+
 # -- NodeAffinity section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
 # for more information
@@ -41,6 +46,8 @@ clusterDomain: cluster.local
 collector:
   # -- Set to false to exclude collector installation
   enabled: true
+  # -- number of replicas of the collector component
+  replicas: 1
   image:
     name: otel/opentelemetry-collector-contrib
     version: 0.83.0
@@ -203,6 +210,10 @@ jaeger:
 
   # -- UID for the jaeger resource
   UID:
+
+jaegerInjector:
+  # -- number of replicas of the jaeger-injector component
+  replicas: 1
 
 linkerdVersion: &linkerd_version linkerdVersionValue
 
