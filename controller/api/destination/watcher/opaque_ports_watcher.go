@@ -3,6 +3,7 @@ package watcher
 import (
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	labels "github.com/linkerd/linkerd2/pkg/k8s"
@@ -59,7 +60,7 @@ func NewOpaquePortsWatcher(k8sAPI *k8s.API, log *logging.Entry, opaquePorts map[
 	_, err := k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    opw.addService,
 		DeleteFunc: opw.deleteService,
-		UpdateFunc: func(_, obj interface{}) { opw.addService(obj) },
+		UpdateFunc: opw.updateService,
 	})
 	if err != nil {
 		return nil, err
@@ -131,6 +132,19 @@ func (opw *OpaquePortsWatcher) Unsubscribe(id ServiceID, listener OpaquePortsUpd
 		}
 		delete(opw.subscriptions, id)
 	}
+}
+
+func (opw *OpaquePortsWatcher) updateService(oldObj interface{}, newObj interface{}) {
+	newSvc := newObj.(*corev1.Service)
+	oldSvc := oldObj.(*corev1.Service)
+
+	oldUpdated := latestUpdated(oldSvc.ManagedFields)
+	updated := latestUpdated(newSvc.ManagedFields)
+	if !updated.IsZero() && updated != oldUpdated {
+		delta := time.Since(updated)
+		serviceInformerLag.Observe(float64(delta.Milliseconds()))
+	}
+	opw.addService(newObj)
 }
 
 func (opw *OpaquePortsWatcher) addService(obj interface{}) {
