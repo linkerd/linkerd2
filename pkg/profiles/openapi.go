@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"path"
 	"sort"
+	"strings"
 
 	"github.com/go-openapi/spec"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
@@ -67,9 +67,10 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomai
 		sort.Strings(paths)
 	}
 
+	base := strings.TrimRight(swagger.BasePath, "/")
 	for _, relPath := range paths {
 		item := swagger.Paths.Paths[relPath]
-		path := path.Join(swagger.BasePath, relPath)
+		path := base + "/" + strings.TrimLeft(relPath, "/")
 		pathRegex := PathToRegex(path)
 		if item.Delete != nil {
 			spec := MkRouteSpec(path, pathRegex, http.MethodDelete, item.Delete)
