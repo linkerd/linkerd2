@@ -1,16 +1,23 @@
 package destination
 
 import (
+	"sync"
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/api/util"
+	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
 )
 
 func makeServer(t *testing.T) *server {
+	srv, _ := getServerWithClient(t)
+	return srv
+}
+
+func getServerWithClient(t *testing.T) (*server, *l5dcrdclient.Interface) {
 	meshedPodResources := []string{`
 apiVersion: v1
 kind: Namespace
@@ -444,16 +451,16 @@ spec:
 	res = append(res, hostPortMapping...)
 	res = append(res, mirrorServiceResources...)
 	res = append(res, destinationCredentialsResources...)
-	k8sAPI, err := k8s.NewFakeAPI(res...)
+	k8sAPI, l5dClient, err := k8s.NewFakeAPIWithL5dClient(res...)
 	if err != nil {
-		t.Fatalf("NewFakeAPI returned an error: %s", err)
+		t.Fatalf("NewFakeAPIWithL5dClient returned an error: %s", err)
 	}
 	metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
 	if err != nil {
 		t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
 	}
 	log := logging.WithField("test", t.Name())
-	logging.SetLevel(logging.DebugLevel)
+	logging.SetLevel(logging.TraceLevel)
 	defaultOpaquePorts := map[uint32]struct{}{
 		25:    {},
 		443:   {},
@@ -468,6 +475,10 @@ spec:
 		t.Fatalf("initializeIndexers returned an error: %s", err)
 	}
 
+	pods, err := watcher.NewPodWatcher(k8sAPI, metadataAPI, log, defaultOpaquePorts)
+	if err != nil {
+		t.Fatalf("can't create Pods watcher: %s", err)
+	}
 	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, false, "local")
 	if err != nil {
 		t.Fatalf("can't create Endpoints watcher: %s", err)
@@ -479,10 +490,6 @@ spec:
 	profiles, err := watcher.NewProfileWatcher(k8sAPI, log)
 	if err != nil {
 		t.Fatalf("can't create profile watcher: %s", err)
-	}
-	servers, err := watcher.NewServerWatcher(k8sAPI, log)
-	if err != nil {
-		t.Fatalf("can't create Server watcher: %s", err)
 	}
 
 	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", false, watcher.CreateMockDecoder(exportedServiceResources...))
@@ -498,10 +505,10 @@ spec:
 
 	return &server{
 		pb.UnimplementedDestinationServer{},
+		pods,
 		endpoints,
 		opaquePorts,
 		profiles,
-		servers,
 		clusterStore,
 		true,
 		"linkerd",
@@ -512,36 +519,45 @@ spec:
 		metadataAPI,
 		log,
 		make(<-chan struct{}),
-	}
+	}, l5dClient
 }
 
 type bufferingGetStream struct {
-	updates []*pb.Update
+	updates chan *pb.Update
 	util.MockServerStream
 }
 
 func (bgs *bufferingGetStream) Send(update *pb.Update) error {
-	bgs.updates = append(bgs.updates, update)
+	bgs.updates <- update
 	return nil
 }
 
 type bufferingGetProfileStream struct {
 	updates []*pb.DestinationProfile
 	util.MockServerStream
+	mu sync.Mutex
 }
 
 func (bgps *bufferingGetProfileStream) Send(profile *pb.DestinationProfile) error {
+	bgps.mu.Lock()
+	defer bgps.mu.Unlock()
 	bgps.updates = append(bgps.updates, profile)
 	return nil
 }
 
+func (bgps *bufferingGetProfileStream) Updates() []*pb.DestinationProfile {
+	bgps.mu.Lock()
+	defer bgps.mu.Unlock()
+	return bgps.updates
+}
+
 type mockDestinationGetServer struct {
 	util.MockServerStream
-	updatesReceived []*pb.Update
+	updatesReceived chan *pb.Update
 }
 
 func (m *mockDestinationGetServer) Send(update *pb.Update) error {
-	m.updatesReceived = append(m.updatesReceived, update)
+	m.updatesReceived <- update
 	return nil
 }
 
@@ -584,7 +600,7 @@ metadata:
 	}
 	metadataAPI.Sync(nil)
 
-	mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
+	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
 	translator := newEndpointTranslator(
 		"linkerd",
 		"trust.domain",
@@ -595,6 +611,7 @@ metadata:
 		true,
 		metadataAPI,
 		mockGetServer,
+		nil,
 		logging.WithField("test", t.Name()),
 	)
 	return mockGetServer, translator
