@@ -10,7 +10,8 @@ on:
       - deny.toml
       - '**/*.rs'
       - policy-*/Dockerfile
-      - rust-toolchain
+      - rust-toolchain.toml
+      - bin/rust-toolchain-version
 
 permissions:
   contents: read

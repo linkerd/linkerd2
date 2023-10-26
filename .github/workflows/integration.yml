@@ -16,6 +16,8 @@ on:
       - policy-test/**
       - viz/**
       - '!.devcontainer/**'
+      - rust-toolchain.toml
+      - bin/rust-toolchain-version
 
 permissions:
   contents: read
