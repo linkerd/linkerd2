@@ -72,6 +72,8 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyShutdownGracePeriodAnnotation:           "30s",
 							k8s.ProxyOutboundDiscoveryCacheUnusedTimeout:     "50000ms",
 							k8s.ProxyInboundDiscoveryCacheUnusedTimeout:      "900s",
+							k8s.ProxyOutboundProtocolDetectTimeout:           "9000ms",
+							k8s.ProxyInboundProtocolDetectTimeout:            "9s",
 						},
 					},
 					Spec: corev1.PodSpec{},
@@ -122,6 +124,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.ShutdownGracePeriod = "30000ms"
 				values.Proxy.OutboundDiscoveryCacheUnusedTimeout = "50s"
 				values.Proxy.InboundDiscoveryCacheUnusedTimeout = "900s"
+				values.Proxy.OutboundProtocolDetectTimeout = "9s"
+				values.Proxy.InboundProtocolDetectTimeout = "9s"
 				return values
 			},
 		},
@@ -168,6 +172,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				k8s.ProxyInjectAnnotation:                    "ingress",
 				k8s.ProxyOutboundDiscoveryCacheUnusedTimeout: "50s",
 				k8s.ProxyInboundDiscoveryCacheUnusedTimeout:  "6000ms",
+				k8s.ProxyOutboundProtocolDetectTimeout:       "9000ms",
+				k8s.ProxyInboundProtocolDetectTimeout:        "9s",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -213,6 +219,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.IsIngress = true
 				values.Proxy.OutboundDiscoveryCacheUnusedTimeout = "50s"
 				values.Proxy.InboundDiscoveryCacheUnusedTimeout = "6s"
+				values.Proxy.OutboundProtocolDetectTimeout = "9s"
+				values.Proxy.InboundProtocolDetectTimeout = "9s"
 				return values
 			},
 		},
@@ -222,6 +230,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				k8s.ProxyInboundConnectTimeout:               "600",
 				k8s.ProxyOutboundDiscoveryCacheUnusedTimeout: "50",
 				k8s.ProxyInboundDiscoveryCacheUnusedTimeout:  "5000",
+				k8s.ProxyOutboundProtocolDetectTimeout:       "9000",
+				k8s.ProxyInboundProtocolDetectTimeout:        "9",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -241,6 +251,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				k8s.ProxyInboundConnectTimeout:               "2s5ms",
 				k8s.ProxyOutboundDiscoveryCacheUnusedTimeout: "6s5000ms",
 				k8s.ProxyInboundDiscoveryCacheUnusedTimeout:  "6s5000ms",
+				k8s.ProxyOutboundProtocolDetectTimeout:       "4s5000ms",
+				k8s.ProxyInboundProtocolDetectTimeout:        "4s5000ms",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -254,6 +266,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.InboundConnectTimeout = "2005ms"
 				values.Proxy.OutboundDiscoveryCacheUnusedTimeout = "11s"
 				values.Proxy.InboundDiscoveryCacheUnusedTimeout = "11s"
+				values.Proxy.OutboundProtocolDetectTimeout = "9s"
+				values.Proxy.InboundProtocolDetectTimeout = "9s"
 				return values
 			},
 		},

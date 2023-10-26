@@ -559,6 +559,7 @@ data:
         version: install-proxy-version
       inboundConnectTimeout: 100ms
       inboundDiscoveryCacheUnusedTimeout: 90s
+      inboundProtocolDetectTimeout: 10s
       isGateway: false
       isIngress: false
       logFormat: plain
@@ -566,6 +567,7 @@ data:
       opaquePorts: 25,587,3306,4444,5432,6379,9300,11211
       outboundConnectTimeout: 1000ms
       outboundDiscoveryCacheUnusedTimeout: 5s
+      outboundProtocolDetectTimeout: 10s
       podInboundPorts: ""
       ports:
         admin: 4191
@@ -863,6 +865,10 @@ spec:
           value: "5s"
         - name: LINKERD2_PROXY_INBOUND_DISCOVERY_IDLE_TIMEOUT
           value: "90s"
+        - name: LINKERD2_PROXY_OUTBOUND_DETECT_TIMEOUT
+          value: "10s"
+        - name: LINKERD2_PROXY_INBOUND_DETECT_TIMEOUT
+          value: "10s"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1190,6 +1196,10 @@ spec:
           value: "5s"
         - name: LINKERD2_PROXY_INBOUND_DISCOVERY_IDLE_TIMEOUT
           value: "90s"
+        - name: LINKERD2_PROXY_OUTBOUND_DETECT_TIMEOUT
+          value: "10s"
+        - name: LINKERD2_PROXY_INBOUND_DETECT_TIMEOUT
+          value: "10s"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1556,6 +1566,10 @@ spec:
           value: "5s"
         - name: LINKERD2_PROXY_INBOUND_DISCOVERY_IDLE_TIMEOUT
           value: "90s"
+        - name: LINKERD2_PROXY_OUTBOUND_DETECT_TIMEOUT
+          value: "10s"
+        - name: LINKERD2_PROXY_INBOUND_DETECT_TIMEOUT
+          value: "10s"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
