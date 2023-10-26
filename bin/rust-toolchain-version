@@ -1,0 +1,24 @@
+#! /usr/bin/env bash
+# Extracts the current Rust version from the toolchain file.
+
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+
+version_regex='channel = "(.+)"'
+toolchain=$(cat "$rootdir"/rust-toolchain.toml)
+
+# If the `rust-toolchain.toml` file contains a line matching the channel regex,
+# extract the channel and echo it.
+if [[ $toolchain =~ $version_regex ]]; then
+    echo "${BASH_REMATCH[1]}"
+    exit 0;
+fi
+
+# Otherwise, no matching line was found, so print an error.
+if [[ "${GITHUB_ACTIONS:-false}" ==  "true" ]]; then
+    echo "::error file=rust-toolchain.toml::failed to parse rust-toolchain.toml"
+else
+    echo "failed to parse rust-toolchain.toml"
+fi
+
+exit 1
