@@ -24,7 +24,7 @@ includes patches for security advisory [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3
     a string rather than as the numeric status code ([linkerd2-proxy#2480];
     fixes [#11449])
   * Fixed a regression introduced in stable-2.13.0 where proxies would not
-    terminate unusred service discovery watches, exerting backpressure on the
+    terminate unused service discovery watches, exerting backpressure on the
     Destination controller which could cause it to become stuck
     ([linkerd2-proxy#2484])
 
