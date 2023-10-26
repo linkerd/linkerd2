@@ -1,5 +1,43 @@
 # Changes
 
+## stable-2.14.2
+
+This stable release fixes issues in the proxy and Destination controller which
+can result in Linkerd proxies sending traffic to stale endpoints. In addition,
+it contains a bug fix for profile resolutions for pods bound on host ports and
+includes patches for security advisory [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3
+
+* Control Plane
+  * Fixed an issue where the Destination controller could stop processing
+    changes in the endpoints of a destination, if a proxy subscribed to that
+    destination stops reading service discovery updates. This issue results in
+    proxies attempting to send traffic for that destination to stale endpoints
+    ([#11491], fixes [#11480], [#11279], [#10590])
+  * Fixed an issue where the Destination controller would not update pod
+    metadata for profile resolutions for a pod accessed via the host network
+    (e.g. HostPort endpoints) ([#11334])
+  * Addressed [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3 by upgrading several
+    dependencies (including Go's gRPC and net libraries)
+
+* Proxy
+  * Fixed a regression where the proxy rendered `grpc_status` metric labels as
+    a string rather than as the numeric status code ([linkerd2-proxy#2480];
+    fixes [#11449])
+  * Fixed a regression introduced in stable-2.13.0 where proxies would not
+    terminate unused service discovery watches, exerting backpressure on the
+    Destination controller, potentially causing it to become
+    stuck ([linkerd2-proxy#2484])
+
+[#10590]: https://github.com/linkerd/linkerd2/issues/10590
+[#11279]: https://github.com/linkerd/linkerd2/issues/11279
+[#11491]: https://github.com/linkerd/linkerd2/issues/11491
+[#11480]: https://github.com/linkerd/linkerd2/issues/11480
+[#11334]: https://github.com/linkerd/linkerd2/pull/11334
+[#11449]: https://github.com/linkerd/linkerd2/issues/11449
+[CVE-2023-44487]: https://github.com/advisories/GHSA-qppj-fm5r-hxr3
+[linkerd2-proxy#2480]: https://github.com/linkerd/linkerd2-proxy/pull/2480
+[linkerd2-proxy#2484]: https://github.com/linkerd/linkerd2-proxy/pull/2484
+
 ## stable-2.14.1
 
 This stable release introduces a fix for service discovery on endpoints that
