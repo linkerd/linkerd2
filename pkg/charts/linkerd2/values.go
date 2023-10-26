@@ -111,6 +111,8 @@ type (
 		InboundConnectTimeout               string           `json:"inboundConnectTimeout"`
 		OutboundDiscoveryCacheUnusedTimeout string           `json:"outboundDiscoveryCacheUnusedTimeout"`
 		InboundDiscoveryCacheUnusedTimeout  string           `json:"inboundDiscoveryCacheUnusedTimeout"`
+		OutboundProtocolDetectTimeout       string           `json:"outboundProtocolDetectTimeout"`
+		InboundProtocolDetectTimeout        string           `json:"inboundProtocolDetectTimeout"`
 		PodInboundPorts                     string           `json:"podInboundPorts"`
 		OpaquePorts                         string           `json:"opaquePorts"`
 		Await                               bool             `json:"await"`
