@@ -115,8 +115,8 @@ proxy:
   # -- Maximum time allowed before an unused inbound discovery result
   # is evicted from the cache
   inboundDiscoveryCacheUnusedTimeout: "90s"
-  # -- Maximum time allowed for the proxy to determine the client's protocol by
-  # peeking from the socket
+  # -- Maximum time allowed for the proxy to determine an outbound connection's
+  # protocol by peeking from the socket
   outboundProtocolDetectTimeout: "10s"
   # -- Maximum time allowed for the proxy to determine an incoming connection's
   # protocol by peeking from the socket

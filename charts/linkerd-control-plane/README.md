@@ -241,7 +241,7 @@ Kubernetes: `>=1.21.0-0`
 | proxy.opaquePorts | string | `"25,587,3306,4444,5432,6379,9300,11211"` | Default set of opaque ports - SMTP (25,587) server-first - MYSQL (3306) server-first - Galera (4444) server-first - PostgreSQL (5432) server-first - Redis (6379) server-first - ElasticSearch (9300) server-first - Memcached (11211) clients do not issue any preamble, which breaks detection |
 | proxy.outboundConnectTimeout | string | `"1000ms"` | Maximum time allowed for the proxy to establish an outbound TCP connection |
 | proxy.outboundDiscoveryCacheUnusedTimeout | string | `"5s"` | Maximum time allowed before an unused outbound discovery result is evicted from the cache |
-| proxy.outboundProtocolDetectTimeout | string | `"10s"` | Maximum time allowed for the proxy to determine the client's protocol by peeking from the socket |
+| proxy.outboundProtocolDetectTimeout | string | `"10s"` | Maximum time allowed for the proxy to determine an outbound connection's protocol by peeking from the socket |
 | proxy.ports.admin | int | `4191` | Admin port for the proxy container |
 | proxy.ports.control | int | `4190` | Control port for the proxy container |
 | proxy.ports.inbound | int | `4143` | Inbound port for the proxy container |
