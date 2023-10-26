@@ -12,7 +12,7 @@ includes patches for security advisory [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3
     changes in the endpoints of a destination, if a proxy subscribed to that
     destination stops reading service discovery updates. This issue results in
     proxies attempting to send traffic for that destination to stale endpoints
-    ([#11483], fixes [#11480], [#11279], [#10590])
+    ([#11491], fixes [#11480], [#11279], [#10590])
   * Fixed an issue where the Destination controller would not update pod
     metadata for profile resolutions for a pod accessed via the host network
     (e.g. HostPort endpoints) ([#11334])
@@ -30,7 +30,7 @@ includes patches for security advisory [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3
 
 [#10590]: https://github.com/linkerd/linkerd2/issues/10590
 [#11279]: https://github.com/linkerd/linkerd2/issues/11279
-[#11483]: https://github.com/linkerd/linkerd2/issues/11483
+[#11483]: https://github.com/linkerd/linkerd2/issues/11491
 [#11480]: https://github.com/linkerd/linkerd2/issues/11480
 [#11334]: https://github.com/linkerd/linkerd2/pull/11334
 [#11449]: https://github.com/linkerd/linkerd2/issues/11449
