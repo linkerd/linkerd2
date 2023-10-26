@@ -25,8 +25,8 @@ includes patches for security advisory [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3
     fixes [#11449])
   * Fixed a regression introduced in stable-2.13.0 where proxies would not
     terminate unused service discovery watches, exerting backpressure on the
-    Destination controller which could cause it to become stuck
-    ([linkerd2-proxy#2484])
+    Destination controller, potentially causing it to become
+    stuck ([linkerd2-proxy#2484])
 
 [#10590]: https://github.com/linkerd/linkerd2/issues/10590
 [#11279]: https://github.com/linkerd/linkerd2/issues/11279
