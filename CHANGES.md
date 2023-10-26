@@ -30,7 +30,7 @@ includes patches for security advisory [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3
 
 [#10590]: https://github.com/linkerd/linkerd2/issues/10590
 [#11279]: https://github.com/linkerd/linkerd2/issues/11279
-[#11483]: https://github.com/linkerd/linkerd2/issues/11491
+[#11491]: https://github.com/linkerd/linkerd2/issues/11491
 [#11480]: https://github.com/linkerd/linkerd2/issues/11480
 [#11334]: https://github.com/linkerd/linkerd2/pull/11334
 [#11449]: https://github.com/linkerd/linkerd2/issues/11449
