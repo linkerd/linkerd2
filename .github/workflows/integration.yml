@@ -16,6 +16,8 @@ on:
       - policy-test/**
       - viz/**
       - '!.devcontainer/**'
+      - rust-toolchain.toml
+      - bin/rust-toolchain-version
 
 permissions:
   contents: read
@@ -188,7 +190,7 @@ jobs:
         shell: bash
         run: |
           rm -rf "$HOME/.cargo"
-          bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(cat rust-toolchain)"
+          bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(./bin/rust-toolchain-version)"
           # shellcheck disable=SC1090
           source ~/.cargo/env
           echo "PATH=$PATH" >> "$GITHUB_ENV"

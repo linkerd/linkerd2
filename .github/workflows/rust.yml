@@ -10,7 +10,8 @@ on:
       - deny.toml
       - '**/*.rs'
       - policy-*/Dockerfile
-      - rust-toolchain
+      - rust-toolchain.toml
+      - bin/rust-toolchain-version
 
 permissions:
   contents: read
@@ -87,15 +88,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - shell: bash
         run: |
-          # Extract current Rust version from the toolchain file.
-          version_regex='channel = "([0-9]+\.[0-9]+\.[0-9]+)"'
-          toolchain=$(cat rust-toolchain.toml)
-          if [[ $toolchain =~ $version_regex ]]; then
-            toolchain_version=${BASH_REMATCH[1]}
-          else
-            echo "::error file=rust-toolchain.toml::failed to parse rust-toolchain.toml"
-            exit 1
-          fi
+          toolchain_version="$(./bin/rust-toolchain-version)"
 
           ex=0
           # Check this workflow against the version in rust-toolchain.
