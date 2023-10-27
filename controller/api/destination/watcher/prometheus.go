@@ -50,7 +50,7 @@ var (
 	endpointsInformerLag = promauto.NewHistogram(
 		prometheus.HistogramOpts{
 			Name:    "endpoints_informer_lag_ms",
-			Help:    "The amount of time between when an Endpoints resources is updated and when an informer observes it",
+			Help:    "The amount of time between when an Endpoints resource is updated and when an informer observes it",
 			Buckets: informer_lag_ms_buckets,
 		},
 	)
@@ -58,7 +58,7 @@ var (
 	endpointsliceInformerLag = promauto.NewHistogram(
 		prometheus.HistogramOpts{
 			Name:    "endpointslice_informer_lag_ms",
-			Help:    "The amount of time between when an EndpointSlice resources is updated and when an informer observes it",
+			Help:    "The amount of time between when an EndpointSlice resource is updated and when an informer observes it",
 			Buckets: informer_lag_ms_buckets,
 		},
 	)
@@ -66,7 +66,7 @@ var (
 	serviceInformerLag = promauto.NewHistogram(
 		prometheus.HistogramOpts{
 			Name:    "service_informer_lag_ms",
-			Help:    "The amount of time between when a Serivce resources is updated and when an informer observes it",
+			Help:    "The amount of time between when a Service resource is updated and when an informer observes it",
 			Buckets: informer_lag_ms_buckets,
 		},
 	)
@@ -74,7 +74,7 @@ var (
 	serverInformerLag = promauto.NewHistogram(
 		prometheus.HistogramOpts{
 			Name:    "server_informer_lag_ms",
-			Help:    "The amount of time between when a Server resources is updated and when an informer observes it",
+			Help:    "The amount of time between when a Server resource is updated and when an informer observes it",
 			Buckets: informer_lag_ms_buckets,
 		},
 	)
@@ -82,7 +82,7 @@ var (
 	podInformerLag = promauto.NewHistogram(
 		prometheus.HistogramOpts{
 			Name:    "pod_informer_lag_ms",
-			Help:    "The amount of time between when a Pod resources is updated and when an informer observes it",
+			Help:    "The amount of time between when a Pod resource is updated and when an informer observes it",
 			Buckets: informer_lag_ms_buckets,
 		},
 	)
@@ -90,7 +90,7 @@ var (
 	serviceProfileInformerLag = promauto.NewHistogram(
 		prometheus.HistogramOpts{
 			Name:    "serviceprofile_informer_lag_ms",
-			Help:    "The amount of time between when a ServiceProfile resources is updated and when an informer observes it",
+			Help:    "The amount of time between when a ServiceProfile resource is updated and when an informer observes it",
 			Buckets: informer_lag_ms_buckets,
 		},
 	)
