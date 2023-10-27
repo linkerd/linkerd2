@@ -43,7 +43,7 @@ security advisories [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3 and GHSA-c827-hfw6-qwvm
   changes in the endpoints of a destination, if a proxy subscribed to that
   destination stops reading service discovery updates. This issue results in
   proxies attempting to send traffic for that destination to stale endpoints
-  ([#11483], fixes [#11480], [#11279], and [#10590])
+  ([#11491], fixes [#11480], [#11279], and [#10590])
 * Fixed a regression introduced in stable-2.13.0 where proxies would not
   terminate unused service discovery watches, exerting backpressure on the
   Destination controller which could cause it to become stuck
@@ -65,7 +65,7 @@ the `namespace-metadata` ServiceAccount ([#11504])
 
 [#10590]: https://github.com/linkerd/linkerd2/issues/10590
 [#11279]: https://github.com/linkerd/linkerd2/issues/11279
-[#11483]: https://github.com/linkerd/linkerd2/issues/11483
+[#11491]: https://github.com/linkerd/linkerd2/pull/11491
 [#11449]: https://github.com/linkerd/linkerd2/issues/11449
 [#11480]: https://github.com/linkerd/linkerd2/issues/11480
 [#11504]: https://github.com/linkerd/linkerd2/issues/11504
