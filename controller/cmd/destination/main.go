@@ -117,7 +117,7 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
-	metadataAPI, err := k8s.InitializeMetadataAPI(*kubeConfigPath, "local", k8s.Node, k8s.RS)
+	metadataAPI, err := k8s.InitializeMetadataAPI(*kubeConfigPath, "local", k8s.Node, k8s.RS, k8s.Job)
 	if err != nil {
 		log.Fatalf("Failed to initialize Kubernetes metadata API: %s", err)
 	}
