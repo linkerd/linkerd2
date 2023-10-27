@@ -1,5 +1,37 @@
 # Changes
 
+## edge-23.10.4
+
+This edge release includes a fix for the `ServiceProfile` CRD resource schema.
+The schema incorrectly required `not` response matches to be arrays, while the
+in-cluster validator parsed `not` response matches as objects. In addition, an
+issues has been fixed in `linkerd profile`. When used with the `--open-api`
+flag, it would not strip trailing slashes when generating a resource from
+swagger specifications.
+
+* Fixed an issue where trailing slashes wouldn't be stripped when generating
+  `ServiceProfile` resources through `linkerd profile --open-api` ([#11519])
+* Fixed an issue in the `ServiceProfile` CRD schema. The schema incorrectly
+  required that a `not` response match should be an array, which the service
+  profile validator rejected since it expected an object. The schema has been
+  updated to properly indicate that `not` values should be an object ([#11510];
+  fixes [#11483])
+* Improved logging in the destination controller by adding the client pod's
+  name to the logging context. This will improve visibility into the messages
+  sent and received by the control plane from a specific proxy ([#11532])
+* Fixed an issue in the destination controller where the metadata API would not
+  initialize a `Job` informer. The destination controller uses the metadata API
+  to retrieve `Job` metadata, and relies mostly on informers. Without an
+  initialized informer, an error message would be logged, and the controller
+  relied on direct API calls ([#11541]; fixes [#11531])
+
+[#11541]: https://github.com/linkerd/linkerd2/pull/11532
+[#11532]: https://github.com/linkerd/linkerd2/pull/11532
+[#11531]: https://github.com/linkerd/linkerd2/issues/11531
+[#11519]: https://github.com/linkerd/linkerd2/pull/11519
+[#11510]: https://github.com/linkerd/linkerd2/pull/11510
+[#11483]: https://github.com/linkerd/linkerd2/issues/11483
+
 ## edge-23.10.3
 
 This edge release fixes issues in the proxy and Destination controller which can
