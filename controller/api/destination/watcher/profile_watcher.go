@@ -113,7 +113,7 @@ func (pw *ProfileWatcher) updateProfile(old interface{}, new interface{}) {
 	updated := latestUpdated(newProfile.ManagedFields)
 	if !updated.IsZero() && updated != oldUpdated {
 		delta := time.Since(updated)
-		serviceProfileInformerLag.Observe(float64(delta.Milliseconds()))
+		serviceProfileInformerLag.Observe(delta.Seconds())
 	}
 
 	pw.addProfile(new)

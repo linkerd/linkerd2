@@ -184,7 +184,7 @@ func (pw *PodWatcher) updatePod(oldObj any, newObj any) {
 	updated := latestUpdated(newPod.ManagedFields)
 	if !updated.IsZero() && updated != oldUpdated {
 		delta := time.Since(updated)
-		podInformerLag.Observe(float64(delta.Milliseconds()))
+		podInformerLag.Observe(delta.Seconds())
 	}
 
 	pw.log.Tracef("Updated pod %s.%s", newPod.Name, newPod.Namespace)
@@ -239,7 +239,7 @@ func (pw *PodWatcher) updateServer(oldObj interface{}, newObj interface{}) {
 	updated := latestUpdated(newServer.ManagedFields)
 	if !updated.IsZero() && updated != oldUpdated {
 		delta := time.Since(updated)
-		serverInformerLag.Observe(float64(delta.Milliseconds()))
+		serverInformerLag.Observe(delta.Seconds())
 	}
 
 	pw.updateServers(newObj)

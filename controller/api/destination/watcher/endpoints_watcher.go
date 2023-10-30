@@ -301,7 +301,7 @@ func (ew *EndpointsWatcher) updateService(oldObj interface{}, newObj interface{}
 	updated := latestUpdated(newService.ManagedFields)
 	if !updated.IsZero() && updated != oldUpdated {
 		delta := time.Since(updated)
-		serviceInformerLag.Observe(float64(delta.Milliseconds()))
+		serviceInformerLag.Observe(delta.Seconds())
 	}
 
 	ew.addService(newObj)
@@ -361,7 +361,7 @@ func (ew *EndpointsWatcher) updateEndpoints(oldObj interface{}, newObj interface
 	updated := latestUpdated(newEndpoints.ManagedFields)
 	if !updated.IsZero() && updated != oldUpdated {
 		delta := time.Since(updated)
-		endpointsInformerLag.Observe(float64(delta.Milliseconds()))
+		endpointsInformerLag.Observe(delta.Seconds())
 	}
 
 	id := ServiceID{newEndpoints.Namespace, newEndpoints.Name}
@@ -427,7 +427,7 @@ func (ew *EndpointsWatcher) updateEndpointSlice(oldObj interface{}, newObj inter
 	updated := latestUpdated(newSlice.ManagedFields)
 	if !updated.IsZero() && updated != oldUpdated {
 		delta := time.Since(updated)
-		endpointsliceInformerLag.Observe(float64(delta.Milliseconds()))
+		endpointsliceInformerLag.Observe(delta.Seconds())
 	}
 
 	id, err := getEndpointSliceServiceID(newSlice)
@@ -518,7 +518,7 @@ func (ew *EndpointsWatcher) updateServer(oldObj interface{}, newObj interface{})
 	updated := latestUpdated(newServer.ManagedFields)
 	if !updated.IsZero() && updated != oldUpdated {
 		delta := time.Since(updated)
-		serverInformerLag.Observe(float64(delta.Milliseconds()))
+		serverInformerLag.Observe(delta.Seconds())
 	}
 
 	ew.addServer(newObj)

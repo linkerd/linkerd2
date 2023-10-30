@@ -142,7 +142,7 @@ func (opw *OpaquePortsWatcher) updateService(oldObj interface{}, newObj interfac
 	updated := latestUpdated(newSvc.ManagedFields)
 	if !updated.IsZero() && updated != oldUpdated {
 		delta := time.Since(updated)
-		serviceInformerLag.Observe(float64(delta.Milliseconds()))
+		serviceInformerLag.Observe(delta.Seconds())
 	}
 	opw.addService(newObj)
 }
