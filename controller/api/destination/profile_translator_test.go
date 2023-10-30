@@ -421,52 +421,49 @@ var (
 
 func TestProfileTranslator(t *testing.T) {
 	t.Run("Sends update", func(t *testing.T) {
-		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := &profileTranslator{
-			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name()),
-		}
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Update(profile)
 
-		numProfiles := len(mockGetProfileServer.profilesReceived)
-		if numProfiles != 1 {
-			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
-		}
-		actualPbProfile := mockGetProfileServer.profilesReceived[0]
+		actualPbProfile := <-mockGetProfileServer.profilesReceived
 		if !proto.Equal(actualPbProfile, pbProfile) {
 			t.Fatalf("Expected profile sent to be [%v] but was [%v]", pbProfile, actualPbProfile)
+		}
+		numProfiles := len(mockGetProfileServer.profilesReceived) + 1
+		if numProfiles != 1 {
+			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
 		}
 	})
 
 	t.Run("Request match with more than one field becomes ALL", func(t *testing.T) {
-		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := &profileTranslator{
-			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name()),
-		}
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Update(multipleRequestMatches)
 
-		numProfiles := len(mockGetProfileServer.profilesReceived)
-		if numProfiles != 1 {
-			t.Fatalf("Expecting [1] profiles, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
-		}
-		actualPbProfile := mockGetProfileServer.profilesReceived[0]
+		actualPbProfile := <-mockGetProfileServer.profilesReceived
 		if !proto.Equal(actualPbProfile, pbRequestMatchAll) {
 			t.Fatalf("Expected profile sent to be [%v] but was [%v]", pbRequestMatchAll, actualPbProfile)
+		}
+		numProfiles := len(mockGetProfileServer.profilesReceived) + 1
+		if numProfiles != 1 {
+			t.Fatalf("Expecting [1] profiles, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
 		}
 	})
 
 	t.Run("Ignores request match without any fields", func(t *testing.T) {
-		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := &profileTranslator{
-			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name()),
-		}
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Update(notEnoughRequestMatches)
 
@@ -477,32 +474,30 @@ func TestProfileTranslator(t *testing.T) {
 	})
 
 	t.Run("Response match with more than one field becomes ALL", func(t *testing.T) {
-		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := &profileTranslator{
-			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name()),
-		}
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Update(multipleResponseMatches)
 
-		numProfiles := len(mockGetProfileServer.profilesReceived)
-		if numProfiles != 1 {
-			t.Fatalf("Expecting [1] profiles, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
-		}
-		actualPbProfile := mockGetProfileServer.profilesReceived[0]
+		actualPbProfile := <-mockGetProfileServer.profilesReceived
 		if !proto.Equal(actualPbProfile, pbResponseMatchAll) {
 			t.Fatalf("Expected profile sent to be [%v] but was [%v]", pbResponseMatchAll, actualPbProfile)
+		}
+		numProfiles := len(mockGetProfileServer.profilesReceived) + 1
+		if numProfiles != 1 {
+			t.Fatalf("Expecting [1] profiles, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
 		}
 	})
 
 	t.Run("Ignores response match without any fields", func(t *testing.T) {
-		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := &profileTranslator{
-			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name()),
-		}
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Update(notEnoughResponseMatches)
 
@@ -513,12 +508,11 @@ func TestProfileTranslator(t *testing.T) {
 	})
 
 	t.Run("Ignores response match with invalid status range", func(t *testing.T) {
-		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := &profileTranslator{
-			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name()),
-		}
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Update(invalidStatusRange)
 
@@ -529,58 +523,57 @@ func TestProfileTranslator(t *testing.T) {
 	})
 
 	t.Run("Sends update for one sided status range", func(t *testing.T) {
-		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := &profileTranslator{
-			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name()),
-		}
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Update(oneSidedStatusRange)
 
-		numProfiles := len(mockGetProfileServer.profilesReceived)
+		<-mockGetProfileServer.profilesReceived
+
+		numProfiles := len(mockGetProfileServer.profilesReceived) + 1
 		if numProfiles != 1 {
 			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
 		}
 	})
 
 	t.Run("Sends empty update", func(t *testing.T) {
-		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := &profileTranslator{
-			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name()),
-		}
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Update(nil)
 
-		numProfiles := len(mockGetProfileServer.profilesReceived)
-		if numProfiles != 1 {
-			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
-		}
-		actualPbProfile := mockGetProfileServer.profilesReceived[0]
+		actualPbProfile := <-mockGetProfileServer.profilesReceived
 		if !proto.Equal(actualPbProfile, defaultPbProfile) {
 			t.Fatalf("Expected profile sent to be [%v] but was [%v]", defaultPbProfile, actualPbProfile)
+		}
+		numProfiles := len(mockGetProfileServer.profilesReceived) + 1
+		if numProfiles != 1 {
+			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
 		}
 	})
 
 	t.Run("Sends update with custom timeout", func(t *testing.T) {
-		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := &profileTranslator{
-			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name()),
-		}
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator.Start()
+		defer translator.Stop()
 
 		translator.Update(profileWithTimeout)
 
-		numProfiles := len(mockGetProfileServer.profilesReceived)
-		if numProfiles != 1 {
-			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
-		}
-		actualPbProfile := mockGetProfileServer.profilesReceived[0]
+		actualPbProfile := <-mockGetProfileServer.profilesReceived
 		if !proto.Equal(actualPbProfile, pbProfileWithTimeout) {
 			t.Fatalf("Expected profile sent to be [%v] but was [%v]", pbProfileWithTimeout, actualPbProfile)
+		}
+		numProfiles := len(mockGetProfileServer.profilesReceived) + 1
+		if numProfiles != 1 {
+			t.Fatalf("Expecting [1] profile, got [%d]. Updates: %v", numProfiles, mockGetProfileServer.profilesReceived)
 		}
 	})
 }
