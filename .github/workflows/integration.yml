@@ -16,6 +16,8 @@ on:
       - policy-test/**
       - viz/**
       - '!.devcontainer/**'
+      - rust-toolchain.toml
+      - bin/rust-toolchain-version
 
 permissions:
   contents: read
@@ -147,7 +149,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: tj-actions/changed-files@95690f9ece77c1740f4a55b7f1de9023ed6b1f87
+      - uses: tj-actions/changed-files@fea790cb660e33aef4bdf07304e28fedd77dfa13
         id: changed
         with:
           files: |
@@ -188,7 +190,7 @@ jobs:
         shell: bash
         run: |
           rm -rf "$HOME/.cargo"
-          bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(cat rust-toolchain)"
+          bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(./bin/rust-toolchain-version)"
           # shellcheck disable=SC1090
           source ~/.cargo/env
           echo "PATH=$PATH" >> "$GITHUB_ENV"
@@ -287,7 +289,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: tj-actions/changed-files@95690f9ece77c1740f4a55b7f1de9023ed6b1f87
+      - uses: tj-actions/changed-files@fea790cb660e33aef4bdf07304e28fedd77dfa13
         id: changed
         with:
           files: |
@@ -331,7 +333,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: tj-actions/changed-files@95690f9ece77c1740f4a55b7f1de9023ed6b1f87
+      - uses: tj-actions/changed-files@fea790cb660e33aef4bdf07304e28fedd77dfa13
         id: changed
         with:
           files: |

@@ -35,6 +35,11 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 							},
 						},
 					},
+					"/path/with/trailing/slash/": {
+						PathItemProps: spec.PathItemProps{
+							Get: &spec.Operation{},
+						},
+					},
 				},
 			},
 		},
@@ -67,6 +72,13 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 					},
 					IsRetryable: true,
 					Timeout:     "60s",
+				},
+				{
+					Name: "GET /path/with/trailing/slash/",
+					Condition: &sp.RequestMatch{
+						PathRegex: "/path/with/trailing/slash/",
+						Method:    "GET",
+					},
 				},
 			},
 		},
