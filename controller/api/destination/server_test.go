@@ -480,7 +480,7 @@ func TestGetProfiles(t *testing.T) {
 		if profile.Endpoint.ProtocolHint == nil {
 			t.Fatalf("Expected protocol hint but found none")
 		}
-		if profile.Endpoint.ProtocolHint.GetOpaqueTransport().GetInboundPort() != 4143 {
+		if profile.Endpoint.GetProtocolHint().GetOpaqueTransport().GetInboundPort() != 4143 {
 			t.Fatalf("Expected pod to support opaque traffic on port 4143")
 		}
 		if profile.Endpoint.Addr.String() != epAddr.String() {
@@ -535,10 +535,10 @@ func TestGetProfiles(t *testing.T) {
 		if !profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", 80)
 		}
-		if profile.Endpoint.ProtocolHint == nil {
+		if profile.Endpoint.GetProtocolHint() == nil {
 			t.Fatalf("Expected protocol hint but found none")
 		}
-		if profile.Endpoint.ProtocolHint.GetOpaqueTransport().GetInboundPort() != 4143 {
+		if profile.Endpoint.GetProtocolHint().GetOpaqueTransport().GetInboundPort() != 4143 {
 			t.Fatalf("Expected pod to support opaque traffic on port 4143")
 		}
 	})

@@ -494,8 +494,8 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 	// If the pod is controlled by any Linkerd control plane, then it can be
 	// hinted that this destination knows H2 (and handles our orig-proto
 	// translation)
-	weightedAddr.ProtocolHint = &pb.ProtocolHint{}
 	if controllerNSLabel != "" && !isSkippedInboundPort {
+		weightedAddr.ProtocolHint = &pb.ProtocolHint{}
 		// If address is set as opaque by a Server, or its port is set as
 		// opaque by annotation or default value, then hint its proxy's
 		// inbound port, and set the hinted protocol to Opaque, so that the
