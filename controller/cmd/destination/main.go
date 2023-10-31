@@ -68,10 +68,7 @@ func Main(args []string) {
 		log.Warnf("expected cluster domain through args (falling back to %s)", *clusterDomain)
 	}
 
-	opaquePorts, err := util.ParsePorts(*defaultOpaquePorts)
-	if err != nil {
-		log.Fatalf("Failed to parse opaque Ports %s: %s", *defaultOpaquePorts, err)
-	}
+	opaquePorts := util.ParsePorts(*defaultOpaquePorts)
 
 	log.Infof("Using default opaque ports: %v", opaquePorts)
 

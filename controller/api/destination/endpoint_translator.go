@@ -372,7 +372,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 		)
 		if address.Pod != nil {
 			opaquePorts = watcher.GetAnnotatedOpaquePorts(address.Pod, et.defaultOpaquePorts)
-			wa, err = createWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+			wa, err = createWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS)
 		} else {
 			var authOverride *pb.AuthorityOverride
 			if address.AuthorityOverride != "" {
@@ -462,7 +462,7 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
-func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
+func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string) (*pb.WeightedAddr, error) {
 
 	tcpAddr, err := toAddr(address)
 	if err != nil {
@@ -481,10 +481,7 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 		return &weightedAddr, nil
 	}
 
-	skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(address.Pod)
-	if err != nil {
-		log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
-	}
+	skippedInboundPorts := getPodSkippedInboundPortsAnnotations(address.Pod)
 
 	controllerNSLabel := address.Pod.Labels[pkgK8s.ControllerNSLabel]
 	sa, ns := pkgK8s.GetServiceAccountAndNS(address.Pod)
@@ -504,12 +501,10 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 		if controllerNSLabel != "" && !isSkippedInboundPort {
 			port, err := getInboundPort(&address.Pod.Spec)
 			if err != nil {
-				log.Error(err)
-				return nil, err
-			} else {
-				weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
-					InboundPort: port,
-				}
+				return nil, fmt.Errorf("failed to read inbound port: %w", err)
+			}
+			weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
+				InboundPort: port,
 			}
 		}
 	} else if enableH2Upgrade && controllerNSLabel != "" && !isSkippedInboundPort {

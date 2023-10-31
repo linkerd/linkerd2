@@ -443,7 +443,9 @@ func TestGetProfiles(t *testing.T) {
 		if profile.Endpoint == nil {
 			t.Fatalf("Expected response to have endpoint field")
 		}
-
+		if !profile.OpaqueProtocol {
+			t.Fatal("Expected port 3306 to be an opaque protocol, but it was not")
+		}
 		if profile.GetEndpoint().GetProtocolHint().GetOpaque() == nil {
 			t.Fatalf("Expected protocol hint to be opaque")
 		}
