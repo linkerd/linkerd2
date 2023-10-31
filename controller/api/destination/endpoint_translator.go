@@ -491,32 +491,33 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 	weightedAddr.MetricLabels = pkgK8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
 	_, isSkippedInboundPort := skippedInboundPorts[address.Port]
 
-	// If the pod is controlled by any Linkerd control plane, then it can be
-	// hinted that this destination knows H2 (and handles our orig-proto
-	// translation)
-	if controllerNSLabel != "" && !isSkippedInboundPort {
-		weightedAddr.ProtocolHint = &pb.ProtocolHint{}
+	weightedAddr.ProtocolHint = &pb.ProtocolHint{}
+
+	_, opaquePort := opaquePorts[address.Port]
+	if address.OpaqueProtocol || opaquePort {
 		// If address is set as opaque by a Server, or its port is set as
-		// opaque by annotation or default value, then hint its proxy's
-		// inbound port, and set the hinted protocol to Opaque, so that the
-		// client proxy does not send a SessionProtocol.
-		_, opaquePort := opaquePorts[address.Port]
-		if address.OpaqueProtocol || opaquePort {
+		// opaque by annotation or default value, then set the hinted protocol to
+		// Opaque.
+		weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_Opaque_{
+			Opaque: &pb.ProtocolHint_Opaque{},
+		}
+		if controllerNSLabel != "" && !isSkippedInboundPort {
 			port, err := getInboundPort(&address.Pod.Spec)
 			if err != nil {
 				log.Error(err)
+				return nil, err
 			} else {
 				weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
 					InboundPort: port,
 				}
-				weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_Opaque_{
-					Opaque: &pb.ProtocolHint_Opaque{},
-				}
 			}
-		} else if enableH2Upgrade {
-			weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_H2_{
-				H2: &pb.ProtocolHint_H2{},
-			}
+		}
+	} else if enableH2Upgrade && controllerNSLabel != "" && !isSkippedInboundPort {
+		// If the pod is controlled by any Linkerd control plane, then it can be
+		// hinted that this destination knows H2 (and handles our orig-proto
+		// translation)
+		weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_H2_{
+			H2: &pb.ProtocolHint_H2{},
 		}
 	}
 

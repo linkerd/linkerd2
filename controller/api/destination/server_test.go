@@ -432,7 +432,7 @@ func TestGetProfiles(t *testing.T) {
 		}
 	})
 
-	t.Run("Return profile with no protocol hint for default opaque port when pod is unmeshed", func(t *testing.T) {
+	t.Run("Return profile with protocol hint for default opaque port when pod is unmeshed", func(t *testing.T) {
 		server := makeServer(t)
 		defer server.clusterStore.UnregisterGauges()
 
@@ -443,8 +443,12 @@ func TestGetProfiles(t *testing.T) {
 		if profile.Endpoint == nil {
 			t.Fatalf("Expected response to have endpoint field")
 		}
-		if profile.Endpoint.GetProtocolHint().GetProtocol() != nil || profile.Endpoint.GetProtocolHint().GetOpaqueTransport() != nil {
-			t.Fatalf("Expected no protocol hint but found one")
+
+		if profile.GetEndpoint().GetProtocolHint().GetOpaque() == nil {
+			t.Fatalf("Expected protocol hint to be opaque")
+		}
+		if profile.GetEndpoint().GetProtocolHint().GetOpaqueTransport() != nil {
+			t.Fatalf("Expected protocol hint to not use opaque transport")
 		}
 	})
 
