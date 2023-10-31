@@ -93,7 +93,7 @@ Fixes #[GitHub issue ID]
 - one line, <= 50 characters
 - describe what is done; not the result
 - use the active voice
-- capitalize first word and proper nouns
+- capitalize the first word and proper nouns
 - do not end in a period — this is a title/subject
 - reference the GitHub issue by number
 
