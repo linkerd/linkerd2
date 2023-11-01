@@ -75,8 +75,8 @@ var (
 		k8s.ProxyShutdownGracePeriodAnnotation,
 		k8s.ProxyOutboundDiscoveryCacheUnusedTimeout,
 		k8s.ProxyInboundDiscoveryCacheUnusedTimeout,
-		k8s.ProxyOutboundProtocolDetectTimeout,
-		k8s.ProxyInboundProtocolDetectTimeout,
+		k8s.ProxyDisableOutboundProtocolDetectTimeout,
+		k8s.ProxyDisableInboundProtocolDetectTimeout,
 	}
 	// ProxyAlphaConfigAnnotations is the list of all alpha configuration
 	// (config.alpha prefix) that can be applied to a pod or namespace.
@@ -956,21 +956,21 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyOutboundProtocolDetectTimeout]; ok {
-		duration, err := time.ParseDuration(override)
-		if err != nil {
-			log.Warnf("unrecognised duration value used on pod annotation %s: %s", k8s.ProxyOutboundProtocolDetectTimeout, err.Error())
+	if override, ok := annotations[k8s.ProxyDisableOutboundProtocolDetectTimeout]; ok {
+		value, err := strconv.ParseBool(override)
+		if err == nil {
+			values.Proxy.DisableOutboundProtocolDetectTimeout = value
 		} else {
-			values.Proxy.OutboundProtocolDetectTimeout = fmt.Sprintf("%ds", int(duration.Seconds()))
+			log.Warnf("unrecognised value used on pod annotation %s: %s", k8s.ProxyDisableOutboundProtocolDetectTimeout, err.Error())
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyInboundProtocolDetectTimeout]; ok {
-		duration, err := time.ParseDuration(override)
-		if err != nil {
-			log.Warnf("unrecognised duration value used on pod annotation %s: %s", k8s.ProxyInboundProtocolDetectTimeout, err.Error())
+	if override, ok := annotations[k8s.ProxyDisableInboundProtocolDetectTimeout]; ok {
+		value, err := strconv.ParseBool(override)
+		if err == nil {
+			values.Proxy.DisableInboundProtocolDetectTimeout = value
 		} else {
-			values.Proxy.InboundProtocolDetectTimeout = fmt.Sprintf("%ds", int(duration.Seconds()))
+			log.Warnf("unrecognised value used on pod annotation %s: %s", k8s.ProxyDisableInboundProtocolDetectTimeout, err.Error())
 		}
 	}
 

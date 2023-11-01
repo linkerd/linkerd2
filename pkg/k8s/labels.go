@@ -238,13 +238,15 @@ const (
 	// that will evict unused inbound discovery results
 	ProxyInboundDiscoveryCacheUnusedTimeout = ProxyConfigAnnotationsPrefix + "/proxy-inbound-discovery-cache-unused-timeout"
 
-	// ProxyOutboundProtocolDetectTimeout can be used to configure the protocol
-	// detection read timeout for outbound connections
-	ProxyOutboundProtocolDetectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-outbound-protocol-detect-timeout"
+	// ProxyDisableOutboundProtocolDetectTimeout can be used to disable protocol
+	// detection timeouts for outbound connections by setting them to a very
+	// high value.
+	ProxyDisableOutboundProtocolDetectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-outbound-protocol-detect-timeout"
 
-	// ProxyInboundProtocolDetectTimeout can be used to configure the protocol
-	// detection read timeout for inbound connections
-	ProxyInboundProtocolDetectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-inbound-protocol-detect-timeout"
+	// ProxyDisableInboundProtocolDetectTimeout can be used to disable protocol
+	// detection timeouts for inbound connections by setting them to a very
+	// high value.
+	ProxyDisableInboundProtocolDetectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-inbound-protocol-detect-timeout"
 
 	// ProxyEnableGatewayAnnotation can be used to configure the proxy
 	// to operate as a gateway, routing requests that target the inbound router.

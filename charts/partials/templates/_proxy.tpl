@@ -57,13 +57,13 @@ env:
 - name: LINKERD2_PROXY_INBOUND_DISCOVERY_IDLE_TIMEOUT
   value: {{.Values.proxy.inboundDiscoveryCacheUnusedTimeout | quote}}
 {{ end -}}
-{{ if .Values.proxy.outboundProtocolDetectTimeout -}}
+{{ if .Values.proxy.DisableOutboundProtocolDetectTimeout -}}
 - name: LINKERD2_PROXY_OUTBOUND_DETECT_TIMEOUT
-  value: {{.Values.proxy.outboundProtocolDetectTimeout | quote}}
+  value: "365d"
 {{ end -}}
-{{ if .Values.proxy.inboundProtocolDetectTimeout -}}
+{{ if .Values.proxy.DisableInboundProtocolDetectTimeout -}}
 - name: LINKERD2_PROXY_INBOUND_DETECT_TIMEOUT
-  value: {{.Values.proxy.inboundProtocolDetectTimeout | quote}}
+  value: "365d"
 {{ end -}}
 - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
   value: 0.0.0.0:{{.Values.proxy.ports.control}}

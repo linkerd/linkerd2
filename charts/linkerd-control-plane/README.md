@@ -229,19 +229,19 @@ Kubernetes: `>=1.21.0-0`
 | proxy.await | bool | `true` | If set, the application container will not start until the proxy is ready |
 | proxy.cores | int | `0` | The `cpu.limit` and `cores` should be kept in sync. The value of `cores` must be an integer and should typically be set by rounding up from the limit. E.g. if cpu.limit is '1500m', cores should be 2. |
 | proxy.defaultInboundPolicy | string | "all-unauthenticated" | The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny" |
+| proxy.disableInboundProtocolDetectTimeout | bool | `false` | When set to true, disables the protocol detection timeout on the inbound side of the proxy by setting it to a very high value |
+| proxy.disableOutboundProtocolDetectTimeout | bool | `false` | When set to true, disables the protocol detection timeout on the outbound side of the proxy by setting it to a very high value |
 | proxy.enableExternalProfiles | bool | `false` | Enable service profiles for non-Kubernetes services |
 | proxy.image.name | string | `"cr.l5d.io/linkerd/proxy"` | Docker image for the proxy |
 | proxy.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy container image |
 | proxy.image.version | string | linkerdVersion | Tag for the proxy container image |
 | proxy.inboundConnectTimeout | string | `"100ms"` | Maximum time allowed for the proxy to establish an inbound TCP connection |
 | proxy.inboundDiscoveryCacheUnusedTimeout | string | `"90s"` | Maximum time allowed before an unused inbound discovery result is evicted from the cache |
-| proxy.inboundProtocolDetectTimeout | string | `"10s"` | Maximum time allowed for the proxy to determine an incoming connection's protocol by peeking from the socket |
 | proxy.logFormat | string | `"plain"` | Log format (`plain` or `json`) for the proxy |
 | proxy.logLevel | string | `"warn,linkerd=info,trust_dns=error"` | Log level for the proxy |
 | proxy.opaquePorts | string | `"25,587,3306,4444,5432,6379,9300,11211"` | Default set of opaque ports - SMTP (25,587) server-first - MYSQL (3306) server-first - Galera (4444) server-first - PostgreSQL (5432) server-first - Redis (6379) server-first - ElasticSearch (9300) server-first - Memcached (11211) clients do not issue any preamble, which breaks detection |
 | proxy.outboundConnectTimeout | string | `"1000ms"` | Maximum time allowed for the proxy to establish an outbound TCP connection |
 | proxy.outboundDiscoveryCacheUnusedTimeout | string | `"5s"` | Maximum time allowed before an unused outbound discovery result is evicted from the cache |
-| proxy.outboundProtocolDetectTimeout | string | `"10s"` | Maximum time allowed for the proxy to determine an outbound connection's protocol by peeking from the socket |
 | proxy.ports.admin | int | `4191` | Admin port for the proxy container |
 | proxy.ports.control | int | `4190` | Control port for the proxy container |
 | proxy.ports.inbound | int | `4143` | Inbound port for the proxy container |

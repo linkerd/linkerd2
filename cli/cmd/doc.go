@@ -254,11 +254,11 @@ func generateAnnotationsDocs() []annotationDoc {
 		},
 		{
 			Name:        k8s.ProxyOutboundProtocolDetectTimeout,
-			Description: "Maximum time allowed for the proxy to determine an outbound connection's protocol by peeking from the socket",
+			Description: "When set to true, disables the protocol detection timeout on the outbound side of the proxy by setting it to a very high value",
 		},
 		{
 			Name:        k8s.ProxyInboundProtocolDetectTimeout,
-			Description: "Maximum time allowed for the proxy to determine an inbound connection's protocol by peeking from the socket",
+			Description: "When set to true, disables the protocol detection timeout on the inbound side of the proxy by setting it to a very high value",
 		},
 		{
 			Name:        k8s.ProxyWaitBeforeExitSecondsAnnotation,
