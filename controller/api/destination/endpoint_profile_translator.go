@@ -65,11 +65,11 @@ func (ept *endpointProfileTranslator) Update(address *watcher.Address) (bool, er
 		} else if endpoint.ProtocolHint.OpaqueTransport == nil {
 			port, err := getInboundPort(&address.Pod.Spec)
 			if err != nil {
-				return false, err
-			}
-
-			endpoint.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
-				InboundPort: port,
+				ept.log.Error(err)
+			} else {
+				endpoint.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
+					InboundPort: port,
+				}
 			}
 		}
 

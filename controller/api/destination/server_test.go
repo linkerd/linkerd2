@@ -417,6 +417,23 @@ func TestGetProfiles(t *testing.T) {
 		}
 	})
 
+	t.Run("Return profile with no opaque transport when pod does not have label and port is opaque", func(t *testing.T) {
+		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
+		// port 3306 is in the default opaque port list
+		stream := profileStream(t, server, podIP2, 3306, "")
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
+		if profile.Endpoint == nil {
+			t.Fatalf("Expected response to have endpoint field")
+		}
+
+		if profile.Endpoint.GetProtocolHint().GetOpaqueTransport() != nil {
+			t.Fatalf("Expected no opaque transport but found one")
+		}
+	})
+
 	t.Run("Return profile with no protocol hint when pod does not have label", func(t *testing.T) {
 		server := makeServer(t)
 		defer server.clusterStore.UnregisterGauges()
