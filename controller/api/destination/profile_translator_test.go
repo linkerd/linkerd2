@@ -423,7 +423,7 @@ func TestProfileTranslator(t *testing.T) {
 	t.Run("Sends update", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "", 80, nil)
 		translator.Start()
 		defer translator.Stop()
 
@@ -442,7 +442,7 @@ func TestProfileTranslator(t *testing.T) {
 	t.Run("Request match with more than one field becomes ALL", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "", 80, nil)
 		translator.Start()
 		defer translator.Stop()
 
@@ -461,7 +461,7 @@ func TestProfileTranslator(t *testing.T) {
 	t.Run("Ignores request match without any fields", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "", 80, nil)
 		translator.Start()
 		defer translator.Stop()
 
@@ -476,7 +476,7 @@ func TestProfileTranslator(t *testing.T) {
 	t.Run("Response match with more than one field becomes ALL", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "", 80, nil)
 		translator.Start()
 		defer translator.Stop()
 
@@ -495,7 +495,7 @@ func TestProfileTranslator(t *testing.T) {
 	t.Run("Ignores response match without any fields", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "", 80, nil)
 		translator.Start()
 		defer translator.Stop()
 
@@ -510,7 +510,7 @@ func TestProfileTranslator(t *testing.T) {
 	t.Run("Ignores response match with invalid status range", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "", 80, nil)
 		translator.Start()
 		defer translator.Stop()
 
@@ -525,7 +525,7 @@ func TestProfileTranslator(t *testing.T) {
 	t.Run("Sends update for one sided status range", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "", 80, nil)
 		translator.Start()
 		defer translator.Stop()
 
@@ -542,7 +542,7 @@ func TestProfileTranslator(t *testing.T) {
 	t.Run("Sends empty update", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "", 80, nil)
 		translator.Start()
 		defer translator.Stop()
 
@@ -561,7 +561,7 @@ func TestProfileTranslator(t *testing.T) {
 	t.Run("Sends update with custom timeout", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+		translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "", 80, nil)
 		translator.Start()
 		defer translator.Stop()
 
