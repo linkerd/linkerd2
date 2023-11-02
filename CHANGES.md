@@ -1,5 +1,20 @@
 # Changes
 
+## edge-23.11.1
+
+This edge release fixes two bugs in the Destination controller that could cause
+outbound connections to hang indefinitely.
+
+* helm: Introduce configurable values for protocol detection ([#11536])
+* destination: Fix GetProfiles error when address is opaque and unmeshed ([#11556])
+* destination: Return NotFound for unknown pod names ([#11540])
+* proxy: Log controller errors at WARN
+* proxy: Fix grpc_status metric labels for inbound traffic
+
+[#11536]: https://github.com/linkerd/linkerd2/pull/11536
+[#11556]: https://github.com/linkerd/linkerd2/pull/11556
+[#11540]: https://github.com/linkerd/linkerd2/pull/11540
+
 ## edge-23.10.4
 
 This edge release includes a fix for the `ServiceProfile` CRD resource schema.
@@ -25,7 +40,7 @@ swagger specifications.
   initialized informer, an error message would be logged, and the controller
   relied on direct API calls ([#11541]; fixes [#11531])
 
-[#11541]: https://github.com/linkerd/linkerd2/pull/11532
+[#11541]: https://github.com/linkerd/linkerd2/pull/11541
 [#11532]: https://github.com/linkerd/linkerd2/pull/11532
 [#11531]: https://github.com/linkerd/linkerd2/issues/11531
 [#11519]: https://github.com/linkerd/linkerd2/pull/11519
