@@ -72,6 +72,8 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyShutdownGracePeriodAnnotation:           "30s",
 							k8s.ProxyOutboundDiscoveryCacheUnusedTimeout:     "50000ms",
 							k8s.ProxyInboundDiscoveryCacheUnusedTimeout:      "900s",
+							k8s.ProxyDisableOutboundProtocolDetectTimeout:    "true",
+							k8s.ProxyDisableInboundProtocolDetectTimeout:     "true",
 						},
 					},
 					Spec: corev1.PodSpec{},
@@ -122,6 +124,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.ShutdownGracePeriod = "30000ms"
 				values.Proxy.OutboundDiscoveryCacheUnusedTimeout = "50s"
 				values.Proxy.InboundDiscoveryCacheUnusedTimeout = "900s"
+				values.Proxy.DisableOutboundProtocolDetectTimeout = true
+				values.Proxy.DisableInboundProtocolDetectTimeout = true
 				return values
 			},
 		},
@@ -140,34 +144,36 @@ func TestGetOverriddenValues(t *testing.T) {
 		},
 		{id: "use namespace overrides",
 			nsAnnotations: map[string]string{
-				k8s.ProxyImageAnnotation:                     "cr.l5d.io/linkerd/proxy",
-				k8s.ProxyImagePullPolicyAnnotation:           pullPolicy,
-				k8s.ProxyInitImageAnnotation:                 "cr.l5d.io/linkerd/proxy-init",
-				k8s.ProxyControlPortAnnotation:               "4000",
-				k8s.ProxyInboundPortAnnotation:               "5000",
-				k8s.ProxyAdminPortAnnotation:                 "5001",
-				k8s.ProxyOutboundPortAnnotation:              "5002",
-				k8s.ProxyPodInboundPortsAnnotation:           "1234,5678",
-				k8s.ProxyIgnoreInboundPortsAnnotation:        "4222,6222",
-				k8s.ProxyIgnoreOutboundPortsAnnotation:       "8079,8080",
-				k8s.ProxyCPURequestAnnotation:                "0.15",
-				k8s.ProxyMemoryRequestAnnotation:             "120",
-				k8s.ProxyCPULimitAnnotation:                  "1.5",
-				k8s.ProxyMemoryLimitAnnotation:               "256",
-				k8s.ProxyUIDAnnotation:                       "8500",
-				k8s.ProxyLogLevelAnnotation:                  "debug,linkerd=debug",
-				k8s.ProxyLogFormatAnnotation:                 "json",
-				k8s.ProxyEnableExternalProfilesAnnotation:    "false",
-				k8s.ProxyVersionOverrideAnnotation:           proxyVersionOverride,
-				k8s.ProxyWaitBeforeExitSecondsAnnotation:     "123",
-				k8s.ProxyOutboundConnectTimeout:              "6000ms",
-				k8s.ProxyInboundConnectTimeout:               "600ms",
-				k8s.ProxyOpaquePortsAnnotation:               "4320-4325,3306",
-				k8s.ProxyAwait:                               "enabled",
-				k8s.ProxyAccessLogAnnotation:                 "apache",
-				k8s.ProxyInjectAnnotation:                    "ingress",
-				k8s.ProxyOutboundDiscoveryCacheUnusedTimeout: "50s",
-				k8s.ProxyInboundDiscoveryCacheUnusedTimeout:  "6000ms",
+				k8s.ProxyImageAnnotation:                      "cr.l5d.io/linkerd/proxy",
+				k8s.ProxyImagePullPolicyAnnotation:            pullPolicy,
+				k8s.ProxyInitImageAnnotation:                  "cr.l5d.io/linkerd/proxy-init",
+				k8s.ProxyControlPortAnnotation:                "4000",
+				k8s.ProxyInboundPortAnnotation:                "5000",
+				k8s.ProxyAdminPortAnnotation:                  "5001",
+				k8s.ProxyOutboundPortAnnotation:               "5002",
+				k8s.ProxyPodInboundPortsAnnotation:            "1234,5678",
+				k8s.ProxyIgnoreInboundPortsAnnotation:         "4222,6222",
+				k8s.ProxyIgnoreOutboundPortsAnnotation:        "8079,8080",
+				k8s.ProxyCPURequestAnnotation:                 "0.15",
+				k8s.ProxyMemoryRequestAnnotation:              "120",
+				k8s.ProxyCPULimitAnnotation:                   "1.5",
+				k8s.ProxyMemoryLimitAnnotation:                "256",
+				k8s.ProxyUIDAnnotation:                        "8500",
+				k8s.ProxyLogLevelAnnotation:                   "debug,linkerd=debug",
+				k8s.ProxyLogFormatAnnotation:                  "json",
+				k8s.ProxyEnableExternalProfilesAnnotation:     "false",
+				k8s.ProxyVersionOverrideAnnotation:            proxyVersionOverride,
+				k8s.ProxyWaitBeforeExitSecondsAnnotation:      "123",
+				k8s.ProxyOutboundConnectTimeout:               "6000ms",
+				k8s.ProxyInboundConnectTimeout:                "600ms",
+				k8s.ProxyOpaquePortsAnnotation:                "4320-4325,3306",
+				k8s.ProxyAwait:                                "enabled",
+				k8s.ProxyAccessLogAnnotation:                  "apache",
+				k8s.ProxyInjectAnnotation:                     "ingress",
+				k8s.ProxyOutboundDiscoveryCacheUnusedTimeout:  "50s",
+				k8s.ProxyInboundDiscoveryCacheUnusedTimeout:   "6000ms",
+				k8s.ProxyDisableOutboundProtocolDetectTimeout: "true",
+				k8s.ProxyDisableInboundProtocolDetectTimeout:  "false",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -213,15 +219,19 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.IsIngress = true
 				values.Proxy.OutboundDiscoveryCacheUnusedTimeout = "50s"
 				values.Proxy.InboundDiscoveryCacheUnusedTimeout = "6s"
+				values.Proxy.DisableOutboundProtocolDetectTimeout = true
+				values.Proxy.DisableInboundProtocolDetectTimeout = false
 				return values
 			},
 		},
 		{id: "use invalid duration for proxy timeouts",
 			nsAnnotations: map[string]string{
-				k8s.ProxyOutboundConnectTimeout:              "6000",
-				k8s.ProxyInboundConnectTimeout:               "600",
-				k8s.ProxyOutboundDiscoveryCacheUnusedTimeout: "50",
-				k8s.ProxyInboundDiscoveryCacheUnusedTimeout:  "5000",
+				k8s.ProxyOutboundConnectTimeout:               "6000",
+				k8s.ProxyInboundConnectTimeout:                "600",
+				k8s.ProxyOutboundDiscoveryCacheUnusedTimeout:  "50",
+				k8s.ProxyInboundDiscoveryCacheUnusedTimeout:   "5000",
+				k8s.ProxyDisableOutboundProtocolDetectTimeout: "9000",
+				k8s.ProxyDisableInboundProtocolDetectTimeout:  "9",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -237,10 +247,12 @@ func TestGetOverriddenValues(t *testing.T) {
 		{id: "use valid duration for proxy timeouts",
 			nsAnnotations: map[string]string{
 				// Validate we're converting time values into ms for the proxy to parse correctly.
-				k8s.ProxyOutboundConnectTimeout:              "6s5ms",
-				k8s.ProxyInboundConnectTimeout:               "2s5ms",
-				k8s.ProxyOutboundDiscoveryCacheUnusedTimeout: "6s5000ms",
-				k8s.ProxyInboundDiscoveryCacheUnusedTimeout:  "6s5000ms",
+				k8s.ProxyOutboundConnectTimeout:               "6s5ms",
+				k8s.ProxyInboundConnectTimeout:                "2s5ms",
+				k8s.ProxyOutboundDiscoveryCacheUnusedTimeout:  "6s5000ms",
+				k8s.ProxyInboundDiscoveryCacheUnusedTimeout:   "6s5000ms",
+				k8s.ProxyDisableOutboundProtocolDetectTimeout: "false",
+				k8s.ProxyDisableInboundProtocolDetectTimeout:  "true",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -254,6 +266,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.InboundConnectTimeout = "2005ms"
 				values.Proxy.OutboundDiscoveryCacheUnusedTimeout = "11s"
 				values.Proxy.InboundDiscoveryCacheUnusedTimeout = "11s"
+				values.Proxy.DisableOutboundProtocolDetectTimeout = false
+				values.Proxy.DisableInboundProtocolDetectTimeout = true
 				return values
 			},
 		},
