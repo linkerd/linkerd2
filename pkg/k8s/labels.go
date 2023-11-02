@@ -241,12 +241,12 @@ const (
 	// ProxyDisableOutboundProtocolDetectTimeout can be used to disable protocol
 	// detection timeouts for outbound connections by setting them to a very
 	// high value.
-	ProxyDisableOutboundProtocolDetectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-outbound-protocol-detect-timeout"
+	ProxyDisableOutboundProtocolDetectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-disable-outbound-protocol-detect-timeout"
 
 	// ProxyDisableInboundProtocolDetectTimeout can be used to disable protocol
 	// detection timeouts for inbound connections by setting them to a very
 	// high value.
-	ProxyDisableInboundProtocolDetectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-inbound-protocol-detect-timeout"
+	ProxyDisableInboundProtocolDetectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-disable-inbound-protocol-detect-timeout"
 
 	// ProxyEnableGatewayAnnotation can be used to configure the proxy
 	// to operate as a gateway, routing requests that target the inbound router.
