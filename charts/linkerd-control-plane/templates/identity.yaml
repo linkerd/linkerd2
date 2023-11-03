@@ -215,8 +215,9 @@ spec:
       {{- $_ := set $tree.Values.proxy "capabilities" (dict "drop" (list "ALL")) }}
       {{- $_ := set $tree.Values.proxy "outboundDiscoveryCacheUnusedTimeout" "5s" }}
       {{- $_ := set $tree.Values.proxy "inboundDiscoveryCacheUnusedTimeout" "90s" }}
-      {{- $_ := set $tree.Values.proxy "nativeSidecar" false }}
+      {{- if not $tree.Values.proxy.nativeSidecar }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- end }}
       initContainers:
       {{ if .Values.cniEnabled -}}
       - {{- include "partials.network-validator" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
@@ -228,6 +229,9 @@ spec:
       */}}
       {{- $_ := set $tree.Values.proxyInit "ignoreOutboundPorts" .Values.proxyInit.kubeAPIServerPorts -}}
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
+      {{- if $tree.Values.proxy.nativeSidecar }}
+      - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       {{- if .Values.priorityClassName -}}
       priorityClassName: {{ .Values.priorityClassName }}

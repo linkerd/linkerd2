@@ -168,7 +168,7 @@ readinessProbe:
     path: /ready
     port: {{.Values.proxy.ports.admin}}
   initialDelaySeconds: 2
-{{- if .Values.proxy.nativeSidecar }}
+{{- if and .Values.proxy.nativeSidecar (not .Values.proxy.component) }}
 startupProbe:
   httpGet:
     path: /ready
