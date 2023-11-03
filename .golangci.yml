@@ -13,12 +13,9 @@ run:
 linters:
   enable:
   - bodyclose
-  - deadcode
-  - depguard
   - errcheck
   - errorlint
   - exportloopref
-  - goconst
   - gocritic
   - gosec
   - gosimple
@@ -33,8 +30,8 @@ linters:
   - unconvert
   - unparam
   - unused
-  - varcheck
   # TODO: enable more linters!
+  # - depguard
   # - dupl
   # - gochecknoglobals
   # - gochecknoinits
@@ -45,8 +42,6 @@ linters:
   # - prealloc
 
   disable:
-  - depguard
-  - goconst
   # https://github.com/golangci/golangci-lint/issues/2649
   - structcheck
 
