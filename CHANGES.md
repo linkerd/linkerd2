@@ -1759,7 +1759,7 @@ it, such as recent versions of Flux.
   `linkerd-multicluster-link` chart for enhanced control on the service mirror
   deployment (thanks @utay!)
 * Fixed formatting of the `helm.sh/chart` label in CRDs
-* Updated container base images from buster to bullseye
+* Updated container base images from buster to bookworm
 * Added support for spaces in the `config.linkerd.io/opaque-ports` annotation
 
 ## edge-22.3.5
