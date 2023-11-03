@@ -7,7 +7,7 @@ require (
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
 	github.com/clarketm/json v1.15.7
 	github.com/containernetworking/cni v1.1.2
-	github.com/emicklei/proto v1.12.1
+	github.com/emicklei/proto v1.12.2
 	github.com/evanphx/json-patch v5.7.0+incompatible
 	github.com/fatih/color v1.15.0
 	github.com/fsnotify/fsnotify v1.7.0
