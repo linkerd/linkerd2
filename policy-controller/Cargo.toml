@@ -45,9 +45,17 @@ default-features = false
 features = ["admission", "derive"]
 
 [dependencies.kubert]
-version = "0.18"
+version = "0.19"
 default-features = false
-features = ["clap", "index", "lease", "metrics", "runtime", "server", "rustls-tls"]
+features = [
+    "clap",
+    "index",
+    "lease",
+    "metrics",
+    "runtime",
+    "server",
+    "rustls-tls",
+]
 
 [dependencies.tokio]
 version = "1"
