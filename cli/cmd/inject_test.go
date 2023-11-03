@@ -347,7 +347,7 @@ func TestUninjectAndInject(t *testing.T) {
 		{
 			inputFileName:  "inject_emojivoto_deployment.input.yml",
 			goldenFileName: "inject_emojivoto_deployment_native_sidecar.golden.yml",
-			reportFileName: "inject_emojivoto_deployment_native_sidecar.report",
+			reportFileName: "inject_emojivoto_deployment.report",
 			injectProxy:    true,
 			testInjectConfig: func() *linkerd2.Values {
 				values := defaultConfig()
