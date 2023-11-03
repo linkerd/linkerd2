@@ -174,16 +174,6 @@ spec:
           value: linkerd-destination.linkerd.serviceaccount.identity.linkerd.cluster.local
         image: cr.l5d.io/linkerd/proxy:test-inject-proxy-version
         imagePullPolicy: IfNotPresent
-        lifecycle:
-          preStop:
-            exec:
-              command:
-              - /usr/lib/linkerd/linkerd-await
-              - --timeout=1s
-              - --port=4191
-              - --shutdown
-              - /bin/sleep
-              - "0"
         livenessProbe:
           httpGet:
             path: /live

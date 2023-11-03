@@ -200,18 +200,12 @@ lifecycle:
         - --timeout=2m
         - --port={{.Values.proxy.ports.admin}}
 {{- end }}
-{{- if or .Values.proxy.waitBeforeExitSeconds .Values.proxy.nativeSidecar }}
+{{- if .Values.proxy.waitBeforeExitSeconds }}
   preStop:
     exec:
       command:
-        {{- if .Values.proxy.nativeSidecar }}
-        - /usr/lib/linkerd/linkerd-await
-        - --timeout=1s
-        - --port={{.Values.proxy.ports.admin}}
-        - --shutdown
-        {{- end }}
         - /bin/sleep
-        - {{.Values.proxy.waitBeforeExitSeconds | default 0 | quote}}
+        - {{.Values.proxy.waitBeforeExitSeconds | quote}}
 {{- end }}
 {{- end }}
 volumeMounts:
