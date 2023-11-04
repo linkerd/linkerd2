@@ -46,7 +46,7 @@ clusterDomain: cluster.local
 collector:
   # -- Set to false to exclude collector installation
   enabled: true
-  # -- number of replicas of the collector component
+  # -- Number of replicas of the collector component
   replicas: 1
   image:
     name: otel/opentelemetry-collector-contrib
@@ -211,10 +211,6 @@ jaeger:
   # -- UID for the jaeger resource
   UID:
 
-jaegerInjector:
-  # -- number of replicas of the jaeger-injector component
-  replicas: 1
-
 linkerdVersion: &linkerd_version linkerdVersionValue
 
 namespaceMetadata:
@@ -238,6 +234,8 @@ namespaceMetadata:
   tolerations: *default_tolerations
 
 webhook:
+  # -- Number of replicas of the jaeger-injector component
+  replicas: 1
   # -- Do not create a secret resource for the webhook.
   # If this is set to `true`, the value `webhook.caBundle` must be set
   # or the ca bundle must injected with cert-manager ca injector using

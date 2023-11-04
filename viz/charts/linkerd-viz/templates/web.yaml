@@ -77,7 +77,7 @@ spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- $_ := set $tree "component" "web" -}}
       {{- $_ := set $tree "label" "component" -}}
-      {{- include "linkerd.affinity" . | nindent 6 }}
+      {{- include "linkerd.affinity" $tree | nindent 6 }}
       containers:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}:8085

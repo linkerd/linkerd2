@@ -70,7 +70,7 @@ jaegerUrl: ""
 
 # metrics API configuration
 metricsAPI:
-  # -- number of replicas of the metrics-api component
+  # -- Number of replicas of the metrics-api component
   replicas: 1
   # -- log level of the metrics-api component
   # @default -- defaultLogLevel
@@ -131,7 +131,7 @@ metricsAPI:
 
 # tap configuration
 tap:
-    # -- Number of tap component replicas
+  # -- Number of tap component replicas
   replicas: 1
   # -- log level of the tap component
   # @default -- defaultLogLevel

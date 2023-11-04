@@ -16,7 +16,7 @@ metadata:
   name: jaeger-injector
   namespace: {{ .Release.Namespace }}
 spec:
-  replicas: {{ .Values.jaegerInjector.replicas }}
+  replicas: {{ .Values.webhook.replicas }}
   selector:
     matchLabels:
       linkerd.io/extension: jaeger
@@ -45,7 +45,7 @@ spec:
       {{- include "linkerd.node-selector" (dict "Values" .Values.webhook) | nindent 6 }}
       {{- $_ := set $tree "component" "jaeger-injector" -}}
       {{- $_ := set $tree "label" "component" -}}
-      {{- include "linkerd.affinity" . | nindent 6 }}
+      {{- include "linkerd.affinity" $tree | nindent 6 }}
       containers:
       - args:
         - -collector-svc-addr={{.Values.webhook.collectorSvcAddr}}
