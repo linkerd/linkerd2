@@ -1,5 +1,21 @@
 # Changes
 
+## stable-2.14.3
+
+This stable release fixes an issue in the Destination controller that was
+forbidding to route traffic to opaque ports on unmeshed pods. Also, it increases
+the log level from debug to warning when the outbound proxy faces this type of
+events.
+
+* Fixed `GetProfiles` error when address is opaque and unmeshed ([#11556],
+  fixes[#11555])
+* Started logging at warning level when the controller clients receive an error
+  ([#2499])
+
+[#11556]: https://github.com/linkerd/linkerd2/pull/11556
+[#11555]: https://github.com/linkerd/linkerd2/pull/11555
+[#2499]: https://github.com/linkerd/linkerd2-proxy/pull/2499
+
 ## stable-2.14.2
 
 This stable release fixes issues in the proxy and Destination controller which
