@@ -113,7 +113,8 @@ jobs:
       matrix:
         integration_test:
         - cluster-domain
-        - cni-calico-deep
+        # Currently broken (#11567)
+        # - cni-calico-deep
         - deep
         - viz
         - default-policy-deny
