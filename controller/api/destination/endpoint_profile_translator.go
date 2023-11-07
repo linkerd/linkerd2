@@ -5,7 +5,6 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
-	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
 )
 
@@ -17,9 +16,7 @@ type endpointProfileTranslator struct {
 	stream              pb.Destination_GetProfileServer
 	lastMessage         string
 
-	k8sAPI      *k8s.API
-	metadataAPI *k8s.MetadataAPI
-	log         *logging.Entry
+	log *logging.Entry
 }
 
 // newEndpointProfileTranslator translates pod updates and protocol updates to
@@ -31,8 +28,6 @@ func newEndpointProfileTranslator(
 	defaultOpaquePorts map[uint32]struct{},
 	log *logging.Entry,
 	stream pb.Destination_GetProfileServer,
-	k8sAPI *k8s.API,
-	metadataAPI *k8s.MetadataAPI,
 ) *endpointProfileTranslator {
 	return &endpointProfileTranslator{
 		enableH2Upgrade:     enableH2Upgrade,
@@ -40,8 +35,6 @@ func newEndpointProfileTranslator(
 		identityTrustDomain: identityTrustDomain,
 		defaultOpaquePorts:  defaultOpaquePorts,
 		stream:              stream,
-		k8sAPI:              k8sAPI,
-		metadataAPI:         metadataAPI,
 		log:                 log.WithField("component", "endpoint-profile-translator"),
 	}
 }
