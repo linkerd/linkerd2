@@ -14,7 +14,7 @@ require (
 	github.com/go-openapi/spec v0.20.9
 	github.com/go-test/deep v1.1.0
 	github.com/golang/protobuf v1.5.3
-	github.com/gorilla/websocket v1.5.0
+	github.com/gorilla/websocket v1.5.1
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/imdario/mergo v0.3.16
