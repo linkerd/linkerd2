@@ -199,6 +199,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         startupProbe:
+          failureThreshold: 120
           httpGet:
             path: /ready
             port: 4191
