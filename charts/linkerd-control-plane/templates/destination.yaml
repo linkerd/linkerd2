@@ -344,6 +344,9 @@ spec:
       - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       {{- if $tree.Values.proxy.nativeSidecar }}
+        {{- $_ := set $tree.Values.proxy "startupProbeInitialDelaySeconds" 20 }}
+        {{- $_ := set $tree.Values.proxy "startupProbePeriodSeconds" 5 }}
+        {{- $_ := set $tree.Values.proxy "startupProbeFailureThreshold" 20 }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       {{- if .Values.priorityClassName -}}
