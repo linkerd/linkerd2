@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"sync"
+	"time"
 
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	splisters "github.com/linkerd/linkerd2/controller/gen/client/listers/serviceprofile/v1alpha2"
@@ -105,6 +106,16 @@ func (pw *ProfileWatcher) addProfile(obj interface{}) {
 }
 
 func (pw *ProfileWatcher) updateProfile(old interface{}, new interface{}) {
+	oldProfile := old.(*sp.ServiceProfile)
+	newProfile := new.(*sp.ServiceProfile)
+
+	oldUpdated := latestUpdated(oldProfile.ManagedFields)
+	updated := latestUpdated(newProfile.ManagedFields)
+	if !updated.IsZero() && updated != oldUpdated {
+		delta := time.Since(updated)
+		serviceProfileInformerLag.Observe(delta.Seconds())
+	}
+
 	pw.addProfile(new)
 }
 
