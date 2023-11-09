@@ -9,7 +9,7 @@ require (
 	github.com/containernetworking/cni v1.1.2
 	github.com/emicklei/proto v1.12.2
 	github.com/evanphx/json-patch v5.7.0+incompatible
-	github.com/fatih/color v1.15.0
+	github.com/fatih/color v1.16.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-openapi/spec v0.20.9
 	github.com/go-test/deep v1.1.0
