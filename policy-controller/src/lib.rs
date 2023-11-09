@@ -9,22 +9,22 @@ pub use linkerd_policy_controller_k8s_api as k8s;
 pub use linkerd_policy_controller_k8s_index::{inbound, outbound, ClusterInfo, DefaultPolicy};
 
 use anyhow::{bail, Result};
+use clap::Parser;
+use futures::prelude::*;
+use index_list::IndexList;
+use k8s::{api::apps::v1::Deployment, Client, ObjectMeta, Resource};
+use k8s_openapi::api::coordination::v1 as coordv1;
+use kube::{api::PatchParams, runtime::watcher};
+use kubert::LeaseManager;
 use linkerd_policy_controller_core::inbound::{
     DiscoverInboundServer, InboundServer, InboundServerStream,
 };
 use linkerd_policy_controller_core::outbound::{
     DiscoverOutboundPolicy, OutboundDiscoverTarget, OutboundPolicy, OutboundPolicyStream,
 };
-use clap::Parser;
-use futures::prelude::*;
-use k8s::{api::apps::v1::Deployment, Client, ObjectMeta, Resource};
-use k8s_openapi::api::coordination::v1 as coordv1;
-use kube::{api::PatchParams, runtime::watcher};
-use kubert::LeaseManager;
-use index_list::IndexList;
 use linkerd_policy_controller_k8s_index::ports::parse_portset;
 use linkerd_policy_controller_k8s_status::{self as status};
-use std::{net::IpAddr, num::NonZeroU16, net::SocketAddr, sync::Arc};
+use std::{net::IpAddr, net::SocketAddr, num::NonZeroU16, sync::Arc};
 use tokio::{sync::mpsc, time::Duration};
 use tonic::transport::Server;
 use tracing::{info, info_span, instrument, Instrument};
@@ -190,8 +190,9 @@ impl Args {
 
         // Spawn resource watches.
 
-        let pods = runtime
-            .watch_all::<k8s::Pod>(watcher::Config::default().labels("linkerd.io/control-plane-ns"));
+        let pods = runtime.watch_all::<k8s::Pod>(
+            watcher::Config::default().labels("linkerd.io/control-plane-ns"),
+        );
         tokio::spawn(
             kubert::index::namespaced(inbound_index.clone(), pods).instrument(info_span!("pods")),
         );
@@ -254,11 +255,14 @@ impl Args {
             .push(status_index.clone())
             .shared();
         tokio::spawn(
-            kubert::index::namespaced(services_indexes, services).instrument(info_span!("services")),
+            kubert::index::namespaced(services_indexes, services)
+                .instrument(info_span!("services")),
         );
 
         // Spawn the status Controller reconciliation.
-        tokio::spawn(status::Index::run(status_index.clone()).instrument(info_span!("status::Index")));
+        tokio::spawn(
+            status::Index::run(status_index.clone()).instrument(info_span!("status::Index")),
+        );
 
         // Run the gRPC server, serving results by looking up against the index handle.
         tokio::spawn(grpc(
@@ -394,7 +398,6 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
             )
     }
 }
-
 
 #[derive(Clone, Debug)]
 struct IpNets(Vec<IpNet>);
