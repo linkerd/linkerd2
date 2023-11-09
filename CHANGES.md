@@ -1,5 +1,29 @@
 # Changes
 
+## edge-23.11.2
+
+This edge release contains observability improvements and bug fixes to the
+Destination controller, and a refinement to the multicluster gateway resolution
+logic.
+
+* Fixed an issue where the Destination controller could stop processing service
+  profile updates, if a proxy subscribed to those updates stops reading them;
+  this is a followup to the issue [#11491] fixed in [edge-23.10.3] ([#11546])
+* In the Destination controller, added informer lag histogram metrics to track
+  whenever the Kubernetes objects watched by the controller are falling behind
+  the state in the kube-apiserver ([#11534])
+* In the multicluster service mirror, extended the target gateway resolution
+  logic to take into account all the possible IPs a hostname might resolve to,
+  rather than just the first one (thanks @MrFreezeex!) ([#11499])
+* Added probes to the debug container to appease environments requiring probes
+  for all containers ([#11308])
+
+[edge-23.10.3]: https://github.com/linkerd/linkerd2/releases/tag/edge-23.10.3
+[#11546]: https://github.com/linkerd/linkerd2/pull/11546
+[#11534]: https://github.com/linkerd/linkerd2/pull/11534
+[#11499]: https://github.com/linkerd/linkerd2/pull/11499
+[#11308]: https://github.com/linkerd/linkerd2/pull/11308
+
 ## edge-23.11.1
 
 This edge release fixes two bugs in the Destination controller that could cause
