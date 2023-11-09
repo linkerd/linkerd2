@@ -21,6 +21,8 @@ controllerLogFormat: plain
 controlPlaneTracing: false
 # -- namespace to send control plane traces to
 controlPlaneTracingNamespace: linkerd-jaeger
+# Add a new option to skip namespace metadata jobs
+skipNamespaceMetadataJobs: false
 # -- control plane version. See Proxy section for proxy version
 linkerdVersion: linkerdVersionValue
 # -- default kubernetes deployment strategy
