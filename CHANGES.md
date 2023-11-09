@@ -18,7 +18,6 @@ logic.
 * Added probes to the debug container to appease environments requiring probes
   for all containers ([#11308])
 
-[#11491]: https://github.com/linkerd/linkerd2/pull/11491
 [#11546]: https://github.com/linkerd/linkerd2/pull/11546
 [#11534]: https://github.com/linkerd/linkerd2/pull/11534
 [#11499]: https://github.com/linkerd/linkerd2/pull/11499
