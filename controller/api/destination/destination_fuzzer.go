@@ -91,12 +91,11 @@ func FuzzProfileTranslatorUpdate(data []byte) int {
 		return 0
 	}
 	t := &testing.T{}
-	mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+	mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-	translator := &profileTranslator{
-		stream: mockGetProfileServer,
-		log:    logging.WithField("test", t.Name()),
-	}
+	translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+	translator.Start()
+	defer translator.Stop()
 	translator.Update(profile)
 	return 1
 }

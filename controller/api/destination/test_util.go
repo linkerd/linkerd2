@@ -563,11 +563,11 @@ func (m *mockDestinationGetServer) Send(update *pb.Update) error {
 
 type mockDestinationGetProfileServer struct {
 	util.MockServerStream
-	profilesReceived []*pb.DestinationProfile
+	profilesReceived chan *pb.DestinationProfile
 }
 
 func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) error {
-	m.profilesReceived = append(m.profilesReceived, profile)
+	m.profilesReceived <- profile
 	return nil
 }
 

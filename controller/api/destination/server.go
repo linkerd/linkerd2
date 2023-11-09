@@ -345,11 +345,14 @@ func (s *server) subscribeToServiceProfile(
 		WithField("port", port)
 
 	canceled := stream.Context().Done()
+	streamEnd := make(chan struct{})
 
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
-	translator := newProfileTranslator(stream, log, fqn, port)
+	translator := newProfileTranslator(stream, log, fqn, port, streamEnd)
+	translator.Start()
+	defer translator.Stop()
 
 	// The opaque ports adaptor merges profile updates with service opaque
 	// port annotation updates; it then publishes the result to the traffic
@@ -376,9 +379,9 @@ func (s *server) subscribeToServiceProfile(
 	// namespace. If there's no namespace in the token, start a single
 	// subscription.
 	if token.Ns == "" {
-		return s.subscribeToServiceWithoutContext(fqn, listener, canceled, log)
+		return s.subscribeToServiceWithoutContext(fqn, listener, canceled, log, streamEnd)
 	}
-	return s.subscribeToServicesWithContext(fqn, token, listener, canceled, log)
+	return s.subscribeToServicesWithContext(fqn, token, listener, canceled, log, streamEnd)
 }
 
 // subscribeToServiceWithContext establishes two profile watches: a "backup"
@@ -393,6 +396,7 @@ func (s *server) subscribeToServicesWithContext(
 	listener watcher.ProfileUpdateListener,
 	canceled <-chan struct{},
 	log *logging.Entry,
+	streamEnd <-chan struct{},
 ) error {
 	// We ned to support two subscriptions:
 	// - First, a backup subscription that assumes the context of the server
@@ -430,7 +434,9 @@ func (s *server) subscribeToServicesWithContext(
 	select {
 	case <-s.shutdown:
 	case <-canceled:
-		log.Debug("Cancelled")
+		log.Debugf("GetProfile %s cancelled", fqn)
+	case <-streamEnd:
+		log.Errorf("GetProfile %s stream aborted", fqn)
 	}
 	return nil
 }
@@ -440,8 +446,9 @@ func (s *server) subscribeToServicesWithContext(
 func (s *server) subscribeToServiceWithoutContext(
 	fqn string,
 	listener watcher.ProfileUpdateListener,
-	cancel <-chan struct{},
+	canceled <-chan struct{},
 	log *logging.Entry,
+	streamEnd <-chan struct{},
 ) error {
 	id, err := profileID(fqn, contextToken{}, s.clusterDomain)
 	if err != nil {
@@ -457,8 +464,10 @@ func (s *server) subscribeToServiceWithoutContext(
 
 	select {
 	case <-s.shutdown:
-	case <-cancel:
-		log.Debug("Cancelled")
+	case <-canceled:
+		log.Debugf("GetProfile %s cancelled", fqn)
+	case <-streamEnd:
+		log.Errorf("GetProfile %s stream aborted", fqn)
 	}
 	return nil
 }
