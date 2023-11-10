@@ -1,4 +1,7 @@
 {{ define "partials.proxy" -}}
+{{ if and .Values.proxy.nativeSidecar .Values.proxy.waitBeforeExitSeconds }}
+{{ fail "proxy.nativeSidecar and waitBeforeExitSeconds cannot be used simultaneously" }}
+{{- end }}
 {{- $trustDomain := (.Values.identityTrustDomain | default .Values.clusterDomain) -}}
 env:
 - name: _pod_name
@@ -191,9 +194,9 @@ securityContext:
   seccompProfile:
     type: RuntimeDefault
 terminationMessagePolicy: FallbackToLogsOnError
-{{- if or .Values.proxy.await .Values.proxy.waitBeforeExitSeconds .Values.proxy.nativeSidecar }}
+{{- if and (not .Values.proxy.nativeSidecar) (or .Values.proxy.await .Values.proxy.waitBeforeExitSeconds) }}
 lifecycle:
-{{- if and .Values.proxy.await (not .Values.proxy.nativeSidecar) }}
+{{- if .Values.proxy.await }}
   postStart:
     exec:
       command:
