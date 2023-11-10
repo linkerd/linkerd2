@@ -65,7 +65,7 @@ func Mutate(collectorSvcAddr, collectorSvcAccount, clusterDomain, linkerdNamespa
 			ClusterDomain:       clusterDomain,
 			LinkerdNamespace:    linkerdNamespace,
 		}
-		if params.ProxyPath == "notfound" || labels.IsTracingEnabled(pod) {
+		if params.ProxyPath == "" || labels.IsTracingEnabled(pod) {
 			return admissionResponse, nil
 		}
 

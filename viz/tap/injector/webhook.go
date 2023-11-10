@@ -44,7 +44,7 @@ func Mutate(tapSvcName string) webhook.Handler {
 			ProxyPath:       webhook.GetProxyContainerPath(pod.Spec),
 			ProxyTapSvcName: tapSvcName,
 		}
-		if params.ProxyPath == "notfound" || vizLabels.IsTapEnabled(pod) {
+		if params.ProxyPath == "" || vizLabels.IsTapEnabled(pod) {
 			return admissionResponse, nil
 		}
 		namespace, err := k8sAPI.Get(k8s.NS, request.Namespace)

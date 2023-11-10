@@ -20,5 +20,5 @@ func GetProxyContainerPath(spec corev1.PodSpec) string {
 			return fmt.Sprintf("initContainers/%d", i)
 		}
 	}
-	return "notfound"
+	return ""
 }
