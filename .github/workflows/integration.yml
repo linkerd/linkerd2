@@ -18,6 +18,7 @@ on:
       - '!.devcontainer/**'
       - rust-toolchain.toml
       - bin/rust-toolchain-version
+      - bin/_docker.sh
 
 permissions:
   contents: read
@@ -391,4 +392,3 @@ jobs:
           just linkerd-tag='${{ needs.tag.outputs.tag }}' \
               k3d-k8s='${{ matrix.k8s }}' \
               mc-test-run
-

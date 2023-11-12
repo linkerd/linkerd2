@@ -30,15 +30,8 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Configure cache
-      shell: bash
-      run: echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
-    - uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84
-      with:
-        path: ${{ env.DOCKER_BUILDKIT_CACHE }}
-        key: ${{ runner.os }}-buildx-${{ inputs.component }}-${{ inputs.tag }}
-        restore-keys: ${{ runner.os }}-buildx-${{ inputs.component }}-
-
+    # populate ACTIONS_CACHE_URL and ACTIONS_RUNTIME_TOKEN
+    - uses: crazy-max/ghaction-github-runtime@b3a9207c0e1ef41f4cf215303c976869d0c2c1c4
     - uses: docker/setup-qemu-action@68827325e0b33c7199eb31dd4e31fbe9023e06e3
     - uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226
     - name: Run bin/docker-build-${{ inputs.component }}
@@ -61,10 +54,6 @@ runs:
         image_digest=$(cat target/metadata-${{ inputs.component }}.json | jq -r '."containerimage.digest"')
         echo "${image_digest}"
         echo "DIGEST=${{ inputs.docker-registry }}/${{ inputs.component }}@${image_digest}" >> "$GITHUB_OUTPUT"
-
-    # Delete older docker images to prevent cache bloat.
-    - run: bin/docker-cache-prune
-      shell: bash
 
 outputs:
   image:
