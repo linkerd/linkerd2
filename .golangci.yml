@@ -13,12 +13,9 @@ run:
 linters:
   enable:
   - bodyclose
-  - deadcode
-  - depguard
   - errcheck
   - errorlint
   - exportloopref
-  - goconst
   - gocritic
   - gosec
   - gosimple
@@ -33,8 +30,8 @@ linters:
   - unconvert
   - unparam
   - unused
-  - varcheck
   # TODO: enable more linters!
+  # - depguard
   # - dupl
   # - gochecknoglobals
   # - gochecknoinits
@@ -136,18 +133,10 @@ issues:
     - gocritic
     text: "ifElseChain: rewrite if-else to switch statement"
 
-  # Test files do not need to be linted by gosec since all OS operations are
-  # not dynamic.
-  - linters:
-    - gosec
-    path: .*test.*
-    text: "G204: Subprocess launched with .*"
-
-  # Test/fuzzing do not need to be checked for file handle cleanup.
+  # Test/fuzzing do not need to be tested for security issues.
   - linters:
     - gosec
     path: .*(test|fuzzer).*\.go
-    text: Deferring unsafe method \"Close\" on type \"\*os\.File\"
 
   # In tests/fuzzing we are usually mocking components or have a good idea
   # about the errors that we expect. For this reason, we ignore unchecked

@@ -601,6 +601,8 @@ data:
       await: true
       capabilities: null
       defaultInboundPolicy: default-allow-policy
+      disableInboundProtocolDetectTimeout: false
+      disableOutboundProtocolDetectTimeout: false
       enableExternalProfiles: false
       image:
         name: ProxyImageName

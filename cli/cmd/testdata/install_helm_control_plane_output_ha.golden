@@ -625,6 +625,8 @@ data:
       await: true
       capabilities: null
       defaultInboundPolicy: all-unauthenticated
+      disableInboundProtocolDetectTimeout: false
+      disableOutboundProtocolDetectTimeout: false
       enableExternalProfiles: false
       image:
         name: cr.l5d.io/linkerd/proxy

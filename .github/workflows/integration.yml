@@ -126,7 +126,7 @@ jobs:
     steps:
       - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
         with:
-          go-version: '1.19'
+          go-version: '1.21'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
         with:
@@ -149,7 +149,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: tj-actions/changed-files@bfc49f4cff6934aa236c171f9bcbf1dd6b1ef438
+      - uses: tj-actions/changed-files@40526807ee1e208a1a8c1bbe6bd2d1b044ef6368
         id: changed
         with:
           files: |
@@ -173,7 +173,7 @@ jobs:
       matrix:
         k8s:
           - v1.21
-          - v1.26
+          - v1.28
     steps:
       - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
         env:
@@ -267,7 +267,7 @@ jobs:
     steps:
       - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
         with:
-          go-version: '1.19'
+          go-version: '1.21'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
         with:
@@ -289,7 +289,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: tj-actions/changed-files@bfc49f4cff6934aa236c171f9bcbf1dd6b1ef438
+      - uses: tj-actions/changed-files@40526807ee1e208a1a8c1bbe6bd2d1b044ef6368
         id: changed
         with:
           files: |
@@ -310,7 +310,7 @@ jobs:
     steps:
       - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
         with:
-          go-version: '1.19'
+          go-version: '1.21'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
         with:
@@ -333,7 +333,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: tj-actions/changed-files@bfc49f4cff6934aa236c171f9bcbf1dd6b1ef438
+      - uses: tj-actions/changed-files@40526807ee1e208a1a8c1bbe6bd2d1b044ef6368
         id: changed
         with:
           files: |
@@ -354,14 +354,14 @@ jobs:
       matrix:
         k8s:
           - v1.21
-          - v1.26
+          - v1.28
     steps:
       - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
         with:
-          go-version: '1.19'
+          go-version: '1.21'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
         with:

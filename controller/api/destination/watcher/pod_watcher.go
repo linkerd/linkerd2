@@ -277,7 +277,7 @@ func (pw *PodWatcher) getOrNewPodPublisher(service *ServiceID, hostname, ip stri
 	if hostname != "" {
 		pod, err = pw.getEndpointByHostname(hostname, service)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get pod for hostname %s: %w", hostname, err)
+			return nil, err
 		}
 		ip = pod.Status.PodIP
 	} else {
@@ -399,7 +399,7 @@ func (pw *PodWatcher) getEndpointByHostname(hostname string, svcID *ServiceID) (
 		}
 	}
 
-	return nil, fmt.Errorf("no pod found in Endpoints %s/%s for hostname %s", svcID.Namespace, svcID.Name, hostname)
+	return nil, status.Errorf(codes.NotFound, "no pod found in Endpoints %s/%s for hostname %s", svcID.Namespace, svcID.Name, hostname)
 }
 
 func (pp *podPublisher) subscribe(listener PodUpdateListener) {
