@@ -35,45 +35,46 @@ impl OutboundDiscover {
 }
 
 #[async_trait::async_trait]
-impl DiscoverInboundServer<(String, String, NonZeroU16)> for InboundDiscover {
+impl DiscoverInboundServer<(grpc::inbound::PolicyWorkload, NonZeroU16)> for InboundDiscover {
     async fn get_inbound_server(
         &self,
-        (namespace, pod, port): (String, String, NonZeroU16),
+        (workload, port): (grpc::inbound::PolicyWorkload, NonZeroU16),
     ) -> Result<Option<InboundServer>> {
-        let rx = match self.0.write().workload_server_rx(&namespace, &pod, port) {
-            Ok(rx) => Some(rx),
-            Err(_) => None,
+        let rx = match workload {
+            grpc::inbound::PolicyWorkload::Pod(ns, name) => {
+                self.0.write().workload_server_rx(&ns, &name, port)
+            }
+            grpc::inbound::PolicyWorkload::External(ns, name) => {
+                self.0.write().pod_server_rx(&ns, &name, port)
+            }
         };
-        if let Some(rx) = rx {
+
+        if let Some(rx) = rx.ok() {
             let server = (*rx.borrow()).clone();
             return Ok(Some(server));
-        }
-
-        let rx = match self.0.write().pod_server_rx(&namespace, &pod, port) {
-            Ok(rx) => rx,
-            Err(_) => return Ok(None),
         };
-        let server = (*rx.borrow()).clone();
-        Ok(Some(server))
+
+        Ok(None)
     }
 
     async fn watch_inbound_server(
         &self,
-        (namespace, pod, port): (String, String, NonZeroU16),
+        (workload, port): (grpc::inbound::PolicyWorkload, NonZeroU16),
     ) -> Result<Option<InboundServerStream>> {
-        let rx = match self.0.write().workload_server_rx(&namespace, &pod, port) {
-            Ok(rx) => Some(rx),
-            Err(_) => None,
+        let rx = match workload {
+            grpc::inbound::PolicyWorkload::Pod(ns, name) => {
+                self.0.write().workload_server_rx(&ns, &name, port)
+            }
+            grpc::inbound::PolicyWorkload::External(ns, name) => {
+                self.0.write().pod_server_rx(&ns, &name, port)
+            }
         };
 
-        if let Some(rx) = rx {
+        if let Some(rx) = rx.ok() {
             return Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx))));
-        }
+        };
 
-        match self.0.write().pod_server_rx(&namespace, &pod, port) {
-            Ok(rx) => Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx)))),
-            Err(_) => Ok(None),
-        }
+        Ok(None)
     }
 }
 

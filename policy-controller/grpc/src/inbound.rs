@@ -27,11 +27,53 @@ pub struct InboundPolicyServer<T> {
     cluster_networks: Arc<[IpNet]>,
 }
 
+pub enum PolicyWorkload {
+    Pod(String, String),
+    External(String, String),
+}
+
+impl TryFrom<String> for PolicyWorkload {
+    type Error = String;
+
+    fn try_from(workload: String) -> Result<Self, Self::Error> {
+        // Parse workload kind
+        let (kind, metadata) = match workload.split_once(':') {
+            None => {
+                return Err(format!("Invalid workload kind: {workload}"));
+            }
+            Some((kind, metadata)) if kind.is_empty() || metadata.is_empty() => {
+                return Err(format!("Invalid workload kind: {workload}"));
+            }
+            Some((kind, _metadata)) if kind != "pod" || kind != "external" => {
+                return Err(format!("Invalid workload kind: {workload}"));
+            }
+            Some((kind, metadata)) => (kind, metadata),
+        };
+
+        // Parse workload name and namespace
+        let (ns, name) = match metadata.split_once(':') {
+            None => {
+                return Err(format!("Invalid workload: {workload}"));
+            }
+            Some((ns, name)) if ns.is_empty() || name.is_empty() => {
+                return Err(format!("Invalid workload: {workload}"));
+            }
+            Some((ns, name)) => (ns, name),
+        };
+
+        if kind == "pod" {
+            Ok(PolicyWorkload::Pod(ns.into(), name.into()))
+        } else {
+            Ok(PolicyWorkload::External(ns.into(), name.into()))
+        }
+    }
+}
+
 // === impl InboundPolicyServer ===
 
 impl<T> InboundPolicyServer<T>
 where
-    T: DiscoverInboundServer<(String, String, NonZeroU16)> + Send + Sync + 'static,
+    T: DiscoverInboundServer<(PolicyWorkload, NonZeroU16)> + Send + Sync + 'static,
 {
     pub fn new(discover: T, cluster_networks: Vec<IpNet>, drain: drain::Watch) -> Self {
         Self {
@@ -48,37 +90,23 @@ where
     fn check_target(
         &self,
         proto::PortSpec { workload, port }: proto::PortSpec,
-    ) -> Result<(String, String, NonZeroU16), tonic::Status> {
-        // Parse a workload name in the form namespace:name.
-        let (ns, name) = match workload.split_once(':') {
-            None => {
-                return Err(tonic::Status::invalid_argument(format!(
-                    "Invalid workload: {}",
-                    workload
-                )));
-            }
-            Some((ns, pod)) if ns.is_empty() || pod.is_empty() => {
-                return Err(tonic::Status::invalid_argument(format!(
-                    "Invalid workload: {}",
-                    workload
-                )));
-            }
-            Some((ns, pod)) => (ns, pod),
-        };
+    ) -> Result<(PolicyWorkload, NonZeroU16), tonic::Status> {
+        let workload = PolicyWorkload::try_from(workload)
+            .map_err(|err| tonic::Status::invalid_argument(err))?;
 
         // Ensure that the port is in the valid range.
         let port = u16::try_from(port)
             .and_then(NonZeroU16::try_from)
             .map_err(|_| tonic::Status::invalid_argument(format!("Invalid port: {port}")))?;
 
-        Ok((ns.to_string(), name.to_string(), port))
+        Ok((workload, port))
     }
 }
 
 #[async_trait::async_trait]
 impl<T> InboundServerPolicies for InboundPolicyServer<T>
 where
-    T: DiscoverInboundServer<(String, String, NonZeroU16)> + Send + Sync + 'static,
+    T: DiscoverInboundServer<(PolicyWorkload, NonZeroU16)> + Send + Sync + 'static,
 {
     async fn get_port(
         &self,
