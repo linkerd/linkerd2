@@ -1,10 +1,12 @@
 package k8s
 
 import (
+	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/metadata/fake"
 )
@@ -16,10 +18,26 @@ func NewFakeAPI(configs ...string) (*API, error) {
 		return nil, err
 	}
 
+	return NewFakeClusterScopedAPI(clientSet, spClientSet), nil
+}
+
+// NewFakeAPIWithL5dClient provides a mock Kubernetes API for testing like
+// NewFakeAPI, but it also returns the mock client for linkerd CRDs
+func NewFakeAPIWithL5dClient(configs ...string) (*API, *l5dcrdclient.Interface, error) {
+	clientSet, _, _, l5dClientSet, err := k8s.NewFakeClientSets(configs...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return NewFakeClusterScopedAPI(clientSet, l5dClientSet), &l5dClientSet, nil
+}
+
+// NewFakeClusterScopedAPI provides a mock Kubernetes API for testing.
+func NewFakeClusterScopedAPI(clientSet kubernetes.Interface, l5dClientSet l5dcrdclient.Interface) *API {
 	return NewClusterScopedAPI(
 		clientSet,
 		nil,
-		spClientSet,
+		l5dClientSet,
 		"fake",
 		CJ,
 		CM,
@@ -39,7 +57,7 @@ func NewFakeAPI(configs ...string) (*API, error) {
 		ES,
 		Srv,
 		Secret,
-	), nil
+	)
 }
 
 // NewFakeMetadataAPI provides a mock Kubernetes API for testing.

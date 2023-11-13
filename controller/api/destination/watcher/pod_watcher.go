@@ -7,7 +7,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/util"
@@ -78,9 +80,9 @@ func NewPodWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.E
 	}
 
 	_, err = k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    pw.updateServer,
-		DeleteFunc: pw.updateServer,
-		UpdateFunc: func(_, obj interface{}) { pw.updateServer(obj) },
+		AddFunc:    pw.updateServers,
+		DeleteFunc: pw.updateServers,
+		UpdateFunc: pw.updateServer,
 	})
 	if err != nil {
 		return nil, err
@@ -95,11 +97,11 @@ func NewPodWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.E
 // the corresponding ip is found for the given service/hostname, and returned.
 func (pw *PodWatcher) Subscribe(service *ServiceID, hostname, ip string, port Port, listener PodUpdateListener) (string, error) {
 	if hostname != "" {
-		pw.log.Debugf("Establishing watch on %s.%s.%s:%d", hostname, service.Name, service.Namespace, port)
+		pw.log.Debugf("Establishing watch on pod %s.%s.%s:%d", hostname, service.Name, service.Namespace, port)
 	} else if service != nil {
-		pw.log.Debugf("Establishing watch on %s.%s:%d", service.Name, service.Namespace, port)
+		pw.log.Debugf("Establishing watch on pod %s.%s:%d", service.Name, service.Namespace, port)
 	} else {
-		pw.log.Debugf("Establishing watch on %s:%d", ip, port)
+		pw.log.Debugf("Establishing watch on pod %s:%d", ip, port)
 	}
 	pp, err := pw.getOrNewPodPublisher(service, hostname, ip, port)
 	if err != nil {
@@ -177,6 +179,14 @@ func (pw *PodWatcher) updatePod(oldObj any, newObj any) {
 		// this is just a mark, wait for actual deletion event
 		return
 	}
+
+	oldUpdated := latestUpdated(oldPod.ManagedFields)
+	updated := latestUpdated(newPod.ManagedFields)
+	if !updated.IsZero() && updated != oldUpdated {
+		delta := time.Since(updated)
+		podInformerLag.Observe(delta.Seconds())
+	}
+
 	pw.log.Tracef("Updated pod %s.%s", newPod.Name, newPod.Namespace)
 	go pw.submitPodUpdate(newPod, false)
 }
@@ -189,26 +199,56 @@ func (pw *PodWatcher) submitPodUpdate(pod *corev1.Pod, remove bool) {
 	if remove {
 		submitPod = nil
 	}
+
 	for _, container := range pod.Spec.Containers {
 		for _, containerPort := range container.Ports {
 			if containerPort.ContainerPort != 0 {
-				if pp, ok := pw.getPodPublisher(pod.Status.PodIP, Port(containerPort.ContainerPort)); ok {
-					pp.updatePod(submitPod)
+				for _, pip := range pod.Status.PodIPs {
+					if pp, ok := pw.getPodPublisher(pip.IP, Port(containerPort.ContainerPort)); ok {
+						pp.updatePod(submitPod)
+					}
+				}
+				if len(pod.Status.PodIPs) == 0 && pod.Status.PodIP != "" {
+					if pp, ok := pw.getPodPublisher(pod.Status.PodIP, Port(containerPort.ContainerPort)); ok {
+						pp.updatePod(submitPod)
+					}
 				}
 			}
+
 			if containerPort.HostPort != 0 {
-				if pp, ok := pw.getPodPublisher(pod.Status.HostIP, Port(containerPort.HostPort)); ok {
-					pp.updatePod(submitPod)
+				for _, hip := range pod.Status.HostIPs {
+					if pp, ok := pw.getPodPublisher(hip.IP, Port(containerPort.HostPort)); ok {
+						pp.updatePod(submitPod)
+					}
+				}
+				if len(pod.Status.HostIPs) == 0 && pod.Status.HostIP != "" {
+					if pp, ok := pw.getPodPublisher(pod.Status.HostIP, Port(containerPort.HostPort)); ok {
+						pp.updatePod(submitPod)
+					}
 				}
 			}
 		}
 	}
 }
 
+func (pw *PodWatcher) updateServer(oldObj interface{}, newObj interface{}) {
+	oldServer := oldObj.(*v1beta1.Server)
+	newServer := newObj.(*v1beta1.Server)
+
+	oldUpdated := latestUpdated(oldServer.ManagedFields)
+	updated := latestUpdated(newServer.ManagedFields)
+	if !updated.IsZero() && updated != oldUpdated {
+		delta := time.Since(updated)
+		serverInformerLag.Observe(delta.Seconds())
+	}
+
+	pw.updateServers(newObj)
+}
+
 // updateServer triggers an Update() call to the listeners of the podPublishers
 // whose pod matches the Server's selector. This function is an event handler
 // so it cannot block.
-func (pw *PodWatcher) updateServer(_ any) {
+func (pw *PodWatcher) updateServers(_ any) {
 	pw.mu.RLock()
 	defer pw.mu.RUnlock()
 
@@ -261,7 +301,7 @@ func (pw *PodWatcher) getOrNewPodPublisher(service *ServiceID, hostname, ip stri
 	if hostname != "" {
 		pod, err = pw.getEndpointByHostname(hostname, service)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get pod for hostname %s: %w", hostname, err)
+			return nil, err
 		}
 		ip = pod.Status.PodIP
 	} else {
@@ -383,7 +423,7 @@ func (pw *PodWatcher) getEndpointByHostname(hostname string, svcID *ServiceID) (
 		}
 	}
 
-	return nil, fmt.Errorf("no pod found in Endpoints %s/%s for hostname %s", svcID.Namespace, svcID.Name, hostname)
+	return nil, status.Errorf(codes.NotFound, "no pod found in Endpoints %s/%s for hostname %s", svcID.Namespace, svcID.Name, hostname)
 }
 
 func (pp *podPublisher) subscribe(listener PodUpdateListener) {

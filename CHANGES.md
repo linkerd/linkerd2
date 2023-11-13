@@ -1,5 +1,149 @@
 # Changes
 
+## edge-23.11.2
+
+This edge release contains observability improvements and bug fixes to the
+Destination controller, and a refinement to the multicluster gateway resolution
+logic.
+
+* Fixed an issue where the Destination controller could stop processing service
+  profile updates, if a proxy subscribed to those updates stops reading them;
+  this is a followup to the issue [#11491] fixed in [edge-23.10.3] ([#11546])
+* In the Destination controller, added informer lag histogram metrics to track
+  whenever the Kubernetes objects watched by the controller are falling behind
+  the state in the kube-apiserver ([#11534])
+* In the multicluster service mirror, extended the target gateway resolution
+  logic to take into account all the possible IPs a hostname might resolve to,
+  rather than just the first one (thanks @MrFreezeex!) ([#11499])
+* Added probes to the debug container to appease environments requiring probes
+  for all containers ([#11308])
+
+[edge-23.10.3]: https://github.com/linkerd/linkerd2/releases/tag/edge-23.10.3
+[#11546]: https://github.com/linkerd/linkerd2/pull/11546
+[#11534]: https://github.com/linkerd/linkerd2/pull/11534
+[#11499]: https://github.com/linkerd/linkerd2/pull/11499
+[#11308]: https://github.com/linkerd/linkerd2/pull/11308
+
+## edge-23.11.1
+
+This edge release fixes two bugs in the Destination controller that could cause
+outbound connections to hang indefinitely.
+
+* helm: Introduce configurable values for protocol detection ([#11536])
+* destination: Fix GetProfiles error when address is opaque and unmeshed ([#11556])
+* destination: Return NotFound for unknown pod names ([#11540])
+* proxy: Log controller errors at WARN
+* proxy: Fix grpc_status metric labels for inbound traffic
+
+[#11536]: https://github.com/linkerd/linkerd2/pull/11536
+[#11556]: https://github.com/linkerd/linkerd2/pull/11556
+[#11540]: https://github.com/linkerd/linkerd2/pull/11540
+
+## edge-23.10.4
+
+This edge release includes a fix for the `ServiceProfile` CRD resource schema.
+The schema incorrectly required `not` response matches to be arrays, while the
+in-cluster validator parsed `not` response matches as objects. In addition, an
+issues has been fixed in `linkerd profile`. When used with the `--open-api`
+flag, it would not strip trailing slashes when generating a resource from
+swagger specifications.
+
+* Fixed an issue where trailing slashes wouldn't be stripped when generating
+  `ServiceProfile` resources through `linkerd profile --open-api` ([#11519])
+* Fixed an issue in the `ServiceProfile` CRD schema. The schema incorrectly
+  required that a `not` response match should be an array, which the service
+  profile validator rejected since it expected an object. The schema has been
+  updated to properly indicate that `not` values should be an object ([#11510];
+  fixes [#11483])
+* Improved logging in the destination controller by adding the client pod's
+  name to the logging context. This will improve visibility into the messages
+  sent and received by the control plane from a specific proxy ([#11532])
+* Fixed an issue in the destination controller where the metadata API would not
+  initialize a `Job` informer. The destination controller uses the metadata API
+  to retrieve `Job` metadata, and relies mostly on informers. Without an
+  initialized informer, an error message would be logged, and the controller
+  relied on direct API calls ([#11541]; fixes [#11531])
+
+[#11541]: https://github.com/linkerd/linkerd2/pull/11541
+[#11532]: https://github.com/linkerd/linkerd2/pull/11532
+[#11531]: https://github.com/linkerd/linkerd2/issues/11531
+[#11519]: https://github.com/linkerd/linkerd2/pull/11519
+[#11510]: https://github.com/linkerd/linkerd2/pull/11510
+[#11483]: https://github.com/linkerd/linkerd2/issues/11483
+
+## edge-23.10.3
+
+This edge release fixes issues in the proxy and Destination controller which can
+result in Linkerd proxies sending traffic to stale endpoints. In addition, it
+contains other bugfixes and updates dependencies to include patches for the
+security advisories [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3 and GHSA-c827-hfw6-qwvm.
+
+* Fixed an issue where the Destination controller could stop processing
+  changes in the endpoints of a destination, if a proxy subscribed to that
+  destination stops reading service discovery updates. This issue results in
+  proxies attempting to send traffic for that destination to stale endpoints
+  ([#11491], fixes [#11480], [#11279], and [#10590])
+* Fixed a regression introduced in stable-2.13.0 where proxies would not
+  terminate unused service discovery watches, exerting backpressure on the
+  Destination controller which could cause it to become stuck
+  ([linkerd2-proxy#2484] and [linkerd2-proxy#2486])
+* Added `INFO`-level logging to the proxy when endpoints are added or removed
+  from a load balancer. These logs are enabled by default, and can be disabled
+  by [setting the proxy log level][proxy-log-level] to
+  `warn,linkerd=info,linkerd_proxy_balance=warn` or similar
+  ([linkerd2-proxy#2486])
+* Fixed a regression where the proxy rendered `grpc_status` metric labels as a
+  string rather than as the numeric status code ([linkerd2-proxy#2480]; fixes
+  [#11449])
+* Extended `linkerd-jaeger`'s `imagePullSecrets` Helm value to also apply to
+the `namespace-metadata` ServiceAccount ([#11504])
+* Updated the control plane's dependency on the `golang.google.org/grpc` Go
+  package to include patches for [CVE-2023-44487]/GHSA-qppj-fm5r-hxr3 ([#11496])
+* Updated dependencies on `rustix` to include patches for GHSA-c827-hfw6-qwvm
+  ([linkerd2-proxy#2488] and [#11512]).
+
+[#10590]: https://github.com/linkerd/linkerd2/issues/10590
+[#11279]: https://github.com/linkerd/linkerd2/issues/11279
+[#11491]: https://github.com/linkerd/linkerd2/pull/11491
+[#11449]: https://github.com/linkerd/linkerd2/issues/11449
+[#11480]: https://github.com/linkerd/linkerd2/issues/11480
+[#11504]: https://github.com/linkerd/linkerd2/issues/11504
+[#11512]: https://github.com/linkerd/linkerd2/issues/11512
+[linkerd2-proxy#2480]: https://github.com/linkerd/linkerd2-proxy/pull/2480
+[linkerd2-proxy#2484]: https://github.com/linkerd/linkerd2-proxy/pull/2484
+[linkerd2-proxy#2486]: https://github.com/linkerd/linkerd2-proxy/pull/2486
+[linkerd2-proxy#2488]: https://github.com/linkerd/linkerd2-proxy/pull/2488
+[proxy-log-level]: https://linkerd.io/2.14/tasks/modifying-proxy-log-level/
+[CVE-2023-44487]: https://github.com/advisories/GHSA-qppj-fm5r-hxr3
+
+## edge-23.10.2
+
+This edge release includes a fix addressing an issue during upgrades for
+instances not relying on automated webhook certificate management (like
+cert-manager provides).
+
+* Added a `checksum/config` annotation to the destination and proxy injector
+  deployment manifests, to force restarting those workloads whenever their
+  webhook secrets change during upgrade (thanks @iAnomaly!) ([#11440])
+* Fixed policy controller error when deleting a Gateway API HTTPRoute resource
+  ([#11471])
+
+[#11440]: https://github.com/linkerd/linkerd2/pull/11440
+[#11471]: https://github.com/linkerd/linkerd2/pull/11471
+
+## edge-23.10.1
+
+This edge release adds additional configurability to Linkerd's viz and
+multicluster extensions.
+
+* Added a `podAnnotations` Helm value to allow adding additional annotations to
+  the Linkerd-Viz Prometheus Deployment ([#11365]) (thanks @cemenson)
+* Added `imagePullSecrets` Helm values to the multicluster chart so that it can
+  be installed in an air-gapped environment. ([#11285]) (thanks @lhaussknecht)
+
+[#11365]: https://github.com/linkerd/linkerd2/issues/11365
+[#11285]: https://github.com/linkerd/linkerd2/issues/11285
+
 ## edge-23.9.4
 
 This edge release makes Linkerd even better.

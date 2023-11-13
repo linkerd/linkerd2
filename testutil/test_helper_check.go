@@ -44,20 +44,16 @@ func (h *TestHelper) TestCheckPre() error {
 
 // TestCheck runs validates the output of `linkerd check`
 func (h *TestHelper) TestCheck(extraArgs ...string) error {
-	cmd := []string{"check", "--output", "json", "--wait", "5m"}
-	cmd = append(cmd, extraArgs...)
-	categories := append(coreCategories, healthcheck.LinkerdControlPlaneVersionChecks,
-		vizHealthcheck.LinkerdVizExtensionCheck)
-	return h.testCheck(cmd, categories)
+	return h.TestCheckWith([]healthcheck.CategoryID{healthcheck.LinkerdControlPlaneVersionChecks, vizHealthcheck.LinkerdVizExtensionCheck}, extraArgs...)
 }
 
-// TestCheckMc validates the output of `linkerd check` and `linkerd mc check`
-func (h *TestHelper) TestCheckMc(extraArgs ...string) error {
-	// TODO (matei): expose multicluster healthchecks in a public library so
-	// they can be consumed here, similar to what viz is doing.
+// TestCheckWith validates the output of `linkerd check`. It will validate the
+// core categories and any additional categories that the caller provides.
+func (h *TestHelper) TestCheckWith(additional []healthcheck.CategoryID, extraArgs ...string) error {
 	cmd := []string{"check", "--output", "json", "--wait", "5m"}
 	cmd = append(cmd, extraArgs...)
-	return h.testCheck(cmd, coreCategories)
+	categories := append(coreCategories, additional...)
+	return h.testCheck(cmd, categories)
 }
 
 // TestCheckProxy runs validates the output of `linkerd check --proxy`

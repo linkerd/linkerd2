@@ -6,7 +6,7 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	log "github.com/sirupsen/logrus"
+	logging "github.com/sirupsen/logrus"
 )
 
 type endpointProfileTranslator struct {
@@ -19,7 +19,7 @@ type endpointProfileTranslator struct {
 
 	k8sAPI      *k8s.API
 	metadataAPI *k8s.MetadataAPI
-	log         *log.Entry
+	log         *logging.Entry
 }
 
 // newEndpointProfileTranslator translates pod updates and protocol updates to
@@ -29,6 +29,7 @@ func newEndpointProfileTranslator(
 	controllerNS,
 	identityTrustDomain string,
 	defaultOpaquePorts map[uint32]struct{},
+	log *logging.Entry,
 	stream pb.Destination_GetProfileServer,
 	k8sAPI *k8s.API,
 	metadataAPI *k8s.MetadataAPI,
@@ -64,11 +65,11 @@ func (ept *endpointProfileTranslator) Update(address *watcher.Address) (bool, er
 		} else if endpoint.ProtocolHint.OpaqueTransport == nil {
 			port, err := getInboundPort(&address.Pod.Spec)
 			if err != nil {
-				return false, err
-			}
-
-			endpoint.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
-				InboundPort: port,
+				ept.log.Error(err)
+			} else {
+				endpoint.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
+					InboundPort: port,
+				}
 			}
 		}
 

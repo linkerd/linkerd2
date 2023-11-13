@@ -625,6 +625,8 @@ data:
       await: true
       capabilities: null
       defaultInboundPolicy: all-unauthenticated
+      disableInboundProtocolDetectTimeout: false
+      disableOutboundProtocolDetectTimeout: false
       enableExternalProfiles: false
       image:
         name: cr.l5d.io/linkerd/proxy
@@ -1006,7 +1008,7 @@ spec:
           value: "25,587,3306,4444,5432,6379,9300,11211"
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
-            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)", "pod":"$(_pod_name)"}
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1279,6 +1281,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: ff01f9fed5a80929d1215ebec514a25888ac7fed762a5a753bd896928e26b951
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1374,7 +1377,7 @@ spec:
           value: "25,587,3306,4444,5432,6379,9300,11211"
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
-            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)", "pod":"$(_pod_name)"}
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1743,6 +1746,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: 9a5539dd6fc3fb72bf39d6be47b21a2c0ff97c286c4ee144548d7268c17d3fd4
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1839,7 +1843,7 @@ spec:
           value: "25,587,3306,4444,5432,6379,9300,11211"
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
-            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)", "pod":"$(_pod_name)"}
         - name: _pod_sa
           valueFrom:
             fieldRef:

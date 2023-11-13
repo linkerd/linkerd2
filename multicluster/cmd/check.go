@@ -34,8 +34,8 @@ const (
 	// prior to stable-2.10.0 when the linkerd prefix was removed.
 	MulticlusterLegacyExtension = "linkerd-multicluster"
 
-	// linkerdMulticlusterExtensionCheck adds checks related to the multicluster extension
-	linkerdMulticlusterExtensionCheck healthcheck.CategoryID = "linkerd-multicluster"
+	// LinkerdMulticlusterExtensionCheck adds checks related to the multicluster extension
+	LinkerdMulticlusterExtensionCheck healthcheck.CategoryID = "linkerd-multicluster"
 
 	linkerdServiceMirrorServiceAccountName = "linkerd-service-mirror-%s"
 	linkerdServiceMirrorComponentName      = "service-mirror"
@@ -129,7 +129,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		return fmt.Errorf("Validation error when executing check command: %w", err)
 	}
 	checks := []healthcheck.CategoryID{
-		linkerdMulticlusterExtensionCheck,
+		LinkerdMulticlusterExtensionCheck,
 	}
 	linkerdHC := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
@@ -290,7 +290,7 @@ func multiclusterCategory(hc *healthChecker, wait time.Duration) *healthcheck.Ca
 				return healthcheck.CheckIfProxyVersionsMatchWithCLI(pods)
 			}))
 
-	return healthcheck.NewCategory(linkerdMulticlusterExtensionCheck, checkers, true)
+	return healthcheck.NewCategory(LinkerdMulticlusterExtensionCheck, checkers, true)
 }
 
 func (hc *healthChecker) checkLinkCRD(ctx context.Context) error {
@@ -555,6 +555,13 @@ func (hc *healthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context,
 	links := []string{}
 	errors := []error{}
 	for _, link := range hc.links {
+		// When linked against a cluster without a gateway, there will be no
+		// gateway address and no probe spec initialised. In such cases, skip
+		// the check
+		if link.GatewayAddress == "" || link.ProbeSpec.Path == "" {
+			continue
+		}
+
 		// Check that each gateway probe service has endpoints.
 		selector := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s,%s=%s", k8s.MirroredGatewayLabel, k8s.RemoteClusterNameLabel, link.TargetClusterName)}
 		gatewayMirrors, err := hc.KubeAPIClient().CoreV1().Services(metav1.NamespaceAll).List(ctx, selector)

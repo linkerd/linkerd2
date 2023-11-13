@@ -75,6 +75,8 @@ var (
 		k8s.ProxyShutdownGracePeriodAnnotation,
 		k8s.ProxyOutboundDiscoveryCacheUnusedTimeout,
 		k8s.ProxyInboundDiscoveryCacheUnusedTimeout,
+		k8s.ProxyDisableOutboundProtocolDetectTimeout,
+		k8s.ProxyDisableInboundProtocolDetectTimeout,
 	}
 	// ProxyAlphaConfigAnnotations is the list of all alpha configuration
 	// (config.alpha prefix) that can be applied to a pod or namespace.
@@ -951,6 +953,24 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 			log.Warnf("unrecognized duration value used on pod annotation %s: %s", k8s.ProxyInboundDiscoveryCacheUnusedTimeout, err.Error())
 		} else {
 			values.Proxy.InboundDiscoveryCacheUnusedTimeout = fmt.Sprintf("%ds", int(duration.Seconds()))
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyDisableOutboundProtocolDetectTimeout]; ok {
+		value, err := strconv.ParseBool(override)
+		if err == nil {
+			values.Proxy.DisableOutboundProtocolDetectTimeout = value
+		} else {
+			log.Warnf("unrecognised value used on pod annotation %s: %s", k8s.ProxyDisableOutboundProtocolDetectTimeout, err.Error())
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyDisableInboundProtocolDetectTimeout]; ok {
+		value, err := strconv.ParseBool(override)
+		if err == nil {
+			values.Proxy.DisableInboundProtocolDetectTimeout = value
+		} else {
+			log.Warnf("unrecognised value used on pod annotation %s: %s", k8s.ProxyDisableInboundProtocolDetectTimeout, err.Error())
 		}
 	}
 

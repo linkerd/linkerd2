@@ -440,6 +440,9 @@ prometheus:
     scrape_interval: 10s
     scrape_timeout: 10s
     evaluation_interval: 10s
+  
+  # -- annotations for the prometheus pod
+  podAnnotations: {}
 
   # -- Alert relabeling is applied to alerts before they are sent to the
   # Alertmanager.

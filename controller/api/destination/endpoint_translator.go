@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
@@ -13,6 +12,8 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -22,26 +23,55 @@ const (
 	// inboundListenAddr is the environment variable holding the inbound
 	// listening address for the proxy container.
 	envInboundListenAddr = "LINKERD2_PROXY_INBOUND_LISTEN_ADDR"
+
+	updateQueueCapacity = 100
 )
 
 // endpointTranslator satisfies EndpointUpdateListener and translates updates
 // into Destination.Get messages.
-type endpointTranslator struct {
-	controllerNS            string
-	identityTrustDomain     string
-	enableH2Upgrade         bool
-	nodeTopologyZone        string
-	nodeName                string
-	defaultOpaquePorts      map[uint32]struct{}
-	enableEndpointFiltering bool
+type (
+	endpointTranslator struct {
+		controllerNS            string
+		identityTrustDomain     string
+		enableH2Upgrade         bool
+		nodeTopologyZone        string
+		nodeName                string
+		defaultOpaquePorts      map[uint32]struct{}
+		enableEndpointFiltering bool
 
-	availableEndpoints watcher.AddressSet
-	filteredSnapshot   watcher.AddressSet
-	stream             pb.Destination_GetServer
-	log                *logging.Entry
+		availableEndpoints watcher.AddressSet
+		filteredSnapshot   watcher.AddressSet
+		stream             pb.Destination_GetServer
+		endStream          chan struct{}
+		log                *logging.Entry
+		overflowCounter    prometheus.Counter
 
-	mu sync.Mutex
-}
+		updates chan interface{}
+		stop    chan struct{}
+	}
+
+	addUpdate struct {
+		set watcher.AddressSet
+	}
+
+	removeUpdate struct {
+		set watcher.AddressSet
+	}
+
+	noEndpointsUpdate struct {
+		exists bool
+	}
+)
+
+var updatesQueueOverflowCounter = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "endpoint_updates_queue_overflow",
+		Help: "A counter incremented whenever the endpoint updates queue overflows",
+	},
+	[]string{
+		"service",
+	},
+)
 
 func newEndpointTranslator(
 	controllerNS string,
@@ -53,6 +83,7 @@ func newEndpointTranslator(
 	enableEndpointFiltering bool,
 	k8sAPI *k8s.MetadataAPI,
 	stream pb.Destination_GetServer,
+	endStream chan struct{},
 	log *logging.Entry,
 ) *endpointTranslator {
 	log = log.WithFields(logging.Fields{
@@ -79,15 +110,85 @@ func newEndpointTranslator(
 		availableEndpoints,
 		filteredSnapshot,
 		stream,
+		endStream,
 		log,
-		sync.Mutex{},
+		updatesQueueOverflowCounter.With(prometheus.Labels{"service": service}),
+		make(chan interface{}, updateQueueCapacity),
+		make(chan struct{}),
 	}
 }
 
 func (et *endpointTranslator) Add(set watcher.AddressSet) {
-	et.mu.Lock()
-	defer et.mu.Unlock()
+	et.enqueueUpdate(&addUpdate{set})
+}
 
+func (et *endpointTranslator) Remove(set watcher.AddressSet) {
+	et.enqueueUpdate(&removeUpdate{set})
+}
+
+func (et *endpointTranslator) NoEndpoints(exists bool) {
+	et.enqueueUpdate(&noEndpointsUpdate{exists})
+}
+
+// Add, Remove, and NoEndpoints are called from a client-go informer callback
+// and therefore must not block. For each of these, we enqueue an update in
+// a channel so that it can be processed asyncronously. To ensure that enqueuing
+// does not block, we first check to see if there is capacity in the buffered
+// channel. If there is not, we drop the update and signal to the stream that
+// it has fallen too far behind and should be closed.
+func (et *endpointTranslator) enqueueUpdate(update interface{}) {
+	select {
+	case et.updates <- update:
+		// Update has been successfully enqueued.
+	default:
+		// We are unable to enqueue because the channel does not have capacity.
+		// The stream has fallen too far behind and should be closed.
+		et.overflowCounter.Inc()
+		select {
+		case <-et.endStream:
+			// The endStream channel has already been closed so no action is
+			// necessary.
+		default:
+			et.log.Error("endpoint update queue full; aborting stream")
+			close(et.endStream)
+		}
+	}
+}
+
+// Start initiates a goroutine which processes update events off of the
+// endpointTranslator's internal queue and sends to the grpc stream as
+// appropriate. The goroutine calls several non-thread-safe functions (including
+// Send) and therefore, Start must not be called more than once.
+func (et *endpointTranslator) Start() {
+	go func() {
+		for {
+			select {
+			case update := <-et.updates:
+				et.processUpdate(update)
+			case <-et.stop:
+				return
+			}
+		}
+	}()
+}
+
+// Stop terminates the goroutine started by Start.
+func (et *endpointTranslator) Stop() {
+	close(et.stop)
+}
+
+func (et *endpointTranslator) processUpdate(update interface{}) {
+	switch update := update.(type) {
+	case *addUpdate:
+		et.add(update.set)
+	case *removeUpdate:
+		et.remove(update.set)
+	case *noEndpointsUpdate:
+		et.noEndpoints(update.exists)
+	}
+}
+
+func (et *endpointTranslator) add(set watcher.AddressSet) {
 	for id, address := range set.Addresses {
 		et.availableEndpoints.Addresses[id] = address
 	}
@@ -95,15 +196,32 @@ func (et *endpointTranslator) Add(set watcher.AddressSet) {
 	et.sendFilteredUpdate(set)
 }
 
-func (et *endpointTranslator) Remove(set watcher.AddressSet) {
-	et.mu.Lock()
-	defer et.mu.Unlock()
-
+func (et *endpointTranslator) remove(set watcher.AddressSet) {
 	for id := range set.Addresses {
 		delete(et.availableEndpoints.Addresses, id)
 	}
 
 	et.sendFilteredUpdate(set)
+}
+
+func (et *endpointTranslator) noEndpoints(exists bool) {
+	et.log.Debugf("NoEndpoints(%+v)", exists)
+
+	et.availableEndpoints.Addresses = map[watcher.ID]watcher.Address{}
+	et.filteredSnapshot.Addresses = map[watcher.ID]watcher.Address{}
+
+	u := &pb.Update{
+		Update: &pb.Update_NoEndpoints{
+			NoEndpoints: &pb.NoEndpoints{
+				Exists: exists,
+			},
+		},
+	}
+
+	et.log.Debugf("Sending destination no endpoints: %+v", u)
+	if err := et.stream.Send(u); err != nil {
+		et.log.Debugf("Failed to send address update: %s", err)
+	}
 }
 
 func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
@@ -242,26 +360,6 @@ func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watche
 			Addresses: remove,
 			Labels:    filtered.Labels,
 		}
-}
-
-func (et *endpointTranslator) NoEndpoints(exists bool) {
-	et.log.Debugf("NoEndpoints(%+v)", exists)
-
-	et.availableEndpoints.Addresses = map[watcher.ID]watcher.Address{}
-	et.filteredSnapshot.Addresses = map[watcher.ID]watcher.Address{}
-
-	u := &pb.Update{
-		Update: &pb.Update_NoEndpoints{
-			NoEndpoints: &pb.NoEndpoints{
-				Exists: exists,
-			},
-		},
-	}
-
-	et.log.Debugf("Sending destination no endpoints: %+v", u)
-	if err := et.stream.Send(u); err != nil {
-		et.log.Debugf("Failed to send address update: %s", err)
-	}
 }
 
 func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {

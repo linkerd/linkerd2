@@ -126,19 +126,23 @@ func NewServer(
 }
 
 func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) error {
-	client, _ := peer.FromContext(stream.Context())
 	log := s.log
+
+	client, _ := peer.FromContext(stream.Context())
 	if client != nil {
-		log = s.log.WithField("remote", client.Addr)
+		log = log.WithField("remote", client.Addr)
 	}
-	log.Debugf("Get %s", dest.GetPath())
 
 	var token contextToken
 	if dest.GetContextToken() != "" {
+		log.Debugf("Dest token: %q", dest.GetContextToken())
 		token = s.parseContextToken(dest.GetContextToken())
-		log.Debugf("Dest token: %v", token)
+		log = log.WithFields(logging.Fields{"context-pod": token.Pod, "context-ns": token.Ns})
 	}
 
+	log.Debugf("Get %s", dest.GetPath())
+
+	streamEnd := make(chan struct{})
 	// The host must be fully-qualified or be an IP address.
 	host, port, err := getHostAndPort(dest.GetPath())
 	if err != nil {
@@ -189,8 +193,12 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			false, // Disable endpoint filtering for remote discovery.
 			s.metadataAPI,
 			stream,
+			streamEnd,
 			log,
 		)
+		translator.Start()
+		defer translator.Stop()
+
 		err = remoteWatcher.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
 		if err != nil {
 			var ise watcher.InvalidService
@@ -215,8 +223,11 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			true,
 			s.metadataAPI,
 			stream,
+			streamEnd,
 			log,
 		)
+		translator.Start()
+		defer translator.Stop()
 
 		err = s.endpoints.Subscribe(service, port, instanceID, translator)
 		if err != nil {
@@ -235,6 +246,8 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	case <-s.shutdown:
 	case <-stream.Context().Done():
 		log.Debugf("Get %s cancelled", dest.GetPath())
+	case <-streamEnd:
+		log.Errorf("Get %s stream aborted", dest.GetPath())
 	}
 
 	return nil
@@ -242,11 +255,20 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 
 func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetProfileServer) error {
 	log := s.log
+
 	client, _ := peer.FromContext(stream.Context())
 	if client != nil {
 		log = log.WithField("remote", client.Addr)
 	}
-	log.Debugf("Getting profile for %s with token %q", dest.GetPath(), dest.GetContextToken())
+
+	var token contextToken
+	if dest.GetContextToken() != "" {
+		log.Debugf("Dest token: %q", dest.GetContextToken())
+		token = s.parseContextToken(dest.GetContextToken())
+		log = log.WithFields(logging.Fields{"context-pod": token.Pod, "context-ns": token.Ns})
+	}
+
+	log.Debugf("Getting profile for %s", dest.GetPath())
 
 	// The host must be fully-qualified or be an IP address.
 	host, port, err := getHostAndPort(dest.GetPath())
@@ -256,16 +278,17 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	}
 
 	if ip := net.ParseIP(host); ip != nil {
-		return s.getProfileByIP(dest.GetContextToken(), ip, port, stream)
+		return s.getProfileByIP(token, ip, port, log, stream)
 	}
 
-	return s.getProfileByName(dest.GetContextToken(), host, port, stream)
+	return s.getProfileByName(token, host, port, log, stream)
 }
 
 func (s *server) getProfileByIP(
-	token string,
+	token contextToken,
 	ip net.IP,
 	port uint32,
+	log *logging.Entry,
 	stream pb.Destination_GetProfileServer,
 ) error {
 	// Get the service that the IP currently maps to.
@@ -275,16 +298,18 @@ func (s *server) getProfileByIP(
 	}
 
 	if svcID == nil {
-		return s.subscribeToEndpointProfile(nil, "", ip.String(), port, stream)
+		return s.subscribeToEndpointProfile(nil, "", ip.String(), port, log, stream)
 	}
 
 	fqn := fmt.Sprintf("%s.%s.svc.%s", svcID.Name, svcID.Namespace, s.clusterDomain)
-	return s.subscribeToServiceProfile(*svcID, token, fqn, port, stream)
+	return s.subscribeToServiceProfile(*svcID, token, fqn, port, log, stream)
 }
 
 func (s *server) getProfileByName(
-	token, host string,
+	token contextToken,
+	host string,
 	port uint32,
+	log *logging.Entry,
 	stream pb.Destination_GetProfileServer,
 ) error {
 	service, hostname, err := parseK8sServiceName(host, s.clusterDomain)
@@ -297,10 +322,10 @@ func (s *server) getProfileByName(
 	// name. When we fetch the profile using a pod's DNS name, we want to
 	// return an endpoint in the profile response.
 	if hostname != "" {
-		return s.subscribeToEndpointProfile(&service, hostname, "", port, stream)
+		return s.subscribeToEndpointProfile(&service, hostname, "", port, log, stream)
 	}
 
-	return s.subscribeToServiceProfile(service, token, host, port, stream)
+	return s.subscribeToServiceProfile(service, token, host, port, log, stream)
 }
 
 // Resolves a profile for a service, sending updates to the provided stream.
@@ -308,21 +333,26 @@ func (s *server) getProfileByName(
 // This function does not return until the stream is closed.
 func (s *server) subscribeToServiceProfile(
 	service watcher.ID,
-	token, fqn string,
+	token contextToken,
+	fqn string,
 	port uint32,
+	log *logging.Entry,
 	stream pb.Destination_GetProfileServer,
 ) error {
-	log := s.log.
+	log = log.
 		WithField("ns", service.Namespace).
 		WithField("svc", service.Name).
 		WithField("port", port)
 
 	canceled := stream.Context().Done()
+	streamEnd := make(chan struct{})
 
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
-	translator := newProfileTranslator(stream, log, fqn, port)
+	translator := newProfileTranslator(stream, log, fqn, port, streamEnd)
+	translator.Start()
+	defer translator.Stop()
 
 	// The opaque ports adaptor merges profile updates with service opaque
 	// port annotation updates; it then publishes the result to the traffic
@@ -348,11 +378,10 @@ func (s *server) subscribeToServiceProfile(
 	// The primary lookup uses the context token to determine the requester's
 	// namespace. If there's no namespace in the token, start a single
 	// subscription.
-	tok := s.parseContextToken(token)
-	if tok.Ns == "" {
-		return s.subscribeToServiceWithoutContext(fqn, listener, canceled, log)
+	if token.Ns == "" {
+		return s.subscribeToServiceWithoutContext(fqn, listener, canceled, log, streamEnd)
 	}
-	return s.subscribeToServicesWithContext(fqn, tok, listener, canceled, log)
+	return s.subscribeToServicesWithContext(fqn, token, listener, canceled, log, streamEnd)
 }
 
 // subscribeToServiceWithContext establishes two profile watches: a "backup"
@@ -367,6 +396,7 @@ func (s *server) subscribeToServicesWithContext(
 	listener watcher.ProfileUpdateListener,
 	canceled <-chan struct{},
 	log *logging.Entry,
+	streamEnd <-chan struct{},
 ) error {
 	// We ned to support two subscriptions:
 	// - First, a backup subscription that assumes the context of the server
@@ -404,7 +434,9 @@ func (s *server) subscribeToServicesWithContext(
 	select {
 	case <-s.shutdown:
 	case <-canceled:
-		log.Debug("Cancelled")
+		log.Debugf("GetProfile %s cancelled", fqn)
+	case <-streamEnd:
+		log.Errorf("GetProfile %s stream aborted", fqn)
 	}
 	return nil
 }
@@ -414,8 +446,9 @@ func (s *server) subscribeToServicesWithContext(
 func (s *server) subscribeToServiceWithoutContext(
 	fqn string,
 	listener watcher.ProfileUpdateListener,
-	cancel <-chan struct{},
+	canceled <-chan struct{},
 	log *logging.Entry,
+	streamEnd <-chan struct{},
 ) error {
 	id, err := profileID(fqn, contextToken{}, s.clusterDomain)
 	if err != nil {
@@ -431,8 +464,10 @@ func (s *server) subscribeToServiceWithoutContext(
 
 	select {
 	case <-s.shutdown:
-	case <-cancel:
-		log.Debug("Cancelled")
+	case <-canceled:
+		log.Debugf("GetProfile %s cancelled", fqn)
+	case <-streamEnd:
+		log.Errorf("GetProfile %s stream aborted", fqn)
 	}
 	return nil
 }
@@ -446,6 +481,7 @@ func (s *server) subscribeToEndpointProfile(
 	hostname,
 	ip string,
 	port uint32,
+	log *logging.Entry,
 	stream pb.Destination_GetProfileServer,
 ) error {
 	translator := newEndpointProfileTranslator(
@@ -453,6 +489,7 @@ func (s *server) subscribeToEndpointProfile(
 		s.controllerNS,
 		s.identityTrustDomain,
 		s.defaultOpaquePorts,
+		log,
 		stream,
 		s.k8sAPI,
 		s.metadataAPI,
@@ -510,6 +547,7 @@ func getSvcID(k8sAPI *k8s.API, clusterIP string, log *logging.Entry) (*watcher.S
 type contextToken struct {
 	Ns       string `json:"ns,omitempty"`
 	NodeName string `json:"nodeName,omitempty"`
+	Pod      string `json:"pod,omitempty"`
 }
 
 func (s *server) parseContextToken(token string) contextToken {
@@ -552,18 +590,20 @@ func profileID(authority string, ctxToken contextToken, clusterDomain string) (w
 }
 
 func getHostAndPort(authority string) (string, watcher.Port, error) {
-	hostPort := strings.Split(authority, ":")
-	if len(hostPort) > 2 {
-		return "", 0, fmt.Errorf("invalid destination %s", authority)
+	if !strings.Contains(authority, ":") {
+		return authority, watcher.Port(80), nil
 	}
-	host := hostPort[0]
-	port := 80
-	if len(hostPort) == 2 {
-		var err error
-		port, err = strconv.Atoi(hostPort[1])
-		if err != nil || port <= 0 || port > 65535 {
-			return "", 0, fmt.Errorf("invalid port %s", hostPort[1])
-		}
+
+	host, sport, err := net.SplitHostPort(authority)
+	if err != nil {
+		return "", 0, fmt.Errorf("invalid destination: %w", err)
+	}
+	port, err := strconv.Atoi(sport)
+	if err != nil {
+		return "", 0, fmt.Errorf("invalid port %s: %w", sport, err)
+	}
+	if port <= 0 || port > 65535 {
+		return "", 0, fmt.Errorf("invalid port %d", port)
 	}
 	return host, watcher.Port(port), nil
 }

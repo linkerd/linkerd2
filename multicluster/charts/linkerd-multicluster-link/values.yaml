@@ -3,6 +3,9 @@
 controllerImage: cr.l5d.io/linkerd/controller
 # -- Tag for the Service Mirror container Docker image
 controllerImageVersion: linkerdVersionValue
+# -- For Private docker registries, authentication is needed.
+#  Registry secrets are applied to the respective service accounts
+imagePullSecrets: []
 # -- Additional annotations to add to all pods
 podAnnotations: {}
 # -- Additional labels to add to all pods

@@ -25,6 +25,8 @@ func FuzzAdd(data []byte) int {
 	}
 	t := &testing.T{}
 	_, translator := makeEndpointTranslator(t)
+	translator.Start()
+	defer translator.Stop()
 	translator.Add(set)
 	translator.Remove(set)
 	return 1
@@ -52,7 +54,7 @@ func FuzzGet(data []byte) int {
 	server := makeServer(t)
 
 	stream := &bufferingGetStream{
-		updates:          []*pb.Update{},
+		updates:          make(chan *pb.Update, 50),
 		MockServerStream: util.NewMockServerStream(),
 	}
 	_ = server.Get(dest1, stream)
@@ -89,12 +91,11 @@ func FuzzProfileTranslatorUpdate(data []byte) int {
 		return 0
 	}
 	t := &testing.T{}
-	mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: []*pb.DestinationProfile{}}
+	mockGetProfileServer := &mockDestinationGetProfileServer{profilesReceived: make(chan *pb.DestinationProfile, 50)}
 
-	translator := &profileTranslator{
-		stream: mockGetProfileServer,
-		log:    logging.WithField("test", t.Name()),
-	}
+	translator := newProfileTranslator(mockGetProfileServer, logging.WithField("test", t.Name()), "foo.bar.svc.cluster.local", 80, nil)
+	translator.Start()
+	defer translator.Stop()
 	translator.Update(profile)
 	return 1
 }

@@ -158,14 +158,16 @@ pub async fn await_route_status(
     name: &str,
 ) -> k8s::policy::httproute::RouteStatus {
     use k8s::policy::httproute as api;
-    await_condition(client, ns, name, |obj: Option<&api::HttpRoute>| -> bool {
+    let route_status = await_condition(client, ns, name, |obj: Option<&api::HttpRoute>| -> bool {
         obj.and_then(|route| route.status.as_ref()).is_some()
     })
     .await
     .expect("must fetch route")
     .status
     .expect("route must contain a status representation")
-    .inner
+    .inner;
+    tracing::trace!(?route_status, name, ns, "got route status");
+    route_status
 }
 
 // Wait for the endpoints controller to populate the Endpoints resource.
@@ -286,16 +288,16 @@ pub fn mk_route(
     }
 }
 
-pub fn find_route_condition(
-    statuses: impl IntoIterator<Item = k8s_gateway_api::RouteParentStatus>,
-    parent_name: &str,
-) -> Option<k8s::Condition> {
+pub fn find_route_condition<'a>(
+    statuses: impl IntoIterator<Item = &'a k8s_gateway_api::RouteParentStatus>,
+    parent_name: &'static str,
+) -> Option<&'a k8s::Condition> {
     statuses
         .into_iter()
         .find(|route_status| route_status.parent_ref.name == parent_name)
         .expect("route must have at least one status set")
         .conditions
-        .into_iter()
+        .iter()
         .find(|cond| cond.type_ == "Accepted")
 }
 

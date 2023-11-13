@@ -7,11 +7,17 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/api/util"
+	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
 )
 
 func makeServer(t *testing.T) *server {
+	srv, _ := getServerWithClient(t)
+	return srv
+}
+
+func getServerWithClient(t *testing.T) (*server, *l5dcrdclient.Interface) {
 	meshedPodResources := []string{`
 apiVersion: v1
 kind: Namespace
@@ -26,6 +32,9 @@ metadata:
 spec:
   type: LoadBalancer
   clusterIP: 172.17.12.0
+  clusterIPs:
+  - 172.17.12.0
+  - 2001:db8::88
   ports:
   - port: 8989`,
 		`
@@ -56,6 +65,7 @@ status:
   podIP: 172.17.0.12
   podIPs:
   - ip: 172.17.0.12
+  - ip: 2001:db8::68
 spec:
   containers:
     - env:
@@ -445,9 +455,9 @@ spec:
 	res = append(res, hostPortMapping...)
 	res = append(res, mirrorServiceResources...)
 	res = append(res, destinationCredentialsResources...)
-	k8sAPI, err := k8s.NewFakeAPI(res...)
+	k8sAPI, l5dClient, err := k8s.NewFakeAPIWithL5dClient(res...)
 	if err != nil {
-		t.Fatalf("NewFakeAPI returned an error: %s", err)
+		t.Fatalf("NewFakeAPIWithL5dClient returned an error: %s", err)
 	}
 	metadataAPI, err := k8s.NewFakeMetadataAPI(nil)
 	if err != nil {
@@ -513,16 +523,16 @@ spec:
 		metadataAPI,
 		log,
 		make(<-chan struct{}),
-	}
+	}, l5dClient
 }
 
 type bufferingGetStream struct {
-	updates []*pb.Update
+	updates chan *pb.Update
 	util.MockServerStream
 }
 
 func (bgs *bufferingGetStream) Send(update *pb.Update) error {
-	bgs.updates = append(bgs.updates, update)
+	bgs.updates <- update
 	return nil
 }
 
@@ -547,21 +557,21 @@ func (bgps *bufferingGetProfileStream) Updates() []*pb.DestinationProfile {
 
 type mockDestinationGetServer struct {
 	util.MockServerStream
-	updatesReceived []*pb.Update
+	updatesReceived chan *pb.Update
 }
 
 func (m *mockDestinationGetServer) Send(update *pb.Update) error {
-	m.updatesReceived = append(m.updatesReceived, update)
+	m.updatesReceived <- update
 	return nil
 }
 
 type mockDestinationGetProfileServer struct {
 	util.MockServerStream
-	profilesReceived []*pb.DestinationProfile
+	profilesReceived chan *pb.DestinationProfile
 }
 
 func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) error {
-	m.profilesReceived = append(m.profilesReceived, profile)
+	m.profilesReceived <- profile
 	return nil
 }
 
@@ -594,7 +604,7 @@ metadata:
 	}
 	metadataAPI.Sync(nil)
 
-	mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
+	mockGetServer := &mockDestinationGetServer{updatesReceived: make(chan *pb.Update, 50)}
 	translator := newEndpointTranslator(
 		"linkerd",
 		"trust.domain",
@@ -605,6 +615,7 @@ metadata:
 		true,
 		metadataAPI,
 		mockGetServer,
+		nil,
 		logging.WithField("test", t.Name()),
 	)
 	return mockGetServer, translator

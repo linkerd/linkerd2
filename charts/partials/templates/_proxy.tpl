@@ -57,6 +57,14 @@ env:
 - name: LINKERD2_PROXY_INBOUND_DISCOVERY_IDLE_TIMEOUT
   value: {{.Values.proxy.inboundDiscoveryCacheUnusedTimeout | quote}}
 {{ end -}}
+{{ if .Values.proxy.disableOutboundProtocolDetectTimeout -}}
+- name: LINKERD2_PROXY_OUTBOUND_DETECT_TIMEOUT
+  value: "365d"
+{{ end -}}
+{{ if .Values.proxy.disableInboundProtocolDetectTimeout -}}
+- name: LINKERD2_PROXY_INBOUND_DETECT_TIMEOUT
+  value: "365d"
+{{ end -}}
 - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
   value: 0.0.0.0:{{.Values.proxy.ports.control}}
 - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -92,7 +100,7 @@ env:
 {{ end -}}
 - name: LINKERD2_PROXY_DESTINATION_CONTEXT
   value: |
-    {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+    {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)", "pod":"$(_pod_name)"}
 - name: _pod_sa
   valueFrom:
     fieldRef:

@@ -601,6 +601,8 @@ data:
       await: true
       capabilities: null
       defaultInboundPolicy: default-allow-policy
+      disableInboundProtocolDetectTimeout: false
+      disableOutboundProtocolDetectTimeout: false
       enableExternalProfiles: false
       image:
         name: ProxyImageName
@@ -928,7 +930,7 @@ spec:
           value: "25,443,587,3306,5432,11211"
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
-            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)", "pod":"$(_pod_name)"}
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1179,6 +1181,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: d3eac3abc6cf5f1943e0f005fd15ad0107229283fa6f8db72f9ccb4766bb2228
         linkerd.io/created-by: CliVersion
         linkerd.io/proxy-version: ProxyVersion
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1251,7 +1254,7 @@ spec:
           value: "25,443,587,3306,5432,11211"
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
-            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)", "pod":"$(_pod_name)"}
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1607,6 +1610,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: 543c65ff6faff4112a64971371380e01188b1bbc583fef84c7b50844cb1a896d
         linkerd.io/created-by: CliVersion
         linkerd.io/proxy-version: ProxyVersion
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1680,7 +1684,7 @@ spec:
           value: "25,443,587,3306,5432,11211"
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
-            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)", "pod":"$(_pod_name)"}
         - name: _pod_sa
           valueFrom:
             fieldRef:

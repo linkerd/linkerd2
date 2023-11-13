@@ -16,6 +16,8 @@ on:
       - policy-test/**
       - viz/**
       - '!.devcontainer/**'
+      - rust-toolchain.toml
+      - bin/rust-toolchain-version
 
 permissions:
   contents: read
@@ -36,7 +38,7 @@ jobs:
     permissions:
       actions: write
     steps:
-      - uses: styfle/cancel-workflow-action@b173b6ec0100793626c2d9e6b90435061f4fc3e5
+      - uses: styfle/cancel-workflow-action@01ce38bf961b4e243a6342cbade0dbc8ba3f0432
         with:
           all_but_latest: true
           access_token: ${{ github.token }}
@@ -45,7 +47,7 @@ jobs:
     needs: [cleanup]
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
         id: tag
     outputs:
@@ -56,7 +58,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -94,7 +96,7 @@ jobs:
           - proxy
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -124,8 +126,8 @@ jobs:
     steps:
       - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
         with:
-          go-version: '1.19'
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+          go-version: '1.21'
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
         with:
           name: image-archives
@@ -146,8 +148,8 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
-      - uses: tj-actions/changed-files@8238a4103220c636f2dad328ead8a7c8dbe316a3
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: tj-actions/changed-files@25ef3926d147cd02fc7e931c1ef50772bbb0d25d
         id: changed
         with:
           files: |
@@ -171,13 +173,13 @@ jobs:
       matrix:
         k8s:
           - v1.21
-          - v1.26
+          - v1.28
     steps:
       - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: olix0r/cargo-action-fmt/setup@9269f3aa1ff01775d95efc97037e2cbdb41d9684
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
         with:
           name: image-archives
@@ -188,7 +190,7 @@ jobs:
         shell: bash
         run: |
           rm -rf "$HOME/.cargo"
-          bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(cat rust-toolchain)"
+          bin/scurl -v https://sh.rustup.rs | sh -s -- -y --default-toolchain "$(./bin/rust-toolchain-version)"
           # shellcheck disable=SC1090
           source ~/.cargo/env
           echo "PATH=$PATH" >> "$GITHUB_ENV"
@@ -228,7 +230,7 @@ jobs:
           - web
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -265,8 +267,8 @@ jobs:
     steps:
       - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
         with:
-          go-version: '1.19'
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+          go-version: '1.21'
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
         with:
           name: image-archives
@@ -286,8 +288,8 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
-      - uses: tj-actions/changed-files@8238a4103220c636f2dad328ead8a7c8dbe316a3
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: tj-actions/changed-files@25ef3926d147cd02fc7e931c1ef50772bbb0d25d
         id: changed
         with:
           files: |
@@ -308,8 +310,8 @@ jobs:
     steps:
       - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
         with:
-          go-version: '1.19'
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+          go-version: '1.21'
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
         with:
           name: image-archives
@@ -330,8 +332,8 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
-      - uses: tj-actions/changed-files@8238a4103220c636f2dad328ead8a7c8dbe316a3
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: tj-actions/changed-files@25ef3926d147cd02fc7e931c1ef50772bbb0d25d
         id: changed
         with:
           files: |
@@ -352,15 +354,15 @@ jobs:
       matrix:
         k8s:
           - v1.21
-          - v1.26
+          - v1.28
     steps:
       - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
         with:
-          go-version: '1.19'
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+          go-version: '1.21'
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
         with:
           name: image-archives

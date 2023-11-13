@@ -15,10 +15,10 @@ jobs:
   proto-diff:
     timeout-minutes: 10
     runs-on: ubuntu-20.04
-    container: ghcr.io/linkerd/dev:v40-go
+    container: ghcr.io/linkerd/dev:v42-go
     steps:
       - run: apt update && apt install -y unzip
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: bin/protoc-diff
 

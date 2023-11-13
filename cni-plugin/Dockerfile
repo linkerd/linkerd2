@@ -1,7 +1,7 @@
 ARG BUILDPLATFORM=linux/amd64
 
 # Precompile key slow-to-build dependencies
-FROM --platform=$BUILDPLATFORM golang:1.19-alpine as go-deps
+FROM --platform=$BUILDPLATFORM golang:1.21-alpine as go-deps
 WORKDIR /linkerd-build
 COPY go.mod go.sum ./
 COPY bin/install-deps bin/
@@ -18,7 +18,7 @@ COPY cni-plugin cni-plugin
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /go/bin/linkerd-cni -v -mod=readonly ./cni-plugin/
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 WORKDIR /linkerd
 RUN apt-get update && apt-get install -y --no-install-recommends \
     iptables \

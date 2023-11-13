@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -168,7 +169,7 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *log
 	ew.svcHandle, err = k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ew.addService,
 		DeleteFunc: ew.deleteService,
-		UpdateFunc: func(_, obj interface{}) { ew.addService(obj) },
+		UpdateFunc: ew.updateService,
 	})
 	if err != nil {
 		return nil, err
@@ -177,7 +178,7 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *log
 	ew.srvHandle, err = k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ew.addServer,
 		DeleteFunc: ew.deleteServer,
-		UpdateFunc: func(_, obj interface{}) { ew.addServer(obj) },
+		UpdateFunc: ew.updateServer,
 	})
 	if err != nil {
 		return nil, err
@@ -199,7 +200,7 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *log
 		ew.epHandle, err = k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    ew.addEndpoints,
 			DeleteFunc: ew.deleteEndpoints,
-			UpdateFunc: func(_, obj interface{}) { ew.addEndpoints(obj) },
+			UpdateFunc: ew.updateEndpoints,
 		})
 		if err != nil {
 			return nil, err
@@ -292,6 +293,20 @@ func (ew *EndpointsWatcher) addService(obj interface{}) {
 	sp.updateService(service)
 }
 
+func (ew *EndpointsWatcher) updateService(oldObj interface{}, newObj interface{}) {
+	oldService := oldObj.(*corev1.Service)
+	newService := newObj.(*corev1.Service)
+
+	oldUpdated := latestUpdated(oldService.ManagedFields)
+	updated := latestUpdated(newService.ManagedFields)
+	if !updated.IsZero() && updated != oldUpdated {
+		delta := time.Since(updated)
+		serviceInformerLag.Observe(delta.Seconds())
+	}
+
+	ew.addService(newObj)
+}
+
 func (ew *EndpointsWatcher) deleteService(obj interface{}) {
 	service, ok := obj.(*corev1.Service)
 	if !ok {
@@ -328,6 +343,30 @@ func (ew *EndpointsWatcher) addEndpoints(obj interface{}) {
 	id := ServiceID{endpoints.Namespace, endpoints.Name}
 	sp := ew.getOrNewServicePublisher(id)
 	sp.updateEndpoints(endpoints)
+}
+
+func (ew *EndpointsWatcher) updateEndpoints(oldObj interface{}, newObj interface{}) {
+	oldEndpoints, ok := oldObj.(*corev1.Endpoints)
+	if !ok {
+		ew.log.Errorf("error processing endpoints resource, got %#v expected *corev1.Endpoints", oldObj)
+		return
+	}
+	newEndpoints, ok := newObj.(*corev1.Endpoints)
+	if !ok {
+		ew.log.Errorf("error processing endpoints resource, got %#v expected *corev1.Endpoints", newObj)
+		return
+	}
+
+	oldUpdated := latestUpdated(oldEndpoints.ManagedFields)
+	updated := latestUpdated(newEndpoints.ManagedFields)
+	if !updated.IsZero() && updated != oldUpdated {
+		delta := time.Since(updated)
+		endpointsInformerLag.Observe(delta.Seconds())
+	}
+
+	id := ServiceID{newEndpoints.Namespace, newEndpoints.Name}
+	sp := ew.getOrNewServicePublisher(id)
+	sp.updateEndpoints(newEndpoints)
 }
 
 func (ew *EndpointsWatcher) deleteEndpoints(obj interface{}) {
@@ -383,6 +422,12 @@ func (ew *EndpointsWatcher) updateEndpointSlice(oldObj interface{}, newObj inter
 	if !ok {
 		ew.log.Errorf("error processing EndpointSlice resource, got %#v expected *discovery.EndpointSlice", newObj)
 		return
+	}
+	oldUpdated := latestUpdated(oldSlice.ManagedFields)
+	updated := latestUpdated(newSlice.ManagedFields)
+	if !updated.IsZero() && updated != oldUpdated {
+		delta := time.Since(updated)
+		endpointsliceInformerLag.Observe(delta.Seconds())
 	}
 
 	id, err := getEndpointSliceServiceID(newSlice)
@@ -464,6 +509,19 @@ func (ew *EndpointsWatcher) addServer(obj interface{}) {
 	for _, sp := range ew.publishers {
 		sp.updateServer(server, true)
 	}
+}
+
+func (ew *EndpointsWatcher) updateServer(oldObj interface{}, newObj interface{}) {
+	oldServer := oldObj.(*v1beta1.Server)
+	newServer := newObj.(*v1beta1.Server)
+	oldUpdated := latestUpdated(oldServer.ManagedFields)
+	updated := latestUpdated(newServer.ManagedFields)
+	if !updated.IsZero() && updated != oldUpdated {
+		delta := time.Since(updated)
+		serverInformerLag.Observe(delta.Seconds())
+	}
+
+	ew.addServer(newObj)
 }
 
 func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
@@ -1337,4 +1395,16 @@ func SetToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
 		}
 	}
 	return nil
+}
+
+func latestUpdated(managedFields []metav1.ManagedFieldsEntry) time.Time {
+	var latest time.Time
+	for _, field := range managedFields {
+		if field.Operation == metav1.ManagedFieldsOperationUpdate {
+			if latest.IsZero() || field.Time.After(latest) {
+				latest = field.Time.Time
+			}
+		}
+	}
+	return latest
 }

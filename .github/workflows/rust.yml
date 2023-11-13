@@ -10,7 +10,8 @@ on:
       - deny.toml
       - '**/*.rs'
       - policy-*/Dockerfile
-      - rust-toolchain
+      - rust-toolchain.toml
+      - bin/rust-toolchain-version
 
 permissions:
   contents: read
@@ -34,7 +35,7 @@ jobs:
     # Prevent sudden announcement of a new advisory from failing Ci.
     continue-on-error: ${{ matrix.checks == 'advisories' }}
     steps:
-    - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
     - uses: EmbarkStudios/cargo-deny-action@1e59595bed8fc55c969333d08d7817b36888f0c5
       with:
         command: check ${{ matrix.checks }}
@@ -42,18 +43,18 @@ jobs:
   fmt:
     timeout-minutes: 5
     runs-on: ubuntu-latest
-    container: ghcr.io/linkerd/dev:v40-rust
+    container: ghcr.io/linkerd/dev:v42-rust
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just rs-check-fmt
 
   clippy:
-    timeout-minutes: 10
+    timeout-minutes: 20
     runs-on: ubuntu-latest
-    container: ghcr.io/linkerd/dev:v40-rust
+    container: ghcr.io/linkerd/dev:v42-rust
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just rs-fetch
       - run: just rs-clippy
@@ -62,9 +63,10 @@ jobs:
   check:
     timeout-minutes: 20
     runs-on: ubuntu-latest
-    container: ghcr.io/linkerd/dev:v40-rust
+    container: ghcr.io/linkerd/dev:v42-rust
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just rs-fetch
       - run: just rs-check-dirs
 
@@ -72,9 +74,10 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    container: ghcr.io/linkerd/dev:v40-rust
+    container: ghcr.io/linkerd/dev:v42-rust
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just rs-fetch
       - run: just rs-test-build
       - run: just rs-test
@@ -84,14 +87,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
-      - run: |
-          ex=0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - shell: bash
+        run: |
+          toolchain_version="$(./bin/rust-toolchain-version)"
 
+          ex=0
           # Check this workflow against the version in rust-toolchain.
           versions=$(sed -nE 's|.*docker://(.*/)?rust:([^ #]+).*|\2|p' .github/workflows/*)
-          for mismatch in $(echo "$versions" | grep -vF "$(cat rust-toolchain)" || true) ; do
-            echo "::error file=.github/workflows/rust.yml::Workflow uses incorrect rust version(s): $mismatch"
+          for mismatch in $(echo "$versions" | grep -vF "$toolchain_version" || true) ; do
+            echo "::error file=.github/workflows/rust.yml::Workflow uses incorrect rust version(s): $mismatch (expected '$toolchain_version)')"
             ex=$((ex + 1))
           done
 

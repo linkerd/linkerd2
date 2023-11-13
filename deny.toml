@@ -15,7 +15,7 @@ ignore = []
 
 [licenses]
 unlicensed = "deny"
-allow = ["Apache-2.0", "BSD-3-Clause", "ISC", "MIT"]
+allow = ["Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MIT"]
 deny = []
 copyleft = "deny"
 allow-osi-fsf-free = "neither"
@@ -59,8 +59,6 @@ skip = [
     # `rustls-pemfile` and `k8s-openapi` depend on versions of `base64` that
     # have diverged significantly.
     { name = "base64" },
-    # `metrics` depends on an old versoin of `ahash`.
-    { name = "ahash", version = "0.7" },
     # syn v2 has been released and some libraries are slower to adopt it
     { name = "syn", version = "1.0" },
     # `tower-http` (a transitive dep via `kubert`) depends on v2.x of `bitflags`,
@@ -77,9 +75,6 @@ skip-tree = [
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-allow-git = [
-    "https://github.com/linkerd/linkerd2-proxy-api",
-]
 
 [sources.allow-org]
 github = []
