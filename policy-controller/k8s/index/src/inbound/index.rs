@@ -81,11 +81,11 @@ struct PodIndex {
 /// Holds external workload information for a single namespace
 #[derive(Debug)]
 struct ExternalIndex {
-    by_name: HashMap<String, ExternalWorkload>,
+    by_name: HashMap<String, ExternalEndpoint>,
 }
 
 #[derive(Debug)]
-struct ExternalWorkload {
+struct ExternalEndpoint {
     // TODO: prototype, labels?
     meta: WorkloadMeta,
 
@@ -400,8 +400,8 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
     // handle resets specially.
 }
 
-impl kubert::index::IndexNamespacedResource<k8s::external::ExternalWorkload> for Index {
-    fn apply(&mut self, workload: k8s::external::ExternalWorkload) {
+impl kubert::index::IndexNamespacedResource<k8s::external::ExternalEndpoint> for Index {
+    fn apply(&mut self, workload: k8s::external::ExternalEndpoint) {
         let ns = workload.namespace().expect("workload must have namespace");
         let name = workload.name_unchecked();
         let _span = info_span!("apply", %ns, %name).entered();
@@ -949,7 +949,7 @@ impl ExternalIndex {
         name: String,
         meta: WorkloadMeta,
         ports: Vec<NonZeroU16>,
-    ) -> Result<Option<&mut ExternalWorkload>> {
+    ) -> Result<Option<&mut ExternalEndpoint>> {
         let workload = match self.by_name.entry(name.clone()) {
             Entry::Occupied(entry) => {
                 let workload = entry.into_mut();
@@ -966,7 +966,7 @@ impl ExternalIndex {
                 workload.meta = meta;
                 workload
             }
-            Entry::Vacant(entry) => entry.insert(ExternalWorkload {
+            Entry::Vacant(entry) => entry.insert(ExternalEndpoint {
                 meta,
                 ports,
                 port_servers: PortMap::default(),
@@ -1031,8 +1031,8 @@ impl PodIndex {
     }
 }
 
-// === impl ExternalWorkload ===
-impl ExternalWorkload {
+// === impl ExternalEndpoint ===
+impl ExternalEndpoint {
     fn reindex_servers(&mut self, policy: &PolicyIndex, authentications: &AuthenticationNsIndex) {
         // unmatched ports will get a default policy
         let mut unmatched_ports = self.port_servers.keys().copied().collect::<PortSet>();

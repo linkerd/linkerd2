@@ -7,11 +7,11 @@ use serde::{Deserialize, Serialize};
 #[kube(
     group = "multicluster.linkerd.io",
     version = "v1alpha1",
-    kind = "ExternalWorkload",
-    status = "ExternalWorkloadStatus",
+    kind = "ExternalEndpoint",
+    status = "ExternalEndpointStatus",
     namespaced
 )]
-pub struct ExternalWorkloadSpec {
+pub struct ExternalEndpointSpec {
     pub address: String,
     pub ports: Vec<PortSpec>,
     pub identity: String,
@@ -24,7 +24,7 @@ pub struct PortSpec {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
-pub struct ExternalWorkloadStatus {
+pub struct ExternalEndpointStatus {
     pub conditions: Vec<Condition>,
 }
 

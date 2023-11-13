@@ -203,7 +203,7 @@ async fn main() -> Result<()> {
     );
 
     let externals =
-        runtime.watch_all::<k8s::external::ExternalWorkload>(watcher::Config::default());
+        runtime.watch_all::<k8s::external::ExternalEndpoint>(watcher::Config::default());
     tokio::spawn(
         kubert::index::namespaced(inbound_index.clone(), externals)
             .instrument(info_span!("externalworkloads")),
