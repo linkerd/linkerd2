@@ -12,7 +12,8 @@ use serde::{Deserialize, Serialize};
     namespaced
 )]
 pub struct ExternalEndpointSpec {
-    pub address: String,
+    #[serde(rename = "workloadIPs")]
+    pub workload_ips: Vec<ExternalIP>,
     pub ports: Vec<PortSpec>,
     pub identity: String,
 }
@@ -26,6 +27,11 @@ pub struct PortSpec {
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
 pub struct ExternalEndpointStatus {
     pub conditions: Vec<Condition>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
+pub struct ExternalIP {
+    pub ip: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
