@@ -44,7 +44,7 @@ impl TryFrom<String> for PolicyWorkload {
             Some((kind, metadata)) if kind.is_empty() || metadata.is_empty() => {
                 return Err(format!("Invalid workload kind: {workload}"));
             }
-            Some((kind, _metadata)) if kind != "pod" || kind != "external" => {
+            Some((kind, _metadata)) if kind != "pod" && kind != "external" => {
                 return Err(format!("Invalid workload kind: {workload}"));
             }
             Some((kind, metadata)) => (kind, metadata),

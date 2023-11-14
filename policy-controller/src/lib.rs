@@ -42,10 +42,10 @@ impl DiscoverInboundServer<(grpc::inbound::PolicyWorkload, NonZeroU16)> for Inbo
     ) -> Result<Option<InboundServer>> {
         let rx = match workload {
             grpc::inbound::PolicyWorkload::Pod(ns, name) => {
-                self.0.write().workload_server_rx(&ns, &name, port)
+                self.0.write().pod_server_rx(&ns, &name, port)
             }
             grpc::inbound::PolicyWorkload::External(ns, name) => {
-                self.0.write().pod_server_rx(&ns, &name, port)
+                self.0.write().workload_server_rx(&ns, &name, port)
             }
         };
 
@@ -63,18 +63,17 @@ impl DiscoverInboundServer<(grpc::inbound::PolicyWorkload, NonZeroU16)> for Inbo
     ) -> Result<Option<InboundServerStream>> {
         let rx = match workload {
             grpc::inbound::PolicyWorkload::Pod(ns, name) => {
-                self.0.write().workload_server_rx(&ns, &name, port)
-            }
-            grpc::inbound::PolicyWorkload::External(ns, name) => {
                 self.0.write().pod_server_rx(&ns, &name, port)
             }
+            grpc::inbound::PolicyWorkload::External(ns, name) => {
+                self.0.write().workload_server_rx(&ns, &name, port)
+            }
         };
 
-        if let Some(rx) = rx.ok() {
-            return Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx))));
-        };
-
-        Ok(None)
+        match rx {
+            Ok(rx) => Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx)))),
+            Err(_) => Ok(None),
+        }
     }
 }
 

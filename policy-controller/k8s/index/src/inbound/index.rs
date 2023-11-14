@@ -81,22 +81,16 @@ struct PodIndex {
 /// Holds external workload information for a single namespace
 #[derive(Debug)]
 struct ExternalIndex {
+    namespace: String,
     by_name: HashMap<String, ExternalEndpoint>,
 }
 
 #[derive(Debug)]
 struct ExternalEndpoint {
-    // TODO: prototype, labels?
-    meta: WorkloadMeta,
+    meta: external_endpoint::Meta,
 
     ports: Vec<NonZeroU16>,
-    port_servers: PortMap<WorkloadPortServer>,
-}
-
-#[derive(Debug, PartialEq)]
-pub(crate) struct WorkloadMeta {
-    /// The workload's labels. Used by `Server` pod selectors.
-    pub labels: k8s::Labels,
+    port_servers: PortMap<ExternalPortServer>,
 }
 
 /// Holds a single pod's data with the server watches for all known ports.
@@ -140,7 +134,7 @@ struct PodPortServer {
 }
 
 #[derive(Debug)]
-struct WorkloadPortServer {
+struct ExternalPortServer {
     // Name of server matching pod
     name: Option<String>,
 
@@ -407,13 +401,7 @@ impl kubert::index::IndexNamespacedResource<k8s::external::ExternalEndpoint> for
         let _span = info_span!("apply", %ns, %name).entered();
         tracing::info!(%ns, %name, "Applying workload");
 
-        let meta = WorkloadMeta {
-            labels: workload
-                .metadata
-                .labels
-                .unwrap_or_else(|| Default::default())
-                .into(),
-        };
+        let meta = external_endpoint::Meta::from_metadata(workload.metadata);
         let namespace = self.namespaces.get_or_default(ns);
         let ports = workload
             .spec
@@ -917,6 +905,7 @@ impl Namespace {
                 by_name: HashMap::default(),
             },
             external: ExternalIndex {
+                namespace: namespace.clone(),
                 by_name: HashMap::default(),
             },
             policy: PolicyIndex {
@@ -939,6 +928,7 @@ impl Namespace {
     #[inline]
     fn reindex(&mut self, authns: &AuthenticationNsIndex) {
         self.pods.reindex(&self.policy, authns);
+        self.external.reindex(&self.policy, authns);
     }
 }
 
@@ -947,7 +937,7 @@ impl ExternalIndex {
     fn update(
         &mut self,
         name: String,
-        meta: WorkloadMeta,
+        meta: external_endpoint::Meta,
         ports: Vec<NonZeroU16>,
     ) -> Result<Option<&mut ExternalEndpoint>> {
         let workload = match self.by_name.entry(name.clone()) {
@@ -973,6 +963,14 @@ impl ExternalIndex {
             }),
         };
         Ok(Some(workload))
+    }
+
+    fn reindex(&mut self, policy: &PolicyIndex, authns: &AuthenticationNsIndex) {
+        let _span = info_span!("reindex", ns = %self.namespace).entered();
+        for (name, pod) in self.by_name.iter_mut() {
+            let _span = info_span!("external_endpoint", external_endpoint = %name).entered();
+            pod.reindex_servers(policy, authns);
+        }
     }
 }
 
@@ -1069,12 +1067,9 @@ impl ExternalEndpoint {
             }
         }
 
-        // TODO (matei): here we'd think of default policies
-        //for port in unmatched_ports.into_iter() {
-        // Umm default policy for VMs? Based on cluster info? Good or not?
-        //self.set_default_server(port, &policy.cluster_info);
-        // SKIP defaults for now
-        //}
+        for port in unmatched_ports.into_iter() {
+            self.set_default_server(port, &policy.cluster_info);
+        }
     }
 
     fn update_server(&mut self, port: NonZeroU16, name: &str, server: InboundServer) {
@@ -1082,7 +1077,7 @@ impl ExternalEndpoint {
             Entry::Vacant(entry) => {
                 tracing::info!(port = %port, server = %name, "Creating server");
                 let (watch, _) = watch::channel(server);
-                entry.insert(WorkloadPortServer {
+                entry.insert(ExternalPortServer {
                     name: Some(name.to_string()),
                     watch,
                 });
@@ -1119,28 +1114,86 @@ impl ExternalEndpoint {
         tracing::info!(port = %port, server = %name, "Updated server");
     }
 
-    fn port_server_or_default(
-        &mut self,
-        port: NonZeroU16,
-        config: &ClusterInfo,
-    ) -> &mut WorkloadPortServer {
+    /// Updates a pod-port to use the given named server.
+    fn set_default_server(&mut self, port: NonZeroU16, config: &ClusterInfo) {
+        let server = Self::default_inbound_server(port, &self.meta.settings, config);
         match self.port_servers.entry(port) {
-            Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => {
-                let (watch, _) = watch::channel(Self::default_server(port, config));
-                entry.insert(WorkloadPortServer { name: None, watch })
+                tracing::debug!(%port, server = %config.default_policy, "Creating default server");
+                let (watch, _) = watch::channel(server);
+                entry.insert(ExternalPortServer { name: None, watch });
+            }
+
+            Entry::Occupied(mut entry) => {
+                let ps = entry.get_mut();
+                ps.watch.send_if_modified(|current| {
+                    // Avoid sending redundant updates.
+                    if *current == server {
+                        tracing::trace!(%port, server = %config.default_policy, "Default server already set");
+                        return false;
+                    }
+
+                    tracing::debug!(%port, server = %config.default_policy, "Setting default server");
+                    ps.name = None;
+                    *current = server;
+                    true
+                });
             }
         }
     }
 
-    fn default_server(_port: NonZeroU16, config: &ClusterInfo) -> InboundServer {
-        let policy = config.default_policy;
+    fn port_server_or_default(
+        &mut self,
+        port: NonZeroU16,
+        config: &ClusterInfo,
+    ) -> &mut ExternalPortServer {
+        match self.port_servers.entry(port) {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => {
+                let (watch, _) = watch::channel(Self::default_inbound_server(
+                    port,
+                    &self.meta.settings,
+                    &config,
+                ));
+                entry.insert(ExternalPortServer { name: None, watch })
+            }
+        }
+    }
+
+    fn default_inbound_server(
+        port: NonZeroU16,
+        settings: &external_endpoint::Settings,
+        config: &ClusterInfo,
+    ) -> InboundServer {
+        // Determine if port is opaque
+        let protocol = if settings.opaque_ports.contains(&port) {
+            ProxyProtocol::Opaque
+        } else {
+            ProxyProtocol::Detect {
+                timeout: config.default_detect_timeout,
+            }
+        };
+
+        // Default policy from annotations if overridden
+        let mut policy = settings.default_policy.unwrap_or(config.default_policy);
+        if settings.require_id_ports.contains(&port) {
+            if let DefaultPolicy::Allow {
+                ref mut authenticated_only,
+                ..
+            } = policy
+            {
+                *authenticated_only = true;
+            }
+        }
+
         let authorizations = policy.default_authzs(config);
+
+        // Do not worry about probe paths, they do not need to be authorized!
         let http_routes = config.default_inbound_http_routes(Vec::new().into_iter());
-        // TODO (matei): this is all a bit hacky
+
         InboundServer {
             reference: ServerRef::Default(policy.as_str()),
-            protocol: ProxyProtocol::Http1,
+            protocol,
             authorizations,
             http_routes,
         }
@@ -1837,5 +1890,101 @@ impl ClusterInfo {
         routes.insert(HttpRouteRef::Default("probe"), probe_route);
 
         routes
+    }
+}
+
+pub mod external_endpoint {
+    use crate::ports::{parse_portset, PortSet};
+    use crate::DefaultPolicy;
+    use linkerd_policy_controller_k8s_api::{self as k8s};
+
+    #[derive(Debug, PartialEq)]
+    pub(crate) struct Meta {
+        /// The workload's labels. Used by `Server` pod selectors.
+        pub labels: k8s::Labels,
+
+        // External endpoint specific settings (i.e., derived from annotations).
+        pub settings: Settings,
+    }
+
+    #[derive(Debug, PartialEq, Default)]
+    pub(crate) struct Settings {
+        pub require_id_ports: PortSet,
+        pub opaque_ports: PortSet,
+        pub default_policy: Option<DefaultPolicy>,
+    }
+
+    impl Settings {
+        /// Just like a pod, we have to read the annotations and determine
+        /// defaults
+        ///
+        /// - Opaque port
+        /// - Ports that require identity
+        /// - Default policy
+        ///
+        /// Code is copy&pasta'd from the pod version
+        ///
+        pub(crate) fn from_metadata(meta: &k8s::ObjectMeta) -> Self {
+            let anns = match meta.annotations.as_ref() {
+                None => return Self::default(),
+                Some(anns) => anns,
+            };
+
+            let default_policy = Self::default_policy(anns).unwrap_or_else(|error| {
+                tracing::warn!(%error, "invalid default policy annotation value");
+                None
+            });
+
+            let opaque_ports =
+                Self::ports_annotation(anns, "config.linkerd.io/opaque-ports").unwrap_or_default();
+            let require_id_ports = Self::ports_annotation(
+                anns,
+                "config.linkerd.io/proxy-require-identity-inbound-ports",
+            )
+            .unwrap_or_default();
+
+            Self {
+                default_policy,
+                opaque_ports,
+                require_id_ports,
+            }
+        }
+
+        /// Attempts to read a default policy override from an annotation map.
+        fn default_policy(
+            ann: &std::collections::BTreeMap<String, String>,
+        ) -> anyhow::Result<Option<DefaultPolicy>> {
+            if let Some(v) = ann.get("config.linkerd.io/default-inbound-policy") {
+                let mode = v.parse()?;
+                return Ok(Some(mode));
+            }
+
+            Ok(None)
+        }
+
+        /// Reads `annotation` from the provided set of annotations, parsing it as a port set.  If the
+        /// annotation is not set or is invalid, the empty set is returned.
+        pub(crate) fn ports_annotation(
+            annotations: &std::collections::BTreeMap<String, String>,
+            annotation: &str,
+        ) -> Option<PortSet> {
+            annotations.get(annotation).map(|spec| {
+                parse_portset(spec).unwrap_or_else(|error| {
+                    tracing::info!(%spec, %error, %annotation, "Invalid ports list");
+                    Default::default()
+                })
+            })
+        }
+    }
+
+    impl Meta {
+        pub(crate) fn from_metadata(meta: k8s::ObjectMeta) -> Self {
+            let settings = Settings::from_metadata(&meta);
+            tracing::trace!(?settings);
+            Self {
+                settings,
+                labels: meta.labels.into(),
+            }
+        }
     }
 }
