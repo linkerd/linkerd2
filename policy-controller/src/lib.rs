@@ -1,6 +1,7 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 mod admission;
+mod cli;
 pub mod index_list;
 pub use self::admission::Admission;
 pub use linkerd_policy_controller_core::IpNet;
@@ -22,7 +23,6 @@ use linkerd_policy_controller_core::inbound::{
 use linkerd_policy_controller_core::outbound::{
     DiscoverOutboundPolicy, OutboundDiscoverTarget, OutboundPolicy, OutboundPolicyStream,
 };
-use linkerd_policy_controller_k8s_index::ports::parse_portset;
 use linkerd_policy_controller_k8s_status::{self as status};
 use std::{net::IpAddr, net::SocketAddr, num::NonZeroU16, sync::Arc};
 use tokio::{sync::mpsc, time::Duration};
@@ -44,7 +44,7 @@ pub struct OutboundDiscover(outbound::SharedIndex);
 /// runtime.
 #[tokio::main]
 pub async fn run() -> Result<()> {
-    Controller::from_args().await?.run().await
+    Controller::from_args(cli::Args::parse()).await?.run().await
 }
 
 pub struct Controller {
@@ -56,119 +56,46 @@ pub struct Controller {
     pub cluster_info: Arc<ClusterInfo>,
 }
 
-#[derive(Debug, Parser)]
-#[clap(name = "policy", about = "Linkerd 2 policy controller")]
-struct Args {
-    #[clap(
-        long,
-        default_value = "linkerd=info,warn",
-        env = "LINKERD_POLICY_CONTROLLER_LOG"
-    )]
-    log_level: kubert::LogFilter,
-
-    #[clap(long, default_value = "plain")]
-    log_format: kubert::LogFormat,
-
-    #[clap(flatten)]
-    client: kubert::ClientArgs,
-
-    #[clap(flatten)]
-    server: kubert::ServerArgs,
-
-    #[clap(flatten)]
-    admin: kubert::AdminArgs,
-
-    /// Disables the admission controller server.
-    #[clap(long)]
-    admission_controller_disabled: bool,
-
-    #[clap(long, default_value = "0.0.0.0:8090")]
-    grpc_addr: SocketAddr,
-
-    /// Network CIDRs of pod IPs.
-    ///
-    /// The default includes all private networks.
-    #[clap(
-        long,
-        default_value = "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
-    )]
-    cluster_networks: IpNets,
-
-    #[clap(long, default_value = "cluster.local")]
-    identity_domain: String,
-
-    #[clap(long, default_value = "cluster.local")]
-    cluster_domain: String,
-
-    #[clap(long, default_value = "all-unauthenticated")]
-    default_policy: DefaultPolicy,
-
-    #[clap(long, default_value = "linkerd-destination")]
-    policy_deployment_name: String,
-
-    #[clap(long, default_value = "linkerd")]
-    control_plane_namespace: String,
-
-    /// Network CIDRs of all expected probes.
-    #[clap(long)]
-    probe_networks: Option<IpNets>,
-
-    #[clap(long)]
-    default_opaque_ports: String,
-}
-
 // === impl Controller ===
 
 impl Controller {
-    pub async fn from_args() -> Result<Self> {
-        let Args {
-            admin,
-            client,
-            log_level,
-            log_format,
-            server,
-            grpc_addr,
-            admission_controller_disabled,
-            identity_domain,
-            cluster_domain,
-            cluster_networks: IpNets(cluster_networks),
-            default_policy,
-            policy_deployment_name,
-            control_plane_namespace,
-            probe_networks,
-            default_opaque_ports,
-        } = Args::parse();
+    /// Runs the policy controller with the provided [`Args`].
+    pub async fn run(mut self) -> Result<()> {
+        self.spawn_inbound_watches();
+        self.spawn_outbound_watches();
+        self.spawn_shared_watches();
 
-        let server = if admission_controller_disabled {
-            None
-        } else {
-            Some(server)
-        };
+        // Run the gRPC server, serving results by looking up against the index handle.
+        tokio::spawn(grpc(
+            self.grpc_addr,
+            self.cluster_info.dns_domain.clone(),
+            self.cluster_info.networks.clone(),
+            self.inbound_index,
+            self.outbound_index,
+            self.runtime.shutdown_handle(),
+        ));
 
-        let mut admin = admin.into_builder();
-        admin.with_default_prometheus();
+        let client = self.runtime.client();
+        let runtime = self.runtime.spawn_server(|| Admission::new(client));
 
-        let runtime = kubert::Runtime::builder()
-            .with_log(log_level, log_format)
-            .with_admin(admin)
-            .with_client(client)
-            .with_optional_server(server)
-            .build()
-            .await?;
+        // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
+        // complete before exiting.
+        if runtime.run().await.is_err() {
+            bail!("Aborted");
+        }
 
-        let probe_networks = probe_networks.map(|IpNets(nets)| nets).unwrap_or_default();
+        Ok(())
+    }
 
-        let default_opaque_ports = parse_portset(&default_opaque_ports)?;
-        let cluster_info = Arc::new(ClusterInfo {
-            networks: cluster_networks.clone(),
-            identity_domain,
-            control_plane_ns: control_plane_namespace.clone(),
-            dns_domain: cluster_domain.clone(),
-            default_policy,
-            default_detect_timeout: DETECT_TIMEOUT,
-            default_opaque_ports,
-            probe_networks,
-        });
+    pub async fn from_default_args() -> Result<Self> {
+        Self::from_args(cli::Args::parse()).await
+    }
+
+    // TODO(eliza): this could be made public if we choose to make the
+    // `cli::Args` type public
+    async fn from_args(args: cli::Args) -> Result<Self> {
+        let runtime = args.runtime().await?;
+        let cluster_info = args.cluster_info()?;
 
         let hostname =
             std::env::var("HOSTNAME").expect("Failed to fetch `HOSTNAME` environment variable");
@@ -179,8 +106,8 @@ impl Controller {
 
         let lease = init_lease(
             runtime.client(),
-            &control_plane_namespace,
-            &policy_deployment_name,
+            &args.control_plane_namespace,
+            &args.policy_deployment_name,
         )
         .await?;
         let (claims, _task) = lease.spawn(hostname.clone(), params).await?;
@@ -214,36 +141,8 @@ impl Controller {
             outbound_index,
             status_index,
             cluster_info,
-            grpc_addr,
+            grpc_addr: args.grpc_addr,
         })
-    }
-
-    /// Runs the policy controller with the provided [`Args`].
-    pub async fn run(self) -> Result<()> {
-        self.spawn_inbound_watches();
-        self.spawn_outbound_watches();
-        self.spawn_shared_watches();
-
-        // Run the gRPC server, serving results by looking up against the index handle.
-        tokio::spawn(grpc(
-            self.grpc_addr,
-            self.cluster_info.dns_domain.clone(),
-            self.cluster_info.networks.clone(),
-            self.inbound_index,
-            self.outbound_index,
-            self.runtime.shutdown_handle(),
-        ));
-
-        let client = self.runtime.client();
-        let runtime = self.runtime.spawn_server(|| Admission::new(client));
-
-        // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
-        // complete before exiting.
-        if runtime.run().await.is_err() {
-            bail!("Aborted");
-        }
-
-        Ok(())
     }
 
     /// Spawn watcher tasks for inbound-only resources.
@@ -460,19 +359,6 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
                     source_namespace,
                 },
             )
-    }
-}
-
-#[derive(Clone, Debug)]
-struct IpNets(Vec<IpNet>);
-
-impl std::str::FromStr for IpNets {
-    type Err = anyhow::Error;
-    fn from_str(s: &str) -> Result<Self> {
-        s.split(',')
-            .map(|n| n.parse().map_err(Into::into))
-            .collect::<Result<Vec<IpNet>>>()
-            .map(Self)
     }
 }
 
