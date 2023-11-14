@@ -39,14 +39,6 @@ pub struct InboundDiscover(inbound::SharedIndex);
 #[derive(Clone, Debug)]
 pub struct OutboundDiscover(outbound::SharedIndex);
 
-/// Runs the policy controller with arguments parsed from the process'
-/// command-line arguments. This function constructs a multi-threaded Tokio
-/// runtime.
-#[tokio::main]
-pub async fn run() -> Result<()> {
-    Controller::from_args(cli::Args::parse()).await?.run().await
-}
-
 pub struct Controller {
     pub runtime: kubert::Runtime<Option<kubert::server::Bound>>,
     pub inbound_index: inbound::SharedIndex,

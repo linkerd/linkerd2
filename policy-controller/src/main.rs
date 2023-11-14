@@ -5,6 +5,13 @@
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-fn main() -> anyhow::Result<()> {
-    linkerd_policy_controller::run()
+/// Runs the policy controller with arguments parsed from the process'
+/// command-line arguments. This function constructs a multi-threaded Tokio
+/// runtime.
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    linkerd_policy_controller::Controller::from_default_args()
+        .await?
+        .run()
+        .await
 }
