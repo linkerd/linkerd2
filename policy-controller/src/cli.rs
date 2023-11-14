@@ -97,7 +97,8 @@ impl Args {
     pub fn cluster_info(&self) -> Result<Arc<ClusterInfo>> {
         let probe_networks = self
             .probe_networks
-            .map(|IpNets(nets)| nets)
+            .as_ref()
+            .map(|IpNets(nets)| nets.clone())
             .unwrap_or_default();
 
         let default_opaque_ports = parse_portset(&self.default_opaque_ports)?;
@@ -106,7 +107,7 @@ impl Args {
             identity_domain: self.identity_domain.clone(),
             control_plane_ns: self.control_plane_namespace.clone(),
             dns_domain: self.cluster_domain.clone(),
-            default_policy: self.default_policy.clone(),
+            default_policy: self.default_policy,
             default_detect_timeout: crate::DETECT_TIMEOUT,
             default_opaque_ports,
             probe_networks,

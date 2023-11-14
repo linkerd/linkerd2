@@ -159,7 +159,7 @@ impl Controller {
         let servers = self
             .runtime
             .watch_all::<k8s::policy::Server>(watcher::Config::default());
-        let servers_indexes = IndexList::new(self.inbound_index)
+        let servers_indexes = IndexList::new(self.inbound_index.clone())
             .push(self.status_index.clone())
             .shared();
         tokio::spawn(
@@ -170,7 +170,7 @@ impl Controller {
             .runtime
             .watch_all::<k8s::policy::ServerAuthorization>(watcher::Config::default());
         tokio::spawn(
-            kubert::index::namespaced(self.inbound_index, server_authzs)
+            kubert::index::namespaced(self.inbound_index.clone(), server_authzs)
                 .instrument(info_span!("serverauthorizations")),
         );
 
@@ -178,7 +178,7 @@ impl Controller {
             .runtime
             .watch_all::<k8s::policy::AuthorizationPolicy>(watcher::Config::default());
         tokio::spawn(
-            kubert::index::namespaced(self.inbound_index, authz_policies)
+            kubert::index::namespaced(self.inbound_index.clone(), authz_policies)
                 .instrument(info_span!("authorizationpolicies")),
         );
 
@@ -186,7 +186,7 @@ impl Controller {
             .runtime
             .watch_all::<k8s::policy::MeshTLSAuthentication>(watcher::Config::default());
         tokio::spawn(
-            kubert::index::namespaced(self.inbound_index, mtls_authns)
+            kubert::index::namespaced(self.inbound_index.clone(), mtls_authns)
                 .instrument(info_span!("meshtlsauthentications")),
         );
 
@@ -194,7 +194,7 @@ impl Controller {
             .runtime
             .watch_all::<k8s::policy::NetworkAuthentication>(watcher::Config::default());
         tokio::spawn(
-            kubert::index::namespaced(self.inbound_index, network_authns)
+            kubert::index::namespaced(self.inbound_index.clone(), network_authns)
                 .instrument(info_span!("networkauthentications")),
         );
     }
