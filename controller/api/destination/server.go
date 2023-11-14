@@ -491,8 +491,6 @@ func (s *server) subscribeToEndpointProfile(
 		s.defaultOpaquePorts,
 		log,
 		stream,
-		s.k8sAPI,
-		s.metadataAPI,
 	)
 
 	var err error
