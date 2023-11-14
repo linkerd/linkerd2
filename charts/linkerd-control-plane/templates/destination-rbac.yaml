@@ -23,6 +23,9 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["multicluster.linkerd.io"]
+  resources: ["externalendpoints"]
+  verbs: ["list", "get", "watch"]
   {{- if .Values.enableEndpointSlices }}
 - apiGroups: ["discovery.k8s.io"]
   resources: ["endpointslices"]
@@ -243,6 +246,14 @@ rules:
       - httproutes/status
     verbs:
       - patch
+  - apiGroups:
+      - multicluster.linkerd.io
+    resources:
+      - externalendpoints
+    verbs:
+      - list
+      - watch
+      - get
   - apiGroups:
       - coordination.k8s.io
     resources:

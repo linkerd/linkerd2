@@ -42,6 +42,7 @@ spec:
                 type: array
                 description: endpoint addresses
                 items:
+                  type: object
                   properties:
                     ip:
                       description: "IP (as a string for now)"

@@ -53,9 +53,9 @@ var (
 		"templates/policy/network-authentication.yaml",
 		"templates/policy/server-authorization.yaml",
 		"templates/policy/server.yaml",
-		"templates/multicluster/external-endpoint.yaml",
 		"templates/serviceprofile.yaml",
 		"templates/gateway.networking.k8s.io_httproutes.yaml",
+		"templates/multicluster/external-endpoint.yaml",
 	}
 
 	templatesControlPlane = []string{
