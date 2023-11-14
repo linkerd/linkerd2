@@ -51,7 +51,7 @@ pub struct Controller {
 // === impl Controller ===
 
 impl Controller {
-    /// Runs the policy controller with the provided [`Args`].
+    /// Runs the policy controller, returning an error if the runtime is aborted.
     pub async fn run(mut self) -> Result<()> {
         self.spawn_inbound_watches();
         self.spawn_outbound_watches();
