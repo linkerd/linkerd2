@@ -33,10 +33,32 @@ const DETECT_TIMEOUT: Duration = Duration::from_secs(10);
 const LEASE_DURATION: Duration = Duration::from_secs(30);
 const LEASE_NAME: &str = "policy-controller-write";
 const RENEW_GRACE_PERIOD: Duration = Duration::from_secs(1);
+#[derive(Clone, Debug)]
+pub struct InboundDiscover(inbound::SharedIndex);
+
+#[derive(Clone, Debug)]
+pub struct OutboundDiscover(outbound::SharedIndex);
+
+/// Runs the policy controller with arguments parsed from the process'
+/// command-line arguments. This function constructs a multi-threaded Tokio
+/// runtime.
+#[tokio::main]
+pub async fn run() -> Result<()> {
+    Controller::from_args().await?.run().await
+}
+
+pub struct Controller {
+    pub runtime: kubert::Runtime<Option<kubert::server::Bound>>,
+    pub inbound_index: inbound::SharedIndex,
+    pub outbound_index: outbound::SharedIndex,
+    pub status_index: status::SharedIndex,
+    pub grpc_addr: SocketAddr,
+    pub cluster_info: Arc<ClusterInfo>,
+}
 
 #[derive(Debug, Parser)]
 #[clap(name = "policy", about = "Linkerd 2 policy controller")]
-pub struct Args {
+struct Args {
     #[clap(
         long,
         default_value = "linkerd=info,warn",
@@ -95,25 +117,10 @@ pub struct Args {
     default_opaque_ports: String,
 }
 
-#[derive(Clone, Debug)]
-pub struct InboundDiscover(inbound::SharedIndex);
+// === impl Controller ===
 
-#[derive(Clone, Debug)]
-pub struct OutboundDiscover(outbound::SharedIndex);
-
-/// Runs the policy controller with arguments parsed from the process'
-/// command-line arguments. This function constructs a multi-threaded Tokio
-/// runtime.
-#[tokio::main]
-pub async fn run() -> Result<()> {
-    Args::parse().run().await
-}
-
-// === impl Args ===
-
-impl Args {
-    /// Runs the policy controller with the provided [`Args`].
-    pub async fn run(self) -> Result<()> {
+impl Controller {
+    pub async fn from_args() -> Result<Self> {
         let Args {
             admin,
             client,
@@ -130,7 +137,7 @@ impl Args {
             control_plane_namespace,
             probe_networks,
             default_opaque_ports,
-        } = self;
+        } = Args::parse();
 
         let server = if admission_controller_disabled {
             None
@@ -141,7 +148,7 @@ impl Args {
         let mut admin = admin.into_builder();
         admin.with_default_prometheus();
 
-        let mut runtime = kubert::Runtime::builder()
+        let runtime = kubert::Runtime::builder()
             .with_log(log_level, log_format)
             .with_admin(admin)
             .with_client(client)
@@ -181,98 +188,17 @@ impl Args {
         // Build the API index data structures which will maintain information
         // necessary for serving the inbound policy and outbound policy gRPC APIs.
         let inbound_index = inbound::Index::shared(cluster_info.clone());
-        let outbound_index = outbound::Index::shared(cluster_info);
+        let outbound_index = outbound::Index::shared(cluster_info.clone());
 
         // Build the status index which will maintain information necessary for
         // updating the status field of policy resources.
         let (updates_tx, updates_rx) = mpsc::unbounded_channel();
         let status_index = status::Index::shared(hostname.clone(), claims.clone(), updates_tx);
 
-        // Spawn resource watches.
-
-        let pods = runtime.watch_all::<k8s::Pod>(
-            watcher::Config::default().labels("linkerd.io/control-plane-ns"),
-        );
-        tokio::spawn(
-            kubert::index::namespaced(inbound_index.clone(), pods).instrument(info_span!("pods")),
-        );
-
-        let servers = runtime.watch_all::<k8s::policy::Server>(watcher::Config::default());
-        let servers_indexes = IndexList::new(inbound_index.clone())
-            .push(status_index.clone())
-            .shared();
-        tokio::spawn(
-            kubert::index::namespaced(servers_indexes, servers).instrument(info_span!("servers")),
-        );
-
-        let server_authzs =
-            runtime.watch_all::<k8s::policy::ServerAuthorization>(watcher::Config::default());
-        tokio::spawn(
-            kubert::index::namespaced(inbound_index.clone(), server_authzs)
-                .instrument(info_span!("serverauthorizations")),
-        );
-
-        let authz_policies =
-            runtime.watch_all::<k8s::policy::AuthorizationPolicy>(watcher::Config::default());
-        tokio::spawn(
-            kubert::index::namespaced(inbound_index.clone(), authz_policies)
-                .instrument(info_span!("authorizationpolicies")),
-        );
-
-        let mtls_authns =
-            runtime.watch_all::<k8s::policy::MeshTLSAuthentication>(watcher::Config::default());
-        tokio::spawn(
-            kubert::index::namespaced(inbound_index.clone(), mtls_authns)
-                .instrument(info_span!("meshtlsauthentications")),
-        );
-
-        let network_authns =
-            runtime.watch_all::<k8s::policy::NetworkAuthentication>(watcher::Config::default());
-        tokio::spawn(
-            kubert::index::namespaced(inbound_index.clone(), network_authns)
-                .instrument(info_span!("networkauthentications")),
-        );
-
-        let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(watcher::Config::default());
-        let http_routes_indexes = IndexList::new(inbound_index.clone())
-            .push(outbound_index.clone())
-            .push(status_index.clone())
-            .shared();
-        tokio::spawn(
-            kubert::index::namespaced(http_routes_indexes.clone(), http_routes)
-                .instrument(info_span!("httproutes.policy.linkerd.io")),
-        );
-
-        let gateway_http_routes =
-            runtime.watch_all::<k8s_gateway_api::HttpRoute>(watcher::Config::default());
-        tokio::spawn(
-            kubert::index::namespaced(http_routes_indexes, gateway_http_routes)
-                .instrument(info_span!("httproutes.gateway.networking.k8s.io")),
-        );
-
-        let services = runtime.watch_all::<k8s::Service>(watcher::Config::default());
-        let services_indexes = IndexList::new(outbound_index.clone())
-            .push(status_index.clone())
-            .shared();
-        tokio::spawn(
-            kubert::index::namespaced(services_indexes, services)
-                .instrument(info_span!("services")),
-        );
-
         // Spawn the status Controller reconciliation.
         tokio::spawn(
             status::Index::run(status_index.clone()).instrument(info_span!("status::Index")),
         );
-
-        // Run the gRPC server, serving results by looking up against the index handle.
-        tokio::spawn(grpc(
-            grpc_addr,
-            cluster_domain,
-            cluster_networks,
-            inbound_index,
-            outbound_index,
-            runtime.shutdown_handle(),
-        ));
 
         let client = runtime.client();
         let status_controller = status::Controller::new(claims, client, hostname, updates_rx);
@@ -282,8 +208,34 @@ impl Args {
                 .instrument(info_span!("status::Controller")),
         );
 
-        let client = runtime.client();
-        let runtime = runtime.spawn_server(|| Admission::new(client));
+        Ok(Self {
+            runtime,
+            inbound_index,
+            outbound_index,
+            status_index,
+            cluster_info,
+            grpc_addr,
+        })
+    }
+
+    /// Runs the policy controller with the provided [`Args`].
+    pub async fn run(self) -> Result<()> {
+        self.spawn_inbound_watches();
+        self.spawn_outbound_watches();
+        self.spawn_shared_watches();
+
+        // Run the gRPC server, serving results by looking up against the index handle.
+        tokio::spawn(grpc(
+            self.grpc_addr,
+            self.cluster_info.dns_domain.clone(),
+            self.cluster_info.networks.clone(),
+            self.inbound_index,
+            self.outbound_index,
+            self.runtime.shutdown_handle(),
+        ));
+
+        let client = self.runtime.client();
+        let runtime = self.runtime.spawn_server(|| Admission::new(client));
 
         // Block the main thread on the shutdown signal. Once it fires, wait for the background tasks to
         // complete before exiting.
@@ -293,7 +245,119 @@ impl Args {
 
         Ok(())
     }
+
+    /// Spawn watcher tasks for inbound-only resources.
+    ///
+    /// This spawns watches for the following resource types:
+    ///
+    /// - Pods
+    /// - Servers
+    /// - ServerAuthorizations
+    /// - AuthorizationPolicies
+    /// - MeshTLSAuthentications
+    /// - NetworkAuthentications
+    pub fn spawn_inbound_watches(&mut self) {
+        let pods = self.runtime.watch_all::<k8s::Pod>(
+            watcher::Config::default().labels("linkerd.io/control-plane-ns"),
+        );
+        tokio::spawn(
+            kubert::index::namespaced(self.inbound_index.clone(), pods)
+                .instrument(info_span!("pods")),
+        );
+
+        let servers = self
+            .runtime
+            .watch_all::<k8s::policy::Server>(watcher::Config::default());
+        let servers_indexes = IndexList::new(self.inbound_index)
+            .push(self.status_index.clone())
+            .shared();
+        tokio::spawn(
+            kubert::index::namespaced(servers_indexes, servers).instrument(info_span!("servers")),
+        );
+
+        let server_authzs = self
+            .runtime
+            .watch_all::<k8s::policy::ServerAuthorization>(watcher::Config::default());
+        tokio::spawn(
+            kubert::index::namespaced(self.inbound_index, server_authzs)
+                .instrument(info_span!("serverauthorizations")),
+        );
+
+        let authz_policies = self
+            .runtime
+            .watch_all::<k8s::policy::AuthorizationPolicy>(watcher::Config::default());
+        tokio::spawn(
+            kubert::index::namespaced(self.inbound_index, authz_policies)
+                .instrument(info_span!("authorizationpolicies")),
+        );
+
+        let mtls_authns = self
+            .runtime
+            .watch_all::<k8s::policy::MeshTLSAuthentication>(watcher::Config::default());
+        tokio::spawn(
+            kubert::index::namespaced(self.inbound_index, mtls_authns)
+                .instrument(info_span!("meshtlsauthentications")),
+        );
+
+        let network_authns = self
+            .runtime
+            .watch_all::<k8s::policy::NetworkAuthentication>(watcher::Config::default());
+        tokio::spawn(
+            kubert::index::namespaced(self.inbound_index, network_authns)
+                .instrument(info_span!("networkauthentications")),
+        );
+    }
+
+    /// Spawn watches on resources only needed by the outbound index.
+    ///
+    /// This spawns watches for the following resource types:
+    ///
+    /// - Services
+    pub fn spawn_outbound_watches(&mut self) {
+        let services = self
+            .runtime
+            .watch_all::<k8s::Service>(watcher::Config::default());
+        let services_indexes = IndexList::new(self.outbound_index.clone())
+            .push(self.status_index.clone())
+            .shared();
+        tokio::spawn(
+            kubert::index::namespaced(services_indexes, services)
+                .instrument(info_span!("services")),
+        );
+    }
+
+    /// Spawn watches for resource types needed by both the inbound and outbound
+    /// indices.
+    ///
+    /// This spawns watches for the following resource types:
+    ///
+    /// - policy.linkerd.io.HTTPRoutes
+    /// - gateway.networking.k8s.io.HTTPRoutes
+    ///
+    pub fn spawn_shared_watches(&mut self) {
+        let http_routes = self
+            .runtime
+            .watch_all::<k8s::policy::HttpRoute>(watcher::Config::default());
+        let http_routes_indexes = IndexList::new(self.inbound_index.clone())
+            .push(self.outbound_index.clone())
+            .push(self.status_index.clone())
+            .shared();
+        tokio::spawn(
+            kubert::index::namespaced(http_routes_indexes.clone(), http_routes)
+                .instrument(info_span!("httproutes.policy.linkerd.io")),
+        );
+
+        let gateway_http_routes = self
+            .runtime
+            .watch_all::<k8s_gateway_api::HttpRoute>(watcher::Config::default());
+        tokio::spawn(
+            kubert::index::namespaced(http_routes_indexes, gateway_http_routes)
+                .instrument(info_span!("httproutes.gateway.networking.k8s.io")),
+        );
+    }
 }
+
+// === impl Args ===
 
 impl InboundDiscover {
     pub fn new(index: inbound::SharedIndex) -> Self {
