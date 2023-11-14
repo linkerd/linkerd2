@@ -3,7 +3,7 @@
 mod admission;
 mod cli;
 pub mod index_list;
-pub use self::admission::Admission;
+pub use self::{admission::Admission, cli::Args};
 pub use linkerd_policy_controller_core::IpNet;
 pub use linkerd_policy_controller_grpc as grpc;
 pub use linkerd_policy_controller_k8s_api as k8s;
@@ -83,9 +83,7 @@ impl Controller {
         Self::from_args(cli::Args::parse()).await
     }
 
-    // TODO(eliza): this could be made public if we choose to make the
-    // `cli::Args` type public
-    async fn from_args(args: cli::Args) -> Result<Self> {
+    pub async fn from_args(args: cli::Args) -> Result<Self> {
         let runtime = args.runtime().await?;
         let cluster_info = args.cluster_info()?;
 
