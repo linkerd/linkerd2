@@ -4,6 +4,9 @@
 # proper messages
 set +e
 
+k8s_version_min='+v1.21'
+k8s_version_max='+v1.26'
+
 ##### Test setup helpers #####
 
 export default_test_names=(deep viz external helm-upgrade uninstall upgrade-edge upgrade-stable default-policy-deny rsa-ca)
@@ -244,7 +247,7 @@ setup_cluster() {
 
   test_setup
   if [ -z "$skip_cluster_create" ]; then
-    "$bindir"/k3d cluster create "$@" --image +v1.26
+    "$bindir"/k3d cluster create "$@"
     image_load "$name"
   fi
   check_cluster
@@ -317,16 +320,20 @@ start_test() {
 
   case $name in
     cluster-domain)
-      config=("$name" "${config[@]}" --no-lb --k3s-arg --cluster-domain=custom.domain --k3s-arg '--disable=servicelb,traefik@server:0')
+      config=("$name" "${config[@]}" --no-lb --k3s-arg --cluster-domain=custom.domain --k3s-arg '--disable=servicelb,traefik@server:0' --image "$k8s_version_max")
       ;;
     cni-calico-deep)
-      config=("$name" "${config[@]}" --no-lb --k3s-arg --write-kubeconfig-mode=644 --k3s-arg --flannel-backend=none --k3s-arg --cluster-cidr=192.168.0.0/16 --k3s-arg '--disable=servicelb,traefik@server:0')
+      # This requires k8s v1.27.6-k3s1 because after that Calico won't work.
+      # We have to use a config file because that version can't be set via the
+      # --image flag.
+      # See https://github.com/k3d-io/k3d/issues/1375
+      config=("$name" "${config[@]}" --no-lb --k3s-arg --write-kubeconfig-mode=644 --k3s-arg --flannel-backend=none --k3s-arg --cluster-cidr=192.168.0.0/16 --k3s-arg '--disable=servicelb,traefik@server:0' --config "$bindir"/_k3d-config.yml)
       ;;
     multicluster)
-      config=("${config[@]}" --network multicluster-test)
+      config=("${config[@]}" --network multicluster-test --image "$k8s_version_max")
       ;;
     *)
-      config=("$name" "${config[@]}" --no-lb --k3s-arg '--disable=servicelb,traefik@server:0')
+      config=("$name" "${config[@]}" --no-lb --k3s-arg '--disable=servicelb,traefik@server:0' --image "$k8s_version_max")
       ;;
   esac
 
@@ -386,13 +393,13 @@ latest_release_channel() {
 # Run the upgrade-edge test by upgrading the most-recent edge release to the
 # HEAD of this branch.
 run_upgrade-edge_test() {
-  run_test "$test_directory/upgrade-edge/..." 
+  run_test "$test_directory/upgrade-edge/..."
 }
 
 # Run the upgrade-stable test by upgrading the most-recent stable release to the
 # HEAD of this branch.
 run_upgrade-stable_test() {
-  run_test "$test_directory/upgrade-stable/..." 
+  run_test "$test_directory/upgrade-stable/..."
 }
 
 run_viz_test() {
@@ -445,7 +452,7 @@ run_uninstall_test() {
 }
 
 run_multicluster_test() {
-   run_test "$test_directory/multicluster/..." 
+   run_test "$test_directory/multicluster/..."
 }
 
 run_deep_test() {
