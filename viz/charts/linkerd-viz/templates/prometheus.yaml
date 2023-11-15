@@ -15,6 +15,7 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    {{- with .Values.commonAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 data:
   prometheus.yml: |-
     global:

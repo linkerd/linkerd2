@@ -7,6 +7,7 @@ metadata:
   {{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    {{- with .Values.commonAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: ext-namespace-metadata-linkerd-config
   namespace: {{ .Release.Namespace }}
 rules:

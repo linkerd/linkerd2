@@ -54,6 +54,8 @@ podAnnotations: {}
 podLabels: {}
 # -- Labels to apply to all resources
 commonLabels: {}
+# -- Annotations to apply to all resources
+commonAnnotations: {}
 # -- Kubernetes priorityClassName for the Linkerd Pods
 priorityClassName: ""
 # -- Runtime Class Name for all the pods

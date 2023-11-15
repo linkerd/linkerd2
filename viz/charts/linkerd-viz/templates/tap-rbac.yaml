@@ -117,6 +117,7 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    {{- with .Values.commonAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tap.crtPEM)) (empty .Values.tap.crtPEM) }}

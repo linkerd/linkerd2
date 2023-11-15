@@ -50,6 +50,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    {{- with .Values.commonAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   labels:
     linkerd.io/extension: viz
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}

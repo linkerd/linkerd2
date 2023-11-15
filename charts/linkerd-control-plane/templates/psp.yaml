@@ -9,6 +9,7 @@ metadata:
   name: linkerd-{{.Release.Namespace}}-control-plane
   annotations:
     seccomp.security.alpha.kubernetes.io/allowedProfileNames: "runtime/default"
+    {{- with .Values.commonAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   labels:
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}

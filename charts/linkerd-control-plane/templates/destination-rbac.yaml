@@ -71,6 +71,7 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
+    {{- with .Values.commonAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.profileValidator.crtPEM)) (empty .Values.profileValidator.crtPEM) }}
@@ -84,6 +85,7 @@ metadata:
   name: linkerd-sp-validator-webhook-config
   {{- if or (.Values.profileValidator.injectCaFrom) (.Values.profileValidator.injectCaFromSecret) }}
   annotations:
+    {{- with .Values.commonAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   {{- if .Values.profileValidator.injectCaFrom }}
     cert-manager.io/inject-ca-from: {{ .Values.profileValidator.injectCaFrom }}
   {{- end }}
@@ -129,6 +131,7 @@ metadata:
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
+    {{- with .Values.commonAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
     {{ include "partials.annotations.created-by" . }}
 type: kubernetes.io/tls
 data:
@@ -143,6 +146,7 @@ metadata:
   name: linkerd-policy-validator-webhook-config
   {{- if or (.Values.policyValidator.injectCaFrom) (.Values.policyValidator.injectCaFromSecret) }}
   annotations:
+    {{- with .Values.commonAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   {{- if .Values.policyValidator.injectCaFrom }}
     cert-manager.io/inject-ca-from: {{ .Values.policyValidator.injectCaFrom }}
   {{- end }}
@@ -150,6 +154,7 @@ metadata:
     cert-manager.io/inject-ca-from-secret: {{ .Values.policyValidator.injectCaFromSecret }}
   {{- end }}
   {{- end }}
+    {{- with .Values.commonAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
