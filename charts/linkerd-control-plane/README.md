@@ -3,7 +3,7 @@
 Linkerd gives you observability, reliability, and security
 for your microservices — with no code change required.
 
-![Version: 1.16.4](https://img.shields.io/badge/Version-1.16.4-informational?style=flat-square)
+![Version: 1.16.5](https://img.shields.io/badge/Version-1.16.5-informational?style=flat-square)
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -226,6 +226,8 @@ Kubernetes: `>=1.21.0-0`
 | proxy.await | bool | `true` | If set, the application container will not start until the proxy is ready |
 | proxy.cores | int | `0` | The `cpu.limit` and `cores` should be kept in sync. The value of `cores` must be an integer and should typically be set by rounding up from the limit. E.g. if cpu.limit is '1500m', cores should be 2. |
 | proxy.defaultInboundPolicy | string | "all-unauthenticated" | The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny" |
+| proxy.disableInboundProtocolDetectTimeout | bool | `false` | When set to true, disables the protocol detection timeout on the inbound side of the proxy by setting it to a very high value |
+| proxy.disableOutboundProtocolDetectTimeout | bool | `false` | When set to true, disables the protocol detection timeout on the outbound side of the proxy by setting it to a very high value |
 | proxy.enableExternalProfiles | bool | `false` | Enable service profiles for non-Kubernetes services |
 | proxy.image.name | string | `"cr.l5d.io/linkerd/proxy"` | Docker image for the proxy |
 | proxy.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy container Docker image |

@@ -1,5 +1,30 @@
 # Changes
 
+## stable-2.14.4
+
+This stable release improves observability for the control plane by adding
+additional logging to the destination controller and by adding histograms which
+can detect Kubernetes informer lag. It also adds the ability to configure
+protocol detection.
+
+* Improved logging in the destination controller by adding the client pod's
+  name to the logging context. This will improve visibility into the messages
+  sent and received by the control plane from a specific proxy ([#11532])
+* helm: Introduce configurable values for protocol detection ([#11536])
+* Fixed an issue where the Destination controller could stop processing service
+  profile updates, if a proxy subscribed to those updates stops reading them;
+  this is a followup to the issue [#11491] fixed in [stable-2.14.2] ([#11546])
+* In the Destination controller, added informer lag histogram metrics to track
+  whenever the Kubernetes objects watched by the controller are falling behind
+  the state in the kube-apiserver ([#11534])
+* proxy: Fix grpc_status metric labels for inbound traffic
+
+[stable-2.14.2]: https://github.com/linkerd/linkerd2/releases/tag/stable-2.14.2
+[#11532]: https://github.com/linkerd/linkerd2/pull/11532
+[#11536]: https://github.com/linkerd/linkerd2/pull/11536
+[#11546]: https://github.com/linkerd/linkerd2/pull/11546
+[#11534]: https://github.com/linkerd/linkerd2/pull/11534
+
 ## stable-2.14.3
 
 This stable release fixes an issue in the Destination controller that was

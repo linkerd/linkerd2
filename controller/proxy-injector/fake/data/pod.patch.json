@@ -85,7 +85,7 @@
         "readOnlyRootFilesystem": true,
         "seccompProfile": {
           "type": "RuntimeDefault"
-		}
+        }
       },
       "terminationMessagePolicy": "FallbackToLogsOnError",
       "volumeMounts": [
@@ -247,7 +247,7 @@
         },
         {
           "name": "LINKERD2_PROXY_DESTINATION_CONTEXT",
-          "value": "{\"ns\":\"$(_pod_ns)\", \"nodeName\":\"$(_pod_nodeName)\"}\n"
+          "value": "{\"ns\":\"$(_pod_ns)\", \"nodeName\":\"$(_pod_nodeName)\", \"pod\":\"$(_pod_name)\"}\n"
         },
         {
           "name": "_pod_sa",
@@ -344,7 +344,7 @@
         "runAsUser": 2102,
         "seccompProfile": {
           "type": "RuntimeDefault"
-		}
+        }
       },
       "terminationMessagePolicy": "FallbackToLogsOnError",
       "volumeMounts": [

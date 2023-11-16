@@ -616,6 +616,8 @@ data:
       await: true
       capabilities: null
       defaultInboundPolicy: all-unauthenticated
+      disableInboundProtocolDetectTimeout: false
+      disableOutboundProtocolDetectTimeout: false
       enableExternalProfiles: false
       image:
         name: cr.l5d.io/linkerd/proxy
@@ -952,7 +954,7 @@ spec:
           value: "25,587,3306,4444,5432,6379,9300,11211"
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
-            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)", "pod":"$(_pod_name)"}
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1278,7 +1280,7 @@ spec:
           value: "25,587,3306,4444,5432,6379,9300,11211"
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
-            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)", "pod":"$(_pod_name)"}
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1704,7 +1706,7 @@ spec:
           value: "25,587,3306,4444,5432,6379,9300,11211"
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
-            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)", "pod":"$(_pod_name)"}
         - name: _pod_sa
           valueFrom:
             fieldRef:

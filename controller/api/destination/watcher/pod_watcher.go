@@ -7,7 +7,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/util"
@@ -78,9 +80,9 @@ func NewPodWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.E
 	}
 
 	_, err = k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    pw.updateServer,
-		DeleteFunc: pw.updateServer,
-		UpdateFunc: func(_, obj interface{}) { pw.updateServer(obj) },
+		AddFunc:    pw.updateServers,
+		DeleteFunc: pw.updateServers,
+		UpdateFunc: pw.updateServer,
 	})
 	if err != nil {
 		return nil, err
@@ -177,6 +179,14 @@ func (pw *PodWatcher) updatePod(oldObj any, newObj any) {
 		// this is just a mark, wait for actual deletion event
 		return
 	}
+
+	oldUpdated := latestUpdated(oldPod.ManagedFields)
+	updated := latestUpdated(newPod.ManagedFields)
+	if !updated.IsZero() && updated != oldUpdated {
+		delta := time.Since(updated)
+		podInformerLag.Observe(delta.Seconds())
+	}
+
 	pw.log.Tracef("Updated pod %s.%s", newPod.Name, newPod.Namespace)
 	go pw.submitPodUpdate(newPod, false)
 }
@@ -205,10 +215,24 @@ func (pw *PodWatcher) submitPodUpdate(pod *corev1.Pod, remove bool) {
 	}
 }
 
+func (pw *PodWatcher) updateServer(oldObj interface{}, newObj interface{}) {
+	oldServer := oldObj.(*v1beta1.Server)
+	newServer := newObj.(*v1beta1.Server)
+
+	oldUpdated := latestUpdated(oldServer.ManagedFields)
+	updated := latestUpdated(newServer.ManagedFields)
+	if !updated.IsZero() && updated != oldUpdated {
+		delta := time.Since(updated)
+		serverInformerLag.Observe(delta.Seconds())
+	}
+
+	pw.updateServers(newObj)
+}
+
 // updateServer triggers an Update() call to the listeners of the podPublishers
 // whose pod matches the Server's selector. This function is an event handler
 // so it cannot block.
-func (pw *PodWatcher) updateServer(_ any) {
+func (pw *PodWatcher) updateServers(_ any) {
 	pw.mu.RLock()
 	defer pw.mu.RUnlock()
 
