@@ -1,0 +1,151 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-access-local-resources-test-cluster
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: test-cluster
+rules:
+- apiGroups: [""]
+  resources: ["endpoints", "services"]
+  verbs: ["list", "get", "watch", "create", "delete", "update"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list", "get", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-access-local-resources-test-cluster
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: test-cluster
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-service-mirror-access-local-resources-test-cluster
+subjects:
+- kind: ServiceAccount
+  name: linkerd-service-mirror-test-cluster
+  namespace: test
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-read-remote-creds-test-cluster
+  namespace: test
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: test-cluster
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["cluster-credentials-test-cluster"]
+    verbs: ["list", "get", "watch"]
+  - apiGroups: ["multicluster.linkerd.io"]
+    resources: ["links"]
+    verbs: ["list", "get", "watch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["create", "get", "update", "patch"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-read-remote-creds-test-cluster
+  namespace: test
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: test-cluster
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: linkerd-service-mirror-read-remote-creds-test-cluster
+subjects:
+  - kind: ServiceAccount
+    name: linkerd-service-mirror-test-cluster
+    namespace: test
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-service-mirror-test-cluster
+  namespace: test
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: test-cluster
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    linkerd.io/extension: multicluster
+    component: service-mirror
+    mirror.linkerd.io/cluster-name: test-cluster
+  name: linkerd-service-mirror-test-cluster
+  namespace: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: linkerd-service-mirror
+      mirror.linkerd.io/cluster-name: test-cluster
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
+      labels:
+        linkerd.io/extension: multicluster
+        component: linkerd-service-mirror
+        mirror.linkerd.io/cluster-name: test-cluster
+    spec:
+      containers:
+      - args:
+        - service-mirror
+        - -log-level=info
+        - -log-format=plain
+        - -event-requeue-limit=3
+        - -namespace=test
+        - -enable-pprof=false
+        - test-cluster
+        image: cr.l5d.io/linkerd/controller:dev-undefined
+        name: service-mirror
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 2103
+          seccompProfile:
+            type: RuntimeDefault
+        ports:
+        - containerPort: 9999
+          name: admin-http
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: linkerd-service-mirror-test-cluster
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: probe-gateway-test-cluster
+  namespace: test
+  labels:
+    linkerd.io/extension: multicluster
+    mirror.linkerd.io/mirrored-gateway: "true"
+    mirror.linkerd.io/cluster-name: test-cluster
+spec:
+  ports:
+  - name: mc-probe
+    port: 4191
+    protocol: TCP
