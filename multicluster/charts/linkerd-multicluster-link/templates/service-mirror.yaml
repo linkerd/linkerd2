@@ -86,7 +86,6 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
 ---
-{{- $tree := deepCopy . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -121,9 +120,13 @@ spec:
         mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
+    {{- if .Values.enablePodAntiAffinity}}
+    {{- with $tree := deepCopy . }}
     {{- $_ := set $tree "component" .Values.targetClusterName -}}
     {{- $_ := set $tree "label" "mirror.linkerd.io/cluster-name" -}}
     {{- include "linkerd.affinity" $tree | nindent 6 }}
+    {{- end }}
+    {{- end }}
       containers:
       - args:
         - service-mirror

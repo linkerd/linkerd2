@@ -95,6 +95,9 @@ spec:
     matchLabels:
       component: linkerd-service-mirror
       mirror.linkerd.io/cluster-name: test-cluster
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -106,6 +109,26 @@ spec:
         component: linkerd-service-mirror
         mirror.linkerd.io/cluster-name: test-cluster
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: mirror.linkerd.io/cluster-name
+                  operator: In
+                  values:
+                  - test-cluster
+              topologyKey: topology.kubernetes.io/zone
+            weight: 100
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: mirror.linkerd.io/cluster-name
+                operator: In
+                values:
+                - test-cluster
+            topologyKey: kubernetes.io/hostname
       containers:
       - args:
         - service-mirror
@@ -134,6 +157,22 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: linkerd-service-mirror-test-cluster
+---
+kind: PodDisruptionBudget
+apiVersion: policy/v1
+metadata:
+  name: linkerd-service-mirror-test-cluster
+  namespace: test
+  labels:
+    component: linkerd-service-mirror
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      component: linkerd-service-mirror
+      mirror.linkerd.io/cluster-name: test-cluster
 ---
 apiVersion: v1
 kind: Service
