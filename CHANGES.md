@@ -17,6 +17,7 @@ protocol detection.
 * In the Destination controller, added informer lag histogram metrics to track
   whenever the Kubernetes objects watched by the controller are falling behind
   the state in the kube-apiserver ([#11534])
+* proxy: Fix grpc_status metric labels for inbound traffic
 
 [stable-2.14.2]: https://github.com/linkerd/linkerd2/releases/tag/stable-2.14.2
 [#11532]: https://github.com/linkerd/linkerd2/pull/11532
