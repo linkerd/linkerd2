@@ -1,5 +1,18 @@
 # Changes
 
+## edge-23.11.3
+
+This edge release fixes a bug where Linkerd could cause EOF errors during bursts
+of TCP connections.
+
+* Fixed a bug where the `linkerd multicluster link` command's
+  `--gateway-addresses` flag was not respected when a remote gateway exists
+  ([#11564])
+* proxy: Increased DEFAULT_OUTBOUND_TCP_QUEUE_CAPACITY to prevent EOF errors
+  during bursts of TCP connections
+
+[#11564]: https://github.com/linkerd/linkerd2/pull/11564
+
 ## edge-23.11.2
 
 This edge release contains observability improvements and bug fixes to the
