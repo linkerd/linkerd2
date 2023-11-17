@@ -1,3 +1,0 @@
-apiVersion: k3d.io/v1alpha4
-kind: Simple
-image: rancher/k3s:v1.27.6-k3s1
