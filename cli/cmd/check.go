@@ -175,6 +175,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 			checks = append(checks, healthcheck.LinkerdOpaquePortsDefinitionChecks)
 		} else {
 			checks = append(checks, healthcheck.LinkerdControlPlaneVersionChecks)
+			checks = append(checks, healthcheck.LinkerdExtensionChecks)
 		}
 		checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
 		checks = append(checks, healthcheck.LinkerdHAChecks)
