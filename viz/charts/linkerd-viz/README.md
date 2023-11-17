@@ -115,7 +115,7 @@ Kubernetes: `>=1.21.0-0`
 | metricsAPI.logLevel | string | defaultLogLevel | log level of the metrics-api component |
 | metricsAPI.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | metricsAPI.proxy | string | `nil` |  |
-| metricsAPI.replicas | int | `1` | number of replicas of the metrics-api component |
+| metricsAPI.replicas | int | `1` | Number of replicas of the metrics-api component |
 | metricsAPI.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the metrics-api container can use |
 | metricsAPI.resources.cpu.request | string | `nil` | Amount of CPU units that the metrics-api container requests |
 | metricsAPI.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the metrics-api container can use |
