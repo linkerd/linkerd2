@@ -127,7 +127,7 @@ spec:
       - name: tls
         secret:
           secretName: tap-injector-k8s-tls
-{{- if .Values.enablePodDisruptionBudget }}
+{{- if and .Values.enablePodDisruptionBudget (gt (int .Values.tapInjector.replicas) 1) }}
 ---
 kind: PodDisruptionBudget
 apiVersion: policy/v1

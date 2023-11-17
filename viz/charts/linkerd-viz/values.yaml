@@ -50,7 +50,7 @@ tolerations: &default_tolerations
 # Enable this only when you have multiple replicas of components.
 enablePodAntiAffinity: false
 
-# -- enables the creation of pod disruption budgets for tap and tap-injector components
+# -- enables the creation of pod disruption budgets for tap, tap-injector, web and metrics-api components
 enablePodDisruptionBudget: false
 
 # -- NodeAffinity section, See the

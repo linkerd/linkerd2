@@ -142,7 +142,7 @@ spec:
       - name: tls
         secret:
           secretName: tap-k8s-tls
-{{- if .Values.enablePodDisruptionBudget }}
+{{- if and .Values.enablePodDisruptionBudget (gt (int .Values.tap.replicas) 1) }}
 ---
 kind: PodDisruptionBudget
 apiVersion: policy/v1
