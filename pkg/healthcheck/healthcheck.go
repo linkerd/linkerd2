@@ -2728,7 +2728,7 @@ func (hc *HealthChecker) checkExtensionNsLabels(ctx context.Context) error {
 
 	namespaces, err := hc.kubeAPI.GetAllNamespacesWithExtensionLabel(ctx)
 	if err != nil {
-		return fmt.Errorf("unexpected error when retrieving namespaces: %v", err)
+		return fmt.Errorf("unexpected error when retrieving namespaces: %w", err)
 	}
 
 	freq := make(map[string][]string)
