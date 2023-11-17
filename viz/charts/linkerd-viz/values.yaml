@@ -418,7 +418,7 @@ prometheus:
     # -- Docker image name for the prometheus instance
     name: prometheus
     # -- Docker image tag for the prometheus instance
-    tag: v2.47.0
+    tag: v2.48.0
     # -- Pull policy for the prometheus instance
     # @default -- defaultImagePullPolicy
     pullPolicy: ""
@@ -440,7 +440,7 @@ prometheus:
     scrape_interval: 10s
     scrape_timeout: 10s
     evaluation_interval: 10s
-  
+
   # -- annotations for the prometheus pod
   podAnnotations: {}
 
