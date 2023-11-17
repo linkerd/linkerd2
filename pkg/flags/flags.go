@@ -6,6 +6,8 @@ import (
 	"os"
 
 	"github.com/linkerd/linkerd2/pkg/version"
+
+	"github.com/bombsimon/logrusr/v4"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"helm.sh/helm/v3/pkg/cli/values"
@@ -28,11 +30,6 @@ const (
 // func calls flag.Parse(), so it should be called after all other flags have
 // been configured.
 func ConfigureAndParse(cmd *flag.FlagSet, args []string) {
-	klog.InitFlags(nil)
-	flag.Set("stderrthreshold", "FATAL")
-	flag.Set("logtostderr", "false")
-	flag.Set("log_file", "/dev/null")
-	flag.Set("v", "0")
 	logLevel := cmd.String("log-level", log.InfoLevel.String(),
 		"log level, must be one of: panic, fatal, error, warn, info, debug, trace")
 	logFormat := cmd.String("log-format", "plain",
@@ -44,8 +41,10 @@ func ConfigureAndParse(cmd *flag.FlagSet, args []string) {
 	//nolint:errcheck
 	cmd.Parse(args)
 
-	// set log timestamps
 	log.SetFormatter(getFormatter(*logFormat))
+
+	klog.InitFlags(nil)
+	klog.SetLogger(logrusr.New(log.StandardLogger()))
 
 	setLogLevel(*logLevel)
 	maybePrintVersionAndExit(*printVersion)
@@ -66,16 +65,25 @@ func setLogLevel(logLevel string) {
 	}
 	log.SetLevel(level)
 
-	if level >= log.DebugLevel {
-		flag.Set("stderrthreshold", "INFO")
-		flag.Set("logtostderr", "true")
-		flag.Set("v", "6")
-		// pipe klog entries to logrus
-		klog.SetOutput(log.StandardLogger().Writer())
-	}
-
-	if level >= log.TraceLevel {
-		flag.Set("v", "12") // At 7 and higher, authorization tokens get logged.
+	// Based on k8s logging conventions, except for 'tracing' that we bump to 7
+	// because we know client-go dumps more info at that level
+	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md
+	switch level {
+	case log.PanicLevel:
+		flag.Set("v", "0")
+	case log.FatalLevel:
+		flag.Set("v", "0")
+	case log.ErrorLevel:
+		flag.Set("v", "0")
+	case log.WarnLevel:
+		flag.Set("v", "0")
+	case log.InfoLevel:
+		flag.Set("v", "2")
+	case log.DebugLevel:
+		flag.Set("v", "4")
+	case log.TraceLevel:
+		// At 7 and higher, authorization tokens get logged
+		flag.Set("v", "7")
 	}
 }
 
