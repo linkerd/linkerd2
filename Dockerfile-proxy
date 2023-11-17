@@ -1,4 +1,4 @@
-ARG RUNTIME_IMAGE=gcr.io/distroless/cc
+ARG RUNTIME_IMAGE=gcr.io/distroless/cc-debian12
 ARG BUILDPLATFORM=linux/amd64
 
 # Precompile key slow-to-build dependencies
