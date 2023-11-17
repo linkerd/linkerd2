@@ -119,9 +119,9 @@ jobs:
     strategy:
       matrix:
         test:
-          - cni-calico-deep
+          # Pending https://github.com/linkerd/linkerd2/pull/11617
+          #- cni-calico-deep
           - deep
-    continue-on-error: true
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
@@ -262,7 +262,6 @@ jobs:
           - uninstall
           - upgrade-edge
           - upgrade-stable
-    continue-on-error: true
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
@@ -305,7 +304,6 @@ jobs:
   test-viz:
     needs: [tag, changed-viz, build-cli, build-core, build-ext]
     if: needs.changed-viz.outputs.modified == 'true'
-    continue-on-error: true
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
