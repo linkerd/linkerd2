@@ -1,5 +1,14 @@
 {{ $prefix := .Values.pathPrefix -}}
-{{ $initIndex := ternary "0" "-" (dig "proxy" "nativeSidecar" false (merge (dict) .Values)) -}}
+{{/*
+$initIndex represents the patch insertion index of the next initContainer when
+proxy.nativeSidecar is true. If enabled, the proxy-init or network-validator
+should run first, immediately followed by the proxy. This ordering allows us
+to proxy traffic in subsequent initContainers.
+
+Note: dig is not used directly on .Values because it rejects chartutil.Values
+structs.
+*/}}
+{{- $initIndex := ternary "0" "-" (.Values.proxy | default (dict) | dig "nativeSidecar" false) -}}
 [
   {{- if .Values.addRootMetadata }}
   {
