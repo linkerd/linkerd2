@@ -282,7 +282,7 @@ func generateAnnotationsDocs() []annotationDoc {
 		},
 		{
 			Name:        k8s.ProxyEnableNativeSidecarAnnotation,
-			Description: "Enables native sidecars as init containers. Requires Kubernetes >=1.28, SidecarContainers feature gate, and disables waitBeforeExitSeconds.",
+			Description: "Enable KEP-753 native sidecars. This is an experimental feature. It requires Kubernetes >= 1.29. If enabled, .proxy.waitBeforeExitSeconds should not be used.",
 		},
 	}
 }
