@@ -176,9 +176,9 @@ startupProbe:
   httpGet:
     path: /ready
     port: {{.Values.proxy.ports.admin}}
-  initialDelaySeconds: {{.Values.proxy.startupProbeInitialDelaySeconds | default 0}}
-  periodSeconds: {{.Values.proxy.startupProbePeriodSeconds | default 1}}
-  failureThreshold: {{.Values.proxy.startupProbeFailureThreshold | default 120}}
+  initialDelaySeconds: {{.Values.proxy.startupProbe.initialDelaySeconds}}
+  periodSeconds: {{.Values.proxy.startupProbe.periodSeconds}}
+  failureThreshold: {{.Values.proxy.startupProbe.failureThreshold}}
 {{- end }}
 {{- if .Values.proxy.resources }}
 {{ include "partials.resources" .Values.proxy.resources }}

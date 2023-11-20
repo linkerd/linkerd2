@@ -657,6 +657,10 @@ data:
           request: ""
       saMountPath: null
       shutdownGracePeriod: ""
+      startupProbe:
+        failureThreshold: 120
+        initialDelaySeconds: 0
+        periodSeconds: 1
       uid: 2102
       waitBeforeExitSeconds: 0
     proxyContainerName: linkerd-proxy

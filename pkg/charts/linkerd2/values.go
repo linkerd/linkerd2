@@ -120,6 +120,7 @@ type (
 		AccessLog                            string           `json:"accessLog"`
 		ShutdownGracePeriod                  string           `json:"shutdownGracePeriod"`
 		NativeSidecar                        bool             `json:"nativeSidecar"`
+		StartupProbe                         *StartupProbe    `json:"startupProbe"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
@@ -225,6 +226,13 @@ type (
 		CPU              Constraints `json:"cpu"`
 		Memory           Constraints `json:"memory"`
 		EphemeralStorage Constraints `json:"ephemeral-storage"`
+	}
+
+	// StartupProbe represents the initContainer startup probe parameters for the proxy
+	StartupProbe struct {
+		InitialDelaySeconds uint `json:"initialDelaySeconds"`
+		PeriodSeconds       uint `json:"periodSeconds"`
+		FailureThreshold    uint `json:"failureThreshold"`
 	}
 
 	// Identity contains the fields to set the identity variables in the proxy
