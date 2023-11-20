@@ -516,7 +516,7 @@ metadata:
 			description: "fails invalid configuration",
 			k8sConfigs:  []string{namespaces["vizOne"], namespaces["mcOne"], namespaces["mcTwo"]},
 			results: []string{
-				"linkerd-extension-checks namespace configuration for extensions: some extensions have invalid configuration:\n\t* label \"linkerd.io/extension=multicluster\" is present on more than one namespace:\n\t\t* mc-1\n\t\t* mc-2",
+				"linkerd-extension-checks namespace configuration for extensions: some extensions have invalid configuration\n\t* label \"linkerd.io/extension=multicluster\" is present on more than one namespace:\n\t\t* mc-1\n\t\t* mc-2",
 			},
 		},
 	}

@@ -2741,9 +2741,7 @@ func (hc *HealthChecker) checkExtensionNsLabels(ctx context.Context) error {
 		freq[ext] = append(freq[ext], fmt.Sprintf("\t\t* %s", ns.Name))
 	}
 
-	errs := []string{
-		"some extensions have invalid configuration:",
-	}
+	errs := []string{}
 	for ext, namespaces := range freq {
 		if len(namespaces) == 1 {
 			continue
@@ -2751,8 +2749,9 @@ func (hc *HealthChecker) checkExtensionNsLabels(ctx context.Context) error {
 		errs = append(errs, fmt.Sprintf("\t* label \"%s=%s\" is present on more than one namespace:\n%s", k8s.LinkerdExtensionLabel, ext, strings.Join(namespaces, "\n")))
 	}
 
-	if len(errs) > 1 {
-		return errors.New(strings.Join(errs, "\n"))
+	if len(errs) > 0 {
+		return errors.New(strings.Join(
+			append([]string{"some extensions have invalid configuration"}, errs...), "\n"))
 	}
 
 	return nil
