@@ -173,9 +173,6 @@ async fn inbound_accepted_reconcile_no_parent() {
         assert_eq!(cond.status, "False");
         assert_eq!(cond.reason, "NoMatchingParent");
 
-        // Save create_timestamp to assert status has been updated.
-        let create_timestamp = &cond.last_transition_time;
-
         // Create the 'Server' that route references and expect it to be picked up
         // by the index. Consequently, route will have its status reconciled.
         let server = k8s::policy::Server {
@@ -192,8 +189,8 @@ async fn inbound_accepted_reconcile_no_parent() {
         };
         create(&client, server).await;
 
-        // HTTPRoute may not be patched instantly, await the condition where
-        // create_timestamp and observed_timestamp are different.
+        // HTTPRoute may not be patched instantly, await the route condition
+        // status becoming true.
         let route_status = await_condition(
             &client,
             &ns,
@@ -208,7 +205,7 @@ async fn inbound_accepted_reconcile_no_parent() {
                     Some(cond) => cond,
                     None => return false,
                 };
-                &cond.last_transition_time > create_timestamp
+                cond.status == "True"
             },
         )
         .await
@@ -266,9 +263,6 @@ async fn inbound_accepted_reconcile_parent_delete() {
         assert_eq!(cond.status, "True");
         assert_eq!(cond.reason, "Accepted");
 
-        // Save create_timestamp to assert status has been updated.
-        let create_timestamp = &cond.last_transition_time;
-
         // Delete Server
         let api: kube::Api<k8s::policy::Server> = kube::Api::namespaced(client.clone(), &ns);
         api.delete(
@@ -278,8 +272,8 @@ async fn inbound_accepted_reconcile_parent_delete() {
         .await
         .expect("API delete request failed");
 
-        // HTTPRoute may not be patched instantly, await the condition where
-        // create_timestamp and observed_timestamp are different.
+        // HTTPRoute may not be patched instantly, await the route condition
+        // becoming true.
         let route_status = await_condition(
             &client,
             &ns,
@@ -294,7 +288,7 @@ async fn inbound_accepted_reconcile_parent_delete() {
                     Some(cond) => cond,
                     None => return false,
                 };
-                &cond.last_transition_time > create_timestamp
+                cond.status == "False"
             },
         )
         .await
