@@ -91,7 +91,6 @@ jobs:
     strategy:
       matrix:
         component:
-          - cni-plugin
           - controller
           - policy-controller
           - proxy

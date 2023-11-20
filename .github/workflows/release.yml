@@ -37,7 +37,6 @@ jobs:
       matrix:
         component:
         - cli-bin
-        - cni-plugin
         - controller
         - policy-controller
         - debug

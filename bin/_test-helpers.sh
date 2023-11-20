@@ -292,9 +292,6 @@ image_load() {
   if [[ "$cluster_name" = *viz ]]; then
     images_load+=(jaeger-webhook)
   fi
-  if [ "$cluster_name" = "cni-calico-deep" ]; then
-    images_load+=(cni-plugin)
-  fi
   case $images in
     docker)
       "$bindir"/image-load --k3d --cluster "$cluster_name" "${images_load[@]}"
