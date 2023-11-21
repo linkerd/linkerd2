@@ -184,6 +184,8 @@ spec:
       {{- $_ := set $tree.Values.proxy "podInboundPorts" "8086,8090,8443,9443,9990,9996,9997" }}
       {{- $_ := set $tree.Values.proxy "outboundDiscoveryCacheUnusedTimeout" "5s" }}
       {{- $_ := set $tree.Values.proxy "inboundDiscoveryCacheUnusedTimeout" "90s" }}
+      {{- $_ := set $tree.Values.proxy "inboundHTTP1ConnectionPoolIdleTimeout" "3s" }}
+      {{- $_ := set $tree.Values.proxy "outboundHTTP1ConnectionPoolIdleTimeout" "3s" }}
       {{- /*
         The pod needs to accept webhook traffic, and we can't rely on that originating in the
         cluster network.

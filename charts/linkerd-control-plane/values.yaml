@@ -122,6 +122,10 @@ proxy:
   # -- Maximum time allowed before an unused inbound discovery result
   # is evicted from the cache
   inboundDiscoveryCacheUnusedTimeout: "90s"
+  # Idle timeout for inbound HTTP/1.x connection pool
+  inboundHTTP1ConnectionPoolIdleTimeout: "3s"
+  # Idle timeout for outbound HTTP/1.x connection pool
+  outboundHTTP1ConnectionPoolIdleTimeout: "3s"
   # -- When set to true, disables the protocol detection timeout on the
   # outbound side of the proxy by setting it to a very high value
   disableOutboundProtocolDetectTimeout: false

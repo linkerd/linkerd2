@@ -238,6 +238,14 @@ const (
 	// that will evict unused inbound discovery results
 	ProxyInboundDiscoveryCacheUnusedTimeout = ProxyConfigAnnotationsPrefix + "/proxy-inbound-discovery-cache-unused-timeout"
 
+	// ProxyInboundHTTP1ConnectionPoolIdleTimeout can be used to configure the HTTP/1
+	// inbound connection idle timeout
+	ProxyInboundHTTP1ConnectionPoolIdleTimeout = ProxyConfigAnnotationsPrefix + "/proxy-inbound-http1-connection-pool-idle-timeout"
+
+	// ProxyOutboundHTTP1ConnectionPoolIdleTimeout can be used to configure the HTTP/1
+	// outbound connection idle timeout
+	ProxyOutboundHTTP1ConnectionPoolIdleTimeout = ProxyConfigAnnotationsPrefix + "/proxy-outbound-http1-connection-pool-idle-timeout"
+
 	// ProxyDisableOutboundProtocolDetectTimeout can be used to disable protocol
 	// detection timeouts for outbound connections by setting them to a very
 	// high value.

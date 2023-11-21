@@ -66,6 +66,14 @@ env:
 - name: LINKERD2_PROXY_INBOUND_DISCOVERY_IDLE_TIMEOUT
   value: {{.Values.proxy.inboundDiscoveryCacheUnusedTimeout | quote}}
 {{ end -}}
+{{ if .Values.proxy.inboundHTTP1ConnectionPoolIdleTimeout -}}
+- name: LINKERD2_PROXY_INBOUND_HTTP1_CONNECTION_POOL_IDLE_TIMEOUT
+  value: {{.Values.proxy.inboundHTTP1ConnectionPoolIdleTimeout | quote}}
+{{ end -}}
+{{ if .Values.proxy.outboundHTTP1ConnectionPoolIdleTimeout -}}
+- name: LINKERD2_PROXY_OUTBOUND_HTTP1_CONNECTION_POOL_IDLE_TIMEOUT
+  value: {{.Values.proxy.outboundHTTP1ConnectionPoolIdleTimeout | quote}}
+{{ end -}}
 {{ if .Values.proxy.disableOutboundProtocolDetectTimeout -}}
 - name: LINKERD2_PROXY_OUTBOUND_DETECT_TIMEOUT
   value: "365d"
