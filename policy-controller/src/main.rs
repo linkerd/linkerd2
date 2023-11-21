@@ -202,11 +202,10 @@ async fn main() -> Result<()> {
             .instrument(info_span!("meshtlsauthentications")),
     );
 
-    let externals =
-        runtime.watch_all::<k8s::external::ExternalEndpoint>(watcher::Config::default());
+    let externals = runtime.watch_all::<k8s::external::ExternalGroup>(watcher::Config::default());
     tokio::spawn(
         kubert::index::namespaced(inbound_index.clone(), externals)
-            .instrument(info_span!("externalworkloads")),
+            .instrument(info_span!("externalgroups")),
     );
 
     let network_authns =

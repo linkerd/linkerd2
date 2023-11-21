@@ -45,7 +45,7 @@ impl DiscoverInboundServer<(grpc::inbound::PolicyWorkload, NonZeroU16)> for Inbo
                 self.0.write().pod_server_rx(&ns, &name, port)
             }
             grpc::inbound::PolicyWorkload::External(ns, name) => {
-                self.0.write().workload_server_rx(&ns, &name, port)
+                self.0.write().external_server_rx(&ns, &name, port)
             }
         };
 
@@ -66,7 +66,7 @@ impl DiscoverInboundServer<(grpc::inbound::PolicyWorkload, NonZeroU16)> for Inbo
                 self.0.write().pod_server_rx(&ns, &name, port)
             }
             grpc::inbound::PolicyWorkload::External(ns, name) => {
-                self.0.write().workload_server_rx(&ns, &name, port)
+                self.0.write().external_server_rx(&ns, &name, port)
             }
         };
 

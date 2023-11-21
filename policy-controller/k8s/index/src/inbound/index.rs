@@ -82,12 +82,14 @@ struct PodIndex {
 #[derive(Debug)]
 struct ExternalIndex {
     namespace: String,
-    by_name: HashMap<String, ExternalEndpoint>,
+    by_name: HashMap<String, ExternalGroup>,
 }
 
+/// Holds information needed to discover policy for an external group
 #[derive(Debug)]
-struct ExternalEndpoint {
-    meta: external_endpoint::Meta,
+struct ExternalGroup {
+    // Includes settings (from annotations) and labels
+    meta: external_group::Meta,
 
     ports: Vec<NonZeroU16>,
     port_servers: PortMap<ExternalPortServer>,
@@ -181,7 +183,7 @@ impl Index {
         }))
     }
 
-    pub fn workload_server_rx(
+    pub fn external_server_rx(
         &mut self,
         namespace: &str,
         name: &str,
@@ -394,25 +396,22 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
     // handle resets specially.
 }
 
-impl kubert::index::IndexNamespacedResource<k8s::external::ExternalEndpoint> for Index {
-    fn apply(&mut self, workload: k8s::external::ExternalEndpoint) {
-        let ns = workload.namespace().expect("workload must have namespace");
-        let name = workload.name_unchecked();
+impl kubert::index::IndexNamespacedResource<k8s::external::ExternalGroup> for Index {
+    fn apply(&mut self, group: k8s::external::ExternalGroup) {
+        let ns = group
+            .namespace()
+            .expect("workload group must have namespace");
+        let name = group.name_unchecked();
         let _span = info_span!("apply", %ns, %name).entered();
         tracing::info!(%ns, %name, "Applying workload");
 
-        let meta = external_endpoint::Meta::from_metadata(workload.metadata);
+        let meta = external_group::Meta::from_metadata(group.metadata);
         let namespace = self.namespaces.get_or_default(ns);
-        let ports = workload
-            .spec
-            .ports
-            .into_iter()
-            .map(|spec| spec.port)
-            .collect();
+        let ports = group.spec.ports.into_iter().map(|spec| spec.port).collect();
         match namespace.external.update(name, meta, ports) {
             Ok(None) => {}
-            Ok(Some(w)) => w.reindex_servers(&namespace.policy, &self.authentications),
-            Err(_) => todo!(),
+            Ok(Some(g)) => g.reindex_servers(&namespace.policy, &self.authentications),
+            Err(error) => tracing::error!(%error, "Illegal group update"),
         }
     }
 
@@ -937,39 +936,39 @@ impl ExternalIndex {
     fn update(
         &mut self,
         name: String,
-        meta: external_endpoint::Meta,
+        meta: external_group::Meta,
         ports: Vec<NonZeroU16>,
-    ) -> Result<Option<&mut ExternalEndpoint>> {
-        let workload = match self.by_name.entry(name.clone()) {
+    ) -> Result<Option<&mut ExternalGroup>> {
+        let group = match self.by_name.entry(name.clone()) {
             Entry::Occupied(entry) => {
-                let workload = entry.into_mut();
-                if workload.ports != ports {
+                let group = entry.into_mut();
+                if group.ports != ports {
                     bail!("workload {} port must not change", name);
                 }
 
-                if workload.meta == meta {
+                if group.meta == meta {
                     tracing::info!(workload = %name, "No changes");
                     return Ok(None);
                 }
 
                 tracing::info!(workload = %name, "Updating");
-                workload.meta = meta;
-                workload
+                group.meta = meta;
+                group
             }
-            Entry::Vacant(entry) => entry.insert(ExternalEndpoint {
+            Entry::Vacant(entry) => entry.insert(ExternalGroup {
                 meta,
                 ports,
                 port_servers: PortMap::default(),
             }),
         };
-        Ok(Some(workload))
+        Ok(Some(group))
     }
 
     fn reindex(&mut self, policy: &PolicyIndex, authns: &AuthenticationNsIndex) {
         let _span = info_span!("reindex", ns = %self.namespace).entered();
-        for (name, pod) in self.by_name.iter_mut() {
-            let _span = info_span!("external_endpoint", external_endpoint = %name).entered();
-            pod.reindex_servers(policy, authns);
+        for (name, group) in self.by_name.iter_mut() {
+            let _span = info_span!("external_group", external_group = %name).entered();
+            group.reindex_servers(policy, authns);
         }
     }
 }
@@ -1030,7 +1029,7 @@ impl PodIndex {
 }
 
 // === impl ExternalEndpoint ===
-impl ExternalEndpoint {
+impl ExternalGroup {
     fn reindex_servers(&mut self, policy: &PolicyIndex, authentications: &AuthenticationNsIndex) {
         // unmatched ports will get a default policy
         let mut unmatched_ports = self.port_servers.keys().copied().collect::<PortSet>();
@@ -1162,7 +1161,7 @@ impl ExternalEndpoint {
 
     fn default_inbound_server(
         port: NonZeroU16,
-        settings: &external_endpoint::Settings,
+        settings: &external_group::Settings,
         config: &ClusterInfo,
     ) -> InboundServer {
         // Determine if port is opaque
@@ -1893,17 +1892,20 @@ impl ClusterInfo {
     }
 }
 
-pub mod external_endpoint {
+// Module that implements some convenience functions to parse workload groups
+//
+// Exposes labels and settings derived from annotations.
+pub mod external_group {
     use crate::ports::{parse_portset, PortSet};
     use crate::DefaultPolicy;
     use linkerd_policy_controller_k8s_api::{self as k8s};
 
     #[derive(Debug, PartialEq)]
     pub(crate) struct Meta {
-        /// The workload's labels. Used by `Server` pod selectors.
+        /// The workload group's labels. Used by `Server` pod selectors.
         pub labels: k8s::Labels,
 
-        // External endpoint specific settings (i.e., derived from annotations).
+        // External group specific settings (i.e., derived from annotations).
         pub settings: Settings,
     }
 
