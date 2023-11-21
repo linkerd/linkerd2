@@ -488,17 +488,18 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 	weightedAddr.MetricLabels = pkgK8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
 	_, isSkippedInboundPort := skippedInboundPorts[address.Port]
 
-	weightedAddr.ProtocolHint = &pb.ProtocolHint{}
+	if controllerNSLabel != "" && !isSkippedInboundPort {
+		weightedAddr.ProtocolHint = &pb.ProtocolHint{}
 
-	_, opaquePort := opaquePorts[address.Port]
-	if address.OpaqueProtocol || opaquePort {
+		_, opaquePort := opaquePorts[address.Port]
 		// If address is set as opaque by a Server, or its port is set as
 		// opaque by annotation or default value, then set the hinted protocol to
 		// Opaque.
-		weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_Opaque_{
-			Opaque: &pb.ProtocolHint_Opaque{},
-		}
-		if controllerNSLabel != "" && !isSkippedInboundPort {
+		if address.OpaqueProtocol || opaquePort {
+			weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_Opaque_{
+				Opaque: &pb.ProtocolHint_Opaque{},
+			}
+
 			port, err := getInboundPort(&address.Pod.Spec)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read inbound port: %w", err)
@@ -506,13 +507,13 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 			weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
 				InboundPort: port,
 			}
-		}
-	} else if enableH2Upgrade && controllerNSLabel != "" && !isSkippedInboundPort {
-		// If the pod is controlled by any Linkerd control plane, then it can be
-		// hinted that this destination knows H2 (and handles our orig-proto
-		// translation)
-		weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_H2_{
-			H2: &pb.ProtocolHint_H2{},
+		} else if enableH2Upgrade {
+			// If the pod is controlled by any Linkerd control plane, then it can be
+			// hinted that this destination knows H2 (and handles our orig-proto
+			// translation)
+			weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_H2_{
+				H2: &pb.ProtocolHint_H2{},
+			}
 		}
 	}
 
