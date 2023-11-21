@@ -45,6 +45,20 @@ spec:
                   expectedIdentity:
                     type: string
                     description: "Catch all for identity to bootstrap everything else"
+              ports:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    port:
+                      description: "Name of the port to target"
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    protocol:
+                      description: "Protocol"
+                      type: string
           status:
             type: object
             properties:

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
     group = "multicluster.linkerd.io",
     version = "v1alpha1",
     kind = "ExternalEndpoint",
-    status = "ExternalEndpointStatus",
+    status = "ExternalStatus",
     namespaced
 )]
 pub struct ExternalEndpointSpec {
@@ -18,6 +18,27 @@ pub struct ExternalEndpointSpec {
     pub identity: String,
 }
 
+/// Describes a set of VMs that share a template; analogous to a deployment
+#[derive(Clone, Debug, PartialEq, Eq, CustomResource, Deserialize, Serialize, JsonSchema)]
+#[kube(
+    group = "multicluster.linkerd.io",
+    version = "v1alpha1",
+    kind = "ExternalGroup",
+    status = "ExternalStatus",
+    namespaced
+)]
+pub struct ExternalGroupSpec {
+    pub template: ExternalTemplate,
+    pub ports: Vec<PortSpec>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalTemplate {
+    pub expected_identity: String,
+}
+
+// Shared
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
 pub struct PortSpec {
     pub port: std::num::NonZeroU16,
@@ -25,7 +46,7 @@ pub struct PortSpec {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
-pub struct ExternalEndpointStatus {
+pub struct ExternalStatus {
     pub conditions: Vec<Condition>,
 }
 
