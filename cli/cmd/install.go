@@ -56,6 +56,7 @@ var (
 		"templates/serviceprofile.yaml",
 		"templates/gateway.networking.k8s.io_httproutes.yaml",
 		"templates/multicluster/external-endpoint.yaml",
+		"templates/multicluster/external-group.yaml",
 	}
 
 	templatesControlPlane = []string{

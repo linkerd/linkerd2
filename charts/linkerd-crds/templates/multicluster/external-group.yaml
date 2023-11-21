@@ -1,8 +1,7 @@
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: externalendpoints.multicluster.linkerd.io
+  name: externalgroups.multicluster.linkerd.io
   annotations:
     {{ include "partials.annotations.created-by" . }}
   labels:
@@ -13,11 +12,11 @@ spec:
   names:
     categories:
     - external
-    kind: ExternalEndpoint
-    listKind: ExternalEndpointList
-    plural: externalendpoints
-    singular: externalendpoint
-    shortNames: [ee]
+    kind: ExternalGroup
+    listKind: ExternalGroupList
+    plural: externalgroups
+    singular: externalgroup
+    shortNames: [eg]
   scope: Namespaced
   versions:
   - name: v1alpha1
@@ -39,31 +38,13 @@ spec:
           spec:
             type: object
             properties:
-              workloadIPs:
-                type: array
-                description: endpoint addresses
-                items:
-                  type: object
-                  properties:
-                    ip:
-                      description: "IP (as a string for now)"
-                      type: string
-              ports:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    port:
-                      description: "Name of the port to target"
-                      format: int32
-                      maximum: 65535
-                      minimum: 1
-                      type: integer
-                    protocol:
-                      description: "Protocol"
-                      type: string
-              identity:
-                type: string
+              template:
+                type: object
+                description: endpoint template
+                properties:
+                  expectedIdentity:
+                    type: string
+                    description: "Catch all for identity to bootstrap everything else"
           status:
             type: object
             properties:
@@ -84,4 +65,6 @@ spec:
                       type: string
                     message:
                       type: string
----
+
+
+
