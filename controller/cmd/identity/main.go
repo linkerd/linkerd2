@@ -40,6 +40,8 @@ func Main(args []string) {
 	identityIssuanceLifeTime := cmd.String("identity-issuance-lifetime", "", "the amount of time for which the Identity issuer should certify identity")
 	identityClockSkewAllowance := cmd.String("identity-clock-skew-allowance", "", "the amount of time to allow for clock skew within a Linkerd cluster")
 	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
+	qps := cmd.Float64("kube-apiclient-qps", 100, "Maximum QPS sent to the kube-apiserver before throttling")
+	burst := cmd.Int("kube-apiclient-burst", 200, "Burst value over kube-apiclient-qps")
 
 	issuerPath := cmd.String("issuer",
 		"/var/run/linkerd/identity/issuer",
@@ -137,10 +139,16 @@ func Main(args []string) {
 	//
 	// Create k8s API
 	//
-	k8sAPI, err := k8s.NewAPI(*kubeConfigPath, "", "", []string{}, 0)
+	config, err := k8s.GetConfig(*kubeConfigPath, "")
+	if err != nil {
+		log.Fatalf("Error configuring Kubernetes API client: %s", err)
+	}
+	k8sAPI, err := k8s.NewAPIForConfig(config, "", []string{}, 0, float32(*qps), *burst)
 	if err != nil {
 		log.Fatalf("Failed to load kubeconfig: %s: %s", *kubeConfigPath, err)
 	}
+	log.Infof("Using k8s client with QPS=%.2f Burst=%d", config.QPS, config.Burst)
+
 	v, err := idctl.NewK8sTokenValidator(ctx, k8sAPI, dom)
 	if err != nil {
 		log.Fatalf("Failed to initialize identity service: %s", err)

@@ -175,6 +175,8 @@ Kubernetes: `>=1.21.0-0`
 | identity.issuer.tls | object | `{"crtPEM":"","keyPEM":""}` | Which scheme is used for the identity issuer secret format |
 | identity.issuer.tls.crtPEM | string | `""` | Issuer certificate (ECDSA). It must be provided during install. |
 | identity.issuer.tls.keyPEM | string | `""` | Key for the issuer certificate (ECDSA). It must be provided during install |
+| identity.kubeAPIClientBurst | int | `200` | Burst value over kubeAPIClientQPS |
+| identity.kubeAPIClientQPS | int | `100` | Maximum QPS sent to the kube-apiserver before throttling. See https://github.com/kubernetes/client-go/blob/v12.0.0/util/flowcontrol/throttle.go |
 | identity.serviceAccountTokenProjection | bool | `true` | Use [Service Account token Volume projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection) for pod validation instead of the default token |
 | identityTrustAnchorsPEM | string | `""` | Trust root certificate (ECDSA). It must be provided during install. |
 | identityTrustDomain | string | clusterDomain | Trust domain used for identity |

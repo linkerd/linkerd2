@@ -456,6 +456,8 @@ data:
             AiAtuoI5XuCtrGVRzSmRTl2ra28aV9MyTU7d5qnTAFHKSgIgRKCvluOSgA5O21p5
             51tdrmkHEZRr0qlLSJdHYgEfMzk=
             -----END CERTIFICATE-----
+      kubeAPIClientBurst: 200
+      kubeAPIClientQPS: 100
       serviceAccountTokenProjection: true
     identityProxyResources: null
     identityResources: null
@@ -790,6 +792,8 @@ spec:
         - -identity-clock-skew-allowance=20s
         - -identity-scheme=linkerd.io/tls
         - -enable-pprof=false
+        - -kube-apiclient-qps=100
+        - -kube-apiclient-burst=200
         env:
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"

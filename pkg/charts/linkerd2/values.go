@@ -231,6 +231,8 @@ type (
 	Identity struct {
 		ExternalCA                    bool    `json:"externalCA"`
 		ServiceAccountTokenProjection bool    `json:"serviceAccountTokenProjection"`
+		KubeAPIClientQPS              float32 `json:"kubeAPIClientQPS"`
+		KubeAPIClientBurst            int     `json:"kubeAPIClientBurst"`
 		Issuer                        *Issuer `json:"issuer"`
 	}
 
