@@ -173,6 +173,8 @@ func TestNewValues(t *testing.T) {
 		},
 		Identity: &Identity{
 			ServiceAccountTokenProjection: true,
+			KubeAPIClientQPS:              100,
+			KubeAPIClientBurst:            200,
 			Issuer: &Issuer{
 				ClockSkewAllowance: "20s",
 				IssuanceLifetime:   "24h0m0s",
