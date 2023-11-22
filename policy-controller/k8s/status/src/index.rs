@@ -67,6 +67,7 @@ pub struct Index {
     http_route_refs: HashMap<NamespaceGroupKindName, References>,
     servers: HashSet<ResourceId>,
     services: HashMap<ResourceId, Service>,
+    external_groups: HashSet<ResourceId>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -151,6 +152,7 @@ impl Index {
             http_route_refs: HashMap::new(),
             servers: HashSet::new(),
             services: HashMap::new(),
+            external_groups: HashSet::new(),
         }))
     }
 
@@ -212,6 +214,7 @@ impl Index {
     ) -> Option<gateway::RouteParentStatus> {
         match parent_ref {
             ParentReference::Server(server) => {
+                tracing::info!(?server, "Patching route attached to group");
                 let condition = if self.servers.contains(server) {
                     accepted()
                 } else {
@@ -254,6 +257,27 @@ impl Index {
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
                     conditions: vec![condition, backend_condition],
+                })
+            }
+            ParentReference::ExternalGroup(group, port) => {
+                // Should we check the group has that port?
+                let condition = if self.external_groups.contains(group) {
+                    accepted()
+                } else {
+                    no_matching_parent()
+                };
+
+                Some(gateway::RouteParentStatus {
+                    parent_ref: gateway::ParentReference {
+                        group: Some(POLICY_API_GROUP.to_string()),
+                        kind: Some("ExternalGroup".to_string()),
+                        namespace: Some(group.namespace.clone()),
+                        name: group.name.clone(),
+                        section_name: None,
+                        port: port.clone(),
+                    },
+                    controller_name: POLICY_CONTROLLER_NAME.to_string(),
+                    conditions: vec![condition],
                 })
             }
             ParentReference::UnknownKind => None,
@@ -482,6 +506,36 @@ impl kubert::index::IndexNamespacedResource<k8s::Service> for Index {
 
     // Since apply only reindexes a single Service at a time, there's no need
     // to handle resets specially.
+}
+
+impl kubert::index::IndexNamespacedResource<k8s::external::ExternalGroup> for Index {
+    fn apply(&mut self, resource: k8s::external::ExternalGroup) {
+        let namespace = resource.namespace().expect("group must have a namespace");
+        let name = resource.name_unchecked();
+        let id = ResourceId::new(namespace, name);
+
+        self.external_groups.insert(id);
+
+        // If we're not the leader, skip reconciling the cluster.
+        if !self.claims.borrow().is_current_for(&self.name) {
+            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
+            return;
+        }
+        self.reconcile();
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let id = ResourceId::new(namespace, name);
+
+        self.external_groups.remove(&id);
+
+        // If we're not the leader, skip reconciling the cluster.
+        if !self.claims.borrow().is_current_for(&self.name) {
+            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
+            return;
+        }
+        self.reconcile();
+    }
 }
 
 impl Index {

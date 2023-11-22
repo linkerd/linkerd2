@@ -1,6 +1,7 @@
 use crate::resource_id::ResourceId;
 use gateway::{CommonRouteSpec, HttpBackendRef};
 use linkerd_policy_controller_k8s_api::{
+    external::ExternalGroup,
     gateway,
     policy::{self, Server},
     Service,
@@ -16,6 +17,7 @@ use linkerd_policy_controller_k8s_api::{
 #[derive(Clone, Eq, PartialEq)]
 pub enum ParentReference {
     Server(ResourceId),
+    ExternalGroup(ResourceId, Option<u16>),
     Service(ResourceId, Option<u16>),
     UnknownKind,
 }
@@ -60,6 +62,12 @@ impl ParentReference {
             // the HTTPRoute's namespace.
             let namespace = parent_ref.namespace.as_deref().unwrap_or(default_namespace);
             ParentReference::Service(
+                ResourceId::new(namespace.to_string(), parent_ref.name.clone()),
+                parent_ref.port,
+            )
+        } else if policy::httproute::parent_ref_targets_kind::<ExternalGroup>(parent_ref) {
+            let namespace = parent_ref.namespace.as_deref().unwrap_or(default_namespace);
+            ParentReference::ExternalGroup(
                 ResourceId::new(namespace.to_string(), parent_ref.name.clone()),
                 parent_ref.port,
             )

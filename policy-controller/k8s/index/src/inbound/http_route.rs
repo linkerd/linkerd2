@@ -1,6 +1,7 @@
 use crate::http_route;
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Error, Result};
+use k8s::external::ExternalGroup;
 use k8s_gateway_api as api;
 use linkerd_policy_controller_core::http_route::{HttpRouteMatch, Method};
 use linkerd_policy_controller_core::inbound::{Filter, HttpRoute, HttpRouteRule};
@@ -21,6 +22,7 @@ pub struct RouteBinding {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ParentRef {
     Server(String),
+    External(String, Option<u16>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -45,9 +47,10 @@ pub enum InvalidParentRef {
     #[error("HTTPRoute resource may not reference a parent Server in an other namespace")]
     ServerInAnotherNamespace,
 
+    /*
     #[error("HTTPRoute resource may not reference a parent by port")]
     SpecifiesPort,
-
+    */
     #[error("HTTPRoute resource may not reference a parent by section name")]
     SpecifiesSection,
 }
@@ -151,9 +154,27 @@ impl RouteBinding {
     }
 
     #[inline]
+    pub fn selects_group(&self, name: &str, port: Option<u16>) -> bool {
+        self.parents
+            .iter()
+            .any(|p| matches!(p, ParentRef::External(n, p) if n == name && *p == port))
+    }
+
+    #[inline]
     pub fn accepted_by_server(&self, name: &str) -> bool {
         self.statuses.iter().any(|status| {
             status.parent == ParentRef::Server(name.to_string())
+                && status
+                    .conditions
+                    .iter()
+                    .any(|condition| condition.type_ == ConditionType::Accepted && condition.status)
+        })
+    }
+
+    #[inline]
+    pub fn accepted_by_group(&self, name: &str, port: Option<u16>) -> bool {
+        self.statuses.iter().any(|status| {
+            status.parent == ParentRef::External(name.into(), port)
                 && status
                     .conditions
                     .iter()
@@ -291,13 +312,17 @@ impl ParentRef {
         parent_ref: api::ParentReference,
     ) -> Option<Result<Self, InvalidParentRef>> {
         // Skip parent refs that don't target a `Server` resource.
-        if !policy::parent_ref_targets_kind::<Server>(&parent_ref) || parent_ref.name.is_empty() {
+        if !policy::parent_ref_targets_kind::<Server>(&parent_ref)
+            && !policy::parent_ref_targets_kind::<ExternalGroup>(&parent_ref)
+        {
+            return None;
+        } else if parent_ref.name.is_empty() {
             return None;
         }
 
         let api::ParentReference {
             group: _,
-            kind: _,
+            kind,
             namespace,
             name,
             section_name,
@@ -307,14 +332,20 @@ impl ParentRef {
         if namespace.is_some() && namespace.as_deref() != route_ns {
             return Some(Err(InvalidParentRef::ServerInAnotherNamespace));
         }
+        /*
         if port.is_some() {
             return Some(Err(InvalidParentRef::SpecifiesPort));
         }
+        */
         if section_name.is_some() {
             return Some(Err(InvalidParentRef::SpecifiesSection));
         }
 
-        Some(Ok(ParentRef::Server(name)))
+        match kind {
+            Some(kind) if kind == "Server" => Some(Ok(ParentRef::Server(name))),
+            Some(kind) if kind == "ExternalGroup" => Some(Ok(ParentRef::External(name, port))),
+            _ => None,
+        }
     }
 }
 
@@ -332,7 +363,7 @@ impl Status {
         // Only match parent statuses that belong to resources of
         // `kind: Server`.
         match status.parent_ref.kind.as_deref() {
-            Some("Server") => (),
+            Some("Server") | Some("ExternalGroup") => (),
             _ => return None,
         }
 
@@ -360,7 +391,13 @@ impl Status {
             .collect();
 
         Some(Status {
-            parent: ParentRef::Server(status.parent_ref.name.to_string()),
+            parent: match status.parent_ref.kind.as_deref() {
+                Some("Server") => ParentRef::Server(status.parent_ref.name.to_string()),
+                Some("ExternalGroup") => {
+                    ParentRef::External(status.parent_ref.name.to_string(), status.parent_ref.port)
+                }
+                _ => panic!("should not reach this"),
+            },
             conditions,
         })
     }

@@ -1222,6 +1222,9 @@ spec:
                           minLength: 1
                           pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                           type: string
+                        port:
+                          description: "Just a port"
+                          type: integer
                         sectionName:
                           description: "SectionName is the name of a section within
                             the target resource. In the following resources, SectionName
@@ -5165,6 +5168,9 @@ spec:
                           minLength: 1
                           pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                           type: string
+                        port:
+                          description: "Just a port"
+                          type: integer
                         sectionName:
                           description: "SectionName is the name of a section within
                             the target resource. In the following resources, SectionName

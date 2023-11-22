@@ -1045,6 +1045,8 @@ impl ExternalGroup {
             std::hash::BuildHasherDefault::<PortHasher>::default(),
         );
 
+        // Loop through the ports. An alternative might be to create a default port when we update
+        // the server and instead loop through port servers here.
         let ports = self.ports.clone();
         for port in ports {
             if let Some(prior) = matched_ports.get(&port) {
@@ -1057,13 +1059,17 @@ impl ExternalGroup {
                 continue;
             }
 
-            tracing::info!(%workload_name, "Creating inbound external server");
             let authorizations =
                 policy.workload_authzs(&workload_name, port.to_owned(), authentications);
             // No probe paths
             let http_routes =
-                policy.http_routes(&workload_name, authentications, Vec::new().into_iter());
+                policy.workload_http_routes(&workload_name, Some(port.get()), authentications);
+            if authorizations.len() == 0 && http_routes.len() == 0 {
+                // Default server
+                continue;
+            }
 
+            tracing::info!(%workload_name, "Creating inbound external server");
             let s = InboundServer {
                 reference: ServerRef::External(workload_name.clone()),
                 authorizations,
@@ -1131,7 +1137,7 @@ impl ExternalGroup {
         let server = Self::default_inbound_server(port, &self.meta.settings, config);
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
-                tracing::debug!(%port, server = %config.default_policy, "Creating default (workload) server");
+                tracing::info!(%port, server = %config.default_policy, "Creating default (workload) server");
                 let (watch, _) = watch::channel(server);
                 entry.insert(ExternalPortServer { name: None, watch });
             }
@@ -1199,15 +1205,12 @@ impl ExternalGroup {
         }
 
         let authorizations = policy.default_authzs(config);
-
-        // Do not worry about probe paths, they do not need to be authorized!
-        let http_routes = config.default_inbound_http_routes(Vec::new().into_iter());
-
         InboundServer {
             reference: ServerRef::External(policy.to_string()),
             protocol,
             authorizations,
-            http_routes,
+            // Do not worry about probe paths, they do not need to be authorized!
+            http_routes: Default::default(),
         }
     }
 }
@@ -1607,11 +1610,13 @@ impl PolicyIndex {
                     };
 
                     if target_name != workload_name || port != *target_port {
-                        tracing::info!(
+                        tracing::trace!(
                             ns = %self.namespace,
                             authorizationpolicy = %name,
                             workload = %workload_name,
                             target = %target_name,
+                            %port,
+                            %target_port,
                             "AuthorizationPolicy does not target workload",
                         );
                         continue;
@@ -1636,7 +1641,6 @@ impl PolicyIndex {
                     workload = %workload_name,
                 "AuthorizationPolicy targets workload",
             );
-            tracing::info!(authns = ?spec.authentications);
 
             let authz = match self.policy_client_authz(spec, authentications) {
                 Ok(authz) => authz,
@@ -1730,6 +1734,29 @@ impl PolicyIndex {
             return routes;
         }
         self.cluster_info.default_inbound_http_routes(probe_paths)
+    }
+
+    // Again doing a separate function for convenience and for me (matei) to
+    // understand the code
+    fn workload_http_routes(
+        &self,
+        group_name: &str,
+        port: Option<u16>,
+        authn: &AuthenticationNsIndex,
+    ) -> HashMap<HttpRouteRef, HttpRoute> {
+        let routes = self
+            .http_routes
+            .iter()
+            .filter(|(_, route)| route.selects_group(group_name, port))
+            .filter(|(_, route)| route.accepted_by_group(group_name, port))
+            .map(|(gkn, route)| {
+                let mut route = route.route.clone();
+                route.authorizations = self.route_client_authzs(gkn, authn);
+                (HttpRouteRef::Linkerd(gkn.clone()), route)
+            })
+            .collect::<HashMap<_, _>>();
+
+        return routes;
     }
 
     fn policy_client_authz(

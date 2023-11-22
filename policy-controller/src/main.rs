@@ -203,8 +203,11 @@ async fn main() -> Result<()> {
     );
 
     let externals = runtime.watch_all::<k8s::external::ExternalGroup>(watcher::Config::default());
+    let external_indexes = IndexList::new(inbound_index.clone())
+        .push(status_index.clone())
+        .shared();
     tokio::spawn(
-        kubert::index::namespaced(inbound_index.clone(), externals)
+        kubert::index::namespaced(external_indexes, externals)
             .instrument(info_span!("externalgroups")),
     );
 
