@@ -16,6 +16,7 @@ use std::{pin::Pin, time::Duration};
 pub enum ServerRef {
     Default(&'static str),
     Server(String),
+    External(String),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

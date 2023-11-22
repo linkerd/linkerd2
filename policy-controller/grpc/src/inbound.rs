@@ -232,6 +232,11 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
             "kind" => "server",
             "name" => name,
         )),
+        ServerRef::External(name) => convert_args!(hashmap!(
+        "group" => "multicluster.linkerd.io",
+        "kind" => "externalgroup",
+        "name" => name,
+        )),
     };
     trace!(?labels);
 

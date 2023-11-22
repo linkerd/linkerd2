@@ -137,9 +137,8 @@ struct PodPortServer {
 
 #[derive(Debug)]
 struct ExternalPortServer {
-    // Name of server matching pod
+    // Name of the server is the name of the workload
     name: Option<String>,
-
     // Sender used to broadcast server updates
     watch: watch::Sender<InboundServer>,
 }
@@ -408,9 +407,9 @@ impl kubert::index::IndexNamespacedResource<k8s::external::ExternalGroup> for In
         let meta = external_group::Meta::from_metadata(group.metadata);
         let namespace = self.namespaces.get_or_default(ns);
         let ports = group.spec.ports.into_iter().map(|spec| spec.port).collect();
-        match namespace.external.update(name, meta, ports) {
+        match namespace.external.update(name.clone(), meta, ports) {
             Ok(None) => {}
-            Ok(Some(g)) => g.reindex_servers(&namespace.policy, &self.authentications),
+            Ok(Some(g)) => g.reindex_policy(name, &namespace.policy, &self.authentications),
             Err(error) => tracing::error!(%error, "Illegal group update"),
         }
     }
@@ -942,6 +941,7 @@ impl ExternalIndex {
         let group = match self.by_name.entry(name.clone()) {
             Entry::Occupied(entry) => {
                 let group = entry.into_mut();
+                // !! Think through what IS allowed to change !!
                 if group.ports != ports {
                     bail!("workload {} port must not change", name);
                 }
@@ -968,7 +968,7 @@ impl ExternalIndex {
         let _span = info_span!("reindex", ns = %self.namespace).entered();
         for (name, group) in self.by_name.iter_mut() {
             let _span = info_span!("external_group", external_group = %name).entered();
-            group.reindex_servers(policy, authns);
+            group.reindex_policy(name.into(), policy, authns);
         }
     }
 }
@@ -1030,7 +1030,13 @@ impl PodIndex {
 
 // === impl ExternalEndpoint ===
 impl ExternalGroup {
-    fn reindex_servers(&mut self, policy: &PolicyIndex, authentications: &AuthenticationNsIndex) {
+    // Re-index by looking at policy attached to ports
+    fn reindex_policy(
+        &mut self,
+        workload_name: String,
+        policy: &PolicyIndex,
+        authentications: &AuthenticationNsIndex,
+    ) {
         // unmatched ports will get a default policy
         let mut unmatched_ports = self.port_servers.keys().copied().collect::<PortSet>();
 
@@ -1039,31 +1045,39 @@ impl ExternalGroup {
             std::hash::BuildHasherDefault::<PortHasher>::default(),
         );
 
-        for (srvname, server) in policy.servers.iter() {
-            if server.pod_selector.matches(&self.meta.labels) {
-                for port in self.select_ports(&server.port_ref) {
-                    if let Some(prior) = matched_ports.get(&port) {
-                        tracing::warn!(
-                            port = %port,
-                            server = %prior,
-                            conflict = %srvname,
-                            "Port already matched by another server; skipping"
-                        );
-                        continue;
-                    }
-
-                    let s = policy.inbound_server(
-                        srvname.clone(),
-                        server,
-                        authentications,
-                        Vec::new().into_iter(),
-                    );
-                    self.update_server(port, srvname, s);
-
-                    matched_ports.insert(port, srvname.clone());
-                    unmatched_ports.remove(&port);
-                }
+        let ports = self.ports.clone();
+        for port in ports {
+            if let Some(prior) = matched_ports.get(&port) {
+                tracing::warn!(
+                    port = %port,
+                    server = %prior,
+                    conflict = %workload_name,
+                    "Port already matched by another policy; skipping"
+                );
+                continue;
             }
+
+            tracing::info!(%workload_name, "Creating inbound external server");
+            let authorizations =
+                policy.workload_authzs(&workload_name, port.to_owned(), authentications);
+            // No probe paths
+            let http_routes =
+                policy.http_routes(&workload_name, authentications, Vec::new().into_iter());
+
+            let s = InboundServer {
+                reference: ServerRef::External(workload_name.clone()),
+                authorizations,
+                // Mark all as detect
+                protocol: ProxyProtocol::Detect {
+                    timeout: policy.cluster_info.default_detect_timeout,
+                },
+                http_routes,
+            };
+
+            self.update_server(port, &workload_name, s);
+
+            matched_ports.insert(*&port, workload_name.clone());
+            unmatched_ports.remove(&port);
         }
 
         for port in unmatched_ports.into_iter() {
@@ -1071,21 +1085,10 @@ impl ExternalGroup {
         }
     }
 
-    /// Enumerates ports.
-    ///
-    /// A named port may refer to an arbitrary number of port numbers.
-    fn select_ports(&mut self, port_ref: &Port) -> Vec<NonZeroU16> {
-        match port_ref {
-            // Implement named ports
-            Port::Number(p) => Some(*p).into_iter().collect(),
-            Port::Name(_name) => todo!(),
-        }
-    }
-
     fn update_server(&mut self, port: NonZeroU16, name: &str, server: InboundServer) {
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
-                tracing::info!(port = %port, server = %name, "Creating server");
+                tracing::info!(port = %port, server = %name, "Creating (workload) server");
                 let (watch, _) = watch::channel(server);
                 entry.insert(ExternalPortServer {
                     name: Some(name.to_string()),
@@ -1094,12 +1097,11 @@ impl ExternalGroup {
             }
 
             Entry::Occupied(mut entry) => {
-                let ps = entry.get_mut();
+                let ws = entry.get_mut();
 
-                // TODO (matei): look at this
-                ps.watch.send_if_modified(|current| {
-                    if ps.name.as_deref() == Some(name) && *current == server {
-                        tracing::trace!(port = %port, server = %name, "Skipped redundant server update");
+                ws.watch.send_if_modified(|current| {
+                    if ws.name.as_deref() == Some(name) && *current == server {
+                        tracing::trace!(port = %port, server = %name, "Skipped redundant (workload) server update");
                         tracing::trace!(?server);
                         return false;
                     }
@@ -1110,9 +1112,9 @@ impl ExternalGroup {
                     // make the opportunistic choice to assume the cluster is
                     // configured coherently so we take the update. The admission
                     // controller should prevent conflicts.
-                    tracing::trace!(port = %port, server = %name, "Updating server");
-                    if ps.name.as_deref() != Some(name) {
-                        ps.name = Some(name.to_string());
+                    tracing::trace!(port = %port, server = %name, "Updating (workload) server");
+                    if ws.name.as_deref() != Some(name) {
+                        ws.name = Some(name.to_string());
                     }
 
                     *current = server;
@@ -1124,27 +1126,27 @@ impl ExternalGroup {
         tracing::info!(port = %port, server = %name, "Updated server");
     }
 
-    /// Updates a pod-port to use the given named server.
+    /// Updates a workload-port to use the given named server.
     fn set_default_server(&mut self, port: NonZeroU16, config: &ClusterInfo) {
         let server = Self::default_inbound_server(port, &self.meta.settings, config);
         match self.port_servers.entry(port) {
             Entry::Vacant(entry) => {
-                tracing::debug!(%port, server = %config.default_policy, "Creating default server");
+                tracing::debug!(%port, server = %config.default_policy, "Creating default (workload) server");
                 let (watch, _) = watch::channel(server);
                 entry.insert(ExternalPortServer { name: None, watch });
             }
 
             Entry::Occupied(mut entry) => {
-                let ps = entry.get_mut();
-                ps.watch.send_if_modified(|current| {
+                let ws = entry.get_mut();
+                ws.watch.send_if_modified(|current| {
                     // Avoid sending redundant updates.
                     if *current == server {
-                        tracing::trace!(%port, server = %config.default_policy, "Default server already set");
+                        tracing::trace!(%port, server = %config.default_policy, "Default (workload) server already set");
                         return false;
                     }
 
-                    tracing::debug!(%port, server = %config.default_policy, "Setting default server");
-                    ps.name = None;
+                    ws.name = None;
+                    tracing::debug!(%port, server = %config.default_policy, "Setting default (workload) server");
                     *current = server;
                     true
                 });
@@ -1202,7 +1204,7 @@ impl ExternalGroup {
         let http_routes = config.default_inbound_http_routes(Vec::new().into_iter());
 
         InboundServer {
-            reference: ServerRef::Default(policy.as_str()),
+            reference: ServerRef::External(policy.to_string()),
             protocol,
             authorizations,
             http_routes,
@@ -1546,6 +1548,10 @@ impl PolicyIndex {
                     // the server authorizations.
                     continue;
                 }
+                authorization_policy::Target::ExternalGroup(_) => {
+                    // Separate function to deal with this for now
+                    continue;
+                }
             }
 
             tracing::trace!(
@@ -1561,6 +1567,82 @@ impl PolicyIndex {
                 Err(error) => {
                     tracing::info!(
                         server = %server_name,
+                        authorizationpolicy = %name,
+                        %error,
+                        "Illegal AuthorizationPolicy; ignoring",
+                    );
+                    continue;
+                }
+            };
+
+            let reference = AuthorizationRef::AuthorizationPolicy(name.to_string());
+            authzs.insert(reference, authz);
+        }
+
+        authzs
+    }
+
+    // Specialised version of client authz used only for workloads
+    fn workload_authzs(
+        &self,
+        workload_name: &str,
+        port: NonZeroU16,
+        authentications: &AuthenticationNsIndex,
+    ) -> HashMap<AuthorizationRef, ClientAuthorization> {
+        let mut authzs = HashMap::default();
+        for (name, spec) in self.authorization_policies.iter() {
+            // Skip the policy if it doesn't apply to the workload.
+            match &spec.target {
+                authorization_policy::Target::ExternalGroup((target_name, target_port)) => {
+                    let target_port = if let Some(p) = target_port {
+                        p
+                    } else {
+                        tracing::info!(
+                            ns = %self.namespace,
+                            authorizationpolicy = %name,
+                            workload = %workload_name,
+                            target = %target_name,
+                            "AuthorizationPolicy contains an invalid port in target reference");
+                        continue;
+                    };
+
+                    if target_name != workload_name || port != *target_port {
+                        tracing::info!(
+                            ns = %self.namespace,
+                            authorizationpolicy = %name,
+                            workload = %workload_name,
+                            target = %target_name,
+                            "AuthorizationPolicy does not target workload",
+                        );
+                        continue;
+                    }
+                }
+                authorization_policy::Target::Namespace => {}
+                authorization_policy::Target::HttpRoute(_) => {
+                    // Policies which target HttpRoutes will be attached to
+                    // the route authorizations and should not be included in
+                    // the server authorizations.
+                    continue;
+                }
+                authorization_policy::Target::Server(_) => {
+                    // Ignore server here
+                    continue;
+                }
+            }
+
+            tracing::info!(
+                    ns = %self.namespace,
+                    authorizationpolicy = %name,
+                    workload = %workload_name,
+                "AuthorizationPolicy targets workload",
+            );
+            tracing::info!(authns = ?spec.authentications);
+
+            let authz = match self.policy_client_authz(spec, authentications) {
+                Ok(authz) => authz,
+                Err(error) => {
+                    tracing::info!(
+                        server = %workload_name,
                         authorizationpolicy = %name,
                         %error,
                         "Illegal AuthorizationPolicy; ignoring",

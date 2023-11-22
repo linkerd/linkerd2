@@ -60,6 +60,9 @@ spec:
                       maxLength: 253
                       minLength: 1
                       type: string
+                    port:
+                      description: A port to select on the referred object
+                      type: integer
                 requiredAuthenticationRefs:
                   description: >-
                     RequiredAuthenticationRefs enumerates a set of required

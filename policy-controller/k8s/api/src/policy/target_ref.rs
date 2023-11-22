@@ -16,7 +16,14 @@ pub struct LocalTargetRef {
     pub group: Option<String>,
     pub kind: String,
     pub name: String,
+    // Need it for policy attached to workload group
+    // we include it here since the workload group SHOULD
+    // be local to the policy that selects it
+    pub port: Option<PortNumber>,
 }
+
+// Similar to parentRef type
+pub type PortNumber = u16;
 
 #[derive(
     Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
@@ -87,7 +94,13 @@ impl LocalTargetRef {
         T::DynamicType: Default,
     {
         let (group, kind, name) = group_kind_name(resource);
-        Self { group, kind, name }
+        // Return None, this is only used in tests AFAIK
+        Self {
+            group,
+            kind,
+            name,
+            port: None,
+        }
     }
 
     /// Returns the target ref kind, qualified by its group, if necessary.
@@ -136,6 +149,7 @@ impl NamespacedTargetRef {
     {
         let (group, kind, name) = group_kind_name(resource);
         let namespace = resource.meta().namespace.clone();
+
         Self {
             group,
             kind,

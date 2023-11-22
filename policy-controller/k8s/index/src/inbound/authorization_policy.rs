@@ -1,3 +1,5 @@
+use std::num::NonZeroU16;
+
 use anyhow::Result;
 use linkerd_policy_controller_core::http_route::GroupKindName;
 use linkerd_policy_controller_k8s_api::{
@@ -16,6 +18,7 @@ pub(crate) struct Spec {
 pub(crate) enum Target {
     HttpRoute(GroupKindName),
     Server(String),
+    ExternalGroup((String, Option<NonZeroU16>)),
     Namespace,
 }
 
@@ -63,6 +66,10 @@ impl TryFrom<k8s::policy::AuthorizationPolicySpec> for Spec {
 fn target(t: LocalTargetRef) -> Result<Target> {
     match t {
         t if t.targets_kind::<k8s::policy::Server>() => Ok(Target::Server(t.name)),
+        t if t.targets_kind::<k8s::external::ExternalGroup>() => Ok(Target::ExternalGroup((
+            t.name,
+            t.port.and_then(|p| NonZeroU16::new(p)),
+        ))),
         t if t.targets_kind::<k8s::Namespace>() => Ok(Target::Namespace),
         t if t.targets_kind::<k8s::policy::HttpRoute>()
             || t.targets_kind::<k8s_gateway_api::HttpRoute>() =>
