@@ -1,5 +1,31 @@
 # Changes
 
+## stable-2.14.5
+
+This stable release fixes a proxy regression where bursts of TCP connections
+could result in EOF errors, due to an incorrect queue capacity. In addition, it
+includes fixes for the control plane, dependency upgrades, and support for image
+digests in Linkerd manifests.
+
+* Added a controlPlaneVersion override to the `linkerd-control-plane` Helm chart
+  to support including SHA256 image digests in Linkerd manifests (thanks
+  @cromulentbanana!) ([#11406]; fixes [#11312])
+* Added a `checksum/config` annotation to the destination and proxy injector
+  deployment manifests, to force restarting those workloads whenever their
+  webhook secrets change during upgrade (thanks @iAnomaly!) ([#11440]; fixes
+  [#6940])
+* Updated the Policy controller's OpenSSL dependency to v3, as OpenSSL 1.1.1 is
+  EOL ([#11625])
+* proxy: Increased `DEFAULT_OUTBOUND_TCP_QUEUE_CAPACITY` to prevent EOF errors
+  during bursts of TCP connections (proxy PR [#2521][proxy-2521])
+
+[#11406]: https://github.com/linkerd/linkerd2/pull/11406
+[#11312]: https://github.com/linkerd/linkerd2/issues/11312
+[#11440]: https://github.com/linkerd/linkerd2/pull/11440
+[#6940]: https://github.com/linkerd/linkerd2/issues/6940
+[#11625]: https://github.com/linkerd/linkerd2/pull/11625
+[proxy-2521]: https://github.com/linkerd/linkerd2-proxy/pull/2521
+
 ## stable-2.14.4
 
 This stable release improves observability for the control plane by adding

@@ -1301,7 +1301,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: d678d93a3ae6be52fc98976b988d287fb3f8bc41d1eb9cc5f06d63fc3a3b9ee7
+        checksum/config: d119786757611ae950baf183387a1524cb2dc7e1801ba143a1922ceff51a5871
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: install-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
