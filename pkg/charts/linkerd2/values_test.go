@@ -134,6 +134,11 @@ func TestNewValues(t *testing.T) {
 			InboundDiscoveryCacheUnusedTimeout:   "90s",
 			DisableOutboundProtocolDetectTimeout: false,
 			DisableInboundProtocolDetectTimeout:  false,
+			StartupProbe: &StartupProbe{
+				FailureThreshold:    120,
+				InitialDelaySeconds: 0,
+				PeriodSeconds:       1,
+			},
 		},
 		ProxyInit: &ProxyInit{
 			IptablesMode:        "legacy",

@@ -82,6 +82,7 @@ var (
 	// (config.alpha prefix) that can be applied to a pod or namespace.
 	ProxyAlphaConfigAnnotations = []string{
 		k8s.ProxyWaitBeforeExitSecondsAnnotation,
+		k8s.ProxyEnableNativeSidecarAnnotation,
 	}
 )
 
@@ -997,6 +998,13 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 				k8s.ProxyWaitBeforeExitSecondsAnnotation, override)
 		} else {
 			values.Proxy.WaitBeforeExitSeconds = waitBeforeExitSeconds
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyEnableNativeSidecarAnnotation]; ok {
+		value, err := strconv.ParseBool(override)
+		if err == nil {
+			values.Proxy.NativeSidecar = value
 		}
 	}
 

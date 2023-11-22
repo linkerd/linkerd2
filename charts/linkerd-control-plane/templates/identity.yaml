@@ -206,6 +206,7 @@ spec:
       {{- $_ := set $tree.Values.proxy "await" false }}
       {{- $_ := set $tree.Values.proxy "loadTrustBundleFromConfigMap" true }}
       {{- $_ := set $tree.Values.proxy "podInboundPorts" "8080,9990" }}
+      {{- $_ := set $tree.Values.proxy "nativeSidecar" false }}
       {{- /*
         The identity controller cannot discover policies, so we configure it with defaults that
         enforce TLS on the identity service.

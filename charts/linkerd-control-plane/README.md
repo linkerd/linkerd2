@@ -239,6 +239,7 @@ Kubernetes: `>=1.21.0-0`
 | proxy.inboundDiscoveryCacheUnusedTimeout | string | `"90s"` | Maximum time allowed before an unused inbound discovery result is evicted from the cache |
 | proxy.logFormat | string | `"plain"` | Log format (`plain` or `json`) for the proxy |
 | proxy.logLevel | string | `"warn,linkerd=info,trust_dns=error"` | Log level for the proxy |
+| proxy.nativeSidecar | bool | `false` | Enable KEP-753 native sidecars This is an experimental feature. It requires Kubernetes >= 1.29. If enabled, .proxy.waitBeforeExitSeconds should not be used. |
 | proxy.opaquePorts | string | `"25,587,3306,4444,5432,6379,9300,11211"` | Default set of opaque ports - SMTP (25,587) server-first - MYSQL (3306) server-first - Galera (4444) server-first - PostgreSQL (5432) server-first - Redis (6379) server-first - ElasticSearch (9300) server-first - Memcached (11211) clients do not issue any preamble, which breaks detection |
 | proxy.outboundConnectTimeout | string | `"1000ms"` | Maximum time allowed for the proxy to establish an outbound TCP connection |
 | proxy.outboundDiscoveryCacheUnusedTimeout | string | `"5s"` | Maximum time allowed before an unused outbound discovery result is evicted from the cache |
@@ -254,6 +255,7 @@ Kubernetes: `>=1.21.0-0`
 | proxy.resources.memory.limit | string | `""` | Maximum amount of memory that the proxy can use |
 | proxy.resources.memory.request | string | `""` | Maximum amount of memory that the proxy requests |
 | proxy.shutdownGracePeriod | string | `""` | Grace period for graceful proxy shutdowns. If this timeout elapses before all open connections have completed, the proxy will terminate forcefully, closing any remaining connections. |
+| proxy.startupProbe | object | `{"failureThreshold":120,"initialDelaySeconds":0,"periodSeconds":1}` | Native sidecar proxy startup probe parameters. |
 | proxy.uid | int | `2102` | User id under which the proxy runs |
 | proxy.waitBeforeExitSeconds | int | `0` | If set the injected proxy sidecars in the data plane will stay alive for at least the given period before receiving the SIGTERM signal from Kubernetes but no longer than the pod's `terminationGracePeriodSeconds`. See [Lifecycle hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks) for more info on container lifecycle hooks. |
 | proxyInit.closeWaitTimeoutSecs | int | `0` |  |

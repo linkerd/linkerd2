@@ -74,6 +74,7 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyInboundDiscoveryCacheUnusedTimeout:      "900s",
 							k8s.ProxyDisableOutboundProtocolDetectTimeout:    "true",
 							k8s.ProxyDisableInboundProtocolDetectTimeout:     "true",
+							k8s.ProxyEnableNativeSidecarAnnotation:           "true",
 						},
 					},
 					Spec: corev1.PodSpec{},
@@ -126,6 +127,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.InboundDiscoveryCacheUnusedTimeout = "900s"
 				values.Proxy.DisableOutboundProtocolDetectTimeout = true
 				values.Proxy.DisableInboundProtocolDetectTimeout = true
+				values.Proxy.NativeSidecar = true
 				return values
 			},
 		},
@@ -174,6 +176,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				k8s.ProxyInboundDiscoveryCacheUnusedTimeout:   "6000ms",
 				k8s.ProxyDisableOutboundProtocolDetectTimeout: "true",
 				k8s.ProxyDisableInboundProtocolDetectTimeout:  "false",
+				k8s.ProxyEnableNativeSidecarAnnotation:        "true",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -221,6 +224,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.InboundDiscoveryCacheUnusedTimeout = "6s"
 				values.Proxy.DisableOutboundProtocolDetectTimeout = true
 				values.Proxy.DisableInboundProtocolDetectTimeout = false
+				values.Proxy.NativeSidecar = true
 				return values
 			},
 		},
