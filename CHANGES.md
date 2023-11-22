@@ -2,10 +2,11 @@
 
 ## edge-23.11.4
 
-This edge release introduces support for the native sidecar containers added in
-Kubernetes 1.29, improving proxy sidecar compatibility for jobs and
-initContainers. In addition, it includes Helm chart improvements, and
-improvements to the multicluster extension.
+This edge release introduces support for the native sidecar containers entering
+beta support in Kubernetes 1.29. This improves the startup and shutdown ordering
+for the proxy relative to other containers, such as `job`s and `initContainer`s.
+In addition, this edge release includes Helm chart improvements, and improvements
+to the multicluster extension.
 
 * Added a new `config.alpha.linkerd.io/proxy-enable-native-sidecar` annotation
   and `Proxy.NativeSidecar` Helm option that causes the proxy container to run
