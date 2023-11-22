@@ -153,6 +153,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/destination-rbac.yaml") . | sha256sum }}
         {{ include "partials.annotations.created-by" . }}
         {{- include "partials.proxy.annotations" . | nindent 8}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
@@ -203,7 +204,7 @@ spec:
         - -default-opaque-ports={{.Values.proxy.opaquePorts}}
         - -enable-pprof={{.Values.enablePprof | default false}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
-        image: {{.Values.controllerImage}}:{{.Values.linkerdVersion}}
+        image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
@@ -239,7 +240,7 @@ spec:
         - -log-level={{.Values.controllerLogLevel}}
         - -log-format={{.Values.controllerLogFormat}}
         - -enable-pprof={{.Values.enablePprof | default false}}
-        image: {{.Values.controllerImage}}:{{.Values.linkerdVersion}}
+        image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
