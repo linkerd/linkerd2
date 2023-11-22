@@ -1041,7 +1041,7 @@ impl ExternalGroup {
 
         for (srvname, server) in policy.servers.iter() {
             if server.pod_selector.matches(&self.meta.labels) {
-                for port in self.ports.clone().into_iter() {
+                for port in self.select_ports(&server.port_ref) {
                     if let Some(prior) = matched_ports.get(&port) {
                         tracing::warn!(
                             port = %port,
@@ -1068,6 +1068,17 @@ impl ExternalGroup {
 
         for port in unmatched_ports.into_iter() {
             self.set_default_server(port, &policy.cluster_info);
+        }
+    }
+
+    /// Enumerates ports.
+    ///
+    /// A named port may refer to an arbitrary number of port numbers.
+    fn select_ports(&mut self, port_ref: &Port) -> Vec<NonZeroU16> {
+        match port_ref {
+            // Implement named ports
+            Port::Number(p) => Some(*p).into_iter().collect(),
+            Port::Name(_name) => todo!(),
         }
     }
 
