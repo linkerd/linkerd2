@@ -4,7 +4,10 @@
 
 This edge release introduces support for the native sidecar containers entering
 beta support in Kubernetes 1.29. This improves the startup and shutdown ordering
-for the proxy relative to other containers, such as `job`s and `initContainer`s.
+for the proxy relative to other containers, fixing the long-standing
+shutdown issue with injected `Job`s. Furthermore, traffic from other
+`initContainer`s can now be proxied by Linkerd.
+
 In addition, this edge release includes Helm chart improvements, and improvements
 to the multicluster extension.
 
