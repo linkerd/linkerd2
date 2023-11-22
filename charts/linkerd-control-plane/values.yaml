@@ -328,7 +328,8 @@ identity:
   serviceAccountTokenProjection: true
 
   # -- Maximum QPS sent to the kube-apiserver before throttling.
-  # See https://github.com/kubernetes/client-go/blob/v12.0.0/util/flowcontrol/throttle.go
+  # See [token bucket rate limiter
+  # implementation](https://github.com/kubernetes/client-go/blob/v12.0.0/util/flowcontrol/throttle.go)
   kubeAPIClientQPS: 100
 
   # -- Burst value over kubeAPIClientQPS
