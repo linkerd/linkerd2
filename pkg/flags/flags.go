@@ -65,8 +65,10 @@ func setLogLevel(logLevel string) {
 	}
 	log.SetLevel(level)
 
-	// Based on k8s logging conventions, except for 'tracing' that we bump to 7
-	// because we know client-go dumps more info at that level
+	// Loosely based on k8s logging conventions, except for 'tracing' that we
+	// bump to 10 (we can see in client-go source code that level is actually
+	// used) and `debug` to 6 (given that at level 7 and higher auth tokens get
+	// logged)
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md
 	switch level {
 	case log.PanicLevel:
@@ -80,10 +82,9 @@ func setLogLevel(logLevel string) {
 	case log.InfoLevel:
 		flag.Set("v", "2")
 	case log.DebugLevel:
-		flag.Set("v", "4")
+		flag.Set("v", "6")
 	case log.TraceLevel:
-		// At 7 and higher, authorization tokens get logged
-		flag.Set("v", "7")
+		flag.Set("v", "10")
 	}
 }
 
