@@ -1,5 +1,35 @@
 # Changes
 
+## edge-23.11.4
+
+This edge release introduces support for the native sidecar containers added in
+Kubernetes 1.29, improving proxy sidecar compatibility for jobs and
+initContainers. In addition, it includes Helm chart improvements, and
+improvements to the multicluster extension.
+
+* Added a new `config.alpha.linkerd.io/proxy-enable-native-sidecar` annotation
+  and `Proxy.NativeSidecar` Helm option that causes the proxy container to run
+  as an init-container (thanks @teejaded!) ([#11465]; fixes [#11461])
+* Fixed broken affinity rules for the multicluster `service-mirror` when running
+  in HA mode ([#11609]; fixes [#11603])
+* Added a new check to `linkerd check` that ensures all extension namespaces are
+  configured properly ([#11629]; fixes [#11509])
+* Updated the Prometheus Docker image used by the `linkerd-viz` extension to
+  v2.48.0, resolving a number of CVEs in older Prometheus versions ([#11633])
+* Added `nodeAffinity` to `deployment` templates in the `linkerd-viz` and
+  `linkerd-jaeger` Helm charts (thanks @naing2victor!) ([#11464]; fixes
+  [#10680])
+
+[#11465]: https://github.com/linkerd/linkerd2/pull/11465
+[#11461]: https://github.com/linkerd/linkerd2/issues/11461
+[#11609]: https://github.com/linkerd/linkerd2/pull/11609
+[#11603]: https://github.com/linkerd/linkerd2/issues/11603
+[#11629]: https://github.com/linkerd/linkerd2/pull/11629
+[#11509]: https://github.com/linkerd/linkerd2/issues/11509
+[#11633]: https://github.com/linkerd/linkerd2/pull/11633
+[#11464]: https://github.com/linkerd/linkerd2/pull/11464
+[#10680]: https://github.com/linkerd/linkerd2/issues/10680
+
 ## edge-23.11.3
 
 This edge release fixes a bug where Linkerd could cause EOF errors during bursts
