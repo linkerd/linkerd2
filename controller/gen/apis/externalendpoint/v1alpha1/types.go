@@ -34,9 +34,10 @@ type ExternalEndpoint struct {
 // Note: for now, when deserialising treat fields as optional so it's easier to
 // create those resources
 type ExternalEndpointSpec struct {
-	workloadIPs []WorkloadIP   `json:"workloadIPs,omitempty"`
-	identity    string         `json:"identity,omitempty"`
-	ports       []WorkloadPort `json:"ports,omitempty"`
+	WorkloadIPs []WorkloadIP   `json:"workloadIPs,omitempty"`
+	Identity    string         `json:"identity,omitempty"`
+	ServerName  string         `json:"serverName,omitempty"`
+	Ports       []WorkloadPort `json:"ports,omitempty"`
 }
 
 // WorkloadIPs tracks IPs. It's an object since we might introduce different IP
@@ -91,6 +92,8 @@ const (
 	WorkloadReady WorkloadConditionType = "Ready"
 	// Scheduled / initialised
 	WorkloadInitialized WorkloadConditionType = "Initialized"
+	// TEMP: simulate lifecycle by using a deleted condition
+	WorkloadDeleted WorkloadConditionType = "Deleted"
 )
 
 // WorkloadConditionStatus

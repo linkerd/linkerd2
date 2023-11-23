@@ -64,6 +64,8 @@ spec:
                       type: string
               identity:
                 type: string
+              serverName:
+                type: string
           status:
             type: object
             properties:

@@ -102,7 +102,7 @@ func Main(args []string) {
 			*kubeConfigPath,
 			true,
 			"local",
-			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
+			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv, k8s.EE,
 		)
 	} else {
 		k8sAPI, err = k8s.InitializeAPI(
@@ -113,6 +113,7 @@ func Main(args []string) {
 			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
 		)
 	}
+
 	if err != nil {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
@@ -126,6 +127,12 @@ func Main(args []string) {
 	if err != nil {
 		log.Fatalf("Failed to initialize Cluster Store: %s", err)
 	}
+
+	recon, err := watcher.NewExternalReconciler(k8sAPI, done)
+	if err != nil {
+		log.Fatalf("Failed to initialize Reconciler: %s", err)
+	}
+	recon.Start()
 
 	server, err := destination.NewServer(
 		*addr,
