@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 
+	externalendpointv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/externalendpoint/v1alpha1"
 	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha1"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1alpha1"
 	policyv1beta3 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1beta3"
@@ -35,6 +36,7 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
+	ExternalendpointV1alpha1() externalendpointv1alpha1.ExternalendpointV1alpha1Interface
 	LinkV1alpha1() linkv1alpha1.LinkV1alpha1Interface
 	PolicyV1alpha1() policyv1alpha1.PolicyV1alpha1Interface
 	PolicyV1beta3() policyv1beta3.PolicyV1beta3Interface
@@ -46,12 +48,18 @@ type Interface interface {
 // Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
+	externalendpointV1alpha1   *externalendpointv1alpha1.ExternalendpointV1alpha1Client
 	linkV1alpha1               *linkv1alpha1.LinkV1alpha1Client
 	policyV1alpha1             *policyv1alpha1.PolicyV1alpha1Client
 	policyV1beta3              *policyv1beta3.PolicyV1beta3Client
 	serverV1beta1              *serverv1beta1.ServerV1beta1Client
 	serverauthorizationV1beta1 *serverauthorizationv1beta1.ServerauthorizationV1beta1Client
 	linkerdV1alpha2            *linkerdv1alpha2.LinkerdV1alpha2Client
+}
+
+// ExternalendpointV1alpha1 retrieves the ExternalendpointV1alpha1Client
+func (c *Clientset) ExternalendpointV1alpha1() externalendpointv1alpha1.ExternalendpointV1alpha1Interface {
+	return c.externalendpointV1alpha1
 }
 
 // LinkV1alpha1 retrieves the LinkV1alpha1Client
@@ -128,6 +136,10 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 
 	var cs Clientset
 	var err error
+	cs.externalendpointV1alpha1, err = externalendpointv1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
 	cs.linkV1alpha1, err = linkv1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
@@ -173,6 +185,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
+	cs.externalendpointV1alpha1 = externalendpointv1alpha1.New(c)
 	cs.linkV1alpha1 = linkv1alpha1.New(c)
 	cs.policyV1alpha1 = policyv1alpha1.New(c)
 	cs.policyV1beta3 = policyv1beta3.New(c)

@@ -24,6 +24,7 @@ import (
 	time "time"
 
 	versioned "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
+	externalendpoint "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/externalendpoint"
 	internalinterfaces "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/internalinterfaces"
 	link "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/link"
 	policy "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/policy"
@@ -247,11 +248,16 @@ type SharedInformerFactory interface {
 	// client.
 	InformerFor(obj runtime.Object, newFunc internalinterfaces.NewInformerFunc) cache.SharedIndexInformer
 
+	Externalendpoint() externalendpoint.Interface
 	Link() link.Interface
 	Policy() policy.Interface
 	Server() server.Interface
 	Serverauthorization() serverauthorization.Interface
 	Linkerd() serviceprofile.Interface
+}
+
+func (f *sharedInformerFactory) Externalendpoint() externalendpoint.Interface {
+	return externalendpoint.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Link() link.Interface {

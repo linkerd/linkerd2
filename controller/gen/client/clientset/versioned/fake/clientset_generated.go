@@ -20,6 +20,8 @@ package fake
 
 import (
 	clientset "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
+	externalendpointv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/externalendpoint/v1alpha1"
+	fakeexternalendpointv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/externalendpoint/v1alpha1/fake"
 	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha1"
 	fakelinkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha1/fake"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1alpha1"
@@ -88,6 +90,11 @@ var (
 	_ clientset.Interface = &Clientset{}
 	_ testing.FakeClient  = &Clientset{}
 )
+
+// ExternalendpointV1alpha1 retrieves the ExternalendpointV1alpha1Client
+func (c *Clientset) ExternalendpointV1alpha1() externalendpointv1alpha1.ExternalendpointV1alpha1Interface {
+	return &fakeexternalendpointv1alpha1.FakeExternalendpointV1alpha1{Fake: &c.Fake}
+}
 
 // LinkV1alpha1 retrieves the LinkV1alpha1Client
 func (c *Clientset) LinkV1alpha1() linkv1alpha1.LinkV1alpha1Interface {

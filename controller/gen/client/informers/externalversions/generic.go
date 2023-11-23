@@ -21,7 +21,8 @@ package externalversions
 import (
 	"fmt"
 
-	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
+	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalendpoint/v1alpha1"
+	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
 	v1beta3 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1beta3"
 	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
@@ -57,8 +58,12 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=link, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithResource("links"):
+	// Group=externalendpoint, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("externalendpoints"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Externalendpoint().V1alpha1().ExternalEndpoints().Informer()}, nil
+
+		// Group=link, Version=v1alpha1
+	case linkv1alpha1.SchemeGroupVersion.WithResource("links"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Link().V1alpha1().Links().Informer()}, nil
 
 		// Group=linkerd.io, Version=v1alpha2
