@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	eev1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalendpoint/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
@@ -36,6 +37,7 @@ const (
 )
 
 const endpointTargetRefPod = "Pod"
+const endpointTargetRefExt = "ExternalEndpoint"
 
 type (
 	// Address represents an individual port on a specific endpoint.
@@ -47,6 +49,7 @@ type (
 		IP                string
 		Port              Port
 		Pod               *corev1.Pod
+		External          *eev1alpha1.ExternalEndpoint
 		OwnerName         string
 		OwnerKind         string
 		Identity          string
@@ -907,6 +910,19 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 			}
 		}
 
+		if endpoint.TargetRef.Kind == endpointTargetRefExt {
+			for _, IPAddr := range endpoint.Addresses {
+				address, id, err := pp.newExtRefAddress(resolvedPort, IPAddr, endpoint.TargetRef.Name, endpoint.TargetRef.Namespace)
+				if err != nil {
+					pp.log.Errorf("Unable to create new address:%v", err)
+					continue
+				}
+				// No opaq or hints for now
+				addresses[id] = address
+			}
+
+		}
+
 	}
 	return AddressSet{
 		Addresses:          addresses,
@@ -1043,6 +1059,31 @@ func (pp *portPublisher) newPodRefAddress(endpointPort Port, endpointIP, podName
 		Pod:       pod,
 		OwnerName: ownerName,
 		OwnerKind: ownerKind,
+	}
+
+	return addr, id, nil
+}
+
+func (pp *portPublisher) newExtRefAddress(endpointPort Port, endpointIP, tName, tNamespace string) (Address, PodID, error) {
+	id := ExternalID{
+		Name:      tName,
+		Namespace: tNamespace,
+	}
+	ee, err := pp.k8sAPI.EE().Lister().ExternalEndpoints(id.Namespace).Get(id.Name)
+	if err != nil {
+		return Address{}, PodID{}, fmt.Errorf("unable to fetch ExternalEndpoint %v: %w", id, err)
+	}
+	// For now, skip this
+	//ownerKind, ownerName, err := pp.metadataAPI.GetOwnerKindAndName(context.Background(), pod, false)
+	//if err != nil {
+	//return Address{}, PodID{}, err
+	//}
+	addr := Address{
+		IP:        endpointIP,
+		Port:      endpointPort,
+		External:  ee,
+		OwnerName: "",
+		OwnerKind: "ExternalGroup (probably)",
 	}
 
 	return addr, id, nil

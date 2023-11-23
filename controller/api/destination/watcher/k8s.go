@@ -33,6 +33,8 @@ type (
 	}
 	// ServiceID is the namespace-qualified name of a service.
 	ServiceID = ID
+	// ExternalID
+	ExternalID = ID
 	// PodID is the namespace-qualified name of a pod.
 	PodID = ID
 	// ProfileID is the namespace-qualified name of a service profile.

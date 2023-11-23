@@ -373,6 +373,9 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 		if address.Pod != nil {
 			opaquePorts = watcher.GetAnnotatedOpaquePorts(address.Pod, et.defaultOpaquePorts)
 			wa, err = createWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+		} else if address.External != nil {
+			et.log.Infof("Translating external address")
+			wa, err = createWeightedAddr(address, map[uint32]struct{}{}, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {
 			var authOverride *pb.AuthorityOverride
 			if address.AuthorityOverride != "" {
@@ -477,8 +480,32 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 
 	// If the address is not backed by a pod, there is no additional metadata
 	// to add.
-	if address.Pod == nil {
+	if address.Pod == nil && address.External == nil {
 		return &weightedAddr, nil
+	}
+
+	if address.External != nil {
+		weightedAddr.ProtocolHint = &pb.ProtocolHint{}
+		weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_H2_{
+			H2: &pb.ProtocolHint_H2{},
+		}
+
+		id := address.External.Spec.Identity
+		sn := address.External.Spec.ServerName
+
+		weightedAddr.TlsIdentity = &pb.TlsIdentity{
+			Strategy: &pb.TlsIdentity_DnsLikeIdentity_{
+				DnsLikeIdentity: &pb.TlsIdentity_DnsLikeIdentity{
+					Name: id,
+				},
+			},
+			ServerName: &pb.TlsIdentity_ServerName{
+				Name: sn,
+			},
+		}
+
+		return &weightedAddr, nil
+
 	}
 
 	skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(address.Pod)
@@ -535,6 +562,9 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 				DnsLikeIdentity: &pb.TlsIdentity_DnsLikeIdentity{
 					Name: id,
 				},
+			},
+			ServerName: &pb.TlsIdentity_ServerName{
+				Name: id,
 			},
 		}
 	}

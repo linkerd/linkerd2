@@ -213,7 +213,7 @@ func (er *ExternalReconciler) processUpdate(key string) {
 
 		// Create endpoint
 		serving := IsReady(ee)
-		terminating := true
+		terminating := false
 		// Would also have to check 'Terminating' here, usually done through a
 		// deletion timestamp
 
