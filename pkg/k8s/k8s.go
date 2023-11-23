@@ -19,6 +19,7 @@ const (
 	Deployment            = "deployment"
 	Endpoints             = "endpoints"
 	EndpointSlices        = "endpointslices"
+	ExternalEndpoint      = "externalendpoint"
 	Job                   = "job"
 	MeshTLSAuthentication = "meshtlsauthentication"
 	MutatingWebhookConfig = "mutatingwebhookconfig"
@@ -42,6 +43,10 @@ const (
 
 	ServiceProfileAPIVersion = "linkerd.io/v1alpha2"
 	ServiceProfileKind       = "ServiceProfile"
+
+	ExternalEndpointAPIVersion = "v1alpha1"
+	ExternalEndpointKind       = "ExternalEndpoint"
+	ExternalEndpointAPIGroup   = "multicluster.linkerd.io"
 
 	LinkAPIGroup        = "multicluster.linkerd.io"
 	LinkAPIVersion      = "v1alpha1"
@@ -81,6 +86,7 @@ var AllResources = []string{
 	ServerAuthorization,
 	Service,
 	ServiceProfile,
+	ExternalEndpoint,
 	StatefulSet,
 }
 

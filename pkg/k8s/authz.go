@@ -128,6 +128,24 @@ func ServersAccess(ctx context.Context, k8sClient kubernetes.Interface) error {
 	return errors.New("Server CRD not found")
 }
 
+// ExternalEndpointAccess checks whether the Server CRD is installed on the cluster
+// and the client is authorized to access Servers.
+func ExternalEndpointAccess(ctx context.Context, k8sClient kubernetes.Interface) error {
+	groupVersion := fmt.Sprintf("%s/%s", ExternalEndpointAPIGroup, ExternalEndpointAPIVersion)
+	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(groupVersion)
+	if err != nil {
+		return err
+	}
+	if res.GroupVersion == groupVersion {
+		for _, apiRes := range res.APIResources {
+			if apiRes.Kind == ServerKind {
+				return ResourceAuthz(ctx, k8sClient, "", "list", ExternalEndpointAPIGroup, "", "externalendpoints", "")
+			}
+		}
+	}
+	return errors.New("ExternalEndpoints CRD not found")
+}
+
 // EndpointSliceAccess verifies whether the K8s cluster has
 // access to EndpointSlice resources.
 func EndpointSliceAccess(ctx context.Context, k8sClient kubernetes.Interface) error {

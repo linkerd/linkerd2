@@ -3,6 +3,7 @@ package k8s
 import (
 	"strings"
 
+	eev1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalendpoint/v1alpha1"
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	sazv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	spv1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
@@ -30,6 +31,7 @@ const (
 	DS
 	Endpoint
 	ES // EndpointSlice resource
+	EE // ExternalEndpoint
 	Job
 	MWC
 	NS
@@ -56,6 +58,8 @@ func (res APIResource) GVK() (schema.GroupVersionKind, error) {
 		return appsv1.SchemeGroupVersion.WithKind("Deployment"), nil
 	case DS:
 		return appsv1.SchemeGroupVersion.WithKind("DaemonSet"), nil
+	case EE:
+		return eev1alpha1.SchemeGroupVersion.WithKind("ExternalEndpoint"), nil
 	case Endpoint:
 		return v1.SchemeGroupVersion.WithKind("Endpoint"), nil
 	case ES:
@@ -102,6 +106,8 @@ func GetAPIResource(kind string) (APIResource, error) {
 		return Deploy, nil
 	case k8s.DaemonSet:
 		return DS, nil
+	case k8s.ExternalEndpoint:
+		return EE, nil
 	case k8s.Endpoints:
 		return Endpoint, nil
 	case k8s.EndpointSlices:
