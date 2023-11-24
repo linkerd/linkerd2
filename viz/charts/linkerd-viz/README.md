@@ -198,7 +198,9 @@ Kubernetes: `>=1.21.0-0`
 | tapInjector.keyPEM | string | `""` | Certificate key for the tapInjector. If not provided and not using an external secret then Helm will generate one. |
 | tapInjector.logFormat | string | defaultLogFormat | log format of the tapInjector component |
 | tapInjector.logLevel | string | defaultLogLevel | log level of the tapInjector |
-| tapInjector.namespaceSelector | string | `nil` |  |
+| tapInjector.namespaceSelector.matchExpressions[0].key | string | `"kubernetes.io/metadata.name"` |  |
+| tapInjector.namespaceSelector.matchExpressions[0].operator | string | `"NotIn"` |  |
+| tapInjector.namespaceSelector.matchExpressions[0].values[0] | string | `"kube-system"` |  |
 | tapInjector.objectSelector | string | `nil` |  |
 | tapInjector.proxy | string | `nil` |  |
 | tapInjector.replicas | int | `1` | Number of replicas of tapInjector |
