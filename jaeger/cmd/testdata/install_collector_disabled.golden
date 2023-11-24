@@ -30,7 +30,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: c5d4d160a7fd2febef85a7a02d2df5b5575dec35abc84d696e9afa8d3f8423e6
+        checksum/config: e51bdbaf37450b54e9daa9d8e09de78005be8cdbcbabc74ea314492a0fc74768
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
@@ -41,6 +41,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
@@ -208,6 +209,12 @@ metadata:
     linkerd.io/extension: jaeger
 webhooks:
 - name: jaeger-injector.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
   clientConfig:
     service:
       name: jaeger-injector
@@ -288,6 +295,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - --query.base-path=/jaeger
