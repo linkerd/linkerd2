@@ -285,10 +285,11 @@ webhook:
   logLevel: info
 
   namespaceSelector:
-    #matchExpressions:
-    #- key: runlevel
-    #  operator: NotIn
-    #  values: ["0","1"]
+    matchExpressions:
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
   objectSelector:
     #matchLabels:
     #  foo: bar
