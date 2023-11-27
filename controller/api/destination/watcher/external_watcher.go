@@ -360,7 +360,7 @@ func (er *ExternalReconciler) processUpdate(key string) {
 
 	for _, slice := range updateSlices {
 		er.log.Infof("Updating slice %s", slice.Name)
-		_, err := er.k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Update(context.TODO(), slice, metav1.UpdateOptions{})
+		_, err := er.k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Update(context.TODO(), slice, metav1.UpdateOptions{FieldManager: ManagedByController})
 		if err != nil {
 			er.log.Errorf("Failed to update slice %s/%s: %s", svc.Namespace, slice.Name)
 			er.log.Infof("Slice %v", slice)
@@ -369,7 +369,7 @@ func (er *ExternalReconciler) processUpdate(key string) {
 
 	for _, slice := range createSlices {
 		er.log.Infof("Creating slice %s", slice.Name)
-		_, err := er.k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Create(context.TODO(), slice, metav1.CreateOptions{})
+		_, err := er.k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Create(context.TODO(), slice, metav1.CreateOptions{FieldManager: ManagedByController})
 		if err != nil {
 			er.log.Errorf("Failed to create slice %s/%s: %s", svc.Namespace, slice.Name, err)
 			er.log.Infof("Slice %v", slice)

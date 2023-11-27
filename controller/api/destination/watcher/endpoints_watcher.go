@@ -976,6 +976,13 @@ func (pp *portPublisher) endpointSliceToIDs(es *discovery.EndpointSlice) []ID {
 			})
 		}
 
+		if endpoint.TargetRef.Kind == endpointTargetRefExt {
+			ids = append(ids, PodID{
+				Name:      endpoint.TargetRef.Name,
+				Namespace: endpoint.TargetRef.Namespace,
+			})
+		}
+
 	}
 	return ids
 }
