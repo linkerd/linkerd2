@@ -284,6 +284,7 @@ webhook:
     pullPolicy: ""
   logLevel: info
 
+  # -- Namespace selector used by admission webhook.
   namespaceSelector:
     matchExpressions:
     - key: kubernetes.io/metadata.name

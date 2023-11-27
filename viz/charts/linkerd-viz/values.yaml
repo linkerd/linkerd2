@@ -246,6 +246,7 @@ tapInjector:
     # @default -- defaultImagePullPolicy
     pullPolicy: ""
 
+  # -- Namespace selector used by admission webhook.
   namespaceSelector:
     matchExpressions:
     - key: kubernetes.io/metadata.name
