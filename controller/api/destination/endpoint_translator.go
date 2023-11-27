@@ -493,9 +493,9 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 		sn := address.External.Spec.ServerName
 
 		weightedAddr.TlsIdentity = &pb.TlsIdentity{
-			Strategy: &pb.TlsIdentity_DnsLikeIdentity_{
-				DnsLikeIdentity: &pb.TlsIdentity_DnsLikeIdentity{
-					Name: id,
+			Strategy: &pb.TlsIdentity_UriLikeIdentity_{
+				UriLikeIdentity: &pb.TlsIdentity_UriLikeIdentity{
+					Uri: id,
 				},
 			},
 			ServerName: &pb.TlsIdentity_ServerName{
