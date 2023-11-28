@@ -78,12 +78,26 @@ var (
 		},
 		[]string{"client"},
 	)
+	clientQPS = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "http_client_qps",
+			Help: "Max QPS used for the client config.",
+		},
+		[]string{"client"},
+	)
+	clientBurst = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "http_client_burst",
+			Help: "Burst used for the client config.",
+		},
+		[]string{"client"},
+	)
 )
 
 func init() {
 	prometheus.MustRegister(
-		serverCounter, serverLatency, serverResponseSize,
-		clientCounter, clientLatency, clientInFlight,
+		serverCounter, serverLatency, serverResponseSize, clientCounter,
+		clientLatency, clientInFlight, clientQPS, clientBurst,
 	)
 }
 
@@ -126,4 +140,12 @@ func ClientWithTelemetry(name string, wt func(http.RoundTripper) http.RoundTripp
 			),
 		)
 	}
+}
+
+func SetClientQPS(name string, qps float32) {
+	clientQPS.With(prometheus.Labels{"client": name}).Set(float64(qps))
+}
+
+func SetClientBurst(name string, burst int) {
+	clientBurst.With(prometheus.Labels{"client": name}).Set(float64(burst))
 }

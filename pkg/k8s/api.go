@@ -50,17 +50,33 @@ func NewAPI(configPath, kubeContext string, impersonate string, impersonateGroup
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %w", err)
 	}
-	return NewAPIForConfig(config, impersonate, impersonateGroup, timeout)
+	return NewAPIForConfig(config, impersonate, impersonateGroup, timeout, 0, 0)
 }
 
 // NewAPIForConfig uses a Kubernetes config to construct a client for accessing
 // the configured cluster
-func NewAPIForConfig(config *rest.Config, impersonate string, impersonateGroup []string, timeout time.Duration) (*KubernetesAPI, error) {
+func NewAPIForConfig(
+	config *rest.Config,
+	impersonate string,
+	impersonateGroup []string,
+	timeout time.Duration,
+	qps float32,
+	burst int,
+) (*KubernetesAPI, error) {
 
 	// k8s' client-go doesn't support injecting context
 	// https://github.com/kubernetes/kubernetes/issues/46503
 	// but we can set the timeout manually
 	config.Timeout = timeout
+	if qps > 0 && burst > 0 {
+		config.QPS = qps
+		config.Burst = burst
+		prometheus.SetClientQPS("k8s", config.QPS)
+		prometheus.SetClientBurst("k8s", config.Burst)
+	} else {
+		prometheus.SetClientQPS("k8s", rest.DefaultQPS)
+		prometheus.SetClientBurst("k8s", rest.DefaultBurst)
+	}
 	wt := config.WrapTransport
 	config.WrapTransport = prometheus.ClientWithTelemetry("k8s", wt)
 
