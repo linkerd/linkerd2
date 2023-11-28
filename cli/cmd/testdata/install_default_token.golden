@@ -525,8 +525,9 @@ data:
             AiAtuoI5XuCtrGVRzSmRTl2ra28aV9MyTU7d5qnTAFHKSgIgRKCvluOSgA5O21p5
             51tdrmkHEZRr0qlLSJdHYgEfMzk=
             -----END CERTIFICATE-----
-      kubeAPIClientBurst: 200
-      kubeAPIClientQPS: 100
+      kubeAPI:
+        clientBurst: 200
+        clientQPS: 100
       serviceAccountTokenProjection: false
     identityProxyResources: null
     identityResources: null

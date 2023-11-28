@@ -48,6 +48,13 @@ identityTrustAnchorsPEM: |
 # -- Trust domain used for identity
 # @default -- clusterDomain
 identityTrustDomain: ""
+kubeAPI: &kubeapi
+  # -- Maximum QPS sent to the kube-apiserver before throttling.
+  # See [token bucket rate limiter
+  # implementation](https://github.com/kubernetes/client-go/blob/v12.0.0/util/flowcontrol/throttle.go)
+  clientQPS: 100
+  # -- Burst value over clientQPS
+  clientBurst: 200
 # -- Additional annotations to add to all pods
 podAnnotations: {}
 # -- Additional labels to add to all pods
@@ -327,14 +334,6 @@ identity:
   # -- Use [Service Account token Volume projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection) for pod validation instead of the default token
   serviceAccountTokenProjection: true
 
-  # -- Maximum QPS sent to the kube-apiserver before throttling.
-  # See [token bucket rate limiter
-  # implementation](https://github.com/kubernetes/client-go/blob/v12.0.0/util/flowcontrol/throttle.go)
-  kubeAPIClientQPS: 100
-
-  # -- Burst value over kubeAPIClientQPS
-  kubeAPIClientBurst: 200
-
   issuer:
     scheme: linkerd.io/tls
 
@@ -352,6 +351,8 @@ identity:
       # -- Key for the issuer certificate (ECDSA). It must be provided during
       # install
       keyPEM: |
+
+  kubeAPI: *kubeapi
 
 # -|- CPU, Memory and Ephemeral Storage resources required by the identity controller (see `proxy.resources` for sub-fields)
 #identityResources:

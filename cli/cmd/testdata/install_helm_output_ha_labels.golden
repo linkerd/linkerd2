@@ -532,8 +532,9 @@ data:
         scheme: linkerd.io/tls
         tls:
           crtPEM: test-crt-pem
-      kubeAPIClientBurst: 200
-      kubeAPIClientQPS: 100
+      kubeAPI:
+        clientBurst: 200
+        clientQPS: 100
       serviceAccountTokenProjection: true
     identityProxyResources: null
     identityResources:
