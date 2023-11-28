@@ -238,9 +238,10 @@ type (
 	// Identity contains the fields to set the identity variables in the proxy
 	// sidecar container
 	Identity struct {
-		ExternalCA                    bool    `json:"externalCA"`
-		ServiceAccountTokenProjection bool    `json:"serviceAccountTokenProjection"`
-		Issuer                        *Issuer `json:"issuer"`
+		ExternalCA                    bool     `json:"externalCA"`
+		ServiceAccountTokenProjection bool     `json:"serviceAccountTokenProjection"`
+		Issuer                        *Issuer  `json:"issuer"`
+		KubeAPI                       *KubeAPI `json:"kubeAPI"`
 	}
 
 	// Issuer has the Helm variables of the identity issuer
@@ -249,6 +250,12 @@ type (
 		ClockSkewAllowance string     `json:"clockSkewAllowance"`
 		IssuanceLifetime   string     `json:"issuanceLifetime"`
 		TLS                *IssuerTLS `json:"tls"`
+	}
+
+	// KubeAPI contains the kube-apiserver client config
+	KubeAPI struct {
+		ClientQPS   float32 `json:"clientQPS"`
+		ClientBurst int     `json:"clientBurst"`
 	}
 
 	// Webhook Helm variables for a webhook

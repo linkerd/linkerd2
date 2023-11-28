@@ -184,6 +184,10 @@ func TestNewValues(t *testing.T) {
 				TLS:                &IssuerTLS{},
 				Scheme:             "linkerd.io/tls",
 			},
+			KubeAPI: &KubeAPI{
+				ClientQPS:   100,
+				ClientBurst: 200,
+			},
 		},
 		NodeSelector: map[string]string{
 			"kubernetes.io/os": "linux",
