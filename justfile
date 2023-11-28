@@ -131,7 +131,7 @@ _cargo-test := _cargo + ```
 ## Policy integration tests
 ##
 
-export POLICY_TEST_CONTEXT := "k3d-" + k3d-name
+export POLICY_TEST_CONTEXT := env_var_or_default("POLICY_TEST_CONTEXT", "k3d-" + k3d-name)
 
 # Install linkerd in the test cluster and run the policy tests.
 policy-test: linkerd-install policy-test-deps-load policy-test-run && policy-test-cleanup linkerd-uninstall
