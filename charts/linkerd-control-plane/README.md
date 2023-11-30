@@ -160,6 +160,7 @@ Kubernetes: `>=1.21.0-0`
 | debugContainer.image.name | string | `"cr.l5d.io/linkerd/debug"` | Docker image for the debug container |
 | debugContainer.image.pullPolicy | string | imagePullPolicy | Pull policy for the debug container image |
 | debugContainer.image.version | string | linkerdVersion | Tag for the debug container image |
+| defaultRegistry | string | `""` | Docker registry to use. If set, will overwrite the registry domain in all images. |
 | deploymentStrategy | object | `{"rollingUpdate":{"maxSurge":"25%","maxUnavailable":"25%"}}` | default kubernetes deployment strategy |
 | disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob |
 | enableEndpointSlices | bool | `true` | enables the use of EndpointSlice informers for the destination service; enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on |

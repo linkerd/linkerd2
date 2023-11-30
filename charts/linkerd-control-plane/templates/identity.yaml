@@ -165,7 +165,7 @@ spec:
         env:
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"
-        image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion | default .Values.linkerdVersion}}
+        image: {{ include "partials.images.controller" . }}
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
           httpGet:

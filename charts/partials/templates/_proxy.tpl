@@ -153,7 +153,7 @@ be used in other contexts.
 - name: LINKERD2_PROXY_SHUTDOWN_GRACE_PERIOD
   value: {{.Values.proxy.shutdownGracePeriod | quote}}
 {{ end -}}
-image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion}}
+image: {{ include "partials.images.proxy" . }}
 imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}
 livenessProbe:
   httpGet:

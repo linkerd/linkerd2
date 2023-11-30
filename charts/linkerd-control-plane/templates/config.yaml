@@ -33,6 +33,12 @@ data:
   {{- if (empty $values.identityTrustDomain) -}}
   {{- $_ := set $values "identityTrustDomain" $values.clusterDomain}}
   {{- end -}}
+  {{- $_ := set $values "controllerImage" (include "partials.images.controller" . | trim | split ":")._0 }}
+  {{- $_ := set $values.policyController.image "name" (include "partials.images.policy" . | trim | split ":")._0 }}
+  {{- $_ := set $values.proxy.image "name" (include "partials.images.proxy" . | trim | split ":")._0 }}
+  {{- $_ := set $values.proxyInit.image "name" (include "partials.images.proxyInit" . | trim | split ":")._0 }}
+  {{- $_ := set $values.debugContainer.image "name" (include "partials.images.debug" . | trim | split ":")._0 }}
+  {{- $_ := unset $values "defaultRegistry"}}
   {{- $_ := unset $values "partials"}}
   {{- $_ := unset $values "configs"}}
   {{- $_ := unset $values "stage"}}

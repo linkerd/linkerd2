@@ -291,6 +291,9 @@ networkValidator:
   # -- Include a securityContext in the network-validator pod spec
   enableSecurityContext: true
 
+# -- Docker registry to use. If set, will overwrite the registry domain in all images.
+defaultRegistry: ""
+
 # -- For Private docker registries, authentication is needed.
 #  Registry secrets are applied to the respective service accounts
 imagePullSecrets: []

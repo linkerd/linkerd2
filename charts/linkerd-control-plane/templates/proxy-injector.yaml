@@ -79,7 +79,7 @@ spec:
         - -log-format={{.Values.controllerLogFormat}}
         - -linkerd-namespace={{.Release.Namespace}}
         - -enable-pprof={{.Values.enablePprof | default false}}
-        image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion | default .Values.linkerdVersion}}
+        image: {{ include "partials.images.controller" . }}
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
