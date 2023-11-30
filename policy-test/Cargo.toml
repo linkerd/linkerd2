@@ -30,8 +30,9 @@ default-features = false
 features = ["client", "openssl-tls", "runtime", "ws"]
 
 [dependencies.linkerd2-proxy-api]
-version = "0.11"
-features = ["inbound", "outbound"]
+git = "https://github.com/linkerd/linkerd2-proxy-api"
+branch = "matei/add-like-uri-identity-clone"
+features = ["inbound", "outbound", "destination"]
 
 [dev-dependencies]
 tokio-test = "0.4"

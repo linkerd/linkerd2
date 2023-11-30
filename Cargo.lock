@@ -1450,8 +1450,7 @@ dependencies = [
 [[package]]
 name = "linkerd2-proxy-api"
 version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2348745f909668e6de2dbd175eeeac374887ffb33989a0e09766f1807b27cdfe"
+source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=matei/add-like-uri-identity-clone#1fa4bc473012da47d95a35c392e1ffe20da9e39a"
 dependencies = [
  "http",
  "ipnet",

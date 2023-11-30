@@ -19,11 +19,20 @@ pub trait DiscoverOutboundPolicy<T> {
 
 pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send + Sync + 'static>>;
 
-pub struct OutboundDiscoverTarget {
-    pub service_name: String,
-    pub service_namespace: String,
-    pub service_port: NonZeroU16,
-    pub source_namespace: String,
+pub enum OutboundDiscoverTarget {
+    Service {
+        service_name: String,
+        service_namespace: String,
+        service_port: NonZeroU16,
+        source_namespace: String,
+    },
+
+    Endpoint {
+        endpoint_name: String,
+        endpoint_namespace: String,
+        endpoint_port: NonZeroU16,
+        addr: IpAddr,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -35,6 +44,15 @@ pub struct OutboundPolicy {
     pub port: NonZeroU16,
     pub opaque: bool,
     pub accrual: Option<FailureAccrual>,
+    pub endpoint: Option<FwdEndpoint>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FwdEndpoint {
+    pub skipped: bool,
+    pub identity: String,
+    pub sni: String,
+    pub addr: IpAddr,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

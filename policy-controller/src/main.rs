@@ -210,6 +210,12 @@ async fn main() -> Result<()> {
         kubert::index::namespaced(external_indexes, externals)
             .instrument(info_span!("externalgroups")),
     );
+    let external_endpoints =
+        runtime.watch_all::<k8s::external::ExternalEndpoint>(watcher::Config::default());
+    tokio::spawn(
+        kubert::index::namespaced(outbound_index.clone(), external_endpoints)
+            .instrument(info_span!("externalendpoints")),
+    );
 
     let network_authns =
         runtime.watch_all::<k8s::policy::NetworkAuthentication>(watcher::Config::default());

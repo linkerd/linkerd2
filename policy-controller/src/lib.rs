@@ -81,19 +81,9 @@ impl DiscoverInboundServer<(grpc::inbound::PolicyWorkload, NonZeroU16)> for Inbo
 impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
     async fn get_outbound_policy(
         &self,
-        OutboundDiscoverTarget {
-            service_name,
-            service_namespace,
-            service_port,
-            source_namespace,
-        }: OutboundDiscoverTarget,
+        target: OutboundDiscoverTarget,
     ) -> Result<Option<OutboundPolicy>> {
-        let rx = match self.0.write().outbound_policy_rx(
-            service_name,
-            service_namespace,
-            service_port,
-            source_namespace,
-        ) {
+        let rx = match self.0.write().outbound_policy_rx(target) {
             Ok(rx) => rx,
             Err(error) => {
                 tracing::error!(%error, "failed to get outbound policy rx");
@@ -106,19 +96,9 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
 
     async fn watch_outbound_policy(
         &self,
-        OutboundDiscoverTarget {
-            service_name,
-            service_namespace,
-            service_port,
-            source_namespace,
-        }: OutboundDiscoverTarget,
+        target: OutboundDiscoverTarget,
     ) -> Result<Option<OutboundPolicyStream>> {
-        match self.0.write().outbound_policy_rx(
-            service_name,
-            service_namespace,
-            service_port,
-            source_namespace,
-        ) {
+        match self.0.write().outbound_policy_rx(target) {
             Ok(rx) => Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx)))),
             Err(_) => Ok(None),
         }
@@ -130,16 +110,31 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
         port: NonZeroU16,
         source_namespace: String,
     ) -> Option<OutboundDiscoverTarget> {
-        self.0
-            .read()
-            .lookup_service(addr)
-            .map(
-                |outbound::ServiceRef { name, namespace }| OutboundDiscoverTarget {
-                    service_name: name,
-                    service_namespace: namespace,
-                    service_port: port,
-                    source_namespace,
+        let svc =
+            self.0
+                .read()
+                .lookup_service(addr)
+                .map(
+                    |outbound::ServiceRef { name, namespace }| OutboundDiscoverTarget::Service {
+                        service_name: name,
+                        service_namespace: namespace,
+                        service_port: port,
+                        source_namespace: source_namespace.clone(),
+                    },
+                );
+        if svc.is_some() {
+            svc
+        } else {
+            self.0.read().lookup_endpoint(addr).map(
+                |outbound::index::EndpointRef { name, namespace }| {
+                    OutboundDiscoverTarget::Endpoint {
+                        endpoint_name: name,
+                        endpoint_namespace: namespace,
+                        endpoint_port: port,
+                        addr,
+                    }
                 },
             )
+        }
     }
 }

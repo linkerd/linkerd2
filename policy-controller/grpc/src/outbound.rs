@@ -1,4 +1,5 @@
 use crate::http_route;
+use api::destination::protocol_hint::H2;
 use futures::prelude::*;
 use linkerd2_proxy_api::{
     self as api, destination,
@@ -11,8 +12,8 @@ use linkerd2_proxy_api::{
 use linkerd_policy_controller_core::{
     http_route::GroupKindNamespaceName,
     outbound::{
-        Backend, DiscoverOutboundPolicy, Filter, HttpRoute, HttpRouteRule, OutboundDiscoverTarget,
-        OutboundPolicy, OutboundPolicyStream,
+        Backend, DiscoverOutboundPolicy, Filter, FwdEndpoint, HttpRoute, HttpRouteRule,
+        OutboundDiscoverTarget, OutboundPolicy, OutboundPolicyStream,
     },
 };
 use std::{net::SocketAddr, num::NonZeroU16, sync::Arc, time};
@@ -60,11 +61,13 @@ where
             outbound::traffic_spec::Target::Addr(target) => target,
             outbound::traffic_spec::Target::Authority(auth) => {
                 return self.lookup_authority(&auth).map(
-                    |(service_namespace, service_name, service_port)| OutboundDiscoverTarget {
-                        service_name,
-                        service_namespace,
-                        service_port,
-                        source_namespace,
+                    |(service_namespace, service_name, service_port)| {
+                        OutboundDiscoverTarget::Service {
+                            service_name,
+                            service_namespace,
+                            service_port,
+                            source_namespace,
+                        }
                     },
                 )
             }
@@ -142,11 +145,11 @@ where
         &self,
         req: tonic::Request<outbound::TrafficSpec>,
     ) -> Result<tonic::Response<outbound::OutboundPolicy>, tonic::Status> {
-        let service = self.lookup(req.into_inner())?;
+        let target = self.lookup(req.into_inner())?;
 
         let policy = self
             .index
-            .get_outbound_policy(service)
+            .get_outbound_policy(target)
             .await
             .map_err(|error| {
                 tonic::Status::internal(format!("failed to get outbound policy: {error}"))
@@ -208,8 +211,72 @@ fn response_stream(drain: drain::Watch, mut rx: OutboundPolicyStream) -> BoxWatc
     })
 }
 
+fn fwd_external_endpoint(
+    endpoint: FwdEndpoint,
+    opaque: bool,
+    port: NonZeroU16,
+    namespace: String,
+    name: String,
+) -> outbound::OutboundPolicy {
+    let backend = fwd_backend(&endpoint, port, opaque);
+    let metadata = Metadata {
+        kind: Some(metadata::Kind::Resource(api::meta::Resource {
+            group: "multicluster.linkerd.io".to_string(),
+            kind: "ExternalEndpoint".to_string(),
+            namespace,
+            name,
+            port: u16::from(port).into(),
+            ..Default::default()
+        })),
+    };
+
+    let kind = if opaque {
+        linkerd2_proxy_api::outbound::proxy_protocol::Kind::Opaque(
+            outbound::proxy_protocol::Opaque {
+                routes: vec![default_outbound_opaq_route(backend)],
+            },
+        )
+    } else {
+        linkerd2_proxy_api::outbound::proxy_protocol::Kind::Detect(
+            outbound::proxy_protocol::Detect {
+                timeout: Some(
+                    time::Duration::from_secs(10)
+                        .try_into()
+                        .expect("failed to convert detect timeout to protobuf"),
+                ),
+                opaque: Some(outbound::proxy_protocol::Opaque {
+                    routes: vec![default_outbound_opaq_route(backend.clone())],
+                }),
+                http1: Some(outbound::proxy_protocol::Http1 {
+                    routes: vec![default_outbound_http_route(backend.clone())],
+                    failure_accrual: None,
+                }),
+                http2: Some(outbound::proxy_protocol::Http2 {
+                    routes: vec![default_outbound_http_route(backend)],
+                    failure_accrual: None,
+                }),
+            },
+        )
+    };
+
+    outbound::OutboundPolicy {
+        metadata: Some(metadata),
+        protocol: Some(outbound::ProxyProtocol { kind: Some(kind) }),
+    }
+}
+
 fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
-    let backend = default_backend(&outbound);
+    let backend = if let Some(endpoint) = outbound.endpoint {
+        return fwd_external_endpoint(
+            endpoint,
+            outbound.opaque,
+            outbound.port,
+            outbound.namespace,
+            outbound.name,
+        );
+    } else {
+        default_backend(&outbound)
+    };
 
     let kind = if outbound.opaque {
         linkerd2_proxy_api::outbound::proxy_protocol::Kind::Opaque(
@@ -482,6 +549,79 @@ fn default_backend(outbound: &OutboundPolicy) -> outbound::Backend {
                 load: Some(default_balancer_config()),
             },
         )),
+    }
+}
+
+fn fwd_backend(endpoint: &FwdEndpoint, port: NonZeroU16, opaque: bool) -> outbound::Backend {
+    if endpoint.skipped {
+        return outbound::Backend {
+            metadata: Some(Metadata {
+                kind: Some(metadata::Kind::Default("external".to_string())),
+            }),
+            queue: Some(default_queue_config()),
+            kind: Some(outbound::backend::Kind::Forward(
+                destination::WeightedAddr {
+                    addr: Some(to_tcp_addr(endpoint.addr, port)),
+                    // Default weight from dst
+                    weight: 10000,
+                    metric_labels: Default::default(),
+                    tls_identity: None,
+                    protocol_hint: None,
+                    authority_override: None,
+                },
+            )),
+        };
+    }
+
+    let protocol_hint = if !opaque {
+        destination::ProtocolHint {
+            opaque_transport: None,
+            protocol: Some(destination::protocol_hint::Protocol::H2(H2 {})),
+        }
+    } else {
+        destination::ProtocolHint {
+            opaque_transport: Some(destination::protocol_hint::OpaqueTransport {
+                // This is going to be read from some default config
+                inbound_port: 4143,
+            }),
+            protocol: Some(destination::protocol_hint::Protocol::Opaque(
+                destination::protocol_hint::Opaque {},
+            )),
+        }
+    };
+
+    outbound::Backend {
+        metadata: Some(Metadata {
+            kind: Some(metadata::Kind::Default("external".to_string())),
+        }),
+        queue: Some(default_queue_config()),
+        kind: Some(outbound::backend::Kind::Forward(
+            destination::WeightedAddr {
+                addr: Some(to_tcp_addr(endpoint.addr, port)),
+                // Default weight from dst
+                weight: 10000,
+                metric_labels: Default::default(),
+                tls_identity: Some(destination::TlsIdentity {
+                    strategy: Some(destination::tls_identity::Strategy::UriLikeIdentity(
+                        destination::tls_identity::UriLikeIdentity {
+                            uri: endpoint.identity.clone(),
+                        },
+                    )),
+                    server_name: Some(destination::tls_identity::ServerName {
+                        name: endpoint.sni.clone(),
+                    }),
+                }),
+                protocol_hint: Some(protocol_hint),
+                authority_override: None,
+            },
+        )),
+    }
+}
+
+fn to_tcp_addr(addr: std::net::IpAddr, port: NonZeroU16) -> linkerd2_proxy_api::net::TcpAddress {
+    linkerd2_proxy_api::net::TcpAddress {
+        ip: Some(addr.into()),
+        port: port.get().into(),
     }
 }
 

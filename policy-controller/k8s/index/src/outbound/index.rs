@@ -9,13 +9,18 @@ use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
 use linkerd_policy_controller_core::{
     http_route::GroupKindNamespaceName,
     outbound::{
-        Backend, Backoff, FailureAccrual, Filter, HttpRoute, HttpRouteRule, OutboundPolicy,
-        WeightedService,
+        self, Backend, Backoff, FailureAccrual, Filter, FwdEndpoint, HttpRoute, HttpRouteRule,
+        OutboundPolicy, WeightedService,
     },
 };
-use linkerd_policy_controller_k8s_api::{policy as api, ResourceExt, Service, Time};
+use linkerd_policy_controller_k8s_api::{
+    external::{self, ExternalEndpoint},
+    policy as api, ResourceExt, Service, Time,
+};
 use parking_lot::RwLock;
-use std::{hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time};
+use std::{
+    collections::hash_map::Entry, hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time,
+};
 use tokio::sync::watch;
 
 #[derive(Debug)]
@@ -23,6 +28,7 @@ pub struct Index {
     namespaces: NamespaceIndex,
     services_by_ip: HashMap<IpAddr, ServiceRef>,
     service_info: HashMap<ServiceRef, ServiceInfo>,
+    endpoints_by_ip: HashMap<IpAddr, EndpointRef>,
 }
 
 pub type SharedIndex = Arc<RwLock<Index>>;
@@ -40,8 +46,11 @@ struct NamespaceIndex {
     by_ns: HashMap<String, Namespace>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Namespace {
+    /// Stores a list of endpoints that are local to the namespace keyed by the
+    /// endpoint's name
+    endpoints_info: HashMap<String, EndpointInfo>,
     /// Stores an observable handle for each known service:port,
     /// as well as any route resources in the cluster that specify
     /// a port.
@@ -83,6 +92,42 @@ struct RoutesWatch {
     watch: watch::Sender<OutboundPolicy>,
 }
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct EndpointRef {
+    pub name: String,
+    pub namespace: String,
+}
+
+#[derive(Debug, Default, Clone)]
+struct EndpointConfig {
+    identity: String,
+    sni: String,
+    opaque_ports: PortSet,
+    skipped_inbound_ports: PortSet,
+    ports: Vec<NonZeroU16>,
+    // Some more things to add:
+    // ownerRef -> metrics
+}
+
+#[derive(Debug)]
+struct EndpointInfo {
+    config: EndpointConfig,
+    watches_by_ip_port: HashMap<EndpointWatchKey, EndpointWatch>,
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+struct EndpointWatchKey {
+    addr: IpAddr,
+    port: NonZeroU16,
+}
+
+#[derive(Debug)]
+pub struct EndpointWatch {
+    opaque: bool,
+    skipped: bool,
+    watch: watch::Sender<OutboundPolicy>,
+}
+
 impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
     fn apply(&mut self, route: api::HttpRoute) {
         self.apply(HttpRouteResource::Linkerd(route))
@@ -105,6 +150,95 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         let gknn = gkn_for_gateway_http_route(name).namespaced(namespace);
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete(&gknn);
+        }
+    }
+}
+
+// Implement callbacks for ExternalEndpoints
+// * For Add / Update events, look at the status first. If an ExternalEndpoint is
+//   not ready, then do not update it.
+// * For Delete, we don't care about the status, we only care about notifying
+//   subscribers
+impl kubert::index::IndexNamespacedResource<ExternalEndpoint> for Index {
+    fn apply(&mut self, ee: ExternalEndpoint) {
+        let name = ee.name_unchecked();
+        let ns = ee
+            .namespace()
+            .expect("ExternalEndpoint must have a namespace");
+        // Note: lifecycle is WIP, these are mostly stubs to show the type of
+        // processing we'd need to do.
+        // For the prototype, I'm using conditions only to signify when a pod is
+        // ready (or not). For the real deal, we'd want a deletedTimestamp, or
+        // something similar that marked the object for GC. Our objects (endpoints)
+        // should only last as long as there is a connection from the VM to the
+        // control plane (+ a reasonable delay in case of a lossy network).
+        // The resource is not _persistent_ in the same manner as a pod, since
+        // without a connection, we cannot reliably determine whether the
+        // endpoint is still active.
+        if !external::is_ready(ee.status.as_ref()) || external::is_terminating(ee.status.as_ref()) {
+            tracing::info!(%name, %ns, status = ?ee.status, "Skipping unready ExternalEndpoint");
+            return;
+        }
+
+        // Parse IP address. IP addresses may be dual-stack so we'd have to
+        // split them up here and add two separate instances in our ee_by_ip
+        // table. For now, assume IPv4 only
+        let addrs = ee
+            .spec
+            .workload_ips
+            .iter()
+            .map(|wip| wip.ip.clone())
+            .collect::<Vec<String>>();
+
+        let ee_ref = EndpointRef {
+            name: name.clone(),
+            namespace: ns.clone(),
+        };
+        for addr in addrs {
+            match addr.parse() {
+                Ok(addr) => {
+                    self.endpoints_by_ip.insert(addr, ee_ref.clone());
+                }
+                Err(error) => {
+                    tracing::error!(%error, external_endpoint=name, addr, "invalid IP address");
+                }
+            }
+        }
+
+        // Parse configuration
+        let identity = ee.spec.identity.clone();
+        let sni = ee.spec.server_name.clone();
+        let opaque_ports = ports_annotation(ee.annotations(), "config.linkerd.io/opaque-ports")
+            .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
+        let skipped_inbound_ports =
+            ports_annotation(ee.annotations(), "config.linkerd.io/skip-inbound-ports")
+                .unwrap_or_else(|| Default::default());
+        let ports = ee.spec.ports.iter().map(|ps| ps.port).collect();
+
+        self.namespaces
+            .by_ns
+            .entry(ns.clone())
+            .or_insert_with(|| Namespace {
+                namespace: Arc::new(ns),
+                ..Default::default()
+            })
+            .update_endpoint(
+                name,
+                EndpointConfig {
+                    identity,
+                    sni,
+                    opaque_ports,
+                    skipped_inbound_ports,
+                    ports,
+                },
+            );
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let ee_ref = EndpointRef { name, namespace };
+        self.endpoints_by_ip.retain(|_, v| *v != ee_ref);
+        if let Some(ns) = self.namespaces.by_ns.get_mut(ee_ref.namespace.as_str()) {
+            ns.delete_endpoint(&ee_ref.name);
         }
     }
 }
@@ -152,6 +286,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                 service_routes: Default::default(),
                 service_port_routes: Default::default(),
                 namespace: Arc::new(ns),
+                ..Default::default()
             })
             .update_service(service.name_unchecked(), &service_info);
 
@@ -180,38 +315,85 @@ impl Index {
             },
             services_by_ip: HashMap::default(),
             service_info: HashMap::default(),
+            endpoints_by_ip: HashMap::default(),
         }))
     }
 
     pub fn outbound_policy_rx(
         &mut self,
-        service_name: String,
-        service_namespace: String,
-        service_port: NonZeroU16,
-        source_namespace: String,
+        target: outbound::OutboundDiscoverTarget,
     ) -> Result<watch::Receiver<OutboundPolicy>> {
-        let ns = self
-            .namespaces
-            .by_ns
-            .entry(service_namespace.clone())
-            .or_insert_with(|| Namespace {
-                service_routes: Default::default(),
-                service_port_routes: Default::default(),
-                namespace: Arc::new(service_namespace.to_string()),
-            });
-        let key = ServicePort {
-            service: service_name,
-            port: service_port,
+        let watch = match target {
+            outbound::OutboundDiscoverTarget::Service {
+                service_name,
+                service_namespace,
+                service_port,
+                source_namespace,
+            } => {
+                let ns = self
+                    .namespaces
+                    .by_ns
+                    .entry(service_namespace.clone())
+                    .or_insert_with(|| Namespace {
+                        service_routes: Default::default(),
+                        service_port_routes: Default::default(),
+                        namespace: Arc::new(service_namespace.to_string()),
+                        endpoints_info: HashMap::default(),
+                    });
+                let key = ServicePort {
+                    service: service_name,
+                    port: service_port,
+                };
+                tracing::debug!(?key, "subscribing to service port");
+                let routes = ns.service_routes_or_default(
+                    key,
+                    &self.namespaces.cluster_info,
+                    &self.service_info,
+                );
+                &routes.watch_for_ns_or_default(source_namespace).watch
+            }
+            outbound::OutboundDiscoverTarget::Endpoint {
+                endpoint_name,
+                endpoint_namespace,
+                endpoint_port,
+                addr,
+            } => {
+                let ns = self
+                    .namespaces
+                    .by_ns
+                    .entry(endpoint_namespace.clone())
+                    .or_insert_with(|| Namespace {
+                        service_routes: Default::default(),
+                        service_port_routes: Default::default(),
+                        namespace: Arc::new(endpoint_namespace.to_string()),
+                        endpoints_info: HashMap::default(),
+                    });
+                let entry = ns.endpoints_info.get_mut(&endpoint_name);
+                if let Some(ep) = entry {
+                    tracing::info!(name = ?endpoint_name, ns = ?endpoint_namespace, "subscribing to endpoint port");
+                    &ep.watch_for_port(
+                        endpoint_name,
+                        endpoint_namespace,
+                        EndpointWatchKey {
+                            addr,
+                            port: endpoint_port,
+                        },
+                    )
+                    .watch
+                } else {
+                    bail!("endpoint {endpoint_namespace}/{endpoint_name} does not exist");
+                }
+            }
         };
-        tracing::debug!(?key, "subscribing to service port");
-        let routes =
-            ns.service_routes_or_default(key, &self.namespaces.cluster_info, &self.service_info);
-        let watch = routes.watch_for_ns_or_default(source_namespace);
-        Ok(watch.watch.subscribe())
+        Ok(watch.subscribe())
     }
 
     pub fn lookup_service(&self, addr: IpAddr) -> Option<ServiceRef> {
         self.services_by_ip.get(&addr).cloned()
+    }
+
+    pub fn lookup_endpoint(&self, addr: IpAddr) -> Option<EndpointRef> {
+        self.endpoints_by_ip.get(&addr).cloned()
     }
 
     fn apply(&mut self, route: HttpRouteResource) {
@@ -235,6 +417,7 @@ impl Index {
                     service_routes: Default::default(),
                     service_port_routes: Default::default(),
                     namespace: Arc::new(ns),
+                    ..Default::default()
                 })
                 .apply(
                     route.clone(),
@@ -309,6 +492,32 @@ impl Namespace {
         }
     }
 
+    fn update_endpoint(&mut self, name: String, config: EndpointConfig) {
+        tracing::info!(?name, ns = ?self.namespace, ?config, "updating endpoint");
+        let endpoint = match self.endpoints_info.entry(name.clone()) {
+            Entry::Occupied(entry) => {
+                let ep = entry.into_mut();
+                if ep.config.ports != config.ports {
+                    tracing::error!("endpoint {} port names must not change", name);
+                    return;
+                }
+
+                ep.config = config;
+                ep
+            }
+            Entry::Vacant(entry) => entry.insert(EndpointInfo {
+                config,
+                watches_by_ip_port: Default::default(),
+            }),
+        };
+
+        for (EndpointWatchKey { port, .. }, watch) in &mut endpoint.watches_by_ip_port {
+            watch.skipped = endpoint.config.skipped_inbound_ports.contains(&port);
+            watch.opaque = endpoint.config.opaque_ports.contains(&port);
+            watch.send_if_modified();
+        }
+    }
+
     fn delete(&mut self, gknn: &GroupKindNamespaceName) {
         for service in self.service_port_routes.values_mut() {
             service.delete(gknn);
@@ -316,6 +525,10 @@ impl Namespace {
         for routes in self.service_routes.values_mut() {
             routes.remove(gknn);
         }
+    }
+
+    fn delete_endpoint(&mut self, name: &str) {
+        self.endpoints_info.remove(name);
     }
 
     fn service_routes_or_default(
@@ -739,6 +952,7 @@ impl ServiceRoutes {
                 port: self.port,
                 opaque: self.opaque,
                 accrual: self.accrual,
+                endpoint: None,
             });
             RoutesWatch {
                 opaque: self.opaque,
@@ -787,6 +1001,63 @@ impl ServiceRoutes {
             watch.routes.remove(gknn);
             watch.send_if_modified();
         }
+    }
+}
+
+impl EndpointInfo {
+    fn watch_for_port(
+        &mut self,
+        name: String,
+        namespace: String,
+        watch_key: EndpointWatchKey,
+    ) -> &mut EndpointWatch {
+        let skipped = self.config.skipped_inbound_ports.contains(&watch_key.port);
+        let opaque = self.config.opaque_ports.contains(&watch_key.port);
+        self.watches_by_ip_port
+            .entry(watch_key.clone())
+            .or_insert_with(|| {
+                let (sender, _) = watch::channel(OutboundPolicy {
+                    endpoint: Some(FwdEndpoint {
+                        skipped,
+                        identity: self.config.identity.clone(),
+                        sni: self.config.sni.clone(),
+                        addr: watch_key.addr,
+                    }),
+                    name,
+                    namespace,
+                    opaque,
+                    port: watch_key.port,
+                    http_routes: Default::default(),
+                    authority: Default::default(),
+                    accrual: None,
+                });
+                EndpointWatch {
+                    opaque,
+                    skipped,
+                    watch: sender,
+                }
+            })
+    }
+}
+impl EndpointWatch {
+    fn send_if_modified(&mut self) {
+        self.watch.send_if_modified(|policy| {
+            let mut modified = false;
+            if self.opaque != policy.opaque {
+                policy.opaque = self.opaque;
+                modified = true;
+            }
+
+            if let Some(ep) = policy.endpoint.as_mut() {
+                if self.skipped != ep.skipped {
+                    ep.skipped = self.skipped;
+                    modified = true;
+                }
+                // TODO: identity & SNI won't change at runtime but it's best to
+                // confirm that's the case, otherwise include them here
+            }
+            modified
+        });
     }
 }
 
