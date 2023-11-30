@@ -134,7 +134,7 @@ Kubernetes: `>=1.21.0-0`
 | webhook.injectCaFromSecret | string | `""` | Inject the CA bundle from a Secret. If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook. The Secret must have the CA Bundle stored in the `ca.crt` key and have the `cert-manager.io/allow-direct-injection` annotation set to `true`. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource) for more information. |
 | webhook.keyPEM | string | `""` | Certificate key for the webhook. If not provided and not using an external secret then Helm will generate one. |
 | webhook.logLevel | string | `"info"` |  |
-| webhook.namespaceSelector | string | `nil` |  |
+| webhook.namespaceSelector | object | `{"matchExpressions":[{"key":"kubernetes.io/metadata.name","operator":"NotIn","values":["kube-system"]}]}` | Namespace selector used by admission webhook. |
 | webhook.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | webhook.objectSelector | string | `nil` |  |
 | webhook.replicas | int | `1` | Number of replicas of the jaeger-injector component |
