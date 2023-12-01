@@ -1,5 +1,29 @@
 # Changes
 
+## edge-23.12.1
+
+This edge release introduces new configuration values in the identity
+controller for client-go's `QPS` and `Burst` settings. Default values for these
+settings have also been raised from `5` (QPS) and `10` (Burst) to `100` and
+`200` respectively.
+
+* Added `namespaceSelector` fields for the tap-injector and jaeger-injector
+  webhooks. The webhooks are now configured to skip `kube-system` by default
+  ([#11649]; fixes [#11647]) (thanks @mikutas!)
+* Added the ability to configure client-go's `QPS` and `Burst` settings in the
+  identity controller ([#11644])
+* Improved client-go logging visibility throughout the control plane's
+  components ([#11632])
+* Introduced `PodDisruptionBudgets` in the linkerd-viz Helm chart for tap and
+  tap-injector ([#11628]; fixes [#11248]) (thanks @mcharriere!)
+
+[#11649]: https://github.com/linkerd/linkerd2/pull/11649
+[#11647]: https://github.com/linkerd/linkerd2/issues/11647
+[#11644]: https://github.com/linkerd/linkerd2/pull/11644
+[#11632]: https://github.com/linkerd/linkerd2/pull/11632
+[#11628]: https://github.com/linkerd/linkerd2/pull/11628
+[#11248]: https://github.com/linkerd/linkerd2/issues/11248
+
 ## edge-23.11.4
 
 This edge release introduces support for the native sidecar containers entering
