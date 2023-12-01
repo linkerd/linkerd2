@@ -414,6 +414,18 @@ grafana:
   # set.
   uidPrefix:
 
+ingress:
+  enabled: false
+  host: ""
+  annotations:
+    nginx.ingress.kubernetes.io/upstream-vhost: $service_name.$namespace.svc.cluster.local:8084
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Origin "";
+      proxy_hide_header l5d-remote-ip;
+      proxy_hide_header l5d-server-id;
+    nginx.ingress.kubernetes.io/auth-signin: https://$host/oauth2/start?rd=$escaped_request_uri
+    nginx.ingress.kubernetes.io/auth-url: https://$host/oauth2/auth
+
 prometheus:
   # -- toggle field to enable or disable prometheus
   enabled: true

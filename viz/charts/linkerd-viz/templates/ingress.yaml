@@ -1,0 +1,23 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    linkerd.io/extension: viz
+    {{- with .Values.ingress.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: {{ required "Ingress host required" .Values.ingress.host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web
+            port:
+              number: 8084
+{{- end }}
