@@ -416,6 +416,7 @@ grafana:
 
 ingress:
   enabled: false
+  className: nginx
   host: ""
   annotations:
     nginx.ingress.kubernetes.io/upstream-vhost: $service_name.$namespace.svc.cluster.local:8084

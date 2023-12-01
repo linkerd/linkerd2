@@ -8,7 +8,7 @@ metadata:
     linkerd.io/extension: viz
     {{- with .Values.ingress.annotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
-  ingressClassName: nginx
+  ingressClassName: {{ .Values.ingress.className }}
   rules:
   - host: {{ required "Ingress host required" .Values.ingress.host }}
     http:
