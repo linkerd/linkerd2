@@ -4,6 +4,10 @@
 
 # -- Create PodDisruptionBudget resources for each control plane workload
 enablePodDisruptionBudget: true
+# -- sets pod disruption budget parameter for all deployments
+podDisruptionBudget:
+  # -- Maximum number of pods that can be unavailable during disruption
+  maxUnavailable: 1
 
 # -- Specify a deployment strategy for each control plane workload
 deploymentStrategy:
