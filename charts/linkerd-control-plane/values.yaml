@@ -39,6 +39,10 @@ enablePodAntiAffinity: false
 enablePprof: false
 # -- enables the creation of pod disruption budgets for control plane components
 enablePodDisruptionBudget: false
+# -- sets pod disruption budget parameter for all deployments
+podDisruptionBudget:
+  # -- Maximum number of pods that can be unavailable during disruption
+  maxUnavailable: 1
 # -- enabling this omits the NET_ADMIN capability in the PSP
 # and the proxy-init container when injecting the proxy;
 # requires the linkerd-cni plugin to already be installed
