@@ -6,7 +6,6 @@ require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
 	github.com/clarketm/json v1.15.7
-	github.com/containernetworking/cni v1.1.2
 	github.com/emicklei/proto v1.12.2
 	github.com/evanphx/json-patch v5.7.0+incompatible
 	github.com/fatih/color v1.16.0
@@ -20,7 +19,6 @@ require (
 	github.com/imdario/mergo v0.3.16
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/linkerd/linkerd2-proxy-api v0.11.0
-	github.com/linkerd/linkerd2-proxy-init v1.6.2
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mattn/go-runewidth v0.0.15
 	github.com/nsf/termbox-go v1.1.1
