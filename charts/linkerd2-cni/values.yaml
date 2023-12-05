@@ -53,7 +53,7 @@ image:
   # -- Docker image for the CNI plugin
   name: "cr.l5d.io/linkerd/cni-plugin"
   # -- Tag for the CNI container Docker image
-  version: "v1.2.2"
+  version: "v1.3.0"
   # -- Pull policy for the linkerd-cni container
   pullPolicy: IfNotPresent
 
@@ -86,7 +86,7 @@ extraInitContainers: []
 #     - mountPath: /host/etc/cni/net.d
 #       name: cni-net-dir
 
-# -- Resource requests and limits for linkerd-cni daemonset containers
+# -- Resource requests and limits for linkerd-cni daemonset container
 resources:
   cpu:
     # -- Maximum amount of CPU units that the cni container can use
@@ -103,3 +103,39 @@ resources:
     limit: ""
     # -- Amount of ephemeral storage that the cni container requests
     request: ""
+
+reinitializePods:
+  image:
+    # -- Docker image for the reinitialize-pods container
+    name: "cr.l5d.io/linkerd/cni-plugin"
+    # -- Tag for the reinitialize-pods container Docker image
+    version: "v1.3.0"
+    # -- Pull policy for the reinitialize-pods container
+    pullPolicy: IfNotPresent
+
+  # -- Log level for the reinitialize-pods container
+  # @default -- info
+  logLevel: info
+  # -- Log format (`plain` or `json`) for the reinitialize-pods container
+  # @default -- plain
+  logFormat: plain
+
+  # -- Include a securityContext in the reinitialize-pods container
+  enableSecurityContext: true
+
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the reinitialize-pods container can use
+      limit: ""
+      # -- Amount of CPU units that the reinitialize-pods container requests
+      request: ""
+    memory:
+      # -- Maximum amount of memory that the reinitialize-pods container can use
+      limit: ""
+      # -- Amount of memory that the reinitialize-pods container requests
+      request: ""
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the reinitialize-pods container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the reinitialize-pods container requests
+      request: ""

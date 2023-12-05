@@ -18,6 +18,9 @@ rules:
 - apiGroups: [""]
   resources: ["pods", "nodes", "namespaces", "services"]
   verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["pods/eviction"]
+  verbs: ["create"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -152,6 +155,50 @@ spec:
           readOnlyRootFilesystem: true
           privileged: false
         resources:
+      # This container watches over pods whose linkerd-network-validator
+      # container failed, probably because of a race condition while setting up
+      # the CNI plugin chain, and evicts those pods so they can try acquiring a
+      # proper network config again
+      - name: reinitialize-pods
+        image: cr.l5d.io/linkerd/cni-plugin:v1.3.0
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: LINKERD_REINITIALIZE_PODS_POD_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        command:
+          - /usr/lib/linkerd/linkerd-reinitialize-pods
+        args:
+          - --admin-addr=0.0.0.0:9990
+          - --log-format
+          - plain
+          - --log-level
+          - info
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: admin-http
+          initialDelaySeconds: 10
+        ports:
+        - containerPort: 9990
+          name: admin-http
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+      priorityClassName: system-cluster-critical
       volumes:
       - name: cni-bin-dir
         hostPath:
