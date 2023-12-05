@@ -346,7 +346,8 @@
           "path": "/live",
           "port": 4191
         },
-        "initialDelaySeconds": 10
+        "initialDelaySeconds": 10,
+        "timeoutSeconds": 1
       },
       "name": "linkerd-proxy",
       "ports": [
@@ -364,7 +365,8 @@
           "path": "/ready",
           "port": 4191
         },
-        "initialDelaySeconds": 2
+        "initialDelaySeconds": 2,
+        "timeoutSeconds": 1
       },
       "resources": null,
       "securityContext": {
