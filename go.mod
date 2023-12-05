@@ -10,7 +10,7 @@ require (
 	github.com/evanphx/json-patch v5.7.0+incompatible
 	github.com/fatih/color v1.16.0
 	github.com/fsnotify/fsnotify v1.7.0
-	github.com/go-openapi/spec v0.20.9
+	github.com/go-openapi/spec v0.20.11
 	github.com/go-test/deep v1.1.0
 	github.com/golang/protobuf v1.5.3
 	github.com/gorilla/websocket v1.5.1
