@@ -212,7 +212,6 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         resources:
-      priorityClassName: system-cluster-critical
       volumes:
       - name: cni-bin-dir
         hostPath:

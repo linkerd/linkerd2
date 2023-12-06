@@ -26,8 +26,11 @@ destCNINetDir:    "/etc/cni/net.d"
 destCNIBinDir:    "/opt/cni/bin"
 # -- Configures the CNI plugin to use the -w flag for the iptables command
 useWaitFlag:      false
-# -- Kubernetes priorityClassName for the CNI plugin's Pods
-priorityClassName: ""
+# -- Kubernetes priorityClassName for the CNI plugin's Pods.
+# Defaults to system-cluster-critical so it signals the scheduler to start
+# before application pods, but after CNI plugins (whose priorityClassName is
+# system-node-critical). This isn't strictly enforced.
+priorityClassName: "system-cluster-critical"
 
 # -- Add a PSP resource and bind it to the linkerd-cni ServiceAccounts.
 # Note PSP has been deprecated since k8s v1.21

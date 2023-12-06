@@ -331,7 +331,6 @@ spec:
         {{- if .Values.resources }}
         {{- include "partials.resources" .Values.resources | nindent 8 }}
         {{- end }}
-      priorityClassName: system-cluster-critical
       volumes:
       {{- if ne .Values.destCNIBinDir .Values.destCNINetDir }}
       - name: cni-bin-dir
