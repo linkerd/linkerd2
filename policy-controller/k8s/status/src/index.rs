@@ -554,7 +554,7 @@ fn now() -> DateTime<Utc> {
     #[cfg(not(test))]
     let now = Utc::now();
     #[cfg(test)]
-    let now = DateTime::<Utc>::MAX_UTC;
+    let now = DateTime::<Utc>::MIN_UTC;
     now
 }
 
