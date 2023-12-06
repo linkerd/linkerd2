@@ -6,6 +6,7 @@ use crate::{
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use chrono::offset::Utc;
 use chrono::DateTime;
+use gateway::RouteParentStatus;
 use k8s::Resource;
 use kubert::lease::Claim;
 use linkerd_policy_controller_core::{http_route::GroupKindName, POLICY_CONTROLLER_NAME};
@@ -64,15 +65,16 @@ pub struct Index {
 
     /// Maps HttpRoute ids to a list of their parent and backend refs,
     /// regardless of if those parents have accepted the route.
-    http_route_refs: HashMap<NamespaceGroupKindName, References>,
+    http_route_refs: HashMap<NamespaceGroupKindName, HttpRoute>,
     servers: HashSet<ResourceId>,
     services: HashMap<ResourceId, Service>,
 }
 
 #[derive(Clone, PartialEq)]
-struct References {
+struct HttpRoute {
     parents: Vec<ParentReference>,
     backends: Vec<BackendReference>,
+    statuses: Vec<RouteParentStatus>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -188,18 +190,18 @@ impl Index {
         }
     }
 
-    // If the route is new or its parentRefs and/or backendRefs have changed,
-    // return true, so that a patch is generated; otherwise return false.
-    fn update_http_route(&mut self, id: NamespaceGroupKindName, references: &References) -> bool {
+    // If the route is new or its contents have changed, return true, so that a
+    // patch is generated; otherwise return false.
+    fn update_http_route(&mut self, id: NamespaceGroupKindName, route: &HttpRoute) -> bool {
         match self.http_route_refs.entry(id) {
             Entry::Vacant(entry) => {
-                entry.insert(references.clone());
+                entry.insert(route.clone());
             }
             Entry::Occupied(mut entry) => {
-                if entry.get() == references {
+                if entry.get() == route {
                     return false;
                 }
-                entry.insert(references.clone());
+                entry.insert(route.clone());
             }
         }
         true
@@ -285,25 +287,29 @@ impl Index {
     fn make_http_route_patch(
         &self,
         id: &NamespaceGroupKindName,
-        parents: &[ParentReference],
-        backends: &[BackendReference],
+        route: &HttpRoute,
     ) -> k8s::Patch<serde_json::Value> {
-        let backend_condition = self.backend_condition(backends);
-        let parent_statuses = parents
+        let backend_condition = self.backend_condition(&route.backends);
+        let unowned_statuses = route
+            .statuses
             .iter()
-            .filter_map(|parent_ref| self.parent_status(parent_ref, backend_condition.clone()))
-            .collect();
+            .filter(|status| status.controller_name != POLICY_CONTROLLER_NAME)
+            .cloned();
+        let parent_statuses = route
+            .parents
+            .iter()
+            .filter_map(|parent_ref| self.parent_status(parent_ref, backend_condition.clone()));
         let status = gateway::HttpRouteStatus {
             inner: gateway::RouteStatus {
-                parents: parent_statuses,
+                parents: unowned_statuses.chain(parent_statuses).collect(),
             },
         };
         make_patch(&id.gkn.name, status)
     }
 
     fn reconcile(&self) {
-        for (id, references) in self.http_route_refs.iter() {
-            let patch = self.make_http_route_patch(id, &references.parents, &references.backends);
+        for (id, route) in self.http_route_refs.iter() {
+            let patch = self.make_http_route_patch(id, route);
             if let Err(error) = self.updates.send(Update {
                 id: id.clone(),
                 patch,
@@ -344,10 +350,20 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
                 .flatten(),
         );
 
-        // Construct references and insert into the index; if the HTTPRoute is
+        let statuses = resource
+            .status
+            .into_iter()
+            .flat_map(|status| status.inner.parents)
+            .collect();
+
+        // Construct route and insert into the index; if the HTTPRoute is
         // already in the index and it hasn't changed, skip creating a patch.
-        let references = References { parents, backends };
-        self.index_httproute(id, references);
+        let route = HttpRoute {
+            parents,
+            backends,
+            statuses,
+        };
+        self.index_httproute(id, route);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -396,10 +412,20 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
                 .flatten(),
         );
 
-        // Construct references and insert into the index; if the HTTPRoute is
+        let statuses = resource
+            .status
+            .into_iter()
+            .flat_map(|status| status.inner.parents)
+            .collect();
+
+        // Construct route and insert into the index; if the HTTPRoute is
         // already in the index and it hasn't changed, skip creating a patch.
-        let references = References { parents, backends };
-        self.index_httproute(id, references);
+        let route = HttpRoute {
+            parents,
+            backends,
+            statuses,
+        };
+        self.index_httproute(id, route);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -485,10 +511,10 @@ impl kubert::index::IndexNamespacedResource<k8s::Service> for Index {
 }
 
 impl Index {
-    fn index_httproute(&mut self, id: NamespaceGroupKindName, references: References) {
+    fn index_httproute(&mut self, id: NamespaceGroupKindName, route: HttpRoute) {
         // Insert into the index; if the HTTPRoute is already in the index and it hasn't
         // changed, skip creating a patch.
-        if !self.update_http_route(id.clone(), &references) {
+        if !self.update_http_route(id.clone(), &route) {
             return;
         }
 
@@ -501,7 +527,7 @@ impl Index {
 
         // Create a patch for the HTTPRoute and send it to the Controller so
         // that it is applied.
-        let patch = self.make_http_route_patch(&id, &references.parents, &references.backends);
+        let patch = self.make_http_route_patch(&id, &route);
         if let Err(error) = self.updates.send(Update {
             id: id.clone(),
             patch,
@@ -528,7 +554,7 @@ fn now() -> DateTime<Utc> {
     #[cfg(not(test))]
     let now = Utc::now();
     #[cfg(test)]
-    let now = DateTime::<Utc>::MIN_UTC;
+    let now = DateTime::<Utc>::MAX_UTC;
     now
 }
 
