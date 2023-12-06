@@ -21,6 +21,9 @@ rules:
 - apiGroups: [""]
   resources: ["pods/eviction"]
   verbs: ["create"]
+- apiGroups: ["events.k8s.io"]
+  resources: ["events"]
+  verbs: ["create"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -163,10 +166,14 @@ spec:
         image: cr.l5d.io/linkerd/cni-plugin:v1.3.0
         imagePullPolicy: IfNotPresent
         env:
-        - name: LINKERD_REINITIALIZE_PODS_POD_NODE_NAME
+        - name: LINKERD_REINITIALIZE_PODS_NODE_NAME
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: LINKERD_REINITIALIZE_PODS_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
         command:
           - /usr/lib/linkerd/linkerd-reinitialize-pods
         args:
