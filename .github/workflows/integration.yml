@@ -118,8 +118,7 @@ jobs:
     strategy:
       matrix:
         test:
-          # Pending https://github.com/linkerd/linkerd2/pull/11617
-          #- cni-calico-deep
+          - cni-calico-deep
           - deep
     runs-on: ubuntu-20.04
     timeout-minutes: 15
