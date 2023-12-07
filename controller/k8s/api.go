@@ -79,7 +79,7 @@ func InitializeAPI(ctx context.Context, kubeConfig string, ensureClusterWideAcce
 		return nil, err
 	}
 
-	k8sClient, err := k8s.NewAPIForConfig(config, "", []string{}, 0)
+	k8sClient, err := k8s.NewAPIForConfig(config, "", []string{}, 0, 0, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func InitializeAPI(ctx context.Context, kubeConfig string, ensureClusterWideAcce
 
 // InitializeAPIForConfig creates Kubernetes clients and returns an initialized API wrapper.
 func InitializeAPIForConfig(ctx context.Context, kubeConfig *rest.Config, ensureClusterWideAccess bool, cluster string, resources ...APIResource) (*API, error) {
-	k8sClient, err := k8s.NewAPIForConfig(kubeConfig, "", []string{}, 0)
+	k8sClient, err := k8s.NewAPIForConfig(kubeConfig, "", []string{}, 0, 0, 0)
 	if err != nil {
 		return nil, err
 	}

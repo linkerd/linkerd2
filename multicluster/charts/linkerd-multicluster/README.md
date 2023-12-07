@@ -3,7 +3,7 @@
 The Linkerd-Multicluster extension contains resources to support multicluster
 linking to remote clusters
 
-![Version: 30.11.6](https://img.shields.io/badge/Version-30.11.6-informational?style=flat-square)
+![Version: 30.11.7](https://img.shields.io/badge/Version-30.11.7-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -92,6 +92,7 @@ Kubernetes: `>=1.21.0-0`
 | gateway.tolerations | list | `[]` | Tolerations for the gateway pod |
 | identityTrustDomain | string | `"cluster.local"` | Identity Trust Domain of the certificate authority |
 | imagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all multicluster components |
+| imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | linkerdNamespace | string | `"linkerd"` | Namespace of linkerd installation |
 | linkerdVersion | string | `"linkerdVersionValue"` | Control plane version |
 | namespaceMetadata.image.name | string | `"extension-init"` | Docker image name for the namespace-metadata instance |

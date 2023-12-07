@@ -424,6 +424,7 @@ func testUpgradeOptions() (flagOptions, error) {
 }
 
 func testOptions(t *testing.T) (*charts.Values, flagOptions) {
+	t.Helper()
 	installValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("failed to create install options: %s", err)
@@ -444,10 +445,12 @@ func replaceVersions(manifest string) string {
 }
 
 func generateIssuerCerts(t *testing.T, b64encode bool) issuerCerts {
+	t.Helper()
 	return generateCerts(t, "identity.linkerd.cluster.local", b64encode)
 }
 
 func generateCerts(t *testing.T, name string, b64encode bool) issuerCerts {
+	t.Helper()
 	ca, err := tls.GenerateRootCAWithDefaults("test")
 	if err != nil {
 		t.Fatal(err)
@@ -572,6 +575,7 @@ func pathMatch(path []string, template []string) bool {
 }
 
 func renderInstall(t *testing.T, values *charts.Values) *bytes.Buffer {
+	t.Helper()
 	var buf bytes.Buffer
 	if err := renderCRDs(&buf, valuespkg.Options{}); err != nil {
 		t.Fatalf("could not render install manifests: %s", err)
@@ -599,6 +603,7 @@ func renderUpgrade(installManifest string, upgradeOpts []flag.Flag, templateOpts
 }
 
 func renderInstallAndUpgrade(t *testing.T, installOpts *charts.Values, upgradeOpts []flag.Flag, templateOpts valuespkg.Options) (*bytes.Buffer, *bytes.Buffer, error) {
+	t.Helper()
 	err := validateValues(context.Background(), nil, installOpts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to validate values: %w", err)

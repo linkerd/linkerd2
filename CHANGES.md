@@ -1,5 +1,31 @@
 # Changes
 
+## stable-2.14.6
+
+This stable release back-ports bugfixes and improvements from recent edge
+releases.
+
+* multicluster: Added an `imagePullSecrets` configuration to
+  linkerd-multicluster Helm chart (thanks @lhaussknecht!). ([#11287])
+* multicluster: Updated the service mirror to support gateways exposed on
+  multiple IP addresses (thanks @MrFreezeex!) ([#11499])
+* Updated control plane logging so that client-go may emit error logs. This will
+  also ensures that all logs are emitted in JSON when the json log format is
+  enabled. ([#11632])
+* Added `kubeAPI.clientBurst` and `kubeAPI.clientQPS` configurations that allow
+  users to configure the burst and QPS rate limits for the Kubernetes API
+  clients used by the control plane. The default burst and qps values are now
+  set at 200 and 100, respectively. The prior defaults limited bursts 10 and QPS
+  to 5, which could cause throttling issues in clusters that schedule many pods
+  quickly. ([#11644])
+* viz: Update the default prometheus version to v2.48.0. ([#11633])
+
+[#11287]: https://github.com/linkerd/linkerd2/pull/11287
+[#11499]: https://github.com/linkerd/linkerd2/pull/11499
+[#11632]: https://github.com/linkerd/linkerd2/pull/11632
+[#11644]: https://github.com/linkerd/linkerd2/pull/11644
+[#11633]: https://github.com/linkerd/linkerd2/pull/11633
+
 ## stable-2.14.5
 
 This stable release fixes a proxy regression where bursts of TCP connections

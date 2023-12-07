@@ -50,6 +50,10 @@ podLabels: {}
 commonLabels: {}
 # -- Docker imagePullPolicy for all multicluster components
 imagePullPolicy: IfNotPresent
+# -- For Private docker registries, authentication is needed.
+#  Registry secrets are applied to the respective service accounts
+imagePullSecrets: []
+# - name: my-private-docker-registry-login-secret
 # -- The port on which the proxy accepts outbound traffic
 proxyOutboundPort: 4140
 # -- If the remote mirror service account should be installed

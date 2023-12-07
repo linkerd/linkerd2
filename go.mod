@@ -54,6 +54,7 @@ require (
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1
+	github.com/bombsimon/logrusr/v4 v4.1.0
 	github.com/prometheus/client_model v0.4.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/utils v0.0.0-20230220204549-a5ecb0141aa5
