@@ -61,6 +61,7 @@ var (
 
 	templatesControlPlane = []string{
 		"templates/namespace.yaml",
+		"templates/autoregistration-rbac.yaml",
 		"templates/identity-rbac.yaml",
 		"templates/destination-rbac.yaml",
 		"templates/heartbeat-rbac.yaml",
@@ -73,6 +74,7 @@ var (
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",
 		"templates/proxy-injector.yaml",
+		"templates/autoregistration.yaml",
 	}
 
 	ignoreCluster bool
