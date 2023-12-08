@@ -6,7 +6,6 @@ use crate::{
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use chrono::offset::Utc;
 use chrono::DateTime;
-use gateway::RouteParentStatus;
 use k8s::Resource;
 use kubert::lease::Claim;
 use linkerd_policy_controller_core::{http_route::GroupKindName, POLICY_CONTROLLER_NAME};
@@ -74,7 +73,7 @@ pub struct Index {
 struct HttpRoute {
     parents: Vec<ParentReference>,
     backends: Vec<BackendReference>,
-    statuses: Vec<RouteParentStatus>,
+    statuses: Vec<gateway::RouteParentStatus>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -289,16 +288,23 @@ impl Index {
         id: &NamespaceGroupKindName,
         route: &HttpRoute,
     ) -> k8s::Patch<serde_json::Value> {
-        let backend_condition = self.backend_condition(&route.backends);
+        // To preserve any statuses from other controllers, we copy those
+        // statuses.
         let unowned_statuses = route
             .statuses
             .iter()
             .filter(|status| status.controller_name != POLICY_CONTROLLER_NAME)
             .cloned();
+
+        // Compute a status for each parent_ref which has a kind we support.
+        let backend_condition = self.backend_condition(&route.backends);
         let parent_statuses = route
             .parents
             .iter()
             .filter_map(|parent_ref| self.parent_status(parent_ref, backend_condition.clone()));
+
+        // Include both existing statuses from other controllers and the parent
+        // statuses we have computed.
         let status = gateway::HttpRouteStatus {
             inner: gateway::RouteStatus {
                 parents: unowned_statuses.chain(parent_statuses).collect(),
