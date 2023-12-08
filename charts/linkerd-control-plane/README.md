@@ -151,8 +151,8 @@ Kubernetes: `>=1.21.0-0`
 | commonLabels | object | `{}` | Labels to apply to all resources |
 | controlPlaneTracing | bool | `false` | enables control plane tracing |
 | controlPlaneTracingCollector.name | string | `"collector"` | name of the collector to send control plane traces to |
-| controlPlaneTracingCollector.namespace | string | `"linkerd-jaeger"` | namespace to send control plane traces to | 
-| controlPlaneTracingCollector.port | int | `"55678"` | port of the collector to send control plane traces to | 
+| controlPlaneTracingCollector.namespace | string | `"linkerd-jaeger"` | namespace to send control plane traces to |
+| controlPlaneTracingCollector.port | int | `"55678"` | port of the collector to send control plane traces to |
 | controllerImage | string | `"cr.l5d.io/linkerd/controller"` | Docker image for the destination and identity components |
 | controllerImageVersion | string | `""` | Optionally allow a specific container image Tag (or SHA) to be specified for the controllerImage. |
 | controllerLogFormat | string | `"plain"` | Log format for the control plane components |
