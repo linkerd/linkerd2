@@ -19,8 +19,11 @@ controllerLogLevel: info
 controllerLogFormat: plain
 # -- enables control plane tracing
 controlPlaneTracing: false
-# -- namespace to send control plane traces to
-controlPlaneTracingNamespace: linkerd-jaeger
+# -- Optional trace collector config options
+controlPlaneTracingCollector:
+  name: collector
+  namespace: linkerd-jaeger
+  port: 55678
 # -- control plane version. See Proxy section for proxy version
 linkerdVersion: linkerdVersionValue
 # -- default kubernetes deployment strategy

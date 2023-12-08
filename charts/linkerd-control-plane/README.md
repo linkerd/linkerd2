@@ -150,7 +150,9 @@ Kubernetes: `>=1.21.0-0`
 | cniEnabled | bool | `false` | enabling this omits the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed |
 | commonLabels | object | `{}` | Labels to apply to all resources |
 | controlPlaneTracing | bool | `false` | enables control plane tracing |
-| controlPlaneTracingNamespace | string | `"linkerd-jaeger"` | namespace to send control plane traces to |
+| controlPlaneTracingCollector.name | string | `"collector"` | name of the collector to send control plane traces to |
+| controlPlaneTracingCollector.namespace | string | `"linkerd-jaeger"` | namespace to send control plane traces to | 
+| controlPlaneTracingCollector.port | int | `"55678"` | port of the collector to send control plane traces to | 
 | controllerImage | string | `"cr.l5d.io/linkerd/controller"` | Docker image for the destination and identity components |
 | controllerImageVersion | string | `""` | Optionally allow a specific container image Tag (or SHA) to be specified for the controllerImage. |
 | controllerLogFormat | string | `"plain"` | Log format for the control plane components |
