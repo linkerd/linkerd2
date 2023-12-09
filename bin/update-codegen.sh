@@ -20,6 +20,7 @@ do
   rm -f "${SCRIPT_ROOT}/controller/gen/apis/${crd_path}/zz_generated.deepcopy.go"
 done
 
+# shellcheck disable=SC1091
 source "${CODEGEN_PKG}/kube_codegen.sh"
 
 # Create a symlink so that the root of the repo is inside github.com/linkerd/linkerd2.
