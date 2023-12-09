@@ -54,5 +54,5 @@ kube::codegen::gen_client \
     --output-base "${SCRIPT_ROOT}" \
     --boilerplate "${SCRIPT_ROOT}/controller/gen/boilerplate.go.txt"
 
-# Once the code ha been generated, we can remove the symlink.
+# Once the code has been generated, we can remove the symlink.
 rm -rf "${SCRIPT_ROOT}/github.com"
