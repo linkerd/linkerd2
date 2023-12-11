@@ -11,8 +11,8 @@ for your microservices — with no code change required.
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.22+ cluster in a matter of seconds. See
-the [Linkerd Getting Started Guide][getting-started] for how.
+You can run Linkerd on any Kubernetes cluster in a matter of seconds. See the
+[Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
 docs][linkerd-docs].
