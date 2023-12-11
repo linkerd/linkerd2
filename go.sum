@@ -308,6 +308,8 @@ github.com/linkerd/linkerd2-proxy-api v0.11.0 h1:v0HiLOjQNgPsqGEhlAZae3WQQLqxMsd
 github.com/linkerd/linkerd2-proxy-api v0.11.0/go.mod h1:cDD1zKPmEZRAJxXFHkzlO6OpfnL4upIgUkDMxcNiijI=
 github.com/linkerd/linkerd2-proxy-api v0.11.1-0.20231122193208-1fa4bc473012 h1:dfN0zlXTSRkfKTMZACyyKBWAUTOiYhrtDUvYnjQeI9o=
 github.com/linkerd/linkerd2-proxy-api v0.11.1-0.20231122193208-1fa4bc473012/go.mod h1:cDD1zKPmEZRAJxXFHkzlO6OpfnL4upIgUkDMxcNiijI=
+github.com/linkerd/linkerd2-proxy-api v0.11.1-0.20231207132728-6d3da9056e03 h1:vy/iWz9S2Xv20NHIDi+g5c7/i5NjmfaU2UL2tR7z1jw=
+github.com/linkerd/linkerd2-proxy-api v0.11.1-0.20231207132728-6d3da9056e03/go.mod h1:cDD1zKPmEZRAJxXFHkzlO6OpfnL4upIgUkDMxcNiijI=
 github.com/linkerd/linkerd2-proxy-init v1.6.2 h1:hSB2rUsEf/wHYnHCA4JC4DgRKYYKiDEXnKhKub0RTvo=
 github.com/linkerd/linkerd2-proxy-init v1.6.2/go.mod h1:lHCNCzP6xCajRTNIiYX6oWcs8KbAph2Z2zUFgFtVHkw=
 github.com/mailru/easyjson v0.0.0-20190614124828-94de47d64c63/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
