@@ -4,8 +4,8 @@
 # proper messages
 set +e
 
-k8s_version_min='+v1.21'
-k8s_version_max='+v1.26'
+k8s_version_min='+v1.22'
+k8s_version_max='+v1.28'
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 testdir="$bindir"/../test/integration

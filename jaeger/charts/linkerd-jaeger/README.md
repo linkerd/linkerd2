@@ -11,7 +11,7 @@ OpenCensus and Jaeger.
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.21+ cluster in a matter of seconds. See
+You can run Linkerd on any Kubernetes cluster in a matter of seconds. See
 the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
@@ -62,7 +62,7 @@ helm install linkerd-jaeger -n linkerd-jaeger --create-namespace linkerd/linkerd
 
 ## Requirements
 
-Kubernetes: `>=1.21.0-0`
+Kubernetes: `>=1.22.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
