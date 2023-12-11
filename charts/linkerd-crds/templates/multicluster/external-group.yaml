@@ -2,11 +2,6 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: externalgroups.multicluster.linkerd.io
-  annotations:
-    {{ include "partials.annotations.created-by" . }}
-  labels:
-    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
-    linkerd.io/control-plane-ns: {{.Release.Namespace}}
 spec:
   group: multicluster.linkerd.io
   names:
@@ -42,43 +37,30 @@ spec:
                 type: object
                 description: endpoint template
                 properties:
-                  expectedIdentity:
-                    type: string
-                    description: "Catch all for identity to bootstrap everything else"
-              ports:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    port:
-                      description: "Name of the port to target"
-                      format: int32
-                      maximum: 65535
-                      minimum: 1
-                      type: integer
-                    protocol:
-                      description: "Protocol"
-                      type: string
-          status:
-            type: object
-            properties:
-              conditions:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    lastProbeTime:
-                      type: string
-                    lastTransitionTime:
-                      type: string
-                    status:
-                      type: string
-                    type:
-                      type: string
-                    reason:
-                      type: string
-                    message:
-                      type: string
-
-
+                  metadata:
+                    description: Metadata that will be used for all created `ExternalEndpoints`.
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      labels:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    type: object
+                  ports:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        port:
+                          description: "Name of the port to target"
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        protocol:
+                          description: "Protocol"
+                          type: string
 

@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalendpoint/v1alpha1"
+	externalgroupv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalgroup/v1alpha1"
 	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
 	v1beta3 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1beta3"
@@ -61,6 +62,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=externalendpoint, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("externalendpoints"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Externalendpoint().V1alpha1().ExternalEndpoints().Informer()}, nil
+
+		// Group=externalgroup, Version=v1alpha1
+	case externalgroupv1alpha1.SchemeGroupVersion.WithResource("externalgroups"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Externalgroup().V1alpha1().ExternalGroups().Informer()}, nil
 
 		// Group=link, Version=v1alpha1
 	case linkv1alpha1.SchemeGroupVersion.WithResource("links"):

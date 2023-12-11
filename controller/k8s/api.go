@@ -12,6 +12,7 @@ import (
 	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	l5dcrdinformer "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
 	eeinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/externalendpoint/v1alpha1"
+	eginformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/externalgroup/v1alpha1"
 	srvinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/server/v1beta1"
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -50,6 +51,7 @@ type API struct {
 	ds       appv1informers.DaemonSetInformer
 	endpoint coreinformers.EndpointsInformer
 	ee       eeinformers.ExternalEndpointInformer
+	eg       eginformers.ExternalGroupInformer
 	es       discoveryinformers.EndpointSliceInformer
 	job      batchv1informers.JobInformer
 	mwc      arinformers.MutatingWebhookConfigurationInformer
@@ -232,6 +234,13 @@ func newAPI(
 			api.ee = l5dCrdSharedInformers.Externalendpoint().V1alpha1().ExternalEndpoints()
 			api.syncChecks = append(api.syncChecks, api.ee.Informer().HasSynced)
 			api.promGauges.addInformerSize(k8s.ExternalEndpoint, informerLabels, api.ee.Informer())
+		case EG:
+			if l5dCrdSharedInformers == nil {
+				panic("Linkerd CRD shared informer not configured")
+			}
+			api.eg = l5dCrdSharedInformers.Externalgroup().V1alpha1().ExternalGroups()
+			api.syncChecks = append(api.syncChecks, api.eg.Informer().HasSynced)
+			api.promGauges.addInformerSize(k8s.ExternalGroup, informerLabels, api.eg.Informer())
 		case Job:
 			api.job = sharedInformers.Batch().V1().Jobs()
 			api.syncChecks = append(api.syncChecks, api.job.Informer().HasSynced)
@@ -385,6 +394,13 @@ func (api *API) EE() eeinformers.ExternalEndpointInformer {
 		panic("ExternalEndpoint informer not configured")
 	}
 	return api.ee
+}
+
+func (api *API) EG() eginformers.ExternalGroupInformer {
+	if api.eg == nil {
+		panic("ExternalGroup informer not configured")
+	}
+	return api.eg
 }
 
 // ES provides access to a shared informer and lister for EndpointSlices
