@@ -25,6 +25,7 @@ import (
 
 	versioned "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	externalendpoint "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/externalendpoint"
+	externalgroup "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/externalgroup"
 	internalinterfaces "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/internalinterfaces"
 	link "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/link"
 	policy "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/policy"
@@ -249,6 +250,7 @@ type SharedInformerFactory interface {
 	InformerFor(obj runtime.Object, newFunc internalinterfaces.NewInformerFunc) cache.SharedIndexInformer
 
 	Externalendpoint() externalendpoint.Interface
+	Externalgroup() externalgroup.Interface
 	Link() link.Interface
 	Policy() policy.Interface
 	Server() server.Interface
@@ -258,6 +260,10 @@ type SharedInformerFactory interface {
 
 func (f *sharedInformerFactory) Externalendpoint() externalendpoint.Interface {
 	return externalendpoint.New(f, f.namespace, f.tweakListOptions)
+}
+
+func (f *sharedInformerFactory) Externalgroup() externalgroup.Interface {
+	return externalgroup.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Link() link.Interface {

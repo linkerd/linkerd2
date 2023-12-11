@@ -20,6 +20,7 @@ package scheme
 
 import (
 	externalendpointv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalendpoint/v1alpha1"
+	externalgroupv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalgroup/v1alpha1"
 	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
 	policyv1beta3 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1beta3"
@@ -38,6 +39,7 @@ var Codecs = serializer.NewCodecFactory(Scheme)
 var ParameterCodec = runtime.NewParameterCodec(Scheme)
 var localSchemeBuilder = runtime.SchemeBuilder{
 	externalendpointv1alpha1.AddToScheme,
+	externalgroupv1alpha1.AddToScheme,
 	linkv1alpha1.AddToScheme,
 	policyv1alpha1.AddToScheme,
 	policyv1beta3.AddToScheme,
