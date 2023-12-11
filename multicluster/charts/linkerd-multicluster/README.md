@@ -60,7 +60,7 @@ helm install linkerd-multicluster -n linkerd-multicluster --create-namespace lin
 
 ## Requirements
 
-Kubernetes: `>=1.21.0-0`
+Kubernetes: `>=1.22.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|

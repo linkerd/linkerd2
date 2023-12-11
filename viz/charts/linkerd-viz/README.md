@@ -60,7 +60,7 @@ helm install linkerd-viz -n linkerd-viz --create-namespace linkerd/linkerd-viz
 
 ## Requirements
 
-Kubernetes: `>=1.21.0-0`
+Kubernetes: `>=1.22.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
