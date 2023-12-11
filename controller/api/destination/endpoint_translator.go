@@ -374,7 +374,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			opaquePorts = watcher.GetAnnotatedOpaquePorts(address.Pod, et.defaultOpaquePorts)
 			wa, err = createWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else if address.External != nil {
-			wa, err = createWeightedAddr(address, map[uint32]struct{}{}, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+			wa, err = createWeightedAddr(address, et.defaultOpaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {
 			var authOverride *pb.AuthorityOverride
 			if address.AuthorityOverride != "" {
@@ -502,6 +502,8 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 				Name: sn,
 			},
 		}
+
+		weightedAddr.MetricLabels = pkgK8s.GetExtLabels(address.OwnerKind, address.OwnerName, address.External)
 
 		return &weightedAddr, nil
 

@@ -30,7 +30,6 @@ pub struct ExternalEndpointSpec {
     group = "multicluster.linkerd.io",
     version = "v1alpha1",
     kind = "ExternalGroup",
-    status = "ExternalStatus",
     namespaced
 )]
 pub struct ExternalGroupSpec {

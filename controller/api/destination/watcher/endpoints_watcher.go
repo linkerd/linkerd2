@@ -1080,17 +1080,27 @@ func (pp *portPublisher) newExtRefAddress(endpointPort Port, endpointIP, tName, 
 	if err != nil {
 		return Address{}, PodID{}, fmt.Errorf("unable to fetch ExternalEndpoint %v: %w", id, err)
 	}
-	// For now, skip this
-	//ownerKind, ownerName, err := pp.metadataAPI.GetOwnerKindAndName(context.Background(), pod, false)
-	//if err != nil {
-	//return Address{}, PodID{}, err
-	//}
+
+	var ownerKind, ownerName string
+	ownerRefs := ee.GetOwnerReferences()
+	if len(ownerRefs) == 0 {
+		ownerKind = "externalendpoint"
+		ownerName = ee.Name
+	} else if len(ownerRefs) > 1 {
+		pp.log.Debugf("unexpected owner reference count (%d): %+v", len(ownerRefs), ownerRefs)
+		ownerKind = "externalendpoint"
+		ownerName = ee.Name
+	} else {
+		ownerKind = strings.ToLower(ownerRefs[0].Kind)
+		ownerName = ownerRefs[0].Name
+	}
+
 	addr := Address{
 		IP:        endpointIP,
 		Port:      endpointPort,
 		External:  ee,
-		OwnerName: "",
-		OwnerKind: "ExternalGroup (probably)",
+		OwnerName: ownerName,
+		OwnerKind: ownerKind,
 	}
 
 	return addr, id, nil

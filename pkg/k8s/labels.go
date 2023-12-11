@@ -8,6 +8,7 @@ package k8s
 import (
 	"fmt"
 
+	eev1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalendpoint/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/version"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -488,6 +489,17 @@ func GetServiceAccountAndNS(pod *corev1.Pod) (sa string, ns string) {
 	}
 
 	return
+}
+
+// GetExtLabels
+func GetExtLabels(ownerKind, ownerName string, ee *eev1alpha1.ExternalEndpoint) map[string]string {
+	labels := map[string]string{"externalendpoint": ee.Name}
+	l5dLabel := KindToL5DLabel(ownerKind)
+	labels[l5dLabel] = ownerName
+	if controllerNS := ee.Labels[ControllerNSLabel]; controllerNS != "" {
+		labels["control_plane_ns"] = controllerNS
+	}
+	return labels
 }
 
 // GetPodLabels returns the set of prometheus owner labels for a given pod
