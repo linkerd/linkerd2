@@ -171,7 +171,7 @@ jobs:
     strategy:
       matrix:
         k8s:
-          - v1.21
+          - v1.22
           - v1.28
     steps:
       - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
