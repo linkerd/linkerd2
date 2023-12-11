@@ -25,7 +25,7 @@ pub struct ExternalEndpointSpec {
 // === Group ===
 
 /// Describes a set of VMs that share a template; analogous to a deployment
-#[derive(Clone, Debug, PartialEq, Eq, CustomResource, Deserialize, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, CustomResource, Deserialize, Serialize, JsonSchema)]
 #[kube(
     group = "multicluster.linkerd.io",
     version = "v1alpha1",
@@ -34,13 +34,14 @@ pub struct ExternalEndpointSpec {
 )]
 pub struct ExternalGroupSpec {
     pub template: ExternalTemplate,
-    pub ports: Vec<PortSpec>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExternalTemplate {
-    pub expected_identity: String,
+    // Metadata and ports
+    pub metadata: kube::core::ObjectMeta,
+    pub ports: Vec<PortSpec>,
 }
 
 // === Shared ===

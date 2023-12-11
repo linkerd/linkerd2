@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/linkerd/linkerd2/controller/cmd/autoregistration"
 	"github.com/linkerd/linkerd2/controller/cmd/destination"
 	"github.com/linkerd/linkerd2/controller/cmd/heartbeat"
 	"github.com/linkerd/linkerd2/controller/cmd/identity"
@@ -20,8 +19,6 @@ func main() {
 	}
 
 	switch os.Args[1] {
-	case "autoregistration":
-		autoregistration.Main(os.Args[2:])
 	case "destination":
 		destination.Main(os.Args[2:])
 	case "heartbeat":

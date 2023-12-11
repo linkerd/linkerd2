@@ -406,7 +406,13 @@ impl kubert::index::IndexNamespacedResource<k8s::external::ExternalGroup> for In
 
         let meta = external_group::Meta::from_metadata(group.metadata);
         let namespace = self.namespaces.get_or_default(ns);
-        let ports = group.spec.ports.into_iter().map(|spec| spec.port).collect();
+        let ports = group
+            .spec
+            .template
+            .ports
+            .into_iter()
+            .map(|spec| spec.port)
+            .collect();
         match namespace.external.update(name.clone(), meta, ports) {
             Ok(None) => {}
             Ok(Some(g)) => g.reindex_policy(name, &namespace.policy, &self.authentications),
