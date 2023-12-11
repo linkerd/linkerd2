@@ -22,6 +22,8 @@ import (
 	clientset "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	externalendpointv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/externalendpoint/v1alpha1"
 	fakeexternalendpointv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/externalendpoint/v1alpha1/fake"
+	externalgroupv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/externalgroup/v1alpha1"
+	fakeexternalgroupv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/externalgroup/v1alpha1/fake"
 	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha1"
 	fakelinkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha1/fake"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1alpha1"
@@ -94,6 +96,11 @@ var (
 // ExternalendpointV1alpha1 retrieves the ExternalendpointV1alpha1Client
 func (c *Clientset) ExternalendpointV1alpha1() externalendpointv1alpha1.ExternalendpointV1alpha1Interface {
 	return &fakeexternalendpointv1alpha1.FakeExternalendpointV1alpha1{Fake: &c.Fake}
+}
+
+// ExternalgroupV1alpha1 retrieves the ExternalgroupV1alpha1Client
+func (c *Clientset) ExternalgroupV1alpha1() externalgroupv1alpha1.ExternalgroupV1alpha1Interface {
+	return &fakeexternalgroupv1alpha1.FakeExternalgroupV1alpha1{Fake: &c.Fake}
 }
 
 // LinkV1alpha1 retrieves the LinkV1alpha1Client

@@ -20,6 +20,7 @@ const (
 	Endpoints             = "endpoints"
 	EndpointSlices        = "endpointslices"
 	ExternalEndpoint      = "externalendpoint"
+	ExternalGroup         = "externalgroup"
 	Job                   = "job"
 	MeshTLSAuthentication = "meshtlsauthentication"
 	MutatingWebhookConfig = "mutatingwebhookconfig"

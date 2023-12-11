@@ -10,7 +10,7 @@ codegen_pkg=${GOPATH}/pkg/mod/k8s.io/code-generator@v0.27.4
 # ROOT_PACKAGE :: the package that is the target for code generation
 ROOT_PACKAGE=github.com/linkerd/linkerd2
 
-crds=(serviceprofile:v1alpha2 server:v1beta1 serverauthorization:v1beta1 link:v1alpha1 policy:v1alpha1 policy:v1beta3 externalendpoint:v1alpha1)
+crds=(serviceprofile:v1alpha2 server:v1beta1 serverauthorization:v1beta1 link:v1alpha1 policy:v1alpha1 policy:v1beta3 externalendpoint:v1alpha1 externalgroup:v1alpha1)
 
 # remove previously generated code
 rm -rf "${rootdir}/controller/gen/client"
@@ -45,3 +45,4 @@ sed -i 's/Group: \"policy\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controll
 sed -i 's/Group: \"policy\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/policy/v1alpha1/fake/fake_networkauthentication.go"
 sed -i 's/Group: \"policy\"/Group: \"policy.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/policy/v1beta3/fake/fake_httproute.go"
 sed -i 's/Group: \"externalendpoint\"/Group: \"multicluster.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/externalendpoint/v1alpha1/fake/fake_externalendpoint.go"
+sed -i 's/Group: \"externalgroup\"/Group: \"multicluster.linkerd.io\"/g' "${rootdir}/controller/gen/client/clientset/versioned/typed/externalgroup/v1alpha1/fake/fake_externalgroup.go"
