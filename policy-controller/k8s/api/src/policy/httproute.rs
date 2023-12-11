@@ -22,7 +22,7 @@ pub use k8s_gateway_api::{
     group = "policy.linkerd.io",
     version = "v1beta3",
     kind = "HTTPRoute",
-    struct = "HttpRoute",
+    root = "HttpRoute",
     status = "HttpRouteStatus",
     namespaced
 )]

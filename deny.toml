@@ -67,6 +67,8 @@ skip = [
     # https://github.com/hawkw/matchers/pull/4
     { name = "regex-automata", version = "0.1" },
     { name = "regex-syntax", version = "0.6" },
+    # Pending hyper upgrade to 1.0
+    { name = "socket2" },
 ]
 skip-tree = [
     # `serde_json` and `h2` depend on diverged versions of `indexmap` (2.0.x and
