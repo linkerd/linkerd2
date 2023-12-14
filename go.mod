@@ -38,9 +38,9 @@ require (
 	google.golang.org/grpc v1.60.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
 	google.golang.org/protobuf v1.31.0
-	helm.sh/helm/v3 v3.13.2
+	helm.sh/helm/v3 v3.13.3
 	k8s.io/api v0.28.4
-	k8s.io/apiextensions-apiserver v0.28.3
+	k8s.io/apiextensions-apiserver v0.28.4
 	k8s.io/apimachinery v0.28.4
 	k8s.io/client-go v0.28.4
 	k8s.io/code-generator v0.28.4
@@ -153,7 +153,7 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231002182017-d307bd883b97 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/cli-runtime v0.28.2 // indirect
+	k8s.io/cli-runtime v0.28.4 // indirect
 	k8s.io/gengo v0.0.0-20220902162205-c0856e24416d // indirect
 	k8s.io/kube-openapi v0.0.0-20230717233707-2695361300d9 // indirect
 	oras.land/oras-go v1.2.4 // indirect
