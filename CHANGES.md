@@ -1,5 +1,23 @@
 # Changes
 
+## edge-23.12.2
+
+This edge release includes a restructuring of the proxy's balancer along with
+accompanying new metrics. The new minimum supported Kubernetes version is 1.22.
+
+* Restructured the proxy's balancer ([#11750]): balancer changes may now occur
+  independently of request processing. Fail-fast circuit breaking is enforced on
+  the balancer's queue so that requests can't get stuck in a queue indefinitely.
+  This new balancer is instrumented with new metrics: request (in-queue) latency
+  histograms, failfast states, discovery updates counts, and balancer endpoint
+  pool sizes.
+* Changed how the policy controller updates HTTPRoute status so that it doesn't
+  affect statuses from other non-linkerd controllers ([#11705]; fixes [#11659])
+
+[#11750]: https://github.com/linkerd/linkerd2/pull/11750
+[#11705]: https://github.com/linkerd/linkerd2/pull/11705
+[#11659]: https://github.com/linkerd/linkerd2/pull/11659
+
 ## edge-23.12.1
 
 This edge release introduces new configuration values in the identity
