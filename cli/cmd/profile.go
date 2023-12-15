@@ -1,16 +1,20 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"sigs.k8s.io/yaml"
 )
 
 type profileOptions struct {
@@ -20,6 +24,7 @@ type profileOptions struct {
 	openAPI       string
 	proto         string
 	ignoreCluster bool
+	output        string
 }
 
 func newProfileOptions() *profileOptions {
@@ -29,6 +34,7 @@ func newProfileOptions() *profileOptions {
 		openAPI:       "",
 		proto:         "",
 		ignoreCluster: false,
+		output:        "yaml",
 	}
 }
 
@@ -112,16 +118,24 @@ func newCmdProfile() *cobra.Command {
 				}
 			}
 
+			var profile *sp.ServiceProfile
 			if options.template {
+				if options.output != "yaml" {
+					return errors.New("the --template flag is only compatible with yaml output")
+				}
 				return profiles.RenderProfileTemplate(options.namespace, options.name, clusterDomain, os.Stdout)
 			} else if options.openAPI != "" {
-				return profiles.RenderOpenAPI(options.openAPI, options.namespace, options.name, clusterDomain, os.Stdout)
+				profile, err = profiles.RenderOpenAPI(options.openAPI, options.namespace, options.name, clusterDomain)
 			} else if options.proto != "" {
-				return profiles.RenderProto(options.proto, options.namespace, options.name, clusterDomain, os.Stdout)
+				profile, err = profiles.RenderProto(options.proto, options.namespace, options.name, clusterDomain)
+			} else {
+				return errors.New("one of --template, --open-api, or --proto must be specified")
+			}
+			if err != nil {
+				return err
 			}
 
-			// we should never get here
-			return errors.New("Unexpected error")
+			return writeProfile(profile, os.Stdout, options.output)
 		},
 	}
 
@@ -130,6 +144,23 @@ func newCmdProfile() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the service")
 	cmd.PersistentFlags().StringVar(&options.proto, "proto", options.proto, "Output a service profile based on the given Protobuf spec file")
 	cmd.PersistentFlags().BoolVar(&options.ignoreCluster, "ignore-cluster", options.ignoreCluster, "Output a service profile through offline generation")
-
+	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: yaml, json")
 	return cmd
+}
+
+func writeProfile(profile *sp.ServiceProfile, w io.Writer, format string) error {
+	var output []byte
+	var err error
+	if format == "yaml" {
+		output, err = yaml.Marshal(profile)
+	} else if format == "json" {
+		output, err = json.Marshal(profile)
+	} else {
+		return fmt.Errorf("unknown output format: %s", format)
+	}
+	if err != nil {
+		return fmt.Errorf("Error writing Service Profile: %w", err)
+	}
+	_, err = w.Write(output)
+	return err
 }

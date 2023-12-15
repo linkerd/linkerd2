@@ -233,15 +233,6 @@ func readFile(fileName string) (io.Reader, error) {
 	return os.Open(filepath.Clean(fileName))
 }
 
-func writeProfile(profile sp.ServiceProfile, w io.Writer) error {
-	output, err := yaml.Marshal(profile)
-	if err != nil {
-		return fmt.Errorf("Error writing Service Profile: %w", err)
-	}
-	_, err = w.Write(output)
-	return err
-}
-
 // PathToRegex converts a path into a regex.
 func PathToRegex(path string) string {
 	escaped := regexp.QuoteMeta(path)
