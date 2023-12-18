@@ -1,3 +1,4 @@
+{{- if not .Values.skipNamespaceMetadataJobs}}
 kind: ServiceAccount
 apiVersion: v1
 metadata:
@@ -12,7 +13,9 @@ metadata:
   name: namespace-metadata
   namespace: {{.Release.Namespace}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
+{{-end}}
 ---
+{{- if not .Values.skipNamespaceMetadataJobs}}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -31,7 +34,9 @@ rules:
   resources: ["namespaces"]
   verbs: ["get", "patch"]
   resourceNames: ["{{.Release.Namespace}}"]
+{{-end}}
 ---
+{{- if not .Values.skipNamespaceMetadataJobs}}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -53,7 +58,9 @@ subjects:
 - kind: ServiceAccount
   name: namespace-metadata
   namespace: {{.Release.Namespace}}
+{{-end}}
 ---
+{{- if not .Values.skipNamespaceMetadataJobs}}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -75,3 +82,4 @@ subjects:
 - kind: ServiceAccount
   name: namespace-metadata
   namespace: {{.Release.Namespace}}
+{{-end}}

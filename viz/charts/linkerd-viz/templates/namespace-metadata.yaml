@@ -1,3 +1,4 @@
+{{- if not .Values.skipNamespaceMetadataJobs}}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -13,7 +14,7 @@ metadata:
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.cliVersion}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: namespace-metadata
-  namespace: {{.Release.Namespace}}
+  namespace: {{.Release.Namespace}}{{- if not .Values.skipNamespaceMetadataJobs}}
 spec:
   template:
     metadata:
@@ -65,3 +66,4 @@ spec:
         - --prometheus-url
         - {{.}}
         {{- end }}
+{{-end}}

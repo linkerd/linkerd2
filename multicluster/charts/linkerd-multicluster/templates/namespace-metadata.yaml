@@ -1,3 +1,4 @@
+{{- if not .Values.skipNamespaceMetadataJobs}}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -59,3 +60,4 @@ spec:
         - {{.Release.Namespace}}
         - --linkerd-namespace
         - {{.Values.linkerdNamespace}}
+{{-end}}
