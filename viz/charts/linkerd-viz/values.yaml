@@ -58,6 +58,9 @@ enablePodDisruptionBudget: false
 # for more information
 # nodeAffinity:
 
+# -- adding an option to disble namespace-metadata jobs
+skipNamespaceMetadataJobs: false
+
 # -- Create Roles and RoleBindings to associate this extension's
 # ServiceAccounts to the control plane PSP resource. This requires that
 # `enabledPSP` is set to true on the control plane install. Note PSP has been
