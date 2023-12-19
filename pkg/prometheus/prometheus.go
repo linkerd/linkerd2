@@ -105,7 +105,7 @@ var (
 func init() {
 	prometheus.MustRegister(
 		serverCounter, serverLatency, serverResponseSize, clientCounter,
-		clientLatency, clientInFlight, clientQPS, clientBurst,
+		clientLatency, clientInFlight, clientQPS, clientBurst, clientErrorCounter,
 	)
 }
 
