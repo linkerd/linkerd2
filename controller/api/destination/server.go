@@ -281,17 +281,15 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		err = s.getProfileByIP(token, ip, port, log, stream)
 		if err != nil {
 			log.Errorf("Failed to subscribe to profile by ip %q: %q", dest.GetPath(), err)
-			return err
 		}
-		return nil
+		return err
 	}
 
 	err = s.getProfileByName(token, host, port, log, stream)
 	if err != nil {
 		log.Errorf("Failed to subscribe to profile by name %q: %q", dest.GetPath(), err)
-		return err
 	}
-	return nil
+	return err
 }
 
 func (s *server) getProfileByIP(
