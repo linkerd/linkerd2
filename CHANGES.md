@@ -1,5 +1,18 @@
 # Changes
 
+## edge-23.12.3
+
+This edge release contains improvements to the logging and diagnostics of the
+destination controller.
+
+* Added a control plane metric to count errors talking to the Kubernetes API
+  ([#11774])
+* Fixed an issue causing spurious destination controller error messages for
+  profile lookups on unmeshed pods with port in default opaque list ([#11550])
+
+[#11774]: https://github.com/linkerd/linkerd2/pull/11774
+[#11550]: https://github.com/linkerd/linkerd2/pull/11550
+
 ## edge-23.12.2
 
 This edge release includes a restructuring of the proxy's balancer along with
