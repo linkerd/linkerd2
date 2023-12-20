@@ -1,5 +1,18 @@
 # Changes
 
+## stable-2.14.7
+
+This stable release fixes two bugs in the Linkerd control plane.
+
+* Fixed an issue in the destination controller where the metadata API was not
+  properly initialized for jobs, leading to error messages and unnecessary API
+  calls ([#11541])
+* Fixed an issue in the policy controller where it was overriding statuses on
+  HTTPRoute resources from other controllers ([#11705])
+
+[#11541]: https://github.com/linkerd/linkerd2/pull/11541
+[#11705]: https://github.com/linkerd/linkerd2/pull/11705
+
 ## stable-2.14.6
 
 This stable release back-ports bugfixes and improvements from recent edge
