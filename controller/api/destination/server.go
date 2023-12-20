@@ -278,10 +278,18 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	}
 
 	if ip := net.ParseIP(host); ip != nil {
-		return s.getProfileByIP(token, ip, port, log, stream)
+		err = s.getProfileByIP(token, ip, port, log, stream)
+		if err != nil {
+			log.Errorf("Failed to subscribe to profile by ip %q: %q", dest.GetPath(), err)
+		}
+		return err
 	}
 
-	return s.getProfileByName(token, host, port, log, stream)
+	err = s.getProfileByName(token, host, port, log, stream)
+	if err != nil {
+		log.Errorf("Failed to subscribe to profile by name %q: %q", dest.GetPath(), err)
+	}
+	return err
 }
 
 func (s *server) getProfileByIP(
@@ -657,10 +665,10 @@ func hasSuffix(slice []string, suffix []string) bool {
 	return true
 }
 
-func getPodSkippedInboundPortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, error) {
+func getPodSkippedInboundPortsAnnotations(pod *corev1.Pod) map[uint32]struct{} {
 	annotation, ok := pod.Annotations[labels.ProxyIgnoreInboundPortsAnnotation]
 	if !ok || annotation == "" {
-		return nil, nil
+		return nil
 	}
 
 	return util.ParsePorts(annotation)

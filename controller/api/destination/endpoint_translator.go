@@ -377,7 +377,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 		)
 		if address.Pod != nil {
 			opaquePorts = watcher.GetAnnotatedOpaquePorts(address.Pod, et.defaultOpaquePorts)
-			wa, err = createWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+			wa, err = createWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS)
 			if err != nil {
 				et.log.Errorf("Failed to translate endpoints to weighted addr: %s", err)
 				continue
@@ -486,7 +486,6 @@ func createWeightedAddr(
 	enableH2Upgrade bool,
 	identityTrustDomain string,
 	controllerNS string,
-	log *logging.Entry,
 ) (*pb.WeightedAddr, error) {
 	tcpAddr, err := toAddr(address)
 	if err != nil {
@@ -505,10 +504,7 @@ func createWeightedAddr(
 		return &weightedAddr, nil
 	}
 
-	skippedInboundPorts, err := getPodSkippedInboundPortsAnnotations(address.Pod)
-	if err != nil {
-		log.Errorf("failed to get ignored inbound ports annotation for pod: %s", err)
-	}
+	skippedInboundPorts := getPodSkippedInboundPortsAnnotations(address.Pod)
 
 	controllerNSLabel := address.Pod.Labels[pkgK8s.ControllerNSLabel]
 	sa, ns := pkgK8s.GetServiceAccountAndNS(address.Pod)
@@ -523,29 +519,29 @@ func createWeightedAddr(
 
 	_, isSkippedInboundPort := skippedInboundPorts[address.Port]
 
-	// If the pod is controlled by any Linkerd control plane, then it can be
-	// hinted that this destination knows H2 (and handles our orig-proto
-	// translation)
-	weightedAddr.ProtocolHint = &pb.ProtocolHint{}
 	if controllerNSLabel != "" && !isSkippedInboundPort {
-		// If address is set as opaque by a Server, or its port is set as
-		// opaque by annotation or default value, then hint its proxy's
-		// inbound port, and set the hinted protocol to Opaque, so that the
-		// client proxy does not send a SessionProtocol.
+		weightedAddr.ProtocolHint = &pb.ProtocolHint{}
+
 		_, opaquePort := opaquePorts[address.Port]
+		// If address is set as opaque by a Server, or its port is set as
+		// opaque by annotation or default value, then set the hinted protocol to
+		// Opaque.
 		if address.OpaqueProtocol || opaquePort {
+			weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_Opaque_{
+				Opaque: &pb.ProtocolHint_Opaque{},
+			}
+
 			port, err := getInboundPort(&address.Pod.Spec)
 			if err != nil {
-				log.Error(err)
-			} else {
-				weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
-					InboundPort: port,
-				}
-				weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_Opaque_{
-					Opaque: &pb.ProtocolHint_Opaque{},
-				}
+				return nil, fmt.Errorf("failed to read inbound port: %w", err)
+			}
+			weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
+				InboundPort: port,
 			}
 		} else if enableH2Upgrade {
+			// If the pod is controlled by any Linkerd control plane, then it can be
+			// hinted that this destination knows H2 (and handles our orig-proto
+			// translation)
 			weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_H2_{
 				H2: &pb.ProtocolHint_H2{},
 			}
