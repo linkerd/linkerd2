@@ -30,7 +30,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 59b9d7a68d62aabbd291fabf1aa9596df514c7d37853ba34cfd38a0ccb9365d5
+        checksum/config: 86385686bca3c64713b2759edabf06ea7e7fdfa14ab0bfa02e9a734dcab4626f
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
@@ -41,6 +41,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
@@ -251,6 +252,12 @@ metadata:
     linkerd.io/extension: jaeger
 webhooks:
 - name: jaeger-injector.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
   clientConfig:
     service:
       name: jaeger-injector
@@ -447,6 +454,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - command:
         - /otelcol-contrib
@@ -561,6 +569,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - --query.base-path=/jaeger

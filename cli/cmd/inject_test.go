@@ -344,6 +344,17 @@ func TestUninjectAndInject(t *testing.T) {
 				return values
 			}(),
 		},
+		{
+			inputFileName:  "inject_emojivoto_deployment.input.yml",
+			goldenFileName: "inject_emojivoto_deployment_native_sidecar.golden.yml",
+			reportFileName: "inject_emojivoto_deployment.report",
+			injectProxy:    true,
+			testInjectConfig: func() *linkerd2.Values {
+				values := defaultConfig()
+				values.Proxy.NativeSidecar = true
+				return values
+			}(),
+		},
 	}
 
 	for i, tc := range testCases {
@@ -678,6 +689,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	values.Proxy.Await = false
 	values.Proxy.AccessLog = "apache"
 	values.Proxy.ShutdownGracePeriod = "60s"
+	values.Proxy.NativeSidecar = true
 
 	expectedOverrides := map[string]string{
 		k8s.ProxyIgnoreInboundPortsAnnotation:  "8500-8505",
@@ -699,6 +711,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 		k8s.ProxyAwait:                            "disabled",
 		k8s.ProxyAccessLogAnnotation:              "apache",
 		k8s.ProxyShutdownGracePeriodAnnotation:    "60s",
+		k8s.ProxyEnableNativeSidecarAnnotation:    "true",
 	}
 
 	overrides := getOverrideAnnotations(values, baseValues)

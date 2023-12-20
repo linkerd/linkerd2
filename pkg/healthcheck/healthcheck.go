@@ -138,6 +138,10 @@ const (
 	// corresponding pods
 	LinkerdOpaquePortsDefinitionChecks CategoryID = "linkerd-opaque-ports-definition"
 
+	// LinkerdExtensionChecks adds checks to validate configuration for all
+	// extensions discovered in the cluster at runtime
+	LinkerdExtensionChecks CategoryID = "linkerd-extension-checks"
+
 	// LinkerdCNIResourceLabel is the label key that is used to identify
 	// whether a Kubernetes resource is related to the install-cni command
 	// The value is expected to be "true", "false" or "", where "false" and
@@ -1414,6 +1418,20 @@ func (hc *HealthChecker) allCategories() []*Category {
 			},
 			false,
 		),
+		NewCategory(
+			LinkerdExtensionChecks,
+			[]Checker{
+				{
+					description: "namespace configuration for extensions",
+					warning:     true,
+					hintAnchor:  "l5d-extension-namespaces",
+					check: func(ctx context.Context) error {
+						return hc.checkExtensionNsLabels(ctx)
+					},
+				},
+			},
+			false,
+		),
 	}
 }
 
@@ -2673,7 +2691,7 @@ func (hc *HealthChecker) checkExtensionAPIServerAuthentication(ctx context.Conte
 func (hc *HealthChecker) checkClockSkew(ctx context.Context) error {
 	if hc.kubeAPI == nil {
 		// we should never get here
-		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
+		return errors.New("unexpected error: Kubernetes ClientSet not initialized")
 	}
 
 	var clockSkewNodes []string
@@ -2697,6 +2715,43 @@ func (hc *HealthChecker) checkClockSkew(ctx context.Context) error {
 
 	if len(clockSkewNodes) > 0 {
 		return fmt.Errorf("clock skew detected for node(s): %s", strings.Join(clockSkewNodes, ", "))
+	}
+
+	return nil
+}
+
+func (hc *HealthChecker) checkExtensionNsLabels(ctx context.Context) error {
+	if hc.kubeAPI == nil {
+		// oops something wrong happened
+		return errors.New("unexpected error: Kubernetes ClientSet not initialized")
+	}
+
+	namespaces, err := hc.kubeAPI.GetAllNamespacesWithExtensionLabel(ctx)
+	if err != nil {
+		return fmt.Errorf("unexpected error when retrieving namespaces: %w", err)
+	}
+
+	freq := make(map[string][]string)
+	for _, ns := range namespaces {
+		// We can guarantee the namespace has the extension label since we used
+		// a label selector when retrieving namespaces
+		ext := ns.Labels[k8s.LinkerdExtensionLabel]
+		// To make it easier to print, store already error-formatted namespace
+		// in freq table
+		freq[ext] = append(freq[ext], fmt.Sprintf("\t\t* %s", ns.Name))
+	}
+
+	errs := []string{}
+	for ext, namespaces := range freq {
+		if len(namespaces) == 1 {
+			continue
+		}
+		errs = append(errs, fmt.Sprintf("\t* label \"%s=%s\" is present on more than one namespace:\n%s", k8s.LinkerdExtensionLabel, ext, strings.Join(namespaces, "\n")))
+	}
+
+	if len(errs) > 0 {
+		return errors.New(strings.Join(
+			append([]string{"some extensions have invalid configuration"}, errs...), "\n"))
 	}
 
 	return nil

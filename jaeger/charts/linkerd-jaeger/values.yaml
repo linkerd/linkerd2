@@ -22,6 +22,16 @@ imagePullSecrets: []
 # for more information
 tolerations: &default_tolerations
 
+# -- Enables Pod Anti Affinity logic to balance the placement of replicas
+# across hosts and zones for High Availability.
+# Enable this only when you have multiple replicas of components.
+enablePodAntiAffinity: false
+
+# -- NodeAffinity section, See the
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
+# for more information
+#nodeAffinity:
+
 # -- Create Roles and RoleBindings to associate this extension's
 # ServiceAccounts to the control plane PSP resource. This requires that
 # `enabledPSP` is set to true on the control plane install. Note PSP has been
@@ -36,6 +46,8 @@ clusterDomain: cluster.local
 collector:
   # -- Set to false to exclude collector installation
   enabled: true
+  # -- Number of replicas of the collector component
+  replicas: 1
   image:
     name: otel/opentelemetry-collector-contrib
     version: 0.83.0
@@ -222,6 +234,8 @@ namespaceMetadata:
   tolerations: *default_tolerations
 
 webhook:
+  # -- Number of replicas of the jaeger-injector component
+  replicas: 1
   # -- Do not create a secret resource for the webhook.
   # If this is set to `true`, the value `webhook.caBundle` must be set
   # or the ca bundle must injected with cert-manager ca injector using
@@ -270,11 +284,13 @@ webhook:
     pullPolicy: ""
   logLevel: info
 
+  # -- Namespace selector used by admission webhook.
   namespaceSelector:
-    #matchExpressions:
-    #- key: runlevel
-    #  operator: NotIn
-    #  values: ["0","1"]
+    matchExpressions:
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
   objectSelector:
     #matchLabels:
     #  foo: bar

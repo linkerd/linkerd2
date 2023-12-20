@@ -3,7 +3,7 @@
 The Linkerd-Jaeger extension adds distributed tracing to Linkerd using
 OpenCensus and Jaeger.
 
-![Version: 30.13.6-edge](https://img.shields.io/badge/Version-30.13.6--edge-informational?style=flat-square)
+![Version: 30.14.1-edge](https://img.shields.io/badge/Version-30.14.1--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -11,7 +11,7 @@ OpenCensus and Jaeger.
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.21+ cluster in a matter of seconds. See
+You can run Linkerd on any Kubernetes cluster in a matter of seconds. See
 the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
@@ -62,7 +62,7 @@ helm install linkerd-jaeger -n linkerd-jaeger --create-namespace linkerd/linkerd
 
 ## Requirements
 
-Kubernetes: `>=1.21.0-0`
+Kubernetes: `>=1.22.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
@@ -82,6 +82,7 @@ Kubernetes: `>=1.21.0-0`
 | collector.image.pullPolicy | string | `""` |  |
 | collector.image.version | string | `"0.83.0"` |  |
 | collector.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
+| collector.replicas | int | `1` | Number of replicas of the collector component |
 | collector.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the collector container can use |
 | collector.resources.cpu.request | string | `nil` | Amount of CPU units that the collector container requests |
 | collector.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the collector container can use |
@@ -92,6 +93,7 @@ Kubernetes: `>=1.21.0-0`
 | commonLabels | object | `{}` | Labels to apply to all resources |
 | defaultUID | int | `2103` | Default UID for all the jaeger components |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
+| enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | jaeger.UID | string | `nil` | UID for the jaeger resource |
 | jaeger.args | list | `["--query.base-path=/jaeger"]` | CLI arguments for Jaeger, See [Jaeger AIO Memory CLI reference](https://www.jaegertracing.io/docs/1.24/cli/#jaeger-all-in-one-memory) |
@@ -132,9 +134,10 @@ Kubernetes: `>=1.21.0-0`
 | webhook.injectCaFromSecret | string | `""` | Inject the CA bundle from a Secret. If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook. The Secret must have the CA Bundle stored in the `ca.crt` key and have the `cert-manager.io/allow-direct-injection` annotation set to `true`. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource) for more information. |
 | webhook.keyPEM | string | `""` | Certificate key for the webhook. If not provided and not using an external secret then Helm will generate one. |
 | webhook.logLevel | string | `"info"` |  |
-| webhook.namespaceSelector | string | `nil` |  |
+| webhook.namespaceSelector | object | `{"matchExpressions":[{"key":"kubernetes.io/metadata.name","operator":"NotIn","values":["kube-system"]}]}` | Namespace selector used by admission webhook. |
 | webhook.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | webhook.objectSelector | string | `nil` |  |
+| webhook.replicas | int | `1` | Number of replicas of the jaeger-injector component |
 | webhook.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the jaeger-injector container can use |
 | webhook.resources.cpu.request | string | `nil` | Amount of CPU units that the jaeger-injector container requests |
 | webhook.resources.memory.limit | string | `nil` | Maximum amount of memory that jaeger-injector container can use |

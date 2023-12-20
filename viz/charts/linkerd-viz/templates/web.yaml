@@ -29,6 +29,7 @@ spec:
     port: 9994
     targetPort: 9994
 ---
+{{- $tree := deepCopy . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -74,6 +75,9 @@ spec:
       {{- include "linkerd.tolerations" . | nindent 6 }}
       {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
+      {{- $_ := set $tree "component" "web" -}}
+      {{- $_ := set $tree "label" "component" -}}
+      {{- include "linkerd.affinity" $tree | nindent 6 }}
       containers:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}:8085
@@ -139,3 +143,24 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: web
+{{- if and .Values.enablePodDisruptionBudget (gt (int .Values.dashboard.replicas) 1) }}
+---
+kind: PodDisruptionBudget
+apiVersion: policy/v1
+metadata:
+  name: web
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/extension: viz
+    component: web
+    namespace: {{.Release.Namespace}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      linkerd.io/extension: viz
+      component: web
+{{- end }}

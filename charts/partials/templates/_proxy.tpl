@@ -1,4 +1,7 @@
 {{ define "partials.proxy" -}}
+{{ if and .Values.proxy.nativeSidecar .Values.proxy.waitBeforeExitSeconds }}
+{{ fail "proxy.nativeSidecar and waitBeforeExitSeconds cannot be used simultaneously" }}
+{{- end }}
 {{- $trustDomain := (.Values.identityTrustDomain | default .Values.clusterDomain) -}}
 env:
 - name: _pod_name
@@ -168,6 +171,15 @@ readinessProbe:
     path: /ready
     port: {{.Values.proxy.ports.admin}}
   initialDelaySeconds: 2
+{{- if and .Values.proxy.nativeSidecar .Values.proxy.await }}
+startupProbe:
+  httpGet:
+    path: /ready
+    port: {{.Values.proxy.ports.admin}}
+  initialDelaySeconds: {{.Values.proxy.startupProbe.initialDelaySeconds}}
+  periodSeconds: {{.Values.proxy.startupProbe.periodSeconds}}
+  failureThreshold: {{.Values.proxy.startupProbe.failureThreshold}}
+{{- end }}
 {{- if .Values.proxy.resources }}
 {{ include "partials.resources" .Values.proxy.resources }}
 {{- end }}
@@ -182,7 +194,7 @@ securityContext:
   seccompProfile:
     type: RuntimeDefault
 terminationMessagePolicy: FallbackToLogsOnError
-{{- if or (.Values.proxy.await) (.Values.proxy.waitBeforeExitSeconds) }}
+{{- if and (not .Values.proxy.nativeSidecar) (or .Values.proxy.await .Values.proxy.waitBeforeExitSeconds) }}
 lifecycle:
 {{- if .Values.proxy.await }}
   postStart:
@@ -211,5 +223,8 @@ volumeMounts:
 - mountPath: {{.Values.proxy.saMountPath.mountPath}}
   name: {{.Values.proxy.saMountPath.name}}
   readOnly: {{.Values.proxy.saMountPath.readOnly}}
+{{- end -}}
+{{- if .Values.proxy.nativeSidecar }}
+restartPolicy: Always
 {{- end -}}
 {{- end }}

@@ -491,6 +491,10 @@ func getOverrideAnnotations(values *linkerd2.Values, base *linkerd2.Values) map[
 		overrideAnnotations[k8s.ProxyShutdownGracePeriodAnnotation] = proxy.ShutdownGracePeriod
 	}
 
+	if proxy.NativeSidecar != baseProxy.NativeSidecar {
+		overrideAnnotations[k8s.ProxyEnableNativeSidecarAnnotation] = strconv.FormatBool(proxy.NativeSidecar)
+	}
+
 	return overrideAnnotations
 }
 

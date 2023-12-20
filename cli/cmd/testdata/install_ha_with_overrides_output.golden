@@ -543,6 +543,9 @@ data:
             AiAtuoI5XuCtrGVRzSmRTl2ra28aV9MyTU7d5qnTAFHKSgIgRKCvluOSgA5O21p5
             51tdrmkHEZRr0qlLSJdHYgEfMzk=
             -----END CERTIFICATE-----
+      kubeAPI:
+        clientBurst: 200
+        clientQPS: 100
       serviceAccountTokenProjection: true
     identityProxyResources: null
     identityResources:
@@ -661,6 +664,7 @@ data:
       isIngress: false
       logFormat: plain
       logLevel: warn,linkerd=info,trust_dns=error
+      nativeSidecar: false
       opaquePorts: 25,587,3306,4444,5432,6379,9300,11211
       outboundConnectTimeout: 1000ms
       outboundDiscoveryCacheUnusedTimeout: 5s
@@ -683,6 +687,10 @@ data:
           request: 300Mi
       saMountPath: null
       shutdownGracePeriod: ""
+      startupProbe:
+        failureThreshold: 120
+        initialDelaySeconds: 0
+        periodSeconds: 1
       uid: 2102
       waitBeforeExitSeconds: 0
     proxyContainerName: linkerd-proxy
@@ -930,6 +938,8 @@ spec:
         - -identity-clock-skew-allowance=20s
         - -identity-scheme=linkerd.io/tls
         - -enable-pprof=false
+        - -kube-apiclient-qps=100
+        - -kube-apiclient-burst=200
         env:
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"

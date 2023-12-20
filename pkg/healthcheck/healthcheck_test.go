@@ -473,6 +473,80 @@ status:
 
 }
 
+func TestNamespaceExtCfg(t *testing.T) {
+	namespaces := map[string]string{
+		"vizOne": `
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: viz-1
+  labels:
+    linkerd.io/extension: viz
+`,
+		"mcOne": `
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mc-1
+  labels:
+    linkerd.io/extension: multicluster
+`,
+		"mcTwo": `
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mc-2
+  labels:
+    linkerd.io/extension: multicluster
+`}
+
+	testCases := []struct {
+		description string
+		k8sConfigs  []string
+		results     []string
+	}{
+		{
+			description: "successfully passes checks",
+			k8sConfigs:  []string{namespaces["vizOne"], namespaces["mcOne"]},
+			results: []string{
+				"linkerd-extension-checks namespace configuration for extensions",
+			},
+		},
+		{
+			description: "fails invalid configuration",
+			k8sConfigs:  []string{namespaces["vizOne"], namespaces["mcOne"], namespaces["mcTwo"]},
+			results: []string{
+				"linkerd-extension-checks namespace configuration for extensions: some extensions have invalid configuration\n\t* label \"linkerd.io/extension=multicluster\" is present on more than one namespace:\n\t\t* mc-1\n\t\t* mc-2",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		// pin tc
+		tc := tc
+		t.Run(tc.description, func(t *testing.T) {
+			hc := NewHealthChecker(
+				[]CategoryID{LinkerdExtensionChecks},
+				&Options{
+					ControlPlaneNamespace: "test-ns",
+				},
+			)
+
+			var err error
+			hc.kubeAPI, err = k8s.NewFakeAPI(tc.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+
+			obs := newObserver()
+			hc.RunChecks(obs.resultFn)
+			if diff := deep.Equal(obs.results, tc.results); diff != nil {
+				t.Fatalf("%+v", diff)
+			}
+		})
+	}
+}
+
 func TestConfigExists(t *testing.T) {
 
 	namespace := []string{`

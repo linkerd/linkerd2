@@ -732,7 +732,7 @@ spec:
         - --config.file=/etc/prometheus/prometheus.yml
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
-        image: prom/prometheus:v2.47.0
+        image: prom/prometheus:v2.48.0
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1020,6 +1020,12 @@ metadata:
     linkerd.io/extension: viz
 webhooks:
 - name: tap-injector.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
   clientConfig:
     service:
       name: tap-injector
@@ -1082,7 +1088,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 390143015ec83a86ded6630634da5834c8ac7700b93d486a7dc101a15cb87f15
+        checksum/config: d1929cba78b3be3d4f4ccdb0177d328b09d87f39ba90f30fbbbd471be561f18f
         linkerd.io/created-by: linkerd/helm dev-undefined
         linkerd.io/inject: enabled
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
@@ -1263,6 +1269,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.linkerd-viz.svc.cluster.local:8085

@@ -1,5 +1,118 @@
 # Changes
 
+## edge-23.12.2
+
+This edge release includes a restructuring of the proxy's balancer along with
+accompanying new metrics. The new minimum supported Kubernetes version is 1.22.
+
+* Restructured the proxy's balancer ([#11750]): balancer changes may now occur
+  independently of request processing. Fail-fast circuit breaking is enforced on
+  the balancer's queue so that requests can't get stuck in a queue indefinitely.
+  This new balancer is instrumented with new metrics: request (in-queue) latency
+  histograms, failfast states, discovery updates counts, and balancer endpoint
+  pool sizes.
+* Changed how the policy controller updates HTTPRoute status so that it doesn't
+  affect statuses from other non-linkerd controllers ([#11705]; fixes [#11659])
+
+[#11750]: https://github.com/linkerd/linkerd2/pull/11750
+[#11705]: https://github.com/linkerd/linkerd2/pull/11705
+[#11659]: https://github.com/linkerd/linkerd2/pull/11659
+
+## edge-23.12.1
+
+This edge release introduces new configuration values in the identity
+controller for client-go's `QPS` and `Burst` settings. Default values for these
+settings have also been raised from `5` (QPS) and `10` (Burst) to `100` and
+`200` respectively.
+
+* Added `namespaceSelector` fields for the tap-injector and jaeger-injector
+  webhooks. The webhooks are now configured to skip `kube-system` by default
+  ([#11649]; fixes [#11647]) (thanks @mikutas!)
+* Added the ability to configure client-go's `QPS` and `Burst` settings in the
+  identity controller ([#11644])
+* Improved client-go logging visibility throughout the control plane's
+  components ([#11632])
+* Introduced `PodDisruptionBudgets` in the linkerd-viz Helm chart for tap and
+  tap-injector ([#11628]; fixes [#11248]) (thanks @mcharriere!)
+
+[#11649]: https://github.com/linkerd/linkerd2/pull/11649
+[#11647]: https://github.com/linkerd/linkerd2/issues/11647
+[#11644]: https://github.com/linkerd/linkerd2/pull/11644
+[#11632]: https://github.com/linkerd/linkerd2/pull/11632
+[#11628]: https://github.com/linkerd/linkerd2/pull/11628
+[#11248]: https://github.com/linkerd/linkerd2/issues/11248
+
+## edge-23.11.4
+
+This edge release introduces support for the native sidecar containers entering
+beta support in Kubernetes 1.29. This improves the startup and shutdown ordering
+for the proxy relative to other containers, fixing the long-standing
+shutdown issue with injected `Job`s. Furthermore, traffic from other
+`initContainer`s can now be proxied by Linkerd.
+
+In addition, this edge release includes Helm chart improvements, and improvements
+to the multicluster extension.
+
+* Added a new `config.alpha.linkerd.io/proxy-enable-native-sidecar` annotation
+  and `Proxy.NativeSidecar` Helm option that causes the proxy container to run
+  as an init-container (thanks @teejaded!) ([#11465]; fixes [#11461])
+* Fixed broken affinity rules for the multicluster `service-mirror` when running
+  in HA mode ([#11609]; fixes [#11603])
+* Added a new check to `linkerd check` that ensures all extension namespaces are
+  configured properly ([#11629]; fixes [#11509])
+* Updated the Prometheus Docker image used by the `linkerd-viz` extension to
+  v2.48.0, resolving a number of CVEs in older Prometheus versions ([#11633])
+* Added `nodeAffinity` to `deployment` templates in the `linkerd-viz` and
+  `linkerd-jaeger` Helm charts (thanks @naing2victor!) ([#11464]; fixes
+  [#10680])
+
+[#11465]: https://github.com/linkerd/linkerd2/pull/11465
+[#11461]: https://github.com/linkerd/linkerd2/issues/11461
+[#11609]: https://github.com/linkerd/linkerd2/pull/11609
+[#11603]: https://github.com/linkerd/linkerd2/issues/11603
+[#11629]: https://github.com/linkerd/linkerd2/pull/11629
+[#11509]: https://github.com/linkerd/linkerd2/issues/11509
+[#11633]: https://github.com/linkerd/linkerd2/pull/11633
+[#11464]: https://github.com/linkerd/linkerd2/pull/11464
+[#10680]: https://github.com/linkerd/linkerd2/issues/10680
+
+## edge-23.11.3
+
+This edge release fixes a bug where Linkerd could cause EOF errors during bursts
+of TCP connections.
+
+* Fixed a bug where the `linkerd multicluster link` command's
+  `--gateway-addresses` flag was not respected when a remote gateway exists
+  ([#11564])
+* proxy: Increased DEFAULT_OUTBOUND_TCP_QUEUE_CAPACITY to prevent EOF errors
+  during bursts of TCP connections
+
+[#11564]: https://github.com/linkerd/linkerd2/pull/11564
+
+## edge-23.11.2
+
+This edge release contains observability improvements and bug fixes to the
+Destination controller, and a refinement to the multicluster gateway resolution
+logic.
+
+* Fixed an issue where the Destination controller could stop processing service
+  profile updates, if a proxy subscribed to those updates stops reading them;
+  this is a followup to the issue [#11491] fixed in [edge-23.10.3] ([#11546])
+* In the Destination controller, added informer lag histogram metrics to track
+  whenever the Kubernetes objects watched by the controller are falling behind
+  the state in the kube-apiserver ([#11534])
+* In the multicluster service mirror, extended the target gateway resolution
+  logic to take into account all the possible IPs a hostname might resolve to,
+  rather than just the first one (thanks @MrFreezeex!) ([#11499])
+* Added probes to the debug container to appease environments requiring probes
+  for all containers ([#11308])
+
+[edge-23.10.3]: https://github.com/linkerd/linkerd2/releases/tag/edge-23.10.3
+[#11546]: https://github.com/linkerd/linkerd2/pull/11546
+[#11534]: https://github.com/linkerd/linkerd2/pull/11534
+[#11499]: https://github.com/linkerd/linkerd2/pull/11499
+[#11308]: https://github.com/linkerd/linkerd2/pull/11308
+
 ## edge-23.11.1
 
 This edge release fixes two bugs in the Destination controller that could cause

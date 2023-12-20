@@ -134,6 +134,11 @@ func TestNewValues(t *testing.T) {
 			InboundDiscoveryCacheUnusedTimeout:   "90s",
 			DisableOutboundProtocolDetectTimeout: false,
 			DisableInboundProtocolDetectTimeout:  false,
+			StartupProbe: &StartupProbe{
+				FailureThreshold:    120,
+				InitialDelaySeconds: 0,
+				PeriodSeconds:       1,
+			},
 		},
 		ProxyInit: &ProxyInit{
 			IptablesMode:        "legacy",
@@ -178,6 +183,10 @@ func TestNewValues(t *testing.T) {
 				IssuanceLifetime:   "24h0m0s",
 				TLS:                &IssuerTLS{},
 				Scheme:             "linkerd.io/tls",
+			},
+			KubeAPI: &KubeAPI{
+				ClientQPS:   100,
+				ClientBurst: 200,
 			},
 		},
 		NodeSelector: map[string]string{

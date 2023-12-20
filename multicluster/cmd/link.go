@@ -232,7 +232,6 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 					return err
 				}
 
-				gatewayAddresses := ""
 				gwAddresses := []string{}
 				for _, ingress := range gateway.Status.LoadBalancer.Ingress {
 					addr := ingress.IP
@@ -244,15 +243,14 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 					}
 					gwAddresses = append(gwAddresses, addr)
 				}
-				if len(gwAddresses) == 0 && opts.gatewayAddresses == "" {
+
+				if opts.gatewayAddresses != "" {
+					link.GatewayAddress = opts.gatewayAddresses
+				} else if len(gwAddresses) > 0 {
+					link.GatewayAddress = strings.Join(gwAddresses, ",")
+				} else {
 					return fmt.Errorf("Gateway %s.%s has no ingress addresses", gateway.Name, gateway.Namespace)
 				}
-				if len(gwAddresses) > 0 {
-					gatewayAddresses = strings.Join(gwAddresses, ",")
-				} else {
-					gatewayAddresses = opts.gatewayAddresses
-				}
-				link.GatewayAddress = gatewayAddresses
 
 				gatewayIdentity, ok := gateway.Annotations[k8s.GatewayIdentity]
 				if !ok || gatewayIdentity == "" {

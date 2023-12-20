@@ -1,4 +1,14 @@
 {{ $prefix := .Values.pathPrefix -}}
+{{/*
+$initIndex represents the patch insertion index of the next initContainer when
+proxy.nativeSidecar is true. If enabled, the proxy-init or network-validator
+should run first, immediately followed by the proxy. This ordering allows us
+to proxy traffic in subsequent initContainers.
+
+Note: dig is not used directly on .Values because it rejects chartutil.Values
+structs.
+*/}}
+{{- $initIndex := ternary "0" "-" (.Values.proxy | default (dict) | dig "nativeSidecar" false) -}}
 [
   {{- if .Values.addRootMetadata }}
   {
@@ -62,14 +72,14 @@
   },
   {
     "op": "add",
-    "path": "{{$prefix}}/spec/initContainers/-",
+    "path": "{{$prefix}}/spec/initContainers/{{$initIndex}}{{$initIndex = add1 $initIndex}}",
     "value":
       {{- include "partials.proxy-init" . | fromYaml | toPrettyJson | nindent 6 }}
   },
   {{- else if and .Values.proxy .Values.cniEnabled }}
   {
     "op": "add",
-    "path": "{{$prefix}}/spec/initContainers/-",
+    "path": "{{$prefix}}/spec/initContainers/{{$initIndex}}{{$initIndex = add1 $initIndex}}",
     "value":
       {{- include "partials.network-validator" . | fromYaml | toPrettyJson | nindent 6 }}
   },
@@ -103,7 +113,9 @@
   {{- end }}
   {
     "op": "add",
-  {{- if .Values.proxy.await }}
+  {{- if .Values.proxy.nativeSidecar }}
+    "path": "{{$prefix}}/spec/initContainers/{{$initIndex}}",
+  {{- else if .Values.proxy.await }}
     "path": "{{$prefix}}/spec/containers/0",
   {{- else }}
     "path": "{{$prefix}}/spec/containers/-",

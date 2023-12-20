@@ -50,6 +50,9 @@ tolerations: &default_tolerations
 # Enable this only when you have multiple replicas of components.
 enablePodAntiAffinity: false
 
+# -- enables the creation of pod disruption budgets for tap, tap-injector, web and metrics-api components
+enablePodDisruptionBudget: false
+
 # -- NodeAffinity section, See the
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
 # for more information
@@ -70,7 +73,7 @@ jaegerUrl: ""
 
 # metrics API configuration
 metricsAPI:
-  # -- number of replicas of the metrics-api component
+  # -- Number of replicas of the metrics-api component
   replicas: 1
   # -- log level of the metrics-api component
   # @default -- defaultLogLevel
@@ -131,7 +134,7 @@ metricsAPI:
 
 # tap configuration
 tap:
-    # -- Number of tap component replicas
+  # -- Number of tap component replicas
   replicas: 1
   # -- log level of the tap component
   # @default -- defaultLogLevel
@@ -243,11 +246,13 @@ tapInjector:
     # @default -- defaultImagePullPolicy
     pullPolicy: ""
 
+  # -- Namespace selector used by admission webhook.
   namespaceSelector:
-    # matchExpressions:
-    # - key: runlevel
-    #   operator: NotIn
-    #   values: ["0","1"]
+    matchExpressions:
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
   objectSelector:
     # matchLabels:
     #   foo: bar
@@ -418,7 +423,7 @@ prometheus:
     # -- Docker image name for the prometheus instance
     name: prometheus
     # -- Docker image tag for the prometheus instance
-    tag: v2.47.0
+    tag: v2.48.0
     # -- Pull policy for the prometheus instance
     # @default -- defaultImagePullPolicy
     pullPolicy: ""
@@ -440,7 +445,7 @@ prometheus:
     scrape_interval: 10s
     scrape_timeout: 10s
     evaluation_interval: 10s
-  
+
   # -- annotations for the prometheus pod
   podAnnotations: {}
 

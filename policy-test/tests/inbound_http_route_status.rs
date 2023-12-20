@@ -173,9 +173,6 @@ async fn inbound_accepted_reconcile_no_parent() {
         assert_eq!(cond.status, "False");
         assert_eq!(cond.reason, "NoMatchingParent");
 
-        // Save create_timestamp to assert status has been updated.
-        let create_timestamp = &cond.last_transition_time;
-
         // Create the 'Server' that route references and expect it to be picked up
         // by the index. Consequently, route will have its status reconciled.
         let server = k8s::policy::Server {
@@ -192,9 +189,9 @@ async fn inbound_accepted_reconcile_no_parent() {
         };
         create(&client, server).await;
 
-        // HTTPRoute may not be patched instantly, await the condition where
-        // create_timestamp and observed_timestamp are different.
-        let route_status = await_condition(
+        // HTTPRoute may not be patched instantly, await the route condition
+        // status becoming accepted.
+        let _route_status = await_condition(
             &client,
             &ns,
             "test-reconcile-inbound-route",
@@ -208,20 +205,13 @@ async fn inbound_accepted_reconcile_no_parent() {
                     Some(cond) => cond,
                     None => return false,
                 };
-                &cond.last_transition_time > create_timestamp
+                cond.status == "True" && cond.reason == "Accepted"
             },
         )
         .await
         .expect("must fetch route")
         .status
         .expect("route must contain a status representation");
-
-        // HTTPRoute may not be patched instantly, wrap with a timeout and loop
-        // until create_timestamp and observed_timestamp are different.
-        let cond = find_route_condition(&route_status.inner.parents, server_name)
-            .expect("route must have a route condition");
-        assert_eq!(cond.status, "True");
-        assert_eq!(cond.reason, "Accepted");
     })
     .await;
 }
@@ -266,9 +256,6 @@ async fn inbound_accepted_reconcile_parent_delete() {
         assert_eq!(cond.status, "True");
         assert_eq!(cond.reason, "Accepted");
 
-        // Save create_timestamp to assert status has been updated.
-        let create_timestamp = &cond.last_transition_time;
-
         // Delete Server
         let api: kube::Api<k8s::policy::Server> = kube::Api::namespaced(client.clone(), &ns);
         api.delete(
@@ -278,9 +265,9 @@ async fn inbound_accepted_reconcile_parent_delete() {
         .await
         .expect("API delete request failed");
 
-        // HTTPRoute may not be patched instantly, await the condition where
-        // create_timestamp and observed_timestamp are different.
-        let route_status = await_condition(
+        // HTTPRoute may not be patched instantly, await the route condition
+        // becoming NoMatchingParent.
+        let _route_status = await_condition(
             &client,
             &ns,
             "test-reconcile-delete-route",
@@ -294,18 +281,13 @@ async fn inbound_accepted_reconcile_parent_delete() {
                     Some(cond) => cond,
                     None => return false,
                 };
-                &cond.last_transition_time > create_timestamp
+                cond.status == "False" && cond.reason == "NoMatchingParent"
             },
         )
         .await
         .expect("must fetch route")
         .status
         .expect("route must contain a status representation");
-
-        let cond = find_route_condition(&route_status.inner.parents, server_name)
-            .expect("route must have a route condition");
-        assert_eq!(cond.status, "False");
-        assert_eq!(cond.reason, "NoMatchingParent");
     })
     .await;
 }

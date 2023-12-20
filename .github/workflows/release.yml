@@ -37,7 +37,6 @@ jobs:
       matrix:
         component:
         - cli-bin
-        - cni-plugin
         - controller
         - policy-controller
         - debug
@@ -95,7 +94,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-    - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
+    - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
       with:
         go-version: '1.21'
     - name: Download image archives
@@ -113,8 +112,7 @@ jobs:
       matrix:
         integration_test:
         - cluster-domain
-        # XXX(ver) Broken.
-        #- cni-calico-deep
+        - cni-calico-deep
         - deep
         - viz
         - default-policy-deny
@@ -129,7 +127,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-    - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
+    - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
       with:
         go-version: '1.21'
     - name: Set environment variables from scripts
@@ -153,7 +151,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: '1.21'
       - uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226
@@ -315,7 +313,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
     - name: Log into GCP
-      uses: 'google-github-actions/auth@35b0e87d162680511bf346c299f71c9c5c379033'
+      uses: 'google-github-actions/auth@67e9c72af6e0492df856527b474995862b7b6591'
       with:
         credentials_json: ${{ secrets.LINKERD_SITE_TOKEN }}
     - name: Edge Helm chart creation and upload

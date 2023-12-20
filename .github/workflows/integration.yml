@@ -18,6 +18,7 @@ on:
       - '!.devcontainer/**'
       - rust-toolchain.toml
       - bin/rust-toolchain-version
+      - bin/_docker.sh
 
 permissions:
   contents: read
@@ -90,7 +91,6 @@ jobs:
     strategy:
       matrix:
         component:
-          - cni-plugin
           - controller
           - policy-controller
           - proxy
@@ -120,11 +120,10 @@ jobs:
         test:
           - cni-calico-deep
           - deep
-    continue-on-error: true
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: '1.21'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -149,7 +148,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: tj-actions/changed-files@40526807ee1e208a1a8c1bbe6bd2d1b044ef6368
+      - uses: tj-actions/changed-files@56284d80811fb5963a972b438f2870f175e5b7c8
         id: changed
         with:
           files: |
@@ -172,7 +171,7 @@ jobs:
     strategy:
       matrix:
         k8s:
-          - v1.21
+          - v1.22
           - v1.28
     steps:
       - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
@@ -261,11 +260,10 @@ jobs:
           - uninstall
           - upgrade-edge
           - upgrade-stable
-    continue-on-error: true
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: '1.21'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -289,7 +287,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: tj-actions/changed-files@40526807ee1e208a1a8c1bbe6bd2d1b044ef6368
+      - uses: tj-actions/changed-files@56284d80811fb5963a972b438f2870f175e5b7c8
         id: changed
         with:
           files: |
@@ -304,11 +302,10 @@ jobs:
   test-viz:
     needs: [tag, changed-viz, build-cli, build-core, build-ext]
     if: needs.changed-viz.outputs.modified == 'true'
-    continue-on-error: true
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
-      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: '1.21'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -333,7 +330,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: tj-actions/changed-files@40526807ee1e208a1a8c1bbe6bd2d1b044ef6368
+      - uses: tj-actions/changed-files@56284d80811fb5963a972b438f2870f175e5b7c8
         id: changed
         with:
           files: |
@@ -353,13 +350,13 @@ jobs:
     strategy:
       matrix:
         k8s:
-          - v1.21
+          - v1.22
           - v1.28
     steps:
       - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: '1.21'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -391,4 +388,3 @@ jobs:
           just linkerd-tag='${{ needs.tag.outputs.tag }}' \
               k3d-k8s='${{ matrix.k8s }}' \
               mc-test-run
-

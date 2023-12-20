@@ -8,7 +8,7 @@ var tpl = `[
   },
   {
     "op": "add",
-    "path": "/spec/containers/{{.ProxyIndex}}/env/-",
+    "path": "/spec/{{.ProxyPath}}/env/-",
     "value": {
       "name": "LINKERD2_PROXY_TAP_SVC_NAME",
       "value": "{{.ProxyTapSvcName}}"

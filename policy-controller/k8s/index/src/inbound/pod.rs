@@ -43,7 +43,12 @@ pub(crate) fn tcp_ports_by_name(spec: &k8s::PodSpec) -> HashMap<String, PortSet>
 /// Pod and the paths for which probes are expected.
 pub(crate) fn pod_http_probes(pod: &k8s::PodSpec) -> PortMap<BTreeSet<String>> {
     let mut probes = PortMap::<BTreeSet<String>>::default();
-    for (port, path) in pod.containers.iter().flat_map(container_http_probe_paths) {
+    for (port, path) in pod
+        .containers
+        .iter()
+        .chain(pod.init_containers.iter().flatten())
+        .flat_map(container_http_probe_paths)
+    {
         probes.entry(port).or_default().insert(path);
     }
     probes

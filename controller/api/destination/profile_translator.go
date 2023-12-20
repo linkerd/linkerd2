@@ -11,6 +11,8 @@ import (
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/util"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	logging "github.com/sirupsen/logrus"
 )
 
@@ -18,22 +20,90 @@ const millisPerDecimilli = 10
 
 // implements the ProfileUpdateListener interface
 type profileTranslator struct {
-	stream             pb.Destination_GetProfileServer
-	log                *logging.Entry
 	fullyQualifiedName string
 	port               uint32
+
+	stream          pb.Destination_GetProfileServer
+	endStream       chan struct{}
+	log             *logging.Entry
+	overflowCounter prometheus.Counter
+
+	updates chan *sp.ServiceProfile
+	stop    chan struct{}
 }
 
-func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32) *profileTranslator {
+var profileUpdatesQueueOverflowCounter = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "profile_updates_queue_overflow",
+		Help: "A counter incremented whenever the profile updates queue overflows",
+	},
+	[]string{
+		"fqn",
+		"port",
+	},
+)
+
+func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endStream chan struct{}) *profileTranslator {
 	return &profileTranslator{
-		stream:             stream,
-		log:                log.WithField("component", "profile-translator"),
 		fullyQualifiedName: fqn,
 		port:               port,
+
+		stream:          stream,
+		endStream:       endStream,
+		log:             log.WithField("component", "profile-translator"),
+		overflowCounter: profileUpdatesQueueOverflowCounter.With(prometheus.Labels{"fqn": fqn, "port": fmt.Sprintf("%d", port)}),
+		updates:         make(chan *sp.ServiceProfile, updateQueueCapacity),
+		stop:            make(chan struct{}),
 	}
 }
 
+// Update is called from a client-go informer callback and therefore must not
+// We enqueue an update in a channel so that it can be processed asyncronously.
+// To ensure that enqueuing does not block, we first check to see if there is
+// capacity in the buffered channel. If there is not, we drop the update and
+// signal to the stream that it has fallen too far behind and should be closed.
 func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
+	select {
+	case pt.updates <- profile:
+		// Update has been successfully enqueued.
+	default:
+		// We are unable to enqueue because the channel does not have capacity.
+		// The stream has fallen too far behind and should be closed.
+		pt.overflowCounter.Inc()
+		select {
+		case <-pt.endStream:
+			// The endStream channel has already been closed so no action is
+			// necessary.
+		default:
+			pt.log.Error("profile update queue full; aborting stream")
+			close(pt.endStream)
+		}
+	}
+}
+
+// Start initiates a goroutine which processes update events off of the
+// profileTranslator's internal queue and sends to the grpc stream as
+// appropriate. The goroutine calls non-thread-safe Send, therefore Start must
+// not be called more than once.
+func (pt *profileTranslator) Start() {
+	go func() {
+		for {
+			select {
+			case update := <-pt.updates:
+				pt.update(update)
+			case <-pt.stop:
+				return
+			}
+		}
+	}()
+}
+
+// Stop terminates the goroutine started by Start.
+func (pt *profileTranslator) Stop() {
+	close(pt.stop)
+}
+
+func (pt *profileTranslator) update(profile *sp.ServiceProfile) {
 	if profile == nil {
 		pt.log.Debugf("Sending default profile")
 		if err := pt.stream.Send(pt.defaultServiceProfile()); err != nil {

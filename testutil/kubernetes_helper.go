@@ -369,6 +369,7 @@ func (h *KubernetesHelper) URLFor(ctx context.Context, namespace, deployName str
 // WaitRollout blocks until all the given deployments have been completely
 // rolled out (and their pods are ready)
 func (h *KubernetesHelper) WaitRollout(t *testing.T, deploys map[string]DeploySpec) {
+	t.Helper()
 	// Use default context
 	h.WaitRolloutWithContext(t, deploys, h.k8sContext)
 }
@@ -376,6 +377,7 @@ func (h *KubernetesHelper) WaitRollout(t *testing.T, deploys map[string]DeploySp
 // WaitRolloutWithContext blocks until all the given deployments in a provided
 // k8s context have been completely rolled out (and their pods are ready)
 func (h *KubernetesHelper) WaitRolloutWithContext(t *testing.T, deploys map[string]DeploySpec, context string) {
+	t.Helper()
 	for deploy, deploySpec := range deploys {
 		stat, err := h.KubectlWithContext("", context, "--namespace="+deploySpec.Namespace,
 			"rollout", "status", "--timeout=5m", "deploy/"+deploy)

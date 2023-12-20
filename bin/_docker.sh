@@ -15,8 +15,8 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 # docker registry in, for instance, CI.
 export DOCKER_REGISTRY=${DOCKER_REGISTRY:-cr.l5d.io/linkerd}
 
-# buildx cache directory
-export DOCKER_BUILDKIT_CACHE=${DOCKER_BUILDKIT_CACHE:-}
+# populated in GitHub Actions
+export ACTIONS_CACHE_URL=${ACTIONS_CACHE_URL:-}
 
 export DOCKER_TARGET=${DOCKER_TARGET:-$(os)}
 
@@ -67,8 +67,8 @@ docker_build() {
     rootdir=${ROOTDIR:-$( cd "$bindir"/.. && pwd )}
     cache_params=""
 
-    if [ "$DOCKER_BUILDKIT_CACHE" ]; then
-      cache_params="--cache-from type=local,src=${DOCKER_BUILDKIT_CACHE} --cache-to type=local,dest=${DOCKER_BUILDKIT_CACHE},mode=max"
+    if [ "$ACTIONS_CACHE_URL" ]; then
+      cache_params="--cache-from type=gha,scope=$name-$DOCKER_TARGET --cache-to type=gha,scope=$name-$DOCKER_TARGET,mode=max"
     fi
 
     output_params="--load"

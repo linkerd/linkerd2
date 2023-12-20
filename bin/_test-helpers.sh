@@ -4,6 +4,12 @@
 # proper messages
 set +e
 
+k8s_version_min='+v1.22'
+k8s_version_max='+v1.28'
+
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+testdir="$bindir"/../test/integration
+
 ##### Test setup helpers #####
 
 export default_test_names=(deep viz external helm-upgrade uninstall upgrade-edge upgrade-stable default-policy-deny rsa-ca)
@@ -186,15 +192,6 @@ handle_cleanup_input() {
   fi
 }
 
-test_setup() {
-  bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
-  export bindir
-
-  export test_directory="$bindir"/../test/integration
-
-  check_linkerd_binary
-}
-
 check_linkerd_binary() {
   printf 'Checking the linkerd binary...'
   if [ ! -x "$linkerd_path" ]; then
@@ -230,9 +227,9 @@ setup_min_cluster() {
   local name=$1
   export helm_path="$bindir"/helm
 
-  test_setup
+  check_linkerd_binary
   if [ -z "$skip_cluster_create" ]; then
-    "$bindir"/k3d cluster create "$@" --image +v1.21
+    "$bindir"/k3d cluster create "$@" --image "$k8s_version_min"
     image_load "$name"
   fi
   check_cluster
@@ -242,9 +239,9 @@ setup_cluster() {
   local name=$1
   export helm_path="$bindir"/helm
 
-  test_setup
+  check_linkerd_binary
   if [ -z "$skip_cluster_create" ]; then
-    "$bindir"/k3d cluster create "$@" --image +v1.26
+    "$bindir"/k3d cluster create "$@"
     image_load "$name"
   fi
   check_cluster
@@ -292,9 +289,6 @@ image_load() {
   if [[ "$cluster_name" = *viz ]]; then
     images_load+=(jaeger-webhook)
   fi
-  if [ "$cluster_name" = "cni-calico-deep" ]; then
-    images_load+=(cni-plugin)
-  fi
   case $images in
     docker)
       "$bindir"/image-load --k3d --cluster "$cluster_name" "${images_load[@]}"
@@ -317,16 +311,20 @@ start_test() {
 
   case $name in
     cluster-domain)
-      config=("$name" "${config[@]}" --no-lb --k3s-arg --cluster-domain=custom.domain --k3s-arg '--disable=servicelb,traefik@server:0')
+      config=("$name" "${config[@]}" --no-lb --k3s-arg --cluster-domain=custom.domain --k3s-arg '--disable=servicelb,traefik@server:0' --image "$k8s_version_max")
       ;;
     cni-calico-deep)
-      config=("$name" "${config[@]}" --no-lb --k3s-arg --write-kubeconfig-mode=644 --k3s-arg --flannel-backend=none --k3s-arg --cluster-cidr=192.168.0.0/16 --k3s-arg '--disable=servicelb,traefik@server:0')
+      # This requires k8s v1.27.6-k3s1 because after that Calico won't work.
+      # We have to use a config file because that version can't be set via the
+      # --image flag.
+      # See https://github.com/k3d-io/k3d/issues/1375
+      config=("$name" "${config[@]}" --no-lb --k3s-arg --write-kubeconfig-mode=644 --k3s-arg --flannel-backend=none --k3s-arg --cluster-cidr=192.168.0.0/16 --k3s-arg '--disable=servicelb,traefik@server:0' --config "$testdir"/deep/calico-k3d.yml)
       ;;
     multicluster)
-      config=("${config[@]}" --network multicluster-test)
+      config=("${config[@]}" --network multicluster-test --image "$k8s_version_max")
       ;;
     *)
-      config=("$name" "${config[@]}" --no-lb --k3s-arg '--disable=servicelb,traefik@server:0')
+      config=("$name" "${config[@]}" --no-lb --k3s-arg '--disable=servicelb,traefik@server:0' --image "$k8s_version_max")
       ;;
   esac
 
@@ -386,17 +384,17 @@ latest_release_channel() {
 # Run the upgrade-edge test by upgrading the most-recent edge release to the
 # HEAD of this branch.
 run_upgrade-edge_test() {
-  run_test "$test_directory/upgrade-edge/..." 
+  run_test "$testdir/upgrade-edge/..."
 }
 
 # Run the upgrade-stable test by upgrading the most-recent stable release to the
 # HEAD of this branch.
 run_upgrade-stable_test() {
-  run_test "$test_directory/upgrade-stable/..." 
+  run_test "$testdir/upgrade-stable/..."
 }
 
 run_viz_test() {
-  run_test "$test_directory/viz/..."
+  run_test "$testdir/viz/..."
 }
 
 setup_helm() {
@@ -435,42 +433,42 @@ run_helm-upgrade_test() {
 
   setup_helm
   helm_viz_chart="$( cd "$bindir"/.. && pwd )"/viz/charts/linkerd-viz
-  run_test "$test_directory/install/install_test.go" --helm-path="$helm_path" --helm-charts="$helm_charts" \
+  run_test "$testdir/install/install_test.go" --helm-path="$helm_path" --helm-charts="$helm_charts" \
   --viz-helm-chart="$helm_viz_chart" --viz-helm-stable-chart="linkerd/linkerd-viz" --helm-release="$helm_release_name" --upgrade-helm-from-version="$stable_version"
   helm_cleanup
 }
 
 run_uninstall_test() {
-  run_test "$test_directory/install/uninstall/uninstall_test.go" --uninstall=true
+  run_test "$testdir/install/uninstall/uninstall_test.go" --uninstall=true
 }
 
 run_multicluster_test() {
-   run_test "$test_directory/multicluster/..." 
+   run_test "$testdir/multicluster/..."
 }
 
 run_deep_test() {
-  run_test "$test_directory/deep/..."
+  run_test "$testdir/deep/..."
 }
 
 run_default-policy-deny_test() {
   export default_inbound_policy='deny'
-  run_test "$test_directory/install/..."
+  run_test "$testdir/install/..."
 }
 
 run_cni-calico-deep_test() {
-  run_test "$test_directory/deep/..." --cni
+  run_test "$testdir/deep/..." --cni
 }
 
 run_rsa-ca_test() {
-  run_test "$test_directory/rsa-ca/..."
+  run_test "$testdir/rsa-ca/..."
 }
 
 run_external_test() {
-  run_test "$test_directory/external/..."
+  run_test "$testdir/external/..."
 }
 
 run_cluster-domain_test() {
-  run_test "$test_directory/install/..." --cluster-domain='custom.domain'
+  run_test "$testdir/install/..." --cluster-domain='custom.domain'
 }
 
 # exit_on_err should be called right after a command to check the result status

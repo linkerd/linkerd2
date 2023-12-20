@@ -3,7 +3,7 @@
 The Linkerd-Viz extension contains observability and visualization
 components for Linkerd.
 
-![Version: 30.13.5-edge](https://img.shields.io/badge/Version-30.13.5--edge-informational?style=flat-square)
+![Version: 30.14.1-edge](https://img.shields.io/badge/Version-30.14.1--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -11,8 +11,8 @@ components for Linkerd.
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.21+ cluster in a matter of seconds. See
-the [Linkerd Getting Started Guide][getting-started] for how.
+You can run Linkerd on any Kubernetes cluster in a matter of seconds. See the
+[Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
 docs][linkerd-docs].
@@ -60,7 +60,7 @@ helm install linkerd-viz -n linkerd-viz --create-namespace linkerd/linkerd-viz
 
 ## Requirements
 
-Kubernetes: `>=1.21.0-0`
+Kubernetes: `>=1.22.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
@@ -98,6 +98,7 @@ Kubernetes: `>=1.21.0-0`
 | defaultUID | int | `2103` | UID for all the viz components |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
+| enablePodDisruptionBudget | bool | `false` | enables the creation of pod disruption budgets for tap, tap-injector, web and metrics-api components |
 | grafana.externalUrl | string | `nil` | url of a Grafana instance hosted off-cluster. Cannot be set if grafana.url is set. The reverse proxy will not be used for this URL. |
 | grafana.uidPrefix | string | `nil` | prefix for Grafana dashboard UID's, used when grafana.externalUrl is set. |
 | grafana.url | string | `nil` | url of an in-cluster Grafana instance with reverse proxy configured, used by the Linkerd viz web dashboard to provide direct links to specific Grafana dashboards. Cannot be set if grafana.externalUrl is set. See the [Linkerd documentation](https://linkerd.io/2/tasks/grafana) for more information |
@@ -115,7 +116,7 @@ Kubernetes: `>=1.21.0-0`
 | metricsAPI.logLevel | string | defaultLogLevel | log level of the metrics-api component |
 | metricsAPI.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | metricsAPI.proxy | string | `nil` |  |
-| metricsAPI.replicas | int | `1` | number of replicas of the metrics-api component |
+| metricsAPI.replicas | int | `1` | Number of replicas of the metrics-api component |
 | metricsAPI.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the metrics-api container can use |
 | metricsAPI.resources.cpu.request | string | `nil` | Amount of CPU units that the metrics-api container requests |
 | metricsAPI.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the metrics-api container can use |
@@ -141,7 +142,7 @@ Kubernetes: `>=1.21.0-0`
 | prometheus.image.name | string | `"prometheus"` | Docker image name for the prometheus instance |
 | prometheus.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the prometheus instance |
 | prometheus.image.registry | string | `"prom"` | Docker registry for the prometheus instance |
-| prometheus.image.tag | string | `"v2.47.0"` | Docker image tag for the prometheus instance |
+| prometheus.image.tag | string | `"v2.48.0"` | Docker image tag for the prometheus instance |
 | prometheus.logFormat | string | defaultLogLevel | log format (plain, json) of the prometheus instance |
 | prometheus.logLevel | string | defaultLogLevel | log level of the prometheus instance |
 | prometheus.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
@@ -197,7 +198,7 @@ Kubernetes: `>=1.21.0-0`
 | tapInjector.keyPEM | string | `""` | Certificate key for the tapInjector. If not provided and not using an external secret then Helm will generate one. |
 | tapInjector.logFormat | string | defaultLogFormat | log format of the tapInjector component |
 | tapInjector.logLevel | string | defaultLogLevel | log level of the tapInjector |
-| tapInjector.namespaceSelector | string | `nil` |  |
+| tapInjector.namespaceSelector | object | `{"matchExpressions":[{"key":"kubernetes.io/metadata.name","operator":"NotIn","values":["kube-system"]}]}` | Namespace selector used by admission webhook. |
 | tapInjector.objectSelector | string | `nil` |  |
 | tapInjector.proxy | string | `nil` |  |
 | tapInjector.replicas | int | `1` | Number of replicas of tapInjector |

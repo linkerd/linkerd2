@@ -20,6 +20,7 @@ import (
 
 const (
 	defaultWeight uint32 = 10000
+
 	// inboundListenAddr is the environment variable holding the inbound
 	// listening address for the proxy container.
 	envInboundListenAddr = "LINKERD2_PROXY_INBOUND_LISTEN_ADDR"
@@ -31,13 +32,15 @@ const (
 // into Destination.Get messages.
 type (
 	endpointTranslator struct {
-		controllerNS            string
-		identityTrustDomain     string
-		enableH2Upgrade         bool
-		nodeTopologyZone        string
-		nodeName                string
-		defaultOpaquePorts      map[uint32]struct{}
-		enableEndpointFiltering bool
+		controllerNS        string
+		identityTrustDomain string
+		nodeTopologyZone    string
+		nodeName            string
+		defaultOpaquePorts  map[uint32]struct{}
+
+		enableH2Upgrade,
+		enableEndpointFiltering,
+		experimentalEndpointZoneWeights bool
 
 		availableEndpoints watcher.AddressSet
 		filteredSnapshot   watcher.AddressSet
@@ -76,11 +79,12 @@ var updatesQueueOverflowCounter = promauto.NewCounterVec(
 func newEndpointTranslator(
 	controllerNS string,
 	identityTrustDomain string,
-	enableH2Upgrade bool,
+	enableH2Upgrade,
+	enableEndpointFiltering,
+	experimentalEndpointZoneWeights bool,
 	service string,
 	srcNodeName string,
 	defaultOpaquePorts map[uint32]struct{},
-	enableEndpointFiltering bool,
 	k8sAPI *k8s.MetadataAPI,
 	stream pb.Destination_GetServer,
 	endStream chan struct{},
@@ -102,11 +106,12 @@ func newEndpointTranslator(
 	return &endpointTranslator{
 		controllerNS,
 		identityTrustDomain,
-		enableH2Upgrade,
 		nodeTopologyZone,
 		srcNodeName,
 		defaultOpaquePorts,
+		enableH2Upgrade,
 		enableEndpointFiltering,
+		experimentalEndpointZoneWeights,
 		availableEndpoints,
 		filteredSnapshot,
 		stream,
@@ -373,17 +378,26 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 		if address.Pod != nil {
 			opaquePorts = watcher.GetAnnotatedOpaquePorts(address.Pod, et.defaultOpaquePorts)
 			wa, err = createWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS)
+			if err != nil {
+				et.log.Errorf("Failed to translate endpoints to weighted addr: %s", err)
+				continue
+			}
 		} else {
+			// When there's no associated pod, we may still need to set metadata
+			// (especially for remote multi-cluster services).
+			var addr *net.TcpAddress
+			addr, err = toAddr(address)
+			if err != nil {
+				et.log.Errorf("Failed to translate endpoints to weighted addr: %s", err)
+				continue
+			}
+
 			var authOverride *pb.AuthorityOverride
 			if address.AuthorityOverride != "" {
 				authOverride = &pb.AuthorityOverride{
 					AuthorityOverride: address.AuthorityOverride,
 				}
 			}
-
-			// handling address with no associated pod
-			var addr *net.TcpAddress
-			addr, err = toAddr(address)
 			wa = &pb.WeightedAddr{
 				Addr:              addr,
 				Weight:            defaultWeight,
@@ -398,7 +412,6 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 						},
 					},
 				}
-				// in this case we most likely have a proxy on the other side, so set protocol hint as well.
 				if et.enableH2Upgrade {
 					wa.ProtocolHint = &pb.ProtocolHint{
 						Protocol: &pb.ProtocolHint_H2_{
@@ -408,10 +421,15 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 				}
 			}
 		}
-		if err != nil {
-			et.log.Errorf("Failed to translate endpoints to weighted addr: %s", err)
-			continue
+
+		if et.experimentalEndpointZoneWeights {
+			// EXPERIMENTAL: Use the endpoint weight field to indicate zonal
+			// preference so that local endoints are more heavily weighted.
+			if et.nodeTopologyZone != "" && address.Zone != nil && *address.Zone == et.nodeTopologyZone {
+				wa.Weight *= 10
+			}
 		}
+
 		addrs = append(addrs, wa)
 	}
 
@@ -462,8 +480,13 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
-func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string) (*pb.WeightedAddr, error) {
-
+func createWeightedAddr(
+	address watcher.Address,
+	opaquePorts map[uint32]struct{},
+	enableH2Upgrade bool,
+	identityTrustDomain string,
+	controllerNS string,
+) (*pb.WeightedAddr, error) {
 	tcpAddr, err := toAddr(address)
 	if err != nil {
 		return nil, err
@@ -486,6 +509,14 @@ func createWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}
 	controllerNSLabel := address.Pod.Labels[pkgK8s.ControllerNSLabel]
 	sa, ns := pkgK8s.GetServiceAccountAndNS(address.Pod)
 	weightedAddr.MetricLabels = pkgK8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
+
+	// Set a zone label, even if it is empty (for consistency).
+	z := ""
+	if address.Zone != nil {
+		z = *address.Zone
+	}
+	weightedAddr.MetricLabels["zone"] = z
+
 	_, isSkippedInboundPort := skippedInboundPorts[address.Port]
 
 	if controllerNSLabel != "" && !isSkippedInboundPort {

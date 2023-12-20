@@ -509,16 +509,18 @@ spec:
 
 	return &server{
 		pb.UnimplementedDestinationServer{},
+		Config{
+			EnableH2Upgrade:     true,
+			ControllerNS:        "linkerd",
+			ClusterDomain:       "mycluster.local",
+			IdentityTrustDomain: "trust.domain",
+			DefaultOpaquePorts:  defaultOpaquePorts,
+		},
 		pods,
 		endpoints,
 		opaquePorts,
 		profiles,
 		clusterStore,
-		true,
-		"linkerd",
-		"trust.domain",
-		"mycluster.local",
-		defaultOpaquePorts,
 		k8sAPI,
 		metadataAPI,
 		log,
@@ -567,15 +569,16 @@ func (m *mockDestinationGetServer) Send(update *pb.Update) error {
 
 type mockDestinationGetProfileServer struct {
 	util.MockServerStream
-	profilesReceived []*pb.DestinationProfile
+	profilesReceived chan *pb.DestinationProfile
 }
 
 func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) error {
-	m.profilesReceived = append(m.profilesReceived, profile)
+	m.profilesReceived <- profile
 	return nil
 }
 
 func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointTranslator) {
+	t.Helper()
 	node := `apiVersion: v1
 kind: Node
 metadata:
@@ -592,12 +595,6 @@ metadata:
     topology.kubernetes.io/zone: west-1a
   name: test-123
 `
-	k8sAPI, err := k8s.NewFakeAPI(node)
-	if err != nil {
-		t.Fatalf("NewFakeAPI returned an error: %s", err)
-	}
-	k8sAPI.Sync(nil)
-
 	metadataAPI, err := k8s.NewFakeMetadataAPI([]string{node})
 	if err != nil {
 		t.Fatalf("NewFakeMetadataAPI returned an error: %s", err)
@@ -609,10 +606,11 @@ metadata:
 		"linkerd",
 		"trust.domain",
 		true,
+		true,  // enableEndpointFiltering
+		false, // experimentalEndpointZoneWeights
 		"service-name.service-ns",
 		"test-123",
 		map[uint32]struct{}{},
-		true,
 		metadataAPI,
 		mockGetServer,
 		nil,

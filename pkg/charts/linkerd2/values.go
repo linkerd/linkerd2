@@ -119,6 +119,8 @@ type (
 		DefaultInboundPolicy                 string           `json:"defaultInboundPolicy"`
 		AccessLog                            string           `json:"accessLog"`
 		ShutdownGracePeriod                  string           `json:"shutdownGracePeriod"`
+		NativeSidecar                        bool             `json:"nativeSidecar"`
+		StartupProbe                         *StartupProbe    `json:"startupProbe"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
@@ -226,12 +228,20 @@ type (
 		EphemeralStorage Constraints `json:"ephemeral-storage"`
 	}
 
+	// StartupProbe represents the initContainer startup probe parameters for the proxy
+	StartupProbe struct {
+		InitialDelaySeconds uint `json:"initialDelaySeconds"`
+		PeriodSeconds       uint `json:"periodSeconds"`
+		FailureThreshold    uint `json:"failureThreshold"`
+	}
+
 	// Identity contains the fields to set the identity variables in the proxy
 	// sidecar container
 	Identity struct {
-		ExternalCA                    bool    `json:"externalCA"`
-		ServiceAccountTokenProjection bool    `json:"serviceAccountTokenProjection"`
-		Issuer                        *Issuer `json:"issuer"`
+		ExternalCA                    bool     `json:"externalCA"`
+		ServiceAccountTokenProjection bool     `json:"serviceAccountTokenProjection"`
+		Issuer                        *Issuer  `json:"issuer"`
+		KubeAPI                       *KubeAPI `json:"kubeAPI"`
 	}
 
 	// Issuer has the Helm variables of the identity issuer
@@ -240,6 +250,12 @@ type (
 		ClockSkewAllowance string     `json:"clockSkewAllowance"`
 		IssuanceLifetime   string     `json:"issuanceLifetime"`
 		TLS                *IssuerTLS `json:"tls"`
+	}
+
+	// KubeAPI contains the kube-apiserver client config
+	KubeAPI struct {
+		ClientQPS   float32 `json:"clientQPS"`
+		ClientBurst int     `json:"clientBurst"`
 	}
 
 	// Webhook Helm variables for a webhook

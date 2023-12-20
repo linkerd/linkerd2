@@ -44,7 +44,7 @@ func Launch(
 		log.Fatalf("error building Kubernetes API config: %s", err)
 	}
 
-	k8sAPI, err := pkgk8s.NewAPIForConfig(config, "", []string{}, 0)
+	k8sAPI, err := pkgk8s.NewAPIForConfig(config, "", []string{}, 0, 0, 0)
 	if err != nil {
 		//nolint:gocritic
 		log.Fatalf("error configuring Kubernetes API client: %s", err)
