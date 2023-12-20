@@ -55,6 +55,7 @@ var (
 		"templates/policy/server.yaml",
 		"templates/serviceprofile.yaml",
 		"templates/gateway.networking.k8s.io_httproutes.yaml",
+		"templates/workload/external-workload.yaml",
 	}
 
 	templatesControlPlane = []string{
