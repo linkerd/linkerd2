@@ -26,15 +26,23 @@ func Main(args []string) {
 	addr := cmd.String("addr", ":8086", "address to serve on")
 	metricsAddr := cmd.String("metrics-addr", ":9996", "address to serve scrapable metrics on")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
-	enableH2Upgrade := cmd.Bool("enable-h2-upgrade", true, "Enable transparently upgraded HTTP2 connections among pods in the service mesh")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", true, "Enable the usage of EndpointSlice informers and resources")
+	enableH2Upgrade := cmd.Bool("enable-h2-upgrade", true,
+		"Enable transparently upgraded HTTP2 connections among pods in the service mesh")
+	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", true,
+		"Enable the usage of EndpointSlice informers and resources")
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
 	defaultOpaquePorts := cmd.String("default-opaque-ports", "", "configures the default opaque ports")
 	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
 
 	traceCollector := flags.AddTraceFlags(cmd)
+
+	// Zone weighting is disabled by default because it is not consumed by
+	// proxies. This feature exists to support experimentation on top of the
+	// Linkerd control plane API.
+	experimentalEndpointZoneWeights := cmd.Bool("experimental-endpoint-zone-weights", false,
+		"Enable setting endpoint weighting based on zone locality")
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -127,17 +135,21 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize Cluster Store: %s", err)
 	}
 
+	config := destination.Config{
+		ControllerNS:                    *controllerNamespace,
+		IdentityTrustDomain:             *trustDomain,
+		ClusterDomain:                   *clusterDomain,
+		DefaultOpaquePorts:              opaquePorts,
+		EnableH2Upgrade:                 *enableH2Upgrade,
+		EnableEndpointSlices:            *enableEndpointSlices,
+		ExperimentalEndpointZoneWeights: *experimentalEndpointZoneWeights,
+	}
 	server, err := destination.NewServer(
 		*addr,
-		*controllerNamespace,
-		*trustDomain,
-		*enableH2Upgrade,
-		*enableEndpointSlices,
+		config,
 		k8sAPI,
 		metadataAPI,
 		clusterStore,
-		*clusterDomain,
-		opaquePorts,
 		done,
 	)
 
