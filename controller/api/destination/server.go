@@ -25,21 +25,28 @@ import (
 )
 
 type (
+	Config struct {
+		ControllerNS,
+		IdentityTrustDomain,
+		ClusterDomain string
+
+		EnableH2Upgrade,
+		EnableEndpointSlices,
+		ExperimentalEndpointZoneWeights bool
+
+		DefaultOpaquePorts map[uint32]struct{}
+	}
+
 	server struct {
 		pb.UnimplementedDestinationServer
 
-		pods        *watcher.PodWatcher
-		endpoints   *watcher.EndpointsWatcher
-		opaquePorts *watcher.OpaquePortsWatcher
-		profiles    *watcher.ProfileWatcher
+		config Config
 
+		pods         *watcher.PodWatcher
+		endpoints    *watcher.EndpointsWatcher
+		opaquePorts  *watcher.OpaquePortsWatcher
+		profiles     *watcher.ProfileWatcher
 		clusterStore *watcher.ClusterStore
-
-		enableH2Upgrade     bool
-		controllerNS        string
-		identityTrustDomain string
-		clusterDomain       string
-		defaultOpaquePorts  map[uint32]struct{}
 
 		k8sAPI      *k8s.API
 		metadataAPI *k8s.MetadataAPI
@@ -62,15 +69,10 @@ type (
 // API.
 func NewServer(
 	addr string,
-	controllerNS string,
-	identityTrustDomain string,
-	enableH2Upgrade bool,
-	enableEndpointSlices bool,
+	config Config,
 	k8sAPI *k8s.API,
 	metadataAPI *k8s.MetadataAPI,
 	clusterStore *watcher.ClusterStore,
-	clusterDomain string,
-	defaultOpaquePorts map[uint32]struct{},
 	shutdown <-chan struct{},
 ) (*grpc.Server, error) {
 	log := logging.WithFields(logging.Fields{
@@ -84,15 +86,15 @@ func NewServer(
 		return nil, err
 	}
 
-	pods, err := watcher.NewPodWatcher(k8sAPI, metadataAPI, log, defaultOpaquePorts)
+	pods, err := watcher.NewPodWatcher(k8sAPI, metadataAPI, log, config.DefaultOpaquePorts)
 	if err != nil {
 		return nil, err
 	}
-	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, enableEndpointSlices, "local")
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, config.EnableEndpointSlices, "local")
 	if err != nil {
 		return nil, err
 	}
-	opaquePorts, err := watcher.NewOpaquePortsWatcher(k8sAPI, log, defaultOpaquePorts)
+	opaquePorts, err := watcher.NewOpaquePortsWatcher(k8sAPI, log, config.DefaultOpaquePorts)
 	if err != nil {
 		return nil, err
 	}
@@ -103,16 +105,12 @@ func NewServer(
 
 	srv := server{
 		pb.UnimplementedDestinationServer{},
+		config,
 		pods,
 		endpoints,
 		opaquePorts,
 		profiles,
 		clusterStore,
-		enableH2Upgrade,
-		controllerNS,
-		identityTrustDomain,
-		clusterDomain,
-		defaultOpaquePorts,
 		k8sAPI,
 		metadataAPI,
 		log,
@@ -155,7 +153,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		return status.Errorf(codes.InvalidArgument, "IP queries not supported by Get API: host=%s", host)
 	}
 
-	service, instanceID, err := parseK8sServiceName(host, s.clusterDomain)
+	service, instanceID, err := parseK8sServiceName(host, s.config.ClusterDomain)
 	if err != nil {
 		log.Debugf("Invalid service %s", dest.GetPath())
 		return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
@@ -184,13 +182,14 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			return status.Errorf(codes.NotFound, "Remote cluster not found: %s", cluster)
 		}
 		translator := newEndpointTranslator(
-			s.controllerNS,
+			s.config.ControllerNS,
 			remoteConfig.TrustDomain,
-			s.enableH2Upgrade,
+			s.config.EnableH2Upgrade,
+			false, // Disable endpoint filtering for remote discovery.
+			s.config.ExperimentalEndpointZoneWeights,
 			fmt.Sprintf("%s.%s.svc.%s:%d", remoteSvc, service.Namespace, remoteConfig.ClusterDomain, port),
 			token.NodeName,
-			s.defaultOpaquePorts,
-			false, // Disable endpoint filtering for remote discovery.
+			s.config.DefaultOpaquePorts,
 			s.metadataAPI,
 			stream,
 			streamEnd,
@@ -214,13 +213,14 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	} else {
 		// Local discovery
 		translator := newEndpointTranslator(
-			s.controllerNS,
-			s.identityTrustDomain,
-			s.enableH2Upgrade,
+			s.config.ControllerNS,
+			s.config.IdentityTrustDomain,
+			s.config.EnableH2Upgrade,
+			true,
+			s.config.ExperimentalEndpointZoneWeights,
 			dest.GetPath(),
 			token.NodeName,
-			s.defaultOpaquePorts,
-			true,
+			s.config.DefaultOpaquePorts,
 			s.metadataAPI,
 			stream,
 			streamEnd,
@@ -278,10 +278,18 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	}
 
 	if ip := net.ParseIP(host); ip != nil {
-		return s.getProfileByIP(token, ip, port, log, stream)
+		err = s.getProfileByIP(token, ip, port, log, stream)
+		if err != nil {
+			log.Errorf("Failed to subscribe to profile by ip %q: %q", dest.GetPath(), err)
+		}
+		return err
 	}
 
-	return s.getProfileByName(token, host, port, log, stream)
+	err = s.getProfileByName(token, host, port, log, stream)
+	if err != nil {
+		log.Errorf("Failed to subscribe to profile by name %q: %q", dest.GetPath(), err)
+	}
+	return err
 }
 
 func (s *server) getProfileByIP(
@@ -301,7 +309,7 @@ func (s *server) getProfileByIP(
 		return s.subscribeToEndpointProfile(nil, "", ip.String(), port, log, stream)
 	}
 
-	fqn := fmt.Sprintf("%s.%s.svc.%s", svcID.Name, svcID.Namespace, s.clusterDomain)
+	fqn := fmt.Sprintf("%s.%s.svc.%s", svcID.Name, svcID.Namespace, s.config.ClusterDomain)
 	return s.subscribeToServiceProfile(*svcID, token, fqn, port, log, stream)
 }
 
@@ -312,7 +320,7 @@ func (s *server) getProfileByName(
 	log *logging.Entry,
 	stream pb.Destination_GetProfileServer,
 ) error {
-	service, hostname, err := parseK8sServiceName(host, s.clusterDomain)
+	service, hostname, err := parseK8sServiceName(host, s.config.ClusterDomain)
 	if err != nil {
 		s.log.Debugf("Invalid service %s", host)
 		return status.Errorf(codes.InvalidArgument, "invalid service %q: %q", host, err)
@@ -407,7 +415,7 @@ func (s *server) subscribeToServicesWithContext(
 
 	// The backup lookup ignores the context token to lookup any
 	// server-namespace-hosted profiles.
-	backupID, err := profileID(fqn, contextToken{}, s.clusterDomain)
+	backupID, err := profileID(fqn, contextToken{}, s.config.ClusterDomain)
 	if err != nil {
 		log.Debug("Invalid service")
 		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
@@ -419,7 +427,7 @@ func (s *server) subscribeToServicesWithContext(
 	}
 	defer s.profiles.Unsubscribe(backupID, backup)
 
-	primaryID, err := profileID(fqn, token, s.clusterDomain)
+	primaryID, err := profileID(fqn, token, s.config.ClusterDomain)
 	if err != nil {
 		log.Debug("Invalid service")
 		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
@@ -450,7 +458,7 @@ func (s *server) subscribeToServiceWithoutContext(
 	log *logging.Entry,
 	streamEnd <-chan struct{},
 ) error {
-	id, err := profileID(fqn, contextToken{}, s.clusterDomain)
+	id, err := profileID(fqn, contextToken{}, s.config.ClusterDomain)
 	if err != nil {
 		log.Debug("Invalid service")
 		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
@@ -485,10 +493,10 @@ func (s *server) subscribeToEndpointProfile(
 	stream pb.Destination_GetProfileServer,
 ) error {
 	translator := newEndpointProfileTranslator(
-		s.enableH2Upgrade,
-		s.controllerNS,
-		s.identityTrustDomain,
-		s.defaultOpaquePorts,
+		s.config.EnableH2Upgrade,
+		s.config.ControllerNS,
+		s.config.IdentityTrustDomain,
+		s.config.DefaultOpaquePorts,
 		log,
 		stream,
 	)
@@ -657,10 +665,10 @@ func hasSuffix(slice []string, suffix []string) bool {
 	return true
 }
 
-func getPodSkippedInboundPortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, error) {
+func getPodSkippedInboundPortsAnnotations(pod *corev1.Pod) map[uint32]struct{} {
 	annotation, ok := pod.Annotations[labels.ProxyIgnoreInboundPortsAnnotation]
 	if !ok || annotation == "" {
-		return nil, nil
+		return nil
 	}
 
 	return util.ParsePorts(annotation)

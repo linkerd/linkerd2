@@ -3,7 +3,7 @@
 The Linkerd-Viz extension contains observability and visualization
 components for Linkerd.
 
-![Version: 30.14.0-edge](https://img.shields.io/badge/Version-30.14.0--edge-informational?style=flat-square)
+![Version: 30.14.2-edge](https://img.shields.io/badge/Version-30.14.2--edge-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -11,8 +11,8 @@ components for Linkerd.
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.21+ cluster in a matter of seconds. See
-the [Linkerd Getting Started Guide][getting-started] for how.
+You can run Linkerd on any Kubernetes cluster in a matter of seconds. See the
+[Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
 docs][linkerd-docs].
@@ -60,7 +60,7 @@ helm install linkerd-viz -n linkerd-viz --create-namespace linkerd/linkerd-viz
 
 ## Requirements
 
-Kubernetes: `>=1.21.0-0`
+Kubernetes: `>=1.22.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|

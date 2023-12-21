@@ -21,10 +21,6 @@ CGO_ENABLED=0 GOOS=linux GOARCH=$arch go install -mod=readonly \
     github.com/prometheus/common/expfmt \
     github.com/prometheus/common/model \
     github.com/sirupsen/logrus \
-    github.com/containernetworking/cni/pkg/version \
-    github.com/containernetworking/cni/pkg/skel \
-    github.com/containernetworking/cni/pkg/types \
-    github.com/containernetworking/cni/pkg/invoke \
     google.golang.org/grpc \
     k8s.io/client-go/discovery \
     k8s.io/client-go/kubernetes \

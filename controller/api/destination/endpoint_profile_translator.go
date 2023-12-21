@@ -48,25 +48,6 @@ func (ept *endpointProfileTranslator) Update(address *watcher.Address) (bool, er
 		return false, fmt.Errorf("failed to create endpoint: %w", err)
 	}
 
-	// The protocol for an endpoint should only be updated if there is a pod,
-	// endpoint, and the endpoint has a protocol hint. If there is an endpoint
-	// but it does not have a protocol hint, that means we could not determine
-	// if it has a peer proxy so a opaque traffic would not be supported.
-	if address.Pod != nil && endpoint != nil && endpoint.ProtocolHint != nil {
-		if !address.OpaqueProtocol {
-			endpoint.ProtocolHint.OpaqueTransport = nil
-		} else if endpoint.ProtocolHint.OpaqueTransport == nil {
-			port, err := getInboundPort(&address.Pod.Spec)
-			if err != nil {
-				ept.log.Error(err)
-			} else {
-				endpoint.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
-					InboundPort: port,
-				}
-			}
-		}
-
-	}
 	profile := &pb.DestinationProfile{
 		RetryBudget:    defaultRetryBudget(),
 		Endpoint:       endpoint,
@@ -86,7 +67,7 @@ func (ept *endpointProfileTranslator) Update(address *watcher.Address) (bool, er
 }
 
 func (ept *endpointProfileTranslator) createEndpoint(address watcher.Address, opaquePorts map[uint32]struct{}) (*pb.WeightedAddr, error) {
-	weightedAddr, err := createWeightedAddr(address, opaquePorts, ept.enableH2Upgrade, ept.identityTrustDomain, ept.controllerNS, ept.log)
+	weightedAddr, err := createWeightedAddr(address, opaquePorts, ept.enableH2Upgrade, ept.identityTrustDomain, ept.controllerNS)
 	if err != nil {
 		return nil, err
 	}
