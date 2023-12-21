@@ -163,3 +163,11 @@ require (
 	sigs.k8s.io/kustomize/kyaml v0.14.3 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 )
+
+// Required to unblock these bumps:
+// k8s.io/apiextensions-apiserver@v0.29.0
+// k8s.io/apimachinery@v0.29.0
+// k8s.io/kube-aggregator@v0.29.0
+// k8s.io/api@0.29.0
+// Remove when helm v3.13.4 is out
+replace k8s.io/cli-runtime => k8s.io/cli-runtime v0.29.0
