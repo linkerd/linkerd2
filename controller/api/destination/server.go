@@ -492,14 +492,19 @@ func (s *server) subscribeToEndpointProfile(
 	log *logging.Entry,
 	stream pb.Destination_GetProfileServer,
 ) error {
+	canceled := stream.Context().Done()
+	streamEnd := make(chan struct{})
 	translator := newEndpointProfileTranslator(
 		s.config.EnableH2Upgrade,
 		s.config.ControllerNS,
 		s.config.IdentityTrustDomain,
 		s.config.DefaultOpaquePorts,
-		log,
 		stream,
+		streamEnd,
+		log,
 	)
+	translator.Start()
+	defer translator.Stop()
 
 	var err error
 	ip, err = s.pods.Subscribe(service, hostname, ip, port, translator)
@@ -510,8 +515,10 @@ func (s *server) subscribeToEndpointProfile(
 
 	select {
 	case <-s.shutdown:
-	case <-stream.Context().Done():
+	case <-canceled:
 		s.log.Debugf("Cancelled")
+	case <-streamEnd:
+		log.Errorf("GetProfile %s:%d stream aborted", ip, port)
 	}
 	return nil
 }
