@@ -582,7 +582,7 @@ podMonitor:
     enabled: true
 
 # Optional: support to deploy extra manifest objects along with your chart
-# Example: 
+# Example:
 # extraObjects:
 # - kind: ExternalSecret
 #   apiVersion: kubernetes-client.io/v1
