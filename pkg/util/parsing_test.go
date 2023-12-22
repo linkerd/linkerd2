@@ -45,10 +45,7 @@ func TestParsePorts(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("test %s", tc.ports), func(t *testing.T) {
-			ports, err := ParsePorts(tc.ports)
-			if err != nil {
-				t.Fatalf("could not parse ports: %v", err)
-			}
+			ports := ParsePorts(tc.ports)
 			if diff := deep.Equal(ports, tc.result); diff != nil {
 				t.Errorf("%v", diff)
 			}
