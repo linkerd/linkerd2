@@ -1,6 +1,8 @@
 package destination
 
 import (
+	"fmt"
+
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/prometheus/client_golang/prometheus"
@@ -85,33 +87,36 @@ func (ept *endpointProfileTranslator) Stop() {
 	close(ept.stop)
 }
 
-// Update sends a DestinationProfile message into the stream, if the same
-// message hasn't been sent already. If it has, false is returned.
-func (ept *endpointProfileTranslator) Update(address *watcher.Address) (bool, error) {
+// Update enqueues an address update to be translated into a DestinationProfile.
+// An error is returned if the update cannot be enqueued.
+func (ept *endpointProfileTranslator) Update(address *watcher.Address) error {
 	select {
 	case ept.updates <- address:
 		// Update has been successfully enqueued.
+		return nil
 	default:
-		// We are unable to enqueue because the channel does not have capacity.
-		// The stream has fallen too far behind and should be closed.
-		endpointProfileUpdatesQueueOverflowCounter.Inc()
 		select {
 		case <-ept.endStream:
 			// The endStream channel has already been closed so no action is
 			// necessary.
+			return fmt.Errorf("profile update stream closed")
 		default:
-			ept.log.Error("Profile update queue full; aborting stream")
+			// We are unable to enqueue because the channel does not have capacity.
+			// The stream has fallen too far behind and should be closed.
+			endpointProfileUpdatesQueueOverflowCounter.Inc()
 			close(ept.endStream)
+			return fmt.Errorf("profile update queue full; aborting stream")
 		}
 	}
-	return true, nil
 }
 
 func (ept *endpointProfileTranslator) update(address *watcher.Address) {
 	opaquePorts := watcher.GetAnnotatedOpaquePorts(address.Pod, ept.defaultOpaquePorts)
 	endpoint, err := ept.createEndpoint(*address, opaquePorts)
 	if err != nil {
-		ept.log.Error(err)
+		ept.log.Errorf("Failed to create endpoint for %s:%d: %s",
+			address.IP, address.Port, err)
+		return
 	}
 
 	profile := &pb.DestinationProfile{

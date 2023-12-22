@@ -46,7 +46,9 @@ func TestEndpointProfileTranslator(t *testing.T) {
 		translator.Start()
 		defer translator.Stop()
 
-		translator.Update(addr)
+		if err := translator.Update(addr); err != nil {
+			t.Fatal("Expected update")
+		}
 		select {
 		case p := <-mockGetProfileServer.profilesReceived:
 			log.Debugf("Received update: %v", p)
@@ -54,14 +56,18 @@ func TestEndpointProfileTranslator(t *testing.T) {
 			t.Fatal("No update received")
 		}
 
-		translator.Update(addr)
+		if err := translator.Update(addr); err != nil {
+			t.Fatal("Unexpected update")
+		}
 		select {
 		case p := <-mockGetProfileServer.profilesReceived:
 			t.Fatalf("Duplicate update sent: %v", p)
 		case <-time.After(1 * time.Second):
 		}
 
-		translator.Update(podAddr)
+		if err := translator.Update(podAddr); err != nil {
+			t.Fatal("Expected update")
+		}
 		select {
 		case p := <-mockGetProfileServer.profilesReceived:
 			log.Debugf("Received update: %v", p)
@@ -85,14 +91,18 @@ func TestEndpointProfileTranslator(t *testing.T) {
 		defer translator.Stop()
 
 		for i := 0; i < updateQueueCapacity/2; i++ {
-			translator.Update(podAddr)
+			if err := translator.Update(podAddr); err != nil {
+				t.Fatal("Expected update")
+			}
 			select {
 			case <-endStream:
 				t.Fatal("Stream ended prematurely")
 			default:
 			}
 
-			translator.Update(addr)
+			if err := translator.Update(addr); err != nil {
+				t.Fatal("Expected update")
+			}
 			select {
 			case <-endStream:
 				t.Fatal("Stream ended prematurely")
@@ -100,12 +110,16 @@ func TestEndpointProfileTranslator(t *testing.T) {
 			}
 		}
 
-		translator.Update(podAddr)
+		if err := translator.Update(podAddr); err == nil {
+			t.Fatal("Expected update to fail")
+		}
 		select {
 		case <-endStream:
 		default:
 			t.Fatal("Stream should have ended")
 		}
 
+		// XXX We should assert that endpointProfileUpdatesQueueOverflowCounter
+		// == 1 but we can't read counter values.
 	})
 }
