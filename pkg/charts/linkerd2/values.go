@@ -33,6 +33,7 @@ type (
 		EnablePodAntiAffinity        bool                   `json:"enablePodAntiAffinity"`
 		NodeAffinity                 map[string]interface{} `json:"nodeAffinity"`
 		EnablePodDisruptionBudget    bool                   `json:"enablePodDisruptionBudget"`
+		PodDisruptionBudget          map[string]interface{} `json:"podDisruptionBudget"`
 		WebhookFailurePolicy         string                 `json:"webhookFailurePolicy"`
 		DeploymentStrategy           map[string]interface{} `json:"deploymentStrategy,omitempty"`
 		DisableHeartBeat             bool                   `json:"disableHeartBeat"`

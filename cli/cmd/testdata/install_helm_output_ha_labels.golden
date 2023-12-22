@@ -565,6 +565,8 @@ data:
     podAnnotations:
       asda: fasda
       bingo: bongo
+    podDisruptionBudget:
+      maxUnavailable: 1
     podLabels:
       fiz: buz
       foo: bar

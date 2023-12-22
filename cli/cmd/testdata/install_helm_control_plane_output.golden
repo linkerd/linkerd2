@@ -536,6 +536,8 @@ data:
     nodeSelector:
       kubernetes.io/os: linux
     podAnnotations: {}
+    podDisruptionBudget:
+      maxUnavailable: 1
     podLabels: {}
     podMonitor:
       controller:
