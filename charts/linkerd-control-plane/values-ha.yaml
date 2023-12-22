@@ -14,7 +14,7 @@ deploymentStrategy:
 # -- add PodAntiAffinity to each control plane workload
 enablePodAntiAffinity: true
 
-# nodeAffinity: 
+# nodeAffinity:
 
 # proxy configuration
 proxy:
@@ -58,3 +58,19 @@ policyControllerResources: *controller_resources
 
 # flag for linkerd check
 highAvailability: true
+
+# Optional: support to deploy extra manifest objects along with your chart
+# Example:
+# extraObjects:
+# - kind: ExternalSecret
+#   apiVersion: kubernetes-client.io/v1
+#   metadata:
+#     name: linkerd-identity-issuer
+#   spec:
+#     backendType: secretsManager
+#     data:
+#       - key: prod/eks-prod/linkerd/linkerd2-secret-key-pem
+#         name: crt.pem
+#       - key: prod/eks-prod/linkerd/linkerd2-secret-crt-pem
+#         name: key.pem
+extraObjects: []
