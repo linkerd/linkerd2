@@ -58,8 +58,9 @@ enablePodDisruptionBudget: false
 # for more information
 # nodeAffinity:
 
-# -- adding an option to disble namespace-metadata jobs
-skipNamespaceMetadataJobs: false
+# -- Creates a Job that adds necessary metadata to the extension's namespace
+# during install; disable if lack of privileges require doing this manually
+createNamespaceMetadataJobs: true
 
 # -- Create Roles and RoleBindings to associate this extension's
 # ServiceAccounts to the control plane PSP resource. This requires that
