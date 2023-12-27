@@ -467,7 +467,14 @@ fn convert_http_backend(
 fn default_backend(outbound: &OutboundPolicy) -> outbound::Backend {
     outbound::Backend {
         metadata: Some(Metadata {
-            kind: Some(metadata::Kind::Default("service".to_string())),
+            kind: Some(metadata::Kind::Resource(api::meta::Resource {
+                group: "core".to_string(),
+                kind: "Service".to_string(),
+                name: outbound.name.clone(),
+                namespace: outbound.namespace.clone(),
+                section: Default::default(),
+                port: u16::from(outbound.port).into(),
+            })),
         }),
         queue: Some(default_queue_config()),
         kind: Some(outbound::backend::Kind::Balancer(
