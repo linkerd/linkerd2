@@ -259,6 +259,6 @@ where
     // Default kind is assumed to be service for backend ref objects
     super::targets_kind::<T>(
         backend_ref.group.as_deref(),
-        backend_ref.kind.as_deref().unwrap_or("service"),
+        backend_ref.kind.as_deref().unwrap_or("Service"),
     )
 }
