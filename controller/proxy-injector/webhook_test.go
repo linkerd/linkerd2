@@ -2,7 +2,6 @@ package injector
 
 import (
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -111,9 +110,9 @@ func TestGetPodPatch(t *testing.T) {
 			t.Fatalf("Unexpected error: %s", err)
 		}
 
-		for id, testCase := range testCases {
+		for _, testCase := range testCases {
 			testCase := testCase // pin
-			t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
+			t.Run(testCase.filename, func(t *testing.T) {
 				pod, err := factory.FileContents(testCase.filename)
 				if err != nil {
 					t.Fatalf("Unexpected error: %s", err)
@@ -139,7 +138,6 @@ func TestGetPodPatch(t *testing.T) {
 				if diff := deep.Equal(expectedPatch, actualPatch); diff != nil {
 					t.Fatalf("The actual patch didn't match what was expected.\n%+v", diff)
 				}
-
 			})
 		}
 	})

@@ -139,6 +139,13 @@ func TestNewValues(t *testing.T) {
 				InitialDelaySeconds: 0,
 				PeriodSeconds:       1,
 			},
+			Control: &ProxyControl{
+				Streams: &ProxyControlStreams{
+					InitialTimeout: "3s",
+					IdleTimeout:    "5m",
+					Lifetime:       "1h",
+				},
+			},
 		},
 		ProxyInit: &ProxyInit{
 			IptablesMode:        "legacy",
