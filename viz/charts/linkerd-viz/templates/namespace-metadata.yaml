@@ -66,4 +66,4 @@ spec:
         - --prometheus-url
         - {{.}}
         {{- end }}
-{{-end}}
+{{- end }}

@@ -77,4 +77,4 @@ subjects:
 - kind: ServiceAccount
   name: namespace-metadata
   namespace: {{.Release.Namespace}}
-{{-end}}
+{{- end }}

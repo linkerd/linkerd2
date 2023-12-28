@@ -61,4 +61,4 @@ spec:
         - {{.Release.Namespace}}
         - --linkerd-namespace
         - {{.Values.linkerdNamespace}}
-{{-end}}
+{{- end }}
