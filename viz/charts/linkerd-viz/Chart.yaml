@@ -6,12 +6,12 @@ description: |
   components for Linkerd.
 home: https://linkerd.io
 keywords:
-- service-mesh
+  - service-mesh
 kubeVersion: ">=1.22.0-0"
 name: "linkerd-viz"
 sources:
-- https://github.com/linkerd/linkerd2/
-version: 30.14.2-edge
+  - https://github.com/linkerd/linkerd2/
+version: 30.14.3-edge
 icon: https://linkerd.io/images/logo-only-200h.png
 maintainers:
   - name: Linkerd authors
