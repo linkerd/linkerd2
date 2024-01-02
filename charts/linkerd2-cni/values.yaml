@@ -75,6 +75,41 @@ imagePullSecrets: []
 # -- Add additional initContainers to the daemonset
 extraInitContainers: []
 
+# -- The cni-repair-controller scans pods in each node to find those that have
+# been injected by linkerd, and whose linkerd-network-validator container has
+# failed.  This is usually caused by a race between linkerd-cni and the CNI
+# plugin used in the cluster. This controller deletes those failed pods so they
+# can restart and rety re-acquiring a proper network config.
+repairController:
+  enabled: false
+
+  # -- Log level for the repair-controller container
+  # @default -- info
+  logLevel: info
+  # -- Log format (`plain` or `json`) for the repair-controller container
+  # @default -- plain
+  logFormat: plain
+
+  # -- Include a securityContext in the repair-controller container
+  enableSecurityContext: true
+
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the repair-controller container can use
+      limit: ""
+      # -- Amount of CPU units that the repair-controller container requests
+      request: ""
+    memory:
+      # -- Maximum amount of memory that the repair-controller container can use
+      limit: ""
+      # -- Amount of memory that the repair-controller container requests
+      request: ""
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the repair-controller container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the repair-controller container requests
+      request: ""
+
 # -- Resource requests and limits for linkerd-cni daemonset container
 resources:
   cpu:
@@ -92,39 +127,3 @@ resources:
     limit: ""
     # -- Amount of ephemeral storage that the cni container requests
     request: ""
-
-reinitializePods:
-  image:
-    # -- Docker image for the reinitialize-pods container
-    name: "cr.l5d.io/linkerd/cni-plugin"
-    # -- Tag for the reinitialize-pods container Docker image
-    version: "v1.3.0"
-    # -- Pull policy for the reinitialize-pods container
-    pullPolicy: IfNotPresent
-
-  # -- Log level for the reinitialize-pods container
-  # @default -- info
-  logLevel: info
-  # -- Log format (`plain` or `json`) for the reinitialize-pods container
-  # @default -- plain
-  logFormat: plain
-
-  # -- Include a securityContext in the reinitialize-pods container
-  enableSecurityContext: true
-
-  resources:
-    cpu:
-      # -- Maximum amount of CPU units that the reinitialize-pods container can use
-      limit: ""
-      # -- Amount of CPU units that the reinitialize-pods container requests
-      request: ""
-    memory:
-      # -- Maximum amount of memory that the reinitialize-pods container can use
-      limit: ""
-      # -- Amount of memory that the reinitialize-pods container requests
-      request: ""
-    ephemeral-storage:
-      # -- Maximum amount of ephemeral storage that the reinitialize-pods container can use
-      limit: ""
-      # -- Amount of ephemeral storage that the reinitialize-pods container requests
-      request: ""

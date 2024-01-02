@@ -35,8 +35,8 @@ type Resources struct {
 	EphemeralStorage Constraints `json:"ephemeral-storage"`
 }
 
-// ReinitializePods contains the config for the reinitialize-pods container
-type ReinitializePods struct {
+// RepairController contains the config for the repair-controller container
+type RepairController struct {
 	Image                 Image     `json:"image"`
 	LogLevel              string    `json:"logLevel"`
 	LogFormat             string    `json:"logFormat"`
@@ -69,7 +69,7 @@ type Values struct {
 	EnablePSP           bool                `json:"enablePSP"`
 	Privileged          bool                `json:"privileged"`
 	Resources           Resources           `json:"resources"`
-	ReinitializePods    ReinitializePods    `json:"reinitializePods"`
+	RepairController    RepairController    `json:"repairController"`
 }
 
 // NewValues returns a new instance of the Values type.

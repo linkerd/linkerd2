@@ -43,18 +43,16 @@ Kubernetes: `>=1.21.0-0`
 | proxyAdminPort | int | `4191` | Admin port for the proxy container |
 | proxyControlPort | int | `4190` | Control port for the proxy container |
 | proxyUID | int | `2102` | User id under which the proxy shall be ran |
-| reinitializePods.enableSecurityContext | bool | `true` | Include a securityContext in the reinitialize-pods container |
-| reinitializePods.image.name | string | `"cr.l5d.io/linkerd/cni-plugin"` | Docker image for the reinitialize-pods container |
-| reinitializePods.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the reinitialize-pods container |
-| reinitializePods.image.version | string | `"v1.3.0"` | Tag for the reinitialize-pods container Docker image |
-| reinitializePods.logFormat | string | plain | Log format (`plain` or `json`) for the reinitialize-pods container |
-| reinitializePods.logLevel | string | info | Log level for the reinitialize-pods container |
-| reinitializePods.resources.cpu.limit | string | `""` | Maximum amount of CPU units that the reinitialize-pods container can use |
-| reinitializePods.resources.cpu.request | string | `""` | Amount of CPU units that the reinitialize-pods container requests |
-| reinitializePods.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the reinitialize-pods container can use |
-| reinitializePods.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the reinitialize-pods container requests |
-| reinitializePods.resources.memory.limit | string | `""` | Maximum amount of memory that the reinitialize-pods container can use |
-| reinitializePods.resources.memory.request | string | `""` | Amount of memory that the reinitialize-pods container requests |
+| repairController | object | `{"enableSecurityContext":true,"enabled":false,"logFormat":"plain","logLevel":"info","resources":{"cpu":{"limit":"","request":""},"ephemeral-storage":{"limit":"","request":""},"memory":{"limit":"","request":""}}}` | The cni-repair-controller scans pods in each node to find those that have been injected by linkerd, and whose linkerd-network-validator container has failed.  This is usually caused by a race between linkerd-cni and the CNI plugin used in the cluster. This controller deletes those failed pods so they can restart and rety re-acquiring a proper network config. |
+| repairController.enableSecurityContext | bool | `true` | Include a securityContext in the repair-controller container |
+| repairController.logFormat | string | plain | Log format (`plain` or `json`) for the repair-controller container |
+| repairController.logLevel | string | info | Log level for the repair-controller container |
+| repairController.resources.cpu.limit | string | `""` | Maximum amount of CPU units that the repair-controller container can use |
+| repairController.resources.cpu.request | string | `""` | Amount of CPU units that the repair-controller container requests |
+| repairController.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the repair-controller container can use |
+| repairController.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the repair-controller container requests |
+| repairController.resources.memory.limit | string | `""` | Maximum amount of memory that the repair-controller container can use |
+| repairController.resources.memory.request | string | `""` | Amount of memory that the repair-controller container requests |
 | resources | object | `{"cpu":{"limit":"","request":""},"ephemeral-storage":{"limit":"","request":""},"memory":{"limit":"","request":""}}` | Resource requests and limits for linkerd-cni daemonset container |
 | resources.cpu.limit | string | `""` | Maximum amount of CPU units that the cni container can use |
 | resources.cpu.request | string | `""` | Amount of CPU units that the cni container requests |

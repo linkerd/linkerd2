@@ -113,8 +113,8 @@ rules:
   resources: ["pods", "nodes", "namespaces", "services"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods/eviction"]
-  verbs: ["create"]
+  resources: ["pods"]
+  verbs: ["delete"]
 - apiGroups: ["events.k8s.io"]
   resources: ["events"]
   verbs: ["create"]
@@ -280,31 +280,32 @@ spec:
         {{- if .Values.resources }}
         {{- include "partials.resources" .Values.resources | nindent 8 }}
         {{- end }}
+      {{- if .Values.repairController.enabled }}
       # This container watches over pods whose linkerd-network-validator
       # container failed, probably because of a race condition while setting up
-      # the CNI plugin chain, and evicts those pods so they can try acquiring a
+      # the CNI plugin chain, and deletes those pods so they can try acquiring a
       # proper network config again
-      - name: reinitialize-pods
-        image: {{ .Values.reinitializePods.image.name -}}:{{- .Values.reinitializePods.image.version }}
-        imagePullPolicy: {{ .Values.reinitializePods.image.pullPolicy }}
-        {{- if .Values.reinitializePods.enableSecurityContext }}
+      - name: repair-controller
+        image: {{ .Values.image.name -}}:{{- .Values.image.version }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{- if .Values.repairController.enableSecurityContext }}
         env:
-        - name: LINKERD_REINITIALIZE_PODS_NODE_NAME
+        - name: LINKERD_CNI_REPAIR_CONTROLLER_NODE_NAME
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        - name: LINKERD_REINITIALIZE_PODS_POD_NAME
+        - name: LINKERD_CNI_REPAIR_CONTROLLER_POD_NAME
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
         command:
-          - /usr/lib/linkerd/linkerd-reinitialize-pods
+          - /usr/lib/linkerd/linkerd-cni-repair-controller
         args:
           - --admin-addr=0.0.0.0:9990
           - --log-format
-          - {{ .Values.reinitializePods.logFormat }}
+          - {{ .Values.repairController.logFormat }}
           - --log-level
-          - {{ .Values.reinitializePods.logLevel }}
+          - {{ .Values.repairController.logLevel }}
         livenessProbe:
           httpGet:
             path: /live
@@ -331,6 +332,7 @@ spec:
         {{- if .Values.resources }}
         {{- include "partials.resources" .Values.resources | nindent 8 }}
         {{- end }}
+      {{- end }}
       volumes:
       {{- if ne .Values.destCNIBinDir .Values.destCNINetDir }}
       - name: cni-bin-dir
