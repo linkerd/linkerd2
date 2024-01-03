@@ -39,6 +39,7 @@ func TestEndpointProfileTranslator(t *testing.T) {
 		log := logging.WithField("test", t.Name())
 		translator := newEndpointProfileTranslator(
 			true, "cluster", "identity", make(map[uint32]struct{}),
+			nil, nil,
 			mockGetProfileServer,
 			nil,
 			log,
@@ -83,6 +84,7 @@ func TestEndpointProfileTranslator(t *testing.T) {
 		endStream := make(chan struct{})
 		translator := newEndpointProfileTranslator(
 			true, "cluster", "identity", make(map[uint32]struct{}),
+			nil, nil,
 			mockGetProfileServer,
 			endStream,
 			log,

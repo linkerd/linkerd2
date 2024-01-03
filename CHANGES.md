@@ -1,5 +1,12 @@
 # Changes
 
+## stable-2.14.8
+
+This stable release fixes an issue in the control plane where discovery for pod
+IP addresses could hang indefinitely ([#11815]).
+
+[#11815]: https://github.com/linkerd/linkerd2/pull/11815
+
 ## stable-2.14.7
 
 This stable release fixes two bugs in the Linkerd control plane.
