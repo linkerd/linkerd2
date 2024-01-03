@@ -8,6 +8,8 @@ RUN cargo new policy-test --lib
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo fetch
 ARG TARGETARCH
+# Enable tokio runtime metrics
+ENV RUSTFLAGS="--cfg tokio_unstable"
 RUN --mount=type=cache,target=target \
     --mount=type=cache,target=/usr/local/cargo/registry \
     target=$(case "$TARGETARCH" in \
