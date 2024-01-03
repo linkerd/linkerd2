@@ -121,6 +121,17 @@ type (
 		ShutdownGracePeriod                  string           `json:"shutdownGracePeriod"`
 		NativeSidecar                        bool             `json:"nativeSidecar"`
 		StartupProbe                         *StartupProbe    `json:"startupProbe"`
+		Control                              *ProxyControl    `json:"control"`
+	}
+
+	ProxyControl struct {
+		Streams *ProxyControlStreams `json:"streams"`
+	}
+
+	ProxyControlStreams struct {
+		InitialTimeout string `json:"initialTimeout"`
+		IdleTimeout    string `json:"idleTimeout"`
+		Lifetime       string `json:"lifetime"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container

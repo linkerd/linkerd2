@@ -33,6 +33,8 @@ func mkFilename(filename string, verbose bool) string {
 }
 
 func testUninjectAndInject(t *testing.T, tc testCase) {
+	t.Helper()
+
 	file, err := os.Open("testdata/" + tc.inputFileName)
 	if err != nil {
 		t.Errorf("error opening test input file: %v\n", err)

@@ -207,6 +207,17 @@ proxy:
     initialDelaySeconds: 0
     periodSeconds: 1
     failureThreshold: 120
+  # Configures general properties of the proxy's control plane clients.
+  control:
+    # Configures limits on API response streams.
+    streams:
+      # -- The timeout for the first update from the control plane.
+      initialTimeout: "3s"
+      # -- The timeout between consecutive updates from the control plane.
+      idleTimeout: "5m"
+      # -- The maximum duration for a response stream (i.e. before it will be
+      # reinitialized).
+      lifetime: "1h"
 
 # proxy-init configuration
 proxyInit:
