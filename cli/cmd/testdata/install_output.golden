@@ -608,6 +608,7 @@ data:
       disableInboundProtocolDetectTimeout: false
       disableOutboundProtocolDetectTimeout: false
       enableExternalProfiles: false
+      experimentalEnv: null
       image:
         name: ProxyImageName
         pullPolicy: ImagePullPolicy

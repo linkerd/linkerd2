@@ -640,6 +640,7 @@ data:
       disableInboundProtocolDetectTimeout: false
       disableOutboundProtocolDetectTimeout: false
       enableExternalProfiles: false
+      experimentalEnv: null
       image:
         name: cr.l5d.io/linkerd/proxy
         pullPolicy: ""

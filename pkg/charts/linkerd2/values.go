@@ -122,6 +122,8 @@ type (
 		NativeSidecar                        bool             `json:"nativeSidecar"`
 		StartupProbe                         *StartupProbe    `json:"startupProbe"`
 		Control                              *ProxyControl    `json:"control"`
+
+		ExperimentalEnv map[string]string `json:"experimentalEnv"`
 	}
 
 	ProxyControl struct {
