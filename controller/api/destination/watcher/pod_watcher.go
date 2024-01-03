@@ -53,7 +53,7 @@ type (
 
 	// PodUpdateListener is the interface subscribers must implement.
 	PodUpdateListener interface {
-		Update(*Address) (bool, error)
+		Update(*Address) error
 	}
 )
 
@@ -115,13 +115,10 @@ func (pw *PodWatcher) Subscribe(service *ServiceID, hostname, ip string, port Po
 		return "", err
 	}
 
-	sent, err := listener.Update(&address)
-	if err != nil {
-		return "", err
+	if err = listener.Update(&address); err != nil {
+		return "", fmt.Errorf("failed to send initial update: %w", err)
 	}
-	if sent {
-		pp.metrics.incUpdates()
-	}
+	pp.metrics.incUpdates()
 
 	return pp.ip, nil
 }
@@ -261,11 +258,11 @@ func (pw *PodWatcher) updateServers(_ any) {
 					pw.log.Errorf("Error creating address for pod: %s", err)
 					continue
 				}
-				sent, err := listener.Update(&addr)
-				if err != nil {
-					pw.log.Errorf("Error calling pod watcher listener for server update: %s", err)
+				if err = listener.Update(&addr); err != nil {
+					pw.log.Warnf("Error sending update to listener: %s", err)
+					continue
 				}
-				updated = updated || sent
+				updated = true
 			}
 			if updated {
 				pp.metrics.incUpdates()
@@ -464,11 +461,11 @@ func (pp *podPublisher) updatePod(pod *corev1.Pod) {
 				pp.log.Errorf("Error creating address for pod: %s", err)
 				continue
 			}
-			sent, err := l.Update(&addr)
-			if err != nil {
-				pp.log.Errorf("Error calling pod watcher listener for pod update: %s", err)
+			if err = l.Update(&addr); err != nil {
+				pp.log.Warnf("Error sending update to listener: %s", err)
+				continue
 			}
-			updated = updated || sent
+			updated = true
 		}
 		if updated {
 			pp.metrics.incUpdates()
@@ -487,11 +484,11 @@ func (pp *podPublisher) updatePod(pod *corev1.Pod) {
 				pp.log.Errorf("Error creating address for pod: %s", err)
 				continue
 			}
-			sent, err := l.Update(&addr)
-			if err != nil {
-				pp.log.Errorf("Error calling pod watcher listener for pod deletion: %s", err)
+			if err = l.Update(&addr); err != nil {
+				pp.log.Warnf("Error sending update to listener: %s", err)
+				continue
 			}
-			updated = updated || sent
+			updated = true
 		}
 		if updated {
 			pp.metrics.incUpdates()
