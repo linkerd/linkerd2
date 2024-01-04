@@ -9,7 +9,7 @@ import (
 
 // FuzzParsePorts fuzzes the ParsePorts function.
 func FuzzParsePorts(data []byte) int {
-	_, _ = util.ParsePorts(string(data))
+	_ = util.ParsePorts(string(data))
 	return 1
 }
 

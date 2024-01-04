@@ -346,8 +346,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		sort.Slice(addressesAdded, func(i, j int) bool {
 			return addressesAdded[i].GetAddr().Port < addressesAdded[j].GetAddr().Port
 		})
-		checkAddressAndWeight(t, addressesAdded[0], pod1)
-		checkAddressAndWeight(t, addressesAdded[1], pod2)
+		checkAddressAndWeight(t, addressesAdded[0], pod1, defaultWeight)
+		checkAddressAndWeight(t, addressesAdded[1], pod2, defaultWeight)
 		checkAddress(t, addressesRemoved[0], pod3)
 	})
 
@@ -372,6 +372,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 			"replicationcontroller": "rc-name",
 			"serviceaccount":        "serviceaccount-name",
 			"control_plane_ns":      "linkerd",
+			"zone":                  "",
 		}
 		if diff := deep.Equal(actualAddedAddress1MetricLabels, expectedAddedAddress1MetricLabels); diff != nil {
 			t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", expectedAddedAddress1MetricLabels, actualAddedAddress1MetricLabels)
@@ -428,7 +429,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	})
 }
 
-func TestEndpointTranslatorForZonedAddresses(t *testing.T) {
+func TestEndpointTranslatorTopologyAwareFilter(t *testing.T) {
 	t.Run("Sends one update for add and none for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 		translator.Start()
@@ -446,6 +447,59 @@ func TestEndpointTranslatorForZonedAddresses(t *testing.T) {
 		if len(mockGetServer.updatesReceived) != 0 {
 			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
 		}
+	})
+}
+
+func TestEndpointTranslatorExperimentalZoneWeights(t *testing.T) {
+	zoneA := "west-1a"
+	zoneB := "west-1b"
+	addrA := watcher.Address{
+		IP:   "7.9.7.9",
+		Port: 7979,
+		Zone: &zoneA,
+	}
+	addrB := watcher.Address{
+		IP:   "9.7.9.7",
+		Port: 9797,
+		Zone: &zoneB,
+	}
+
+	t.Run("Disabled", func(t *testing.T) {
+		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.experimentalEndpointZoneWeights = false
+		translator.Start()
+		defer translator.Stop()
+
+		translator.Add(mkAddressSetForServices(addrA, addrB))
+
+		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
+		if len(addrs) != 2 {
+			t.Fatalf("Expected [2] addresses returned, got %v", addrs)
+		}
+		sort.Slice(addrs, func(i, j int) bool {
+			return addrs[i].GetAddr().Port < addrs[j].GetAddr().Port
+		})
+		checkAddressAndWeight(t, addrs[0], addrA, defaultWeight)
+		checkAddressAndWeight(t, addrs[1], addrB, defaultWeight)
+	})
+
+	t.Run("Applies weights", func(t *testing.T) {
+		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.experimentalEndpointZoneWeights = true
+		translator.Start()
+		defer translator.Stop()
+
+		translator.Add(mkAddressSetForServices(addrA, addrB))
+
+		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
+		if len(addrs) != 2 {
+			t.Fatalf("Expected [2] addresses returned, got %v", addrs)
+		}
+		sort.Slice(addrs, func(i, j int) bool {
+			return addrs[i].GetAddr().Port < addrs[j].GetAddr().Port
+		})
+		checkAddressAndWeight(t, addrs[0], addrA, defaultWeight*10)
+		checkAddressAndWeight(t, addrs[1], addrB, defaultWeight)
 	})
 }
 
@@ -521,14 +575,18 @@ func mkAddressSetForPods(podAddresses ...watcher.Address) watcher.AddressSet {
 	return set
 }
 
-func checkAddressAndWeight(t *testing.T, actual *pb.WeightedAddr, expected watcher.Address) {
+func checkAddressAndWeight(t *testing.T, actual *pb.WeightedAddr, expected watcher.Address, weight uint32) {
+	t.Helper()
+
 	checkAddress(t, actual.GetAddr(), expected)
-	if actual.GetWeight() != defaultWeight {
-		t.Fatalf("Expected weight [%+v] but got [%+v]", defaultWeight, actual.GetWeight())
+	if actual.GetWeight() != weight {
+		t.Fatalf("Expected weight [%+v] but got [%+v]", weight, actual.GetWeight())
 	}
 }
 
 func checkAddress(t *testing.T, actual *net.TcpAddress, expected watcher.Address) {
+	t.Helper()
+
 	expectedAddr, err := addr.ParseProxyIPV4(expected.IP)
 	expectedTCP := net.TcpAddress{
 		Ip:   expectedAddr,

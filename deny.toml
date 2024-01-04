@@ -64,6 +64,11 @@ skip = [
     # `tower-http` (a transitive dep via `kubert`) depends on v2.x of `bitflags`,
     # while pretty much the entire rest of the world is still on v1.x
     { name = "bitflags", version = "1.0" },
+    # https://github.com/hawkw/matchers/pull/4
+    { name = "regex-automata", version = "0.1" },
+    { name = "regex-syntax", version = "0.6" },
+    # Pending hyper upgrade to 1.0
+    { name = "socket2" },
 ]
 skip-tree = [
     # `serde_json` and `h2` depend on diverged versions of `indexmap` (2.0.x and

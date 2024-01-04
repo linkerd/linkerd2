@@ -44,6 +44,12 @@ env:
   value: {{.Values.proxy.defaultInboundPolicy}}
 - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
   value: {{.Values.clusterNetworks | quote}}
+- name: LINKERD2_PROXY_CONTROL_STREAM_INITIAL_TIMEOUT
+  value: {{((.Values.proxy.control).streams).initialTimeout | default "" | quote}}
+- name: LINKERD2_PROXY_CONTROL_STREAM_IDLE_TIMEOUT
+  value: {{((.Values.proxy.control).streams).idleTimeout | default "" | quote}}
+- name: LINKERD2_PROXY_CONTROL_STREAM_LIFETIME
+  value: {{((.Values.proxy.control).streams).lifetime | default "" | quote}}
 {{ if .Values.proxy.inboundConnectTimeout -}}
 - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
   value: {{.Values.proxy.inboundConnectTimeout | quote}}
@@ -152,6 +158,10 @@ be used in other contexts.
 {{ if .Values.proxy.shutdownGracePeriod -}}
 - name: LINKERD2_PROXY_SHUTDOWN_GRACE_PERIOD
   value: {{.Values.proxy.shutdownGracePeriod | quote}}
+{{ end -}}
+{{ range $k, $v := (.Values.proxy.experimentalEnv) -}}
+- name: {{ $k }}
+  value: {{ $v | quote }}
 {{ end -}}
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion}}
 imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}

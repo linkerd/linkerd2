@@ -51,6 +51,7 @@ type (
 		OwnerKind         string
 		Identity          string
 		AuthorityOverride string
+		Zone              *string
 		ForZones          []discovery.ForZone
 		OpaqueProtocol    bool
 	}
@@ -898,6 +899,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
 				}
+				address.Zone = endpoint.Zone
 				if endpoint.Hints != nil {
 					zones := make([]discovery.ForZone, len(endpoint.Hints.ForZones))
 					copy(zones, endpoint.Hints.ForZones)

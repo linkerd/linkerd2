@@ -62,6 +62,14 @@ var (
 		[]string{"client", "code", "method"},
 	)
 
+	clientErrorCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_client_errors_total",
+			Help: "A counter for errors from the wrapped client.",
+		},
+		[]string{"client", "method"},
+	)
+
 	clientLatency = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "http_client_request_latency_seconds",
@@ -97,7 +105,7 @@ var (
 func init() {
 	prometheus.MustRegister(
 		serverCounter, serverLatency, serverResponseSize, clientCounter,
-		clientLatency, clientInFlight, clientQPS, clientBurst,
+		clientLatency, clientInFlight, clientQPS, clientBurst, clientErrorCounter,
 	)
 }
 
@@ -128,17 +136,30 @@ func ClientWithTelemetry(name string, wt func(http.RoundTripper) http.RoundTripp
 	latency := clientLatency.MustCurryWith(prometheus.Labels{"client": name})
 	counter := clientCounter.MustCurryWith(prometheus.Labels{"client": name})
 	inFlight := clientInFlight.With(prometheus.Labels{"client": name})
+	errors := clientErrorCounter.MustCurryWith(prometheus.Labels{"client": name})
 
 	return func(rt http.RoundTripper) http.RoundTripper {
 		if wt != nil {
 			rt = wt(rt)
 		}
 
-		return promhttp.InstrumentRoundTripperInFlight(inFlight,
-			promhttp.InstrumentRoundTripperCounter(counter,
-				promhttp.InstrumentRoundTripperDuration(latency, rt),
+		return InstrumentErrorCounter(errors,
+			promhttp.InstrumentRoundTripperInFlight(inFlight,
+				promhttp.InstrumentRoundTripperCounter(counter,
+					promhttp.InstrumentRoundTripperDuration(latency, rt),
+				),
 			),
 		)
+	}
+}
+
+func InstrumentErrorCounter(counter *prometheus.CounterVec, next http.RoundTripper) promhttp.RoundTripperFunc {
+	return func(r *http.Request) (*http.Response, error) {
+		resp, err := next.RoundTrip(r)
+		if err != nil {
+			counter.With(prometheus.Labels{"method": r.Method}).Inc()
+		}
+		return resp, err
 	}
 }
 

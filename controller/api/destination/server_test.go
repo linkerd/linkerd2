@@ -449,6 +449,25 @@ func TestGetProfiles(t *testing.T) {
 		}
 	})
 
+	t.Run("Return profile with protocol hint for default opaque port when pod is unmeshed", func(t *testing.T) {
+		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
+		// 3306 is in the default opaque list
+		stream := profileStream(t, server, podIP2, 3306, "")
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
+		if profile.Endpoint == nil {
+			t.Fatalf("Expected response to have endpoint field")
+		}
+		if !profile.OpaqueProtocol {
+			t.Fatal("Expected port 3306 to be an opaque protocol, but it was not")
+		}
+		if profile.GetEndpoint().GetProtocolHint() != nil {
+			t.Fatalf("Expected protocol hint to be nil")
+		}
+	})
+
 	t.Run("Return non-opaque protocol profile when using cluster IP and opaque protocol port", func(t *testing.T) {
 		server := makeServer(t)
 		defer server.clusterStore.UnregisterGauges()
@@ -497,7 +516,7 @@ func TestGetProfiles(t *testing.T) {
 		if profile.Endpoint.ProtocolHint == nil {
 			t.Fatalf("Expected protocol hint but found none")
 		}
-		if profile.Endpoint.ProtocolHint.GetOpaqueTransport().GetInboundPort() != 4143 {
+		if profile.Endpoint.GetProtocolHint().GetOpaqueTransport().GetInboundPort() != 4143 {
 			t.Fatalf("Expected pod to support opaque traffic on port 4143")
 		}
 		if profile.Endpoint.Addr.String() != epAddr.String() {
@@ -552,10 +571,10 @@ func TestGetProfiles(t *testing.T) {
 		if !profile.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", 80)
 		}
-		if profile.Endpoint.ProtocolHint == nil {
+		if profile.Endpoint.GetProtocolHint() == nil {
 			t.Fatalf("Expected protocol hint but found none")
 		}
-		if profile.Endpoint.ProtocolHint.GetOpaqueTransport().GetInboundPort() != 4143 {
+		if profile.Endpoint.GetProtocolHint().GetOpaqueTransport().GetInboundPort() != 4143 {
 			t.Fatalf("Expected pod to support opaque traffic on port 4143")
 		}
 	})

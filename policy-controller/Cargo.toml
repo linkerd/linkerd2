@@ -17,14 +17,14 @@ anyhow = "1"
 async-trait = "0.1"
 drain = "0.1"
 futures = { version = "0.3", default-features = false }
-k8s-gateway-api = "0.13"
-k8s-openapi = { version = "0.19", features = ["v1_22"] }
+k8s-gateway-api = "0.15"
+k8s-openapi = { version = "0.20", features = ["v1_22"] }
 hyper = { version = "0.14", features = ["http1", "http2", "runtime", "server"] }
 ipnet = { version = "2", default-features = false }
 linkerd-policy-controller-core = { path = "./core" }
 linkerd-policy-controller-grpc = { path = "./grpc" }
 linkerd-policy-controller-k8s-api = { path = "./k8s/api" }
-openssl = { version = "0.10.60", optional = true }
+openssl = { version = "0.10.62", optional = true }
 linkerd-policy-controller-k8s-index = { path = "./k8s/index" }
 linkerd-policy-controller-k8s-status = { path = "./k8s/status" }
 parking_lot = "0.12"
@@ -40,18 +40,18 @@ default-features = false
 features = ["derive", "env", "std"]
 
 [dependencies.kube]
-version = "0.85"
+version = "0.87.1"
 default-features = false
 features = ["admission", "derive"]
 
 [dependencies.kubert]
-version = "0.19"
+version = "0.21.1"
 default-features = false
 features = [
     "clap",
     "index",
     "lease",
-    "metrics",
+    "prometheus-client",
     "runtime",
     "server",
     "rustls-tls",

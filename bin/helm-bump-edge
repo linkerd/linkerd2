@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+# This script bumps the patch version of all charts whose versions end in -edge.
+# The BUMP_CRDS and BUMP_CNI variables can be set to also bump those versions.
+
+set -euo pipefail
+shopt -s globstar
+
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+
+# Iterate through charts/*/Chart.yaml and bump the patch version of the
+# `version` field. E.g. 1.18.2-edge becomes 1.18.3-edge.
+for chart in **/Chart.yaml; do
+    # Skip the linkerd-crds chart unless BUMP_CRDS is set.
+    if [[ "$chart" =~ "linkerd-crds" ]] && [[ -z "${BUMP_CRDS:-}" ]]; then
+        continue
+    fi
+    if [[ "$chart" =~ "linkerd2-cni" ]] && [[ -z "${BUMP_CNI:-}" ]]; then
+        continue
+    fi
+
+    version=$(yq eval .version <"$chart")
+    if [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)-edge$ ]]; then
+        major="${BASH_REMATCH[1]}"
+        minor="${BASH_REMATCH[2]}"
+        patch="${BASH_REMATCH[3]}"
+        new_version="$major.$minor.$((patch + 1))-edge"
+        echo "Bumping $chart from $version to $new_version"
+        # Replace version line with new version
+        yq -i ".version = \"$new_version\"" "$chart"
+    fi
+done
+
+"$bindir"/helm-docs

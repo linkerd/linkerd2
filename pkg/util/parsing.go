@@ -9,7 +9,7 @@ import (
 
 // ParsePorts parses the given ports string into a map of ports;
 // this includes converting port ranges into separate ports
-func ParsePorts(portsString string) (map[uint32]struct{}, error) {
+func ParsePorts(portsString string) map[uint32]struct{} {
 	opaquePorts := make(map[uint32]struct{})
 	if portsString != "" {
 		portRanges := GetPortRanges(portsString)
@@ -25,7 +25,7 @@ func ParsePorts(portsString string) (map[uint32]struct{}, error) {
 
 		}
 	}
-	return opaquePorts, nil
+	return opaquePorts
 }
 
 // ParseContainerOpaquePorts parses the opaque ports annotation into a list of
