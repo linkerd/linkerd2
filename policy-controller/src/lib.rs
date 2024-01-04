@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 mod admission;
 pub mod index_list;
+mod validation;
 pub use self::admission::Admission;
 use anyhow::Result;
 use linkerd_policy_controller_core::inbound::{
