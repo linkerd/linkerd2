@@ -10203,17 +10203,8 @@ spec:
             type: object
           spec:
             properties:
-              workloadIPs:
-                type: array
-                description: workloadIPs contains a list of IP addresses that
-                  can be used to send traffic to the workload.
-                items:
-                  type: object
-                  properties:
-                    ip:
-                      type: string
               meshTls:
-                description: tls describes mesh TLS settings associated with an
+                description: meshTls describes TLS settings associated with an
                   external workload.
                 properties:
                   identity:
@@ -10252,10 +10243,20 @@ spec:
                       description: protocol exposed by the port. Must be UDP or
                         TCP. Defaults to TCP.
                       type: string
+                      default: "TCP"
+              workloadIPs:
+                type: array
+                description: workloadIPs contains a list of IP addresses that
+                  can be used to send traffic to the workload.
+                items:
+                  type: object
+                  properties:
+                    ip:
+                      type: string
             type: object
             required:
-            - workloadIPs
             - ports
+            - workloadIPs
           status:
             type: object
             properties:
