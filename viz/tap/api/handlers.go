@@ -55,19 +55,18 @@ var (
 
 	resources = []struct {
 		name       string
-		shortname  string
 		namespaced bool
 	}{
-		{"namespaces", "ns", false},
-		{"pods", "po", true},
-		{"replicationcontrollers", "rc", true},
-		{"services", "svc", true},
-		{"daemonsets", "ds", true},
-		{"deployments", "deploy", true},
-		{"replicasets", "rs", true},
-		{"statefulsets", "sts", true},
-		{"jobs", "", true},
-		{"cronjobs", "cj", true},
+		{"namespaces", false},
+		{"pods", true},
+		{"replicationcontrollers", true},
+		{"services", true},
+		{"daemonsets", true},
+		{"deployments", true},
+		{"replicasets", true},
+		{"statefulsets", true},
+		{"jobs", true},
+		{"cronjobs", true},
 	}
 )
 
@@ -257,7 +256,6 @@ func handleAPIResourceList(w http.ResponseWriter, _ *http.Request, _ httprouter.
 		resList.APIResources = append(resList.APIResources,
 			metav1.APIResource{
 				Name:       res.name,
-				ShortNames: []string{res.shortname},
 				Namespaced: res.namespaced,
 				Kind:       gvk.Kind,
 				Verbs:      metav1.Verbs{"watch"},
