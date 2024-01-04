@@ -632,6 +632,7 @@ data:
       disableInboundProtocolDetectTimeout: false
       disableOutboundProtocolDetectTimeout: false
       enableExternalProfiles: false
+      experimentalEnv: null
       image:
         name: my.custom.registry/linkerd-io/proxy
         pullPolicy: ""
