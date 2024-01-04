@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn valid_dns_all() {
-        assert!(validate_identity("**").is_ok())
+        assert!(validate_identity("*").is_ok())
     }
 
     #[test]
