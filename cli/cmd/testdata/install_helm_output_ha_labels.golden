@@ -482,6 +482,9 @@ data:
     cniEnabled: false
     controlPlaneTracing: false
     controlPlaneTracingNamespace: linkerd-jaeger
+    controller:
+      podDisruptionBudget:
+        maxUnavailable: 1
     controllerImage: cr.l5d.io/linkerd/controller
     controllerLogFormat: plain
     controllerLogLevel: info
@@ -565,8 +568,6 @@ data:
     podAnnotations:
       asda: fasda
       bingo: bongo
-    podDisruptionBudget:
-      maxUnavailable: 1
     podLabels:
       fiz: buz
       foo: bar

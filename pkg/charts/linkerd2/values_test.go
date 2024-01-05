@@ -67,8 +67,10 @@ func TestNewValues(t *testing.T) {
 		PodLabels:                    map[string]string{},
 		EnableEndpointSlices:         true,
 		EnablePodDisruptionBudget:    false,
-		PodDisruptionBudget: &PodDisruptionBudget{
-			MaxUnavailable: 1,
+		Controller: &Controller{
+			PodDisruptionBudget: &PodDisruptionBudget{
+				MaxUnavailable: 1,
+			},
 		},
 		PodMonitor: &PodMonitor{
 			Enabled:        false,
@@ -238,7 +240,7 @@ func TestNewValues(t *testing.T) {
 		expected.ControllerReplicas = 3
 		expected.EnablePodAntiAffinity = true
 		expected.EnablePodDisruptionBudget = true
-		expected.PodDisruptionBudget = &PodDisruptionBudget{
+		expected.Controller.PodDisruptionBudget = &PodDisruptionBudget{
 			MaxUnavailable: 1,
 		}
 		expected.DeploymentStrategy = haDeploymentStrategy

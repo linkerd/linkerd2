@@ -481,6 +481,9 @@ data:
     cniEnabled: true
     controlPlaneTracing: false
     controlPlaneTracingNamespace: linkerd-jaeger
+    controller:
+      podDisruptionBudget:
+        maxUnavailable: 1
     controllerImage: cr.l5d.io/linkerd/controller
     controllerLogFormat: plain
     controllerLogLevel: info
@@ -559,8 +562,6 @@ data:
     nodeSelector:
       kubernetes.io/os: linux
     podAnnotations: {}
-    podDisruptionBudget:
-      maxUnavailable: 1
     podLabels: {}
     podMonitor:
       controller:
