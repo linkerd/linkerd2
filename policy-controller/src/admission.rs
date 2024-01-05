@@ -1,3 +1,4 @@
+use super::validation;
 use crate::k8s::{
     labels,
     policy::{
@@ -296,7 +297,12 @@ fn validate_identity_ref(id: &NamespacedTargetRef) -> Result<()> {
 #[async_trait::async_trait]
 impl Validate<MeshTLSAuthenticationSpec> for Admission {
     async fn validate(self, _ns: &str, _name: &str, spec: MeshTLSAuthenticationSpec) -> Result<()> {
-        // The CRD validates identity strings, but does not validate identity references.
+        for id in spec.identities.iter().flatten() {
+            if let Err(err) = validation::validate_identity(id) {
+                bail!("id {} is invalid: {}", id, err);
+            }
+        }
+
         for id in spec.identity_refs.iter().flatten() {
             validate_identity_ref(id)?;
         }

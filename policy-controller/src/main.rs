@@ -115,12 +115,9 @@ async fn main() -> Result<()> {
         Some(server)
     };
 
-    let mut admin = admin.into_builder();
-    admin.with_default_prometheus();
-
     let mut runtime = kubert::Runtime::builder()
         .with_log(log_level, log_format)
-        .with_admin(admin)
+        .with_admin(admin.into_builder().with_prometheus(Default::default()))
         .with_client(client)
         .with_optional_server(server)
         .build()

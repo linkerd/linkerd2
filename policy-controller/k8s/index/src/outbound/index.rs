@@ -611,7 +611,7 @@ fn convert_backend(
         weight: weight.into(),
         authority: cluster.service_dns_authority(&service_ref.namespace, &name, port),
         name,
-        namespace: ns.to_string(),
+        namespace: service_ref.namespace.to_string(),
         port,
         filters,
     }))

@@ -66,6 +66,7 @@ func (td *TestDataDiffer) diffTestYAML(path, actualYAML, expectedYAML string) er
 
 // DiffTestdata generates the diff for actual w.r.the file in path
 func (td *TestDataDiffer) DiffTestdata(t *testing.T, path, actual string) {
+	t.Helper()
 	expected := ReadTestdata(path)
 	if actual == expected {
 		return

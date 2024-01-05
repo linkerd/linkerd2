@@ -3,7 +3,7 @@
 Linkerd gives you observability, reliability, and security
 for your microservices — with no code change required.
 
-![Version: 1.18.2-edge](https://img.shields.io/badge/Version-1.18.2--edge-informational?style=flat-square)
+![Version: 1.18.3-edge](https://img.shields.io/badge/Version-1.18.3--edge-informational?style=flat-square)
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -233,6 +233,9 @@ Kubernetes: `>=1.22.0-0`
 | profileValidator.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]}]}` | Namespace selector used by admission webhook |
 | prometheusUrl | string | `""` | url of external prometheus instance (used for the heartbeat) |
 | proxy.await | bool | `true` | If set, the application container will not start until the proxy is ready |
+| proxy.control.streams.idleTimeout | string | `"5m"` | The timeout between consecutive updates from the control plane. |
+| proxy.control.streams.initialTimeout | string | `"3s"` | The timeout for the first update from the control plane. |
+| proxy.control.streams.lifetime | string | `"1h"` | The maximum duration for a response stream (i.e. before it will be reinitialized). |
 | proxy.cores | int | `0` | The `cpu.limit` and `cores` should be kept in sync. The value of `cores` must be an integer and should typically be set by rounding up from the limit. E.g. if cpu.limit is '1500m', cores should be 2. |
 | proxy.defaultInboundPolicy | string | "all-unauthenticated" | The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny" |
 | proxy.disableInboundProtocolDetectTimeout | bool | `false` | When set to true, disables the protocol detection timeout on the inbound side of the proxy by setting it to a very high value |

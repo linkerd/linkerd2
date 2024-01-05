@@ -267,6 +267,24 @@ pub fn mk_service(ns: &str, name: &str, port: i32) -> k8s::Service {
     }
 }
 
+#[track_caller]
+pub fn assert_svc_meta(meta: &Option<grpc::meta::Metadata>, svc: &k8s::Service, port: u16) {
+    tracing::debug!(?meta, ?svc, port, "Asserting service metadata");
+    assert_eq!(
+        meta,
+        &Some(grpc::meta::Metadata {
+            kind: Some(grpc::meta::metadata::Kind::Resource(grpc::meta::Resource {
+                group: "core".to_string(),
+                kind: "Service".to_string(),
+                name: svc.name_unchecked(),
+                namespace: svc.namespace().unwrap(),
+                section: "".to_string(),
+                port: port.into()
+            })),
+        })
+    );
+}
+
 pub fn mk_route(
     ns: &str,
     name: &str,

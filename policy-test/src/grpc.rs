@@ -46,7 +46,7 @@ macro_rules! assert_protocol_detect {
             Some(inbound::ProxyProtocol {
                 kind: Some(inbound::proxy_protocol::Kind::Detect(
                     inbound::proxy_protocol::Detect {
-                        timeout: Some(time::Duration::from_secs(10).try_into().unwrap()),
+                        timeout: Some(std::time::Duration::from_secs(10).try_into().unwrap()),
                         http_routes: vec![
                             $crate::grpc::defaults::http_route(),
                             $crate::grpc::defaults::probe_route(),
@@ -63,8 +63,8 @@ macro_rules! assert_default_accrual_backoff {
     ($backoff:expr) => {{
         use linkerd2_proxy_api::outbound;
         let default_backoff = outbound::ExponentialBackoff {
-            min_backoff: Some(Duration::from_secs(1).try_into().unwrap()),
-            max_backoff: Some(Duration::from_secs(60).try_into().unwrap()),
+            min_backoff: Some(std::time::Duration::from_secs(1).try_into().unwrap()),
+            max_backoff: Some(std::time::Duration::from_secs(60).try_into().unwrap()),
             jitter_ratio: 0.5 as f32,
         };
         assert_eq!(&default_backoff, $backoff)
@@ -103,11 +103,24 @@ async fn connect_port_forward(
     client: &kube::Client,
     pod: &str,
 ) -> Result<impl io::AsyncRead + io::AsyncWrite + Unpin> {
-    let mut pf = kube::Api::<k8s::Pod>::namespaced(client.clone(), "linkerd")
-        .portforward(pod, &[8090])
-        .await?;
-    let io = pf.take_stream(8090).expect("must have a stream");
-    Ok(io)
+    loop {
+        let mut pf = match kube::Api::<k8s::Pod>::namespaced(client.clone(), "linkerd")
+            .portforward(pod, &[8090])
+            .await
+        {
+            Err(kube::Error::UpgradeConnection(
+                kube::client::UpgradeConnectionError::ProtocolSwitch(status),
+            )) => {
+                tracing::info!(?status, "Flakey port forward; retrying");
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                continue;
+            }
+            res => res?,
+        };
+
+        let io = pf.take_stream(8090).expect("must have a stream");
+        return Ok(io);
+    }
 }
 
 // === impl InboundPolicyClient ===

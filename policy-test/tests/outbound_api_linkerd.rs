@@ -4,8 +4,9 @@ use futures::prelude::*;
 use kube::ResourceExt;
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
-    assert_default_accrual_backoff, create, create_annotated_service, create_cluster_scoped,
-    create_opaque_service, create_service, delete_cluster_scoped, grpc, mk_service, with_temp_ns,
+    assert_default_accrual_backoff, assert_svc_meta, create, create_annotated_service,
+    create_cluster_scoped, create_opaque_service, create_service, delete_cluster_scoped, grpc,
+    mk_service, with_temp_ns,
 };
 use maplit::{btreemap, convert_args};
 use tokio::time;
@@ -46,6 +47,8 @@ async fn service_with_no_http_routes() {
             .expect("watch must return an initial config");
         tracing::trace!(?config);
 
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
         // There should be a default route.
         detect_http_routes(&config, |routes| {
             let route = assert_singleton(routes);
@@ -69,6 +72,8 @@ async fn service_with_http_route_without_rules() {
             .expect("watch must return an initial config");
         tracing::trace!(?config);
 
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
         // There should be a default route.
         detect_http_routes(&config, |routes| {
             let route = assert_singleton(routes);
@@ -83,6 +88,8 @@ async fn service_with_http_route_without_rules() {
             .expect("watch must not fail")
             .expect("watch must return an updated config");
         tracing::trace!(?config);
+
+        assert_svc_meta(&config.metadata, &svc, 4191);
 
         // There should be a route with no rules.
         detect_http_routes(&config, |routes| {
@@ -107,6 +114,8 @@ async fn service_with_http_routes_without_backends() {
             .expect("watch must return an initial config");
         tracing::trace!(?config);
 
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
         // There should be a default route.
         detect_http_routes(&config, |routes| {
             let route = assert_singleton(routes);
@@ -125,6 +134,8 @@ async fn service_with_http_routes_without_backends() {
             .expect("watch must not fail")
             .expect("watch must return an updated config");
         tracing::trace!(?config);
+
+        assert_svc_meta(&config.metadata, &svc, 4191);
 
         // There should be a route with the logical backend.
         detect_http_routes(&config, |routes| {
@@ -151,6 +162,8 @@ async fn service_with_http_routes_with_backend() {
             .expect("watch must return an initial config");
         tracing::trace!(?config);
 
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
         // There should be a default route.
         detect_http_routes(&config, |routes| {
             let route = assert_singleton(routes);
@@ -173,6 +186,8 @@ async fn service_with_http_routes_with_backend() {
             .expect("watch must not fail")
             .expect("watch must return an updated config");
         tracing::trace!(?config);
+
+        assert_svc_meta(&config.metadata, &svc, 4191);
 
         // There should be a route with a backend with no filters.
         detect_http_routes(&config, |routes| {
@@ -200,6 +215,8 @@ async fn service_with_http_routes_with_cross_namespace_backend() {
             .expect("watch must not fail")
             .expect("watch must return an initial config");
         tracing::trace!(?config);
+
+        assert_svc_meta(&config.metadata, &svc, 4191);
 
         // There should be a default route.
         detect_http_routes(&config, |routes| {
@@ -239,6 +256,8 @@ async fn service_with_http_routes_with_cross_namespace_backend() {
             .expect("watch must return an updated config");
         tracing::trace!(?config);
 
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
         // There should be a route with a backend with no filters.
         detect_http_routes(&config, |routes| {
             let route = assert_singleton(routes);
@@ -269,6 +288,8 @@ async fn service_with_http_routes_with_invalid_backend() {
             .expect("watch must return an initial config");
         tracing::trace!(?config);
 
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
         // There should be a default route.
         detect_http_routes(&config, |routes| {
             let route = assert_singleton(routes);
@@ -289,6 +310,8 @@ async fn service_with_http_routes_with_invalid_backend() {
             .expect("watch must not fail")
             .expect("watch must return an updated config");
         tracing::trace!(?config);
+
+        assert_svc_meta(&config.metadata, &svc, 4191);
 
         // There should be a route with a backend.
         detect_http_routes(&config, |routes| {
@@ -317,6 +340,8 @@ async fn service_with_multiple_http_routes() {
             .expect("watch must return an initial config");
         tracing::trace!(?config);
 
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
         // There should be a default route.
         detect_http_routes(&config, |routes| {
             let route = assert_singleton(routes);
@@ -340,6 +365,8 @@ async fn service_with_multiple_http_routes() {
             .expect("watch must return an updated config");
         tracing::trace!(?config);
 
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
         let _b_route = create(
             &client,
             mk_http_route(&ns, "b-route", &svc, Some(4191)).build(),
@@ -353,6 +380,8 @@ async fn service_with_multiple_http_routes() {
             .expect("watch must not fail")
             .expect("watch must return an updated config");
         tracing::trace!(?config);
+
+        assert_svc_meta(&config.metadata, &svc, 4191);
 
         // There should be 2 routes, returned in order.
         detect_http_routes(&config, |routes| {
@@ -405,6 +434,8 @@ async fn service_with_consecutive_failure_accrual() {
             .expect("watch must return an initial config");
         tracing::trace!(?config);
 
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
         detect_failure_accrual(&config, |accrual| {
             let consecutive = failure_accrual_consecutive(accrual);
             assert_eq!(8, consecutive.max_failures);
@@ -448,6 +479,8 @@ async fn service_with_consecutive_failure_accrual_defaults() {
             .expect("watch must not fail")
             .expect("watch must return an initial config");
         tracing::trace!(?config);
+
+        assert_svc_meta(&config.metadata, &svc, 4191);
 
         // Expect default max_failures and default backoff
         detect_failure_accrual(&config, |accrual| {
@@ -614,6 +647,8 @@ async fn opaque_service() {
             .expect("watch must return an initial config");
         tracing::trace!(?config);
 
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
         // Proxy protocol should be opaque.
         match config.protocol.unwrap().kind.unwrap() {
             grpc::outbound::proxy_protocol::Kind::Opaque(_) => {}
@@ -754,6 +789,8 @@ async fn backend_with_filters() {
             .expect("watch must return an initial config");
         tracing::trace!(?config);
 
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
         // There should be a default route.
         detect_http_routes(&config, |routes| {
             let route = assert_singleton(routes);
@@ -803,6 +840,8 @@ async fn backend_with_filters() {
             .expect("watch must not fail")
             .expect("watch must return an updated config");
         tracing::trace!(?config);
+
+        assert_svc_meta(&config.metadata, &svc, 4191);
 
         // There should be a route without rule filters.
         detect_http_routes(&config, |routes| {
@@ -873,6 +912,8 @@ async fn http_route_with_no_port() {
             .expect("watch must return an initial config");
         tracing::trace!(?config_4191);
 
+        assert_svc_meta(&config_4191.metadata, &svc, 4191);
+
         let mut rx_9999 = retry_watch_outbound_policy(&client, &ns, &svc, 9999).await;
         let config_9999 = rx_9999
             .next()
@@ -880,6 +921,8 @@ async fn http_route_with_no_port() {
             .expect("watch must not fail")
             .expect("watch must return an initial config");
         tracing::trace!(?config_9999);
+
+        assert_svc_meta(&config_9999.metadata, &svc, 9999);
 
         // There should be a default route.
         detect_http_routes(&config_4191, |routes| {
@@ -1399,8 +1442,8 @@ fn assert_backend_matches_service(
     svc: &k8s::Service,
     port: u16,
 ) {
-    let kind = backend.backend.as_ref().unwrap().kind.as_ref().unwrap();
-    let dst = match kind {
+    let backend = backend.backend.as_ref().unwrap();
+    let dst = match backend.kind.as_ref().unwrap() {
         grpc::outbound::backend::Kind::Balancer(balance) => {
             let kind = balance.discovery.as_ref().unwrap().kind.as_ref().unwrap();
             match kind {
@@ -1421,6 +1464,8 @@ fn assert_backend_matches_service(
             port
         )
     );
+
+    assert_svc_meta(&backend.metadata, svc, port)
 }
 
 #[track_caller]
