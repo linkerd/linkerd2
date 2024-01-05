@@ -173,6 +173,11 @@ func NewRemoteClusterServiceWatcher(
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize api for target cluster %s: %w", clusterName, err)
 	}
+	_, err = remoteAPI.Client.Discovery().ServerVersion()
+	if err != nil {
+		remoteAPI.UnregisterGauges()
+		return nil, fmt.Errorf("cannot connect to api for target cluster %s: %w", clusterName, err)
+	}
 
 	// Create k8s event recorder
 	eventBroadcaster := record.NewBroadcaster()
@@ -184,7 +189,7 @@ func NewRemoteClusterServiceWatcher(
 	})
 
 	stopper := make(chan struct{})
-	rcsw := RemoteClusterServiceWatcher{
+	return &RemoteClusterServiceWatcher{
 		serviceMirrorNamespace: serviceMirrorNamespace,
 		link:                   link,
 		remoteAPIClient:        remoteAPI,
@@ -203,14 +208,7 @@ func NewRemoteClusterServiceWatcher(
 		headlessServicesEnabled: enableHeadlessSvc,
 		// always instantiate the gatewayAlive=true to prevent unexpected service fail fast
 		gatewayAlive: true,
-	}
-
-	_, err = remoteAPI.Client.Discovery().ServerVersion()
-	if err != nil {
-		return &rcsw, fmt.Errorf("cannot connect to api for target cluster %s: %w", clusterName, err)
-	}
-
-	return &rcsw, nil
+	}, nil
 }
 
 func (rcsw *RemoteClusterServiceWatcher) mirroredResourceName(remoteName string) string {

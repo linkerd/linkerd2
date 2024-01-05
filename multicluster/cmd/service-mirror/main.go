@@ -303,7 +303,7 @@ func restartClusterWatcher(
 	if err != nil {
 		return fmt.Errorf("unable to parse kube config: %w", err)
 	}
-	clusterWatcher, err = servicemirror.NewRemoteClusterServiceWatcher(
+	cw, err := servicemirror.NewRemoteClusterServiceWatcher(
 		ctx,
 		namespace,
 		controllerK8sAPI,
@@ -317,6 +317,7 @@ func restartClusterWatcher(
 	if err != nil {
 		return fmt.Errorf("unable to create cluster watcher: %w", err)
 	}
+	clusterWatcher = cw
 	err = clusterWatcher.Start(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to start cluster watcher: %w", err)
