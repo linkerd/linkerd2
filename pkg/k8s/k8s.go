@@ -19,6 +19,7 @@ const (
 	Deployment            = "deployment"
 	Endpoints             = "endpoints"
 	EndpointSlices        = "endpointslices"
+	ExtWorkload           = "externalworkload"
 	Job                   = "job"
 	MeshTLSAuthentication = "meshtlsauthentication"
 	MutatingWebhookConfig = "mutatingwebhookconfig"
@@ -50,9 +51,13 @@ const (
 
 	K8sCoreAPIGroup = "core"
 
-	NamespaceKind = "Namespace"
-	ServerKind    = "Server"
-	HTTPRouteKind = "HTTPRoute"
+	NamespaceKind   = "Namespace"
+	ServerKind      = "Server"
+	HTTPRouteKind   = "HTTPRoute"
+	ExtWorkloadKind = "ExternalWorkload"
+
+	WorkloadAPIGroup   = "workload.linkerd.io"
+	WorkloadAPIVersion = "v1alpha1"
 
 	// special case k8s job label, to not conflict with Prometheus' job label
 	l5dJob = "k8s_job"

@@ -13,7 +13,7 @@ CODEGEN_PKG=${GOPATH}/pkg/mod/k8s.io/code-generator@${GEN_VER}
 rm -rf "${SCRIPT_ROOT}/controller/gen/client/clientset/*"
 rm -rf "${SCRIPT_ROOT}/controller/gen/client/listeners/*"
 rm -rf "${SCRIPT_ROOT}/controller/gen/client/informers/*"
-crds=(serviceprofile:v1alpha2 server:v1beta1 serverauthorization:v1beta1 link:v1alpha1 policy:v1alpha1 policy:v1beta3)
+crds=(serviceprofile:v1alpha2 server:v1beta1 serverauthorization:v1beta1 link:v1alpha1 policy:v1alpha1 policy:v1beta3 externalworkload:v1alpha1)
 for crd in "${crds[@]}"
 do
   crd_path=$(tr : / <<< "$crd")

@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 pub mod duration;
+pub mod external_workload;
 pub mod labels;
 pub mod policy;
 

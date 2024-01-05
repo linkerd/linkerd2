@@ -11,6 +11,7 @@ import (
 	spv1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	l5dcrdinformer "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
+	ewinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/externalworkload/v1alpha1"
 	srvinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/server/v1beta1"
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -49,6 +50,7 @@ type API struct {
 	ds       appv1informers.DaemonSetInformer
 	endpoint coreinformers.EndpointsInformer
 	es       discoveryinformers.EndpointSliceInformer
+	ew       ewinformers.ExternalWorkloadInformer
 	job      batchv1informers.JobInformer
 	mwc      arinformers.MutatingWebhookConfigurationInformer
 	ns       coreinformers.NamespaceInformer
@@ -119,6 +121,11 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 			}
 		case res == Srv:
 			err := k8s.ServersAccess(ctx, k8sClient)
+			if err != nil {
+				return nil, err
+			}
+		case res == ExtWorkload:
+			err := k8s.ExtWorkloadAccess(ctx, k8sClient)
 			if err != nil {
 				return nil, err
 			}
@@ -218,6 +225,13 @@ func newAPI(
 			api.es = sharedInformers.Discovery().V1().EndpointSlices()
 			api.syncChecks = append(api.syncChecks, api.es.Informer().HasSynced)
 			api.promGauges.addInformerSize(k8s.EndpointSlices, informerLabels, api.es.Informer())
+		case ExtWorkload:
+			if l5dCrdSharedInformers == nil {
+				panic("Linkerd CRD shared informer not configured")
+			}
+			api.ew = l5dCrdSharedInformers.Externalworkload().V1alpha1().ExternalWorkloads()
+			api.syncChecks = append(api.syncChecks, api.ew.Informer().HasSynced)
+			api.promGauges.addInformerSize(k8s.ExtWorkload, informerLabels, api.ew.Informer())
 		case Job:
 			api.job = sharedInformers.Batch().V1().Jobs()
 			api.syncChecks = append(api.syncChecks, api.job.Informer().HasSynced)
@@ -372,6 +386,15 @@ func (api *API) ES() discoveryinformers.EndpointSliceInformer {
 		panic("EndpointSlices informer not configured")
 	}
 	return api.es
+}
+
+// ExtWorkload() provides access to a shared informer and lister for
+// ExternalWorkload CRDs
+func (api *API) ExtWorkload() ewinformers.ExternalWorkloadInformer {
+	if api.ew == nil {
+		panic("ExternalWorkload informer not configured")
+	}
+	return api.ew
 }
 
 // CM provides access to a shared informer and lister for ConfigMaps.

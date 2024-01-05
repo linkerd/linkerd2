@@ -24,6 +24,7 @@ import (
 	time "time"
 
 	versioned "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
+	externalworkload "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/externalworkload"
 	internalinterfaces "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/internalinterfaces"
 	link "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/link"
 	policy "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/policy"
@@ -46,6 +47,7 @@ type sharedInformerFactory struct {
 	lock             sync.Mutex
 	defaultResync    time.Duration
 	customResync     map[reflect.Type]time.Duration
+	transform        cache.TransformFunc
 
 	informers map[reflect.Type]cache.SharedIndexInformer
 	// startedInformers is used for tracking which informers have been started.
@@ -80,6 +82,14 @@ func WithTweakListOptions(tweakListOptions internalinterfaces.TweakListOptionsFu
 func WithNamespace(namespace string) SharedInformerOption {
 	return func(factory *sharedInformerFactory) *sharedInformerFactory {
 		factory.namespace = namespace
+		return factory
+	}
+}
+
+// WithTransform sets a transform on all informers.
+func WithTransform(transform cache.TransformFunc) SharedInformerOption {
+	return func(factory *sharedInformerFactory) *sharedInformerFactory {
+		factory.transform = transform
 		return factory
 	}
 }
@@ -188,6 +198,7 @@ func (f *sharedInformerFactory) InformerFor(obj runtime.Object, newFunc internal
 	}
 
 	informer = newFunc(f.client, resyncPeriod)
+	informer.SetTransform(f.transform)
 	f.informers[informerType] = informer
 
 	return informer
@@ -247,11 +258,16 @@ type SharedInformerFactory interface {
 	// client.
 	InformerFor(obj runtime.Object, newFunc internalinterfaces.NewInformerFunc) cache.SharedIndexInformer
 
+	Externalworkload() externalworkload.Interface
 	Link() link.Interface
 	Policy() policy.Interface
 	Server() server.Interface
 	Serverauthorization() serverauthorization.Interface
 	Linkerd() serviceprofile.Interface
+}
+
+func (f *sharedInformerFactory) Externalworkload() externalworkload.Interface {
+	return externalworkload.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Link() link.Interface {
