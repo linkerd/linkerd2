@@ -35,6 +35,15 @@ type Resources struct {
 	EphemeralStorage Constraints `json:"ephemeral-storage"`
 }
 
+// RepairController contains the config for the repair-controller container
+type RepairController struct {
+	Image                 Image     `json:"image"`
+	LogLevel              string    `json:"logLevel"`
+	LogFormat             string    `json:"logFormat"`
+	EnableSecurityContext bool      `json:"enableSecurityContext"`
+	Resources             Resources `json:"resources"`
+}
+
 // Values contains the top-level elements in the cni Helm chart
 type Values struct {
 	InboundProxyPort    uint                `json:"inboundProxyPort"`
@@ -60,6 +69,7 @@ type Values struct {
 	EnablePSP           bool                `json:"enablePSP"`
 	Privileged          bool                `json:"privileged"`
 	Resources           Resources           `json:"resources"`
+	RepairController    RepairController    `json:"repairController"`
 }
 
 // NewValues returns a new instance of the Values type.
