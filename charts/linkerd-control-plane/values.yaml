@@ -198,7 +198,6 @@ proxy:
   # "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny"
   # @default -- "all-unauthenticated"
   defaultInboundPolicy: "all-unauthenticated"
-<<<<<<< HEAD
   # -- Enable KEP-753 native sidecars
   # This is an experimental feature. It requires Kubernetes >= 1.29.
   # If enabled, .proxy.waitBeforeExitSeconds should not be used.
