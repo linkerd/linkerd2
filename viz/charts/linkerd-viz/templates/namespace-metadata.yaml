@@ -1,4 +1,4 @@
-{{- if .Values.createNamespaceMetadataJobs}}
+{{- if .Values.createNamespaceMetadataJob}}
 apiVersion: batch/v1
 kind: Job
 metadata:

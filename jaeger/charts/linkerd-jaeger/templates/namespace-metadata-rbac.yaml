@@ -1,5 +1,5 @@
 ---
-{{- if .Values.createNamespaceMetadataJobs}}
+{{- if .Values.createNamespaceMetadataJob}}
 kind: ServiceAccount
 apiVersion: v1
 metadata:
