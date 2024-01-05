@@ -67,7 +67,10 @@ type API struct {
 	l5dCrdSharedInformers l5dcrdinformer.SharedInformerFactory
 }
 
-// InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
+// InitializeAPI creates Kubernetes clients and returns an initialized API
+// wrapper. This creates informers on each one of resources passed, registering
+// metrics on each one; don't forget to call UnregisterGauges() on the returned
+// API reference to clean them up!
 func InitializeAPI(ctx context.Context, kubeConfig string, ensureClusterWideAccess bool, cluster string, resources ...APIResource) (*API, error) {
 	config, err := k8s.GetConfig(kubeConfig, "")
 	if err != nil {
@@ -87,7 +90,10 @@ func InitializeAPI(ctx context.Context, kubeConfig string, ensureClusterWideAcce
 	return initAPI(ctx, k8sClient, dynamicClient, config, ensureClusterWideAccess, cluster, resources...)
 }
 
-// InitializeAPIForConfig creates Kubernetes clients and returns an initialized API wrapper.
+// InitializeAPIForConfig creates Kubernetes clients and returns an initialized
+// API wrapper. This creates informers on each one of resources passed,
+// registering metrics on each one; don't forget to call UnregisterGauges() on
+// the returned API reference to clean them up!
 func InitializeAPIForConfig(ctx context.Context, kubeConfig *rest.Config, ensureClusterWideAccess bool, cluster string, resources ...APIResource) (*API, error) {
 	k8sClient, err := k8s.NewAPIForConfig(kubeConfig, "", []string{}, 0, 0, 0)
 	if err != nil {
@@ -141,7 +147,10 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 	return api, nil
 }
 
-// NewClusterScopedAPI takes a Kubernetes client and returns an initialized cluster-wide API.
+// NewClusterScopedAPI takes a Kubernetes client and returns an initialized
+// cluster-wide API. This creates informers on each one of resources passed,
+// registering metrics on each one; don't forget to call UnregisterGauges() on
+// the returned API reference to clean them up!
 func NewClusterScopedAPI(
 	k8sClient kubernetes.Interface,
 	dynamicClient dynamic.Interface,
@@ -153,7 +162,10 @@ func NewClusterScopedAPI(
 	return newAPI(k8sClient, dynamicClient, l5dCrdClient, sharedInformers, cluster, resources...)
 }
 
-// NewNamespacedAPI takes a Kubernetes client and returns an initialized API scoped to namespace.
+// NewNamespacedAPI takes a Kubernetes client and returns an initialized API
+// scoped to namespace. This creates informers on each one of resources passed,
+// registering metrics on each one; don't forget to call UnregisterGauges() on
+// the returned API reference to clean them up!
 func NewNamespacedAPI(
 	k8sClient kubernetes.Interface,
 	dynamicClient dynamic.Interface,
