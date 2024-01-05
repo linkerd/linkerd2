@@ -53,7 +53,7 @@ image:
   # -- Docker image for the CNI plugin
   name: "cr.l5d.io/linkerd/cni-plugin"
   # -- Tag for the CNI container Docker image
-  version: "v1.2.2"
+  version: "v1.3.0"
   # -- Pull policy for the linkerd-cni container
   pullPolicy: IfNotPresent
 
@@ -71,22 +71,44 @@ imagePullSecrets: []
 
 # -- Add additional initContainers to the daemonset
 extraInitContainers: []
-# - name: wait-for-other-cni
-#   image: busybox:1.33
-#   command:
-#     - /bin/sh
-#     - -xc
-#     - |
-#       for i in $(seq 1 180); do
-#         test -f /host/etc/cni/net.d/10-aws.conflist && exit 0
-#         sleep 1
-#       done
-#       exit 1
-#   volumeMounts:
-#     - mountPath: /host/etc/cni/net.d
-#       name: cni-net-dir
 
-# -- Resource requests and limits for linkerd-cni daemonset containers
+# The cni-repair-controller scans pods in each node to find those that have
+# been injected by linkerd, and whose linkerd-network-validator container has
+# failed. This is usually caused by a race between linkerd-cni and the CNI
+# plugin used in the cluster. This controller deletes those failed pods so they
+# can restart and rety re-acquiring a proper network config.
+repairController:
+  # -- Enables the repair-controller container
+  enabled: false
+
+  # -- Log level for the repair-controller container
+  # @default -- info
+  logLevel: info
+  # -- Log format (`plain` or `json`) for the repair-controller container
+  # @default -- plain
+  logFormat: plain
+
+  # -- Include a securityContext in the repair-controller container
+  enableSecurityContext: true
+
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the repair-controller container can use
+      limit: ""
+      # -- Amount of CPU units that the repair-controller container requests
+      request: ""
+    memory:
+      # -- Maximum amount of memory that the repair-controller container can use
+      limit: ""
+      # -- Amount of memory that the repair-controller container requests
+      request: ""
+    ephemeral-storage:
+      # -- Maximum amount of ephemeral storage that the repair-controller container can use
+      limit: ""
+      # -- Amount of ephemeral storage that the repair-controller container requests
+      request: ""
+
+# -- Resource requests and limits for linkerd-cni daemonset container
 resources:
   cpu:
     # -- Maximum amount of CPU units that the cni container can use
