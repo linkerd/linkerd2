@@ -26,11 +26,8 @@ destCNINetDir:    "/etc/cni/net.d"
 destCNIBinDir:    "/opt/cni/bin"
 # -- Configures the CNI plugin to use the -w flag for the iptables command
 useWaitFlag:      false
-# -- Kubernetes priorityClassName for the CNI plugin's Pods.
-# Defaults to system-cluster-critical so it signals the scheduler to start
-# before application pods, but after CNI plugins (whose priorityClassName is
-# system-node-critical). This isn't strictly enforced.
-priorityClassName: "system-cluster-critical"
+# -- Kubernetes priorityClassName for the CNI plugin's Pods
+priorityClassName: ""
 
 # -- Add a PSP resource and bind it to the linkerd-cni ServiceAccounts.
 # Note PSP has been deprecated since k8s v1.21
@@ -75,12 +72,13 @@ imagePullSecrets: []
 # -- Add additional initContainers to the daemonset
 extraInitContainers: []
 
-# -- The cni-repair-controller scans pods in each node to find those that have
+# The cni-repair-controller scans pods in each node to find those that have
 # been injected by linkerd, and whose linkerd-network-validator container has
-# failed.  This is usually caused by a race between linkerd-cni and the CNI
+# failed. This is usually caused by a race between linkerd-cni and the CNI
 # plugin used in the cluster. This controller deletes those failed pods so they
 # can restart and rety re-acquiring a proper network config.
 repairController:
+  # -- Enables the repair-controller container
   enabled: false
 
   # -- Log level for the repair-controller container

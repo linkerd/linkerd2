@@ -25,12 +25,6 @@ rules:
 - apiGroups: [""]
   resources: ["pods", "nodes", "namespaces", "services"]
   verbs: ["list", "get", "watch"]
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["delete"]
-- apiGroups: ["events.k8s.io"]
-  resources: ["events"]
-  verbs: ["create"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

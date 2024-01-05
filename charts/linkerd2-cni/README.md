@@ -38,13 +38,13 @@ Kubernetes: `>=1.21.0-0`
 | outboundProxyPort | int | `4140` | Outbound port for the proxy container |
 | podLabels | object | `{}` | Additional labels to add to all pods |
 | portsToRedirect | string | `""` | Ports to redirect to proxy |
-| priorityClassName | string | `"system-cluster-critical"` | Kubernetes priorityClassName for the CNI plugin's Pods. Defaults to system-cluster-critical so it signals the scheduler to start before application pods, but after CNI plugins (whose priorityClassName is system-node-critical). This isn't strictly enforced. |
+| priorityClassName | string | `""` | Kubernetes priorityClassName for the CNI plugin's Pods |
 | privileged | bool | `false` | Run the install-cni container in privileged mode |
 | proxyAdminPort | int | `4191` | Admin port for the proxy container |
 | proxyControlPort | int | `4190` | Control port for the proxy container |
 | proxyUID | int | `2102` | User id under which the proxy shall be ran |
-| repairController | object | `{"enableSecurityContext":true,"enabled":false,"logFormat":"plain","logLevel":"info","resources":{"cpu":{"limit":"","request":""},"ephemeral-storage":{"limit":"","request":""},"memory":{"limit":"","request":""}}}` | The cni-repair-controller scans pods in each node to find those that have been injected by linkerd, and whose linkerd-network-validator container has failed.  This is usually caused by a race between linkerd-cni and the CNI plugin used in the cluster. This controller deletes those failed pods so they can restart and rety re-acquiring a proper network config. |
 | repairController.enableSecurityContext | bool | `true` | Include a securityContext in the repair-controller container |
+| repairController.enabled | bool | `false` | Enables the repair-controller container |
 | repairController.logFormat | string | plain | Log format (`plain` or `json`) for the repair-controller container |
 | repairController.logLevel | string | info | Log level for the repair-controller container |
 | repairController.resources.cpu.limit | string | `""` | Maximum amount of CPU units that the repair-controller container can use |
