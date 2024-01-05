@@ -1181,6 +1181,7 @@ dependencies = [
  "linkerd-policy-controller-k8s-status",
  "openssl",
  "parking_lot",
+ "regex",
  "serde",
  "serde_json",
  "thiserror",
