@@ -10156,7 +10156,7 @@ spec:
     listKind: ExternalWorkloadList
     plural: externalworkloads
     singular: externalworkload
-    shortNames: [ew]
+    shortNames: []
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
