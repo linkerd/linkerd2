@@ -175,6 +175,7 @@ func NewRemoteClusterServiceWatcher(
 	}
 	_, err = remoteAPI.Client.Discovery().ServerVersion()
 	if err != nil {
+		remoteAPI.UnregisterGauges()
 		return nil, fmt.Errorf("cannot connect to api for target cluster %s: %w", clusterName, err)
 	}
 
