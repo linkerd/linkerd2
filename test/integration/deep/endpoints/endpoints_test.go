@@ -110,9 +110,10 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
     "namespace": "(\S*)",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8086,
-    "pod": "linkerd\-destination\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-dst\.\S*",
-	(?s).*.*
+    "pod": "linkerd-destination\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd-dst\.\S*",
+    "weight": \d+,
+    "labels": \{(?s).*\}
   \}
 \]`,
 			ns: controlNs,
@@ -125,9 +126,11 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
     "namespace": "(\S*)",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8080,
-    "pod": "linkerd\-identity\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-identity\.\S*",
-	(?s).*
+    "pod": "linkerd-identity\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd-identity\.\S*",
+    "weight": \d+,
+    "labels": \{(?s).*\}
+  \}
 \]`,
 			ns: controlNs,
 		},
@@ -139,9 +142,10 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
     "namespace": "(\S*)",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8443,
-    "pod": "linkerd\-proxy\-injector-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-proxy\-injector\.\S*",
-	(?s).*
+    "pod": "linkerd-proxy-injector-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd-proxy-injector\.\S*",
+    "weight": \d+,
+    "labels": \{(?s).*\}
   \}
 \]`,
 			ns: controlNs,
@@ -154,9 +158,10 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
     "namespace": "(\S*)",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8080,
-    "pod": "nginx\-[a-f0-9]+\-[a-z0-9]+",
+    "pod": "nginx-[a-f0-9]+\-[a-z0-9]+",
     "service": "nginx\.\S*",
-	(?s).*
+    "weight": \d+,
+    "labels": \{(?s).*\}
   \}
 \]`,
 			ns: endpointNs,
