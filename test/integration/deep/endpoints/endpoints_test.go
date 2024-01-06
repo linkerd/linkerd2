@@ -99,7 +99,7 @@ func TestBadEndpoints(t *testing.T) {
 		testutil.AnnotatedErrorf(t, "unexpected error string", "unexpected error string: %s", stderrOut[0])
 	}
 }
-``
+
 func createTestCaseTable(controlNs, endpointNs string) []testCase {
 	return []testCase{
 		{
