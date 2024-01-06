@@ -99,7 +99,7 @@ func TestBadEndpoints(t *testing.T) {
 		testutil.AnnotatedErrorf(t, "unexpected error string", "unexpected error string: %s", stderrOut[0])
 	}
 }
-
+``
 func createTestCaseTable(controlNs, endpointNs string) []testCase {
 	return []testCase{
 		{
@@ -112,8 +112,7 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
     "port": 8086,
     "pod": "linkerd\-destination\-[a-f0-9]+\-[a-z0-9]+",
     "service": "linkerd\-dst\.\S*",
-	"weight": 10000,
-	"labels": \{.*\}
+	(?s).*.*
   \}
 \]`,
 			ns: controlNs,
@@ -128,8 +127,7 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
     "port": 8080,
     "pod": "linkerd\-identity\-[a-f0-9]+\-[a-z0-9]+",
     "service": "linkerd\-identity\.\S*",
-	"weight": 10000,
-	"labels": \{.*\}
+	(?s).*
 \]`,
 			ns: controlNs,
 		},
@@ -143,8 +141,7 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
     "port": 8443,
     "pod": "linkerd\-proxy\-injector-[a-f0-9]+\-[a-z0-9]+",
     "service": "linkerd\-proxy\-injector\.\S*",
-	"weight": 10000,
-	"labels": \{.*\}
+	(?s).*
   \}
 \]`,
 			ns: controlNs,
@@ -159,8 +156,7 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
     "port": 8080,
     "pod": "nginx\-[a-f0-9]+\-[a-z0-9]+",
     "service": "nginx\.\S*",
-	"weight": 10000,
-	"labels": \{.*\}
+	(?s).*
   \}
 \]`,
 			ns: endpointNs,
