@@ -111,7 +111,9 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8086,
     "pod": "linkerd\-destination\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-dst\.\S*"
+    "service": "linkerd\-dst\.\S*",
+	"weight": 10000,
+	"labels": \{.*\}
   \}
 \]`,
 			ns: controlNs,
@@ -125,8 +127,9 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8080,
     "pod": "linkerd\-identity\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-identity\.\S*"
-  \}
+    "service": "linkerd\-identity\.\S*",
+	"weight": 10000,
+	"labels": \{.*\}
 \]`,
 			ns: controlNs,
 		},
@@ -139,7 +142,9 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8443,
     "pod": "linkerd\-proxy\-injector-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-proxy\-injector\.\S*"
+    "service": "linkerd\-proxy\-injector\.\S*",
+	"weight": 10000,
+	"labels": \{.*\}
   \}
 \]`,
 			ns: controlNs,
@@ -153,7 +158,9 @@ func createTestCaseTable(controlNs, endpointNs string) []testCase {
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8080,
     "pod": "nginx\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "nginx\.\S*"
+    "service": "nginx\.\S*",
+	"weight": 10000,
+	"labels": \{.*\}
   \}
 \]`,
 			ns: endpointNs,
