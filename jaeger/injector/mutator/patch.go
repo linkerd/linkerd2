@@ -35,7 +35,7 @@ const tpl = `[
     "path": "/spec/{{.ProxyPath}}/volumeMounts/-",
     "value": {
       "mountPath": "var/run/linkerd/podinfo",
-      "name": "podinfo"
+      "name": "linkerd-podinfo"
     }
   },
   {
@@ -52,7 +52,7 @@ const tpl = `[
      }
    ]
        },
-       "name": "podinfo"
+       "name": "linkerd-podinfo"
      }
   }
 ]`
