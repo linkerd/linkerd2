@@ -82,6 +82,12 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["workload.linkerd.io"]
+  resources: ["externalworkloads"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["create", "get", "update", "patch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -235,6 +241,14 @@ rules:
       - httproutes/status
     verbs:
       - patch
+  - apiGroups:
+    - workload.linkerd.io
+    resources:
+      - externalworkloads
+    verbs:
+      - get
+      - list
+      - watch
   - apiGroups:
       - coordination.k8s.io
     resources:
@@ -1196,7 +1210,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: d3eac3abc6cf5f1943e0f005fd15ad0107229283fa6f8db72f9ccb4766bb2228
+        checksum/config: e5e2bc5f90b533b10cbd81e9b5deddbcb8ef36cd08c660701a9e3ff6ed9a93bf
         linkerd.io/created-by: CliVersion
         linkerd.io/proxy-version: ProxyVersion
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"

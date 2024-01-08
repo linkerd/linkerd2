@@ -99,6 +99,8 @@ func NewFakeClientSets(configs ...string) (
 			spObjs = append(spObjs, obj)
 		case Server:
 			spObjs = append(spObjs, obj)
+		case ExtWorkload:
+			spObjs = append(spObjs, obj)
 		default:
 			objs = append(objs, obj)
 		}
@@ -139,6 +141,7 @@ metadata:
 		apiextensionsfake.NewSimpleClientset(apiextObjs...),
 		apiregistrationfake.NewSimpleClientset(apiRegObjs...),
 		spfake.NewSimpleClientset(spObjs...),
+
 		nil
 }
 

@@ -57,6 +57,7 @@ func NewFakeClusterScopedAPI(clientSet kubernetes.Interface, l5dClientSet l5dcrd
 		ES,
 		Srv,
 		Secret,
+		ExtWorkload,
 	)
 }
 
