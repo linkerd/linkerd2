@@ -30,6 +30,7 @@ const (
 	DS
 	Endpoint
 	ES // EndpointSlice resource
+	ExtWorkload
 	Job
 	MWC
 	NS
