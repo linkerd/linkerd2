@@ -75,7 +75,7 @@ pub struct Condition {
     typ: String,
     /// Status of the condition.
     /// Can be True, False, Unknown
-    status: String,
+    status: ConditionStatus,
     /// Last time a condition transitioned from one status to another.
     last_transition_time: crate::apimachinery::pkg::apis::meta::v1::Time,
     /// Last time an ExternalWorkload was probed for a condition.
@@ -85,4 +85,11 @@ pub struct Condition {
     reason: String,
     /// Human readable message that describes details about last transition.
     message: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
+pub enum ConditionStatus {
+    True,
+    False,
+    Unknown,
 }
