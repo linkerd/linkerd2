@@ -116,6 +116,8 @@ func TestEndpoints(t *testing.T) {
 }
 
 func testEndpointsCall(exp endpointsExp, t *testing.T) {
+	t.Helper()
+
 	updates := make([]pb.Update, 0)
 	for _, endpoint := range exp.endpoints {
 		addrSet := util.BuildAddrSet(endpoint)

@@ -37,6 +37,8 @@ type (
 		name    string
 		address string
 		ip      string
+		weight  uint32
+		labels  map[string]string
 	}
 )
 
@@ -200,6 +202,8 @@ func requestEndpointsFromAPI(client destinationPb.DestinationClient, authorities
 					name:    labels["pod"],
 					address: tcpAddr.String(),
 					ip:      getIP(tcpAddr),
+					weight:  addr.GetWeight(),
+					labels:  addr.GetMetricLabels(),
 				})
 			}
 		}
@@ -230,6 +234,9 @@ type rowEndpoint struct {
 	Port      uint32 `json:"port"`
 	Pod       string `json:"pod"`
 	Service   string `json:"service"`
+	Weight    uint32 `json:"weight"`
+
+	Labels map[string]string `json:"labels"`
 }
 
 func writeEndpointsToBuffer(endpoints endpointsInfo, w *tabwriter.Writer, options *endpointsOptions) {
@@ -255,6 +262,8 @@ func writeEndpointsToBuffer(endpoints endpointsInfo, w *tabwriter.Writer, option
 					Port:      port,
 					Pod:       name,
 					Service:   serviceID,
+					Weight:    pod.weight,
+					Labels:    pod.labels,
 				}
 
 				endpointsTables[namespace] = append(endpointsTables[namespace], row)
