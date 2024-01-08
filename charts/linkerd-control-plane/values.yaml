@@ -584,15 +584,10 @@ podMonitor:
 # Optional: support to deploy extra manifest objects along with your chart
 # Example:
 # extraObjects:
-# - kind: ExternalSecret
-#   apiVersion: kubernetes-client.io/v1
+# - kind: ConfigMap
+#   apiVersion: v1
 #   metadata:
-#     name: linkerd-identity-issuer
-#   spec:
-#     backendType: secretsManager
-#     data:
-#       - key: prod/eks-prod/linkerd/linkerd2-secret-key-pem
-#         name: crt.pem
-#       - key: prod/eks-prod/linkerd/linkerd2-secret-crt-pem
-#         name: key.pem
+#     name: extra-config-map
+#   data:
+#     key: value
 extraObjects: []
