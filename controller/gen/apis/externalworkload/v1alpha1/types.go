@@ -60,10 +60,10 @@ type ExternalWorkloadSpec struct {
 type MeshTls struct {
 	// Identity associated with the workload. Used by peers to perform
 	// verification in the mTLS handshake
-	Identity string `json:"identity,omitempty"`
+	Identity string `json:"identity"`
 	// ServerName is the DNS formatted name associated with the workload. Used
 	// to terminate TLS using the SNI extension.
-	ServerName string `json:"serverName,omitempty"`
+	ServerName string `json:"serverName"`
 }
 
 // PortSpec represents a network port in a single workload.

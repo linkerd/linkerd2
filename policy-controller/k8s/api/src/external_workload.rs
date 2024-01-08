@@ -31,11 +31,11 @@ pub struct ExternalWorkloadSpec {
 pub struct MeshTls {
     /// Identity associated with the workload. Used by peers to perform
     /// verification in the mTLS handshake
-    pub identity: Option<String>,
+    pub identity: String,
     /// ServerName is the DNS formatted name associated with the workload. Used
     /// to terminate TLS using the SNI extension.
     #[serde(rename = "serverName")]
-    pub server_name: Option<String>,
+    pub server_name: String,
 }
 
 /// PortSpec represents a network port in a single workload.
@@ -54,15 +54,15 @@ pub struct PortSpec {
     pub protocol: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
-pub struct ExternalWorkloadStatus {
-    pub conditions: Vec<Condition>,
-}
-
 /// WorkloadIPs contains a list of IP addresses exposed by an ExternalWorkload
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
 pub struct WorkloadIP {
     pub ip: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
+pub struct ExternalWorkloadStatus {
+    pub conditions: Vec<Condition>,
 }
 
 /// WorkloadCondition represents the service state of an ExternalWorkload
