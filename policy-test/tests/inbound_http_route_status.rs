@@ -16,7 +16,9 @@ async fn inbound_accepted_parent() {
                 ..Default::default()
             },
             spec: k8s::policy::ServerSpec {
-                pod_selector: k8s::labels::Selector::from_iter(Some(("app", server_name))),
+                selector: k8s::policy::server::Selector::Pod(k8s::labels::Selector::from_iter(
+                    Some(("app", server_name)),
+                )),
                 port: k8s::policy::server::Port::Name("http".to_string()),
                 proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
             },
@@ -91,7 +93,9 @@ async fn inbound_multiple_parents() {
                 ..Default::default()
             },
             spec: k8s::policy::ServerSpec {
-                pod_selector: k8s::labels::Selector::from_iter(Some(("app", "test-valid-server"))),
+                selector: k8s::policy::server::Selector::Pod(k8s::labels::Selector::from_iter(
+                    Some(("app", "test-valid-server")),
+                )),
                 port: k8s::policy::server::Port::Name("http".to_string()),
                 proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
             },
@@ -182,7 +186,9 @@ async fn inbound_accepted_reconcile_no_parent() {
                 ..Default::default()
             },
             spec: k8s::policy::ServerSpec {
-                pod_selector: k8s::labels::Selector::from_iter(Some(("app", server_name))),
+                selector: k8s::policy::server::Selector::Pod(k8s::labels::Selector::from_iter(
+                    Some(("app", server_name)),
+                )),
                 port: k8s::policy::server::Port::Name("http".to_string()),
                 proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
             },
@@ -229,7 +235,9 @@ async fn inbound_accepted_reconcile_parent_delete() {
                 ..Default::default()
             },
             spec: k8s::policy::ServerSpec {
-                pod_selector: k8s::labels::Selector::from_iter(Some(("app", server_name))),
+                selector: k8s::policy::server::Selector::Pod(k8s::labels::Selector::from_iter(
+                    Some(("app", server_name)),
+                )),
                 port: k8s::policy::server::Port::Name("http".to_string()),
                 proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
             },
