@@ -41,7 +41,9 @@ pub fn server(ns: &str) -> k8s::policy::Server {
             ..Default::default()
         },
         spec: k8s::policy::ServerSpec {
-            pod_selector: k8s::labels::Selector::from_iter(Some(("app", "web"))),
+            selector: k8s::policy::server::Selector::Pod(k8s::labels::Selector::from_iter(Some((
+                "app", "web",
+            )))),
             port: k8s::policy::server::Port::Name("http".to_string()),
             proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
         },

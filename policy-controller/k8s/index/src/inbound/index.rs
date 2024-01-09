@@ -25,7 +25,9 @@ use linkerd_policy_controller_core::{
     },
     IdentityMatch, Ipv4Net, Ipv6Net, NetworkMatch,
 };
-use linkerd_policy_controller_k8s_api::{self as k8s, policy::server::Port, ResourceExt};
+use linkerd_policy_controller_k8s_api::{
+    self as k8s, policy::server::Port, policy::server::Selector, ResourceExt,
+};
 use parking_lot::RwLock;
 use std::{
     collections::{hash_map::Entry, BTreeSet},
@@ -924,34 +926,36 @@ impl Pod {
         );
 
         for (srvname, server) in policy.servers.iter() {
-            if server.pod_selector.matches(&self.meta.labels) {
-                for port in self.select_ports(&server.port_ref).into_iter() {
-                    // If the port is already matched to a server, then log a warning and skip
-                    // updating it so it doesn't flap between servers.
-                    if let Some(prior) = matched_ports.get(&port) {
-                        tracing::warn!(
-                            port = %port,
-                            server = %prior,
-                            conflict = %srvname,
-                            "Port already matched by another server; skipping"
+            if let Selector::Pod(pod_selector) = &server.selector {
+                if pod_selector.matches(&self.meta.labels) {
+                    for port in self.select_ports(&server.port_ref).into_iter() {
+                        // If the port is already matched to a server, then log a warning and skip
+                        // updating it so it doesn't flap between servers.
+                        if let Some(prior) = matched_ports.get(&port) {
+                            tracing::warn!(
+                                port = %port,
+                                server = %prior,
+                                conflict = %srvname,
+                                "Port already matched by another server; skipping"
+                            );
+                            continue;
+                        }
+
+                        let s = policy.inbound_server(
+                            srvname.clone(),
+                            server,
+                            authentications,
+                            self.probes
+                                .get(&port)
+                                .into_iter()
+                                .flatten()
+                                .map(|p| p.as_str()),
                         );
-                        continue;
+                        self.update_server(port, srvname, s);
+
+                        matched_ports.insert(port, srvname.clone());
+                        unmatched_ports.remove(&port);
                     }
-
-                    let s = policy.inbound_server(
-                        srvname.clone(),
-                        server,
-                        authentications,
-                        self.probes
-                            .get(&port)
-                            .into_iter()
-                            .flatten()
-                            .map(|p| p.as_str()),
-                    );
-                    self.update_server(port, srvname, s);
-
-                    matched_ports.insert(port, srvname.clone());
-                    unmatched_ports.remove(&port);
                 }
             }
         }

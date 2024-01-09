@@ -8,15 +8,24 @@ use std::{fmt, num::NonZeroU16};
 #[derive(Clone, Debug, PartialEq, Eq, CustomResource, Deserialize, Serialize, JsonSchema)]
 #[kube(
     group = "policy.linkerd.io",
-    version = "v1beta1",
+    version = "v1beta2",
     kind = "Server",
     namespaced
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ServerSpec {
-    pub pod_selector: labels::Selector,
+    #[serde(flatten)]
+    pub selector: Selector,
     pub port: Port,
     pub proxy_protocol: Option<ProxyProtocol>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
+pub enum Selector {
+    #[serde(rename = "podSelector")]
+    Pod(labels::Selector),
+    #[serde(rename = "externalWorkloadSelector")]
+    ExternalWorkload(labels::Selector),
 }
 
 /// References a pod spec's port by name or number.

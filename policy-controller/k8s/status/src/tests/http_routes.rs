@@ -172,7 +172,7 @@ fn make_server(
         },
         spec: k8s::policy::ServerSpec {
             port,
-            pod_selector: pod_labels.into_iter().collect(),
+            selector: k8s::policy::server::Selector::Pod(pod_labels.into_iter().collect()),
             proxy_protocol,
         },
     }

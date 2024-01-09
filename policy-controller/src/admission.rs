@@ -1,12 +1,9 @@
 use super::validation;
-use crate::k8s::{
-    labels,
-    policy::{
-        httproute, AuthorizationPolicy, AuthorizationPolicySpec, HttpRoute, HttpRouteSpec,
-        LocalTargetRef, MeshTLSAuthentication, MeshTLSAuthenticationSpec, NamespacedTargetRef,
-        NetworkAuthentication, NetworkAuthenticationSpec, Server, ServerAuthorization,
-        ServerAuthorizationSpec, ServerSpec,
-    },
+use crate::k8s::policy::{
+    httproute, server::Selector, AuthorizationPolicy, AuthorizationPolicySpec, HttpRoute,
+    HttpRouteSpec, LocalTargetRef, MeshTLSAuthentication, MeshTLSAuthenticationSpec,
+    NamespacedTargetRef, NetworkAuthentication, NetworkAuthenticationSpec, Server,
+    ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
 };
 use anyhow::{anyhow, bail, ensure, Result};
 use futures::future;
@@ -328,7 +325,7 @@ impl Validate<ServerSpec> for Admission {
             let server_name = server.name_unchecked();
             if server_name != name
                 && server.spec.port == spec.port
-                && Self::overlaps(&server.spec.pod_selector, &spec.pod_selector)
+                && Self::overlaps(&server.spec.selector, &spec.selector)
             {
                 let server_ns = server.namespace();
                 let server_ns = server_ns.as_deref().unwrap_or("default");
@@ -351,9 +348,19 @@ impl Admission {
     // example, if `left` selects pods with 'foo=bar' and `right` selects pods with
     // 'foo', we should indicate the selectors overlap. It's a bit tricky to work
     // through all of the cases though, so we'll just punt for now.
-    fn overlaps(left: &labels::Selector, right: &labels::Selector) -> bool {
-        if left.selects_all() || right.selects_all() {
-            return true;
+    fn overlaps(left: &Selector, right: &Selector) -> bool {
+        match (left, right) {
+            (Selector::Pod(ps_left), Selector::Pod(ps_right)) => {
+                if ps_left.selects_all() || ps_right.selects_all() {
+                    return true;
+                }
+            }
+            (Selector::ExternalWorkload(et_left), Selector::ExternalWorkload(et_right)) => {
+                if et_left.selects_all() || et_right.selects_all() {
+                    return true;
+                }
+            }
+            (_, _) => return false,
         }
 
         left == right
