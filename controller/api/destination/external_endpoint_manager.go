@@ -17,9 +17,6 @@ import (
 )
 
 const (
-	// Value used in `kubernetes.io/managed-by` annotation
-	managedByController = "linkerd-destination"
-
 	// Specifies capacity for updates buffer
 	epUpdateQueueCapacity = 100
 
@@ -38,7 +35,9 @@ const (
 	leaseRetryPeriod = 2 * time.Second
 )
 
-// EndpointManagem
+// EndpointManager reconciles service memberships for ExternalWorkload resources
+// by writing EndpointSlice objects for Services that select one or more
+// external endpoints.
 type EndpointManager struct {
 	k8sAPI   *k8s.API
 	log      *logging.Entry
@@ -273,19 +272,4 @@ func (em *EndpointManager) updateExternal(obj interface{}) {
 		fmt.Printf("Hello from %s\n", ew.Name)
 		em.enqueueUpdate(svc)
 	}
-}
-
-func isReady(workload *ewv1alpha1.ExternalWorkload) bool {
-	if workload.Status.Conditions == nil || len(workload.Status.Conditions) == 0 {
-		return false
-	}
-
-	var cond *ewv1alpha1.WorkloadCondition
-	for i := range workload.Status.Conditions {
-		if workload.Status.Conditions[i].Type == ewv1alpha1.WorkloadReady {
-			cond = &workload.Status.Conditions[i]
-		}
-	}
-
-	return cond.Status == ewv1alpha1.ConditionTrue
 }
