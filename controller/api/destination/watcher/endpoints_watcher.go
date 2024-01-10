@@ -1182,6 +1182,7 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 }
 
 func (pp *portPublisher) updateServer(server *v1beta1.Server, selector labels.Selector, isAdd bool) {
+	updated := false
 	for id, address := range pp.addresses.Addresses {
 		if address.Pod != nil && selector.Matches(labels.Set(address.Pod.Labels)) {
 			var portMatch bool
@@ -1207,12 +1208,18 @@ func (pp *portPublisher) updateServer(server *v1beta1.Server, selector labels.Se
 				} else {
 					address.OpaqueProtocol = false
 				}
-				pp.addresses.Addresses[id] = address
+				if pp.addresses.Addresses[id].OpaqueProtocol != address.OpaqueProtocol {
+					pp.addresses.Addresses[id] = address
+					updated = true
+				}
 			}
 		}
 	}
-	for _, listener := range pp.listeners {
-		listener.Add(pp.addresses)
+	if updated {
+		for _, listener := range pp.listeners {
+			listener.Add(pp.addresses)
+		}
+		pp.metrics.incUpdates()
 	}
 }
 
