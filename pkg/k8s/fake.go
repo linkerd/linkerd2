@@ -141,7 +141,6 @@ metadata:
 		apiextensionsfake.NewSimpleClientset(apiextObjs...),
 		apiregistrationfake.NewSimpleClientset(apiRegObjs...),
 		spfake.NewSimpleClientset(spObjs...),
-
 		nil
 }
 

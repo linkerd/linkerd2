@@ -407,7 +407,7 @@ func (ec *EndpointsController) updateService(obj interface{}) {
 		return
 	}
 
-	if svc.Namespace == "kube-systec" {
+	if svc.Namespace == "kube-system" {
 		ec.log.Tracef("skipping Service event: %s/%s is a kube-system Service", svc.Namespace, svc.Name)
 		return
 	}
@@ -419,9 +419,6 @@ func (ec *EndpointsController) updateService(obj interface{}) {
 	}
 
 	ec.enqueueUpdate(key)
-}
-
-func (ec *EndpointsController) updateExternal(ew *ewv1alpha1.ExternalWorkload) {
 }
 
 func isReady(ew *ewv1alpha1.ExternalWorkload) bool {
