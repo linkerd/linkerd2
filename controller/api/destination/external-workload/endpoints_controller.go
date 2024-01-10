@@ -98,7 +98,7 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 	ec := &EndpointsController{
 		k8sAPI: k8sAPI,
 		updates: updateQueue{
-			queue: make(chan queueUpdate),
+			queue: make(chan queueUpdate, updateQueueCapacity),
 			queueMetrics: queueMetrics{
 				queueLength:  queueLengthGauge,
 				queueUpdates: queueUpdateCounter,
