@@ -55,7 +55,7 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 		updates: make(chan string, updateQueueCapacity),
 		stop:    stopCh,
 		log: logging.WithFields(logging.Fields{
-			"component": "external-endpoint-manager",
+			"component": "external-endpoints-controller",
 		}),
 	}
 
