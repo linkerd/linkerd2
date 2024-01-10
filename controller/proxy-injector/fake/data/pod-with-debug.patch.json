@@ -199,7 +199,7 @@
         },
         {
           "name": "LINKERD2_PROXY_POLICY_WORKLOAD",
-          "value": "$(_pod_ns):$(_pod_name)"
+          "value": "{\"ns\":\"$(_pod_ns)\", \"nodeName\":\"$(_pod_nodeName)\", \"pod\":\"$(_pod_name)\"}\n"
         },
         {
           "name": "LINKERD2_PROXY_INBOUND_DEFAULT_POLICY",

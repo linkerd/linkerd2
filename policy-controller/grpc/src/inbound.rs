@@ -1,4 +1,4 @@
-use crate::http_route;
+use crate::{http_route, workload::Kind, workload::Workload};
 use futures::prelude::*;
 use linkerd2_proxy_api::{
     self as api,
@@ -17,7 +17,7 @@ use linkerd_policy_controller_core::{
     IdentityMatch, IpNet, NetworkMatch,
 };
 use maplit::*;
-use std::{num::NonZeroU16, sync::Arc};
+use std::{num::NonZeroU16, str::FromStr, sync::Arc};
 use tracing::trace;
 
 #[derive(Clone, Debug)]
@@ -49,21 +49,16 @@ where
         &self,
         proto::PortSpec { workload, port }: proto::PortSpec,
     ) -> Result<(String, String, NonZeroU16), tonic::Status> {
-        // Parse a workload name in the form namespace:name.
-        let (ns, name) = match workload.split_once(':') {
-            None => {
-                return Err(tonic::Status::invalid_argument(format!(
-                    "Invalid workload: {}",
-                    workload
-                )));
+        let (ns, name) = match Workload::from_str(&workload)? {
+            Workload {
+                namespace,
+                kind: Kind::Pod(pod),
+            } => (namespace, pod),
+            _ => {
+                return Err(tonic::Status::invalid_argument(
+                    "only pod workload supported at the moment",
+                ))
             }
-            Some((ns, pod)) if ns.is_empty() || pod.is_empty() => {
-                return Err(tonic::Status::invalid_argument(format!(
-                    "Invalid workload: {}",
-                    workload
-                )));
-            }
-            Some((ns, pod)) => (ns, pod),
         };
 
         // Ensure that the port is in the valid range.
