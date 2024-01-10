@@ -102,7 +102,15 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 		DeleteFunc: func(obj interface{}) {
 			var ew *ewv1alpha1.ExternalWorkload
 			if ew, ok := obj.(*ewv1alpha1.ExternalWorkload); ok {
-				ec.updateExternal(ew)
+				services, err := ec.getSvcMembership(ew)
+				if err != nil {
+					ec.log.Errorf("failed to get service membership for %s/%s: %v", ew.Namespace, ew.Name, err)
+					return
+				}
+
+				for svc := range services {
+					ec.enqueueUpdate(svc)
+				}
 				return
 			}
 
