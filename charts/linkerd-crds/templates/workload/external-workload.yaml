@@ -103,8 +103,7 @@ spec:
                       type: string
             type: object
             required:
-            - ports
-            - workloadIPs
+            - meshTls
           status:
             type: object
             properties:

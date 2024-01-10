@@ -46,14 +46,16 @@ type ExternalWorkloadList struct {
 // ExternalWorkloadSpec represents the desired state of an external workload
 type ExternalWorkloadSpec struct {
 	// MeshTls describes TLS settings associated with an external workload
+	MeshTls MeshTls `json:"meshTls"`
+	// Ports describes a set of ports exposed by the workload
 	//
 	// +optional
-	MeshTls MeshTls `json:"meshTls,omitempty"`
-	// Ports describes a set of ports exposed by the workload
-	Ports []PortSpec `json:"ports"`
+	Ports []PortSpec `json:"ports,omitempty"`
 	// List of IP addresses that can be used to send traffic to an external
 	// workload
-	WorkloadIPs []WorkloadIP `json:"workloadIPs"`
+	//
+	// +optional
+	WorkloadIPs []WorkloadIP `json:"workloadIPs,omitempty"`
 }
 
 // MeshTls describes TLS settings associated with an external workload

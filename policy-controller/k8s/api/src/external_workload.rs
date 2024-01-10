@@ -17,13 +17,13 @@ use serde::{Deserialize, Serialize};
 pub struct ExternalWorkloadSpec {
     /// MeshTls describes TLS settings associated with an external workload
     #[serde(rename = "meshTls")]
-    pub mesh_tls: Option<MeshTls>,
+    pub mesh_tls: MeshTls,
     /// Ports describes a set of ports exposed by the workload
-    pub ports: Vec<PortSpec>,
+    pub ports: Option<Vec<PortSpec>>,
     /// List of IP addresses that can be used to send traffic to an external
     /// workload
     #[serde(rename = "workloadIPs")]
-    pub workload_ips: Vec<WorkloadIP>,
+    pub workload_ips: Option<Vec<WorkloadIP>>,
 }
 
 /// MeshTls describes TLS settings associated with an external workload
