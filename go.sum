@@ -154,8 +154,8 @@ github.com/go-openapi/jsonpointer v0.20.2 h1:mQc3nmndL8ZBzStEo3JYF8wzmeWffDH4VbX
 github.com/go-openapi/jsonpointer v0.20.2/go.mod h1:bHen+N0u1KEO3YlmqOjTT9Adn1RfD91Ar825/PuiRVs=
 github.com/go-openapi/jsonreference v0.20.4 h1:bKlDxQxQJgwpUSgOENiMPzCTBVuc7vTdXSSgNeAhojU=
 github.com/go-openapi/jsonreference v0.20.4/go.mod h1:5pZJyJP2MnYCpoeoMAql78cCHauHj0V9Lhc506VOpw4=
-github.com/go-openapi/spec v0.20.13 h1:XJDIN+dLH6vqXgafnl5SUIMnzaChQ6QTo0/UPMbkIaE=
-github.com/go-openapi/spec v0.20.13/go.mod h1:8EOhTpBoFiask8rrgwbLC3zmJfz4zsCUueRuPM6GNkw=
+github.com/go-openapi/spec v0.20.14 h1:7CBlRnw+mtjFGlPDRZmAMnq35cRzI91xj03HVyUi/Do=
+github.com/go-openapi/spec v0.20.14/go.mod h1:8EOhTpBoFiask8rrgwbLC3zmJfz4zsCUueRuPM6GNkw=
 github.com/go-openapi/swag v0.22.6 h1:dnqg1XfHXL9aBxSbktBqFR5CxVyVI+7fYWhAf1JOeTw=
 github.com/go-openapi/swag v0.22.6/go.mod h1:Gl91UqO+btAM0plGGxHqJcQZ1ZTy6jbmridBTsDy8A0=
 github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/melR3HDY=
