@@ -7,6 +7,8 @@ import (
 
 	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +22,7 @@ const (
 	// Specifies capacity for updates buffer
 	updateQueueCapacity = 400
 
-	// Name of the lease resource the controllem will use
+	// Name of the lease resource the controller will use
 	leaseName = "linkerd-destination-endpoint-write"
 
 	// Duration of the lease
@@ -35,13 +37,56 @@ const (
 	leaseRetryPeriod = 2 * time.Second
 )
 
+type (
+	updateQueue struct {
+		queue chan queueUpdate
+		queueMetrics
+	}
+
+	queueMetrics struct {
+		queueLength  prometheus.Gauge
+		queueUpdates prometheus.Counter
+		queueDrops   prometheus.Counter
+		queueLatency prometheus.Histogram
+	}
+
+	queueUpdate struct {
+		item string
+
+		enqueTime time.Time
+	}
+)
+
+var (
+	queueLengthGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "external_endpoints_controller_queue_length",
+		Help: "Total number of updates currently waiting to be processed",
+	})
+
+	queueUpdateCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "external_endpoints_controller_queue_updates",
+		Help: "Total number of updates that entered the queue",
+	})
+
+	queueDroppedCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "external_endpoints_controller_queue_dropped",
+		Help: "Total number of updates dropped due to a backed-up queue",
+	})
+
+	queueLatencyHist = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "external_endpoints_controller_queue_latency_seconds",
+		Help:    "Distribution of durations that updates have spent in the queue",
+		Buckets: []float64{.005, .01, .05, .1, .5, 1, 3, 10},
+	})
+)
+
 // EndpointsController reconciles service memberships for ExternalWorkload resources
 // by writing EndpointSlice objects for Services that select one or more
 // external endpoints.
 type EndpointsController struct {
 	k8sAPI   *k8s.API
 	log      *logging.Entry
-	updates  chan string
+	updates  updateQueue
 	stop     chan struct{}
 	isLeader bool
 
@@ -51,9 +96,17 @@ type EndpointsController struct {
 
 func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stopCh chan struct{}) (*EndpointsController, error) {
 	ec := &EndpointsController{
-		k8sAPI:  k8sAPI,
-		updates: make(chan string, updateQueueCapacity),
-		stop:    stopCh,
+		k8sAPI: k8sAPI,
+		updates: updateQueue{
+			queue: make(chan queueUpdate),
+			queueMetrics: queueMetrics{
+				queueLength:  queueLengthGauge,
+				queueUpdates: queueUpdateCounter,
+				queueDrops:   queueDroppedCounter,
+				queueLatency: queueLatencyHist,
+			},
+		},
+		stop: stopCh,
 		log: logging.WithFields(logging.Fields{
 			"component": "external-endpoints-controller",
 		}),
@@ -338,8 +391,12 @@ func (ec *EndpointsController) Start() {
 	go func() {
 		for {
 			select {
-			case update := <-ec.updates:
-				ec.processUpdate(update)
+			case update := <-ec.updates.queue:
+				elapsed := time.Since(update.enqueTime).Seconds()
+				ec.updates.queueLatency.Observe(elapsed)
+				ec.updates.queueLength.Dec()
+
+				ec.processUpdate(update.item)
 			case <-ec.stop:
 				ec.log.Info("Received shutdown signal")
 				// Propagate shutdown to elector through the context.
@@ -353,13 +410,19 @@ func (ec *EndpointsController) Start() {
 // enqueueUpdate will enqueue a service key to the updates buffer to be
 // processed by the endpoint manager. When a write to the buffer blocks, the
 // update is dropped.
-func (ec *EndpointsController) enqueueUpdate(update string) {
+func (ec *EndpointsController) enqueueUpdate(key string) {
+	update := queueUpdate{
+		item:      key,
+		enqueTime: time.Now(),
+	}
 	select {
-	case ec.updates <- update:
+	case ec.updates.queue <- update:
 		// Update successfully enqueued.
+		ec.updates.queueLength.Inc()
+		ec.updates.queueUpdates.Inc()
 	default:
 		// Drop update
-		// TODO (matei): add overflow counter
+		ec.updates.queueDrops.Inc()
 		ec.log.Debugf("External endpoint manager queue is full; dropping update for %s", update)
 		return
 	}
@@ -367,6 +430,7 @@ func (ec *EndpointsController) enqueueUpdate(update string) {
 
 func (ec *EndpointsController) processUpdate(update string) {
 	// TODO (matei): reconciliation logic
+	// TODO (matei): track how long an item takes to be processed
 	ec.log.Infof("Received %s", update)
 }
 
@@ -406,7 +470,7 @@ func (ec *EndpointsController) getSvcMembership(workload *ewv1alpha1.ExternalWor
 // === Callbacks ===
 
 // When a service update has been received (regardless of the event type, i.e.
-// can be Added, Modified, Deleted) send it to the endpoint manager for
+// can be Added, Modified, Deleted) send it to the endpoint controller for
 // processing.
 func (ec *EndpointsController) updateService(obj interface{}) {
 	svc, ok := obj.(*corev1.Service)
