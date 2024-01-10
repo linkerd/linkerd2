@@ -34,6 +34,18 @@ type (
 	}
 )
 
+var TemplatesMulticluster = []string{
+	chartutil.ChartfileName,
+	chartutil.ValuesfileName,
+	"templates/namespace.yaml",
+	"templates/gateway.yaml",
+	"templates/gateway-policy.yaml",
+	"templates/psp.yaml",
+	"templates/remote-access-service-mirror-rbac.yaml",
+	"templates/link-crd.yaml",
+	"templates/service-mirror-policy.yaml",
+}
+
 func newMulticlusterInstallCommand() *cobra.Command {
 	options, err := newMulticlusterInstallOptionsWithDefault()
 	var ha bool
@@ -129,16 +141,9 @@ func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptio
 }
 
 func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string]interface{}) error {
-	files := []*loader.BufferedFile{
-		{Name: chartutil.ChartfileName},
-		{Name: chartutil.ValuesfileName},
-		{Name: "templates/namespace.yaml"},
-		{Name: "templates/gateway.yaml"},
-		{Name: "templates/gateway-policy.yaml"},
-		{Name: "templates/psp.yaml"},
-		{Name: "templates/remote-access-service-mirror-rbac.yaml"},
-		{Name: "templates/link-crd.yaml"},
-		{Name: "templates/service-mirror-policy.yaml"},
+	var files []*loader.BufferedFile
+	for _, template := range TemplatesMulticluster {
+		files = append(files, &loader.BufferedFile{Name: template})
 	}
 
 	var partialFiles []*loader.BufferedFile

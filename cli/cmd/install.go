@@ -58,7 +58,7 @@ var (
 		"templates/workload/external-workload.yaml",
 	}
 
-	templatesControlPlane = []string{
+	TemplatesControlPlane = []string{
 		"templates/namespace.yaml",
 		"templates/identity-rbac.yaml",
 		"templates/destination-rbac.yaml",
@@ -364,7 +364,7 @@ func renderControlPlane(w io.Writer, values *l5dcharts.Values, valuesOverrides m
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
-	for _, template := range templatesControlPlane {
+	for _, template := range TemplatesControlPlane {
 		files = append(files, &loader.BufferedFile{Name: template})
 	}
 	if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCP+"/", files); err != nil {
