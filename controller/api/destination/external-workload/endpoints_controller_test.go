@@ -1,4 +1,4 @@
-package destination
+package externalworkload
 
 import (
 	"testing"
@@ -35,15 +35,15 @@ func TestEndpointManagerUpdatesQueue(t *testing.T) {
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			em, err := NewEndpointManager(k8sAPI, make(chan struct{}), "test-controller-hostname", "test-controller-ns")
+			ec, err := NewEndpointsController(k8sAPI, "test-controller-hostname", "test-controller-ns", make(chan struct{}))
 			if err != nil {
 				t.Fatalf("can't create External Endpoint Manager: %s", err)
 			}
 
-			em.k8sAPI.Sync(nil)
+			ec.k8sAPI.Sync(nil)
 
-			if len(em.updates) != tt.expectedEv {
-				t.Fatalf("expected %d events to be enqueued, got %d instead", tt.expectedEv, len(em.updates))
+			if len(ec.updates) != tt.expectedEv {
+				t.Fatalf("expected %d events to be enqueued, got %d instead", tt.expectedEv, len(ec.updates))
 			}
 		})
 	}
