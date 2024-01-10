@@ -423,7 +423,7 @@ func (ec *EndpointsController) enqueueUpdate(key string) {
 	default:
 		// Drop update
 		ec.updates.queueDrops.Inc()
-		ec.log.Debugf("External endpoint manager queue is full; dropping update for %s", update)
+		ec.log.Debugf("External endpoint manager queue is full; dropping update for %s", update.item)
 		return
 	}
 }
