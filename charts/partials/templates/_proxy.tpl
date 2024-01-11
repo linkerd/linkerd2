@@ -40,7 +40,7 @@ env:
   value: {{ternary "localhost.:8090" (printf "linkerd-policy.%s.svc.%s.:8090" .Release.Namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-destination")}}
 - name: LINKERD2_PROXY_POLICY_WORKLOAD
   value: |
-    {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)", "pod":"$(_pod_name)"}
+    {"ns":"$(_pod_ns)", "pod":"$(_pod_name)"}
 - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
   value: {{.Values.proxy.defaultInboundPolicy}}
 - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS

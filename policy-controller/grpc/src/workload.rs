@@ -1,16 +1,15 @@
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Kind {
-    #[serde(rename = "external")]
+    #[serde(rename = "external_workload")]
     External(String),
     #[serde(rename = "pod")]
     Pod(String),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Workload {
     #[serde(flatten)]
     pub kind: Kind,
@@ -71,7 +70,7 @@ mod tests {
 
     #[test]
     fn parse_new_format_external() {
-        let input = r#"{"ns":"my-namespace", "external":"my-external"}"#;
+        let input = r#"{"ns":"my-namespace", "external_workload":"my-external"}"#;
         let expected: Workload = Workload {
             namespace: "my-namespace".to_string(),
             kind: Kind::External("my-external".to_string()),

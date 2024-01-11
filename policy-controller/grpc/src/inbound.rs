@@ -55,9 +55,10 @@ where
                 kind: Kind::Pod(pod),
             } => (namespace, pod),
             _ => {
+                // TODO: handle external workloads
                 return Err(tonic::Status::invalid_argument(
                     "only pod workload supported at the moment",
-                ))
+                ));
             }
         };
 
