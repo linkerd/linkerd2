@@ -38,7 +38,8 @@ spec:
     - name: LINKERD2_PROXY_POLICY_SVC_ADDR
       value: linkerd-policy.linkerd.svc.cluster.local.:8090
     - name: LINKERD2_PROXY_POLICY_WORKLOAD
-      value: $(_pod_ns):$(_pod_name)
+      value: |
+        {"ns":"$(_pod_ns)", "pod":"$(_pod_name)"}
     - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
       value: all-unauthenticated
     - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS

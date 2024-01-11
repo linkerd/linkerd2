@@ -1219,6 +1219,8 @@ dependencies = [
  "linkerd2-proxy-api",
  "maplit",
  "prost-types",
+ "serde",
+ "serde_json",
  "tokio",
  "tonic",
  "tracing",
