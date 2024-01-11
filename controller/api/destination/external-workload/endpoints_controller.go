@@ -38,16 +38,12 @@ const (
 )
 
 type (
-	updateQueue struct {
-		queue chan queueUpdate
-		queueMetrics
-	}
-
 	queueMetrics struct {
-		queueLength  prometheus.Gauge
 		queueUpdates prometheus.Counter
 		queueDrops   prometheus.Counter
 		queueLatency prometheus.Histogram
+
+		queueLength prometheus.GaugeFunc
 	}
 
 	queueUpdate struct {
@@ -58,11 +54,6 @@ type (
 )
 
 var (
-	queueLengthGauge = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "external_endpoints_controller_queue_length",
-		Help: "Total number of updates currently waiting to be processed",
-	})
-
 	queueUpdateCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "external_endpoints_controller_queue_updates",
 		Help: "Total number of updates that entered the queue",
@@ -86,31 +77,34 @@ var (
 type EndpointsController struct {
 	k8sAPI   *k8s.API
 	log      *logging.Entry
-	updates  updateQueue
+	updates  chan queueUpdate
 	stop     chan struct{}
 	isLeader bool
 
 	lec leaderelection.LeaderElectionConfig
+	queueMetrics
 	sync.RWMutex
 }
 
 func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stopCh chan struct{}) (*EndpointsController, error) {
 	ec := &EndpointsController{
-		k8sAPI: k8sAPI,
-		updates: updateQueue{
-			queue: make(chan queueUpdate, updateQueueCapacity),
-			queueMetrics: queueMetrics{
-				queueLength:  queueLengthGauge,
-				queueUpdates: queueUpdateCounter,
-				queueDrops:   queueDroppedCounter,
-				queueLatency: queueLatencyHist,
-			},
+		k8sAPI:  k8sAPI,
+		updates: make(chan queueUpdate, updateQueueCapacity),
+		queueMetrics: queueMetrics{
+			queueUpdates: queueUpdateCounter,
+			queueDrops:   queueDroppedCounter,
+			queueLatency: queueLatencyHist,
 		},
 		stop: stopCh,
 		log: logging.WithFields(logging.Fields{
 			"component": "external-endpoints-controller",
 		}),
 	}
+
+	ec.queueMetrics.queueLength = promauto.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "external_endpoints_controller_queue_length",
+		Help: "Total number of updates currently waiting to be processed",
+	}, func() float64 { return (float64)(len(ec.updates)) })
 
 	_, err := k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ec.updateService,
@@ -391,14 +385,13 @@ func (ec *EndpointsController) Start() {
 	go func() {
 		for {
 			select {
-			case update := <-ec.updates.queue:
+			case update := <-ec.updates:
 				elapsed := time.Since(update.enqueTime).Seconds()
-				ec.updates.queueLatency.Observe(elapsed)
-				ec.updates.queueLength.Dec()
+				ec.queueLatency.Observe(elapsed)
 
 				ec.processUpdate(update.item)
 			case <-ec.stop:
-				ec.log.Info("Received shutdown signal")
+				ec.log.Info("received shutdown signal")
 				// Propagate shutdown to elector through the context.
 				cancel()
 				return
@@ -416,13 +409,12 @@ func (ec *EndpointsController) enqueueUpdate(key string) {
 		enqueTime: time.Now(),
 	}
 	select {
-	case ec.updates.queue <- update:
+	case ec.updates <- update:
 		// Update successfully enqueued.
-		ec.updates.queueLength.Inc()
-		ec.updates.queueUpdates.Inc()
+		ec.queueUpdates.Inc()
 	default:
 		// Drop update
-		ec.updates.queueDrops.Inc()
+		ec.queueDrops.Inc()
 		ec.log.Debugf("External endpoint manager queue is full; dropping update for %s", update.item)
 		return
 	}
