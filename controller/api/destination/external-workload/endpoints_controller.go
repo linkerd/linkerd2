@@ -3,6 +3,7 @@ package externalworkload
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
@@ -79,11 +80,18 @@ type EndpointsController struct {
 	log      *logging.Entry
 	updates  chan queueUpdate
 	stop     chan struct{}
-	isLeader bool
+	isLeader atomic.Bool
 
 	lec leaderelection.LeaderElectionConfig
 	queueMetrics
 	sync.RWMutex
+}
+
+func (ec *EndpointsController) UnregisterMetrics() {
+	prometheus.Unregister(ec.queueMetrics.queueLength)
+	prometheus.Unregister(ec.queueMetrics.queueUpdates)
+	prometheus.Unregister(ec.queueMetrics.queueLatency)
+	prometheus.Unregister(ec.queueMetrics.queueDrops)
 }
 
 func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stopCh chan struct{}) (*EndpointsController, error) {
@@ -142,7 +150,7 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 				return
 			}
 
-			for svc := range services {
+			for _, svc := range services {
 				ec.enqueueUpdate(svc)
 			}
 		},
@@ -155,7 +163,7 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 					return
 				}
 
-				for svc := range services {
+				for _, svc := range services {
 					ec.enqueueUpdate(svc)
 				}
 				return
@@ -179,7 +187,7 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 				return
 			}
 
-			for svc := range services {
+			for _, svc := range services {
 				ec.enqueueUpdate(svc)
 			}
 		},
@@ -201,103 +209,21 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 				return
 			}
 
-			// Compute whether any labels have changed in between updates. If
-			// they have, this might affect service membership so we need to
-			// process the update.
-			labelsChanged := false
-			if len(old.Labels) != len(updated.Labels) {
-				labelsChanged = true
-			} else {
-				for upK, upV := range updated.Labels {
-					oldV, ok := old.Labels[upK]
-					if ok && oldV == upV {
-						// Labels match
-						continue
-					} else {
-						labelsChanged = true
-						break
-					}
-				}
-			}
-
-			readinessChanged := isReady(old) != isReady(updated)
-
-			// Check if anything in the spec has changed in between versions.
-			specChanged := false
-			ports := make(map[int32]struct{})
-			for _, pSpec := range updated.Spec.Ports {
-				ports[pSpec.Port] = struct{}{}
-			}
-			for _, pSpec := range old.Spec.Ports {
-				if _, ok := ports[pSpec.Port]; !ok {
-					specChanged = true
-					break
-				}
-			}
-
-			ips := make(map[string]struct{})
-			for _, addr := range updated.Spec.WorkloadIPs {
-				ips[addr.Ip] = struct{}{}
-			}
-			for _, addr := range old.Spec.WorkloadIPs {
-				if _, ok := ips[addr.Ip]; !ok {
-					specChanged = true
-					break
-				}
-			}
-
+			lChanged := labelsChanged(old, updated)
+			wChanged := workloadChanged(old, updated)
 			// If nothing has changed, don't bother with the update
-			if !readinessChanged && !specChanged && !labelsChanged {
+			if !lChanged && !wChanged {
 				ec.log.Debugf("skipping ExternalWorkload update; nothing has changed between old rv %s and new rv %s", old.ResourceVersion, updated.ResourceVersion)
 				return
 			}
 
-			services, err := ec.getSvcMembership(updated)
+			services, err := ec.updateServices(old, updated, lChanged, wChanged)
 			if err != nil {
-				ec.log.Errorf("failed to get service membership for %s/%s: %v", updated.Namespace, updated.Name, err)
+				ec.log.Errorf("failed to get service membership for workload %s/%s: %v", updated.Namespace, updated.Name, err)
 				return
 			}
 
-			// If the labels have changed, membership for the services has
-			// changed. We need to figure out which services to update.
-			if labelsChanged {
-				// Get a list of services for the old set.
-				oldServices, err := ec.getSvcMembership(old)
-				if err != nil {
-					ec.log.Errorf("failed to get service membership for %s/%s: %v", old.Namespace, old.Name, err)
-					return
-				}
-
-				// When the workload spec has changed in-between versions (or
-				// the readiness) we will need to update old services (services
-				// that referenced the previous version) and new services
-				if specChanged || readinessChanged {
-					for k := range oldServices {
-						services[k] = struct{}{}
-					}
-				} else {
-					// When the spec / readiness has not changed, we simply need
-					// to re-compute memberships. Do not take into account
-					// services in common (since they are unchanged) updated
-					// only services that select the old or the new
-					disjoint := make(map[string]struct{})
-					for k, v := range services {
-						if _, ok := oldServices[k]; !ok {
-							disjoint[k] = v
-						}
-					}
-
-					for k, v := range oldServices {
-						if _, ok := services[k]; !ok {
-							disjoint[k] = v
-						}
-					}
-
-					services = disjoint
-				}
-			}
-
-			for svc := range services {
+			for _, svc := range services {
 				ec.enqueueUpdate(svc)
 			}
 		},
@@ -332,12 +258,12 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 			OnStartedLeading: func(context.Context) {
 				ec.Lock()
 				defer ec.Unlock()
-				ec.isLeader = true
+				ec.isLeader.Store(true)
 			},
 			OnStoppedLeading: func() {
 				ec.Lock()
 				defer ec.Unlock()
-				ec.isLeader = false
+				ec.isLeader.Store(false)
 				ec.log.Infof("%s released lease", hostname)
 			},
 			OnNewLeader: func(identity string) {
@@ -429,11 +355,11 @@ func (ec *EndpointsController) processUpdate(update string) {
 // getSvcMembership accepts a pointer to an external workload resource and
 // returns a set of service keys (<namespace>/<name>). The set includes all
 // services local to the workload's namespace that match the workload.
-func (ec *EndpointsController) getSvcMembership(workload *ewv1alpha1.ExternalWorkload) (map[string]struct{}, error) {
-	set := make(map[string]struct{})
+func (ec *EndpointsController) getSvcMembership(workload *ewv1alpha1.ExternalWorkload) ([]string, error) {
+	keys := []string{}
 	services, err := ec.k8sAPI.Svc().Lister().Services(workload.Namespace).List(labels.Everything())
 	if err != nil {
-		return set, err
+		return keys, err
 	}
 
 	for _, svc := range services {
@@ -447,16 +373,16 @@ func (ec *EndpointsController) getSvcMembership(workload *ewv1alpha1.ExternalWor
 		// deleted and is waiting for cache eviction
 		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(svc)
 		if err != nil {
-			return map[string]struct{}{}, err
+			return []string{}, err
 		}
 
 		// Check if service selects our ee.
 		if labels.ValidatedSetSelector(svc.Spec.Selector).Matches(labels.Set(workload.Labels)) {
-			set[key] = struct{}{}
+			keys = append(keys, key)
 		}
 	}
 
-	return set, nil
+	return keys, nil
 }
 
 // === Callbacks ===
@@ -502,4 +428,115 @@ func isReady(ew *ewv1alpha1.ExternalWorkload) bool {
 	}
 
 	return false
+}
+
+// === Util ===
+
+// Check whether two label sets are matching
+func labelsChanged(old, updated *ewv1alpha1.ExternalWorkload) bool {
+	if len(old.Labels) != len(updated.Labels) {
+		return true
+	}
+
+	for upK, upV := range updated.Labels {
+		oldV, ok := old.Labels[upK]
+		if !ok || oldV != upV {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Check whether two workload resources have changed
+// Note: we are interested in changes to the ports, ips and readiness fields
+// since these are going to influence a change in a service's underlying
+// endpoint slice
+func workloadChanged(old, updated *ewv1alpha1.ExternalWorkload) bool {
+	if isReady(old) != isReady(updated) {
+		return true
+	}
+
+	ports := make(map[int32]struct{})
+	for _, pSpec := range updated.Spec.Ports {
+		ports[pSpec.Port] = struct{}{}
+	}
+
+	for _, pSpec := range old.Spec.Ports {
+		if _, ok := ports[pSpec.Port]; !ok {
+			return true
+		}
+	}
+
+	ips := make(map[string]struct{})
+	for _, addr := range updated.Spec.WorkloadIPs {
+		ips[addr.Ip] = struct{}{}
+	}
+	for _, addr := range old.Spec.WorkloadIPs {
+		if _, ok := ips[addr.Ip]; !ok {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (ec *EndpointsController) updateServices(old, updated *ewv1alpha1.ExternalWorkload, labelsChanged, workloadChanged bool) ([]string, error) {
+	updatedSvc, err := ec.getSvcMembership(updated)
+	if !labelsChanged {
+		return updatedSvc, err
+	}
+
+	oldSvc, err := ec.getSvcMembership(old)
+	if err != nil {
+		return []string{}, err
+	}
+
+	// Keep track of services selecting the updated workload, add to a set in
+	// case we have duplicates from the old workload.
+	set := make(map[string]struct{})
+	for _, svc := range updatedSvc {
+		set[svc] = struct{}{}
+	}
+
+	// When the workload spec has changed in-between versions (or
+	// the readiness) we will need to update old services (services
+	// that referenced the previous version) and new services
+	if workloadChanged {
+		for _, key := range oldSvc {
+			// When the service selects old workload but not new workload, then
+			// add it to the list of services to process
+			if _, ok := set[key]; !ok {
+				updatedSvc = append(updatedSvc, key)
+			}
+		}
+		return updatedSvc, nil
+	}
+
+	// When the spec / readiness has not changed, we simply need
+	// to re-compute memberships. Do not take into account
+	// services in common (since they are unchanged) updated
+	// only services that select the old or the new
+	disjoint := make(map[string]struct{})
+
+	// If service selects the old workload but not the updated, add it in.
+	for _, key := range oldSvc {
+		if _, ok := set[key]; !ok {
+			disjoint[key] = struct{}{}
+		}
+	}
+
+	// If service selects the updated workload but not the old, add it in.
+	for key := range set {
+		if _, ok := disjoint[key]; !ok {
+			disjoint[key] = struct{}{}
+		}
+	}
+
+	result := make([]string, 0, len(disjoint))
+	for k := range disjoint {
+		result = append(result, k)
+	}
+
+	return result, nil
 }
