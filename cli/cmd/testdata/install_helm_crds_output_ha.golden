@@ -10311,12 +10311,14 @@ spec:
                     minLength: 1
                     maxLength: 253
                 type: object
+                required:
+                - identity
+                - serverName
               ports:
                 type: array
                 description: ports describes a list of ports exposed by the
                   workload
                 items:
-                  type: object
                   properties:
                     name:
                       type: string
@@ -10333,6 +10335,9 @@ spec:
                         TCP. Defaults to TCP.
                       type: string
                       default: "TCP"
+                  type: object
+                  required:
+                  - port
               workloadIPs:
                 type: array
                 description: workloadIPs contains a list of IP addresses that
@@ -10344,8 +10349,7 @@ spec:
                       type: string
             type: object
             required:
-            - ports
-            - workloadIPs
+            - meshTls
           status:
             type: object
             properties:

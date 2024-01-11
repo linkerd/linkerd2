@@ -46,24 +46,26 @@ type ExternalWorkloadList struct {
 // ExternalWorkloadSpec represents the desired state of an external workload
 type ExternalWorkloadSpec struct {
 	// MeshTls describes TLS settings associated with an external workload
+	MeshTls MeshTls `json:"meshTls"`
+	// Ports describes a set of ports exposed by the workload
 	//
 	// +optional
-	MeshTls MeshTls `json:"meshTls,omitempty"`
-	// Ports describes a set of ports exposed by the workload
-	Ports []PortSpec `json:"ports"`
+	Ports []PortSpec `json:"ports,omitempty"`
 	// List of IP addresses that can be used to send traffic to an external
 	// workload
-	WorkloadIPs []WorkloadIP `json:"workloadIPs"`
+	//
+	// +optional
+	WorkloadIPs []WorkloadIP `json:"workloadIPs,omitempty"`
 }
 
 // MeshTls describes TLS settings associated with an external workload
 type MeshTls struct {
 	// Identity associated with the workload. Used by peers to perform
 	// verification in the mTLS handshake
-	Identity string `json:"identity,omitempty"`
+	Identity string `json:"identity"`
 	// ServerName is the DNS formatted name associated with the workload. Used
 	// to terminate TLS using the SNI extension.
-	ServerName string `json:"serverName,omitempty"`
+	ServerName string `json:"serverName"`
 }
 
 // PortSpec represents a network port in a single workload.
