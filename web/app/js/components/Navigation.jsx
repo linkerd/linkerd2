@@ -383,10 +383,10 @@ class NavigationBase extends React.Component {
 
   handleConfirmNamespaceChange = () => {
     const { newNamespace } = this.state;
-    const { updateNamespaceInContext, history } = this.props;
+    const { updateNamespaceInContext, history, pathPrefix } = this.props;
     this.setState({ showNamespaceChangeDialog: false });
     updateNamespaceInContext(newNamespace);
-    history.push(`/namespaces/${newNamespace}`);
+    history.push(`${pathPrefix}/namespaces/${newNamespace}`);
   };
 
   handleFilterInputChange = event => {
@@ -460,7 +460,7 @@ class NavigationBase extends React.Component {
   }
 
   render() {
-    const { api, classes, selectedNamespace, ChildComponent, uuid, releaseVersion, ...otherProps } = this.props;
+    const { api, classes, selectedNamespace, ChildComponent, uuid, releaseVersion, pathPrefix, ...otherProps } = this.props;
     const { namespaces, formattedNamespaceFilter, hideUpdateBadge, isLatest, latestVersion,
       showNamespaceChangeDialog, newNamespace, mobileSidebarOpen, error, showGatewayLink } = this.state;
     const filteredNamespaces = namespaces.filter(ns => {
@@ -476,7 +476,7 @@ class NavigationBase extends React.Component {
         { !mobileSidebarOpen &&
           <div className={classes.navToolbar}>
             <div className={classes.linkerdNavLogo}>
-              <Link to="/namespaces">{linkerdWordLogo}</Link>
+              <Link to={`${pathPrefix}/namespaces`}>{linkerdWordLogo}</Link>
             </div>
           </div>
         }

@@ -35,6 +35,7 @@ type (
 		jaegerProxy         *reverseProxy
 		hc                  healthChecker
 		statCache           *cache.Cache
+		basePath            string
 	}
 )
 
@@ -42,7 +43,7 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 	// when running the dashboard via `linkerd dashboard`, serve the index bundle at the right path
 	pathPfx := proxyPathRegexp.FindString(req.URL.Path)
 	if pathPfx == "" {
-		pathPfx = "/"
+		pathPfx = h.basePath + "/"
 	}
 
 	params := appParams{

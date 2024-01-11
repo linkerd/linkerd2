@@ -353,6 +353,9 @@ dashboard:
   # documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more
   # information
   enforcedHostRegexp: ""
+
+  # -- The base path to server the dashboard
+  basePath: ""
   resources:
     cpu:
       # -- Maximum amount of CPU units that the web container can use

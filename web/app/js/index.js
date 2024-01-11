@@ -36,18 +36,23 @@ import { dashboardTheme } from './components/util/theme.js';
 const appMain = document.getElementById('main');
 const appData = !appMain ? {} : appMain.dataset;
 
-let pathPrefix = '';
+let pathPrefix = appData.pathPrefix;
 const proxyPathMatch = window.location.pathname.match(/\/api\/v1\/namespaces\/.*\/proxy/g);
 if (proxyPathMatch) {
   pathPrefix = proxyPathMatch[0];
 }
 
+// Make sure the pathPrefix does not end with a '/'
+if (pathPrefix.slice(-1) === '/') {
+  pathPrefix = pathPrefix.slice(0, -1);
+}
+
 let defaultNamespace = 'default';
-const pathArray = window.location.pathname.split('/');
+const pathArray = window.location.pathname.substring(pathPrefix.length).split('/');
 
 // if the current URL path specifies a namespace, this should become the
 // defaultNamespace
-if (pathArray[0] === '' && pathArray[1] === 'namespaces' && pathArray[2]) {
+if (pathPrefix !== '' && pathArray[0] === '' && pathArray[1] === 'namespaces' && pathArray[2]) {
   defaultNamespace = pathArray[2];
 // if the current URL path is a legacy path such as `/daemonsets`, the
 // defaultNamespace should be "_all", unless the path is `/namespaces`
@@ -96,7 +101,7 @@ class App extends React.Component {
 
     this.state.checkNamespaceMatch = path => {
       const { selectedNamespace } = this.state;
-      const pathNamespace = path.split('/')[2];
+      const pathNamespace = path.substring(pathPrefix.length).split('/')[2];
       if (pathNamespace && pathNamespace !== selectedNamespace) {
         this.setState({ selectedNamespace: pathNamespace });
       }
