@@ -289,6 +289,10 @@ func (ec *EndpointsController) processQueue() {
 
 // processUpdate will run a reconciliation function for a single Service object
 // that needs to have its EndpointSlice objects reconciled.
+// TODO (matei): remove lint during impl of processUpdate. CI complains error is
+// always nil
+//
+//nolint:nolintlint
 func (ec *EndpointsController) processUpdate(update string) error {
 	// TODO (matei): reconciliation logic
 	ec.log.Infof("received %s", update)
