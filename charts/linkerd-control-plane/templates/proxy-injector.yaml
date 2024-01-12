@@ -79,6 +79,10 @@ spec:
         - -log-format={{.Values.controllerLogFormat}}
         - -linkerd-namespace={{.Release.Namespace}}
         - -enable-pprof={{.Values.enablePprof | default false}}
+        {{- with (.Values.proxyInjector).experimentalEnv }}
+        env:
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
