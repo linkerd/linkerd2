@@ -19,9 +19,6 @@ import (
 )
 
 const (
-	// Specifies capacity for updates buffer
-	updateQueueCapacity = 400
-
 	// Name of the lease resource the controller will use
 	leaseName = "linkerd-destination-endpoint-write"
 
