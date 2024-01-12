@@ -5,6 +5,8 @@ args:
 - 4140
 - --proxy-uid
 - 2102
+- --proxy-gid
+- 2102
 - --inbound-ports-to-ignore
 - 4190,4191
 image: cr.l5d.io/linkerd/proxy-init:v18.8.4

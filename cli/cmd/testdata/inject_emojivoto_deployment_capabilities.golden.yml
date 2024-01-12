@@ -160,6 +160,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2102
+          runAsGroup: 2102
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
@@ -190,6 +191,7 @@ spec:
             drop:
             - ALL
           runAsUser: 33
+          runAsGroup: 33
       initContainers:
       - args:
         - --incoming-proxy-port
@@ -197,6 +199,8 @@ spec:
         - --outgoing-proxy-port
         - "4140"
         - --proxy-uid
+        - "2102"
+        - --proxy-gid
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191,4567,4568
@@ -225,6 +229,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 65534
+          runAsGroup: 65534
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError

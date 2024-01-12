@@ -454,6 +454,7 @@ spec:
           runAsNonRoot: true
           readOnlyRootFilesystem: true
           runAsUser: 1234
+          runAsGroup: 1234
           seccompProfile:
             type: RuntimeDefault
       securityContext:
@@ -922,6 +923,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 5678
+          runAsGroup: 5678
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:
@@ -1134,6 +1136,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 1234
+          runAsGroup: 1234
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:
@@ -1307,6 +1310,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 1234
+          runAsGroup: 1234
           seccompProfile:
             type: RuntimeDefault
       securityContext:

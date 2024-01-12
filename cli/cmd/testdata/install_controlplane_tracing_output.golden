@@ -486,6 +486,7 @@ data:
     controllerLogLevel: info
     controllerReplicas: 1
     controllerUID: 2103
+    controllerGID: 2103
     debugContainer:
       image:
         name: cr.l5d.io/linkerd/debug
@@ -671,6 +672,7 @@ data:
         initialDelaySeconds: 0
         periodSeconds: 1
       uid: 2102
+      gid: 2102
       waitBeforeExitSeconds: 0
     proxyContainerName: linkerd-proxy
     proxyInit:
@@ -699,6 +701,7 @@ data:
           request: 20Mi
       runAsRoot: false
       runAsUser: 65534
+      runAsGroup: 65534
       saMountPath: null
       skipSubnets: ""
       xtMountPath:
@@ -904,6 +907,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1036,6 +1040,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2102
+          runAsGroup: 2102
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1051,6 +1056,8 @@ spec:
         - --outgoing-proxy-port
         - "4140"
         - --proxy-uid
+        - "2102"
+        - --proxy-gid
         - "2102"
         - --inbound-ports-to-ignore
         - "4190,4191,4567,4568"
@@ -1075,6 +1082,7 @@ spec:
           privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          runAsGroup: 65534
           readOnlyRootFilesystem: true
           seccompProfile:
             type: RuntimeDefault
@@ -1369,6 +1377,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2102
+          runAsGroup: 2102
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1422,6 +1431,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1455,6 +1465,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1505,6 +1516,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1519,6 +1531,8 @@ spec:
         - --outgoing-proxy-port
         - "4140"
         - --proxy-uid
+        - "2102"
+        - --proxy-gid
         - "2102"
         - --inbound-ports-to-ignore
         - "4190,4191,4567,4568"
@@ -1543,6 +1557,7 @@ spec:
           privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          runAsGroup: 65534
           readOnlyRootFilesystem: true
           seccompProfile:
             type: RuntimeDefault
@@ -1631,6 +1646,7 @@ spec:
               readOnlyRootFilesystem: true
               runAsNonRoot: true
               runAsUser: 2103
+              runAsGroup: 2103
               allowPrivilegeEscalation: false
               seccompProfile:
                 type: RuntimeDefault
@@ -1802,6 +1818,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2102
+          runAsGroup: 2102
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1848,6 +1865,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1866,6 +1884,8 @@ spec:
         - --outgoing-proxy-port
         - "4140"
         - --proxy-uid
+        - "2102"
+        - --proxy-gid
         - "2102"
         - --inbound-ports-to-ignore
         - "4190,4191,4567,4568"
@@ -1890,6 +1910,7 @@ spec:
           privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          runAsGroup: 65534
           readOnlyRootFilesystem: true
           seccompProfile:
             type: RuntimeDefault

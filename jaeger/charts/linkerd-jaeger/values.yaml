@@ -41,6 +41,9 @@ enablePSP: false
 # -- Default UID for all the jaeger components
 defaultUID: 2103
 
+# -- Default GID for all the jaeger components
+defaultGID: 2103
+
 # -- Kubernetes DNS Domain name to use
 clusterDomain: cluster.local
 collector:
@@ -81,6 +84,9 @@ collector:
 
   # -- UID for the collector resource
   UID:
+
+  # -- GID for the collector resource
+  GID:
 
   # -- OpenTelemetry Collector config, See the
   # [Configuration docs](https://opentelemetry.io/docs/collector/configuration/)
@@ -211,6 +217,9 @@ jaeger:
   # -- UID for the jaeger resource
   UID:
 
+  # -- GID for the jaeger resource
+  GID:
+
 linkerdVersion: &linkerd_version linkerdVersionValue
 
 namespaceMetadata:
@@ -317,3 +326,6 @@ webhook:
 
   # -- UID for the webhook resource
   UID:
+
+  # -- GID for the webhook resource
+  GID:

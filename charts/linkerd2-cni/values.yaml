@@ -20,6 +20,8 @@ logLevel:         info
 portsToRedirect:  ""
 # -- User id under which the proxy shall be ran
 proxyUID:         2102
+# -- Group id under which the proxy shall be ran
+proxyGID:         2102
 # -- Directory on the host where the CNI plugin binaries reside
 destCNINetDir:    "/etc/cni/net.d"
 # -- Directory on the host where the CNI configuration will be placed

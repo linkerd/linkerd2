@@ -73,6 +73,7 @@ Kubernetes: `>=1.22.0-0`
 | clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use |
 | commonLabels | object | `{}` | Labels to apply to all resources |
 | dashboard.UID | string | `nil` | UID for the dashboard resource |
+| dashboard.GID | string | `nil` | GID for the dashboard resource |
 | dashboard.enforcedHostRegexp | string | `""` | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information |
 | dashboard.image.name | string | `"web"` | Docker image name for the web instance |
 | dashboard.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the  web component |
@@ -96,11 +97,13 @@ Kubernetes: `>=1.22.0-0`
 | defaultLogLevel | string | `"info"` | Log level for all the viz components |
 | defaultRegistry | string | `"cr.l5d.io/linkerd"` | Docker registry for all viz components |
 | defaultUID | int | `2103` | UID for all the viz components |
+| defaultGID | int | `2103` | GID for all the viz components |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
 | enablePodDisruptionBudget | bool | `false` | enables the creation of pod disruption budgets for tap, tap-injector, web and metrics-api components |
 | grafana.externalUrl | string | `nil` | url of a Grafana instance hosted off-cluster. Cannot be set if grafana.url is set. The reverse proxy will not be used for this URL. |
 | grafana.uidPrefix | string | `nil` | prefix for Grafana dashboard UID's, used when grafana.externalUrl is set. |
+| grafana.gidPrefix | string | `nil` | prefix for Grafana dashboard GID's, used when grafana.externalUrl is set. |
 | grafana.url | string | `nil` | url of an in-cluster Grafana instance with reverse proxy configured, used by the Linkerd viz web dashboard to provide direct links to specific Grafana dashboards. Cannot be set if grafana.externalUrl is set. See the [Linkerd documentation](https://linkerd.io/2/tasks/grafana) for more information |
 | identityTrustDomain | string | clusterDomain | Trust domain used for identity |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
@@ -108,6 +111,7 @@ Kubernetes: `>=1.22.0-0`
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
 | metricsAPI.UID | string | `nil` | UID for the metrics-api resource |
+| metricsAPI.GID | string | `nil` | GID for the metrics-api resource |
 | metricsAPI.image.name | string | `"metrics-api"` | Docker image name for the metrics-api component |
 | metricsAPI.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the metrics-api component |
 | metricsAPI.image.registry | string | defaultRegistry | Docker registry for the metrics-api component |
@@ -161,6 +165,7 @@ Kubernetes: `>=1.22.0-0`
 | prometheus.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | prometheusUrl | string | `""` | url of external prometheus instance |
 | tap.UID | string | `nil` | UID for the dashboard resource |
+| tap.GID | string | `nil` | GID for the dashboard resource |
 | tap.caBundle | string | `""` | Bundle of CA certificates for tap. If not provided nor injected with cert-manager, then Helm will use the certificate generated for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value, injectCaFrom, or injectCaFromSecret must be set, as no certificate will be generated. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information. |
 | tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided and not using an external secret then Helm will generate one. |
 | tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set or the ca bundle must injected with cert-manager ca injector using `tap.injectCaFrom` or `tap.injectCaFromSecret` (see below). |
@@ -185,6 +190,7 @@ Kubernetes: `>=1.22.0-0`
 | tap.service | object | `{"annotations":{}}` | tap service configuration |
 | tap.service.annotations | object | `{}` | Additional annotations to add to tap service |
 | tapInjector.UID | string | `nil` | UID for the tapInjector resource |
+| tapInjector.GID | string | `nil` | GID for the tapInjector resource |
 | tapInjector.caBundle | string | `""` | Bundle of CA certificates for the tapInjector. If not provided nor injected with cert-manager, then Helm will use the certificate generated for `tapInjector.crtPEM`. If `tapInjector.externalSecret` is set to true, this value, injectCaFrom, or injectCaFromSecret must be set, as no certificate will be generated. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information. |
 | tapInjector.crtPEM | string | `""` | Certificate for the tapInjector. If not provided and not using an external secret then Helm will generate one. |
 | tapInjector.externalSecret | bool | `false` | Do not create a secret resource for the tapInjector webhook. If this is set to `true`, the value `tapInjector.caBundle` must be set or the ca bundle must injected with cert-manager ca injector using `tapInjector.injectCaFrom` or `tapInjector.injectCaFromSecret` (see below). |

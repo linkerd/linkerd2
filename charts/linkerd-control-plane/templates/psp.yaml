@@ -37,6 +37,15 @@ spec:
     {{- else }}
     rule: RunAsAny
     {{- end }}
+  runAsGroup:
+    {{- if .Values.cniEnabled }}
+    rule: MustRunAs
+    ranges:
+    - min: 1000
+      max: 999999
+    {{- else }}
+    rule: RunAsAny
+    {{- end }}
   supplementalGroups:
     rule: MustRunAs
     ranges:

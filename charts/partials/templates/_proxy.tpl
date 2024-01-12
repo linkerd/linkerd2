@@ -201,6 +201,7 @@ securityContext:
   readOnlyRootFilesystem: true
   runAsNonRoot: true
   runAsUser: {{.Values.proxy.uid}}
+  runAsGroup: {{.Values.proxy.gid}}
   seccompProfile:
     type: RuntimeDefault
 terminationMessagePolicy: FallbackToLogsOnError

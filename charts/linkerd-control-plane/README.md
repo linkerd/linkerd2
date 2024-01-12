@@ -284,6 +284,7 @@ Kubernetes: `>=1.22.0-0`
 | proxyInit.resources.memory.request | string | `"20Mi"` | Amount of memory that the proxy-init container requests |
 | proxyInit.runAsRoot | bool | `false` | Allow overriding the runAsNonRoot behaviour (<https://github.com/linkerd/linkerd2/issues/7308>) |
 | proxyInit.runAsUser | int | `65534` | This value is used only if runAsRoot is false; otherwise runAsUser will be 0 |
+| proxyInit.runAsGroup | int | `65534` | This value is used only if runAsRoot is false; otherwise runAsGroup will be 0 |
 | proxyInit.skipSubnets | string | `""` | Comma-separated list of subnets in valid CIDR format that should be skipped by the proxy |
 | proxyInit.xtMountPath.mountPath | string | `"/run"` |  |
 | proxyInit.xtMountPath.name | string | `"linkerd-proxy-init-xtables-lock"` |  |
