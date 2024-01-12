@@ -159,21 +159,7 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 				return
 			}
 
-			lChanged := labelsChanged(old, updated)
-			wChanged := workloadChanged(old, updated)
-			// If nothing has changed, don't bother with the update
-			if !lChanged && !wChanged {
-				ec.log.Debugf("skipping ExternalWorkload update; nothing has changed between old rv %s and new rv %s", old.ResourceVersion, updated.ResourceVersion)
-				return
-			}
-
-			services, err := ec.updateServices(old, updated, lChanged, wChanged)
-			if err != nil {
-				ec.log.Errorf("failed to get service membership for workload %s/%s: %v", updated.Namespace, updated.Name, err)
-				return
-			}
-
-			for _, svc := range services {
+			for _, svc := range ec.servicesToUpdate(old, updated) {
 				ec.queue.Add(svc)
 			}
 		},
@@ -429,19 +415,32 @@ func workloadChanged(old, updated *ewv1alpha1.ExternalWorkload) bool {
 	return false
 }
 
-// updateServices accepts pointers to two ExternalWorkload resources, and two
-// booleans that determine the state of an update. Based on the state of the
-// update and the references to the workload resources, it will collect a set of
-// Services that need to be updated.
-func (ec *EndpointsController) updateServices(old, updated *ewv1alpha1.ExternalWorkload, labelsChanged, workloadChanged bool) ([]string, error) {
+// servicesToUpdate accepts pointers to two ExternalWorkload resources used to
+// determine the state of an update. Based on the state of the update and the
+// references to the workload resources, it will collect a set of Services that
+// need to be updated.
+func (ec *EndpointsController) servicesToUpdate(old, updated *ewv1alpha1.ExternalWorkload) []string {
+	labelsChanged := labelsChanged(old, updated)
+	workloadChanged := workloadChanged(old, updated)
+	if !labelsChanged && !workloadChanged {
+		ec.log.Debugf("skipping ExternalWorkload update; nothing has changed between old rv %s and new rv %s", old.ResourceVersion, updated.ResourceVersion)
+		return nil
+	}
+
 	updatedSvc, err := ec.getSvcMembership(updated)
+	if err != nil {
+		ec.log.Errorf("failed to get service membership for workload %s/%s: %v", updated.Namespace, updated.Name, err)
+		return nil
+	}
+
 	if !labelsChanged {
-		return updatedSvc, err
+		return updatedSvc
 	}
 
 	oldSvc, err := ec.getSvcMembership(old)
 	if err != nil {
-		return []string{}, err
+		ec.log.Errorf("failed to get service membership for workload %s/%s: %v", old.Namespace, old.Name, err)
+		return nil
 	}
 
 	// Keep track of services selecting the updated workload, add to a set in
@@ -462,7 +461,7 @@ func (ec *EndpointsController) updateServices(old, updated *ewv1alpha1.ExternalW
 				updatedSvc = append(updatedSvc, key)
 			}
 		}
-		return updatedSvc, nil
+		return updatedSvc
 	}
 
 	// When the spec / readiness has not changed, we simply need
@@ -490,7 +489,7 @@ func (ec *EndpointsController) updateServices(old, updated *ewv1alpha1.ExternalW
 		result = append(result, k)
 	}
 
-	return result, nil
+	return result
 }
 
 // getSvcMembership accepts a pointer to an external workload resource and
