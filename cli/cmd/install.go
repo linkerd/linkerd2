@@ -40,7 +40,8 @@ const (
 
 %s
 
-You can use the --ignore-cluster flag if you just want to generate the installation config.`
+You can use the --ignore-cluster flag if you just want to generate the installation config.
+`
 
 	errMsgLinkerdConfigResourceConflict = "Can't install the Linkerd control plane in the '%s' namespace. Reason: %s.\nRun the command `linkerd upgrade`, if you are looking to upgrade Linkerd.\n"
 )
