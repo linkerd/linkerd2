@@ -6,7 +6,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.9.1-edge
+    helm.sh/chart: linkerd-crds-1.9.2-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -105,7 +105,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.9.1-edge
+    helm.sh/chart: linkerd-crds-1.9.2-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -5321,7 +5321,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.9.1-edge
+    helm.sh/chart: linkerd-crds-1.9.2-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -5408,7 +5408,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.9.1-edge
+    helm.sh/chart: linkerd-crds-1.9.2-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -5461,7 +5461,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.9.1-edge
+    helm.sh/chart: linkerd-crds-1.9.2-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -5727,7 +5727,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.9.1-edge
+    helm.sh/chart: linkerd-crds-1.9.2-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: policy.linkerd.io
@@ -5952,7 +5952,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.9.1-edge
+    helm.sh/chart: linkerd-crds-1.9.2-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: linkerd.io
@@ -6226,7 +6226,7 @@ metadata:
     gateway.networking.k8s.io/channel: experimental
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.9.1-edge
+    helm.sh/chart: linkerd-crds-1.9.2-edge
     linkerd.io/control-plane-ns: linkerd
   creationTimestamp: null
   name: httproutes.gateway.networking.k8s.io
@@ -10234,7 +10234,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    helm.sh/chart: linkerd-crds-1.9.1-edge
+    helm.sh/chart: linkerd-crds-1.9.2-edge
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: workload.linkerd.io

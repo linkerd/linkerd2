@@ -1,5 +1,43 @@
 # Changes
 
+## edge-24.1.1
+
+This edge release introduces a number of different fixes and improvements. More
+notably, it introduces a new `cni-repair-controller` binary to the CNI plugin
+image. The controller will automatically restart pods that have not received
+their iptables configuration.
+
+* Removed shortnames from Tap API resources to avoid colliding with existing
+  Kubernetes resources ([#11816]; fixes [#11784])
+* Introduced a new ExternalWorkload CRD to support upcoming mesh expansion
+  feature ([#11805])
+* Changed `MeshTLSAuthentication` resource validation to allow SPIFFE URI
+  identities ([#11882])
+* Introduced a new `cni-repair-controller` to the `linkerd-cni` DaemonSet to
+  automatically restart misconfigured pods that are missing iptables rules
+  ([#11699]; fixes [#11073])
+* Fixed a `"duplicate metrics"` warning in the multicluster service-mirror
+  component ([#11875]; fixes [#11839])
+* Added metric labels and weights to `linkerd diagnostics endpoints` json
+  output ([#11889])
+* Changed how `Server` updates are handled in the destination service. The
+  change will ensure that during a cluster resync, consumers won't be
+  overloaded by redundant updates ([#11907])
+* Changed `linkerd install` error output to add a newline when a Kubernetes
+  client cannot be successfully initialised ([#11917])
+
+[#11816]: https://github.com/linkerd/linkerd2/pull/11816
+[#11784]: https://github.com/linkerd/linkerd2/issues/11784
+[#11805]: https://github.com/linkerd/linkerd2/pull/11805
+[#11882]: https://github.com/linkerd/linkerd2/pull/11882
+[#11699]: https://github.com/linkerd/linkerd2/pull/11699
+[#11073]: https://github.com/linkerd/linkerd2/issues/11073
+[#11875]: https://github.com/linkerd/linkerd2/pull/11875
+[#11839]: https://github.com/linkerd/linkerd2/issues/11839
+[#11889]: https://github.com/linkerd/linkerd2/pull/11889
+[#11907]: https://github.com/linkerd/linkerd2/pull/11907
+[#11917]: https://github.com/linkerd/linkerd2/pull/11917
+
 ## edge-23.12.4
 
 This edge release includes fixes and improvements to the destination
