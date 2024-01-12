@@ -129,7 +129,7 @@ metadata:
   labels:
     linkerd.io/extension: multicluster
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-multicluster
@@ -427,7 +427,7 @@ spec:
     singular: link
     kind: Link
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-multicluster

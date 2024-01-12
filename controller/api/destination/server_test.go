@@ -11,7 +11,7 @@ import (
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/api/util"
-	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
+	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -722,12 +722,12 @@ func TestGetProfiles(t *testing.T) {
 		}
 
 		// Server is created, setting the port to opaque
-		(*l5dClient).ServerV1beta1().Servers("ns").Create(context.Background(), &v1beta1.Server{
+		(*l5dClient).ServerV1beta2().Servers("ns").Create(context.Background(), &v1beta2.Server{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "srv-hostport-mapping-2",
 				Namespace: "ns",
 			},
-			Spec: v1beta1.ServerSpec{
+			Spec: v1beta2.ServerSpec{
 				PodSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
 						"app": "hostport-mapping-2",

@@ -28,8 +28,8 @@ import (
 	fakepolicyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1alpha1/fake"
 	policyv1beta3 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1beta3"
 	fakepolicyv1beta3 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1beta3/fake"
-	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta1"
-	fakeserverv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta1/fake"
+	serverv1beta2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta2"
+	fakeserverv1beta2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta2/fake"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serverauthorization/v1beta1"
 	fakeserverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serverauthorization/v1beta1/fake"
 	linkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2"
@@ -111,9 +111,9 @@ func (c *Clientset) PolicyV1beta3() policyv1beta3.PolicyV1beta3Interface {
 	return &fakepolicyv1beta3.FakePolicyV1beta3{Fake: &c.Fake}
 }
 
-// ServerV1beta1 retrieves the ServerV1beta1Client
-func (c *Clientset) ServerV1beta1() serverv1beta1.ServerV1beta1Interface {
-	return &fakeserverv1beta1.FakeServerV1beta1{Fake: &c.Fake}
+// ServerV1beta2 retrieves the ServerV1beta2Client
+func (c *Clientset) ServerV1beta2() serverv1beta2.ServerV1beta2Interface {
+	return &fakeserverv1beta2.FakeServerV1beta2{Fake: &c.Fake}
 }
 
 // ServerauthorizationV1beta1 retrieves the ServerauthorizationV1beta1Client

@@ -80,7 +80,7 @@ func uninstallRunE(ctx context.Context) error {
 		}
 	}
 
-	srvs, err := k8sAPI.L5dCrdClient.ServerV1beta1().Servers(v1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
+	srvs, err := k8sAPI.L5dCrdClient.ServerV1beta2().Servers(v1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		return err
 	}
