@@ -42,11 +42,9 @@ func TestEndpointManagerUpdatesQueue(t *testing.T) {
 
 			ec.k8sAPI.Sync(nil)
 
-			if len(ec.updates) != tt.expectedEv {
-				t.Fatalf("expected %d events to be enqueued, got %d instead", tt.expectedEv, len(ec.updates))
+			if ec.queue.Len() != tt.expectedEv {
+				t.Fatalf("expected %d events to be enqueued, got %d instead", tt.expectedEv, ec.queue.Len())
 			}
-
-			ec.UnregisterMetrics()
 		})
 	}
 }

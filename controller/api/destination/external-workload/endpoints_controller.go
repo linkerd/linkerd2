@@ -8,8 +8,6 @@ import (
 
 	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,6 +15,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"k8s.io/client-go/util/workqueue"
 )
 
 const (
@@ -36,40 +35,9 @@ const (
 	// Duration a leader elector should wait in between action re-tries.
 	// Core controllers have a value of 2 seconds.
 	leaseRetryPeriod = 2 * time.Second
-)
 
-type (
-	queueMetrics struct {
-		queueUpdates prometheus.Counter
-		queueDrops   prometheus.Counter
-		queueLatency prometheus.Histogram
-
-		queueLength prometheus.GaugeFunc
-	}
-
-	queueUpdate struct {
-		item string
-
-		enqueTime time.Time
-	}
-)
-
-var (
-	queueUpdateCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "external_endpoints_controller_queue_updates",
-		Help: "Total number of updates that entered the queue",
-	})
-
-	queueDroppedCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "external_endpoints_controller_queue_dropped",
-		Help: "Total number of updates dropped due to a backed-up queue",
-	})
-
-	queueLatencyHist = promauto.NewHistogram(prometheus.HistogramOpts{
-		Name:    "external_endpoints_controller_queue_latency_seconds",
-		Help:    "Distribution of durations that updates have spent in the queue",
-		Buckets: []float64{.005, .01, .05, .1, .5, 1, 3, 10},
-	})
+	// Max retries for a service to be reconciled
+	maxRetryBudget = 15
 )
 
 // EndpointsController reconciles service memberships for ExternalWorkload resources
@@ -78,41 +46,26 @@ var (
 type EndpointsController struct {
 	k8sAPI   *k8s.API
 	log      *logging.Entry
-	updates  chan queueUpdate
+	queue    workqueue.RateLimitingInterface
 	stop     chan struct{}
 	isLeader atomic.Bool
 
 	lec leaderelection.LeaderElectionConfig
-	queueMetrics
 	sync.RWMutex
 }
 
-func (ec *EndpointsController) UnregisterMetrics() {
-	prometheus.Unregister(ec.queueMetrics.queueLength)
-	prometheus.Unregister(ec.queueMetrics.queueUpdates)
-	prometheus.Unregister(ec.queueMetrics.queueLatency)
-	prometheus.Unregister(ec.queueMetrics.queueDrops)
-}
-
 func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stopCh chan struct{}) (*EndpointsController, error) {
+	// TODO: pass in a metrics provider to the queue config
 	ec := &EndpointsController{
-		k8sAPI:  k8sAPI,
-		updates: make(chan queueUpdate, updateQueueCapacity),
-		queueMetrics: queueMetrics{
-			queueUpdates: queueUpdateCounter,
-			queueDrops:   queueDroppedCounter,
-			queueLatency: queueLatencyHist,
-		},
+		k8sAPI: k8sAPI,
+		queue: workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), workqueue.RateLimitingQueueConfig{
+			Name: "endpoints_controller_workqueue",
+		}),
 		stop: stopCh,
 		log: logging.WithFields(logging.Fields{
 			"component": "external-endpoints-controller",
 		}),
 	}
-
-	ec.queueMetrics.queueLength = promauto.NewGaugeFunc(prometheus.GaugeOpts{
-		Name: "external_endpoints_controller_queue_length",
-		Help: "Total number of updates currently waiting to be processed",
-	}, func() float64 { return (float64)(len(ec.updates)) })
 
 	_, err := k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    ec.updateService,
@@ -151,7 +104,7 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 			}
 
 			for _, svc := range services {
-				ec.enqueueUpdate(svc)
+				ec.queue.Add(svc)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
@@ -164,7 +117,7 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 				}
 
 				for _, svc := range services {
-					ec.enqueueUpdate(svc)
+					ec.queue.Add(svc)
 				}
 				return
 			}
@@ -188,7 +141,7 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 			}
 
 			for _, svc := range services {
-				ec.enqueueUpdate(svc)
+				ec.queue.Add(svc)
 			}
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
@@ -224,7 +177,7 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 			}
 
 			for _, svc := range services {
-				ec.enqueueUpdate(svc)
+				ec.queue.Add(svc)
 			}
 		},
 	})
@@ -279,9 +232,12 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 
 // Start will run the endpoint manager's processing loop and leader elector.
 //
-// The function will spawn two background tasks; one to run the leader elector
-// client that and one that will process updates applied by the informer
-// callbacks.
+// The function will spawn three background tasks; one to run the leader elector
+// client, one that will process updates applied by the informer
+// callbacks and one to handle shutdown signals and propagate them to all
+// components.
+//
+// Warning: Do not call Start() more than once
 func (ec *EndpointsController) Start() {
 	// Create a parent context that will be used by leader elector to gracefully
 	// shutdown.
@@ -290,7 +246,6 @@ func (ec *EndpointsController) Start() {
 	// channel closed), the leader elector will release the lease and stop its
 	// execution.
 	ctx, cancel := context.WithCancel(context.Background())
-
 	go func() {
 		for {
 			// Block until a lease is acquired or a lease has been released
@@ -299,90 +254,86 @@ func (ec *EndpointsController) Start() {
 			// continue spinning.
 			select {
 			case <-ctx.Done():
+				ec.log.Trace("leader election client received shutdown signal")
 				return
 			default:
 			}
 		}
 	}()
 
-	// Start a background task to process updates. When a shutdown signal is
-	// received over the manager's stop channel, it is propagated to the elector
-	// through the context object to ensure the elector task does not leak.
+	// When a shutdown signal is received over the manager's stop channel, it is
+	// propagated to the elector through the context object and to the queue
+	// through its dedicated `Shutdown()` function.
 	go func() {
-		for {
-			select {
-			case update := <-ec.updates:
-				elapsed := time.Since(update.enqueTime).Seconds()
-				ec.queueLatency.Observe(elapsed)
-
-				ec.processUpdate(update.item)
-			case <-ec.stop:
-				ec.log.Info("received shutdown signal")
-				// Propagate shutdown to elector through the context.
-				cancel()
-				return
-			}
-		}
+		// Block until a shutdown signal arrives
+		<-ec.stop
+		// Do not drain the queue since we may not hold the lease.
+		ec.queue.ShutDown()
+		// Propagate shutdown to elector
+		cancel()
+		ec.log.Infof("received shutdown signal")
 	}()
+
+	// Start a background task to process updates.
+	go ec.processQueue()
 }
 
-// enqueueUpdate will enqueue a service key to the updates buffer to be
-// processed by the endpoint manager. When a write to the buffer blocks, the
-// update is dropped.
-func (ec *EndpointsController) enqueueUpdate(key string) {
-	update := queueUpdate{
-		item:      key,
-		enqueTime: time.Now(),
+// processQueue spins and pops elements off the queue. When the queue has
+// received a shutdown signal it exists.
+//
+// The queue uses locking internally so this function is thread safe and can
+// have many workers call it in parallel; workers will not process the same item
+// at the same time.
+func (ec *EndpointsController) processQueue() {
+	for {
+		item, quit := ec.queue.Get()
+		if quit {
+			ec.log.Trace("queue received shutdown signal")
+			return
+		}
+
+		key := item.(string)
+		err := ec.processUpdate(key)
+		ec.handleError(err, key)
+
+		// Tell the queue that we are done processing this key. This will
+		// unblock the key for other workers to process if executing in
+		// parallel, or if it needs to be re-queued because another update has
+		// been received.
+		ec.queue.Done(key)
 	}
-	select {
-	case ec.updates <- update:
-		// Update successfully enqueued.
-		ec.queueUpdates.Inc()
-	default:
-		// Drop update
-		ec.queueDrops.Inc()
-		ec.log.Debugf("External endpoint manager queue is full; dropping update for %s", update.item)
+}
+
+// processUpdate will run a reconciliation function for a single Service object
+// that needs to have its EndpointSlice objects reconciled.
+func (ec *EndpointsController) processUpdate(update string) error {
+	// TODO (matei): reconciliation logic
+	ec.log.Infof("received %s", update)
+	return nil
+}
+
+// handleError will look at the result of the queue update processing step and
+// decide whether an update should be re-tried or marked as done.
+//
+// The queue operates with an error budget. When exceeded, the item is evicted
+// from the queue (and its retry history wiped). Otherwise, the item is enqueued
+// according to the queue's rate limiting algorithm.
+func (ec *EndpointsController) handleError(err error, key string) {
+	if err == nil {
+		// Wipe out rate limiting history for key when processing was successful.
+		// Next time this key is used, it will get its own fresh rate limiter
+		// error budget
+		ec.queue.Forget(key)
 		return
 	}
-}
 
-func (ec *EndpointsController) processUpdate(update string) {
-	// TODO (matei): reconciliation logic
-	// TODO (matei): track how long an item takes to be processed
-	ec.log.Infof("Received %s", update)
-}
-
-// getSvcMembership accepts a pointer to an external workload resource and
-// returns a set of service keys (<namespace>/<name>). The set includes all
-// services local to the workload's namespace that match the workload.
-func (ec *EndpointsController) getSvcMembership(workload *ewv1alpha1.ExternalWorkload) ([]string, error) {
-	keys := []string{}
-	services, err := ec.k8sAPI.Svc().Lister().Services(workload.Namespace).List(labels.Everything())
-	if err != nil {
-		return keys, err
+	if ec.queue.NumRequeues(key) < maxRetryBudget {
+		ec.queue.AddRateLimited(key)
+		return
 	}
 
-	for _, svc := range services {
-		if svc.Spec.Selector == nil {
-			continue
-		}
-
-		// Taken from official k8s code, this checks whether a given object has
-		// a deleted state before returning a `namespace/name` key. This is
-		// important since we do not want to consider a service that has been
-		// deleted and is waiting for cache eviction
-		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(svc)
-		if err != nil {
-			return []string{}, err
-		}
-
-		// Check if service selects our ee.
-		if labels.ValidatedSetSelector(svc.Spec.Selector).Matches(labels.Set(workload.Labels)) {
-			keys = append(keys, key)
-		}
-	}
-
-	return keys, nil
+	ec.queue.Forget(key)
+	ec.log.Errorf("dropped Service %s out of update queue: %v", key, err)
 }
 
 // === Callbacks ===
@@ -408,7 +359,7 @@ func (ec *EndpointsController) updateService(obj interface{}) {
 		ec.log.Infof("failed to get key for svc %s/%s: %v", svc.Namespace, svc.Name, err)
 	}
 
-	ec.enqueueUpdate(key)
+	ec.queue.Add(key)
 }
 
 func isReady(ew *ewv1alpha1.ExternalWorkload) bool {
@@ -481,6 +432,10 @@ func workloadChanged(old, updated *ewv1alpha1.ExternalWorkload) bool {
 	return false
 }
 
+// updateServices accepts pointers to two ExternalWorkload resources, and two
+// booleans that determine the state of an update. Based on the state of the
+// update and the references to the workload resources, it will collect a set of
+// Services that need to be updated.
 func (ec *EndpointsController) updateServices(old, updated *ewv1alpha1.ExternalWorkload, labelsChanged, workloadChanged bool) ([]string, error) {
 	updatedSvc, err := ec.getSvcMembership(updated)
 	if !labelsChanged {
@@ -539,4 +494,37 @@ func (ec *EndpointsController) updateServices(old, updated *ewv1alpha1.ExternalW
 	}
 
 	return result, nil
+}
+
+// getSvcMembership accepts a pointer to an external workload resource and
+// returns a set of service keys (<namespace>/<name>). The set includes all
+// services local to the workload's namespace that match the workload.
+func (ec *EndpointsController) getSvcMembership(workload *ewv1alpha1.ExternalWorkload) ([]string, error) {
+	keys := []string{}
+	services, err := ec.k8sAPI.Svc().Lister().Services(workload.Namespace).List(labels.Everything())
+	if err != nil {
+		return keys, err
+	}
+
+	for _, svc := range services {
+		if svc.Spec.Selector == nil {
+			continue
+		}
+
+		// Taken from official k8s code, this checks whether a given object has
+		// a deleted state before returning a `namespace/name` key. This is
+		// important since we do not want to consider a service that has been
+		// deleted and is waiting for cache eviction
+		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(svc)
+		if err != nil {
+			return []string{}, err
+		}
+
+		// Check if service selects our ee.
+		if labels.ValidatedSetSelector(svc.Spec.Selector).Matches(labels.Set(workload.Labels)) {
+			keys = append(keys, key)
+		}
+	}
+
+	return keys, nil
 }
