@@ -478,12 +478,12 @@ data:
     cniEnabled: false
     controlPlaneTracing: false
     controlPlaneTracingNamespace: ""
+    controllerGID: 2103
     controllerImage: ControllerImage
     controllerLogFormat: ControllerLogFormat
     controllerLogLevel: ControllerLogLevel
     controllerReplicas: 1
     controllerUID: 2103
-    controllerGID: 2103
     debugContainer:
       image:
         name: DebugImageName
@@ -610,6 +610,7 @@ data:
       disableOutboundProtocolDetectTimeout: false
       enableExternalProfiles: false
       experimentalEnv: null
+      gid: 2102
       image:
         name: ProxyImageName
         pullPolicy: ImagePullPolicy
@@ -645,7 +646,6 @@ data:
       shutdownGracePeriod: ""
       startupProbe: null
       uid: 2102
-      gid: 2102
       waitBeforeExitSeconds: 0
     proxyContainerName: ProxyContainerName
     proxyInit:
@@ -672,9 +672,9 @@ data:
         memory:
           limit: 50Mi
           request: 10Mi
+      runAsGroup: 65534
       runAsRoot: false
       runAsUser: 65534
-      runAsGroup: 65534
       saMountPath: null
       skipSubnets: ""
       xtMountPath:
@@ -873,9 +873,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
-          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1008,9 +1008,9 @@ spec:
             drop:
               - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2102
           runAsNonRoot: true
           runAsUser: 2102
-          runAsGroup: 2102
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1048,9 +1048,9 @@ spec:
             - NET_ADMIN
             - NET_RAW
           privileged: false
+          runAsGroup: 65534
           runAsNonRoot: true
           runAsUser: 65534
-          runAsGroup: 65534
           readOnlyRootFilesystem: true
           seccompProfile:
             type: RuntimeDefault
@@ -1342,9 +1342,9 @@ spec:
             drop:
               - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2102
           runAsNonRoot: true
           runAsUser: 2102
-          runAsGroup: 2102
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1395,9 +1395,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
-          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1429,9 +1429,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
-          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1486,9 +1486,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
-          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1525,9 +1525,9 @@ spec:
             - NET_ADMIN
             - NET_RAW
           privileged: false
+          runAsGroup: 65534
           runAsNonRoot: true
           runAsUser: 65534
-          runAsGroup: 65534
           readOnlyRootFilesystem: true
           seccompProfile:
             type: RuntimeDefault
@@ -1616,9 +1616,9 @@ spec:
                 drop:
                 - ALL
               readOnlyRootFilesystem: true
+              runAsGroup: 2103
               runAsNonRoot: true
               runAsUser: 2103
-              runAsGroup: 2103
               allowPrivilegeEscalation: false
               seccompProfile:
                 type: RuntimeDefault
@@ -1786,9 +1786,9 @@ spec:
             drop:
               - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2102
           runAsNonRoot: true
           runAsUser: 2102
-          runAsGroup: 2102
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1833,9 +1833,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
-          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1876,9 +1876,9 @@ spec:
             - NET_ADMIN
             - NET_RAW
           privileged: false
+          runAsGroup: 65534
           runAsNonRoot: true
           runAsUser: 65534
-          runAsGroup: 65534
           readOnlyRootFilesystem: true
           seccompProfile:
             type: RuntimeDefault

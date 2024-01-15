@@ -66,9 +66,9 @@ securityContext:
   privileged: false
   {{- end }}
   {{- if .Values.proxyInit.runAsRoot }}
+  runAsGroup: 0
   runAsNonRoot: false
   runAsUser: 0
-  runAsGroup: 0
   {{- else }}
   runAsNonRoot: true
   runAsUser: {{ .Values.proxyInit.runAsUser | int | eq 0 | ternary 65534 .Values.proxyInit.runAsUser }}

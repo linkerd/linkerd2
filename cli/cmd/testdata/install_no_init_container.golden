@@ -481,12 +481,12 @@ data:
     cniEnabled: true
     controlPlaneTracing: false
     controlPlaneTracingNamespace: linkerd-jaeger
+    controllerGID: 2103
     controllerImage: cr.l5d.io/linkerd/controller
     controllerLogFormat: plain
     controllerLogLevel: info
     controllerReplicas: 1
     controllerUID: 2103
-    controllerGID: 2103
     debugContainer:
       image:
         name: cr.l5d.io/linkerd/debug
@@ -634,6 +634,7 @@ data:
       disableOutboundProtocolDetectTimeout: false
       enableExternalProfiles: false
       experimentalEnv: null
+      gid: 2102
       image:
         name: cr.l5d.io/linkerd/proxy
         pullPolicy: ""
@@ -672,7 +673,6 @@ data:
         initialDelaySeconds: 0
         periodSeconds: 1
       uid: 2102
-      gid: 2102
       waitBeforeExitSeconds: 0
     proxyContainerName: linkerd-proxy
     proxyInit:
@@ -699,9 +699,9 @@ data:
         memory:
           limit: 20Mi
           request: 20Mi
+      runAsGroup: 65534
       runAsRoot: false
       runAsUser: 65534
-      runAsGroup: 65534
       saMountPath: null
       skipSubnets: ""
       xtMountPath:
@@ -904,9 +904,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
-          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1037,9 +1037,9 @@ spec:
             drop:
               - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2102
           runAsNonRoot: true
           runAsUser: 2102
-          runAsGroup: 2102
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1065,9 +1065,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 65534
           runAsNonRoot: true
           runAsUser: 65534
-          runAsGroup: 65534
           seccompProfile:
             type: RuntimeDefault
         command:
@@ -1366,9 +1366,9 @@ spec:
             drop:
               - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2102
           runAsNonRoot: true
           runAsUser: 2102
-          runAsGroup: 2102
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1419,9 +1419,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
-          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1453,9 +1453,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
-          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1504,9 +1504,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
-          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1531,9 +1531,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 65534
           runAsNonRoot: true
           runAsUser: 65534
-          runAsGroup: 65534
           seccompProfile:
             type: RuntimeDefault
         command:
@@ -1626,9 +1626,9 @@ spec:
                 drop:
                 - ALL
               readOnlyRootFilesystem: true
+              runAsGroup: 2103
               runAsNonRoot: true
               runAsUser: 2103
-              runAsGroup: 2103
               allowPrivilegeEscalation: false
               seccompProfile:
                 type: RuntimeDefault
@@ -1798,9 +1798,9 @@ spec:
             drop:
               - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2102
           runAsNonRoot: true
           runAsUser: 2102
-          runAsGroup: 2102
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
@@ -1845,9 +1845,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
-          runAsGroup: 2103
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -1876,9 +1876,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 65534
           runAsNonRoot: true
           runAsUser: 65534
-          runAsGroup: 65534
           seccompProfile:
             type: RuntimeDefault
         command:
