@@ -3,6 +3,7 @@ package util
 import (
 	"strings"
 
+	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -50,6 +51,28 @@ func ParseContainerOpaquePorts(override string, containers []corev1.Container) [
 	return values
 }
 
+// ParseExternalWorkloadOpaquePorts parses the opaque ports annotation into a list of
+// port ranges, including validating port ranges and converting named ports
+// into their port number equivalents.
+func ParseExternalWorkloadOpaquePorts(override string, ew *ewv1alpha1.ExternalWorkload) []PortRange {
+	portRanges := GetPortRanges(override)
+	var values []PortRange
+	for _, pr := range portRanges {
+		port, named := isNamedInExternalWorkload(pr, ew)
+		if named {
+			values = append(values, PortRange{UpperBound: int(port), LowerBound: int(port)})
+		} else {
+			pr, err := ParsePortRange(pr)
+			if err != nil {
+				log.Warnf("Invalid port range [%v]: %s", pr, err)
+				continue
+			}
+			values = append(values, pr)
+		}
+	}
+	return values
+}
+
 // GetPortRanges gets port ranges from an override annotation
 func GetPortRanges(override string) []string {
 	var ports []string
@@ -71,6 +94,16 @@ func isNamed(pr string, containers []corev1.Container) (int32, bool) {
 			}
 		}
 	}
+	return 0, false
+}
+
+func isNamedInExternalWorkload(pr string, ew *ewv1alpha1.ExternalWorkload) (int32, bool) {
+	for _, p := range ew.Spec.Ports {
+		if p.Name == pr {
+			return p.Port, true
+		}
+	}
+
 	return 0, false
 }
 

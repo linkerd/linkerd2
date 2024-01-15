@@ -521,7 +521,7 @@ func (pp *podPublisher) createAddress() (Address, error) {
 	var ownerKind, ownerName string
 	var err error
 	if pp.pod != nil {
-		ownerKind, ownerName, err = pp.metadataAPI.GetOwnerKindAndName(context.Background(), pp.pod, true)
+		ownerKind, ownerName, err = pp.metadataAPI.GetOwnerKindAndName(context.Background(), pp.pod.Kind, pp.pod, true)
 		if err != nil {
 			return Address{}, err
 		}

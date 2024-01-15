@@ -10,7 +10,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -213,14 +212,13 @@ func (api *MetadataAPI) GetByNamespaceFiltered(
 // Kubernetes singular resource type (e.g. deployment, daemonset, job, etc.).
 // If retry is true, when the shared informer cache doesn't return anything we
 // try again with a direct Kubernetes API call.
-func (api *MetadataAPI) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod, retry bool) (string, string, error) {
+func (api *MetadataAPI) GetOwnerKindAndName(ctx context.Context, kind string, pod metav1.Object, retry bool) (string, string, error) {
 	ownerRefs := pod.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
-		// pod without a parent
-		return "pod", pod.Name, nil
+		return strings.ToLower(kind), pod.GetName(), nil
 	} else if len(ownerRefs) > 1 {
 		log.Debugf("unexpected owner reference count (%d): %+v", len(ownerRefs), ownerRefs)
-		return "pod", pod.Name, nil
+		return strings.ToLower(kind), pod.GetName(), nil
 	}
 
 	parent := ownerRefs[0]
@@ -228,31 +226,31 @@ func (api *MetadataAPI) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod
 	var err error
 	switch parent.Kind {
 	case "Job":
-		parentObj, err = api.getByNamespace(Job, pod.Namespace, parent.Name)
+		parentObj, err = api.getByNamespace(Job, pod.GetNamespace(), parent.Name)
 		if err != nil {
-			log.Warnf("failed to retrieve job from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
+			log.Warnf("failed to retrieve job from indexer %s/%s: %s", pod.GetNamespace(), parent.Name, err)
 			if retry {
 				parentObj, err = api.client.
 					Resource(batchv1.SchemeGroupVersion.WithResource("jobs")).
-					Namespace(pod.Namespace).
+					Namespace(pod.GetNamespace()).
 					Get(ctx, parent.Name, metav1.GetOptions{})
 				if err != nil {
-					log.Warnf("failed to retrieve job from direct API call %s/%s: %s", pod.Namespace, parent.Name, err)
+					log.Warnf("failed to retrieve job from direct API call %s/%s: %s", pod.GetNamespace(), parent.Name, err)
 				}
 			}
 		}
 	case "ReplicaSet":
 		var rsObj *metav1.PartialObjectMetadata
-		rsObj, err = api.getByNamespace(RS, pod.Namespace, parent.Name)
+		rsObj, err = api.getByNamespace(RS, pod.GetNamespace(), parent.Name)
 		if err != nil {
-			log.Warnf("failed to retrieve replicaset from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
+			log.Warnf("failed to retrieve replicaset from indexer %s/%s: %s", pod.GetNamespace(), parent.Name, err)
 			if retry {
 				rsObj, err = api.client.
 					Resource(appsv1.SchemeGroupVersion.WithResource("replicasets")).
-					Namespace(pod.Namespace).
+					Namespace(pod.GetNamespace()).
 					Get(ctx, parent.Name, metav1.GetOptions{})
 				if err != nil {
-					log.Warnf("failed to retrieve replicaset from direct API call %s/%s: %s", pod.Namespace, parent.Name, err)
+					log.Warnf("failed to retrieve replicaset from direct API call %s/%s: %s", pod.GetNamespace(), parent.Name, err)
 				}
 			}
 		}

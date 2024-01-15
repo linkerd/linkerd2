@@ -97,6 +97,8 @@ func NewFakeClientSets(configs ...string) (
 			discoveryObjs = append(discoveryObjs, obj)
 		case ServiceProfile:
 			spObjs = append(spObjs, obj)
+		case ExtWorkload:
+			spObjs = append(spObjs, obj)
 		case Server:
 			spObjs = append(spObjs, obj)
 		default:
