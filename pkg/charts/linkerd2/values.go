@@ -123,7 +123,7 @@ type (
 		StartupProbe                         *StartupProbe    `json:"startupProbe"`
 		Control                              *ProxyControl    `json:"control"`
 
-		ExperimentalEnv map[string]string `json:"experimentalEnv"`
+		ExperimentalEnv []corev1.EnvVar `json:"experimentalEnv"`
 	}
 
 	ProxyControl struct {
