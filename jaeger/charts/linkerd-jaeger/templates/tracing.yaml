@@ -271,7 +271,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.jaeger.UID | default .Values.defaultUID}}
-          runAsUser: {{.Values.jaeger.GID | default .Values.defaultGID}}
+          runAsGroup: {{.Values.jaeger.GID | default .Values.defaultGID}}
           seccompProfile:
             type: RuntimeDefault
       dnsPolicy: ClusterFirst
