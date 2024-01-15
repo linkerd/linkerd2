@@ -25,8 +25,8 @@ import (
 	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
 	v1beta3 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1beta3"
-	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
-	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
+	v1beta2 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
+	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
@@ -84,12 +84,12 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	case v1beta3.SchemeGroupVersion.WithResource("httproutes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Policy().V1beta3().HTTPRoutes().Informer()}, nil
 
-		// Group=server, Version=v1beta1
-	case v1beta1.SchemeGroupVersion.WithResource("servers"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Server().V1beta1().Servers().Informer()}, nil
+		// Group=server, Version=v1beta2
+	case v1beta2.SchemeGroupVersion.WithResource("servers"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Server().V1beta2().Servers().Informer()}, nil
 
 		// Group=serverauthorization, Version=v1beta1
-	case serverauthorizationv1beta1.SchemeGroupVersion.WithResource("serverauthorizations"):
+	case v1beta1.SchemeGroupVersion.WithResource("serverauthorizations"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Serverauthorization().V1beta1().ServerAuthorizations().Informer()}, nil
 
 	}

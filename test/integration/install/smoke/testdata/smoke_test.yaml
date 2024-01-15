@@ -32,7 +32,7 @@ spec:
     port: 9090
     targetPort: 9090
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   name: smoke-test-terminus
@@ -93,7 +93,7 @@ spec:
     port: 8080
     targetPort: 8080
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   name: smoke-test-proxy-admin

@@ -328,7 +328,7 @@ spec:
         name: http
         protocol: TCP`,
 		`
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   name: srv

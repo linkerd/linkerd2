@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
+	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/util"
@@ -229,8 +229,8 @@ func (pw *PodWatcher) submitPodUpdate(pod *corev1.Pod, remove bool) {
 }
 
 func (pw *PodWatcher) updateServer(oldObj interface{}, newObj interface{}) {
-	oldServer := oldObj.(*v1beta1.Server)
-	newServer := newObj.(*v1beta1.Server)
+	oldServer := oldObj.(*v1beta2.Server)
+	newServer := newObj.(*v1beta2.Server)
 
 	oldUpdated := latestUpdated(oldServer.ManagedFields)
 	updated := latestUpdated(newServer.ManagedFields)
