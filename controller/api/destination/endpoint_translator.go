@@ -700,7 +700,7 @@ func getInboundPortFromExternalWorkload(ewSpec *ewv1alpha1.ExternalWorkloadSpec)
 	return 0, fmt.Errorf("failed to find %s port for given ExternalWorkloadSpec", pkgK8s.ProxyPortName)
 }
 
-// GetAnnotatedOpaquePortsForPod returns the opaque ports for the external workload given its
+// getAnnotatedOpaquePortsForExternalWorkload returns the opaque ports for the external workload given its
 // annotations, or the default opaque ports if it's not annotated
 func getAnnotatedOpaquePortsForExternalWorkload(ew *ewv1alpha1.ExternalWorkload, defaultPorts map[uint32]struct{}) map[uint32]struct{} {
 	if ew == nil {

@@ -898,7 +898,12 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
 				}
-				address.Zone = endpoint.Zone
+
+				if endpoint.Zone != nil {
+					zone := *endpoint.Zone
+					address.Zone = &zone
+				}
+
 				if endpoint.Hints != nil {
 					zones := make([]discovery.ForZone, len(endpoint.Hints.ForZones))
 					copy(zones, endpoint.Hints.ForZones)
@@ -912,7 +917,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 			for _, IPAddr := range endpoint.Addresses {
 				address, id, err := pp.newExtRefAddress(resolvedPort, IPAddr, endpoint.TargetRef.Name, es.Namespace)
 				if err != nil {
-					pp.log.Errorf("Unable to create new address:%v", err)
+					pp.log.Errorf("Unable to create new address: %v", err)
 					continue
 				}
 
@@ -921,7 +926,11 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
 				}
-				address.Zone = endpoint.Zone
+
+				if endpoint.Zone != nil {
+					zone := *endpoint.Zone
+					address.Zone = &zone
+				}
 				if endpoint.Hints != nil {
 					zones := make([]discovery.ForZone, len(endpoint.Hints.ForZones))
 					copy(zones, endpoint.Hints.ForZones)
