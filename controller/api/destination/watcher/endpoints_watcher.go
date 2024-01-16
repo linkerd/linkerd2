@@ -886,6 +886,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 		}
 
 		if endpoint.TargetRef.Kind == endpointTargetRefPod {
+			println("target external workload")
 			for _, IPAddr := range endpoint.Addresses {
 				address, id, err := pp.newPodRefAddress(resolvedPort, IPAddr, endpoint.TargetRef.Name, endpoint.TargetRef.Namespace)
 				if err != nil {
@@ -909,7 +910,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 
 		if endpoint.TargetRef.Kind == endpointTargetRefExternalWorkload {
 			for _, IPAddr := range endpoint.Addresses {
-				address, id, err := pp.newExtRefAddress(resolvedPort, IPAddr, endpoint.TargetRef.Name, endpoint.TargetRef.Namespace)
+				address, id, err := pp.newExtRefAddress(resolvedPort, IPAddr, endpoint.TargetRef.Name, es.Namespace)
 				if err != nil {
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue

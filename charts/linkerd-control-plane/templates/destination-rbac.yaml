@@ -23,6 +23,9 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["workload.linkerd.io"]
+  resources: ["externalworkloads"]
+  verbs: ["list", "get", "watch"]
   {{- if .Values.enableEndpointSlices }}
 - apiGroups: ["discovery.k8s.io"]
   resources: ["endpointslices"]

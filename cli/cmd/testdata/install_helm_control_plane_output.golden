@@ -73,6 +73,9 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["workload.linkerd.io"]
+  resources: ["externalworkloads"]
+  verbs: ["list", "get", "watch"]
 - apiGroups: ["discovery.k8s.io"]
   resources: ["endpointslices"]
   verbs: ["list", "get", "watch"]
@@ -1214,7 +1217,11 @@ spec:
   template:
     metadata:
       annotations:
+<<<<<<< HEAD
         checksum/config: d2b9e62513426ee1bac42dfc80477e8730316fd3bda7f422f1bdd27e3e59316f
+=======
+        checksum/config: b63cc8090093fb793f50b451a2ed8d7b11014673bb4df0398ad45233ae5ca35e
+>>>>>>> add rbac
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
