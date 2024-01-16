@@ -24,7 +24,8 @@ The Steering Committee’s responsibilities are to:
 The Steering Committee comprises at most 7 people. To be eligible for
 membership in the Steering Committee, you must:
 
-1. Be responsible for a production Linkerd deployment of non-trivial size
+1. Have been responsible for a production Linkerd deployment of non-trivial
+   size within the past two years.
 2. Be willing and able to attend regularly-scheduled Steering Committee
    meetings
 3. Abide by Linkerd's Code of Conduct.
