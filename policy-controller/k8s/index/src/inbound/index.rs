@@ -69,7 +69,7 @@ struct AuthenticationNsIndex {
 #[derive(Debug)]
 struct Namespace {
     pods: PodIndex,
-    external_workloads: ExternalIndex,
+    external_workloads: ExternalWorkloadIndex,
     policy: PolicyIndex,
 }
 
@@ -123,7 +123,7 @@ struct WorkloadPortServer {
 
 /// Holds all external workload data for a single namespace
 #[derive(Debug)]
-struct ExternalIndex {
+struct ExternalWorkloadIndex {
     namespace: String,
     by_name: HashMap<String, ExternalWorkload>,
 }
@@ -207,6 +207,34 @@ impl Index {
             .get_mut(pod)
             .ok_or_else(|| anyhow::anyhow!("pod {}.{} not found", pod, namespace))?;
         Ok(pod
+            .port_server_or_default(port, &self.cluster_info)
+            .watch
+            .subscribe())
+    }
+
+    /// Obtains an external_workload:port's server receiver.
+    ///
+    /// An error is returned if the external workload is not found. If the port
+    /// is not found, a default server is created.
+    pub fn external_workload_server_rx(
+        &mut self,
+        namespace: &str,
+        workload: &str,
+        port: NonZeroU16,
+    ) -> Result<watch::Receiver<InboundServer>> {
+        let ns = self
+            .namespaces
+            .by_ns
+            .get_mut(namespace)
+            .ok_or_else(|| anyhow::anyhow!("namespace not found: {}", namespace))?;
+        let external_workload =
+            ns.external_workloads
+                .by_name
+                .get_mut(workload)
+                .ok_or_else(|| {
+                    anyhow::anyhow!("external workload {}.{} not found", workload, namespace)
+                })?;
+        Ok(external_workload
             .port_server_or_default(port, &self.cluster_info)
             .watch
             .subscribe())
@@ -409,9 +437,9 @@ impl kubert::index::IndexNamespacedResource<k8s::external_workload::ExternalWork
     fn delete(&mut self, ns: String, name: String) {
         tracing::debug!(%ns, %name, "delete");
         if let Entry::Occupied(mut ns) = self.namespaces.by_ns.entry(ns) {
-            // Once the pod is removed, there's nothing else to update. Any open
-            // watches will complete.  No other parts of the index need to be
-            // updated.
+            // Once the external workload is removed, there's nothing else to
+            // update. Any open watches will complete. No other parts of the
+            // index need to be updated.
             if ns
                 .get_mut()
                 .external_workloads
@@ -425,7 +453,7 @@ impl kubert::index::IndexNamespacedResource<k8s::external_workload::ExternalWork
         }
     }
 
-    // Since apply only reindexes a single pod at a time, there's no need to
+    // Since apply only reindexes a single external workload at a time, there's no need to
     // handle resets specially.
 }
 
@@ -907,7 +935,7 @@ impl Namespace {
                 namespace: namespace.clone(),
                 by_name: HashMap::default(),
             },
-            external_workloads: ExternalIndex {
+            external_workloads: ExternalWorkloadIndex {
                 namespace: namespace.clone(),
                 by_name: HashMap::default(),
             },
@@ -1172,9 +1200,9 @@ impl Pod {
     }
 }
 
-// === impl ExternalIndex ===
+// === impl ExternalWorkloadIndex ===
 
-impl ExternalIndex {
+impl ExternalWorkloadIndex {
     #[inline]
     fn is_empty(&self) -> bool {
         self.by_name.is_empty()
@@ -1331,12 +1359,13 @@ impl ExternalWorkload {
                         return false;
                     }
 
-                    // If the port's server previously matched a different server,
-                    // this can either mean that multiple servers currently match
-                    // the pod:port, or that we're in the middle of an update. We
-                    // make the opportunistic choice to assume the cluster is
-                    // configured coherently so we take the update. The admission
-                    // controller should prevent conflicts.
+                    // If the port's server previously matched a different
+                    // server, this can either mean that multiple servers
+                    // currently match the external_workload:port, or that we're
+                    // in the middle of an update. We make the opportunistic
+                    // choice to assume the cluster is configured coherently so
+                    // we take the update. The admission controller should
+                    // prevent conflicts.
                     tracing::trace!(port = %port, server = %name, "Updating server");
                     if ps.name.as_deref() != Some(name) {
                         ps.name = Some(name.to_string());
@@ -1397,6 +1426,25 @@ impl ExternalWorkload {
         match port_ref {
             Port::Number(p) => Some(*p),
             Port::Name(name) => self.port_names.get(name).cloned(),
+        }
+    }
+
+    fn port_server_or_default(
+        &mut self,
+        port: NonZeroU16,
+        config: &ClusterInfo,
+    ) -> &mut WorkloadPortServer {
+        match self.port_servers.entry(port) {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => {
+                let (watch, _) = watch::channel(PolicyIndex::default_inbound_server(
+                    port,
+                    &self.meta.settings,
+                    Vec::new().into_iter(),
+                    config,
+                ));
+                entry.insert(WorkloadPortServer { name: None, watch })
+            }
         }
     }
 }
