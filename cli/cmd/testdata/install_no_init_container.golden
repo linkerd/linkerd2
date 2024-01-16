@@ -239,6 +239,14 @@ rules:
     verbs:
       - patch
   - apiGroups:
+      - workload.linkerd.io
+    resources:
+      - externalworkloads
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
       - coordination.k8s.io
     resources:
       - leases
@@ -861,7 +869,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - identity
@@ -1225,7 +1233,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 6c6be36634a1edea1ebcad1c3981959c48eb6b78684e7093058a50eca6ba2f97
+        checksum/config: d4bf92fed9aef0313ad18729f0b373da57c319c902152dc80c605834dffe636f
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: install-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1239,7 +1247,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - env:
         - name: _pod_name
@@ -1666,7 +1674,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - env:
         - name: _pod_name

@@ -230,6 +230,14 @@ rules:
     verbs:
       - patch
   - apiGroups:
+      - workload.linkerd.io
+    resources:
+      - externalworkloads
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
       - coordination.k8s.io
     resources:
       - leases
@@ -1312,7 +1320,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: ff01f9fed5a80929d1215ebec514a25888ac7fed762a5a753bd896928e26b951
+        checksum/config: 87abaa41d2dbabb91103c13138f417ed7b9d048fd0d559a3666a139becd41366
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"

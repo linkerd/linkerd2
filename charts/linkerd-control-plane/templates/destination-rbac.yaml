@@ -243,8 +243,8 @@ rules:
       - httproutes/status
     verbs:
       - patch
-   - apiGroups:
-    - workload.linkerd.io
+  - apiGroups:
+      - workload.linkerd.io
     resources:
       - externalworkloads
     verbs:
