@@ -8,7 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func makeExternalWorkload(name, namespace, id, sni string, labels map[string]string, ports map[int32]string, ips []string) *ewv1alpha1.ExternalWorkload {
+func makeExternalWorkload(labels map[string]string, ports map[int32]string, ips []string) *ewv1alpha1.ExternalWorkload {
 	portSpecs := []ewv1alpha1.PortSpec{}
 	for port, name := range ports {
 		spec := ewv1alpha1.PortSpec{
@@ -27,14 +27,14 @@ func makeExternalWorkload(name, namespace, id, sni string, labels map[string]str
 
 	return &ewv1alpha1.ExternalWorkload{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
+			Name:      "wkld1",
+			Namespace: "ns",
 			Labels:    labels,
 		},
 		Spec: ewv1alpha1.ExternalWorkloadSpec{
 			MeshTls: ewv1alpha1.MeshTls{
-				Identity:   id,
-				ServerName: sni,
+				Identity:   "some-identity",
+				ServerName: "some-sni",
 			},
 			Ports:       portSpecs,
 			WorkloadIPs: wIps,
@@ -54,19 +54,11 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "no change",
 			old: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
@@ -76,19 +68,11 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload adds an IP address",
 			old: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0", "192.0.3.0"},
@@ -98,19 +82,11 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload removes an IP address",
 			old: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0", "192.0.3.0"},
 			),
 			updated: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
@@ -120,19 +96,11 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload changes an IP address",
 			old: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.3.0"},
@@ -142,19 +110,11 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload adds new port",
 			old: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-1", 2: "port-2"},
 				[]string{"192.0.2.0"},
@@ -164,19 +124,11 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload removes port",
 			old: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-1", 2: "port-2"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
@@ -186,19 +138,11 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload changes port number",
 			old: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{2: "port-1"},
 				[]string{"192.0.2.0"},
@@ -208,19 +152,11 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload changes port name",
 			old: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-foo"},
 				[]string{"192.0.2.0"},
@@ -230,19 +166,11 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload removes port name",
 			old: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				nil,
 				map[int32]string{1: ""},
 				[]string{"192.0.2.0"},
@@ -274,19 +202,11 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
 		{
 			name: "no change",
 			old: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				map[string]string{"app": "test"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				map[string]string{"app": "test"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
@@ -306,19 +226,11 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
 		{
 			name: "labels and spec have changed",
 			old: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				map[string]string{"app": "test-1"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				map[string]string{"app": "test-2"},
 				map[int32]string{2: "port-1"},
 				[]string{"192.0.2.0"},
@@ -346,19 +258,11 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
 		{
 			name: "spec has changed",
 			old: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				map[string]string{"app": "test-1"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				map[string]string{"app": "test-1"},
 				map[int32]string{2: "port-1"},
 				[]string{"192.0.2.0"},
@@ -378,19 +282,11 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
 		{
 			name: "labels have changed",
 			old: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				map[string]string{"app": "test-1", "env": "staging"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
-				"wkld1",
-				"ns",
-				"some-id",
-				"some-sni",
 				map[string]string{"app": "test-1", "env": "prod"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
