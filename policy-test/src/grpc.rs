@@ -10,6 +10,7 @@ use linkerd2_proxy_api::{
     outbound::outbound_policies_client::OutboundPoliciesClient,
 };
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
+use serde::{Deserialize, Serialize};
 use tokio::io;
 
 #[macro_export]
@@ -59,6 +60,25 @@ macro_rules! assert_protocol_detect {
 }
 
 #[macro_export]
+macro_rules! assert_protocol_detect_external {
+    ($config:expr) => {{
+        use linkerd2_proxy_api::inbound;
+
+        assert_eq!(
+            $config.protocol,
+            Some(inbound::ProxyProtocol {
+                kind: Some(inbound::proxy_protocol::Kind::Detect(
+                    inbound::proxy_protocol::Detect {
+                        timeout: Some(std::time::Duration::from_secs(10).try_into().unwrap()),
+                        http_routes: vec![$crate::grpc::defaults::http_route()],
+                    }
+                ))
+            })
+        )
+    }};
+}
+
+#[macro_export]
 macro_rules! assert_default_accrual_backoff {
     ($backoff:expr) => {{
         use linkerd2_proxy_api::outbound;
@@ -79,6 +99,22 @@ pub struct InboundPolicyClient {
 #[derive(Debug)]
 pub struct OutboundPolicyClient {
     client: OutboundPoliciesClient<GrpcHttp>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub enum Kind {
+    #[serde(rename = "external_workload")]
+    External(String),
+    #[serde(rename = "pod")]
+    Pod(String),
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Workload {
+    #[serde(flatten)]
+    pub kind: Kind,
+    #[serde(rename = "ns")]
+    pub namespace: String,
 }
 
 #[derive(Debug)]
@@ -157,6 +193,7 @@ impl InboundPolicyClient {
         Ok(rsp.into_inner())
     }
 
+    //TODO (matei): we should move our tests over to the new token format
     pub async fn watch_port(
         &mut self,
         ns: &str,
@@ -170,6 +207,52 @@ impl InboundPolicyClient {
                 port: port as u32,
             }))
             .await?;
+        Ok(rsp.into_inner())
+    }
+
+    //TODO (matei): see if we can collapse this into `get_port` once it supports
+    //new token format
+    pub async fn get_port_for_external_workload(
+        &mut self,
+        ns: &str,
+        name: &str,
+        port: u16,
+    ) -> Result<inbound::Server, tonic::Status> {
+        let token = serde_json::to_string(&Workload {
+            kind: Kind::External(name.into()),
+            namespace: ns.into(),
+        })
+        .unwrap();
+        let rsp = self
+            .client
+            .get_port(tonic::Request::new(inbound::PortSpec {
+                workload: token,
+                port: port as u32,
+            }))
+            .await?;
+
+        Ok(rsp.into_inner())
+    }
+
+    pub async fn watch_port_for_external_workload(
+        &mut self,
+        ns: &str,
+        name: &str,
+        port: u16,
+    ) -> Result<tonic::Streaming<inbound::Server>, tonic::Status> {
+        let token = serde_json::to_string(&Workload {
+            kind: Kind::External(name.into()),
+            namespace: ns.into(),
+        })
+        .unwrap();
+        let rsp = self
+            .client
+            .watch_port(tonic::Request::new(inbound::PortSpec {
+                workload: token,
+                port: port as u32,
+            }))
+            .await?;
+
         Ok(rsp.into_inner())
     }
 }
@@ -305,6 +388,15 @@ pub mod defaults {
         inbound::ProxyProtocol {
             kind: Some(Kind::Http1(Http1 {
                 routes: vec![http_route(), probe_route()],
+            })),
+        }
+    }
+
+    pub fn proxy_protocol_external() -> inbound::ProxyProtocol {
+        use inbound::proxy_protocol::{Http1, Kind};
+        inbound::ProxyProtocol {
+            kind: Some(Kind::Http1(Http1 {
+                routes: vec![http_route()],
             })),
         }
     }
