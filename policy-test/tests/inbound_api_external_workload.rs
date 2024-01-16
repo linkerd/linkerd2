@@ -355,9 +355,6 @@ async fn external_workload_srv_with_http_route() {
 #[tokio::test(flavor = "current_thread")]
 async fn external_workload_default_http_route() {
     with_temp_ns(|client, ns| async move {
-        // Create a pod that does nothing. It's injected with a proxy, so we can
-        // attach policies to its admin server.
-
         // Create an external workload object.
         let ext_workload = create(&client, mk_external_workload(&ns, "wkld-1")).await;
 
