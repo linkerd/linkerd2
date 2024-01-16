@@ -712,11 +712,40 @@ func getAnnotatedOpaquePortsForExternalWorkload(ew *ewv1alpha1.ExternalWorkload,
 	}
 	opaquePorts := make(map[uint32]struct{})
 	if annotation != "" {
-		for _, pr := range util.ParseExternalWorkloadOpaquePorts(annotation, ew) {
+		for _, pr := range parseExternalWorkloadOpaquePorts(annotation, ew) {
 			for _, port := range pr.Ports() {
 				opaquePorts[uint32(port)] = struct{}{}
 			}
 		}
 	}
 	return opaquePorts
+}
+
+func parseExternalWorkloadOpaquePorts(override string, ew *ewv1alpha1.ExternalWorkload) []util.PortRange {
+	portRanges := util.GetPortRanges(override)
+	var values []util.PortRange
+	for _, pr := range portRanges {
+		port, named := isNamedInExternalWorkload(pr, ew)
+		if named {
+			values = append(values, util.PortRange{UpperBound: int(port), LowerBound: int(port)})
+		} else {
+			pr, err := util.ParsePortRange(pr)
+			if err != nil {
+				logging.Warnf("Invalid port range [%v]: %s", pr, err)
+				continue
+			}
+			values = append(values, pr)
+		}
+	}
+	return values
+}
+
+func isNamedInExternalWorkload(pr string, ew *ewv1alpha1.ExternalWorkload) (int32, bool) {
+	for _, p := range ew.Spec.Ports {
+		if p.Name == pr {
+			return p.Port, true
+		}
+	}
+
+	return 0, false
 }
