@@ -1323,11 +1323,7 @@ spec:
   template:
     metadata:
       annotations:
-<<<<<<< HEAD
-        checksum/config: 87abaa41d2dbabb91103c13138f417ed7b9d048fd0d559a3666a139becd41366
-=======
-        checksum/config: 615478cf471aba027733245076a797466add11cfdfe6c07664aed8bd6f8b8d01
->>>>>>> add rbac
+        checksum/config: 0c44eef305979e083e188ead1a3260e0938593280984479e1801906324a1922f
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
