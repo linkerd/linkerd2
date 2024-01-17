@@ -5,3 +5,4 @@ mod http_route;
 
 pub mod inbound;
 pub mod outbound;
+pub mod workload;

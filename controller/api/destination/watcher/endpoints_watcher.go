@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
+	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
@@ -506,15 +506,15 @@ func (ew *EndpointsWatcher) getServicePublisher(id ServiceID) (sp *servicePublis
 func (ew *EndpointsWatcher) addServer(obj interface{}) {
 	ew.Lock()
 	defer ew.Unlock()
-	server := obj.(*v1beta1.Server)
+	server := obj.(*v1beta2.Server)
 	for _, sp := range ew.publishers {
 		sp.updateServer(server, true)
 	}
 }
 
 func (ew *EndpointsWatcher) updateServer(oldObj interface{}, newObj interface{}) {
-	oldServer := oldObj.(*v1beta1.Server)
-	newServer := newObj.(*v1beta1.Server)
+	oldServer := oldObj.(*v1beta2.Server)
+	newServer := newObj.(*v1beta2.Server)
 	oldUpdated := latestUpdated(oldServer.ManagedFields)
 	updated := latestUpdated(newServer.ManagedFields)
 	if !updated.IsZero() && updated != oldUpdated {
@@ -528,7 +528,7 @@ func (ew *EndpointsWatcher) updateServer(oldObj interface{}, newObj interface{})
 func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
 	ew.Lock()
 	defer ew.Unlock()
-	server := obj.(*v1beta1.Server)
+	server := obj.(*v1beta2.Server)
 	for _, sp := range ew.publishers {
 		sp.updateServer(server, false)
 	}
@@ -700,7 +700,7 @@ func (sp *servicePublisher) metricsLabels(port Port, hostname string) prometheus
 	return endpointsLabels(sp.cluster, sp.id.Namespace, sp.id.Name, strconv.Itoa(int(port)), hostname)
 }
 
-func (sp *servicePublisher) updateServer(server *v1beta1.Server, isAdd bool) {
+func (sp *servicePublisher) updateServer(server *v1beta2.Server, isAdd bool) {
 	sp.Lock()
 	defer sp.Unlock()
 
@@ -1181,7 +1181,8 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 	pp.metrics.setSubscribers(len(pp.listeners))
 }
 
-func (pp *portPublisher) updateServer(server *v1beta1.Server, selector labels.Selector, isAdd bool) {
+func (pp *portPublisher) updateServer(server *v1beta2.Server, selector labels.Selector, isAdd bool) {
+	updated := false
 	for id, address := range pp.addresses.Addresses {
 		if address.Pod != nil && selector.Matches(labels.Set(address.Pod.Labels)) {
 			var portMatch bool
@@ -1207,12 +1208,18 @@ func (pp *portPublisher) updateServer(server *v1beta1.Server, selector labels.Se
 				} else {
 					address.OpaqueProtocol = false
 				}
-				pp.addresses.Addresses[id] = address
+				if pp.addresses.Addresses[id].OpaqueProtocol != address.OpaqueProtocol {
+					pp.addresses.Addresses[id] = address
+					updated = true
+				}
 			}
 		}
 	}
-	for _, listener := range pp.listeners {
-		listener.Add(pp.addresses)
+	if updated {
+		for _, listener := range pp.listeners {
+			listener.Add(pp.addresses)
+		}
+		pp.metrics.incUpdates()
 	}
 }
 

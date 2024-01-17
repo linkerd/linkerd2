@@ -250,7 +250,7 @@ rules:
     verbs:
       - patch
   - apiGroups:
-    - workload.linkerd.io
+      - workload.linkerd.io
     resources:
       - externalworkloads
     verbs:

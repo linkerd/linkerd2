@@ -1,4 +1,4 @@
-use crate::http_route;
+use crate::{http_route, workload};
 use futures::prelude::*;
 use linkerd2_proxy_api::{
     self as api, destination,
@@ -15,7 +15,7 @@ use linkerd_policy_controller_core::{
         OutboundPolicy, OutboundPolicyStream,
     },
 };
-use std::{net::SocketAddr, num::NonZeroU16, sync::Arc, time};
+use std::{net::SocketAddr, num::NonZeroU16, str::FromStr, sync::Arc, time};
 
 #[derive(Clone, Debug)]
 pub struct OutboundPolicyServer<T> {
@@ -45,17 +45,7 @@ where
         let target = spec
             .target
             .ok_or_else(|| tonic::Status::invalid_argument("target is required"))?;
-        let source_namespace = spec
-            .source_workload
-            .split_once(':')
-            .ok_or_else(|| {
-                tonic::Status::invalid_argument(format!(
-                    "failed to parse source workload: {}",
-                    spec.source_workload
-                ))
-            })?
-            .0
-            .to_string();
+        let source_namespace = workload::Workload::from_str(&spec.source_workload)?.namespace;
         let target = match target {
             outbound::traffic_spec::Target::Addr(target) => target,
             outbound::traffic_spec::Target::Authority(auth) => {

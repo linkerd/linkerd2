@@ -1,4 +1,4 @@
-package v1beta1
+package v1beta2
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,9 +29,10 @@ type Server struct {
 
 // ServerSpec specifies a Server resource.
 type ServerSpec struct {
-	PodSelector   *metav1.LabelSelector `json:"podSelector"`
-	Port          intstr.IntOrString    `json:"port,omitempty"`
-	ProxyProtocol string                `json:"proxyProtocol,omitempty"`
+	PodSelector              *metav1.LabelSelector `json:"podSelector"`
+	ExternalWorkloadSelector *metav1.LabelSelector `json:"externalWorkloadSelector"`
+	Port                     intstr.IntOrString    `json:"port,omitempty"`
+	ProxyProtocol            string                `json:"proxyProtocol,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -1,4 +1,4 @@
-use crate::http_route;
+use crate::{http_route, workload::Workload};
 use futures::prelude::*;
 use linkerd2_proxy_api::{
     self as api,
@@ -17,7 +17,7 @@ use linkerd_policy_controller_core::{
     IdentityMatch, IpNet, NetworkMatch,
 };
 use maplit::*;
-use std::{num::NonZeroU16, sync::Arc};
+use std::{num::NonZeroU16, str::FromStr, sync::Arc};
 use tracing::trace;
 
 #[derive(Clone, Debug)]
@@ -31,7 +31,7 @@ pub struct InboundPolicyServer<T> {
 
 impl<T> InboundPolicyServer<T>
 where
-    T: DiscoverInboundServer<(String, String, NonZeroU16)> + Send + Sync + 'static,
+    T: DiscoverInboundServer<(Workload, NonZeroU16)> + Send + Sync + 'static,
 {
     pub fn new(discover: T, cluster_networks: Vec<IpNet>, drain: drain::Watch) -> Self {
         Self {
@@ -48,37 +48,21 @@ where
     fn check_target(
         &self,
         proto::PortSpec { workload, port }: proto::PortSpec,
-    ) -> Result<(String, String, NonZeroU16), tonic::Status> {
-        // Parse a workload name in the form namespace:name.
-        let (ns, name) = match workload.split_once(':') {
-            None => {
-                return Err(tonic::Status::invalid_argument(format!(
-                    "Invalid workload: {}",
-                    workload
-                )));
-            }
-            Some((ns, pod)) if ns.is_empty() || pod.is_empty() => {
-                return Err(tonic::Status::invalid_argument(format!(
-                    "Invalid workload: {}",
-                    workload
-                )));
-            }
-            Some((ns, pod)) => (ns, pod),
-        };
-
+    ) -> Result<(Workload, NonZeroU16), tonic::Status> {
+        let workload = Workload::from_str(&workload)?;
         // Ensure that the port is in the valid range.
         let port = u16::try_from(port)
             .and_then(NonZeroU16::try_from)
             .map_err(|_| tonic::Status::invalid_argument(format!("Invalid port: {port}")))?;
 
-        Ok((ns.to_string(), name.to_string(), port))
+        Ok((workload, port))
     }
 }
 
 #[async_trait::async_trait]
 impl<T> InboundServerPolicies for InboundPolicyServer<T>
 where
-    T: DiscoverInboundServer<(String, String, NonZeroU16)> + Send + Sync + 'static,
+    T: DiscoverInboundServer<(Workload, NonZeroU16)> + Send + Sync + 'static,
 {
     async fn get_port(
         &self,

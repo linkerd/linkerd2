@@ -1,4 +1,4 @@
-package v1beta1
+package v1beta2
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,7 +13,7 @@ var (
 	// of the group and the version of the API.
 	SchemeGroupVersion = schema.GroupVersion{
 		Group:   server.GroupName,
-		Version: "v1beta1",
+		Version: "v1beta2",
 	}
 
 	// SchemeBuilder collects functions that add things to a scheme. It's to

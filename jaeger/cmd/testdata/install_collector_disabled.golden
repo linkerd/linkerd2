@@ -41,7 +41,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
@@ -109,7 +109,7 @@ spec:
     port: 443
     targetPort: jaeger-injector
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -295,7 +295,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - --query.base-path=/jaeger

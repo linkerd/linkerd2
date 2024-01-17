@@ -12,7 +12,7 @@ import (
 	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	l5dcrdinformer "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
 	ewinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/externalworkload/v1alpha1"
-	srvinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/server/v1beta1"
+	srvinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/server/v1beta2"
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
@@ -279,7 +279,7 @@ func newAPI(
 			if l5dCrdSharedInformers == nil {
 				panic("Linkerd CRD shared informer not configured")
 			}
-			api.srv = l5dCrdSharedInformers.Server().V1beta1().Servers()
+			api.srv = l5dCrdSharedInformers.Server().V1beta2().Servers()
 			api.syncChecks = append(api.syncChecks, api.srv.Informer().HasSynced)
 			api.promGauges.addInformerSize(k8s.Server, informerLabels, api.srv.Informer())
 		case SS:

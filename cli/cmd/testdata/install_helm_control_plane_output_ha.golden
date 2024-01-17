@@ -236,7 +236,7 @@ rules:
     verbs:
       - patch
   - apiGroups:
-    - workload.linkerd.io
+      - workload.linkerd.io
     resources:
       - externalworkloads
     verbs:
@@ -1001,7 +1001,8 @@ spec:
         - name: LINKERD2_PROXY_POLICY_SVC_ADDR
           value: linkerd-policy.linkerd-dev.svc.cluster.local.:8090
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
-          value: "$(_pod_ns):$(_pod_name)"
+          value: |
+            {"ns":"$(_pod_ns)", "pod":"$(_pod_name)"}
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
           value: all-unauthenticated
         - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
@@ -1317,7 +1318,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 30c643c8f9122b8fd76d873ae346aef49251dca7b261eeaac77699065a1afd3f
+        checksum/config: 87abaa41d2dbabb91103c13138f417ed7b9d048fd0d559a3666a139becd41366
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1376,7 +1377,8 @@ spec:
         - name: LINKERD2_PROXY_POLICY_SVC_ADDR
           value: localhost.:8090
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
-          value: "$(_pod_ns):$(_pod_name)"
+          value: |
+            {"ns":"$(_pod_ns)", "pod":"$(_pod_name)"}
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
           value: all-unauthenticated
         - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
@@ -1848,7 +1850,8 @@ spec:
         - name: LINKERD2_PROXY_POLICY_SVC_ADDR
           value: linkerd-policy.linkerd-dev.svc.cluster.local.:8090
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
-          value: "$(_pod_ns):$(_pod_name)"
+          value: |
+            {"ns":"$(_pod_ns)", "pod":"$(_pod_name)"}
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
           value: all-unauthenticated
         - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
