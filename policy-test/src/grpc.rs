@@ -9,8 +9,8 @@ use linkerd2_proxy_api::{
     inbound::inbound_server_policies_client::InboundServerPoliciesClient,
     outbound::outbound_policies_client::OutboundPoliciesClient,
 };
+use linkerd_policy_controller_grpc::workload;
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
-use serde::{Deserialize, Serialize};
 use tokio::io;
 
 #[macro_export]
@@ -99,22 +99,6 @@ pub struct InboundPolicyClient {
 #[derive(Debug)]
 pub struct OutboundPolicyClient {
     client: OutboundPoliciesClient<GrpcHttp>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub enum Kind {
-    #[serde(rename = "external_workload")]
-    External(String),
-    #[serde(rename = "pod")]
-    Pod(String),
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Workload {
-    #[serde(flatten)]
-    pub kind: Kind,
-    #[serde(rename = "ns")]
-    pub namespace: String,
 }
 
 #[derive(Debug)]
@@ -218,8 +202,8 @@ impl InboundPolicyClient {
         name: &str,
         port: u16,
     ) -> Result<inbound::Server, tonic::Status> {
-        let token = serde_json::to_string(&Workload {
-            kind: Kind::External(name.into()),
+        let token = serde_json::to_string(&workload::Workload {
+            kind: workload::Kind::External(name.into()),
             namespace: ns.into(),
         })
         .unwrap();
@@ -240,8 +224,8 @@ impl InboundPolicyClient {
         name: &str,
         port: u16,
     ) -> Result<tonic::Streaming<inbound::Server>, tonic::Status> {
-        let token = serde_json::to_string(&Workload {
-            kind: Kind::External(name.into()),
+        let token = serde_json::to_string(&workload::Workload {
+            kind: workload::Kind::External(name.into()),
             namespace: ns.into(),
         })
         .unwrap();
