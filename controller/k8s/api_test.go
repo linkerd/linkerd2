@@ -1232,7 +1232,7 @@ metadata:
 					t.Fatalf("Expected name to be [%s], got [%s]", tt.expectedOwnerName, ownerName)
 				}
 
-				ownerKind, ownerName, err = metadataAPI.GetOwnerKindAndName(context.Background(), pod.Kind, pod, retry)
+				ownerKind, ownerName, err = metadataAPI.GetOwnerKindAndName(context.Background(), pod, retry)
 				if err != nil {
 					t.Fatalf("Unexpected error: %s", err)
 				}

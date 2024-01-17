@@ -898,6 +898,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					continue
 				}
 
+				// copy Zone to avoid referencing the endpoint in the cache
 				if endpoint.Zone != nil {
 					zone := *endpoint.Zone
 					address.Zone = &zone
@@ -920,12 +921,13 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					continue
 				}
 
-				err = SetToServerProtocolExternalWorkload(pp.k8sAPI, &address, resolvedPort)
+				err = setToServerProtocolExternalWorkload(pp.k8sAPI, &address, resolvedPort)
 				if err != nil {
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
 				}
 
+				// copy Zone to avoid referencing the endpoint in the cache
 				if endpoint.Zone != nil {
 					zone := *endpoint.Zone
 					address.Zone = &zone
@@ -1067,7 +1069,7 @@ func (pp *portPublisher) newPodRefAddress(endpointPort Port, endpointIP, podName
 	if err != nil {
 		return Address{}, PodID{}, fmt.Errorf("unable to fetch pod %v: %w", id, err)
 	}
-	ownerKind, ownerName, err := pp.metadataAPI.GetOwnerKindAndName(context.Background(), pod.Kind, pod, false)
+	ownerKind, ownerName, err := pp.metadataAPI.GetOwnerKindAndName(context.Background(), pod, false)
 	if err != nil {
 		return Address{}, PodID{}, err
 	}
@@ -1093,11 +1095,7 @@ func (pp *portPublisher) newExtRefAddress(endpointPort Port, endpointIP, externa
 		return Address{}, ExternalWorkloadID{}, fmt.Errorf("unable to fetch ExternalWorkload %v: %w", id, err)
 	}
 
-	ownerKind, ownerName, err := pp.metadataAPI.GetOwnerKindAndName(context.Background(), ew.Kind, ew, false)
-	if err != nil {
-		return Address{}, PodID{}, err
-	}
-
+	ownerKind, ownerName := getOwnerKindAndNameForExternalWorkload(ew)
 	addr := Address{
 		IP:               endpointIP,
 		Port:             endpointPort,
@@ -1504,9 +1502,9 @@ func SetToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
 	return nil
 }
 
-// SetToServerProtocol sets the address's OpaqueProtocol field based off any
+// setToServerProtocolExternalWorkload sets the address's OpaqueProtocol field based off any
 // Servers that select it and override the expected protocol for ExternalWorkloads.
-func SetToServerProtocolExternalWorkload(k8sAPI *k8s.API, address *Address, port Port) error {
+func setToServerProtocolExternalWorkload(k8sAPI *k8s.API, address *Address, port Port) error {
 	if address.ExternalWorkload == nil {
 		return fmt.Errorf("endpoint not backed by ExternalWorkload: %s:%d", address.IP, address.Port)
 	}
@@ -1543,6 +1541,22 @@ func SetToServerProtocolExternalWorkload(k8sAPI *k8s.API, address *Address, port
 		}
 	}
 	return nil
+}
+
+// getOwnerKindAndNameForExternalWorkload returns the ExternalWorkload owner's kind and name, using owner
+// references. The kind is represented as the Kubernetes singular resource type (e.g. deployment, daemonset, job, etc.).
+func getOwnerKindAndNameForExternalWorkload(ew *ewv1alpha1.ExternalWorkload) (string, string) {
+	ownerRefs := ew.GetOwnerReferences()
+	if len(ownerRefs) == 0 {
+		// ExternalWorkload without a parent
+		return "externalworkload", ew.Name
+	} else if len(ownerRefs) > 1 {
+		logging.Debugf("unexpected owner reference count (%d): %+v", len(ownerRefs), ownerRefs)
+		return "externalworkload", ew.Name
+	}
+
+	parent := ownerRefs[0]
+	return strings.ToLower(parent.Kind), parent.Name
 }
 
 func latestUpdated(managedFields []metav1.ManagedFieldsEntry) time.Time {
