@@ -514,13 +514,13 @@ func GetPodLabels(ownerKind, ownerName string, pod *corev1.Pod) map[string]strin
 	return labels
 }
 
-// GetPodLabels returns the set of prometheus owner labels for a given pod
+// GetExternalWorkloadLabels returns the set of prometheus owner labels for a given ExternalWorkload
 func GetExternalWorkloadLabels(ownerKind, ownerName string, ew *ewv1alpha1.ExternalWorkload) map[string]string {
 	labels := map[string]string{"external_workload": ew.Name}
 
-	l5dLabel := KindToL5DLabel(ownerKind)
-	labels[l5dLabel] = ownerName
-
+	if ownerKind != "" && ownerName != "" {
+		labels[ownerKind] = ownerName
+	}
 	return labels
 }
 

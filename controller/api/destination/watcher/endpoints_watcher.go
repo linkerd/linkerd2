@@ -898,12 +898,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					continue
 				}
 
-				// copy Zone to avoid referencing the endpoint in the cache
-				if endpoint.Zone != nil {
-					zone := *endpoint.Zone
-					address.Zone = &zone
-				}
-
+				address.Zone = endpoint.Zone
 				if endpoint.Hints != nil {
 					zones := make([]discovery.ForZone, len(endpoint.Hints.ForZones))
 					copy(zones, endpoint.Hints.ForZones)
@@ -927,11 +922,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					continue
 				}
 
-				// copy Zone to avoid referencing the endpoint in the cache
-				if endpoint.Zone != nil {
-					zone := *endpoint.Zone
-					address.Zone = &zone
-				}
+				address.Zone = endpoint.Zone
 				if endpoint.Hints != nil {
 					zones := make([]discovery.ForZone, len(endpoint.Hints.ForZones))
 					copy(zones, endpoint.Hints.ForZones)
@@ -1095,13 +1086,17 @@ func (pp *portPublisher) newExtRefAddress(endpointPort Port, endpointIP, externa
 		return Address{}, ExternalWorkloadID{}, fmt.Errorf("unable to fetch ExternalWorkload %v: %w", id, err)
 	}
 
-	ownerKind, ownerName := getOwnerKindAndNameForExternalWorkload(ew)
 	addr := Address{
 		IP:               endpointIP,
 		Port:             endpointPort,
 		ExternalWorkload: ew,
-		OwnerName:        ownerName,
-		OwnerKind:        ownerKind,
+	}
+
+	ownerRefs := ew.GetOwnerReferences()
+	if len(ownerRefs) == 1 {
+		parent := ownerRefs[0]
+		addr.OwnerName = parent.Name
+		addr.OwnerName = strings.ToLower(parent.Kind)
 	}
 
 	return addr, id, nil
@@ -1541,22 +1536,6 @@ func setToServerProtocolExternalWorkload(k8sAPI *k8s.API, address *Address, port
 		}
 	}
 	return nil
-}
-
-// getOwnerKindAndNameForExternalWorkload returns the ExternalWorkload owner's kind and name, using owner
-// references. The kind is represented as the Kubernetes singular resource type (e.g. deployment, daemonset, job, etc.).
-func getOwnerKindAndNameForExternalWorkload(ew *ewv1alpha1.ExternalWorkload) (string, string) {
-	ownerRefs := ew.GetOwnerReferences()
-	if len(ownerRefs) == 0 {
-		// ExternalWorkload without a parent
-		return "externalworkload", ew.Name
-	} else if len(ownerRefs) > 1 {
-		logging.Debugf("unexpected owner reference count (%d): %+v", len(ownerRefs), ownerRefs)
-		return "externalworkload", ew.Name
-	}
-
-	parent := ownerRefs[0]
-	return strings.ToLower(parent.Kind), parent.Name
 }
 
 func latestUpdated(managedFields []metav1.ManagedFieldsEntry) time.Time {
