@@ -52,7 +52,7 @@ type EndpointsController struct {
 
 // The EndpointsController code has been structured (and modified) based on the
 // core EndpointSlice controller. Copyright 2014 The Kubernetes Authors
-// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/endpoint/endpoints_controller.go
+// https://github.com/kubernetes/kubernetes/blob/29fad383dab0dd7b7b563ec9eae10156616a6f34/pkg/controller/endpointslice/endpointslice_controller.go
 //
 // There are some fundamental differences between the core endpoints controller
 // and Linkerd's endpoints controller; for one, the churn rate is expected to be
