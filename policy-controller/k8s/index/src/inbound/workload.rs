@@ -5,17 +5,17 @@ use anyhow::Result;
 use linkerd_policy_controller_k8s_api as k8s;
 use std::{collections::BTreeSet, num::NonZeroU16};
 
-/// Holds pod metadata/config that can change.
+/// Holds workload metadata/config that can change.
 #[derive(Debug, PartialEq)]
 pub(crate) struct Meta {
-    /// The pod's labels. Used by `Server` pod selectors.
+    /// The workload's labels. Used by `Server` selectors.
     pub labels: k8s::Labels,
 
-    // Pod-specific settings (i.e., derived from annotations).
+    // Workload-specific settings (i.e., derived from annotations).
     pub settings: Settings,
 }
 
-/// Per-pod settings, as configured by the pod's annotations.
+/// Per-workload settings, as configured by the workload's annotations.
 #[derive(Debug, Default, PartialEq)]
 pub(crate) struct Settings {
     pub require_id_ports: PortSet,
@@ -24,7 +24,7 @@ pub(crate) struct Settings {
 }
 
 /// Gets the set of named ports with `protocol: TCP` from a pod spec.
-pub(crate) fn tcp_ports_by_name(spec: &k8s::PodSpec) -> HashMap<String, PortSet> {
+pub(crate) fn pod_tcp_ports_by_name(spec: &k8s::PodSpec) -> HashMap<String, PortSet> {
     let mut ports = HashMap::<String, PortSet>::default();
     for (port, name) in spec
         .containers
@@ -33,6 +33,26 @@ pub(crate) fn tcp_ports_by_name(spec: &k8s::PodSpec) -> HashMap<String, PortSet>
         .filter_map(named_tcp_port)
     {
         ports.entry(name.to_string()).or_default().insert(port);
+    }
+    ports
+}
+
+/// Gets the set of named ports withn `protocol: TCP` from an external workload
+/// spec.
+///
+/// Since an external workload has only one set of ports, each name is
+/// guaranteed to be unique.
+pub(crate) fn external_tcp_ports_by_name(
+    spec: &k8s::external_workload::ExternalWorkloadSpec,
+) -> HashMap<String, NonZeroU16> {
+    let mut ports = HashMap::<String, NonZeroU16>::default();
+    for (port, name) in spec
+        .ports
+        .iter()
+        .flatten()
+        .filter_map(named_external_tcp_port)
+    {
+        ports.insert(name.into(), port);
     }
     ports
 }
@@ -101,6 +121,16 @@ fn named_tcp_port(port: &k8s::ContainerPort) -> Option<(NonZeroU16, &str)> {
         .ok()?;
     let n = port.name.as_deref()?;
     Some((p, n))
+}
+
+fn named_external_tcp_port(spec: &k8s::external_workload::PortSpec) -> Option<(NonZeroU16, &str)> {
+    if let Some(ref proto) = spec.protocol {
+        if !proto.eq_ignore_ascii_case("TCP") {
+            return None;
+        }
+    }
+    let n = spec.name.as_deref()?;
+    Some((spec.port, n))
 }
 
 // === impl Meta ===

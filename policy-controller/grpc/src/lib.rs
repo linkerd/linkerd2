@@ -2,7 +2,7 @@
 #![forbid(unsafe_code)]
 
 mod http_route;
-mod workload;
 
 pub mod inbound;
 pub mod outbound;
+pub mod workload;

@@ -1,4 +1,4 @@
-use crate::{http_route, workload::Kind, workload::Workload};
+use crate::{http_route, workload::Workload};
 use futures::prelude::*;
 use linkerd2_proxy_api::{
     self as api,
@@ -31,7 +31,7 @@ pub struct InboundPolicyServer<T> {
 
 impl<T> InboundPolicyServer<T>
 where
-    T: DiscoverInboundServer<(String, String, NonZeroU16)> + Send + Sync + 'static,
+    T: DiscoverInboundServer<(Workload, NonZeroU16)> + Send + Sync + 'static,
 {
     pub fn new(discover: T, cluster_networks: Vec<IpNet>, drain: drain::Watch) -> Self {
         Self {
@@ -48,33 +48,21 @@ where
     fn check_target(
         &self,
         proto::PortSpec { workload, port }: proto::PortSpec,
-    ) -> Result<(String, String, NonZeroU16), tonic::Status> {
-        let (ns, name) = match Workload::from_str(&workload)? {
-            Workload {
-                namespace,
-                kind: Kind::Pod(pod),
-            } => (namespace, pod),
-            _ => {
-                // TODO: handle external workloads
-                return Err(tonic::Status::invalid_argument(
-                    "only pod workload supported at the moment",
-                ));
-            }
-        };
-
+    ) -> Result<(Workload, NonZeroU16), tonic::Status> {
+        let workload = Workload::from_str(&workload)?;
         // Ensure that the port is in the valid range.
         let port = u16::try_from(port)
             .and_then(NonZeroU16::try_from)
             .map_err(|_| tonic::Status::invalid_argument(format!("Invalid port: {port}")))?;
 
-        Ok((ns.to_string(), name.to_string(), port))
+        Ok((workload, port))
     }
 }
 
 #[async_trait::async_trait]
 impl<T> InboundServerPolicies for InboundPolicyServer<T>
 where
-    T: DiscoverInboundServer<(String, String, NonZeroU16)> + Send + Sync + 'static,
+    T: DiscoverInboundServer<(Workload, NonZeroU16)> + Send + Sync + 'static,
 {
     async fn get_port(
         &self,

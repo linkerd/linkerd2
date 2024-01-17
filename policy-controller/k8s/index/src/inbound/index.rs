@@ -8,7 +8,7 @@
 
 use super::{
     authorization_policy, http_route::RouteBinding, meshtls_authentication, network_authentication,
-    pod, server, server_authorization,
+    server, server_authorization, workload,
 };
 use crate::{
     http_route::{gkn_for_gateway_http_route, gkn_for_linkerd_http_route, gkn_for_resource},
@@ -65,10 +65,11 @@ struct AuthenticationNsIndex {
     by_ns: HashMap<String, AuthenticationIndex>,
 }
 
-/// Holds `Pod`, `Server`, and `ServerAuthorization` indices for a single namespace.
+/// Holds `Pod`, `ExternalWorkload`, `Server`, and `ServerAuthorization` indices for a single namespace.
 #[derive(Debug)]
 struct Namespace {
     pods: PodIndex,
+    external_workloads: ExternalWorkloadIndex,
     policy: PolicyIndex,
 }
 
@@ -85,7 +86,7 @@ struct PodIndex {
 /// or as `Server` resources select a port.
 #[derive(Debug)]
 struct Pod {
-    meta: pod::Meta,
+    meta: workload::Meta,
 
     /// The pod's named container ports. Used by `Server` port selectors.
     ///
@@ -97,7 +98,7 @@ struct Pod {
     /// `Namespace::reindex`--when a port is selected by a `Server`--or by
     /// `Namespace::get_pod_server` when a client discovers a port that has no
     /// configured server (and i.e. uses the default policy).
-    port_servers: PortMap<PodPortServer>,
+    port_servers: PortMap<WorkloadPortServer>,
 
     /// The pod's probe ports and their respective paths.
     ///
@@ -107,16 +108,43 @@ struct Pod {
     probes: PortMap<BTreeSet<String>>,
 }
 
-/// Holds the state of a single port on a pod.
+/// Holds the state of a single port on a workload (e.g. a pod or an external
+/// workload).
 #[derive(Debug)]
-struct PodPortServer {
+struct WorkloadPortServer {
     /// The name of the server resource that matches this port. Unset when no
     /// server resources match this pod/port (and, i.e., the default policy is
     /// used).
     name: Option<String>,
 
-    /// A sender used to broadcast pod port server updates.
+    /// A sender used to broadcast workload port server updates.
     watch: watch::Sender<InboundServer>,
+}
+
+/// Holds all external workload data for a single namespace
+#[derive(Debug)]
+struct ExternalWorkloadIndex {
+    namespace: String,
+    by_name: HashMap<String, ExternalWorkload>,
+}
+
+/// Holds data for a single external workload, with server watches for all known
+/// ports.
+///
+/// The set of ports / servers is updated as clients discover server
+/// configuration or as `Server` resources select a port.
+#[derive(Debug)]
+struct ExternalWorkload {
+    meta: workload::Meta,
+
+    // The workload's named container ports. Used by `Server` port selectors.
+    //
+    // A workload will not have multiple ports with the same name, e.g. two
+    // `admin-http` ports pointing to different numerical values.
+    port_names: HashMap<String, NonZeroU16>,
+
+    /// All known TCP server ports.
+    port_servers: PortMap<WorkloadPortServer>,
 }
 
 /// Holds the state of policy resources for a single namespace.
@@ -179,6 +207,34 @@ impl Index {
             .get_mut(pod)
             .ok_or_else(|| anyhow::anyhow!("pod {}.{} not found", pod, namespace))?;
         Ok(pod
+            .port_server_or_default(port, &self.cluster_info)
+            .watch
+            .subscribe())
+    }
+
+    /// Obtains an external_workload:port's server receiver.
+    ///
+    /// An error is returned if the external workload is not found. If the port
+    /// is not found, a default server is created.
+    pub fn external_workload_server_rx(
+        &mut self,
+        namespace: &str,
+        workload: &str,
+        port: NonZeroU16,
+    ) -> Result<watch::Receiver<InboundServer>> {
+        let ns = self
+            .namespaces
+            .by_ns
+            .get_mut(namespace)
+            .ok_or_else(|| anyhow::anyhow!("namespace not found: {}", namespace))?;
+        let external_workload =
+            ns.external_workloads
+                .by_name
+                .get_mut(workload)
+                .ok_or_else(|| {
+                    anyhow::anyhow!("external workload {}.{} not found", workload, namespace)
+                })?;
+        Ok(external_workload
             .port_server_or_default(port, &self.cluster_info)
             .watch
             .subscribe())
@@ -311,15 +367,15 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
         let port_names = pod
             .spec
             .as_ref()
-            .map(pod::tcp_ports_by_name)
+            .map(workload::pod_tcp_ports_by_name)
             .unwrap_or_default();
         let probes = pod
             .spec
             .as_ref()
-            .map(pod::pod_http_probes)
+            .map(workload::pod_http_probes)
             .unwrap_or_default();
 
-        let meta = pod::Meta::from_metadata(pod.metadata);
+        let meta = workload::Meta::from_metadata(pod.metadata);
 
         // Add or update the pod. If the pod was not already present in the
         // index with the same metadata, index it against the policy resources,
@@ -347,6 +403,57 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
     }
 
     // Since apply only reindexes a single pod at a time, there's no need to
+    // handle resets specially.
+}
+
+impl kubert::index::IndexNamespacedResource<k8s::external_workload::ExternalWorkload> for Index {
+    fn apply(&mut self, ext_workload: k8s::external_workload::ExternalWorkload) {
+        let ns = ext_workload.namespace().unwrap();
+        let name = ext_workload.name_unchecked();
+        let _span = info_span!("apply", %ns, %name).entered();
+
+        // Extract ports and settings.
+        // Note: external workloads do not have any probe paths to synthesise
+        // default policies for.
+        let port_names = workload::external_tcp_ports_by_name(&ext_workload.spec);
+        let meta = workload::Meta::from_metadata(ext_workload.metadata);
+
+        // Add or update the workload.
+        //
+        // If the resource is present in the index, but its metadata has
+        // changed, then it means the watches need to get an update.
+        let ns = self.namespaces.get_or_default(ns);
+        match ns.external_workloads.update(name, meta, port_names) {
+            // No update
+            Ok(None) => {}
+            // Update, so re-index
+            Ok(Some(workload)) => workload.reindex_servers(&ns.policy, &self.authentications),
+            Err(error) => {
+                tracing::error!(%error, "Illegal external workload update");
+            }
+        }
+    }
+
+    fn delete(&mut self, ns: String, name: String) {
+        tracing::debug!(%ns, %name, "delete");
+        if let Entry::Occupied(mut ns) = self.namespaces.by_ns.entry(ns) {
+            // Once the external workload is removed, there's nothing else to
+            // update. Any open watches will complete. No other parts of the
+            // index need to be updated.
+            if ns
+                .get_mut()
+                .external_workloads
+                .by_name
+                .remove(&name)
+                .is_some()
+                && ns.get().is_empty()
+            {
+                ns.remove();
+            }
+        }
+    }
+
+    // Since apply only reindexes a single external workload at a time, there's no need to
     // handle resets specially.
 }
 
@@ -828,6 +935,10 @@ impl Namespace {
                 namespace: namespace.clone(),
                 by_name: HashMap::default(),
             },
+            external_workloads: ExternalWorkloadIndex {
+                namespace: namespace.clone(),
+                by_name: HashMap::default(),
+            },
             policy: PolicyIndex {
                 namespace,
                 cluster_info,
@@ -842,12 +953,13 @@ impl Namespace {
     /// Returns true if the index does not include any resources.
     #[inline]
     fn is_empty(&self) -> bool {
-        self.pods.is_empty() && self.policy.is_empty()
+        self.pods.is_empty() && self.policy.is_empty() && self.external_workloads.is_empty()
     }
 
     #[inline]
     fn reindex(&mut self, authns: &AuthenticationNsIndex) {
         self.pods.reindex(&self.policy, authns);
+        self.external_workloads.reindex(&self.policy, authns);
     }
 }
 
@@ -862,7 +974,7 @@ impl PodIndex {
     fn update(
         &mut self,
         name: String,
-        meta: pod::Meta,
+        meta: workload::Meta,
         port_names: HashMap<String, PortSet>,
         probes: PortMap<BTreeSet<String>>,
     ) -> Result<Option<&mut Pod>> {
@@ -975,7 +1087,7 @@ impl Pod {
             Entry::Vacant(entry) => {
                 tracing::trace!(port = %port, server = %name, "Creating server");
                 let (watch, _) = watch::channel(server);
-                entry.insert(PodPortServer {
+                entry.insert(WorkloadPortServer {
                     name: Some(name.to_string()),
                     watch,
                 });
@@ -1013,7 +1125,7 @@ impl Pod {
 
     /// Updates a pod-port to use the given named server.
     fn set_default_server(&mut self, port: NonZeroU16, config: &ClusterInfo) {
-        let server = Self::default_inbound_server(
+        let server = PolicyIndex::default_inbound_server(
             port,
             &self.meta.settings,
             self.probes
@@ -1027,7 +1139,7 @@ impl Pod {
             Entry::Vacant(entry) => {
                 tracing::debug!(%port, server = %config.default_policy, "Creating default server");
                 let (watch, _) = watch::channel(server);
-                entry.insert(PodPortServer { name: None, watch });
+                entry.insert(WorkloadPortServer { name: None, watch });
             }
 
             Entry::Occupied(mut entry) => {
@@ -1068,11 +1180,11 @@ impl Pod {
         &mut self,
         port: NonZeroU16,
         config: &ClusterInfo,
-    ) -> &mut PodPortServer {
+    ) -> &mut WorkloadPortServer {
         match self.port_servers.entry(port) {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => {
-                let (watch, _) = watch::channel(Self::default_inbound_server(
+                let (watch, _) = watch::channel(PolicyIndex::default_inbound_server(
                     port,
                     &self.meta.settings,
                     self.probes
@@ -1082,45 +1194,257 @@ impl Pod {
                         .map(|p| p.as_str()),
                     config,
                 ));
-                entry.insert(PodPortServer { name: None, watch })
+                entry.insert(WorkloadPortServer { name: None, watch })
+            }
+        }
+    }
+}
+
+// === impl ExternalWorkloadIndex ===
+
+impl ExternalWorkloadIndex {
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.by_name.is_empty()
+    }
+
+    /// Indexes an external workload resource and computes any changes in the
+    /// workload's state.
+    ///
+    /// If the workload is indexed for the first time, or some of its settings
+    /// have changed (e.g. metadata) then indexing will trigger a namespace-wide
+    /// server re-index to push new state to the clients.
+    ///
+    /// Otherwise, if nothing has changed, do not trigger re-indexing.
+    fn update(
+        &mut self,
+        name: String,
+        meta: workload::Meta,
+        port_names: HashMap<String, NonZeroU16>,
+    ) -> Result<Option<&mut ExternalWorkload>> {
+        let workload = match self.by_name.entry(name.clone()) {
+            Entry::Vacant(entry) => entry.insert(ExternalWorkload {
+                meta,
+                port_names,
+                port_servers: PortMap::default(),
+            }),
+            Entry::Occupied(entry) => {
+                let workload = entry.into_mut();
+
+                if workload.meta == meta && workload.port_names == port_names {
+                    tracing::debug!(external_workload = %name, "No changes");
+                    return Ok(None);
+                }
+
+                if workload.meta != meta {
+                    tracing::trace!(external_workload = %name, "Updating workload's metadata");
+                    workload.meta = meta;
+                }
+
+                if workload.port_names != port_names {
+                    tracing::trace!(external_workload = %name, "Updating workload's ports");
+                    workload.port_names = port_names;
+                }
+
+                tracing::debug!(external_workload = %name, "Updating");
+                workload
+            }
+        };
+        Ok(Some(workload))
+    }
+
+    /// For each external workload in a namespace, re-compute the server and
+    /// authorization policy states to determine if new changes need to be
+    /// pushed to clients.
+    fn reindex(&mut self, policy: &PolicyIndex, authns: &AuthenticationNsIndex) {
+        let _span = info_span!("reindex", ns = %self.namespace).entered();
+        for (name, ext_workload) in self.by_name.iter_mut() {
+            let _span = info_span!("external_workload", external_workload = %name).entered();
+            ext_workload.reindex_servers(policy, authns);
+        }
+    }
+}
+
+//
+impl ExternalWorkload {
+    /// Determines the policies for ports on this workload
+    fn reindex_servers(&mut self, policy: &PolicyIndex, authentications: &AuthenticationNsIndex) {
+        // Keep track of ports that are already known so that they may receive
+        // default policies if they are still not selected by a server.
+        //
+        // TODO (matei): we could eagerly fill this out if we require users to
+        // always document a workload's ports. i.e. right now a non-named port
+        // will be lazily discovered only when traffic is sent, we could eagerly
+        // set policies for it (but I feel like for now, this should be similar in
+        // behaviour to a pod)
+        //
+        let mut unmatched_ports = self.port_servers.keys().copied().collect::<PortSet>();
+
+        // Keep track of which ports have been matched with servers so that we
+        // can detect when more than one server matches a single port.
+        let mut matched_ports = PortMap::with_capacity_and_hasher(
+            unmatched_ports.len(),
+            std::hash::BuildHasherDefault::<PortHasher>::default(),
+        );
+
+        for (srvname, server) in policy.servers.iter() {
+            if let Selector::ExternalWorkload(selector) = &server.selector {
+                if selector.matches(&self.meta.labels) {
+                    // Each server selects exactly one port on an
+                    // external workload
+                    //
+                    // Note: an external workload has only one set of ports. A
+                    // pod has a union, each container declares its own set.
+                    let port = if let Some(srv_port) = self.selects_port(&server.port_ref) {
+                        srv_port
+                    } else {
+                        // If server references a named port, and our workload
+                        // contains no such port, then skip this server.
+                        continue;
+                    };
+
+                    if let Some(prior) = matched_ports.get(&port) {
+                        // If a different server has already matched this
+                        tracing::warn!(
+                        %port,
+                        server = %prior,
+                        conflict = %srvname,
+                        "Port already matched by another server; skipping"
+                        );
+                        continue;
+                    }
+
+                    let s = policy.inbound_server(
+                        srvname.clone(),
+                        server,
+                        authentications,
+                        Vec::new().into_iter(),
+                    );
+
+                    self.update_server(port, srvname, s);
+                    matched_ports.insert(port, srvname.clone());
+                    unmatched_ports.remove(&port);
+                }
+            }
+        }
+
+        // Reset all other ports that were previously selected to defaults
+        for port in unmatched_ports.into_iter() {
+            self.set_default_server(port, &policy.cluster_info);
+        }
+    }
+
+    /// Updates an external workload-port to use a given named server.
+    ///
+    /// We use name explicitly (and not derived from the 'server') to ensure we
+    /// are not handling a default server.
+    fn update_server(&mut self, port: NonZeroU16, name: &str, server: InboundServer) {
+        match self.port_servers.entry(port) {
+            Entry::Vacant(entry) => {
+                tracing::trace!(port = %port, server = %name, "Creating server");
+                let (watch, _) = watch::channel(server);
+                entry.insert(WorkloadPortServer {
+                    name: Some(name.to_string()),
+                    watch,
+                });
+            }
+
+            Entry::Occupied(mut entry) => {
+                let ps = entry.get_mut();
+
+                ps.watch.send_if_modified(|current| {
+                    if ps.name.as_deref() == Some(name) && *current == server {
+                        tracing::trace!(port = %port, server = %name, "Skipped redundant server update");
+                        tracing::trace!(?server);
+                        return false;
+                    }
+
+                    // If the port's server previously matched a different
+                    // server, this can either mean that multiple servers
+                    // currently match the external_workload:port, or that we're
+                    // in the middle of an update. We make the opportunistic
+                    // choice to assume the cluster is configured coherently so
+                    // we take the update. The admission controller should
+                    // prevent conflicts.
+                    tracing::trace!(port = %port, server = %name, "Updating server");
+                    if ps.name.as_deref() != Some(name) {
+                        ps.name = Some(name.to_string());
+                    }
+
+                    *current = server;
+                    true
+                });
+            }
+        }
+
+        tracing::debug!(port = %port, server = %name, "Updated server");
+    }
+
+    /// Updates a workload-port to use a given named server.
+    fn set_default_server(&mut self, port: NonZeroU16, config: &ClusterInfo) {
+        // Create a default server policy, without authorising any probe paths
+        let server = PolicyIndex::default_inbound_server(
+            port,
+            &self.meta.settings,
+            Vec::new().into_iter(),
+            config,
+        );
+        match self.port_servers.entry(port) {
+            Entry::Vacant(entry) => {
+                tracing::debug!(%port, server = %config.default_policy, "Creating default server");
+                let (watch, _) = watch::channel(server);
+                entry.insert(WorkloadPortServer { name: None, watch });
+            }
+
+            Entry::Occupied(mut entry) => {
+                // A server must have selected this before; override with
+                // default policy
+                let ps = entry.get_mut();
+                ps.watch.send_if_modified(|current| {
+                    // Avoid sending redundant updates
+                    if *current == server {
+                        tracing::trace!(%port, server = %config.default_policy, "Default server already set");
+                        return false;
+                    }
+
+                    tracing::debug!(%port, server = %config.default_policy, "Setting default server");
+                    ps.name = None;
+                    *current = server;
+                    true
+                });
             }
         }
     }
 
-    fn default_inbound_server<'p>(
-        port: NonZeroU16,
-        settings: &pod::Settings,
-        probe_paths: impl Iterator<Item = &'p str>,
-        config: &ClusterInfo,
-    ) -> InboundServer {
-        let protocol = if settings.opaque_ports.contains(&port) {
-            ProxyProtocol::Opaque
-        } else {
-            ProxyProtocol::Detect {
-                timeout: config.default_detect_timeout,
-            }
-        };
-
-        let mut policy = settings.default_policy.unwrap_or(config.default_policy);
-        if settings.require_id_ports.contains(&port) {
-            if let DefaultPolicy::Allow {
-                ref mut authenticated_only,
-                ..
-            } = policy
-            {
-                *authenticated_only = true;
-            }
+    /// Returns an optional port when a server references a known external
+    /// workload port.
+    ///
+    /// Unlike a pod, an external workload has only one set of ports. Names
+    /// within the set are unique, and as a result, only one port will ever
+    /// match a given name.
+    fn selects_port(&mut self, port_ref: &Port) -> Option<NonZeroU16> {
+        match port_ref {
+            Port::Number(p) => Some(*p),
+            Port::Name(name) => self.port_names.get(name).cloned(),
         }
+    }
 
-        let authorizations = policy.default_authzs(config);
-
-        let http_routes = config.default_inbound_http_routes(probe_paths);
-
-        InboundServer {
-            reference: ServerRef::Default(policy.as_str()),
-            protocol,
-            authorizations,
-            http_routes,
+    fn port_server_or_default(
+        &mut self,
+        port: NonZeroU16,
+        config: &ClusterInfo,
+    ) -> &mut WorkloadPortServer {
+        match self.port_servers.entry(port) {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => {
+                let (watch, _) = watch::channel(PolicyIndex::default_inbound_server(
+                    port,
+                    &self.meta.settings,
+                    Vec::new().into_iter(),
+                    config,
+                ));
+                entry.insert(WorkloadPortServer { name: None, watch })
+            }
         }
     }
 }
@@ -1185,6 +1509,43 @@ impl PolicyIndex {
             }
         }
         true
+    }
+
+    fn default_inbound_server<'p>(
+        port: NonZeroU16,
+        settings: &workload::Settings,
+        probe_paths: impl Iterator<Item = &'p str>,
+        config: &ClusterInfo,
+    ) -> InboundServer {
+        let protocol = if settings.opaque_ports.contains(&port) {
+            ProxyProtocol::Opaque
+        } else {
+            ProxyProtocol::Detect {
+                timeout: config.default_detect_timeout,
+            }
+        };
+
+        let mut policy = settings.default_policy.unwrap_or(config.default_policy);
+        if settings.require_id_ports.contains(&port) {
+            if let DefaultPolicy::Allow {
+                ref mut authenticated_only,
+                ..
+            } = policy
+            {
+                *authenticated_only = true;
+            }
+        }
+
+        let authorizations = policy.default_authzs(config);
+
+        let http_routes = config.default_inbound_http_routes(probe_paths);
+
+        InboundServer {
+            reference: ServerRef::Default(policy.as_str()),
+            protocol,
+            authorizations,
+            http_routes,
+        }
     }
 
     fn inbound_server<'p>(

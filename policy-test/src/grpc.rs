@@ -9,6 +9,7 @@ use linkerd2_proxy_api::{
     inbound::inbound_server_policies_client::InboundServerPoliciesClient,
     outbound::outbound_policies_client::OutboundPoliciesClient,
 };
+use linkerd_policy_controller_grpc::workload;
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
 use tokio::io;
 
@@ -55,6 +56,25 @@ macro_rules! assert_protocol_detect {
                 )),
             }),
         );
+    }};
+}
+
+#[macro_export]
+macro_rules! assert_protocol_detect_external {
+    ($config:expr) => {{
+        use linkerd2_proxy_api::inbound;
+
+        assert_eq!(
+            $config.protocol,
+            Some(inbound::ProxyProtocol {
+                kind: Some(inbound::proxy_protocol::Kind::Detect(
+                    inbound::proxy_protocol::Detect {
+                        timeout: Some(std::time::Duration::from_secs(10).try_into().unwrap()),
+                        http_routes: vec![$crate::grpc::defaults::http_route()],
+                    }
+                ))
+            })
+        )
     }};
 }
 
@@ -157,6 +177,7 @@ impl InboundPolicyClient {
         Ok(rsp.into_inner())
     }
 
+    //TODO (matei): we should move our tests over to the new token format
     pub async fn watch_port(
         &mut self,
         ns: &str,
@@ -170,6 +191,52 @@ impl InboundPolicyClient {
                 port: port as u32,
             }))
             .await?;
+        Ok(rsp.into_inner())
+    }
+
+    //TODO (matei): see if we can collapse this into `get_port` once it supports
+    //new token format
+    pub async fn get_port_for_external_workload(
+        &mut self,
+        ns: &str,
+        name: &str,
+        port: u16,
+    ) -> Result<inbound::Server, tonic::Status> {
+        let token = serde_json::to_string(&workload::Workload {
+            kind: workload::Kind::External(name.into()),
+            namespace: ns.into(),
+        })
+        .unwrap();
+        let rsp = self
+            .client
+            .get_port(tonic::Request::new(inbound::PortSpec {
+                workload: token,
+                port: port as u32,
+            }))
+            .await?;
+
+        Ok(rsp.into_inner())
+    }
+
+    pub async fn watch_port_for_external_workload(
+        &mut self,
+        ns: &str,
+        name: &str,
+        port: u16,
+    ) -> Result<tonic::Streaming<inbound::Server>, tonic::Status> {
+        let token = serde_json::to_string(&workload::Workload {
+            kind: workload::Kind::External(name.into()),
+            namespace: ns.into(),
+        })
+        .unwrap();
+        let rsp = self
+            .client
+            .watch_port(tonic::Request::new(inbound::PortSpec {
+                workload: token,
+                port: port as u32,
+            }))
+            .await?;
+
         Ok(rsp.into_inner())
     }
 }
@@ -305,6 +372,15 @@ pub mod defaults {
         inbound::ProxyProtocol {
             kind: Some(Kind::Http1(Http1 {
                 routes: vec![http_route(), probe_route()],
+            })),
+        }
+    }
+
+    pub fn proxy_protocol_external() -> inbound::ProxyProtocol {
+        use inbound::proxy_protocol::{Http1, Kind};
+        inbound::ProxyProtocol {
+            kind: Some(Kind::Http1(Http1 {
+                routes: vec![http_route()],
             })),
         }
     }
