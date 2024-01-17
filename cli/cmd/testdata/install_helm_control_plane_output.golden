@@ -1220,7 +1220,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: d2b9e62513426ee1bac42dfc80477e8730316fd3bda7f422f1bdd27e3e59316f
+        checksum/config: bdf627c4f8fc3bc85e69064de22d6032ab30887fa55d18238a677e9b9b594dd8
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
