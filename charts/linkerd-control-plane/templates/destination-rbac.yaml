@@ -26,10 +26,13 @@ rules:
 - apiGroups: ["workload.linkerd.io"]
   resources: ["externalworkloads"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["create", "get", "update", "patch"]
   {{- if .Values.enableEndpointSlices }}
 - apiGroups: ["discovery.k8s.io"]
   resources: ["endpointslices"]
-  verbs: ["list", "get", "watch"]
+  verbs: ["list", "get", "watch", "create", "update", "patch", "delete"]
   {{- end }}
 ---
 kind: ClusterRoleBinding

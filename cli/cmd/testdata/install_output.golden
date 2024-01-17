@@ -85,6 +85,9 @@ rules:
 - apiGroups: ["workload.linkerd.io"]
   resources: ["externalworkloads"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["create", "get", "update", "patch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -841,7 +844,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - identity
@@ -1208,7 +1211,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 6a47258ae8020d44e14acdb315e9893c13b5e3721aafc9acc4a17a9a17b52b7b
+        checksum/config: 91d0273ac7d213bf95872f62c460ba146a459106e21d12f75e2ebe6ad7562b7f
         linkerd.io/created-by: CliVersion
         linkerd.io/proxy-version: ProxyVersion
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1222,7 +1225,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - env:
         - name: _pod_name
@@ -1659,7 +1662,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - env:
         - name: _pod_name
