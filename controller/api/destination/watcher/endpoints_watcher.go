@@ -886,7 +886,6 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 		}
 
 		if endpoint.TargetRef.Kind == endpointTargetRefPod {
-			println("target external workload")
 			for _, IPAddr := range endpoint.Addresses {
 				address, id, err := pp.newPodRefAddress(resolvedPort, IPAddr, endpoint.TargetRef.Name, endpoint.TargetRef.Namespace)
 				if err != nil {
