@@ -48,6 +48,7 @@ func NewFakeClusterScopedAPI(clientSet kubernetes.Interface, l5dClientSet l5dcrd
 		MWC,
 		NS,
 		Pod,
+		ExtWorkload,
 		RC,
 		RS,
 		SP,
