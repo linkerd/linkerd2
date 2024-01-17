@@ -50,6 +50,19 @@ type EndpointsController struct {
 	sync.RWMutex
 }
 
+// The EndpointsController code has been structured (and modified) based on the
+// core EndpointSlice controller. Copyright 2014 The Kubernetes Authors
+// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/endpoint/endpoints_controller.go
+//
+// There are some fundamental differences between the core endpoints controller
+// and Linkerd's endpoints controller; for one, the churn rate is expected to be
+// much lower for a controller that reconciles ExternalWorkload resources.
+// Furthermore, the structure of the resource is different, statuses do not
+// contain as many conditions, and the lifecycle of an ExternalWorkload is
+// different to that of a Pod (e.g. a workload is long lived).
+//
+// NewEndpointsController creates a new controller. The controller must be
+// started with its `Start()` method.
 func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stopCh chan struct{}) (*EndpointsController, error) {
 	// TODO: pass in a metrics provider to the queue config
 	ec := &EndpointsController{
