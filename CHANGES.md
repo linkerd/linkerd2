@@ -1,5 +1,19 @@
 # Changes
 
+## stable-2.14.9
+
+This stable release adds a cni-repair-controller which fixes the issue of
+injected pods that cannot acquire proper network config because linkerd-cni
+and/or the cluster's network CNI haven't fully started ([#11699]). It also
+fixes a bug in the destination controller where having a large number of
+Server resources could cause the destination controller to use an excessive
+amount of CPU ([#11907]). Finally, it fixes a conflict with tap resource
+shortnames which was causing warnings from kubectl v1.29.0+ ([#11816]).
+
+[#11699]: https://github.com/linkerd/linkerd2/pull/11699
+[#11907]: https://github.com/linkerd/linkerd2/pull/11907
+[#11816]: https://github.com/linkerd/linkerd2/pull/11816
+
 ## stable-2.14.8
 
 This stable release fixes an issue in the control plane where discovery for pod

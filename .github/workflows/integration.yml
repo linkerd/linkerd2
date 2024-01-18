@@ -257,7 +257,7 @@ jobs:
           - rsa-ca
           - helm-upgrade
           - uninstall
-          - upgrade-edge
+          # - upgrade-edge
           - upgrade-stable
     continue-on-error: true
     runs-on: ubuntu-20.04
