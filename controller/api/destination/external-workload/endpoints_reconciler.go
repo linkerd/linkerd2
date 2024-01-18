@@ -187,7 +187,7 @@ func (r *endpointsReconciler) reconcileIPv4Endpoints(svc *corev1.Service, extWor
 		return nil
 	}
 
-	reconResult := r.reconcileEndpoints(svc, epSlices, desiredEndpoints, desiredEndpointPorts)
+	reconResult := r.reconcileEndpoints(svc, toReconcile, desiredEndpoints, desiredEndpointPorts)
 	r.log.Debugf("Reconciliation result for %s/%s: %d to add, %d to update, %d to remove", svc.Namespace, svc.Name, len(reconResult.toCreate), len(reconResult.toUpdate), len(reconResult.toDelete))
 
 	// Create EndpointSlices only if the service has not been marked for
@@ -262,8 +262,9 @@ func (r *endpointsReconciler) reconcileEndpoints(svc *corev1.Service, currentSli
 	for _, currentSlice := range currentSlices {
 		keepEndpoints := []discoveryv1.Endpoint{}
 		epUpdated := false
-		for _, endpoint := range currentSlice.Endpoints {
-			found := desiredEps.Get(&endpoint)
+		// Note: we operate with an index to avoid implicit memory aliasing
+		for i := range currentSlice.Endpoints {
+			found := desiredEps.Get(&currentSlice.Endpoints[i])
 			// If the endpoint is desired (i.e. a workload exists with an IP and
 			// we want to add it to the service's endpoints), then we should
 			// keep it.
@@ -271,12 +272,12 @@ func (r *endpointsReconciler) reconcileEndpoints(svc *corev1.Service, currentSli
 				keepEndpoints = append(keepEndpoints, *found)
 				// We know the slice already contains an endpoint we want, but
 				// has the endpoint changed? If yes, we need to persist it
-				if !epsliceutil.EndpointsEqualBeyondHash(found, &endpoint) {
+				if !epsliceutil.EndpointsEqualBeyondHash(found, &currentSlice.Endpoints[i]) {
 					epUpdated = true
 				}
 
 				// Once an endpoint has been found in a slice, we can delete it
-				desiredEps.Delete(&endpoint)
+				desiredEps.Delete(&currentSlice.Endpoints[i])
 			}
 		}
 
@@ -536,6 +537,7 @@ func (r *endpointsReconciler) findEndpointPorts(svc *corev1.Service, ew *ewv1alp
 	}
 
 	for _, svcPort := range svc.Spec.Ports {
+		svcPort := svcPort // pin
 		portNum, err := findWorkloadPort(ew, &svcPort)
 		if err != nil {
 			return nil, err
