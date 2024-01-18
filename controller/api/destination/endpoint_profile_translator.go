@@ -111,7 +111,12 @@ func (ept *endpointProfileTranslator) Update(address *watcher.Address) error {
 }
 
 func (ept *endpointProfileTranslator) update(address *watcher.Address) {
-	opaquePorts := watcher.GetAnnotatedOpaquePorts(address.Pod, ept.defaultOpaquePorts)
+	var opaquePorts map[uint32]struct{}
+	if address.Pod != nil {
+		opaquePorts = watcher.GetAnnotatedOpaquePorts(address.Pod, ept.defaultOpaquePorts)
+	} else {
+		opaquePorts = watcher.GetAnnotatedOpaquePortsForExternalWorkload(address.ExternalWorkload, ept.defaultOpaquePorts)
+	}
 	endpoint, err := ept.createEndpoint(*address, opaquePorts)
 	if err != nil {
 		ept.log.Errorf("Failed to create endpoint for %s:%d: %s",
@@ -139,7 +144,13 @@ func (ept *endpointProfileTranslator) update(address *watcher.Address) {
 }
 
 func (ept *endpointProfileTranslator) createEndpoint(address watcher.Address, opaquePorts map[uint32]struct{}) (*pb.WeightedAddr, error) {
-	weightedAddr, err := createWeightedAddr(address, opaquePorts, ept.enableH2Upgrade, ept.identityTrustDomain, ept.controllerNS)
+	var weightedAddr *pb.WeightedAddr
+	var err error
+	if address.ExternalWorkload != nil {
+		weightedAddr, err = createWeightedAddrForExternalWorkload(address, opaquePorts)
+	} else {
+		weightedAddr, err = createWeightedAddr(address, opaquePorts, ept.enableH2Upgrade, ept.identityTrustDomain, ept.controllerNS)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -148,6 +159,8 @@ func (ept *endpointProfileTranslator) createEndpoint(address watcher.Address, op
 	// metadata, so it needs to be special-cased.
 	if address.Pod != nil {
 		weightedAddr.MetricLabels["namespace"] = address.Pod.Namespace
+	} else if address.ExternalWorkload != nil {
+		weightedAddr.MetricLabels["namespace"] = address.ExternalWorkload.Namespace
 	}
 
 	return weightedAddr, err

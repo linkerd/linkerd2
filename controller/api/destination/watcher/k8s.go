@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 
+	ext "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
@@ -17,6 +18,8 @@ const (
 	PodIPIndex = "ip"
 	// HostIPIndex is the key for the index based on Host IP of pods with host network enabled
 	HostIPIndex = "hostIP"
+	// ExternalWorkloadIPIndex is the key for the index based on IP of externalworkloads
+	ExternalWorkloadIPIndex = "externalWorkloadIP"
 )
 
 type (
@@ -156,6 +159,25 @@ func InitializeIndexers(k8sAPI *k8s.API) error {
 		return fmt.Errorf("could not create an indexer for pods: %w", err)
 	}
 
+	err = k8sAPI.ExtWorkload().Informer().AddIndexers(cache.Indexers{ExternalWorkloadIPIndex: func(obj interface{}) ([]string, error) {
+		ew, ok := obj.(*ext.ExternalWorkload)
+		if !ok {
+			return nil, errors.New("object is not an externalworkload")
+		}
+
+		addrs := []string{}
+		for _, ip := range ew.Spec.WorkloadIPs {
+			for _, port := range ew.Spec.Ports {
+				addrs = append(addrs, net.JoinHostPort(ip.Ip, fmt.Sprintf("%d", port.Port)))
+			}
+		}
+		return addrs, nil
+	}})
+
+	if err != nil {
+		return fmt.Errorf("could not create an indexer for externalworkloads: %w", err)
+	}
+
 	return nil
 }
 
@@ -173,6 +195,19 @@ func getIndexedPods(k8sAPI *k8s.API, indexName string, key string) ([]*corev1.Po
 		pods = append(pods, pod)
 	}
 	return pods, nil
+}
+
+func getIndexedExternalWorkloads(k8sAPI *k8s.API, indexName string, key string) ([]*ext.ExternalWorkload, error) {
+	objs, err := k8sAPI.ExtWorkload().Informer().GetIndexer().ByIndex(indexName, key)
+	if err != nil {
+		return nil, fmt.Errorf("failed getting %s indexed externalworkloads: %w", indexName, err)
+	}
+	workloads := make([]*ext.ExternalWorkload, 0)
+	for _, obj := range objs {
+		workload := obj.(*ext.ExternalWorkload)
+		workloads = append(workloads, workload)
+	}
+	return workloads, nil
 }
 
 func podNotTerminating(pod *corev1.Pod) bool {

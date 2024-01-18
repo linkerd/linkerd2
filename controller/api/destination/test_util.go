@@ -479,9 +479,9 @@ spec:
 		t.Fatalf("initializeIndexers returned an error: %s", err)
 	}
 
-	pods, err := watcher.NewPodWatcher(k8sAPI, metadataAPI, log, defaultOpaquePorts)
+	workloads, err := watcher.NewWorkloadWatcher(k8sAPI, metadataAPI, log, defaultOpaquePorts)
 	if err != nil {
-		t.Fatalf("can't create Pods watcher: %s", err)
+		t.Fatalf("can't create Workloads watcher: %s", err)
 	}
 	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, false, "local")
 	if err != nil {
@@ -516,7 +516,7 @@ spec:
 			IdentityTrustDomain: "trust.domain",
 			DefaultOpaquePorts:  defaultOpaquePorts,
 		},
-		pods,
+		workloads,
 		endpoints,
 		opaquePorts,
 		profiles,
