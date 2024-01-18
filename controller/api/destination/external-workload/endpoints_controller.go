@@ -2,6 +2,8 @@ package externalworkload
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -9,6 +11,9 @@ import (
 	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -40,11 +45,12 @@ const (
 // by writing EndpointSlice objects for Services that select one or more
 // external endpoints.
 type EndpointsController struct {
-	k8sAPI   *k8s.API
-	log      *logging.Entry
-	queue    workqueue.RateLimitingInterface
-	stop     chan struct{}
-	isLeader atomic.Bool
+	k8sAPI     *k8s.API
+	log        *logging.Entry
+	queue      workqueue.RateLimitingInterface
+	reconciler *endpointsReconciler
+	stop       chan struct{}
+	isLeader   atomic.Bool
 
 	lec leaderelection.LeaderElectionConfig
 	sync.RWMutex
@@ -70,7 +76,8 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 		queue: workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), workqueue.RateLimitingQueueConfig{
 			Name: "endpoints_controller_workqueue",
 		}),
-		stop: stopCh,
+		reconciler: newEndpointsReconciler(k8sAPI),
+		stop:       stopCh,
 		log: logging.WithFields(logging.Fields{
 			"component": "external-endpoints-controller",
 		}),
@@ -81,6 +88,63 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 		DeleteFunc: ec.updateService,
 		UpdateFunc: func(_, newObj interface{}) {
 			ec.updateService(newObj)
+		},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			es, ok := obj.(*discoveryv1.EndpointSlice)
+			if !ok {
+				ec.log.Debugf("couldn't get EndpointSlice from object %#v", obj)
+				return
+			}
+
+			ec.syncEndpointSlice(es)
+		},
+		UpdateFunc: func(oldObj interface{}, newObj interface{}) {
+			prevEs, ok := oldObj.(*discoveryv1.EndpointSlice)
+			if !ok {
+				ec.log.Debugf("couldn't get EndpointSlice from object %#v", prevEs)
+				return
+			}
+
+			newEs, ok := newObj.(*discoveryv1.EndpointSlice)
+			if !ok {
+				ec.log.Debugf("couldn't get EndpointSlice from object %#v", newEs)
+				return
+			}
+
+			// Check whether any of the owned by labels have changed. If they
+			// have, it might be an indication that a user has manually modified
+			// the slice.
+			if newEs.Labels[discoveryv1.LabelServiceName] != prevEs.Labels[discoveryv1.LabelServiceName] {
+				ec.syncEndpointSlice(newEs)
+				ec.syncEndpointSlice(prevEs)
+			} else {
+				ec.syncEndpointSlice(newEs)
+			}
+
+		},
+		DeleteFunc: func(obj interface{}) {
+			es, ok := obj.(*discoveryv1.EndpointSlice)
+			if !ok {
+				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+				if !ok {
+					ec.log.Errorf("couldn't get object from tombstone %+v", obj)
+					return
+				}
+				es, ok = tombstone.Obj.(*discoveryv1.EndpointSlice)
+				if !ok {
+					ec.log.Errorf("tombstone contained object that is not an EndpointSlice %+v", obj)
+					return
+				}
+			}
+
+			ec.syncEndpointSlice(es)
 		},
 	})
 
@@ -297,15 +361,82 @@ func (ec *EndpointsController) processQueue() {
 
 // processUpdate will run a reconciliation function for a single Service object
 // that needs to have its EndpointSlice objects reconciled.
-//
-// TODO (matei): remove lint during impl of processUpdate. CI complains error is
-// always nil
-//
-//nolint:all
 func (ec *EndpointsController) processUpdate(update string) error {
-	// TODO (matei): reconciliation logic
-	ec.log.Infof("received %s", update)
+	namespace, name, err := cache.SplitMetaNamespaceKey(update)
+	if err != nil {
+		return err
+	}
+
+	svc, err := ec.k8sAPI.Svc().Lister().Services(namespace).Get(name)
+	if err != nil {
+		// If the error is anything except a 'NotFound' then bubble up the error
+		// and re-queue the entry; the service will be re-processed at some
+		// point in the future.
+		if !kerrors.IsNotFound(err) {
+			return err
+		}
+
+		// Nothing to do if the service is not found, return nil to guarantee
+		// operation won't be retried.
+		return nil
+	}
+
+	if svc.Spec.Type == corev1.ServiceTypeExternalName {
+		// services with Type ExternalName do not receive any endpoints
+		return nil
+	}
+
+	if svc.Spec.Selector == nil {
+		// services without a selector will not get any endpoints automatically
+		// created; this is done out-of-band by the service operator
+		return nil
+	}
+
+	ewSelector := labels.Set(svc.Spec.Selector).AsSelectorPreValidated()
+	ews, err := ec.k8sAPI.ExtWorkload().Lister().List(ewSelector)
+	if err != nil {
+		// This operation should be infallible since we retrieve from the cache
+		// (we can guarantee we will receive at least an empty list), for good
+		// measure, bubble up the error if one will be returned by the informer.
+		return err
+	}
+
+	esSelector := labels.Set(map[string]string{
+		discoveryv1.LabelServiceName: svc.Name,
+		discoveryv1.LabelManagedBy:   managedBy,
+	}).AsSelectorPreValidated()
+	epSlices, err := ec.k8sAPI.ES().Lister().List(esSelector)
+	if err != nil {
+		return err
+	}
+
+	epSlices = filterEndpointSlices(epSlices)
+	if ec.reconciler.endpointTracker.StaleSlices(svc, epSlices) {
+		return errors.New("EndpointSlice informer cache is out of date")
+	}
+	err = ec.reconciler.reconcile(svc, ews, epSlices)
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// filterEndpointSlices will return a new slice (of EndpointSlices) that
+// contains only resources that have not been marked for GC by the APIServer.
+func filterEndpointSlices(es []*discoveryv1.EndpointSlice) []*discoveryv1.EndpointSlice {
+	n := 0
+	for _, s := range es {
+		// Append at the head
+		if s.DeletionTimestamp == nil {
+			es[n] = s
+			n++
+		}
+	}
+
+	// Only return n most slices where n is the number of elements that are
+	// valid
+	return es[:n]
 }
 
 // handleError will look at the result of the queue update processing step and
@@ -356,6 +487,20 @@ func (ec *EndpointsController) updateService(obj interface{}) {
 	}
 
 	ec.queue.Add(key)
+}
+
+func (ec *EndpointsController) syncEndpointSlice(es *discoveryv1.EndpointSlice) {
+	if es.Labels[discoveryv1.LabelManagedBy] != managedBy {
+		return
+	}
+	svcName, ok := es.Labels[discoveryv1.LabelServiceName]
+	if !ok || svcName == "" {
+		ec.log.Debugf("skipping EndpointSlice update since it has no owner service")
+		return
+	}
+	if ec.reconciler.endpointTracker.ShouldSync(es) {
+		ec.queue.Add(fmt.Sprintf("%s/%s", es.Namespace, svcName))
+	}
 }
 
 func isReady(ew *ewv1alpha1.ExternalWorkload) bool {
