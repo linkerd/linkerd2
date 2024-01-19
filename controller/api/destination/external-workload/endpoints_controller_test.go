@@ -326,7 +326,7 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
 				t.Fatalf("unexpected error %v", err)
 			}
 
-			ec, err := NewEndpointsController(k8sAPI, "my-hostname", "controlplane-ns", make(chan struct{}))
+			ec, err := NewEndpointsController(k8sAPI, "my-hostname", "controlplane-ns", make(chan struct{}), false)
 			if err != nil {
 				t.Fatalf("unexpected error %v", err)
 			}
