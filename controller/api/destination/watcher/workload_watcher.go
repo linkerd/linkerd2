@@ -490,6 +490,10 @@ func (ww *WorkloadWatcher) getExternalWorkloadByIP(ip string, port uint32) (*ext
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
+	if len(workloads) == 0 {
+		ww.log.Debugf("no externalworkload found for %s:%d", ip, port)
+		return nil, nil
+	}
 	if len(workloads) == 1 {
 		ww.log.Debugf("found externalworkload %s:%d", ip, port)
 		return workloads[0], nil

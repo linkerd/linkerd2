@@ -445,6 +445,25 @@ spec:
   - port: 80`,
 	}
 
+	externalWorkloads := []string{`
+apiVersion: workload.linkerd.io/v1alpha1
+kind: ExternalWorkload
+metadata:
+  name: my-cool-workload
+  namespace: ns
+spec:
+  meshTls:
+    identity: spiffe://some-domain/cool
+    serverName: server.local
+  workloadIps:
+  - ip: 200.1.1.1
+  ports:
+  - port: 8989
+status:
+  conditions:
+  ready: true`,
+	}
+
 	res := append(meshedPodResources, clientSP...)
 	res = append(res, unmeshedPod)
 	res = append(res, meshedOpaquePodResources...)
@@ -455,6 +474,7 @@ spec:
 	res = append(res, hostPortMapping...)
 	res = append(res, mirrorServiceResources...)
 	res = append(res, destinationCredentialsResources...)
+	res = append(res, externalWorkloads...)
 	k8sAPI, l5dClient, err := k8s.NewFakeAPIWithL5dClient(res...)
 	if err != nil {
 		t.Fatalf("NewFakeAPIWithL5dClient returned an error: %s", err)
