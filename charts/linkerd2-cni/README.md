@@ -6,7 +6,7 @@ Linkerd [CNI plugin](https://linkerd.io/2/features/cni/) takes care of setting
 up your pod's network so  incoming and outgoing traffic is proxied through the
 data plane.
 
-![Version: 30.12.1](https://img.shields.io/badge/Version-30.12.1-informational?style=flat-square)
+![Version: 30.12.2](https://img.shields.io/badge/Version-30.12.2-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -31,7 +31,7 @@ Kubernetes: `>=1.21.0-0`
 | ignoreOutboundPorts | string | `""` | Default set of outbound ports to skip via iptables |
 | image.name | string | `"cr.l5d.io/linkerd/cni-plugin"` | Docker image for the CNI plugin |
 | image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the linkerd-cni container |
-| image.version | string | `"v1.2.2"` | Tag for the CNI container Docker image |
+| image.version | string | `"v1.3.0"` | Tag for the CNI container Docker image |
 | imagePullSecrets | list | `[]` |  |
 | inboundProxyPort | int | `4143` | Inbound port for the proxy container |
 | logLevel | string | `"info"` | Log level for the CNI plugin |
@@ -43,7 +43,17 @@ Kubernetes: `>=1.21.0-0`
 | proxyAdminPort | int | `4191` | Admin port for the proxy container |
 | proxyControlPort | int | `4190` | Control port for the proxy container |
 | proxyUID | int | `2102` | User id under which the proxy shall be ran |
-| resources | object | `{"cpu":{"limit":"","request":""},"ephemeral-storage":{"limit":"","request":""},"memory":{"limit":"","request":""}}` | Resource requests and limits for linkerd-cni daemonset containers |
+| repairController.enableSecurityContext | bool | `true` | Include a securityContext in the repair-controller container |
+| repairController.enabled | bool | `false` | Enables the repair-controller container |
+| repairController.logFormat | string | plain | Log format (`plain` or `json`) for the repair-controller container |
+| repairController.logLevel | string | info | Log level for the repair-controller container |
+| repairController.resources.cpu.limit | string | `""` | Maximum amount of CPU units that the repair-controller container can use |
+| repairController.resources.cpu.request | string | `""` | Amount of CPU units that the repair-controller container requests |
+| repairController.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the repair-controller container can use |
+| repairController.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the repair-controller container requests |
+| repairController.resources.memory.limit | string | `""` | Maximum amount of memory that the repair-controller container can use |
+| repairController.resources.memory.request | string | `""` | Amount of memory that the repair-controller container requests |
+| resources | object | `{"cpu":{"limit":"","request":""},"ephemeral-storage":{"limit":"","request":""},"memory":{"limit":"","request":""}}` | Resource requests and limits for linkerd-cni daemonset container |
 | resources.cpu.limit | string | `""` | Maximum amount of CPU units that the cni container can use |
 | resources.cpu.request | string | `""` | Amount of CPU units that the cni container requests |
 | resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the cni container can use |
