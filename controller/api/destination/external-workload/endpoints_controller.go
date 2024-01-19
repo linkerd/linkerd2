@@ -68,7 +68,8 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 	ec := &EndpointsController{
 		k8sAPI: k8sAPI,
 		queue: workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), workqueue.RateLimitingQueueConfig{
-			Name: "endpoints_controller_workqueue",
+			Name:            "endpoints_controller_workqueue",
+			MetricsProvider: newWorkQueueMetricsProvider(),
 		}),
 		stop: stopCh,
 		log: logging.WithFields(logging.Fields{
