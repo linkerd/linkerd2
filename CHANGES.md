@@ -1,5 +1,10 @@
 # Changes
 
+## edge-24.1.2
+
+This edge release incrementally improves support for ExternalWorkload resources
+throughout the control plane.
+
 ## edge-24.1.1
 
 This edge release introduces a number of different fixes and improvements. More
