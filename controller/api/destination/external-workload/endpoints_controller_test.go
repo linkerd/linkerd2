@@ -1,14 +1,16 @@
 package externalworkload
 
 import (
+	"fmt"
 	"testing"
 
 	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-func makeExternalWorkload(labels map[string]string, ports map[int32]string, ips []string) *ewv1alpha1.ExternalWorkload {
+func makeExternalWorkload(name string, labels map[string]string, ports map[int32]string, ips []string) *ewv1alpha1.ExternalWorkload {
 	portSpecs := []ewv1alpha1.PortSpec{}
 	for port, name := range ports {
 		spec := ewv1alpha1.PortSpec{
@@ -25,9 +27,9 @@ func makeExternalWorkload(labels map[string]string, ports map[int32]string, ips 
 		wIps = append(wIps, ewv1alpha1.WorkloadIP{Ip: ip})
 	}
 
-	return &ewv1alpha1.ExternalWorkload{
+	ew := &ewv1alpha1.ExternalWorkload{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "wkld1",
+			Name:      name,
 			Namespace: "ns",
 			Labels:    labels,
 		},
@@ -40,6 +42,9 @@ func makeExternalWorkload(labels map[string]string, ports map[int32]string, ips 
 			WorkloadIPs: wIps,
 		},
 	}
+
+	ew.ObjectMeta.UID = types.UID(fmt.Sprintf("%s-%s", ew.Namespace, ew.Name))
+	return ew
 }
 
 // Test diffing logic that determines if two workloads with the same name and
@@ -54,11 +59,13 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "no change",
 			old: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
@@ -68,11 +75,13 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload adds an IP address",
 			old: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0", "192.0.3.0"},
@@ -82,11 +91,13 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload removes an IP address",
 			old: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0", "192.0.3.0"},
 			),
 			updated: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
@@ -96,11 +107,13 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload changes an IP address",
 			old: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.3.0"},
@@ -110,11 +123,13 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload adds new port",
 			old: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1", 2: "port-2"},
 				[]string{"192.0.2.0"},
@@ -124,11 +139,13 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload removes port",
 			old: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1", 2: "port-2"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
@@ -138,11 +155,13 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload changes port number",
 			old: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{2: "port-1"},
 				[]string{"192.0.2.0"},
@@ -152,11 +171,13 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload changes port name",
 			old: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-foo"},
 				[]string{"192.0.2.0"},
@@ -166,11 +187,13 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload removes port name",
 			old: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"wlkd1",
 				nil,
 				map[int32]string{1: ""},
 				[]string{"192.0.2.0"},
@@ -202,11 +225,13 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
 		{
 			name: "no change",
 			old: makeExternalWorkload(
+				"wlkd1",
 				map[string]string{"app": "test"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"wlkd1",
 				map[string]string{"app": "test"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
@@ -226,11 +251,13 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
 		{
 			name: "labels and spec have changed",
 			old: makeExternalWorkload(
+				"wlkd1",
 				map[string]string{"app": "test-1"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"wlkd1",
 				map[string]string{"app": "test-2"},
 				map[int32]string{2: "port-1"},
 				[]string{"192.0.2.0"},
@@ -258,11 +285,13 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
 		{
 			name: "spec has changed",
 			old: makeExternalWorkload(
+				"wlkd1",
 				map[string]string{"app": "test-1"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"wlkd1",
 				map[string]string{"app": "test-1"},
 				map[int32]string{2: "port-1"},
 				[]string{"192.0.2.0"},
@@ -282,11 +311,13 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
 		{
 			name: "labels have changed",
 			old: makeExternalWorkload(
+				"wlkd1",
 				map[string]string{"app": "test-1", "env": "staging"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"wlkd1",
 				map[string]string{"app": "test-1", "env": "prod"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},

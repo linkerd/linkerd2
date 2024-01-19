@@ -76,7 +76,7 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 		queue: workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), workqueue.RateLimitingQueueConfig{
 			Name: "endpoints_controller_workqueue",
 		}),
-		reconciler: newEndpointsReconciler(k8sAPI),
+		reconciler: newEndpointsReconciler(k8sAPI, maxEndpointsQuota),
 		stop:       stopCh,
 		log: logging.WithFields(logging.Fields{
 			"component": "external-endpoints-controller",
