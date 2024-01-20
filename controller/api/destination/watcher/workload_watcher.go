@@ -419,7 +419,7 @@ func (ww *WorkloadWatcher) getOrNewWorkloadPublisher(service *ServiceID, hostnam
 				"port": strconv.FormatUint(uint64(port), 10),
 			}),
 			log: ww.log.WithFields(logging.Fields{
-				"component": "pod-publisher",
+				"component": "workload-publisher",
 				"ip":        ip,
 				"port":      port,
 			}),
