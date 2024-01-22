@@ -652,9 +652,17 @@ func findWorkloadPort(ew *ewv1alpha1.ExternalWorkload, svcPort *corev1.ServicePo
 			}
 		}
 	case intstr.Int:
-		return int32(targetPort.IntValue()), nil
+		// Ensure the port is documented in the workload spec, since we
+		// require it.
+		// Upstream version allows for undocumented container ports here (i.e.
+		// it returns the int value).
+		for _, wPort := range ew.Spec.Ports {
+			port := int32(targetPort.IntValue())
+			if wPort.Port == port && wPort.Protocol == svcPort.Protocol {
+				return port, nil
+			}
+		}
 	}
-
 	return 0, fmt.Errorf("no suitable port for targetPort %v on workload %s/%s", targetPort, ew.Namespace, ew.Name)
 }
 

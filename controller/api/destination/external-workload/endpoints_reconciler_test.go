@@ -613,6 +613,10 @@ func TestEndpointSlicesAreRecycled(t *testing.T) {
 		}
 	}
 
+	for _, ew := range ews {
+		ew.Spec.Ports[0].Port = int32(81)
+	}
+
 	// changing a service port should require all slices to be updated, time for a repack
 	svc.Spec.Ports[0].TargetPort.IntVal = 81
 	r := newEndpointsReconciler(k8sAPI, testControllerName, defaultTestEndpointsQuota)
