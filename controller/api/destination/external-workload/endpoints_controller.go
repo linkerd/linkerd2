@@ -63,14 +63,18 @@ type EndpointsController struct {
 //
 // NewEndpointsController creates a new controller. The controller must be
 // started with its `Start()` method.
-func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stopCh chan struct{}) (*EndpointsController, error) {
-	// TODO: pass in a metrics provider to the queue config
+func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stopCh chan struct{}, exportQueueMetrics bool) (*EndpointsController, error) {
+	workQueueConfig := workqueue.RateLimitingQueueConfig{
+		Name: "endpoints_controller_workqueue",
+	}
+	if exportQueueMetrics {
+		workQueueConfig.MetricsProvider = newWorkQueueMetricsProvider()
+	}
+
 	ec := &EndpointsController{
 		k8sAPI: k8sAPI,
-		queue: workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), workqueue.RateLimitingQueueConfig{
-			Name: "endpoints_controller_workqueue",
-		}),
-		stop: stopCh,
+		queue:  workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), workQueueConfig),
+		stop:   stopCh,
 		log: logging.WithFields(logging.Fields{
 			"component": "external-endpoints-controller",
 		}),
