@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/linkerd/linkerd2/controller/api/destination"
+	externalworkload "github.com/linkerd/linkerd2/controller/api/destination/external-workload"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -107,7 +108,7 @@ func Main(args []string) {
 			*kubeConfigPath,
 			true,
 			"local",
-			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
+			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv, k8s.ExtWorkload,
 		)
 	} else {
 		k8sAPI, err = k8s.InitializeAPI(
@@ -158,6 +159,18 @@ func Main(args []string) {
 	k8sAPI.Sync(nil)
 	metadataAPI.Sync(nil)
 	clusterStore.Sync(nil)
+
+	hostname, ok := os.LookupEnv("HOSTNAME")
+	if !ok {
+		log.Fatal("Failed to initialize External Workload Endpoints Controller, \"HOSTNAME\" value not found")
+	}
+	externalWorkloadController, err := externalworkload.NewEndpointsController(k8sAPI, hostname, *controllerNamespace, done)
+	if err != nil {
+		log.Fatal("Failed to initialize External Workload Endpoints Controller: %v", err)
+	}
+
+	// Start mesh expansion external workload controller to write endpointslices
+	externalWorkloadController.Start()
 
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)
