@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	epsliceutil "k8s.io/endpointslice/util"
 	utilnet "k8s.io/utils/net"
@@ -36,22 +37,33 @@ const (
 // states) and keeping track of any drifts between the informer cache and what
 // has been written to the API Server
 type endpointsReconciler struct {
-	k8sAPI *k8s.API
-	log    *logging.Entry
+	k8sAPI         *k8s.API
+	log            *logging.Entry
+	controllerName string
 	// Upstream utility component that will internally track the most recent
 	// resourceVersion observed for an EndpointSlice
 	endpointTracker *epsliceutil.EndpointSliceTracker
 	maxEndpoints    int
 }
 
+// endpointMeta is a helper struct that incldues attributes slices will be
+// grouped on (i.e. ports and the address family supported).
+//
+// Note: this is inspired from the upstream EndpointSlice controller impl.
+type endpointMeta struct {
+	ports       []discoveryv1.EndpointPort
+	addressType discoveryv1.AddressType
+}
+
 // newEndpointsReconciler takes an API client and returns a reconciler with
 // logging and a tracker set-up
-func newEndpointsReconciler(k8sAPI *k8s.API, maxEndpoints int) *endpointsReconciler {
+func newEndpointsReconciler(k8sAPI *k8s.API, controllerName string, maxEndpoints int) *endpointsReconciler {
 	return &endpointsReconciler{
 		k8sAPI,
 		logging.WithFields(logging.Fields{
 			"component": "external-endpoints-reconciler",
 		}),
+		controllerName,
 		epsliceutil.NewEndpointSliceTracker(),
 		maxEndpoints,
 	}
@@ -66,99 +78,124 @@ func newEndpointsReconciler(k8sAPI *k8s.API, maxEndpoints int) *endpointsReconci
 // Optionally, if the controller has previously created any slices for this
 // service, these will also be passed in. The reconciler will:
 //
-// * Determine what address families (AF) the service supports
-// * For each address family, it will determine which slices to process (an
-// EndpointSlice is specialised and supports only one AF type)
-func (r *endpointsReconciler) reconcile(svc *corev1.Service, ews []*ewv1alpha1.ExternalWorkload, es []*discoveryv1.EndpointSlice) error {
-
-	addrTypes := getSupportedAddressTypes(svc)
+// * Determine what address types the service supports
+// * For each address type, it will determine which slices to process (an
+// EndpointSlice is specialised and supports only one type)
+func (r *endpointsReconciler) reconcile(svc *corev1.Service, ews []*ewv1alpha1.ExternalWorkload, existingSlices []*discoveryv1.EndpointSlice) error {
 	toDelete := []*discoveryv1.EndpointSlice{}
-	ipv4Slices := []*discoveryv1.EndpointSlice{}
+	slicesByAddrType := make(map[discoveryv1.AddressType][]*discoveryv1.EndpointSlice)
+	errs := []error{}
 
-	for _, slice := range es {
-		_, supported := addrTypes[slice.AddressType]
+	// Get the list of supported address types for the service
+	supportedAddrTypes := getSupportedAddressTypes(svc)
+	for _, slice := range existingSlices {
+		// If a slice has an address type that the slice does not support, then
+		// it should be deleted
+		_, supported := supportedAddrTypes[slice.AddressType]
 		if !supported {
 			toDelete = append(toDelete, slice)
 			continue
 		}
 
-		if slice.AddressType == discoveryv1.AddressTypeIPv4 {
-			ipv4Slices = append(ipv4Slices, slice)
+		// If this is the first time we see this address type, create the list
+		// in the set.
+		if _, ok := slicesByAddrType[slice.AddressType]; !ok {
+			slicesByAddrType[slice.AddressType] = []*discoveryv1.EndpointSlice{}
+		}
+
+		slicesByAddrType[slice.AddressType] = append(slicesByAddrType[slice.AddressType], slice)
+	}
+
+	// For each supported address type, reconcile endpoint slices that match the
+	// given type
+	for addrType := range supportedAddrTypes {
+		existingSlices := slicesByAddrType[addrType]
+		err := r.reconcileByAddressType(svc, ews, existingSlices, addrType)
+		if err != nil {
+			errs = append(errs, err)
 		}
 	}
 
-	// TODO (matei): we only process IPv4 for now. IPv6 support will go in here.
-	return r.reconcileIPv4Endpoints(svc, ews, ipv4Slices, toDelete)
+	// delete services whose address type is no longer supported by the service
+	for _, slice := range toDelete {
+		err := r.k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Delete(context.TODO(), slice.Name, metav1.DeleteOptions{})
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return utilerrors.NewAggregate(errs)
 }
 
 // reconcileIPv4Endpoints operates on a set of external workloads, their
 // service, and any endpointslices that have been created by the controller. It
 // will compute the diff that needs to be written to the API Server.
-func (r *endpointsReconciler) reconcileIPv4Endpoints(svc *corev1.Service, extWorkloads []*ewv1alpha1.ExternalWorkload, epSlices []*discoveryv1.EndpointSlice, toDelete []*discoveryv1.EndpointSlice) error {
+func (r *endpointsReconciler) reconcileByAddressType(svc *corev1.Service, extWorkloads []*ewv1alpha1.ExternalWorkload, existingSlices []*discoveryv1.EndpointSlice, addrType discoveryv1.AddressType) error {
+	slicesToCreate := []*discoveryv1.EndpointSlice{}
+	slicesToUpdate := []*discoveryv1.EndpointSlice{}
+	slicesToDelete := []*discoveryv1.EndpointSlice{}
+
 	// We start the reconciliation by checking ownerRefs
 	//
 	// We follow the upstream here and look at our existing slices and segment
-	// by ports. Besides risking to hit a port quota (of 100 ports per
-	// endpoint), we can have cases where a service selects a named port that
-	// maps to a different value on multiple workloads.
+	// by ports.
 	currentSlicesByPorts := map[epsliceutil.PortMapKey][]*discoveryv1.EndpointSlice{}
-	for _, slice := range epSlices {
+	for _, slice := range existingSlices {
 		// Loop through the endpointslices and figure out which endpointslice
 		// does not have an ownerRef set to the service. If a slice has been
 		// selected but does not point to the service, we delete it.
-		if !ownedBy(slice, svc) {
-			toDelete = append(toDelete, slice)
+		if ownedBy(slice, svc) {
+			hash := epsliceutil.NewPortMapKey(slice.Ports)
+			currentSlicesByPorts[hash] = append(currentSlicesByPorts[hash], slice)
 		} else {
-			h := epsliceutil.NewPortMapKey(slice.Ports)
-			currentSlicesByPorts[h] = append(currentSlicesByPorts[h], slice)
+			slicesToDelete = append(slicesToDelete, slice)
 		}
 	}
 
-	// Build a list of endpoints we want to create / update. This will be based
-	// off the external workloads we have read.
-	// We use an EndpointSet from the upstream util library. Each Endpoint we
-	// add will be hashed internally.
-	//
-	// We also split each set of endpoints by the ports they target. This
-	// segmentation allows us to have a service select two different workloads
-	// using a named port; consequently there will be 2 endpointslices,
-	// otherwise we'd have a port clash.
-	desiredEndpointsByPort := map[epsliceutil.PortMapKey]epsliceutil.EndpointSet{}
+	// desiredEndpointsByPortMap represents a set of endpoints grouped together
+	// by the list of ports they use. These are the endpoints that we will keep
+	// and write to the API server.
+	desiredEndpointsByPortMap := map[epsliceutil.PortMapKey]epsliceutil.EndpointSet{}
+	// desiredMetaByPortMap represents grouping metadata keyed off by the same
+	// hashed port list as the endpoints.
+	desiredMetaByPortMap := map[epsliceutil.PortMapKey]*endpointMeta{}
 
-	// A PortMapKey is an upstream type that when created creates a hash of a
-	// port list. We use a map to ensure we don't add ports twice (i.e. we add
-	// them to a set).
-	desiredEndpointPorts := map[epsliceutil.PortMapKey][]discoveryv1.EndpointPort{}
 	for _, extWorkload := range extWorkloads {
-		// We skip workloads with no IPs
+		// We skip workloads with no IPs.
+		//
+		// Note: workloads only have a 'Ready' status so we do not care about
+		// other status conditions.
 		if len(extWorkload.Spec.WorkloadIPs) == 0 {
 			continue
 		}
 
 		// Find which ports a service selects (or maps to) on an external workload
-		ports, err := r.findEndpointPorts(svc, extWorkload)
-		// Since we require a workload to document its ports, if a service's
-		// targetPort does not match any ports on a workload, we skip it.
-		//
-		// This is different to the upstream where a container port needn't be
-		// documented
-		if err != nil {
-			r.log.Debugf("skipping workload; failed to remap port for service %s/%s and workload %s/%s: %v", svc.Namespace, svc.Name, extWorkload.Namespace, extWorkload.Name, err)
-			continue
-		}
-
+		// Note: we require all workload ports are documented. Pods do not have
+		// to document all of their container ports.
+		ports := r.findEndpointPorts(svc, extWorkload)
 		portHash := epsliceutil.NewPortMapKey(ports)
-		if _, ok := desiredEndpointPorts[portHash]; !ok {
-			desiredEndpointPorts[portHash] = ports
+		if _, ok := desiredMetaByPortMap[portHash]; !ok {
+			desiredMetaByPortMap[portHash] = &endpointMeta{ports, addrType}
 		}
 
-		ep := externalWorkloadToEndpoint(discoveryv1.AddressTypeIPv4, extWorkload, svc)
-		if _, ok := desiredEndpointsByPort[portHash]; !ok {
-			desiredEndpointsByPort[portHash] = epsliceutil.EndpointSet{}
+		if _, ok := desiredEndpointsByPortMap[portHash]; !ok {
+			desiredEndpointsByPortMap[portHash] = epsliceutil.EndpointSet{}
 		}
 
-		desiredEndpointsByPort[portHash].Insert(&ep)
+		ep := externalWorkloadToEndpoint(addrType, extWorkload, svc)
+		if len(ep.Addresses) > 0 {
+			desiredEndpointsByPortMap[portHash].Insert(&ep)
+		}
 	}
+
+	for portKey, desiredEndpoints := range desiredEndpointsByPortMap {
+		create, update, del := r.reconcileEndpointsByPortMap(svc, currentSlicesByPorts[portKey], desiredEndpoints, desiredMetaByPortMap[portKey])
+		slicesToCreate = append(slicesToCreate, create...)
+		slicesToUpdate = append(slicesToUpdate, update...)
+		slicesToDelete = append(slicesToDelete, del...)
+	}
+
+	r.log.Debugf("Reconciliation result for %s/%s: %d to add, %d to update, %d to remove", svc.Namespace, svc.Name, len(slicesToCreate), len(slicesToUpdate), len(slicesToDelete))
 
 	// If there are any slices whose ports no longer match what we want in our
 	// current reconciliation, delete them
@@ -166,109 +203,36 @@ func (r *endpointsReconciler) reconcileIPv4Endpoints(svc *corev1.Service, extWor
 	// Note: in the upstream they run some more complicated diffing before
 	// applying to ensure creates & deletes turn into updates. We simplify and
 	// instead choose to re-create the slice if ports have changed.
-	for _, currentSlice := range epSlices {
-		portHash := epsliceutil.NewPortMapKey(currentSlice.Ports)
-		if _, ok := desiredEndpointPorts[portHash]; !ok {
-			toDelete = append(toDelete, currentSlice)
+	for _, existingSlice := range existingSlices {
+		portHash := epsliceutil.NewPortMapKey(existingSlice.Ports)
+		if _, ok := desiredEndpointsByPortMap[portHash]; !ok {
+			slicesToDelete = append(slicesToDelete, existingSlice)
 		}
 	}
 
-	totalToCreate := []*discoveryv1.EndpointSlice{}
-	totalToUpdate := []*discoveryv1.EndpointSlice{}
-	totalToDelete := []*discoveryv1.EndpointSlice{}
-
-	// Add slices that we have already marked for deletion due to various
-	// reasons
-	totalToDelete = append(totalToDelete, toDelete...)
-	for portKey, desiredEndpoints := range desiredEndpointsByPort {
-		create, update, del := r.reconcileEndpoints(svc, currentSlicesByPorts[portKey], desiredEndpoints, desiredEndpointPorts[portKey])
-		totalToCreate = append(totalToCreate, create...)
-		totalToUpdate = append(totalToUpdate, update...)
-		totalToDelete = append(totalToDelete, del...)
-	}
-
-	r.log.Debugf("Reconciliation result for %s/%s: %d to add, %d to update, %d to remove", svc.Namespace, svc.Name, len(totalToCreate), len(totalToUpdate), len(totalToDelete))
-
-	// Create EndpointSlices only if the service has not been marked for
-	// deletion; according to the upstream implementation not doing so has the
-	// potential to cause race conditions
-	if svc.DeletionTimestamp == nil {
-		// TODO: context with timeout
-		for _, slice := range totalToCreate {
-			r.log.Tracef("Starting create: %s/%s", slice.Namespace, slice.Name)
-			createdSlice, err := r.k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Create(context.TODO(), slice, metav1.CreateOptions{})
-			if err != nil {
-				// If the namespace  is terminating, operations will not
-				// succeed. Drop the entire reconiliation effort
-				if errors.HasStatusCause(err, corev1.NamespaceTerminatingCause) {
-					return nil
-				}
-
-				return err
-			}
-			r.endpointTracker.Update(createdSlice)
-			r.log.Tracef("Finished creating: %s/%s", createdSlice.Namespace, createdSlice.Name)
-		}
-	}
-
-	for _, slice := range totalToUpdate {
-		r.log.Tracef("Starting update: %s/%s", slice.Namespace, slice.Name)
-		updatedSlice, err := r.k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Update(context.TODO(), slice, metav1.UpdateOptions{})
-		if err != nil {
-			return err
-		}
-		r.endpointTracker.Update(updatedSlice)
-		r.log.Tracef("Finished updating: %s/%s", updatedSlice.Namespace, updatedSlice.Name)
-	}
-
-	for _, slice := range totalToDelete {
-		r.log.Tracef("Starting delete: %s/%s", slice.Namespace, slice.Name)
-		err := r.k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Delete(context.TODO(), slice.Name, metav1.DeleteOptions{})
-		if err != nil {
-			return err
-		}
-		r.endpointTracker.ExpectDeletion(slice)
-		r.log.Tracef("Finished deleting: %s/%s", slice.Namespace, slice.Name)
-	}
-
-	return nil
+	return r.finalize(svc, slicesToCreate, slicesToUpdate, slicesToDelete)
 }
 
-// reconcileEndpoints will take a service, a set of slices that apply for that
-// service's address family and a list of endpoints that the APIServer should be
-// aware of.
-//
-// It is possible for some of the desired endpoints to already exist, in which
-// case, the function computes if they need to be updated.
-func (r *endpointsReconciler) reconcileEndpoints(svc *corev1.Service, currentSlices []*discoveryv1.EndpointSlice, desiredEps epsliceutil.EndpointSet, desiredPorts []discoveryv1.EndpointPort) ([]*discoveryv1.EndpointSlice, []*discoveryv1.EndpointSlice, []*discoveryv1.EndpointSlice) {
-
-	// This function is heavily inspired by the upstream counterpart with some
-	// simplifications around using sets.
-	//
-	// There are three stages to a reconciliation:
-	// 1. Decide what state needs to be deleted / updated.
-	// 2. If there are endpoints that do not yet exist, decide if there are any
-	// slices that have not met their quota that can hold them.
-	// 3. If we still have endpoints that we need to add, write them.
-	//
-	// We keep track of deletes in a set to avoid deleting the same element
-	// twice.
-	deleteByName := map[string]struct{}{}
-	// And we do the same for updates
-	updateByName := map[string]struct{}{}
-	// And we need a way to keep track of revisions we might make
-	allByName := map[string]*discoveryv1.EndpointSlice{}
-	// And another to keep track of unchanged state
-	unchangedByName := map[string]struct{}{}
+// reconcileEndpointsByPortMap will compute the state diff to be written to the
+// API Server for a service. The function takes into account any existing
+// endpoint slices and any external workloads matched by the service.
+// The function works on slices and workloads that have been already grouped by
+// a common set of ports.
+func (r *endpointsReconciler) reconcileEndpointsByPortMap(svc *corev1.Service, existingSlices []*discoveryv1.EndpointSlice, desiredEps epsliceutil.EndpointSet, desiredMeta *endpointMeta) ([]*discoveryv1.EndpointSlice, []*discoveryv1.EndpointSlice, []*discoveryv1.EndpointSlice) {
+	slicesByName := map[string]*discoveryv1.EndpointSlice{}
+	sliceNamesUnchanged := map[string]struct{}{}
+	sliceNamesToUpdate := map[string]struct{}{}
+	sliceNamesToDelete := map[string]struct{}{}
 
 	// 1. Figure out which endpoints are no longer required in the existing
 	// slices, and update endpoints that have changed
-	for _, currentSlice := range currentSlices {
+	for _, existingSlice := range existingSlices {
+		slicesByName[existingSlice.Name] = existingSlice
 		keepEndpoints := []discoveryv1.Endpoint{}
 		epUpdated := false
-		// Note: we operate with an index to avoid implicit memory aliasing
-		for i := range currentSlice.Endpoints {
-			found := desiredEps.Get(&currentSlice.Endpoints[i])
+		for _, endpoint := range existingSlice.Endpoints {
+			endpoint := endpoint // pin
+			found := desiredEps.Get(&endpoint)
 			// If the endpoint is desired (i.e. a workload exists with an IP and
 			// we want to add it to the service's endpoints), then we should
 			// keep it.
@@ -276,17 +240,17 @@ func (r *endpointsReconciler) reconcileEndpoints(svc *corev1.Service, currentSli
 				keepEndpoints = append(keepEndpoints, *found)
 				// We know the slice already contains an endpoint we want, but
 				// has the endpoint changed? If yes, we need to persist it
-				if !epsliceutil.EndpointsEqualBeyondHash(found, &currentSlice.Endpoints[i]) {
+				if !epsliceutil.EndpointsEqualBeyondHash(found, &endpoint) {
 					epUpdated = true
 				}
 
 				// Once an endpoint has been found in a slice, we can delete it
-				desiredEps.Delete(&currentSlice.Endpoints[i])
+				desiredEps.Delete(&endpoint)
 			}
 		}
 
 		// Re-generate labels and see whether service's labels have changed
-		labels, labelsChanged := setEndpointSliceLabels(currentSlice, svc)
+		labels, labelsChanged := setEndpointSliceLabels(existingSlice, svc, r.controllerName)
 
 		// Consider what kind of reconciliation we should proceed with:
 		//
@@ -296,29 +260,29 @@ func (r *endpointsReconciler) reconcileEndpoints(svc *corev1.Service, currentSli
 		// 2. We need to update the slice's metadata because labels have
 		// changed.
 		// 3. Slice remains unchanged so we have a noop on our hands
-		if epUpdated || len(currentSlice.Endpoints) != len(keepEndpoints) {
+		if epUpdated || len(existingSlice.Endpoints) != len(keepEndpoints) {
 			if len(keepEndpoints) == 0 {
 				// When there are no endpoints to keep, then the slice should be
 				// deleted
-				deleteByName[currentSlice.Name] = struct{}{}
+				sliceNamesToDelete[existingSlice.Name] = struct{}{}
 			} else {
 				// There is at least one endpoint to keep / update
-				slice := currentSlice.DeepCopy()
+				slice := existingSlice.DeepCopy()
 				slice.Labels = labels
 				slice.Endpoints = keepEndpoints
-				updateByName[slice.Name] = struct{}{}
-				allByName[slice.Name] = slice
+				sliceNamesToUpdate[slice.Name] = struct{}{}
+				slicesByName[slice.Name] = slice
 			}
 		} else if labelsChanged {
-			slice := currentSlice.DeepCopy()
+			slice := existingSlice.DeepCopy()
 			slice.Labels = labels
-			updateByName[slice.Name] = struct{}{}
-			allByName[slice.Name] = slice
+			sliceNamesToUpdate[slice.Name] = struct{}{}
+			slicesByName[slice.Name] = slice
 		} else {
 			// Unchanged, we save it for later.
 			// unchanged slices may receive new endpoints that are leftover if
 			// they're not past their quotaca
-			unchangedByName[currentSlice.Name] = struct{}{}
+			sliceNamesUnchanged[existingSlice.Name] = struct{}{}
 		}
 	}
 
@@ -327,10 +291,10 @@ func (r *endpointsReconciler) reconcileEndpoints(svc *corev1.Service, currentSli
 	//
 	// We start by adding our leftover endpoints to the list of endpoints we
 	// will update anyway (to save a write).
-	if desiredEps.Len() > 0 && len(updateByName) > 0 {
+	if desiredEps.Len() > 0 && len(sliceNamesToUpdate) > 0 {
 		slices := []*discoveryv1.EndpointSlice{}
-		for sliceName := range updateByName {
-			slices = append(slices, allByName[sliceName])
+		for sliceName := range sliceNamesToUpdate {
+			slices = append(slices, slicesByName[sliceName])
 		}
 
 		// Sort in descending order of capacity; fullest first.
@@ -347,60 +311,114 @@ func (r *endpointsReconciler) reconcileEndpoints(svc *corev1.Service, currentSli
 		}
 	}
 
-	// Deal with any remaining endpoints by:
-	// (a) adding to unchanged slices first
-	if desiredEps.Len() > 0 {
-		unchangedSlices := []*discoveryv1.EndpointSlice{}
-		for unchangedSlice := range unchangedByName {
-			unchangedSlices = append(unchangedSlices, allByName[unchangedSlice])
-		}
-
-		// Sort in descending order of capacity; fullest first.
-		sort.Slice(unchangedSlices, func(i, j int) bool {
-			return len(unchangedSlices[i].Endpoints) > len(unchangedSlices[j].Endpoints)
-		})
-
-		for _, slice := range unchangedSlices {
-			for desiredEps.Len() > 0 && len(slice.Endpoints) < r.maxEndpoints {
-				ep, _ := desiredEps.PopAny()
-				slice.Endpoints = append(slice.Endpoints, *ep)
-			}
-			// Now add it to the list of slices to update since it's been
-			// changed
-			updateByName[slice.Name] = struct{}{}
-			delete(unchangedByName, slice.Name)
-		}
-	}
-
-	// (b) creating new slices second (if needed)
-	toCreate := []*discoveryv1.EndpointSlice{}
+	// If we have remaining endpoints, we need to deal with them
+	// by using unchanged slices or creating new ones
+	slicesToCreate := []*discoveryv1.EndpointSlice{}
 	for desiredEps.Len() > 0 {
-		slice := newEndpointSlice(svc, desiredPorts)
-		for desiredEps.Len() > 0 && len(slice.Endpoints) < r.maxEndpoints {
-			ep, _ := desiredEps.PopAny()
-			slice.Endpoints = append(slice.Endpoints, *ep)
+		var sliceToFill *discoveryv1.EndpointSlice
+
+		// Deal with any remaining endpoints by:
+		// (a) adding to unchanged slices first
+		if desiredEps.Len() < r.maxEndpoints && len(sliceNamesUnchanged) > 0 {
+			unchangedSlices := []*discoveryv1.EndpointSlice{}
+			for unchangedSlice := range sliceNamesUnchanged {
+				unchangedSlices = append(unchangedSlices, slicesByName[unchangedSlice])
+			}
+
+			sliceToFill = getSliceToFill(unchangedSlices, desiredEps.Len(), r.maxEndpoints)
 		}
-		toCreate = append(toCreate, slice)
 
+		// If we have no unchanged slice to fill, then
+		// (b) create a new slice
+		if sliceToFill == nil {
+			sliceToFill = newEndpointSlice(svc, desiredMeta, r.controllerName)
+		} else {
+			// deep copy required to mutate slice
+			sliceToFill = sliceToFill.DeepCopy()
+			slicesByName[sliceToFill.Name] = sliceToFill
+		}
+
+		// Fill out the slice
+		for desiredEps.Len() > 0 && len(sliceToFill.Endpoints) < r.maxEndpoints {
+			ep, _ := desiredEps.PopAny()
+			sliceToFill.Endpoints = append(sliceToFill.Endpoints, *ep)
+		}
+
+		// Figure out what kind of slice we just filled and update the diffed
+		// state
+		if sliceToFill.Name != "" {
+			sliceNamesToUpdate[sliceToFill.Name] = struct{}{}
+			delete(sliceNamesUnchanged, sliceToFill.Name)
+		} else {
+			slicesToCreate = append(slicesToCreate, sliceToFill)
+		}
 	}
 
-	toUpdate := []*discoveryv1.EndpointSlice{}
-	for name := range updateByName {
-		toUpdate = append(toUpdate, allByName[name])
+	slicesToUpdate := []*discoveryv1.EndpointSlice{}
+	for name := range sliceNamesToUpdate {
+		slicesToUpdate = append(slicesToUpdate, slicesByName[name])
 	}
 
-	toDelete := []*discoveryv1.EndpointSlice{}
-	for name := range deleteByName {
-		toDelete = append(toDelete, allByName[name])
+	slicesToDelete := []*discoveryv1.EndpointSlice{}
+	for name := range sliceNamesToDelete {
+		slicesToDelete = append(slicesToUpdate, slicesByName[name])
 	}
 
-	return toCreate, toUpdate, toDelete
+	return slicesToCreate, slicesToDelete, slicesToUpdate
+}
+
+// finalize performs writes to the API Server to update the state after it's
+// been diffed.
+func (r *endpointsReconciler) finalize(svc *corev1.Service, slicesToCreate, slicesToUpdate, slicesToDelete []*discoveryv1.EndpointSlice) error {
+	// Create EndpointSlices only if the service has not been marked for
+	// deletion; according to the upstream implementation not doing so has the
+	// potential to cause race conditions
+	if svc.DeletionTimestamp == nil {
+		// TODO: context with timeout
+		for _, slice := range slicesToCreate {
+			r.log.Tracef("Starting create: %s/%s", slice.Namespace, slice.Name)
+			createdSlice, err := r.k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Create(context.TODO(), slice, metav1.CreateOptions{})
+			if err != nil {
+				// If the namespace  is terminating, operations will not
+				// succeed. Drop the entire reconiliation effort
+				if errors.HasStatusCause(err, corev1.NamespaceTerminatingCause) {
+					return nil
+				}
+
+				return err
+			}
+			r.endpointTracker.Update(createdSlice)
+			r.log.Tracef("Finished creating: %s/%s", createdSlice.Namespace, createdSlice.Name)
+		}
+	}
+
+	for _, slice := range slicesToUpdate {
+		r.log.Tracef("Starting update: %s/%s", slice.Namespace, slice.Name)
+		updatedSlice, err := r.k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Update(context.TODO(), slice, metav1.UpdateOptions{})
+		if err != nil {
+			return err
+		}
+		r.endpointTracker.Update(updatedSlice)
+		r.log.Tracef("Finished updating: %s/%s", updatedSlice.Namespace, updatedSlice.Name)
+	}
+
+	for _, slice := range slicesToDelete {
+		r.log.Tracef("Starting delete: %s/%s", slice.Namespace, slice.Name)
+		err := r.k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Delete(context.TODO(), slice.Name, metav1.DeleteOptions{})
+		if err != nil {
+			return err
+		}
+		r.endpointTracker.ExpectDeletion(slice)
+		r.log.Tracef("Finished deleting: %s/%s", slice.Namespace, slice.Name)
+	}
+
+	return nil
 }
 
 // === Utility ===
 
 // Creates a new endpointslice object
-func newEndpointSlice(svc *corev1.Service, ports []discoveryv1.EndpointPort) *discoveryv1.EndpointSlice {
+func newEndpointSlice(svc *corev1.Service, meta *endpointMeta, controllerName string) *discoveryv1.EndpointSlice {
 	// We need an ownerRef to point to our service
 	ownerRef := metav1.NewControllerRef(svc, schema.GroupVersionKind{Version: "v1", Kind: "Service"})
 	slice := &discoveryv1.EndpointSlice{
@@ -410,13 +428,32 @@ func newEndpointSlice(svc *corev1.Service, ports []discoveryv1.EndpointPort) *di
 			Labels:          map[string]string{},
 			OwnerReferences: []metav1.OwnerReference{*ownerRef},
 		},
-		AddressType: discoveryv1.AddressTypeIPv4,
+		AddressType: meta.addressType,
 		Endpoints:   []discoveryv1.Endpoint{},
-		Ports:       ports,
+		Ports:       meta.ports,
 	}
-	labels, _ := setEndpointSliceLabels(slice, svc)
+	labels, _ := setEndpointSliceLabels(slice, svc, controllerName)
 	slice.Labels = labels
 	return slice
+}
+
+// getSliceToFill will return an endpoint slice from a list of endpoint slices
+// whose capacity is closest to being full when numEndpoints are added. If no
+// slice fits the criteria a nil pointer is returned
+func getSliceToFill(slices []*discoveryv1.EndpointSlice, numEndpoints, maxEndpoints int) *discoveryv1.EndpointSlice {
+	closestDiff := maxEndpoints
+	var closestSlice *discoveryv1.EndpointSlice
+	for _, slice := range slices {
+		diff := maxEndpoints - (numEndpoints + len(slice.Endpoints))
+		if diff >= 0 && diff < closestDiff {
+			closestDiff = diff
+			closestSlice = slice
+			if closestDiff == 0 {
+				return closestSlice
+			}
+		}
+	}
+	return closestSlice
 }
 
 // setEndpointSliceLabels returns a new map with the new endpoint slice labels,
@@ -428,7 +465,7 @@ func newEndpointSlice(svc *corev1.Service, ports []discoveryv1.EndpointPort) *di
 //
 // copied from https://github.com/kubernetes/endpointslice/commit/a09c1c9580d13f5020248d25c7fd11f5dde6dd9b
 // copyright 2019 The Kubernetes Authors
-func setEndpointSliceLabels(es *discoveryv1.EndpointSlice, service *corev1.Service) (map[string]string, bool) {
+func setEndpointSliceLabels(es *discoveryv1.EndpointSlice, service *corev1.Service, controllerName string) (map[string]string, bool) {
 	isReserved := func(label string) bool {
 		if label == discoveryv1.LabelServiceName ||
 			label == discoveryv1.LabelManagedBy ||
@@ -483,7 +520,7 @@ func setEndpointSliceLabels(es *discoveryv1.EndpointSlice, service *corev1.Servi
 
 	// override endpoint slices reserved labels
 	svcLabels[discoveryv1.LabelServiceName] = service.Name
-	svcLabels[discoveryv1.LabelManagedBy] = managedBy
+	svcLabels[discoveryv1.LabelManagedBy] = controllerName
 
 	return svcLabels, updated
 }
@@ -554,19 +591,20 @@ func ownedBy(slice *discoveryv1.EndpointSlice, svc *corev1.Service) bool {
 
 // findEndpointPorts is a utility function that will return a list of ports
 // that are documented on an external workload and selected by a service
-func (r *endpointsReconciler) findEndpointPorts(svc *corev1.Service, ew *ewv1alpha1.ExternalWorkload) ([]discoveryv1.EndpointPort, error) {
+func (r *endpointsReconciler) findEndpointPorts(svc *corev1.Service, ew *ewv1alpha1.ExternalWorkload) []discoveryv1.EndpointPort {
 	epPorts := []discoveryv1.EndpointPort{}
 	// If we are dealing with a headless service, upstream implementation allows
 	// the service not to have any ports
 	if len(svc.Spec.Ports) == 0 && svc.Spec.ClusterIP == corev1.ClusterIPNone {
-		return epPorts, nil
+		return epPorts
 	}
 
 	for _, svcPort := range svc.Spec.Ports {
 		svcPort := svcPort // pin
 		portNum, err := findWorkloadPort(ew, &svcPort)
 		if err != nil {
-			return nil, err
+			r.log.Errorf("failed to find port for service %s/%s: %v", svc.Namespace, svc.Name, err)
+			continue
 		}
 
 		portName := &svcPort.Name
@@ -584,7 +622,7 @@ func (r *endpointsReconciler) findEndpointPorts(svc *corev1.Service, ew *ewv1alp
 		})
 	}
 
-	return epPorts, nil
+	return epPorts
 }
 
 // findWorkloadPort is provided a service port and an external workload and
@@ -606,7 +644,7 @@ func findWorkloadPort(ew *ewv1alpha1.ExternalWorkload, svcPort *corev1.ServicePo
 		// Ensure the port is documented in the workload spec, since we
 		// require it.
 		// Upstream version allows for undocumented container ports here (i.e.
-		// it returns the int value)
+		// it returns the int value).
 		for _, wPort := range ew.Spec.Ports {
 			port := int32(targetPort.IntValue())
 			if wPort.Port == port && wPort.Protocol == svcPort.Protocol {
@@ -615,7 +653,7 @@ func findWorkloadPort(ew *ewv1alpha1.ExternalWorkload, svcPort *corev1.ServicePo
 		}
 	}
 
-	return 0, fmt.Errorf("no suitable port for workload %s/%s", ew.Namespace, ew.Name)
+	return 0, fmt.Errorf("no suitable port for targetPort %v on workload %s/%s", targetPort, ew.Namespace, ew.Name)
 }
 
 // getSupportedAddressTypes will return a set of address families (AF) supported
