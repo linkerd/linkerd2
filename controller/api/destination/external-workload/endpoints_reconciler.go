@@ -195,7 +195,7 @@ func (r *endpointsReconciler) reconcileByAddressType(svc *corev1.Service, extWor
 		slicesToDelete = append(slicesToDelete, del...)
 	}
 
-	r.log.Debugf("Reconciliation result for %s/%s: %d to add, %d to update, %d to remove", svc.Namespace, svc.Name, len(slicesToCreate), len(slicesToUpdate), len(slicesToDelete))
+	r.log.Infof("Reconciliation result for %s/%s: %d to add, %d to update, %d to remove", svc.Namespace, svc.Name, len(slicesToCreate), len(slicesToUpdate), len(slicesToDelete))
 
 	// If there are any slices whose ports no longer match what we want in our
 	// current reconciliation, delete them
@@ -361,10 +361,10 @@ func (r *endpointsReconciler) reconcileEndpointsByPortMap(svc *corev1.Service, e
 
 	slicesToDelete := []*discoveryv1.EndpointSlice{}
 	for name := range sliceNamesToDelete {
-		slicesToDelete = append(slicesToUpdate, slicesByName[name])
+		slicesToDelete = append(slicesToDelete, slicesByName[name])
 	}
 
-	return slicesToCreate, slicesToDelete, slicesToUpdate
+	return slicesToCreate, slicesToUpdate, slicesToDelete
 }
 
 // finalize performs writes to the API Server to update the state after it's
@@ -376,7 +376,7 @@ func (r *endpointsReconciler) finalize(svc *corev1.Service, slicesToCreate, slic
 	if svc.DeletionTimestamp == nil {
 		// TODO: context with timeout
 		for _, slice := range slicesToCreate {
-			r.log.Tracef("Starting create: %s/%s", slice.Namespace, slice.Name)
+			r.log.Infof("Starting create: %s/%s", slice.Namespace, slice.GenerateName)
 			createdSlice, err := r.k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Create(context.TODO(), slice, metav1.CreateOptions{})
 			if err != nil {
 				// If the namespace  is terminating, operations will not
@@ -388,7 +388,7 @@ func (r *endpointsReconciler) finalize(svc *corev1.Service, slicesToCreate, slic
 				return err
 			}
 			r.endpointTracker.Update(createdSlice)
-			r.log.Tracef("Finished creating: %s/%s", createdSlice.Namespace, createdSlice.Name)
+			r.log.Infof("Finished creating: %s/%s", createdSlice.Namespace, createdSlice.Name)
 		}
 	}
 

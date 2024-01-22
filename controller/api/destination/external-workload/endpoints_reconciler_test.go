@@ -13,6 +13,7 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	epsliceutil "k8s.io/endpointslice/util"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -49,7 +50,28 @@ var (
 	}
 
 	maxTestEndpointsQuota = 10
+
+	testControllerName = "test-controller"
 )
+
+func makeEndpointSlice(svc *corev1.Service, ports []discoveryv1.EndpointPort) *discoveryv1.EndpointSlice {
+	// We need an ownerRef to point to our service
+	ownerRef := metav1.NewControllerRef(svc, schema.GroupVersionKind{Version: "v1", Kind: "Service"})
+	slice := &discoveryv1.EndpointSlice{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName:    fmt.Sprintf("linkerd-external-%s", svc.Name),
+			Namespace:       svc.Namespace,
+			Labels:          map[string]string{},
+			OwnerReferences: []metav1.OwnerReference{*ownerRef},
+		},
+		AddressType: discoveryv1.AddressTypeIPv4,
+		Endpoints:   []discoveryv1.Endpoint{},
+		Ports:       ports,
+	}
+	labels, _ := setEndpointSliceLabels(slice, svc, testControllerName)
+	slice.Labels = labels
+	return slice
+}
 
 // === Reconciler module tests ===
 
@@ -67,7 +89,7 @@ func TestReconcilerCreatesNewEndpointSlice(t *testing.T) {
 	ew := makeExternalWorkload("wlkd-1", map[string]string{"app": ""}, map[int32]string{8080: ""}, []string{"192.0.2.0"})
 	ew.ObjectMeta.UID = types.UID(fmt.Sprintf("%s-%s", ew.Namespace, ew.Name))
 
-	r := newEndpointsReconciler(k8sAPI, 10)
+	r := newEndpointsReconciler(k8sAPI, "test-controller", 10)
 	err = r.reconcile(svc, []*ewv1alpha1.ExternalWorkload{ew}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error when reconciling endpoints: %v", err)
@@ -105,7 +127,7 @@ func TestReconcilerUpdatesEndpointSlice(t *testing.T) {
 	ports := []discoveryv1.EndpointPort{{
 		Port: &port,
 	}}
-	es := newEndpointSlice(svc, ports)
+	es := makeEndpointSlice(svc, ports)
 	endpoints := []discoveryv1.Endpoint{}
 	endpoints = append(endpoints, externalWorkloadToEndpoint(discoveryv1.AddressTypeIPv4, ewCreated, svc))
 	es.Endpoints = endpoints
@@ -121,7 +143,7 @@ func TestReconcilerUpdatesEndpointSlice(t *testing.T) {
 		t.Fatalf("unexpected error when creating Kubernetes clientset: %v", err)
 	}
 
-	r := newEndpointsReconciler(k8sAPI, 10)
+	r := newEndpointsReconciler(k8sAPI, testControllerName, maxTestEndpointsQuota)
 	err = r.reconcile(svc, []*ewv1alpha1.ExternalWorkload{ewCreated, ewUpdated}, []*discoveryv1.EndpointSlice{es})
 	if err != nil {
 		t.Fatalf("unexpected error when reconciling endpoints: %v", err)
@@ -167,7 +189,7 @@ func TestReconcilerUpdatesEndpointSliceInPlace(t *testing.T) {
 	ports := []discoveryv1.EndpointPort{{
 		Port: &port,
 	}}
-	es := newEndpointSlice(svc, ports)
+	es := makeEndpointSlice(svc, ports)
 	endpoints := []discoveryv1.Endpoint{}
 	endpoints = append(endpoints, externalWorkloadToEndpoint(discoveryv1.AddressTypeIPv4, ewCreated, svc))
 	es.Endpoints = endpoints
@@ -188,7 +210,7 @@ func TestReconcilerUpdatesEndpointSliceInPlace(t *testing.T) {
 		corev1.LabelTopologyZone: "zone1",
 	}
 
-	r := newEndpointsReconciler(k8sAPI, 10)
+	r := newEndpointsReconciler(k8sAPI, testControllerName, maxTestEndpointsQuota)
 	err = r.reconcile(svc, []*ewv1alpha1.ExternalWorkload{ewCreated, ewCreated}, []*discoveryv1.EndpointSlice{es})
 	if err != nil {
 		t.Fatalf("unexpected error when reconciling endpoints: %v", err)
@@ -289,7 +311,7 @@ func TestReconcilerHandlesExceededCapacity(t *testing.T) {
 			allocatedEws := []*ewv1alpha1.ExternalWorkload{}
 			for i < tt.numExistingSlices {
 				ports := []discoveryv1.EndpointPort{{Port: &port}}
-				es := newEndpointSlice(svc, ports)
+				es := makeEndpointSlice(svc, ports)
 				eps := []discoveryv1.Endpoint{}
 				// Take a chunk according to the parametrised stepBy
 				if step+tt.stepBy < tt.numWorkloads {
@@ -317,7 +339,7 @@ func TestReconcilerHandlesExceededCapacity(t *testing.T) {
 				t.Fatalf("unexpected error when creating Kubernetes clientset: %v", err)
 			}
 
-			r := newEndpointsReconciler(k8sAPI, 10)
+			r := newEndpointsReconciler(k8sAPI, testControllerName, maxTestEndpointsQuota)
 			err = r.reconcile(svc, ews, preexistingSlices)
 			if err != nil {
 				t.Fatalf("unexpected error when reconciling endpoints: %v", err)
@@ -374,7 +396,7 @@ func TestReconcilerSegmentsPortsProperly(t *testing.T) {
 			existingWorkloads: []*ewv1alpha1.ExternalWorkload{
 				makeExternalWorkload("wlkd-1", map[string]string{"app": "test"}, map[int32]string{8080: "http"}, []string{"192.0.2.1"}),
 			},
-			existingSlice: newEndpointSlice(httpNamedPortSvc, []discoveryv1.EndpointPort{makeEndpointPort(8080, "http")}),
+			existingSlice: makeEndpointSlice(httpNamedPortSvc, []discoveryv1.EndpointPort{makeEndpointPort(8080, "http")}),
 			appliedWorkloads: []*ewv1alpha1.ExternalWorkload{
 				makeExternalWorkload("wlkd-2", map[string]string{"app": "test"}, map[int32]string{80: "http"}, []string{"192.0.3.1"}),
 			},
@@ -396,7 +418,7 @@ func TestReconcilerSegmentsPortsProperly(t *testing.T) {
 			existingWorkloads: []*ewv1alpha1.ExternalWorkload{
 				makeExternalWorkload("wlkd-1", map[string]string{"app": "test"}, map[int32]string{8080: "http"}, []string{"192.0.2.1"}),
 			},
-			existingSlice: newEndpointSlice(httpNamedPortSvc, []discoveryv1.EndpointPort{makeEndpointPort(8080, "http")}),
+			existingSlice: makeEndpointSlice(httpNamedPortSvc, []discoveryv1.EndpointPort{makeEndpointPort(8080, "http")}),
 			appliedWorkloads: []*ewv1alpha1.ExternalWorkload{
 				makeExternalWorkload("wlkd-2", map[string]string{"app": "test"}, map[int32]string{8080: "http"}, []string{"192.0.3.1"}),
 			},
@@ -408,14 +430,14 @@ func TestReconcilerSegmentsPortsProperly(t *testing.T) {
 			existingWorkloads: []*ewv1alpha1.ExternalWorkload{
 				makeExternalWorkload("wlkd-1", map[string]string{"app": "test"}, map[int32]string{8080: "http"}, []string{"192.0.2.1"}),
 			},
-			existingSlice: newEndpointSlice(httpNamedPortSvc, []discoveryv1.EndpointPort{makeEndpointPort(8080, "http")}),
+			existingSlice: makeEndpointSlice(httpNamedPortSvc, []discoveryv1.EndpointPort{makeEndpointPort(8080, "http")}),
 			appliedWorkloads: []*ewv1alpha1.ExternalWorkload{
 				makeExternalWorkload("wlkd-2", map[string]string{"app": "test"}, map[int32]string{80: "http", 8080: ""}, []string{"192.0.3.1"}),
 			},
 			expectedSlices: 1,
 		},
 		{
-			name:    "unnamed targetPort changes to named port and slice is deleted",
+			name:    "when named targetPort is no longer selected by workloads, ports are unset",
 			service: httpNamedPortSvc,
 			existingWorkloads: []*ewv1alpha1.ExternalWorkload{
 				makeExternalWorkload("wlkd-1", map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{"192.0.2.1"}),
@@ -445,7 +467,7 @@ func TestReconcilerSegmentsPortsProperly(t *testing.T) {
 				},
 			},
 			appliedWorkloads: []*ewv1alpha1.ExternalWorkload{},
-			expectedSlices:   0,
+			expectedSlices:   1,
 		},
 	} {
 		tt := tt // pin
@@ -489,7 +511,7 @@ func TestReconcilerSegmentsPortsProperly(t *testing.T) {
 			// Collect all of the ports by hashing them. We'll check the
 			// generated slices at the end to see whether all of the ports have
 			// been written successfully
-			r := newEndpointsReconciler(k8sAPI, 10)
+			r := newEndpointsReconciler(k8sAPI, testControllerName, maxTestEndpointsQuota)
 			expectedPorts := map[epsliceutil.PortMapKey]struct{}{}
 
 			err = r.reconcile(tt.service, ews, existingSlices)
@@ -499,19 +521,15 @@ func TestReconcilerSegmentsPortsProperly(t *testing.T) {
 
 			slices := fetchEndpointSlices(t, k8sAPI, httpNamedPortSvc)
 			if len(slices) != tt.expectedSlices {
-				t.Fatalf("expected %d endpointslices after reconciliation, got %d instead", tt.expectedSlices, len(slices))
-			}
+				t.Errorf("expected %d endpointslices after reconciliation, got %d instead", tt.expectedSlices, len(slices))
+				for _, slice := range slices {
+					t.Logf("%s\n---\n", endpointSliceAsYaml(t, &slice))
+				}
 
-			if tt.expectedSlices == 0 {
-				// No need to check ports if everything has been deleted
-				return
 			}
 
 			for _, ew := range ews {
-				ports, err := r.findEndpointPorts(httpNamedPortSvc, ew)
-				if err != nil {
-					t.Errorf("failed to find port for %s/%s: %v", ew.Namespace, ew.Name, err)
-				}
+				ports := r.findEndpointPorts(httpNamedPortSvc, ew)
 				expectedPorts[epsliceutil.NewPortMapKey(ports)] = struct{}{}
 			}
 			for _, slice := range slices {
@@ -606,7 +624,7 @@ func fetchEndpointSlices(t *testing.T, k8sAPI *k8s.API, svc *corev1.Service) []d
 	t.Helper()
 	selector := labels.Set(map[string]string{
 		discoveryv1.LabelServiceName: svc.Name,
-		discoveryv1.LabelManagedBy:   managedBy,
+		discoveryv1.LabelManagedBy:   testControllerName,
 	}).AsSelectorPreValidated()
 	fetchedSlices, err := k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: selector.String(),
