@@ -365,7 +365,7 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
 			ec.Start()
 			k8sAPI.Sync(nil)
 
-			services, err := ec.servicesToUpdate(tt.old, tt.updated)
+			services, err := ec.getServicesToUpdateOnExternalWorkloadChange(tt.old, tt.updated)
 			if err != nil {
 				t.Fatalf("unexpected error %v", err)
 			}
