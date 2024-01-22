@@ -1,3 +1,4 @@
+{{- if .Values.createNamespaceMetadataJob}}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -65,3 +66,4 @@ spec:
         - --prometheus-url
         - {{.}}
         {{- end }}
+{{- end }}
