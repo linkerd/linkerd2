@@ -169,7 +169,7 @@ func Main(args []string) {
 	}
 	externalWorkloadController, err := externalworkload.NewEndpointsController(k8sAPI, hostname, *controllerNamespace, done, *exportControllerQueueMetrics)
 	if err != nil {
-		log.Fatal("Failed to initialize External Workload Endpoints Controller: %v", err)
+		log.Fatalf("Failed to initialize External Workload Endpoints Controller: %v", err)
 	}
 
 	// Start mesh expansion external workload controller to write endpointslices

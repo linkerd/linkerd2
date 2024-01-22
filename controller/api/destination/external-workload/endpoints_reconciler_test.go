@@ -57,7 +57,7 @@ func TestReconcilerCreatesNewEndpointSlice(t *testing.T) {
 		t.Fatalf("unexpected error when creating Kubernetes clientset: %v", err)
 	}
 
-	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "", "")
+	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "")
 	ew := makeExternalWorkload("wlkd-1", map[string]string{"app": ""}, map[int32]string{8080: ""}, []string{"192.0.2.0"})
 	ew.ObjectMeta.UID = types.UID(fmt.Sprintf("%s-%s", ew.Namespace, ew.Name))
 
@@ -67,7 +67,7 @@ func TestReconcilerCreatesNewEndpointSlice(t *testing.T) {
 		t.Fatalf("unexpected error when reconciling endpoints: %v", err)
 	}
 
-	expectedEndpoint := makeEndpoint([]string{"192.0.2.0"}, true, "", ew)
+	expectedEndpoint := makeEndpoint([]string{"192.0.2.0"}, true, ew)
 	es := fetchEndpointSlices(t, k8sAPI, svc)
 	if len(es) != 1 {
 		t.Fatalf("expected %d endpointslices after reconciliation, got %d instead", 1, len(es))
@@ -95,7 +95,7 @@ func TestReconcilerCreatesNewEndpointSliceHeadless(t *testing.T) {
 		t.Fatalf("unexpected error when creating Kubernetes clientset: %v", err)
 	}
 
-	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "", "")
+	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "")
 	svc.Spec.ClusterIP = corev1.ClusterIPNone
 	ew := makeExternalWorkload("wlkd-1", map[string]string{"app": ""}, map[int32]string{8080: ""}, []string{"192.0.2.0"})
 	ew.Namespace = "default"
@@ -107,7 +107,7 @@ func TestReconcilerCreatesNewEndpointSliceHeadless(t *testing.T) {
 		t.Fatalf("unexpected error when reconciling endpoints: %v", err)
 	}
 
-	expectedEndpoint := makeEndpoint([]string{"192.0.2.0"}, true, "", ew)
+	expectedEndpoint := makeEndpoint([]string{"192.0.2.0"}, true, ew)
 	es := fetchEndpointSlices(t, k8sAPI, svc)
 	if len(es) != 1 {
 		t.Fatalf("expected %d endpointslices after reconciliation, got %d instead", 1, len(es))
@@ -141,7 +141,7 @@ func TestReconcilerCreatesNewEndpointSliceHeadless(t *testing.T) {
 // reconciling with the two workloads updates the endpointslice
 func TestReconcilerUpdatesEndpointSlice(t *testing.T) {
 	// Create a service
-	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "", "")
+	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "")
 
 	// Create our existing workload
 	ewCreated := makeExternalWorkload("wlkd-1", map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{"192.0.2.1"})
@@ -188,10 +188,10 @@ func TestReconcilerUpdatesEndpointSlice(t *testing.T) {
 
 	for _, ep := range slice.Endpoints {
 		if ep.TargetRef.Name == ewUpdated.Name {
-			expectedEndpoint := makeEndpoint([]string{"192.0.2.0"}, true, "", ewUpdated)
+			expectedEndpoint := makeEndpoint([]string{"192.0.2.0"}, true, ewUpdated)
 			diffEndpoints(t, ep, expectedEndpoint)
 		} else if ep.TargetRef.Name == ewCreated.Name {
-			expectedEndpoint := makeEndpoint([]string{"192.0.2.1"}, true, "", ewCreated)
+			expectedEndpoint := makeEndpoint([]string{"192.0.2.1"}, true, ewCreated)
 			diffEndpoints(t, ep, expectedEndpoint)
 		} else {
 			t.Errorf("found unexpected targetRef name %s", ep.TargetRef.Name)
@@ -203,7 +203,7 @@ func TestReconcilerUpdatesEndpointSlice(t *testing.T) {
 // endpoint
 func TestReconcilerUpdatesEndpointSliceInPlace(t *testing.T) {
 	// Create a service
-	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "", "")
+	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "")
 
 	// Create our existing workload
 	ewCreated := makeExternalWorkload("wlkd-1", map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{"192.0.2.1"})
@@ -266,7 +266,7 @@ func TestReconcilerUpdatesEndpointSliceInPlace(t *testing.T) {
 
 // A named port on a service can target a different port on a workload
 func TestReconcileEndpointSlicesNamedPorts(t *testing.T) {
-	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpNamedPort}, "192.0.2.1", "")
+	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpNamedPort}, "192.0.2.1")
 	ews := []*ewv1alpha1.ExternalWorkload{}
 	// Generate a large number of external workloads
 	// randomise ports so that a named port maps to different target values
@@ -319,7 +319,7 @@ func TestReconcileEndpointSlicesNamedPorts(t *testing.T) {
 // a simple use case with 250 workloads matching a service and no existing slices
 // reconcile should create 3 slices, completely filling 2 of them
 func TestReconcileManyWorkloads(t *testing.T) {
-	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1", "")
+	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1")
 	// start with 250 workloads
 	ews := []*ewv1alpha1.ExternalWorkload{}
 	for i := 0; i < 250; i++ {
@@ -349,7 +349,7 @@ func TestReconcileManyWorkloads(t *testing.T) {
 //
 // We will drop 27 in the first slice closest to full
 func TestReconcileEndpointSlicesSomePreexisting(t *testing.T) {
-	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1", "")
+	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1")
 	// start with 250 workloads
 	ews := []*ewv1alpha1.ExternalWorkload{}
 	for i := 0; i < 250; i++ {
@@ -372,7 +372,7 @@ func TestReconcileEndpointSlicesSomePreexisting(t *testing.T) {
 	for i := 1; i < len(ews)-4; i += 4 {
 		addrs := []string{ews[i].Spec.WorkloadIPs[0].Ip}
 		isReady := isReady(ews[i])
-		es1.Endpoints = append(es1.Endpoints, makeEndpoint(addrs, isReady, "", ews[i]))
+		es1.Endpoints = append(es1.Endpoints, makeEndpoint(addrs, isReady, ews[i]))
 	}
 
 	es2 := makeEndpointSlice(svc, esPorts)
@@ -380,7 +380,7 @@ func TestReconcileEndpointSlicesSomePreexisting(t *testing.T) {
 	for i := 3; i < len(ews)-4; i += 4 {
 		addrs := []string{ews[i].Spec.WorkloadIPs[0].Ip}
 		isReady := isReady(ews[i])
-		es2.Endpoints = append(es2.Endpoints, makeEndpoint(addrs, isReady, "", ews[i]))
+		es2.Endpoints = append(es2.Endpoints, makeEndpoint(addrs, isReady, ews[i]))
 	}
 
 	existingSlices := []*discoveryv1.EndpointSlice{es1, es2}
@@ -409,7 +409,7 @@ func TestReconcileEndpointSlicesSomePreexisting(t *testing.T) {
 // Ensure reconciler updates everything in-place when a service requires a
 // change. That means we expect to only see updates, no creates.
 func TestReconcileEndpointSlicesUpdatingSvc(t *testing.T) {
-	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1", "")
+	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1")
 	// start with 250 workloads
 	ews := []*ewv1alpha1.ExternalWorkload{}
 	for i := 0; i < 250; i++ {
@@ -462,7 +462,7 @@ func TestReconcileEndpointSlicesUpdatingSvc(t *testing.T) {
 // This test will ensure that we update slices with the appropriate labels when
 // a service has changed.
 func TestReconcileEndpointSlicesLabelsUpdatingSvc(t *testing.T) {
-	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1", "")
+	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1")
 	// start with 250 workloads
 	ews := []*ewv1alpha1.ExternalWorkload{}
 	for i := 0; i < 250; i++ {
@@ -514,7 +514,7 @@ func TestReconcileEndpointSlicesLabelsUpdatingSvc(t *testing.T) {
 // In some cases, such as service labels updates, all slices for that service will require a change
 // However, this should not happen for reserved labels
 func TestReconcileEndpointSlicesReservedLabelsSvc(t *testing.T) {
-	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1", "")
+	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1")
 	// start with 250 workloads
 	ews := []*ewv1alpha1.ExternalWorkload{}
 	for i := 0; i < 250; i++ {
@@ -569,7 +569,7 @@ func TestReconcileEndpointSlicesReservedLabelsSvc(t *testing.T) {
 }
 
 func TestEndpointSlicesAreRecycled(t *testing.T) {
-	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1", "")
+	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1")
 	// start with 250 workloads
 	ews := []*ewv1alpha1.ExternalWorkload{}
 	for i := 0; i < 300; i++ {
@@ -597,7 +597,7 @@ func TestEndpointSlicesAreRecycled(t *testing.T) {
 
 		addrs := []string{ews[i].Spec.WorkloadIPs[0].Ip}
 		isReady := isReady(ews[i])
-		existingSlices[sliceNum].Endpoints = append(existingSlices[sliceNum].Endpoints, makeEndpoint(addrs, isReady, "", ew))
+		existingSlices[sliceNum].Endpoints = append(existingSlices[sliceNum].Endpoints, makeEndpoint(addrs, isReady, ew))
 	}
 
 	cmc := newCacheMutationCheck(existingSlices)
@@ -640,15 +640,6 @@ func makeEndpointSlice(svc *corev1.Service, ports []discoveryv1.EndpointPort) *d
 	}
 	labels, _ := setEndpointSliceLabels(slice, svc, testControllerName)
 	slice.Labels = labels
-	return slice
-}
-
-func makeEndpointSliceWithEndpoints(svc *corev1.Service, ports []discoveryv1.EndpointPort, ews []*ewv1alpha1.ExternalWorkload) *discoveryv1.EndpointSlice {
-	slice := makeEndpointSlice(svc, ports)
-	slice.Endpoints = []discoveryv1.Endpoint{}
-	for _, ew := range ews {
-		slice.Endpoints = append(slice.Endpoints, externalWorkloadToEndpoint(discoveryv1.AddressTypeIPv4, ew, svc))
-	}
 	return slice
 }
 
@@ -737,8 +728,8 @@ func endpointSliceAsYaml(t *testing.T, es *discoveryv1.EndpointSlice) string {
 
 }
 
-func makeIPv4Service(selector map[string]string, ports []corev1.ServicePort, clusterIP string, svcType string) *corev1.Service {
-	svc := &corev1.Service{
+func makeIPv4Service(selector map[string]string, ports []corev1.ServicePort, clusterIP string) *corev1.Service {
+	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-svc",
 			Namespace: "default",
@@ -752,16 +743,9 @@ func makeIPv4Service(selector map[string]string, ports []corev1.ServicePort, clu
 		},
 		Status: corev1.ServiceStatus{},
 	}
-	if svcType != "" {
-		svc.Spec.Type = corev1.ServiceType(svcType)
-	} else {
-		svc.Spec.Type = corev1.ServiceTypeClusterIP
-	}
-
-	return svc
 }
 
-func makeEndpoint(addrs []string, isReady bool, hostname string, ew *ewv1alpha1.ExternalWorkload) discoveryv1.Endpoint {
+func makeEndpoint(addrs []string, isReady bool, ew *ewv1alpha1.ExternalWorkload) discoveryv1.Endpoint {
 	rdy := &isReady
 	term := !isReady
 	ep := discoveryv1.Endpoint{
@@ -771,7 +755,6 @@ func makeEndpoint(addrs []string, isReady bool, hostname string, ew *ewv1alpha1.
 			Serving:     rdy,
 			Terminating: &term,
 		},
-		Hostname: &hostname,
 		TargetRef: &corev1.ObjectReference{
 			Kind:      ew.Kind,
 			Namespace: ew.Namespace,
@@ -780,14 +763,6 @@ func makeEndpoint(addrs []string, isReady bool, hostname string, ew *ewv1alpha1.
 		},
 	}
 	return ep
-}
-
-func makeEndpointPort(val int, name string) discoveryv1.EndpointPort {
-	port := int32(val)
-	return discoveryv1.EndpointPort{
-		Port: &port,
-		Name: &name,
-	}
 }
 
 func fetchEndpointSlices(t *testing.T, k8sAPI *k8s.API, svc *corev1.Service) []discoveryv1.EndpointSlice {
