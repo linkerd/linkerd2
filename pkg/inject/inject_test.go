@@ -57,6 +57,7 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyMemoryLimitAnnotation:                   "256",
 							k8s.ProxyEphemeralStorageLimitAnnotation:         "50",
 							k8s.ProxyUIDAnnotation:                           "8500",
+							k8s.ProxyGIDAnnotation:                           "8500",
 							k8s.ProxyLogLevelAnnotation:                      "debug,linkerd=debug",
 							k8s.ProxyLogFormatAnnotation:                     "json",
 							k8s.ProxyEnableExternalProfilesAnnotation:        "false",
@@ -110,6 +111,7 @@ func TestGetOverriddenValues(t *testing.T) {
 					},
 				}
 				values.Proxy.UID = 8500
+				values.Proxy.GID = 8500
 				values.ProxyInit.Image.Name = "cr.l5d.io/linkerd/proxy-init"
 				values.ProxyInit.Image.PullPolicy = pullPolicy
 				values.ProxyInit.Image.Version = version.ProxyInitVersion
@@ -161,6 +163,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				k8s.ProxyCPULimitAnnotation:                   "1.5",
 				k8s.ProxyMemoryLimitAnnotation:                "256",
 				k8s.ProxyUIDAnnotation:                        "8500",
+				k8s.ProxyGIDAnnotation:                        "8500",
 				k8s.ProxyLogLevelAnnotation:                   "debug,linkerd=debug",
 				k8s.ProxyLogFormatAnnotation:                  "json",
 				k8s.ProxyEnableExternalProfilesAnnotation:     "false",
@@ -209,6 +212,7 @@ func TestGetOverriddenValues(t *testing.T) {
 					},
 				}
 				values.Proxy.UID = 8500
+				values.Proxy.GID = 8500
 				values.ProxyInit.Image.Name = "cr.l5d.io/linkerd/proxy-init"
 				values.ProxyInit.Image.PullPolicy = pullPolicy
 				values.ProxyInit.Image.Version = version.ProxyInitVersion

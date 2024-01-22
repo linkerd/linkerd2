@@ -42,6 +42,7 @@ Kubernetes: `>=1.22.0-0`
 | privileged | bool | `false` | Run the install-cni container in privileged mode |
 | proxyAdminPort | int | `4191` | Admin port for the proxy container |
 | proxyControlPort | int | `4190` | Control port for the proxy container |
+| proxyGID | int | `2102` | Group id under which the proxy shall be ran |
 | proxyUID | int | `2102` | User id under which the proxy shall be ran |
 | repairController.enableSecurityContext | bool | `true` | Include a securityContext in the repair-controller container |
 | repairController.enabled | bool | `false` | Enables the repair-controller container |

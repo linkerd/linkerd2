@@ -492,6 +492,7 @@ data:
     cniEnabled: false
     controlPlaneTracing: false
     controlPlaneTracingNamespace: ""
+    controllerGID: 2103
     controllerImage: ControllerImage
     controllerLogFormat: ControllerLogFormat
     controllerLogLevel: ControllerLogLevel
@@ -623,6 +624,7 @@ data:
       disableOutboundProtocolDetectTimeout: false
       enableExternalProfiles: false
       experimentalEnv: null
+      gid: 2102
       image:
         name: ProxyImageName
         pullPolicy: ImagePullPolicy
@@ -684,6 +686,7 @@ data:
         memory:
           limit: 50Mi
           request: 10Mi
+      runAsGroup: 65534
       runAsRoot: false
       runAsUser: 65534
       saMountPath: null
@@ -884,6 +887,7 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
@@ -1019,6 +1023,7 @@ spec:
             drop:
               - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2102
           runAsNonRoot: true
           runAsUser: 2102
           seccompProfile:
@@ -1036,6 +1041,8 @@ spec:
         - --outgoing-proxy-port
         - "4140"
         - --proxy-uid
+        - "2102"
+        - --proxy-gid
         - "2102"
         - --inbound-ports-to-ignore
         - "4190,4191"
@@ -1056,6 +1063,7 @@ spec:
             - NET_ADMIN
             - NET_RAW
           privileged: false
+          runAsGroup: 65534
           runAsNonRoot: true
           runAsUser: 65534
           readOnlyRootFilesystem: true
@@ -1350,6 +1358,7 @@ spec:
             drop:
               - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2102
           runAsNonRoot: true
           runAsUser: 2102
           seccompProfile:
@@ -1402,6 +1411,7 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
@@ -1435,6 +1445,7 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
@@ -1491,6 +1502,7 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
@@ -1507,6 +1519,8 @@ spec:
         - --outgoing-proxy-port
         - "4140"
         - --proxy-uid
+        - "2102"
+        - --proxy-gid
         - "2102"
         - --inbound-ports-to-ignore
         - "4190,4191"
@@ -1527,6 +1541,7 @@ spec:
             - NET_ADMIN
             - NET_RAW
           privileged: false
+          runAsGroup: 65534
           runAsNonRoot: true
           runAsUser: 65534
           readOnlyRootFilesystem: true
@@ -1617,6 +1632,7 @@ spec:
                 drop:
                 - ALL
               readOnlyRootFilesystem: true
+              runAsGroup: 2103
               runAsNonRoot: true
               runAsUser: 2103
               allowPrivilegeEscalation: false
@@ -1787,6 +1803,7 @@ spec:
             drop:
               - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2102
           runAsNonRoot: true
           runAsUser: 2102
           seccompProfile:
@@ -1833,6 +1850,7 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
           allowPrivilegeEscalation: false
@@ -1854,6 +1872,8 @@ spec:
         - "4140"
         - --proxy-uid
         - "2102"
+        - --proxy-gid
+        - "2102"
         - --inbound-ports-to-ignore
         - "4190,4191"
         image: ProxyInitImageName:ProxyInitVersion
@@ -1873,6 +1893,7 @@ spec:
             - NET_ADMIN
             - NET_RAW
           privileged: false
+          runAsGroup: 65534
           runAsNonRoot: true
           runAsUser: 65534
           readOnlyRootFilesystem: true

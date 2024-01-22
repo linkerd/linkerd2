@@ -41,6 +41,7 @@ Kubernetes: `>=1.22.0-0`
 | podLabels | object | `{}` | Additional labels to add to all pods |
 | replicas | int | `1` | Number of service mirror replicas to run |
 | resources | object | `{}` | Resources for the Service mirror container |
+| serviceMirrorGID | int | `2103` | Group id under which the Service Mirror shall be ran |
 | serviceMirrorRetryLimit | int | `3` | Number of times update from the remote cluster is allowed to be requeued (retried) |
 | serviceMirrorUID | int | `2103` | User id under which the Service Mirror shall be ran |
 | targetClusterName | string | `""` | Name of the target cluster that's going to be linked |

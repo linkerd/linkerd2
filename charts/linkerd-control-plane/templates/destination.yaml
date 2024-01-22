@@ -241,6 +241,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.controllerUID}}
+          runAsGroup: {{.Values.controllerGID}}
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -281,6 +282,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.controllerUID}}
+          runAsGroup: {{.Values.controllerGID}}
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -339,6 +341,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.controllerUID}}
+          runAsGroup: {{.Values.controllerGID}}
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault

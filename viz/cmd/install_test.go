@@ -73,10 +73,12 @@ func TestRender(t *testing.T) {
 			map[string]interface{}{
 				"defaultLogLevel": "debug",
 				"defaultUID":      1234,
+				"defaultGID":      1234,
 				"defaultRegistry": "gcr.io/linkerd",
 				"tap": map[string]interface{}{
 					"logLevel": "info",
 					"UID":      5678,
+					"GID":      5678,
 					"image": map[string]interface{}{
 						"registry": "cr.l5d.io/linkerd",
 						"tag":      "stable-9.2",

@@ -42,6 +42,7 @@ type cniPluginOptions struct {
 	ignoreOutboundPorts []string
 	portsToRedirect     []uint
 	proxyUID            int64
+	proxyGID            int64
 	image               cniPluginImage
 	logLevel            string
 	destCNINetDir       string
@@ -120,6 +121,7 @@ The installation can be configured by using the --set, --values, --set-string an
 	cmd.PersistentFlags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry,
 		fmt.Sprintf("Docker registry to pull images from ($%s)", flags.EnvOverrideDockerRegistry))
 	cmd.PersistentFlags().Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")
+	cmd.PersistentFlags().Int64Var(&options.proxyGID, "proxy-gid", options.proxyGID, "Run the proxy under this group ID")
 	cmd.PersistentFlags().UintVar(&options.inboundPort, "inbound-port", options.inboundPort, "Proxy port to use for inbound traffic")
 	cmd.PersistentFlags().UintVar(&options.outboundPort, "outbound-port", options.outboundPort, "Proxy port to use for outbound traffic")
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
@@ -165,6 +167,7 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 		ignoreInboundPorts:  nil,
 		ignoreOutboundPorts: nil,
 		proxyUID:            defaults.ProxyUID,
+		proxyGID:            defaults.ProxyGID,
 		image:               cniPluginImage,
 		logLevel:            "info",
 		destCNINetDir:       defaults.DestCNINetDir,
@@ -203,6 +206,7 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 	installValues.IgnoreOutboundPorts = strings.Join(options.ignoreOutboundPorts, ",")
 	installValues.PortsToRedirect = strings.Join(portsToRedirect, ",")
 	installValues.ProxyUID = options.proxyUID
+	installValues.ProxyGID = options.proxyGID
 	installValues.DestCNINetDir = options.destCNINetDir
 	installValues.DestCNIBinDir = options.destCNIBinDir
 	installValues.UseWaitFlag = options.useWaitFlag

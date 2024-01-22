@@ -156,6 +156,7 @@ items:
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            runAsGroup: 2102
             runAsNonRoot: true
             runAsUser: 2102
             seccompProfile:
@@ -188,6 +189,8 @@ items:
           - "4140"
           - --proxy-uid
           - "2102"
+          - --proxy-gid
+          - "2102"
           - --inbound-ports-to-ignore
           - 4190,4191,4567,4568
           - --outbound-ports-to-ignore
@@ -210,6 +213,7 @@ items:
               - NET_RAW
             privileged: false
             readOnlyRootFilesystem: true
+            runAsGroup: 65534
             runAsNonRoot: true
             runAsUser: 65534
             seccompProfile:
@@ -387,6 +391,7 @@ items:
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            runAsGroup: 2102
             runAsNonRoot: true
             runAsUser: 2102
             seccompProfile:
@@ -414,6 +419,8 @@ items:
           - "4140"
           - --proxy-uid
           - "2102"
+          - --proxy-gid
+          - "2102"
           - --inbound-ports-to-ignore
           - 4190,4191,4567,4568
           - --outbound-ports-to-ignore
@@ -436,6 +443,7 @@ items:
               - NET_RAW
             privileged: false
             readOnlyRootFilesystem: true
+            runAsGroup: 65534
             runAsNonRoot: true
             runAsUser: 65534
             seccompProfile:

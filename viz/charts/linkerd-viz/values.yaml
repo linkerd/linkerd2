@@ -26,6 +26,8 @@ defaultLogLevel: info
 defaultLogFormat: plain
 # -- UID for all the viz components
 defaultUID: 2103
+# -- GID for all the viz components
+defaultGID: 2103
 
 # -- Namespace of the Linkerd core control-plane install
 linkerdNamespace: linkerd
@@ -118,6 +120,9 @@ metricsAPI:
 
   # -- UID for the metrics-api resource
   UID:
+
+  # -- GID for the metrics-api resource
+  gID:
 
   # -- NodeSelector section, See the
   # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information
@@ -218,6 +223,9 @@ tap:
   # -- UID for the dashboard resource
   UID:
 
+  # -- GID for the dashboard resource
+  GID:
+
   # -- tap service configuration
   service:
     # -- Additional annotations to add to tap service
@@ -258,6 +266,8 @@ tapInjector:
     #   foo: bar
   # -- UID for the tapInjector resource
   UID:
+  # -- GID for the tapInjector resource
+  GID:
   failurePolicy: Ignore
   resources:
     cpu:
@@ -345,6 +355,9 @@ dashboard:
 
   # -- UID for the dashboard resource
   UID:
+
+  # -- GID for the dashboard resource
+  GID:
 
   # -- Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check
   restrictPrivileges: false

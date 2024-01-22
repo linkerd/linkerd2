@@ -82,6 +82,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.webhook.UID | default .Values.defaultUID}}
+          runAsGroup: {{.Values.webhook.GID | default .Values.defaultGID}}
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:

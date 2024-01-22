@@ -454,6 +454,7 @@ spec:
           runAsNonRoot: true
           readOnlyRootFilesystem: true
           runAsUser: 2103
+          runAsGroup: 2103
           seccompProfile:
             type: RuntimeDefault
       securityContext:
@@ -761,9 +762,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 65534
           runAsNonRoot: true
           runAsUser: 65534
-          runAsGroup: 65534
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:
@@ -928,6 +929,7 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
           seccompProfile:
@@ -1140,6 +1142,7 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
           seccompProfile:
@@ -1316,6 +1319,7 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
           seccompProfile:
