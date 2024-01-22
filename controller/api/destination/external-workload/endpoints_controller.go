@@ -3,7 +3,6 @@ package externalworkload
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -20,6 +19,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/util/workqueue"
+	endpointslicerec "k8s.io/endpointslice"
 )
 
 const (
@@ -84,10 +84,10 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 	}
 
 	_, err := k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ec.updateService,
-		DeleteFunc: ec.updateService,
+		AddFunc:    ec.onServiceUpdate,
+		DeleteFunc: ec.onServiceUpdate,
 		UpdateFunc: func(_, newObj interface{}) {
-			ec.updateService(newObj)
+			ec.onServiceUpdate(newObj)
 		},
 	})
 
@@ -96,56 +96,11 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 	}
 
 	_, err = k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			es, ok := obj.(*discoveryv1.EndpointSlice)
-			if !ok {
-				ec.log.Debugf("couldn't get EndpointSlice from object %#v", obj)
-				return
-			}
-
-			ec.syncEndpointSlice(es)
+		AddFunc: ec.onEndpointSliceAdd,
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			ec.onEndpointSliceUpdate(oldObj, newObj)
 		},
-		UpdateFunc: func(oldObj interface{}, newObj interface{}) {
-			prevEs, ok := oldObj.(*discoveryv1.EndpointSlice)
-			if !ok {
-				ec.log.Debugf("couldn't get EndpointSlice from object %#v", prevEs)
-				return
-			}
-
-			newEs, ok := newObj.(*discoveryv1.EndpointSlice)
-			if !ok {
-				ec.log.Debugf("couldn't get EndpointSlice from object %#v", newEs)
-				return
-			}
-
-			// Check whether any of the owned by labels have changed. If they
-			// have, it might be an indication that a user has manually modified
-			// the slice.
-			if newEs.Labels[discoveryv1.LabelServiceName] != prevEs.Labels[discoveryv1.LabelServiceName] {
-				ec.syncEndpointSlice(newEs)
-				ec.syncEndpointSlice(prevEs)
-			} else {
-				ec.syncEndpointSlice(newEs)
-			}
-
-		},
-		DeleteFunc: func(obj interface{}) {
-			es, ok := obj.(*discoveryv1.EndpointSlice)
-			if !ok {
-				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-				if !ok {
-					ec.log.Errorf("couldn't get object from tombstone %+v", obj)
-					return
-				}
-				es, ok = tombstone.Obj.(*discoveryv1.EndpointSlice)
-				if !ok {
-					ec.log.Errorf("tombstone contained object that is not an EndpointSlice %+v", obj)
-					return
-				}
-			}
-
-			ec.syncEndpointSlice(es)
-		},
+		DeleteFunc: ec.onEndpointSliceDelete,
 	})
 
 	if err != nil {
@@ -153,88 +108,9 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 	}
 
 	_, err = k8sAPI.ExtWorkload().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			ew, ok := obj.(*ewv1alpha1.ExternalWorkload)
-			if !ok {
-				ec.log.Errorf("couldn't get ExternalWorkload from object %#v", obj)
-				return
-			}
-
-			if len(ew.Spec.WorkloadIPs) == 0 {
-				ec.log.Debugf("ExternalWorkload %s/%s has no IP addresses", ew.Namespace, ew.Name)
-				return
-			}
-
-			if len(ew.Spec.Ports) == 0 {
-				ec.log.Debugf("ExternalWorkload %s/%s has no ports", ew.Namespace, ew.Name)
-				return
-			}
-
-			services, err := ec.getSvcMembership(ew)
-			if err != nil {
-				ec.log.Errorf("failed to get service membership for %s/%s: %v", ew.Namespace, ew.Name, err)
-				return
-			}
-
-			for _, svc := range services {
-				ec.queue.Add(svc)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			ew, ok := obj.(*ewv1alpha1.ExternalWorkload)
-			if !ok {
-				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-				if !ok {
-					ec.log.Errorf("couldn't get object from tombstone %+v", obj)
-					return
-				}
-				ew, ok = tombstone.Obj.(*ewv1alpha1.ExternalWorkload)
-				if !ok {
-					ec.log.Errorf("tombstone contained object that is not an ExternalWorkload %+v", obj)
-					return
-				}
-			}
-
-			services, err := ec.getSvcMembership(ew)
-			if err != nil {
-				ec.log.Errorf("failed to get service membership for %s/%s: %v", ew.Namespace, ew.Name, err)
-				return
-			}
-
-			for _, svc := range services {
-				ec.queue.Add(svc)
-			}
-		},
-		UpdateFunc: func(oldObj, newObj interface{}) {
-			old, ok := oldObj.(*ewv1alpha1.ExternalWorkload)
-			if !ok {
-				ec.log.Errorf("couldn't get ExternalWorkload from object %#v", oldObj)
-				return
-			}
-
-			updated, ok := newObj.(*ewv1alpha1.ExternalWorkload)
-			if !ok {
-				ec.log.Errorf("couldn't get ExternalWorkload from object %#v", newObj)
-				return
-			}
-
-			// Ignore resync updates. If nothing has changed in the object, then
-			// the update processing is redudant.
-			if old.ResourceVersion == updated.ResourceVersion {
-				ec.log.Tracef("skipping ExternalWorkload resync update event")
-				return
-			}
-
-			services, err := ec.servicesToUpdate(old, updated)
-			if err != nil {
-				ec.log.Errorf("failed to get list of services to update: %v", err)
-				return
-			}
-
-			for _, svc := range services {
-				ec.queue.Add(svc)
-			}
-		},
+		AddFunc:    ec.onAddExternalWorkload,
+		DeleteFunc: ec.onDeleteExternalWorkload,
+		UpdateFunc: ec.onUpdateExternalWorkload,
 	})
 
 	if err != nil {
@@ -348,7 +224,7 @@ func (ec *EndpointsController) processQueue() {
 		}
 
 		key := item.(string)
-		err := ec.processUpdate(key)
+		err := ec.syncService(key)
 		ec.handleError(err, key)
 
 		// Tell the queue that we are done processing this key. This will
@@ -359,9 +235,33 @@ func (ec *EndpointsController) processQueue() {
 	}
 }
 
-// processUpdate will run a reconciliation function for a single Service object
+// handleError will look at the result of the queue update processing step and
+// decide whether an update should be re-tried or marked as done.
+//
+// The queue operates with an error budget. When exceeded, the item is evicted
+// from the queue (and its retry history wiped). Otherwise, the item is enqueued
+// according to the queue's rate limiting algorithm.
+func (ec *EndpointsController) handleError(err error, key string) {
+	if err == nil {
+		// Wipe out rate limiting history for key when processing was successful.
+		// Next time this key is used, it will get its own fresh rate limiter
+		// error budget
+		ec.queue.Forget(key)
+		return
+	}
+
+	if ec.queue.NumRequeues(key) < maxRetryBudget {
+		ec.queue.AddRateLimited(key)
+		return
+	}
+
+	ec.queue.Forget(key)
+	ec.log.Errorf("dropped Service %s out of update queue: %v", key, err)
+}
+
+// syncService will run a reconciliation function for a single Service object
 // that needs to have its EndpointSlice objects reconciled.
-func (ec *EndpointsController) processUpdate(update string) error {
+func (ec *EndpointsController) syncService(update string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(update)
 	if err != nil {
 		return err
@@ -376,8 +276,8 @@ func (ec *EndpointsController) processUpdate(update string) error {
 			return err
 		}
 
-		// Nothing to do if the service is not found, return nil to guarantee
-		// operation won't be retried.
+		ec.reconciler.endpointTracker.DeleteService(namespace, name)
+		// The service has been deleted, return nil so that it won't be retried.
 		return nil
 	}
 
@@ -410,7 +310,7 @@ func (ec *EndpointsController) processUpdate(update string) error {
 		return err
 	}
 
-	epSlices = filterEndpointSlices(epSlices)
+	epSlices = dropEndpointSlicesPendingDeletion(epSlices)
 	if ec.reconciler.endpointTracker.StaleSlices(svc, epSlices) {
 		return errors.New("EndpointSlice informer cache is out of date")
 	}
@@ -422,58 +322,14 @@ func (ec *EndpointsController) processUpdate(update string) error {
 	return nil
 }
 
-// filterEndpointSlices will return a new slice (of EndpointSlices) that
-// contains only resources that have not been marked for GC by the APIServer.
-func filterEndpointSlices(es []*discoveryv1.EndpointSlice) []*discoveryv1.EndpointSlice {
-	n := 0
-	for _, s := range es {
-		// Append at the head
-		if s.DeletionTimestamp == nil {
-			es[n] = s
-			n++
-		}
-	}
-
-	// Only return n most slices where n is the number of elements that are
-	// valid
-	return es[:n]
-}
-
-// handleError will look at the result of the queue update processing step and
-// decide whether an update should be re-tried or marked as done.
-//
-// The queue operates with an error budget. When exceeded, the item is evicted
-// from the queue (and its retry history wiped). Otherwise, the item is enqueued
-// according to the queue's rate limiting algorithm.
-func (ec *EndpointsController) handleError(err error, key string) {
-	if err == nil {
-		// Wipe out rate limiting history for key when processing was successful.
-		// Next time this key is used, it will get its own fresh rate limiter
-		// error budget
-		ec.queue.Forget(key)
-		return
-	}
-
-	if ec.queue.NumRequeues(key) < maxRetryBudget {
-		ec.queue.AddRateLimited(key)
-		return
-	}
-
-	ec.queue.Forget(key)
-	ec.log.Errorf("dropped Service %s out of update queue: %v", key, err)
-}
-
-// === Callbacks ===
-
 // When a service update has been received (regardless of the event type, i.e.
 // can be Added, Modified, Deleted) send it to the endpoint controller for
 // processing.
-func (ec *EndpointsController) updateService(obj interface{}) {
-	// Use client-go's generic key function to make a key of the format
-	// <namespace>/<name>
+func (ec *EndpointsController) onServiceUpdate(obj interface{}) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
 		ec.log.Infof("failed to get key for object %+v: %v", obj, err)
+		return
 	}
 
 	namespace, _, err := cache.SplitMetaNamespaceKey(key)
@@ -489,217 +345,120 @@ func (ec *EndpointsController) updateService(obj interface{}) {
 	ec.queue.Add(key)
 }
 
-func (ec *EndpointsController) syncEndpointSlice(es *discoveryv1.EndpointSlice) {
-	if es.Labels[discoveryv1.LabelManagedBy] != managedBy {
+// onEndpointSliceAdd queues a sync for the relevant Service for a sync if the
+// EndpointSlice resource version does not match the expected version in the
+// endpointSliceTracker.
+func (ec *EndpointsController) onEndpointSliceAdd(obj interface{}) {
+	es := obj.(*discoveryv1.EndpointSlice)
+	if es == nil {
+		ec.log.Info("Invalid EndpointSlice provided to onEndpointSliceAdd()")
 		return
 	}
-	svcName, ok := es.Labels[discoveryv1.LabelServiceName]
-	if !ok || svcName == "" {
-		ec.log.Debugf("skipping EndpointSlice update since it has no owner service")
+
+	if managedByController(es) && ec.reconciler.endpointTracker.ShouldSync(es) {
+		ec.queueServiceForEndpointSlice(es)
+	}
+}
+
+// onEndpointSliceUpdate queues a sync for the relevant Service for a sync if
+// the EndpointSlice resource version does not match the expected version in the
+// endpointSliceTracker or the managed-by value of the EndpointSlice has changed
+// from or to this controller.
+func (ec *EndpointsController) onEndpointSliceUpdate(prevObj, obj interface{}) {
+	prevEndpointSlice := prevObj.(*discoveryv1.EndpointSlice)
+	endpointSlice := obj.(*discoveryv1.EndpointSlice)
+	if endpointSlice == nil || prevEndpointSlice == nil {
+		ec.log.Info("Invalid EndpointSlice provided to onEndpointSliceUpdate()")
 		return
 	}
-	if ec.reconciler.endpointTracker.ShouldSync(es) {
-		ec.queue.Add(fmt.Sprintf("%s/%s", es.Namespace, svcName))
+
+	// EndpointSlice generation does not change when labels change. Although the
+	// controller will never change LabelServiceName, users might. This check
+	// ensures that we handle changes to this label.
+	svcName := endpointSlice.Labels[discoveryv1.LabelServiceName]
+	prevSvcName := prevEndpointSlice.Labels[discoveryv1.LabelServiceName]
+	if svcName != prevSvcName {
+		ec.log.Infof("label changed label: %s, oldService: %s, newService: %s, endpointsliece: %s", discoveryv1.LabelServiceName, prevSvcName, svcName, endpointSlice.Name)
+		ec.queueServiceForEndpointSlice(endpointSlice)
+		ec.queueServiceForEndpointSlice(prevEndpointSlice)
+		return
+	}
+	if managedByChanged(prevEndpointSlice, endpointSlice) ||
+		(managedByController(endpointSlice) && ec.reconciler.endpointTracker.ShouldSync(endpointSlice)) {
+		ec.queueServiceForEndpointSlice(endpointSlice)
 	}
 }
 
-func isReady(ew *ewv1alpha1.ExternalWorkload) bool {
-	if len(ew.Status.Conditions) == 0 {
-		return false
-	}
-
-	// Loop through the conditions and look at each condition in turn starting
-	// from the top.
-	for i := range ew.Status.Conditions {
-		cond := ew.Status.Conditions[i]
-		// Stop once we find a 'Ready' condition. We expect a resource to only
-		// have one 'Ready' type condition.
-		if cond.Type == ewv1alpha1.WorkloadReady && cond.Status == ewv1alpha1.ConditionTrue {
-			return true
+// onEndpointSliceDelete queues a sync for the relevant Service for a sync if the
+// EndpointSlice resource version does not match the expected version in the
+// endpointSliceTracker.
+func (ec *EndpointsController) onEndpointSliceDelete(obj interface{}) {
+	endpointSlice := ec.getEndpointSliceFromDeleteAction(obj)
+	if endpointSlice != nil && managedByController(endpointSlice) && ec.reconciler.endpointTracker.Has(endpointSlice) {
+		// This returns false if we didn't expect the EndpointSlice to be
+		// deleted. If that is the case, we queue the Service for another sync.
+		if !ec.reconciler.endpointTracker.HandleDeletion(endpointSlice) {
+			ec.queueServiceForEndpointSlice(endpointSlice)
 		}
 	}
-
-	return false
 }
 
-// === Util ===
-
-// Check whether two label sets are matching
-func labelsChanged(old, updated *ewv1alpha1.ExternalWorkload) bool {
-	if len(old.Labels) != len(updated.Labels) {
-		return true
-	}
-
-	for upK, upV := range updated.Labels {
-		oldV, ok := old.Labels[upK]
-		if !ok || oldV != upV {
-			return true
-		}
-	}
-
-	return false
-}
-
-// specChanged will check whether two workload resource specs have changed
-//
-// Note: we are interested in changes to the ports, ips and readiness fields
-// since these are going to influence a change in a service's underlying
-// endpoint slice
-func specChanged(old, updated *ewv1alpha1.ExternalWorkload) bool {
-	if isReady(old) != isReady(updated) {
-		return true
-	}
-
-	if len(old.Spec.Ports) != len(updated.Spec.Ports) ||
-		len(old.Spec.WorkloadIPs) != len(updated.Spec.WorkloadIPs) {
-		return true
-	}
-
-	// Determine if the ports have changed between workload resources
-	portSet := make(map[int32]ewv1alpha1.PortSpec)
-	for _, ps := range updated.Spec.Ports {
-		portSet[ps.Port] = ps
-	}
-
-	for _, oldPs := range old.Spec.Ports {
-		// If the port number is present in the new workload but not the old
-		// one, then we have a diff and we return early
-		newPs, ok := portSet[oldPs.Port]
-		if !ok {
-			return true
-		}
-
-		// If the port is present in both workloads, we check to see if any of
-		// the port spec's values have changed, e.g. name or protocol
-		if newPs.Name != oldPs.Name || newPs.Protocol != oldPs.Protocol {
-			return true
-		}
-	}
-
-	// Determine if the ips have changed between workload resources. If an IP
-	// is documented for one workload but not the other, then we have a diff.
-	ipSet := make(map[string]struct{})
-	for _, addr := range updated.Spec.WorkloadIPs {
-		ipSet[addr.Ip] = struct{}{}
-	}
-
-	for _, addr := range old.Spec.WorkloadIPs {
-		if _, ok := ipSet[addr.Ip]; !ok {
-			return true
-		}
-	}
-
-	return false
-}
-
-func toSet(s []string) map[string]struct{} {
-	set := map[string]struct{}{}
-	for _, k := range s {
-		set[k] = struct{}{}
-	}
-	return set
-}
-
-// servicesToUpdate will look at an old and an updated external workload
-// resource and determine which services need to be reconciled. The outcome is
-// determined by what has changed in-between resources (selections, spec, or
-// both).
-func (ec *EndpointsController) servicesToUpdate(old, updated *ewv1alpha1.ExternalWorkload) ([]string, error) {
-	labelsChanged := labelsChanged(old, updated)
-	specChanged := specChanged(old, updated)
-	if !labelsChanged && !specChanged {
-		ec.log.Debugf("skipping update; nothing has changed between old rv %s and new rv %s", old.ResourceVersion, updated.ResourceVersion)
-		return nil, nil
-	}
-
-	newSelection, err := ec.getSvcMembership(updated)
+// queueServiceForEndpointSlice attempts to queue the corresponding Service for
+// the provided EndpointSlice.
+func (ec *EndpointsController) queueServiceForEndpointSlice(endpointSlice *discoveryv1.EndpointSlice) {
+	key, err := endpointslicerec.ServiceControllerKey(endpointSlice)
 	if err != nil {
-		return nil, err
-
+		ec.log.Errorf("Couldn't get key for EndpointSlice %+v: %v", endpointSlice, err)
+		return
 	}
 
-	oldSelection, err := ec.getSvcMembership(old)
-	if err != nil {
-		return nil, err
-	}
-
-	result := map[string]struct{}{}
-	// Determine the list of services we need to update based on the difference
-	// between our old and updated workload.
-	//
-	// Service selections (i.e. services that select a workload through a label
-	// selector) may reference an old workload, a new workload, or both,
-	// depending on the workload's labels.
-	if labelsChanged && specChanged {
-		// When the selection has changed, and the workload has changed, all
-		// services need to be updated so we consider the union of selections.
-		result = toSet(append(newSelection, oldSelection...))
-	} else if specChanged {
-		// When the workload resource has changed, it is enough to consider
-		// either the oldSelection slice or the newSelection slice, since they
-		// are equal. We have the same set of services to update since no
-		// selection has been changed by the update.
-		return newSelection, nil
-	} else {
-		// When the selection has changed, then we need to consider only
-		// services that reference the old workload's labels, or the new
-		// workload's labels, but not both. Services that select both are
-		// unchanged since the workload has not changed.
-		newSelectionSet := toSet(newSelection)
-		oldSelectionSet := toSet(oldSelection)
-
-		// Determine selections that reference only the old workload resource
-		for _, oldSvc := range oldSelection {
-			if _, ok := newSelectionSet[oldSvc]; !ok {
-				result[oldSvc] = struct{}{}
-			}
-		}
-
-		// Determine selections that reference only the new workload resource
-		for _, newSvc := range newSelection {
-			if _, ok := oldSelectionSet[newSvc]; !ok {
-				result[newSvc] = struct{}{}
-			}
-		}
-	}
-
-	var resultSlice []string
-	for svc := range result {
-		resultSlice = append(resultSlice, svc)
-	}
-
-	return resultSlice, nil
+	ec.queue.Add(key)
 }
 
-// getSvcMembership accepts a pointer to an external workload resource and
-// returns a set of service keys (<namespace>/<name>). The set includes all
-// services local to the workload's namespace that match the workload.
-func (ec *EndpointsController) getSvcMembership(workload *ewv1alpha1.ExternalWorkload) ([]string, error) {
-	keys := []string{}
-	services, err := ec.k8sAPI.Svc().Lister().Services(workload.Namespace).List(labels.Everything())
+func (ec *EndpointsController) onAddExternalWorkload(obj interface{}) {
+	ew, ok := obj.(*ewv1alpha1.ExternalWorkload)
+	if !ok {
+		ec.log.Errorf("couldn't get ExternalWorkload from object %#v", obj)
+		return
+	}
+
+	services, err := ec.getExternalWorkloadSvcMembership(ew)
 	if err != nil {
-		return keys, err
+		ec.log.Errorf("failed to get service membership for %s/%s: %v", ew.Namespace, ew.Name, err)
+		return
 	}
 
 	for _, svc := range services {
-		if svc.Spec.Selector == nil {
-			continue
-		}
+		ec.queue.Add(svc)
+	}
+}
 
-		// Taken from upstream k8s code, this checks whether a given object has
-		// a deleted state before returning a `namespace/name` key. This is
-		// important since we do not want to consider a service that has been
-		// deleted and is waiting for cache eviction
-		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(svc)
-		if err != nil {
-			return []string{}, err
-		}
-
-		// Check if service selects our ExternalWorkload.
-		if labels.ValidatedSetSelector(svc.Spec.Selector).Matches(labels.Set(workload.Labels)) {
-			keys = append(keys, key)
-		}
+func (ec *EndpointsController) onUpdateExternalWorkload(old, cur interface{}) {
+	services, err := ec.getServicesToUpdateOnExternalWorkloadChange(old, cur)
+	if err != nil {
+		ec.log.Error(err)
+		return
 	}
 
-	return keys, nil
+	for _, svc := range services {
+		ec.queue.Add(svc)
+	}
+}
+
+func (ec *EndpointsController) onDeleteExternalWorkload(obj interface{}) {
+	ew := ec.getExternalWorkloadFromDeleteAction(obj)
+	if ew != nil {
+		ec.onAddExternalWorkload(ew)
+	}
+}
+
+func dropEndpointSlicesPendingDeletion(endpointSlices []*discoveryv1.EndpointSlice) []*discoveryv1.EndpointSlice {
+	n := 0
+	for _, endpointSlice := range endpointSlices {
+		if endpointSlice.DeletionTimestamp == nil {
+			endpointSlices[n] = endpointSlice
+			n++
+		}
+	}
+	return endpointSlices[:n]
 }
