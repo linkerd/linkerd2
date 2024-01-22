@@ -37,6 +37,8 @@ type (
 	PodID = ID
 	// ProfileID is the namespace-qualified name of a service profile.
 	ProfileID = ID
+	// PodID is the namespace-qualified name of an ExternalWorkload.
+	ExternalWorkloadID = ID
 
 	// Port is a numeric port.
 	Port      = uint32

@@ -36,6 +36,9 @@ func Main(args []string) {
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
 	defaultOpaquePorts := cmd.String("default-opaque-ports", "", "configures the default opaque ports")
 	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
+	// This will default to true. It can be overridden with experimental CLI
+	// flags. Currently not exposed as a configuration value through Helm.
+	exportControllerQueueMetrics := cmd.Bool("export-queue-metrics", true, "Exports queue metrics for the external workload controller")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
@@ -116,7 +119,7 @@ func Main(args []string) {
 			*kubeConfigPath,
 			true,
 			"local",
-			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
+			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv, k8s.ExtWorkload,
 		)
 	}
 	if err != nil {
@@ -164,7 +167,7 @@ func Main(args []string) {
 	if !ok {
 		log.Fatal("Failed to initialize External Workload Endpoints Controller, \"HOSTNAME\" value not found")
 	}
-	externalWorkloadController, err := externalworkload.NewEndpointsController(k8sAPI, hostname, *controllerNamespace, done)
+	externalWorkloadController, err := externalworkload.NewEndpointsController(k8sAPI, hostname, *controllerNamespace, done, *exportControllerQueueMetrics)
 	if err != nil {
 		log.Fatal("Failed to initialize External Workload Endpoints Controller: %v", err)
 	}

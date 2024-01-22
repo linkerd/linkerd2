@@ -55,6 +55,7 @@ const (
 	ServerKind      = "Server"
 	HTTPRouteKind   = "HTTPRoute"
 	ExtWorkloadKind = "ExternalWorkload"
+	PodKind         = "Pod"
 
 	WorkloadAPIGroup   = "workload.linkerd.io"
 	WorkloadAPIVersion = "v1alpha1"

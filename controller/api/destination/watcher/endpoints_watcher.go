@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
@@ -36,6 +37,7 @@ const (
 )
 
 const endpointTargetRefPod = "Pod"
+const endpointTargetRefExternalWorkload = "ExternalWorkload"
 
 type (
 	// Address represents an individual port on a specific endpoint.
@@ -47,6 +49,7 @@ type (
 		IP                string
 		Port              Port
 		Pod               *corev1.Pod
+		ExternalWorkload  *ewv1alpha1.ExternalWorkload
 		OwnerName         string
 		OwnerKind         string
 		Identity          string
@@ -704,13 +707,8 @@ func (sp *servicePublisher) updateServer(server *v1beta2.Server, isAdd bool) {
 	sp.Lock()
 	defer sp.Unlock()
 
-	selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
-	if err != nil {
-		sp.log.Errorf("failed to create Selector: %s", err)
-		return
-	}
 	for _, pp := range sp.ports {
-		pp.updateServer(server, selector, isAdd)
+		pp.updateServer(server, isAdd)
 	}
 }
 
@@ -899,6 +897,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
 				}
+
 				address.Zone = endpoint.Zone
 				if endpoint.Hints != nil {
 					zones := make([]discovery.ForZone, len(endpoint.Hints.ForZones))
@@ -907,6 +906,32 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 				}
 				addresses[id] = address
 			}
+		}
+
+		if endpoint.TargetRef.Kind == endpointTargetRefExternalWorkload {
+			for _, IPAddr := range endpoint.Addresses {
+				address, id, err := pp.newExtRefAddress(resolvedPort, IPAddr, endpoint.TargetRef.Name, es.Namespace)
+				if err != nil {
+					pp.log.Errorf("Unable to create new address: %v", err)
+					continue
+				}
+
+				err = setToServerProtocolExternalWorkload(pp.k8sAPI, &address, resolvedPort)
+				if err != nil {
+					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
+					continue
+				}
+
+				address.Zone = endpoint.Zone
+				if endpoint.Hints != nil {
+					zones := make([]discovery.ForZone, len(endpoint.Hints.ForZones))
+					copy(zones, endpoint.Hints.ForZones)
+					address.ForZones = zones
+				}
+
+				addresses[id] = address
+			}
+
 		}
 
 	}
@@ -1050,6 +1075,33 @@ func (pp *portPublisher) newPodRefAddress(endpointPort Port, endpointIP, podName
 	return addr, id, nil
 }
 
+func (pp *portPublisher) newExtRefAddress(endpointPort Port, endpointIP, externalWorkloadName, externalWorkloadNamespace string) (Address, ExternalWorkloadID, error) {
+	id := ExternalWorkloadID{
+		Name:      externalWorkloadName,
+		Namespace: externalWorkloadNamespace,
+	}
+
+	ew, err := pp.k8sAPI.ExtWorkload().Lister().ExternalWorkloads(id.Namespace).Get(id.Name)
+	if err != nil {
+		return Address{}, ExternalWorkloadID{}, fmt.Errorf("unable to fetch ExternalWorkload %v: %w", id, err)
+	}
+
+	addr := Address{
+		IP:               endpointIP,
+		Port:             endpointPort,
+		ExternalWorkload: ew,
+	}
+
+	ownerRefs := ew.GetOwnerReferences()
+	if len(ownerRefs) == 1 {
+		parent := ownerRefs[0]
+		addr.OwnerName = parent.Name
+		addr.OwnerName = strings.ToLower(parent.Kind)
+	}
+
+	return addr, id, nil
+}
+
 func (pp *portPublisher) resolveESTargetPort(slicePorts []discovery.EndpointPort) Port {
 	if slicePorts == nil {
 		return undefinedEndpointPort
@@ -1180,12 +1232,21 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 
 	pp.metrics.setSubscribers(len(pp.listeners))
 }
-
-func (pp *portPublisher) updateServer(server *v1beta2.Server, selector labels.Selector, isAdd bool) {
+func (pp *portPublisher) updateServer(server *v1beta2.Server, isAdd bool) {
 	updated := false
 	for id, address := range pp.addresses.Addresses {
-		if address.Pod != nil && selector.Matches(labels.Set(address.Pod.Labels)) {
-			var portMatch bool
+		portMatch := false
+		if address.Pod != nil {
+			selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
+			if err != nil {
+				pp.log.Errorf("failed to create Selector: %s", err)
+				return
+			}
+
+			if !selector.Matches(labels.Set(address.Pod.Labels)) {
+				continue
+			}
+
 			switch server.Spec.Port.Type {
 			case intstr.Int:
 				if server.Spec.Port.IntVal == int32(address.Port) {
@@ -1202,16 +1263,46 @@ func (pp *portPublisher) updateServer(server *v1beta2.Server, selector labels.Se
 			default:
 				continue
 			}
-			if portMatch {
-				if isAdd && server.Spec.ProxyProtocol == opaqueProtocol {
-					address.OpaqueProtocol = true
-				} else {
-					address.OpaqueProtocol = false
+
+		} else if address.ExternalWorkload != nil {
+			selector, err := metav1.LabelSelectorAsSelector(server.Spec.ExternalWorkloadSelector)
+			if err != nil {
+				pp.log.Errorf("failed to create Selector: %s", err)
+				return
+			}
+
+			if !selector.Matches(labels.Set(address.ExternalWorkload.Labels)) {
+				continue
+			}
+
+			switch server.Spec.Port.Type {
+			case intstr.Int:
+				if server.Spec.Port.IntVal == int32(address.Port) {
+					portMatch = true
 				}
-				if pp.addresses.Addresses[id].OpaqueProtocol != address.OpaqueProtocol {
-					pp.addresses.Addresses[id] = address
-					updated = true
+			case intstr.String:
+				for _, p := range address.ExternalWorkload.Spec.Ports {
+					if p.Port == int32(address.Port) && p.Name == server.Spec.Port.StrVal {
+						portMatch = true
+					}
 				}
+			default:
+				continue
+			}
+
+		} else {
+			continue
+		}
+
+		if portMatch {
+			if isAdd && server.Spec.ProxyProtocol == opaqueProtocol {
+				address.OpaqueProtocol = true
+			} else {
+				address.OpaqueProtocol = false
+			}
+			if pp.addresses.Addresses[id].OpaqueProtocol != address.OpaqueProtocol {
+				pp.addresses.Addresses[id] = address
+				updated = true
 			}
 		}
 	}
@@ -1393,6 +1484,47 @@ func SetToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
 							portMatch = true
 						}
 					}
+				}
+			default:
+				continue
+			}
+			if portMatch {
+				address.OpaqueProtocol = true
+				return nil
+			}
+		}
+	}
+	return nil
+}
+
+// setToServerProtocolExternalWorkload sets the address's OpaqueProtocol field based off any
+// Servers that select it and override the expected protocol for ExternalWorkloads.
+func setToServerProtocolExternalWorkload(k8sAPI *k8s.API, address *Address, port Port) error {
+	if address.ExternalWorkload == nil {
+		return fmt.Errorf("endpoint not backed by ExternalWorkload: %s:%d", address.IP, address.Port)
+	}
+	servers, err := k8sAPI.Srv().Lister().Servers("").List(labels.Everything())
+	if err != nil {
+		return fmt.Errorf("failed to list Servers: %w", err)
+	}
+	for _, server := range servers {
+		selector, err := metav1.LabelSelectorAsSelector(server.Spec.ExternalWorkloadSelector)
+		if err != nil {
+			return fmt.Errorf("failed to create Selector: %w", err)
+		}
+		if server.Spec.ProxyProtocol == opaqueProtocol && selector.Matches(labels.Set(address.ExternalWorkload.Labels)) {
+			var portMatch bool
+			switch server.Spec.Port.Type {
+			case intstr.Int:
+				if server.Spec.Port.IntVal == int32(port) {
+					portMatch = true
+				}
+			case intstr.String:
+				for _, p := range address.ExternalWorkload.Spec.Ports {
+					if p.Port == int32(port) && p.Name == server.Spec.Port.StrVal {
+						portMatch = true
+					}
+
 				}
 			default:
 				continue

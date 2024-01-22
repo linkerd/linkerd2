@@ -8,6 +8,7 @@ package k8s
 import (
 	"fmt"
 
+	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/version"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -510,6 +511,16 @@ func GetPodLabels(ownerKind, ownerName string, pod *corev1.Pod) map[string]strin
 		labels["pod_template_hash"] = pth
 	}
 
+	return labels
+}
+
+// GetExternalWorkloadLabels returns the set of prometheus owner labels for a given ExternalWorkload
+func GetExternalWorkloadLabels(ownerKind, ownerName string, ew *ewv1alpha1.ExternalWorkload) map[string]string {
+	labels := map[string]string{"external_workload": ew.Name}
+
+	if ownerKind != "" && ownerName != "" {
+		labels[ownerKind] = ownerName
+	}
 	return labels
 }
 

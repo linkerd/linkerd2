@@ -11,6 +11,7 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
+	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -94,6 +95,95 @@ var (
 								Value: "0.0.0.0:4143",
 							},
 						},
+					},
+				},
+			},
+		},
+		OpaqueProtocol: true,
+	}
+
+	ew1 = watcher.Address{
+		IP:   "1.1.1.1",
+		Port: 1,
+		ExternalWorkload: &ewv1alpha1.ExternalWorkload{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ew-1",
+				Namespace: "ns",
+			},
+			Spec: ewv1alpha1.ExternalWorkloadSpec{
+				MeshTls: ewv1alpha1.MeshTls{
+					Identity:   "spiffe://some-domain/ew-1",
+					ServerName: "server.local",
+				},
+			},
+		},
+		OwnerKind: "workloadgroup",
+		OwnerName: "wg-name",
+	}
+
+	ew2 = watcher.Address{
+		IP:   "1.1.1.2",
+		Port: 2,
+		ExternalWorkload: &ewv1alpha1.ExternalWorkload{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ew-2",
+				Namespace: "ns",
+				Labels: map[string]string{
+					k8s.ControllerNSLabel:    "linkerd",
+					k8s.ProxyDeploymentLabel: "deployment-name",
+				},
+			},
+			Spec: ewv1alpha1.ExternalWorkloadSpec{
+				MeshTls: ewv1alpha1.MeshTls{
+					Identity:   "spiffe://some-domain/ew-2",
+					ServerName: "server.local",
+				},
+			},
+		},
+	}
+
+	ew3 = watcher.Address{
+		IP:   "1.1.1.3",
+		Port: 3,
+		ExternalWorkload: &ewv1alpha1.ExternalWorkload{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ew-3",
+				Namespace: "ns",
+				Labels: map[string]string{
+					k8s.ControllerNSLabel:    "linkerd",
+					k8s.ProxyDeploymentLabel: "deployment-name",
+				},
+			},
+			Spec: ewv1alpha1.ExternalWorkloadSpec{
+				MeshTls: ewv1alpha1.MeshTls{
+					Identity:   "spiffe://some-domain/ew-3",
+					ServerName: "server.local",
+				},
+			},
+		},
+	}
+
+	ewOpaque = watcher.Address{
+		IP:   "1.1.1.4",
+		Port: 4,
+		ExternalWorkload: &ewv1alpha1.ExternalWorkload{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod4",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					k8s.ProxyOpaquePortsAnnotation: "4",
+				},
+			},
+			Spec: ewv1alpha1.ExternalWorkloadSpec{
+				MeshTls: ewv1alpha1.MeshTls{
+					Identity:   "spiffe://some-domain/ew-opaque",
+					ServerName: "server.local",
+				},
+
+				Ports: []ewv1alpha1.PortSpec{
+					{
+						Port: 4143,
+						Name: "linkerd-proxy",
 					},
 				},
 			},
@@ -429,6 +519,136 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	})
 }
 
+func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
+	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
+		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
+
+		translator.Add(mkAddressSetForExternalWorkloads(ew1, ew2))
+		translator.Remove(mkAddressSetForExternalWorkloads(ew2))
+
+		expectedNumUpdates := 2
+		<-mockGetServer.updatesReceived // Add
+		<-mockGetServer.updatesReceived // Remove
+
+		if len(mockGetServer.updatesReceived) != 0 {
+			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
+		}
+	})
+
+	t.Run("Sends addresses as removed or added", func(t *testing.T) {
+		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
+
+		translator.Add(mkAddressSetForExternalWorkloads(ew1, ew2, ew3))
+		translator.Remove(mkAddressSetForExternalWorkloads(ew3))
+
+		addressesAdded := (<-mockGetServer.updatesReceived).GetAdd().Addrs
+		actualNumberOfAdded := len(addressesAdded)
+		expectedNumberOfAdded := 3
+		if actualNumberOfAdded != expectedNumberOfAdded {
+			t.Fatalf("Expecting [%d] addresses to be added, got [%d]: %v", expectedNumberOfAdded, actualNumberOfAdded, addressesAdded)
+		}
+
+		addressesRemoved := (<-mockGetServer.updatesReceived).GetRemove().Addrs
+		actualNumberOfRemoved := len(addressesRemoved)
+		expectedNumberOfRemoved := 1
+		if actualNumberOfRemoved != expectedNumberOfRemoved {
+			t.Fatalf("Expecting [%d] addresses to be removed, got [%d]: %v", expectedNumberOfRemoved, actualNumberOfRemoved, addressesRemoved)
+		}
+
+		sort.Slice(addressesAdded, func(i, j int) bool {
+			return addressesAdded[i].GetAddr().Port < addressesAdded[j].GetAddr().Port
+		})
+		checkAddressAndWeight(t, addressesAdded[0], ew1, defaultWeight)
+		checkAddressAndWeight(t, addressesAdded[1], ew2, defaultWeight)
+		checkAddress(t, addressesRemoved[0], ew3)
+	})
+
+	t.Run("Sends metric labels with added addresses", func(t *testing.T) {
+		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
+
+		translator.Add(mkAddressSetForExternalWorkloads(ew1))
+
+		update := <-mockGetServer.updatesReceived
+
+		actualGlobalMetricLabels := update.GetAdd().MetricLabels
+		expectedGlobalMetricLabels := map[string]string{"namespace": "service-ns", "service": "service-name"}
+		if diff := deep.Equal(actualGlobalMetricLabels, expectedGlobalMetricLabels); diff != nil {
+			t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", expectedGlobalMetricLabels, actualGlobalMetricLabels)
+		}
+
+		actualAddedAddress1MetricLabels := update.GetAdd().Addrs[0].MetricLabels
+		expectedAddedAddress1MetricLabels := map[string]string{
+			"external_workload": "ew-1",
+			"zone":              "",
+			"workloadgroup":     "wg-name",
+		}
+		if diff := deep.Equal(actualAddedAddress1MetricLabels, expectedAddedAddress1MetricLabels); diff != nil {
+			t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", expectedAddedAddress1MetricLabels, actualAddedAddress1MetricLabels)
+		}
+	})
+
+	t.Run("Sends TlsIdentity and Server Name when enabled", func(t *testing.T) {
+		expectedTLSIdentity := &pb.TlsIdentity{
+			Strategy: &pb.TlsIdentity_UriLikeIdentity_{
+				UriLikeIdentity: &pb.TlsIdentity_UriLikeIdentity{
+					Uri: "spiffe://some-domain/ew-1",
+				},
+			},
+			ServerName: &pb.TlsIdentity_DnsLikeIdentity{
+				Name: "server.local",
+			},
+		}
+
+		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
+
+		translator.Add(mkAddressSetForExternalWorkloads(ew1))
+		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
+		if len(addrs) != 1 {
+			t.Fatalf("Expected [1] address returned, got %v", addrs)
+		}
+
+		actualTLSIdentity := addrs[0].GetTlsIdentity()
+		if diff := deep.Equal(actualTLSIdentity, expectedTLSIdentity); diff != nil {
+			t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTLSIdentity, actualTLSIdentity)
+		}
+	})
+
+	t.Run("Sends Opaque ProtocolHint for opaque ports", func(t *testing.T) {
+		expectedProtocolHint := &pb.ProtocolHint{
+			Protocol: &pb.ProtocolHint_Opaque_{
+				Opaque: &pb.ProtocolHint_Opaque{},
+			},
+			OpaqueTransport: &pb.ProtocolHint_OpaqueTransport{
+				InboundPort: 4143,
+			},
+		}
+
+		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
+
+		translator.Add(mkAddressSetForExternalWorkloads(ewOpaque))
+
+		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
+		if len(addrs) != 1 {
+			t.Fatalf("Expected [1] address returned, got %v", addrs)
+		}
+
+		actualProtocolHint := addrs[0].GetProtocolHint()
+		if diff := deep.Equal(actualProtocolHint, expectedProtocolHint); diff != nil {
+			t.Fatalf("ProtocolHint: %v", diff)
+		}
+	})
+}
+
 func TestEndpointTranslatorTopologyAwareFilter(t *testing.T) {
 	t.Run("Sends one update for add and none for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
@@ -571,6 +791,18 @@ func mkAddressSetForPods(podAddresses ...watcher.Address) watcher.AddressSet {
 	for _, p := range podAddresses {
 		id := watcher.PodID{Name: p.Pod.Name, Namespace: p.Pod.Namespace}
 		set.Addresses[id] = p
+	}
+	return set
+}
+
+func mkAddressSetForExternalWorkloads(ewAddresses ...watcher.Address) watcher.AddressSet {
+	set := watcher.AddressSet{
+		Addresses: make(map[watcher.PodID]watcher.Address),
+		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
+	}
+	for _, ew := range ewAddresses {
+		id := watcher.ExternalWorkloadID{Name: ew.ExternalWorkload.Name, Namespace: ew.ExternalWorkload.Namespace}
+		set.Addresses[id] = ew
 	}
 	return set
 }
