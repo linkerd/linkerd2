@@ -19,18 +19,6 @@ import (
 	utilnet "k8s.io/utils/net"
 )
 
-const (
-	// Name of the controller. Used as an annotation value for all created
-	// EndpointSlice objects
-	managedBy = "linkerd-external-workloads-controller"
-
-	// Max number of endpoints per EndpointSlice
-	maxEndpointsQuota = 100
-
-	// Max number of ports supported in a Service
-	maxEndpointPortsQuota = 100
-)
-
 // endpointsReconciler is a subcomponent of the EndpointsController.
 //
 // Its main responsibility is to reconcile a service's endpoints (by diffing
@@ -44,6 +32,7 @@ type endpointsReconciler struct {
 	// resourceVersion observed for an EndpointSlice
 	endpointTracker *epsliceutil.EndpointSliceTracker
 	maxEndpoints    int
+	// TODO (matei): add metrics around events
 }
 
 // endpointMeta is a helper struct that incldues attributes slices will be
@@ -195,14 +184,8 @@ func (r *endpointsReconciler) reconcileByAddressType(svc *corev1.Service, extWor
 		slicesToDelete = append(slicesToDelete, del...)
 	}
 
-	r.log.Infof("Reconciliation result for %s/%s: %d to add, %d to update, %d to remove", svc.Namespace, svc.Name, len(slicesToCreate), len(slicesToUpdate), len(slicesToDelete))
-
 	// If there are any slices whose ports no longer match what we want in our
 	// current reconciliation, delete them
-	//
-	// Note: in the upstream they run some more complicated diffing before
-	// applying to ensure creates & deletes turn into updates. We simplify and
-	// instead choose to re-create the slice if ports have changed.
 	for _, existingSlice := range existingSlices {
 		portHash := epsliceutil.NewPortMapKey(existingSlice.Ports)
 		if _, ok := desiredEndpointsByPortMap[portHash]; !ok {
@@ -370,13 +353,41 @@ func (r *endpointsReconciler) reconcileEndpointsByPortMap(svc *corev1.Service, e
 // finalize performs writes to the API Server to update the state after it's
 // been diffed.
 func (r *endpointsReconciler) finalize(svc *corev1.Service, slicesToCreate, slicesToUpdate, slicesToDelete []*discoveryv1.EndpointSlice) error {
+	// If there are slices to create and delete, change the creates to updates
+	// of the slices that would otherwise be deleted.
+	for i := 0; i < len(slicesToDelete); {
+		if len(slicesToCreate) == 0 {
+			break
+		}
+		sliceToDelete := slicesToDelete[i]
+		slice := slicesToCreate[len(slicesToCreate)-1]
+		// Only update EndpointSlices that are owned by this Service and have
+		// the same AddressType. We need to avoid updating EndpointSlices that
+		// are being garbage collected for an old Service with the same name.
+		// The AddressType field is immutable. Since Services also consider
+		// IPFamily immutable, the only case where this should matter will be
+		// the migration from IP to IPv4 and IPv6 AddressTypes, where there's a
+		// chance EndpointSlices with an IP AddressType would otherwise be
+		// updated to IPv4 or IPv6 without this check.
+		if sliceToDelete.AddressType == slice.AddressType && ownedBy(sliceToDelete, svc) {
+			slice.Name = sliceToDelete.Name
+			slicesToCreate = slicesToCreate[:len(slicesToCreate)-1]
+			slicesToUpdate = append(slicesToUpdate, slice)
+			slicesToDelete = append(slicesToDelete[:i], slicesToDelete[i+1:]...)
+		} else {
+			i++
+		}
+	}
+
+	r.log.Debugf("reconciliation result for %s/%s: %d to add, %d to update, %d to remove", svc.Namespace, svc.Name, len(slicesToCreate), len(slicesToUpdate), len(slicesToDelete))
+
 	// Create EndpointSlices only if the service has not been marked for
 	// deletion; according to the upstream implementation not doing so has the
 	// potential to cause race conditions
 	if svc.DeletionTimestamp == nil {
 		// TODO: context with timeout
 		for _, slice := range slicesToCreate {
-			r.log.Infof("Starting create: %s/%s", slice.Namespace, slice.GenerateName)
+			r.log.Tracef("starting create: %s/%s", slice.Namespace, slice.Name)
 			createdSlice, err := r.k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Create(context.TODO(), slice, metav1.CreateOptions{})
 			if err != nil {
 				// If the namespace  is terminating, operations will not
@@ -388,28 +399,28 @@ func (r *endpointsReconciler) finalize(svc *corev1.Service, slicesToCreate, slic
 				return err
 			}
 			r.endpointTracker.Update(createdSlice)
-			r.log.Infof("Finished creating: %s/%s", createdSlice.Namespace, createdSlice.Name)
+			r.log.Tracef("finished creating: %s/%s", createdSlice.Namespace, createdSlice.Name)
 		}
 	}
 
 	for _, slice := range slicesToUpdate {
-		r.log.Tracef("Starting update: %s/%s", slice.Namespace, slice.Name)
+		r.log.Tracef("starting update: %s/%s", slice.Namespace, slice.Name)
 		updatedSlice, err := r.k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Update(context.TODO(), slice, metav1.UpdateOptions{})
 		if err != nil {
 			return err
 		}
 		r.endpointTracker.Update(updatedSlice)
-		r.log.Tracef("Finished updating: %s/%s", updatedSlice.Namespace, updatedSlice.Name)
+		r.log.Tracef("finished updating: %s/%s", updatedSlice.Namespace, updatedSlice.Name)
 	}
 
 	for _, slice := range slicesToDelete {
-		r.log.Tracef("Starting delete: %s/%s", slice.Namespace, slice.Name)
+		r.log.Tracef("starting delete: %s/%s", slice.Namespace, slice.Name)
 		err := r.k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Delete(context.TODO(), slice.Name, metav1.DeleteOptions{})
 		if err != nil {
 			return err
 		}
 		r.endpointTracker.ExpectDeletion(slice)
-		r.log.Tracef("Finished deleting: %s/%s", slice.Namespace, slice.Name)
+		r.log.Tracef("finished deleting: %s/%s", slice.Namespace, slice.Name)
 	}
 
 	return nil
@@ -498,8 +509,8 @@ func setEndpointSliceLabels(es *discoveryv1.EndpointSlice, service *corev1.Servi
 	}
 
 	// if the labels are not identical update the slice with the corresponding service labels
-	for epLabelKey, epLabelVal := range svcLabels {
-		svcLabelVal, found := svcLabels[epLabelKey]
+	for svcLabelKey, svcLabelVal := range svcLabels {
+		epLabelVal, found := epLabels[svcLabelKey]
 		if !found {
 			updated = true
 			break
@@ -641,16 +652,7 @@ func findWorkloadPort(ew *ewv1alpha1.ExternalWorkload, svcPort *corev1.ServicePo
 			}
 		}
 	case intstr.Int:
-		// Ensure the port is documented in the workload spec, since we
-		// require it.
-		// Upstream version allows for undocumented container ports here (i.e.
-		// it returns the int value).
-		for _, wPort := range ew.Spec.Ports {
-			port := int32(targetPort.IntValue())
-			if wPort.Port == port && wPort.Protocol == svcPort.Protocol {
-				return port, nil
-			}
-		}
+		return int32(targetPort.IntValue()), nil
 	}
 
 	return 0, fmt.Errorf("no suitable port for targetPort %v on workload %s/%s", targetPort, ew.Namespace, ew.Name)

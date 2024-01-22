@@ -6,6 +6,7 @@ import (
 
 	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"helm.sh/helm/v3/pkg/time"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -45,6 +46,23 @@ func makeExternalWorkload(name string, labels map[string]string, ports map[int32
 
 	ew.ObjectMeta.UID = types.UID(fmt.Sprintf("%s-%s", ew.Namespace, ew.Name))
 	return ew
+}
+
+func newStatusCondition(ready bool) ewv1alpha1.WorkloadCondition {
+	var status ewv1alpha1.WorkloadConditionStatus
+	if ready {
+		status = ewv1alpha1.ConditionTrue
+	} else {
+		status = ewv1alpha1.ConditionFalse
+	}
+	return ewv1alpha1.WorkloadCondition{
+		Type:               ewv1alpha1.WorkloadReady,
+		Status:             status,
+		LastProbeTime:      metav1.Time{},
+		LastTransitionTime: metav1.Time(time.Now()),
+		Reason:             "test",
+		Message:            "test",
+	}
 }
 
 // Test diffing logic that determines if two workloads with the same name and

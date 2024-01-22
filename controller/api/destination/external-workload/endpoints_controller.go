@@ -37,6 +37,13 @@ const (
 	// Core controllers have a value of 2 seconds.
 	leaseRetryPeriod = 2 * time.Second
 
+	// Name of the controller. Used as an annotation value for all created
+	// EndpointSlice objects
+	managedBy = "linkerd-external-workloads-controller"
+
+	// Max number of endpoints per EndpointSlice
+	maxEndpointsQuota = 100
+
 	// Max retries for a service to be reconciled
 	maxRetryBudget = 15
 )
