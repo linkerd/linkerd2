@@ -649,7 +649,7 @@ func (wp *workloadPublisher) updateExternalWorkload(externalWorkload *ext.Extern
 			return
 		}
 
-		if !externalworkload.IsReady(externalWorkload) {
+		if !externalworkload.IsEwReady(externalWorkload) {
 			wp.log.Tracef("ExternalWorkload %s.%s not ready - ignore", externalWorkload.Name, externalWorkload.Namespace)
 			return
 		}
@@ -676,7 +676,7 @@ func (wp *workloadPublisher) updateExternalWorkload(externalWorkload *ext.Extern
 	}
 
 	// backing pod becoming unready or getting deleted
-	if externalWorkload == nil || !externalworkload.IsReady(externalWorkload) {
+	if externalWorkload == nil || !externalworkload.IsEwReady(externalWorkload) {
 		wp.log.Debugf("ExternalWorkload %s.%s deleted or it became unready - remove", wp.externalWorkload.Name, wp.externalWorkload.Namespace)
 		wp.externalWorkload = nil
 		updated := false

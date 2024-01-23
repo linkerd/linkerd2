@@ -542,7 +542,7 @@ func externalWorkloadToEndpoint(addrType discoveryv1.AddressType, ew *ewv1alpha1
 	// * publishNotReadyAddresses (found on a service)
 	// * deletionTimestamps (found normally on a pod)
 	// * or a terminating flag on the endpoint
-	serving := isEwReady(ew)
+	serving := IsEwReady(ew)
 
 	addresses := []string{}
 	// We assume the workload has been validated beforehand and contains a valid

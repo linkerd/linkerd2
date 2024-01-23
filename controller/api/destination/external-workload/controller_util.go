@@ -148,7 +148,7 @@ func ewEndpointsChanged(oldEw, newEw *ewv1alpha1.ExternalWorkload) (bool, bool) 
 	// will move from the unready endpoints set to the ready endpoints.
 	// So for the purposes of an endpoint, a readiness change on an ExternalWorkload
 	// means we have a changed ExternalWorkload.
-	if isEwReady(oldEw) != isEwReady(newEw) {
+	if IsEwReady(oldEw) != IsEwReady(newEw) {
 		return true, labelsChanged
 	}
 
@@ -200,7 +200,7 @@ func managedByChanged(endpointSlice1, endpointSlice2 *discoveryv1.EndpointSlice)
 	return managedByController(endpointSlice1) != managedByController(endpointSlice2)
 }
 
-func isEwReady(ew *ewv1alpha1.ExternalWorkload) bool {
+func IsEwReady(ew *ewv1alpha1.ExternalWorkload) bool {
 	if len(ew.Status.Conditions) == 0 {
 		return false
 	}
