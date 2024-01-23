@@ -128,14 +128,14 @@ func (r *endpointsReconciler) reconcileByAddressType(svc *corev1.Service, extWor
 	//
 	// We follow the upstream here and look at our existing slices and segment
 	// by ports.
-	currentSlicesByPorts := map[epsliceutil.PortMapKey][]*discoveryv1.EndpointSlice{}
+	existingSlicesByPorts := map[epsliceutil.PortMapKey][]*discoveryv1.EndpointSlice{}
 	for _, slice := range existingSlices {
 		// Loop through the endpointslices and figure out which endpointslice
 		// does not have an ownerRef set to the service. If a slice has been
 		// selected but does not point to the service, we delete it.
 		if ownedBy(slice, svc) {
 			hash := epsliceutil.NewPortMapKey(slice.Ports)
-			currentSlicesByPorts[hash] = append(currentSlicesByPorts[hash], slice)
+			existingSlicesByPorts[hash] = append(existingSlicesByPorts[hash], slice)
 		} else {
 			slicesToDelete = append(slicesToDelete, slice)
 		}
@@ -178,7 +178,7 @@ func (r *endpointsReconciler) reconcileByAddressType(svc *corev1.Service, extWor
 	}
 
 	for portKey, desiredEndpoints := range desiredEndpointsByPortMap {
-		create, update, del := r.reconcileEndpointsByPortMap(svc, currentSlicesByPorts[portKey], desiredEndpoints, desiredMetaByPortMap[portKey])
+		create, update, del := r.reconcileEndpointsByPortMap(svc, existingSlicesByPorts[portKey], desiredEndpoints, desiredMetaByPortMap[portKey])
 		slicesToCreate = append(slicesToCreate, create...)
 		slicesToUpdate = append(slicesToUpdate, update...)
 		slicesToDelete = append(slicesToDelete, del...)
@@ -186,10 +186,9 @@ func (r *endpointsReconciler) reconcileByAddressType(svc *corev1.Service, extWor
 
 	// If there are any slices whose ports no longer match what we want in our
 	// current reconciliation, delete them
-	for _, existingSlice := range existingSlices {
-		portHash := epsliceutil.NewPortMapKey(existingSlice.Ports)
+	for portHash, existingSlices := range existingSlicesByPorts {
 		if _, ok := desiredEndpointsByPortMap[portHash]; !ok {
-			slicesToDelete = append(slicesToDelete, existingSlice)
+			slicesToDelete = append(slicesToDelete, existingSlices...)
 		}
 	}
 

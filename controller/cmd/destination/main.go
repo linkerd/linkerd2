@@ -163,17 +163,20 @@ func Main(args []string) {
 	metadataAPI.Sync(nil)
 	clusterStore.Sync(nil)
 
-	hostname, ok := os.LookupEnv("HOSTNAME")
-	if !ok {
-		log.Fatal("Failed to initialize External Workload Endpoints Controller, \"HOSTNAME\" value not found")
-	}
-	externalWorkloadController, err := externalworkload.NewEndpointsController(k8sAPI, hostname, *controllerNamespace, done, *exportControllerQueueMetrics)
-	if err != nil {
-		log.Fatalf("Failed to initialize External Workload Endpoints Controller: %v", err)
-	}
-
 	// Start mesh expansion external workload controller to write endpointslices
-	externalWorkloadController.Start()
+	// to API Server.
+	if *enableEndpointSlices {
+		hostname, ok := os.LookupEnv("HOSTNAME")
+		if !ok {
+			log.Fatal("Failed to initialize External Workload Endpoints Controller, \"HOSTNAME\" value not found")
+		}
+		externalWorkloadController, err := externalworkload.NewEndpointsController(k8sAPI, hostname, *controllerNamespace, done, *exportControllerQueueMetrics)
+		if err != nil {
+			log.Fatalf("Failed to initialize External Workload Endpoints Controller: %v", err)
+		}
+
+		externalWorkloadController.Start()
+	}
 
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)
