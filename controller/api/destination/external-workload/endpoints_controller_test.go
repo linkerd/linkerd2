@@ -9,9 +9,10 @@ import (
 	"helm.sh/helm/v3/pkg/time"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-func makeExternalWorkload(name string, labels map[string]string, ports map[int32]string, ips []string) *ewv1alpha1.ExternalWorkload {
+func makeExternalWorkload(resVersion string, name string, labels map[string]string, ports map[int32]string, ips []string) *ewv1alpha1.ExternalWorkload {
 	portSpecs := []ewv1alpha1.PortSpec{}
 	for port, name := range ports {
 		spec := ewv1alpha1.PortSpec{
@@ -30,9 +31,10 @@ func makeExternalWorkload(name string, labels map[string]string, ports map[int32
 
 	ew := &ewv1alpha1.ExternalWorkload{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: "ns",
-			Labels:    labels,
+			Name:            name,
+			Namespace:       "ns",
+			Labels:          labels,
+			ResourceVersion: resVersion,
 		},
 		Spec: ewv1alpha1.ExternalWorkloadSpec{
 			MeshTls: ewv1alpha1.MeshTls{
@@ -77,12 +79,14 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "no change",
 			old: makeExternalWorkload(
+				"1",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"1",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
@@ -93,12 +97,14 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload adds an IP address",
 			old: makeExternalWorkload(
+				"1",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"2",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
@@ -109,12 +115,14 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload removes an IP address",
 			old: makeExternalWorkload(
+				"1",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0", "192.0.3.0"},
 			),
 			updated: makeExternalWorkload(
+				"2",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
@@ -125,12 +133,14 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload changes an IP address",
 			old: makeExternalWorkload(
+				"1",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"2",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
@@ -141,12 +151,14 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload adds new port",
 			old: makeExternalWorkload(
+				"1",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"2",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1", 2: "port-2"},
@@ -157,12 +169,14 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload removes port",
 			old: makeExternalWorkload(
+				"1",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1", 2: "port-2"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"2",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
@@ -173,12 +187,14 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload changes port number",
 			old: makeExternalWorkload(
+				"1",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"2",
 				"wlkd1",
 				nil,
 				map[int32]string{2: "port-1"},
@@ -189,12 +205,14 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload changes port name",
 			old: makeExternalWorkload(
+				"1",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"2",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-foo"},
@@ -205,12 +223,14 @@ func TestWorkloadSpecChanged(t *testing.T) {
 		{
 			name: "updated workload removes port name",
 			old: makeExternalWorkload(
+				"1",
 				"wlkd1",
 				nil,
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"2",
 				"wlkd1",
 				nil,
 				map[int32]string{1: ""},
@@ -221,9 +241,9 @@ func TestWorkloadSpecChanged(t *testing.T) {
 	} {
 		tt := tt // Pin
 		t.Run(tt.name, func(t *testing.T) {
-			changed := specChanged(tt.old, tt.updated)
-			if tt.expectChanged != changed {
-				t.Errorf("expected changed '%v', got '%v'", tt.expectChanged, changed)
+			specChanged, _ := ewEndpointsChanged(tt.old, tt.updated)
+			if tt.expectChanged != specChanged {
+				t.Errorf("expected changed '%v', got '%v'", tt.expectChanged, specChanged)
 			}
 		})
 
@@ -238,17 +258,19 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
 		old            *ewv1alpha1.ExternalWorkload
 		updated        *ewv1alpha1.ExternalWorkload
 		k8sConfigs     []string
-		expectServices map[string]struct{}
+		expectServices sets.Set[string]
 	}{
 		{
 			name: "no change",
 			old: makeExternalWorkload(
+				"1",
 				"wlkd1",
 				map[string]string{"app": "test"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"1",
 				"wlkd1",
 				map[string]string{"app": "test"},
 				map[int32]string{1: "port-1"},
@@ -264,17 +286,19 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
               selector:
                 app: test`,
 			},
-			expectServices: map[string]struct{}{},
+			expectServices: sets.Set[string]{},
 		},
 		{
 			name: "labels and spec have changed",
 			old: makeExternalWorkload(
+				"1",
 				"wlkd1",
 				map[string]string{"app": "test-1"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"2",
 				"wlkd1",
 				map[string]string{"app": "test-2"},
 				map[int32]string{2: "port-1"},
@@ -298,17 +322,19 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
               selector:
                 app: test-2`,
 			},
-			expectServices: map[string]struct{}{"ns/svc-1": {}, "ns/svc-2": {}},
+			expectServices: sets.Set[string]{"ns/svc-1": {}, "ns/svc-2": {}},
 		},
 		{
 			name: "spec has changed",
 			old: makeExternalWorkload(
+				"1",
 				"wlkd1",
 				map[string]string{"app": "test-1"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"2",
 				"wlkd1",
 				map[string]string{"app": "test-1"},
 				map[int32]string{2: "port-1"},
@@ -324,17 +350,19 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
               selector:
                 app: test-1`,
 			},
-			expectServices: map[string]struct{}{"ns/svc-1": {}},
+			expectServices: sets.Set[string]{"ns/svc-1": {}},
 		},
 		{
 			name: "labels have changed",
 			old: makeExternalWorkload(
+				"1",
 				"wlkd1",
 				map[string]string{"app": "test-1", "env": "staging"},
 				map[int32]string{1: "port-1"},
 				[]string{"192.0.2.0"},
 			),
 			updated: makeExternalWorkload(
+				"2",
 				"wlkd1",
 				map[string]string{"app": "test-1", "env": "prod"},
 				map[int32]string{1: "port-1"},
@@ -366,8 +394,9 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
               selector:
                 env: prod`,
 			},
-			expectServices: map[string]struct{}{"ns/staging": {}, "ns/prod": {}},
-		}} {
+			expectServices: sets.Set[string]{"ns/staging": {}, "ns/prod": {}},
+		},
+	} {
 		tt := tt // Pin
 		t.Run(tt.name, func(t *testing.T) {
 			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs...)
@@ -383,17 +412,14 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
 			ec.Start()
 			k8sAPI.Sync(nil)
 
-			services, err := ec.getServicesToUpdateOnExternalWorkloadChange(tt.old, tt.updated)
-			if err != nil {
-				t.Fatalf("unexpected error %v", err)
-			}
+			services := ec.getServicesToUpdateOnExternalWorkloadChange(tt.old, tt.updated)
 
 			if len(services) != len(tt.expectServices) {
 				t.Fatalf("expected %d services to update, got %d services instead", len(tt.expectServices), len(services))
 			}
 
-			for _, svc := range services {
-				if _, ok := tt.expectServices[svc]; !ok {
+			for svc := range services {
+				if !tt.expectServices.Has(svc) {
 					t.Errorf("unexpected service key %s found in list of results", svc)
 				}
 			}
