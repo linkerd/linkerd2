@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 
@@ -339,6 +340,14 @@ func makeExternalWorkload(resVersion, name string, labels map[string]string, por
 			},
 			Ports:       portSpecs,
 			WorkloadIPs: wIps,
+		},
+		Status: ewv1alpha1.ExternalWorkloadStatus{
+			Conditions: []ewv1alpha1.WorkloadCondition{
+				{
+					Type:   ewv1alpha1.WorkloadReady,
+					Status: ewv1alpha1.ConditionTrue,
+				},
+			},
 		},
 	}
 
@@ -854,6 +863,14 @@ func TestSyncService(t *testing.T) {
 			if !reflect.DeepEqual(testcase.expectedEndpointPorts, slice.Ports) {
 				t.Error("actual ports do not match expected ones")
 			}
+
+			// sort actual endpoints in terms of targetRef name, in ascending
+			// order. This will ensure reflection package doesn't give a
+			// spurious error.
+
+			sort.Slice(slice.Endpoints, func(i, j int) bool {
+				return slice.Endpoints[i].TargetRef.Name < slice.Endpoints[j].TargetRef.Name
+			})
 
 			if !reflect.DeepEqual(testcase.expectedEndpoints, slice.Endpoints) {
 				t.Error("actual endpoints do not match expected ones")

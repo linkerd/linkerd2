@@ -662,7 +662,7 @@ func findWorkloadPort(ew *ewv1alpha1.ExternalWorkload, svcPort *corev1.ServicePo
 			}
 		}
 	}
-	return 0, fmt.Errorf("no suitable port for targetPort %v on workload %s/%s", targetPort, ew.Namespace, ew.Name)
+	return 0, fmt.Errorf("no suitable port for targetPort %s on workload %s/%s", targetPort.String(), ew.Namespace, ew.Name)
 }
 
 // getSupportedAddressTypes will return a set of address families (AF) supported
