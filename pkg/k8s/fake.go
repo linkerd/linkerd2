@@ -75,7 +75,7 @@ func NewFakeAPIFromManifests(readers []io.Reader) (*KubernetesAPI, error) {
 // NewFakeClientSets provides mock Kubernetes ClientSets.
 // TODO: make this private once KubernetesAPI (and NewFakeAPI) supports spClient
 func NewFakeClientSets(configs ...string) (
-	kubernetes.Interface,
+	*fake.Clientset,
 	apiextensionsclient.Interface,
 	apiregistrationclient.Interface,
 	spclient.Interface,

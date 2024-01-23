@@ -58,7 +58,7 @@ func TestReconcilerCreatesNewEndpointSlice(t *testing.T) {
 	}
 
 	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "")
-	ew := makeExternalWorkload("wlkd-1", map[string]string{"app": ""}, map[int32]string{8080: ""}, []string{"192.0.2.0"})
+	ew := makeExternalWorkload("1", "wlkd-1", map[string]string{"app": ""}, map[int32]string{8080: ""}, []string{"192.0.2.0"})
 	ew.ObjectMeta.UID = types.UID(fmt.Sprintf("%s-%s", ew.Namespace, ew.Name))
 
 	r := newEndpointsReconciler(k8sAPI, testControllerName, defaultTestEndpointsQuota)
@@ -97,7 +97,7 @@ func TestReconcilerCreatesNewEndpointSliceHeadless(t *testing.T) {
 
 	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "")
 	svc.Spec.ClusterIP = corev1.ClusterIPNone
-	ew := makeExternalWorkload("wlkd-1", map[string]string{"app": ""}, map[int32]string{8080: ""}, []string{"192.0.2.0"})
+	ew := makeExternalWorkload("1", "wlkd-1", map[string]string{"app": ""}, map[int32]string{8080: ""}, []string{"192.0.2.0"})
 	ew.Namespace = "default"
 	ew.ObjectMeta.UID = types.UID(fmt.Sprintf("%s-%s", ew.Namespace, ew.Name))
 
@@ -144,7 +144,7 @@ func TestReconcilerUpdatesEndpointSlice(t *testing.T) {
 	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "")
 
 	// Create our existing workload
-	ewCreated := makeExternalWorkload("wlkd-1", map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{"192.0.2.1"})
+	ewCreated := makeExternalWorkload("1", "wlkd-1", map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{"192.0.2.1"})
 	ewCreated.ObjectMeta.UID = types.UID(fmt.Sprintf("%s-%s", ewCreated.Namespace, ewCreated.Name))
 
 	// Create an endpointslice
@@ -159,7 +159,7 @@ func TestReconcilerUpdatesEndpointSlice(t *testing.T) {
 	es.Generation = 1
 
 	// Create our "new" workload
-	ewUpdated := makeExternalWorkload("wlkd-2", map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{"192.0.2.0"})
+	ewUpdated := makeExternalWorkload("1", "wlkd-2", map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{"192.0.2.0"})
 	ewUpdated.ObjectMeta.UID = types.UID(fmt.Sprintf("%s-%s", ewUpdated.Namespace, ewUpdated.Name))
 
 	// Convert endpointslice to string and register with fake client
@@ -206,7 +206,7 @@ func TestReconcilerUpdatesEndpointSliceInPlace(t *testing.T) {
 	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "")
 
 	// Create our existing workload
-	ewCreated := makeExternalWorkload("wlkd-1", map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{"192.0.2.1"})
+	ewCreated := makeExternalWorkload("1", "wlkd-1", map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{"192.0.2.1"})
 	ewCreated.ObjectMeta.UID = types.UID(fmt.Sprintf("%s-%s", ewCreated.Namespace, ewCreated.Name))
 
 	// Create an endpointslice
@@ -275,7 +275,7 @@ func TestReconcileEndpointSlicesNamedPorts(t *testing.T) {
 		offset := i % 5
 		genIp := fmt.Sprintf("192.%d.%d.%d", i%5, i%3, i%2)
 		genPort := int32(8080 + offset)
-		ew := makeExternalWorkload(fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{genPort: "http"}, []string{genIp})
+		ew := makeExternalWorkload("1", fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{genPort: "http"}, []string{genIp})
 		ew.Status.Conditions = []ewv1alpha1.WorkloadCondition{newStatusCondition(ready)}
 		ews = append(ews, ew)
 	}
@@ -325,7 +325,7 @@ func TestReconcileManyWorkloads(t *testing.T) {
 	for i := 0; i < 250; i++ {
 		ready := !(i%3 == 0)
 		genIp := fmt.Sprintf("192.%d.%d.%d", i%5, i%3, i%2)
-		ew := makeExternalWorkload(fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
+		ew := makeExternalWorkload("1", fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
 
 		ew.Status.Conditions = []ewv1alpha1.WorkloadCondition{newStatusCondition(ready)}
 		ews = append(ews, ew)
@@ -355,7 +355,7 @@ func TestReconcileEndpointSlicesSomePreexisting(t *testing.T) {
 	for i := 0; i < 250; i++ {
 		ready := !(i%3 == 0)
 		genIp := fmt.Sprintf("192.%d.%d.%d", i%5, i%3, i%2)
-		ew := makeExternalWorkload(fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
+		ew := makeExternalWorkload("1", fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
 
 		ew.Status.Conditions = []ewv1alpha1.WorkloadCondition{newStatusCondition(ready)}
 		ews = append(ews, ew)
@@ -371,7 +371,7 @@ func TestReconcileEndpointSlicesSomePreexisting(t *testing.T) {
 	// Take a quarter of workloads in the first slice
 	for i := 1; i < len(ews)-4; i += 4 {
 		addrs := []string{ews[i].Spec.WorkloadIPs[0].Ip}
-		isReady := isReady(ews[i])
+		isReady := isEwReady(ews[i])
 		es1.Endpoints = append(es1.Endpoints, makeEndpoint(addrs, isReady, ews[i]))
 	}
 
@@ -379,7 +379,7 @@ func TestReconcileEndpointSlicesSomePreexisting(t *testing.T) {
 	// Take a quarter of workloads in the second slice
 	for i := 3; i < len(ews)-4; i += 4 {
 		addrs := []string{ews[i].Spec.WorkloadIPs[0].Ip}
-		isReady := isReady(ews[i])
+		isReady := isEwReady(ews[i])
 		es2.Endpoints = append(es2.Endpoints, makeEndpoint(addrs, isReady, ews[i]))
 	}
 
@@ -415,7 +415,7 @@ func TestReconcileEndpointSlicesUpdatingSvc(t *testing.T) {
 	for i := 0; i < 250; i++ {
 		ready := !(i%3 == 0)
 		genIp := fmt.Sprintf("192.%d.%d.%d", i%5, i%3, i%2)
-		ew := makeExternalWorkload(fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
+		ew := makeExternalWorkload("1", fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
 
 		ew.Status.Conditions = []ewv1alpha1.WorkloadCondition{newStatusCondition(ready)}
 		ews = append(ews, ew)
@@ -468,7 +468,7 @@ func TestReconcileEndpointSlicesLabelsUpdatingSvc(t *testing.T) {
 	for i := 0; i < 250; i++ {
 		ready := !(i%3 == 0)
 		genIp := fmt.Sprintf("192.%d.%d.%d", i%5, i%3, i%2)
-		ew := makeExternalWorkload(fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
+		ew := makeExternalWorkload("1", fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
 
 		ew.Status.Conditions = []ewv1alpha1.WorkloadCondition{newStatusCondition(ready)}
 		ews = append(ews, ew)
@@ -520,7 +520,7 @@ func TestReconcileEndpointSlicesReservedLabelsSvc(t *testing.T) {
 	for i := 0; i < 250; i++ {
 		ready := !(i%3 == 0)
 		genIp := fmt.Sprintf("192.%d.%d.%d", i%5, i%3, i%2)
-		ew := makeExternalWorkload(fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
+		ew := makeExternalWorkload("1", fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
 
 		ew.Status.Conditions = []ewv1alpha1.WorkloadCondition{newStatusCondition(ready)}
 		ews = append(ews, ew)
@@ -575,7 +575,7 @@ func TestEndpointSlicesAreRecycled(t *testing.T) {
 	for i := 0; i < 300; i++ {
 		ready := !(i%3 == 0)
 		genIp := fmt.Sprintf("192.%d.%d.%d", i%5, i%3, i%2)
-		ew := makeExternalWorkload(fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
+		ew := makeExternalWorkload("1", fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
 
 		ew.Status.Conditions = []ewv1alpha1.WorkloadCondition{newStatusCondition(ready)}
 		ews = append(ews, ew)
@@ -596,7 +596,7 @@ func TestEndpointSlicesAreRecycled(t *testing.T) {
 		}
 
 		addrs := []string{ews[i].Spec.WorkloadIPs[0].Ip}
-		isReady := isReady(ews[i])
+		isReady := isEwReady(ews[i])
 		existingSlices[sliceNum].Endpoints = append(existingSlices[sliceNum].Endpoints, makeEndpoint(addrs, isReady, ew))
 	}
 
@@ -898,4 +898,12 @@ func (cmc *cacheMutationCheck) Check(t *testing.T) {
 			t.Errorf("Cached object was unexpectedly mutated. Original: %+v, Mutated: %+v", o.deepCopy, o.original)
 		}
 	}
+}
+
+func toSet(s []string) map[string]struct{} {
+	set := map[string]struct{}{}
+	for _, k := range s {
+		set[k] = struct{}{}
+	}
+	return set
 }

@@ -107,10 +107,8 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 	}
 
 	_, err = k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: ec.onEndpointSliceAdd,
-		UpdateFunc: func(oldObj, newObj interface{}) {
-			ec.onEndpointSliceUpdate(oldObj, newObj)
-		},
+		AddFunc:    ec.onEndpointSliceAdd,
+		UpdateFunc: ec.onEndpointSliceUpdate,
 		DeleteFunc: ec.onEndpointSliceDelete,
 	})
 
@@ -445,11 +443,7 @@ func (ec *EndpointsController) onAddExternalWorkload(obj interface{}) {
 }
 
 func (ec *EndpointsController) onUpdateExternalWorkload(old, cur interface{}) {
-	services, err := ec.getServicesToUpdateOnExternalWorkloadChange(old, cur)
-	if err != nil {
-		ec.log.Error(err)
-		return
-	}
+	services := ec.getServicesToUpdateOnExternalWorkloadChange(old, cur)
 
 	for _, svc := range services {
 		ec.queue.Add(svc)
