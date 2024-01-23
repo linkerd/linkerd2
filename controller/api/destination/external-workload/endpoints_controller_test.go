@@ -28,6 +28,8 @@ type endpointSliceController struct {
 }
 
 func newController(t *testing.T) (*k8s.API, func() []k8stesting.Action, *endpointSliceController) {
+	t.Helper()
+
 	k8sAPI, actions, err := k8s.NewFakeAPIWithActions()
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1241,6 +1243,7 @@ func newStatusCondition(ready bool) ewv1alpha1.WorkloadCondition {
 	}
 }
 
+//nolint:all
 func expectActions(t *testing.T, actions []k8stesting.Action, num int, verb, resource string) {
 	t.Helper()
 	// if actions are less the below logic will panic

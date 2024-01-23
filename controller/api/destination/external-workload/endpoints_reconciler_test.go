@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	k8stesting "k8s.io/client-go/testing"
 	epsliceutil "k8s.io/endpointslice/util"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -331,12 +332,10 @@ func TestReconcileManyWorkloads(t *testing.T) {
 		ews = append(ews, ew)
 	}
 
-	k8sAPI, err := k8s.NewFakeAPI([]string{}...)
-	if err != nil {
-		t.Fatalf("unexpected error when creating Kubernetes clientset: %v", err)
-	}
+	k8sAPI, actions := newClientset(t, []string{})
 	r := newEndpointsReconciler(k8sAPI, testControllerName, defaultTestEndpointsQuota)
 	r.reconcile(svc, ews, []*discoveryv1.EndpointSlice{})
+	expectActions(t, actions(), 3, "create", "endpointslices")
 
 	slices := fetchEndpointSlices(t, k8sAPI, svc)
 	expectSlicesWithLengths(t, []int{100, 100, 50}, slices)
@@ -385,10 +384,7 @@ func TestReconcileEndpointSlicesSomePreexisting(t *testing.T) {
 
 	existingSlices := []*discoveryv1.EndpointSlice{es1, es2}
 	cmc := newCacheMutationCheck(existingSlices)
-	k8sAPI, err := k8s.NewFakeAPI([]string{}...)
-	if err != nil {
-		t.Fatalf("unexpected error when creating Kubernetes clientset: %v", err)
-	}
+	k8sAPI, actions := newClientset(t, []string{})
 	for _, slice := range existingSlices {
 		_, err := k8sAPI.Client.DiscoveryV1().EndpointSlices(svc.Namespace).Create(context.TODO(), slice, metav1.CreateOptions{})
 		if err != nil {
@@ -398,6 +394,7 @@ func TestReconcileEndpointSlicesSomePreexisting(t *testing.T) {
 
 	r := newEndpointsReconciler(k8sAPI, testControllerName, defaultTestEndpointsQuota)
 	r.reconcile(svc, ews, existingSlices)
+	expectActions(t, actions(), 2, "update", "endpointslices")
 
 	slices := fetchEndpointSlices(t, k8sAPI, svc)
 	expectSlicesWithLengths(t, []int{100, 100, 50}, slices)
@@ -421,36 +418,22 @@ func TestReconcileEndpointSlicesUpdatingSvc(t *testing.T) {
 		ews = append(ews, ew)
 	}
 
-	k8sAPI, err := k8s.NewFakeAPI([]string{}...)
-	if err != nil {
-		t.Fatalf("unexpected error when creating Kubernetes clientset: %v", err)
-	}
-
+	k8sAPI, actions := newClientset(t, []string{})
 	r := newEndpointsReconciler(k8sAPI, testControllerName, defaultTestEndpointsQuota)
 	r.reconcile(svc, ews, []*discoveryv1.EndpointSlice{})
 
 	slices := fetchEndpointSlices(t, k8sAPI, svc)
-	// Create a set of names. We expect to see only updates so we can
-	// cross-check names.
-	sliceNames := map[string]struct{}{}
-	for _, slice := range slices {
-		sliceNames[slice.Name] = struct{}{}
-	}
 	expectSlicesWithLengths(t, []int{100, 100, 50}, slices)
-
 	for _, ew := range ews {
 		ew.Spec.Ports[0].Port = int32(81)
 	}
-
 	svc.Spec.Ports[0].TargetPort.IntVal = 81
+
 	r.reconcile(svc, ews, []*discoveryv1.EndpointSlice{&slices[0], &slices[1], &slices[2]})
+	expectActions(t, actions(), 3, "update", "endpointslices")
 	slices = fetchEndpointSlices(t, k8sAPI, svc)
 	expectSlicesWithLengths(t, []int{100, 100, 50}, slices)
 	for _, slice := range slices {
-		if _, ok := sliceNames[slice.Name]; !ok {
-			t.Errorf("unexpected slice %s/%s found in results", slice.Namespace, slice.Name)
-		}
-
 		if *slice.Ports[0].Port != 81 {
 			t.Errorf("expected targetPort value to be 81, got: %d", slice.Ports[0].Port)
 		}
@@ -474,34 +457,22 @@ func TestReconcileEndpointSlicesLabelsUpdatingSvc(t *testing.T) {
 		ews = append(ews, ew)
 	}
 
-	k8sAPI, err := k8s.NewFakeAPI([]string{}...)
-	if err != nil {
-		t.Fatalf("unexpected error when creating Kubernetes clientset: %v", err)
-	}
-
+	k8sAPI, actions := newClientset(t, []string{})
 	r := newEndpointsReconciler(k8sAPI, testControllerName, defaultTestEndpointsQuota)
 	r.reconcile(svc, ews, []*discoveryv1.EndpointSlice{})
 
 	slices := fetchEndpointSlices(t, k8sAPI, svc)
-	// Create a set of names. We expect to see only updates so we can
-	// cross-check names.
-	sliceNames := map[string]struct{}{}
-	for _, slice := range slices {
-		sliceNames[slice.Name] = struct{}{}
-	}
 	expectSlicesWithLengths(t, []int{100, 100, 50}, slices)
 
 	// update service with new labels
 	svc.Labels = map[string]string{"foo": "bar"}
 	r.reconcile(svc, ews, []*discoveryv1.EndpointSlice{&slices[0], &slices[1], &slices[2]})
+	expectActions(t, actions(), 3, "update", "endpointslices")
 
 	slices = fetchEndpointSlices(t, k8sAPI, svc)
 	expectSlicesWithLengths(t, []int{100, 100, 50}, slices)
 	// check that the labels were updated
 	for _, slice := range slices {
-		if _, ok := sliceNames[slice.Name]; !ok {
-			t.Errorf("unexpected slice %s/%s found in the list of result; no slices should be created", slice.Namespace, slice.Name)
-		}
 		w, ok := slice.Labels["foo"]
 		if !ok {
 			t.Errorf("expected label \"foo\" from parent service not found")
@@ -526,34 +497,27 @@ func TestReconcileEndpointSlicesReservedLabelsSvc(t *testing.T) {
 		ews = append(ews, ew)
 	}
 
-	k8sAPI, err := k8s.NewFakeAPI([]string{}...)
-	if err != nil {
-		t.Fatalf("unexpected error when creating Kubernetes clientset: %v", err)
-	}
-
+	k8sAPI, actions := newClientset(t, []string{})
 	r := newEndpointsReconciler(k8sAPI, testControllerName, defaultTestEndpointsQuota)
 	r.reconcile(svc, ews, []*discoveryv1.EndpointSlice{})
+	numActionExpected := 3
 
 	slices := fetchEndpointSlices(t, k8sAPI, svc)
-	// Create a set of names. We expect to see only updates so we can
-	// cross-check names.
-	sliceNames := map[string]struct{}{}
-	for _, slice := range slices {
-		sliceNames[slice.Name] = struct{}{}
-	}
 	expectSlicesWithLengths(t, []int{100, 100, 50}, slices)
+	numActionExpected++
 
 	// update service with new labels
 	svc.Labels = map[string]string{discoveryv1.LabelServiceName: "bad", discoveryv1.LabelManagedBy: "actor", corev1.IsHeadlessService: "invalid"}
 	r.reconcile(svc, ews, []*discoveryv1.EndpointSlice{&slices[0], &slices[1], &slices[2]})
-
 	slices = fetchEndpointSlices(t, k8sAPI, svc)
+	numActionExpected++
+	if len(actions()) != numActionExpected {
+		t.Errorf("expected %d actions, got %d instead", numActionExpected, len(actions()))
+	}
+
 	expectSlicesWithLengths(t, []int{100, 100, 50}, slices)
 	// check that the labels were updated
 	for _, slice := range slices {
-		if _, ok := sliceNames[slice.Name]; !ok {
-			t.Errorf("unexpected slice %s/%s found in the list of result; no slices should be created", slice.Namespace, slice.Name)
-		}
 		if v := slice.Labels[discoveryv1.LabelServiceName]; v == "bad" {
 			t.Errorf("unexpected label value \"%s\" from parent service found on slice", "bad")
 		}
@@ -626,6 +590,16 @@ func TestEndpointSlicesAreRecycled(t *testing.T) {
 	expectSlicesWithLengths(t, []int{100, 100, 100}, slices)
 	// ensure cache mutation has not occurred
 	cmc.Check(t)
+}
+
+func newClientset(t *testing.T, k8sConfigs []string) (*k8s.API, func() []k8stesting.Action) {
+	k8sAPI, actions, err := k8s.NewFakeAPIWithActions(k8sConfigs...)
+
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	return k8sAPI, actions
 }
 
 func makeEndpointSlice(svc *corev1.Service, ports []discoveryv1.EndpointPort) *discoveryv1.EndpointSlice {
@@ -814,42 +788,6 @@ func diffEndpoints(t *testing.T, actual, expected discoveryv1.Endpoint) {
 		t.Errorf("expected targetRef with name %s; got %s instead", expRef.Name, actRef.Name)
 	}
 
-}
-
-// TestReconcileEndpoints will test the diffing logic in isolation of the rest
-// of the reconciler machinery.
-func TestReconcileEndpoints(t *testing.T) {
-	for _, tt := range []struct {
-		name string
-	}{
-		{
-			name: "test endpoint is marked as serving and ready when status is ready",
-		},
-		{
-			name: "test endpoint is marked as unready when status is unready",
-		},
-		{
-			name: "test endpoint is marked as unready when status is missing",
-		},
-
-		{
-			name: "test service port change with no workload match deletes slices",
-		},
-		{
-			name: "test service port change results in new slices being created",
-		},
-		{
-			name: "test headless service is created and entry receives hostname",
-		},
-		{
-			name: "test an existing endpointslice is deleted when no workloads exist",
-		},
-	} {
-		tt := tt // pin
-		t.Run(tt.name, func(t *testing.T) {
-
-		})
-	}
 }
 
 // === impl cache mutation check
