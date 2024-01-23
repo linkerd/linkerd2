@@ -916,7 +916,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					continue
 				}
 
-				err = setToServerProtocolExternalWorkload(pp.k8sAPI, &address, resolvedPort)
+				err = SetToServerProtocolExternalWorkload(pp.k8sAPI, &address, resolvedPort)
 				if err != nil {
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
@@ -1499,7 +1499,7 @@ func SetToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
 
 // setToServerProtocolExternalWorkload sets the address's OpaqueProtocol field based off any
 // Servers that select it and override the expected protocol for ExternalWorkloads.
-func setToServerProtocolExternalWorkload(k8sAPI *k8s.API, address *Address, port Port) error {
+func SetToServerProtocolExternalWorkload(k8sAPI *k8s.API, address *Address, port Port) error {
 	if address.ExternalWorkload == nil {
 		return fmt.Errorf("endpoint not backed by ExternalWorkload: %s:%d", address.IP, address.Port)
 	}

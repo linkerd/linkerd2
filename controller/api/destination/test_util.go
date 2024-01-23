@@ -337,6 +337,9 @@ spec:
   podSelector:
     matchLabels:
       app: policy-test
+  externalWorkloadSelector:
+    matchLabels:
+      app: external-workload-policy-test
   port: 80
   proxyProtocol: opaque`,
 	}
@@ -445,6 +448,51 @@ spec:
   - port: 80`,
 	}
 
+	externalWorkloads := []string{`
+apiVersion: workload.linkerd.io/v1alpha1
+kind: ExternalWorkload
+metadata:
+  name: my-cool-workload
+  namespace: ns
+  annotations:
+    config.linkerd.io/opaque-ports: "4242"
+spec:
+  meshTls:
+    identity: spiffe://some-domain/cool
+    serverName: server.local
+  workloadIPs:
+  - ip: 200.1.1.1
+  ports:
+  - port: 8989
+  - port: 4242
+  - name: linkerd-proxy
+    port: 4143
+status:
+  conditions:
+  ready: true`,
+		`
+apiVersion: workload.linkerd.io/v1alpha1
+kind: ExternalWorkload
+metadata:
+  name: policy-test-workload
+  namespace: ns
+  labels:
+    app: external-workload-policy-test
+spec:
+  meshTls:
+    identity: spiffe://some-domain/cool
+    serverName: server.local
+  workloadIPs:
+  - ip: 200.1.1.2
+  ports:
+  - port: 80
+  - name: linkerd-proxy
+    port: 4143
+status:
+  conditions:
+  ready: true`,
+	}
+
 	res := append(meshedPodResources, clientSP...)
 	res = append(res, unmeshedPod)
 	res = append(res, meshedOpaquePodResources...)
@@ -455,6 +503,7 @@ spec:
 	res = append(res, hostPortMapping...)
 	res = append(res, mirrorServiceResources...)
 	res = append(res, destinationCredentialsResources...)
+	res = append(res, externalWorkloads...)
 	k8sAPI, l5dClient, err := k8s.NewFakeAPIWithL5dClient(res...)
 	if err != nil {
 		t.Fatalf("NewFakeAPIWithL5dClient returned an error: %s", err)
@@ -479,9 +528,9 @@ spec:
 		t.Fatalf("initializeIndexers returned an error: %s", err)
 	}
 
-	pods, err := watcher.NewPodWatcher(k8sAPI, metadataAPI, log, defaultOpaquePorts)
+	workloads, err := watcher.NewWorkloadWatcher(k8sAPI, metadataAPI, log, defaultOpaquePorts)
 	if err != nil {
-		t.Fatalf("can't create Pods watcher: %s", err)
+		t.Fatalf("can't create Workloads watcher: %s", err)
 	}
 	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, false, "local")
 	if err != nil {
@@ -516,7 +565,7 @@ spec:
 			IdentityTrustDomain: "trust.domain",
 			DefaultOpaquePorts:  defaultOpaquePorts,
 		},
-		pods,
+		workloads,
 		endpoints,
 		opaquePorts,
 		profiles,
