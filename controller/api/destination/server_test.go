@@ -39,6 +39,8 @@ const podIPPolicy = "172.17.0.16"
 const podIPStatefulSet = "172.17.13.15"
 const externalIP = "192.168.1.20"
 const externalIPv6 = "2001:db8::78"
+const externalWorkloadIP = "200.1.1.1"
+const externalWorkloadIPPolicy = "200.1.1.2"
 const port uint32 = 8989
 const opaquePort uint32 = 4242
 const skippedPort uint32 = 24224
@@ -405,6 +407,47 @@ func TestGetProfiles(t *testing.T) {
 		}
 	})
 
+	t.Run("Return profile with endpoint when using externalworkload IP", func(t *testing.T) {
+		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := profileStream(t, server, externalWorkloadIP, port, "ns:ns")
+		defer stream.Cancel()
+
+		epAddr, err := toAddress(externalWorkloadIP, port)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// An explanation for why we expect 1 to 3 updates is in test cases
+		// above
+		updates := stream.Updates()
+		if len(updates) == 0 || len(updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(updates), updates)
+		}
+
+		first := updates[0]
+		if first.Endpoint == nil {
+			t.Fatalf("Expected response to have endpoint field")
+		}
+		if first.OpaqueProtocol {
+			t.Fatalf("Expected port %d to not be an opaque protocol, but it was", port)
+		}
+		_, exists := first.Endpoint.MetricLabels["namespace"]
+		if !exists {
+			t.Fatalf("Expected 'namespace' metric label to exist but it did not %v", first.Endpoint)
+		}
+		if first.GetEndpoint().GetProtocolHint() == nil {
+			t.Fatalf("Expected protocol hint but found none")
+		}
+		if first.GetEndpoint().GetProtocolHint().GetOpaqueTransport() != nil {
+			t.Fatalf("Expected externalworkload to not support opaque traffic on port %d", port)
+		}
+		if first.Endpoint.Addr.String() != epAddr.String() {
+			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
+		}
+	})
+
 	t.Run("Return default profile when IP does not map to service or pod", func(t *testing.T) {
 		server := makeServer(t)
 		defer server.clusterStore.UnregisterGauges()
@@ -558,11 +601,73 @@ func TestGetProfiles(t *testing.T) {
 		}
 	})
 
+	t.Run("Return opaque protocol profile with endpoint when using externalworkload IP and opaque protocol port", func(t *testing.T) {
+		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := profileStream(t, server, externalWorkloadIP, opaquePort, "")
+		defer stream.Cancel()
+
+		epAddr, err := toAddress(externalWorkloadIP, opaquePort)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// An explanation for why we expect 1 to 3 updates is in test cases
+		// above
+		updates := stream.Updates()
+		if len(updates) == 0 || len(updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(updates), updates)
+		}
+
+		profile := assertSingleProfile(t, updates)
+		if profile.Endpoint == nil {
+			t.Fatalf("Expected response to have endpoint field")
+		}
+		if !profile.OpaqueProtocol {
+			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", opaquePort)
+		}
+		_, exists := profile.Endpoint.MetricLabels["namespace"]
+		if !exists {
+			t.Fatalf("Expected 'namespace' metric label to exist but it did not")
+		}
+		if profile.Endpoint.ProtocolHint == nil {
+			t.Fatalf("Expected protocol hint but found none")
+		}
+		if profile.Endpoint.GetProtocolHint().GetOpaqueTransport().GetInboundPort() != 4143 {
+			t.Fatalf("Expected pod to support opaque traffic on port 4143")
+		}
+		if profile.Endpoint.Addr.String() != epAddr.String() {
+			t.Fatalf("Expected endpoint IP port to be %d, but it was %d", epAddr.Port, profile.Endpoint.Addr.Port)
+		}
+	})
+
 	t.Run("Return profile with opaque protocol when using Pod IP selected by a Server", func(t *testing.T) {
 		server := makeServer(t)
 		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, podIPPolicy, 80, "")
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
+		if profile.Endpoint == nil {
+			t.Fatalf("Expected response to have endpoint field")
+		}
+		if !profile.OpaqueProtocol {
+			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", 80)
+		}
+		if profile.Endpoint.GetProtocolHint() == nil {
+			t.Fatalf("Expected protocol hint but found none")
+		}
+		if profile.Endpoint.GetProtocolHint().GetOpaqueTransport().GetInboundPort() != 4143 {
+			t.Fatalf("Expected pod to support opaque traffic on port 4143")
+		}
+	})
+
+	t.Run("Return profile with opaque protocol when using externalworkload IP selected by a Server", func(t *testing.T) {
+		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := profileStream(t, server, externalWorkloadIPPolicy, 80, "")
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
 		if profile.Endpoint == nil {

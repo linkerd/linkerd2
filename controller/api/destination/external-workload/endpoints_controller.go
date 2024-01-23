@@ -362,7 +362,7 @@ func (ec *EndpointsController) updateService(obj interface{}) {
 	ec.queue.Add(key)
 }
 
-func isReady(ew *ewv1alpha1.ExternalWorkload) bool {
+func IsReady(ew *ewv1alpha1.ExternalWorkload) bool {
 	if len(ew.Status.Conditions) == 0 {
 		return false
 	}
@@ -405,7 +405,7 @@ func labelsChanged(old, updated *ewv1alpha1.ExternalWorkload) bool {
 // since these are going to influence a change in a service's underlying
 // endpoint slice
 func specChanged(old, updated *ewv1alpha1.ExternalWorkload) bool {
-	if isReady(old) != isReady(updated) {
+	if IsReady(old) != IsReady(updated) {
 		return true
 	}
 

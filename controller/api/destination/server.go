@@ -42,7 +42,7 @@ type (
 
 		config Config
 
-		pods         *watcher.PodWatcher
+		workloads    *watcher.WorkloadWatcher
 		endpoints    *watcher.EndpointsWatcher
 		opaquePorts  *watcher.OpaquePortsWatcher
 		profiles     *watcher.ProfileWatcher
@@ -86,7 +86,7 @@ func NewServer(
 		return nil, err
 	}
 
-	pods, err := watcher.NewPodWatcher(k8sAPI, metadataAPI, log, config.DefaultOpaquePorts)
+	workloads, err := watcher.NewWorkloadWatcher(k8sAPI, metadataAPI, log, config.DefaultOpaquePorts)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func NewServer(
 	srv := server{
 		pb.UnimplementedDestinationServer{},
 		config,
-		pods,
+		workloads,
 		endpoints,
 		opaquePorts,
 		profiles,
@@ -507,11 +507,11 @@ func (s *server) subscribeToEndpointProfile(
 	defer translator.Stop()
 
 	var err error
-	ip, err = s.pods.Subscribe(service, hostname, ip, port, translator)
+	ip, err = s.workloads.Subscribe(service, hostname, ip, port, translator)
 	if err != nil {
 		return err
 	}
-	defer s.pods.Unsubscribe(ip, port, translator)
+	defer s.workloads.Unsubscribe(ip, port, translator)
 
 	select {
 	case <-s.shutdown:

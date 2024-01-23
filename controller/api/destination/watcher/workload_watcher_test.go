@@ -60,7 +60,7 @@ status:
 		}
 
 		k8sAPI.Sync(nil)
-		pw := PodWatcher{
+		ww := WorkloadWatcher{
 			k8sAPI: k8sAPI,
 			log: log.WithFields(log.Fields{
 				"component": "pod-watcher",
@@ -68,7 +68,7 @@ status:
 		}
 
 		// Get host IP pod that is mapped to the port `hostPort1`
-		pod, err := pw.getPodByHostIP(hostIP, hostPort1)
+		pod, err := ww.getPodByHostIP(hostIP, hostPort1)
 		if err != nil {
 			t.Fatalf("failed to get pod: %s", err)
 		}
@@ -81,7 +81,7 @@ status:
 		// Get host IP pod that is mapped to the port `hostPort2`; this tests
 		// that the indexer properly adds multiple containers from a single
 		// pod.
-		pod, err = pw.getPodByHostIP(hostIP, hostPort2)
+		pod, err = ww.getPodByHostIP(hostIP, hostPort2)
 		if err != nil {
 			t.Fatalf("failed to get pod: %s", err)
 		}
@@ -92,7 +92,7 @@ status:
 			t.Fatalf("expected pod name to be %s, but got %s", expectedPodName, pod.Name)
 		}
 		// Get host IP pod with unmapped host port
-		pod, err = pw.getPodByHostIP(hostIP, 12347)
+		pod, err = ww.getPodByHostIP(hostIP, 12347)
 		if err != nil {
 			t.Fatalf("expected no error when getting host IP pod with unmapped host port, but got: %s", err)
 		}
@@ -100,7 +100,7 @@ status:
 			t.Fatal("expected no pod to be found with unmapped host port")
 		}
 		// Get pod IP pod and expect an error
-		_, err = pw.getPodByPodIP(podIP, 12346)
+		_, err = ww.getPodByPodIP(podIP, 12346)
 		if err == nil {
 			t.Fatal("expected error when getting by pod IP and unmapped host port, but got none")
 		}

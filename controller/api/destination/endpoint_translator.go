@@ -13,7 +13,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	logging "github.com/sirupsen/logrus"
@@ -385,7 +384,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 				continue
 			}
 		} else if address.ExternalWorkload != nil {
-			opaquePorts = getAnnotatedOpaquePortsForExternalWorkload(address.ExternalWorkload, et.defaultOpaquePorts)
+			opaquePorts = watcher.GetAnnotatedOpaquePortsForExternalWorkload(address.ExternalWorkload, et.defaultOpaquePorts)
 			wa, err = createWeightedAddrForExternalWorkload(address, opaquePorts)
 			if err != nil {
 				et.log.Errorf("Failed to translate ExternalWorkload endpoints to weighted addr: %s", err)
@@ -698,54 +697,4 @@ func getInboundPortFromExternalWorkload(ewSpec *ewv1alpha1.ExternalWorkloadSpec)
 	}
 
 	return 0, fmt.Errorf("failed to find %s port for given ExternalWorkloadSpec", pkgK8s.ProxyPortName)
-}
-
-// getAnnotatedOpaquePortsForExternalWorkload returns the opaque ports for the external workload given its
-// annotations, or the default opaque ports if it's not annotated
-func getAnnotatedOpaquePortsForExternalWorkload(ew *ewv1alpha1.ExternalWorkload, defaultPorts map[uint32]struct{}) map[uint32]struct{} {
-	if ew == nil {
-		return defaultPorts
-	}
-	annotation, ok := ew.Annotations[pkgK8s.ProxyOpaquePortsAnnotation]
-	if !ok {
-		return defaultPorts
-	}
-	opaquePorts := make(map[uint32]struct{})
-	if annotation != "" {
-		for _, pr := range parseExternalWorkloadOpaquePorts(annotation, ew) {
-			for _, port := range pr.Ports() {
-				opaquePorts[uint32(port)] = struct{}{}
-			}
-		}
-	}
-	return opaquePorts
-}
-
-func parseExternalWorkloadOpaquePorts(override string, ew *ewv1alpha1.ExternalWorkload) []util.PortRange {
-	portRanges := util.GetPortRanges(override)
-	var values []util.PortRange
-	for _, pr := range portRanges {
-		port, named := isNamedInExternalWorkload(pr, ew)
-		if named {
-			values = append(values, util.PortRange{UpperBound: int(port), LowerBound: int(port)})
-		} else {
-			pr, err := util.ParsePortRange(pr)
-			if err != nil {
-				logging.Warnf("Invalid port range [%v]: %s", pr, err)
-				continue
-			}
-			values = append(values, pr)
-		}
-	}
-	return values
-}
-
-func isNamedInExternalWorkload(pr string, ew *ewv1alpha1.ExternalWorkload) (int32, bool) {
-	for _, p := range ew.Spec.Ports {
-		if p.Name == pr {
-			return p.Port, true
-		}
-	}
-
-	return 0, false
 }
