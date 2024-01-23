@@ -472,6 +472,347 @@ func TestSyncService(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "EWs with multiple IPs and Service with ipFamilies=ipv6",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "foobar",
+					Namespace:         namespace,
+					CreationTimestamp: creationTimestamp,
+				},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{Name: "tcp-example", TargetPort: intstr.FromInt32(80), Protocol: v1.ProtocolTCP},
+						{Name: "udp-example", TargetPort: intstr.FromInt32(161), Protocol: v1.ProtocolUDP},
+						{Name: "sctp-example", TargetPort: intstr.FromInt32(3456), Protocol: v1.ProtocolSCTP},
+					},
+					Selector:   map[string]string{"foo": "bar"},
+					IPFamilies: []v1.IPFamily{v1.IPv6Protocol},
+				},
+			},
+			externalWorkloads: []*ewv1alpha1.ExternalWorkload{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:         namespace,
+						Name:              "ew0",
+						Labels:            map[string]string{"foo": "bar"},
+						DeletionTimestamp: nil,
+					},
+					Spec: ewv1alpha1.ExternalWorkloadSpec{
+						WorkloadIPs: []ewv1alpha1.WorkloadIP{
+							{
+								Ip: "10.0.0.1",
+							},
+						},
+						Ports: []ewv1alpha1.PortSpec{
+							{Name: "tcp-example", Port: 80, Protocol: v1.ProtocolTCP},
+							{Name: "udp-example", Port: 161, Protocol: v1.ProtocolUDP},
+							{Name: "sctp-example", Port: 3456, Protocol: v1.ProtocolSCTP},
+						},
+					},
+					Status: ewv1alpha1.ExternalWorkloadStatus{
+						Conditions: []ewv1alpha1.WorkloadCondition{
+							{
+								Type:   ewv1alpha1.WorkloadReady,
+								Status: ewv1alpha1.ConditionTrue,
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:         namespace,
+						Name:              "ew1",
+						Labels:            map[string]string{"foo": "bar"},
+						DeletionTimestamp: nil,
+					},
+					Spec: ewv1alpha1.ExternalWorkloadSpec{
+						WorkloadIPs: []ewv1alpha1.WorkloadIP{
+							{
+								Ip: "10.0.0.2",
+							},
+							{
+
+								Ip: "fd08::5678:0000:0000:9abc:def0",
+							},
+						},
+						Ports: []ewv1alpha1.PortSpec{
+							{Name: "tcp-example", Port: 80, Protocol: v1.ProtocolTCP},
+							{Name: "udp-example", Port: 161, Protocol: v1.ProtocolUDP},
+							{Name: "sctp-example", Port: 3456, Protocol: v1.ProtocolSCTP},
+						},
+					},
+					Status: ewv1alpha1.ExternalWorkloadStatus{
+						Conditions: []ewv1alpha1.WorkloadCondition{
+							{
+								Type:   ewv1alpha1.WorkloadReady,
+								Status: ewv1alpha1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
+			expectedEndpointPorts: []discoveryv1.EndpointPort{
+				{
+					Name:     ptr.To("udp-example"),
+					Protocol: protoPtr(v1.ProtocolUDP),
+					Port:     ptr.To(int32(161)),
+				},
+				{
+					Name:     ptr.To("sctp-example"),
+					Protocol: protoPtr(v1.ProtocolSCTP),
+					Port:     ptr.To(int32(3456)),
+				},
+				{
+					Name:     ptr.To("tcp-example"),
+					Protocol: protoPtr(v1.ProtocolTCP),
+					Port:     ptr.To(int32(80)),
+				},
+			},
+			expectedEndpoints: []discoveryv1.Endpoint{
+				{
+					Conditions: discoveryv1.EndpointConditions{
+						Ready:       ptr.To(true),
+						Serving:     ptr.To(true),
+						Terminating: ptr.To(false),
+					},
+					Addresses: []string{"fd08::5678:0000:0000:9abc:def0"},
+					TargetRef: &v1.ObjectReference{Kind: "ExternalWorkload", Namespace: namespace, Name: "ew1"},
+				},
+			},
+		},
+		{
+			name: "Not ready workloads",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "foobar",
+					Namespace:         namespace,
+					CreationTimestamp: creationTimestamp,
+				},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{Name: "tcp-example", TargetPort: intstr.FromInt32(80), Protocol: v1.ProtocolTCP},
+						{Name: "udp-example", TargetPort: intstr.FromInt32(161), Protocol: v1.ProtocolUDP},
+						{Name: "sctp-example", TargetPort: intstr.FromInt32(3456), Protocol: v1.ProtocolSCTP},
+					},
+					Selector:   map[string]string{"foo": "bar"},
+					IPFamilies: []v1.IPFamily{v1.IPv4Protocol},
+				},
+			},
+			externalWorkloads: []*ewv1alpha1.ExternalWorkload{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:         namespace,
+						Name:              "ew0",
+						Labels:            map[string]string{"foo": "bar"},
+						DeletionTimestamp: nil,
+					},
+					Spec: ewv1alpha1.ExternalWorkloadSpec{
+						WorkloadIPs: []ewv1alpha1.WorkloadIP{
+							{
+								Ip: "10.0.0.1",
+							},
+						},
+						Ports: []ewv1alpha1.PortSpec{
+							{Name: "tcp-example", Port: 80, Protocol: v1.ProtocolTCP},
+							{Name: "udp-example", Port: 161, Protocol: v1.ProtocolUDP},
+							{Name: "sctp-example", Port: 3456, Protocol: v1.ProtocolSCTP},
+						},
+					},
+					Status: ewv1alpha1.ExternalWorkloadStatus{
+						Conditions: []ewv1alpha1.WorkloadCondition{
+							{
+								Type:   ewv1alpha1.WorkloadReady,
+								Status: ewv1alpha1.ConditionTrue,
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:         namespace,
+						Name:              "ew1",
+						Labels:            map[string]string{"foo": "bar"},
+						DeletionTimestamp: nil,
+					},
+					Spec: ewv1alpha1.ExternalWorkloadSpec{
+						WorkloadIPs: []ewv1alpha1.WorkloadIP{
+							{
+								Ip: "10.0.0.2",
+							},
+							{
+
+								Ip: "fd08::5678:0000:0000:9abc:def0",
+							},
+						},
+						Ports: []ewv1alpha1.PortSpec{
+							{Name: "tcp-example", Port: 80, Protocol: v1.ProtocolTCP},
+							{Name: "udp-example", Port: 161, Protocol: v1.ProtocolUDP},
+							{Name: "sctp-example", Port: 3456, Protocol: v1.ProtocolSCTP},
+						},
+					},
+					Status: ewv1alpha1.ExternalWorkloadStatus{
+						Conditions: []ewv1alpha1.WorkloadCondition{
+							{
+								Type:   ewv1alpha1.WorkloadReady,
+								Status: ewv1alpha1.ConditionFalse,
+							},
+						},
+					},
+				},
+			},
+			expectedEndpointPorts: []discoveryv1.EndpointPort{
+				{
+					Name:     ptr.To("udp-example"),
+					Protocol: protoPtr(v1.ProtocolUDP),
+					Port:     ptr.To(int32(161)),
+				},
+				{
+					Name:     ptr.To("sctp-example"),
+					Protocol: protoPtr(v1.ProtocolSCTP),
+					Port:     ptr.To(int32(3456)),
+				},
+				{
+					Name:     ptr.To("tcp-example"),
+					Protocol: protoPtr(v1.ProtocolTCP),
+					Port:     ptr.To(int32(80)),
+				},
+			},
+			expectedEndpoints: []discoveryv1.Endpoint{
+				{
+					Conditions: discoveryv1.EndpointConditions{
+						Ready:       ptr.To(true),
+						Serving:     ptr.To(true),
+						Terminating: ptr.To(false),
+					},
+					Addresses: []string{"10.0.0.1"},
+					TargetRef: &v1.ObjectReference{Kind: "ExternalWorkload", Namespace: namespace, Name: "ew0"},
+				},
+				{
+					Conditions: discoveryv1.EndpointConditions{
+						Ready:       ptr.To(false),
+						Serving:     ptr.To(false),
+						Terminating: ptr.To(false),
+					},
+					Addresses: []string{"10.0.0.2"},
+					TargetRef: &v1.ObjectReference{Kind: "ExternalWorkload", Namespace: namespace, Name: "ew1"},
+				},
+			},
+		},
+		{
+			name: "Two Ready workloads with the same IPs",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "foobar",
+					Namespace:         namespace,
+					CreationTimestamp: creationTimestamp,
+				},
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{Name: "tcp-example", TargetPort: intstr.FromInt32(80), Protocol: v1.ProtocolTCP},
+						{Name: "udp-example", TargetPort: intstr.FromInt32(161), Protocol: v1.ProtocolUDP},
+						{Name: "sctp-example", TargetPort: intstr.FromInt32(3456), Protocol: v1.ProtocolSCTP},
+					},
+					Selector:   map[string]string{"foo": "bar"},
+					IPFamilies: []v1.IPFamily{v1.IPv4Protocol},
+				},
+			},
+			externalWorkloads: []*ewv1alpha1.ExternalWorkload{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:         namespace,
+						Name:              "ew0",
+						Labels:            map[string]string{"foo": "bar"},
+						DeletionTimestamp: nil,
+					},
+					Spec: ewv1alpha1.ExternalWorkloadSpec{
+						WorkloadIPs: []ewv1alpha1.WorkloadIP{
+							{
+								Ip: "10.0.0.1",
+							},
+						},
+						Ports: []ewv1alpha1.PortSpec{
+							{Name: "tcp-example", Port: 80, Protocol: v1.ProtocolTCP},
+							{Name: "udp-example", Port: 161, Protocol: v1.ProtocolUDP},
+							{Name: "sctp-example", Port: 3456, Protocol: v1.ProtocolSCTP},
+						},
+					},
+					Status: ewv1alpha1.ExternalWorkloadStatus{
+						Conditions: []ewv1alpha1.WorkloadCondition{
+							{
+								Type:   ewv1alpha1.WorkloadReady,
+								Status: ewv1alpha1.ConditionTrue,
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:         namespace,
+						Name:              "ew1",
+						Labels:            map[string]string{"foo": "bar"},
+						DeletionTimestamp: nil,
+					},
+					Spec: ewv1alpha1.ExternalWorkloadSpec{
+						WorkloadIPs: []ewv1alpha1.WorkloadIP{
+							{
+								Ip: "10.0.0.1",
+							},
+						},
+						Ports: []ewv1alpha1.PortSpec{
+							{Name: "tcp-example", Port: 80, Protocol: v1.ProtocolTCP},
+							{Name: "udp-example", Port: 161, Protocol: v1.ProtocolUDP},
+							{Name: "sctp-example", Port: 3456, Protocol: v1.ProtocolSCTP},
+						},
+					},
+					Status: ewv1alpha1.ExternalWorkloadStatus{
+						Conditions: []ewv1alpha1.WorkloadCondition{
+							{
+								Type:   ewv1alpha1.WorkloadReady,
+								Status: ewv1alpha1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
+			expectedEndpointPorts: []discoveryv1.EndpointPort{
+				{
+					Name:     ptr.To("udp-example"),
+					Protocol: protoPtr(v1.ProtocolUDP),
+					Port:     ptr.To(int32(161)),
+				},
+				{
+					Name:     ptr.To("sctp-example"),
+					Protocol: protoPtr(v1.ProtocolSCTP),
+					Port:     ptr.To(int32(3456)),
+				},
+				{
+					Name:     ptr.To("tcp-example"),
+					Protocol: protoPtr(v1.ProtocolTCP),
+					Port:     ptr.To(int32(80)),
+				},
+			},
+			expectedEndpoints: []discoveryv1.Endpoint{
+				{
+					Conditions: discoveryv1.EndpointConditions{
+						Ready:       ptr.To(true),
+						Serving:     ptr.To(true),
+						Terminating: ptr.To(false),
+					},
+					Addresses: []string{"10.0.0.1"},
+					TargetRef: &v1.ObjectReference{Kind: "ExternalWorkload", Namespace: namespace, Name: "ew0"},
+				},
+				{
+					Conditions: discoveryv1.EndpointConditions{
+						Ready:       ptr.To(true),
+						Serving:     ptr.To(true),
+						Terminating: ptr.To(false),
+					},
+					Addresses: []string{"10.0.0.1"},
+					TargetRef: &v1.ObjectReference{Kind: "ExternalWorkload", Namespace: namespace, Name: "ew1"},
+				},
+			},
+		},
 	}
 
 	for _, testcase := range testcases {
