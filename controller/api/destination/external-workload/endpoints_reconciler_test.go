@@ -370,7 +370,7 @@ func TestReconcileEndpointSlicesSomePreexisting(t *testing.T) {
 	// Take a quarter of workloads in the first slice
 	for i := 1; i < len(ews)-4; i += 4 {
 		addrs := []string{ews[i].Spec.WorkloadIPs[0].Ip}
-		isReady := isEwReady(ews[i])
+		isReady := IsEwReady(ews[i])
 		es1.Endpoints = append(es1.Endpoints, makeEndpoint(addrs, isReady, ews[i]))
 	}
 
@@ -378,7 +378,7 @@ func TestReconcileEndpointSlicesSomePreexisting(t *testing.T) {
 	// Take a quarter of workloads in the second slice
 	for i := 3; i < len(ews)-4; i += 4 {
 		addrs := []string{ews[i].Spec.WorkloadIPs[0].Ip}
-		isReady := isEwReady(ews[i])
+		isReady := IsEwReady(ews[i])
 		es2.Endpoints = append(es2.Endpoints, makeEndpoint(addrs, isReady, ews[i]))
 	}
 
@@ -560,7 +560,7 @@ func TestEndpointSlicesAreRecycled(t *testing.T) {
 		}
 
 		addrs := []string{ews[i].Spec.WorkloadIPs[0].Ip}
-		isReady := isEwReady(ews[i])
+		isReady := IsEwReady(ews[i])
 		existingSlices[sliceNum].Endpoints = append(existingSlices[sliceNum].Endpoints, makeEndpoint(addrs, isReady, ew))
 	}
 
