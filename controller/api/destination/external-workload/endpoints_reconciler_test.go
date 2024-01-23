@@ -765,20 +765,28 @@ func diffEndpoints(t *testing.T, actual, expected discoveryv1.Endpoint) {
 		t.Errorf("expected %d addresses, got %d instead", len(expected.Addresses), len(actual.Addresses))
 	}
 
-	if *actual.Conditions.Ready != *expected.Conditions.Ready {
-		t.Errorf("expected \"ready\" condition to be %t, got %t instead", *expected.Conditions.Ready, *actual.Conditions.Ready)
+	if actual.Conditions.Ready != nil && expected.Conditions.Ready != nil {
+		if *actual.Conditions.Ready != *expected.Conditions.Ready {
+			t.Errorf("expected \"ready\" condition to be %t, got %t instead", *expected.Conditions.Ready, *actual.Conditions.Ready)
+		}
 	}
 
-	if *actual.Conditions.Serving != *expected.Conditions.Serving {
-		t.Errorf("expected \"serving\" condition to be %t, got %t instead", *expected.Conditions.Serving, *actual.Conditions.Serving)
+	if actual.Conditions.Serving != nil && expected.Conditions.Serving != nil {
+		if *actual.Conditions.Serving != *expected.Conditions.Serving {
+			t.Errorf("expected \"serving\" condition to be %t, got %t instead", *expected.Conditions.Serving, *actual.Conditions.Serving)
+		}
 	}
 
-	if *actual.Conditions.Terminating != *expected.Conditions.Terminating {
-		t.Errorf("expected \"terminating\" condition to be %t, got %t instead", *expected.Conditions.Terminating, *actual.Conditions.Terminating)
+	if actual.Conditions.Terminating != nil && expected.Conditions.Terminating != nil {
+		if *actual.Conditions.Terminating != *expected.Conditions.Terminating {
+			t.Errorf("expected \"terminating\" condition to be %t, got %t instead", *expected.Conditions.Terminating, *actual.Conditions.Terminating)
+		}
 	}
 
-	if *actual.Zone != *expected.Zone {
-		t.Errorf("expected \"zone=%s\", got \"zone=%s\" instead", *expected.Zone, *actual.Zone)
+	if actual.Zone != nil && expected.Zone != nil {
+		if *actual.Zone != *expected.Zone {
+			t.Errorf("expected \"zone=%s\", got \"zone=%s\" instead", *expected.Zone, *actual.Zone)
+		}
 	}
 
 	actualAddrs := toSet(actual.Addresses)
