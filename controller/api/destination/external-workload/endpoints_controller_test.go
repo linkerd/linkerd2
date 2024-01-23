@@ -47,7 +47,7 @@ func newController(t *testing.T) (*k8s.API, func() []k8stesting.Action, *endpoin
 
 }
 
-func newExternalWorkload(n int, namespace string, ready bool, nPorts int, terminating bool) *ewv1alpha1.ExternalWorkload {
+func newExternalWorkload(n int, namespace string, ready bool, terminating bool) *ewv1alpha1.ExternalWorkload {
 	status := ewv1alpha1.ConditionTrue
 	if !ready {
 		status = ewv1alpha1.ConditionFalse
@@ -168,7 +168,7 @@ func TestServiceExternalNameTypeSync(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			client, actions, esController := newController(t)
-			ew := newExternalWorkload(1, namespace, true, 0, false)
+			ew := newExternalWorkload(1, namespace, true, false)
 			err := esController.externalWorkloadsStore.Add(ew)
 			if err != nil {
 				t.Errorf("unexpected error: %s", err)
@@ -227,11 +227,11 @@ func TestSyncServiceExternalWorkloadSelection(t *testing.T) {
 	client, actions, esController := newController(t)
 	ns := "test-ns"
 
-	ew1 := newExternalWorkload(1, ns, true, 0, false)
+	ew1 := newExternalWorkload(1, ns, true, false)
 	esController.externalWorkloadsStore.Add(ew1)
 
 	// ensure this ew will not match the selector
-	ew2 := newExternalWorkload(2, ns, true, 0, false)
+	ew2 := newExternalWorkload(2, ns, true, false)
 	ew2.Labels["foo"] = "boo"
 	esController.externalWorkloadsStore.Add(ew2)
 
