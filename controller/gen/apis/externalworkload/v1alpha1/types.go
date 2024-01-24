@@ -111,12 +111,15 @@ type WorkloadCondition struct {
 	// +optional
 	LastProbeTime metav1.Time `json:"lastProbeTime,omitempty"`
 	// Last time a condition transitioned from one status to another.
-	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
+	// +optional
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	// Unique one word reason in CamelCase that describes the reason for a
 	// transition.
-	Reason string `json:"reason"`
+	// +optional
+	Reason string `json:"reason,omitempty"`
 	// Human readable message that describes details about last transition.
-	Message string `json:"message"`
+	// +optional
+	Message string `json:"message,omitempty"`
 }
 
 // WorkloadConditionType is a value for the type of a condition in an
