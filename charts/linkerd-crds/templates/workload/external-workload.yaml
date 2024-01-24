@@ -154,8 +154,5 @@ spec:
                       maxLength: 32768
                       type: string
                 required:
-                - lastTransitionTime
                 - status
                 - type
-                - reason
-                - message
