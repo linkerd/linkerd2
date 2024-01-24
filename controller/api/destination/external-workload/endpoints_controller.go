@@ -437,7 +437,7 @@ func (ec *EndpointsController) onAddExternalWorkload(obj interface{}) {
 		return
 	}
 
-	for _, svc := range services {
+	for svc := range services {
 		ec.queue.Add(svc)
 	}
 }
@@ -445,7 +445,7 @@ func (ec *EndpointsController) onAddExternalWorkload(obj interface{}) {
 func (ec *EndpointsController) onUpdateExternalWorkload(old, cur interface{}) {
 	services := ec.getServicesToUpdateOnExternalWorkloadChange(old, cur)
 
-	for _, svc := range services {
+	for svc := range services {
 		ec.queue.Add(svc)
 	}
 }
