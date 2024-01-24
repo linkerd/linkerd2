@@ -11,8 +11,19 @@ import (
 )
 
 func (ec *EndpointsController) getServicesToUpdateOnExternalWorkloadChange(old, cur interface{}) sets.Set[string] {
-	newEw := cur.(*ewv1alpha1.ExternalWorkload)
-	oldEw := old.(*ewv1alpha1.ExternalWorkload)
+	newEw, newEwOk := cur.(*ewv1alpha1.ExternalWorkload)
+	oldEw, oldEwOk := old.(*ewv1alpha1.ExternalWorkload)
+
+	if !oldEwOk {
+		ec.log.Errorf("Expected (cur) to be an EndpointSlice in getServicesToUpdateOnExternalWorkloadChange(), got type: %T", cur)
+		return sets.Set[string]{}
+	}
+
+	if !newEwOk {
+		ec.log.Errorf("Expected (old) to be an EndpointSlice in getServicesToUpdateOnExternalWorkloadChange(), got type: %T", old)
+		return sets.Set[string]{}
+	}
+
 	if newEw.ResourceVersion == oldEw.ResourceVersion {
 		// Periodic resync will send update events for all known ExternalWorkloads.
 		// Two different versions of the same pod will always have different RVs

@@ -232,7 +232,11 @@ func (ec *EndpointsController) processQueue() {
 			return
 		}
 
-		key := item.(string)
+		key, ok := item.(string)
+		if !ok {
+			ec.log.Errorf("Found queue element of type %T, was expecting a string", item)
+			continue
+		}
 		err := ec.syncService(key)
 		ec.handleError(err, key)
 
