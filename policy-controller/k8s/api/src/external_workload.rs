@@ -77,14 +77,14 @@ pub struct Condition {
     /// Can be True, False, Unknown
     status: ConditionStatus,
     /// Last time a condition transitioned from one status to another.
-    last_transition_time: crate::apimachinery::pkg::apis::meta::v1::Time,
+    last_transition_time: Option<crate::apimachinery::pkg::apis::meta::v1::Time>,
     /// Last time an ExternalWorkload was probed for a condition.
     last_probe_time: Option<crate::apimachinery::pkg::apis::meta::v1::Time>,
     /// Unique one word reason in CamelCase that describes the reason for a
     /// transition.
-    reason: String,
+    reason: Option<String>,
     /// Human readable message that describes details about last transition.
-    message: String,
+    message: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
