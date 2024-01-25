@@ -2895,7 +2895,7 @@ status:
 
 // Test that when an endpointslice's endpoints change their readiness status to
 // not ready, this is correctly picked up by the subscribers
-func TestEndpointSliceChangeToUnready(t *testing.T) {
+func TestEndpointSliceChangeNotReady(t *testing.T) {
 	k8sConfigsWithES := []string{`
 kind: APIResourceList
 apiVersion: v1
@@ -3037,7 +3037,7 @@ status:
 }
 
 // Test that when an endpointslice's endpoints change their readiness status to
-// not ready, this is correctly picked up by the subscribers
+// ready, this is correctly picked up by the subscribers
 func TestEndpointSliceChangeToReady(t *testing.T) {
 	k8sConfigsWithES := []string{`
 kind: APIResourceList
