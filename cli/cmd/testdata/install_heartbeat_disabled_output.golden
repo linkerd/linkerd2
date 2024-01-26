@@ -626,7 +626,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v2.2.3
+        version: v2.2.4
       iptablesMode: legacy
       kubeAPIServerPorts: 443,6443
       logFormat: ""
@@ -806,7 +806,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - identity
@@ -1001,7 +1001,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy-init:v2.2.3
+        image: cr.l5d.io/linkerd/proxy-init:v2.2.4
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1190,7 +1190,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - env:
         - name: _pod_name
@@ -1469,7 +1469,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy-init:v2.2.3
+        image: cr.l5d.io/linkerd/proxy-init:v2.2.4
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1563,7 +1563,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - env:
         - name: _pod_name
@@ -1757,7 +1757,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy-init:v2.2.3
+        image: cr.l5d.io/linkerd/proxy-init:v2.2.4
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
