@@ -492,6 +492,17 @@ status:
   conditions:
   ready: true`,
 	}
+	extenalNameResources := []string{
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: externalname
+  namespace: ns
+spec:
+  type: ExternalName
+  externalName: linkerd.io`,
+	}
 
 	res := append(meshedPodResources, clientSP...)
 	res = append(res, unmeshedPod)
@@ -504,6 +515,7 @@ status:
 	res = append(res, mirrorServiceResources...)
 	res = append(res, destinationCredentialsResources...)
 	res = append(res, externalWorkloads...)
+	res = append(res, extenalNameResources...)
 	k8sAPI, l5dClient, err := k8s.NewFakeAPIWithL5dClient(res...)
 	if err != nil {
 		t.Fatalf("NewFakeAPIWithL5dClient returned an error: %s", err)

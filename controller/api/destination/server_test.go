@@ -17,6 +17,8 @@ import (
 	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/testutil"
 	logging "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -58,6 +60,23 @@ func TestGet(t *testing.T) {
 		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: "linkerd.io"}, stream)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
+		}
+	})
+
+	t.Run("Returns InvalidArgument for ExternalName service", func(t *testing.T) {
+		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := &bufferingGetStream{
+			updates:          make(chan *pb.Update, 50),
+			MockServerStream: util.NewMockServerStream(),
+		}
+
+		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: "externalname.ns.svc.cluster.local"}, stream)
+
+		code := status.Code(err)
+		if code != codes.InvalidArgument {
+			t.Fatalf("Expected InvalidArgument, got %s", code)
 		}
 	})
 
@@ -191,6 +210,23 @@ func TestGetProfiles(t *testing.T) {
 		err := server.GetProfile(&pb.GetDestination{Scheme: "k8s", Path: "linkerd.io"}, stream)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
+		}
+	})
+
+	t.Run("Returns InvalidArgument for ExternalName service", func(t *testing.T) {
+		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+		defer stream.Cancel()
+
+		err := server.GetProfile(&pb.GetDestination{Scheme: "k8s", Path: "externalname.ns.svc.cluster.local"}, stream)
+		code := status.Code(err)
+		if code != codes.InvalidArgument {
+			t.Fatalf("Expected InvalidArgument, got %s", code)
 		}
 	})
 

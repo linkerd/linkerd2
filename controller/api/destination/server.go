@@ -280,6 +280,11 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	if ip := net.ParseIP(host); ip != nil {
 		err = s.getProfileByIP(token, ip, port, log, stream)
 		if err != nil {
+			var ise watcher.InvalidService
+			if errors.As(err, &ise) {
+				log.Debugf("Invalid service %s", dest.GetPath())
+				return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+			}
 			log.Errorf("Failed to subscribe to profile by ip %q: %q", dest.GetPath(), err)
 		}
 		return err
@@ -287,6 +292,11 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 	err = s.getProfileByName(token, host, port, log, stream)
 	if err != nil {
+		var ise watcher.InvalidService
+		if errors.As(err, &ise) {
+			log.Debugf("Invalid service %s", dest.GetPath())
+			return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+		}
 		log.Errorf("Failed to subscribe to profile by name %q: %q", dest.GetPath(), err)
 	}
 	return err
