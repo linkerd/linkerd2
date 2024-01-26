@@ -985,6 +985,11 @@ func (pp *portPublisher) endpointSliceToIDs(es *discovery.EndpointSlice) []ID {
 				Name:      endpoint.TargetRef.Name,
 				Namespace: endpoint.TargetRef.Namespace,
 			})
+		} else if endpoint.TargetRef.Kind == endpointTargetRefExternalWorkload {
+			ids = append(ids, ExternalWorkloadID{
+				Name:      endpoint.TargetRef.Name,
+				Namespace: endpoint.TargetRef.Namespace,
+			})
 		}
 
 	}
