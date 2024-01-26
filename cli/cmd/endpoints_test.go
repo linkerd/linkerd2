@@ -130,7 +130,7 @@ func testEndpointsCall(exp endpointsExp, t *testing.T) {
 		},
 	}
 
-	endpoints, err := requestEndpointsFromAPI(mockClient, exp.authorities)
+	endpoints, err := requestEndpointsFromAPI(mockClient, "", exp.authorities)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
