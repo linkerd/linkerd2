@@ -1,5 +1,19 @@
 # Changes
 
+## edge-24.1.3
+
+This release continues support for ExternalWorkload resources throughout the
+control and data planes.
+
+* Updated the proxy to use SPIRE to instrument identity outside of Kubernetes.
+* Updated the Destination controller to return `INVALID_ARGUMENT` status codes
+  properly when a `ServiceProfile` is requested for a service that does not
+  exist. (#11980)
+* Introduced an ExternalWorkload EndpointSlice controller has been added to the
+  Destination controller.
+* Added a `createNamespaceMetadataJob` Helm value to control whether the
+  namespace-metadata job is run during install (#11782)
+
 ## edge-24.1.2
 
 This edge release incrementally improves support for ExternalWorkload resources
