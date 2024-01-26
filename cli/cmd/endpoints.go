@@ -28,6 +28,7 @@ import (
 type endpointsOptions struct {
 	outputFormat   string
 	destinationPod string
+	contextToken   string
 }
 
 type (
@@ -117,7 +118,7 @@ destination.`,
 
 			defer conn.Close()
 
-			endpoints, err := requestEndpointsFromAPI(client, args)
+			endpoints, err := requestEndpointsFromAPI(client, options.contextToken, args)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Destination API error: %s\n", err)
 				os.Exit(1)
@@ -132,13 +133,14 @@ destination.`,
 
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, fmt.Sprintf("Output format; one of: \"%s\" or \"%s\"", tableOutput, jsonOutput))
 	cmd.PersistentFlags().StringVar(&options.destinationPod, "destination-pod", "", "Target a specific destination Pod when there are multiple running")
+	cmd.PersistentFlags().StringVar(&options.contextToken, "token", "", "The context token to use when making the request to the destination API")
 
 	pkgcmd.ConfigureOutputFlagCompletion(cmd)
 
 	return cmd
 }
 
-func requestEndpointsFromAPI(client destinationPb.DestinationClient, authorities []string) (endpointsInfo, error) {
+func requestEndpointsFromAPI(client destinationPb.DestinationClient, token string, authorities []string) (endpointsInfo, error) {
 	info := make(endpointsInfo)
 	// buffered channels to avoid blocking
 	events := make(chan *destinationPb.Update, len(authorities))
@@ -151,8 +153,9 @@ func requestEndpointsFromAPI(client destinationPb.DestinationClient, authorities
 			defer wg.Done()
 			if len(errs) == 0 {
 				dest := &destinationPb.GetDestination{
-					Scheme: "http:",
-					Path:   authority,
+					Scheme:       "http:",
+					Path:         authority,
+					ContextToken: token,
 				}
 
 				rsp, err := client.Get(context.Background(), dest)
