@@ -9,7 +9,7 @@ control and data planes.
 * Updated the Destination controller to return `INVALID_ARGUMENT` status codes
   properly when a `ServiceProfile` is requested for a service that does not
   exist. (#11980)
-* Introduced an ExternalWorkload EndpointSlice controller has been added to the
+* An ExternalWorkload EndpointSlice controller has been added to the
   Destination controller.
 * Added a `createNamespaceMetadataJob` Helm value to control whether the
   namespace-metadata job is run during install (#11782)
