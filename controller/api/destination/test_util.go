@@ -62,6 +62,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   podIP: 172.17.0.12
   podIPs:
   - ip: 172.17.0.12
@@ -142,6 +145,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   podIP: 172.17.0.13
   podIPs:
   - ip: 172.17.0.13`
@@ -185,6 +191,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   podIP: 172.17.0.14
   podIPs:
   - ip: 172.17.0.14
@@ -246,6 +255,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   podIP: 172.17.0.15
   podIPs:
   - ip: 172.17.0.15
@@ -295,6 +307,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   podIP: 172.17.13.15
   podIPs:
   - ip: 172.17.13.15`,
@@ -312,6 +327,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   podIP: 172.17.0.16
   podIPs:
   - ip: 172.17.0.16
@@ -353,6 +371,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   hostIP: 192.168.1.20
   podIP: 172.17.0.17
   podIPs:
@@ -407,6 +428,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   podIP: 172.17.55.1
   podIPs:
   - ip: 172.17.55.1
@@ -469,7 +493,7 @@ spec:
     port: 4143
 status:
   conditions:
-  ready: true`,
+  - ready: true`,
 		`
 apiVersion: workload.linkerd.io/v1alpha1
 kind: ExternalWorkload

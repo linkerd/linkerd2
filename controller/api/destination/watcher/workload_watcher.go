@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	externalworkload "github.com/linkerd/linkerd2/controller/api/destination/external-workload"
 	ext "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -43,10 +42,7 @@ type (
 		defaultOpaquePorts map[uint32]struct{}
 		k8sAPI             *k8s.API
 		metadataAPI        *k8s.MetadataAPI
-		ip                 string
-		port               Port
-		pod                *corev1.Pod
-		externalWorkload   *ext.ExternalWorkload
+		addr               Address
 		listeners          []WorkloadUpdateListener
 		metrics            metrics
 		log                *logging.Entry
@@ -115,24 +111,16 @@ func (ww *WorkloadWatcher) Subscribe(service *ServiceID, hostname, ip string, po
 	} else {
 		ww.log.Debugf("Establishing watch on workload %s:%d", ip, port)
 	}
-	pp, err := ww.getOrNewWorkloadPublisher(service, hostname, ip, port)
+	wp, err := ww.getOrNewWorkloadPublisher(service, hostname, ip, port)
 	if err != nil {
 		return "", err
 	}
 
-	pp.subscribe(listener)
-
-	address, err := pp.createAddress()
-	if err != nil {
+	if err = wp.subscribe(listener); err != nil {
 		return "", err
 	}
 
-	if err = listener.Update(&address); err != nil {
-		return "", fmt.Errorf("failed to send initial update: %w", err)
-	}
-	pp.metrics.incUpdates()
-
-	return pp.ip, nil
+	return wp.addr.IP, nil
 }
 
 // Subscribe stops notifying the listener on chages on any pod backing the
@@ -150,7 +138,7 @@ func (ww *WorkloadWatcher) Unsubscribe(ip string, port Port, listener WorkloadUp
 	wp.unsubscribe(listener)
 
 	if len(wp.listeners) == 0 {
-		delete(ww.publishers, IPPort{wp.ip, wp.port})
+		delete(ww.publishers, IPPort{wp.addr.IP, wp.addr.Port})
 	}
 }
 
@@ -328,17 +316,32 @@ func (ww *WorkloadWatcher) updateServers(_ any) {
 
 	for _, wp := range ww.publishers {
 		var opaquePorts map[uint32]struct{}
-		if wp.pod != nil {
-			opaquePorts = GetAnnotatedOpaquePorts(wp.pod, ww.defaultOpaquePorts)
-		} else if wp.externalWorkload != nil {
-			opaquePorts = GetAnnotatedOpaquePortsForExternalWorkload(wp.externalWorkload, ww.defaultOpaquePorts)
+		if wp.addr.Pod != nil {
+			opaquePorts = GetAnnotatedOpaquePorts(wp.addr.Pod, ww.defaultOpaquePorts)
+		} else if wp.addr.ExternalWorkload != nil {
+			opaquePorts = GetAnnotatedOpaquePortsForExternalWorkload(wp.addr.ExternalWorkload, ww.defaultOpaquePorts)
 		} else {
 			continue
 		}
 
-		_, isOpaque := opaquePorts[wp.port]
+		_, annotatedOpaque := opaquePorts[wp.addr.Port]
 		// if port is annotated to be always opaque we can disregard Server updates
-		if isOpaque {
+		if annotatedOpaque {
+			continue
+		}
+
+		opaque := wp.addr.OpaqueProtocol
+		name := net.JoinHostPort(wp.addr.IP, fmt.Sprintf("%d", wp.addr.Port))
+		if wp.addr.Pod != nil {
+			name = wp.addr.Pod.GetName()
+		} else if wp.addr.ExternalWorkload != nil {
+			name = wp.addr.ExternalWorkload.GetName()
+		}
+		if err := SetToServerProtocol(wp.k8sAPI, &wp.addr); err != nil {
+			wp.log.Errorf("Error computing opaque protocol for %s: %q", name, err)
+		}
+		if wp.addr.OpaqueProtocol == opaque {
+			// OpaqueProtocol has not changed. No need to update the listeners.
 			continue
 		}
 
@@ -346,25 +349,13 @@ func (ww *WorkloadWatcher) updateServers(_ any) {
 			wp.mu.RLock()
 			defer wp.mu.RUnlock()
 
-			updated := false
 			for _, listener := range wp.listeners {
-				// the Server in question doesn't carry information about other
-				// Servers that might target this workloadPublisher; createAddress()
-				// queries all the relevant Servers to determine the full state
-				addr, err := wp.createAddress()
-				if err != nil {
-					ww.log.Errorf("Error creating address for workload: %s", err)
-					continue
-				}
-				if err = listener.Update(&addr); err != nil {
+				if err := listener.Update(&wp.addr); err != nil {
 					ww.log.Warnf("Error sending update to listener: %s", err)
 					continue
 				}
-				updated = true
 			}
-			if updated {
-				wp.metrics.incUpdates()
-			}
+			wp.metrics.incUpdates()
 		}(wp)
 	}
 }
@@ -410,10 +401,10 @@ func (ww *WorkloadWatcher) getOrNewWorkloadPublisher(service *ServiceID, hostnam
 			defaultOpaquePorts: ww.defaultOpaquePorts,
 			k8sAPI:             ww.k8sAPI,
 			metadataAPI:        ww.metadataAPI,
-			ip:                 ip,
-			port:               port,
-			pod:                pod,
-			externalWorkload:   externalWorkload,
+			addr: Address{
+				IP:   ip,
+				Port: port,
+			},
 			metrics: ipPortVecs.newMetrics(prometheus.Labels{
 				"ip":   ip,
 				"port": strconv.FormatUint(uint64(port), 10),
@@ -423,6 +414,12 @@ func (ww *WorkloadWatcher) getOrNewWorkloadPublisher(service *ServiceID, hostnam
 				"ip":        ip,
 				"port":      port,
 			}),
+		}
+		if pod != nil {
+			wp.updatePod(pod)
+		}
+		if externalWorkload != nil {
+			wp.updateExternalWorkload(externalWorkload)
 		}
 		ww.publishers[ipPort] = wp
 	}
@@ -541,12 +538,18 @@ func (ww *WorkloadWatcher) getEndpointByHostname(hostname string, svcID *Service
 	return nil, status.Errorf(codes.NotFound, "no pod found in Endpoints %s/%s for hostname %s", svcID.Namespace, svcID.Name, hostname)
 }
 
-func (wp *workloadPublisher) subscribe(listener WorkloadUpdateListener) {
+func (wp *workloadPublisher) subscribe(listener WorkloadUpdateListener) error {
 	wp.mu.Lock()
 	defer wp.mu.Unlock()
 
 	wp.listeners = append(wp.listeners, listener)
 	wp.metrics.setSubscribers(len(wp.listeners))
+
+	if err := listener.Update(&wp.addr); err != nil {
+		return fmt.Errorf("failed to send initial update: %w", err)
+	}
+	wp.metrics.incUpdates()
+	return nil
 }
 
 func (wp *workloadPublisher) unsubscribe(listener WorkloadUpdateListener) {
@@ -575,7 +578,7 @@ func (wp *workloadPublisher) updatePod(pod *corev1.Pod) {
 	defer wp.mu.Unlock()
 
 	// pod wasn't ready or there was no backing pod - check if passed pod is ready
-	if wp.pod == nil {
+	if wp.addr.Pod == nil {
 		if pod == nil {
 			wp.log.Trace("Pod deletion event already consumed - ignore")
 			return
@@ -587,46 +590,50 @@ func (wp *workloadPublisher) updatePod(pod *corev1.Pod) {
 		}
 
 		wp.log.Debugf("Pod %s.%s became ready", pod.Name, pod.Namespace)
-		wp.pod = pod
-		updated := false
-		for _, l := range wp.listeners {
-			addr, err := wp.createAddress()
+		wp.addr.Pod = pod
+
+		// Fill in ownership.
+		if wp.addr.Pod != nil {
+			ownerKind, ownerName, err := wp.metadataAPI.GetOwnerKindAndName(context.Background(), wp.addr.Pod, true)
 			if err != nil {
-				wp.log.Errorf("Error creating address for pod: %s", err)
-				continue
+				wp.log.Errorf("Error getting pod owner for pod %s: %q", wp.addr.Pod.GetName(), err)
+			} else {
+				wp.addr.OwnerKind = ownerKind
+				wp.addr.OwnerName = ownerName
 			}
-			if err = l.Update(&addr); err != nil {
+		}
+
+		// Compute opaque protocol.
+		if err := SetToServerProtocol(wp.k8sAPI, &wp.addr); err != nil {
+			wp.log.Errorf("Error computing opaque protocol for pod %s: %q", wp.addr.Pod.GetName(), err)
+		}
+
+		for _, l := range wp.listeners {
+			if err := l.Update(&wp.addr); err != nil {
 				wp.log.Warnf("Error sending update to listener: %s", err)
 				continue
 			}
-			updated = true
 		}
-		if updated {
-			wp.metrics.incUpdates()
-		}
+		wp.metrics.incUpdates()
+
 		return
 	}
 
 	// backing pod becoming unready or getting deleted
 	if pod == nil || !isRunningAndReady(pod) {
-		wp.log.Debugf("Pod %s.%s deleted or it became unready - remove", wp.pod.Name, wp.pod.Namespace)
-		wp.pod = nil
-		updated := false
+		wp.log.Debugf("Pod %s.%s deleted or it became unready - remove", wp.addr.Pod.Name, wp.addr.Pod.Namespace)
+		wp.addr.Pod = nil
+		wp.addr.OwnerKind = ""
+		wp.addr.OwnerName = ""
+		wp.addr.OpaqueProtocol = false
 		for _, l := range wp.listeners {
-			addr, err := wp.createAddress()
-			if err != nil {
-				wp.log.Errorf("Error creating address for pod: %s", err)
-				continue
-			}
-			if err = l.Update(&addr); err != nil {
+			if err := l.Update(&wp.addr); err != nil {
 				wp.log.Warnf("Error sending update to listener: %s", err)
 				continue
 			}
-			updated = true
 		}
-		if updated {
-			wp.metrics.incUpdates()
-		}
+		wp.metrics.incUpdates()
+
 		return
 	}
 
@@ -641,118 +648,26 @@ func (wp *workloadPublisher) updateExternalWorkload(externalWorkload *ext.Extern
 	wp.mu.Lock()
 	defer wp.mu.Unlock()
 
-	// externalWorkload wasn't ready or there was no backing externalWorkload.
-	// check if passed externalWorkload is ready
-	if wp.externalWorkload == nil {
-		if externalWorkload == nil {
-			wp.log.Trace("ExternalWorkload deletion event already consumed - ignore")
-			return
-		}
+	wp.addr.ExternalWorkload = externalWorkload
 
-		if !externalworkload.IsEwReady(externalWorkload) {
-			wp.log.Tracef("ExternalWorkload %s.%s not ready - ignore", externalWorkload.Name, externalWorkload.Namespace)
-			return
-		}
-
-		wp.log.Debugf("ExternalWorkload %s.%s became ready", externalWorkload.Name, externalWorkload.Namespace)
-		wp.externalWorkload = externalWorkload
-		updated := false
-		for _, l := range wp.listeners {
-			addr, err := wp.createAddress()
-			if err != nil {
-				wp.log.Errorf("Error creating address for externalWorkload: %s", err)
-				continue
-			}
-			if err = l.Update(&addr); err != nil {
-				wp.log.Warnf("Error sending update to listener: %s", err)
-				continue
-			}
-			updated = true
-		}
-		if updated {
-			wp.metrics.incUpdates()
-		}
-		return
+	// Fill in ownership.
+	if wp.addr.ExternalWorkload != nil && len(wp.addr.ExternalWorkload.GetOwnerReferences()) == 1 {
+		wp.addr.OwnerKind = wp.addr.ExternalWorkload.GetOwnerReferences()[0].Kind
+		wp.addr.OwnerName = wp.addr.ExternalWorkload.GetOwnerReferences()[0].Name
 	}
 
-	// backing pod becoming unready or getting deleted
-	if externalWorkload == nil || !externalworkload.IsEwReady(externalWorkload) {
-		wp.log.Debugf("ExternalWorkload %s.%s deleted or it became unready - remove", wp.externalWorkload.Name, wp.externalWorkload.Namespace)
-		wp.externalWorkload = nil
-		updated := false
-		for _, l := range wp.listeners {
-			addr, err := wp.createAddress()
-			if err != nil {
-				wp.log.Errorf("Error creating address for pod: %s", err)
-				continue
-			}
-			if err = l.Update(&addr); err != nil {
-				wp.log.Warnf("Error sending update to listener: %s", err)
-				continue
-			}
-			updated = true
-		}
-		if updated {
-			wp.metrics.incUpdates()
-		}
-		return
+	// Compute opaque protocol.
+	if err := SetToServerProtocolExternalWorkload(wp.k8sAPI, &wp.addr); err != nil {
+		wp.log.Errorf("Error computing opaque protocol for externalworkload %s: %q", wp.addr.ExternalWorkload.GetName(), err)
 	}
 
-	wp.log.Tracef("Ignored event on externalWorkload %s.%s", externalWorkload.Name, externalWorkload.Namespace)
-}
-
-// createAddress returns an Address instance for the given ip, port and workload. It
-// completes the ownership and opaque protocol information
-func (wp *workloadPublisher) createAddress() (Address, error) {
-	var ownerKind, ownerName string
-	var err error
-	if wp.pod != nil {
-		ownerKind, ownerName, err = wp.metadataAPI.GetOwnerKindAndName(context.Background(), wp.pod, true)
-		if err != nil {
-			return Address{}, err
-		}
-	} else if wp.externalWorkload != nil {
-		if len(wp.externalWorkload.GetOwnerReferences()) == 1 {
-			ownerKind = wp.externalWorkload.GetOwnerReferences()[0].Kind
-			ownerName = wp.externalWorkload.GetOwnerReferences()[0].Name
+	for _, l := range wp.listeners {
+		if err := l.Update(&wp.addr); err != nil {
+			wp.log.Warnf("Error sending update to listener: %s", err)
+			continue
 		}
 	}
-
-	address := Address{
-		IP:               wp.ip,
-		Port:             wp.port,
-		Pod:              wp.pod,
-		ExternalWorkload: wp.externalWorkload,
-		OwnerName:        ownerName,
-		OwnerKind:        ownerKind,
-	}
-
-	// Override opaqueProtocol if the endpoint's port is annotated as opaque
-	if wp.pod != nil {
-		opaquePorts := GetAnnotatedOpaquePorts(wp.pod, wp.defaultOpaquePorts)
-		if _, ok := opaquePorts[wp.port]; ok {
-			address.OpaqueProtocol = true
-		} else {
-			if err := SetToServerProtocol(wp.k8sAPI, &address, wp.port); err != nil {
-				return Address{}, fmt.Errorf("failed to set address OpaqueProtocol: %w", err)
-			}
-		}
-	} else if wp.externalWorkload != nil {
-		opaquePorts := GetAnnotatedOpaquePortsForExternalWorkload(wp.externalWorkload, wp.defaultOpaquePorts)
-		if _, ok := opaquePorts[wp.port]; ok {
-			address.OpaqueProtocol = true
-		} else {
-			if err := SetToServerProtocolExternalWorkload(wp.k8sAPI, &address, wp.port); err != nil {
-				return Address{}, fmt.Errorf("failed to set address OpaqueProtocol: %w", err)
-			}
-		}
-	} else {
-		if _, ok := wp.defaultOpaquePorts[wp.port]; ok {
-			address.OpaqueProtocol = true
-		}
-	}
-
-	return address, nil
+	wp.metrics.incUpdates()
 }
 
 // GetAnnotatedOpaquePorts returns the opaque ports for the pod given its
