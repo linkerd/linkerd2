@@ -6,7 +6,7 @@ require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
 	github.com/clarketm/json v1.15.7
-	github.com/emicklei/proto v1.13.0
+	github.com/emicklei/proto v1.13.2
 	github.com/evanphx/json-patch v5.8.1+incompatible
 	github.com/fatih/color v1.16.0
 	github.com/fsnotify/fsnotify v1.7.0
@@ -55,6 +55,7 @@ require (
 	github.com/bombsimon/logrusr/v4 v4.1.0
 	github.com/prometheus/client_model v0.5.0
 	gopkg.in/yaml.v2 v2.4.0
+	k8s.io/endpointslice v0.29.1
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 )
 
@@ -156,7 +157,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/cli-runtime v0.29.0 // indirect
 	k8s.io/component-base v0.29.1 // indirect
-	k8s.io/endpointslice v0.29.1 // indirect
 	k8s.io/gengo v0.0.0-20240110203215-22eea95d1e7a // indirect
 	k8s.io/kube-openapi v0.0.0-20240117194847-208609032b15 // indirect
 	oras.land/oras-go v1.2.4 // indirect
