@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	ext "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -19,6 +20,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -88,8 +91,8 @@ func NewWorkloadWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logg
 	}
 
 	_, err = k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ww.updateServers,
-		DeleteFunc: ww.updateServers,
+		AddFunc:    ww.addOrDeleteServer,
+		DeleteFunc: ww.addOrDeleteServer,
 		UpdateFunc: ww.updateServer,
 	})
 	if err != nil {
@@ -298,30 +301,47 @@ func (ww *WorkloadWatcher) updateServer(oldObj interface{}, newObj interface{}) 
 
 	oldUpdated := latestUpdated(oldServer.ManagedFields)
 	updated := latestUpdated(newServer.ManagedFields)
-	if oldServer.ResourceVersion == newServer.ResourceVersion {
-		return
-	}
+
 	if !updated.IsZero() && updated != oldUpdated {
 		delta := time.Since(updated)
 		serverInformerLag.Observe(delta.Seconds())
 	}
 
-	ww.updateServers(newObj)
+	ww.updateServers(oldServer, newServer)
 }
 
-// updateServer triggers an Update() call to the listeners of the workloadPublishers
-// whose pod matches the Server's podSelector or whose externalworkload matches
-// the Server's externalworkload selection. This function is an event handler
-// so it cannot block.
-func (ww *WorkloadWatcher) updateServers(_ any) {
+func (ww *WorkloadWatcher) addOrDeleteServer(obj interface{}) {
+	server, ok := obj.(*v1beta2.Server)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			ww.log.Errorf("Couldn't get object from DeletedFinalStateUnknown %#v", obj)
+			return
+		}
+		server, ok = tombstone.Obj.(*v1beta2.Server)
+		if !ok {
+			ww.log.Errorf("DeletedFinalStateUnknown contained object that is not a Server %#v", obj)
+			return
+		}
+	}
+	ww.updateServers(server)
+}
+
+func (ww *WorkloadWatcher) updateServers(servers ...*v1beta2.Server) {
 	ww.mu.RLock()
 	defer ww.mu.RUnlock()
 
 	for _, wp := range ww.publishers {
 		var opaquePorts map[uint32]struct{}
 		if wp.addr.Pod != nil {
+			if !ww.isPodSelectedByAny(wp.addr.Pod, servers...) {
+				continue
+			}
 			opaquePorts = GetAnnotatedOpaquePorts(wp.addr.Pod, ww.defaultOpaquePorts)
 		} else if wp.addr.ExternalWorkload != nil {
+			if !ww.isExternalWorkloadSelectedByAny(wp.addr.ExternalWorkload, servers...) {
+				continue
+			}
 			opaquePorts = GetAnnotatedOpaquePortsForExternalWorkload(wp.addr.ExternalWorkload, ww.defaultOpaquePorts)
 		} else {
 			continue
@@ -361,6 +381,34 @@ func (ww *WorkloadWatcher) updateServers(_ any) {
 			wp.metrics.incUpdates()
 		}(wp)
 	}
+}
+
+func (ww *WorkloadWatcher) isPodSelectedByAny(pod *corev1.Pod, servers ...*v1beta2.Server) bool {
+	for _, s := range servers {
+		selector, err := metav1.LabelSelectorAsSelector(s.Spec.PodSelector)
+		if err != nil {
+			ww.log.Errorf("failed to parse PodSelector of Server %s.%s: %q", s.GetName(), s.GetNamespace(), err)
+			continue
+		}
+		if selector.Matches(labels.Set(pod.Labels)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (ww *WorkloadWatcher) isExternalWorkloadSelectedByAny(ew *v1alpha1.ExternalWorkload, servers ...*v1beta2.Server) bool {
+	for _, s := range servers {
+		selector, err := metav1.LabelSelectorAsSelector(s.Spec.ExternalWorkloadSelector)
+		if err != nil {
+			ww.log.Errorf("failed to parse ExternalWorkloadSelector of Server %s.%s: %q", s.GetName(), s.GetNamespace(), err)
+			continue
+		}
+		if selector.Matches(labels.Set(ew.Labels)) {
+			return true
+		}
+	}
+	return false
 }
 
 // getOrNewWorkloadPublisher returns the workloadPublisher for the given target if it
