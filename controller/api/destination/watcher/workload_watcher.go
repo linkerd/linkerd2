@@ -298,6 +298,9 @@ func (ww *WorkloadWatcher) updateServer(oldObj interface{}, newObj interface{}) 
 
 	oldUpdated := latestUpdated(oldServer.ManagedFields)
 	updated := latestUpdated(newServer.ManagedFields)
+	if oldServer.ResourceVersion == newServer.ResourceVersion {
+		return
+	}
 	if !updated.IsZero() && updated != oldUpdated {
 		delta := time.Since(updated)
 		serverInformerLag.Observe(delta.Seconds())
