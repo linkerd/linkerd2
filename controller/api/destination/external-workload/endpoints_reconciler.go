@@ -433,7 +433,7 @@ func newEndpointSlice(svc *corev1.Service, meta *endpointMeta, controllerName st
 	ownerRef := metav1.NewControllerRef(svc, schema.GroupVersionKind{Version: "v1", Kind: "Service"})
 	slice := &discoveryv1.EndpointSlice{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName:    fmt.Sprintf("linkerd-external-%s", svc.Name),
+			GenerateName:    fmt.Sprintf("linkerd-external-%s-", svc.Name),
 			Namespace:       svc.Namespace,
 			Labels:          map[string]string{},
 			OwnerReferences: []metav1.OwnerReference{*ownerRef},
