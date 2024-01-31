@@ -10,7 +10,6 @@ import (
 	"time"
 
 	externalworkload "github.com/linkerd/linkerd2/controller/api/destination/external-workload"
-	"github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	ext "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -410,7 +409,7 @@ func (ww *WorkloadWatcher) isPodSelectedByAny(pod *corev1.Pod, servers ...*v1bet
 	return false
 }
 
-func (ww *WorkloadWatcher) isExternalWorkloadSelectedByAny(ew *v1alpha1.ExternalWorkload, servers ...*v1beta2.Server) bool {
+func (ww *WorkloadWatcher) isExternalWorkloadSelectedByAny(ew *ext.ExternalWorkload, servers ...*v1beta2.Server) bool {
 	for _, s := range servers {
 		selector, err := metav1.LabelSelectorAsSelector(s.Spec.ExternalWorkloadSelector)
 		if err != nil {
