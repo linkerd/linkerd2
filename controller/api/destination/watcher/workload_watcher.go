@@ -339,6 +339,10 @@ func (ww *WorkloadWatcher) addOrDeleteServer(obj interface{}) {
 	ww.updateServers(server)
 }
 
+// updateServer triggers an Update() call to the listeners of the workloadPublishers
+// whose pod matches the any of the Servers' podSelector or whose
+// externalworkload matches any of the Servers' externalworkload selection. This
+// function is an event handler so it cannot block.
 func (ww *WorkloadWatcher) updateServers(servers ...*v1beta2.Server) {
 	ww.mu.RLock()
 	defer ww.mu.RUnlock()
