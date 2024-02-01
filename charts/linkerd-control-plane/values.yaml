@@ -387,6 +387,9 @@ disableHeartBeat: false
 
 # proxy injector configuration
 proxyInjector:
+  # timeout in seconds before the API Server cancels a request to the proxy injector
+  # if timeout is exceeded, the webhookfailurePolicy is used
+  timeoutSeconds: 10
   # -- Do not create a secret resource for the proxyInjector webhook.
   # If this is set to `true`, the value `proxyInjector.caBundle` must be set
   # or the ca bundle must injected with cert-manager ca injector using
