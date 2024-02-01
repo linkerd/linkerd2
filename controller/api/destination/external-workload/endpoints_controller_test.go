@@ -1238,6 +1238,81 @@ func TestWorkloadServicesToUpdate(t *testing.T) {
 	}
 }
 
+// Assert that de-registering handlers won't result in cache staleness issues
+//
+// The test will simulate a scenario where a lease is acquired, an endpointslice
+// created, and the lease is lost. Without wiping out state, this test will
+// fail, since any changes made to the resources will not be observed while the
+// lease is not held; these changes will result in stale cache entries (since
+// the state diverged).
+func TestLeaderElectionSyncsState(t *testing.T) {
+	client, actions, esController := newController(t)
+	ns := "test-ns"
+	service := createService(t, esController, ns, "test-svc")
+	ew1 := newExternalWorkload(1, ns, false, true)
+	esController.serviceStore.Add(service)
+	esController.externalWorkloadsStore.Add(ew1)
+
+	// Simulate a lease being acquired,
+	err := esController.addHandlers()
+	if err != nil {
+		t.Fatalf("unexpected error when registering client-go callbacks: %v", err)
+	}
+
+	err = esController.syncService(fmt.Sprintf("%s/%s", ns, service.Name))
+	if err != nil {
+		t.Fatalf("unexpected error when processing service %s/%s: %v", ns, service.Name, err)
+	}
+	expectActions(t, actions(), 1, "create", "endpointslices")
+
+	slices, err := client.Client.DiscoveryV1().EndpointSlices(ns).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		t.Errorf("expected no error fetching endpoint slices, got: %s", err)
+	}
+	if len(slices.Items) != 1 {
+		t.Errorf("expected 1 endpoint slices, got: %d", len(slices.Items))
+	}
+	sliceName := slices.Items[0].Name
+
+	// Simulate a lease being lost; we delete the previously created
+	// endpointslice out-of-band.
+	err = esController.removeHandlers()
+	if err != nil {
+		t.Fatalf("unexpected error when de-registering client-go callbacks: %v", err)
+	}
+	err = client.Client.DiscoveryV1().EndpointSlices(ns).Delete(context.TODO(), sliceName, metav1.DeleteOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error when deleting endpointslice %s/%s: %v", ns, sliceName, err)
+	}
+	slices, err = client.Client.DiscoveryV1().EndpointSlices(ns).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		t.Errorf("expected no error fetching endpoint slices, got: %s", err)
+	}
+	if len(slices.Items) != 0 {
+		t.Errorf("expected 0 endpoint slices, got: %d", len(slices.Items))
+	}
+
+	// The lease is re-acquired. We should start with a clean slate to avoid
+	// cache staleness errors.
+	esController.addHandlers()
+	err = esController.syncService(fmt.Sprintf("%s/%s", ns, service.Name))
+	if err != nil {
+		t.Fatalf("unexpected error when processing service %s/%s: %v", ns, service.Name, err)
+	}
+	expectActions(t, actions(), 1, "create", "endpointslices")
+	slices, err = client.Client.DiscoveryV1().EndpointSlices(ns).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		t.Errorf("expected no error fetching endpoint slices, got: %s", err)
+	}
+	if len(slices.Items) != 1 {
+		t.Errorf("expected 1 endpoint slices, got: %d", len(slices.Items))
+	}
+	if slices.Items[0].Name == sliceName {
+		t.Fatalf("expected newly created slice's name to be different than the initial slice, got: %s", sliceName)
+	}
+
+}
+
 // protoPtr takes a Protocol and returns a pointer to it.
 func protoPtr(proto v1.Protocol) *v1.Protocol {
 	return &proto
