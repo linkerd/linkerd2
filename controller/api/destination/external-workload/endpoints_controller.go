@@ -74,6 +74,8 @@ type informerHandlers struct {
 	esHandle  cache.ResourceEventHandlerRegistration
 	svcHandle cache.ResourceEventHandlerRegistration
 
+	// Mutex to guard handler registration since the elector loop may start
+	// executing callbacks when a controller starts reading in a background task
 	sync.Mutex
 }
 
@@ -209,6 +211,8 @@ func (ec *EndpointsController) addHandlers() error {
 // removeHandlers will de-register callbacks
 func (ec *EndpointsController) removeHandlers() error {
 	var err error
+	ec.Lock()
+	defer ec.Unlock()
 	if ec.svcHandle != nil {
 		if err = ec.k8sAPI.Svc().Informer().RemoveEventHandler(ec.svcHandle); err != nil {
 			return err
