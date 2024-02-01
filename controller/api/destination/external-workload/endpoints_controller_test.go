@@ -1249,7 +1249,7 @@ func TestLeaderElectionSyncsState(t *testing.T) {
 	client, actions, esController := newController(t)
 	ns := "test-ns"
 	service := createService(t, esController, ns, "test-svc")
-	ew1 := newExternalWorkload(1, ns, true, false)
+	ew1 := newExternalWorkload(1, ns, false, true)
 	esController.serviceStore.Add(service)
 	esController.externalWorkloadsStore.Add(ew1)
 
