@@ -20,6 +20,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/util/workqueue"
 	endpointslicerec "k8s.io/endpointslice"
+	epsliceutil "k8s.io/endpointslice/util"
 )
 
 const (
@@ -74,72 +75,6 @@ type informerHandlers struct {
 	svcHandle cache.ResourceEventHandlerRegistration
 
 	sync.Mutex
-}
-
-// addHandlers will register a set of callbacks with the different informers
-// needed to synchronise endpoint state.
-func (ec *EndpointsController) addHandlers() error {
-	var err error
-	ec.Lock()
-	defer ec.Unlock()
-
-	ec.svcHandle, err = ec.k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ec.onServiceUpdate,
-		DeleteFunc: ec.onServiceUpdate,
-		UpdateFunc: func(_, newObj interface{}) {
-			ec.onServiceUpdate(newObj)
-		},
-	})
-
-	if err != nil {
-		return err
-	}
-
-	ec.esHandle, err = ec.k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ec.onEndpointSliceAdd,
-		UpdateFunc: ec.onEndpointSliceUpdate,
-		DeleteFunc: ec.onEndpointSliceDelete,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	ec.ewHandle, err = ec.k8sAPI.ExtWorkload().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ec.onAddExternalWorkload,
-		DeleteFunc: ec.onDeleteExternalWorkload,
-		UpdateFunc: ec.onUpdateExternalWorkload,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// removeHandlers will de-register callbacks
-func (ec *EndpointsController) removeHandlers() error {
-	var err error
-	if ec.svcHandle != nil {
-		if err = ec.k8sAPI.Svc().Informer().RemoveEventHandler(ec.svcHandle); err != nil {
-			return err
-		}
-	}
-
-	if ec.ewHandle != nil {
-		if err = ec.k8sAPI.ExtWorkload().Informer().RemoveEventHandler(ec.ewHandle); err != nil {
-			return err
-		}
-	}
-
-	if ec.esHandle != nil {
-		if err = ec.k8sAPI.ES().Informer().RemoveEventHandler(ec.esHandle); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // The EndpointsController code has been structured (and modified) based on the
@@ -223,6 +158,76 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 	}
 
 	return ec, nil
+}
+
+// addHandlers will register a set of callbacks with the different informers
+// needed to synchronise endpoint state.
+func (ec *EndpointsController) addHandlers() error {
+	var err error
+	ec.Lock()
+	defer ec.Unlock()
+
+	// Wipe out previously observed state. This ensures we will not have stale
+	// cache errors due to events that happened when callbacks were not firing.
+	ec.reconciler.endpointTracker = epsliceutil.NewEndpointSliceTracker()
+
+	ec.svcHandle, err = ec.k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    ec.onServiceUpdate,
+		DeleteFunc: ec.onServiceUpdate,
+		UpdateFunc: func(_, newObj interface{}) {
+			ec.onServiceUpdate(newObj)
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	ec.esHandle, err = ec.k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    ec.onEndpointSliceAdd,
+		UpdateFunc: ec.onEndpointSliceUpdate,
+		DeleteFunc: ec.onEndpointSliceDelete,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	ec.ewHandle, err = ec.k8sAPI.ExtWorkload().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    ec.onAddExternalWorkload,
+		DeleteFunc: ec.onDeleteExternalWorkload,
+		UpdateFunc: ec.onUpdateExternalWorkload,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// removeHandlers will de-register callbacks
+func (ec *EndpointsController) removeHandlers() error {
+	var err error
+	if ec.svcHandle != nil {
+		if err = ec.k8sAPI.Svc().Informer().RemoveEventHandler(ec.svcHandle); err != nil {
+			return err
+		}
+	}
+
+	if ec.ewHandle != nil {
+		if err = ec.k8sAPI.ExtWorkload().Informer().RemoveEventHandler(ec.ewHandle); err != nil {
+			return err
+		}
+	}
+
+	if ec.esHandle != nil {
+		if err = ec.k8sAPI.ES().Informer().RemoveEventHandler(ec.esHandle); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Start will run the endpoint manager's processing loop and leader elector.
