@@ -17,7 +17,7 @@ func makeServer(t *testing.T) *server {
 	return srv
 }
 
-func getServerWithClient(t *testing.T) (*server, *l5dcrdclient.Interface) {
+func getServerWithClient(t *testing.T) (*server, l5dcrdclient.Interface) {
 	meshedPodResources := []string{`
 apiVersion: v1
 kind: Namespace
@@ -301,6 +301,32 @@ status:
 	}
 
 	policyResources := []string{
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: policy-test
+  namespace: ns
+spec:
+  type: LoadBalancer
+  clusterIP: 172.17.12.2
+  ports:
+  - port: 80`,
+		`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: policy-test
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 172.17.0.16
+    targetRef:
+      kind: Pod
+      name: pod-policyResources
+      namespace: ns
+  ports:
+  - port: 80`,
 		`
 apiVersion: v1
 kind: Pod
