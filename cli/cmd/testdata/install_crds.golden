@@ -10329,6 +10329,10 @@ spec:
                   properties:
                     ip:
                       type: string
+                # TODO: relax this in the future when ipv6 is supported
+                # an external workload (like a pod) should only
+                # support 2 interfaces
+                maxItems: 1
             type: object
             required:
             - meshTls
