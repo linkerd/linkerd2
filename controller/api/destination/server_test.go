@@ -16,7 +16,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/testutil"
-	"github.com/sirupsen/logrus"
 	logging "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -161,7 +160,6 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("Return endpoint opaque protocol controlled by a server", func(t *testing.T) {
-		logrus.SetLevel(logrus.DebugLevel)
 		server, client := getServerWithClient(t)
 		defer server.clusterStore.UnregisterGauges()
 
