@@ -30,6 +30,7 @@ const fullyQualifiedNameOpaqueService = "name4.ns.svc.mycluster.local"
 const fullyQualifiedNameSkipped = "name5.ns.svc.mycluster.local"
 const fullyQualifiedPodDNS = "pod-0.statefulset-svc.ns.svc.mycluster.local"
 const fullyQualifiedNamePolicy = "policy-test.ns.svc.mycluster.local"
+const fullyQualifiedNameExternalWorkloadPolicy = "policy-test-external-workload.ns.svc.mycluster.local"
 const clusterIP = "172.17.12.0"
 const clusterIPv6 = "2001:db8::88"
 const clusterIPOpaque = "172.17.12.1"
@@ -201,25 +202,13 @@ func TestGet(t *testing.T) {
 		// Update the Server's pod selector so that it no longer selects the
 		// pod. This should result in the proxy protocol no longer being marked
 		// as opaque.
-		srv := v1beta2.Server{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "srv",
-				Namespace: "ns",
-			},
-			Spec: v1beta2.ServerSpec{
-				PodSelector: &metav1.LabelSelector{
-					// PodSelector is updated to NOT select the pod
-					MatchLabels: map[string]string{"app": "FOOBAR"},
-				},
-				ExternalWorkloadSelector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{"app": "external-workload-policy-test"},
-				},
-				Port:          intstr.FromInt(80),
-				ProxyProtocol: "opaque",
-			},
+		srv, err := client.ServerV1beta2().Servers("ns").Get(context.Background(), "srv", metav1.GetOptions{})
+		if err != nil {
+			t.Fatal(err)
 		}
-
-		_, err := client.ServerV1beta2().Servers("ns").Update(context.Background(), &srv, metav1.UpdateOptions{})
+		// PodSelector is updated to NOT select the pod
+		srv.Spec.PodSelector.MatchLabels = map[string]string{"app": "FOOBAR"}
+		_, err = client.ServerV1beta2().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -243,7 +232,7 @@ func TestGet(t *testing.T) {
 		// as opaque.
 		srv.Spec.PodSelector.MatchLabels = map[string]string{"app": "policy-test"}
 
-		_, err = client.ServerV1beta2().Servers("ns").Update(context.Background(), &srv, metav1.UpdateOptions{})
+		_, err = client.ServerV1beta2().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}

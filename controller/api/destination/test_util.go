@@ -363,6 +363,15 @@ spec:
   podSelector:
     matchLabels:
       app: policy-test
+  port: 80
+  proxyProtocol: opaque`,
+		`
+apiVersion: policy.linkerd.io/v1beta2
+kind: Server
+metadata:
+  name: srv-external-workload
+  namespace: ns
+spec:
   externalWorkloadSelector:
     matchLabels:
       app: external-workload-policy-test
@@ -517,6 +526,32 @@ spec:
 status:
   conditions:
   ready: true`,
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: policy-test-external-workload
+  namespace: ns
+spec:
+  type: LoadBalancer
+  clusterIP: 172.17.12.3
+  ports:
+  - port: 80`,
+		`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: policy-test-external-workload
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 200.1.1.2
+    targetRef:
+      kind: ExternalWorkload
+      name: policy-test-workload
+      namespace: ns
+  ports:
+  - port: 80`,
 	}
 	extenalNameResources := []string{
 		`
