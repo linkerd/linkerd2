@@ -82,13 +82,17 @@ spec:
         - -cluster-domain={{.Values.clusterDomain}}
         {{- if .Values.prometheusUrl }}
         - -prometheus-url={{.Values.prometheusUrl}}
+        {{- if and .Values.prometheusAuthType .Values.prometheusAuthCreds }}
+        - -prometheus-auth-type={{.Values.prometheusAuthType}}
+        - -prometheus-auth-creds={{.Values.prometheusAuthCreds}}
+        {{- end }}
         {{- else if .Values.prometheus.enabled }}
         - -prometheus-url=http://prometheus.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}:9090
         {{- else }}
         {{ fail "Please enable `linkerd-prometheus` or provide `prometheusUrl` for the viz extension to function properly"}}
         {{- end }}
         - -enable-pprof={{.Values.enablePprof | default false}}
-        image: {{.Values.metricsAPI.image.registry | default .Values.defaultRegistry}}/{{.Values.metricsAPI.image.name}}:{{.Values.metricsAPI.image.tag | default .Values.linkerdVersion}}
+        image: {{.Values.metricsAPI.image.name}}:{{.Values.metricsAPI.image.tag | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.metricsAPI.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:
           httpGet:

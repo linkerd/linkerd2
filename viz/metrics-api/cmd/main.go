@@ -16,6 +16,7 @@ import (
 	api "github.com/linkerd/linkerd2/viz/metrics-api"
 	promApi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	promConfig "github.com/prometheus/common/config"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -25,6 +26,8 @@ func main() {
 	addr := cmd.String("addr", ":8085", "address to serve on")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 	prometheusURL := cmd.String("prometheus-url", "", "prometheus url")
+	prometheusAuthType := cmd.String("prometheus-auth-type", "", "prometheus auth type. Possible values are: basic | bearer")
+	prometheusAuthCreds := cmd.String("prometheus-auth-creds", "", "prometheus auth credentials")
 	metricsAddr := cmd.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	ignoredNamespaces := cmd.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
@@ -63,7 +66,36 @@ func main() {
 
 	var prometheusClient promApi.Client
 	if *prometheusURL != "" {
-		prometheusClient, err = promApi.NewClient(promApi.Config{Address: *prometheusURL})
+		promClientRoundTripper := promApi.DefaultRoundTripper
+
+		if prometheusAuthType != nil && prometheusAuthCreds != nil {
+			log.Info("Using prometheus auth: ", *prometheusAuthType)
+
+			switch *prometheusAuthType {
+			case "bearer":
+				promClientRoundTripper = promConfig.NewAuthorizationCredentialsRoundTripper(
+					"Bearer",
+					promConfig.Secret(*prometheusAuthCreds),
+					promApi.DefaultRoundTripper,
+				)
+			case "basic":
+				userpass := strings.Split(*prometheusAuthCreds, ":")
+
+				promClientRoundTripper = promConfig.NewBasicAuthRoundTripper(
+					userpass[0],
+					promConfig.Secret(userpass[1]),
+					"",
+					"",
+					promApi.DefaultRoundTripper,
+				)
+			}
+		}
+
+		prometheusClient, err = promApi.NewClient(promApi.Config{
+			Address:      *prometheusURL,
+			RoundTripper: promClientRoundTripper,
+		})
+
 		if err != nil {
 			log.Fatal(err.Error())
 		}
