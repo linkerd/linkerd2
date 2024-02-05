@@ -528,11 +528,14 @@ func (ew *EndpointsWatcher) addServer(obj interface{}) {
 	defer ew.Unlock()
 	server := obj.(*v1beta1.Server)
 	for _, sp := range ew.publishers {
-		sp.updateServer(server, true)
+		sp.updateServer(nil, server)
 	}
 }
 
 func (ew *EndpointsWatcher) updateServer(oldObj interface{}, newObj interface{}) {
+	ew.Lock()
+	defer ew.Unlock()
+
 	oldServer := oldObj.(*v1beta1.Server)
 	newServer := newObj.(*v1beta1.Server)
 	oldUpdated := latestUpdated(oldServer.ManagedFields)
@@ -542,7 +545,9 @@ func (ew *EndpointsWatcher) updateServer(oldObj interface{}, newObj interface{})
 		serverInformerLag.Observe(delta.Seconds())
 	}
 
-	ew.addServer(newObj)
+	for _, sp := range ew.publishers {
+		sp.updateServer(oldServer, newServer)
+	}
 }
 
 func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
@@ -550,7 +555,7 @@ func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
 	defer ew.Unlock()
 	server := obj.(*v1beta1.Server)
 	for _, sp := range ew.publishers {
-		sp.updateServer(server, false)
+		sp.updateServer(server, nil)
 	}
 }
 
@@ -720,17 +725,12 @@ func (sp *servicePublisher) metricsLabels(port Port, hostname string) prometheus
 	return endpointsLabels(sp.cluster, sp.id.Namespace, sp.id.Name, strconv.Itoa(int(port)), hostname)
 }
 
-func (sp *servicePublisher) updateServer(server *v1beta1.Server, isAdd bool) {
+func (sp *servicePublisher) updateServer(oldServer, newServer *v1beta1.Server) {
 	sp.Lock()
 	defer sp.Unlock()
 
-	selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
-	if err != nil {
-		sp.log.Errorf("failed to create Selector: %s", err)
-		return
-	}
 	for _, pp := range sp.ports {
-		pp.updateServer(server, selector, isAdd)
+		pp.updateServer(oldServer, newServer)
 	}
 }
 
@@ -1199,38 +1199,19 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 
 	pp.metrics.setSubscribers(len(pp.listeners))
 }
-
-func (pp *portPublisher) updateServer(server *v1beta1.Server, selector labels.Selector, isAdd bool) {
+func (pp *portPublisher) updateServer(oldServer, newServer *v1beta1.Server) {
 	updated := false
 	for id, address := range pp.addresses.Addresses {
-		if address.Pod != nil && selector.Matches(labels.Set(address.Pod.Labels)) {
-			var portMatch bool
-			switch server.Spec.Port.Type {
-			case intstr.Int:
-				if server.Spec.Port.IntVal == int32(address.Port) {
-					portMatch = true
-				}
-			case intstr.String:
-				for _, c := range address.Pod.Spec.Containers {
-					for _, p := range c.Ports {
-						if p.ContainerPort == int32(address.Port) && p.Name == server.Spec.Port.StrVal {
-							portMatch = true
-						}
-					}
-				}
-			default:
-				continue
+
+		if pp.isAddressSelected(address, oldServer) || pp.isAddressSelected(address, newServer) {
+			if newServer != nil && pp.isAddressSelected(address, newServer) && newServer.Spec.ProxyProtocol == opaqueProtocol {
+				address.OpaqueProtocol = true
+			} else {
+				address.OpaqueProtocol = false
 			}
-			if portMatch {
-				if isAdd && server.Spec.ProxyProtocol == opaqueProtocol {
-					address.OpaqueProtocol = true
-				} else {
-					address.OpaqueProtocol = false
-				}
-				if pp.addresses.Addresses[id].OpaqueProtocol != address.OpaqueProtocol {
-					pp.addresses.Addresses[id] = address
-					updated = true
-				}
+			if pp.addresses.Addresses[id].OpaqueProtocol != address.OpaqueProtocol {
+				pp.addresses.Addresses[id] = address
+				updated = true
 			}
 		}
 	}
@@ -1240,6 +1221,41 @@ func (pp *portPublisher) updateServer(server *v1beta1.Server, selector labels.Se
 		}
 		pp.metrics.incUpdates()
 	}
+}
+
+func (pp *portPublisher) isAddressSelected(address Address, server *v1beta1.Server) bool {
+	if server == nil {
+		return false
+	}
+
+	if address.Pod != nil {
+		selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
+		if err != nil {
+			pp.log.Errorf("failed to create Selector: %s", err)
+			return false
+		}
+
+		if !selector.Matches(labels.Set(address.Pod.Labels)) {
+			return false
+		}
+
+		switch server.Spec.Port.Type {
+		case intstr.Int:
+			if server.Spec.Port.IntVal == int32(address.Port) {
+				return true
+			}
+		case intstr.String:
+			for _, c := range address.Pod.Spec.Containers {
+				for _, p := range c.Ports {
+					if p.ContainerPort == int32(address.Port) && p.Name == server.Spec.Port.StrVal {
+						return true
+					}
+				}
+			}
+		}
+
+	}
+	return false
 }
 
 ////////////
