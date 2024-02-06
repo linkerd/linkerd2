@@ -521,15 +521,28 @@ func (ew *EndpointsWatcher) updateServer(oldObj interface{}, newObj interface{})
 
 	oldServer := oldObj.(*v1beta2.Server)
 	newServer := newObj.(*v1beta2.Server)
-	oldUpdated := latestUpdated(oldServer.ManagedFields)
-	updated := latestUpdated(newServer.ManagedFields)
-	if !updated.IsZero() && updated != oldUpdated {
-		delta := time.Since(updated)
-		serverInformerLag.Observe(delta.Seconds())
+	if oldServer != nil && newServer != nil {
+		oldUpdated := latestUpdated(oldServer.ManagedFields)
+		updated := latestUpdated(newServer.ManagedFields)
+		if !updated.IsZero() && updated != oldUpdated {
+			delta := time.Since(updated)
+			serverInformerLag.Observe(delta.Seconds())
+		}
 	}
 
-	for _, sp := range ew.publishers {
-		sp.updateServer(oldServer, newServer)
+	namespace := ""
+	if oldServer != nil {
+		namespace = oldServer.GetNamespace()
+	}
+	if newServer != nil {
+		namespace = newServer.GetNamespace()
+	}
+
+	for id, sp := range ew.publishers {
+		// Servers may only select workloads in their namespace.
+		if id.Namespace == namespace {
+			sp.updateServer(oldServer, newServer)
+		}
 	}
 }
 
