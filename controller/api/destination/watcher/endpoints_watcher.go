@@ -1167,9 +1167,8 @@ func (pp *portPublisher) resolveTargetPort(subset corev1.EndpointSubset) Port {
 func (pp *portPublisher) updateLocalTrafficPolicy(localTrafficPolicy bool) {
 	pp.localTrafficPolicy = localTrafficPolicy
 	pp.addresses.LocalTrafficPolicy = localTrafficPolicy
-	addresses := pp.addresses.shallowCopy()
 	for _, listener := range pp.listeners {
-		listener.Add(addresses)
+		listener.Add(pp.addresses.shallowCopy())
 	}
 }
 
@@ -1334,9 +1333,8 @@ func (pp *portPublisher) updateServer(server *v1beta2.Server, isAdd bool) {
 		}
 	}
 	if updated {
-		addresses := pp.addresses.shallowCopy()
 		for _, listener := range pp.listeners {
-			listener.Add(addresses)
+			listener.Add(pp.addresses.shallowCopy())
 		}
 		pp.metrics.incUpdates()
 	}
