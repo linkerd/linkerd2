@@ -150,6 +150,27 @@ var endpointsVecs = newEndpointsMetricsVecs()
 
 var undefinedEndpointPort = Port(0)
 
+// shallowCopy returns a shallow copy of addr, in the sense that the Pod and
+// ExternalWorkload fields of the Addresses map values still point to the
+// locations of the original variable
+func (addr AddressSet) shallowCopy() AddressSet {
+	addresses := make(map[ID]Address)
+	for k, v := range addr.Addresses {
+		addresses[k] = v
+	}
+
+	labels := make(map[string]string)
+	for k, v := range addr.Labels {
+		labels[k] = v
+	}
+
+	return AddressSet{
+		Addresses:          addresses,
+		Labels:             labels,
+		LocalTrafficPolicy: addr.LocalTrafficPolicy,
+	}
+}
+
 // NewEndpointsWatcher creates an EndpointsWatcher and begins watching the
 // k8sAPI for pod, service, and endpoint changes. An EndpointsWatcher will
 // watch on Endpoints or EndpointSlice resources, depending on cluster configuration.
@@ -1088,7 +1109,7 @@ func (pp *portPublisher) updateLocalTrafficPolicy(localTrafficPolicy bool) {
 	pp.localTrafficPolicy = localTrafficPolicy
 	pp.addresses.LocalTrafficPolicy = localTrafficPolicy
 	for _, listener := range pp.listeners {
-		listener.Add(pp.addresses)
+		listener.Add(pp.addresses.shallowCopy())
 	}
 }
 
@@ -1153,7 +1174,7 @@ func (pp *portPublisher) noEndpoints(exists bool) {
 func (pp *portPublisher) subscribe(listener EndpointUpdateListener) {
 	if pp.exists {
 		if len(pp.addresses.Addresses) > 0 {
-			listener.Add(pp.addresses)
+			listener.Add(pp.addresses.shallowCopy())
 		} else {
 			listener.NoEndpoints(true)
 		}
@@ -1215,7 +1236,7 @@ func (pp *portPublisher) updateServer(server *v1beta1.Server, selector labels.Se
 	}
 	if updated {
 		for _, listener := range pp.listeners {
-			listener.Add(pp.addresses)
+			listener.Add(pp.addresses.shallowCopy())
 		}
 		pp.metrics.incUpdates()
 	}
@@ -1224,19 +1245,6 @@ func (pp *portPublisher) updateServer(server *v1beta1.Server, selector labels.Se
 ////////////
 /// util ///
 ////////////
-
-// WithPort sets the port field in all addresses of an address set.
-func (as *AddressSet) WithPort(port Port) AddressSet {
-	wp := AddressSet{
-		Addresses: map[PodID]Address{},
-		Labels:    as.Labels,
-	}
-	for id, addr := range as.Addresses {
-		addr.Port = port
-		wp.Addresses[id] = addr
-	}
-	return wp
-}
 
 // getTargetPort returns the port specified as an argument if no service is
 // present. If the service is present and it has a port spec matching the
