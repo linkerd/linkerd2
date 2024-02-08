@@ -1,5 +1,22 @@
 # Changes
 
+## edge-24.2.2
+
+This release addresses some issues in the destination service that could cause
+it to behave unexpectedly when processing updates.
+
+* Fixed a race condition in the destination service that could cause panics
+  under very specific conditions ([#12022]; fixes [#12010])
+* Changed how updates to a `Server` selector are handled in the destination
+  service. When a `Server` that marks a port as opaque no longer selects a
+  resource, the resource's opaqueness will reverted to default settings
+  ([#12031]; fixes [#11995])
+
+[#12010]: https://github.com/linkerd/linkerd2/issues/12010
+[#12022]: https://github.com/linkerd/linkerd2/pull/12022
+[#11995]: https://github.com/linkerd/linkerd2/issues/11995
+[#12031]: https://github.com/linkerd/linkerd2/pull/12031
+
 ## edge-24.2.1
 
 This edge release contains performance and stability improvements to the
