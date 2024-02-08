@@ -6,7 +6,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: metrics-api
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: metrics-api
@@ -41,7 +41,7 @@ metadata:
     component: metrics-api
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: metrics-api
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
 spec:
   replicas: {{.Values.metricsAPI.replicas}}
   selector:
@@ -129,7 +129,7 @@ kind: PodDisruptionBudget
 apiVersion: policy/v1
 metadata:
   name: metrics-api
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: metrics-api

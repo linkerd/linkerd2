@@ -48,7 +48,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: metrics-api
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: metrics-api

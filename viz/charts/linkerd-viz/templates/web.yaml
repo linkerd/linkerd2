@@ -6,7 +6,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: web
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: web
@@ -46,7 +46,7 @@ metadata:
     namespace: {{.Release.Namespace}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: web
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
 spec:
   replicas: {{.Values.dashboard.replicas}}
   selector:
@@ -149,7 +149,7 @@ kind: PodDisruptionBudget
 apiVersion: policy/v1
 metadata:
   name: web
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: web

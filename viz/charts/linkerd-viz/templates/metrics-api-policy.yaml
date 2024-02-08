@@ -2,7 +2,7 @@
 apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
   name: metrics-api
   labels:
     linkerd.io/extension: viz
@@ -21,7 +21,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
   name: metrics-api
   labels:
     linkerd.io/extension: viz
@@ -42,7 +42,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: MeshTLSAuthentication
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
   name: metrics-api-web
   labels:
     linkerd.io/extension: viz

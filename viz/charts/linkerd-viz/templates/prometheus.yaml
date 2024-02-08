@@ -7,7 +7,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: prometheus-config
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: prometheus
@@ -163,7 +163,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: prometheus
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
   labels:
     linkerd.io/extension: viz
     component: prometheus
@@ -198,7 +198,7 @@ metadata:
     namespace: {{.Release.Namespace}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: prometheus
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
 spec:
   replicas: 1
   {{- if .Values.prometheus.persistence }}
@@ -324,7 +324,7 @@ metadata:
     component: prometheus
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: prometheus
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
 spec:
   accessModes:
     - {{ .Values.prometheus.persistence.accessMode | quote }}

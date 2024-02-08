@@ -2,7 +2,7 @@
 apiVersion: policy.linkerd.io/v1alpha1
 kind: NetworkAuthentication
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
   name: kubelet
   labels:
     linkerd.io/extension: viz

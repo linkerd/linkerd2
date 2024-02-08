@@ -6,6 +6,8 @@
 
 # -- control plane version. See Proxy section for proxy version
 linkerdVersion: linkerdVersionValue
+# -- Override namespace for all components
+namespaceOverride: ""
 # -- Kubernetes DNS Domain name to use
 clusterDomain: cluster.local
 # -- Additional labels to add to all pods

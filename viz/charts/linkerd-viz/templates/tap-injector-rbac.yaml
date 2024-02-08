@@ -34,7 +34,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: tap-injector
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
   labels:
     linkerd.io/extension: viz
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
@@ -47,7 +47,7 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: tap-injector-k8s-tls
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
   labels:
@@ -89,7 +89,7 @@ webhooks:
   clientConfig:
     service:
       name: tap-injector
-      namespace: {{ .Release.Namespace }}
+      namespace: {{ include "linkerd-viz.namespace" . }}
       path: "/"
     {{- if and (empty .Values.tapInjector.injectCaFrom) (empty .Values.tapInjector.injectCaFromSecret) }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tapInjector.caBundle)) (empty .Values.tapInjector.caBundle) }}

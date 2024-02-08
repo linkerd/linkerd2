@@ -3,7 +3,7 @@ apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: metrics-api.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
   labels:
     linkerd.io/extension: viz
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
@@ -43,7 +43,7 @@ apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
   name: prometheus.{{.Release.Namespace}}.svc.{{.Values.clusterDomain}}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-viz.namespace" . }}
   labels:
     linkerd.io/extension: viz
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
