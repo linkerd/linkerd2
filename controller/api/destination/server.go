@@ -86,7 +86,7 @@ func NewServer(
 		return nil, err
 	}
 
-	workloads, err := watcher.NewWorkloadWatcher(k8sAPI, metadataAPI, log, config.DefaultOpaquePorts)
+	workloads, err := watcher.NewWorkloadWatcher(k8sAPI, metadataAPI, log, config.EnableEndpointSlices, config.DefaultOpaquePorts)
 	if err != nil {
 		return nil, err
 	}
