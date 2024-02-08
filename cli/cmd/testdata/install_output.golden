@@ -845,7 +845,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - identity
@@ -1226,7 +1226,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - env:
         - name: _pod_name
@@ -1648,7 +1648,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 543c65ff6faff4112a64971371380e01188b1bbc583fef84c7b50844cb1a896d
+        checksum/config: 633f887644538dfcf9530de3cc03eeec11292c7f03bd03795e6f6e26139c1db9
         linkerd.io/created-by: CliVersion
         linkerd.io/proxy-version: ProxyVersion
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1663,7 +1663,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - env:
         - name: _pod_name
