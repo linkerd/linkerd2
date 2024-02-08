@@ -75,6 +75,8 @@ var (
 		k8s.ProxyShutdownGracePeriodAnnotation,
 		k8s.ProxyOutboundDiscoveryCacheUnusedTimeout,
 		k8s.ProxyInboundDiscoveryCacheUnusedTimeout,
+		k8s.ProxyInboundHTTP1ConnectionPoolIdleTimeout,
+		k8s.ProxyOutboundHTTP1ConnectionPoolIdleTimeout,
 		k8s.ProxyDisableOutboundProtocolDetectTimeout,
 		k8s.ProxyDisableInboundProtocolDetectTimeout,
 	}
@@ -954,6 +956,24 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 			log.Warnf("unrecognized duration value used on pod annotation %s: %s", k8s.ProxyInboundDiscoveryCacheUnusedTimeout, err.Error())
 		} else {
 			values.Proxy.InboundDiscoveryCacheUnusedTimeout = fmt.Sprintf("%ds", int(duration.Seconds()))
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyInboundHTTP1ConnectionPoolIdleTimeout]; ok {
+		duration, err := time.ParseDuration(override)
+		if err != nil {
+			log.Warnf("unrecognized duration value used on pod annotation %s: %s", k8s.ProxyInboundHTTP1ConnectionPoolIdleTimeout, err.Error())
+		} else {
+			values.Proxy.InboundHTTP1ConnectionPoolIdleTimeout = fmt.Sprintf("%ds", int(duration.Seconds()))
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyOutboundHTTP1ConnectionPoolIdleTimeout]; ok {
+		duration, err := time.ParseDuration(override)
+		if err != nil {
+			log.Warnf("unrecognized duration value used on pod annotation %s: %s", k8s.ProxyOutboundHTTP1ConnectionPoolIdleTimeout, err.Error())
+		} else {
+			values.Proxy.OutboundHTTP1ConnectionPoolIdleTimeout = fmt.Sprintf("%ds", int(duration.Seconds()))
 		}
 	}
 

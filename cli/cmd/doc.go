@@ -253,6 +253,14 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Maximum time allowed before an unused inbound discovery result is evicted from the cache. Defaults to `90s`",
 		},
 		{
+			Name:        k8s.ProxyInboundHTTP1ConnectionPoolIdleTimeout,
+			Description: "Idle timeout for inbound HTTP/1.x connection pool. Defaults to `3s`",
+		},
+		{
+			Name:        k8s.ProxyOutboundHTTP1ConnectionPoolIdleTimeout,
+			Description: "Idle timeout for outbound HTTP/1.x connection pool. Defaults to `3s`",
+		},
+		{
 			Name:        k8s.ProxyDisableOutboundProtocolDetectTimeout,
 			Description: "When set to true, disables the protocol detection timeout on the outbound side of the proxy by setting it to a very high value",
 		},
