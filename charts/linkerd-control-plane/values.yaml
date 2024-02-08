@@ -5,6 +5,9 @@
 # -- Kubernetes DNS Domain name to use
 clusterDomain: cluster.local
 
+# -- Override namespace for all components
+namespaceOverride: ""
+
 # -- The cluster networks for which service discovery is performed. This should
 # include the pod and service networks, but need not include the node network.
 #
