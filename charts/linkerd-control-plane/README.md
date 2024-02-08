@@ -185,6 +185,7 @@ Kubernetes: `>=1.22.0-0`
 | kubeAPI.clientBurst | int | `200` | Burst value over clientQPS |
 | kubeAPI.clientQPS | int | `100` | Maximum QPS sent to the kube-apiserver before throttling. See [token bucket rate limiter implementation](https://github.com/kubernetes/client-go/blob/v12.0.0/util/flowcontrol/throttle.go) |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
+| namespaceOverride | string | `""` | Override namespace for all components |
 | networkValidator.connectAddr | string | `"1.1.1.1:20001"` | Address to which the network-validator will attempt to connect. we expect this to be rewritten |
 | networkValidator.enableSecurityContext | bool | `true` | Include a securityContext in the network-validator pod spec |
 | networkValidator.listenAddr | string | `"0.0.0.0:4140"` | Address to which network-validator listens to requests from itself |

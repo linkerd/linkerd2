@@ -133,6 +133,7 @@ Kubernetes: `>=1.22.0-0`
 | namespaceMetadata.image.tag | string | `"v0.1.0"` | Docker image tag for the namespace-metadata instance |
 | namespaceMetadata.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | namespaceMetadata.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
+| namespaceOverride | string | `""` | Override namespace for all components |
 | nodeSelector | object | `{"kubernetes.io/os":"linux"}` | Default nodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | podLabels | object | `{}` | Additional labels to add to all pods |
 | prometheus.alertRelabelConfigs | string | `nil` | Alert relabeling is applied to alerts before they are sent to the Alertmanager. |

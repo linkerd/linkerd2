@@ -102,6 +102,7 @@ Kubernetes: `>=1.22.0-0`
 | namespaceMetadata.image.tag | string | `"v0.1.0"` | Docker image tag for the namespace-metadata instance |
 | namespaceMetadata.nodeSelector | object | `{}` | Node selectors for the namespace-metadata instance |
 | namespaceMetadata.tolerations | list | `[]` | Tolerations for the namespace-metadata instance |
+| namespaceOverride | string | `""` | Override namespace for all components |
 | podLabels | object | `{}` | Additional labels to add to all pods |
 | proxyOutboundPort | int | `4140` | The port on which the proxy accepts outbound traffic |
 | remoteMirrorServiceAccount | bool | `true` | If the remote mirror service account should be installed |
