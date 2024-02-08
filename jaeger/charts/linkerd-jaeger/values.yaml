@@ -1,6 +1,9 @@
 # -- Namespace of the Linkerd core control-plane install
 linkerdNamespace: linkerd
 
+# -- Override namespace for all components
+namespaceOverride: ""
+
 # -- Additional labels to add to all pods
 podLabels: {}
 

@@ -3,7 +3,7 @@
 apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: collector-otlp
   labels:
     linkerd.io/extension: jaeger
@@ -21,7 +21,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: collector-otlp-http
   labels:
     linkerd.io/extension: jaeger
@@ -38,7 +38,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: collector-opencensus
   labels:
     linkerd.io/extension: jaeger
@@ -56,7 +56,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: collector-zipkin
   labels:
     linkerd.io/extension: jaeger
@@ -73,7 +73,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: collector-jaeger-thrift
   labels:
     linkerd.io/extension: jaeger
@@ -90,7 +90,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: collector-jaeger-grpc
   labels:
     linkerd.io/extension: jaeger
@@ -107,7 +107,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: collector-admin
   labels:
     linkerd.io/extension: jaeger
@@ -125,7 +125,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: collector-otlp
   labels:
     linkerd.io/extension: jaeger
@@ -144,7 +144,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: collector-otlp-http
   labels:
     linkerd.io/extension: jaeger
@@ -163,7 +163,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: collector-opencensus
   labels:
     linkerd.io/extension: jaeger
@@ -182,7 +182,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: collector-zipkin
   labels:
     linkerd.io/extension: jaeger
@@ -201,7 +201,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: collector-jaeger-thrift
   labels:
     linkerd.io/extension: jaeger
@@ -220,7 +220,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: collector-jaeger-grpc
   labels:
     linkerd.io/extension: jaeger
@@ -239,7 +239,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: jaeger-grpc
   labels:
     linkerd.io/extension: jaeger
@@ -257,7 +257,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: jaeger-grpc
   labels:
     linkerd.io/extension: jaeger
@@ -278,7 +278,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: jaeger-admin
   labels:
     linkerd.io/extension: jaeger
@@ -296,7 +296,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: jaeger-admin
   labels:
     linkerd.io/extension: jaeger
@@ -318,7 +318,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: jaeger-ui
   labels:
     linkerd.io/extension: jaeger
@@ -336,7 +336,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   name: jaeger-ui
   labels:
     linkerd.io/extension: jaeger

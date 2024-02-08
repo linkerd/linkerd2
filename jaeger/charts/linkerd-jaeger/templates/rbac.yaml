@@ -7,7 +7,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: collector
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   labels:
     linkerd.io/extension: jaeger
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
@@ -84,7 +84,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: jaeger-injector
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   labels:
     linkerd.io/extension: jaeger
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
@@ -97,7 +97,7 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: jaeger-injector-k8s-tls
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   labels:
     linkerd.io/extension: jaeger
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
@@ -137,7 +137,7 @@ webhooks:
   clientConfig:
     service:
       name: jaeger-injector
-      namespace: {{ .Release.Namespace }}
+      namespace: {{ include "jaeger.namespace" . }}
       path: "/"
     {{- if and (empty .Values.webhook.injectCaFrom) (empty .Values.webhook.injectCaFromSecret) }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.webhook.caBundle)) (empty .Values.webhook.caBundle) }}
@@ -160,7 +160,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: jaeger
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   labels:
     linkerd.io/extension: jaeger
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}

@@ -14,7 +14,7 @@ metadata:
     component: jaeger-injector
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: jaeger-injector
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
 spec:
   replicas: {{ .Values.webhook.replicas }}
   selector:
@@ -104,7 +104,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: jaeger-injector
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   labels:
     linkerd.io/extension: jaeger
     component: jaeger-injector

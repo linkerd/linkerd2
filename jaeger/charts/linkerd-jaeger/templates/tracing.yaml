@@ -7,7 +7,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: collector-config
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   labels:
     linkerd.io/extension: jaeger
     component: collector
@@ -20,7 +20,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: collector
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   labels:
     linkerd.io/extension: jaeger
     component: collector
@@ -66,7 +66,7 @@ metadata:
     component: collector
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: collector
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
 spec:
   replicas: {{ .Values.collector.replicas }}
   selector:
@@ -180,7 +180,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: jaeger
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
   labels:
     linkerd.io/extension: jaeger
     component: jaeger
@@ -208,7 +208,7 @@ metadata:
     component: jaeger
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: jaeger
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "jaeger.namespace" . }}
 spec:
   replicas: 1
   selector:
