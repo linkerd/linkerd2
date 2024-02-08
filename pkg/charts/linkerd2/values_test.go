@@ -139,6 +139,14 @@ func TestNewValues(t *testing.T) {
 				InitialDelaySeconds: 0,
 				PeriodSeconds:       1,
 			},
+			ReadinessProbe: &Probe{
+				InitialDelaySeconds: 2,
+				TimeoutSeconds:      1,
+			},
+			LivenessProbe: &Probe{
+				InitialDelaySeconds: 10,
+				TimeoutSeconds:      1,
+			},
 			Control: &ProxyControl{
 				Streams: &ProxyControlStreams{
 					InitialTimeout: "3s",
