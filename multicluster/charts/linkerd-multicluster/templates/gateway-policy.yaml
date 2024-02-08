@@ -3,7 +3,7 @@
 apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-multicluster.namespace" . }}
   name: linkerd-gateway
   labels:
     linkerd.io/extension: multicluster
@@ -20,7 +20,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-multicluster.namespace" . }}
   name: linkerd-gateway
   labels:
     linkerd.io/extension: multicluster
@@ -37,16 +37,16 @@ spec:
     - group: policy.linkerd.io
       kind: MeshTLSAuthentication
       name: any-meshed
-      namespace: {{ .Release.Namespace }}
+      namespace: {{ include "linkerd-multicluster.namespace" . }}
     - group: policy.linkerd.io
       kind: NetworkAuthentication
       name: source-cluster
-      namespace: {{ .Release.Namespace }}
+      namespace: {{ include "linkerd-multicluster.namespace" . }}
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: MeshTLSAuthentication
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-multicluster.namespace" . }}
   name: any-meshed
   labels:
     linkerd.io/extension: multicluster
@@ -61,7 +61,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: NetworkAuthentication
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-multicluster.namespace" . }}
   name: source-cluster
   labels:
     linkerd.io/extension: multicluster

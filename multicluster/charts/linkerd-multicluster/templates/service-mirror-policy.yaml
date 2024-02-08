@@ -2,7 +2,7 @@
 apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-multicluster.namespace" . }}
   name: service-mirror
   labels:
     linkerd.io/extension: multicluster
@@ -18,7 +18,7 @@ spec:
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
 metadata:
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "linkerd-multicluster.namespace" . }}
   name: service-mirror
   labels:
     linkerd.io/extension: multicluster
