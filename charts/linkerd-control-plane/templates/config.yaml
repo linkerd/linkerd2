@@ -3,7 +3,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-config
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: controller
     linkerd.io/control-plane-ns: {{.Release.Namespace}}

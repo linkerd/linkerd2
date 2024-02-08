@@ -69,7 +69,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-psp
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
@@ -84,7 +84,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-psp
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}

@@ -8,7 +8,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
   name: "linkerd-controller"
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-ns: {{ .Release.Namespace }}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
@@ -41,7 +41,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
   name: "linkerd-service-mirror"
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-ns: {{ .Release.Namespace }}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
@@ -76,7 +76,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
   name: "linkerd-proxy"
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-ns: {{ .Release.Namespace }}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}

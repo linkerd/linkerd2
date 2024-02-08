@@ -6,7 +6,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -26,7 +26,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst-headless
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -46,7 +46,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -66,7 +66,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-policy
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -86,7 +86,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-policy-validator
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -107,7 +107,7 @@ kind: PodDisruptionBudget
 apiVersion: policy/v1
 metadata:
   name: linkerd-dst
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -138,7 +138,7 @@ metadata:
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   name: linkerd-destination
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
 spec:
   replicas: {{.Values.controllerReplicas}}
   selector:

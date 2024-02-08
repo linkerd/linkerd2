@@ -49,7 +49,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -63,7 +63,7 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector-k8s-tls
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -103,7 +103,7 @@ webhooks:
   clientConfig:
     service:
       name: linkerd-proxy-injector
-      namespace: {{ .Release.Namespace }}
+      namespace: {{ include "partials.namespace" . }}
       path: "/"
     {{- if and (empty .Values.proxyInjector.injectCaFrom) (empty .Values.proxyInjector.injectCaFromSecret) }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.proxyInjector.caBundle)) (empty .Values.proxyInjector.caBundle) }}

@@ -8,7 +8,7 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
   name: ext-namespace-metadata-linkerd-config
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
 rules:
 - apiGroups: [""]
   resources: ["configmaps"]

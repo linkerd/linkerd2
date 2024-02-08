@@ -7,7 +7,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: linkerd-heartbeat
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     app.kubernetes.io/name: heartbeat
     app.kubernetes.io/part-of: Linkerd

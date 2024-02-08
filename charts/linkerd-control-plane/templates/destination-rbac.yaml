@@ -56,7 +56,7 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-destination
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -70,7 +70,7 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator-k8s-tls
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -108,7 +108,7 @@ webhooks:
   clientConfig:
     service:
       name: linkerd-sp-validator
-      namespace: {{ .Release.Namespace }}
+      namespace: {{ include "partials.namespace" . }}
       path: "/"
     {{- if and (empty .Values.profileValidator.injectCaFrom) (empty .Values.profileValidator.injectCaFromSecret) }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.profileValidator.caBundle)) (empty .Values.profileValidator.caBundle) }}
@@ -129,7 +129,7 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-policy-validator-k8s-tls
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "partials.namespace" . }}
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: {{.Release.Namespace}}
@@ -167,7 +167,7 @@ webhooks:
   clientConfig:
     service:
       name: linkerd-policy-validator
-      namespace: {{ .Release.Namespace }}
+      namespace: {{ include "partials.namespace" . }}
       path: "/"
     {{- if and (empty .Values.policyValidator.injectCaFrom) (empty .Values.policyValidator.injectCaFromSecret) }}
     caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.policyValidator.caBundle)) (empty .Values.policyValidator.caBundle) }}
