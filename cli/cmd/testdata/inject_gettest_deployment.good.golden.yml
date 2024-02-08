@@ -136,6 +136,7 @@ spec:
             path: /live
             port: 4191
           initialDelaySeconds: 10
+          timeoutSeconds: 1
         name: linkerd-proxy
         ports:
         - containerPort: 4143
@@ -147,6 +148,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+          timeoutSeconds: 1
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -370,6 +372,7 @@ spec:
             path: /live
             port: 4191
           initialDelaySeconds: 10
+          timeoutSeconds: 1
         name: linkerd-proxy
         ports:
         - containerPort: 4143
@@ -381,6 +384,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+          timeoutSeconds: 1
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true

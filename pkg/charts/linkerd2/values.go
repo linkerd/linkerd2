@@ -121,6 +121,8 @@ type (
 		ShutdownGracePeriod                  string           `json:"shutdownGracePeriod"`
 		NativeSidecar                        bool             `json:"nativeSidecar"`
 		StartupProbe                         *StartupProbe    `json:"startupProbe"`
+		ReadinessProbe                       *Probe           `json:"readinessProbe"`
+		LivenessProbe                        *Probe           `json:"livenessProbe"`
 		Control                              *ProxyControl    `json:"control"`
 
 		ExperimentalEnv []corev1.EnvVar `json:"experimentalEnv"`
@@ -212,6 +214,11 @@ type (
 		Control  int32 `json:"control"`
 		Inbound  int32 `json:"inbound"`
 		Outbound int32 `json:"outbound"`
+	}
+
+	Probe struct {
+		InitialDelaySeconds uint `json:"initialDelaySeconds"`
+		TimeoutSeconds      uint `json:"timeoutSeconds"`
 	}
 
 	// Constraints wraps the Limit and Request settings for computational resources
