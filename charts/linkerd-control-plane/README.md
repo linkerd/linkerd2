@@ -3,7 +3,7 @@
 Linkerd gives you observability, reliability, and security
 for your microservices — with no code change required.
 
-![Version: 1.18.6-edge](https://img.shields.io/badge/Version-1.18.6--edge-informational?style=flat-square)
+![Version: 1.18.7-edge](https://img.shields.io/badge/Version-1.18.7--edge-informational?style=flat-square)
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -244,6 +244,7 @@ Kubernetes: `>=1.22.0-0`
 | proxy.image.version | string | linkerdVersion | Tag for the proxy container image |
 | proxy.inboundConnectTimeout | string | `"100ms"` | Maximum time allowed for the proxy to establish an inbound TCP connection |
 | proxy.inboundDiscoveryCacheUnusedTimeout | string | `"90s"` | Maximum time allowed before an unused inbound discovery result is evicted from the cache |
+| proxy.livenessProbe | object | `{"initialDelaySeconds":10,"timeoutSeconds":1}` | LivenessProbe timeout and delay configuration |
 | proxy.logFormat | string | `"plain"` | Log format (`plain` or `json`) for the proxy |
 | proxy.logLevel | string | `"warn,linkerd=info,trust_dns=error"` | Log level for the proxy |
 | proxy.nativeSidecar | bool | `false` | Enable KEP-753 native sidecars This is an experimental feature. It requires Kubernetes >= 1.29. If enabled, .proxy.waitBeforeExitSeconds should not be used. |
@@ -254,6 +255,7 @@ Kubernetes: `>=1.22.0-0`
 | proxy.ports.control | int | `4190` | Control port for the proxy container |
 | proxy.ports.inbound | int | `4143` | Inbound port for the proxy container |
 | proxy.ports.outbound | int | `4140` | Outbound port for the proxy container |
+| proxy.readinessProbe | object | `{"initialDelaySeconds":2,"timeoutSeconds":1}` | ReadinessProbe timeout and delay configuration |
 | proxy.requireIdentityOnInboundPorts | string | `""` |  |
 | proxy.resources.cpu.limit | string | `""` | Maximum amount of CPU units that the proxy can use |
 | proxy.resources.cpu.request | string | `""` | Amount of CPU units that the proxy requests |
@@ -262,7 +264,9 @@ Kubernetes: `>=1.22.0-0`
 | proxy.resources.memory.limit | string | `""` | Maximum amount of memory that the proxy can use |
 | proxy.resources.memory.request | string | `""` | Maximum amount of memory that the proxy requests |
 | proxy.shutdownGracePeriod | string | `""` | Grace period for graceful proxy shutdowns. If this timeout elapses before all open connections have completed, the proxy will terminate forcefully, closing any remaining connections. |
-| proxy.startupProbe | object | `{"failureThreshold":120,"initialDelaySeconds":0,"periodSeconds":1}` | Native sidecar proxy startup probe parameters. |
+| proxy.startupProbe.failureThreshold | int | `120` |  |
+| proxy.startupProbe.initialDelaySeconds | int | `0` |  |
+| proxy.startupProbe.periodSeconds | int | `1` |  |
 | proxy.uid | int | `2102` | User id under which the proxy runs |
 | proxy.waitBeforeExitSeconds | int | `0` | If set the injected proxy sidecars in the data plane will stay alive for at least the given period before receiving the SIGTERM signal from Kubernetes but no longer than the pod's `terminationGracePeriodSeconds`. See [Lifecycle hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks) for more info on container lifecycle hooks. |
 | proxyInit.closeWaitTimeoutSecs | int | `0` |  |

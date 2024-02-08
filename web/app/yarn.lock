@@ -49,10 +49,10 @@
     json5 "^2.2.3"
     semver "^6.3.1"
 
-"@babel/eslint-parser@^7.23.3":
-  version "7.23.3"
-  resolved "https://registry.yarnpkg.com/@babel/eslint-parser/-/eslint-parser-7.23.3.tgz#7bf0db1c53b54da0c8a12627373554a0828479ca"
-  integrity sha512-9bTuNlyx7oSstodm1cR1bECj4fkiknsDa1YniISkJemMY3DGhJNYBECbe6QD/q54mp2J8VO66jW3/7uP//iFCw==
+"@babel/eslint-parser@^7.23.10":
+  version "7.23.10"
+  resolved "https://registry.yarnpkg.com/@babel/eslint-parser/-/eslint-parser-7.23.10.tgz#2d4164842d6db798873b40e0c4238827084667a2"
+  integrity sha512-3wSYDPZVnhseRnxRJH6ZVTNknBz76AEnyC+AYYhasjP3Yy23qz0ERR7Fcd2SHmYuSFJ2kY9gaaDd3vyqU09eSw==
   dependencies:
     "@nicolo-ribaudo/eslint-scope-5-internals" "5.1.1-v1"
     eslint-visitor-keys "^2.1.0"
@@ -7427,10 +7427,10 @@ query-string@^7.0.0:
     split-on-first "^1.0.0"
     strict-uri-encode "^2.0.0"
 
-query-string@^8.1.0:
-  version "8.1.0"
-  resolved "https://registry.yarnpkg.com/query-string/-/query-string-8.1.0.tgz#e7f95367737219544cd360a11a4f4ca03836e115"
-  integrity sha512-BFQeWxJOZxZGix7y+SByG3F36dA0AbTy9o6pSmKFcFz7DAj0re9Frkty3saBn3nHo3D0oZJ/+rx3r8H8r8Jbpw==
+query-string@^8.2.0:
+  version "8.2.0"
+  resolved "https://registry.yarnpkg.com/query-string/-/query-string-8.2.0.tgz#f0b0ef6caa85f525dbdb745a67d3f8c08d71cc6b"
+  integrity sha512-tUZIw8J0CawM5wyGBiDOAp7ObdRQh4uBor/fUR9ZjmbZVvw95OD9If4w3MQxr99rg0DJZ/9CIORcpEqU5hQG7g==
   dependencies:
     decode-uri-component "^0.4.1"
     filter-obj "^5.1.0"
@@ -9009,10 +9009,10 @@ webpack-sources@^3.2.3:
   resolved "https://registry.yarnpkg.com/webpack-sources/-/webpack-sources-3.2.3.tgz#2d4daab8451fd4b240cc27055ff6a0c2ccea0cde"
   integrity sha512-/DyMEOrDgLKKIG0fmvtz+4dUX/3Ghozwgm6iPp8KRhvn+eQf9+Q7GWxVNMk3+uCPWfdXYC4ExGBckIXdFEfH1w==
 
-webpack@^5.90.0:
-  version "5.90.0"
-  resolved "https://registry.yarnpkg.com/webpack/-/webpack-5.90.0.tgz#313bfe16080d8b2fee6e29b6c986c0714ad4290e"
-  integrity sha512-bdmyXRCXeeNIePv6R6tGPyy20aUobw4Zy8r0LUS2EWO+U+Ke/gYDgsCh7bl5rB6jPpr4r0SZa6dPxBxLooDT3w==
+webpack@^5.90.1:
+  version "5.90.1"
+  resolved "https://registry.yarnpkg.com/webpack/-/webpack-5.90.1.tgz#62ab0c097d7cbe83d32523dbfbb645cdb7c3c01c"
+  integrity sha512-SstPdlAC5IvgFnhiRok8hqJo/+ArAbNv7rhU4fnWGHNVfN59HSQFaxZDSAL3IFG2YmqxuRs+IU33milSxbPlog==
   dependencies:
     "@types/eslint-scope" "^3.7.3"
     "@types/estree" "^1.0.5"

@@ -632,6 +632,9 @@ data:
       inboundDiscoveryCacheUnusedTimeout: ""
       isGateway: false
       isIngress: false
+      livenessProbe:
+        initialDelaySeconds: 10
+        timeoutSeconds: 1
       logFormat: plain
       logLevel: warn,linkerd=info
       nativeSidecar: false
@@ -644,6 +647,9 @@ data:
         control: 4190
         inbound: 4143
         outbound: 4140
+      readinessProbe:
+        initialDelaySeconds: 2
+        timeoutSeconds: 1
       requireIdentityOnInboundPorts: ""
       resources:
         cpu:
@@ -996,6 +1002,7 @@ spec:
             path: /live
             port: 4191
           initialDelaySeconds: 10
+          timeoutSeconds: 1
         name: linkerd-proxy
         ports:
         - containerPort: 4143
@@ -1007,6 +1014,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+          timeoutSeconds: 1
         resources:
           limits:
             cpu: "cpu-limit"
@@ -1327,6 +1335,7 @@ spec:
             path: /live
             port: 4191
           initialDelaySeconds: 10
+          timeoutSeconds: 1
         name: linkerd-proxy
         ports:
         - containerPort: 4143
@@ -1337,6 +1346,8 @@ spec:
           httpGet:
             path: /ready
             port: 4191
+          initialDelaySeconds: 2
+          timeoutSeconds: 1
           initialDelaySeconds: 2
         resources:
           limits:
@@ -1764,6 +1775,7 @@ spec:
             path: /live
             port: 4191
           initialDelaySeconds: 10
+          timeoutSeconds: 1
         name: linkerd-proxy
         ports:
         - containerPort: 4143
@@ -1774,6 +1786,8 @@ spec:
           httpGet:
             path: /ready
             port: 4191
+          initialDelaySeconds: 2
+          timeoutSeconds: 1
           initialDelaySeconds: 2
         resources:
           limits:
