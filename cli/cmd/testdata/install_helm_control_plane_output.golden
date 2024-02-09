@@ -472,6 +472,7 @@ webhooks:
     apiVersions: ["v1"]
     resources: ["pods", "services"]
   sideEffects: None
+  timeoutSeconds: 10
 ---
 # Source: linkerd-control-plane/templates/psp.yaml
 ---
@@ -854,7 +855,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - identity
@@ -1243,7 +1244,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - env:
         - name: _pod_name
@@ -1668,7 +1669,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 27486d27c2df3e0123d3ae33c32dd419e9dedb66f03495501f4e8127961b299e
+        checksum/config: 4e8be2f1320f4464106dcdc3271e16a97ab39937a873fc241ae65e0f16a4a751
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1683,7 +1684,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - env:
         - name: _pod_name

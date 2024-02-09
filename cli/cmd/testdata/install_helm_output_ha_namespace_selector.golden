@@ -467,6 +467,7 @@ webhooks:
     apiVersions: ["v1"]
     resources: ["pods", "services"]
   sideEffects: None
+  timeoutSeconds: 10
 ---
 # Source: linkerd-control-plane/templates/psp.yaml
 ---
@@ -1792,7 +1793,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 4c9f5797be5821da5f47cf2a5f30d44656c3cfcd7e30cff8c1f67f9a71b705fe
+        checksum/config: 6d1f653c24f82b0309781e279efe51242498287370fd7ea8c8fecc78c1d64339
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
