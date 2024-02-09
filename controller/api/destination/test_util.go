@@ -38,20 +38,24 @@ spec:
   ports:
   - port: 8989`,
 		`
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name: name1
   namespace: ns
-subsets:
+  labels:
+    kubernetes.io/service-name: name1
+addressType: IPv4
+endpoints:
 - addresses:
-  - ip: 172.17.0.12
-    targetRef:
-      kind: Pod
-      name: name1-1
-      namespace: ns
-  ports:
-  - port: 8989`,
+  - 172.17.0.12
+  targetRef:
+    kind: Pod
+    name: name1-1
+    namespace: ns
+ports:
+- port: 8989
+  protocol: TCP`,
 		`
 apiVersion: v1
 kind: Pod
@@ -159,20 +163,24 @@ spec:
   ports:
   - port: 4242`,
 		`
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name: name3
   namespace: ns
-subsets:
+  labels:
+    kubernetes.io/service-name: name3
+addressType: IPv4
+endpoints:
 - addresses:
-  - ip: 172.17.0.14
-    targetRef:
-      kind: Pod
-      name: name3
-      namespace: ns
-  ports:
-  - port: 4242`,
+  - 172.17.0.14
+  targetRef:
+    kind: Pod
+    name: name3
+    namespace: ns
+ports:
+- port: 4242
+  protocol: TCP`,
 		`
 apiVersion: v1
 kind: Pod
@@ -220,20 +228,24 @@ spec:
   ports:
   - port: 24224`,
 		`
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name: name5
   namespace: ns
-subsets:
+  labels:
+    kubernetes.io/service-name: name5
+addressType: IPv4
+endpoints:
 - addresses:
-  - ip: 172.17.0.15
-    targetRef:
-      kind: Pod
-      name: name5
-      namespace: ns
-  ports:
-  - port: 24224`,
+  - 172.17.0.15
+  targetRef:
+    kind: Pod
+    name: name5
+    namespace: ns
+ports:
+- port: 24224
+  protocol: TCP`,
 		`
 apiVersion: v1
 kind: Pod
@@ -270,21 +282,25 @@ spec:
   ports:
   - port: 8989`,
 		`
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name:	statefulset-svc
   namespace: ns
-subsets:
+  labels:
+    kubernetes.io/service-name: statefulset-svc
+addressType: IPv4
+endpoints:
 - addresses:
-  - ip: 172.17.13.15
-    hostname: pod-0
-    targetRef:
-      kind: Pod
-      name: pod-0
-      namespace: ns
-  ports:
-  - port: 8989`,
+  - 172.17.13.15
+  hostname: pod-0
+  targetRef:
+    kind: Pod
+    name: pod-0
+    namespace: ns
+ports:
+- port: 8989
+  protocol: TCP`,
 		`
 apiVersion: v1
 kind: Pod
@@ -313,20 +329,24 @@ spec:
   ports:
   - port: 80`,
 		`
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name: policy-test
   namespace: ns
-subsets:
+  labels:
+    kubernetes.io/service-name: policy-test
+addressType: IPv4
+endpoints:
 - addresses:
-  - ip: 172.17.0.16
-    targetRef:
-      kind: Pod
-      name: pod-policyResources
-      namespace: ns
-  ports:
-  - port: 80`,
+  - 172.17.0.16
+  targetRef:
+    kind: Pod
+    name: pod-policyResources
+    namespace: ns
+ports:
+- port: 80
+  protocol: TCP`,
 		`
 apiVersion: v1
 kind: Pod
@@ -418,20 +438,24 @@ spec:
   ports:
   - port: 80`,
 		`
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name: foo
   namespace: ns
-subsets:
+  labels:
+    kubernetes.io/service-name: foo
+addressType: IPv4
+endpoints:
 - addresses:
-  - ip: 172.17.55.1
-    targetRef:
-      kind: Pod
-      name: foo-1
-      namespace: ns
-  ports:
-  - port: 80`,
+  - 172.17.55.1
+  targetRef:
+    kind: Pod
+    name: foo-1
+    namespace: ns
+ports:
+- port: 80
+  protocol: TCP`,
 		`
 apiVersion: v1
 kind: Pod
@@ -538,20 +562,24 @@ spec:
   ports:
   - port: 80`,
 		`
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name: policy-test-external-workload
   namespace: ns
-subsets:
+  labels:
+    kubernetes.io/service-name: policy-test-external-workload
+addressType: IPv4
+endpoints:
 - addresses:
-  - ip: 200.1.1.2
-    targetRef:
-      kind: ExternalWorkload
-      name: policy-test-workload
-      namespace: ns
-  ports:
-  - port: 80`,
+  - 200.1.1.2
+  targetRef:
+    kind: ExternalWorkload
+    name: policy-test-workload
+    namespace: ns
+ports:
+- port: 80
+  protocol: TCP`,
 	}
 	extenalNameResources := []string{
 		`
@@ -601,11 +629,11 @@ spec:
 		t.Fatalf("initializeIndexers returned an error: %s", err)
 	}
 
-	workloads, err := watcher.NewWorkloadWatcher(k8sAPI, metadataAPI, log, defaultOpaquePorts)
+	workloads, err := watcher.NewWorkloadWatcher(k8sAPI, metadataAPI, log, true, defaultOpaquePorts)
 	if err != nil {
 		t.Fatalf("can't create Workloads watcher: %s", err)
 	}
-	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, false, "local")
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, true, "local")
 	if err != nil {
 		t.Fatalf("can't create Endpoints watcher: %s", err)
 	}
@@ -618,7 +646,7 @@ spec:
 		t.Fatalf("can't create profile watcher: %s", err)
 	}
 
-	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", false, watcher.CreateMockDecoder(exportedServiceResources...))
+	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", true, watcher.CreateMockDecoder(exportedServiceResources...))
 	if err != nil {
 		t.Fatalf("can't create cluster store: %s", err)
 	}
