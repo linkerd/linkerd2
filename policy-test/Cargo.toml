@@ -14,13 +14,13 @@ k8s-gateway-api = "0.15"
 k8s-openapi = { version = "0.20", features = ["v1_22"] }
 linkerd-policy-controller-core = { path = "../policy-controller/core" }
 linkerd-policy-controller-k8s-api = { path = "../policy-controller/k8s/api" }
-linkerd-policy-controller-grpc = { path = "../policy-controller/grpc"}
+linkerd-policy-controller-grpc = { path = "../policy-controller/grpc" }
 maplit = "1"
 rand = "0.8"
 serde = "1"
 serde_json = "1"
 schemars = "0.8"
-tonic = { version = "0.8", default-features = false }
+tonic = { version = "0.10", default-features = false }
 tokio = { version = "1", features = ["macros", "rt"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -31,7 +31,7 @@ default-features = false
 features = ["client", "openssl-tls", "runtime", "ws"]
 
 [dependencies.linkerd2-proxy-api]
-version = "0.11"
+version = "0.13"
 features = ["inbound", "outbound"]
 
 [dev-dependencies]
