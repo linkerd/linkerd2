@@ -3599,6 +3599,15 @@ define-properties@^1.2.0:
     has-property-descriptors "^1.0.0"
     object-keys "^1.1.1"
 
+define-properties@^1.2.1:
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/define-properties/-/define-properties-1.2.1.tgz#10781cc616eb951a80a034bafcaa7377f6af2b6c"
+  integrity sha512-8QmQKqEASLd5nx0U1B1okLElbUuuttJ/AnYmRXbbbGDWh6uS208EjD4Xqq/I9wK7u0v6O08XhTWnt5XtEbR6Dg==
+  dependencies:
+    define-data-property "^1.0.1"
+    has-property-descriptors "^1.0.0"
+    object-keys "^1.1.1"
+
 del@^4.1.1:
   version "4.1.1"
   resolved "https://registry.yarnpkg.com/del/-/del-4.1.1.tgz#9e8f117222ea44a31ff3a156c049b99052a9f0b4"
@@ -3801,40 +3810,40 @@ envinfo@^7.7.3:
   resolved "https://registry.yarnpkg.com/envinfo/-/envinfo-7.8.1.tgz#06377e3e5f4d379fea7ac592d5ad8927e0c4d475"
   integrity sha512-/o+BXHmB7ocbHEAs6F2EnG0ogybVVUdkRunTT2glZU9XAaGmhqskrvKwqXuDfNjEO0LZKWdejEEpnq8aM0tOaw==
 
-enzyme-adapter-react-16@^1.15.7:
-  version "1.15.7"
-  resolved "https://registry.yarnpkg.com/enzyme-adapter-react-16/-/enzyme-adapter-react-16-1.15.7.tgz#a737e6d8e2c147e9da5acf957755be7634f76201"
-  integrity sha512-LtjKgvlTc/H7adyQcj+aq0P0H07LDL480WQl1gU512IUyaDo/sbOaNDdZsJXYW2XaoPqrLLE9KbZS+X2z6BASw==
+enzyme-adapter-react-16@^1.15.8:
+  version "1.15.8"
+  resolved "https://registry.yarnpkg.com/enzyme-adapter-react-16/-/enzyme-adapter-react-16-1.15.8.tgz#1aecb5daadaae33d32c5b8b78566d7cf45dc49d8"
+  integrity sha512-uYGC31eGZBp5nGsr4nKhZKvxGQjyHGjS06BJsUlWgE29/hvnpgCsT1BJvnnyny7N3GIIVyxZ4O9GChr6hy2WQA==
   dependencies:
-    enzyme-adapter-utils "^1.14.1"
-    enzyme-shallow-equal "^1.0.5"
-    has "^1.0.3"
-    object.assign "^4.1.4"
-    object.values "^1.1.5"
+    enzyme-adapter-utils "^1.14.2"
+    enzyme-shallow-equal "^1.0.7"
+    hasown "^2.0.0"
+    object.assign "^4.1.5"
+    object.values "^1.1.7"
     prop-types "^15.8.1"
     react-is "^16.13.1"
     react-test-renderer "^16.0.0-0"
-    semver "^5.7.0"
+    semver "^5.7.2"
 
-enzyme-adapter-utils@^1.14.1:
-  version "1.14.1"
-  resolved "https://registry.yarnpkg.com/enzyme-adapter-utils/-/enzyme-adapter-utils-1.14.1.tgz#f30db15dafc22e0ccd44f5acc8d93be29218cdcf"
-  integrity sha512-JZgMPF1QOI7IzBj24EZoDpaeG/p8Os7WeBZWTJydpsH7JRStc7jYbHE4CmNQaLqazaGFyLM8ALWA3IIZvxW3PQ==
+enzyme-adapter-utils@^1.14.2:
+  version "1.14.2"
+  resolved "https://registry.yarnpkg.com/enzyme-adapter-utils/-/enzyme-adapter-utils-1.14.2.tgz#1d012e6261accbe7d406db098bb4d8dfdce8c003"
+  integrity sha512-1ZC++RlsYRaiOWE5NRaF5OgsMt7F5rn/VuaJIgc7eW/fmgg8eS1/Ut7EugSPPi7VMdWMLcymRnMF+mJUJ4B8KA==
   dependencies:
     airbnb-prop-types "^2.16.0"
-    function.prototype.name "^1.1.5"
-    has "^1.0.3"
-    object.assign "^4.1.4"
-    object.fromentries "^2.0.5"
+    function.prototype.name "^1.1.6"
+    hasown "^2.0.0"
+    object.assign "^4.1.5"
+    object.fromentries "^2.0.7"
     prop-types "^15.8.1"
-    semver "^5.7.1"
+    semver "^6.3.1"
 
-enzyme-shallow-equal@^1.0.1, enzyme-shallow-equal@^1.0.5:
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/enzyme-shallow-equal/-/enzyme-shallow-equal-1.0.5.tgz#5528a897a6ad2bdc417c7221a7db682cd01711ba"
-  integrity sha512-i6cwm7hN630JXenxxJFBKzgLC3hMTafFQXflvzHgPmDhOBhxUWDe8AeRv1qp2/uWJ2Y8z5yLWMzmAfkTOiOCZg==
+enzyme-shallow-equal@^1.0.1, enzyme-shallow-equal@^1.0.7:
+  version "1.0.7"
+  resolved "https://registry.yarnpkg.com/enzyme-shallow-equal/-/enzyme-shallow-equal-1.0.7.tgz#4e3aa678022387a68e6c47aff200587851885b5e"
+  integrity sha512-/um0GFqUXnpM9SvKtje+9Tjoz3f1fpBC3eXRFrNs8kpYn69JljciYP7KZTqM/YQbUY9KUjvKB4jo/q+L6WGGvg==
   dependencies:
-    has "^1.0.3"
+    hasown "^2.0.0"
     object-is "^1.1.5"
 
 enzyme@3.11.0:
@@ -6833,13 +6842,13 @@ object-keys@^1.0.12, object-keys@^1.1.1:
   resolved "https://registry.yarnpkg.com/object-keys/-/object-keys-1.1.1.tgz#1c47f272df277f3b1daf061677d9c82e2322c60e"
   integrity sha512-NuAESUOUMrlIXOfHKzD6bpPu3tYt3xvjNdRIQ+FeT0lNb4K8WR70CaDxhuNguS2XG+GjkyMwOzsN5ZktImfhLA==
 
-object.assign@^4.1.0, object.assign@^4.1.2, object.assign@^4.1.3, object.assign@^4.1.4:
-  version "4.1.4"
-  resolved "https://registry.yarnpkg.com/object.assign/-/object.assign-4.1.4.tgz#9673c7c7c351ab8c4d0b516f4343ebf4dfb7799f"
-  integrity sha512-1mxKf0e58bvyjSCtKYY4sRe9itRk3PJpquJOjeIkz885CczcI4IvJJDLPS72oowuSh+pBxUFROpX+TU++hxhZQ==
+object.assign@^4.1.0, object.assign@^4.1.2, object.assign@^4.1.3, object.assign@^4.1.4, object.assign@^4.1.5:
+  version "4.1.5"
+  resolved "https://registry.yarnpkg.com/object.assign/-/object.assign-4.1.5.tgz#3a833f9ab7fdb80fc9e8d2300c803d216d8fdbb0"
+  integrity sha512-byy+U7gp+FVwmyzKPYhW2h5l3crpmGsxl7X2s8y43IgxvG4g3QZ6CffDtsNQy1WsmZpQbO+ybo0AlW7TY6DcBQ==
   dependencies:
-    call-bind "^1.0.2"
-    define-properties "^1.1.4"
+    call-bind "^1.0.5"
+    define-properties "^1.2.1"
     has-symbols "^1.0.3"
     object-keys "^1.1.1"
 
@@ -6852,7 +6861,7 @@ object.entries@^1.1.1, object.entries@^1.1.2, object.entries@^1.1.5, object.entr
     define-properties "^1.1.4"
     es-abstract "^1.20.4"
 
-object.fromentries@^2.0.5, object.fromentries@^2.0.6, object.fromentries@^2.0.7:
+object.fromentries@^2.0.6, object.fromentries@^2.0.7:
   version "2.0.7"
   resolved "https://registry.yarnpkg.com/object.fromentries/-/object.fromentries-2.0.7.tgz#71e95f441e9a0ea6baf682ecaaf37fa2a8d7e616"
   integrity sha512-UPbPHML6sL8PI/mOqPwsH4G6iyXcCGzLin8KvEPenOZN5lpCNBZZQ+V62vdjB1mQHrmqGQt5/OJzemUA+KJmEA==
@@ -6879,7 +6888,7 @@ object.hasown@^1.1.2:
     define-properties "^1.1.4"
     es-abstract "^1.20.4"
 
-object.values@^1.1.1, object.values@^1.1.5, object.values@^1.1.6, object.values@^1.1.7:
+object.values@^1.1.1, object.values@^1.1.6, object.values@^1.1.7:
   version "1.1.7"
   resolved "https://registry.yarnpkg.com/object.values/-/object.values-1.1.7.tgz#617ed13272e7e1071b43973aa1655d9291b8442a"
   integrity sha512-aU6xnDFYT3x17e/f0IiiwlGPTy2jzMySGfUB4fq6z7CV8l85CWHDk5ErhyhpfDHhrOMwGFhSQkhMGHaIotA6Ng==
@@ -7998,7 +8007,7 @@ selfsigned@^2.1.1:
   dependencies:
     node-forge "^1"
 
-semver@^5.7.0, semver@^5.7.1:
+semver@^5.7.2:
   version "5.7.2"
   resolved "https://registry.yarnpkg.com/semver/-/semver-5.7.2.tgz#48d55db737c3287cd4835e17fa13feace1c41ef8"
   integrity sha512-cBznnQ9KjJqU67B52RMC65CMarK2600WFnbkcaiwWq3xy/5haFJlshgnpjovMVJ+Hff49d8GEn0b87C5pDQ10g==
