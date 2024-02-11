@@ -208,6 +208,10 @@ spec:
         {{- range (.Values.destinationController).experimentalArgs }}
         - {{ . }}
         {{- end }}
+        {{- with (.Values.destinationController).experimentalEnv }}
+        env:
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
@@ -245,6 +249,10 @@ spec:
         - -log-level={{.Values.controllerLogLevel}}
         - -log-format={{.Values.controllerLogFormat}}
         - -enable-pprof={{.Values.enablePprof | default false}}
+        {{- with (.Values.spValidator).experimentalEnv }}
+        env:
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:

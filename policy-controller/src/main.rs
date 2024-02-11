@@ -170,6 +170,13 @@ async fn main() -> Result<()> {
         kubert::index::namespaced(inbound_index.clone(), pods).instrument(info_span!("pods")),
     );
 
+    let external_workloads =
+        runtime.watch_all::<k8s::external_workload::ExternalWorkload>(watcher::Config::default());
+    tokio::spawn(
+        kubert::index::namespaced(inbound_index.clone(), external_workloads)
+            .instrument(info_span!("external_workloads")),
+    );
+
     let servers = runtime.watch_all::<k8s::policy::Server>(watcher::Config::default());
     let servers_indexes = IndexList::new(inbound_index.clone())
         .push(status_index.clone())

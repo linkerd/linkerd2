@@ -42,7 +42,7 @@ type (
 
 		config Config
 
-		pods         *watcher.PodWatcher
+		workloads    *watcher.WorkloadWatcher
 		endpoints    *watcher.EndpointsWatcher
 		opaquePorts  *watcher.OpaquePortsWatcher
 		profiles     *watcher.ProfileWatcher
@@ -86,7 +86,7 @@ func NewServer(
 		return nil, err
 	}
 
-	pods, err := watcher.NewPodWatcher(k8sAPI, metadataAPI, log, config.DefaultOpaquePorts)
+	workloads, err := watcher.NewWorkloadWatcher(k8sAPI, metadataAPI, log, config.EnableEndpointSlices, config.DefaultOpaquePorts)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func NewServer(
 	srv := server{
 		pb.UnimplementedDestinationServer{},
 		config,
-		pods,
+		workloads,
 		endpoints,
 		opaquePorts,
 		profiles,
@@ -280,6 +280,11 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	if ip := net.ParseIP(host); ip != nil {
 		err = s.getProfileByIP(token, ip, port, log, stream)
 		if err != nil {
+			var ise watcher.InvalidService
+			if errors.As(err, &ise) {
+				log.Debugf("Invalid service %s", dest.GetPath())
+				return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+			}
 			log.Errorf("Failed to subscribe to profile by ip %q: %q", dest.GetPath(), err)
 		}
 		return err
@@ -287,6 +292,11 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 	err = s.getProfileByName(token, host, port, log, stream)
 	if err != nil {
+		var ise watcher.InvalidService
+		if errors.As(err, &ise) {
+			log.Debugf("Invalid service %s", dest.GetPath())
+			return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+		}
 		log.Errorf("Failed to subscribe to profile by name %q: %q", dest.GetPath(), err)
 	}
 	return err
@@ -507,11 +517,11 @@ func (s *server) subscribeToEndpointProfile(
 	defer translator.Stop()
 
 	var err error
-	ip, err = s.pods.Subscribe(service, hostname, ip, port, translator)
+	ip, err = s.workloads.Subscribe(service, hostname, ip, port, translator)
 	if err != nil {
 		return err
 	}
-	defer s.pods.Unsubscribe(ip, port, translator)
+	defer s.workloads.Unsubscribe(ip, port, translator)
 
 	select {
 	case <-s.shutdown:

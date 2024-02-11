@@ -65,12 +65,14 @@ spec:
                     minLength: 1
                     maxLength: 253
                 type: object
+                required:
+                - identity
+                - serverName
               ports:
                 type: array
                 description: ports describes a list of ports exposed by the
                   workload
                 items:
-                  type: object
                   properties:
                     name:
                       type: string
@@ -87,6 +89,9 @@ spec:
                         TCP. Defaults to TCP.
                       type: string
                       default: "TCP"
+                  type: object
+                  required:
+                  - port
               workloadIPs:
                 type: array
                 description: workloadIPs contains a list of IP addresses that
@@ -96,10 +101,13 @@ spec:
                   properties:
                     ip:
                       type: string
+                # TODO: relax this in the future when ipv6 is supported
+                # an external workload (like a pod) should only
+                # support 2 interfaces
+                maxItems: 1
             type: object
             required:
-            - ports
-            - workloadIPs
+            - meshTls
           status:
             type: object
             properties:
@@ -150,8 +158,5 @@ spec:
                       maxLength: 32768
                       type: string
                 required:
-                - lastTransitionTime
                 - status
                 - type
-                - reason
-                - message

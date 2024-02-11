@@ -100,6 +100,14 @@ func TestRender(t *testing.T) {
 			OpaquePorts:          "25,443,587,3306,5432,11211",
 			Await:                true,
 			DefaultInboundPolicy: "default-allow-policy",
+			LivenessProbe: &charts.Probe{
+				InitialDelaySeconds: 10,
+				TimeoutSeconds:      1,
+			},
+			ReadinessProbe: &charts.Probe{
+				InitialDelaySeconds: 2,
+				TimeoutSeconds:      1,
+			},
 		},
 		ProxyInit: &charts.ProxyInit{
 			IptablesMode: "legacy",

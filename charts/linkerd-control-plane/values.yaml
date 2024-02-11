@@ -209,6 +209,14 @@ proxy:
   # If enabled, .proxy.waitBeforeExitSeconds should not be used.
   nativeSidecar: false
   # -- Native sidecar proxy startup probe parameters.
+  # -- LivenessProbe timeout and delay configuration
+  livenessProbe:
+    initialDelaySeconds: 10
+    timeoutSeconds: 1
+  # -- ReadinessProbe timeout and delay configuration
+  readinessProbe:
+    initialDelaySeconds: 2
+    timeoutSeconds: 1
   startupProbe:
     initialDelaySeconds: 0
     periodSeconds: 1
@@ -256,7 +264,7 @@ proxyInit:
     # @default -- imagePullPolicy
     pullPolicy: ""
     # -- Tag for the proxy-init container image
-    version: v2.2.3
+    version: v2.2.4
   resources:
     cpu:
       # -- Maximum amount of CPU units that the proxy-init container can use
@@ -393,6 +401,9 @@ disableHeartBeat: false
 
 # proxy injector configuration
 proxyInjector:
+  # -- Timeout in seconds before the API Server cancels a request to the proxy
+  # injector. If timeout is exceeded, the webhookfailurePolicy is used.
+  timeoutSeconds: 10
   # -- Do not create a secret resource for the proxyInjector webhook.
   # If this is set to `true`, the value `proxyInjector.caBundle` must be set
   # or the ca bundle must injected with cert-manager ca injector using

@@ -19,10 +19,11 @@ limitations under the License.
 package scheme
 
 import (
+	externalworkloadv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
 	policyv1beta3 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1beta3"
-	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
+	serverv1beta2 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	linkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,10 +37,11 @@ var Scheme = runtime.NewScheme()
 var Codecs = serializer.NewCodecFactory(Scheme)
 var ParameterCodec = runtime.NewParameterCodec(Scheme)
 var localSchemeBuilder = runtime.SchemeBuilder{
+	externalworkloadv1alpha1.AddToScheme,
 	linkv1alpha1.AddToScheme,
 	policyv1alpha1.AddToScheme,
 	policyv1beta3.AddToScheme,
-	serverv1beta1.AddToScheme,
+	serverv1beta2.AddToScheme,
 	serverauthorizationv1beta1.AddToScheme,
 	linkerdv1alpha2.AddToScheme,
 }

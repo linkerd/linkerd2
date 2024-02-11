@@ -116,6 +116,8 @@ func TestEndpoints(t *testing.T) {
 }
 
 func testEndpointsCall(exp endpointsExp, t *testing.T) {
+	t.Helper()
+
 	updates := make([]pb.Update, 0)
 	for _, endpoint := range exp.endpoints {
 		addrSet := util.BuildAddrSet(endpoint)
@@ -128,7 +130,7 @@ func testEndpointsCall(exp endpointsExp, t *testing.T) {
 		},
 	}
 
-	endpoints, err := requestEndpointsFromAPI(mockClient, exp.authorities)
+	endpoints, err := requestEndpointsFromAPI(mockClient, "", exp.authorities)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

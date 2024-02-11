@@ -98,7 +98,58 @@ resources:
 }
 
 func TestServersAccess(t *testing.T) {
-	api, err := NewFakeAPI(`
+	testCases := []struct {
+		name          string
+		resources     []string
+		expectedError error
+	}{
+		{
+			name: "supports version but not authorized",
+			resources: []string{
+				`
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: servers.policy.linkerd.io
+spec:
+  conversion:
+    strategy: None
+  group: policy.linkerd.io
+  names:
+    kind: Server
+    listKind: ServerList
+    plural: servers
+    shortNames:
+    - srv
+    singular: server
+  scope: Namespaced
+`, `
+kind: APIResourceList
+apiVersion: v1beta1
+groupVersion: policy.linkerd.io/v1beta2
+resources:
+- name: servers
+  singularName: server
+  namespaced: true
+  kind: Server
+  verbs:
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - create
+  - update
+  - watch
+  shortNames:
+  - srv
+`},
+			expectedError: errors.New("not authorized to access servers.policy.linkerd.io"),
+		},
+		{
+			name: "does not support version",
+			resources: []string{
+				`
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -135,19 +186,26 @@ resources:
   - watch
   shortNames:
   - srv
-`)
-	if err != nil {
-		t.Error(err)
+`},
+			expectedError: errors.New(`the server could not find the requested resource, GroupVersion "policy.linkerd.io/v1beta2" not found`),
+		},
 	}
 
-	testError := errors.New("not authorized to access servers.policy.linkerd.io")
+	for _, tc := range testCases {
+		tc := tc // pin
+		t.Run(tc.name, func(t *testing.T) {
+			api, err := NewFakeAPI(tc.resources...)
+			if err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
 
-	err = ServersAccess(context.Background(), api.Interface)
-
-	if err == nil {
-		t.Fatal("Expected error, but got success")
-	}
-	if err.Error() != testError.Error() {
-		t.Fatalf("Unexpected error (Expected: %s, Got: %s)", testError, err)
+			err = ServersAccess(context.Background(), api.Interface)
+			if err == nil {
+				t.Fatal("Expected error, but got success")
+			}
+			if err.Error() != tc.expectedError.Error() {
+				t.Fatalf("Unexpected error (Expected: %s, Got: %s)", tc.expectedError, err)
+			}
+		})
 	}
 }

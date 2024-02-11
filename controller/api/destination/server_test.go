@@ -11,12 +11,14 @@ import (
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/api/util"
-	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
+	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/testutil"
 	logging "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -27,6 +29,7 @@ const fullyQualifiedNameOpaque = "name3.ns.svc.mycluster.local"
 const fullyQualifiedNameOpaqueService = "name4.ns.svc.mycluster.local"
 const fullyQualifiedNameSkipped = "name5.ns.svc.mycluster.local"
 const fullyQualifiedPodDNS = "pod-0.statefulset-svc.ns.svc.mycluster.local"
+const fullyQualifiedNamePolicy = "policy-test.ns.svc.mycluster.local"
 const clusterIP = "172.17.12.0"
 const clusterIPv6 = "2001:db8::88"
 const clusterIPOpaque = "172.17.12.1"
@@ -39,6 +42,8 @@ const podIPPolicy = "172.17.0.16"
 const podIPStatefulSet = "172.17.13.15"
 const externalIP = "192.168.1.20"
 const externalIPv6 = "2001:db8::78"
+const externalWorkloadIP = "200.1.1.1"
+const externalWorkloadIPPolicy = "200.1.1.2"
 const port uint32 = 8989
 const opaquePort uint32 = 4242
 const skippedPort uint32 = 24224
@@ -56,6 +61,23 @@ func TestGet(t *testing.T) {
 		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: "linkerd.io"}, stream)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
+		}
+	})
+
+	t.Run("Returns InvalidArgument for ExternalName service", func(t *testing.T) {
+		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := &bufferingGetStream{
+			updates:          make(chan *pb.Update, 50),
+			MockServerStream: util.NewMockServerStream(),
+		}
+
+		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: "externalname.ns.svc.cluster.local"}, stream)
+
+		code := status.Code(err)
+		if code != codes.InvalidArgument {
+			t.Fatalf("Expected InvalidArgument, got %s", code)
 		}
 	})
 
@@ -137,6 +159,98 @@ func TestGet(t *testing.T) {
 		}
 	})
 
+	t.Run("Return endpoint opaque protocol controlled by a server", func(t *testing.T) {
+		server, client := getServerWithClient(t)
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := &bufferingGetStream{
+			updates:          make(chan *pb.Update, 50),
+			MockServerStream: util.NewMockServerStream(),
+		}
+		defer stream.Cancel()
+		errs := make(chan error)
+
+		path := fmt.Sprintf("%s:%d", fullyQualifiedNamePolicy, 80)
+
+		// server.Get blocks until the grpc stream is complete so we call it
+		// in a goroutine and watch stream.updates for updates.
+		go func() {
+			err := server.Get(&pb.GetDestination{
+				Scheme: "k8s",
+				Path:   path,
+			}, stream)
+			if err != nil {
+				errs <- err
+			}
+		}()
+
+		select {
+		case err := <-errs:
+			t.Fatalf("Got error: %s", err)
+		case update := <-stream.updates:
+			addrs := update.GetAdd().Addrs
+			if len(addrs) == 0 {
+				t.Fatalf("Expected len(addrs) to be > 0")
+			}
+
+			if addrs[0].GetProtocolHint().GetOpaqueTransport() == nil {
+				t.Fatalf("Expected opaque transport for %s but was nil", path)
+			}
+		}
+
+		// Update the Server's pod selector so that it no longer selects the
+		// pod. This should result in the proxy protocol no longer being marked
+		// as opaque.
+		srv, err := client.ServerV1beta2().Servers("ns").Get(context.Background(), "srv", metav1.GetOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		// PodSelector is updated to NOT select the pod
+		srv.Spec.PodSelector.MatchLabels = map[string]string{"app": "FOOBAR"}
+		_, err = client.ServerV1beta2().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		select {
+		case update := <-stream.updates:
+			addrs := update.GetAdd().Addrs
+			if len(addrs) == 0 {
+				t.Fatalf("Expected len(addrs) to be > 0")
+			}
+
+			if addrs[0].GetProtocolHint().GetOpaqueTransport() != nil {
+				t.Fatalf("Expected opaque transport to be nil for %s but was %+v", path, *addrs[0].GetProtocolHint().GetOpaqueTransport())
+			}
+		case err := <-errs:
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// Update the Server's pod selector so that it once again selects the
+		// pod. This should result in the proxy protocol once again being marked
+		// as opaque.
+		srv.Spec.PodSelector.MatchLabels = map[string]string{"app": "policy-test"}
+
+		_, err = client.ServerV1beta2().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		select {
+		case update := <-stream.updates:
+			addrs := update.GetAdd().Addrs
+			if len(addrs) == 0 {
+				t.Fatalf("Expected len(addrs) to be > 0")
+			}
+
+			if addrs[0].GetProtocolHint().GetOpaqueTransport() == nil {
+				t.Fatalf("Expected opaque transport for %s but was nil", path)
+			}
+		case err := <-errs:
+			t.Fatalf("Got error: %s", err)
+		}
+	})
+
 	t.Run("Remote discovery", func(t *testing.T) {
 		server := makeServer(t)
 		defer server.clusterStore.UnregisterGauges()
@@ -189,6 +303,23 @@ func TestGetProfiles(t *testing.T) {
 		err := server.GetProfile(&pb.GetDestination{Scheme: "k8s", Path: "linkerd.io"}, stream)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")
+		}
+	})
+
+	t.Run("Returns InvalidArgument for ExternalName service", func(t *testing.T) {
+		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+		defer stream.Cancel()
+
+		err := server.GetProfile(&pb.GetDestination{Scheme: "k8s", Path: "externalname.ns.svc.cluster.local"}, stream)
+		code := status.Code(err)
+		if code != codes.InvalidArgument {
+			t.Fatalf("Expected InvalidArgument, got %s", code)
 		}
 	})
 
@@ -405,6 +536,47 @@ func TestGetProfiles(t *testing.T) {
 		}
 	})
 
+	t.Run("Return profile with endpoint when using externalworkload IP", func(t *testing.T) {
+		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := profileStream(t, server, externalWorkloadIP, port, "ns:ns")
+		defer stream.Cancel()
+
+		epAddr, err := toAddress(externalWorkloadIP, port)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// An explanation for why we expect 1 to 3 updates is in test cases
+		// above
+		updates := stream.Updates()
+		if len(updates) == 0 || len(updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(updates), updates)
+		}
+
+		first := updates[0]
+		if first.Endpoint == nil {
+			t.Fatalf("Expected response to have endpoint field")
+		}
+		if first.OpaqueProtocol {
+			t.Fatalf("Expected port %d to not be an opaque protocol, but it was", port)
+		}
+		_, exists := first.Endpoint.MetricLabels["namespace"]
+		if !exists {
+			t.Fatalf("Expected 'namespace' metric label to exist but it did not %v", first.Endpoint)
+		}
+		if first.GetEndpoint().GetProtocolHint() == nil {
+			t.Fatalf("Expected protocol hint but found none")
+		}
+		if first.GetEndpoint().GetProtocolHint().GetOpaqueTransport() != nil {
+			t.Fatalf("Expected externalworkload to not support opaque traffic on port %d", port)
+		}
+		if first.Endpoint.Addr.String() != epAddr.String() {
+			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
+		}
+	})
+
 	t.Run("Return default profile when IP does not map to service or pod", func(t *testing.T) {
 		server := makeServer(t)
 		defer server.clusterStore.UnregisterGauges()
@@ -558,11 +730,73 @@ func TestGetProfiles(t *testing.T) {
 		}
 	})
 
+	t.Run("Return opaque protocol profile with endpoint when using externalworkload IP and opaque protocol port", func(t *testing.T) {
+		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := profileStream(t, server, externalWorkloadIP, opaquePort, "")
+		defer stream.Cancel()
+
+		epAddr, err := toAddress(externalWorkloadIP, opaquePort)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// An explanation for why we expect 1 to 3 updates is in test cases
+		// above
+		updates := stream.Updates()
+		if len(updates) == 0 || len(updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(updates), updates)
+		}
+
+		profile := assertSingleProfile(t, updates)
+		if profile.Endpoint == nil {
+			t.Fatalf("Expected response to have endpoint field")
+		}
+		if !profile.OpaqueProtocol {
+			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", opaquePort)
+		}
+		_, exists := profile.Endpoint.MetricLabels["namespace"]
+		if !exists {
+			t.Fatalf("Expected 'namespace' metric label to exist but it did not")
+		}
+		if profile.Endpoint.ProtocolHint == nil {
+			t.Fatalf("Expected protocol hint but found none")
+		}
+		if profile.Endpoint.GetProtocolHint().GetOpaqueTransport().GetInboundPort() != 4143 {
+			t.Fatalf("Expected pod to support opaque traffic on port 4143")
+		}
+		if profile.Endpoint.Addr.String() != epAddr.String() {
+			t.Fatalf("Expected endpoint IP port to be %d, but it was %d", epAddr.Port, profile.Endpoint.Addr.Port)
+		}
+	})
+
 	t.Run("Return profile with opaque protocol when using Pod IP selected by a Server", func(t *testing.T) {
 		server := makeServer(t)
 		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, podIPPolicy, 80, "")
+		defer stream.Cancel()
+		profile := assertSingleProfile(t, stream.Updates())
+		if profile.Endpoint == nil {
+			t.Fatalf("Expected response to have endpoint field")
+		}
+		if !profile.OpaqueProtocol {
+			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", 80)
+		}
+		if profile.Endpoint.GetProtocolHint() == nil {
+			t.Fatalf("Expected protocol hint but found none")
+		}
+		if profile.Endpoint.GetProtocolHint().GetOpaqueTransport().GetInboundPort() != 4143 {
+			t.Fatalf("Expected pod to support opaque traffic on port 4143")
+		}
+	})
+
+	t.Run("Return profile with opaque protocol when using externalworkload IP selected by a Server", func(t *testing.T) {
+		server := makeServer(t)
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := profileStream(t, server, externalWorkloadIPPolicy, 80, "")
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
 		if profile.Endpoint == nil {
@@ -722,12 +956,12 @@ func TestGetProfiles(t *testing.T) {
 		}
 
 		// Server is created, setting the port to opaque
-		(*l5dClient).ServerV1beta1().Servers("ns").Create(context.Background(), &v1beta1.Server{
+		l5dClient.ServerV1beta2().Servers("ns").Create(context.Background(), &v1beta2.Server{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "srv-hostport-mapping-2",
 				Namespace: "ns",
 			},
-			Spec: v1beta1.ServerSpec{
+			Spec: v1beta2.ServerSpec{
 				PodSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
 						"app": "hostport-mapping-2",

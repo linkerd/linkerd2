@@ -98,3 +98,7 @@ enablePodAntiAffinity: false
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
 # for more information
 # nodeAffinity:
+
+# -- Creates a Job that adds necessary metadata to the extension's namespace
+# during install; disable if lack of privileges require doing this manually
+createNamespaceMetadataJob: true

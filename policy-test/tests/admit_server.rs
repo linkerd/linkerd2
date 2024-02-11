@@ -1,6 +1,6 @@
 use linkerd_policy_controller_k8s_api::{
-    self as api, labels,
-    policy::server::{Port, ProxyProtocol, Server, ServerSpec},
+    self as api,
+    policy::server::{Port, ProxyProtocol, Selector, Server, ServerSpec},
 };
 use linkerd_policy_test::{admission, with_temp_ns};
 
@@ -13,7 +13,7 @@ async fn accepts_valid() {
             ..Default::default()
         },
         spec: ServerSpec {
-            pod_selector: api::labels::Selector::default(),
+            selector: Selector::Pod(api::labels::Selector::default()),
             port: Port::Number(80.try_into().unwrap()),
             proxy_protocol: None,
         },
@@ -31,7 +31,7 @@ async fn accepts_server_updates() {
                 ..Default::default()
             },
             spec: ServerSpec {
-                pod_selector: api::labels::Selector::from_iter(Some(("app", "test"))),
+                selector: Selector::Pod(api::labels::Selector::from_iter(Some(("app", "test")))),
                 port: Port::Number(80.try_into().unwrap()),
                 proxy_protocol: None,
             },
@@ -57,7 +57,7 @@ async fn accepts_server_updates() {
 async fn rejects_identitical_pod_selector() {
     with_temp_ns(|client, ns| async move {
         let spec = ServerSpec {
-            pod_selector: api::labels::Selector::from_iter(Some(("app", "test"))),
+            selector: Selector::Pod(api::labels::Selector::from_iter(Some(("app", "test")))),
             port: Port::Number(80.try_into().unwrap()),
             proxy_protocol: None,
         };
@@ -103,7 +103,7 @@ async fn rejects_all_pods_selected() {
                 ..Default::default()
             },
             spec: ServerSpec {
-                pod_selector: api::labels::Selector::from_iter(Some(("app", "test"))),
+                selector: Selector::Pod(api::labels::Selector::from_iter(Some(("app", "test")))),
                 port: Port::Number(80.try_into().unwrap()),
                 proxy_protocol: Some(ProxyProtocol::Http2),
             },
@@ -119,7 +119,7 @@ async fn rejects_all_pods_selected() {
                 ..Default::default()
             },
             spec: ServerSpec {
-                pod_selector: api::labels::Selector::default(),
+                selector: Selector::Pod(api::labels::Selector::default()),
                 port: Port::Number(80.try_into().unwrap()),
                 // proxy protocol doesn't factor into the selection
                 proxy_protocol: Some(ProxyProtocol::Http1),
@@ -151,7 +151,8 @@ async fn rejects_invalid_proxy_protocol() {
     )]
     #[serde(rename_all = "camelCase")]
     pub struct ServerSpec {
-        pub pod_selector: labels::Selector,
+        #[serde(flatten)]
+        pub selector: Selector,
         pub port: Port,
         pub proxy_protocol: String,
     }
@@ -171,7 +172,7 @@ async fn rejects_invalid_proxy_protocol() {
             ..Default::default()
         },
         spec: ServerSpec {
-            pod_selector: api::labels::Selector::default(),
+            selector: Selector::Pod(api::labels::Selector::default()),
             port: Port::Number(80.try_into().unwrap()),
             proxy_protocol: "garbanzo".to_string(),
         },

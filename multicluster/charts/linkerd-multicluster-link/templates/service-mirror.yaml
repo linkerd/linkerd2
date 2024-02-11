@@ -139,6 +139,10 @@ spec:
         {{- end }}
         - -enable-pprof={{.Values.enablePprof | default false}}
         - {{.Values.targetClusterName}}
+        {{- with .Values.serviceMirrorExperimentalEnv }}
+        env:
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion}}
         name: service-mirror
         securityContext:

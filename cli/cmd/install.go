@@ -40,7 +40,8 @@ const (
 
 %s
 
-You can use the --ignore-cluster flag if you just want to generate the installation config.`
+You can use the --ignore-cluster flag if you just want to generate the installation config.
+`
 
 	errMsgLinkerdConfigResourceConflict = "Can't install the Linkerd control plane in the '%s' namespace. Reason: %s.\nRun the command `linkerd upgrade`, if you are looking to upgrade Linkerd.\n"
 )
@@ -58,7 +59,7 @@ var (
 		"templates/workload/external-workload.yaml",
 	}
 
-	templatesControlPlane = []string{
+	TemplatesControlPlane = []string{
 		"templates/namespace.yaml",
 		"templates/identity-rbac.yaml",
 		"templates/destination-rbac.yaml",
@@ -364,7 +365,7 @@ func renderControlPlane(w io.Writer, values *l5dcharts.Values, valuesOverrides m
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
-	for _, template := range templatesControlPlane {
+	for _, template := range TemplatesControlPlane {
 		files = append(files, &loader.BufferedFile{Name: template})
 	}
 	if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCP+"/", files); err != nil {

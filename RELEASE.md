@@ -24,26 +24,25 @@ bin/git-commit-proxy-version <linkerd2-proxy-sha>
 The script will update the `.proxy-version` file. Submit a PR to obtain reviews
 and approval.
 
-## 2. Bump the proxy-init version
+## 2. Bump the proxy-init or CNI plugin version
 
-If the `linkerd2/proxy-init` project has a new release (which is rare), the
-following updates are needed:
-
-- `go.mod`
-
-   ```mod
-   github.com/linkerd/linkerd2-proxy-init v1.2.0
-   ```
+If the `linkerd2/proxy-init` or `linkerd2/cni-plugin` projects have a new
+release (which is rare), the following updates are needed:
 
 - `pkg/version/version.go` (this also implies changes in unit test fixtures)
 
    ```go
-   var ProxyInitVersion = "v1.2.0"
+   var ProxyInitVersion = "v2.2.4"
+   var LinkerdCNIVersion = "v1.3.0"
    ```
 
 - `charts/linkerd-control-plane/values.yaml`
 
    Upgrade the version in `global.proxyInit.image.version`
+
+- `charts/linkerd2-cni/values.yaml`
+
+   Upgrade the version in `image.version`
 
 Create a new branch in the `linkerd2` repo,
 `username/proxy-init-version-bump`.

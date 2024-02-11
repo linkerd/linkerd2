@@ -418,7 +418,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - -controller-namespace=linkerd
@@ -461,7 +461,7 @@ spec:
           type: RuntimeDefault
       serviceAccountName: metrics-api
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -781,7 +781,7 @@ spec:
           name: prometheus-config
         name: prometheus-config
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -884,7 +884,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - api
@@ -937,7 +937,7 @@ spec:
         secret:
           secretName: tap-k8s-tls
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -1099,7 +1099,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - injector
@@ -1149,7 +1149,7 @@ spec:
         secret:
           secretName: tap-injector-k8s-tls
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -1217,7 +1217,7 @@ metadata:
     namespace: linkerd-viz
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
-    
+
     linkerd.io/inject: enabled
 spec:
   type: ClusterIP
@@ -1269,7 +1269,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.linkerd-viz.svc.cluster.local:8085

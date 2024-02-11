@@ -9,6 +9,7 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
+	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -379,7 +380,14 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			opaquePorts = watcher.GetAnnotatedOpaquePorts(address.Pod, et.defaultOpaquePorts)
 			wa, err = createWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS)
 			if err != nil {
-				et.log.Errorf("Failed to translate endpoints to weighted addr: %s", err)
+				et.log.Errorf("Failed to translate Pod endpoints to weighted addr: %s", err)
+				continue
+			}
+		} else if address.ExternalWorkload != nil {
+			opaquePorts = watcher.GetAnnotatedOpaquePortsForExternalWorkload(address.ExternalWorkload, et.defaultOpaquePorts)
+			wa, err = createWeightedAddrForExternalWorkload(address, opaquePorts)
+			if err != nil {
+				et.log.Errorf("Failed to translate ExternalWorkload endpoints to weighted addr: %s", err)
 				continue
 			}
 		} else {
@@ -480,6 +488,74 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
+func createWeightedAddrForExternalWorkload(
+	address watcher.Address,
+	opaquePorts map[uint32]struct{},
+) (*pb.WeightedAddr, error) {
+	tcpAddr, err := toAddr(address)
+	if err != nil {
+		return nil, err
+	}
+
+	weightedAddr := pb.WeightedAddr{
+		Addr:         tcpAddr,
+		Weight:       defaultWeight,
+		MetricLabels: map[string]string{},
+	}
+
+	weightedAddr.MetricLabels = pkgK8s.GetExternalWorkloadLabels(address.OwnerKind, address.OwnerName, address.ExternalWorkload)
+	// If the address is not backed by an ExternalWorkload, there is no additional metadata
+	// to add.
+	if address.ExternalWorkload == nil {
+		return &weightedAddr, nil
+	}
+
+	weightedAddr.ProtocolHint = &pb.ProtocolHint{}
+	_, opaquePort := opaquePorts[address.Port]
+	// If address is set as opaque by a Server, or its port is set as
+	// opaque by annotation or default value, then set the hinted protocol to
+	// Opaque.
+	if address.OpaqueProtocol || opaquePort {
+		weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_Opaque_{
+			Opaque: &pb.ProtocolHint_Opaque{},
+		}
+
+		port, err := getInboundPortFromExternalWorkload(&address.ExternalWorkload.Spec)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read inbound port: %w", err)
+		}
+		weightedAddr.ProtocolHint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
+			InboundPort: port,
+		}
+	} else {
+		weightedAddr.ProtocolHint.Protocol = &pb.ProtocolHint_H2_{
+			H2: &pb.ProtocolHint_H2{},
+		}
+	}
+
+	// we assume external workloads support only SPIRE identity
+	weightedAddr.TlsIdentity = &pb.TlsIdentity{
+		Strategy: &pb.TlsIdentity_UriLikeIdentity_{
+			UriLikeIdentity: &pb.TlsIdentity_UriLikeIdentity{
+				Uri: address.ExternalWorkload.Spec.MeshTls.Identity,
+			},
+		},
+		ServerName: &pb.TlsIdentity_DnsLikeIdentity{
+			Name: address.ExternalWorkload.Spec.MeshTls.ServerName,
+		},
+	}
+
+	weightedAddr.MetricLabels = pkgK8s.GetExternalWorkloadLabels(address.OwnerKind, address.OwnerName, address.ExternalWorkload)
+	// Set a zone label, even if it is empty (for consistency).
+	z := ""
+	if address.Zone != nil {
+		z = *address.Zone
+	}
+	weightedAddr.MetricLabels["zone"] = z
+
+	return &weightedAddr, nil
+}
+
 func createWeightedAddr(
 	address watcher.Address,
 	opaquePorts map[uint32]struct{},
@@ -558,12 +634,13 @@ func createWeightedAddr(
 		!isSkippedInboundPort {
 
 		id := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", sa, ns, controllerNSLabel, identityTrustDomain)
+		tlsId := &pb.TlsIdentity_DnsLikeIdentity{Name: id}
+
 		weightedAddr.TlsIdentity = &pb.TlsIdentity{
 			Strategy: &pb.TlsIdentity_DnsLikeIdentity_{
-				DnsLikeIdentity: &pb.TlsIdentity_DnsLikeIdentity{
-					Name: id,
-				},
+				DnsLikeIdentity: tlsId,
 			},
+			ServerName: tlsId,
 		}
 	}
 
@@ -608,4 +685,16 @@ func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
 		}
 	}
 	return 0, fmt.Errorf("failed to find %s environment variable in any container for given pod spec", envInboundListenAddr)
+}
+
+// getInboundPortFromExternalWorkload gets the inbound port from the ExternalWorkload spec
+// variable.
+func getInboundPortFromExternalWorkload(ewSpec *ewv1alpha1.ExternalWorkloadSpec) (uint32, error) {
+	for _, p := range ewSpec.Ports {
+		if p.Name == pkgK8s.ProxyPortName {
+			return uint32(p.Port), nil
+		}
+	}
+
+	return 0, fmt.Errorf("failed to find %s port for given ExternalWorkloadSpec", pkgK8s.ProxyPortName)
 }

@@ -87,6 +87,14 @@ var (
 		},
 	)
 
+	externalWorkloadInformerLag = promauto.NewHistogram(
+		prometheus.HistogramOpts{
+			Name:    "externalworkload_informer_lag_seconds",
+			Help:    "The amount of time between when an ExternalWorkload resource is updated and when an informer observes it",
+			Buckets: informer_lag_seconds_buckets,
+		},
+	)
+
 	serviceProfileInformerLag = promauto.NewHistogram(
 		prometheus.HistogramOpts{
 			Name:    "serviceprofiles_informer_lag_seconds",

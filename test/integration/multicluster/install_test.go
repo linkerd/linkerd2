@@ -16,6 +16,7 @@ import (
 
 	mcHealthcheck "github.com/linkerd/linkerd2/multicluster/cmd"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -113,7 +114,7 @@ func TestInstall(t *testing.T) {
 		"install",
 		"--controller-log-level", "debug",
 		"--set", "proxyInit.image.name=ghcr.io/linkerd/proxy-init",
-		"--set", "proxyInit.image.version=v2.2.3",
+		"--set", fmt.Sprintf("proxyInit.image.version=%s", version.ProxyInitVersion),
 		"--set", fmt.Sprintf("proxy.image.version=%s", TestHelper.GetVersion()),
 		"--set", "heartbeatSchedule=1 2 3 4 5",
 		"--identity-trust-anchors-file", rootPath,

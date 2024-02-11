@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/linkerd/linkerd2/controller/api/destination"
+	externalworkload "github.com/linkerd/linkerd2/controller/api/destination/external-workload"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -35,6 +36,9 @@ func Main(args []string) {
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
 	defaultOpaquePorts := cmd.String("default-opaque-ports", "", "configures the default opaque ports")
 	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
+	// This will default to true. It can be overridden with experimental CLI
+	// flags. Currently not exposed as a configuration value through Helm.
+	exportControllerQueueMetrics := cmd.Bool("export-queue-metrics", true, "Exports queue metrics for the external workload controller")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
@@ -107,7 +111,7 @@ func Main(args []string) {
 			*kubeConfigPath,
 			true,
 			"local",
-			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
+			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv, k8s.ExtWorkload,
 		)
 	} else {
 		k8sAPI, err = k8s.InitializeAPI(
@@ -115,7 +119,7 @@ func Main(args []string) {
 			*kubeConfigPath,
 			true,
 			"local",
-			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv,
+			k8s.Endpoint, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv, k8s.ExtWorkload,
 		)
 	}
 	if err != nil {
@@ -158,6 +162,21 @@ func Main(args []string) {
 	k8sAPI.Sync(nil)
 	metadataAPI.Sync(nil)
 	clusterStore.Sync(nil)
+
+	// Start mesh expansion external workload controller to write endpointslices
+	// to API Server.
+	if *enableEndpointSlices {
+		hostname, ok := os.LookupEnv("HOSTNAME")
+		if !ok {
+			log.Fatal("Failed to initialize External Workload Endpoints Controller, \"HOSTNAME\" value not found")
+		}
+		externalWorkloadController, err := externalworkload.NewEndpointsController(k8sAPI, hostname, *controllerNamespace, done, *exportControllerQueueMetrics)
+		if err != nil {
+			log.Fatalf("Failed to initialize External Workload Endpoints Controller: %v", err)
+		}
+
+		externalWorkloadController.Start()
+	}
 
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)

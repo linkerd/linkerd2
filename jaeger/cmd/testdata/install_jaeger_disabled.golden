@@ -41,7 +41,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
@@ -109,7 +109,7 @@ spec:
     port: 443
     targetPort: jaeger-injector
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -443,7 +443,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - command:
         - /otelcol-contrib
@@ -505,7 +505,7 @@ spec:
           name: collector-config
         name: collector-config-val
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -522,7 +522,7 @@ spec:
   port: 4317
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -539,7 +539,7 @@ spec:
   port: 4318
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -556,7 +556,7 @@ spec:
   port: 55678
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -572,7 +572,7 @@ spec:
       component: collector
   port: 9411
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -588,7 +588,7 @@ spec:
       component: collector
   port: 14268
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -604,7 +604,7 @@ spec:
       component: collector
   port: 14250
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -729,7 +729,7 @@ spec:
   # allow connections from any pod (meshed or not) sending trace data
   requiredAuthenticationRefs: []
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -766,7 +766,7 @@ spec:
       name: collector
       namespace: linkerd-jaeger
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -804,7 +804,7 @@ spec:
       name: prometheus
       namespace: linkerd-viz
 ---
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   namespace: linkerd-jaeger

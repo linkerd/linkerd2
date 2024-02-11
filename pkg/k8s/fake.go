@@ -3,6 +3,7 @@ package k8s
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 
@@ -19,12 +20,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/rand"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	discoveryfake "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/testing"
 	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	apiregistrationclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	apiregistrationfake "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/fake"
@@ -72,7 +75,7 @@ func NewFakeAPIFromManifests(readers []io.Reader) (*KubernetesAPI, error) {
 // NewFakeClientSets provides mock Kubernetes ClientSets.
 // TODO: make this private once KubernetesAPI (and NewFakeAPI) supports spClient
 func NewFakeClientSets(configs ...string) (
-	kubernetes.Interface,
+	*fake.Clientset,
 	apiextensionsclient.Interface,
 	apiregistrationclient.Interface,
 	spclient.Interface,
@@ -98,6 +101,8 @@ func NewFakeClientSets(configs ...string) (
 		case ServiceProfile:
 			spObjs = append(spObjs, obj)
 		case Server:
+			spObjs = append(spObjs, obj)
+		case ExtWorkload:
 			spObjs = append(spObjs, obj)
 		default:
 			objs = append(objs, obj)
@@ -134,6 +139,29 @@ metadata:
 			},
 		},
 	})
+
+	// Add helpers to work with endpoint slice objects.
+	cs.PrependReactor("create", "endpointslices", testing.ReactionFunc(func(action testing.Action) (bool, runtime.Object, error) {
+		es := action.(testing.CreateAction).GetObject().(*discovery.EndpointSlice)
+
+		// The API Server cannot generate a name when we use mocks, intercept
+		// the object and change its name
+		if es.GenerateName != "" {
+			es.Name = fmt.Sprintf("%s-%s", es.GenerateName, rand.String(8))
+			es.GenerateName = ""
+		}
+		es.Generation = 1
+
+		return false, es, nil
+	}))
+
+	cs.PrependReactor("update", "endpointslices", testing.ReactionFunc(func(action testing.Action) (bool, runtime.Object, error) {
+		// An update won't increase the generation since the API Server is
+		// mocked, so do a typecast and increment it here.
+		es := action.(testing.CreateAction).GetObject().(*discovery.EndpointSlice)
+		es.Generation++
+		return false, es, nil
+	}))
 
 	return cs,
 		apiextensionsfake.NewSimpleClientset(apiextObjs...),

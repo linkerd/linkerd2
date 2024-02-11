@@ -17,7 +17,7 @@ func makeServer(t *testing.T) *server {
 	return srv
 }
 
-func getServerWithClient(t *testing.T) (*server, *l5dcrdclient.Interface) {
+func getServerWithClient(t *testing.T) (*server, l5dcrdclient.Interface) {
 	meshedPodResources := []string{`
 apiVersion: v1
 kind: Namespace
@@ -38,20 +38,24 @@ spec:
   ports:
   - port: 8989`,
 		`
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name: name1
   namespace: ns
-subsets:
+  labels:
+    kubernetes.io/service-name: name1
+addressType: IPv4
+endpoints:
 - addresses:
-  - ip: 172.17.0.12
-    targetRef:
-      kind: Pod
-      name: name1-1
-      namespace: ns
-  ports:
-  - port: 8989`,
+  - 172.17.0.12
+  targetRef:
+    kind: Pod
+    name: name1-1
+    namespace: ns
+ports:
+- port: 8989
+  protocol: TCP`,
 		`
 apiVersion: v1
 kind: Pod
@@ -159,20 +163,24 @@ spec:
   ports:
   - port: 4242`,
 		`
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name: name3
   namespace: ns
-subsets:
+  labels:
+    kubernetes.io/service-name: name3
+addressType: IPv4
+endpoints:
 - addresses:
-  - ip: 172.17.0.14
-    targetRef:
-      kind: Pod
-      name: name3
-      namespace: ns
-  ports:
-  - port: 4242`,
+  - 172.17.0.14
+  targetRef:
+    kind: Pod
+    name: name3
+    namespace: ns
+ports:
+- port: 4242
+  protocol: TCP`,
 		`
 apiVersion: v1
 kind: Pod
@@ -220,20 +228,24 @@ spec:
   ports:
   - port: 24224`,
 		`
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name: name5
   namespace: ns
-subsets:
+  labels:
+    kubernetes.io/service-name: name5
+addressType: IPv4
+endpoints:
 - addresses:
-  - ip: 172.17.0.15
-    targetRef:
-      kind: Pod
-      name: name5
-      namespace: ns
-  ports:
-  - port: 24224`,
+  - 172.17.0.15
+  targetRef:
+    kind: Pod
+    name: name5
+    namespace: ns
+ports:
+- port: 24224
+  protocol: TCP`,
 		`
 apiVersion: v1
 kind: Pod
@@ -270,21 +282,25 @@ spec:
   ports:
   - port: 8989`,
 		`
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name:	statefulset-svc
   namespace: ns
-subsets:
+  labels:
+    kubernetes.io/service-name: statefulset-svc
+addressType: IPv4
+endpoints:
 - addresses:
-  - ip: 172.17.13.15
-    hostname: pod-0
-    targetRef:
-      kind: Pod
-      name: pod-0
-      namespace: ns
-  ports:
-  - port: 8989`,
+  - 172.17.13.15
+  hostname: pod-0
+  targetRef:
+    kind: Pod
+    name: pod-0
+    namespace: ns
+ports:
+- port: 8989
+  protocol: TCP`,
 		`
 apiVersion: v1
 kind: Pod
@@ -301,6 +317,36 @@ status:
 	}
 
 	policyResources := []string{
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: policy-test
+  namespace: ns
+spec:
+  type: LoadBalancer
+  clusterIP: 172.17.12.2
+  ports:
+  - port: 80`,
+		`
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: policy-test
+  namespace: ns
+  labels:
+    kubernetes.io/service-name: policy-test
+addressType: IPv4
+endpoints:
+- addresses:
+  - 172.17.0.16
+  targetRef:
+    kind: Pod
+    name: pod-policyResources
+    namespace: ns
+ports:
+- port: 80
+  protocol: TCP`,
 		`
 apiVersion: v1
 kind: Pod
@@ -328,7 +374,7 @@ spec:
         name: http
         protocol: TCP`,
 		`
-apiVersion: policy.linkerd.io/v1beta1
+apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
   name: srv
@@ -337,6 +383,18 @@ spec:
   podSelector:
     matchLabels:
       app: policy-test
+  port: 80
+  proxyProtocol: opaque`,
+		`
+apiVersion: policy.linkerd.io/v1beta2
+kind: Server
+metadata:
+  name: srv-external-workload
+  namespace: ns
+spec:
+  externalWorkloadSelector:
+    matchLabels:
+      app: external-workload-policy-test
   port: 80
   proxyProtocol: opaque`,
 	}
@@ -380,20 +438,24 @@ spec:
   ports:
   - port: 80`,
 		`
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name: foo
   namespace: ns
-subsets:
+  labels:
+    kubernetes.io/service-name: foo
+addressType: IPv4
+endpoints:
 - addresses:
-  - ip: 172.17.55.1
-    targetRef:
-      kind: Pod
-      name: foo-1
-      namespace: ns
-  ports:
-  - port: 80`,
+  - 172.17.55.1
+  targetRef:
+    kind: Pod
+    name: foo-1
+    namespace: ns
+ports:
+- port: 80
+  protocol: TCP`,
 		`
 apiVersion: v1
 kind: Pod
@@ -445,6 +507,92 @@ spec:
   - port: 80`,
 	}
 
+	externalWorkloads := []string{`
+apiVersion: workload.linkerd.io/v1alpha1
+kind: ExternalWorkload
+metadata:
+  name: my-cool-workload
+  namespace: ns
+  annotations:
+    config.linkerd.io/opaque-ports: "4242"
+spec:
+  meshTls:
+    identity: spiffe://some-domain/cool
+    serverName: server.local
+  workloadIPs:
+  - ip: 200.1.1.1
+  ports:
+  - port: 8989
+  - port: 4242
+  - name: linkerd-proxy
+    port: 4143
+status:
+  conditions:
+  ready: true`,
+		`
+apiVersion: workload.linkerd.io/v1alpha1
+kind: ExternalWorkload
+metadata:
+  name: policy-test-workload
+  namespace: ns
+  labels:
+    app: external-workload-policy-test
+spec:
+  meshTls:
+    identity: spiffe://some-domain/cool
+    serverName: server.local
+  workloadIPs:
+  - ip: 200.1.1.2
+  ports:
+  - port: 80
+  - name: linkerd-proxy
+    port: 4143
+status:
+  conditions:
+  ready: true`,
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: policy-test-external-workload
+  namespace: ns
+spec:
+  type: LoadBalancer
+  clusterIP: 172.17.12.3
+  ports:
+  - port: 80`,
+		`
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: policy-test-external-workload
+  namespace: ns
+  labels:
+    kubernetes.io/service-name: policy-test-external-workload
+addressType: IPv4
+endpoints:
+- addresses:
+  - 200.1.1.2
+  targetRef:
+    kind: ExternalWorkload
+    name: policy-test-workload
+    namespace: ns
+ports:
+- port: 80
+  protocol: TCP`,
+	}
+	extenalNameResources := []string{
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: externalname
+  namespace: ns
+spec:
+  type: ExternalName
+  externalName: linkerd.io`,
+	}
+
 	res := append(meshedPodResources, clientSP...)
 	res = append(res, unmeshedPod)
 	res = append(res, meshedOpaquePodResources...)
@@ -455,6 +603,8 @@ spec:
 	res = append(res, hostPortMapping...)
 	res = append(res, mirrorServiceResources...)
 	res = append(res, destinationCredentialsResources...)
+	res = append(res, externalWorkloads...)
+	res = append(res, extenalNameResources...)
 	k8sAPI, l5dClient, err := k8s.NewFakeAPIWithL5dClient(res...)
 	if err != nil {
 		t.Fatalf("NewFakeAPIWithL5dClient returned an error: %s", err)
@@ -479,11 +629,11 @@ spec:
 		t.Fatalf("initializeIndexers returned an error: %s", err)
 	}
 
-	pods, err := watcher.NewPodWatcher(k8sAPI, metadataAPI, log, defaultOpaquePorts)
+	workloads, err := watcher.NewWorkloadWatcher(k8sAPI, metadataAPI, log, true, defaultOpaquePorts)
 	if err != nil {
-		t.Fatalf("can't create Pods watcher: %s", err)
+		t.Fatalf("can't create Workloads watcher: %s", err)
 	}
-	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, false, "local")
+	endpoints, err := watcher.NewEndpointsWatcher(k8sAPI, metadataAPI, log, true, "local")
 	if err != nil {
 		t.Fatalf("can't create Endpoints watcher: %s", err)
 	}
@@ -496,7 +646,7 @@ spec:
 		t.Fatalf("can't create profile watcher: %s", err)
 	}
 
-	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", false, watcher.CreateMockDecoder(exportedServiceResources...))
+	clusterStore, err := watcher.NewClusterStoreWithDecoder(k8sAPI.Client, "linkerd", true, watcher.CreateMockDecoder(exportedServiceResources...))
 	if err != nil {
 		t.Fatalf("can't create cluster store: %s", err)
 	}
@@ -516,7 +666,7 @@ spec:
 			IdentityTrustDomain: "trust.domain",
 			DefaultOpaquePorts:  defaultOpaquePorts,
 		},
-		pods,
+		workloads,
 		endpoints,
 		opaquePorts,
 		profiles,

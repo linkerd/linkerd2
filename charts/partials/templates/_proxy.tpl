@@ -39,7 +39,8 @@ env:
 - name: LINKERD2_PROXY_POLICY_SVC_ADDR
   value: {{ternary "localhost.:8090" (printf "linkerd-policy.%s.svc.%s.:8090" .Release.Namespace .Values.clusterDomain) (eq (toString .Values.proxy.component) "linkerd-destination")}}
 - name: LINKERD2_PROXY_POLICY_WORKLOAD
-  value: "$(_pod_ns):$(_pod_name)"
+  value: |
+    {"ns":"$(_pod_ns)", "pod":"$(_pod_name)"}
 - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
   value: {{.Values.proxy.defaultInboundPolicy}}
 - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
@@ -159,9 +160,8 @@ be used in other contexts.
 - name: LINKERD2_PROXY_SHUTDOWN_GRACE_PERIOD
   value: {{.Values.proxy.shutdownGracePeriod | quote}}
 {{ end -}}
-{{ range $k, $v := (.Values.proxy.experimentalEnv) -}}
-- name: {{ $k }}
-  value: {{ $v | quote }}
+{{ if .Values.proxy.experimentalEnv -}}
+{{ toYaml .Values.proxy.experimentalEnv }}
 {{ end -}}
 image: {{.Values.proxy.image.name}}:{{.Values.proxy.image.version | default .Values.linkerdVersion}}
 imagePullPolicy: {{.Values.proxy.image.pullPolicy | default .Values.imagePullPolicy}}
@@ -169,7 +169,8 @@ livenessProbe:
   httpGet:
     path: /live
     port: {{.Values.proxy.ports.admin}}
-  initialDelaySeconds: 10
+  initialDelaySeconds: {{.Values.proxy.livenessProbe.initialDelaySeconds }}
+  timeoutSeconds: {{.Values.proxy.livenessProbe.timeoutSeconds }}
 name: linkerd-proxy
 ports:
 - containerPort: {{.Values.proxy.ports.inbound}}
@@ -180,7 +181,8 @@ readinessProbe:
   httpGet:
     path: /ready
     port: {{.Values.proxy.ports.admin}}
-  initialDelaySeconds: 2
+  initialDelaySeconds: {{.Values.proxy.readinessProbe.initialDelaySeconds }}
+  timeoutSeconds: {{.Values.proxy.readinessProbe.timeoutSeconds }}
 {{- if and .Values.proxy.nativeSidecar .Values.proxy.await }}
 startupProbe:
   httpGet:

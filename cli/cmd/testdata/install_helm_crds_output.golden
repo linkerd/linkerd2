@@ -5805,7 +5805,9 @@ spec:
                   default: unknown
     - name: v1beta1
       served: true
-      storage: true
+      storage: false
+      deprecated: true
+      deprecationWarning: "policy.linkerd.io/v1alpha1 Server is deprecated; use policy.linkerd.io/v1beta2 Server"
       schema:
         openAPIV3Schema:
           type: object
@@ -5821,6 +5823,94 @@ spec:
                   type: object
                   description: >-
                     Selects pods in the same namespace.
+
+                    The result of matchLabels and matchExpressions are ANDed.
+                    Selects all if empty.
+                  properties:
+                    matchLabels:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    matchExpressions:
+                      type: array
+                      items:
+                        type: object
+                        required: [key, operator]
+                        properties:
+                          key:
+                            type: string
+                          operator:
+                            type: string
+                            enum: [In, NotIn, Exists, DoesNotExist]
+                          values:
+                            type: array
+                            items:
+                              type: string
+                port:
+                  description: >-
+                    A port name or number. Must exist in a pod spec.
+                  x-kubernetes-int-or-string: true
+                proxyProtocol:
+                  description: >-
+                    Configures protocol discovery for inbound connections.
+
+                    Supersedes the `config.linkerd.io/opaque-ports` annotation.
+                  type: string
+                  default: unknown
+      additionalPrinterColumns:
+      - name: Port
+        type: string
+        description: The port the server is listening on
+        jsonPath: .spec.port
+      - name: Protocol
+        type: string
+        description: The protocol of the server
+        jsonPath: .spec.proxyProtocol
+    - name: v1beta2
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required:
+                - port
+              oneOf:
+                - required: [podSelector]
+                - required: [externalWorkloadSelector]
+              properties:
+                podSelector:
+                  type: object
+                  description: >-
+                    Selects pods in the same namespace.
+
+                    The result of matchLabels and matchExpressions are ANDed.
+                    Selects all if empty.
+                  properties:
+                    matchLabels:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    matchExpressions:
+                      type: array
+                      items:
+                        type: object
+                        required: [key, operator]
+                        properties:
+                          key:
+                            type: string
+                          operator:
+                            type: string
+                            enum: [In, NotIn, Exists, DoesNotExist]
+                          values:
+                            type: array
+                            items:
+                              type: string
+                externalWorkloadSelector:
+                  type: object
+                  description: >-
+                    Selects ExternalWorkloads in the same namespace.
 
                     The result of matchLabels and matchExpressions are ANDed.
                     Selects all if empty.
@@ -10221,12 +10311,14 @@ spec:
                     minLength: 1
                     maxLength: 253
                 type: object
+                required:
+                - identity
+                - serverName
               ports:
                 type: array
                 description: ports describes a list of ports exposed by the
                   workload
                 items:
-                  type: object
                   properties:
                     name:
                       type: string
@@ -10243,6 +10335,9 @@ spec:
                         TCP. Defaults to TCP.
                       type: string
                       default: "TCP"
+                  type: object
+                  required:
+                  - port
               workloadIPs:
                 type: array
                 description: workloadIPs contains a list of IP addresses that
@@ -10252,10 +10347,13 @@ spec:
                   properties:
                     ip:
                       type: string
+                # TODO: relax this in the future when ipv6 is supported
+                # an external workload (like a pod) should only
+                # support 2 interfaces
+                maxItems: 1
             type: object
             required:
-            - ports
-            - workloadIPs
+            - meshTls
           status:
             type: object
             properties:
@@ -10306,8 +10404,5 @@ spec:
                       maxLength: 32768
                       type: string
                 required:
-                - lastTransitionTime
                 - status
                 - type
-                - reason
-                - message

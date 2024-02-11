@@ -11,7 +11,8 @@ import (
 	spv1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	l5dcrdinformer "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
-	srvinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/server/v1beta1"
+	ewinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/externalworkload/v1alpha1"
+	srvinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/server/v1beta2"
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
@@ -49,6 +50,7 @@ type API struct {
 	ds       appv1informers.DaemonSetInformer
 	endpoint coreinformers.EndpointsInformer
 	es       discoveryinformers.EndpointSliceInformer
+	ew       ewinformers.ExternalWorkloadInformer
 	job      batchv1informers.JobInformer
 	mwc      arinformers.MutatingWebhookConfigurationInformer
 	ns       coreinformers.NamespaceInformer
@@ -67,7 +69,10 @@ type API struct {
 	l5dCrdSharedInformers l5dcrdinformer.SharedInformerFactory
 }
 
-// InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
+// InitializeAPI creates Kubernetes clients and returns an initialized API
+// wrapper. This creates informers on each one of resources passed, registering
+// metrics on each one; don't forget to call UnregisterGauges() on the returned
+// API reference to clean them up!
 func InitializeAPI(ctx context.Context, kubeConfig string, ensureClusterWideAccess bool, cluster string, resources ...APIResource) (*API, error) {
 	config, err := k8s.GetConfig(kubeConfig, "")
 	if err != nil {
@@ -87,7 +92,10 @@ func InitializeAPI(ctx context.Context, kubeConfig string, ensureClusterWideAcce
 	return initAPI(ctx, k8sClient, dynamicClient, config, ensureClusterWideAccess, cluster, resources...)
 }
 
-// InitializeAPIForConfig creates Kubernetes clients and returns an initialized API wrapper.
+// InitializeAPIForConfig creates Kubernetes clients and returns an initialized
+// API wrapper. This creates informers on each one of resources passed,
+// registering metrics on each one; don't forget to call UnregisterGauges() on
+// the returned API reference to clean them up!
 func InitializeAPIForConfig(ctx context.Context, kubeConfig *rest.Config, ensureClusterWideAccess bool, cluster string, resources ...APIResource) (*API, error) {
 	k8sClient, err := k8s.NewAPIForConfig(kubeConfig, "", []string{}, 0, 0, 0)
 	if err != nil {
@@ -122,6 +130,11 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 			if err != nil {
 				return nil, err
 			}
+		case res == ExtWorkload:
+			err := k8s.ExtWorkloadAccess(ctx, k8sClient)
+			if err != nil {
+				return nil, err
+			}
 		default:
 			continue
 		}
@@ -141,7 +154,10 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 	return api, nil
 }
 
-// NewClusterScopedAPI takes a Kubernetes client and returns an initialized cluster-wide API.
+// NewClusterScopedAPI takes a Kubernetes client and returns an initialized
+// cluster-wide API. This creates informers on each one of resources passed,
+// registering metrics on each one; don't forget to call UnregisterGauges() on
+// the returned API reference to clean them up!
 func NewClusterScopedAPI(
 	k8sClient kubernetes.Interface,
 	dynamicClient dynamic.Interface,
@@ -153,7 +169,10 @@ func NewClusterScopedAPI(
 	return newAPI(k8sClient, dynamicClient, l5dCrdClient, sharedInformers, cluster, resources...)
 }
 
-// NewNamespacedAPI takes a Kubernetes client and returns an initialized API scoped to namespace.
+// NewNamespacedAPI takes a Kubernetes client and returns an initialized API
+// scoped to namespace. This creates informers on each one of resources passed,
+// registering metrics on each one; don't forget to call UnregisterGauges() on
+// the returned API reference to clean them up!
 func NewNamespacedAPI(
 	k8sClient kubernetes.Interface,
 	dynamicClient dynamic.Interface,
@@ -218,6 +237,13 @@ func newAPI(
 			api.es = sharedInformers.Discovery().V1().EndpointSlices()
 			api.syncChecks = append(api.syncChecks, api.es.Informer().HasSynced)
 			api.promGauges.addInformerSize(k8s.EndpointSlices, informerLabels, api.es.Informer())
+		case ExtWorkload:
+			if l5dCrdSharedInformers == nil {
+				panic("Linkerd CRD shared informer not configured")
+			}
+			api.ew = l5dCrdSharedInformers.Externalworkload().V1alpha1().ExternalWorkloads()
+			api.syncChecks = append(api.syncChecks, api.ew.Informer().HasSynced)
+			api.promGauges.addInformerSize(k8s.ExtWorkload, informerLabels, api.ew.Informer())
 		case Job:
 			api.job = sharedInformers.Batch().V1().Jobs()
 			api.syncChecks = append(api.syncChecks, api.job.Informer().HasSynced)
@@ -253,7 +279,7 @@ func newAPI(
 			if l5dCrdSharedInformers == nil {
 				panic("Linkerd CRD shared informer not configured")
 			}
-			api.srv = l5dCrdSharedInformers.Server().V1beta1().Servers()
+			api.srv = l5dCrdSharedInformers.Server().V1beta2().Servers()
 			api.syncChecks = append(api.syncChecks, api.srv.Informer().HasSynced)
 			api.promGauges.addInformerSize(k8s.Server, informerLabels, api.srv.Informer())
 		case SS:
@@ -372,6 +398,15 @@ func (api *API) ES() discoveryinformers.EndpointSliceInformer {
 		panic("EndpointSlices informer not configured")
 	}
 	return api.es
+}
+
+// ExtWorkload() provides access to a shared informer and lister for
+// ExternalWorkload CRDs
+func (api *API) ExtWorkload() ewinformers.ExternalWorkloadInformer {
+	if api.ew == nil {
+		panic("ExternalWorkload informer not configured")
+	}
+	return api.ew
 }
 
 // CM provides access to a shared informer and lister for ConfigMaps.
