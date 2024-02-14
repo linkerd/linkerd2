@@ -62,6 +62,7 @@ type EndpointsController struct {
 
 	lec leaderelection.LeaderElectionConfig
 	informerHandlers
+	dropsMetric workqueue.CounterMetric
 }
 
 // informerHandlers holds handles to callbacks that have been registered with
@@ -93,11 +94,16 @@ type informerHandlers struct {
 // NewEndpointsController creates a new controller. The controller must be
 // started with its `Start()` method.
 func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stopCh chan struct{}, exportQueueMetrics bool) (*EndpointsController, error) {
+	queueName := "endpoints_controller_workqueue"
 	workQueueConfig := workqueue.RateLimitingQueueConfig{
-		Name: "endpoints_controller_workqueue",
+		Name: queueName,
 	}
+
+	var dropsMetric workqueue.CounterMetric = &noopCounterMetric{}
 	if exportQueueMetrics {
-		workQueueConfig.MetricsProvider = newWorkQueueMetricsProvider()
+		provider := newWorkQueueMetricsProvider()
+		workQueueConfig.MetricsProvider = provider
+		dropsMetric = provider.NewDropsMetric(queueName)
 	}
 
 	ec := &EndpointsController{
@@ -108,6 +114,7 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 		log: logging.WithFields(logging.Fields{
 			"component": "external-endpoints-controller",
 		}),
+		dropsMetric: dropsMetric,
 	}
 
 	// Store configuration for leader elector client. The leader elector will
@@ -333,6 +340,7 @@ func (ec *EndpointsController) handleError(err error, key string) {
 	}
 
 	ec.queue.Forget(key)
+	ec.dropsMetric.Inc()
 	ec.log.Errorf("dropped Service %s out of update queue: %v", key, err)
 }
 
@@ -389,7 +397,7 @@ func (ec *EndpointsController) syncService(update string) error {
 
 	epSlices = dropEndpointSlicesPendingDeletion(epSlices)
 	if ec.reconciler.endpointTracker.StaleSlices(svc, epSlices) {
-		ec.log.Warnf("detected EndpointSlice informer cache is out of date when processing %s", svc)
+		ec.log.Warnf("detected EndpointSlice informer cache is out of date when processing %s", update)
 		return errors.New("EndpointSlice informer cache is out of date")
 	}
 	err = ec.reconciler.reconcile(svc, ews, epSlices)
