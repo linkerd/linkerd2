@@ -644,6 +644,7 @@ data:
     prometheusUrl: ""
     proxy:
       accessLog: ""
+      additionalEnv: null
       await: true
       capabilities: null
       control:
@@ -1108,7 +1109,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
           timeoutSeconds: 1
-          initialDelaySeconds: 2
         resources:
           limits:
             memory: "250Mi"
@@ -1491,7 +1491,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
           timeoutSeconds: 1
-          initialDelaySeconds: 2
         resources:
           limits:
             memory: "250Mi"
@@ -1975,7 +1974,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
           timeoutSeconds: 1
-          initialDelaySeconds: 2
         resources:
           limits:
             memory: "250Mi"
