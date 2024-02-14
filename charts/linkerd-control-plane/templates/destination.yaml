@@ -205,6 +205,9 @@ spec:
         - -identity-trust-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
         - -default-opaque-ports={{.Values.proxy.opaquePorts}}
         - -enable-pprof={{.Values.enablePprof | default false}}
+        {{- range (.Values.destinationController).additionalArgs }}
+        - {{ . }}
+        {{- end }}
         {{- range (.Values.destinationController).experimentalArgs }}
         - {{ . }}
         {{- end }}
@@ -305,6 +308,9 @@ spec:
         {{- if .Values.policyController.probeNetworks }}
         - --probe-networks={{.Values.policyController.probeNetworks | join ","}}
         {{- end}}
+        {{- range .Values.policyController.additionalArgs }}
+        - {{ . }}
+        {{- end }}
         {{- range .Values.policyController.experimentalArgs }}
         - {{ . }}
         {{- end }}
