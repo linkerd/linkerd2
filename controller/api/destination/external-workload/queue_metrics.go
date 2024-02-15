@@ -23,6 +23,7 @@ const (
 	UnfinishedWorkKey          = "unfinished_work_seconds"
 	LongestRunningProcessorKey = "longest_running_processor_seconds"
 	RetriesKey                 = "retries_total"
+	DropsTotalKey              = "drops_total"
 )
 
 type queueMetricsProvider struct {
@@ -33,9 +34,10 @@ type queueMetricsProvider struct {
 	unfinished              *prometheus.GaugeVec
 	longestRunningProcessor *prometheus.GaugeVec
 	retries                 *prometheus.CounterVec
+	drops                   *prometheus.CounterVec
 }
 
-func newWorkQueueMetricsProvider() workqueue.MetricsProvider {
+func newWorkQueueMetricsProvider() *queueMetricsProvider {
 	return &queueMetricsProvider{
 		depth: promauto.NewGaugeVec(prometheus.GaugeOpts{
 			Subsystem: WorkQueueSubsystem,
@@ -84,6 +86,11 @@ func newWorkQueueMetricsProvider() workqueue.MetricsProvider {
 			Name:      RetriesKey,
 			Help:      "Total number of retries handled by workqueue",
 		}, []string{"name"}),
+		drops: promauto.NewCounterVec(prometheus.CounterOpts{
+			Subsystem: WorkQueueSubsystem,
+			Name:      DropsTotalKey,
+			Help:      "Total number of dropped items from the queue due to exceeding retry threshold",
+		}, []string{"name"}),
 	}
 }
 
@@ -114,3 +121,11 @@ func (p queueMetricsProvider) NewLongestRunningProcessorSecondsMetric(name strin
 func (p queueMetricsProvider) NewRetriesMetric(name string) workqueue.CounterMetric {
 	return p.retries.WithLabelValues(name)
 }
+
+func (p queueMetricsProvider) NewDropsMetric(name string) workqueue.CounterMetric {
+	return p.drops.WithLabelValues(name)
+}
+
+type noopCounterMetric struct{}
+
+func (noopCounterMetric) Inc() {}
