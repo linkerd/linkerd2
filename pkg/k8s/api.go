@@ -306,6 +306,11 @@ func GetProxyReady(pod corev1.Pod) bool {
 func GetProxyVersion(pod corev1.Pod) string {
 	for _, container := range pod.Spec.Containers {
 		if container.Name == ProxyContainerName {
+			if strings.Contains(container.Image, "@") {
+				// Proxy container image is specified with digest instead of
+				// tag. We are unable to determine version.
+				return ""
+			}
 			parts := strings.Split(container.Image, ":")
 			return parts[len(parts)-1]
 		}
