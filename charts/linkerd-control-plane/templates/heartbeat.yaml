@@ -59,6 +59,9 @@ spec:
             env:
             - name: LINKERD_DISABLED
               value: "the heartbeat controller does not use the proxy"
+            {{- with (.Values.heartbeat).additionalEnv }}
+            {{- toYaml . | nindent 12 -}}
+            {{- end }}
             {{- with (.Values.heartbeat).experimentalEnv }}
             {{- toYaml . | nindent 12 -}}
             {{- end }}

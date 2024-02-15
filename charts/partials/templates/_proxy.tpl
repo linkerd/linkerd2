@@ -160,6 +160,9 @@ be used in other contexts.
 - name: LINKERD2_PROXY_SHUTDOWN_GRACE_PERIOD
   value: {{.Values.proxy.shutdownGracePeriod | quote}}
 {{ end -}}
+{{ if .Values.proxy.additionalEnv -}}
+{{ toYaml .Values.proxy.additionalEnv }}
+{{ end -}}
 {{ if .Values.proxy.experimentalEnv -}}
 {{ toYaml .Values.proxy.experimentalEnv }}
 {{ end -}}

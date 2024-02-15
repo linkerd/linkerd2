@@ -139,9 +139,14 @@ spec:
         {{- end }}
         - -enable-pprof={{.Values.enablePprof | default false}}
         - {{.Values.targetClusterName}}
-        {{- with .Values.serviceMirrorExperimentalEnv }}
+        {{- if or .Values.serviceMirrorAdditionalEnv .Values.serviceMirrorExperimentalEnv }}
         env:
+        {{- with .Values.serviceMirrorAdditionalEnv }}
         {{- toYaml . | nindent 8 -}}
+        {{- end }}
+        {{- with .Values.serviceMirrorExperimentalEnv }}
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}
         {{- end }}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion}}
         name: service-mirror

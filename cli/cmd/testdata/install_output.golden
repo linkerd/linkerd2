@@ -616,6 +616,7 @@ data:
     prometheusUrl: ""
     proxy:
       accessLog: ""
+      additionalEnv: null
       await: true
       capabilities: null
       control: null
@@ -1348,7 +1349,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
           timeoutSeconds: 1
-          initialDelaySeconds: 2
         resources:
           limits:
             cpu: "cpu-limit"
@@ -1788,7 +1788,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
           timeoutSeconds: 1
-          initialDelaySeconds: 2
         resources:
           limits:
             cpu: "cpu-limit"

@@ -125,6 +125,7 @@ type (
 		LivenessProbe                        *Probe           `json:"livenessProbe"`
 		Control                              *ProxyControl    `json:"control"`
 
+		AdditionalEnv   []corev1.EnvVar `json:"additionalEnv"`
 		ExperimentalEnv []corev1.EnvVar `json:"experimentalEnv"`
 	}
 
