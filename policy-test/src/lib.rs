@@ -176,7 +176,9 @@ pub fn endpoints_ready(obj: Option<&k8s::Endpoints>) -> bool {
         return ep
             .subsets
             .iter()
-            .any(|s| s.addresses.iter().any(|a| a.is_some()));
+            .flatten()
+            .flat_map(|s| &s.addresses)
+            .any(|a| !a.is_empty());
     }
     false
 }
