@@ -3,7 +3,7 @@
 ## edge-24.2.3
 
 * Allowed the `MutatingWebhookConfig` timeout value to be configured ([#12028])
-  (thanks @Michael Bell)
+  (thanks @mikebell90)
 * Added a counter for items dropped from destination controller workqueue
   ([#12079])
 * Fixed a spurious `linkerd check` error when using container images with
