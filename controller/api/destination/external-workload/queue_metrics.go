@@ -23,7 +23,7 @@ const (
 	UnfinishedWorkKey          = "unfinished_work_seconds"
 	LongestRunningProcessorKey = "longest_running_processor_seconds"
 	RetriesKey                 = "retries_total"
-	DropsTotal                 = "drops_total"
+	DropsTotalKey              = "drops_total"
 )
 
 type queueMetricsProvider struct {
@@ -88,7 +88,7 @@ func newWorkQueueMetricsProvider() *queueMetricsProvider {
 		}, []string{"name"}),
 		drops: promauto.NewCounterVec(prometheus.CounterOpts{
 			Subsystem: WorkQueueSubsystem,
-			Name:      DropsTotal,
+			Name:      DropsTotalKey,
 			Help:      "Total number of dropped items from the queue due to exceeding retry threshold",
 		}, []string{"name"}),
 	}
