@@ -5,7 +5,7 @@
 set +e
 
 k8s_version_min='+v1.22'
-k8s_version_max='+v1.28'
+k8s_version_max='+v1.29'
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 testdir="$bindir"/../test/integration
