@@ -636,7 +636,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> fo
     ) {
         let _span = info_span!("reset");
 
-        tracing::trace!(?deleted, ?policies, "reset");
+        tracing::trace!(?deleted, ?policies, "Reset");
         // Aggregate all of the updates by namespace so that we only reindex
         // once per namespace.
         type Ns = NsUpdate<String, authorization_policy::Spec>;
