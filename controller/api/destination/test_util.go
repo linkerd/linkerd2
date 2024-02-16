@@ -757,7 +757,7 @@ metadata:
 		"trust.domain",
 		true,
 		true,  // enableEndpointFiltering
-		false, // experimentalEndpointZoneWeights
+		false, // extEndpointZoneWeights
 		"service-name.service-ns",
 		"test-123",
 		map[uint32]struct{}{},

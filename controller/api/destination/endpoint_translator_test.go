@@ -686,7 +686,7 @@ func TestEndpointTranslatorExperimentalZoneWeights(t *testing.T) {
 
 	t.Run("Disabled", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.experimentalEndpointZoneWeights = false
+		translator.extEndpointZoneWeights = false
 		translator.Start()
 		defer translator.Stop()
 
@@ -705,7 +705,7 @@ func TestEndpointTranslatorExperimentalZoneWeights(t *testing.T) {
 
 	t.Run("Applies weights", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
-		translator.experimentalEndpointZoneWeights = true
+		translator.extEndpointZoneWeights = true
 		translator.Start()
 		defer translator.Stop()
 

@@ -45,7 +45,7 @@ func Main(args []string) {
 	// Zone weighting is disabled by default because it is not consumed by
 	// proxies. This feature exists to support experimentation on top of the
 	// Linkerd control plane API.
-	experimentalEndpointZoneWeights := cmd.Bool("experimental-endpoint-zone-weights", false,
+	extEndpointZoneWeights := cmd.Bool("ext-endpoint-zone-weights", false,
 		"Enable setting endpoint weighting based on zone locality")
 
 	flags.ConfigureAndParse(cmd, args)
@@ -137,13 +137,13 @@ func Main(args []string) {
 	}
 
 	config := destination.Config{
-		ControllerNS:                    *controllerNamespace,
-		IdentityTrustDomain:             *trustDomain,
-		ClusterDomain:                   *clusterDomain,
-		DefaultOpaquePorts:              opaquePorts,
-		EnableH2Upgrade:                 *enableH2Upgrade,
-		EnableEndpointSlices:            *enableEndpointSlices,
-		ExperimentalEndpointZoneWeights: *experimentalEndpointZoneWeights,
+		ControllerNS:           *controllerNamespace,
+		IdentityTrustDomain:    *trustDomain,
+		ClusterDomain:          *clusterDomain,
+		DefaultOpaquePorts:     opaquePorts,
+		EnableH2Upgrade:        *enableH2Upgrade,
+		EnableEndpointSlices:   *enableEndpointSlices,
+		ExtEndpointZoneWeights: *extEndpointZoneWeights,
 	}
 	server, err := destination.NewServer(
 		*addr,
