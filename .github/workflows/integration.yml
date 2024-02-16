@@ -173,7 +173,7 @@ jobs:
       matrix:
         k8s:
           - v1.22
-          - v1.28
+          - v1.29
     steps:
       - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
         env:
@@ -355,7 +355,7 @@ jobs:
       matrix:
         k8s:
           - v1.22
-          - v1.28
+          - v1.29
     steps:
       - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
         env:

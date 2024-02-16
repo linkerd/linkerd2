@@ -41,7 +41,7 @@ type (
 
 		enableH2Upgrade,
 		enableEndpointFiltering,
-		experimentalEndpointZoneWeights bool
+		extEndpointZoneWeights bool
 
 		availableEndpoints watcher.AddressSet
 		filteredSnapshot   watcher.AddressSet
@@ -82,7 +82,7 @@ func newEndpointTranslator(
 	identityTrustDomain string,
 	enableH2Upgrade,
 	enableEndpointFiltering,
-	experimentalEndpointZoneWeights bool,
+	extEndpointZoneWeights bool,
 	service string,
 	srcNodeName string,
 	defaultOpaquePorts map[uint32]struct{},
@@ -112,7 +112,7 @@ func newEndpointTranslator(
 		defaultOpaquePorts,
 		enableH2Upgrade,
 		enableEndpointFiltering,
-		experimentalEndpointZoneWeights,
+		extEndpointZoneWeights,
 		availableEndpoints,
 		filteredSnapshot,
 		stream,
@@ -430,7 +430,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			}
 		}
 
-		if et.experimentalEndpointZoneWeights {
+		if et.extEndpointZoneWeights {
 			// EXPERIMENTAL: Use the endpoint weight field to indicate zonal
 			// preference so that local endoints are more heavily weighted.
 			if et.nodeTopologyZone != "" && address.Zone != nil && *address.Zone == et.nodeTopologyZone {
