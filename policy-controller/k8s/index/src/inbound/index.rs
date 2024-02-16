@@ -397,7 +397,7 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
             // watches will complete.  No other parts of the index need to be
             // updated.
             if ns.get_mut().pods.by_name.remove(&name).is_some() && ns.get().is_empty() {
-                tracing::debug!(namespace = ns.key(), "removing empty namespace index");
+                tracing::debug!(namespace = ns.key(), "Removing empty namespace index");
                 ns.remove();
             }
         }
