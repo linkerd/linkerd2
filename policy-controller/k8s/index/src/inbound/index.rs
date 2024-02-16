@@ -623,7 +623,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> fo
 
     fn delete(&mut self, ns: String, ap: String) {
         let _span = info_span!("delete", %ns, %ap).entered();
-        tracing::trace!(%ap, "delete");
+        tracing::trace!(name = %ap, "Delete");
         self.ns_with_reindex(ns, |ns| {
             ns.policy.authorization_policies.remove(&ap).is_some()
         })
