@@ -905,7 +905,7 @@ impl NamespaceIndex {
         if let Entry::Occupied(mut ns) = self.by_ns.entry(namespace) {
             if f(ns.get_mut()) {
                 if ns.get().is_empty() {
-                    tracing::debug!(namespace = ns.key(), "removing empty namespace index");
+                    tracing::debug!(namespace = ns.key(), "Removing empty namespace index");
                     ns.remove();
                 } else {
                     ns.get_mut().reindex(authns);
