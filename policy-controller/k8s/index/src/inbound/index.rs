@@ -1649,10 +1649,6 @@ impl PolicyIndex {
     ) -> HashMap<AuthorizationRef, ClientAuthorization> {
         let mut authzs = HashMap::default();
 
-        tracing::trace!(
-            aps = ?&self.authorization_policies,
-            "finding authz for route"
-        );
         for (name, spec) in &self.authorization_policies {
             // Skip the policy if it doesn't apply to the route.
             match &spec.target {
@@ -1710,7 +1706,6 @@ impl PolicyIndex {
             .filter(|(_, route)| route.accepted_by_server(server_name))
             .map(|(gkn, route)| {
                 let mut route = route.route.clone();
-                tracing::trace!(?route, "Calculating route authzs");
                 route.authorizations = self.route_client_authzs(gkn, authentications);
                 (HttpRouteRef::Linkerd(gkn.clone()), route)
             })
