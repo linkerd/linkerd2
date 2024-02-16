@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
+	ewv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	v1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
@@ -50,10 +50,10 @@ func newController(t *testing.T) (*k8s.API, func() []k8stesting.Action, *endpoin
 
 }
 
-func newExternalWorkload(n int, namespace string, ready bool, terminating bool) *ewv1alpha1.ExternalWorkload {
-	status := ewv1alpha1.ConditionTrue
+func newExternalWorkload(n int, namespace string, ready bool, terminating bool) *ewv1beta1.ExternalWorkload {
+	status := ewv1beta1.ConditionTrue
 	if !ready {
-		status = ewv1alpha1.ConditionFalse
+		status = ewv1beta1.ConditionFalse
 	}
 
 	var deletionTimestamp *metav1.Time
@@ -63,7 +63,7 @@ func newExternalWorkload(n int, namespace string, ready bool, terminating bool) 
 		}
 	}
 
-	ew := &ewv1alpha1.ExternalWorkload{
+	ew := &ewv1beta1.ExternalWorkload{
 		TypeMeta: metav1.TypeMeta{APIVersion: "v1"},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:         namespace,
@@ -72,21 +72,21 @@ func newExternalWorkload(n int, namespace string, ready bool, terminating bool) 
 			DeletionTimestamp: deletionTimestamp,
 			ResourceVersion:   fmt.Sprint(n),
 		},
-		Spec: ewv1alpha1.ExternalWorkloadSpec{
-			Ports: []ewv1alpha1.PortSpec{
+		Spec: ewv1beta1.ExternalWorkloadSpec{
+			Ports: []ewv1beta1.PortSpec{
 				{
 					Name: "name",
 					Port: 444,
 				},
 			},
-			WorkloadIPs: []ewv1alpha1.WorkloadIP{
+			WorkloadIPs: []ewv1beta1.WorkloadIP{
 				{Ip: "1.2.3.4"},
 			},
 		},
-		Status: ewv1alpha1.ExternalWorkloadStatus{
-			Conditions: []ewv1alpha1.WorkloadCondition{
+		Status: ewv1beta1.ExternalWorkloadStatus{
+			Conditions: []ewv1beta1.WorkloadCondition{
 				{
-					Type:   ewv1alpha1.WorkloadReady,
+					Type:   ewv1beta1.WorkloadReady,
 					Status: status,
 				},
 			},
@@ -309,10 +309,10 @@ func TestSyncServiceEndpointSlicePendingDeletion(t *testing.T) {
 	}
 }
 
-func makeExternalWorkload(resVersion, name string, labels map[string]string, ports map[int32]string, ips []string) *ewv1alpha1.ExternalWorkload {
-	portSpecs := []ewv1alpha1.PortSpec{}
+func makeExternalWorkload(resVersion, name string, labels map[string]string, ports map[int32]string, ips []string) *ewv1beta1.ExternalWorkload {
+	portSpecs := []ewv1beta1.PortSpec{}
 	for port, name := range ports {
-		spec := ewv1alpha1.PortSpec{
+		spec := ewv1beta1.PortSpec{
 			Port: port,
 		}
 		if name != "" {
@@ -321,31 +321,31 @@ func makeExternalWorkload(resVersion, name string, labels map[string]string, por
 		portSpecs = append(portSpecs, spec)
 	}
 
-	wIps := []ewv1alpha1.WorkloadIP{}
+	wIps := []ewv1beta1.WorkloadIP{}
 	for _, ip := range ips {
-		wIps = append(wIps, ewv1alpha1.WorkloadIP{Ip: ip})
+		wIps = append(wIps, ewv1beta1.WorkloadIP{Ip: ip})
 	}
 
-	ew := &ewv1alpha1.ExternalWorkload{
+	ew := &ewv1beta1.ExternalWorkload{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
 			Namespace:       "ns",
 			Labels:          labels,
 			ResourceVersion: resVersion,
 		},
-		Spec: ewv1alpha1.ExternalWorkloadSpec{
-			MeshTls: ewv1alpha1.MeshTls{
+		Spec: ewv1beta1.ExternalWorkloadSpec{
+			MeshTLS: ewv1beta1.MeshTLS{
 				Identity:   "some-identity",
 				ServerName: "some-sni",
 			},
 			Ports:       portSpecs,
 			WorkloadIPs: wIps,
 		},
-		Status: ewv1alpha1.ExternalWorkloadStatus{
-			Conditions: []ewv1alpha1.WorkloadCondition{
+		Status: ewv1beta1.ExternalWorkloadStatus{
+			Conditions: []ewv1beta1.WorkloadCondition{
 				{
-					Type:   ewv1alpha1.WorkloadReady,
-					Status: ewv1alpha1.ConditionTrue,
+					Type:   ewv1beta1.WorkloadReady,
+					Status: ewv1beta1.ConditionTrue,
 				},
 			},
 		},
@@ -361,7 +361,7 @@ func TestSyncService(t *testing.T) {
 	testcases := []struct {
 		name                  string
 		service               *v1.Service
-		externalWorkloads     []*ewv1alpha1.ExternalWorkload
+		externalWorkloads     []*ewv1beta1.ExternalWorkload
 		expectedEndpointPorts []discoveryv1.EndpointPort
 		expectedEndpoints     []discoveryv1.Endpoint
 	}{
@@ -383,7 +383,7 @@ func TestSyncService(t *testing.T) {
 					IPFamilies: []v1.IPFamily{v1.IPv4Protocol},
 				},
 			},
-			externalWorkloads: []*ewv1alpha1.ExternalWorkload{
+			externalWorkloads: []*ewv1beta1.ExternalWorkload{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:         namespace,
@@ -391,23 +391,23 @@ func TestSyncService(t *testing.T) {
 						Labels:            map[string]string{"foo": "bar"},
 						DeletionTimestamp: nil,
 					},
-					Spec: ewv1alpha1.ExternalWorkloadSpec{
-						WorkloadIPs: []ewv1alpha1.WorkloadIP{
+					Spec: ewv1beta1.ExternalWorkloadSpec{
+						WorkloadIPs: []ewv1beta1.WorkloadIP{
 							{
 								Ip: "10.0.0.1",
 							},
 						},
-						Ports: []ewv1alpha1.PortSpec{
+						Ports: []ewv1beta1.PortSpec{
 							{Name: "tcp-example", Port: 80, Protocol: v1.ProtocolTCP},
 							{Name: "udp-example", Port: 161, Protocol: v1.ProtocolUDP},
 							{Name: "sctp-example", Port: 3456, Protocol: v1.ProtocolSCTP},
 						},
 					},
-					Status: ewv1alpha1.ExternalWorkloadStatus{
-						Conditions: []ewv1alpha1.WorkloadCondition{
+					Status: ewv1beta1.ExternalWorkloadStatus{
+						Conditions: []ewv1beta1.WorkloadCondition{
 							{
-								Type:   ewv1alpha1.WorkloadReady,
-								Status: ewv1alpha1.ConditionTrue,
+								Type:   ewv1beta1.WorkloadReady,
+								Status: ewv1beta1.ConditionTrue,
 							},
 						},
 					},
@@ -420,8 +420,8 @@ func TestSyncService(t *testing.T) {
 						DeletionTimestamp: nil,
 					},
 
-					Spec: ewv1alpha1.ExternalWorkloadSpec{
-						WorkloadIPs: []ewv1alpha1.WorkloadIP{
+					Spec: ewv1beta1.ExternalWorkloadSpec{
+						WorkloadIPs: []ewv1beta1.WorkloadIP{
 							{
 								Ip: "10.0.0.2",
 							},
@@ -429,17 +429,17 @@ func TestSyncService(t *testing.T) {
 								Ip: "fd08::5678:0000:0000:9abc:def0",
 							},
 						},
-						Ports: []ewv1alpha1.PortSpec{
+						Ports: []ewv1beta1.PortSpec{
 							{Name: "tcp-example", Port: 80, Protocol: v1.ProtocolTCP},
 							{Name: "udp-example", Port: 161, Protocol: v1.ProtocolUDP},
 							{Name: "sctp-example", Port: 3456, Protocol: v1.ProtocolSCTP},
 						},
 					},
-					Status: ewv1alpha1.ExternalWorkloadStatus{
-						Conditions: []ewv1alpha1.WorkloadCondition{
+					Status: ewv1beta1.ExternalWorkloadStatus{
+						Conditions: []ewv1beta1.WorkloadCondition{
 							{
-								Type:   ewv1alpha1.WorkloadReady,
-								Status: ewv1alpha1.ConditionTrue,
+								Type:   ewv1beta1.WorkloadReady,
+								Status: ewv1beta1.ConditionTrue,
 							},
 						},
 					},
@@ -501,7 +501,7 @@ func TestSyncService(t *testing.T) {
 					IPFamilies: []v1.IPFamily{v1.IPv6Protocol},
 				},
 			},
-			externalWorkloads: []*ewv1alpha1.ExternalWorkload{
+			externalWorkloads: []*ewv1beta1.ExternalWorkload{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:         namespace,
@@ -509,23 +509,23 @@ func TestSyncService(t *testing.T) {
 						Labels:            map[string]string{"foo": "bar"},
 						DeletionTimestamp: nil,
 					},
-					Spec: ewv1alpha1.ExternalWorkloadSpec{
-						WorkloadIPs: []ewv1alpha1.WorkloadIP{
+					Spec: ewv1beta1.ExternalWorkloadSpec{
+						WorkloadIPs: []ewv1beta1.WorkloadIP{
 							{
 								Ip: "10.0.0.1",
 							},
 						},
-						Ports: []ewv1alpha1.PortSpec{
+						Ports: []ewv1beta1.PortSpec{
 							{Name: "tcp-example", Port: 80, Protocol: v1.ProtocolTCP},
 							{Name: "udp-example", Port: 161, Protocol: v1.ProtocolUDP},
 							{Name: "sctp-example", Port: 3456, Protocol: v1.ProtocolSCTP},
 						},
 					},
-					Status: ewv1alpha1.ExternalWorkloadStatus{
-						Conditions: []ewv1alpha1.WorkloadCondition{
+					Status: ewv1beta1.ExternalWorkloadStatus{
+						Conditions: []ewv1beta1.WorkloadCondition{
 							{
-								Type:   ewv1alpha1.WorkloadReady,
-								Status: ewv1alpha1.ConditionTrue,
+								Type:   ewv1beta1.WorkloadReady,
+								Status: ewv1beta1.ConditionTrue,
 							},
 						},
 					},
@@ -537,8 +537,8 @@ func TestSyncService(t *testing.T) {
 						Labels:            map[string]string{"foo": "bar"},
 						DeletionTimestamp: nil,
 					},
-					Spec: ewv1alpha1.ExternalWorkloadSpec{
-						WorkloadIPs: []ewv1alpha1.WorkloadIP{
+					Spec: ewv1beta1.ExternalWorkloadSpec{
+						WorkloadIPs: []ewv1beta1.WorkloadIP{
 							{
 								Ip: "10.0.0.2",
 							},
@@ -547,17 +547,17 @@ func TestSyncService(t *testing.T) {
 								Ip: "fd08::5678:0000:0000:9abc:def0",
 							},
 						},
-						Ports: []ewv1alpha1.PortSpec{
+						Ports: []ewv1beta1.PortSpec{
 							{Name: "tcp-example", Port: 80, Protocol: v1.ProtocolTCP},
 							{Name: "udp-example", Port: 161, Protocol: v1.ProtocolUDP},
 							{Name: "sctp-example", Port: 3456, Protocol: v1.ProtocolSCTP},
 						},
 					},
-					Status: ewv1alpha1.ExternalWorkloadStatus{
-						Conditions: []ewv1alpha1.WorkloadCondition{
+					Status: ewv1beta1.ExternalWorkloadStatus{
+						Conditions: []ewv1beta1.WorkloadCondition{
 							{
-								Type:   ewv1alpha1.WorkloadReady,
-								Status: ewv1alpha1.ConditionTrue,
+								Type:   ewv1beta1.WorkloadReady,
+								Status: ewv1beta1.ConditionTrue,
 							},
 						},
 					},
@@ -610,7 +610,7 @@ func TestSyncService(t *testing.T) {
 					IPFamilies: []v1.IPFamily{v1.IPv4Protocol},
 				},
 			},
-			externalWorkloads: []*ewv1alpha1.ExternalWorkload{
+			externalWorkloads: []*ewv1beta1.ExternalWorkload{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:         namespace,
@@ -618,23 +618,23 @@ func TestSyncService(t *testing.T) {
 						Labels:            map[string]string{"foo": "bar"},
 						DeletionTimestamp: nil,
 					},
-					Spec: ewv1alpha1.ExternalWorkloadSpec{
-						WorkloadIPs: []ewv1alpha1.WorkloadIP{
+					Spec: ewv1beta1.ExternalWorkloadSpec{
+						WorkloadIPs: []ewv1beta1.WorkloadIP{
 							{
 								Ip: "10.0.0.1",
 							},
 						},
-						Ports: []ewv1alpha1.PortSpec{
+						Ports: []ewv1beta1.PortSpec{
 							{Name: "tcp-example", Port: 80, Protocol: v1.ProtocolTCP},
 							{Name: "udp-example", Port: 161, Protocol: v1.ProtocolUDP},
 							{Name: "sctp-example", Port: 3456, Protocol: v1.ProtocolSCTP},
 						},
 					},
-					Status: ewv1alpha1.ExternalWorkloadStatus{
-						Conditions: []ewv1alpha1.WorkloadCondition{
+					Status: ewv1beta1.ExternalWorkloadStatus{
+						Conditions: []ewv1beta1.WorkloadCondition{
 							{
-								Type:   ewv1alpha1.WorkloadReady,
-								Status: ewv1alpha1.ConditionTrue,
+								Type:   ewv1beta1.WorkloadReady,
+								Status: ewv1beta1.ConditionTrue,
 							},
 						},
 					},
@@ -646,8 +646,8 @@ func TestSyncService(t *testing.T) {
 						Labels:            map[string]string{"foo": "bar"},
 						DeletionTimestamp: nil,
 					},
-					Spec: ewv1alpha1.ExternalWorkloadSpec{
-						WorkloadIPs: []ewv1alpha1.WorkloadIP{
+					Spec: ewv1beta1.ExternalWorkloadSpec{
+						WorkloadIPs: []ewv1beta1.WorkloadIP{
 							{
 								Ip: "10.0.0.2",
 							},
@@ -656,17 +656,17 @@ func TestSyncService(t *testing.T) {
 								Ip: "fd08::5678:0000:0000:9abc:def0",
 							},
 						},
-						Ports: []ewv1alpha1.PortSpec{
+						Ports: []ewv1beta1.PortSpec{
 							{Name: "tcp-example", Port: 80, Protocol: v1.ProtocolTCP},
 							{Name: "udp-example", Port: 161, Protocol: v1.ProtocolUDP},
 							{Name: "sctp-example", Port: 3456, Protocol: v1.ProtocolSCTP},
 						},
 					},
-					Status: ewv1alpha1.ExternalWorkloadStatus{
-						Conditions: []ewv1alpha1.WorkloadCondition{
+					Status: ewv1beta1.ExternalWorkloadStatus{
+						Conditions: []ewv1beta1.WorkloadCondition{
 							{
-								Type:   ewv1alpha1.WorkloadReady,
-								Status: ewv1alpha1.ConditionFalse,
+								Type:   ewv1beta1.WorkloadReady,
+								Status: ewv1beta1.ConditionFalse,
 							},
 						},
 					},
@@ -728,7 +728,7 @@ func TestSyncService(t *testing.T) {
 					IPFamilies: []v1.IPFamily{v1.IPv4Protocol},
 				},
 			},
-			externalWorkloads: []*ewv1alpha1.ExternalWorkload{
+			externalWorkloads: []*ewv1beta1.ExternalWorkload{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:         namespace,
@@ -736,23 +736,23 @@ func TestSyncService(t *testing.T) {
 						Labels:            map[string]string{"foo": "bar"},
 						DeletionTimestamp: nil,
 					},
-					Spec: ewv1alpha1.ExternalWorkloadSpec{
-						WorkloadIPs: []ewv1alpha1.WorkloadIP{
+					Spec: ewv1beta1.ExternalWorkloadSpec{
+						WorkloadIPs: []ewv1beta1.WorkloadIP{
 							{
 								Ip: "10.0.0.1",
 							},
 						},
-						Ports: []ewv1alpha1.PortSpec{
+						Ports: []ewv1beta1.PortSpec{
 							{Name: "tcp-example", Port: 80, Protocol: v1.ProtocolTCP},
 							{Name: "udp-example", Port: 161, Protocol: v1.ProtocolUDP},
 							{Name: "sctp-example", Port: 3456, Protocol: v1.ProtocolSCTP},
 						},
 					},
-					Status: ewv1alpha1.ExternalWorkloadStatus{
-						Conditions: []ewv1alpha1.WorkloadCondition{
+					Status: ewv1beta1.ExternalWorkloadStatus{
+						Conditions: []ewv1beta1.WorkloadCondition{
 							{
-								Type:   ewv1alpha1.WorkloadReady,
-								Status: ewv1alpha1.ConditionTrue,
+								Type:   ewv1beta1.WorkloadReady,
+								Status: ewv1beta1.ConditionTrue,
 							},
 						},
 					},
@@ -764,23 +764,23 @@ func TestSyncService(t *testing.T) {
 						Labels:            map[string]string{"foo": "bar"},
 						DeletionTimestamp: nil,
 					},
-					Spec: ewv1alpha1.ExternalWorkloadSpec{
-						WorkloadIPs: []ewv1alpha1.WorkloadIP{
+					Spec: ewv1beta1.ExternalWorkloadSpec{
+						WorkloadIPs: []ewv1beta1.WorkloadIP{
 							{
 								Ip: "10.0.0.1",
 							},
 						},
-						Ports: []ewv1alpha1.PortSpec{
+						Ports: []ewv1beta1.PortSpec{
 							{Name: "tcp-example", Port: 80, Protocol: v1.ProtocolTCP},
 							{Name: "udp-example", Port: 161, Protocol: v1.ProtocolUDP},
 							{Name: "sctp-example", Port: 3456, Protocol: v1.ProtocolSCTP},
 						},
 					},
-					Status: ewv1alpha1.ExternalWorkloadStatus{
-						Conditions: []ewv1alpha1.WorkloadCondition{
+					Status: ewv1beta1.ExternalWorkloadStatus{
+						Conditions: []ewv1beta1.WorkloadCondition{
 							{
-								Type:   ewv1alpha1.WorkloadReady,
-								Status: ewv1alpha1.ConditionTrue,
+								Type:   ewv1beta1.WorkloadReady,
+								Status: ewv1beta1.ConditionTrue,
 							},
 						},
 					},
@@ -885,8 +885,8 @@ func TestSyncService(t *testing.T) {
 func TestEwEndpointsChanged(t *testing.T) {
 	for _, tt := range []struct {
 		name        string
-		old         *ewv1alpha1.ExternalWorkload
-		updated     *ewv1alpha1.ExternalWorkload
+		old         *ewv1beta1.ExternalWorkload
+		updated     *ewv1beta1.ExternalWorkload
 		specChanged bool
 	}{
 		{
@@ -1067,8 +1067,8 @@ func TestEwEndpointsChanged(t *testing.T) {
 func TestWorkloadServicesToUpdate(t *testing.T) {
 	for _, tt := range []struct {
 		name           string
-		old            *ewv1alpha1.ExternalWorkload
-		updated        *ewv1alpha1.ExternalWorkload
+		old            *ewv1beta1.ExternalWorkload
+		updated        *ewv1beta1.ExternalWorkload
 		k8sConfigs     []string
 		expectServices map[string]struct{}
 	}{
@@ -1318,15 +1318,15 @@ func protoPtr(proto v1.Protocol) *v1.Protocol {
 	return &proto
 }
 
-func newStatusCondition(ready bool) ewv1alpha1.WorkloadCondition {
-	var status ewv1alpha1.WorkloadConditionStatus
+func newStatusCondition(ready bool) ewv1beta1.WorkloadCondition {
+	var status ewv1beta1.WorkloadConditionStatus
 	if ready {
-		status = ewv1alpha1.ConditionTrue
+		status = ewv1beta1.ConditionTrue
 	} else {
-		status = ewv1alpha1.ConditionFalse
+		status = ewv1beta1.ConditionFalse
 	}
-	return ewv1alpha1.WorkloadCondition{
-		Type:               ewv1alpha1.WorkloadReady,
+	return ewv1beta1.WorkloadCondition{
+		Type:               ewv1beta1.WorkloadReady,
 		Status:             status,
 		LastProbeTime:      metav1.Time{},
 		LastTransitionTime: metav1.NewTime(time.Now()),

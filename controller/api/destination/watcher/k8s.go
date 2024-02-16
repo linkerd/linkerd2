@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	ext "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
+	ext "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
