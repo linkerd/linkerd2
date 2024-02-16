@@ -8,10 +8,13 @@
   ([#12079])
 * Fixed a spurious `linkerd check` error when using container images with
   digests ([#12059])
+* Fixed an issue where inbound policy could be incorrect after certain policy
+  resources are deleted ([#12088])
 
 [#12028]: https://github.com/linkerd/linkerd2/pull/12028
 [#12079]: https://github.com/linkerd/linkerd2/pull/12079
 [#12059]: https://github.com/linkerd/linkerd2/pull/12059
+[#12088]: https://github.com/linkerd/linkerd2/pull/12088
 
 ## edge-24.2.2
 
