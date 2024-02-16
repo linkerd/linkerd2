@@ -537,11 +537,11 @@ func createWeightedAddrForExternalWorkload(
 	weightedAddr.TlsIdentity = &pb.TlsIdentity{
 		Strategy: &pb.TlsIdentity_UriLikeIdentity_{
 			UriLikeIdentity: &pb.TlsIdentity_UriLikeIdentity{
-				Uri: address.ExternalWorkload.Spec.MeshTls.Identity,
+				Uri: address.ExternalWorkload.Spec.MeshTLS.Identity,
 			},
 		},
 		ServerName: &pb.TlsIdentity_DnsLikeIdentity{
-			Name: address.ExternalWorkload.Spec.MeshTls.ServerName,
+			Name: address.ExternalWorkload.Spec.MeshTLS.ServerName,
 		},
 	}
 

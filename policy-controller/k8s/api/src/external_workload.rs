@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 )]
 pub struct ExternalWorkloadSpec {
     /// MeshTls describes TLS settings associated with an external workload
-    #[serde(rename = "meshTls")]
+    #[serde(rename = "meshTLS")]
     pub mesh_tls: MeshTls,
     /// Ports describes a set of ports exposed by the workload
     pub ports: Option<Vec<PortSpec>>,

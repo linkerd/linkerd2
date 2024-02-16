@@ -21,7 +21,7 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.meshTls.identity
+    - jsonPath: .spec.meshTLS.identity
       name: Identity
       type: string
     - jsonPath: .metadata.creationTimestamp
@@ -46,8 +46,8 @@ spec:
             type: object
           spec:
             properties:
-              meshTls:
-                description: meshTls describes TLS settings associated with an
+              meshTLS:
+                description: meshTLS describes TLS settings associated with an
                   external workload.
                 properties:
                   identity:
@@ -107,7 +107,7 @@ spec:
                 maxItems: 1
             type: object
             required:
-            - meshTls
+            - meshTLS
           status:
             type: object
             properties:
