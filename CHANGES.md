@@ -1,5 +1,40 @@
 # Changes
 
+## stable-2.14.10
+
+This stable release back-ports bugfixes and improvements from recent edge
+releases.
+
+* Introduced support for arbitrary labels in the `podMonitors` field in the
+  control plane Helm chart (thanks @jseiser!) ([#11222]; fixes [#11175])
+* Added a `prometheusUrl` field for the heartbeat job in the control plane Helm
+  chart (thanks @david972!) ([#11343]; fixes [#11342])
+* Updated the Destination controller to return `INVALID_ARGUMENT` status codes
+  properly when a `ServiceProfile` is requested for a service that does not
+  exist. ([#11980])
+* Reduced the load on the Destination controller by only processing Server
+  updates on workloads affected by the Server ([#12017])
+* Changed how updates to a `Server` selector are handled in the destination
+  service. When a `Server` that marks a port as opaque no longer selects a
+  resource, the resource's opaqueness will reverted to default settings
+  ([#12031]; fixes [#11995])
+* Fixed a race condition in the destination service that could cause panics
+  under very specific conditions ([#12022]; fixes [#12010])
+* Fixed an issue where inbound policy could be incorrect after certain policy
+  resources are deleted ([#12088])
+
+[#11222]: https://github.com/linkerd/linkerd2/pull/11222
+[#11175]: https://github.com/linkerd/linkerd2/issues/11175
+[#11343]: https://github.com/linkerd/linkerd2/pull/11343
+[#11342]: https://github.com/linkerd/linkerd2/issues/11342
+[#11980]: https://github.com/linkerd/linkerd2/pull/11980
+[#12017]: https://github.com/linkerd/linkerd2/pull/12017
+[#11995]: https://github.com/linkerd/linkerd2/issues/11995
+[#12031]: https://github.com/linkerd/linkerd2/pull/12031
+[#12010]: https://github.com/linkerd/linkerd2/issues/12010
+[#12022]: https://github.com/linkerd/linkerd2/pull/12022
+[#12088]: https://github.com/linkerd/linkerd2/pull/12088
+
 ## stable-2.14.9
 
 This stable release adds a cni-repair-controller which fixes the issue of
