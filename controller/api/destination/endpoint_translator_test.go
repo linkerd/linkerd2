@@ -11,7 +11,7 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
-	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
+	ewv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -105,13 +105,13 @@ var (
 	ew1 = watcher.Address{
 		IP:   "1.1.1.1",
 		Port: 1,
-		ExternalWorkload: &ewv1alpha1.ExternalWorkload{
+		ExternalWorkload: &ewv1beta1.ExternalWorkload{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "ew-1",
 				Namespace: "ns",
 			},
-			Spec: ewv1alpha1.ExternalWorkloadSpec{
-				MeshTls: ewv1alpha1.MeshTls{
+			Spec: ewv1beta1.ExternalWorkloadSpec{
+				MeshTLS: ewv1beta1.MeshTLS{
 					Identity:   "spiffe://some-domain/ew-1",
 					ServerName: "server.local",
 				},
@@ -124,7 +124,7 @@ var (
 	ew2 = watcher.Address{
 		IP:   "1.1.1.2",
 		Port: 2,
-		ExternalWorkload: &ewv1alpha1.ExternalWorkload{
+		ExternalWorkload: &ewv1beta1.ExternalWorkload{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "ew-2",
 				Namespace: "ns",
@@ -133,8 +133,8 @@ var (
 					k8s.ProxyDeploymentLabel: "deployment-name",
 				},
 			},
-			Spec: ewv1alpha1.ExternalWorkloadSpec{
-				MeshTls: ewv1alpha1.MeshTls{
+			Spec: ewv1beta1.ExternalWorkloadSpec{
+				MeshTLS: ewv1beta1.MeshTLS{
 					Identity:   "spiffe://some-domain/ew-2",
 					ServerName: "server.local",
 				},
@@ -145,7 +145,7 @@ var (
 	ew3 = watcher.Address{
 		IP:   "1.1.1.3",
 		Port: 3,
-		ExternalWorkload: &ewv1alpha1.ExternalWorkload{
+		ExternalWorkload: &ewv1beta1.ExternalWorkload{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "ew-3",
 				Namespace: "ns",
@@ -154,8 +154,8 @@ var (
 					k8s.ProxyDeploymentLabel: "deployment-name",
 				},
 			},
-			Spec: ewv1alpha1.ExternalWorkloadSpec{
-				MeshTls: ewv1alpha1.MeshTls{
+			Spec: ewv1beta1.ExternalWorkloadSpec{
+				MeshTLS: ewv1beta1.MeshTLS{
 					Identity:   "spiffe://some-domain/ew-3",
 					ServerName: "server.local",
 				},
@@ -166,7 +166,7 @@ var (
 	ewOpaque = watcher.Address{
 		IP:   "1.1.1.4",
 		Port: 4,
-		ExternalWorkload: &ewv1alpha1.ExternalWorkload{
+		ExternalWorkload: &ewv1beta1.ExternalWorkload{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "pod4",
 				Namespace: "ns",
@@ -174,13 +174,13 @@ var (
 					k8s.ProxyOpaquePortsAnnotation: "4",
 				},
 			},
-			Spec: ewv1alpha1.ExternalWorkloadSpec{
-				MeshTls: ewv1alpha1.MeshTls{
+			Spec: ewv1beta1.ExternalWorkloadSpec{
+				MeshTLS: ewv1beta1.MeshTLS{
 					Identity:   "spiffe://some-domain/ew-opaque",
 					ServerName: "server.local",
 				},
 
-				Ports: []ewv1alpha1.PortSpec{
+				Ports: []ewv1beta1.PortSpec{
 					{
 						Port: 4143,
 						Name: "linkerd-proxy",
