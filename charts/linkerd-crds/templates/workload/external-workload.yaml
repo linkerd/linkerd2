@@ -20,7 +20,7 @@ spec:
     shortNames: []
   scope: Namespaced
   versions:
-    name: v1alpha1
+  - name: v1alpha1
     served: true
     storage: false
     schema:
@@ -153,14 +153,14 @@ spec:
                 required:
                 - status
                 - type
-  - additionalPrinterColumns:
-    - jsonPath: .spec.meshTLS.identity
+    additionalPrinterColumns:
+    - jsonPath: .spec.meshTls.identity
       name: Identity
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
-    name: v1beta1
+  - name: v1beta1
     served: true
     storage: true
     schema:
@@ -293,8 +293,8 @@ spec:
                 required:
                 - status
                 - type
-  - additionalPrinterColumns:
-    - jsonPath: .spec.meshTls.identity
+    additionalPrinterColumns:
+    - jsonPath: .spec.meshTLS.identity
       name: Identity
       type: string
     - jsonPath: .metadata.creationTimestamp
