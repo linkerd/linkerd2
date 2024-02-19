@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
+	ewv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 
 	corev1 "k8s.io/api/core/v1"
@@ -63,7 +63,7 @@ func TestReconcilerCreatesNewEndpointSlice(t *testing.T) {
 	ew.ObjectMeta.UID = types.UID(fmt.Sprintf("%s-%s", ew.Namespace, ew.Name))
 
 	r := newEndpointsReconciler(k8sAPI, testControllerName, defaultTestEndpointsQuota)
-	err = r.reconcile(svc, []*ewv1alpha1.ExternalWorkload{ew}, nil)
+	err = r.reconcile(svc, []*ewv1beta1.ExternalWorkload{ew}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error when reconciling endpoints: %v", err)
 	}
@@ -103,7 +103,7 @@ func TestReconcilerCreatesNewEndpointSliceHeadless(t *testing.T) {
 	ew.ObjectMeta.UID = types.UID(fmt.Sprintf("%s-%s", ew.Namespace, ew.Name))
 
 	r := newEndpointsReconciler(k8sAPI, testControllerName, defaultTestEndpointsQuota)
-	err = r.reconcile(svc, []*ewv1alpha1.ExternalWorkload{ew}, nil)
+	err = r.reconcile(svc, []*ewv1beta1.ExternalWorkload{ew}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error when reconciling endpoints: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestReconcilerUpdatesEndpointSlice(t *testing.T) {
 	}
 
 	r := newEndpointsReconciler(k8sAPI, testControllerName, defaultTestEndpointsQuota)
-	err = r.reconcile(svc, []*ewv1alpha1.ExternalWorkload{ewCreated, ewUpdated}, []*discoveryv1.EndpointSlice{es})
+	err = r.reconcile(svc, []*ewv1beta1.ExternalWorkload{ewCreated, ewUpdated}, []*discoveryv1.EndpointSlice{es})
 	if err != nil {
 		t.Fatalf("unexpected error when reconciling endpoints: %v", err)
 	}
@@ -237,7 +237,7 @@ func TestReconcilerUpdatesEndpointSliceInPlace(t *testing.T) {
 	}
 
 	r := newEndpointsReconciler(k8sAPI, testControllerName, defaultTestEndpointsQuota)
-	err = r.reconcile(svc, []*ewv1alpha1.ExternalWorkload{ewCreated, ewCreated}, []*discoveryv1.EndpointSlice{es})
+	err = r.reconcile(svc, []*ewv1beta1.ExternalWorkload{ewCreated, ewCreated}, []*discoveryv1.EndpointSlice{es})
 	if err != nil {
 		t.Fatalf("unexpected error when reconciling endpoints: %v", err)
 	}
@@ -268,7 +268,7 @@ func TestReconcilerUpdatesEndpointSliceInPlace(t *testing.T) {
 // A named port on a service can target a different port on a workload
 func TestReconcileEndpointSlicesNamedPorts(t *testing.T) {
 	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpNamedPort}, "192.0.2.1")
-	ews := []*ewv1alpha1.ExternalWorkload{}
+	ews := []*ewv1beta1.ExternalWorkload{}
 	// Generate a large number of external workloads
 	// randomise ports so that a named port maps to different target values
 	for i := 0; i < 300; i++ {
@@ -277,7 +277,7 @@ func TestReconcileEndpointSlicesNamedPorts(t *testing.T) {
 		genIp := fmt.Sprintf("192.%d.%d.%d", i%5, i%3, i%2)
 		genPort := int32(8080 + offset)
 		ew := makeExternalWorkload("1", fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{genPort: "http"}, []string{genIp})
-		ew.Status.Conditions = []ewv1alpha1.WorkloadCondition{newStatusCondition(ready)}
+		ew.Status.Conditions = []ewv1beta1.WorkloadCondition{newStatusCondition(ready)}
 		ews = append(ews, ew)
 	}
 
@@ -322,13 +322,13 @@ func TestReconcileEndpointSlicesNamedPorts(t *testing.T) {
 func TestReconcileManyWorkloads(t *testing.T) {
 	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1")
 	// start with 250 workloads
-	ews := []*ewv1alpha1.ExternalWorkload{}
+	ews := []*ewv1beta1.ExternalWorkload{}
 	for i := 0; i < 250; i++ {
 		ready := !(i%3 == 0)
 		genIp := fmt.Sprintf("192.%d.%d.%d", i%5, i%3, i%2)
 		ew := makeExternalWorkload("1", fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
 
-		ew.Status.Conditions = []ewv1alpha1.WorkloadCondition{newStatusCondition(ready)}
+		ew.Status.Conditions = []ewv1beta1.WorkloadCondition{newStatusCondition(ready)}
 		ews = append(ews, ew)
 	}
 
@@ -350,13 +350,13 @@ func TestReconcileManyWorkloads(t *testing.T) {
 func TestReconcileEndpointSlicesSomePreexisting(t *testing.T) {
 	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1")
 	// start with 250 workloads
-	ews := []*ewv1alpha1.ExternalWorkload{}
+	ews := []*ewv1beta1.ExternalWorkload{}
 	for i := 0; i < 250; i++ {
 		ready := !(i%3 == 0)
 		genIp := fmt.Sprintf("192.%d.%d.%d", i%5, i%3, i%2)
 		ew := makeExternalWorkload("1", fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
 
-		ew.Status.Conditions = []ewv1alpha1.WorkloadCondition{newStatusCondition(ready)}
+		ew.Status.Conditions = []ewv1beta1.WorkloadCondition{newStatusCondition(ready)}
 		ews = append(ews, ew)
 	}
 
@@ -408,13 +408,13 @@ func TestReconcileEndpointSlicesSomePreexisting(t *testing.T) {
 func TestReconcileEndpointSlicesUpdatingSvc(t *testing.T) {
 	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1")
 	// start with 250 workloads
-	ews := []*ewv1alpha1.ExternalWorkload{}
+	ews := []*ewv1beta1.ExternalWorkload{}
 	for i := 0; i < 250; i++ {
 		ready := !(i%3 == 0)
 		genIp := fmt.Sprintf("192.%d.%d.%d", i%5, i%3, i%2)
 		ew := makeExternalWorkload("1", fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
 
-		ew.Status.Conditions = []ewv1alpha1.WorkloadCondition{newStatusCondition(ready)}
+		ew.Status.Conditions = []ewv1beta1.WorkloadCondition{newStatusCondition(ready)}
 		ews = append(ews, ew)
 	}
 
@@ -447,13 +447,13 @@ func TestReconcileEndpointSlicesUpdatingSvc(t *testing.T) {
 func TestReconcileEndpointSlicesLabelsUpdatingSvc(t *testing.T) {
 	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1")
 	// start with 250 workloads
-	ews := []*ewv1alpha1.ExternalWorkload{}
+	ews := []*ewv1beta1.ExternalWorkload{}
 	for i := 0; i < 250; i++ {
 		ready := !(i%3 == 0)
 		genIp := fmt.Sprintf("192.%d.%d.%d", i%5, i%3, i%2)
 		ew := makeExternalWorkload("1", fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
 
-		ew.Status.Conditions = []ewv1alpha1.WorkloadCondition{newStatusCondition(ready)}
+		ew.Status.Conditions = []ewv1beta1.WorkloadCondition{newStatusCondition(ready)}
 		ews = append(ews, ew)
 	}
 
@@ -487,13 +487,13 @@ func TestReconcileEndpointSlicesLabelsUpdatingSvc(t *testing.T) {
 func TestReconcileEndpointSlicesReservedLabelsSvc(t *testing.T) {
 	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1")
 	// start with 250 workloads
-	ews := []*ewv1alpha1.ExternalWorkload{}
+	ews := []*ewv1beta1.ExternalWorkload{}
 	for i := 0; i < 250; i++ {
 		ready := !(i%3 == 0)
 		genIp := fmt.Sprintf("192.%d.%d.%d", i%5, i%3, i%2)
 		ew := makeExternalWorkload("1", fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
 
-		ew.Status.Conditions = []ewv1alpha1.WorkloadCondition{newStatusCondition(ready)}
+		ew.Status.Conditions = []ewv1beta1.WorkloadCondition{newStatusCondition(ready)}
 		ews = append(ews, ew)
 	}
 
@@ -535,13 +535,13 @@ func TestReconcileEndpointSlicesReservedLabelsSvc(t *testing.T) {
 func TestEndpointSlicesAreRecycled(t *testing.T) {
 	svc := makeIPv4Service(map[string]string{"app": "test"}, []corev1.ServicePort{httpUnnamedPort}, "10.0.2.1")
 	// start with 250 workloads
-	ews := []*ewv1alpha1.ExternalWorkload{}
+	ews := []*ewv1beta1.ExternalWorkload{}
 	for i := 0; i < 300; i++ {
 		ready := !(i%3 == 0)
 		genIp := fmt.Sprintf("192.%d.%d.%d", i%5, i%3, i%2)
 		ew := makeExternalWorkload("1", fmt.Sprintf("wlkd-%d", i), map[string]string{"app": "test"}, map[int32]string{8080: ""}, []string{genIp})
 
-		ew.Status.Conditions = []ewv1alpha1.WorkloadCondition{newStatusCondition(ready)}
+		ew.Status.Conditions = []ewv1beta1.WorkloadCondition{newStatusCondition(ready)}
 		ews = append(ews, ew)
 	}
 
@@ -723,7 +723,7 @@ func makeIPv4Service(selector map[string]string, ports []corev1.ServicePort, clu
 	}
 }
 
-func makeEndpoint(addrs []string, isReady bool, ew *ewv1alpha1.ExternalWorkload) discoveryv1.Endpoint {
+func makeEndpoint(addrs []string, isReady bool, ew *ewv1beta1.ExternalWorkload) discoveryv1.Endpoint {
 	rdy := &isReady
 	term := !isReady
 	ep := discoveryv1.Endpoint{
