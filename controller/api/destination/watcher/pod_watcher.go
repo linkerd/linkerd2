@@ -247,7 +247,7 @@ func (pw *PodWatcher) addOrDeleteServer(obj interface{}) {
 }
 
 // updateServer triggers an Update() call to the listeners of the podPublishers
-// whose pod matches anf of the Servers' selector. This function is an event
+// whose pod matches any of the Servers' selector. This function is an event
 // handler so it cannot block.
 func (pw *PodWatcher) updateServers(servers ...*v1beta1.Server) {
 	pw.mu.RLock()
