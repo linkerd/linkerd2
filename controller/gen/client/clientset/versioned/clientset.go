@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"net/http"
 
-	externalworkloadv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/externalworkload/v1alpha1"
 	externalworkloadv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/externalworkload/v1beta1"
 	linkv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/link/v1alpha1"
 	policyv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/policy/v1alpha1"
@@ -37,7 +36,6 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	ExternalworkloadV1alpha1() externalworkloadv1alpha1.ExternalworkloadV1alpha1Interface
 	ExternalworkloadV1beta1() externalworkloadv1beta1.ExternalworkloadV1beta1Interface
 	LinkV1alpha1() linkv1alpha1.LinkV1alpha1Interface
 	PolicyV1alpha1() policyv1alpha1.PolicyV1alpha1Interface
@@ -50,7 +48,6 @@ type Interface interface {
 // Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	externalworkloadV1alpha1   *externalworkloadv1alpha1.ExternalworkloadV1alpha1Client
 	externalworkloadV1beta1    *externalworkloadv1beta1.ExternalworkloadV1beta1Client
 	linkV1alpha1               *linkv1alpha1.LinkV1alpha1Client
 	policyV1alpha1             *policyv1alpha1.PolicyV1alpha1Client
@@ -58,11 +55,6 @@ type Clientset struct {
 	serverV1beta2              *serverv1beta2.ServerV1beta2Client
 	serverauthorizationV1beta1 *serverauthorizationv1beta1.ServerauthorizationV1beta1Client
 	linkerdV1alpha2            *linkerdv1alpha2.LinkerdV1alpha2Client
-}
-
-// ExternalworkloadV1alpha1 retrieves the ExternalworkloadV1alpha1Client
-func (c *Clientset) ExternalworkloadV1alpha1() externalworkloadv1alpha1.ExternalworkloadV1alpha1Interface {
-	return c.externalworkloadV1alpha1
 }
 
 // ExternalworkloadV1beta1 retrieves the ExternalworkloadV1beta1Client
@@ -144,10 +136,6 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 
 	var cs Clientset
 	var err error
-	cs.externalworkloadV1alpha1, err = externalworkloadv1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
-	if err != nil {
-		return nil, err
-	}
 	cs.externalworkloadV1beta1, err = externalworkloadv1beta1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
@@ -197,7 +185,6 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.externalworkloadV1alpha1 = externalworkloadv1alpha1.New(c)
 	cs.externalworkloadV1beta1 = externalworkloadv1beta1.New(c)
 	cs.linkV1alpha1 = linkv1alpha1.New(c)
 	cs.policyV1alpha1 = policyv1alpha1.New(c)
