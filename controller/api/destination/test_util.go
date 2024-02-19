@@ -484,7 +484,7 @@ spec:
 	}
 
 	externalWorkloads := []string{`
-apiVersion: workload.linkerd.io/v1alpha1
+apiVersion: workload.linkerd.io/v1beta1
 kind: ExternalWorkload
 metadata:
   name: my-cool-workload
@@ -492,7 +492,7 @@ metadata:
   annotations:
     config.linkerd.io/opaque-ports: "4242"
 spec:
-  meshTls:
+  meshTLS:
     identity: spiffe://some-domain/cool
     serverName: server.local
   workloadIPs:
@@ -506,7 +506,7 @@ status:
   conditions:
   ready: true`,
 		`
-apiVersion: workload.linkerd.io/v1alpha1
+apiVersion: workload.linkerd.io/v1beta1
 kind: ExternalWorkload
 metadata:
   name: policy-test-workload
@@ -514,7 +514,7 @@ metadata:
   labels:
     app: external-workload-policy-test
 spec:
-  meshTls:
+  meshTLS:
     identity: spiffe://some-domain/cool
     serverName: server.local
   workloadIPs:
