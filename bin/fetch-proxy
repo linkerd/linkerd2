@@ -11,21 +11,49 @@ bindir=$( cd "${0%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
 builddir="$rootdir/target/proxy"
 
-version=${1:-latest}
-if [ "$version" = latest ]; then
-  version=$("$bindir"/scurl https://api.github.com/repos/linkerd/linkerd2-proxy/releases/latest |jq -r .tag_name | sed 's,^release/,,')
+proxy_repo="${LINKERD2_PROXY_REPO:-}"
+if [ -z "$proxy_repo" ]; then
+  proxy_repo=linkerd/linkerd2-proxy
 fi
 
-assetbase="https://github.com/linkerd/linkerd2-proxy/releases/download/release%2F${version}"
-arch=${2:-amd64}
-pkgname="linkerd2-proxy-${version}-${arch}"
-pkgfile="${pkgname}.tar.gz"
-shafile="${pkgname}.txt"
+releases_url=https://api.github.com/repos/"$proxy_repo"/releases
+release_prefix="${LINKERD2_PROXY_RELEASE_PREFIX:-release/}"
+
+github_token="${GITHUB_TOKEN:-}"
+if [ -z "$github_token" ] && [ -n "${GITHUB_TOKEN_FILE:-}" ] && [ -f "$GITHUB_TOKEN_FILE" ]; then
+  github_token=$(cat "$GITHUB_TOKEN_FILE")
+fi
+
+ghcurl() {
+  if [ -n "${github_token:-}" ]; then
+    "$bindir"/scurl -H "Authorization: Bearer ${github_token:-}" "$@"
+  else
+    "$bindir"/scurl "$@"
+  fi
+}
 
 mkdir -p "$builddir"
 cd "$builddir"
-"$bindir"/scurl -O "$assetbase/$pkgfile"
-"$bindir"/scurl -O "$assetbase/$shafile"
+
+version=${1:-latest}
+arch=${2:-amd64}
+if [ "$version" = latest ]; then
+  ghcurl "$releases_url"/latest > release.json
+  version=$(jq -r .tag_name release.json | sed 's,^'"${release_prefix}"',,')
+else
+  tag="${release_prefix}${version}"
+  ghcurl "$releases_url"/tags/"$(printf "$tag" | jq -sRr @uri)" > release.json
+fi
+
+pkgname="linkerd2-proxy-${version}-${arch}"
+
+pkgfile="${pkgname}.tar.gz"
+pkgurl=$(jq -r '.assets[] | select(.name == "'"$pkgfile"'") | .url' release.json)
+ghcurl -H 'Accept: application/octet-stream' -o "$pkgfile" "$pkgurl"
+
+shafile="${pkgname}.txt"
+shaurl=$(jq -r '.assets[] | select(.name == "'"$shafile"'") | .url' release.json)
+ghcurl -H 'Accept: application/octet-stream' -o "$shafile" "$shaurl"
 
 tar -zxvf "$pkgfile" >&2
 expected=$(awk '{print $1}' "$shafile")
