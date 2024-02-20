@@ -18,6 +18,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -80,8 +82,8 @@ func NewPodWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.E
 	}
 
 	_, err = k8sAPI.Srv().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    pw.updateServers,
-		DeleteFunc: pw.updateServers,
+		AddFunc:    pw.addOrDeleteServer,
+		DeleteFunc: pw.addOrDeleteServer,
 		UpdateFunc: pw.updateServer,
 	})
 	if err != nil {
@@ -218,23 +220,44 @@ func (pw *PodWatcher) updateServer(oldObj interface{}, newObj interface{}) {
 
 	oldUpdated := latestUpdated(oldServer.ManagedFields)
 	updated := latestUpdated(newServer.ManagedFields)
+
 	if !updated.IsZero() && updated != oldUpdated {
 		delta := time.Since(updated)
 		serverInformerLag.Observe(delta.Seconds())
 	}
 
-	pw.updateServers(newObj)
+	pw.updateServers(oldServer, newServer)
+}
+
+func (pw *PodWatcher) addOrDeleteServer(obj interface{}) {
+	server, ok := obj.(*v1beta1.Server)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			pw.log.Errorf("Couldn't get object from DeletedFinalStateUnknown %#v", obj)
+			return
+		}
+		server, ok = tombstone.Obj.(*v1beta1.Server)
+		if !ok {
+			pw.log.Errorf("DeletedFinalStateUnknown contained object that is not a Server %#v", obj)
+			return
+		}
+	}
+	pw.updateServers(server)
 }
 
 // updateServer triggers an Update() call to the listeners of the podPublishers
-// whose pod matches the Server's selector. This function is an event handler
-// so it cannot block.
-func (pw *PodWatcher) updateServers(_ any) {
+// whose pod matches any of the Servers' selector. This function is an event
+// handler so it cannot block.
+func (pw *PodWatcher) updateServers(servers ...*v1beta1.Server) {
 	pw.mu.RLock()
 	defer pw.mu.RUnlock()
 
 	for _, pp := range pw.publishers {
 		if pp.pod == nil {
+			continue
+		}
+		if !pw.isPodSelectedByAny(pp.pod, servers...) {
 			continue
 		}
 		opaquePorts := GetAnnotatedOpaquePorts(pp.pod, pw.defaultOpaquePorts)
@@ -269,6 +292,20 @@ func (pw *PodWatcher) updateServers(_ any) {
 			}
 		}(pp)
 	}
+}
+
+func (pw *PodWatcher) isPodSelectedByAny(pod *corev1.Pod, servers ...*v1beta1.Server) bool {
+	for _, s := range servers {
+		selector, err := metav1.LabelSelectorAsSelector(s.Spec.PodSelector)
+		if err != nil {
+			pw.log.Errorf("failed to parse PodSelector of Server %s.%s: %q", s.GetName(), s.GetNamespace(), err)
+			continue
+		}
+		if selector.Matches(labels.Set(pod.Labels)) {
+			return true
+		}
+	}
+	return false
 }
 
 // getOrNewPodPublisher returns the podPublisher for the given target if it

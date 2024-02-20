@@ -521,7 +521,7 @@ policyValidator:
   # for more information.
   injectCaFromSecret: ""
 
-# -|- CPU, Memory and Ephemeral Storage resources required by the policy controller 
+# -|- CPU, Memory and Ephemeral Storage resources required by the policy controller
 #policyControllerResources:
 
 # -- NodeSelector section, See the [K8S
@@ -544,6 +544,9 @@ nodeSelector:
 # for more information
 #nodeAffinity:
 
+# -- url of external prometheus instance (used for the heartbeat)
+prometheusUrl: ""
+
 # Prometheus Operator PodMonitor configuration
 podMonitor:
   # -- Enables the creation of Prometheus Operator [PodMonitor](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.PodMonitor)
@@ -552,6 +555,8 @@ podMonitor:
   scrapeInterval: 10s
   # -- Iimeout after which the scrape is ended
   scrapeTimeout: 10s
+  # -- Labels to apply to all pod Monitors
+  labels: {}
   controller:
     # -- Enables the creation of PodMonitor for the control-plane
     enabled: true
