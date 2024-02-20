@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
+	ewv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
@@ -49,7 +49,7 @@ type (
 		IP                string
 		Port              Port
 		Pod               *corev1.Pod
-		ExternalWorkload  *ewv1alpha1.ExternalWorkload
+		ExternalWorkload  *ewv1beta1.ExternalWorkload
 		OwnerName         string
 		OwnerKind         string
 		Identity          string

@@ -1434,7 +1434,7 @@ ports:
 - name: ""
   port: 8989`,
 				`
-apiVersion: workload.linkerd.io/v1alpha1
+apiVersion: workload.linkerd.io/v1beta1
 kind: ExternalWorkload
 metadata:
   name: name-1-1
@@ -1443,7 +1443,7 @@ status:
   conditions:
   ready: true`,
 				`
-apiVersion: workload.linkerd.io/v1alpha1
+apiVersion: workload.linkerd.io/v1beta1
 kind: ExternalWorkload
 metadata:
   name: name-1-2
@@ -1452,7 +1452,7 @@ status:
   conditions:
   ready: true`,
 				`
-apiVersion: workload.linkerd.io/v1alpha1
+apiVersion: workload.linkerd.io/v1beta1
 kind: ExternalWorkload
 metadata:
   name: name-1-3
@@ -1546,7 +1546,7 @@ metadata:
 ports:
 - name: ""
   port: 8989`, `
-apiVersion: workload.linkerd.io/v1alpha1
+apiVersion: workload.linkerd.io/v1beta1
 kind: ExternalWorkload
 metadata:
   name: name-1-3
@@ -1614,7 +1614,7 @@ metadata:
 ports:
 - name: ""
   port: 8989`, `
-apiVersion: workload.linkerd.io/v1alpha1
+apiVersion: workload.linkerd.io/v1beta1
 kind: ExternalWorkload
 metadata:
   name: name-1-1
@@ -1686,7 +1686,7 @@ metadata:
 ports:
 - name: ""
   port: 9000`, `
-apiVersion: workload.linkerd.io/v1alpha1
+apiVersion: workload.linkerd.io/v1beta1
 kind: ExternalWorkload
 metadata:
   name: name-5-1
@@ -2095,7 +2095,7 @@ metadata:
 ports:
 - name: ""
   port: 8989`, `
-apiVersion: workload.linkerd.io/v1alpha1
+apiVersion: workload.linkerd.io/v1beta1
 kind: ExternalWorkload
 metadata:
   name: name1-1
@@ -2126,7 +2126,7 @@ metadata:
   namespace: ns
 ports:
 - name: ""
-  port: 8989`, `apiVersion: workload.linkerd.io/v1alpha1
+  port: 8989`, `apiVersion: workload.linkerd.io/v1beta1
 kind: ExternalWorkload
 metadata:
   name: name1-2
@@ -2962,13 +2962,13 @@ metadata:
 status:
   phase: Running
   podIP: 172.17.0.12`, `
-apiVersion: workload.linkerd.io/v1alpha1
+apiVersion: workload.linkerd.io/v1beta1
 kind: ExternalWorkload
 metadata:
   name: wlkd1
   namespace: ns
 spec:
-  meshTls:
+  meshTLS:
     identity: foo
     serverName: foo
   ports:
@@ -3131,13 +3131,13 @@ metadata:
 status:
   phase: Running
   podIP: 172.17.0.13`, `
-apiVersion: workload.linkerd.io/v1alpha1
+apiVersion: workload.linkerd.io/v1beta1
 kind: ExternalWorkload
 metadata:
   name: wlkd1
   namespace: ns
 spec:
-  meshTls:
+  meshTLS:
     identity: foo
     serverName: foo
   ports:
@@ -3149,13 +3149,13 @@ status:
   - type: Ready
     status: "True"
 `, `
-apiVersion: workload.linkerd.io/v1alpha1
+apiVersion: workload.linkerd.io/v1beta1
 kind: ExternalWorkload
 metadata:
   name: wlkd2
   namespace: ns
 spec:
-  meshTls:
+  meshTLS:
     identity: foo
     serverName: foo
   ports:

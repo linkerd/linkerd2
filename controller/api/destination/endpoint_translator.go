@@ -9,7 +9,7 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
-	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
+	ewv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -537,11 +537,11 @@ func createWeightedAddrForExternalWorkload(
 	weightedAddr.TlsIdentity = &pb.TlsIdentity{
 		Strategy: &pb.TlsIdentity_UriLikeIdentity_{
 			UriLikeIdentity: &pb.TlsIdentity_UriLikeIdentity{
-				Uri: address.ExternalWorkload.Spec.MeshTls.Identity,
+				Uri: address.ExternalWorkload.Spec.MeshTLS.Identity,
 			},
 		},
 		ServerName: &pb.TlsIdentity_DnsLikeIdentity{
-			Name: address.ExternalWorkload.Spec.MeshTls.ServerName,
+			Name: address.ExternalWorkload.Spec.MeshTLS.ServerName,
 		},
 	}
 
@@ -689,7 +689,7 @@ func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
 
 // getInboundPortFromExternalWorkload gets the inbound port from the ExternalWorkload spec
 // variable.
-func getInboundPortFromExternalWorkload(ewSpec *ewv1alpha1.ExternalWorkloadSpec) (uint32, error) {
+func getInboundPortFromExternalWorkload(ewSpec *ewv1beta1.ExternalWorkloadSpec) (uint32, error) {
 	for _, p := range ewSpec.Ports {
 		if p.Name == pkgK8s.ProxyPortName {
 			return uint32(p.Port), nil

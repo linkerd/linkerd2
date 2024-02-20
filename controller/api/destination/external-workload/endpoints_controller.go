@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
+	ewv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -502,7 +502,7 @@ func (ec *EndpointsController) queueServiceForEndpointSlice(endpointSlice *disco
 }
 
 func (ec *EndpointsController) onAddExternalWorkload(obj interface{}) {
-	ew, ok := obj.(*ewv1alpha1.ExternalWorkload)
+	ew, ok := obj.(*ewv1beta1.ExternalWorkload)
 	if !ok {
 		ec.log.Errorf("couldn't get ExternalWorkload from object %#v", obj)
 		return

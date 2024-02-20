@@ -10,7 +10,7 @@ import (
 	"time"
 
 	externalworkload "github.com/linkerd/linkerd2/controller/api/destination/external-workload"
-	ext "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
+	ext "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"

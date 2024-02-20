@@ -21,7 +21,7 @@ package fake
 import (
 	"context"
 
-	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
+	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	types "k8s.io/apimachinery/pkg/types"
@@ -31,29 +31,29 @@ import (
 
 // FakeExternalWorkloads implements ExternalWorkloadInterface
 type FakeExternalWorkloads struct {
-	Fake *FakeExternalworkloadV1alpha1
+	Fake *FakeExternalworkloadV1beta1
 	ns   string
 }
 
-var externalworkloadsResource = v1alpha1.SchemeGroupVersion.WithResource("externalworkloads")
+var externalworkloadsResource = v1beta1.SchemeGroupVersion.WithResource("externalworkloads")
 
-var externalworkloadsKind = v1alpha1.SchemeGroupVersion.WithKind("ExternalWorkload")
+var externalworkloadsKind = v1beta1.SchemeGroupVersion.WithKind("ExternalWorkload")
 
 // Get takes name of the externalWorkload, and returns the corresponding externalWorkload object, and an error if there is any.
-func (c *FakeExternalWorkloads) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ExternalWorkload, err error) {
+func (c *FakeExternalWorkloads) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.ExternalWorkload, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(externalworkloadsResource, c.ns, name), &v1alpha1.ExternalWorkload{})
+		Invokes(testing.NewGetAction(externalworkloadsResource, c.ns, name), &v1beta1.ExternalWorkload{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.ExternalWorkload), err
+	return obj.(*v1beta1.ExternalWorkload), err
 }
 
 // List takes label and field selectors, and returns the list of ExternalWorkloads that match those selectors.
-func (c *FakeExternalWorkloads) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ExternalWorkloadList, err error) {
+func (c *FakeExternalWorkloads) List(ctx context.Context, opts v1.ListOptions) (result *v1beta1.ExternalWorkloadList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(externalworkloadsResource, externalworkloadsKind, c.ns, opts), &v1alpha1.ExternalWorkloadList{})
+		Invokes(testing.NewListAction(externalworkloadsResource, externalworkloadsKind, c.ns, opts), &v1beta1.ExternalWorkloadList{})
 
 	if obj == nil {
 		return nil, err
@@ -63,8 +63,8 @@ func (c *FakeExternalWorkloads) List(ctx context.Context, opts v1.ListOptions) (
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v1alpha1.ExternalWorkloadList{ListMeta: obj.(*v1alpha1.ExternalWorkloadList).ListMeta}
-	for _, item := range obj.(*v1alpha1.ExternalWorkloadList).Items {
+	list := &v1beta1.ExternalWorkloadList{ListMeta: obj.(*v1beta1.ExternalWorkloadList).ListMeta}
+	for _, item := range obj.(*v1beta1.ExternalWorkloadList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -80,31 +80,31 @@ func (c *FakeExternalWorkloads) Watch(ctx context.Context, opts v1.ListOptions) 
 }
 
 // Create takes the representation of a externalWorkload and creates it.  Returns the server's representation of the externalWorkload, and an error, if there is any.
-func (c *FakeExternalWorkloads) Create(ctx context.Context, externalWorkload *v1alpha1.ExternalWorkload, opts v1.CreateOptions) (result *v1alpha1.ExternalWorkload, err error) {
+func (c *FakeExternalWorkloads) Create(ctx context.Context, externalWorkload *v1beta1.ExternalWorkload, opts v1.CreateOptions) (result *v1beta1.ExternalWorkload, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(externalworkloadsResource, c.ns, externalWorkload), &v1alpha1.ExternalWorkload{})
+		Invokes(testing.NewCreateAction(externalworkloadsResource, c.ns, externalWorkload), &v1beta1.ExternalWorkload{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.ExternalWorkload), err
+	return obj.(*v1beta1.ExternalWorkload), err
 }
 
 // Update takes the representation of a externalWorkload and updates it. Returns the server's representation of the externalWorkload, and an error, if there is any.
-func (c *FakeExternalWorkloads) Update(ctx context.Context, externalWorkload *v1alpha1.ExternalWorkload, opts v1.UpdateOptions) (result *v1alpha1.ExternalWorkload, err error) {
+func (c *FakeExternalWorkloads) Update(ctx context.Context, externalWorkload *v1beta1.ExternalWorkload, opts v1.UpdateOptions) (result *v1beta1.ExternalWorkload, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(externalworkloadsResource, c.ns, externalWorkload), &v1alpha1.ExternalWorkload{})
+		Invokes(testing.NewUpdateAction(externalworkloadsResource, c.ns, externalWorkload), &v1beta1.ExternalWorkload{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.ExternalWorkload), err
+	return obj.(*v1beta1.ExternalWorkload), err
 }
 
 // Delete takes name of the externalWorkload and deletes it. Returns an error if one occurs.
 func (c *FakeExternalWorkloads) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(externalworkloadsResource, c.ns, name, opts), &v1alpha1.ExternalWorkload{})
+		Invokes(testing.NewDeleteActionWithOptions(externalworkloadsResource, c.ns, name, opts), &v1beta1.ExternalWorkload{})
 
 	return err
 }
@@ -113,17 +113,17 @@ func (c *FakeExternalWorkloads) Delete(ctx context.Context, name string, opts v1
 func (c *FakeExternalWorkloads) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(externalworkloadsResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &v1alpha1.ExternalWorkloadList{})
+	_, err := c.Fake.Invokes(action, &v1beta1.ExternalWorkloadList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched externalWorkload.
-func (c *FakeExternalWorkloads) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ExternalWorkload, err error) {
+func (c *FakeExternalWorkloads) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.ExternalWorkload, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(externalworkloadsResource, c.ns, name, pt, data, subresources...), &v1alpha1.ExternalWorkload{})
+		Invokes(testing.NewPatchSubresourceAction(externalworkloadsResource, c.ns, name, pt, data, subresources...), &v1beta1.ExternalWorkload{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.ExternalWorkload), err
+	return obj.(*v1beta1.ExternalWorkload), err
 }
