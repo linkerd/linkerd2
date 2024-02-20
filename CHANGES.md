@@ -1,5 +1,15 @@
 # Changes
 
+## edge-24.2.4
+
+* Updated the ExternalWorkload CRD to v1beta1, renaming the meshTls field to
+  meshTLS ([#12098])
+* Updated the proxy to address some logging and metrics inconsistencies
+  ([#12099])
+
+[#12098]: https://github.com/linkerd/linkerd2/pull/12098
+[#12099]: https://github.com/linkerd/linkerd2/pull/12099
+
 ## edge-24.2.3
 
 * Allowed the `MutatingWebhookConfig` timeout value to be configured ([#12028])
