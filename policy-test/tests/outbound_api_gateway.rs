@@ -1444,7 +1444,7 @@ fn assert_backend_matches_service(
 #[track_caller]
 fn assert_singleton<T>(ts: &[T]) -> &T {
     assert_eq!(ts.len(), 1);
-    ts.get(0).unwrap()
+    ts.first().unwrap()
 }
 
 #[track_caller]

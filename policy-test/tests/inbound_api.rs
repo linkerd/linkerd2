@@ -388,9 +388,9 @@ async fn http_routes_ordered_by_creation() {
         match routes
             .get(idx)?
             .rules
-            .get(0)?
+            .first()?
             .matches
-            .get(0)?
+            .first()?
             .path
             .as_ref()?
             .kind
