@@ -27,7 +27,7 @@ pub struct Execable {
 }
 
 impl Runner {
-    const CURL_IMAGE: &str = "docker.io/curlimages/curl:latest";
+    const CURL_IMAGE: &'static str = "docker.io/curlimages/curl:latest";
 
     pub async fn init(client: &kube::Client, ns: &str) -> Runner {
         let runner = Runner {

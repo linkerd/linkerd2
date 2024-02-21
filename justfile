@@ -50,6 +50,8 @@ rs-check-fmt:
 rs-clippy:
     {{ _cargo }} clippy --frozen --workspace --all-targets --no-deps {{ _features }} {{ _fmt }}
 
+alias clippy := rs-clippy
+
 # Audit Rust dependencies.
 rs-audit-deps:
     {{ _cargo }} deny {{ _features }} check
