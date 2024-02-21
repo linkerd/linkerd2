@@ -77,6 +77,7 @@ Kubernetes: `>=1.22.0-0`
 | gateway.UID | int | `2103` | User id under which the gateway shall be ran |
 | gateway.deploymentAnnotations | object | `{}` | Annotations to add to the gateway deployment |
 | gateway.enabled | bool | `true` | If the gateway component should be installed |
+| gateway.loadBalancerClass | string | `""` | Set loadBalancerClass on gateway service |
 | gateway.loadBalancerIP | string | `""` | Set loadBalancerIP on gateway service |
 | gateway.loadBalancerSourceRanges | list | `[]` | Set loadBalancerSourceRanges on gateway service |
 | gateway.name | string | `"linkerd-gateway"` | The name of the gateway that will be installed |
