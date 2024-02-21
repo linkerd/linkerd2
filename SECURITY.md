@@ -32,18 +32,8 @@ ability to provide security for users may not be immediately addressed. For
 example, CVEs in underlying dependencies that don't actually affect Linkerd may
 not be immediately addressed.
 
-## Version Policy
-
-A note on versions: For stable releases, Linkerd follows a modified semantic
-versioning scheme of the form `2.<major>.<minor>`. In other words, "2" is a
-static prefix, followed by the major version, then the minor.
-
-The Linkerd project will provide security updates for the most recent major
-stable version only. In other words, if `2.X.Y` is the most recent major
-version, we will provide security updates as part of a `2.X.(Y + 1)` release.
-
-Backports of security updates to earlier stable versions will only be done
-at the discretion of the maintainer team.
+Once merged into main, security updates will be available in the next edge
+release produced.
 
 ## Security Audits
 
