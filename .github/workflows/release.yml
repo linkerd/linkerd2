@@ -221,7 +221,8 @@ jobs:
     needs:
     - tag
     - integration_tests
-    - choco_pack
+    # TODO(ver) choco packages are not produced for edge releases...
+    # - choco_pack
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     timeout-minutes: 30
     runs-on: ubuntu-20.04
@@ -229,31 +230,24 @@ jobs:
       contents: write
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-    - name: Set environment variables
-      run: |
-        echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
-        . bin/_release.sh
-        extract_release_notes NOTES.md
-    - name: Download choco package
-      if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe
-      with:
-        name: choco
-        path: choco
+    # - name: Download choco package
+    #   if: startsWith(github.ref, 'refs/tags/stable')
+    #   uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe
+    #   with:
+    #     name: choco
+    #     path: choco
     - name: Pull CLI binaries
-      env:
-        DOCKER_TARGET: multi-arch
-      run : |
-        bin/docker-pull-binaries "$TAG"
-        v=${TAG#"stable-"}
-        mv choco/linkerd.*.nupkg "target/release/linkerd2-cli-stable-$v.nupkg" || true
+      run: DOCKER_TARGET=multi-arch bin/docker-pull-binaries '${{ needs.tag.outputs.tag }}'
+      #  v=${TAG#"stable-"}
+      #  mv choco/linkerd.*.nupkg "target/release/linkerd2-cli-stable-$v.nupkg" || true
     - name: Create release
       id: create_release
       uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844
       with:
+        name: '${{ needs.tag.outputs.tag }}'
+        generate_release_notes: true
         draft: false
         prerelease: false
-        body_path: NOTES.md
         files: |
           ./target/release/linkerd2-cli-*-darwin*
           ./target/release/linkerd2-cli-*-linux-*
