@@ -11,9 +11,9 @@ pub struct Terminus {
 
 impl Terminus {
     const PORT: i32 = 80;
-    const PORT_NAME: &str = "http";
-    const APP: &str = "bb-terminus";
-    pub const SERVICE_NAME: &str = Self::APP;
+    const PORT_NAME: &'static str = "http";
+    const APP: &'static str = "bb-terminus";
+    pub const SERVICE_NAME: &'static str = Self::APP;
 
     /// Builds a `bb-terminus` pod that can be configured to fail some (or all)
     /// requests.
