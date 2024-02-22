@@ -1,5 +1,15 @@
 # Changes
 
+Please visit Linkerd's [Release page][gh-releases] for for the latest release
+notes moving forward!
+
+[gh-releases]: https://github.com/linkerd/linkerd2/releases
+
+## edge-24.2.5
+
+* Migrated edge release change notes to use GitHub's automated release notes
+  feature.
+
 ## edge-24.2.4
 
 * Updated the ExternalWorkload CRD to v1beta1, renaming the meshTls field to
