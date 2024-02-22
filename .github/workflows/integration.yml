@@ -10,6 +10,7 @@ on:
       - Cargo.lock
       # Don't run integration tests if only the Chart metadata has changed.
       - '!**/Chart.yaml'
+      - '!**/README*'
       - charts/**
       - go.sum
       - justfile
