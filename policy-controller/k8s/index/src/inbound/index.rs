@@ -903,7 +903,9 @@ impl NamespaceIndex {
         f: impl FnOnce(&mut Namespace) -> bool,
     ) {
         if let Entry::Occupied(mut ns) = self.by_ns.entry(namespace) {
+            tracing::trace!(ns = ns.key(), "got namespace");
             if f(ns.get_mut()) {
+                tracing::trace!(ns = ns.key(), "reindexing maybe");
                 if ns.get().is_empty() {
                     tracing::debug!(namespace = ns.key(), "Removing empty namespace index");
                     ns.remove();
@@ -1699,6 +1701,9 @@ impl PolicyIndex {
         authentications: &AuthenticationNsIndex,
         probe_paths: impl Iterator<Item = &'p str>,
     ) -> HashMap<HttpRouteRef, HttpRoute> {
+        self.http_routes.iter().for_each(|(gkn, route)| {
+            tracing::trace!(?gkn, ?route, "Found HttpRoute");
+        });
         let routes = self
             .http_routes
             .iter()

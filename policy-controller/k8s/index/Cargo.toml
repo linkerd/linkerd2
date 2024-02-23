@@ -11,6 +11,7 @@ anyhow = "1"
 futures = { version = "0.3", default-features = false }
 http = "0.2"
 k8s-gateway-api = "0.15"
+k8s-openapi = { version = "0.20", features = ["schemars"] }
 kube = { version = "0.87.1", default-features = false, features = [
     "client",
     "derive",
