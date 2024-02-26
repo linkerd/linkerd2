@@ -13,6 +13,7 @@ env:
   GH_ANNOTATION: true
   DOCKER_REGISTRY: ghcr.io/linkerd
   K3D_VERSION: v5.4.4
+  LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO }}
 
 jobs:
   # TODO(ver) We should stop relying so heavily on the environment,
@@ -61,6 +62,8 @@ jobs:
         docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
         component: ${{ matrix.component }}
         tag: ${{ needs.tag.outputs.tag }}
+      env:
+        LINKERD2_PROXY_GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN }}
     - uses: sigstore/cosign-installer@v3
     - run: cosign sign '${{ steps.build.outputs.digest }}'
       env:

@@ -10,14 +10,22 @@ RUN go mod download
 ARG TARGETARCH
 RUN ./bin/install-deps $TARGETARCH
 
-FROM --platform=$BUILDPLATFORM curlimages/curl:7.86.0 as fetch
+FROM --platform=$BUILDPLATFORM debian:bookworm-slim as fetch
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y curl jq && \
+    rm -rf /var/lib/apt/lists/*
 WORKDIR /build
 COPY bin/fetch-proxy bin/fetch-proxy
 COPY bin/scurl bin/scurl
-COPY .proxy-version proxy-version
 ARG TARGETARCH
-RUN (proxy=$(bin/fetch-proxy $(cat proxy-version) $TARGETARCH) && \
-    mv "$proxy" linkerd2-proxy)
+ARG LINKERD2_PROXY_REPO="linkerd/linkerd2-proxy"
+ARG LINKERD2_PROXY_RELEASE_PREFIX="release/"
+ARG LINKERD2_PROXY_VERSION=""
+RUN --mount=type=secret,id=github \
+    export GITHUB_TOKEN_FILE=/run/secrets/github; \
+    proxy=$(bin/fetch-proxy "$LINKERD2_PROXY_VERSION" "$TARGETARCH"); \
+    mv "$proxy" linkerd2-proxy
+RUN echo "$LINKERD2_PROXY_VERSION" > proxy-version
 ARG LINKERD_AWAIT_VERSION=v0.2.6
 RUN bin/scurl -o linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-${TARGETARCH} && chmod +x linkerd-await
 ARG LINKERD_VALIDATOR_VERSION=v0.1.2
