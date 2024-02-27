@@ -9,7 +9,7 @@ SCRIPT_ROOT="$(dirname "${SCRIPT_DIR}")"
 GEN_VER=$( awk '/k8s.io\/code-generator/ { print $2 }' "${SCRIPT_ROOT}/go.mod" )
 CODEGEN_PKG=target/code-generator-${GEN_VER}
 
-if [ ! -d "$CODEGEN_PKG" ]; then
+if [[ ! -d "$CODEGEN_PKG" ]]; then
     mkdir -p "$CODEGEN_PKG"
     git clone --depth 1 --branch "$GEN_VER" https://github.com/kubernetes/code-generator "$CODEGEN_PKG"
 fi
