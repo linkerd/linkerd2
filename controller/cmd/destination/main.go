@@ -19,7 +19,6 @@ import (
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/trace"
 	"github.com/linkerd/linkerd2/pkg/util"
-	"github.com/prometheus/common/log"
 	log "github.com/sirupsen/logrus"
 )
 
