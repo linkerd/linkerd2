@@ -220,7 +220,7 @@ func chartCrds(t *testing.T) *chart.Chart {
 
 	linkerd2Chart.AddDependency(chartPartials)
 
-	for _, filepath := range templatesCrdFiles {
+	for _, filepath := range TemplatesCrdFiles {
 		linkerd2Chart.Templates = append(linkerd2Chart.Templates, &chart.File{
 			Name: filepath,
 		})
