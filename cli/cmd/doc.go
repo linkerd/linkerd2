@@ -238,11 +238,11 @@ func generateAnnotationsDocs() []annotationDoc {
 		},
 		{
 			Name:        k8s.ProxyOutboundConnectTimeout,
-			Description: "Used to configure the outbound TCP connection timeout in the proxy",
+			Description: "Used to configure the outbound TCP connection timeout in the proxy. Defaults to `1s`",
 		},
 		{
 			Name:        k8s.ProxyInboundConnectTimeout,
-			Description: "Inbound TCP connection timeout in the proxy",
+			Description: "Inbound TCP connection timeout in the proxy. Defaults to `300ms`",
 		},
 		{
 			Name:        k8s.ProxyOutboundDiscoveryCacheUnusedTimeout,
