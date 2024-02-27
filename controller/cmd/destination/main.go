@@ -2,8 +2,10 @@ package destination
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,6 +19,7 @@ import (
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/trace"
 	"github.com/linkerd/linkerd2/pkg/util"
+	"github.com/prometheus/common/log"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -56,7 +59,11 @@ func Main(args []string) {
 	go func() {
 		log.Infof("starting admin server on %s", *metricsAddr)
 		if err := adminServer.ListenAndServe(); err != nil {
-			log.Errorf("failed to start destination admin server: %s", err)
+			if errors.Is(err, http.ErrServerClosed) {
+				log.Infof("destination admin server status is shutdown or close: %s", err)
+			} else {
+				log.Errorf("failed to start destination admin server: %s", err)
+			}
 		}
 	}()
 
