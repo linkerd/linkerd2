@@ -181,7 +181,7 @@ jobs:
           - v1.22
           - v1.29
     steps:
-      - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: olix0r/cargo-action-fmt/setup@9269f3aa1ff01775d95efc97037e2cbdb41d9684
@@ -363,7 +363,7 @@ jobs:
           - v1.22
           - v1.29
     steps:
-      - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
