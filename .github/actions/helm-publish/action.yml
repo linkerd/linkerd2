@@ -1,9 +1,5 @@
 name: Helm publish
 description: Helm chart creation and uploading
-inputs:
-  branch:
-    description: edge | stable
-    required: true
 runs:
   using: composite
   steps:
@@ -12,7 +8,9 @@ runs:
   - shell: bash
     run: |
       mkdir -p target/helm
-      gsutil cp gs://helm.linkerd.io/${{ inputs.branch }}/index.yaml target/helm/index-pre.yaml
+      gsutil cp gs://helm.linkerd.io/edge/index.yaml target/helm/index-pre.yaml
+      bin/helm-bump-edge
+      bin/helm-docs
       bin/helm-build package
-      cp charts/artifacthub-repo-${{ inputs.branch }}.yml target/helm/artifacthub-repo.yml
-      gsutil rsync target/helm gs://helm.linkerd.io/${{ inputs.branch }}
+      cp charts/artifacthub-repo-edge.yml target/helm/artifacthub-repo.yml
+      gsutil rsync target/helm gs://helm.linkerd.io/edge

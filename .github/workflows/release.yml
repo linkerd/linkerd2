@@ -4,7 +4,6 @@ on:
   push:
     tags:
     - "edge-*"
-    - "stable-*"
 
 permissions:
   contents: read
@@ -226,7 +225,6 @@ jobs:
     - integration_tests
     # TODO(ver) choco packages are not produced for edge releases...
     # - choco_pack
-    if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     timeout-minutes: 30
     runs-on: ubuntu-20.04
     permissions:
@@ -314,12 +312,4 @@ jobs:
       with:
         credentials_json: ${{ secrets.LINKERD_SITE_TOKEN }}
     - name: Edge Helm chart creation and upload
-      if: startsWith(github.ref, 'refs/tags/edge')
       uses: ./.github/actions/helm-publish
-      with:
-        branch: edge
-    - name: Stable Helm chart creation and upload
-      if: startsWith(github.ref, 'refs/tags/stable')
-      uses: ./.github/actions/helm-publish
-      with:
-        branch: stable
