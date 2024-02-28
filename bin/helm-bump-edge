@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This script bumps$the patch version of all charts
+# This script bumps the patch version of all charts
 
 set -euo pipefail
 shopt -s globstar
