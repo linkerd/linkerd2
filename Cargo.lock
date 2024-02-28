@@ -1190,7 +1190,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
- "tonic",
+ "tonic 0.11.0",
  "tracing",
 ]
 
@@ -1225,7 +1225,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "tonic",
+ "tonic 0.11.0",
  "tracing",
 ]
 
@@ -1310,7 +1310,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-test",
- "tonic",
+ "tonic 0.11.0",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1326,7 +1326,7 @@ dependencies = [
  "prost",
  "prost-types",
  "thiserror",
- "tonic",
+ "tonic 0.10.2",
 ]
 
 [[package]]
@@ -2341,8 +2341,28 @@ version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d560933a0de61cf715926b9cac824d4c883c2c43142f787595e48280c40a1d0e"
 dependencies = [
- "async-stream",
  "async-trait",
+ "base64",
+ "bytes",
+ "http",
+ "http-body",
+ "percent-encoding",
+ "pin-project",
+ "prost",
+ "tokio",
+ "tokio-stream",
+ "tower-layer",
+ "tower-service",
+ "tracing",
+]
+
+[[package]]
+name = "tonic"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76c4eb7a4e9ef9d4763600161f12f5070b92a578e1b634db88a6887844c91a13"
+dependencies = [
+ "async-stream",
  "axum",
  "base64",
  "bytes",
@@ -2353,7 +2373,6 @@ dependencies = [
  "hyper-timeout",
  "percent-encoding",
  "pin-project",
- "prost",
  "tokio",
  "tokio-stream",
  "tower",
