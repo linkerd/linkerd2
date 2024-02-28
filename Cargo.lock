@@ -2734,7 +2734,7 @@ dependencies = [
  "windows_i686_msvc 0.48.5",
  "windows_x86_64_gnu 0.48.2",
  "windows_x86_64_gnullvm 0.48.5",
- "windows_x86_64_msvc 0.48.2",
+ "windows_x86_64_msvc 0.48.5",
 ]
 
 [[package]]
@@ -2826,9 +2826,9 @@ checksum = "1a657e1e9d3f514745a572a6846d3c7aa7dbe1658c056ed9c3344c4109a6949e"
 
 [[package]]
 name = "windows_x86_64_msvc"
-version = "0.48.2"
+version = "0.48.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d419259aba16b663966e29e6d7c6ecfa0bb8425818bb96f6f1f3c3eb71a6e7b9"
+checksum = "ed94fce61571a4006852b7389a063ab983c02eb1bb37b47f8272ce92d06d9538"
 
 [[package]]
 name = "windows_x86_64_msvc"
