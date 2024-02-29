@@ -17,35 +17,32 @@ edge_tag_regex="edge-([0-9][0-9])\.([0-9]|[0-9][0-9])\.([0-9]+)"
 url=https://run.linkerd.io/install-edge
 current_edge=$("$bindir"/scurl $url | awk -v tag_format="$edge_tag_regex" '$0 ~ tag_format')
 
+current_mm=$(echo "$current_edge" | sed -n -E "s/.*$edge_tag_regex}$/\2/p")
+current_xx=$(echo "$current_edge" | sed -n -E "s/.*$edge_tag_regex}$/\3/p")
+yy=$(date +"%y")
+yyyy=$(date +"%Y")
+new_mm=$(date +"%-m")
+
+# If this is a new month, `new_xx` should be 1; otherwise increment it.
+if [[ "$new_mm" != "$current_mm" ]]; then
+    new_xx=1
+else
+    new_xx=$((current_xx+1))
+fi
+
+expected_tag="edge-$yy.$new_mm.$new_xx"
+
+if [[ "$tag" != "$expected_tag" ]]; then
+    echo "Tag ($tag) doesn't match computed edge version ($expected_tag)"
+    exit 1
+fi
+
+new_version="$yyyy.$new_mm.$new_xx"
+
 for chart in **/Chart.yaml; do
     if [[ "$chart" =~ "partials" || "$chart" =~ "patch" || "$chart" =~ "multicluster-link" ]]; then
         continue
     fi
-
-    current_mm=$(echo "$current_edge" | sed -n -E "s/.*$edge_tag_regex}$/\2/p")
-    current_xx=$(echo "$current_edge" | sed -n -E "s/.*$edge_tag_regex}$/\3/p")
-
-    yy=$(date +"%y")
-    yyyy=$(date +"%Y")
-
-    # Strip leading zero
-    new_mm=$(date +"%-m")
-
-    # If this is a new month, `new_xx` should be 1; otherwise increment it.
-    if [[ "$new_mm" != "$current_mm" ]]; then
-        new_xx=1
-    else
-        new_xx=$((current_xx+1))
-    fi
-
-    expected_tag="edge-$yy.$new_mm.$new_xx"
-
-    if [[ "$tag" != "$expected_tag" ]]; then
-        echo "Tag ($tag) doesn't match computed edge version ($expected_tag)"
-        exit 1
-    fi
-
-    new_version="$yyyy.$new_mm.$new_xx"
 
     echo "Bumping $chart to $new_version"
     yq -i ".version = \"$new_version\"" "$chart"
