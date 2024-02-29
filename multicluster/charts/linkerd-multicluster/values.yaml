@@ -25,6 +25,8 @@ gateway:
   serviceAnnotations: {}
   # -- Annotations to add to the gateway deployment
   deploymentAnnotations: {}
+  # -- Set loadBalancerClass on gateway service
+  loadBalancerClass: ""
   # -- Set loadBalancerIP on gateway service
   loadBalancerIP: ""
   # -- Set loadBalancerSourceRanges on gateway service
