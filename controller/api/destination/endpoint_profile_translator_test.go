@@ -110,9 +110,13 @@ func TestEndpointProfileTranslator(t *testing.T) {
 			}
 		}
 
+		// XXX(ver): This assertion sometimes fails in CI. It's not clear why.
+		// For now, let's log the queue length and capacity.
+		t.Logf("Queue length=%d capacity=%d", translator.queueLen(), updateQueueCapacity)
 		if err := translator.Update(podAddr); err == nil {
-			t.Fatal("Expected update to fail")
+			t.Fatalf("Expected update to fail; queue=%d; capacity=%d", translator.queueLen(), updateQueueCapacity)
 		}
+
 		select {
 		case <-endStream:
 		default:
