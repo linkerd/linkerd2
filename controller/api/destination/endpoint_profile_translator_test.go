@@ -34,7 +34,7 @@ func TestEndpointProfileTranslator(t *testing.T) {
 
 	t.Run("Sends update", func(t *testing.T) {
 		mockGetProfileServer := &mockDestinationGetProfileServer{
-			profilesReceived: make(chan *pb.DestinationProfile, 1),
+			profilesReceived: make(chan *pb.DestinationProfile), // UNBUFFERED
 		}
 		log := logging.WithField("test", t.Name())
 		translator := newEndpointProfileTranslator(
@@ -110,11 +110,11 @@ func TestEndpointProfileTranslator(t *testing.T) {
 			}
 		}
 
-		// XXX(ver): This assertion sometimes fails in CI. It's not clear why.
-		// For now, let's log the queue length and capacity.
+		// The queue should be full and the next update should fail.
 		t.Logf("Queue length=%d capacity=%d", translator.queueLen(), updateQueueCapacity)
 		if err := translator.Update(podAddr); err == nil {
 			t.Fatalf("Expected update to fail; queue=%d; capacity=%d", translator.queueLen(), updateQueueCapacity)
+
 		}
 
 		select {
