@@ -6,6 +6,7 @@ on:
   push:
     branches: [ main, stable-* ]
     paths:
+    - .github/workflows/codeql.yml
     - '**/*.go'
     - '**/*.js'
     - '**/*.jsx'
@@ -13,6 +14,7 @@ on:
     # The branches below must be a subset of the branches above
     branches: [ main, stable-* ]
     paths:
+    - .github/workflows/codeql.yml
     - '**/*.go'
     - '**/*.js'
     - '**/*.jsx'
@@ -34,6 +36,9 @@ jobs:
         - javascript
 
     steps:
+    - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+      with:
+        go-version: '1.22'
     - name: Checkout
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
