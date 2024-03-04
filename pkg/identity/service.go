@@ -222,7 +222,7 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 	if reqIdentity != tokIdentity {
 		msg := fmt.Sprintf("requested identity did not match provided token: requested=%s; found=%s",
 			reqIdentity, tokIdentity)
-		log.Infof(msg)
+		log.Info(msg)
 		return nil, status.Error(codes.FailedPrecondition, msg)
 	}
 
