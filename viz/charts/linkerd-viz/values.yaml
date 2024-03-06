@@ -564,11 +564,13 @@ prometheus:
   # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
   # for more information
   tolerations: *default_tolerations
-  # Makes use of Prometheus's federation API to copy data from one Prometheus to another by adding items to scrape_configs
+  # -- Makes use of Prometheus's federation API to copy data from one Prometheus to another by adding items to scrape_configs
   # adds necessary AuthorizationPolicy to avoid 403 errors
-  # Ignored if prometheus.federateUsingServiceMonitor is set to true
-  federate: true
-  # Makes use of Prometheus's federation API to copy data from one Prometheus to another by ServiceMonitor to configure Prometheus
-  # adds necessary AuthorizationPolicy to avoid 403 errors
-  federateUsingServiceMonitor: false 
+  # Ignored if prometheus.federateUsingServiceMonitor is set to true.
+  federateUsingScrapeConfig: false
+  # -- Makes use of Prometheus's federation API to copy data from one Prometheus to another by ServiceMonitor to configure Prometheus
+  # adds necessary AuthorizationPolicy to avoid 403 errors.
+  federateUsingServiceMonitor: false
+  # -- Disables automatic creation of AuthorizationPolicy to prevent 403 scrape errors when using Prometheus federation API.
+  # Ignored if both federateUsingScrapeConfig & federateUsingServiceMonitor are set to false
   disableAuthorizationPolicyForFederatedPrometheus: false

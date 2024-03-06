@@ -142,6 +142,26 @@ data:
     {{- toYaml .Values.prometheus.scrapeConfigs | trim | nindent 4 }}
     {{- end }}
 
+    {{- if (and .Values.prometheus.federateUsingScrapeConfig (not .Values.prometheus.federateUsingServiceMonitor)) }}
+    - job_name: 'linkerd'
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+          - '{{.Release.Namespace}}'
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_pod_container_name
+        action: keep
+        regex: ^prometheus$
+      honor_labels: true
+      metrics_path: '/federate'
+      params:
+        'match[]':
+          - '{job="linkerd-proxy"}'
+          - '{job="linkerd-controller"}'
+    {{- end }}
+
     {{-  if (or .Values.prometheus.alertmanagers .Values.prometheus.alertRelabelConfigs) }}
     alerting:
       alert_relabel_configs:
@@ -334,5 +354,67 @@ spec:
 {{- if .Values.prometheus.persistence.storageClass }}
   storageClassName: "{{ .Values.prometheus.persistence.storageClass }}"
 {{- end }}
+{{- end }}
+{{- if .Values.prometheus.federateUsingServiceMonitor }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    linkerd.io/extension: viz
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.linkerdVersion}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    component: prometheus
+  name: linkerd-federate
+  namespace: {{ .Release.Namespace }}
+spec:
+  endpoints:
+  - interval: 30s
+    scrapeTimeout: 30s
+    params:
+      match[]:
+      - '{job="linkerd-proxy"}'
+      - '{job="linkerd-controller"}'
+    path: /federate
+    port: admin-http
+    honorLabels: true
+    relabelings:
+    - action: keep
+      regex: '^prometheus$'
+      sourceLabels:
+      - '__meta_kubernetes_pod_container_name'
+  jobLabel: app
+  namespaceSelector:
+    matchNames:
+    - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      component: prometheus
+{{- end }}
+{{- if (and (not .Values.prometheus.disableAuthorizationPolicyForFederatedPrometheus) (and (not .Values.prometheus.federateUsingScrapeConfig) (not .Values.prometheus.federateUsingServiceMonitor))) }}
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: prometheus-admin-federate
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/extension: viz
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.linkerdVersion}}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    component: prometheus
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: prometheus-admin
+  requiredAuthenticationRefs:
+    - group: policy.linkerd.io
+      kind: NetworkAuthentication
+      name: kubelet
 {{- end }}
 {{ end -}}
