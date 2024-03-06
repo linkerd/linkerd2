@@ -393,7 +393,7 @@ spec:
     matchLabels:
       component: prometheus
 {{- end }}
-{{- if (and (not .Values.prometheus.disableAuthorizationPolicyForFederatedPrometheus) (and (not .Values.prometheus.federateUsingScrapeConfig) (not .Values.prometheus.federateUsingServiceMonitor))) }}
+{{- if (and (not .Values.prometheus.disableAuthorizationPolicyForFederatedPrometheus) (or (.Values.prometheus.federateUsingScrapeConfig) (.Values.prometheus.federateUsingServiceMonitor))) }}
 ---
 apiVersion: policy.linkerd.io/v1alpha1
 kind: AuthorizationPolicy
