@@ -114,9 +114,21 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 				return nil
 			}),
 
-		flag.NewStringFlag(installUpgradeFlags, "control-plane-tracing-namespace", defaults.ControlPlaneTracingNamespace,
-			"Send control plane traces to Linkerd-Jaeger extension in this namespace", func(values *l5dcharts.Values, value string) error {
-				values.ControlPlaneTracingNamespace = value
+		flag.NewStringFlag(installUpgradeFlags, "control-plane-tracing-collector-name", defaults.ControlPlaneTracingCollector.Name,
+			"Set the name of the control plane tracing collector", func(values *l5dcharts.Values, value string) error {
+				values.ControlPlaneTracingCollector.Name = value
+				return nil
+			}),
+
+		flag.NewStringFlag(installUpgradeFlags, "control-plane-tracing-collector-namespace", defaults.ControlPlaneTracingCollector.Namespace,
+			"Set the namespace of the control plane tracing collector", func(values *l5dcharts.Values, value string) error {
+				values.ControlPlaneTracingCollector.Namespace = value
+				return nil
+			}),
+
+		flag.NewInt64Flag(installUpgradeFlags, "control-plane-tracing-collector-port", defaults.ControlPlaneTracingCollector.Port,
+			"Set the port of the control plane tracing collector", func(values *l5dcharts.Values, value int64) error {
+				values.ControlPlaneTracingCollector.Port = value
 				return nil
 			}),
 
