@@ -14,6 +14,7 @@ use linkerd_policy_controller::{
 };
 use linkerd_policy_controller_k8s_index::ports::parse_portset;
 use linkerd_policy_controller_k8s_status::{self as status};
+use prometheus_client::registry::Registry;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{sync::mpsc, time::Duration};
 use tonic::transport::Server;
@@ -115,9 +116,13 @@ async fn main() -> Result<()> {
         Some(server)
     };
 
+    let mut prom = <Registry>::default();
+    let status_metrics =
+        status::IndexMetrics::register(prom.sub_registry_with_prefix("resource_status"));
+
     let mut runtime = kubert::Runtime::builder()
         .with_log(log_level, log_format)
-        .with_admin(admin.into_builder().with_prometheus(Default::default()))
+        .with_admin(admin.into_builder().with_prometheus(prom))
         .with_client(client)
         .with_optional_server(server)
         .build()
@@ -159,8 +164,9 @@ async fn main() -> Result<()> {
 
     // Build the status index which will maintain information necessary for
     // updating the status field of policy resources.
-    let (updates_tx, updates_rx) = mpsc::unbounded_channel();
-    let status_index = status::Index::shared(hostname.clone(), claims.clone(), updates_tx);
+    let (updates_tx, updates_rx) = mpsc::channel(10000);
+    let status_index =
+        status::Index::shared(hostname.clone(), claims.clone(), updates_tx, status_metrics);
 
     // Spawn resource watches.
 

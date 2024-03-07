@@ -11,12 +11,10 @@ use kubert::lease::Claim;
 use linkerd_policy_controller_core::{http_route::GroupKindName, POLICY_CONTROLLER_NAME};
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
 use parking_lot::RwLock;
+use prometheus_client::{metrics::gauge::Gauge, registry::Registry};
 use std::{collections::hash_map::Entry, sync::Arc};
 use tokio::{
-    sync::{
-        mpsc::{UnboundedReceiver, UnboundedSender},
-        watch::Receiver,
-    },
+    sync::{mpsc, watch::Receiver},
     time::{self, Duration},
 };
 
@@ -46,7 +44,7 @@ pub struct Controller {
     claims: Receiver<Arc<Claim>>,
     client: k8s::Client,
     name: String,
-    updates: UnboundedReceiver<Update>,
+    updates: mpsc::Receiver<Update>,
 
     /// True if this policy controller is the leader — false otherwise.
     leader: bool,
@@ -60,13 +58,19 @@ pub struct Index {
     /// Used in the IndexNamespacedResource trait methods to check who the
     /// current leader is and if updates should be sent to the Controller.
     claims: Receiver<Arc<Claim>>,
-    updates: UnboundedSender<Update>,
+    updates: mpsc::Sender<Update>,
 
     /// Maps HttpRoute ids to a list of their parent and backend refs,
     /// regardless of if those parents have accepted the route.
     http_route_refs: HashMap<NamespaceGroupKindName, HttpRoute>,
     servers: HashSet<ResourceId>,
     services: HashMap<ResourceId, Service>,
+
+    metrics: IndexMetrics,
+}
+
+pub struct IndexMetrics {
+    update_queue_size: Gauge,
 }
 
 #[derive(Clone, PartialEq)]
@@ -82,12 +86,25 @@ pub struct Update {
     pub patch: k8s::Patch<serde_json::Value>,
 }
 
+impl IndexMetrics {
+    pub fn register(prom: &mut Registry) -> Self {
+        let update_queue_size = Gauge::<i64>::default();
+        prom.register(
+            "update_queue_size",
+            "Size of the status update queue",
+            update_queue_size.clone(),
+        );
+
+        Self { update_queue_size }
+    }
+}
+
 impl Controller {
     pub fn new(
         claims: Receiver<Arc<Claim>>,
         client: k8s::Client,
         name: String,
-        updates: UnboundedReceiver<Update>,
+        updates: mpsc::Receiver<Update>,
     ) -> Self {
         Self {
             claims,
@@ -114,8 +131,14 @@ impl Controller {
                 biased;
                 res = self.claims.changed() => {
                     res.expect("Claims watch must not be dropped");
-                    tracing::debug!("Lease holder has changed");
                     let claim = self.claims.borrow_and_update();
+                    match (self.leader, claim.is_current_for(&self.name)) {
+                        (true, false) =>
+                            tracing::debug!("Lease holder has changed; no longer the leader"),
+                        (false, true) =>
+                            tracing::debug!("Lease holder has changed; now the leader"),
+                        _ => {}
+                    }
                     self.leader = claim.is_current_for(&self.name);
                 }
                 // If this policy controller is not the leader, it should
@@ -143,7 +166,8 @@ impl Index {
     pub fn shared(
         name: impl ToString,
         claims: Receiver<Arc<Claim>>,
-        updates: UnboundedSender<Update>,
+        updates: mpsc::Sender<Update>,
+        metrics: IndexMetrics,
     ) -> SharedIndex {
         Arc::new(RwLock::new(Self {
             name: name.to_string(),
@@ -152,6 +176,7 @@ impl Index {
             http_route_refs: HashMap::new(),
             servers: HashSet::new(),
             services: HashMap::new(),
+            metrics,
         }))
     }
 
@@ -181,6 +206,10 @@ impl Index {
             // only proceed if we are the current leader.
             let claims = claims.borrow_and_update();
             let index = index.read();
+
+            let queue_size = index.updates.max_capacity() - index.updates.capacity();
+            index.metrics.update_queue_size.set(queue_size as i64);
+
             if !claims.is_current_for(&index.name) {
                 continue;
             }
@@ -287,7 +316,7 @@ impl Index {
         &self,
         id: &NamespaceGroupKindName,
         route: &HttpRoute,
-    ) -> k8s::Patch<serde_json::Value> {
+    ) -> Option<k8s::Patch<serde_json::Value>> {
         // To preserve any statuses from other controllers, we copy those
         // statuses.
         let unowned_statuses = route
@@ -303,24 +332,30 @@ impl Index {
             .iter()
             .filter_map(|parent_ref| self.parent_status(parent_ref, backend_condition.clone()));
 
+        let all_statuses = unowned_statuses.chain(parent_statuses).collect::<Vec<_>>();
+        if eq_time_insensitive(&all_statuses, &route.statuses) {
+            return None;
+        }
+
         // Include both existing statuses from other controllers and the parent
         // statuses we have computed.
         let status = gateway::HttpRouteStatus {
             inner: gateway::RouteStatus {
-                parents: unowned_statuses.chain(parent_statuses).collect(),
+                parents: all_statuses,
             },
         };
-        make_patch(&id.gkn.name, status)
+        Some(make_patch(&id.gkn.name, status))
     }
 
     fn reconcile(&self) {
         for (id, route) in self.http_route_refs.iter() {
-            let patch = self.make_http_route_patch(id, route);
-            if let Err(error) = self.updates.send(Update {
-                id: id.clone(),
-                patch,
-            }) {
-                tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send HTTPRoute patch")
+            if let Some(patch) = self.make_http_route_patch(id, route) {
+                if let Err(error) = self.updates.try_send(Update {
+                    id: id.clone(),
+                    patch,
+                }) {
+                    tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send HTTPRoute patch")
+                }
             }
         }
     }
@@ -533,12 +568,13 @@ impl Index {
 
         // Create a patch for the HTTPRoute and send it to the Controller so
         // that it is applied.
-        let patch = self.make_http_route_patch(&id, &route);
-        if let Err(error) = self.updates.send(Update {
-            id: id.clone(),
-            patch,
-        }) {
-            tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send HTTPRoute patch")
+        if let Some(patch) = self.make_http_route_patch(&id, &route) {
+            if let Err(error) = self.updates.try_send(Update {
+                id: id.clone(),
+                patch,
+            }) {
+                tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send HTTPRoute patch")
+            }
         }
     }
 }
@@ -617,4 +653,25 @@ fn invalid_backend_kind() -> k8s::Condition {
         status: cond_statuses::STATUS_FALSE.to_string(),
         type_: conditions::RESOLVED_REFS.to_string(),
     }
+}
+
+fn eq_time_insensitive(
+    left: &[gateway::RouteParentStatus],
+    right: &[gateway::RouteParentStatus],
+) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+    left.iter().zip(right.iter()).all(|(l, r)| {
+        l.parent_ref == r.parent_ref
+            && l.controller_name == r.controller_name
+            && l.conditions.len() == r.conditions.len()
+            && l.conditions.iter().zip(r.conditions.iter()).all(|(l, r)| {
+                l.message == r.message
+                    && l.observed_generation == r.observed_generation
+                    && l.reason == r.reason
+                    && l.status == r.status
+                    && l.type_ == r.type_
+            })
+    })
 }
