@@ -132,12 +132,10 @@ impl Controller {
                 res = self.claims.changed() => {
                     res.expect("Claims watch must not be dropped");
                     let claim = self.claims.borrow_and_update();
-                    match (self.leader, claim.is_current_for(&self.name)) {
-                        (true, false) =>
-                            tracing::debug!("Lease holder has changed; no longer the leader"),
-                        (false, true) =>
-                            tracing::debug!("Lease holder has changed; now the leader"),
-                        _ => {}
+                    let was_leader = self.leader;
+                    self.leader = claim.is_current_for(&self.name);
+                    if was_leader != self.leader {
+                        tracing::debug!(leader = %self.leader, "Leadership changed");
                     }
                     self.leader = claim.is_current_for(&self.name);
                 }
@@ -186,7 +184,7 @@ impl Index {
     /// This reconciliation loop ensures that if errors occur when the
     /// Controller applies patches or the write lease holder changes, all
     /// HTTPRoutes have an up-to-date status.
-    pub async fn run(index: Arc<RwLock<Self>>) {
+    pub async fn run(index: Arc<RwLock<Self>>, reconciliation_period: Duration) {
         // Clone the claims watch out of the index. This will immediately
         // drop the read lock on the index so that it is not held for the
         // lifetime of this function.
@@ -198,7 +196,7 @@ impl Index {
                     res.expect("Claims watch must not be dropped");
                     tracing::debug!("Lease holder has changed");
                 }
-                _ = time::sleep(Duration::from_secs(10)) => {}
+                _ = time::sleep(reconciliation_period) => {}
             }
 
             // The claimant has changed, or we should attempt to reconcile all

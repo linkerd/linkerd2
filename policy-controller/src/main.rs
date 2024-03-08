@@ -28,6 +28,11 @@ const DETECT_TIMEOUT: Duration = Duration::from_secs(10);
 const LEASE_DURATION: Duration = Duration::from_secs(30);
 const LEASE_NAME: &str = "policy-controller-write";
 const RENEW_GRACE_PERIOD: Duration = Duration::from_secs(1);
+const RECONCILIATION_PERIOD: Duration = Duration::from_secs(10);
+// The maximum number of status patches to buffer. As a conservative estimate,
+// we assume that sending a patch will take at least 1ms, so we set the buffer
+// size to be the same as the reconciliation period in milliseconds.
+const STATUS_UPDATE_QUEUE_SIZE: usize = RECONCILIATION_PERIOD.as_millis() as usize;
 
 #[derive(Debug, Parser)]
 #[clap(name = "policy", about = "A policy resource prototype")]
@@ -164,7 +169,7 @@ async fn main() -> Result<()> {
 
     // Build the status index which will maintain information necessary for
     // updating the status field of policy resources.
-    let (updates_tx, updates_rx) = mpsc::channel(10000);
+    let (updates_tx, updates_rx) = mpsc::channel(STATUS_UPDATE_QUEUE_SIZE);
     let status_index =
         status::Index::shared(hostname.clone(), claims.clone(), updates_tx, status_metrics);
 
@@ -245,7 +250,10 @@ async fn main() -> Result<()> {
     );
 
     // Spawn the status Controller reconciliation.
-    tokio::spawn(status::Index::run(status_index.clone()).instrument(info_span!("status::Index")));
+    tokio::spawn(
+        status::Index::run(status_index.clone(), RECONCILIATION_PERIOD)
+            .instrument(info_span!("status::Index")),
+    );
 
     // Run the gRPC server, serving results by looking up against the index handle.
     tokio::spawn(grpc(
