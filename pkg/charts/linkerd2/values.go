@@ -33,6 +33,7 @@ type (
 		EnablePodAntiAffinity        bool                   `json:"enablePodAntiAffinity"`
 		NodeAffinity                 map[string]interface{} `json:"nodeAffinity"`
 		EnablePodDisruptionBudget    bool                   `json:"enablePodDisruptionBudget"`
+		Controller                   *Controller            `json:"controller"`
 		WebhookFailurePolicy         string                 `json:"webhookFailurePolicy"`
 		DeploymentStrategy           map[string]interface{} `json:"deploymentStrategy,omitempty"`
 		DisableHeartBeat             bool                   `json:"disableHeartBeat"`
@@ -81,6 +82,16 @@ type (
 		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
+	}
+
+	// Controller contains the fields to set the controller container
+	Controller struct {
+		PodDisruptionBudget *PodDisruptionBudget `json:"podDisruptionBudget"`
+	}
+
+	// PodDisruptionBudget contains the fields to set the PDB
+	PodDisruptionBudget struct {
+		MaxUnavailable int `json:"maxUnavailable"`
 	}
 
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration

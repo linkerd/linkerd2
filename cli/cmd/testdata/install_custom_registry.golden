@@ -496,6 +496,9 @@ data:
     cniEnabled: false
     controlPlaneTracing: false
     controlPlaneTracingNamespace: linkerd-jaeger
+    controller:
+      podDisruptionBudget:
+        maxUnavailable: 1
     controllerImage: my.custom.registry/linkerd-io/controller
     controllerLogFormat: plain
     controllerLogLevel: info
