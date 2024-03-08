@@ -137,7 +137,6 @@ impl Controller {
                     if was_leader != self.leader {
                         tracing::debug!(leader = %self.leader, "Leadership changed");
                     }
-                    self.leader = claim.is_current_for(&self.name);
                 }
                 // If this policy controller is not the leader, it should
                 // process through the updates queue but not actually patch
