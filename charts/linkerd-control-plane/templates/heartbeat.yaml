@@ -19,6 +19,7 @@ metadata:
     {{ include "partials.annotations.created-by" . }}
 spec:
   concurrencyPolicy: Replace
+  revisionHistoryLimit: {{.Values.revisionHistoryLimit}}
   {{ if .Values.heartbeatSchedule -}}
   schedule: "{{.Values.heartbeatSchedule}}"
   {{ else -}}
