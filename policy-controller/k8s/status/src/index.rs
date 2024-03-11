@@ -11,7 +11,6 @@ use kubert::lease::Claim;
 use linkerd_policy_controller_core::{http_route::GroupKindName, POLICY_CONTROLLER_NAME};
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
 use parking_lot::RwLock;
-use prometheus_client::{metrics::gauge::Gauge, registry::Registry};
 use std::{collections::hash_map::Entry, sync::Arc};
 use tokio::{
     sync::{mpsc, watch::Receiver},
@@ -65,12 +64,6 @@ pub struct Index {
     http_route_refs: HashMap<NamespaceGroupKindName, HttpRoute>,
     servers: HashSet<ResourceId>,
     services: HashMap<ResourceId, Service>,
-
-    metrics: IndexMetrics,
-}
-
-pub struct IndexMetrics {
-    update_queue_size: Gauge,
 }
 
 #[derive(Clone, PartialEq)]
@@ -84,19 +77,6 @@ struct HttpRoute {
 pub struct Update {
     pub id: NamespaceGroupKindName,
     pub patch: k8s::Patch<serde_json::Value>,
-}
-
-impl IndexMetrics {
-    pub fn register(prom: &mut Registry) -> Self {
-        let update_queue_size = Gauge::<i64>::default();
-        prom.register(
-            "update_queue_size",
-            "Size of the status update queue",
-            update_queue_size.clone(),
-        );
-
-        Self { update_queue_size }
-    }
 }
 
 impl Controller {
@@ -164,7 +144,6 @@ impl Index {
         name: impl ToString,
         claims: Receiver<Arc<Claim>>,
         updates: mpsc::Sender<Update>,
-        metrics: IndexMetrics,
     ) -> SharedIndex {
         Arc::new(RwLock::new(Self {
             name: name.to_string(),
@@ -173,7 +152,6 @@ impl Index {
             http_route_refs: HashMap::new(),
             servers: HashSet::new(),
             services: HashMap::new(),
-            metrics,
         }))
     }
 
@@ -203,9 +181,6 @@ impl Index {
             // only proceed if we are the current leader.
             let claims = claims.borrow_and_update();
             let index = index.read();
-
-            let queue_size = index.updates.max_capacity() - index.updates.capacity();
-            index.metrics.update_queue_size.set(queue_size as i64);
 
             if !claims.is_current_for(&index.name) {
                 continue;

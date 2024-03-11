@@ -6,4 +6,4 @@ mod service;
 #[cfg(test)]
 mod tests;
 
-pub use self::index::{Controller, Index, IndexMetrics};
+pub use self::index::{Controller, Index};

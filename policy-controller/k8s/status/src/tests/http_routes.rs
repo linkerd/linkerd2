@@ -1,7 +1,7 @@
 use crate::{
     index::{self, POLICY_API_GROUP},
     resource_id::NamespaceGroupKindName,
-    Index, IndexMetrics,
+    Index,
 };
 use k8s::Resource;
 use kubert::index::IndexNamespacedResource;
@@ -19,12 +19,7 @@ fn http_route_accepted_after_server_create() {
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
-    let index = Index::shared(
-        hostname,
-        claims_rx,
-        updates_tx,
-        IndexMetrics::register(&mut Default::default()),
-    );
+    let index = Index::shared(hostname, claims_rx, updates_tx);
 
     // Apply the route.
     let http_route = make_route("ns-0", "route-foo", "srv-8080");
@@ -91,12 +86,7 @@ fn http_route_rejected_after_server_delete() {
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
     let (updates_tx, mut updates_rx) = mpsc::channel(10000);
-    let index = Index::shared(
-        hostname,
-        claims_rx,
-        updates_tx,
-        IndexMetrics::register(&mut Default::default()),
-    );
+    let index = Index::shared(hostname, claims_rx, updates_tx);
 
     let server = make_server(
         "ns-0",

@@ -121,13 +121,9 @@ async fn main() -> Result<()> {
         Some(server)
     };
 
-    let mut prom = <Registry>::default();
-    let status_metrics =
-        status::IndexMetrics::register(prom.sub_registry_with_prefix("resource_status"));
-
     let mut runtime = kubert::Runtime::builder()
         .with_log(log_level, log_format)
-        .with_admin(admin.into_builder().with_prometheus(prom))
+        .with_admin(admin.into_builder().with_prometheus(<Registry>::default()))
         .with_client(client)
         .with_optional_server(server)
         .build()
@@ -170,8 +166,7 @@ async fn main() -> Result<()> {
     // Build the status index which will maintain information necessary for
     // updating the status field of policy resources.
     let (updates_tx, updates_rx) = mpsc::channel(STATUS_UPDATE_QUEUE_SIZE);
-    let status_index =
-        status::Index::shared(hostname.clone(), claims.clone(), updates_tx, status_metrics);
+    let status_index = status::Index::shared(hostname.clone(), claims.clone(), updates_tx);
 
     // Spawn resource watches.
 
