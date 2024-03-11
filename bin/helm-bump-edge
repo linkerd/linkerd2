@@ -1,34 +1,49 @@
 #!/usr/bin/env bash
 
-# This script bumps the patch version of all charts whose versions end in -edge.
-# The BUMP_CRDS and BUMP_CNI variables can be set to also bump those versions.
+# This script bumps the patch version of all charts
 
 set -euo pipefail
 shopt -s globstar
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
-# Iterate through charts/*/Chart.yaml and bump the patch version of the
-# `version` field. E.g. 1.18.2-edge becomes 1.18.3-edge.
+# shellcheck source=_tag.sh
+. "$bindir"/_tag.sh
+tag=$(named_tag)
+
+edge_tag_regex="edge-([0-9][0-9])\.([0-9]|[0-9][0-9])\.([0-9]+)"
+
+# Get the current edge version.
+url=https://run.linkerd.io/install-edge
+current_edge=$("$bindir"/scurl $url | awk -v tag_format="$edge_tag_regex" '$0 ~ tag_format')
+
+current_mm=$(echo "$current_edge" | sed -n -E "s/.*$edge_tag_regex}$/\2/p")
+current_xx=$(echo "$current_edge" | sed -n -E "s/.*$edge_tag_regex}$/\3/p")
+yy=$(date +"%y")
+yyyy=$(date +"%Y")
+new_mm=$(date +"%-m")
+
+# If this is a new month, `new_xx` should be 1; otherwise increment it.
+if [[ "$new_mm" != "$current_mm" ]]; then
+    new_xx=1
+else
+    new_xx=$((current_xx+1))
+fi
+
+expected_tag="edge-$yy.$new_mm.$new_xx"
+
+if [[ "$tag" != "$expected_tag" ]]; then
+    echo "Tag ($tag) doesn't match computed edge version ($expected_tag)"
+    exit 1
+fi
+
+new_version="$yyyy.$new_mm.$new_xx"
+
 for chart in **/Chart.yaml; do
-    # Skip the linkerd-crds chart unless BUMP_CRDS is set.
-    if [[ "$chart" =~ "linkerd-crds" ]] && [[ -z "${BUMP_CRDS:-}" ]]; then
-        continue
-    fi
-    if [[ "$chart" =~ "linkerd2-cni" ]] && [[ -z "${BUMP_CNI:-}" ]]; then
+    if [[ "$chart" =~ "partials" || "$chart" =~ "patch" || "$chart" =~ "multicluster-link" ]]; then
         continue
     fi
 
-    version=$(yq eval .version <"$chart")
-    if [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)-edge$ ]]; then
-        major="${BASH_REMATCH[1]}"
-        minor="${BASH_REMATCH[2]}"
-        patch="${BASH_REMATCH[3]}"
-        new_version="$major.$minor.$((patch + 1))-edge"
-        echo "Bumping $chart from $version to $new_version"
-        # Replace version line with new version
-        yq -i ".version = \"$new_version\"" "$chart"
-    fi
+    echo "Bumping $chart to $new_version"
+    yq -i ".version = \"$new_version\"" "$chart"
 done
-
-"$bindir"/helm-docs

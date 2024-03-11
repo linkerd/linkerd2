@@ -11,7 +11,8 @@ kubeVersion: ">=1.22.0-0"
 name: "linkerd-viz"
 sources:
   - https://github.com/linkerd/linkerd2/
-version: 30.14.11-edge
+# this version will be updated by the CI before publishing the Helm tarball
+version: 0.0.0-undefined
 icon: https://linkerd.io/images/logo-only-200h.png
 maintainers:
   - name: Linkerd authors

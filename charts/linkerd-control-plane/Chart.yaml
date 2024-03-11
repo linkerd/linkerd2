@@ -16,7 +16,8 @@ dependencies:
   - name: partials
     version: 0.1.0
     repository: file://../partials
-version: 1.18.11-edge
+# this version will be updated by the CI before publishing the Helm tarball
+version: 0.0.0-undefined
 icon: https://linkerd.io/images/logo-only-200h.png
 maintainers:
   - name: Linkerd authors

@@ -133,7 +133,7 @@ jobs:
         with:
           go-version: '1.22'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: actions/download-artifact@87c55149d96e628cc2ef7e6fc2aab372015aec85
+      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
           pattern: image-archives-*
           path: image-archives
@@ -155,7 +155,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: tj-actions/changed-files@3f54ebb830831fc121d3263c1857cfbdc310cdb9
+      - uses: tj-actions/changed-files@d516645658aa4705b46600cdbf9e6d54f56b973f
         id: changed
         with:
           files: |
@@ -181,12 +181,12 @@ jobs:
           - v1.22
           - v1.29
     steps:
-      - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: olix0r/cargo-action-fmt/setup@9269f3aa1ff01775d95efc97037e2cbdb41d9684
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: actions/download-artifact@87c55149d96e628cc2ef7e6fc2aab372015aec85
+      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
           patter: image-archives-*
           path: image-archives
@@ -275,7 +275,7 @@ jobs:
         with:
           go-version: '1.22'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: actions/download-artifact@87c55149d96e628cc2ef7e6fc2aab372015aec85
+      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
           pattern: image-archives-*
           path: image-archives
@@ -296,7 +296,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: tj-actions/changed-files@3f54ebb830831fc121d3263c1857cfbdc310cdb9
+      - uses: tj-actions/changed-files@d516645658aa4705b46600cdbf9e6d54f56b973f
         id: changed
         with:
           files: |
@@ -318,7 +318,7 @@ jobs:
         with:
           go-version: '1.22'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: actions/download-artifact@87c55149d96e628cc2ef7e6fc2aab372015aec85
+      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
           pattern: image-archives-*
           path: image-archives
@@ -340,7 +340,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: tj-actions/changed-files@3f54ebb830831fc121d3263c1857cfbdc310cdb9
+      - uses: tj-actions/changed-files@d516645658aa4705b46600cdbf9e6d54f56b973f
         id: changed
         with:
           files: |
@@ -363,14 +363,14 @@ jobs:
           - v1.22
           - v1.29
     steps:
-      - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: '1.22'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: actions/download-artifact@87c55149d96e628cc2ef7e6fc2aab372015aec85
+      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
           pattern: image-archives-*
           path: image-archives
