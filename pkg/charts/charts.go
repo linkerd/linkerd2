@@ -25,6 +25,7 @@ var (
 		"charts/partials/templates/_affinity.tpl",
 		"charts/partials/templates/_capabilities.tpl",
 		"charts/partials/templates/_debug.tpl",
+		"charts/partials/templates/_default-resources.tpl",
 		"charts/partials/templates/_helpers.tpl",
 		"charts/partials/templates/_metadata.tpl",
 		"charts/partials/templates/_nodeselector.tpl",
@@ -133,6 +134,7 @@ func (c *Chart) Render() (bytes.Buffer, error) {
 func (c *Chart) RenderCNI() (bytes.Buffer, error) {
 	cniPartials := []*loader.BufferedFile{
 		{Name: "charts/partials/" + chartutil.ChartfileName},
+		{Name: "charts/partials/templates/_default-resources.tpl"},
 		{Name: "charts/partials/templates/_helpers.tpl"},
 		{Name: "charts/partials/templates/_metadata.tpl"},
 		{Name: "charts/partials/templates/_pull-secrets.tpl"},
