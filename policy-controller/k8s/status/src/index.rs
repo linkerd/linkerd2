@@ -118,19 +118,22 @@ impl Controller {
                         tracing::debug!(leader = %self.leader, "Leadership changed");
                     }
                 }
-                // If this policy controller is not the leader, it should
-                // process through the updates queue but not actually patch
-                // any resources.
-                Some(Update { id, patch}) = self.updates.recv(), if self.leader => {
-                    if id.gkn.group == k8s::policy::HttpRoute::group(&()) {
-                        let api = k8s::Api::<k8s::policy::HttpRoute>::namespaced(self.client.clone(), &id.namespace);
-                        if let Err(error) = api.patch_status(&id.gkn.name, &patch_params, &patch).await {
-                            tracing::error!(namespace = %id.namespace, route = ?id.gkn, %error, "Failed to patch HTTPRoute");
-                        }
-                    } else if id.gkn.group == k8s_gateway_api::HttpRoute::group(&()) {
-                        let api = k8s::Api::<k8s_gateway_api::HttpRoute>::namespaced(self.client.clone(), &id.namespace);
-                        if let Err(error) = api.patch_status(&id.gkn.name, &patch_params, &patch).await {
-                            tracing::error!(namespace = %id.namespace, route = ?id.gkn, %error, "Failed to patch HTTPRoute");
+
+                Some(Update { id, patch}) = self.updates.recv() => {
+                    // If this policy controller is not the leader, it should
+                    // process through the updates queue but not actually patch
+                    // any resources.
+                    if self.leader {
+                        if id.gkn.group == k8s::policy::HttpRoute::group(&()) {
+                            let api = k8s::Api::<k8s::policy::HttpRoute>::namespaced(self.client.clone(), &id.namespace);
+                            if let Err(error) = api.patch_status(&id.gkn.name, &patch_params, &patch).await {
+                                tracing::error!(namespace = %id.namespace, route = ?id.gkn, %error, "Failed to patch HTTPRoute");
+                            }
+                        } else if id.gkn.group == k8s_gateway_api::HttpRoute::group(&()) {
+                            let api = k8s::Api::<k8s_gateway_api::HttpRoute>::namespaced(self.client.clone(), &id.namespace);
+                            if let Err(error) = api.patch_status(&id.gkn.name, &patch_params, &patch).await {
+                                tracing::error!(namespace = %id.namespace, route = ?id.gkn, %error, "Failed to patch HTTPRoute");
+                            }
                         }
                     }
                 }
