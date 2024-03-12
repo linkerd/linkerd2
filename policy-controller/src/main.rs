@@ -121,9 +121,13 @@ async fn main() -> Result<()> {
         Some(server)
     };
 
+    let mut prom = <Registry>::default();
+    let status_metrics =
+        status::ControllerMetrics::register(prom.sub_registry_with_prefix("resource_status"));
+
     let mut runtime = kubert::Runtime::builder()
         .with_log(log_level, log_format)
-        .with_admin(admin.into_builder().with_prometheus(<Registry>::default()))
+        .with_admin(admin.into_builder().with_prometheus(prom))
         .with_client(client)
         .with_optional_server(server)
         .build()
@@ -261,7 +265,8 @@ async fn main() -> Result<()> {
     ));
 
     let client = runtime.client();
-    let status_controller = status::Controller::new(claims, client, hostname, updates_rx);
+    let status_controller =
+        status::Controller::new(claims, client, hostname, updates_rx, status_metrics);
     tokio::spawn(
         status_controller
             .run()

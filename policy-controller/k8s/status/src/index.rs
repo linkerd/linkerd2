@@ -7,10 +7,15 @@ use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use chrono::offset::Utc;
 use chrono::DateTime;
 use k8s::Resource;
-use kubert::lease::Claim;
+use kubert::{client::core::NamespaceResourceScope, lease::Claim};
 use linkerd_policy_controller_core::{http_route::GroupKindName, POLICY_CONTROLLER_NAME};
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
 use parking_lot::RwLock;
+use prometheus_client::{
+    metrics::{counter::Counter, histogram::Histogram},
+    registry::Registry,
+};
+use serde::de::DeserializeOwned;
 use std::{collections::hash_map::Entry, sync::Arc};
 use tokio::{
     sync::{mpsc, watch::Receiver},
@@ -19,6 +24,7 @@ use tokio::{
 
 pub(crate) const POLICY_API_GROUP: &str = "policy.linkerd.io";
 const POLICY_API_VERSION: &str = "policy.linkerd.io/v1alpha1";
+const PATCH_TIMEOUT: Duration = Duration::from_secs(5);
 
 mod conditions {
     pub const RESOLVED_REFS: &str = "ResolvedRefs";
@@ -47,6 +53,15 @@ pub struct Controller {
 
     /// True if this policy controller is the leader — false otherwise.
     leader: bool,
+
+    metrics: ControllerMetrics,
+}
+
+pub struct ControllerMetrics {
+    patch_succeeded: Counter,
+    patch_failed: Counter,
+    patch_timeout: Counter,
+    patch_duration: Histogram,
 }
 
 pub struct Index {
@@ -79,12 +94,53 @@ pub struct Update {
     pub patch: k8s::Patch<serde_json::Value>,
 }
 
+impl ControllerMetrics {
+    pub fn register(prom: &mut Registry) -> Self {
+        let patch_succeeded = Counter::default();
+        prom.register(
+            "patch_succeeded_total",
+            "Counter patches successfully applied to HTTPRoutes",
+            patch_succeeded.clone(),
+        );
+
+        let patch_failed = Counter::default();
+        prom.register(
+            "patch_failed_total",
+            "Counter patches that fail to apply to HTTPRoutes",
+            patch_failed.clone(),
+        );
+
+        let patch_timeout = Counter::default();
+        prom.register(
+            "patch_timeout_total",
+            "Counter patches that time out when applying to HTTPRoutes",
+            patch_timeout.clone(),
+        );
+
+        let patch_duration =
+            Histogram::new([0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0].into_iter());
+        prom.register(
+            "patch_duration_seconds",
+            "Histogram of time taken to apply patches to HTTPRoutes",
+            patch_duration.clone(),
+        );
+
+        Self {
+            patch_succeeded,
+            patch_failed,
+            patch_timeout,
+            patch_duration,
+        }
+    }
+}
+
 impl Controller {
     pub fn new(
         claims: Receiver<Arc<Claim>>,
         client: k8s::Client,
         name: String,
         updates: mpsc::Receiver<Update>,
+        metrics: ControllerMetrics,
     ) -> Self {
         Self {
             claims,
@@ -92,6 +148,7 @@ impl Controller {
             name,
             updates,
             leader: false,
+            metrics,
         }
     }
 
@@ -99,8 +156,6 @@ impl Controller {
     /// should be applied to update the status of an HTTPRoute. A patch should
     /// only be applied if we are the holder of the write lease.
     pub async fn run(mut self) {
-        let patch_params = k8s::PatchParams::apply(POLICY_API_GROUP);
-
         // Select between the write lease claim changing and receiving updates
         // from the index. If the lease claim changes, then check if we are
         // now the leader. If so, we should apply the patches received;
@@ -125,18 +180,46 @@ impl Controller {
                     // any resources.
                     if self.leader {
                         if id.gkn.group == k8s::policy::HttpRoute::group(&()) {
-                            let api = k8s::Api::<k8s::policy::HttpRoute>::namespaced(self.client.clone(), &id.namespace);
-                            if let Err(error) = api.patch_status(&id.gkn.name, &patch_params, &patch).await {
-                                tracing::error!(namespace = %id.namespace, route = ?id.gkn, %error, "Failed to patch HTTPRoute");
-                            }
+                            self.patch_status::<k8s::policy::HttpRoute>(&id.gkn.name, &id.namespace, patch).await;
                         } else if id.gkn.group == k8s_gateway_api::HttpRoute::group(&()) {
-                            let api = k8s::Api::<k8s_gateway_api::HttpRoute>::namespaced(self.client.clone(), &id.namespace);
-                            if let Err(error) = api.patch_status(&id.gkn.name, &patch_params, &patch).await {
-                                tracing::error!(namespace = %id.namespace, route = ?id.gkn, %error, "Failed to patch HTTPRoute");
-                            }
+                            self.patch_status::<k8s_gateway_api::HttpRoute>(&id.gkn.name, &id.namespace, patch).await;
                         }
                     }
                 }
+            }
+        }
+    }
+
+    async fn patch_status<K>(
+        &self,
+        name: &str,
+        namespace: &str,
+        patch: k8s::Patch<serde_json::Value>,
+    ) where
+        K: Resource<Scope = NamespaceResourceScope>,
+        <K as Resource>::DynamicType: Default,
+        K: DeserializeOwned,
+    {
+        let patch_params = k8s::PatchParams::apply(POLICY_API_GROUP);
+        let api = k8s::Api::<K>::namespaced(self.client.clone(), namespace);
+        let start = time::Instant::now();
+        match time::timeout(PATCH_TIMEOUT, api.patch_status(name, &patch_params, &patch)).await {
+            Ok(Ok(_)) => {
+                self.metrics.patch_succeeded.inc();
+                self.metrics
+                    .patch_duration
+                    .observe(start.elapsed().as_secs_f64());
+            }
+            Ok(Err(error)) => {
+                self.metrics.patch_failed.inc();
+                self.metrics
+                    .patch_duration
+                    .observe(start.elapsed().as_secs_f64());
+                tracing::error!(%namespace, %name, %error, "failed to patch HTTPRoute");
+            }
+            Err(_) => {
+                self.metrics.patch_timeout.inc();
+                tracing::error!(%namespace, %name, "timed out patching HTTPRoute");
             }
         }
     }

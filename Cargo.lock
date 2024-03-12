@@ -1290,6 +1290,7 @@ dependencies = [
  "linkerd-policy-controller-k8s-api",
  "parking_lot",
  "prometheus-client",
+ "serde",
  "serde_json",
  "thiserror",
  "tokio",
