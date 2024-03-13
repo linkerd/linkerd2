@@ -6,8 +6,8 @@ use crate::{
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use chrono::offset::Utc;
 use chrono::DateTime;
-use k8s::Resource;
-use kubert::{client::core::NamespaceResourceScope, lease::Claim};
+use k8s::{NamespaceResourceScope, Resource};
+use kubert::lease::Claim;
 use linkerd_policy_controller_core::{http_route::GroupKindName, POLICY_CONTROLLER_NAME};
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
 use parking_lot::RwLock;
