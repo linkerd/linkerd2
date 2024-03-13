@@ -74,7 +74,11 @@ func Inject(linkerdNamespace string) webhook.Handler {
 		if ownerRef := resourceConfig.GetOwnerRef(); ownerRef != nil {
 			res, err := k8s.GetAPIResource(ownerRef.Kind)
 			if err != nil {
-				log.Warningf("skipping event for parent %s: %s", ownerRef.Kind, err)
+				if strings.Contains(err.Error(), "unimplemented resource type") {
+					log.Debugf("skipping event for parent %s: %s", ownerRef.Kind, err)
+				} else {
+					log.Warningf("skipping event for parent %s: %s", ownerRef.Kind, err)
+				}
 			} else {
 				objs, err := api.GetByNamespaceFiltered(res, request.Namespace, ownerRef.Name, labels.Everything())
 				if err != nil {
