@@ -526,6 +526,7 @@ data:
         limit: 250Mi
         request: 50Mi
     disableHeartBeat: false
+    disableIPv6: false
     enableEndpointSlices: true
     enableH2Upgrade: true
     enablePodAntiAffinity: true

@@ -507,6 +507,7 @@ data:
     destinationProxyResources: null
     destinationResources: null
     disableHeartBeat: false
+    disableIPv6: false
     enableEndpointSlices: false
     enableH2Upgrade: true
     enablePodAntiAffinity: false

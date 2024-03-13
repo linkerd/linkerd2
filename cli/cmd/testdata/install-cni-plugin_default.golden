@@ -53,6 +53,7 @@ data:
   dest_cni_bin_dir: "/opt/cni/bin"
   # The CNI network configuration to install on each node. The special
   # values in this config will be automatically populated.
+  # iptables-mode and ipv6 flags are only considered as of linkerd-cni v1.4.0
   cni_network_config: |-
     {
       "name": "linkerd-cni",
@@ -73,7 +74,9 @@ data:
         "ports-to-redirect": [],
         "inbound-ports-to-ignore": ["4191","4190"],
         "simulate": false,
-        "use-wait-flag": false
+        "use-wait-flag": false,
+        "iptables-mode": "legacy",
+        "ipv6": true
       }
     }
 ---
