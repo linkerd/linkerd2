@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 )
 
 // Version is updated automatically as part of the build process, and is the
@@ -45,8 +46,6 @@ func match(expectedVersion, actualVersion string) error {
 		return errors.New("expected version is empty")
 	} else if actualVersion == "" {
 		return errors.New("actual version is empty")
-	} else if actualVersion == expectedVersion {
-		return nil
 	}
 
 	actual, err := parseChannelVersion(actualVersion)
@@ -63,6 +62,10 @@ func match(expectedVersion, actualVersion string) error {
 			actual, expected)
 	}
 
-	return fmt.Errorf("is running version %s but the latest %s version is %s",
-		actual.version, actual.channel, expected.version)
+	if actual.version != expected.version {
+		return fmt.Errorf("is running version %s but the latest %s version is %s",
+			actual.version, strings.Replace(actual.channel, hotpatchSuffix, " hotpatch", 1), expected.version)
+	}
+
+	return nil
 }
