@@ -173,7 +173,12 @@ pub async fn await_route_status(
 // Wait for the endpoints controller to populate the Endpoints resource.
 pub fn endpoints_ready(obj: Option<&k8s::Endpoints>) -> bool {
     if let Some(ep) = obj {
-        return ep.subsets.iter().flatten().count() > 0;
+        return ep
+            .subsets
+            .iter()
+            .flatten()
+            .flat_map(|s| &s.addresses)
+            .any(|a| !a.is_empty());
     }
     false
 }

@@ -19,22 +19,22 @@ limitations under the License.
 package fake
 
 import (
-	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/externalworkload/v1alpha1"
+	v1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/externalworkload/v1beta1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
 
-type FakeExternalworkloadV1alpha1 struct {
+type FakeExternalworkloadV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeExternalworkloadV1alpha1) ExternalWorkloads(namespace string) v1alpha1.ExternalWorkloadInterface {
+func (c *FakeExternalworkloadV1beta1) ExternalWorkloads(namespace string) v1beta1.ExternalWorkloadInterface {
 	return &FakeExternalWorkloads{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeExternalworkloadV1alpha1) RESTClient() rest.Interface {
+func (c *FakeExternalworkloadV1beta1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

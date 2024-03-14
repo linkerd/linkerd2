@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sort"
 
-	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
+	ewv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -70,7 +70,7 @@ func newEndpointsReconciler(k8sAPI *k8s.API, controllerName string, maxEndpoints
 // * Determine what address types the service supports
 // * For each address type, it will determine which slices to process (an
 // EndpointSlice is specialised and supports only one type)
-func (r *endpointsReconciler) reconcile(svc *corev1.Service, ews []*ewv1alpha1.ExternalWorkload, existingSlices []*discoveryv1.EndpointSlice) error {
+func (r *endpointsReconciler) reconcile(svc *corev1.Service, ews []*ewv1beta1.ExternalWorkload, existingSlices []*discoveryv1.EndpointSlice) error {
 	toDelete := []*discoveryv1.EndpointSlice{}
 	slicesByAddrType := make(map[discoveryv1.AddressType][]*discoveryv1.EndpointSlice)
 	errs := []error{}
@@ -119,7 +119,7 @@ func (r *endpointsReconciler) reconcile(svc *corev1.Service, ews []*ewv1alpha1.E
 // reconcileIPv4Endpoints operates on a set of external workloads, their
 // service, and any endpointslices that have been created by the controller. It
 // will compute the diff that needs to be written to the API Server.
-func (r *endpointsReconciler) reconcileByAddressType(svc *corev1.Service, extWorkloads []*ewv1alpha1.ExternalWorkload, existingSlices []*discoveryv1.EndpointSlice, addrType discoveryv1.AddressType) error {
+func (r *endpointsReconciler) reconcileByAddressType(svc *corev1.Service, extWorkloads []*ewv1beta1.ExternalWorkload, existingSlices []*discoveryv1.EndpointSlice, addrType discoveryv1.AddressType) error {
 	slicesToCreate := []*discoveryv1.EndpointSlice{}
 	slicesToUpdate := []*discoveryv1.EndpointSlice{}
 	slicesToDelete := []*discoveryv1.EndpointSlice{}
@@ -433,7 +433,7 @@ func newEndpointSlice(svc *corev1.Service, meta *endpointMeta, controllerName st
 	ownerRef := metav1.NewControllerRef(svc, schema.GroupVersionKind{Version: "v1", Kind: "Service"})
 	slice := &discoveryv1.EndpointSlice{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName:    fmt.Sprintf("linkerd-external-%s", svc.Name),
+			GenerateName:    fmt.Sprintf("linkerd-external-%s-", svc.Name),
 			Namespace:       svc.Namespace,
 			Labels:          map[string]string{},
 			OwnerReferences: []metav1.OwnerReference{*ownerRef},
@@ -535,7 +535,7 @@ func setEndpointSliceLabels(es *discoveryv1.EndpointSlice, service *corev1.Servi
 	return svcLabels, updated
 }
 
-func externalWorkloadToEndpoint(addrType discoveryv1.AddressType, ew *ewv1alpha1.ExternalWorkload, svc *corev1.Service) discoveryv1.Endpoint {
+func externalWorkloadToEndpoint(addrType discoveryv1.AddressType, ew *ewv1beta1.ExternalWorkload, svc *corev1.Service) discoveryv1.Endpoint {
 	// Note: an ExternalWorkload does not have the same lifecycle as a pod; we
 	// do not mark a workload as "Terminating". Because of that, our code is
 	// simpler than the upstream and we never have to consider:
@@ -601,7 +601,7 @@ func ownedBy(slice *discoveryv1.EndpointSlice, svc *corev1.Service) bool {
 
 // findEndpointPorts is a utility function that will return a list of ports
 // that are documented on an external workload and selected by a service
-func (r *endpointsReconciler) findEndpointPorts(svc *corev1.Service, ew *ewv1alpha1.ExternalWorkload) []discoveryv1.EndpointPort {
+func (r *endpointsReconciler) findEndpointPorts(svc *corev1.Service, ew *ewv1beta1.ExternalWorkload) []discoveryv1.EndpointPort {
 	epPorts := []discoveryv1.EndpointPort{}
 	// If we are dealing with a headless service, upstream implementation allows
 	// the service not to have any ports
@@ -640,7 +640,7 @@ func (r *endpointsReconciler) findEndpointPorts(svc *corev1.Service, ew *ewv1alp
 // by the service.
 //
 // adapted from copied from k8s.io/kubernetes/pkg/api/v1/pod
-func findWorkloadPort(ew *ewv1alpha1.ExternalWorkload, svcPort *corev1.ServicePort) (int32, error) {
+func findWorkloadPort(ew *ewv1beta1.ExternalWorkload, svcPort *corev1.ServicePort) (int32, error) {
 	targetPort := svcPort.TargetPort
 	switch targetPort.Type {
 	case intstr.String:

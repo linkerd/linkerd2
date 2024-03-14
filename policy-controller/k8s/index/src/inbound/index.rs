@@ -397,6 +397,7 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
             // watches will complete.  No other parts of the index need to be
             // updated.
             if ns.get_mut().pods.by_name.remove(&name).is_some() && ns.get().is_empty() {
+                tracing::debug!(namespace = ns.key(), "Removing empty namespace index");
                 ns.remove();
             }
         }
@@ -622,6 +623,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> fo
 
     fn delete(&mut self, ns: String, ap: String) {
         let _span = info_span!("delete", %ns, %ap).entered();
+        tracing::trace!(name = %ap, "Delete");
         self.ns_with_reindex(ns, |ns| {
             ns.policy.authorization_policies.remove(&ap).is_some()
         })
@@ -634,6 +636,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> fo
     ) {
         let _span = info_span!("reset");
 
+        tracing::trace!(?deleted, ?policies, "Reset");
         // Aggregate all of the updates by namespace so that we only reindex
         // once per namespace.
         type Ns = NsUpdate<String, authorization_policy::Spec>;
@@ -902,6 +905,7 @@ impl NamespaceIndex {
         if let Entry::Occupied(mut ns) = self.by_ns.entry(namespace) {
             if f(ns.get_mut()) {
                 if ns.get().is_empty() {
+                    tracing::debug!(namespace = ns.key(), "Removing empty namespace index");
                     ns.remove();
                 } else {
                     ns.get_mut().reindex(authns);
@@ -1454,7 +1458,10 @@ impl ExternalWorkload {
 impl PolicyIndex {
     #[inline]
     fn is_empty(&self) -> bool {
-        self.servers.is_empty() && self.server_authorizations.is_empty()
+        self.servers.is_empty()
+            && self.server_authorizations.is_empty()
+            && self.authorization_policies.is_empty()
+            && self.http_routes.is_empty()
     }
 
     fn update_server(&mut self, name: String, server: server::Server) -> bool {

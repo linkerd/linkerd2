@@ -115,7 +115,7 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
-  maxUnavailable: 1
+  maxUnavailable: {{ .Values.controller.podDisruptionBudget.maxUnavailable }}
   selector:
     matchLabels:
       linkerd.io/control-plane-component: destination
@@ -205,12 +205,20 @@ spec:
         - -identity-trust-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
         - -default-opaque-ports={{.Values.proxy.opaquePorts}}
         - -enable-pprof={{.Values.enablePprof | default false}}
+        {{- range (.Values.destinationController).additionalArgs }}
+        - {{ . }}
+        {{- end }}
         {{- range (.Values.destinationController).experimentalArgs }}
         - {{ . }}
         {{- end }}
-        {{- with (.Values.destinationController).experimentalEnv }}
+        {{- if or (.Values.destinationController).additionalEnv (.Values.destinationController).experimentalEnv }}
         env:
+        {{- with (.Values.destinationController).additionalEnv }}
         {{- toYaml . | nindent 8 -}}
+        {{- end }}
+        {{- with (.Values.destinationController).experimentalEnv }}
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}
         {{- end }}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion | default .Values.linkerdVersion}}
@@ -249,9 +257,14 @@ spec:
         - -log-level={{.Values.controllerLogLevel}}
         - -log-format={{.Values.controllerLogFormat}}
         - -enable-pprof={{.Values.enablePprof | default false}}
-        {{- with (.Values.spValidator).experimentalEnv }}
+        {{- if or (.Values.spValidator).additionalEnv (.Values.spValidator).experimentalEnv }}
         env:
+        {{- with (.Values.spValidator).additionalEnv }}
         {{- toYaml . | nindent 8 -}}
+        {{- end }}
+        {{- with (.Values.spValidator).experimentalEnv }}
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}
         {{- end }}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.imagePullPolicy}}
@@ -305,6 +318,9 @@ spec:
         {{- if .Values.policyController.probeNetworks }}
         - --probe-networks={{.Values.policyController.probeNetworks | join ","}}
         {{- end}}
+        {{- range .Values.policyController.additionalArgs }}
+        - {{ . }}
+        {{- end }}
         {{- range .Values.policyController.experimentalArgs }}
         - {{ . }}
         {{- end }}

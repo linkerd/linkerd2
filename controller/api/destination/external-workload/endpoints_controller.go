@@ -3,11 +3,11 @@ package externalworkload
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
+	ewv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -20,6 +20,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/util/workqueue"
 	endpointslicerec "k8s.io/endpointslice"
+	epsliceutil "k8s.io/endpointslice/util"
 )
 
 const (
@@ -27,6 +28,7 @@ const (
 	leaseName = "linkerd-destination-endpoint-write"
 
 	// Duration of the lease
+	// Core controllers (kube-controller-manager) has a duration of 15 seconds
 	leaseDuration = 30 * time.Second
 
 	// Deadline for the leader to refresh its lease. Core controllers have a
@@ -57,10 +59,25 @@ type EndpointsController struct {
 	queue      workqueue.RateLimitingInterface
 	reconciler *endpointsReconciler
 	stop       chan struct{}
-	isLeader   atomic.Bool
 
 	lec leaderelection.LeaderElectionConfig
-	sync.RWMutex
+	informerHandlers
+	dropsMetric workqueue.CounterMetric
+}
+
+// informerHandlers holds handles to callbacks that have been registered with
+// the API Server client's informers.
+//
+// These callbacks will be registered when a controller is elected as leader,
+// and de-registered when the lease is lost.
+type informerHandlers struct {
+	ewHandle  cache.ResourceEventHandlerRegistration
+	esHandle  cache.ResourceEventHandlerRegistration
+	svcHandle cache.ResourceEventHandlerRegistration
+
+	// Mutex to guard handler registration since the elector loop may start
+	// executing callbacks when a controller starts reading in a background task
+	sync.Mutex
 }
 
 // The EndpointsController code has been structured (and modified) based on the
@@ -77,11 +94,16 @@ type EndpointsController struct {
 // NewEndpointsController creates a new controller. The controller must be
 // started with its `Start()` method.
 func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stopCh chan struct{}, exportQueueMetrics bool) (*EndpointsController, error) {
+	queueName := "endpoints_controller_workqueue"
 	workQueueConfig := workqueue.RateLimitingQueueConfig{
-		Name: "endpoints_controller_workqueue",
+		Name: queueName,
 	}
+
+	var dropsMetric workqueue.CounterMetric = &noopCounterMetric{}
 	if exportQueueMetrics {
-		workQueueConfig.MetricsProvider = newWorkQueueMetricsProvider()
+		provider := newWorkQueueMetricsProvider()
+		workQueueConfig.MetricsProvider = provider
+		dropsMetric = provider.NewDropsMetric(queueName)
 	}
 
 	ec := &EndpointsController{
@@ -92,38 +114,7 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 		log: logging.WithFields(logging.Fields{
 			"component": "external-endpoints-controller",
 		}),
-	}
-
-	_, err := k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ec.onServiceUpdate,
-		DeleteFunc: ec.onServiceUpdate,
-		UpdateFunc: func(_, newObj interface{}) {
-			ec.onServiceUpdate(newObj)
-		},
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ec.onEndpointSliceAdd,
-		UpdateFunc: ec.onEndpointSliceUpdate,
-		DeleteFunc: ec.onEndpointSliceDelete,
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = k8sAPI.ExtWorkload().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ec.onAddExternalWorkload,
-		DeleteFunc: ec.onDeleteExternalWorkload,
-		UpdateFunc: ec.onUpdateExternalWorkload,
-	})
-
-	if err != nil {
-		return nil, err
+		dropsMetric: dropsMetric,
 	}
 
 	// Store configuration for leader elector client. The leader elector will
@@ -148,15 +139,23 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 		RenewDeadline: leaseRenewDeadline,
 		RetryPeriod:   leaseRetryPeriod,
 		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: func(context.Context) {
-				ec.Lock()
-				defer ec.Unlock()
-				ec.isLeader.Store(true)
+			OnStartedLeading: func(ctx context.Context) {
+				err := ec.addHandlers()
+				if err != nil {
+					// If the leader has failed to register callbacks then
+					// panic; we are in a bad state that's hard to recover from
+					// gracefully.
+					panic(fmt.Sprintf("failed to register event handlers: %v", err))
+				}
 			},
 			OnStoppedLeading: func() {
-				ec.Lock()
-				defer ec.Unlock()
-				ec.isLeader.Store(false)
+				err := ec.removeHandlers()
+				if err != nil {
+					// If the leader has failed to de-register callbacks then
+					// panic; otherwise, we risk racing with the newly elected
+					// leader
+					panic(fmt.Sprintf("failed to de-register event handlers: %v", err))
+				}
 				ec.log.Infof("%s released lease", hostname)
 			},
 			OnNewLeader: func(identity string) {
@@ -168,6 +167,78 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 	}
 
 	return ec, nil
+}
+
+// addHandlers will register a set of callbacks with the different informers
+// needed to synchronise endpoint state.
+func (ec *EndpointsController) addHandlers() error {
+	var err error
+	ec.Lock()
+	defer ec.Unlock()
+
+	// Wipe out previously observed state. This ensures we will not have stale
+	// cache errors due to events that happened when callbacks were not firing.
+	ec.reconciler.endpointTracker = epsliceutil.NewEndpointSliceTracker()
+
+	ec.svcHandle, err = ec.k8sAPI.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    ec.onServiceUpdate,
+		DeleteFunc: ec.onServiceUpdate,
+		UpdateFunc: func(_, newObj interface{}) {
+			ec.onServiceUpdate(newObj)
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	ec.esHandle, err = ec.k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    ec.onEndpointSliceAdd,
+		UpdateFunc: ec.onEndpointSliceUpdate,
+		DeleteFunc: ec.onEndpointSliceDelete,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	ec.ewHandle, err = ec.k8sAPI.ExtWorkload().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    ec.onAddExternalWorkload,
+		DeleteFunc: ec.onDeleteExternalWorkload,
+		UpdateFunc: ec.onUpdateExternalWorkload,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// removeHandlers will de-register callbacks
+func (ec *EndpointsController) removeHandlers() error {
+	var err error
+	ec.Lock()
+	defer ec.Unlock()
+	if ec.svcHandle != nil {
+		if err = ec.k8sAPI.Svc().Informer().RemoveEventHandler(ec.svcHandle); err != nil {
+			return err
+		}
+	}
+
+	if ec.ewHandle != nil {
+		if err = ec.k8sAPI.ExtWorkload().Informer().RemoveEventHandler(ec.ewHandle); err != nil {
+			return err
+		}
+	}
+
+	if ec.esHandle != nil {
+		if err = ec.k8sAPI.ES().Informer().RemoveEventHandler(ec.esHandle); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Start will run the endpoint manager's processing loop and leader elector.
@@ -207,8 +278,8 @@ func (ec *EndpointsController) Start() {
 	go func() {
 		// Block until a shutdown signal arrives
 		<-ec.stop
-		// Do not drain the queue since we may not hold the lease.
-		ec.queue.ShutDown()
+		// Drain the queue before signalling the lease to terminate
+		ec.queue.ShutDownWithDrain()
 		// Propagate shutdown to elector
 		cancel()
 		ec.log.Infof("received shutdown signal")
@@ -269,6 +340,7 @@ func (ec *EndpointsController) handleError(err error, key string) {
 	}
 
 	ec.queue.Forget(key)
+	ec.dropsMetric.Inc()
 	ec.log.Errorf("dropped Service %s out of update queue: %v", key, err)
 }
 
@@ -325,6 +397,7 @@ func (ec *EndpointsController) syncService(update string) error {
 
 	epSlices = dropEndpointSlicesPendingDeletion(epSlices)
 	if ec.reconciler.endpointTracker.StaleSlices(svc, epSlices) {
+		ec.log.Warnf("detected EndpointSlice informer cache is out of date when processing %s", update)
 		return errors.New("EndpointSlice informer cache is out of date")
 	}
 	err = ec.reconciler.reconcile(svc, ews, epSlices)
@@ -429,7 +502,7 @@ func (ec *EndpointsController) queueServiceForEndpointSlice(endpointSlice *disco
 }
 
 func (ec *EndpointsController) onAddExternalWorkload(obj interface{}) {
-	ew, ok := obj.(*ewv1alpha1.ExternalWorkload)
+	ew, ok := obj.(*ewv1beta1.ExternalWorkload)
 	if !ok {
 		ec.log.Errorf("couldn't get ExternalWorkload from object %#v", obj)
 		return

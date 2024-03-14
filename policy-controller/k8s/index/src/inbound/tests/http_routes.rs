@@ -149,7 +149,7 @@ fn routes_created_for_probes() {
         .http_routes
         .get(&HttpRouteRef::Default("probe"))
         .unwrap();
-    let probes_rules = probes.rules.get(0).unwrap();
+    let probes_rules = probes.rules.first().unwrap();
     assert!(
         probes_rules.matches.contains(&liveness_match),
         "matches: {:#?}",
@@ -181,7 +181,7 @@ fn routes_created_for_probes() {
         .http_routes
         .get(&HttpRouteRef::Default("probe"))
         .unwrap();
-    let probes_rules = probes.rules.get(0).unwrap();
+    let probes_rules = probes.rules.first().unwrap();
     assert!(
         probes_rules.matches.contains(&liveness_match),
         "matches: {:#?}",

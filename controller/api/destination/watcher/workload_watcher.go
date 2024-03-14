@@ -9,8 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
-	ext "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
+	ext "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
@@ -20,6 +19,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
+	discovery "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -29,11 +29,12 @@ type (
 	// WorkloadWatcher watches all pods and externalworkloads in the cluster.
 	// It keeps a map of publishers keyed by IP and port.
 	WorkloadWatcher struct {
-		defaultOpaquePorts map[uint32]struct{}
-		k8sAPI             *k8s.API
-		metadataAPI        *k8s.MetadataAPI
-		publishers         map[IPPort]*workloadPublisher
-		log                *logging.Entry
+		defaultOpaquePorts   map[uint32]struct{}
+		k8sAPI               *k8s.API
+		metadataAPI          *k8s.MetadataAPI
+		publishers           map[IPPort]*workloadPublisher
+		log                  *logging.Entry
+		enableEndpointSlices bool
 
 		mu sync.RWMutex
 	}
@@ -61,7 +62,7 @@ type (
 
 var ipPortVecs = newMetricsVecs("ip_port", []string{"ip", "port"})
 
-func NewWorkloadWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.Entry, defaultOpaquePorts map[uint32]struct{}) (*WorkloadWatcher, error) {
+func NewWorkloadWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logging.Entry, enableEndpointSlices bool, defaultOpaquePorts map[uint32]struct{}) (*WorkloadWatcher, error) {
 	ww := &WorkloadWatcher{
 		defaultOpaquePorts: defaultOpaquePorts,
 		k8sAPI:             k8sAPI,
@@ -70,6 +71,7 @@ func NewWorkloadWatcher(k8sAPI *k8s.API, metadataAPI *k8s.MetadataAPI, log *logg
 		log: log.WithFields(logging.Fields{
 			"component": "workload-watcher",
 		}),
+		enableEndpointSlices: enableEndpointSlices,
 	}
 
 	_, err := k8sAPI.Pod().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -327,6 +329,10 @@ func (ww *WorkloadWatcher) addOrDeleteServer(obj interface{}) {
 	ww.updateServers(server)
 }
 
+// updateServers triggers an Update() call to the listeners of the workloadPublishers
+// whose pod matches the any of the Servers' podSelector or whose
+// externalworkload matches any of the Servers' externalworkload selection. This
+// function is an event handler so it cannot block.
 func (ww *WorkloadWatcher) updateServers(servers ...*v1beta2.Server) {
 	ww.mu.RLock()
 	defer ww.mu.RUnlock()
@@ -397,7 +403,7 @@ func (ww *WorkloadWatcher) isPodSelectedByAny(pod *corev1.Pod, servers ...*v1bet
 	return false
 }
 
-func (ww *WorkloadWatcher) isExternalWorkloadSelectedByAny(ew *v1alpha1.ExternalWorkload, servers ...*v1beta2.Server) bool {
+func (ww *WorkloadWatcher) isExternalWorkloadSelectedByAny(ew *ext.ExternalWorkload, servers ...*v1beta2.Server) bool {
 	for _, s := range servers {
 		selector, err := metav1.LabelSelectorAsSelector(s.Spec.ExternalWorkloadSelector)
 		if err != nil {
@@ -563,6 +569,34 @@ func (ww *WorkloadWatcher) getExternalWorkloadByIP(ip string, port uint32) (*ext
 // since it may be arbitrary we need to look at the corresponding service's
 // Endpoints object to see whether the hostname matches a pod.
 func (ww *WorkloadWatcher) getEndpointByHostname(hostname string, svcID *ServiceID) (*corev1.Pod, error) {
+	if ww.enableEndpointSlices {
+		matchLabels := map[string]string{discovery.LabelServiceName: svcID.Name}
+		selector := labels.Set(matchLabels).AsSelector()
+
+		sliceList, err := ww.k8sAPI.ES().Lister().EndpointSlices(svcID.Namespace).List(selector)
+		if err != nil {
+			return nil, err
+		}
+		for _, slice := range sliceList {
+			for _, ep := range slice.Endpoints {
+				if hostname == *ep.Hostname {
+					if ep.TargetRef != nil && ep.TargetRef.Kind == "Pod" {
+						podName := ep.TargetRef.Name
+						podNamespace := ep.TargetRef.Namespace
+						pod, err := ww.k8sAPI.Pod().Lister().Pods(podNamespace).Get(podName)
+						if err != nil {
+							return nil, err
+						}
+						return pod, nil
+					}
+					return nil, nil
+				}
+			}
+		}
+
+		return nil, status.Errorf(codes.NotFound, "no pod found in EndpointSlices of Service %s/%s for hostname %s", svcID.Namespace, svcID.Name, hostname)
+	}
+
 	ep, err := ww.k8sAPI.Endpoint().Lister().Endpoints(svcID.Namespace).Get(svcID.Name)
 	if err != nil {
 		return nil, err

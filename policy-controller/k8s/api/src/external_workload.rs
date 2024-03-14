@@ -9,14 +9,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Eq, CustomResource, Deserialize, Serialize, JsonSchema)]
 #[kube(
     group = "workload.linkerd.io",
-    version = "v1alpha1",
+    version = "v1beta1",
     kind = "ExternalWorkload",
     status = "ExternalWorkloadStatus",
     namespaced
 )]
 pub struct ExternalWorkloadSpec {
     /// MeshTls describes TLS settings associated with an external workload
-    #[serde(rename = "meshTls")]
+    #[serde(rename = "meshTLS")]
     pub mesh_tls: MeshTls,
     /// Ports describes a set of ports exposed by the workload
     pub ports: Option<Vec<PortSpec>>,

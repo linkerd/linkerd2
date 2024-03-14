@@ -67,6 +67,11 @@ func TestNewValues(t *testing.T) {
 		PodLabels:                    map[string]string{},
 		EnableEndpointSlices:         true,
 		EnablePodDisruptionBudget:    false,
+		Controller: &Controller{
+			PodDisruptionBudget: &PodDisruptionBudget{
+				MaxUnavailable: 1,
+			},
+		},
 		PodMonitor: &PodMonitor{
 			Enabled:        false,
 			ScrapeInterval: "10s",
@@ -138,6 +143,14 @@ func TestNewValues(t *testing.T) {
 				FailureThreshold:    120,
 				InitialDelaySeconds: 0,
 				PeriodSeconds:       1,
+			},
+			ReadinessProbe: &Probe{
+				InitialDelaySeconds: 2,
+				TimeoutSeconds:      1,
+			},
+			LivenessProbe: &Probe{
+				InitialDelaySeconds: 10,
+				TimeoutSeconds:      1,
 			},
 			Control: &ProxyControl{
 				Streams: &ProxyControlStreams{
@@ -242,6 +255,9 @@ func TestNewValues(t *testing.T) {
 		expected.ControllerReplicas = 3
 		expected.EnablePodAntiAffinity = true
 		expected.EnablePodDisruptionBudget = true
+		expected.Controller.PodDisruptionBudget = &PodDisruptionBudget{
+			MaxUnavailable: 1,
+		}
 		expected.DeploymentStrategy = haDeploymentStrategy
 		expected.WebhookFailurePolicy = "Fail"
 
@@ -296,6 +312,8 @@ func TestNewValues(t *testing.T) {
 func TestHAValuesParsing(t *testing.T) {
 	yml := `
 enablePodDisruptionBudget: true
+PodDisruptionBudget:
+  maxUnavailable: 1
 deploymentStrategy:
   rollingUpdate:
     maxUnavailable: 1

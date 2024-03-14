@@ -8,6 +8,9 @@ on:
       - '**/*.go'
       - '**/Dockerfile*'
       - Cargo.lock
+      # Don't run integration tests if only the Chart metadata has changed.
+      - '!**/Chart.yaml'
+      - '!**/README*'
       - charts/**
       - go.sum
       - justfile
@@ -32,6 +35,7 @@ env:
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
   YQ_VERSION: v4.25.1
+  LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO }}
 
 jobs:
   cleanup:
@@ -74,9 +78,9 @@ jobs:
           docker cp "$id:/out/linkerd-linux-amd64" /home/runner/archives/linkerd
           v=$(/home/runner/archives/linkerd version --short --client)
           [[ "$v" == '${{ needs.tag.outputs.tag }}' ]] || exit 1
-      - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
+      - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
         with:
-          name: image-archives
+          name: image-archives-cli
           path: /home/runner/archives
 
   ##
@@ -104,13 +108,15 @@ jobs:
           docker-target: linux-amd64
           component: ${{ matrix.component }}
           tag: ${{ needs.tag.outputs.tag }}
+        env:
+          LINKERD2_PROXY_GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN }}
       - name: Run docker save
         run: |
           mkdir -p /home/runner/archives
           docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
-      - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
+      - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
         with:
-          name: image-archives
+          name: image-archives-${{ matrix.component }}
           path: /home/runner/archives
 
   test-core:
@@ -125,12 +131,13 @@ jobs:
     steps:
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: '1.21'
+          go-version: '1.22'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
+      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
-          name: image-archives
+          pattern: image-archives-*
           path: image-archives
+          merge-multiple: true
       - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: find image-archives -ls
       - run: bin/tests --images archive --cleanup-docker --name ${{ matrix.test }} "$HOME/linkerd"
@@ -148,7 +155,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: tj-actions/changed-files@ae82ed4ae04587b665efad2f206578aa6f0e8539
+      - uses: tj-actions/changed-files@aa08304bd477b800d468db44fe10f6c61f7f7b11
         id: changed
         with:
           files: |
@@ -172,17 +179,18 @@ jobs:
       matrix:
         k8s:
           - v1.22
-          - v1.28
+          - v1.29
     steps:
-      - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: olix0r/cargo-action-fmt/setup@9269f3aa1ff01775d95efc97037e2cbdb41d9684
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
+      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
-          name: image-archives
+          patter: image-archives-*
           path: image-archives
+          merge-multiple: true
       - run: find image-archives -ls
       - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - name: Setup deps
@@ -241,9 +249,9 @@ jobs:
         run: |
           mkdir -p /home/runner/archives
           docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
-      - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
+      - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
         with:
-          name: image-archives
+          name: image-archives-${{ matrix.component }}
           path: /home/runner/archives
 
   # These tests exercise core functionality, but need the viz extension.
@@ -265,12 +273,13 @@ jobs:
     steps:
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: '1.21'
+          go-version: '1.22'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
+      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
-          name: image-archives
+          pattern: image-archives-*
           path: image-archives
+          merge-multiple: true
       - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: ls -l image-archives/linkerd
       - run: bin/tests --images archive --cleanup-docker --name '${{ matrix.integration_test }}' "$HOME/linkerd"
@@ -287,7 +296,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: tj-actions/changed-files@ae82ed4ae04587b665efad2f206578aa6f0e8539
+      - uses: tj-actions/changed-files@aa08304bd477b800d468db44fe10f6c61f7f7b11
         id: changed
         with:
           files: |
@@ -307,12 +316,13 @@ jobs:
     steps:
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: '1.21'
+          go-version: '1.22'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
+      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
-          name: image-archives
+          pattern: image-archives-*
           path: image-archives
+          merge-multiple: true
       - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: ls -l image-archives/linkerd
       - run: bin/tests --images archive --cleanup-docker --name viz "$HOME/linkerd"
@@ -330,7 +340,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: tj-actions/changed-files@ae82ed4ae04587b665efad2f206578aa6f0e8539
+      - uses: tj-actions/changed-files@aa08304bd477b800d468db44fe10f6c61f7f7b11
         id: changed
         with:
           files: |
@@ -351,19 +361,20 @@ jobs:
       matrix:
         k8s:
           - v1.22
-          - v1.28
+          - v1.29
     steps:
-      - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: '1.21'
+          go-version: '1.22'
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
+      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
-          name: image-archives
+          pattern: image-archives-*
           path: image-archives
+          merge-multiple: true
       - run: cp image-archives/linkerd "$HOME" && chmod 755 "$HOME/linkerd"
       - run: ls -l image-archives/linkerd
       - name: Setup deps

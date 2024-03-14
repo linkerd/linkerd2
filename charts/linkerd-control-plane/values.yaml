@@ -39,6 +39,12 @@ enablePodAntiAffinity: false
 enablePprof: false
 # -- enables the creation of pod disruption budgets for control plane components
 enablePodDisruptionBudget: false
+
+controller:
+  # -- sets pod disruption budget parameter for all deployments
+  podDisruptionBudget:
+    # -- Maximum number of pods that can be unavailable during disruption
+    maxUnavailable: 1
 # -- enabling this omits the NET_ADMIN capability in the PSP
 # and the proxy-init container when injecting the proxy;
 # requires the linkerd-cni plugin to already be installed
@@ -203,6 +209,14 @@ proxy:
   # If enabled, .proxy.waitBeforeExitSeconds should not be used.
   nativeSidecar: false
   # -- Native sidecar proxy startup probe parameters.
+  # -- LivenessProbe timeout and delay configuration
+  livenessProbe:
+    initialDelaySeconds: 10
+    timeoutSeconds: 1
+  # -- ReadinessProbe timeout and delay configuration
+  readinessProbe:
+    initialDelaySeconds: 2
+    timeoutSeconds: 1
   startupProbe:
     initialDelaySeconds: 0
     periodSeconds: 1
@@ -387,6 +401,9 @@ disableHeartBeat: false
 
 # proxy injector configuration
 proxyInjector:
+  # -- Timeout in seconds before the API Server cancels a request to the proxy
+  # injector. If timeout is exceeded, the webhookfailurePolicy is used.
+  timeoutSeconds: 10
   # -- Do not create a secret resource for the proxyInjector webhook.
   # If this is set to `true`, the value `proxyInjector.caBundle` must be set
   # or the ca bundle must injected with cert-manager ca injector using

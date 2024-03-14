@@ -472,6 +472,7 @@ webhooks:
     apiVersions: ["v1"]
     resources: ["pods", "services"]
   sideEffects: None
+  timeoutSeconds: 10
 ---
 # Source: linkerd-control-plane/templates/psp.yaml
 ---
@@ -496,6 +497,9 @@ data:
     cniEnabled: false
     controlPlaneTracing: false
     controlPlaneTracingNamespace: linkerd-jaeger
+    controller:
+      podDisruptionBudget:
+        maxUnavailable: 1
     controllerImage: cr.l5d.io/linkerd/controller
     controllerLogFormat: plain
     controllerLogLevel: info
@@ -612,6 +616,7 @@ data:
     prometheusUrl: ""
     proxy:
       accessLog: ""
+      additionalEnv: null
       await: true
       capabilities: null
       control:
@@ -632,6 +637,9 @@ data:
       inboundDiscoveryCacheUnusedTimeout: 90s
       isGateway: false
       isIngress: false
+      livenessProbe:
+        initialDelaySeconds: 10
+        timeoutSeconds: 1
       logFormat: plain
       logLevel: warn,linkerd=info,trust_dns=error
       nativeSidecar: false
@@ -644,6 +652,9 @@ data:
         control: 4190
         inbound: 4143
         outbound: 4140
+      readinessProbe:
+        initialDelaySeconds: 2
+        timeoutSeconds: 1
       requireIdentityOnInboundPorts: ""
       resources:
         cpu:
@@ -848,7 +859,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - identity
@@ -1003,6 +1014,7 @@ spec:
             path: /live
             port: 4191
           initialDelaySeconds: 10
+          timeoutSeconds: 1
         name: linkerd-proxy
         ports:
         - containerPort: 4143
@@ -1014,6 +1026,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+          timeoutSeconds: 1
         resources:
         securityContext:
           allowPrivilegeEscalation: false
@@ -1234,7 +1247,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - env:
         - name: _pod_name
@@ -1339,6 +1352,7 @@ spec:
             path: /live
             port: 4191
           initialDelaySeconds: 10
+          timeoutSeconds: 1
         name: linkerd-proxy
         ports:
         - containerPort: 4143
@@ -1350,6 +1364,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+          timeoutSeconds: 1
         resources:
         securityContext:
           allowPrivilegeEscalation: false
@@ -1656,7 +1671,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 27486d27c2df3e0123d3ae33c32dd419e9dedb66f03495501f4e8127961b299e
+        checksum/config: 4e8be2f1320f4464106dcdc3271e16a97ab39937a873fc241ae65e0f16a4a751
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1671,7 +1686,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - env:
         - name: _pod_name
@@ -1776,6 +1791,7 @@ spec:
             path: /live
             port: 4191
           initialDelaySeconds: 10
+          timeoutSeconds: 1
         name: linkerd-proxy
         ports:
         - containerPort: 4143
@@ -1787,6 +1803,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+          timeoutSeconds: 1
         resources:
         securityContext:
           allowPrivilegeEscalation: false

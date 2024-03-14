@@ -33,6 +33,7 @@ type (
 		EnablePodAntiAffinity        bool                   `json:"enablePodAntiAffinity"`
 		NodeAffinity                 map[string]interface{} `json:"nodeAffinity"`
 		EnablePodDisruptionBudget    bool                   `json:"enablePodDisruptionBudget"`
+		Controller                   *Controller            `json:"controller"`
 		WebhookFailurePolicy         string                 `json:"webhookFailurePolicy"`
 		DeploymentStrategy           map[string]interface{} `json:"deploymentStrategy,omitempty"`
 		DisableHeartBeat             bool                   `json:"disableHeartBeat"`
@@ -83,6 +84,16 @@ type (
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
 	}
 
+	// Controller contains the fields to set the controller container
+	Controller struct {
+		PodDisruptionBudget *PodDisruptionBudget `json:"podDisruptionBudget"`
+	}
+
+	// PodDisruptionBudget contains the fields to set the PDB
+	PodDisruptionBudget struct {
+		MaxUnavailable int `json:"maxUnavailable"`
+	}
+
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration
 	ConfigJSONs struct {
 		Global  string `json:"global"`
@@ -121,8 +132,11 @@ type (
 		ShutdownGracePeriod                  string           `json:"shutdownGracePeriod"`
 		NativeSidecar                        bool             `json:"nativeSidecar"`
 		StartupProbe                         *StartupProbe    `json:"startupProbe"`
+		ReadinessProbe                       *Probe           `json:"readinessProbe"`
+		LivenessProbe                        *Probe           `json:"livenessProbe"`
 		Control                              *ProxyControl    `json:"control"`
 
+		AdditionalEnv   []corev1.EnvVar `json:"additionalEnv"`
 		ExperimentalEnv []corev1.EnvVar `json:"experimentalEnv"`
 	}
 
@@ -212,6 +226,11 @@ type (
 		Control  int32 `json:"control"`
 		Inbound  int32 `json:"inbound"`
 		Outbound int32 `json:"outbound"`
+	}
+
+	Probe struct {
+		InitialDelaySeconds uint `json:"initialDelaySeconds"`
+		TimeoutSeconds      uint `json:"timeoutSeconds"`
 	}
 
 	// Constraints wraps the Limit and Request settings for computational resources

@@ -116,3 +116,4 @@ webhooks:
     apiVersions: ["v1"]
     resources: ["pods", "services"]
   sideEffects: None
+  timeoutSeconds: {{ .Values.proxyInjector.timeoutSeconds | default 10 }}

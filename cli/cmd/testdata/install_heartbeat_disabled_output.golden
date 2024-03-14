@@ -406,6 +406,7 @@ webhooks:
     apiVersions: ["v1"]
     resources: ["pods", "services"]
   sideEffects: None
+  timeoutSeconds: 10
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -426,6 +427,9 @@ data:
     cniEnabled: false
     controlPlaneTracing: false
     controlPlaneTracingNamespace: linkerd-jaeger
+    controller:
+      podDisruptionBudget:
+        maxUnavailable: 1
     controllerImage: cr.l5d.io/linkerd/controller
     controllerLogFormat: plain
     controllerLogLevel: info
@@ -566,6 +570,7 @@ data:
     prometheusUrl: ""
     proxy:
       accessLog: ""
+      additionalEnv: null
       await: true
       capabilities: null
       control:
@@ -586,6 +591,9 @@ data:
       inboundDiscoveryCacheUnusedTimeout: 90s
       isGateway: false
       isIngress: false
+      livenessProbe:
+        initialDelaySeconds: 10
+        timeoutSeconds: 1
       logFormat: plain
       logLevel: warn,linkerd=info,trust_dns=error
       nativeSidecar: false
@@ -598,6 +606,9 @@ data:
         control: 4190
         inbound: 4143
         outbound: 4140
+      readinessProbe:
+        initialDelaySeconds: 2
+        timeoutSeconds: 1
       requireIdentityOnInboundPorts: ""
       resources:
         cpu:
@@ -961,6 +972,7 @@ spec:
             path: /live
             port: 4191
           initialDelaySeconds: 10
+          timeoutSeconds: 1
         name: linkerd-proxy
         ports:
         - containerPort: 4143
@@ -972,6 +984,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+          timeoutSeconds: 1
         resources:
         securityContext:
           allowPrivilegeEscalation: false
@@ -1295,6 +1308,7 @@ spec:
             path: /live
             port: 4191
           initialDelaySeconds: 10
+          timeoutSeconds: 1
         name: linkerd-proxy
         ports:
         - containerPort: 4143
@@ -1306,6 +1320,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+          timeoutSeconds: 1
         resources:
         securityContext:
           allowPrivilegeEscalation: false
@@ -1548,7 +1563,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: d0a59489b5026951c56c51a6307d7dbab88c3b2fae24a84d2a115fbf5ac75db4
+        checksum/config: d7c6dbb14a36b7d04bd84ba861c9c95d37a03e6cb0562d5e97fb9176081cd211
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: install-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1668,6 +1683,7 @@ spec:
             path: /live
             port: 4191
           initialDelaySeconds: 10
+          timeoutSeconds: 1
         name: linkerd-proxy
         ports:
         - containerPort: 4143
@@ -1679,6 +1695,7 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+          timeoutSeconds: 1
         resources:
         securityContext:
           allowPrivilegeEscalation: false

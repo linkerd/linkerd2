@@ -160,6 +160,9 @@ be used in other contexts.
 - name: LINKERD2_PROXY_SHUTDOWN_GRACE_PERIOD
   value: {{.Values.proxy.shutdownGracePeriod | quote}}
 {{ end -}}
+{{ if .Values.proxy.additionalEnv -}}
+{{ toYaml .Values.proxy.additionalEnv }}
+{{ end -}}
 {{ if .Values.proxy.experimentalEnv -}}
 {{ toYaml .Values.proxy.experimentalEnv }}
 {{ end -}}
@@ -169,7 +172,8 @@ livenessProbe:
   httpGet:
     path: /live
     port: {{.Values.proxy.ports.admin}}
-  initialDelaySeconds: 10
+  initialDelaySeconds: {{.Values.proxy.livenessProbe.initialDelaySeconds }}
+  timeoutSeconds: {{.Values.proxy.livenessProbe.timeoutSeconds }}
 name: linkerd-proxy
 ports:
 - containerPort: {{.Values.proxy.ports.inbound}}
@@ -180,7 +184,8 @@ readinessProbe:
   httpGet:
     path: /ready
     port: {{.Values.proxy.ports.admin}}
-  initialDelaySeconds: 2
+  initialDelaySeconds: {{.Values.proxy.readinessProbe.initialDelaySeconds }}
+  timeoutSeconds: {{.Values.proxy.readinessProbe.timeoutSeconds }}
 {{- if and .Values.proxy.nativeSidecar .Values.proxy.await }}
 startupProbe:
   httpGet:

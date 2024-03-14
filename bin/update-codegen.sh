@@ -7,13 +7,18 @@ set -o pipefail
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 SCRIPT_ROOT="$(dirname "${SCRIPT_DIR}")"
 GEN_VER=$( awk '/k8s.io\/code-generator/ { print $2 }' "${SCRIPT_ROOT}/go.mod" )
-CODEGEN_PKG=${GOPATH}/pkg/mod/k8s.io/code-generator@${GEN_VER}
+CODEGEN_PKG=target/code-generator-${GEN_VER}
+
+if [[ ! -d "$CODEGEN_PKG" ]]; then
+    mkdir -p "$CODEGEN_PKG"
+    git clone --depth 1 --branch "$GEN_VER" https://github.com/kubernetes/code-generator "$CODEGEN_PKG"
+fi
 
 # Remove previously generated code
 rm -rf "${SCRIPT_ROOT}/controller/gen/client/clientset/*"
 rm -rf "${SCRIPT_ROOT}/controller/gen/client/listeners/*"
 rm -rf "${SCRIPT_ROOT}/controller/gen/client/informers/*"
-crds=(serviceprofile:v1alpha2 server:v1beta1 serverauthorization:v1beta1 link:v1alpha1 policy:v1alpha1 policy:v1beta3 externalworkload:v1alpha1)
+crds=(serviceprofile:v1alpha2 server:v1beta1 serverauthorization:v1beta1 link:v1alpha1 policy:v1alpha1 policy:v1beta3 externalworkload:v1beta1)
 for crd in "${crds[@]}"
 do
   crd_path=$(tr : / <<< "$crd")

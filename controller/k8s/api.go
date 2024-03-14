@@ -11,7 +11,7 @@ import (
 	spv1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	l5dcrdinformer "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
-	ewinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/externalworkload/v1alpha1"
+	ewinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/externalworkload/v1beta1"
 	srvinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/server/v1beta2"
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -241,7 +241,7 @@ func newAPI(
 			if l5dCrdSharedInformers == nil {
 				panic("Linkerd CRD shared informer not configured")
 			}
-			api.ew = l5dCrdSharedInformers.Externalworkload().V1alpha1().ExternalWorkloads()
+			api.ew = l5dCrdSharedInformers.Externalworkload().V1beta1().ExternalWorkloads()
 			api.syncChecks = append(api.syncChecks, api.ew.Informer().HasSynced)
 			api.promGauges.addInformerSize(k8s.ExtWorkload, informerLabels, api.ew.Informer())
 		case Job:

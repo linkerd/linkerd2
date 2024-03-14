@@ -6,7 +6,7 @@ if command -v helm-docs >/dev/null ; then
     exec helm-docs "$@"
 fi
 
-helmdocsv=1.11.0
+helmdocsv=1.12.0
 bindir=$( cd "${0%/*}" && pwd ) # Change to script dir and set bin dir to this
 targetbin=$( cd "$bindir"/.. && pwd )/target/bin
 helmdocsbin=$targetbin/helm-docs-$helmdocsv

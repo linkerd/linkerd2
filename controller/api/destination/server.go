@@ -32,7 +32,7 @@ type (
 
 		EnableH2Upgrade,
 		EnableEndpointSlices,
-		ExperimentalEndpointZoneWeights bool
+		ExtEndpointZoneWeights bool
 
 		DefaultOpaquePorts map[uint32]struct{}
 	}
@@ -86,7 +86,7 @@ func NewServer(
 		return nil, err
 	}
 
-	workloads, err := watcher.NewWorkloadWatcher(k8sAPI, metadataAPI, log, config.DefaultOpaquePorts)
+	workloads, err := watcher.NewWorkloadWatcher(k8sAPI, metadataAPI, log, config.EnableEndpointSlices, config.DefaultOpaquePorts)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			remoteConfig.TrustDomain,
 			s.config.EnableH2Upgrade,
 			false, // Disable endpoint filtering for remote discovery.
-			s.config.ExperimentalEndpointZoneWeights,
+			s.config.ExtEndpointZoneWeights,
 			fmt.Sprintf("%s.%s.svc.%s:%d", remoteSvc, service.Namespace, remoteConfig.ClusterDomain, port),
 			token.NodeName,
 			s.config.DefaultOpaquePorts,
@@ -217,7 +217,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			s.config.IdentityTrustDomain,
 			s.config.EnableH2Upgrade,
 			true,
-			s.config.ExperimentalEndpointZoneWeights,
+			s.config.ExtEndpointZoneWeights,
 			dest.GetPath(),
 			token.NodeName,
 			s.config.DefaultOpaquePorts,

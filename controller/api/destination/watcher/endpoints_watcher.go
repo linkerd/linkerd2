@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
+	ewv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
@@ -49,7 +49,7 @@ type (
 		IP                string
 		Port              Port
 		Pod               *corev1.Pod
-		ExternalWorkload  *ewv1alpha1.ExternalWorkload
+		ExternalWorkload  *ewv1beta1.ExternalWorkload
 		OwnerName         string
 		OwnerKind         string
 		Identity          string
@@ -153,6 +153,27 @@ type (
 var endpointsVecs = newEndpointsMetricsVecs()
 
 var undefinedEndpointPort = Port(0)
+
+// shallowCopy returns a shallow copy of addr, in the sense that the Pod and
+// ExternalWorkload fields of the Addresses map values still point to the
+// locations of the original variable
+func (addr AddressSet) shallowCopy() AddressSet {
+	addresses := make(map[ID]Address)
+	for k, v := range addr.Addresses {
+		addresses[k] = v
+	}
+
+	labels := make(map[string]string)
+	for k, v := range addr.Labels {
+		labels[k] = v
+	}
+
+	return AddressSet{
+		Addresses:          addresses,
+		Labels:             labels,
+		LocalTrafficPolicy: addr.LocalTrafficPolicy,
+	}
+}
 
 // NewEndpointsWatcher creates an EndpointsWatcher and begins watching the
 // k8sAPI for pod, service, and endpoint changes. An EndpointsWatcher will
@@ -511,21 +532,39 @@ func (ew *EndpointsWatcher) addServer(obj interface{}) {
 	defer ew.Unlock()
 	server := obj.(*v1beta2.Server)
 	for _, sp := range ew.publishers {
-		sp.updateServer(server, true)
+		sp.updateServer(nil, server)
 	}
 }
 
 func (ew *EndpointsWatcher) updateServer(oldObj interface{}, newObj interface{}) {
+	ew.Lock()
+	defer ew.Unlock()
+
 	oldServer := oldObj.(*v1beta2.Server)
 	newServer := newObj.(*v1beta2.Server)
-	oldUpdated := latestUpdated(oldServer.ManagedFields)
-	updated := latestUpdated(newServer.ManagedFields)
-	if !updated.IsZero() && updated != oldUpdated {
-		delta := time.Since(updated)
-		serverInformerLag.Observe(delta.Seconds())
+	if oldServer != nil && newServer != nil {
+		oldUpdated := latestUpdated(oldServer.ManagedFields)
+		updated := latestUpdated(newServer.ManagedFields)
+		if !updated.IsZero() && updated != oldUpdated {
+			delta := time.Since(updated)
+			serverInformerLag.Observe(delta.Seconds())
+		}
 	}
 
-	ew.addServer(newObj)
+	namespace := ""
+	if oldServer != nil {
+		namespace = oldServer.GetNamespace()
+	}
+	if newServer != nil {
+		namespace = newServer.GetNamespace()
+	}
+
+	for id, sp := range ew.publishers {
+		// Servers may only select workloads in their namespace.
+		if id.Namespace == namespace {
+			sp.updateServer(oldServer, newServer)
+		}
+	}
 }
 
 func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
@@ -533,7 +572,7 @@ func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
 	defer ew.Unlock()
 	server := obj.(*v1beta2.Server)
 	for _, sp := range ew.publishers {
-		sp.updateServer(server, false)
+		sp.updateServer(server, nil)
 	}
 }
 
@@ -703,12 +742,12 @@ func (sp *servicePublisher) metricsLabels(port Port, hostname string) prometheus
 	return endpointsLabels(sp.cluster, sp.id.Namespace, sp.id.Name, strconv.Itoa(int(port)), hostname)
 }
 
-func (sp *servicePublisher) updateServer(server *v1beta2.Server, isAdd bool) {
+func (sp *servicePublisher) updateServer(oldServer, newServer *v1beta2.Server) {
 	sp.Lock()
 	defer sp.Unlock()
 
 	for _, pp := range sp.ports {
-		pp.updateServer(server, isAdd)
+		pp.updateServer(oldServer, newServer)
 	}
 }
 
@@ -1147,7 +1186,7 @@ func (pp *portPublisher) updateLocalTrafficPolicy(localTrafficPolicy bool) {
 	pp.localTrafficPolicy = localTrafficPolicy
 	pp.addresses.LocalTrafficPolicy = localTrafficPolicy
 	for _, listener := range pp.listeners {
-		listener.Add(pp.addresses)
+		listener.Add(pp.addresses.shallowCopy())
 	}
 }
 
@@ -1212,7 +1251,7 @@ func (pp *portPublisher) noEndpoints(exists bool) {
 func (pp *portPublisher) subscribe(listener EndpointUpdateListener) {
 	if pp.exists {
 		if len(pp.addresses.Addresses) > 0 {
-			listener.Add(pp.addresses)
+			listener.Add(pp.addresses.shallowCopy())
 		} else {
 			listener.NoEndpoints(true)
 		}
@@ -1237,70 +1276,12 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 
 	pp.metrics.setSubscribers(len(pp.listeners))
 }
-func (pp *portPublisher) updateServer(server *v1beta2.Server, isAdd bool) {
+func (pp *portPublisher) updateServer(oldServer, newServer *v1beta2.Server) {
 	updated := false
 	for id, address := range pp.addresses.Addresses {
-		portMatch := false
-		if address.Pod != nil {
-			selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
-			if err != nil {
-				pp.log.Errorf("failed to create Selector: %s", err)
-				return
-			}
 
-			if !selector.Matches(labels.Set(address.Pod.Labels)) {
-				continue
-			}
-
-			switch server.Spec.Port.Type {
-			case intstr.Int:
-				if server.Spec.Port.IntVal == int32(address.Port) {
-					portMatch = true
-				}
-			case intstr.String:
-				for _, c := range address.Pod.Spec.Containers {
-					for _, p := range c.Ports {
-						if p.ContainerPort == int32(address.Port) && p.Name == server.Spec.Port.StrVal {
-							portMatch = true
-						}
-					}
-				}
-			default:
-				continue
-			}
-
-		} else if address.ExternalWorkload != nil {
-			selector, err := metav1.LabelSelectorAsSelector(server.Spec.ExternalWorkloadSelector)
-			if err != nil {
-				pp.log.Errorf("failed to create Selector: %s", err)
-				return
-			}
-
-			if !selector.Matches(labels.Set(address.ExternalWorkload.Labels)) {
-				continue
-			}
-
-			switch server.Spec.Port.Type {
-			case intstr.Int:
-				if server.Spec.Port.IntVal == int32(address.Port) {
-					portMatch = true
-				}
-			case intstr.String:
-				for _, p := range address.ExternalWorkload.Spec.Ports {
-					if p.Port == int32(address.Port) && p.Name == server.Spec.Port.StrVal {
-						portMatch = true
-					}
-				}
-			default:
-				continue
-			}
-
-		} else {
-			continue
-		}
-
-		if portMatch {
-			if isAdd && server.Spec.ProxyProtocol == opaqueProtocol {
+		if pp.isAddressSelected(address, oldServer) || pp.isAddressSelected(address, newServer) {
+			if newServer != nil && pp.isAddressSelected(address, newServer) && newServer.Spec.ProxyProtocol == opaqueProtocol {
 				address.OpaqueProtocol = true
 			} else {
 				address.OpaqueProtocol = false
@@ -1313,28 +1294,73 @@ func (pp *portPublisher) updateServer(server *v1beta2.Server, isAdd bool) {
 	}
 	if updated {
 		for _, listener := range pp.listeners {
-			listener.Add(pp.addresses)
+			listener.Add(pp.addresses.shallowCopy())
 		}
 		pp.metrics.incUpdates()
 	}
 }
 
+func (pp *portPublisher) isAddressSelected(address Address, server *v1beta2.Server) bool {
+	if server == nil {
+		return false
+	}
+
+	if address.Pod != nil {
+		selector, err := metav1.LabelSelectorAsSelector(server.Spec.PodSelector)
+		if err != nil {
+			pp.log.Errorf("failed to create Selector: %s", err)
+			return false
+		}
+
+		if !selector.Matches(labels.Set(address.Pod.Labels)) {
+			return false
+		}
+
+		switch server.Spec.Port.Type {
+		case intstr.Int:
+			if server.Spec.Port.IntVal == int32(address.Port) {
+				return true
+			}
+		case intstr.String:
+			for _, c := range address.Pod.Spec.Containers {
+				for _, p := range c.Ports {
+					if p.ContainerPort == int32(address.Port) && p.Name == server.Spec.Port.StrVal {
+						return true
+					}
+				}
+			}
+		}
+
+	} else if address.ExternalWorkload != nil {
+		selector, err := metav1.LabelSelectorAsSelector(server.Spec.ExternalWorkloadSelector)
+		if err != nil {
+			pp.log.Errorf("failed to create Selector: %s", err)
+			return false
+		}
+
+		if !selector.Matches(labels.Set(address.ExternalWorkload.Labels)) {
+			return false
+		}
+
+		switch server.Spec.Port.Type {
+		case intstr.Int:
+			if server.Spec.Port.IntVal == int32(address.Port) {
+				return true
+			}
+		case intstr.String:
+			for _, p := range address.ExternalWorkload.Spec.Ports {
+				if p.Port == int32(address.Port) && p.Name == server.Spec.Port.StrVal {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 ////////////
 /// util ///
 ////////////
-
-// WithPort sets the port field in all addresses of an address set.
-func (as *AddressSet) WithPort(port Port) AddressSet {
-	wp := AddressSet{
-		Addresses: map[PodID]Address{},
-		Labels:    as.Labels,
-	}
-	for id, addr := range as.Addresses {
-		addr.Port = port
-		wp.Addresses[id] = addr
-	}
-	return wp
-}
 
 // getTargetPort returns the port specified as an argument if no service is
 // present. If the service is present and it has a port spec matching the

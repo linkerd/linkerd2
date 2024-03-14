@@ -3,7 +3,7 @@ package externalworkload
 import (
 	"reflect"
 
-	ewv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1alpha1"
+	ewv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -11,8 +11,8 @@ import (
 )
 
 func (ec *EndpointsController) getServicesToUpdateOnExternalWorkloadChange(old, cur interface{}) sets.Set[string] {
-	newEw, newEwOk := cur.(*ewv1alpha1.ExternalWorkload)
-	oldEw, oldEwOk := old.(*ewv1alpha1.ExternalWorkload)
+	newEw, newEwOk := cur.(*ewv1beta1.ExternalWorkload)
+	oldEw, oldEwOk := old.(*ewv1beta1.ExternalWorkload)
 
 	if !oldEwOk {
 		ec.log.Errorf("Expected (cur) to be an EndpointSlice in getServicesToUpdateOnExternalWorkloadChange(), got type: %T", cur)
@@ -68,7 +68,7 @@ func determineNeededServiceUpdates(oldServices, services sets.Set[string], specC
 // getExternalWorkloadSvcMembership accepts a pointer to an external workload
 // resource and returns a set of service keys (<namespace>/<name>). The set
 // includes all services local to the workload's namespace that match the workload.
-func (ec *EndpointsController) getExternalWorkloadSvcMembership(workload *ewv1alpha1.ExternalWorkload) (sets.Set[string], error) {
+func (ec *EndpointsController) getExternalWorkloadSvcMembership(workload *ewv1beta1.ExternalWorkload) (sets.Set[string], error) {
 	keys := sets.Set[string]{}
 	services, err := ec.k8sAPI.Svc().Lister().Services(workload.Namespace).List(labels.Everything())
 	if err != nil {
@@ -120,8 +120,8 @@ func (ec *EndpointsController) getEndpointSliceFromDeleteAction(obj interface{})
 }
 
 // getExternalWorkloadFromDeleteAction parses an ExternalWorkload from a delete action.
-func (ec *EndpointsController) getExternalWorkloadFromDeleteAction(obj interface{}) *ewv1alpha1.ExternalWorkload {
-	if ew, ok := obj.(*ewv1alpha1.ExternalWorkload); ok {
+func (ec *EndpointsController) getExternalWorkloadFromDeleteAction(obj interface{}) *ewv1beta1.ExternalWorkload {
+	if ew, ok := obj.(*ewv1beta1.ExternalWorkload); ok {
 		return ew
 	}
 
@@ -132,7 +132,7 @@ func (ec *EndpointsController) getExternalWorkloadFromDeleteAction(obj interface
 		return nil
 	}
 
-	ew, ok := tombstone.Obj.(*ewv1alpha1.ExternalWorkload)
+	ew, ok := tombstone.Obj.(*ewv1beta1.ExternalWorkload)
 	if !ok {
 		ec.log.Errorf("tombstone contained object that is not a ExternalWorkload: %#v", obj)
 		return nil
@@ -143,7 +143,7 @@ func (ec *EndpointsController) getExternalWorkloadFromDeleteAction(obj interface
 // ewEndpointsChanged returns two boolean values. The first is true if the ExternalWorkload has
 // changed in a way that may change existing endpoints. The second value is true if the
 // ExternalWorkload has changed in a way that may affect which Services it matches.
-func ewEndpointsChanged(oldEw, newEw *ewv1alpha1.ExternalWorkload) (bool, bool) {
+func ewEndpointsChanged(oldEw, newEw *ewv1beta1.ExternalWorkload) (bool, bool) {
 	// Check if the ExternalWorkload labels have changed, indicating a possible
 	// change in the service membership
 	labelsChanged := false
@@ -179,7 +179,7 @@ func ewEndpointsChanged(oldEw, newEw *ewv1alpha1.ExternalWorkload) (bool, bool) 
 	}
 
 	// Determine if the ports have changed between workload resources
-	portSet := make(map[int32]ewv1alpha1.PortSpec)
+	portSet := make(map[int32]ewv1beta1.PortSpec)
 	for _, ps := range newEw.Spec.Ports {
 		portSet[ps.Port] = ps
 	}
@@ -211,7 +211,7 @@ func managedByChanged(endpointSlice1, endpointSlice2 *discoveryv1.EndpointSlice)
 	return managedByController(endpointSlice1) != managedByController(endpointSlice2)
 }
 
-func IsEwReady(ew *ewv1alpha1.ExternalWorkload) bool {
+func IsEwReady(ew *ewv1beta1.ExternalWorkload) bool {
 	if len(ew.Status.Conditions) == 0 {
 		return false
 	}
@@ -222,7 +222,7 @@ func IsEwReady(ew *ewv1alpha1.ExternalWorkload) bool {
 		cond := ew.Status.Conditions[i]
 		// Stop once we find a 'Ready' condition. We expect a resource to only
 		// have one 'Ready' type condition.
-		if cond.Type == ewv1alpha1.WorkloadReady && cond.Status == ewv1alpha1.ConditionTrue {
+		if cond.Type == ewv1beta1.WorkloadReady && cond.Status == ewv1beta1.ConditionTrue {
 			return true
 		}
 	}

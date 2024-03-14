@@ -113,7 +113,7 @@ func ServiceProfilesAccess(ctx context.Context, k8sClient kubernetes.Interface) 
 // ServersAccess checks whether the Server CRD is installed on the cluster
 // and the client is authorized to access Servers.
 func ServersAccess(ctx context.Context, k8sClient kubernetes.Interface) error {
-	groupVersion := fmt.Sprintf("%s/%s", PolicyAPIGroup, PolicyAPIVersion)
+	groupVersion := fmt.Sprintf("%s/%s", PolicyAPIGroup, PolicyServerCRDVersion)
 	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(groupVersion)
 	if err != nil {
 		return err
@@ -125,7 +125,7 @@ func ServersAccess(ctx context.Context, k8sClient kubernetes.Interface) error {
 			}
 		}
 	}
-	return errors.New("Server CRD not found")
+	return fmt.Errorf("server CRD (%s) not found", groupVersion)
 }
 
 // ExtWorkloadAccess checks whether the ExternalWorkload CRD is installed on the

@@ -90,7 +90,7 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
 spec:
-  maxUnavailable: 1
+  maxUnavailable: {{ .Values.controller.podDisruptionBudget.maxUnavailable }}
   selector:
     matchLabels:
       linkerd.io/control-plane-component: identity
@@ -165,6 +165,9 @@ spec:
         env:
         - name: LINKERD_DISABLED
           value: "linkerd-await cannot block the identity controller"
+        {{- with (.Values.identity).additionalEnv }}
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}
         {{- with (.Values.identity).experimentalEnv }}
         {{- toYaml . | nindent 8 -}}
         {{- end }}

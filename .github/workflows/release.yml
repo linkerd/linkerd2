@@ -4,7 +4,6 @@ on:
   push:
     tags:
     - "edge-*"
-    - "stable-*"
 
 permissions:
   contents: read
@@ -13,6 +12,7 @@ env:
   GH_ANNOTATION: true
   DOCKER_REGISTRY: ghcr.io/linkerd
   K3D_VERSION: v5.4.4
+  LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO }}
 
 jobs:
   # TODO(ver) We should stop relying so heavily on the environment,
@@ -61,6 +61,8 @@ jobs:
         docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
         component: ${{ matrix.component }}
         tag: ${{ needs.tag.outputs.tag }}
+      env:
+        LINKERD2_PROXY_GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN }}
     - uses: sigstore/cosign-installer@v3
     - run: cosign sign '${{ steps.build.outputs.digest }}'
       env:
@@ -81,9 +83,9 @@ jobs:
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact
       if: matrix.component == 'cli-bin'
-      uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
       with:
-        name: image-archives
+        name: image-archives-cli
         path: /home/runner/archives
 
   windows_static_cli_tests:
@@ -96,11 +98,11 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
     - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
       with:
-        go-version: '1.21'
+        go-version: '1.22'
     - name: Download image archives
-      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
+      uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
       with:
-        name: image-archives
+        name: image-archives-cli
         path: image-archives
     - name: Run CLI Integration tests
       run: go test --failfast --mod=readonly ".\test\cli" --linkerd="$PWD\image-archives\linkerd-windows.exe" --cli-tests -v
@@ -129,7 +131,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
     - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
       with:
-        go-version: '1.21'
+        go-version: '1.22'
     - name: Set environment variables from scripts
       run: |
         TAG='${{ needs.tag.outputs.tag }}'
@@ -153,8 +155,8 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: '1.21'
-      - uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226
+          go-version: '1.22'
+      - uses: docker/setup-buildx-action@0d103c3126aa41d772a8362f6aa67afac040f80c
       - name: Pull linkerd binary
         run: |
           TAG='${{ needs.tag.outputs.tag }}'
@@ -162,7 +164,7 @@ jobs:
           CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-arm64"
           echo "CMD=$CMD" >> "$GITHUB_ENV"
           "$CMD" version --client
-      - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: azure/setup-kubectl@901a10e89ea615cf61f57ac05cecdf23e7de06d8
@@ -211,7 +213,7 @@ jobs:
         args: pack bin/win/linkerd.nuspec
     - name: Chocolatey - upload package
       if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
       with:
         name: choco
         path: ./linkerd.*.nupkg
@@ -221,39 +223,32 @@ jobs:
     needs:
     - tag
     - integration_tests
-    - choco_pack
-    if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
+    # TODO(ver) choco packages are not produced for edge releases...
+    # - choco_pack
     timeout-minutes: 30
     runs-on: ubuntu-20.04
     permissions:
       contents: write
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-    - name: Set environment variables
-      run: |
-        echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
-        . bin/_release.sh
-        extract_release_notes NOTES.md
-    - name: Download choco package
-      if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
-      with:
-        name: choco
-        path: choco
+    # - name: Download choco package
+    #   if: startsWith(github.ref, 'refs/tags/stable')
+    #   uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
+    #   with:
+    #     name: choco
+    #     path: choco
     - name: Pull CLI binaries
-      env:
-        DOCKER_TARGET: multi-arch
-      run : |
-        bin/docker-pull-binaries "$TAG"
-        v=${TAG#"stable-"}
-        mv choco/linkerd.*.nupkg "target/release/linkerd2-cli-stable-$v.nupkg" || true
+      run: DOCKER_TARGET=multi-arch bin/docker-pull-binaries '${{ needs.tag.outputs.tag }}'
+      #  v=${TAG#"stable-"}
+      #  mv choco/linkerd.*.nupkg "target/release/linkerd2-cli-stable-$v.nupkg" || true
     - name: Create release
       id: create_release
-      uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844
+      uses: softprops/action-gh-release@3198ee18f814cdf787321b4a32a26ddbf37acc52
       with:
+        name: '${{ needs.tag.outputs.tag }}'
+        generate_release_notes: true
         draft: false
         prerelease: false
-        body_path: NOTES.md
         files: |
           ./target/release/linkerd2-cli-*-darwin*
           ./target/release/linkerd2-cli-*-linux-*
@@ -313,16 +308,8 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
     - name: Log into GCP
-      uses: 'google-github-actions/auth@5a50e581162a13f4baa8916d01180d2acbc04363'
+      uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c'
       with:
         credentials_json: ${{ secrets.LINKERD_SITE_TOKEN }}
     - name: Edge Helm chart creation and upload
-      if: startsWith(github.ref, 'refs/tags/edge')
       uses: ./.github/actions/helm-publish
-      with:
-        branch: edge
-    - name: Stable Helm chart creation and upload
-      if: startsWith(github.ref, 'refs/tags/stable')
-      uses: ./.github/actions/helm-publish
-      with:
-        branch: stable

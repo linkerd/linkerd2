@@ -1,4 +1,4 @@
-package v1alpha1
+package v1beta1
 
 import (
 	v1 "k8s.io/api/core/v1"
@@ -46,7 +46,7 @@ type ExternalWorkloadList struct {
 // ExternalWorkloadSpec represents the desired state of an external workload
 type ExternalWorkloadSpec struct {
 	// MeshTls describes TLS settings associated with an external workload
-	MeshTls MeshTls `json:"meshTls"`
+	MeshTLS MeshTLS `json:"meshTLS"`
 	// Ports describes a set of ports exposed by the workload
 	//
 	// +optional
@@ -59,7 +59,7 @@ type ExternalWorkloadSpec struct {
 }
 
 // MeshTls describes TLS settings associated with an external workload
-type MeshTls struct {
+type MeshTLS struct {
 	// Identity associated with the workload. Used by peers to perform
 	// verification in the mTLS handshake
 	Identity string `json:"identity"`
