@@ -1,4 +1,4 @@
-## Maintainers
+# Maintainers
 
 The Linkerd maintainers are:
 
