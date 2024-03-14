@@ -400,6 +400,21 @@ jobs:
               k3d-k8s='${{ matrix.k8s }}' \
               mc-test-run
 
+  # Try to re-run the integration tests if they fail, but only up to 3 times.
+  integrations-retry:
+    needs: [test-core, test-policy, test-ext, test-viz, test-multicluster]
+    if: failure() && fromJSON(github.run_attempt) < 3
+    runs-on: ubuntu-20.04
+    permissions:
+      actions: write
+    env:
+        GH_REPO: ${{ github.repository }}
+        GH_TOKEN: ${{ github.token }}
+        GH_DEBUG: api
+        REF: ${{ github.head_ref }}
+    steps:
+      - run: gh workflow run rerun.yml -F 'run_id=${{ github.run_id }}' --ref "$REF"
+
   integrations-ok:
     needs: [test-core, test-policy, test-ext, test-viz, test-multicluster]
     if: always()
@@ -417,3 +432,4 @@ jobs:
         # All jobs must succeed or be skipped.
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1
+
