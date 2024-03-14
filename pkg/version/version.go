@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 )
 
 // Version is updated automatically as part of the build process, and is the
@@ -62,9 +61,9 @@ func match(expectedVersion, actualVersion string) error {
 			actual, expected)
 	}
 
-	if actual.version != expected.version {
+	if actual.version != expected.version || !actual.hotpatchEqual(expected) {
 		return fmt.Errorf("is running version %s but the latest %s version is %s",
-			actual.version, strings.Replace(actual.channel, hotpatchSuffix, " hotpatch", 1), expected.version)
+			actual.versionWithHotpatch(), actual.channel, expected.versionWithHotpatch())
 	}
 
 	return nil
