@@ -59,7 +59,7 @@ func Main(args []string) {
 		log.Infof("starting admin server on %s", *metricsAddr)
 		if err := adminServer.ListenAndServe(); err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
-				log.Infof("destination admin server status is shutdown or close: %s", err)
+				log.Infof("shutting down admin server on %s", *metricsAddr)
 			} else {
 				log.Errorf("failed to start destination admin server: %s", err)
 			}
