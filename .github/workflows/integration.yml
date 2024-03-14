@@ -90,8 +90,8 @@ jobs:
       changed-viz: ${{ steps.viz.outputs.any_changed }}
       changed: >-
         ${{
-          steps.tag.outputs.tag == 'true' ||
           steps.core.outputs.any_changed == 'true' ||
+          steps.policy.outputs.any_changed == 'true' ||
           steps.multicluster.outputs.any_changed == 'true' ||
           steps.viz.outputs.any_changed == 'true'
         }}
