@@ -411,8 +411,9 @@ jobs:
         GH_REPO: ${{ github.repository }}
         GH_TOKEN: ${{ github.token }}
         GH_DEBUG: api
+        REF: ${{ github.head_ref }}
     steps:
-      - run: gh workflow run rerun.yml -F 'run_id=${{ github.run_id }}' --ref ${{ github.head_ref }}
+      - run: gh workflow run rerun.yml -F 'run_id=${{ github.run_id }}' --ref "$REF"
 
   integrations-ok:
     needs: [test-core, test-policy, test-ext, test-viz, test-multicluster]
@@ -431,3 +432,4 @@ jobs:
         # All jobs must succeed or be skipped.
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1
+}
