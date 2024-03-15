@@ -107,21 +107,21 @@ impl ControllerMetrics {
     pub fn register(prom: &mut Registry) -> Self {
         let patch_succeeded = Counter::default();
         prom.register(
-            "patch_succeeded_total",
+            "patch_succeeded",
             "Counter patches successfully applied to HTTPRoutes",
             patch_succeeded.clone(),
         );
 
         let patch_failed = Counter::default();
         prom.register(
-            "patch_failed_total",
+            "patch_failed",
             "Counter patches that fail to apply to HTTPRoutes",
             patch_failed.clone(),
         );
 
         let patch_timeout = Counter::default();
         prom.register(
-            "patch_timeout_total",
+            "patch_timeout",
             "Counter patches that time out when applying to HTTPRoutes",
             patch_timeout.clone(),
         );
