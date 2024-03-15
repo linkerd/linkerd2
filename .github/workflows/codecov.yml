@@ -3,7 +3,7 @@ name: Coverage
 # Run weekly on Sunday at midnight (UTC).
 on:
   schedule:
-    - cron: '0 0 * * 0'
+    - cron: "0 0 * * 0"
 
 permissions:
   contents: read
@@ -12,7 +12,7 @@ jobs:
   go:
     name: Go
     timeout-minutes: 30
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container:
       image: golang:1.22
     steps:
@@ -27,7 +27,7 @@ jobs:
   js:
     name: JS
     timeout-minutes: 30
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container:
       image: node:20-stretch
     steps:
@@ -48,7 +48,7 @@ jobs:
 
   rust:
     name: Rust
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     container:
       image: docker://rust:1.76.0

@@ -13,17 +13,17 @@ permissions:
 jobs:
   js-web-test:
     timeout-minutes: 30
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container:
       image: node:20-bookworm
     env:
       NODE_ENV: test
     steps:
-    - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-    - name: Yarn setup
-      shell: bash
-      run: |
-        bin/scurl --retry 2 https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
-        echo PATH="$HOME/.yarn/bin:$PATH" >> "$GITHUB_ENV"
-    - run: bin/web --frozen-lockfile
-    - run: bin/web test --reporters="jest-progress-bar-reporter" --reporters="./gh_ann_reporter.js"
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - name: Yarn setup
+        shell: bash
+        run: |
+          bin/scurl --retry 2 https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
+          echo PATH="$HOME/.yarn/bin:$PATH" >> "$GITHUB_ENV"
+      - run: bin/web --frozen-lockfile
+      - run: bin/web test --reporters="jest-progress-bar-reporter" --reporters="./gh_ann_reporter.js"
