@@ -12,7 +12,8 @@ use linkerd_policy_controller_core::{http_route::GroupKindName, POLICY_CONTROLLE
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
 use parking_lot::RwLock;
 use prometheus_client::{
-    metrics::{counter::Counter, histogram::Histogram},
+    encoding::{EncodeLabelSet, EncodeLabelValue},
+    metrics::{counter::Counter, family::Family, gauge::Gauge, histogram::Histogram},
     registry::Registry,
 };
 use serde::de::DeserializeOwned;
@@ -88,6 +89,21 @@ pub struct Index {
 pub struct IndexMetrics {
     patch_enqueues: Counter,
     patch_channel_full: Counter,
+    index_size: Family<IndexLabels, Gauge>,
+    index_applies: Family<IndexLabels, Counter>,
+    index_deletes: Family<IndexLabels, Counter>,
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
+struct IndexLabels {
+    resource: ResourceKinds,
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelValue)]
+enum ResourceKinds {
+    HttpRoute,
+    Server,
+    Service,
 }
 
 #[derive(Clone, PartialEq)]
@@ -175,9 +191,33 @@ impl IndexMetrics {
             patch_channel_full.clone(),
         );
 
+        let index_size = Family::default();
+        prom.register(
+            "index_size",
+            "Gauge of the number of resources in the index",
+            index_size.clone(),
+        );
+
+        let index_applies = Family::default();
+        prom.register(
+            "index_applies_total",
+            "Counter of applies to the index",
+            index_applies.clone(),
+        );
+
+        let index_deletes = Family::default();
+        prom.register(
+            "index_deletes_total",
+            "Counter of deletes to the index",
+            index_deletes.clone(),
+        );
+
         Self {
             patch_enqueues,
             patch_channel_full,
+            index_size,
+            index_applies,
+            index_deletes,
         }
     }
 }
@@ -480,6 +520,13 @@ impl Index {
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
     fn apply(&mut self, resource: k8s::policy::HttpRoute) {
+        self.metrics
+            .index_applies
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::HttpRoute,
+            })
+            .inc();
+
         let namespace = resource
             .namespace()
             .expect("HTTPRoute must have a namespace");
@@ -522,9 +569,23 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
             statuses,
         };
         self.index_httproute(id, route);
+
+        self.metrics
+            .index_size
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::HttpRoute,
+            })
+            .set(self.http_route_refs.len() as i64);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
+        self.metrics
+            .index_deletes
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::HttpRoute,
+            })
+            .inc();
+
         let id = NamespaceGroupKindName {
             namespace,
             gkn: GroupKindName {
@@ -534,6 +595,13 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
             },
         };
         self.http_route_refs.remove(&id);
+
+        self.metrics
+            .index_size
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::HttpRoute,
+            })
+            .set(self.http_route_refs.len() as i64);
     }
 
     // Since apply only reindexes a single HTTPRoute at a time, there's no need
@@ -542,6 +610,13 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
 
 impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
     fn apply(&mut self, resource: k8s_gateway_api::HttpRoute) {
+        self.metrics
+            .index_applies
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::HttpRoute,
+            })
+            .inc();
+
         let namespace = resource
             .namespace()
             .expect("HTTPRoute must have a namespace");
@@ -584,9 +659,23 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
             statuses,
         };
         self.index_httproute(id, route);
+
+        self.metrics
+            .index_size
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::HttpRoute,
+            })
+            .set(self.http_route_refs.len() as i64);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
+        self.metrics
+            .index_deletes
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::HttpRoute,
+            })
+            .inc();
+
         let id = NamespaceGroupKindName {
             namespace,
             gkn: GroupKindName {
@@ -596,6 +685,13 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
             },
         };
         self.http_route_refs.remove(&id);
+
+        self.metrics
+            .index_size
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::HttpRoute,
+            })
+            .set(self.http_route_refs.len() as i64);
     }
 
     // Since apply only reindexes a single HTTPRoute at a time, there's no need
@@ -604,6 +700,13 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     fn apply(&mut self, resource: k8s::policy::Server) {
+        self.metrics
+            .index_applies
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::Server,
+            })
+            .inc();
+
         let namespace = resource.namespace().expect("Server must have a namespace");
         let name = resource.name_unchecked();
         let id = ResourceId::new(namespace, name);
@@ -616,9 +719,23 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
             return;
         }
         self.reconcile();
+
+        self.metrics
+            .index_size
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::Server,
+            })
+            .set(self.servers.len() as i64);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
+        self.metrics
+            .index_deletes
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::Server,
+            })
+            .inc();
+
         let id = ResourceId::new(namespace, name);
 
         self.servers.remove(&id);
@@ -629,6 +746,13 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
             return;
         }
         self.reconcile();
+
+        self.metrics
+            .index_size
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::Server,
+            })
+            .set(self.servers.len() as i64);
     }
 
     // Since apply only reindexes a single Server at a time, there's no need
@@ -637,6 +761,13 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
 
 impl kubert::index::IndexNamespacedResource<k8s::Service> for Index {
     fn apply(&mut self, resource: k8s::Service) {
+        self.metrics
+            .index_applies
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::Service,
+            })
+            .inc();
+
         let namespace = resource.namespace().expect("Service must have a namespace");
         let name = resource.name_unchecked();
         let id = ResourceId::new(namespace, name);
@@ -649,9 +780,23 @@ impl kubert::index::IndexNamespacedResource<k8s::Service> for Index {
             return;
         }
         self.reconcile();
+
+        self.metrics
+            .index_size
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::Service,
+            })
+            .set(self.services.len() as i64);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
+        self.metrics
+            .index_deletes
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::Service,
+            })
+            .inc();
+
         let id = ResourceId::new(namespace, name);
 
         self.services.remove(&id);
@@ -662,6 +807,13 @@ impl kubert::index::IndexNamespacedResource<k8s::Service> for Index {
             return;
         }
         self.reconcile();
+
+        self.metrics
+            .index_size
+            .get_or_create(&IndexLabels {
+                resource: ResourceKinds::Service,
+            })
+            .set(self.services.len() as i64);
     }
 
     // Since apply only reindexes a single Service at a time, there's no need
