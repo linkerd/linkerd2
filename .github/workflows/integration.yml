@@ -17,12 +17,12 @@ env:
   LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO }}
 
 concurrency:
-  group:  ${{ github.workflow }}-${{ github.head_ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref }}
   cancel-in-progress: true
 
 jobs:
   meta:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - id: tag
@@ -98,7 +98,7 @@ jobs:
 
   info:
     needs: meta
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 2
     steps:
       - name: Info
@@ -113,7 +113,7 @@ jobs:
   build-cli:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
@@ -145,7 +145,7 @@ jobs:
   build-core:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         component:
@@ -181,13 +181,13 @@ jobs:
         test:
           - cni-calico-deep
           - deep
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: '1.22'
+          go-version: "1.22"
       - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
           pattern: image-archives-*
@@ -207,7 +207,7 @@ jobs:
   test-policy:
     needs: [meta, build-cli, build-core]
     if: needs.meta.outputs.changed-policy == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     strategy:
       matrix:
@@ -262,7 +262,7 @@ jobs:
   build-ext:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         component:
@@ -304,13 +304,13 @@ jobs:
           - uninstall
           - upgrade-edge
           - upgrade-stable
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: '1.22'
+          go-version: "1.22"
       - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
           pattern: image-archives-*
@@ -329,13 +329,13 @@ jobs:
   test-viz:
     needs: [meta, build-cli, build-core, build-ext]
     if: needs.meta.outputs.changed-viz == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: '1.22'
+          go-version: "1.22"
       - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
           pattern: image-archives-*
@@ -355,7 +355,7 @@ jobs:
   test-multicluster:
     needs: [meta, build-cli, build-core, build-ext]
     if: needs.meta.outputs.changed-multicluster == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     strategy:
       matrix:
@@ -369,7 +369,7 @@ jobs:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: '1.22'
+          go-version: "1.22"
       - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
           pattern: image-archives-*
@@ -404,21 +404,21 @@ jobs:
   integrations-retry:
     needs: [test-core, test-policy, test-ext, test-viz, test-multicluster]
     if: failure() && fromJSON(github.run_attempt) < 3
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     permissions:
       actions: write
     env:
-        GH_REPO: ${{ github.repository }}
-        GH_TOKEN: ${{ github.token }}
-        GH_DEBUG: api
-        REF: ${{ github.head_ref }}
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+      GH_DEBUG: api
+      REF: ${{ github.head_ref }}
     steps:
       - run: gh workflow run rerun.yml -F 'run_id=${{ github.run_id }}' --ref "$REF"
 
   integrations-ok:
     needs: [test-core, test-policy, test-ext, test-viz, test-multicluster]
     if: always()
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Results
         run: |
@@ -432,4 +432,3 @@ jobs:
         # All jobs must succeed or be skipped.
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1
-

@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   actionlint:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
       - uses: linkerd/dev/actions/setup-tools@v43
@@ -19,7 +19,7 @@ jobs:
       - run: just-dev lint-actions
 
   devcontainer-versions:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: linkerd/dev/actions/setup-tools@v43
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633

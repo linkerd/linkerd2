@@ -5,9 +5,9 @@ on:
     paths:
       - .github/workflows/go.yml
       - go.sum
-      - '**/*.go'
-      - '**/*.golden'
-      - '**/charts/**'
+      - "**/*.go"
+      - "**/*.golden"
+      - "**/charts/**"
 
 permissions:
   contents: read
@@ -15,7 +15,7 @@ permissions:
 jobs:
   go-lint:
     timeout-minutes: 10
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: ghcr.io/linkerd/dev:v43-go
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
@@ -24,7 +24,7 @@ jobs:
 
   go-format:
     timeout-minutes: 10
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: ghcr.io/linkerd/dev:v43-go
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
@@ -33,11 +33,10 @@ jobs:
 
   go-test:
     timeout-minutes: 10
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: ghcr.io/linkerd/dev:v43-go
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just go-fetch
       - run: just go-test
-
