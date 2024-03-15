@@ -136,14 +136,14 @@ impl ControllerMetrics {
 
         let patch_dequeues = Counter::default();
         prom.register(
-            "patch_dequeues_total",
+            "patch_dequeues",
             "Counter of patches dequeued from the updates channel",
             patch_dequeues.clone(),
         );
 
         let patch_drops = Counter::default();
         prom.register(
-            "patch_drops_total",
+            "patch_drops",
             "Counter of patches dropped because we are not the leader",
             patch_drops.clone(),
         );
@@ -163,14 +163,14 @@ impl IndexMetrics {
     pub fn register(prom: &mut Registry) -> Self {
         let patch_enqueues = Counter::default();
         prom.register(
-            "patch_enqueues_total",
+            "patch_enqueues",
             "Counter of patches enqueued to the updates channel",
             patch_enqueues.clone(),
         );
 
         let patch_channel_full = Counter::default();
         prom.register(
-            "patch_channel_full_total",
+            "patch_channel_full",
             "Counter of patches dropped because the updates channel is full",
             patch_channel_full.clone(),
         );
