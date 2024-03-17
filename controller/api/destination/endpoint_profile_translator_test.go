@@ -2,9 +2,9 @@ package destination
 
 import (
 	"errors"
+	"net/http"
 	"testing"
 	"time"
-	"net/http"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
@@ -116,7 +116,7 @@ func TestEndpointProfileTranslator(t *testing.T) {
 		t.Logf("Queue length=%d capacity=%d", translator.queueLen(), updateQueueCapacity)
 		if err := translator.Update(podAddr); err == nil {
 			if !errors.Is(err, http.ErrServerClosed) {
-			  t.Fatalf("Expected update to fail; queue=%d; capacity=%d", translator.queueLen(), updateQueueCapacity)
+				t.Fatalf("Expected update to fail; queue=%d; capacity=%d", translator.queueLen(), updateQueueCapacity)
 			}
 		}
 
