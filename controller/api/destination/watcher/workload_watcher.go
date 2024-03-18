@@ -39,9 +39,10 @@ type (
 		mu sync.RWMutex
 	}
 
-	// workloadPublisher represents an ip:port along with the backing pod
-	// or externalworkload (if any). It keeps a list of listeners to be notified
-	// whenever the workload or the associated opaque protocol config changes.
+	// workloadPublisher represents an address including ip:port, the backing
+	// pod or externalworkload (if any), and if the protocol is opaque. It keeps
+	// a list of listeners to be notified whenever the workload or the
+	// associated opaque protocol config changes.
 	workloadPublisher struct {
 		defaultOpaquePorts map[uint32]struct{}
 		k8sAPI             *k8s.API
