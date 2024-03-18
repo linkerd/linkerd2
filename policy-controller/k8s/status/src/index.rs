@@ -96,7 +96,7 @@ pub struct IndexMetrics {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
 struct IndexLabels {
-    resource: ResourceKinds,
+    kind: ResourceKinds,
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelValue)]
@@ -219,6 +219,12 @@ impl IndexMetrics {
             index_applies,
             index_deletes,
         }
+    }
+}
+
+impl Into<IndexLabels> for ResourceKinds {
+    fn into(self) -> IndexLabels {
+        IndexLabels { kind: self }
     }
 }
 
@@ -523,7 +529,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         self.metrics
             .index_applies
             .get_or_create(&IndexLabels {
-                resource: ResourceKinds::HttpRoute,
+                kind: ResourceKinds::HttpRoute,
             })
             .inc();
 
@@ -572,18 +578,14 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
 
         self.metrics
             .index_size
-            .get_or_create(&IndexLabels {
-                resource: ResourceKinds::HttpRoute,
-            })
+            .get_or_create(&ResourceKinds::HttpRoute.into())
             .set(self.http_route_refs.len() as i64);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
         self.metrics
             .index_deletes
-            .get_or_create(&IndexLabels {
-                resource: ResourceKinds::HttpRoute,
-            })
+            .get_or_create(&ResourceKinds::HttpRoute.into())
             .inc();
 
         let id = NamespaceGroupKindName {
@@ -598,9 +600,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
 
         self.metrics
             .index_size
-            .get_or_create(&IndexLabels {
-                resource: ResourceKinds::HttpRoute,
-            })
+            .get_or_create(&ResourceKinds::HttpRoute.into())
             .set(self.http_route_refs.len() as i64);
     }
 
@@ -612,9 +612,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
     fn apply(&mut self, resource: k8s_gateway_api::HttpRoute) {
         self.metrics
             .index_applies
-            .get_or_create(&IndexLabels {
-                resource: ResourceKinds::HttpRoute,
-            })
+            .get_or_create(&ResourceKinds::HttpRoute.into())
             .inc();
 
         let namespace = resource
@@ -662,18 +660,14 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
 
         self.metrics
             .index_size
-            .get_or_create(&IndexLabels {
-                resource: ResourceKinds::HttpRoute,
-            })
+            .get_or_create(&ResourceKinds::HttpRoute.into())
             .set(self.http_route_refs.len() as i64);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
         self.metrics
             .index_deletes
-            .get_or_create(&IndexLabels {
-                resource: ResourceKinds::HttpRoute,
-            })
+            .get_or_create(&ResourceKinds::HttpRoute.into())
             .inc();
 
         let id = NamespaceGroupKindName {
@@ -688,9 +682,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
 
         self.metrics
             .index_size
-            .get_or_create(&IndexLabels {
-                resource: ResourceKinds::HttpRoute,
-            })
+            .get_or_create(&ResourceKinds::HttpRoute.into())
             .set(self.http_route_refs.len() as i64);
     }
 
@@ -702,9 +694,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     fn apply(&mut self, resource: k8s::policy::Server) {
         self.metrics
             .index_applies
-            .get_or_create(&IndexLabels {
-                resource: ResourceKinds::Server,
-            })
+            .get_or_create(&ResourceKinds::Server.into())
             .inc();
 
         let namespace = resource.namespace().expect("Server must have a namespace");
@@ -722,18 +712,14 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
 
         self.metrics
             .index_size
-            .get_or_create(&IndexLabels {
-                resource: ResourceKinds::Server,
-            })
+            .get_or_create(&ResourceKinds::Server.into())
             .set(self.servers.len() as i64);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
         self.metrics
             .index_deletes
-            .get_or_create(&IndexLabels {
-                resource: ResourceKinds::Server,
-            })
+            .get_or_create(&ResourceKinds::Server.into())
             .inc();
 
         let id = ResourceId::new(namespace, name);
@@ -749,9 +735,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
 
         self.metrics
             .index_size
-            .get_or_create(&IndexLabels {
-                resource: ResourceKinds::Server,
-            })
+            .get_or_create(&ResourceKinds::Server.into())
             .set(self.servers.len() as i64);
     }
 
@@ -763,9 +747,7 @@ impl kubert::index::IndexNamespacedResource<k8s::Service> for Index {
     fn apply(&mut self, resource: k8s::Service) {
         self.metrics
             .index_applies
-            .get_or_create(&IndexLabels {
-                resource: ResourceKinds::Service,
-            })
+            .get_or_create(&ResourceKinds::Service.into())
             .inc();
 
         let namespace = resource.namespace().expect("Service must have a namespace");
@@ -783,18 +765,14 @@ impl kubert::index::IndexNamespacedResource<k8s::Service> for Index {
 
         self.metrics
             .index_size
-            .get_or_create(&IndexLabels {
-                resource: ResourceKinds::Service,
-            })
+            .get_or_create(&ResourceKinds::Service.into())
             .set(self.services.len() as i64);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
         self.metrics
             .index_deletes
-            .get_or_create(&IndexLabels {
-                resource: ResourceKinds::Service,
-            })
+            .get_or_create(&ResourceKinds::Service.into())
             .inc();
 
         let id = ResourceId::new(namespace, name);
@@ -810,9 +788,7 @@ impl kubert::index::IndexNamespacedResource<k8s::Service> for Index {
 
         self.metrics
             .index_size
-            .get_or_create(&IndexLabels {
-                resource: ResourceKinds::Service,
-            })
+            .get_or_create(&ResourceKinds::Service.into())
             .set(self.services.len() as i64);
     }
 

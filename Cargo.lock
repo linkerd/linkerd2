@@ -1269,6 +1269,7 @@ dependencies = [
  "linkerd-policy-controller-k8s-api",
  "maplit",
  "parking_lot",
+ "prometheus-client",
  "thiserror",
  "tokio",
  "tokio-stream",
