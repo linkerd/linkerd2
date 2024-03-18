@@ -17,11 +17,6 @@ import (
 	"time"
 
 	jsonfilter "github.com/clarketm/json"
-	"github.com/linkerd/linkerd2/pkg/charts"
-	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	"github.com/linkerd/linkerd2/pkg/charts/static"
-	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/util"
 	log "github.com/sirupsen/logrus"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -33,6 +28,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
+
+	"github.com/linkerd/linkerd2/pkg/charts"
+	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/charts/static"
+	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/util"
 )
 
 var (
@@ -279,6 +280,7 @@ func (conf *ResourceConfig) GetOverriddenValues() (*l5dcharts.Values, error) {
 
 	copyValues.Proxy.PodInboundPorts = getPodInboundPorts(conf.pod.spec)
 	conf.applyAnnotationOverrides(copyValues)
+	conf.applyAnnotationEnvironmentVariables(copyValues)
 	return copyValues, nil
 }
 
@@ -1144,6 +1146,29 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 
 	if override, ok := annotations[k8s.ProxyAccessLogAnnotation]; ok {
 		values.Proxy.AccessLog = override
+	}
+}
+
+func (conf *ResourceConfig) applyAnnotationEnvironmentVariables(values *l5dcharts.Values) {
+	const linkerdProxyPrefix = "LINKERD2_PROXY_"
+
+	for k, v := range conf.pod.meta.Annotations {
+		if !strings.HasPrefix(k, k8s.ProxyCustomEnvAnnotationPrefix) {
+			continue
+		}
+
+		// remove reserved prefix
+		k = strings.TrimPrefix(k, k8s.ProxyCustomEnvAnnotationPrefix)
+		// transform to CAMEL_CASE
+		k = strings.ToUpper(k)
+		k = strings.ReplaceAll(k, "-", "_")
+		// append prefix to key
+		k = linkerdProxyPrefix + k
+
+		values.Proxy.AdditionalEnv = append(values.Proxy.AdditionalEnv, corev1.EnvVar{
+			Name:  k,
+			Value: v,
+		})
 	}
 }
 
