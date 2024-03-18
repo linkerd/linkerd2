@@ -13,7 +13,7 @@ use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
 use parking_lot::RwLock;
 use prometheus_client::{
     metrics::{counter::Counter, histogram::Histogram},
-    registry::Registry,
+    registry::{Registry, Unit},
 };
 use serde::de::DeserializeOwned;
 use std::{collections::hash_map::Entry, sync::Arc};
@@ -107,30 +107,31 @@ impl ControllerMetrics {
     pub fn register(prom: &mut Registry) -> Self {
         let patch_succeeded = Counter::default();
         prom.register(
-            "patch_succeeded",
-            "Counter patches successfully applied to HTTPRoutes",
+            "patchs",
+            "Count of successful patch operations",
             patch_succeeded.clone(),
         );
 
         let patch_failed = Counter::default();
         prom.register(
-            "patch_failed",
-            "Counter patches that fail to apply to HTTPRoutes",
+            "patch_api_errors",
+            "Count of patch operations that failed with an API error",
             patch_failed.clone(),
         );
 
         let patch_timeout = Counter::default();
         prom.register(
-            "patch_timeout",
-            "Counter patches that time out when applying to HTTPRoutes",
+            "patch_timeouts",
+            "Count of patch operations that did not complete within the timeout",
             patch_timeout.clone(),
         );
 
         let patch_duration =
             Histogram::new([0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0].into_iter());
-        prom.register(
-            "patch_duration_seconds",
+        prom.register_with_unit(
+            "patch_duration",
             "Histogram of time taken to apply patches to HTTPRoutes",
+            Unit::Seconds,
             patch_duration.clone(),
         );
 

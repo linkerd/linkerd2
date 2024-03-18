@@ -110,6 +110,10 @@ func (ept *endpointProfileTranslator) Update(address *watcher.Address) error {
 	}
 }
 
+func (ept *endpointProfileTranslator) queueLen() int {
+	return len(ept.updates)
+}
+
 func (ept *endpointProfileTranslator) update(address *watcher.Address) {
 	var opaquePorts map[uint32]struct{}
 	if address.Pod != nil {

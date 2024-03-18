@@ -3,7 +3,7 @@
 Linkerd gives you observability, reliability, and security
 for your microservices — with no code change required.
 
-![Version: 1.18.11-edge](https://img.shields.io/badge/Version-1.18.11--edge-informational?style=flat-square)
+![Version: 0.0.0-undefined](https://img.shields.io/badge/Version-0.0.0--undefined-informational?style=flat-square)
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
@@ -146,6 +146,8 @@ Kubernetes: `>=1.22.0-0`
 | commonLabels | object | `{}` | Labels to apply to all resources |
 | controlPlaneTracing | bool | `false` | enables control plane tracing |
 | controlPlaneTracingNamespace | string | `"linkerd-jaeger"` | namespace to send control plane traces to |
+| controller.podDisruptionBudget | object | `{"maxUnavailable":1}` | sets pod disruption budget parameter for all deployments |
+| controller.podDisruptionBudget.maxUnavailable | int | `1` | Maximum number of pods that can be unavailable during disruption |
 | controllerImage | string | `"cr.l5d.io/linkerd/controller"` | Docker image for the destination and identity components |
 | controllerImageVersion | string | `""` | Optionally allow a specific container image Tag (or SHA) to be specified for the controllerImage. |
 | controllerLogFormat | string | `"plain"` | Log format for the control plane components |

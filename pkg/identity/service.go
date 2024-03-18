@@ -209,7 +209,7 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 		}
 		var ite InvalidToken
 		if errors.As(err, &ite) {
-			log.Debugf("invalid token provided for %s: %s", reqIdentity, ite)
+			log.Infof("invalid token provided for %s: %s", reqIdentity, ite)
 			return nil, status.Error(codes.InvalidArgument, ite.Error())
 		}
 
@@ -222,7 +222,7 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 	if reqIdentity != tokIdentity {
 		msg := fmt.Sprintf("requested identity did not match provided token: requested=%s; found=%s",
 			reqIdentity, tokIdentity)
-		log.Debug(msg)
+		log.Info(msg)
 		return nil, status.Error(codes.FailedPrecondition, msg)
 	}
 
