@@ -3,7 +3,7 @@ name: Coverage
 # Run weekly on Sunday at midnight (UTC).
 on:
   schedule:
-    - cron: '0 0 * * 0'
+    - cron: "0 0 * * 0"
 
 permissions:
   contents: read
@@ -12,14 +12,14 @@ jobs:
   go:
     name: Go
     timeout-minutes: 30
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container:
       image: golang:1.22
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - run: go install gotest.tools/gotestsum@v0.4.2
       - run: gotestsum -- -cover -coverprofile=coverage.out -v -mod=readonly ./...
-      - uses: codecov/codecov-action@e0b68c6749509c5f83f984dd99a76a1c1a231044
+      - uses: codecov/codecov-action@54bcd8715eee62d40e33596ef5e8f0f48dbbccab
         with:
           files: ./coverage.out
           flags: unittests,golang
@@ -27,11 +27,11 @@ jobs:
   js:
     name: JS
     timeout-minutes: 30
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container:
       image: node:20-stretch
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - name: Yarn setup
         shell: bash
         run: bin/scurl -o- https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
@@ -41,23 +41,23 @@ jobs:
           export NODE_ENV=test
           bin/web --frozen-lockfile
           bin/web test --reporters="jest-progress-bar-reporter" --reporters="./gh_ann_reporter.js" --coverage
-      - uses: codecov/codecov-action@e0b68c6749509c5f83f984dd99a76a1c1a231044
+      - uses: codecov/codecov-action@54bcd8715eee62d40e33596ef5e8f0f48dbbccab
         with:
           directory: ./web/app/coverage
           flags: unittests,javascript
 
   rust:
     name: Rust
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     container:
       image: docker://rust:1.76.0
       options: --security-opt seccomp=unconfined
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - shell: bash
         run: mkdir -p target && cd target && bin/scurl -v https://github.com/xd009642/tarpaulin/releases/download/0.27.3/cargo-tarpaulin-x86_64-unknown-linux-musl.tar.gz | tar zxvf - && chmod 755 cargo-tarpaulin
       - run: target/cargo-tarpaulin tarpaulin --workspace --out Xml
-      - uses: codecov/codecov-action@e0b68c6749509c5f83f984dd99a76a1c1a231044
+      - uses: codecov/codecov-action@54bcd8715eee62d40e33596ef5e8f0f48dbbccab
         with:
           flags: unittests,rust

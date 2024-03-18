@@ -14,10 +14,10 @@ permissions:
 
 jobs:
   rust-version:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container: ghcr.io/linkerd/dev:v43-rust
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - shell: bash
         run: |
           # Extract current Rust version from the toolchain file.
@@ -37,8 +37,8 @@ jobs:
           fi
 
   devcontainer-image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: linkerd/dev/actions/setup-tools@v43
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - run: just-dev pull-dev-image
