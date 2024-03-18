@@ -254,6 +254,9 @@ jobs:
           done
           exit 1
       - run: just policy-test-run --jobs=1
+        env:
+          # https://nexte.st/book/retries.html
+          NEXTEST_RETRIES: 3
 
   ##
   ## Ext: Run tests that require non-core components.
