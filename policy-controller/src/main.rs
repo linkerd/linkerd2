@@ -14,6 +14,7 @@ use linkerd_policy_controller::{
 };
 use linkerd_policy_controller_k8s_index::ports::parse_portset;
 use linkerd_policy_controller_k8s_status::{self as status};
+use prometheus_client::registry::Registry;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{sync::mpsc, time::Duration};
 use tonic::transport::Server;
@@ -27,6 +28,11 @@ const DETECT_TIMEOUT: Duration = Duration::from_secs(10);
 const LEASE_DURATION: Duration = Duration::from_secs(30);
 const LEASE_NAME: &str = "policy-controller-write";
 const RENEW_GRACE_PERIOD: Duration = Duration::from_secs(1);
+const RECONCILIATION_PERIOD: Duration = Duration::from_secs(10);
+// The maximum number of status patches to buffer. As a conservative estimate,
+// we assume that sending a patch will take at least 1ms, so we set the buffer
+// size to be the same as the reconciliation period in milliseconds.
+const STATUS_UPDATE_QUEUE_SIZE: usize = RECONCILIATION_PERIOD.as_millis() as usize;
 
 #[derive(Debug, Parser)]
 #[clap(name = "policy", about = "A policy resource prototype")]
@@ -117,7 +123,7 @@ async fn main() -> Result<()> {
 
     let mut runtime = kubert::Runtime::builder()
         .with_log(log_level, log_format)
-        .with_admin(admin.into_builder().with_prometheus(Default::default()))
+        .with_admin(admin.into_builder().with_prometheus(<Registry>::default()))
         .with_client(client)
         .with_optional_server(server)
         .build()
@@ -159,7 +165,7 @@ async fn main() -> Result<()> {
 
     // Build the status index which will maintain information necessary for
     // updating the status field of policy resources.
-    let (updates_tx, updates_rx) = mpsc::unbounded_channel();
+    let (updates_tx, updates_rx) = mpsc::channel(STATUS_UPDATE_QUEUE_SIZE);
     let status_index = status::Index::shared(hostname.clone(), claims.clone(), updates_tx);
 
     // Spawn resource watches.
@@ -239,7 +245,10 @@ async fn main() -> Result<()> {
     );
 
     // Spawn the status Controller reconciliation.
-    tokio::spawn(status::Index::run(status_index.clone()).instrument(info_span!("status::Index")));
+    tokio::spawn(
+        status::Index::run(status_index.clone(), RECONCILIATION_PERIOD)
+            .instrument(info_span!("status::Index")),
+    );
 
     // Run the gRPC server, serving results by looking up against the index handle.
     tokio::spawn(grpc(

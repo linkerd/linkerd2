@@ -1,17 +1,17 @@
-name: 'Lock Threads'
+name: "Lock Threads"
 
 on:
   schedule:
-    - cron: '0 1 * * *'
+    - cron: "0 1 * * *"
 
 permissions:
   issues: write
 
 jobs:
   action:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: dessant/lock-threads@1bf7ec25051fe7c00bdd17e6a7cf3d7bfb7dc771
         with:
-          issue-inactive-days: '30'
-          process-only: 'issues'
+          issue-inactive-days: "30"
+          process-only: "issues"

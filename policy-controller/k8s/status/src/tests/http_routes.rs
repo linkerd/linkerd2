@@ -1,4 +1,8 @@
-use crate::{index, index::POLICY_API_GROUP, resource_id::NamespaceGroupKindName, Index};
+use crate::{
+    index::{self, POLICY_API_GROUP},
+    resource_id::NamespaceGroupKindName,
+    Index,
+};
 use k8s::Resource;
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{http_route::GroupKindName, POLICY_CONTROLLER_NAME};
@@ -14,7 +18,7 @@ fn http_route_accepted_after_server_create() {
         expiry: chrono::DateTime::<chrono::Utc>::MAX_UTC,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
-    let (updates_tx, mut updates_rx) = mpsc::unbounded_channel();
+    let (updates_tx, mut updates_rx) = mpsc::channel(10000);
     let index = Index::shared(hostname, claims_rx, updates_tx);
 
     // Apply the route.
@@ -81,7 +85,7 @@ fn http_route_rejected_after_server_delete() {
         expiry: chrono::DateTime::<chrono::Utc>::MAX_UTC,
     };
     let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
-    let (updates_tx, mut updates_rx) = mpsc::unbounded_channel();
+    let (updates_tx, mut updates_rx) = mpsc::channel(10000);
     let index = Index::shared(hostname, claims_rx, updates_tx);
 
     let server = make_server(

@@ -55,7 +55,7 @@ func (c Channels) Match(actualVersion string) error {
 	}
 
 	for _, cv := range c.array {
-		if cv.channel == actual.channel {
+		if cv.updateChannel() == actual.updateChannel() {
 			return match(cv.String(), actualVersion)
 		}
 	}
@@ -113,7 +113,7 @@ func getLatestVersions(ctx context.Context, client *http.Client, url string) (Ch
 			return Channels{}, fmt.Errorf("unexpected versioncheck response: %w", err)
 		}
 
-		if c != cv.channel {
+		if c != cv.updateChannel() {
 			return Channels{}, fmt.Errorf("unexpected versioncheck response: channel in %s does not match %s", cv, c)
 		}
 

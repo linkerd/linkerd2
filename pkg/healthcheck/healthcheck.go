@@ -1389,21 +1389,6 @@ func (hc *HealthChecker) allCategories() []*Category {
 			LinkerdHAChecks,
 			[]Checker{
 				{
-					description: "pod injection disabled on kube-system",
-					hintAnchor:  "l5d-injection-disabled",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						policy, err := hc.getMutatingWebhookFailurePolicy(ctx)
-						if err != nil {
-							return err
-						}
-						if policy != nil && *policy == admissionRegistration.Fail {
-							return hc.checkHAMetadataPresentOnKubeSystemNamespace(ctx)
-						}
-						return SkipError{Reason: "not run for non HA installs"}
-					},
-				},
-				{
 					description:   "multiple replicas of control plane pods",
 					hintAnchor:    "l5d-control-plane-replicas",
 					retryDeadline: hc.RetryDeadline,
@@ -2135,14 +2120,6 @@ func (hc *HealthChecker) getProxyInjectorMutatingWebhook(ctx context.Context) (*
 	return &mwc.Webhooks[0], nil
 }
 
-func (hc *HealthChecker) getMutatingWebhookFailurePolicy(ctx context.Context) (*admissionRegistration.FailurePolicyType, error) {
-	mwh, err := hc.getProxyInjectorMutatingWebhook(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return mwh.FailurePolicy, nil
-}
-
 func (hc *HealthChecker) checkMutatingWebhookConfigurations(ctx context.Context, shouldExist bool) error {
 	options := metav1.ListOptions{
 		LabelSelector: controlPlaneComponentsSelector(),
@@ -2604,20 +2581,6 @@ func (hc *HealthChecker) GetServices(ctx context.Context) ([]corev1.Service, err
 		return nil, err
 	}
 	return svcList.Items, nil
-}
-
-func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace(ctx context.Context) error {
-	ns, err := hc.kubeAPI.CoreV1().Namespaces().Get(ctx, "kube-system", metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	val, ok := ns.Labels[k8s.AdmissionWebhookLabel]
-	if !ok || val != "disabled" {
-		return fmt.Errorf("kube-system namespace needs to have the label %s: disabled if injector webhook failure policy is Fail", k8s.AdmissionWebhookLabel)
-	}
-
-	return nil
 }
 
 func (hc *HealthChecker) checkCanCreate(ctx context.Context, namespace, group, version, resource string) error {
