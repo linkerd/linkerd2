@@ -51,7 +51,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local.:8086
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
-          value: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
+          value: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8
         - name: LINKERD2_PROXY_POLICY_SVC_ADDR
           value: linkerd-policy.linkerd.svc.cluster.local.:8090
         - name: LINKERD2_PROXY_POLICY_WORKLOAD
@@ -60,7 +60,7 @@ spec:
         - name: LINKERD2_PROXY_INBOUND_DEFAULT_POLICY
           value: all-unauthenticated
         - name: LINKERD2_PROXY_POLICY_CLUSTER_NETWORKS
-          value: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
+          value: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8
         - name: LINKERD2_PROXY_CONTROL_STREAM_INITIAL_TIMEOUT
           value: 3s
         - name: LINKERD2_PROXY_CONTROL_STREAM_IDLE_TIMEOUT
