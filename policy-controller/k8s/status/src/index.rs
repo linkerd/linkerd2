@@ -222,9 +222,9 @@ impl IndexMetrics {
     }
 }
 
-impl Into<IndexLabels> for ResourceKinds {
-    fn into(self) -> IndexLabels {
-        IndexLabels { kind: self }
+impl From<ResourceKinds> for IndexLabels {
+    fn from(val: ResourceKinds) -> IndexLabels {
+        IndexLabels { kind: val }
     }
 }
 

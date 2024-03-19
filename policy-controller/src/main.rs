@@ -122,6 +122,8 @@ async fn main() -> Result<()> {
     };
 
     let mut prom = <Registry>::default();
+    let inbound_metrics =
+        inbound::IndexMetrics::register(prom.sub_registry_with_prefix("inbound_policy"));
     let status_metrics =
         status::ControllerMetrics::register(prom.sub_registry_with_prefix("resource_status"));
     let status_index_metrcs =
@@ -166,7 +168,7 @@ async fn main() -> Result<()> {
 
     // Build the API index data structures which will maintain information
     // necessary for serving the inbound policy and outbound policy gRPC APIs.
-    let inbound_index = inbound::Index::shared(cluster_info.clone());
+    let inbound_index = inbound::Index::shared(cluster_info.clone(), inbound_metrics);
     let outbound_index = outbound::Index::shared(cluster_info);
 
     // Build the status index which will maintain information necessary for
