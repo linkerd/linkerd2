@@ -1,5 +1,6 @@
 use crate::{
     http_route::{self, gkn_for_gateway_http_route, gkn_for_linkerd_http_route, HttpRouteResource},
+    metrics::SizedIndex,
     ports::{ports_annotation, PortSet},
     ClusterInfo,
 };
@@ -96,6 +97,18 @@ impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
     }
 }
 
+impl SizedIndex<api::HttpRoute> for Index {
+    fn size(&self, namespace: &str) -> usize {
+        self.namespaces.by_ns.get(namespace).map_or(0, |ns| {
+            ns.service_port_routes.len()
+                + ns.service_routes
+                    .iter()
+                    .map(|(_service, routes)| routes.len())
+                    .sum::<usize>()
+        })
+    }
+}
+
 impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
     fn apply(&mut self, route: k8s_gateway_api::HttpRoute) {
         self.apply(HttpRouteResource::Gateway(route))
@@ -106,6 +119,18 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete(&gknn);
         }
+    }
+}
+
+impl SizedIndex<k8s_gateway_api::HttpRoute> for Index {
+    fn size(&self, namespace: &str) -> usize {
+        self.namespaces.by_ns.get(namespace).map_or(0, |ns| {
+            ns.service_port_routes.len()
+                + ns.service_routes
+                    .iter()
+                    .map(|(_service, routes)| routes.len())
+                    .sum::<usize>()
+        })
     }
 }
 
@@ -171,16 +196,29 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
     }
 }
 
+impl SizedIndex<Service> for Index {
+    fn size(&self, namespace: &str) -> usize {
+        self.service_info
+            .iter()
+            .filter(|(svc, _info)| svc.namespace == namespace)
+            .count()
+    }
+}
+
 impl Index {
-    pub fn shared(cluster_info: Arc<ClusterInfo>) -> SharedIndex {
-        Arc::new(RwLock::new(Self {
+    pub fn new(cluster_info: Arc<ClusterInfo>) -> Self {
+        Self {
             namespaces: NamespaceIndex {
                 by_ns: HashMap::default(),
                 cluster_info,
             },
             services_by_ip: HashMap::default(),
             service_info: HashMap::default(),
-        }))
+        }
+    }
+
+    pub fn shared(self) -> SharedIndex {
+        Arc::new(RwLock::new(self))
     }
 
     pub fn outbound_policy_rx(

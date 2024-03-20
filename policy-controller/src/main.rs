@@ -149,7 +149,12 @@ async fn main() -> Result<()> {
         prom.sub_registry_with_prefix("inbound_policy"),
     )
     .shared();
-    let outbound_index = outbound::Index::shared(cluster_info);
+    let outbound_index_inner = outbound::Index::new(cluster_info).shared();
+    let outbound_index = metrics::IndexMetrics::register(
+        outbound_index_inner.clone(),
+        prom.sub_registry_with_prefix("outbound_policy"),
+    )
+    .shared();
 
     let mut runtime = kubert::Runtime::builder()
         .with_log(log_level, log_format)
@@ -272,7 +277,7 @@ async fn main() -> Result<()> {
         cluster_domain,
         cluster_networks,
         inbound_index_inner,
-        outbound_index,
+        outbound_index_inner,
         runtime.shutdown_handle(),
     ));
 
