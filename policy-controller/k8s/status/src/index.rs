@@ -216,11 +216,11 @@ impl Controller {
                 self.metrics
                     .patch_duration
                     .observe(start.elapsed().as_secs_f64());
-                tracing::error!(%namespace, %name, %error, "failed to patch HTTPRoute");
+                tracing::error!(%namespace, %name, kind = %K::kind(&Default::default()), %error, "Patch failed");
             }
             Err(_) => {
                 self.metrics.patch_timeout.inc();
-                tracing::error!(%namespace, %name, "timed out patching HTTPRoute");
+                tracing::error!(%namespace, %name, kind = %K::kind(&Default::default()), "Patch timed out");
             }
         }
     }
