@@ -15,6 +15,7 @@ env:
   RUSTUP_MAX_RETRIES: 10
   YQ_VERSION: v4.25.1
   LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO || 'linkerd/linkerd2-proxy' }}
+  LINKERD2_PROXY_RELEASE_PREFIX: ${{ vars.LINKERD2_PROXY_RELEASE_PREFIX || 'release/' }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref }}
@@ -157,13 +158,13 @@ jobs:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - uses: ./.github/actions/docker-build
         id: build
+        env:
+          LINKERD2_PROXY_GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN || github.token }}
         with:
           docker-registry: ${{ env.DOCKER_REGISTRY }}
           docker-target: linux-amd64
           component: ${{ matrix.component }}
           tag: ${{ needs.meta.outputs.tag }}
-        env:
-          LINKERD2_PROXY_GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN }}
       - name: Run docker save
         run: |
           mkdir -p /home/runner/archives
