@@ -24,7 +24,6 @@ use tokio::{
 
 pub(crate) const POLICY_API_GROUP: &str = "policy.linkerd.io";
 const POLICY_API_VERSION: &str = "policy.linkerd.io/v1alpha1";
-const PATCH_TIMEOUT: Duration = Duration::from_secs(5);
 
 mod conditions {
     pub const RESOLVED_REFS: &str = "ResolvedRefs";
@@ -50,6 +49,7 @@ pub struct Controller {
     client: k8s::Client,
     name: String,
     updates: mpsc::Receiver<Update>,
+    patch_timeout: Duration,
 
     /// True if this policy controller is the leader — false otherwise.
     leader: bool,
@@ -141,6 +141,7 @@ impl Controller {
         client: k8s::Client,
         name: String,
         updates: mpsc::Receiver<Update>,
+        patch_timeout: Duration,
         metrics: ControllerMetrics,
     ) -> Self {
         Self {
@@ -148,6 +149,7 @@ impl Controller {
             client,
             name,
             updates,
+            patch_timeout,
             leader: false,
             metrics,
         }
@@ -204,7 +206,12 @@ impl Controller {
         let patch_params = k8s::PatchParams::apply(POLICY_API_GROUP);
         let api = k8s::Api::<K>::namespaced(self.client.clone(), namespace);
         let start = time::Instant::now();
-        match time::timeout(PATCH_TIMEOUT, api.patch_status(name, &patch_params, &patch)).await {
+        match time::timeout(
+            self.patch_timeout,
+            api.patch_status(name, &patch_params, &patch),
+        )
+        .await
+        {
             Ok(Ok(_)) => {
                 self.metrics.patch_succeeded.inc();
                 self.metrics
