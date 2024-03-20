@@ -27,6 +27,7 @@ mod cluster_info;
 mod defaults;
 pub mod http_route;
 pub mod inbound;
+pub mod metrics;
 pub mod outbound;
 pub mod ports;
 

@@ -14,7 +14,9 @@ use linkerd_policy_controller_core::outbound::{
 pub use linkerd_policy_controller_core::IpNet;
 pub use linkerd_policy_controller_grpc as grpc;
 pub use linkerd_policy_controller_k8s_api as k8s;
-pub use linkerd_policy_controller_k8s_index::{inbound, outbound, ClusterInfo, DefaultPolicy};
+pub use linkerd_policy_controller_k8s_index::{
+    inbound, metrics, outbound, ClusterInfo, DefaultPolicy,
+};
 use std::{net::IpAddr, num::NonZeroU16};
 
 #[derive(Clone, Debug)]

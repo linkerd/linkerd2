@@ -9,8 +9,8 @@ use k8s_openapi::api::coordination::v1 as coordv1;
 use kube::{api::PatchParams, runtime::watcher};
 use kubert::LeaseManager;
 use linkerd_policy_controller::{
-    grpc, inbound, index_list::IndexList, k8s, outbound, Admission, ClusterInfo, DefaultPolicy,
-    InboundDiscover, IpNet, OutboundDiscover,
+    grpc, inbound, index_list::IndexList, k8s, metrics, outbound, Admission, ClusterInfo,
+    DefaultPolicy, InboundDiscover, IpNet, OutboundDiscover,
 };
 use linkerd_policy_controller_k8s_index::ports::parse_portset;
 use linkerd_policy_controller_k8s_status::{self as status};
@@ -121,22 +121,6 @@ async fn main() -> Result<()> {
         Some(server)
     };
 
-    let mut prom = <Registry>::default();
-    let inbound_metrics =
-        inbound::IndexMetrics::register(prom.sub_registry_with_prefix("inbound_policy"));
-    let status_metrics =
-        status::ControllerMetrics::register(prom.sub_registry_with_prefix("resource_status"));
-    let status_index_metrcs =
-        status::IndexMetrics::register(prom.sub_registry_with_prefix("resource_status"));
-
-    let mut runtime = kubert::Runtime::builder()
-        .with_log(log_level, log_format)
-        .with_admin(admin.into_builder().with_prometheus(prom))
-        .with_client(client)
-        .with_optional_server(server)
-        .build()
-        .await?;
-
     let probe_networks = probe_networks.map(|IpNets(nets)| nets).unwrap_or_default();
 
     let default_opaque_ports = parse_portset(&default_opaque_ports)?;
@@ -150,6 +134,30 @@ async fn main() -> Result<()> {
         default_opaque_ports,
         probe_networks,
     });
+
+    let mut prom = <Registry>::default();
+    let status_metrics =
+        status::ControllerMetrics::register(prom.sub_registry_with_prefix("resource_status"));
+    let status_index_metrcs =
+        status::IndexMetrics::register(prom.sub_registry_with_prefix("resource_status"));
+
+    // Build the API index data structures which will maintain information
+    // necessary for serving the inbound policy and outbound policy gRPC APIs.
+    let inbound_index_inner = inbound::Index::new(cluster_info.clone()).shared();
+    let inbound_index = metrics::IndexMetrics::register(
+        inbound_index_inner.clone(),
+        prom.sub_registry_with_prefix("inbound_policy"),
+    )
+    .shared();
+    let outbound_index = outbound::Index::shared(cluster_info);
+
+    let mut runtime = kubert::Runtime::builder()
+        .with_log(log_level, log_format)
+        .with_admin(admin.into_builder().with_prometheus(prom))
+        .with_client(client)
+        .with_optional_server(server)
+        .build()
+        .await?;
 
     let hostname =
         std::env::var("HOSTNAME").expect("Failed to fetch `HOSTNAME` environment variable");
@@ -165,11 +173,6 @@ async fn main() -> Result<()> {
     )
     .await?;
     let (claims, _task) = lease.spawn(hostname.clone(), params).await?;
-
-    // Build the API index data structures which will maintain information
-    // necessary for serving the inbound policy and outbound policy gRPC APIs.
-    let inbound_index = inbound::Index::shared(cluster_info.clone(), inbound_metrics);
-    let outbound_index = outbound::Index::shared(cluster_info);
 
     // Build the status index which will maintain information necessary for
     // updating the status field of policy resources.
@@ -268,7 +271,7 @@ async fn main() -> Result<()> {
         grpc_addr,
         cluster_domain,
         cluster_networks,
-        inbound_index,
+        inbound_index_inner,
         outbound_index,
         runtime.shutdown_handle(),
     ));

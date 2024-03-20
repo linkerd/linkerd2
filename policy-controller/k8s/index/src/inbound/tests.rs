@@ -27,8 +27,6 @@ use linkerd_policy_controller_k8s_api::{
 use maplit::*;
 use tokio::time;
 
-use super::IndexMetrics;
-
 #[test]
 fn pod_must_exist_for_lookup() {
     let test = TestConfig::default();
@@ -211,10 +209,7 @@ impl TestConfig {
             default_opaque_ports: Default::default(),
             probe_networks,
         };
-        let index = Index::shared(
-            cluster.clone(),
-            IndexMetrics::register(&mut Default::default()),
-        );
+        let index = Index::new(cluster.clone()).shared();
         Self {
             index,
             cluster,
