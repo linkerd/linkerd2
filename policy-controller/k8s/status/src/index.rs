@@ -121,7 +121,7 @@ impl ControllerMetrics {
             Histogram::new([0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0].into_iter());
         prom.register_with_unit(
             "patch_duration",
-            "Histogram of time taken to apply patches to HTTPRoutes",
+            "Histogram of time taken to apply patch operations",
             Unit::Seconds,
             patch_duration.clone(),
         );
