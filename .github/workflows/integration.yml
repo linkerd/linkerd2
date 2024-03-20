@@ -14,7 +14,7 @@ env:
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
   YQ_VERSION: v4.25.1
-  LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO }}
+  LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO || 'linkerd/linkerd2-proxy '}}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref }}
