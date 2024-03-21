@@ -1451,7 +1451,8 @@ func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSe
 		LocalTrafficPolicy: newAddresses.LocalTrafficPolicy,
 	}
 	remove = AddressSet{
-		Addresses: removeAddresses,
+		Addresses:          removeAddresses,
+		LocalTrafficPolicy: newAddresses.LocalTrafficPolicy,
 	}
 	return add, remove
 }
