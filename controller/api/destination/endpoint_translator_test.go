@@ -743,6 +743,35 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
 		}
 	})
+
+	t.Run("Removes cannot change LocalTrafficPolicy", func(t *testing.T) {
+		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
+		addressSet := mkAddressSetForServices(AddressOnTest123Node, AddressNotOnTest123Node)
+		addressSet.LocalTrafficPolicy = true
+		translator.Add(addressSet)
+		set := watcher.AddressSet{
+			Addresses:          make(map[watcher.ServiceID]watcher.Address),
+			Labels:             map[string]string{"service": "service-name", "namespace": "service-ns"},
+			LocalTrafficPolicy: false,
+		}
+		translator.Remove(set)
+
+		// Only the address meant for AddressOnTest123Node should be added.
+		// The remove with no addresses should not change the LocalTrafficPolicy
+		// and should be a noop that does not send an update.
+		expectedNumUpdates := 1
+		<-mockGetServer.updatesReceived // Add
+
+		if len(mockGetServer.updatesReceived) != 0 {
+			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
+		}
+	})
+}
+
+func TestRemovesCannotChangeLocalTrafficPolicy(t *testing.T) {
+
 }
 
 // TestConcurrency, to be triggered with `go test -race`, shouldn't report a race condition
