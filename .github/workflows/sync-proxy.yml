@@ -58,11 +58,14 @@ jobs:
             echo changed=true >> "$GITHUB_OUTPUT"
           fi
       - if: steps.changed.outputs.changed == 'true'
+        env:
+          LINKERD2_PROXY_GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN || github.token }}
+          EDITOR: "true"
         run: |
           set -eu
           git fetch origin bot/sync-proxy/"$VERSION" || true
           git switch -c bot/sync-proxy/"$VERSION"
-          EDITOR=true bin/git-commit-proxy-version "$VERSION"
+          bin/git-commit-proxy-version "$VERSION"
           git push origin bot/sync-proxy/"$VERSION"
       - if: steps.changed.outputs.changed == 'true'
         env:
