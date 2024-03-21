@@ -39,6 +39,7 @@ jobs:
             **/Dockerfile*
             charts/**
             justfile
+            bin/_test-helper.sh
           files_ignore: |
             .devcontainer/**
             **/Chart.yaml
@@ -80,6 +81,7 @@ jobs:
             justfile
             viz/**
             test/integration/viz/**
+            bin/_test-helper.sh
           files_ignore: |
             **/Chart.yaml
             **/README*
