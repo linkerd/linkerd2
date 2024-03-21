@@ -24,7 +24,6 @@ use tokio::{
 
 pub(crate) const POLICY_API_GROUP: &str = "policy.linkerd.io";
 const POLICY_API_VERSION: &str = "policy.linkerd.io/v1alpha1";
-const PATCH_TIMEOUT: Duration = Duration::from_secs(5);
 
 mod conditions {
     pub const RESOLVED_REFS: &str = "ResolvedRefs";
@@ -50,6 +49,7 @@ pub struct Controller {
     client: k8s::Client,
     name: String,
     updates: mpsc::Receiver<Update>,
+    patch_timeout: Duration,
 
     /// True if this policy controller is the leader — false otherwise.
     leader: bool,
@@ -130,7 +130,7 @@ impl ControllerMetrics {
             Histogram::new([0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0].into_iter());
         prom.register_with_unit(
             "patch_duration",
-            "Histogram of time taken to apply patches to HTTPRoutes",
+            "Histogram of time taken to apply patch operations",
             Unit::Seconds,
             patch_duration.clone(),
         );
@@ -189,6 +189,7 @@ impl Controller {
         client: k8s::Client,
         name: String,
         updates: mpsc::Receiver<Update>,
+        patch_timeout: Duration,
         metrics: ControllerMetrics,
     ) -> Self {
         Self {
@@ -196,6 +197,7 @@ impl Controller {
             client,
             name,
             updates,
+            patch_timeout,
             leader: false,
             metrics,
         }
@@ -255,7 +257,12 @@ impl Controller {
         let patch_params = k8s::PatchParams::apply(POLICY_API_GROUP);
         let api = k8s::Api::<K>::namespaced(self.client.clone(), namespace);
         let start = time::Instant::now();
-        match time::timeout(PATCH_TIMEOUT, api.patch_status(name, &patch_params, &patch)).await {
+        match time::timeout(
+            self.patch_timeout,
+            api.patch_status(name, &patch_params, &patch),
+        )
+        .await
+        {
             Ok(Ok(_)) => {
                 self.metrics.patch_succeeded.inc();
                 self.metrics
@@ -267,11 +274,11 @@ impl Controller {
                 self.metrics
                     .patch_duration
                     .observe(start.elapsed().as_secs_f64());
-                tracing::error!(%namespace, %name, %error, "failed to patch HTTPRoute");
+                tracing::error!(%namespace, %name, kind = %K::kind(&Default::default()), %error, "Patch failed");
             }
             Err(_) => {
                 self.metrics.patch_timeout.inc();
-                tracing::error!(%namespace, %name, "timed out patching HTTPRoute");
+                tracing::error!(%namespace, %name, kind = %K::kind(&Default::default()), "Patch timed out");
             }
         }
     }

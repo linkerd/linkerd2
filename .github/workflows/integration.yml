@@ -14,7 +14,8 @@ env:
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
   YQ_VERSION: v4.25.1
-  LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO }}
+  LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO || 'linkerd/linkerd2-proxy' }}
+  LINKERD2_PROXY_RELEASE_PREFIX: ${{ vars.LINKERD2_PROXY_RELEASE_PREFIX || 'release/' }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref }}
@@ -27,7 +28,7 @@ jobs:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - id: tag
         run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
-      - uses: tj-actions/changed-files@77af4bed286740ef1a6387dc4e4e4dec39f96054
+      - uses: tj-actions/changed-files@20576b4b9ed46d41e2d45a2256e5e2316dde6834
         id: core
         with:
           files: |
@@ -38,11 +39,12 @@ jobs:
             **/Dockerfile*
             charts/**
             justfile
+            bin/_test-helper.sh
           files_ignore: |
             .devcontainer/**
             **/Chart.yaml
             **/README*
-      - uses: tj-actions/changed-files@77af4bed286740ef1a6387dc4e4e4dec39f96054
+      - uses: tj-actions/changed-files@20576b4b9ed46d41e2d45a2256e5e2316dde6834
         id: policy
         with:
           files: |
@@ -58,7 +60,7 @@ jobs:
           files_ignore: |
             **/Chart.yaml
             **/README*
-      - uses: tj-actions/changed-files@77af4bed286740ef1a6387dc4e4e4dec39f96054
+      - uses: tj-actions/changed-files@20576b4b9ed46d41e2d45a2256e5e2316dde6834
         id: multicluster
         with:
           files: |
@@ -70,7 +72,7 @@ jobs:
           files_ignore: |
             **/Chart.yaml
             **/README*
-      - uses: tj-actions/changed-files@77af4bed286740ef1a6387dc4e4e4dec39f96054
+      - uses: tj-actions/changed-files@20576b4b9ed46d41e2d45a2256e5e2316dde6834
         id: viz
         with:
           files: |
@@ -79,6 +81,7 @@ jobs:
             justfile
             viz/**
             test/integration/viz/**
+            bin/_test-helper.sh
           files_ignore: |
             **/Chart.yaml
             **/README*
@@ -157,13 +160,13 @@ jobs:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - uses: ./.github/actions/docker-build
         id: build
+        env:
+          LINKERD2_PROXY_GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN || github.token }}
         with:
           docker-registry: ${{ env.DOCKER_REGISTRY }}
           docker-target: linux-amd64
           component: ${{ matrix.component }}
           tag: ${{ needs.meta.outputs.tag }}
-        env:
-          LINKERD2_PROXY_GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN }}
       - name: Run docker save
         run: |
           mkdir -p /home/runner/archives
@@ -403,10 +406,26 @@ jobs:
               k3d-k8s='${{ matrix.k8s }}' \
               mc-test-run
 
+  build-ok:
+    needs: [build-cli, build-core, build-ext]
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Results
+        run: |
+          echo 'needs.build-cli.result: ${{ needs.build-cli.result }}'
+          echo 'needs.build-core.result: ${{ needs.build-core.result }}'
+          echo 'needs.build-ext.result: ${{ needs.build-ext.result }}'
+      - name: Verify jobs
+        # All jobs must succeed or be skipped.
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+
   # Try to re-run the integration tests if they fail, but only up to 3 times.
   integrations-retry:
-    needs: [test-core, test-policy, test-ext, test-viz, test-multicluster]
-    if: failure() && fromJSON(github.run_attempt) < 3
+    needs:
+      [build-ok, test-core, test-policy, test-ext, test-viz, test-multicluster]
+    if: failure() && fromJSON(github.run_attempt) < 3 && needs.build-ok.result == 'success'
     runs-on: ubuntu-22.04
     permissions:
       actions: write
@@ -419,18 +438,19 @@ jobs:
       - run: gh workflow run rerun.yml -F 'run_id=${{ github.run_id }}' --ref "$REF"
 
   integrations-ok:
-    needs: [test-core, test-policy, test-ext, test-viz, test-multicluster]
+    needs:
+      [build-ok, test-core, test-policy, test-ext, test-viz, test-multicluster]
     if: always()
     runs-on: ubuntu-22.04
     steps:
       - name: Results
         run: |
+          echo 'needs.build-ok.result: ${{ needs.build-ok.result }}'
           echo 'needs.test-core.result: ${{ needs.test-core.result }}'
           echo 'needs.test-policy.result: ${{ needs.test-policy.result }}'
           echo 'needs.test-ext.result: ${{ needs.test-ext.result }}'
           echo 'needs.test-viz.result: ${{ needs.test-viz.result }}'
           echo 'needs.test-multicluster.result: ${{ needs.test-multicluster.result }}'
-
       - name: Verify jobs
         # All jobs must succeed or be skipped.
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
