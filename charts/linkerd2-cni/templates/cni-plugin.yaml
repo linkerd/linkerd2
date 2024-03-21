@@ -179,7 +179,7 @@ data:
         "simulate": false,
         "use-wait-flag": {{.Values.useWaitFlag}},
         "iptables-mode": {{.Values.iptablesMode | quote}},
-        "ipv6": {{ternary "false" "true" .Values.disableIPv6 }}
+        "ipv6": {{.Values.disableIPv6 | ternary "false" "true"}}
       }
     }
 ---
