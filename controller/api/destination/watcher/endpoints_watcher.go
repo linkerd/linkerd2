@@ -931,7 +931,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-				err = SetToServerProtocol(pp.k8sAPI, &address, resolvedPort)
+				err = SetToServerProtocol(pp.k8sAPI, &address)
 				if err != nil {
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
@@ -955,7 +955,7 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					continue
 				}
 
-				err = SetToServerProtocolExternalWorkload(pp.k8sAPI, &address, resolvedPort)
+				err = SetToServerProtocolExternalWorkload(pp.k8sAPI, &address)
 				if err != nil {
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
@@ -1067,7 +1067,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-				err = SetToServerProtocol(pp.k8sAPI, &address, resolvedPort)
+				err = SetToServerProtocol(pp.k8sAPI, &address)
 				if err != nil {
 					pp.log.Errorf("failed to set address OpaqueProtocol: %s", err)
 					continue
@@ -1487,7 +1487,7 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 
 // SetToServerProtocol sets the address's OpaqueProtocol field based off any
 // Servers that select it and override the expected protocol.
-func SetToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
+func SetToServerProtocol(k8sAPI *k8s.API, address *Address) error {
 	if address.Pod == nil {
 		return fmt.Errorf("endpoint not backed by Pod: %s:%d", address.IP, address.Port)
 	}
@@ -1504,13 +1504,13 @@ func SetToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
 			var portMatch bool
 			switch server.Spec.Port.Type {
 			case intstr.Int:
-				if server.Spec.Port.IntVal == int32(port) {
+				if server.Spec.Port.IntVal == int32(address.Port) {
 					portMatch = true
 				}
 			case intstr.String:
 				for _, c := range address.Pod.Spec.Containers {
 					for _, p := range c.Ports {
-						if (p.ContainerPort == int32(port) || p.HostPort == int32(port)) &&
+						if (p.ContainerPort == int32(address.Port) || p.HostPort == int32(address.Port)) &&
 							p.Name == server.Spec.Port.StrVal {
 							portMatch = true
 						}
@@ -1530,7 +1530,7 @@ func SetToServerProtocol(k8sAPI *k8s.API, address *Address, port Port) error {
 
 // setToServerProtocolExternalWorkload sets the address's OpaqueProtocol field based off any
 // Servers that select it and override the expected protocol for ExternalWorkloads.
-func SetToServerProtocolExternalWorkload(k8sAPI *k8s.API, address *Address, port Port) error {
+func SetToServerProtocolExternalWorkload(k8sAPI *k8s.API, address *Address) error {
 	if address.ExternalWorkload == nil {
 		return fmt.Errorf("endpoint not backed by ExternalWorkload: %s:%d", address.IP, address.Port)
 	}
@@ -1547,12 +1547,12 @@ func SetToServerProtocolExternalWorkload(k8sAPI *k8s.API, address *Address, port
 			var portMatch bool
 			switch server.Spec.Port.Type {
 			case intstr.Int:
-				if server.Spec.Port.IntVal == int32(port) {
+				if server.Spec.Port.IntVal == int32(address.Port) {
 					portMatch = true
 				}
 			case intstr.String:
 				for _, p := range address.ExternalWorkload.Spec.Ports {
-					if p.Port == int32(port) && p.Name == server.Spec.Port.StrVal {
+					if p.Port == int32(address.Port) && p.Name == server.Spec.Port.StrVal {
 						portMatch = true
 					}
 

@@ -14,7 +14,7 @@ use parking_lot::RwLock;
 use prometheus_client::{
     encoding::{EncodeLabelSet, EncodeLabelValue},
     metrics::{counter::Counter, family::Family, gauge::Gauge, histogram::Histogram},
-    registry::Registry,
+    registry::{Registry, Unit},
 };
 use serde::de::DeserializeOwned;
 use std::{collections::hash_map::Entry, sync::Arc};
@@ -25,7 +25,6 @@ use tokio::{
 
 pub(crate) const POLICY_API_GROUP: &str = "policy.linkerd.io";
 const POLICY_API_VERSION: &str = "policy.linkerd.io/v1alpha1";
-const PATCH_TIMEOUT: Duration = Duration::from_secs(5);
 
 mod conditions {
     pub const RESOLVED_REFS: &str = "ResolvedRefs";
@@ -51,6 +50,7 @@ pub struct Controller {
     client: k8s::Client,
     name: String,
     updates: mpsc::Receiver<Update>,
+    patch_timeout: Duration,
 
     /// True if this policy controller is the leader — false otherwise.
     leader: bool,
@@ -123,44 +123,45 @@ impl ControllerMetrics {
     pub fn register(prom: &mut Registry) -> Self {
         let patch_succeeded = Counter::default();
         prom.register(
-            "patch_succeeded_total",
-            "Counter patches successfully applied to HTTPRoutes",
+            "patchs",
+            "Count of successful patch operations",
             patch_succeeded.clone(),
         );
 
         let patch_failed = Counter::default();
         prom.register(
-            "patch_failed_total",
-            "Counter patches that fail to apply to HTTPRoutes",
+            "patch_api_errors",
+            "Count of patch operations that failed with an API error",
             patch_failed.clone(),
         );
 
         let patch_timeout = Counter::default();
         prom.register(
-            "patch_timeout_total",
-            "Counter patches that time out when applying to HTTPRoutes",
+            "patch_timeouts",
+            "Count of patch operations that did not complete within the timeout",
             patch_timeout.clone(),
         );
 
         let patch_duration =
             Histogram::new([0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0].into_iter());
-        prom.register(
-            "patch_duration_seconds",
-            "Histogram of time taken to apply patches to HTTPRoutes",
+        prom.register_with_unit(
+            "patch_duration",
+            "Histogram of time taken to apply patch operations",
+            Unit::Seconds,
             patch_duration.clone(),
         );
 
         let patch_dequeues = Counter::default();
         prom.register(
-            "patch_dequeues_total",
-            "Counter of patches dequeued from the updates channel",
+            "patch_dequeues",
+            "Count of patches dequeued from the updates channel",
             patch_dequeues.clone(),
         );
 
         let patch_drops = Counter::default();
         prom.register(
-            "patch_drops_total",
-            "Counter of patches dropped because we are not the leader",
+            "patch_drops",
+            "Count of patches dropped because we are not the leader",
             patch_drops.clone(),
         );
 
@@ -179,15 +180,15 @@ impl IndexMetrics {
     pub fn register(prom: &mut Registry) -> Self {
         let patch_enqueues = Counter::default();
         prom.register(
-            "patch_enqueues_total",
-            "Counter of patches enqueued to the updates channel",
+            "patch_enqueues",
+            "Count of patches enqueued to the updates channel",
             patch_enqueues.clone(),
         );
 
         let patch_channel_full = Counter::default();
         prom.register(
-            "patch_channel_full_total",
-            "Counter of patches dropped because the updates channel is full",
+            "patch_channel_overflows",
+            "Count of patches dropped because the updates channel is full",
             patch_channel_full.clone(),
         );
 
@@ -234,6 +235,7 @@ impl Controller {
         client: k8s::Client,
         name: String,
         updates: mpsc::Receiver<Update>,
+        patch_timeout: Duration,
         metrics: ControllerMetrics,
     ) -> Self {
         Self {
@@ -241,6 +243,7 @@ impl Controller {
             client,
             name,
             updates,
+            patch_timeout,
             leader: false,
             metrics,
         }
@@ -300,7 +303,12 @@ impl Controller {
         let patch_params = k8s::PatchParams::apply(POLICY_API_GROUP);
         let api = k8s::Api::<K>::namespaced(self.client.clone(), namespace);
         let start = time::Instant::now();
-        match time::timeout(PATCH_TIMEOUT, api.patch_status(name, &patch_params, &patch)).await {
+        match time::timeout(
+            self.patch_timeout,
+            api.patch_status(name, &patch_params, &patch),
+        )
+        .await
+        {
             Ok(Ok(_)) => {
                 self.metrics.patch_succeeded.inc();
                 self.metrics
@@ -312,11 +320,11 @@ impl Controller {
                 self.metrics
                     .patch_duration
                     .observe(start.elapsed().as_secs_f64());
-                tracing::error!(%namespace, %name, %error, "failed to patch HTTPRoute");
+                tracing::error!(%namespace, %name, kind = %K::kind(&Default::default()), %error, "Patch failed");
             }
             Err(_) => {
                 self.metrics.patch_timeout.inc();
-                tracing::error!(%namespace, %name, "timed out patching HTTPRoute");
+                tracing::error!(%namespace, %name, kind = %K::kind(&Default::default()), "Patch timed out");
             }
         }
     }

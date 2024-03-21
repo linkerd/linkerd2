@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/shell.yml
-      - '**/*.sh'
+      - "**/*.sh"
 
 permissions:
   contents: read
@@ -14,9 +14,8 @@ jobs:
   # https://github.com/koalaman/shellcheck/wiki/Checks
   shellcheck:
     timeout-minutes: 10
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: linkerd/dev/actions/setup-tools@v43
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - run: just sh-lint
-

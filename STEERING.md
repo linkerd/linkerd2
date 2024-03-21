@@ -2,9 +2,9 @@
 
 The goal of the Linkerd Steering Committee is to ensure that Linkerd meets the
 needs of its current and future users. The Steering Committee represents the
-voice of the user, and works with the Linkerd maintainers to help guide
-development efforts towards solving concrete and immediate problems for Linkerd
-adopters.
+voice of the user, and works with the Linkerd maintainers and directors to help
+guide development efforts towards solving concrete and immediate problems for
+Linkerd adopters.
 
 ## Responsibilities
 
@@ -24,16 +24,17 @@ The Steering Committee’s responsibilities are to:
 The Steering Committee comprises at most 7 people. To be eligible for
 membership in the Steering Committee, you must:
 
-1. Be responsible for a production Linkerd deployment of non-trivial size
+1. Be currently responsible for a production Linkerd deployment of non-trivial
+   size, or have been responsible for such a deployment within the past two
+   years.
 2. Be willing and able to attend regularly-scheduled Steering Committee
-   meetings
+   meetings.
 3. Abide by Linkerd's Code of Conduct.
 
 Candidates for membership will be nominated by current Steering Committee
-members or by Linkerd maintainers. If there are more nominations than Steering
-Committee seats remaining, the same group shall vote on the candidates, and the
-candidates with the most votes will become Steering Committee members. Any ties
-will be broken by Linkerd maintainers.
+members or by Linkerd maintainers and directors. Once nominated, inclusion in
+the Steering Committee will be determined by the normal project decision-making
+process.
 
 Membership expires if any of the eligibility conditions is unmet, or after one
 year. Members may seek reinstatement immediately in accordance with the rules
@@ -47,4 +48,4 @@ minutes will be posted publicly.
 ## Changes to this charter
 
 Changes to this charter must be approved by a majority of Steering Committee
-members and a majority of Linkerd maintainers.
+members and a majority of Linkerd maintainers and directors.

@@ -52,7 +52,7 @@ func TestNewValues(t *testing.T) {
 		DeploymentStrategy:           defaultDeploymentStrategy,
 		HeartbeatSchedule:            "",
 		ClusterDomain:                "cluster.local",
-		ClusterNetworks:              "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16",
+		ClusterNetworks:              "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8",
 		ImagePullPolicy:              "IfNotPresent",
 		CliVersion:                   "linkerd/cli dev-undefined",
 		ControllerLogLevel:           "info",
@@ -67,6 +67,11 @@ func TestNewValues(t *testing.T) {
 		PodLabels:                    map[string]string{},
 		EnableEndpointSlices:         true,
 		EnablePodDisruptionBudget:    false,
+		Controller: &Controller{
+			PodDisruptionBudget: &PodDisruptionBudget{
+				MaxUnavailable: 1,
+			},
+		},
 		PodMonitor: &PodMonitor{
 			Enabled:        false,
 			ScrapeInterval: "10s",
@@ -97,7 +102,7 @@ func TestNewValues(t *testing.T) {
 					Request: "",
 				},
 			},
-			ProbeNetworks: []string{"0.0.0.0/0"},
+			ProbeNetworks: []string{"0.0.0.0/0", "::/0"},
 		},
 		Proxy: &Proxy{
 			EnableExternalProfiles: false,
@@ -250,6 +255,9 @@ func TestNewValues(t *testing.T) {
 		expected.ControllerReplicas = 3
 		expected.EnablePodAntiAffinity = true
 		expected.EnablePodDisruptionBudget = true
+		expected.Controller.PodDisruptionBudget = &PodDisruptionBudget{
+			MaxUnavailable: 1,
+		}
 		expected.DeploymentStrategy = haDeploymentStrategy
 		expected.WebhookFailurePolicy = "Fail"
 
@@ -304,6 +312,8 @@ func TestNewValues(t *testing.T) {
 func TestHAValuesParsing(t *testing.T) {
 	yml := `
 enablePodDisruptionBudget: true
+PodDisruptionBudget:
+  maxUnavailable: 1
 deploymentStrategy:
   rollingUpdate:
     maxUnavailable: 1
