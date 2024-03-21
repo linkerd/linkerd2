@@ -59,7 +59,7 @@ jobs:
           fi
       - if: steps.changed.outputs.changed == 'true'
         env:
-          LINKERD2_PROXY_GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN || github.token }}
           EDITOR: "true"
         run: |
           set -eu
