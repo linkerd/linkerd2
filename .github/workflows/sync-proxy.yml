@@ -35,6 +35,7 @@ jobs:
     timeout-minutes: 5
     env:
       LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO || 'linkerd/linkerd2-proxy' }}
+      LINKERD2_PROXY_RELEASE_PREFIX: ${{ vars.LINKERD2_PROXY_RELEASE_PREFIX || 'release/' }}
       VERSION: ${{ needs.meta.outputs.version }}
     permissions:
       checks: read
