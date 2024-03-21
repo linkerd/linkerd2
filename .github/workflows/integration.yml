@@ -39,6 +39,7 @@ jobs:
             **/Dockerfile*
             charts/**
             justfile
+            bin/fetch-proxy
             bin/_test-helper.sh
           files_ignore: |
             .devcontainer/**
