@@ -436,12 +436,14 @@ jobs:
       - run: gh workflow run rerun.yml -F 'run_id=${{ github.run_id }}' --ref "$REF"
 
   integrations-ok:
-    needs: [test-core, test-policy, test-ext, test-viz, test-multicluster]
+    needs:
+      [build-ok, test-core, test-policy, test-ext, test-viz, test-multicluster]
     if: always()
     runs-on: ubuntu-22.04
     steps:
       - name: Results
         run: |
+          echo 'needs.build-ok.result: ${{ needs.build-ok.result }}'
           echo 'needs.test-core.result: ${{ needs.test-core.result }}'
           echo 'needs.test-policy.result: ${{ needs.test-policy.result }}'
           echo 'needs.test-ext.result: ${{ needs.test-ext.result }}'
