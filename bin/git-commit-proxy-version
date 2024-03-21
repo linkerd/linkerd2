@@ -7,10 +7,6 @@ if [ $# -ne 1 ]; then
     exit 64
 fi
 new_proxy_version="v${1#v}"
-if [[ "$new_proxy_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then :; else
-    echo "Invalid version: $new_proxy_version" >&2
-    exit 1
-fi
 
 bindir=$( cd "${0%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
