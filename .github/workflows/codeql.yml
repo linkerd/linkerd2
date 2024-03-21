@@ -4,23 +4,25 @@ name: CodeQL
 
 on:
   push:
-    branches: [ main, stable-* ]
+    branches: [main, stable-*]
     paths:
-    - '**/*.go'
-    - '**/*.js'
-    - '**/*.jsx'
+      - .github/workflows/codeql.yml
+      - "**/*.go"
+      - "**/*.js"
+      - "**/*.jsx"
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ main, stable-* ]
+    branches: [main, stable-*]
     paths:
-    - '**/*.go'
-    - '**/*.js'
-    - '**/*.jsx'
+      - .github/workflows/codeql.yml
+      - "**/*.go"
+      - "**/*.js"
+      - "**/*.jsx"
 
 jobs:
   analyze:
     name: Analyze
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       actions: read
       contents: read
@@ -30,18 +32,21 @@ jobs:
       fail-fast: false
       matrix:
         language:
-        - go
-        - javascript
+          - go
+          - javascript
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: "1.22"
+      - name: Checkout
+        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
 
-    - name: Initialize
-      # Unpinned action version so that we automatically get analyzer updates.
-      uses: github/codeql-action/init@v3
-      with:
-        languages: ${{ matrix.language }}
+      - name: Initialize
+        # Unpinned action version so that we automatically get analyzer updates.
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
 
-    - name: Analyze
-      uses: github/codeql-action/analyze@v3
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3

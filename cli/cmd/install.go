@@ -47,7 +47,7 @@ You can use the --ignore-cluster flag if you just want to generate the installat
 )
 
 var (
-	templatesCrdFiles = []string{
+	TemplatesCrdFiles = []string{
 		"templates/policy/authorization-policy.yaml",
 		"templates/policy/httproute.yaml",
 		"templates/policy/meshtls-authentication.yaml",
@@ -323,7 +323,7 @@ func renderCRDs(w io.Writer, options valuespkg.Options) error {
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
-	for _, template := range templatesCrdFiles {
+	for _, template := range TemplatesCrdFiles {
 		files = append(files, &loader.BufferedFile{Name: template})
 	}
 	if err := charts.FilesReader(static.Templates, l5dcharts.HelmChartDirCrds+"/", files); err != nil {

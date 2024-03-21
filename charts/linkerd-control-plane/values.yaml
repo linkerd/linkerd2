@@ -8,9 +8,9 @@ clusterDomain: cluster.local
 # -- The cluster networks for which service discovery is performed. This should
 # include the pod and service networks, but need not include the node network.
 #
-# By default, all private networks are specified so that resolution works in
-# typical Kubernetes environments.
-clusterNetworks: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
+# By default, all IPv4 private networks and all accepted IPv6 ULAs are
+# specified so that resolution works in typical Kubernetes environments.
+clusterNetworks: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8"
 # -- Docker image pull policy
 imagePullPolicy: IfNotPresent
 # -- Log level for the control plane components
@@ -39,6 +39,12 @@ enablePodAntiAffinity: false
 enablePprof: false
 # -- enables the creation of pod disruption budgets for control plane components
 enablePodDisruptionBudget: false
+
+controller:
+  # -- sets pod disruption budget parameter for all deployments
+  podDisruptionBudget:
+    # -- Maximum number of pods that can be unavailable during disruption
+    maxUnavailable: 1
 # -- enabling this omits the NET_ADMIN capability in the PSP
 # and the proxy-init container when injecting the proxy;
 # requires the linkerd-cni plugin to already be installed
@@ -86,6 +92,7 @@ policyController:
   # By default, all networks are allowed so that all probes are authorized.
   probeNetworks:
     - 0.0.0.0/0
+    - "::/0"
 
   # -- policy controller resource requests & limits
   # @default -- destinationResources

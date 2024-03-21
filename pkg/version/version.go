@@ -45,8 +45,6 @@ func match(expectedVersion, actualVersion string) error {
 		return errors.New("expected version is empty")
 	} else if actualVersion == "" {
 		return errors.New("actual version is empty")
-	} else if actualVersion == expectedVersion {
-		return nil
 	}
 
 	actual, err := parseChannelVersion(actualVersion)
@@ -63,6 +61,10 @@ func match(expectedVersion, actualVersion string) error {
 			actual, expected)
 	}
 
-	return fmt.Errorf("is running version %s but the latest %s version is %s",
-		actual.version, actual.channel, expected.version)
+	if actual.version != expected.version || !actual.hotpatchEqual(expected) {
+		return fmt.Errorf("is running version %s but the latest %s version is %s",
+			actual.versionWithHotpatch(), actual.channel, expected.versionWithHotpatch())
+	}
+
+	return nil
 }

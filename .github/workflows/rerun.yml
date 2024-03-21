@@ -1,0 +1,28 @@
+# This can be invoked from any other workflow to re-run itself on failure.
+# From https://github.com/orgs/community/discussions/67654#discussioncomment-8038649
+name: Re-run failed workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "The ID of the run to rerun"
+        required: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  rerun:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    env:
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+      GH_DEBUG: api
+    steps:
+      - run: gh run watch ${{ inputs.run_id }}
+      - run: gh run rerun ${{ inputs.run_id }} --failed

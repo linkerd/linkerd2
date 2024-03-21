@@ -124,6 +124,9 @@ spec:
   selector:
     app: {{.Values.gateway.name}}
   type: {{ .Values.gateway.serviceType }}
+{{- if .Values.gateway.loadBalancerClass }}
+  loadBalancerClass: {{ .Values.gateway.loadBalancerClass }}
+{{- end }}
 {{- if .Values.gateway.loadBalancerIP }}
   loadBalancerIP: {{ .Values.gateway.loadBalancerIP }}
 {{- end }}

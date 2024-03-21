@@ -110,6 +110,10 @@ func (ept *endpointProfileTranslator) Update(address *watcher.Address) error {
 	}
 }
 
+func (ept *endpointProfileTranslator) queueLen() int {
+	return len(ept.updates)
+}
+
 func (ept *endpointProfileTranslator) update(address *watcher.Address) {
 	var opaquePorts map[uint32]struct{}
 	if address.Pod != nil {
@@ -124,10 +128,11 @@ func (ept *endpointProfileTranslator) update(address *watcher.Address) {
 		return
 	}
 
+	_, opaqueProtocol := opaquePorts[address.Port]
 	profile := &pb.DestinationProfile{
 		RetryBudget:    defaultRetryBudget(),
 		Endpoint:       endpoint,
-		OpaqueProtocol: address.OpaqueProtocol,
+		OpaqueProtocol: opaqueProtocol || address.OpaqueProtocol,
 	}
 	if proto.Equal(profile, ept.current) {
 		ept.log.Debugf("Ignoring redundant profile update: %+v", profile)

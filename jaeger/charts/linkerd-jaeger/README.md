@@ -3,7 +3,7 @@
 The Linkerd-Jaeger extension adds distributed tracing to Linkerd using
 OpenCensus and Jaeger.
 
-![Version: 30.14.11-edge](https://img.shields.io/badge/Version-30.14.11--edge-informational?style=flat-square)
+![Version: 0.0.0-undefined](https://img.shields.io/badge/Version-0.0.0--undefined-informational?style=flat-square)
 
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
