@@ -17,7 +17,6 @@ if [ -z "$proxy_repo" ]; then
 fi
 
 releases_url=https://api.github.com/repos/"$proxy_repo"/releases
-release_prefix="${LINKERD2_PROXY_RELEASE_PREFIX:-release/}"
 
 github_token="${GITHUB_TOKEN:-}"
 if [ -z "$github_token" ] && [ -n "${GITHUB_TOKEN_FILE:-}" ] && [ -f "$GITHUB_TOKEN_FILE" ]; then
@@ -37,10 +36,9 @@ cd "$builddir"
 
 version=${1:-latest}
 arch=${2:-amd64}
-tag="${release_prefix}${version}"
-release_url="$releases_url"/tags/"$(printf "$tag" | jq -sRr @uri)"
-if ! ghcurl "$release_url" > release.json ; then
-  echo "Failed to fetch $release_url" >&2
+
+if ! ghcurl "$releases_url" | jq '.[] | select(.name == "'"$version"'")' > release.json ; then
+  echo "Failed to fetch $releases_url" >&2
   exit 1
 fi
 
