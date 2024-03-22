@@ -43,6 +43,7 @@ metadata:
   name: metrics-api
   namespace: {{ .Release.Namespace }}
 spec:
+  revisionHistoryLimit: {{.Values.revisionHistoryLimit}}
   replicas: {{.Values.metricsAPI.replicas}}
   selector:
     matchLabels:
