@@ -61,7 +61,7 @@ func Main(args []string) {
 			if errors.Is(err, http.ErrServerClosed) {
 				log.Infof("Admin server closed (%s)", *metricsAddr)
 			} else {
-				log.Errorf("Admin server error (%s): %w", *metricsAddr, err)
+				log.Errorf("Admin server error (%s): %s", *metricsAddr, err)
 			}
 		}
 	}()
