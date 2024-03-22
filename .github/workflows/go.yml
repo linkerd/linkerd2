@@ -1,21 +1,34 @@
 name: Go
-
-on:
-  pull_request:
-    paths:
-      - .github/workflows/go.yml
-      - go.sum
-      - '**/*.go'
-      - '**/*.golden'
-      - '**/charts/**'
+on: pull_request
 
 permissions:
   contents: read
 
 jobs:
+  meta:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: tj-actions/changed-files@20576b4b9ed46d41e2d45a2256e5e2316dde6834
+        id: changed
+        with:
+          files: |
+            .github/workflows/go.yml
+            go.sum
+            **/*.go
+            **/*.golden
+            **/charts/**
+          files_ignore: |
+            **/Chart.yaml
+            **/README*
+    outputs:
+      changed: ${{ steps.changed.outputs.any_changed }}
+
   go-lint:
+    needs: meta
+    if: needs.meta.outputs.changed == 'true'
     timeout-minutes: 10
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: ghcr.io/linkerd/dev:v43-go
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
@@ -23,8 +36,10 @@ jobs:
       - run: just go-lint --verbose --timeout=10m
 
   go-format:
+    needs: meta
+    if: needs.meta.outputs.changed == 'true'
     timeout-minutes: 10
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: ghcr.io/linkerd/dev:v43-go
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
@@ -32,8 +47,10 @@ jobs:
       - run: just go-fmt
 
   go-test:
+    needs: meta
+    if: needs.meta.outputs.changed == 'true'
     timeout-minutes: 10
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: ghcr.io/linkerd/dev:v43-go
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
@@ -41,3 +58,34 @@ jobs:
       - run: just go-fetch
       - run: just go-test
 
+  # There's currently one flakey test we want to retry in particular:
+  # TestEndpointProfileTranslator/Handles_overflow
+  go-test-retry:
+    needs: go-test
+    if: failure() && fromJSON(github.run_attempt) < 3
+    runs-on: ubuntu-22.04
+    permissions:
+      actions: write
+    env:
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+      GH_DEBUG: api
+      REF: ${{ github.head_ref }}
+    steps:
+      - run: gh workflow run rerun.yml -F 'run_id=${{ github.run_id }}' --ref "$REF"
+
+  go-ok:
+    needs: [go-lint, go-format, go-test]
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Results
+        run: |
+          echo 'go-lint: ${{ needs.go-lint.result }}'
+          echo 'go-format: ${{ needs.go-format.result }}'
+          echo 'go-test: ${{ needs.go-test.result }}'
+
+      - name: Verify jobs
+        # All jobs must succeed or be skipped.
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1

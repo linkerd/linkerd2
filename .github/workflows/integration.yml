@@ -14,20 +14,21 @@ env:
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
   YQ_VERSION: v4.25.1
-  LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO }}
+  LINKERD2_PROXY_REPO: ${{ vars.LINKERD2_PROXY_REPO || 'linkerd/linkerd2-proxy' }}
+  LINKERD2_PROXY_RELEASE_PREFIX: ${{ vars.LINKERD2_PROXY_RELEASE_PREFIX || 'release/' }}
 
 concurrency:
-  group:  ${{ github.workflow }}-${{ github.head_ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref }}
   cancel-in-progress: true
 
 jobs:
   meta:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - id: tag
         run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
-      - uses: tj-actions/changed-files@77af4bed286740ef1a6387dc4e4e4dec39f96054
+      - uses: tj-actions/changed-files@20576b4b9ed46d41e2d45a2256e5e2316dde6834
         id: core
         with:
           files: |
@@ -38,11 +39,13 @@ jobs:
             **/Dockerfile*
             charts/**
             justfile
+            bin/fetch-proxy
+            bin/_test-helper.sh
           files_ignore: |
             .devcontainer/**
             **/Chart.yaml
             **/README*
-      - uses: tj-actions/changed-files@77af4bed286740ef1a6387dc4e4e4dec39f96054
+      - uses: tj-actions/changed-files@20576b4b9ed46d41e2d45a2256e5e2316dde6834
         id: policy
         with:
           files: |
@@ -58,7 +61,7 @@ jobs:
           files_ignore: |
             **/Chart.yaml
             **/README*
-      - uses: tj-actions/changed-files@77af4bed286740ef1a6387dc4e4e4dec39f96054
+      - uses: tj-actions/changed-files@20576b4b9ed46d41e2d45a2256e5e2316dde6834
         id: multicluster
         with:
           files: |
@@ -70,7 +73,7 @@ jobs:
           files_ignore: |
             **/Chart.yaml
             **/README*
-      - uses: tj-actions/changed-files@77af4bed286740ef1a6387dc4e4e4dec39f96054
+      - uses: tj-actions/changed-files@20576b4b9ed46d41e2d45a2256e5e2316dde6834
         id: viz
         with:
           files: |
@@ -79,6 +82,7 @@ jobs:
             justfile
             viz/**
             test/integration/viz/**
+            bin/_test-helper.sh
           files_ignore: |
             **/Chart.yaml
             **/README*
@@ -98,7 +102,7 @@ jobs:
 
   info:
     needs: meta
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 2
     steps:
       - name: Info
@@ -113,7 +117,7 @@ jobs:
   build-cli:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
@@ -145,7 +149,7 @@ jobs:
   build-core:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         component:
@@ -157,13 +161,13 @@ jobs:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - uses: ./.github/actions/docker-build
         id: build
+        env:
+          LINKERD2_PROXY_GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN || github.token }}
         with:
           docker-registry: ${{ env.DOCKER_REGISTRY }}
           docker-target: linux-amd64
           component: ${{ matrix.component }}
           tag: ${{ needs.meta.outputs.tag }}
-        env:
-          LINKERD2_PROXY_GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN }}
       - name: Run docker save
         run: |
           mkdir -p /home/runner/archives
@@ -181,13 +185,13 @@ jobs:
         test:
           - cni-calico-deep
           - deep
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: '1.22'
+          go-version: "1.22"
       - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
           pattern: image-archives-*
@@ -207,7 +211,7 @@ jobs:
   test-policy:
     needs: [meta, build-cli, build-core]
     if: needs.meta.outputs.changed-policy == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     strategy:
       matrix:
@@ -237,6 +241,8 @@ jobs:
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           bin/scurl -v "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" | bash
           bin/scurl -vo /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" && chmod +x /usr/local/bin/yq
+      - uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84
+      - run: cargo install cargo-nextest
       - run: just policy-test-build
       - run: just k3d-k8s='${{ matrix.k8s }}' k3d-create
       - run: docker load <image-archives/controller.tar
@@ -254,6 +260,9 @@ jobs:
           done
           exit 1
       - run: just policy-test-run --jobs=1
+        env:
+          # https://nexte.st/book/retries.html
+          NEXTEST_RETRIES: 3
 
   ##
   ## Ext: Run tests that require non-core components.
@@ -262,7 +271,7 @@ jobs:
   build-ext:
     needs: meta
     if: needs.meta.outputs.changed == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         component:
@@ -304,13 +313,13 @@ jobs:
           - uninstall
           - upgrade-edge
           - upgrade-stable
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: '1.22'
+          go-version: "1.22"
       - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
           pattern: image-archives-*
@@ -329,13 +338,13 @@ jobs:
   test-viz:
     needs: [meta, build-cli, build-core, build-ext]
     if: needs.meta.outputs.changed-viz == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: '1.22'
+          go-version: "1.22"
       - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
           pattern: image-archives-*
@@ -355,7 +364,7 @@ jobs:
   test-multicluster:
     needs: [meta, build-cli, build-core, build-ext]
     if: needs.meta.outputs.changed-multicluster == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     strategy:
       matrix:
@@ -369,7 +378,7 @@ jobs:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: '1.22'
+          go-version: "1.22"
       - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
           pattern: image-archives-*
@@ -400,36 +409,52 @@ jobs:
               k3d-k8s='${{ matrix.k8s }}' \
               mc-test-run
 
-  # Try to re-run the integration tests if they fail, but only up to 3 times.
-  integrations-retry:
-    needs: [test-core, test-policy, test-ext, test-viz, test-multicluster]
-    if: failure() && fromJSON(github.run_attempt) < 3
-    runs-on: ubuntu-20.04
-    permissions:
-      actions: write
-    env:
-        GH_REPO: ${{ github.repository }}
-        GH_TOKEN: ${{ github.token }}
-        GH_DEBUG: api
-        REF: ${{ github.head_ref }}
-    steps:
-      - run: gh workflow run rerun.yml -F 'run_id=${{ github.run_id }}' --ref "$REF"
-
-  integrations-ok:
-    needs: [test-core, test-policy, test-ext, test-viz, test-multicluster]
+  build-ok:
+    needs: [build-cli, build-core, build-ext]
     if: always()
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Results
         run: |
-          echo 'needs.test-core.result: ${{ needs.test-core.result }}'
-          echo 'needs.test-policy.result: ${{ needs.test-policy.result }}'
-          echo 'needs.test-ext.result: ${{ needs.test-ext.result }}'
-          echo 'needs.test-viz.result: ${{ needs.test-viz.result }}'
-          echo 'needs.test-multicluster.result: ${{ needs.test-multicluster.result }}'
-
+          echo 'needs.build-cli.result: ${{ needs.build-cli.result }}'
+          echo 'needs.build-core.result: ${{ needs.build-core.result }}'
+          echo 'needs.build-ext.result: ${{ needs.build-ext.result }}'
       - name: Verify jobs
         # All jobs must succeed or be skipped.
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1
 
+  # Try to re-run the integration tests if they fail, but only up to 3 times.
+  integrations-retry:
+    needs:
+      [build-ok, test-core, test-policy, test-ext, test-viz, test-multicluster]
+    if: failure() && fromJSON(github.run_attempt) < 3 && needs.build-ok.result == 'success'
+    runs-on: ubuntu-22.04
+    permissions:
+      actions: write
+    env:
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+      GH_DEBUG: api
+      REF: ${{ github.head_ref }}
+    steps:
+      - run: gh workflow run rerun.yml -F 'run_id=${{ github.run_id }}' --ref "$REF"
+
+  integrations-ok:
+    needs:
+      [build-ok, test-core, test-policy, test-ext, test-viz, test-multicluster]
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Results
+        run: |
+          echo 'needs.build-ok.result: ${{ needs.build-ok.result }}'
+          echo 'needs.test-core.result: ${{ needs.test-core.result }}'
+          echo 'needs.test-policy.result: ${{ needs.test-policy.result }}'
+          echo 'needs.test-ext.result: ${{ needs.test-ext.result }}'
+          echo 'needs.test-viz.result: ${{ needs.test-viz.result }}'
+          echo 'needs.test-multicluster.result: ${{ needs.test-multicluster.result }}'
+      - name: Verify jobs
+        # All jobs must succeed or be skipped.
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1

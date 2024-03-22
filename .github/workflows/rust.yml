@@ -5,10 +5,10 @@ on:
     paths:
       - .github/workflows/rust.yml
       - Cargo.lock
-      - '**/Cargo.toml'
+      - "**/Cargo.toml"
       - justfile
       - deny.toml
-      - '**/*.rs'
+      - "**/*.rs"
       - policy-*/Dockerfile
       - rust-toolchain.toml
       - bin/rust-toolchain-version
@@ -26,7 +26,7 @@ env:
 jobs:
   audit:
     timeout-minutes: 10
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         checks:
@@ -35,14 +35,14 @@ jobs:
     # Prevent sudden announcement of a new advisory from failing Ci.
     continue-on-error: ${{ matrix.checks == 'advisories' }}
     steps:
-    - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-    - uses: EmbarkStudios/cargo-deny-action@64015a69ee7ee08f6c56455089cdaf6ad974fd15
-      with:
-        command: check ${{ matrix.checks }}
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: EmbarkStudios/cargo-deny-action@64015a69ee7ee08f6c56455089cdaf6ad974fd15
+        with:
+          command: check ${{ matrix.checks }}
 
   fmt:
     timeout-minutes: 5
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container: ghcr.io/linkerd/dev:v43-rust
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
@@ -51,7 +51,7 @@ jobs:
 
   clippy:
     timeout-minutes: 20
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container: ghcr.io/linkerd/dev:v43-rust
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
@@ -62,7 +62,7 @@ jobs:
 
   check:
     timeout-minutes: 20
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container: ghcr.io/linkerd/dev:v43-rust
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
@@ -72,7 +72,7 @@ jobs:
 
   test:
     name: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     container: ghcr.io/linkerd/dev:v43-rust
     steps:
@@ -84,7 +84,7 @@ jobs:
 
   rust-toolchain:
     name: rust toolchain
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633

@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-    - "edge-*"
+      - "edge-*"
 
 permissions:
   contents: read
@@ -19,7 +19,7 @@ jobs:
   # especially the TAG variable. And it would be great to stop relying
   # on the root-tag script altogether.
   tag:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
@@ -30,63 +30,63 @@ jobs:
   docker_build:
     name: Docker build
     needs: [tag]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     permissions:
       id-token: write # needed for signing the images with GitHub OIDC Token
     strategy:
       matrix:
         component:
-        - cli-bin
-        - controller
-        - policy-controller
-        - debug
-        - jaeger-webhook
-        - metrics-api
-        - proxy
-        - tap
-        - web
+          - cli-bin
+          - controller
+          - policy-controller
+          - debug
+          - jaeger-webhook
+          - metrics-api
+          - proxy
+          - tap
+          - web
     # policy-controller docker builds have occasionally hit a 30-minute timeout.
     timeout-minutes: 45
     steps:
-    - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-    - name: Set tag
-      run: echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
-    - uses: ./.github/actions/docker-build
-      id: build
-      with:
-        docker-registry: ${{ env.DOCKER_REGISTRY }}
-        docker-target: multi-arch
-        docker-push: 1
-        docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
-        docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
-        component: ${{ matrix.component }}
-        tag: ${{ needs.tag.outputs.tag }}
-      env:
-        LINKERD2_PROXY_GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN }}
-    - uses: sigstore/cosign-installer@v3
-    - run: cosign sign '${{ steps.build.outputs.digest }}'
-      env:
-        COSIGN_YES: true
-    - name: Create artifact with CLI
-      # windows_static_cli_tests below needs this because it can't create linux containers
-      # inside windows
-      if: matrix.component == 'cli-bin'
-      env:
-        ARCHIVES: /home/runner/archives
-        DOCKER_TARGET: windows
-      run: |
-        bin/docker-pull-binaries "$TAG"
-        mkdir -p "$ARCHIVES"
-        cp -r "$PWD/target/release/linkerd2-cli-$TAG-windows.exe" "$ARCHIVES/linkerd-windows.exe"
-    # `with.path` values do not support environment variables yet, so an
-    # absolute path is used here.
-    # https://github.com/actions/upload-artifact/issues/8
-    - name: Upload artifact
-      if: matrix.component == 'cli-bin'
-      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
-      with:
-        name: image-archives-cli
-        path: /home/runner/archives
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - name: Set tag
+        run: echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
+      - uses: ./.github/actions/docker-build
+        id: build
+        with:
+          docker-registry: ${{ env.DOCKER_REGISTRY }}
+          docker-target: multi-arch
+          docker-push: 1
+          docker-ghcr-username: ${{ secrets.DOCKER_GHCR_USERNAME }}
+          docker-ghcr-pat: ${{ secrets.DOCKER_GHCR_PAT }}
+          component: ${{ matrix.component }}
+          tag: ${{ needs.tag.outputs.tag }}
+        env:
+          LINKERD2_PROXY_GITHUB_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN }}
+      - uses: sigstore/cosign-installer@v3
+      - run: cosign sign '${{ steps.build.outputs.digest }}'
+        env:
+          COSIGN_YES: true
+      - name: Create artifact with CLI
+        # windows_static_cli_tests below needs this because it can't create linux containers
+        # inside windows
+        if: matrix.component == 'cli-bin'
+        env:
+          ARCHIVES: /home/runner/archives
+          DOCKER_TARGET: windows
+        run: |
+          bin/docker-pull-binaries "$TAG"
+          mkdir -p "$ARCHIVES"
+          cp -r "$PWD/target/release/linkerd2-cli-$TAG-windows.exe" "$ARCHIVES/linkerd-windows.exe"
+      # `with.path` values do not support environment variables yet, so an
+      # absolute path is used here.
+      # https://github.com/actions/upload-artifact/issues/8
+      - name: Upload artifact
+        if: matrix.component == 'cli-bin'
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
+        with:
+          name: image-archives-cli
+          path: /home/runner/archives
 
   windows_static_cli_tests:
     name: Static CLI tests (windows)
@@ -94,18 +94,18 @@ jobs:
     runs-on: windows-latest
     needs: [docker_build]
     steps:
-    - name: Checkout code
-      uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-    - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
-      with:
-        go-version: '1.22'
-    - name: Download image archives
-      uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
-      with:
-        name: image-archives-cli
-        path: image-archives
-    - name: Run CLI Integration tests
-      run: go test --failfast --mod=readonly ".\test\cli" --linkerd="$PWD\image-archives\linkerd-windows.exe" --cli-tests -v
+      - name: Checkout code
+        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: "1.22"
+      - name: Download image archives
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
+        with:
+          name: image-archives-cli
+          path: image-archives
+      - name: Run CLI Integration tests
+        run: go test --failfast --mod=readonly ".\test\cli" --linkerd="$PWD\image-archives\linkerd-windows.exe" --cli-tests -v
 
   integration_tests:
     name: Integration tests
@@ -113,39 +113,39 @@ jobs:
     strategy:
       matrix:
         integration_test:
-        - cluster-domain
-        - cni-calico-deep
-        - deep
-        - viz
-        - default-policy-deny
-        - external
-        - rsa-ca
-        - helm-upgrade
-        - uninstall
-        - upgrade-edge
-        - upgrade-stable
+          - cluster-domain
+          - cni-calico-deep
+          - deep
+          - viz
+          - default-policy-deny
+          - external
+          - rsa-ca
+          - helm-upgrade
+          - uninstall
+          - upgrade-edge
+          - upgrade-stable
     timeout-minutes: 60
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
-    - name: Checkout code
-      uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-    - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
-      with:
-        go-version: '1.22'
-    - name: Set environment variables from scripts
-      run: |
-        TAG='${{ needs.tag.outputs.tag }}'
-        CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
-        echo "CMD=$CMD" >> "$GITHUB_ENV"
-        echo "TAG=$TAG" >> "$GITHUB_ENV"
-    - name: Run integration tests
-      env:
-        LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
-      run: |
-        bin/docker-pull-binaries "$TAG"
-        # Validate the CLI version matches the current build tag.
-        [[ "$TAG" == "$($CMD version --short --client)" ]]
-        bin/tests --images preload --name ${{ matrix.integration_test }} "$CMD"
+      - name: Checkout code
+        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        with:
+          go-version: "1.22"
+      - name: Set environment variables from scripts
+        run: |
+          TAG='${{ needs.tag.outputs.tag }}'
+          CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
+          echo "CMD=$CMD" >> "$GITHUB_ENV"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+      - name: Run integration tests
+        env:
+          LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+        run: |
+          bin/docker-pull-binaries "$TAG"
+          # Validate the CLI version matches the current build tag.
+          [[ "$TAG" == "$($CMD version --short --client)" ]]
+          bin/tests --images preload --name ${{ matrix.integration_test }} "$CMD"
 
   arm64_integration_tests:
     needs: [tag, docker_build]
@@ -155,8 +155,8 @@ jobs:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
-          go-version: '1.22'
-      - uses: docker/setup-buildx-action@0d103c3126aa41d772a8362f6aa67afac040f80c
+          go-version: "1.22"
+      - uses: docker/setup-buildx-action@2b51285047da1547ffb1b2203d8be4c0af6b1f20
       - name: Pull linkerd binary
         run: |
           TAG='${{ needs.tag.outputs.tag }}'
@@ -178,10 +178,10 @@ jobs:
             | USE_SUDO=false K3D_INSTALL_DIR=$PWD/target/bin bash
       - name: Cluster setup
         run: |
-         CLUSTER_NAME=$(printf "${{ github.ref_name }}" | tr -c '[:alnum:]' -)
-         echo "CLUSTER_NAME=$CLUSTER_NAME" >> "$GITHUB_ENV"
-         just k3d-name="$CLUSTER_NAME" k3d-create
-         just k3d-name="$CLUSTER_NAME" k3d-use
+          CLUSTER_NAME=$(printf "${{ github.ref_name }}" | tr -c '[:alnum:]' -)
+          echo "CLUSTER_NAME=$CLUSTER_NAME" >> "$GITHUB_ENV"
+          just k3d-name="$CLUSTER_NAME" k3d-create
+          just k3d-name="$CLUSTER_NAME" k3d-use
       - env:
           RUN_ARM_TEST: 1
           LINKERD_DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
@@ -198,118 +198,118 @@ jobs:
     needs: [integration_tests]
     runs-on: windows-2019
     steps:
-    - name: Checkout code
-      if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-    - name: Chocolatey - update nuspec
-      if: startsWith(github.ref, 'refs/tags/stable')
-      run: |
-        $LINKERD_VERSION=$env:GITHUB_REF.Substring(17)
-        (Get-Content bin\win\linkerd.nuspec).replace('LINKERD_VERSION', "$LINKERD_VERSION") | Set-Content bin\win\linkerd.nuspec
-    - name: Chocolatey - pack
-      if: startsWith(github.ref, 'refs/tags/stable')
-      uses: crazy-max/ghaction-chocolatey@0e015857dd851f84fcb7fb53380eb5c4c8202333
-      with:
-        args: pack bin/win/linkerd.nuspec
-    - name: Chocolatey - upload package
-      if: startsWith(github.ref, 'refs/tags/stable')
-      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
-      with:
-        name: choco
-        path: ./linkerd.*.nupkg
+      - name: Checkout code
+        if: startsWith(github.ref, 'refs/tags/stable')
+        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - name: Chocolatey - update nuspec
+        if: startsWith(github.ref, 'refs/tags/stable')
+        run: |
+          $LINKERD_VERSION=$env:GITHUB_REF.Substring(17)
+          (Get-Content bin\win\linkerd.nuspec).replace('LINKERD_VERSION', "$LINKERD_VERSION") | Set-Content bin\win\linkerd.nuspec
+      - name: Chocolatey - pack
+        if: startsWith(github.ref, 'refs/tags/stable')
+        uses: crazy-max/ghaction-chocolatey@0e015857dd851f84fcb7fb53380eb5c4c8202333
+        with:
+          args: pack bin/win/linkerd.nuspec
+      - name: Chocolatey - upload package
+        if: startsWith(github.ref, 'refs/tags/stable')
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
+        with:
+          name: choco
+          path: ./linkerd.*.nupkg
 
   gh_release:
     name: Create GH release
     needs:
-    - tag
-    - integration_tests
+      - tag
+      - integration_tests
     # TODO(ver) choco packages are not produced for edge releases...
     # - choco_pack
     timeout-minutes: 30
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
-    - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-    # - name: Download choco package
-    #   if: startsWith(github.ref, 'refs/tags/stable')
-    #   uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
-    #   with:
-    #     name: choco
-    #     path: choco
-    - name: Pull CLI binaries
-      run: DOCKER_TARGET=multi-arch bin/docker-pull-binaries '${{ needs.tag.outputs.tag }}'
-      #  v=${TAG#"stable-"}
-      #  mv choco/linkerd.*.nupkg "target/release/linkerd2-cli-stable-$v.nupkg" || true
-    - name: Create release
-      id: create_release
-      uses: softprops/action-gh-release@9d7c94cfd0a1f3ed45544c887983e9fa900f0564
-      with:
-        name: '${{ needs.tag.outputs.tag }}'
-        generate_release_notes: true
-        draft: false
-        prerelease: false
-        files: |
-          ./target/release/linkerd2-cli-*-darwin*
-          ./target/release/linkerd2-cli-*-linux-*
-          ./target/release/linkerd2-cli-*-windows.*
-          ./target/release/linkerd2-cli-*.nupkg
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      # - name: Download choco package
+      #   if: startsWith(github.ref, 'refs/tags/stable')
+      #   uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
+      #   with:
+      #     name: choco
+      #     path: choco
+      - name: Pull CLI binaries
+        run: DOCKER_TARGET=multi-arch bin/docker-pull-binaries '${{ needs.tag.outputs.tag }}'
+        #  v=${TAG#"stable-"}
+        #  mv choco/linkerd.*.nupkg "target/release/linkerd2-cli-stable-$v.nupkg" || true
+      - name: Create release
+        id: create_release
+        uses: softprops/action-gh-release@9d7c94cfd0a1f3ed45544c887983e9fa900f0564
+        with:
+          name: "${{ needs.tag.outputs.tag }}"
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            ./target/release/linkerd2-cli-*-darwin*
+            ./target/release/linkerd2-cli-*-linux-*
+            ./target/release/linkerd2-cli-*-windows.*
+            ./target/release/linkerd2-cli-*.nupkg
 
   website_publish:
     name: Linkerd website publish
     needs: [gh_release]
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     timeout-minutes: 30
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
-    - name: Create linkerd/website repository dispatch event
-      uses: peter-evans/repository-dispatch@ff45666b9427631e3450c54a1bcbee4d9ff4d7c0
-      with:
-        token: ${{ secrets.RELEASE_TOKEN }}
-        repository: linkerd/website
-        event-type: release
+      - name: Create linkerd/website repository dispatch event
+        uses: peter-evans/repository-dispatch@ff45666b9427631e3450c54a1bcbee4d9ff4d7c0
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          repository: linkerd/website
+          event-type: release
 
   website_publish_check:
     name: Linkerd website publish check
     needs: [tag, website_publish]
     timeout-minutes: 30
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-    - name: Set install target for stable
-      if: startsWith(github.ref, 'refs/tags/stable')
-      run: echo "INSTALL=install" >> "$GITHUB_ENV"
-    - name: Set install target for edge
-      if: startsWith(github.ref, 'refs/tags/edge')
-      run: echo "INSTALL=install-edge" >> "$GITHUB_ENV"
-    - name: Check published version
-      shell: bash
-      run: |
-        TAG='${{ needs.tag.outputs.tag }}'
-        until RES=$(bin/scurl "https://run.linkerd.io/$INSTALL" | grep "LINKERD2_VERSION=\${LINKERD2_VERSION:-$TAG}") \
-          || (( count++ >= 10 ))
-        do
-          sleep 30
-        done
-        if [[ -z "$RES" ]]; then
-          echo "::error::The version '$TAG' was NOT found published in the website"
-          exit 1
-        fi
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - name: Set install target for stable
+        if: startsWith(github.ref, 'refs/tags/stable')
+        run: echo "INSTALL=install" >> "$GITHUB_ENV"
+      - name: Set install target for edge
+        if: startsWith(github.ref, 'refs/tags/edge')
+        run: echo "INSTALL=install-edge" >> "$GITHUB_ENV"
+      - name: Check published version
+        shell: bash
+        run: |
+          TAG='${{ needs.tag.outputs.tag }}'
+          until RES=$(bin/scurl "https://run.linkerd.io/$INSTALL" | grep "LINKERD2_VERSION=\${LINKERD2_VERSION:-$TAG}") \
+            || (( count++ >= 10 ))
+          do
+            sleep 30
+          done
+          if [[ -z "$RES" ]]; then
+            echo "::error::The version '$TAG' was NOT found published in the website"
+            exit 1
+          fi
 
   chart_deploy:
     name: Helm chart deploy
     needs: [gh_release]
     timeout-minutes: 30
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
-    - name: Checkout code
-      uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-    - name: Log into GCP
-      uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c'
-      with:
-        credentials_json: ${{ secrets.LINKERD_SITE_TOKEN }}
-    - name: Edge Helm chart creation and upload
-      uses: ./.github/actions/helm-publish
+      - name: Checkout code
+        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - name: Log into GCP
+        uses: "google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c"
+        with:
+          credentials_json: ${{ secrets.LINKERD_SITE_TOKEN }}
+      - name: Edge Helm chart creation and upload
+        uses: ./.github/actions/helm-publish
