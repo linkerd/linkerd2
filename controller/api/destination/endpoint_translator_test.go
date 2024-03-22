@@ -770,10 +770,6 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 	})
 }
 
-func TestRemovesCannotChangeLocalTrafficPolicy(t *testing.T) {
-
-}
-
 // TestConcurrency, to be triggered with `go test -race`, shouldn't report a race condition
 func TestConcurrency(t *testing.T) {
 	_, translator := makeEndpointTranslator(t)
