@@ -3,6 +3,9 @@
     "image": "ghcr.io/linkerd/dev:v43",
     // "dockerFile": "./Dockerfile",
     // "context": "..",
+    "features": {
+        "ghcr.io/devcontainers/features/github-cli:1": {}
+    },
     "customizations": {
         "vscode": {
             "extensions": [
