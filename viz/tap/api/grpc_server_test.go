@@ -667,7 +667,7 @@ status:
 			k8sAPI.Sync(nil)
 
 			labels := make(map[string]string)
-			ip, err := addr.ParsePublicIPV4(exp.requestedIP)
+			ip, err := addr.ParsePublicIP(exp.requestedIP)
 			if err != nil {
 				t.Fatalf("Error parsing IP %s: %s", exp.requestedIP, err)
 			}
