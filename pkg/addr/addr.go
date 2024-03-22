@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"net/netip"
 	"strconv"
-	"strings"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/net"
 	l5dNetPb "github.com/linkerd/linkerd2/controller/gen/common/net"
@@ -46,83 +46,84 @@ func PublicIPToString(ip *l5dNetPb.IPAddress) string {
 
 // ProxyAddressToString formats a Proxy API TCPAddress as a string.
 func ProxyAddressToString(addr *pb.TcpAddress) string {
-	netIP := decodeIPv4ToNetIP(addr.GetIp().GetIpv4())
+	vizIP := proxyToVizIPAddr(addr.GetIp())
+	if vizIP == nil {
+		return ""
+	}
+	strIP := PublicIPToString(vizIP)
 	strPort := strconv.Itoa(int(addr.GetPort()))
-	return net.JoinHostPort(netIP.String(), strPort)
+	return net.JoinHostPort(strIP, strPort)
 }
 
-// ProxyAddressesToString formats a list of Proxy API TCPAddresses as a string.
-func ProxyAddressesToString(addrs []pb.TcpAddress) string {
-	addrStrs := make([]string, len(addrs))
-	for i := range addrs {
-		addrStrs[i] = ProxyAddressToString(&addrs[i])
-	}
-	return "[" + strings.Join(addrStrs, ",") + "]"
-}
-
-// ProxyIPToString formats a Proxy API IPAddress as a string.
-func ProxyIPToString(ip *pb.IPAddress) string {
-	netIP := decodeIPv4ToNetIP(ip.GetIpv4())
-	return netIP.String()
-}
-
-// ParseProxyIPV4 parses an IP Address string into a Proxy API IPAddress.
-func ParseProxyIPV4(ip string) (*pb.IPAddress, error) {
-	netIP := net.ParseIP(ip)
-	if netIP == nil {
-		return nil, fmt.Errorf("Invalid IP address: %s", ip)
+// ParseProxyIP parses an IP Address string into a Proxy API IPAddress.
+func ParseProxyIP(ip string) (*pb.IPAddress, error) {
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return nil, fmt.Errorf("invalid IP address: %s", ip)
 	}
 
-	oBigInt := IPToInt(netIP.To4())
-	return &pb.IPAddress{
-		Ip: &pb.IPAddress_Ipv4{
-			Ipv4: uint32(oBigInt.Uint64()),
-		},
-	}, nil
-}
-
-// ParsePublicIPV4 parses an IP Address string into a Viz API IPAddress.
-func ParsePublicIPV4(ip string) (*l5dNetPb.IPAddress, error) {
-	netIP := net.ParseIP(ip)
-	if netIP != nil {
-		oBigInt := IPToInt(netIP.To4())
-		netIPAddress := &l5dNetPb.IPAddress{
-			Ip: &l5dNetPb.IPAddress_Ipv4{
-				Ipv4: uint32(oBigInt.Uint64()),
+	if addr.Is4() {
+		ipBytes := addr.As4()
+		return &pb.IPAddress{
+			Ip: &pb.IPAddress_Ipv4{
+				Ipv4: binary.BigEndian.Uint32(ipBytes[:]),
 			},
-		}
-		return netIPAddress, nil
+		}, nil
+	} else if addr.Is6() {
+		ipBytes := addr.As16()
+		return &pb.IPAddress{
+			Ip: &pb.IPAddress_Ipv6{
+				Ipv6: &pb.IPv6{
+					First: binary.BigEndian.Uint64(ipBytes[:8]),
+					Last:  binary.BigEndian.Uint64(ipBytes[8:]),
+				},
+			},
+		}, nil
 	}
-	return nil, fmt.Errorf("Invalid IP address: %s", ip)
+
+	return nil, fmt.Errorf("invalid IP address: %s", ip)
+}
+
+// ParsePublicIP parses an IP Address string into a Viz API IPAddress.
+func ParsePublicIP(ip string) (*l5dNetPb.IPAddress, error) {
+	addr, err := ParseProxyIP(ip)
+	if err != nil {
+		return nil, err
+	}
+	return proxyToVizIPAddr(addr), nil
 }
 
 // NetToPublic converts a Proxy API TCPAddress to a Viz API
 // TCPAddress.
 func NetToPublic(net *pb.TcpAddress) *l5dNetPb.TcpAddress {
-	var ip *l5dNetPb.IPAddress
-
-	switch i := net.GetIp().GetIp().(type) {
-	case *pb.IPAddress_Ipv6:
-		ip = &l5dNetPb.IPAddress{
-			Ip: &l5dNetPb.IPAddress_Ipv6{
-				Ipv6: &l5dNetPb.IPv6{
-					First: i.Ipv6.First,
-					Last:  i.Ipv6.Last,
-				},
-			},
-		}
-	case *pb.IPAddress_Ipv4:
-		ip = &l5dNetPb.IPAddress{
-			Ip: &l5dNetPb.IPAddress_Ipv4{
-				Ipv4: i.Ipv4,
-			},
-		}
-	}
+	ip := proxyToVizIPAddr(net.GetIp())
 
 	return &l5dNetPb.TcpAddress{
 		Ip:   ip,
 		Port: net.GetPort(),
 	}
+}
+
+func proxyToVizIPAddr(net *pb.IPAddress) *l5dNetPb.IPAddress {
+	switch ip := net.GetIp().(type) {
+	case *pb.IPAddress_Ipv6:
+		return &l5dNetPb.IPAddress{
+			Ip: &l5dNetPb.IPAddress_Ipv6{
+				Ipv6: &l5dNetPb.IPv6{
+					First: ip.Ipv6.First,
+					Last:  ip.Ipv6.Last,
+				},
+			},
+		}
+	case *pb.IPAddress_Ipv4:
+		return &l5dNetPb.IPAddress{
+			Ip: &l5dNetPb.IPAddress_Ipv4{
+				Ipv4: ip.Ipv4,
+			},
+		}
+	}
+
+	return nil
 }
 
 // decodeIPv4ToNetIP converts IPv4 uint32 to an IPv4 net IP.

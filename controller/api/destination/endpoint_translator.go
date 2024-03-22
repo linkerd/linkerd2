@@ -478,7 +478,7 @@ func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
 }
 
 func toAddr(address watcher.Address) (*net.TcpAddress, error) {
-	ip, err := addr.ParseProxyIPV4(address.IP)
+	ip, err := addr.ParseProxyIP(address.IP)
 	if err != nil {
 		return nil, err
 	}
