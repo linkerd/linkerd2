@@ -38,7 +38,6 @@ func Inject(linkerdNamespace string) webhook.Handler {
 		recorder record.EventRecorder,
 	) (*admissionv1beta1.AdmissionResponse, error) {
 		log.Debugf("request object bytes: %s", request.Object.Raw)
-		log.SetLevel(logrus.TraceLevel)
 
 		// Build the resource config based off the request metadata and kind of
 		// object. This is later used to build the injection report and generated
