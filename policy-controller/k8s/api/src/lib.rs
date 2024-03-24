@@ -24,6 +24,7 @@ pub use k8s_openapi::{
             util::intstr::IntOrString,
         },
     },
+    NamespaceResourceScope,
 };
 pub use kube::{
     api::{Api, ListParams, ObjectMeta, Patch, PatchParams, Resource, ResourceExt},

@@ -52,7 +52,7 @@ func TestNewValues(t *testing.T) {
 		DeploymentStrategy:           defaultDeploymentStrategy,
 		HeartbeatSchedule:            "",
 		ClusterDomain:                "cluster.local",
-		ClusterNetworks:              "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16",
+		ClusterNetworks:              "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8",
 		ImagePullPolicy:              "IfNotPresent",
 		CliVersion:                   "linkerd/cli dev-undefined",
 		ControllerLogLevel:           "info",
@@ -102,7 +102,7 @@ func TestNewValues(t *testing.T) {
 					Request: "",
 				},
 			},
-			ProbeNetworks: []string{"0.0.0.0/0"},
+			ProbeNetworks: []string{"0.0.0.0/0", "::/0"},
 		},
 		Proxy: &Proxy{
 			EnableExternalProfiles: false,

@@ -271,8 +271,8 @@ func TestEventToString(t *testing.T) {
 			httpEvent.GetResponseEnd().Id = streamID
 		}
 
-		srcIP, _ := addr.ParsePublicIPV4("1.2.3.4")
-		destIP, _ := addr.ParsePublicIPV4("2.3.4.5")
+		srcIP, _ := addr.ParsePublicIP("1.2.3.4")
+		destIP, _ := addr.ParsePublicIP("2.3.4.5")
 		return &tapPb.TapEvent{
 			ProxyDirection: tapPb.TapEvent_OUTBOUND,
 			Source: &netPb.TcpAddress{

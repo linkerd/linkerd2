@@ -76,7 +76,7 @@ func TestPublicIPToString(t *testing.T) {
 			expected: "192.168.0.1",
 		},
 		{
-			name: "narmal ipv6",
+			name: "normal ipv6",
 			addr: &l5dNetPb.IPAddress{
 				Ip: &l5dNetPb.IPAddress_Ipv6{
 					Ipv6: &l5dNetPb.IPv6{
@@ -110,85 +110,6 @@ func TestPublicIPToString(t *testing.T) {
 		c := c
 		t.Run(c.name, func(t *testing.T) {
 			got := PublicIPToString(c.addr)
-			if c.expected != got {
-				t.Errorf("expected: %v, got: %v", c.expected, got)
-			}
-		})
-	}
-}
-
-func TestProxyAddressesToString(t *testing.T) {
-	cases := []struct {
-		name     string
-		addrs    []pb.TcpAddress
-		expected string
-	}{
-		{
-			name: "ipv4",
-			addrs: []pb.TcpAddress{
-				{
-					Ip: &pb.IPAddress{
-						Ip: &pb.IPAddress_Ipv4{
-							Ipv4: 3232235521,
-						},
-					},
-					Port: 1234,
-				},
-				{
-					Ip: &pb.IPAddress{
-						Ip: &pb.IPAddress_Ipv4{
-							Ipv4: 3232235522,
-						},
-					},
-					Port: 1234,
-				},
-			},
-			expected: "[192.168.0.1:1234,192.168.0.2:1234]",
-		},
-		{
-			name:     "nil",
-			addrs:    nil,
-			expected: "[]",
-		},
-	}
-
-	for _, c := range cases {
-		c := c
-		t.Run(c.name, func(t *testing.T) {
-			got := ProxyAddressesToString(c.addrs)
-			if c.expected != got {
-				t.Errorf("expected: %v, got: %v", c.expected, got)
-			}
-		})
-	}
-}
-
-func TestProxyIPToString(t *testing.T) {
-	cases := []struct {
-		name     string
-		ip       *pb.IPAddress
-		expected string
-	}{
-		{
-			name: "ipv4",
-			ip: &pb.IPAddress{
-				Ip: &pb.IPAddress_Ipv4{
-					Ipv4: 3232235521,
-				},
-			},
-			expected: "192.168.0.1",
-		},
-		{
-			name:     "nil",
-			ip:       nil,
-			expected: "0.0.0.0",
-		},
-	}
-
-	for _, c := range cases {
-		c := c
-		t.Run(c.name, func(t *testing.T) {
-			got := ProxyIPToString(c.ip)
 			if c.expected != got {
 				t.Errorf("expected: %v, got: %v", c.expected, got)
 			}
@@ -255,7 +176,7 @@ func TestNetToPublic(t *testing.T) {
 	}
 }
 
-func TestParseProxyIPV4(t *testing.T) {
+func TestParseProxyIP(t *testing.T) {
 	var testCases = []struct {
 		ip      string
 		expAddr *pb.IPAddress
@@ -278,10 +199,22 @@ func TestParseProxyIPV4(t *testing.T) {
 			},
 			expErr: false,
 		},
+		{
+			ip: "2001:db8:85a3::8a2e:370:7334",
+			expAddr: &pb.IPAddress{
+				Ip: &pb.IPAddress_Ipv6{
+					Ipv6: &pb.IPv6{
+						First: 2306139570357600256,
+						Last:  151930230829876,
+					},
+				},
+			},
+			expErr: false,
+		},
 	}
 
 	for _, testCase := range testCases {
-		res, err := ParseProxyIPV4(testCase.ip)
+		res, err := ParseProxyIP(testCase.ip)
 		if testCase.expErr && err == nil {
 			t.Fatalf("expected get err, but get nil")
 		}
@@ -296,7 +229,7 @@ func TestParseProxyIPV4(t *testing.T) {
 	}
 }
 
-func TestParsePublicIPV4(t *testing.T) {
+func TestParsePublicIP(t *testing.T) {
 	var testCases = []struct {
 		ip      string
 		expAddr *l5dNetPb.IPAddress
@@ -319,10 +252,22 @@ func TestParsePublicIPV4(t *testing.T) {
 			},
 			expErr: false,
 		},
+		{
+			ip: "2001:db8:85a3::8a2e:370:7334",
+			expAddr: &l5dNetPb.IPAddress{
+				Ip: &l5dNetPb.IPAddress_Ipv6{
+					Ipv6: &l5dNetPb.IPv6{
+						First: 2306139570357600256,
+						Last:  151930230829876,
+					},
+				},
+			},
+			expErr: false,
+		},
 	}
 
 	for _, testCase := range testCases {
-		res, err := ParsePublicIPV4(testCase.ip)
+		res, err := ParsePublicIP(testCase.ip)
 		if testCase.expErr && err == nil {
 			t.Fatalf("expected get err, but get nil")
 		}
@@ -355,6 +300,20 @@ func TestProxyAddressToString(t *testing.T) {
 				Port: 5678,
 			},
 			expStr: "0.0.255.255:5678",
+		},
+		{
+			addr: &pb.TcpAddress{
+				Ip: &pb.IPAddress{
+					Ip: &pb.IPAddress_Ipv6{
+						Ipv6: &pb.IPv6{
+							First: 2306139570357600256,
+							Last:  151930230829876,
+						},
+					},
+				},
+				Port: 5678,
+			},
+			expStr: "[2001:db8:85a3::8a2e:370:7334]:5678",
 		},
 	}
 

@@ -19,7 +19,6 @@ COPY bin/fetch-proxy bin/fetch-proxy
 COPY bin/scurl bin/scurl
 ARG TARGETARCH
 ARG LINKERD2_PROXY_REPO="linkerd/linkerd2-proxy"
-ARG LINKERD2_PROXY_RELEASE_PREFIX="release/"
 ARG LINKERD2_PROXY_VERSION=""
 RUN --mount=type=secret,id=github \
     export GITHUB_TOKEN_FILE=/run/secrets/github; \

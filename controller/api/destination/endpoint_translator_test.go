@@ -14,6 +14,7 @@ import (
 	ewv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,7 +57,7 @@ var (
 	}
 
 	pod3 = watcher.Address{
-		IP:   "1.1.1.3",
+		IP:   "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
 		Port: 3,
 		Pod: &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -743,6 +744,31 @@ func TestEndpointTranslatorForLocalTrafficPolicy(t *testing.T) {
 			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
 		}
 	})
+
+	t.Run("Removes cannot change LocalTrafficPolicy", func(t *testing.T) {
+		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
+		addressSet := mkAddressSetForServices(AddressOnTest123Node, AddressNotOnTest123Node)
+		addressSet.LocalTrafficPolicy = true
+		translator.Add(addressSet)
+		set := watcher.AddressSet{
+			Addresses:          make(map[watcher.ServiceID]watcher.Address),
+			Labels:             map[string]string{"service": "service-name", "namespace": "service-ns"},
+			LocalTrafficPolicy: false,
+		}
+		translator.Remove(set)
+
+		// Only the address meant for AddressOnTest123Node should be added.
+		// The remove with no addresses should not change the LocalTrafficPolicy
+		// and should be a noop that does not send an update.
+		expectedNumUpdates := 1
+		<-mockGetServer.updatesReceived // Add
+
+		if len(mockGetServer.updatesReceived) != 0 {
+			t.Fatalf("Expecting [%d] updates, got [%d].", expectedNumUpdates, expectedNumUpdates+len(mockGetServer.updatesReceived))
+		}
+	})
 }
 
 // TestConcurrency, to be triggered with `go test -race`, shouldn't report a race condition
@@ -819,7 +845,7 @@ func checkAddressAndWeight(t *testing.T, actual *pb.WeightedAddr, expected watch
 func checkAddress(t *testing.T, actual *net.TcpAddress, expected watcher.Address) {
 	t.Helper()
 
-	expectedAddr, err := addr.ParseProxyIPV4(expected.IP)
+	expectedAddr, err := addr.ParseProxyIP(expected.IP)
 	expectedTCP := net.TcpAddress{
 		Ip:   expectedAddr,
 		Port: expected.Port,
@@ -827,11 +853,14 @@ func checkAddress(t *testing.T, actual *net.TcpAddress, expected watcher.Address
 	if err != nil {
 		t.Fatalf("Failed to parse expected IP [%s]: %s", expected.IP, err)
 	}
-	if actual.Ip.GetIpv4() != expectedTCP.Ip.GetIpv4() {
-		t.Fatalf("Expected IP [%+v] but got [%+v]", expectedTCP.Ip, actual.Ip)
+	if actual.Ip.GetIpv4() == 0 && actual.Ip.GetIpv6() == nil {
+		t.Fatal("Actual IP is empty")
 	}
-	if actual.Ip.GetIpv6() != expectedTCP.Ip.GetIpv6() {
-		t.Fatalf("Expected IP [%+v] but got [%+v]", expectedTCP.Ip, actual.Ip)
+	if actual.Ip.GetIpv4() != expectedTCP.Ip.GetIpv4() {
+		t.Fatalf("Expected IPv4 [%+v] but got [%+v]", expectedTCP.Ip, actual.Ip)
+	}
+	if !proto.Equal(actual.Ip.GetIpv6(), expectedTCP.Ip.GetIpv6()) {
+		t.Fatalf("Expected IPv6 [%+v] but got [%+v]", expectedTCP.Ip, actual.Ip)
 	}
 	if actual.Port != expectedTCP.Port {
 		t.Fatalf("Expected port [%+v] but got [%+v]", expectedTCP.Port, actual.Port)

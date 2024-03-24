@@ -423,10 +423,16 @@ pub mod defaults {
                 kind: Some(metadata::Kind::Default("probe".to_string())),
             }),
             authorizations: vec![Authz {
-                networks: vec![Network {
-                    net: Some("0.0.0.0/0".parse::<IpNet>().unwrap().into()),
-                    ..Network::default()
-                }],
+                networks: vec![
+                    Network {
+                        net: Some("0.0.0.0/0".parse::<IpNet>().unwrap().into()),
+                        ..Network::default()
+                    },
+                    Network {
+                        net: Some("::/0".parse::<IpNet>().unwrap().into()),
+                        ..Network::default()
+                    },
+                ],
                 authentication: Some(Authn {
                     permit: Some(Permit::Unauthenticated(PermitUnauthenticated {})),
                 }),

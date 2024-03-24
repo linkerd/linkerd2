@@ -23,13 +23,24 @@ Linkerd GitHub org must follow the guidelines in [CONTRIBUTING.md][contrib].
 Whether these contributions are merged into the project is the prerogative of
 the maintainers.
 
-## Maintainer Expectations
+## Directors
+
+Directors are responsible for non-technical leadership functions within the
+project. This includes representing Linkerd and its maintainers to the
+community, to press, and to the outside world; interfacing with CNCF and other
+governance entities; and participating in project decision-making processes when
+appropriate.
+
+Directors may be elected by a majority vote of the maintainers.
+
+## Maintainers
 
 Maintainers have the ability to merge code into the project. Anyone can
 become a Linkerd maintainer (see "Becoming a maintainer" below.)
 
-As such, there are certain expectations for maintainers. Linkerd maintainers
-are expected to:
+### Expectations
+
+Linkerd maintainers are expected to:
 
 * Review pull requests, triage issues, and fix bugs in their areas of
   expertise, ensuring that all changes go through the project's code review
@@ -43,12 +54,6 @@ If a maintainer is no longer interested in or cannot perform the duties
 listed above, they should move themselves to emeritus status. If necessary,
 this can also occur through the decision-making process outlined below.
 
-### Maintainer decision-making
-
-Ideally, all project decisions are resolved by maintainer consensus. If this
-is not possible, maintainers may call a vote. The voting process is a simple
-majority in which each maintainer receives one vote.
-
 ### Becoming a maintainer
 
 Anyone can become a Linkerd maintainer. Maintainers should be extremely
@@ -61,6 +66,12 @@ Existing maintainers will then ask you to demonstrate the qualifications
 above by contributing PRs, doing code reviews, and other such tasks under
 their guidance. After several months of working together, maintainers will
 decide whether to grant maintainer status.
+
+## Project decision-making process
+
+Ideally, all project decisions are resolved by consensus of maintainers and
+directors. If this is not possible, a vote will be called. The voting process is
+a simple majority in which each maintainer and director receives one vote.
 
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 [contrib]: https://github.com/linkerd/linkerd2/blob/main/CONTRIBUTING.md

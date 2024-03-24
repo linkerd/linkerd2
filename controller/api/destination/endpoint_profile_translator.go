@@ -128,10 +128,11 @@ func (ept *endpointProfileTranslator) update(address *watcher.Address) {
 		return
 	}
 
+	_, opaqueProtocol := opaquePorts[address.Port]
 	profile := &pb.DestinationProfile{
 		RetryBudget:    defaultRetryBudget(),
 		Endpoint:       endpoint,
-		OpaqueProtocol: address.OpaqueProtocol,
+		OpaqueProtocol: opaqueProtocol || address.OpaqueProtocol,
 	}
 	if proto.Equal(profile, ept.current) {
 		ept.log.Debugf("Ignoring redundant profile update: %+v", profile)

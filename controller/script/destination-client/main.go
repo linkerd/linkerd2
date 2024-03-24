@@ -64,7 +64,7 @@ func get(client pb.DestinationClient, req *pb.GetDestination) {
 			log.Println("Add:")
 			log.Printf("labels: %v", updateType.Add.MetricLabels)
 			for _, addr := range updateType.Add.Addrs {
-				log.Printf("- %s:%d", addrUtil.ProxyIPToString(addr.Addr.GetIp()), addr.Addr.Port)
+				log.Printf("- %s:%d", addrUtil.ProxyAddressToString(addr.Addr), addr.Addr.Port)
 				log.Printf("  - labels: %v", addr.MetricLabels)
 				switch addr.GetProtocolHint().GetProtocol().(type) {
 				case *pb.ProtocolHint_H2_:
@@ -82,7 +82,7 @@ func get(client pb.DestinationClient, req *pb.GetDestination) {
 		case *pb.Update_Remove:
 			log.Println("Remove:")
 			for _, addr := range updateType.Remove.Addrs {
-				log.Printf("- %s:%d", addrUtil.ProxyIPToString(addr.GetIp()), addr.Port)
+				log.Printf("- %s:%d", addrUtil.ProxyAddressToString(addr), addr.Port)
 			}
 			log.Println()
 		case *pb.Update_NoEndpoints:

@@ -1,7 +1,8 @@
 use kube::ResourceExt;
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
-    await_condition, await_route_status, create, find_route_condition, mk_route, with_temp_ns,
+    await_condition, await_route_status, create, find_route_condition, mk_route, update,
+    with_temp_ns,
 };
 
 #[tokio::test(flavor = "current_thread")]
@@ -132,18 +133,62 @@ async fn inbound_multiple_parents() {
 #[tokio::test(flavor = "current_thread")]
 async fn inbound_no_parent_ref_patch() {
     with_temp_ns(|client, ns| async move {
-        // A route may not include any parent references. When that's the case,
-        // we expect the controller to simply ignore it.
-        let _route = create(&client, mk_route(&ns, "test-no-parent-refs-route", None)).await;
+        // Create a test 'Server'
+        let server_name = "test-accepted-server";
+        let server = k8s::policy::Server {
+            metadata: k8s::ObjectMeta {
+                namespace: Some(ns.to_string()),
+                name: Some(server_name.to_string()),
+                ..Default::default()
+            },
+            spec: k8s::policy::ServerSpec {
+                selector: k8s::policy::server::Selector::Pod(k8s::labels::Selector::from_iter(
+                    Some(("app", server_name)),
+                )),
+                port: k8s::policy::server::Port::Name("http".to_string()),
+                proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
+            },
+        };
+        let server = create(&client, server).await;
+        let srv_ref = vec![k8s::policy::httproute::ParentReference {
+            group: Some("policy.linkerd.io".to_string()),
+            kind: Some("Server".to_string()),
+            namespace: server.namespace(),
+            name: server.name_unchecked(),
+            section_name: None,
+            port: None,
+        }];
+        // Create a route with a parent reference.
+        let route = create(
+            &client,
+            mk_route(&ns, "test-no-parent-refs-route", Some(srv_ref)),
+        )
+        .await;
 
         // Status may not be set straight away. To account for that, wrap a
         // status condition watcher in a timeout.
         let status = await_route_status(&client, &ns, "test-no-parent-refs-route").await;
         // If timeout has elapsed, then route did not receive a status patch
         assert!(
-            status.parents.is_empty(),
-            "HTTPRoute Status shouldn't contain any parent statuses"
+            status.parents.len() == 1,
+            "HTTPRoute Status should have 1 parent status"
         );
+
+        // Update route to remove parent_refs
+        let _route = update(&client, mk_route(&ns, "test-no-parent-refs-route", None)).await;
+
+        // Wait for the status to be updated to contain no parent statuses.
+        await_condition::<k8s::policy::HttpRoute>(
+            &client,
+            &ns,
+            &route.name_unchecked(),
+            |obj: Option<&k8s::policy::HttpRoute>| -> bool {
+                obj.and_then(|route| route.status.as_ref())
+                    .is_some_and(|status| status.inner.parents.is_empty())
+            },
+        )
+        .await
+        .expect("HTTPRoute Status should have no parent status");
     })
     .await
 }

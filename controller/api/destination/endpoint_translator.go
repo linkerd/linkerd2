@@ -199,7 +199,10 @@ func (et *endpointTranslator) add(set watcher.AddressSet) {
 		et.availableEndpoints.Addresses[id] = address
 	}
 
-	et.sendFilteredUpdate(set)
+	et.availableEndpoints.Labels = set.Labels
+	et.availableEndpoints.LocalTrafficPolicy = set.LocalTrafficPolicy
+
+	et.sendFilteredUpdate()
 }
 
 func (et *endpointTranslator) remove(set watcher.AddressSet) {
@@ -207,7 +210,7 @@ func (et *endpointTranslator) remove(set watcher.AddressSet) {
 		delete(et.availableEndpoints.Addresses, id)
 	}
 
-	et.sendFilteredUpdate(set)
+	et.sendFilteredUpdate()
 }
 
 func (et *endpointTranslator) noEndpoints(exists bool) {
@@ -230,13 +233,7 @@ func (et *endpointTranslator) noEndpoints(exists bool) {
 	}
 }
 
-func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
-	et.availableEndpoints = watcher.AddressSet{
-		Addresses:          et.availableEndpoints.Addresses,
-		Labels:             set.Labels,
-		LocalTrafficPolicy: set.LocalTrafficPolicy,
-	}
-
+func (et *endpointTranslator) sendFilteredUpdate() {
 	filtered := et.filterAddresses()
 	diffAdd, diffRemove := et.diffEndpoints(filtered)
 
@@ -478,7 +475,7 @@ func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
 }
 
 func toAddr(address watcher.Address) (*net.TcpAddress, error) {
-	ip, err := addr.ParseProxyIPV4(address.IP)
+	ip, err := addr.ParseProxyIP(address.IP)
 	if err != nil {
 		return nil, err
 	}
