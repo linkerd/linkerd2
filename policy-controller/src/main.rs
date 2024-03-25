@@ -328,8 +328,11 @@ async fn grpc(
             .svc();
 
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
+
+    let metrics = grpc::metrics::MetricsLayer::new(&mut Registry::default());
+
     tokio::pin! {
-        let srv = Server::builder().add_service(inbound_svc).add_service(outbound_svc).serve_with_shutdown(addr, close_rx.map(|_| {}));
+        let srv = Server::builder().layer(metrics).add_service(inbound_svc).add_service(outbound_svc).serve_with_shutdown(addr, close_rx.map(|_| {}));
     }
 
     info!(%addr, "policy gRPC server listening");

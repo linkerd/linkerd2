@@ -1219,11 +1219,13 @@ dependencies = [
  "linkerd-policy-controller-core",
  "linkerd2-proxy-api",
  "maplit",
+ "prometheus-client",
  "prost-types",
  "serde",
  "serde_json",
  "tokio",
  "tonic",
+ "tower",
  "tracing",
 ]
 
