@@ -14,7 +14,7 @@
 //! [ Pod ] -> [ Port ] <- [ Server ] <- [ ServerAuthorization ]
 //! ```
 //!
-//! Lookups against this index are are initiated for a single pod & port.
+//! Lookups against this index are initiated for a single pod & port.
 //!
 //! The Pod, Server, and ServerAuthorization indices are all scoped within a namespace index, as
 //! these resources cannot reference resources in other namespaces. This scoping helps to narrow the

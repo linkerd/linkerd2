@@ -276,7 +276,7 @@ webhook:
   injectCaFromSecret: ""
 
   # -- collector service address for the proxies to send trace data.
-  # Points by default to the the linkerd-jaeger collector
+  # Points by default to the linkerd-jaeger collector
   collectorSvcAddr: collector.linkerd-jaeger:55678
   # -- service account associated with the collector instance
   collectorSvcAccount: collector

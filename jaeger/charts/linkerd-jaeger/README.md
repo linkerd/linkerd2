@@ -119,7 +119,7 @@ Kubernetes: `>=1.22.0-0`
 | webhook.UID | string | `nil` | UID for the webhook resource |
 | webhook.caBundle | string | `""` | Bundle of CA certificates for webhook. If not provided nor injected with cert-manager, then Helm will use the certificate generated for `webhook.crtPEM`. If `webhook.externalSecret` is set to true, this value, injectCaFrom, or injectCaFromSecret must be set, as no certificate will be generated. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information. |
 | webhook.collectorSvcAccount | string | `"collector"` | service account associated with the collector instance |
-| webhook.collectorSvcAddr | string | `"collector.linkerd-jaeger:55678"` | collector service address for the proxies to send trace data. Points by default to the the linkerd-jaeger collector |
+| webhook.collectorSvcAddr | string | `"collector.linkerd-jaeger:55678"` | collector service address for the proxies to send trace data. Points by default to the linkerd-jaeger collector |
 | webhook.crtPEM | string | `""` | Certificate for the webhook. If not provided and not using an external secret then Helm will generate one. |
 | webhook.externalSecret | bool | `false` | Do not create a secret resource for the webhook. If this is set to `true`, the value `webhook.caBundle` must be set or the ca bundle must injected with cert-manager ca injector using `webhook.injectCaFrom` or `webhook.injectCaFromSecret` (see below). |
 | webhook.failurePolicy | string | `"Ignore"` |  |

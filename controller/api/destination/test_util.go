@@ -694,7 +694,7 @@ spec:
 		t.Fatalf("can't create cluster store: %s", err)
 	}
 
-	// Sync after creating watchers so that the the indexers added get updated
+	// Sync after creating watchers so that the indexers added get updated
 	// properly
 	k8sAPI.Sync(nil)
 	metadataAPI.Sync(nil)
