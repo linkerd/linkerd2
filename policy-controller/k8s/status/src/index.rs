@@ -529,7 +529,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
             backends,
             statuses,
         };
-        self.index_httproute(id, route)
+        self.index_httproute(id, route);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -591,7 +591,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
             backends,
             statuses,
         };
-        self.index_httproute(id, route)
+        self.index_httproute(id, route);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
