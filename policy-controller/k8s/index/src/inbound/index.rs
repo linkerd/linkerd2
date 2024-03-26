@@ -326,7 +326,7 @@ impl Index {
                     name: name.into(),
                 })
                 .collect();
-            updates_by_ns.entry(ns).or_default().removed = removed
+            updates_by_ns.entry(ns).or_default().removed = removed;
         }
 
         for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
@@ -397,7 +397,6 @@ impl kubert::index::IndexNamespacedResource<k8s::Pod> for Index {
 
     fn delete(&mut self, ns: String, name: String) {
         tracing::debug!(%ns, %name, "delete");
-
         if let Entry::Occupied(mut ns) = self.namespaces.by_ns.entry(ns) {
             // Once the pod is removed, there's nothing else to update. Any open
             // watches will complete.  No other parts of the index need to be
@@ -489,12 +488,11 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
         let _span = info_span!("apply", %ns, %name).entered();
 
         let server = server::Server::from_resource(srv, &self.cluster_info);
-        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_server(name, server));
+        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_server(name, server))
     }
 
     fn delete(&mut self, ns: String, name: String) {
         let _span = info_span!("delete", %ns, %name).entered();
-
         self.ns_with_reindex(ns, |ns| ns.policy.servers.remove(&name).is_some())
     }
 
@@ -573,7 +571,6 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
 
     fn delete(&mut self, ns: String, name: String) {
         let _span = info_span!("delete", %ns, %name).entered();
-
         self.ns_with_reindex(ns, |ns| {
             ns.policy.server_authorizations.remove(&name).is_some()
         })
@@ -668,7 +665,6 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> fo
     fn delete(&mut self, ns: String, ap: String) {
         let _span = info_span!("delete", %ns, %ap).entered();
         tracing::trace!(name = %ap, "Delete");
-
         self.ns_with_reindex(ns, |ns| {
             ns.policy.authorization_policies.remove(&ap).is_some()
         })
@@ -924,7 +920,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
 
     fn delete(&mut self, ns: String, name: String) {
         let gkn = gkn_for_linkerd_http_route(name);
-        self.delete_route(ns, gkn);
+        self.delete_route(ns, gkn)
     }
 
     fn reset(
