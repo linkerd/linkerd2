@@ -1,9 +1,6 @@
 name: Sync proxy
 
 on:
-  # Hourly
-  schedule:
-    - cron: "15 * * * *"
   workflow_dispatch:
     inputs:
       version:
