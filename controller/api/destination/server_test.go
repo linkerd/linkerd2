@@ -449,6 +449,9 @@ func TestGetProfiles(t *testing.T) {
 		if first.GetEndpoint().GetProtocolHint().GetOpaqueTransport() != nil {
 			t.Fatalf("Expected pod to not support opaque traffic on port %d", port)
 		}
+		if first.Endpoint.Addr.Ip.GetIpv4() == 0 && first.Endpoint.Addr.Ip.GetIpv6() == nil {
+			t.Fatal("IP is empty")
+		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
 		}
@@ -489,6 +492,9 @@ func TestGetProfiles(t *testing.T) {
 		}
 		if first.GetEndpoint().GetProtocolHint().GetOpaqueTransport() != nil {
 			t.Fatalf("Expected pod to not support opaque traffic on port %d", port)
+		}
+		if first.Endpoint.Addr.Ip.GetIpv4() == 0 && first.Endpoint.Addr.Ip.GetIpv6() == nil {
+			t.Fatal("IP is empty")
 		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
@@ -531,6 +537,9 @@ func TestGetProfiles(t *testing.T) {
 		if first.GetEndpoint().GetProtocolHint().GetOpaqueTransport() != nil {
 			t.Fatalf("Expected pod to not support opaque traffic on port %d", port)
 		}
+		if first.Endpoint.Addr.Ip.GetIpv4() == 0 && first.Endpoint.Addr.Ip.GetIpv6() == nil {
+			t.Fatal("IP is empty")
+		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
 		}
@@ -571,6 +580,9 @@ func TestGetProfiles(t *testing.T) {
 		}
 		if first.GetEndpoint().GetProtocolHint().GetOpaqueTransport() != nil {
 			t.Fatalf("Expected externalworkload to not support opaque traffic on port %d", port)
+		}
+		if first.Endpoint.Addr.Ip.GetIpv4() == 0 && first.Endpoint.Addr.Ip.GetIpv6() == nil {
+			t.Fatal("IP is empty")
 		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
@@ -691,6 +703,9 @@ func TestGetProfiles(t *testing.T) {
 		if profile.Endpoint.GetProtocolHint().GetOpaqueTransport().GetInboundPort() != 4143 {
 			t.Fatalf("Expected pod to support opaque traffic on port 4143")
 		}
+		if profile.Endpoint.Addr.Ip.GetIpv4() == 0 && profile.Endpoint.Addr.Ip.GetIpv6() == nil {
+			t.Fatal("IP is empty")
+		}
 		if profile.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP port to be %d, but it was %d", epAddr.Port, profile.Endpoint.Addr.Port)
 		}
@@ -765,6 +780,9 @@ func TestGetProfiles(t *testing.T) {
 		}
 		if profile.Endpoint.GetProtocolHint().GetOpaqueTransport().GetInboundPort() != 4143 {
 			t.Fatalf("Expected pod to support opaque traffic on port 4143")
+		}
+		if profile.Endpoint.Addr.Ip.GetIpv4() == 0 && profile.Endpoint.Addr.Ip.GetIpv6() == nil {
+			t.Fatal("IP is empty")
 		}
 		if profile.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP port to be %d, but it was %d", epAddr.Port, profile.Endpoint.Addr.Port)
@@ -854,7 +872,7 @@ func TestGetProfiles(t *testing.T) {
 			t.Fatalf("Expected dst_pod to be %s got %s", "hostport-mapping", dstPod)
 		}
 
-		ip, err := addr.ParseProxyIPV4(externalIP)
+		ip, err := addr.ParseProxyIP(externalIP)
 		if err != nil {
 			t.Fatalf("Error parsing IP: %s", err)
 		}
@@ -1047,7 +1065,7 @@ func updateAddAddress(t *testing.T, update *pb.Update) []string {
 }
 
 func toAddress(path string, port uint32) (*net.TcpAddress, error) {
-	ip, err := addr.ParseProxyIPV4(path)
+	ip, err := addr.ParseProxyIP(path)
 	if err != nil {
 		return nil, err
 	}

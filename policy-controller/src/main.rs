@@ -125,6 +125,11 @@ async fn main() -> Result<()> {
         Some(server)
     };
 
+    let mut prom = <Registry>::default();
+    let resource_status = prom.sub_registry_with_prefix("resource_status");
+    let status_metrics = status::ControllerMetrics::register(resource_status);
+    let status_index_metrcs = status::IndexMetrics::register(resource_status);
+
     let probe_networks = probe_networks.map(|IpNets(nets)| nets).unwrap_or_default();
 
     let default_opaque_ports = parse_portset(&default_opaque_ports)?;
@@ -138,12 +143,6 @@ async fn main() -> Result<()> {
         default_opaque_ports,
         probe_networks,
     });
-
-    let mut prom = <Registry>::default();
-    let status_metrics =
-        status::ControllerMetrics::register(prom.sub_registry_with_prefix("resource_status"));
-    let status_index_metrcs =
-        status::IndexMetrics::register(prom.sub_registry_with_prefix("resource_status"));
 
     // Build the API index data structures which will maintain information
     // necessary for serving the inbound policy and outbound policy gRPC APIs.
