@@ -171,7 +171,7 @@ impl IndexMetrics {
 
         let patch_channel_full = Counter::default();
         prom.register(
-            "patch_channel_overflows",
+            "patch_enqueue_overflows",
             "Count of patches dropped because the updates channel is full",
             patch_channel_full.clone(),
         );
