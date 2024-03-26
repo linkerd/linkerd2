@@ -62,6 +62,8 @@ pub struct ControllerMetrics {
     patch_failed: Counter,
     patch_timeout: Counter,
     patch_duration: Histogram,
+    patch_dequeues: Counter,
+    patch_drops: Counter,
 }
 
 pub struct Index {
@@ -79,6 +81,13 @@ pub struct Index {
     http_route_refs: HashMap<NamespaceGroupKindName, HttpRoute>,
     servers: HashSet<ResourceId>,
     services: HashMap<ResourceId, Service>,
+
+    metrics: IndexMetrics,
+}
+
+pub struct IndexMetrics {
+    patch_enqueues: Counter,
+    patch_channel_full: Counter,
 }
 
 #[derive(Clone, PartialEq)]
@@ -126,11 +135,50 @@ impl ControllerMetrics {
             patch_duration.clone(),
         );
 
+        let patch_dequeues = Counter::default();
+        prom.register(
+            "patch_dequeues",
+            "Count of patches dequeued from the updates channel",
+            patch_dequeues.clone(),
+        );
+
+        let patch_drops = Counter::default();
+        prom.register(
+            "patch_drops",
+            "Count of patches dropped because we are not the leader",
+            patch_drops.clone(),
+        );
+
         Self {
             patch_succeeded,
             patch_failed,
             patch_timeout,
             patch_duration,
+            patch_dequeues,
+            patch_drops,
+        }
+    }
+}
+
+impl IndexMetrics {
+    pub fn register(prom: &mut Registry) -> Self {
+        let patch_enqueues = Counter::default();
+        prom.register(
+            "patch_enqueues",
+            "Count of patches enqueued to the updates channel",
+            patch_enqueues.clone(),
+        );
+
+        let patch_channel_full = Counter::default();
+        prom.register(
+            "patch_enqueue_overflows",
+            "Count of patches dropped because the updates channel is full",
+            patch_channel_full.clone(),
+        );
+
+        Self {
+            patch_enqueues,
+            patch_channel_full,
         }
     }
 }
@@ -178,6 +226,7 @@ impl Controller {
                 }
 
                 Some(Update { id, patch}) = self.updates.recv() => {
+                    self.metrics.patch_dequeues.inc();
                     // If this policy controller is not the leader, it should
                     // process through the updates queue but not actually patch
                     // any resources.
@@ -187,6 +236,8 @@ impl Controller {
                         } else if id.gkn.group == k8s_gateway_api::HttpRoute::group(&()) {
                             self.patch_status::<k8s_gateway_api::HttpRoute>(&id.gkn.name, &id.namespace, patch).await;
                         }
+                    } else {
+                        self.metrics.patch_drops.inc();
                     }
                 }
             }
@@ -238,6 +289,7 @@ impl Index {
         name: impl ToString,
         claims: Receiver<Arc<Claim>>,
         updates: mpsc::Sender<Update>,
+        metrics: IndexMetrics,
     ) -> SharedIndex {
         Arc::new(RwLock::new(Self {
             name: name.to_string(),
@@ -246,6 +298,7 @@ impl Index {
             http_route_refs: HashMap::new(),
             servers: HashSet::new(),
             services: HashMap::new(),
+            metrics,
         }))
     }
 
@@ -416,11 +469,17 @@ impl Index {
     fn reconcile(&self) {
         for (id, route) in self.http_route_refs.iter() {
             if let Some(patch) = self.make_http_route_patch(id, route) {
-                if let Err(error) = self.updates.try_send(Update {
+                match self.updates.try_send(Update {
                     id: id.clone(),
                     patch,
                 }) {
-                    tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send HTTPRoute patch")
+                    Ok(()) => {
+                        self.metrics.patch_enqueues.inc();
+                    }
+                    Err(error) => {
+                        self.metrics.patch_channel_full.inc();
+                        tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send HTTPRoute patch");
+                    }
                 }
             }
         }
@@ -635,11 +694,17 @@ impl Index {
         // Create a patch for the HTTPRoute and send it to the Controller so
         // that it is applied.
         if let Some(patch) = self.make_http_route_patch(&id, &route) {
-            if let Err(error) = self.updates.try_send(Update {
+            match self.updates.try_send(Update {
                 id: id.clone(),
                 patch,
             }) {
-                tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send HTTPRoute patch")
+                Ok(()) => {
+                    self.metrics.patch_enqueues.inc();
+                }
+                Err(error) => {
+                    self.metrics.patch_channel_full.inc();
+                    tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send HTTPRoute patch");
+                }
             }
         }
     }
