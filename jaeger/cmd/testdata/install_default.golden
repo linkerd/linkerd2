@@ -41,7 +41,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
       containers:
       - args:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
@@ -455,7 +454,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
       containers:
       - command:
         - /otelcol-contrib
@@ -570,7 +568,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
       containers:
       - args:
         - --query.base-path=/jaeger

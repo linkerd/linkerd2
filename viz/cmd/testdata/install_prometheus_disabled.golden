@@ -378,7 +378,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
       containers:
       - args:
         - -controller-namespace=linkerd
@@ -593,7 +592,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
       containers:
       - args:
         - api
@@ -809,7 +807,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
       containers:
       - args:
         - injector
@@ -927,7 +924,6 @@ metadata:
     namespace: linkerd-viz
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
-    
     linkerd.io/inject: enabled
 spec:
   type: ClusterIP
@@ -979,7 +975,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
       containers:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.linkerd-viz.svc.cluster.local:8085
