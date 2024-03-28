@@ -39,6 +39,7 @@ type (
 		templates   map[string]*template.Template
 		router      *httprouter.Router
 		reHost      *regexp.Regexp
+		basePath    string
 	}
 
 	templatePayload struct {
@@ -84,6 +85,7 @@ Please see https://linkerd.io/dns-rebinding for an explanation of what is happen
 // control plane.
 func NewServer(
 	addr string,
+	basePath string,
 	grafanaAddr string,
 	grafanaExternalAddr string,
 	grafanaPrefix string,
@@ -104,6 +106,7 @@ func NewServer(
 		templateDir: templateDir,
 		reload:      reload,
 		reHost:      reHost,
+		basePath:    basePath,
 	}
 
 	server.router = &httprouter.Router{
@@ -128,11 +131,12 @@ func NewServer(
 		jaeger:              jaegerAddr,
 		hc:                  hc,
 		statCache:           cache.New(statExpiration, statCleanupInterval),
+		basePath:            basePath,
 	}
 
 	// Only create the grafana reverse proxy if we aren't using external grafana
 	if grafanaExternalAddr == "" {
-		handler.grafanaProxy = newReverseProxy(grafanaAddr, "/grafana")
+		handler.grafanaProxy = newReverseProxy(grafanaAddr, server.calculateAbsolutePath("/grafana"))
 	}
 
 	httpServer := &http.Server{
@@ -144,78 +148,78 @@ func NewServer(
 	}
 
 	// webapp routes
-	server.router.GET("/", handler.handleIndex)
-	server.router.GET("/controlplane", handler.handleIndex)
-	server.router.GET("/namespaces", handler.handleIndex)
-	server.router.GET("/gateways", handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/controlplane"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/gateways"), handler.handleIndex)
 
 	// paths for a list of resources by namespace
-	server.router.GET("/namespaces/:namespace/daemonsets", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/statefulsets", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/jobs", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/deployments", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/services", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/replicationcontrollers", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/pods", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/cronjobs", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/replicasets", handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/daemonsets"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/statefulsets"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/jobs"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/deployments"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/services"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/replicationcontrollers"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/pods"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/cronjobs"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/replicasets"), handler.handleIndex)
 
 	// legacy paths that are deprecated but should not 404
-	server.router.GET("/overview", handler.handleIndex)
-	server.router.GET("/daemonsets", handler.handleIndex)
-	server.router.GET("/statefulsets", handler.handleIndex)
-	server.router.GET("/jobs", handler.handleIndex)
-	server.router.GET("/deployments", handler.handleIndex)
-	server.router.GET("/services", handler.handleIndex)
-	server.router.GET("/replicationcontrollers", handler.handleIndex)
-	server.router.GET("/pods", handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/overview"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/daemonsets"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/statefulsets"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/jobs"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/deployments"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/services"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/replicationcontrollers"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/pods"), handler.handleIndex)
 
 	// paths for individual resource view
-	server.router.GET("/namespaces/:namespace", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/pods/:pod", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/daemonsets/:daemonset", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/statefulsets/:statefulset", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/deployments/:deployment", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/services/:deployment", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/jobs/:job", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/replicationcontrollers/:replicationcontroller", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/cronjobs/:cronjob", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace/replicasets/:replicaset", handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/pods/:pod"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/daemonsets/:daemonset"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/statefulsets/:statefulset"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/deployments/:deployment"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/services/:deployment"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/jobs/:job"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/replicationcontrollers/:replicationcontroller"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/cronjobs/:cronjob"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/namespaces/:namespace/replicasets/:replicaset"), handler.handleIndex)
 
 	// tools and community paths
-	server.router.GET("/tap", handler.handleIndex)
-	server.router.GET("/top", handler.handleIndex)
-	server.router.GET("/community", handler.handleIndex)
-	server.router.GET("/routes", handler.handleIndex)
-	server.router.GET("/extensions", handler.handleIndex)
-	server.router.GET("/profiles/new", handler.handleProfileDownload)
+	server.router.GET(server.calculateAbsolutePath("/tap"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/top"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/community"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/routes"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/extensions"), handler.handleIndex)
+	server.router.GET(server.calculateAbsolutePath("/profiles/new"), handler.handleProfileDownload)
 
 	// add catch-all parameter to match all files in dir
-	server.router.GET("/dist/*filepath", mkStaticHandler(staticDir))
+	server.router.GET(server.calculateAbsolutePath("/dist/*filepath"), mkStaticHandler(staticDir))
 
 	// webapp api routes
-	server.router.GET("/api/version", handler.handleAPIVersion)
+	server.router.GET(server.calculateAbsolutePath("/api/version"), handler.handleAPIVersion)
 	// Traffic Performance Summary.  This route used to be called /api/stat
 	// but was renamed to avoid triggering ad blockers.
 	// See: https://github.com/linkerd/linkerd2/issues/970
-	server.router.GET("/api/tps-reports", handler.handleAPIStat)
-	server.router.GET("/api/pods", handler.handleAPIPods)
-	server.router.GET("/api/services", handler.handleAPIServices)
-	server.router.GET("/api/tap", handler.handleAPITap)
-	server.router.GET("/api/routes", handler.handleAPITopRoutes)
-	server.router.GET("/api/edges", handler.handleAPIEdges)
-	server.router.GET("/api/check", handler.handleAPICheck)
-	server.router.GET("/api/resource-definition", handler.handleAPIResourceDefinition)
-	server.router.GET("/api/gateways", handler.handleAPIGateways)
-	server.router.GET("/api/extensions", handler.handleGetExtensions)
+	server.router.GET(server.calculateAbsolutePath("/api/tps-reports"), handler.handleAPIStat)
+	server.router.GET(server.calculateAbsolutePath("/api/pods"), handler.handleAPIPods)
+	server.router.GET(server.calculateAbsolutePath("/api/services"), handler.handleAPIServices)
+	server.router.GET(server.calculateAbsolutePath("/api/tap"), handler.handleAPITap)
+	server.router.GET(server.calculateAbsolutePath("/api/routes"), handler.handleAPITopRoutes)
+	server.router.GET(server.calculateAbsolutePath("/api/edges"), handler.handleAPIEdges)
+	server.router.GET(server.calculateAbsolutePath("/api/check"), handler.handleAPICheck)
+	server.router.GET(server.calculateAbsolutePath("/api/resource-definition"), handler.handleAPIResourceDefinition)
+	server.router.GET(server.calculateAbsolutePath("/api/gateways"), handler.handleAPIGateways)
+	server.router.GET(server.calculateAbsolutePath("/api/extensions"), handler.handleGetExtensions)
 
 	// grafana proxy, only used if external grafana is not in use
 	if grafanaExternalAddr == "" {
-		server.handleAllOperationsForPath("/grafana/*grafanapath", handler.handleGrafana)
+		server.handleAllOperationsForPath(server.calculateAbsolutePath("/grafana/*grafanapath"), handler.handleGrafana)
 	}
 
 	// jaeger proxy
-	server.handleAllOperationsForPath("/jaeger/*jaegerpath", handler.handleJaeger)
+	server.handleAllOperationsForPath(server.calculateAbsolutePath("/jaeger/*jaegerpath"), handler.handleJaeger)
 
 	return httpServer
 }
@@ -269,6 +273,14 @@ func (s *Server) handleAllOperationsForPath(path string, handle httprouter.Handl
 	s.router.PATCH(path, handle)
 	s.router.POST(path, handle)
 	s.router.PUT(path, handle)
+}
+
+func (s *Server) calculateAbsolutePath(relPath string) string {
+	if relPath == "" {
+		return s.basePath
+	}
+
+	return path.Join(s.basePath, relPath)
 }
 
 func safelyJoinPath(rootPath, userPath string) string {
