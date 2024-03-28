@@ -1657,6 +1657,11 @@ spec:
             port: admin-http
           initialDelaySeconds: 10
         resources:
+          limits:
+            memory: "250Mi"
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
         securityContext:
           capabilities:
             drop:

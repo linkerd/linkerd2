@@ -111,6 +111,7 @@ func chartCniPlugin(t *testing.T) *chart.Chart {
 		"templates/_metadata.tpl",
 		"templates/_tolerations.tpl",
 		"templates/_resources.tpl",
+		"templates/_default-resources.tpl",
 	})
 
 	cniChart := &chart.Chart{
