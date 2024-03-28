@@ -87,7 +87,7 @@ jobs:
             echo
             echo "Release notes: $URL"
           ) >"$RUNNER_TEMP"/commit.txt
-          git commit -F "$RUNNER_TEMP"/commit.txt
+          git commit --signoff -F "$RUNNER_TEMP"/commit.txt
           git push origin bot/sync-proxy/"$VERSION"
       - env:
           GH_REPO: ${{ github.repository }}
