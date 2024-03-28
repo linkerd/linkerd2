@@ -115,5 +115,6 @@ webhooks:
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods", "services"]
+    scope: "Namespaced"
   sideEffects: None
   timeoutSeconds: {{ .Values.proxyInjector.timeoutSeconds | default 10 }}
