@@ -15,6 +15,8 @@ commonLabels: {}
 # -- Trust domain used for identity
 # @default -- clusterDomain
 identityTrustDomain: ""
+# -- Specifies the number of old ReplicaSets to retain to allow rollback.
+revisionHistoryLimit: 10
 
 # -- Docker registry for all viz components
 defaultRegistry: cr.l5d.io/linkerd

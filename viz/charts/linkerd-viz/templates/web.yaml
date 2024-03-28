@@ -48,6 +48,7 @@ metadata:
   name: web
   namespace: {{ .Release.Namespace }}
 spec:
+  revisionHistoryLimit: {{.Values.revisionHistoryLimit}}
   replicas: {{.Values.dashboard.replicas}}
   selector:
     matchLabels:
