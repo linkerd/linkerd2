@@ -26,6 +26,10 @@ destCNINetDir:    "/etc/cni/net.d"
 destCNIBinDir:    "/opt/cni/bin"
 # -- Configures the CNI plugin to use the -w flag for the iptables command
 useWaitFlag:      false
+# -- Variant of iptables that will be used to configure routing
+iptablesMode: "legacy"
+# -- Disables adding IPv6 rules on top of IPv4 rules
+disableIPv6: false
 # -- Kubernetes priorityClassName for the CNI plugin's Pods
 priorityClassName: ""
 

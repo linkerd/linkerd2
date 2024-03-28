@@ -66,6 +66,7 @@ func TestNewValues(t *testing.T) {
 		PodAnnotations:               map[string]string{},
 		PodLabels:                    map[string]string{},
 		EnableEndpointSlices:         true,
+		DisableIPv6:                  false,
 		EnablePodDisruptionBudget:    false,
 		Controller: &Controller{
 			PodDisruptionBudget: &PodDisruptionBudget{
