@@ -125,19 +125,6 @@ async fn main() -> Result<()> {
         Some(server)
     };
 
-    let mut prom = <Registry>::default();
-    let resource_status = prom.sub_registry_with_prefix("resource_status");
-    let status_metrics = status::ControllerMetrics::register(resource_status);
-    let status_index_metrcs = status::IndexMetrics::register(resource_status);
-
-    let mut runtime = kubert::Runtime::builder()
-        .with_log(log_level, log_format)
-        .with_admin(admin.into_builder().with_prometheus(prom))
-        .with_client(client)
-        .with_optional_server(server)
-        .build()
-        .await?;
-
     let probe_networks = probe_networks.map(|IpNets(nets)| nets).unwrap_or_default();
 
     let default_opaque_ports = parse_portset(&default_opaque_ports)?;
@@ -151,6 +138,27 @@ async fn main() -> Result<()> {
         default_opaque_ports,
         probe_networks,
     });
+
+    // Build the API index data structures which will maintain information
+    // necessary for serving the inbound policy and outbound policy gRPC APIs.
+    let inbound_index = inbound::Index::shared(cluster_info.clone());
+    let outbound_index = outbound::Index::shared(cluster_info);
+
+    let mut prom = <Registry>::default();
+    let resource_status = prom.sub_registry_with_prefix("resource_status");
+    let status_metrics = status::ControllerMetrics::register(resource_status);
+    let status_index_metrcs = status::IndexMetrics::register(resource_status);
+
+    prom.sub_registry_with_prefix("inbound_index")
+        .register_collector(Box::new(inbound_index.clone()));
+
+    let mut runtime = kubert::Runtime::builder()
+        .with_log(log_level, log_format)
+        .with_admin(admin.into_builder().with_prometheus(prom))
+        .with_client(client)
+        .with_optional_server(server)
+        .build()
+        .await?;
 
     let hostname =
         std::env::var("HOSTNAME").expect("Failed to fetch `HOSTNAME` environment variable");
@@ -167,11 +175,6 @@ async fn main() -> Result<()> {
     .await?;
     let (claims, _task) = lease.spawn(hostname.clone(), params).await?;
 
-    // Build the API index data structures which will maintain information
-    // necessary for serving the inbound policy and outbound policy gRPC APIs.
-    let inbound_index = inbound::Index::shared(cluster_info.clone());
-    let outbound_index = outbound::Index::shared(cluster_info);
-
     // Build the status index which will maintain information necessary for
     // updating the status field of policy resources.
     let (updates_tx, updates_rx) = mpsc::channel(STATUS_UPDATE_QUEUE_SIZE);
@@ -187,18 +190,18 @@ async fn main() -> Result<()> {
     let pods = runtime
         .watch_all::<k8s::Pod>(watcher::Config::default().labels("linkerd.io/control-plane-ns"));
     tokio::spawn(
-        kubert::index::namespaced(inbound_index.clone(), pods).instrument(info_span!("pods")),
+        kubert::index::namespaced(inbound_index.0.clone(), pods).instrument(info_span!("pods")),
     );
 
     let external_workloads =
         runtime.watch_all::<k8s::external_workload::ExternalWorkload>(watcher::Config::default());
     tokio::spawn(
-        kubert::index::namespaced(inbound_index.clone(), external_workloads)
+        kubert::index::namespaced(inbound_index.0.clone(), external_workloads)
             .instrument(info_span!("external_workloads")),
     );
 
     let servers = runtime.watch_all::<k8s::policy::Server>(watcher::Config::default());
-    let servers_indexes = IndexList::new(inbound_index.clone())
+    let servers_indexes = IndexList::new(inbound_index.0.clone())
         .push(status_index.clone())
         .shared();
     tokio::spawn(
@@ -208,33 +211,33 @@ async fn main() -> Result<()> {
     let server_authzs =
         runtime.watch_all::<k8s::policy::ServerAuthorization>(watcher::Config::default());
     tokio::spawn(
-        kubert::index::namespaced(inbound_index.clone(), server_authzs)
+        kubert::index::namespaced(inbound_index.0.clone(), server_authzs)
             .instrument(info_span!("serverauthorizations")),
     );
 
     let authz_policies =
         runtime.watch_all::<k8s::policy::AuthorizationPolicy>(watcher::Config::default());
     tokio::spawn(
-        kubert::index::namespaced(inbound_index.clone(), authz_policies)
+        kubert::index::namespaced(inbound_index.0.clone(), authz_policies)
             .instrument(info_span!("authorizationpolicies")),
     );
 
     let mtls_authns =
         runtime.watch_all::<k8s::policy::MeshTLSAuthentication>(watcher::Config::default());
     tokio::spawn(
-        kubert::index::namespaced(inbound_index.clone(), mtls_authns)
+        kubert::index::namespaced(inbound_index.0.clone(), mtls_authns)
             .instrument(info_span!("meshtlsauthentications")),
     );
 
     let network_authns =
         runtime.watch_all::<k8s::policy::NetworkAuthentication>(watcher::Config::default());
     tokio::spawn(
-        kubert::index::namespaced(inbound_index.clone(), network_authns)
+        kubert::index::namespaced(inbound_index.0.clone(), network_authns)
             .instrument(info_span!("networkauthentications")),
     );
 
     let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(watcher::Config::default());
-    let http_routes_indexes = IndexList::new(inbound_index.clone())
+    let http_routes_indexes = IndexList::new(inbound_index.0.clone())
         .push(outbound_index.clone())
         .push(status_index.clone())
         .shared();
