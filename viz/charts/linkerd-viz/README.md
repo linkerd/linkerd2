@@ -141,6 +141,7 @@ Kubernetes: `>=1.22.0-0`
 | prometheus.image.tag | string | `"v2.48.1"` | Docker image tag for the prometheus instance |
 | prometheus.logFormat | string | defaultLogLevel | log format (plain, json) of the prometheus instance |
 | prometheus.logLevel | string | defaultLogLevel | log level of the prometheus instance |
+| prometheus.metricRelabelConfigs | string | `nil` | A metricRelabelConfigs section allows to drop high cardinality metrics. *NOTE:* Please use with caution. Some metrics are needed for linkerd-viz to function properly. |
 | prometheus.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | prometheus.podAnnotations | object | `{}` | annotations for the prometheus pod |
 | prometheus.proxy | string | `nil` |  |
