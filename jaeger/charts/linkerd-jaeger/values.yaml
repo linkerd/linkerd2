@@ -21,11 +21,10 @@ imagePullSecrets: []
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 # for more information
 tolerations: &default_tolerations
-  # -- Enables Pod Anti Affinity logic to balance the placement of replicas
-  # across hosts and zones for High Availability.
-  # Enable this only when you have multiple replicas of components.
 
-
+# -- Enables Pod Anti Affinity logic to balance the placement of replicas
+# across hosts and zones for High Availability.
+# Enable this only when you have multiple replicas of components.
 enablePodAntiAffinity: false
 
 # -- NodeAffinity section, See the
