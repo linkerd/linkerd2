@@ -44,6 +44,7 @@ func TestNewValues(t *testing.T) {
 	expected := &Values{
 		ControllerImage:              "cr.l5d.io/linkerd/controller",
 		ControllerReplicas:           1,
+		RevisionHistoryLimit:         10,
 		ControllerUID:                2103,
 		EnableH2Upgrade:              true,
 		EnablePodAntiAffinity:        false,

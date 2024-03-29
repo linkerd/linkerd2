@@ -109,13 +109,13 @@ collector:
       k8sattributes:
         auth_type: serviceAccount
         pod_association:
-          - sources:
-              # - from: resource_attribute
-              #   name: k8s.pod.ip
-              - from: resource_attribute
-                name: k8s.pod.name
-              - from: resource_attribute
-                name: k8s.namespace.name
+        - sources:
+          # - from: resource_attribute
+          #   name: k8s.pod.ip
+          - from: resource_attribute
+            name: k8s.pod.name
+          - from: resource_attribute
+            name: k8s.namespace.name
         extract:
           metadata:
             - k8s.pod.name
@@ -142,24 +142,24 @@ collector:
             - container.id
 
           labels:
-            - tag_name: kube_app_name
-              key: app.kubernetes.io/name
-              from: pod
-            - tag_name: kube_app_instance
-              key: app.kubernetes.io/instance
-              from: pod
-            - tag_name: kube_app_version
-              key: app.kubernetes.io/version
-              from: pod
-            - tag_name: kube_app_component
-              key: app.kubernetes.io/component
-              from: pod
-            - tag_name: kube_app_part_of
-              key: app.kubernetes.io/part-of
-              from: pod
-            - tag_name: kube_app_managed_by
-              key: app.kubernetes.io/managed-by
-              from: pod
+          - tag_name: kube_app_name
+            key: app.kubernetes.io/name
+            from: pod
+          - tag_name: kube_app_instance
+            key: app.kubernetes.io/instance
+            from: pod
+          - tag_name: kube_app_version
+            key: app.kubernetes.io/version
+            from: pod
+          - tag_name: kube_app_component
+            key: app.kubernetes.io/component
+            from: pod
+          - tag_name: kube_app_part_of
+            key: app.kubernetes.io/part-of
+            from: pod
+          - tag_name: kube_app_managed_by
+            key: app.kubernetes.io/managed-by
+            from: pod
     extensions:
       health_check:
     exporters:
@@ -294,10 +294,10 @@ webhook:
   # -- Namespace selector used by admission webhook.
   namespaceSelector:
     matchExpressions:
-      - key: kubernetes.io/metadata.name
-        operator: NotIn
-        values:
-          - kube-system
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+      - kube-system
   objectSelector:
     #matchLabels:
     #  foo: bar

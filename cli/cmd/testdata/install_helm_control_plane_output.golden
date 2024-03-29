@@ -729,6 +729,7 @@ data:
           - cert-manager
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
+    revisionHistoryLimit: 10
     tap:
       caBundle: test-tap-ca-bundle
       externalSecret: true
@@ -837,6 +838,7 @@ metadata:
   namespace: linkerd-dev
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/control-plane-component: identity
@@ -1224,6 +1226,7 @@ metadata:
   namespace: linkerd-dev
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/control-plane-component: destination
@@ -1664,6 +1667,7 @@ metadata:
   namespace: linkerd-dev
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector

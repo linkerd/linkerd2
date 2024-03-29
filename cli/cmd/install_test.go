@@ -47,6 +47,7 @@ func TestRender(t *testing.T) {
 		ControllerLogLevel:      "ControllerLogLevel",
 		ControllerLogFormat:     "ControllerLogFormat",
 		ProxyContainerName:      "ProxyContainerName",
+		RevisionHistoryLimit:    10,
 		CNIEnabled:              false,
 		IdentityTrustDomain:     defaultValues.IdentityTrustDomain,
 		IdentityTrustAnchorsPEM: defaultValues.IdentityTrustAnchorsPEM,
