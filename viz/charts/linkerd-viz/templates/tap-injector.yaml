@@ -42,8 +42,8 @@ metadata:
   name: tap-injector
   namespace: {{ .Release.Namespace }}
 spec:
-  revisionHistoryLimit: {{.Values.revisionHistoryLimit}}
   replicas: {{.Values.tapInjector.replicas}}
+  revisionHistoryLimit: {{.Values.revisionHistoryLimit}}
   selector:
     matchLabels:
       component: tap-injector

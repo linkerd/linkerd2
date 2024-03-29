@@ -48,8 +48,8 @@ metadata:
   name: web
   namespace: {{ .Release.Namespace }}
 spec:
-  revisionHistoryLimit: {{.Values.revisionHistoryLimit}}
   replicas: {{.Values.dashboard.replicas}}
+  revisionHistoryLimit: {{.Values.revisionHistoryLimit}}
   selector:
     matchLabels:
       linkerd.io/extension: viz
