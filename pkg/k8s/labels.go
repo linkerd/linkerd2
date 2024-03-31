@@ -290,6 +290,10 @@ const (
 	// enabled, and what access log format is used.
 	ProxyAccessLogAnnotation = ProxyConfigAnnotationsPrefix + "/access-log"
 
+	// ProxyTracingServiceNameAnnotation is used to configure
+	// Service name used for tracing the proxy
+	ProxyTracingServiceNameAnnotation = ProxyConfigAnnotationsPrefix + "/tracing-service-name"
+
 	// AllUnauthenticated allows all unathenticated connections.
 	AllUnauthenticated = "all-unauthenticated"
 

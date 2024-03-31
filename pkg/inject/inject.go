@@ -75,6 +75,7 @@ var (
 		k8s.ProxyDefaultInboundPolicyAnnotation,
 		k8s.ProxySkipSubnetsAnnotation,
 		k8s.ProxyAccessLogAnnotation,
+		k8s.ProxyTracingServiceNameAnnotation,
 		k8s.ProxyShutdownGracePeriodAnnotation,
 		k8s.ProxyOutboundDiscoveryCacheUnusedTimeout,
 		k8s.ProxyInboundDiscoveryCacheUnusedTimeout,
@@ -506,6 +507,10 @@ func applyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 
 	if override, ok := annotations[k8s.ProxyAccessLogAnnotation]; ok {
 		values.Proxy.AccessLog = override
+	}
+
+	if override, ok := annotations[k8s.ProxyTracingServiceNameAnnotation]; ok {
+		values.Proxy.TracingServiceName = override
 	}
 }
 
