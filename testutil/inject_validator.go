@@ -49,6 +49,7 @@ type InjectValidator struct {
 	WaitBeforeExitSeconds   int
 	SkipSubnets             string
 	ShutdownGracePeriod     string
+	TracingServiceName      string
 }
 
 func (iv *InjectValidator) getContainer(pod *v1.PodSpec, name string, isInit bool) *v1.Container {
@@ -321,6 +322,12 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 		}
 	}
 
+	if iv.TracingServiceName != "" {
+		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_TRACING_SERVICE_NAME", iv.TracingServiceName); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -587,6 +594,11 @@ func (iv *InjectValidator) GetFlagsAndAnnotations() ([]string, map[string]string
 	if iv.ShutdownGracePeriod != "" {
 		annotations[k8s.ProxyShutdownGracePeriodAnnotation] = iv.ShutdownGracePeriod
 		flags = append(flags, fmt.Sprintf("--shutdown-grace-period=%s", iv.ShutdownGracePeriod))
+	}
+
+	if iv.TracingServiceName != "" {
+		annotations[k8s.ProxyTracingServiceNameAnnotation] = iv.TracingServiceName
+		flags = append(flags, fmt.Sprintf("--tracing-service-name=%s", iv.TracingServiceName))
 	}
 
 	return flags, annotations
