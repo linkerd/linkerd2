@@ -179,6 +179,10 @@ be used in other contexts.
 - name: LINKERD2_PROXY_SHUTDOWN_GRACE_PERIOD
   value: {{.Values.proxy.shutdownGracePeriod | quote}}
 {{ end -}}
+{{ if .Values.proxy.tracingServiceName -}}
+- name: LINKERD2_PROXY_TRACING_SERVICE_NAME
+  value: {{.Values.proxy.tracingServiceName | quote}}
+{{ end -}}
 {{ if .Values.proxy.additionalEnv -}}
 {{ toYaml .Values.proxy.additionalEnv }}
 {{ end -}}

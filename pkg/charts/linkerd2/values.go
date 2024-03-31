@@ -140,6 +140,7 @@ type (
 		DefaultInboundPolicy                 string           `json:"defaultInboundPolicy"`
 		AccessLog                            string           `json:"accessLog"`
 		ShutdownGracePeriod                  string           `json:"shutdownGracePeriod"`
+		TracingServiceName                   string           `json:"tracingServiceName"`
 		NativeSidecar                        bool             `json:"nativeSidecar"`
 		StartupProbe                         *StartupProbe    `json:"startupProbe"`
 		ReadinessProbe                       *Probe           `json:"readinessProbe"`

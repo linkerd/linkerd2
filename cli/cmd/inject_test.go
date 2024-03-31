@@ -720,6 +720,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	values.Proxy.Await = false
 	values.Proxy.AccessLog = "apache"
 	values.Proxy.ShutdownGracePeriod = "60s"
+	values.Proxy.TracingServiceName = "test-proxy"
 	values.Proxy.NativeSidecar = true
 
 	expectedOverrides := map[string]string{
@@ -743,6 +744,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 		k8s.ProxyAwait:                            "disabled",
 		k8s.ProxyAccessLogAnnotation:              "apache",
 		k8s.ProxyShutdownGracePeriodAnnotation:    "60s",
+		k8s.ProxyTracingServiceNameAnnotation:     "test-proxy",
 		k8s.ProxyEnableNativeSidecarAnnotation:    "true",
 	}
 
