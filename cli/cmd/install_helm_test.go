@@ -192,7 +192,6 @@ func chartCrds(t *testing.T) *chart.Chart {
 		"templates/_tolerations.tpl",
 		"templates/_validate.tpl",
 		"templates/_pull-secrets.tpl",
-		"templates/_default-resources.tpl",
 	}
 
 	chartPartials := chartPartials(partialPaths)
@@ -262,7 +261,6 @@ func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOut
 		"templates/_tolerations.tpl",
 		"templates/_validate.tpl",
 		"templates/_pull-secrets.tpl",
-		"templates/_default-resources.tpl",
 	}
 
 	chartPartials := chartPartials(partialPaths)

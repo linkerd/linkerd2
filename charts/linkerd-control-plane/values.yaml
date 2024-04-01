@@ -95,7 +95,6 @@ policyController:
     - "::/0"
 
   # -- policy controller resource requests & limits
-  # @default -- destinationResources
   resources:
     cpu:
       # -- Maximum amount of CPU units that the policy controller can use

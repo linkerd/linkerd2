@@ -1,5 +1,4 @@
 {{- define "partials.resources" -}}
-{{- if . }}
 {{- $ephemeralStorage := index . "ephemeral-storage" -}}
 resources:
   {{- if or (.cpu).limit (.memory).limit ($ephemeralStorage).limit }}
@@ -26,5 +25,4 @@ resources:
     ephemeral-storage: {{. | quote}}
     {{- end }}
   {{- end }}
-{{- end }}
 {{- end }}

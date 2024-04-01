@@ -888,7 +888,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
       containers:
       - args:
         - identity
@@ -1275,7 +1274,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
       containers:
       - env:
         - name: _pod_name
@@ -1530,6 +1528,7 @@ spec:
             path: /ready
             port: admin-http
           initialDelaySeconds: 10
+        resources:
         securityContext:
           capabilities:
             drop:
@@ -1710,7 +1709,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
       containers:
       - env:
         - name: _pod_name

@@ -1459,6 +1459,7 @@ spec:
             path: /ready
             port: admin-http
           initialDelaySeconds: 10
+        resources:
         securityContext:
           capabilities:
             drop:
