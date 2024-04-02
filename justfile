@@ -66,8 +66,7 @@ rs-doc *flags:
 rs-test-build:
     {{ _cargo-test }} --no-run --frozen \
         --workspace --exclude=linkerd-policy-test \
-        {{ _features }} \
-        {{ _fmt }}
+        {{ _features }}
 
 # Run Rust unit tests
 rs-test *flags:
@@ -144,7 +143,7 @@ policy-test-run *flags:
 
 # Build the policy tests without running them.
 policy-test-build:
-    cd policy-test && {{ _cargo-test }} --no-run {{ _fmt }}
+    cd policy-test && {{ _cargo-test }} --no-run
 
 # Delete all test namespaces and remove linkerd from the cluster.
 policy-test-cleanup:
@@ -528,7 +527,7 @@ mc-flat-network-init:
 # Run the multicluster tests without any setup
 mc-test-run:
     LINKERD_DOCKER_REGISTRY='{{ DOCKER_REGISTRY }}' \
-        go test -test.timeout=20m --failfast --mod=readonly \
+        go test -v -test.timeout=15m --failfast --mod=readonly \
             ./test/integration/multicluster/... \
                 -integration-tests \
                 -linkerd='{{ justfile_directory() }}/bin/linkerd' \

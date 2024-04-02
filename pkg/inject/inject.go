@@ -353,7 +353,7 @@ func (conf *ResourceConfig) GetPodPatch(injectProxy bool) ([]byte, error) {
 	return res, nil
 }
 
-// GetConfigAnnotation returns two values. The first value is the the annotation
+// GetConfigAnnotation returns two values. The first value is the annotation
 // value for a given key. The second is used to decide whether or not the caller
 // should add the annotation. The caller should not add the annotation if the
 // resource already has its own.

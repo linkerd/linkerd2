@@ -93,6 +93,9 @@ struct Args {
 
     #[clap(long)]
     default_opaque_ports: String,
+
+    #[clap(long, default_value = "5000")]
+    patch_timeout_ms: u64,
 }
 
 #[tokio::main]
@@ -113,6 +116,7 @@ async fn main() -> Result<()> {
         control_plane_namespace,
         probe_networks,
         default_opaque_ports,
+        patch_timeout_ms,
     } = Args::parse();
 
     let server = if admission_controller_disabled {
@@ -121,9 +125,14 @@ async fn main() -> Result<()> {
         Some(server)
     };
 
+    let mut prom = <Registry>::default();
+    let resource_status = prom.sub_registry_with_prefix("resource_status");
+    let status_metrics = status::ControllerMetrics::register(resource_status);
+    let status_index_metrcs = status::IndexMetrics::register(resource_status);
+
     let mut runtime = kubert::Runtime::builder()
         .with_log(log_level, log_format)
-        .with_admin(admin.into_builder().with_prometheus(<Registry>::default()))
+        .with_admin(admin.into_builder().with_prometheus(prom))
         .with_client(client)
         .with_optional_server(server)
         .build()
@@ -166,7 +175,12 @@ async fn main() -> Result<()> {
     // Build the status index which will maintain information necessary for
     // updating the status field of policy resources.
     let (updates_tx, updates_rx) = mpsc::channel(STATUS_UPDATE_QUEUE_SIZE);
-    let status_index = status::Index::shared(hostname.clone(), claims.clone(), updates_tx);
+    let status_index = status::Index::shared(
+        hostname.clone(),
+        claims.clone(),
+        updates_tx,
+        status_index_metrcs,
+    );
 
     // Spawn resource watches.
 
@@ -261,7 +275,14 @@ async fn main() -> Result<()> {
     ));
 
     let client = runtime.client();
-    let status_controller = status::Controller::new(claims, client, hostname, updates_rx);
+    let status_controller = status::Controller::new(
+        claims,
+        client,
+        hostname,
+        updates_rx,
+        Duration::from_millis(patch_timeout_ms),
+        status_metrics,
+    );
     tokio::spawn(
         status_controller
             .run()

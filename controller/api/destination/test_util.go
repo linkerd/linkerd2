@@ -41,7 +41,7 @@ spec:
 apiVersion: discovery.k8s.io/v1
 kind: EndpointSlice
 metadata:
-  name: name1
+  name: name1-ipv4
   namespace: ns
   labels:
     kubernetes.io/service-name: name1
@@ -49,6 +49,25 @@ addressType: IPv4
 endpoints:
 - addresses:
   - 172.17.0.12
+  targetRef:
+    kind: Pod
+    name: name1-1
+    namespace: ns
+ports:
+- port: 8989
+  protocol: TCP`,
+		`
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: name1-ipv6
+  namespace: ns
+  labels:
+    kubernetes.io/service-name: name1
+addressType: IPv6
+endpoints:
+- addresses:
+  - 2001:db8::90
   targetRef:
     kind: Pod
     name: name1-1
@@ -675,7 +694,7 @@ spec:
 		t.Fatalf("can't create cluster store: %s", err)
 	}
 
-	// Sync after creating watchers so that the the indexers added get updated
+	// Sync after creating watchers so that the indexers added get updated
 	// properly
 	k8sAPI.Sync(nil)
 	metadataAPI.Sync(nil)

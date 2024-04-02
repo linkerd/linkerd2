@@ -57,7 +57,7 @@ image:
   # -- Docker image for the CNI plugin
   name: "cr.l5d.io/linkerd/cni-plugin"
   # -- Tag for the CNI container Docker image
-  version: "v1.3.0"
+  version: "v1.4.0"
   # -- Pull policy for the linkerd-cni container
   pullPolicy: IfNotPresent
 

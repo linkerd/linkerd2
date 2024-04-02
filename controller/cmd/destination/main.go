@@ -2,8 +2,10 @@ package destination
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -56,7 +58,11 @@ func Main(args []string) {
 	go func() {
 		log.Infof("starting admin server on %s", *metricsAddr)
 		if err := adminServer.ListenAndServe(); err != nil {
-			log.Errorf("failed to start destination admin server: %s", err)
+			if errors.Is(err, http.ErrServerClosed) {
+				log.Infof("Admin server closed (%s)", *metricsAddr)
+			} else {
+				log.Errorf("Admin server error (%s): %s", *metricsAddr, err)
+			}
 		}
 	}()
 

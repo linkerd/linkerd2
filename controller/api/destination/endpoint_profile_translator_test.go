@@ -1,6 +1,8 @@
 package destination
 
 import (
+	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -113,8 +115,9 @@ func TestEndpointProfileTranslator(t *testing.T) {
 		// The queue should be full and the next update should fail.
 		t.Logf("Queue length=%d capacity=%d", translator.queueLen(), updateQueueCapacity)
 		if err := translator.Update(podAddr); err == nil {
-			t.Fatalf("Expected update to fail; queue=%d; capacity=%d", translator.queueLen(), updateQueueCapacity)
-
+			if !errors.Is(err, http.ErrServerClosed) {
+				t.Fatalf("Expected update to fail; queue=%d; capacity=%d", translator.queueLen(), updateQueueCapacity)
+			}
 		}
 
 		select {

@@ -471,6 +471,7 @@ webhooks:
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods", "services"]
+    scope: "Namespaced"
   sideEffects: None
   timeoutSeconds: 10
 ---
@@ -1661,7 +1662,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 633f887644538dfcf9530de3cc03eeec11292c7f03bd03795e6f6e26139c1db9
+        checksum/config: fd791d1adb869c6aa7de66e366ec110a2ccbacf37a750723b111d98636c5ae00
         linkerd.io/created-by: CliVersion
         linkerd.io/proxy-version: ProxyVersion
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
