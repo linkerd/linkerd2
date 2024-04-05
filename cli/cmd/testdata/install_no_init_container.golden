@@ -517,6 +517,7 @@ data:
     destinationProxyResources: null
     destinationResources: null
     disableHeartBeat: false
+    disableIPv6: false
     enableEndpointSlices: true
     enableH2Upgrade: true
     enablePodAntiAffinity: false
@@ -708,7 +709,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v2.2.4
+        version: v2.3.0
       iptablesMode: legacy
       kubeAPIServerPorts: 443,6443
       logFormat: ""

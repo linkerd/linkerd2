@@ -463,7 +463,7 @@ _linkerd-viz-uninit:
 
 ##
 ## linkerd multicluster
-## 
+##
 
 _mc-target-k3d-flags := "--k3s-arg --disable='local-storage,metrics-server@server:*' --k3s-arg '--cluster-cidr=10.23.0.0/24@server:*'"
 

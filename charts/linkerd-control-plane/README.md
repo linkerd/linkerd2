@@ -159,6 +159,7 @@ Kubernetes: `>=1.22.0-0`
 | debugContainer.image.version | string | linkerdVersion | Tag for the debug container image |
 | deploymentStrategy | object | `{"rollingUpdate":{"maxSurge":"25%","maxUnavailable":"25%"}}` | default kubernetes deployment strategy |
 | disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob |
+| disableIPv6 | bool | `false` | disables routing IPv6 traffic in addition to IPv4 traffic through the proxy (IPv6 routing only available as of proxy-init v2.3.0 and linkerd-cni v1.4.0) |
 | enableEndpointSlices | bool | `true` | enables the use of EndpointSlice informers for the destination service; enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on |
 | enableH2Upgrade | bool | `true` | Allow proxies to perform transparent HTTP/2 upgrading |
 | enablePSP | bool | `false` | Add a PSP resource and bind it to the control plane ServiceAccounts. Note PSP has been deprecated since k8s v1.21 |
@@ -271,7 +272,7 @@ Kubernetes: `>=1.22.0-0`
 | proxyInit.ignoreOutboundPorts | string | `"4567,4568"` | Default set of outbound ports to skip via iptables - Galera (4567,4568) |
 | proxyInit.image.name | string | `"cr.l5d.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
 | proxyInit.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy-init container image |
-| proxyInit.image.version | string | `"v2.2.4"` | Tag for the proxy-init container image |
+| proxyInit.image.version | string | `"v2.3.0"` | Tag for the proxy-init container image |
 | proxyInit.iptablesMode | string | `"legacy"` | Variant of iptables that will be used to configure routing. Currently, proxy-init can be run either in 'nft' or in 'legacy' mode. The mode will control which utility binary will be called. The host must support whichever mode will be used |
 | proxyInit.kubeAPIServerPorts | string | `"443,6443"` | Default set of ports to skip via iptables for control plane components so they can communicate with the Kubernetes API Server |
 | proxyInit.logFormat | string | plain | Log format (`plain` or `json`) for the proxy-init |
