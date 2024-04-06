@@ -402,7 +402,7 @@ func (s *server) subscribeToServiceProfile(
 	return s.subscribeToServicesWithContext(fqn, token, listener, canceled, log, streamEnd)
 }
 
-// subscribeToServiceWithContext establishes two profile watches: a "backup"
+// subscribeToServicesWithContext establishes two profile watches: a "backup"
 // watch (ignoring the client namespace) and a preferred "primary" watch
 // assuming the client's context. Once updates are received for both watches, we
 // select over both watches to send profile updates to the stream. A nil update
