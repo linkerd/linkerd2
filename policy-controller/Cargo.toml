@@ -15,8 +15,19 @@ rustls-tls = ["kube/rustls-tls"]
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
+clap = {version = "4", default-features = false, features = ["derive", "env", "std"]}
 drain = "0.1"
 futures = { version = "0.3", default-features = false }
+kube = {version = "0.87.1", default-features = false, features = ["admission", "derive"]}
+kubert = {version = "0.21.1", default-features = false, features = [
+    "clap",
+    "index",
+    "lease",
+    "prometheus-client",
+    "runtime",
+    "server",
+    "rustls-tls",
+]}
 k8s-gateway-api = "0.15"
 k8s-openapi = { version = "0.20", features = ["v1_22"] }
 hyper = { version = "0.14", features = ["http1", "http2", "runtime", "server"] }
@@ -32,41 +43,11 @@ prometheus-client = { version = "0.22.0", default-features = false }
 serde = "1"
 serde_json = "1"
 thiserror = "1"
+tokio = {version = "1", features = ["macros", "parking_lot", "rt", "rt-multi-thread", "signal"]}
 tokio-stream = { version = "0.1", features = ["sync"] }
+tonic = {version = "0.10", default-features = false, features = ["transport"]}
 tracing = "0.1"
 regex = "1"
-
-[dependencies.clap]
-version = "4"
-default-features = false
-features = ["derive", "env", "std"]
-
-[dependencies.kube]
-version = "0.87.1"
-default-features = false
-features = ["admission", "derive"]
-
-[dependencies.kubert]
-version = "0.21.1"
-default-features = false
-features = [
-    "clap",
-    "index",
-    "lease",
-    "prometheus-client",
-    "runtime",
-    "server",
-    "rustls-tls",
-]
-
-[dependencies.tokio]
-version = "1"
-features = ["macros", "parking_lot", "rt", "rt-multi-thread", "signal"]
-
-[dependencies.tonic]
-version = "0.10"
-default-features = false
-features = ["transport"]
 
 [target.x86_64-unknown-linux-gnu.dependencies]
 jemallocator = "0.5"
