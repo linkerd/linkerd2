@@ -32,8 +32,8 @@ release (which is rare), the following updates are needed:
 - `pkg/version/version.go` (this also implies changes in unit test fixtures)
 
    ```go
-   var ProxyInitVersion = "v2.2.4"
-   var LinkerdCNIVersion = "v1.3.0"
+   var ProxyInitVersion = "v2.3.0"
+   var LinkerdCNIVersion = "v1.4.0"
    ```
 
 - `charts/linkerd-control-plane/values.yaml`

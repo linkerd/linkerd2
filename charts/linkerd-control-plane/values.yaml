@@ -39,6 +39,10 @@ enablePodAntiAffinity: false
 enablePprof: false
 # -- enables the creation of pod disruption budgets for control plane components
 enablePodDisruptionBudget: false
+# -- disables routing IPv6 traffic in addition to IPv4 traffic through the
+# proxy (IPv6 routing only available as of proxy-init v2.3.0 and linkerd-cni
+# v1.4.0)
+disableIPv6: false
 
 controller:
   # -- sets pod disruption budget parameter for all deployments
@@ -265,7 +269,7 @@ proxyInit:
     # @default -- imagePullPolicy
     pullPolicy: ""
     # -- Tag for the proxy-init container image
-    version: v2.2.4
+    version: v2.3.0
   resources:
     cpu:
       # -- Maximum amount of CPU units that the proxy-init container can use
