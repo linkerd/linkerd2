@@ -90,13 +90,13 @@ impl Selector {
     }
 }
 
-impl std::iter::FromIterator<(String, String)> for Selector {
+impl FromIterator<(String, String)> for Selector {
     fn from_iter<T: IntoIterator<Item = (String, String)>>(iter: T) -> Self {
         Self::from_map(iter.into_iter().collect())
     }
 }
 
-impl std::iter::FromIterator<(&'static str, &'static str)> for Selector {
+impl FromIterator<(&'static str, &'static str)> for Selector {
     fn from_iter<T: IntoIterator<Item = (&'static str, &'static str)>>(iter: T) -> Self {
         Self::from_map(
             iter.into_iter()
@@ -106,7 +106,7 @@ impl std::iter::FromIterator<(&'static str, &'static str)> for Selector {
     }
 }
 
-impl std::iter::FromIterator<Expression> for Selector {
+impl FromIterator<Expression> for Selector {
     fn from_iter<T: IntoIterator<Item = Expression>>(iter: T) -> Self {
         Self::from_expressions(iter.into_iter().collect())
     }
@@ -135,14 +135,14 @@ impl AsRef<Map> for Labels {
     }
 }
 
-impl std::cmp::PartialEq<Self> for Labels {
+impl PartialEq<Self> for Labels {
     #[inline]
     fn eq(&self, t: &Self) -> bool {
         self.0.as_ref().eq(t.as_ref())
     }
 }
 
-impl std::cmp::PartialEq<Option<Map>> for Labels {
+impl PartialEq<Option<Map>> for Labels {
     #[inline]
     fn eq(&self, t: &Option<Map>) -> bool {
         match t {
@@ -152,13 +152,13 @@ impl std::cmp::PartialEq<Option<Map>> for Labels {
     }
 }
 
-impl std::iter::FromIterator<(String, String)> for Labels {
+impl FromIterator<(String, String)> for Labels {
     fn from_iter<T: IntoIterator<Item = (String, String)>>(iter: T) -> Self {
         Self(Arc::new(iter.into_iter().collect()))
     }
 }
 
-impl std::iter::FromIterator<(&'static str, &'static str)> for Labels {
+impl FromIterator<(&'static str, &'static str)> for Labels {
     fn from_iter<T: IntoIterator<Item = (&'static str, &'static str)>>(iter: T) -> Self {
         iter.into_iter()
             .map(|(k, v)| (k.to_string(), v.to_string()))
@@ -192,7 +192,6 @@ impl Expression {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::iter::FromIterator;
 
     #[test]
     fn test_matches() {

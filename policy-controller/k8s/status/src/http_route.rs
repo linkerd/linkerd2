@@ -94,7 +94,7 @@ impl BackendReference {
 #[cfg(test)]
 mod test {
     use super::*;
-    use linkerd_policy_controller_k8s_api::{policy, ObjectMeta};
+    use linkerd_policy_controller_k8s_api::ObjectMeta;
 
     fn mk_default_http_backends(
         backend_refs: Vec<gateway::BackendObjectReference>,
