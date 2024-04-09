@@ -2,6 +2,7 @@
 target
 tmp.discovery
 **/.idea
+**/.cargo
 **/cmake-*
 **/CMakeLists.txt
 *.iml
