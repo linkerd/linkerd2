@@ -1,4 +1,5 @@
 use crate::{
+    grpc_route::gkn_for_gateway_grpc_route,
     http_route::{self, gkn_for_gateway_http_route, gkn_for_linkerd_http_route, HttpRouteResource},
     ports::{ports_annotation, PortSet},
     ClusterInfo,
@@ -103,6 +104,19 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
 
     fn delete(&mut self, namespace: String, name: String) {
         let gknn = gkn_for_gateway_http_route(name).namespaced(namespace);
+        for ns_index in self.namespaces.by_ns.values_mut() {
+            ns_index.delete(&gknn);
+        }
+    }
+}
+
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Index {
+    fn apply(&mut self, route: k8s_gateway_api::GrpcRoute) {
+        self.apply(HttpRouteResource::GatewayGrpc(route))
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let gknn = gkn_for_gateway_grpc_route(name).namespaced(namespace);
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete(&gknn);
         }
@@ -339,7 +353,7 @@ impl Namespace {
                 };
 
                 // The HttpRoutes which target this Service but don't specify
-                // a port apply to all ports. Therefore we include them.
+                // a port apply to all ports, so we include them.
                 let routes = self
                     .service_routes
                     .get(&sp.service)
@@ -432,6 +446,31 @@ impl Namespace {
                     .into_iter()
                     .flatten()
                     .map(|r| self.convert_gateway_rule(r, cluster, service_info))
+                    .collect::<Result<_>>()?;
+
+                let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
+
+                Ok(HttpRoute {
+                    hostnames,
+                    rules,
+                    creation_timestamp,
+                })
+            }
+            HttpRouteResource::GatewayGrpc(route) => {
+                let hostnames = route
+                    .spec
+                    .hostnames
+                    .into_iter()
+                    .flatten()
+                    .map(http_route::host_match)
+                    .collect::<Vec<_>>();
+
+                let rules = route
+                    .spec
+                    .rules
+                    .into_iter()
+                    .flatten()
+                    .map(|rule| self.convert_gateway_grpc_rule(rule, cluster, service_info))
                     .collect::<Result<_>>()?;
 
                 let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
@@ -540,6 +579,16 @@ impl Namespace {
             backend_request_timeout: None,
             filters,
         })
+    }
+
+    #[allow(unused_variables)]
+    fn convert_gateway_grpc_rule(
+        &self,
+        rule: k8s_gateway_api::GRPCRouteRule,
+        cluster: &ClusterInfo,
+        service_info: &HashMap<ServiceRef, ServiceInfo>,
+    ) -> Result<HttpRouteRule> {
+        todo!()
     }
 }
 
@@ -723,8 +772,8 @@ fn is_service(group: Option<&str>, kind: &str) -> bool {
 
 impl ServiceRoutes {
     fn watch_for_ns_or_default(&mut self, namespace: String) -> &mut RoutesWatch {
-        // The routes from the producer namespace apply to watches in all
-        // namespaces so we copy them.
+        // The routes from the producer namespace apply to
+        // watches in all namespaces, so we copy them.
         let routes = self
             .watches_by_ns
             .get(self.namespace.as_ref())
@@ -881,7 +930,7 @@ fn parse_duration(s: &str) -> Result<time::Duration> {
         "m" => 1000 * 60,
         "h" => 1000 * 60 * 60,
         "d" => 1000 * 60 * 60 * 24,
-        _ => anyhow::bail!(
+        _ => bail!(
             "invalid duration unit {} (expected one of 'ms', 's', 'm', 'h', or 'd')",
             unit
         ),

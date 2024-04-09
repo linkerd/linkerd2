@@ -1,4 +1,5 @@
 use crate::{
+    grpc_route,
     http_route::{self, BackendReference, ParentReference},
     resource_id::{NamespaceGroupKindName, ResourceId},
     service::Service,
@@ -79,6 +80,8 @@ pub struct Index {
     /// Maps HttpRoute ids to a list of their parent and backend refs,
     /// regardless of if those parents have accepted the route.
     http_route_refs: HashMap<NamespaceGroupKindName, HttpRoute>,
+    /// GrpcRoute mapping behavior matches HttpRoute
+    grpc_route_refs: HashMap<NamespaceGroupKindName, GrpcRoute>,
     servers: HashSet<ResourceId>,
     services: HashMap<ResourceId, Service>,
 
@@ -96,6 +99,8 @@ struct HttpRoute {
     backends: Vec<BackendReference>,
     statuses: Vec<gateway::RouteParentStatus>,
 }
+
+type GrpcRoute = HttpRoute;
 
 #[derive(Debug, PartialEq)]
 pub struct Update {
@@ -296,6 +301,7 @@ impl Index {
             claims,
             updates,
             http_route_refs: HashMap::new(),
+            grpc_route_refs: HashMap::new(),
             servers: HashSet::new(),
             services: HashMap::new(),
             metrics,
@@ -610,6 +616,65 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
     // to handle resets specially.
 }
 
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Index {
+    fn apply(&mut self, resource: k8s_gateway_api::GrpcRoute) {
+        let namespace = resource
+            .namespace()
+            .expect("HTTPRoute must have a namespace");
+        let name = resource.name_unchecked();
+        let id = NamespaceGroupKindName {
+            namespace: namespace.clone(),
+            gkn: GroupKindName {
+                group: k8s_gateway_api::HttpRoute::group(&()),
+                kind: k8s_gateway_api::HttpRoute::kind(&()),
+                name: name.into(),
+            },
+        };
+
+        // Create the route parents
+        let parents = http_route::make_parents(&namespace, &resource.spec.inner);
+
+        // Create the route backends
+        let backends = grpc_route::make_backends(
+            &namespace,
+            resource
+                .spec
+                .rules
+                .into_iter()
+                .flatten()
+                .flat_map(|rule| rule.backend_refs)
+                .flatten(),
+        );
+
+        let statuses = resource
+            .status
+            .into_iter()
+            .flat_map(|status| status.inner.parents)
+            .collect();
+
+        // Construct route and insert into the index; if the HTTPRoute is
+        // already in the index and it hasn't changed, skip creating a patch.
+        let route = GrpcRoute {
+            parents,
+            backends,
+            statuses,
+        };
+        self.index_grpcroute(id, route);
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let id = NamespaceGroupKindName {
+            namespace,
+            gkn: GroupKindName {
+                group: k8s_gateway_api::GrpcRoute::group(&()),
+                kind: k8s_gateway_api::GrpcRoute::kind(&()),
+                name: name.into(),
+            },
+        };
+        self.http_route_refs.remove(&id);
+    }
+}
+
 impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
     fn apply(&mut self, resource: k8s::policy::Server) {
         let namespace = resource.namespace().expect("Server must have a namespace");
@@ -677,6 +742,11 @@ impl kubert::index::IndexNamespacedResource<k8s::Service> for Index {
 }
 
 impl Index {
+    #[allow(unused_mut, unused_variables)]
+    fn index_grpcroute(&mut self, id: NamespaceGroupKindName, route: GrpcRoute) {
+        todo!()
+    }
+
     fn index_httproute(&mut self, id: NamespaceGroupKindName, route: HttpRoute) {
         // Insert into the index; if the HTTPRoute is already in the index and it hasn't
         // changed, skip creating a patch.
