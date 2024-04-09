@@ -101,7 +101,7 @@ func Inject(linkerdNamespace string) webhook.Handler {
 
 			// If namespace has annotations that do not exist on pod then copy them
 			// over to pod's template.
-			inject.AppendNamespaceAnnotations(resourceConfig.GetOverrideAnnotations(), resourceConfig.GetNsAnnotations(), resourceConfig)
+			inject.AppendNamespaceAnnotations(resourceConfig.GetOverrideAnnotations(), resourceConfig.GetNsAnnotations(), resourceConfig.GetWorkloadAnnotations())
 
 			// If the pod did not inherit the opaque ports annotation from the
 			// namespace, then add the default value from the config values. This
