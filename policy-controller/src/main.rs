@@ -246,8 +246,18 @@ async fn main() -> Result<()> {
     let gateway_http_routes =
         runtime.watch_all::<k8s_gateway_api::HttpRoute>(watcher::Config::default());
     tokio::spawn(
-        kubert::index::namespaced(http_routes_indexes, gateway_http_routes)
+        kubert::index::namespaced(http_routes_indexes.clone(), gateway_http_routes)
             .instrument(info_span!("httproutes.gateway.networking.k8s.io")),
+    );
+
+    let gateway_grpc_routes =
+        runtime.watch_all::<k8s_gateway_api::GrpcRoute>(watcher::Config::default());
+    let grpc_routes_indexes = IndexList::new(outbound_index.clone())
+        .push(status_index.clone())
+        .shared();
+    tokio::spawn(
+        kubert::index::namespaced(grpc_routes_indexes, gateway_grpc_routes)
+            .instrument(info_span!("grpcroutes.gateway.networking.k8s.io")),
     );
 
     let services = runtime.watch_all::<k8s::Service>(watcher::Config::default());

@@ -1,3 +1,4 @@
+mod grpc_route;
 mod http_route;
 mod index;
 mod resource_id;

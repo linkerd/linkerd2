@@ -25,6 +25,7 @@
 
 mod cluster_info;
 mod defaults;
+pub mod grpc_route;
 pub mod http_route;
 pub mod inbound;
 pub mod outbound;

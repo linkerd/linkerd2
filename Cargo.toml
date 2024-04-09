@@ -12,3 +12,7 @@ members = [
 
 [profile.release]
 lto = "thin"
+
+[patch.crates-io]
+
+k8s-gateway-api = { git = "https://github.com/the-wondersmith/k8s-gateway-api-rs.git", branch = "feat-grpcroute-support" }

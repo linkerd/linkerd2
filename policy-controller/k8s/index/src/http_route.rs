@@ -9,46 +9,49 @@ use std::num::NonZeroU16;
 pub(crate) enum HttpRouteResource {
     Linkerd(linkerd_policy_controller_k8s_api::policy::HttpRoute),
     Gateway(api::HttpRoute),
+    GatewayGrpc(k8s_gateway_api::GrpcRoute),
 }
 
 impl HttpRouteResource {
     pub(crate) fn name(&self) -> String {
         match self {
-            HttpRouteResource::Linkerd(route) => route.name_unchecked(),
-            HttpRouteResource::Gateway(route) => route.name_unchecked(),
+            Self::Linkerd(route) => route.name_unchecked(),
+            Self::Gateway(route) => route.name_unchecked(),
+            Self::GatewayGrpc(route) => route.name_unchecked(),
         }
     }
 
     pub(crate) fn namespace(&self) -> String {
         match self {
-            HttpRouteResource::Linkerd(route) => {
-                route.namespace().expect("HttpRoute must have a namespace")
-            }
-            HttpRouteResource::Gateway(route) => {
-                route.namespace().expect("HttpRoute must have a namespace")
-            }
+            Self::Linkerd(route) => route.namespace().expect("HttpRoute must have a namespace"),
+            Self::Gateway(route) => route.namespace().expect("HttpRoute must have a namespace"),
+            Self::GatewayGrpc(route) => route.namespace().expect("GrpcRoute must have a namespace"),
         }
     }
 
     pub(crate) fn inner(&self) -> &api::CommonRouteSpec {
         match self {
-            HttpRouteResource::Linkerd(route) => &route.spec.inner,
-            HttpRouteResource::Gateway(route) => &route.spec.inner,
+            Self::Linkerd(route) => &route.spec.inner,
+            Self::Gateway(route) => &route.spec.inner,
+            Self::GatewayGrpc(route) => &route.spec.inner,
         }
     }
 
     pub(crate) fn status(&self) -> Option<&api::RouteStatus> {
         match self {
-            HttpRouteResource::Linkerd(route) => route.status.as_ref().map(|status| &status.inner),
-            HttpRouteResource::Gateway(route) => route.status.as_ref().map(|status| &status.inner),
+            Self::Linkerd(route) => route.status.as_ref().map(|status| &status.inner),
+            Self::Gateway(route) => route.status.as_ref().map(|status| &status.inner),
+            Self::GatewayGrpc(route) => route.status.as_ref().map(|status| &status.inner),
         }
     }
 
     pub(crate) fn gknn(&self) -> GroupKindNamespaceName {
         match self {
-            HttpRouteResource::Linkerd(route) => gkn_for_resource(route)
+            Self::Linkerd(route) => gkn_for_resource(route)
                 .namespaced(route.namespace().expect("Route must have namespace")),
-            HttpRouteResource::Gateway(route) => gkn_for_resource(route)
+            Self::Gateway(route) => gkn_for_resource(route)
+                .namespaced(route.namespace().expect("Route must have namespace")),
+            Self::GatewayGrpc(route) => gkn_for_resource(route)
                 .namespaced(route.namespace().expect("Route must have namespace")),
         }
     }

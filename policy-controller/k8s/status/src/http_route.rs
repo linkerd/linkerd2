@@ -46,7 +46,10 @@ pub(crate) fn make_backends(
 }
 
 impl ParentReference {
-    fn from_parent_ref(parent_ref: &gateway::ParentReference, default_namespace: &str) -> Self {
+    pub(crate) fn from_parent_ref(
+        parent_ref: &gateway::ParentReference,
+        default_namespace: &str,
+    ) -> Self {
         if policy::httproute::parent_ref_targets_kind::<Server>(parent_ref) {
             // If the parent reference does not have a namespace, default to using
             // the HTTPRoute's namespace.
@@ -70,7 +73,7 @@ impl ParentReference {
 }
 
 impl BackendReference {
-    fn from_backend_ref(
+    pub(crate) fn from_backend_ref(
         backend_ref: &gateway::BackendObjectReference,
         default_namespace: &str,
     ) -> Self {
