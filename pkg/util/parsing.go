@@ -31,11 +31,11 @@ func ParsePorts(portsString string) map[uint32]struct{} {
 // ParseContainerOpaquePorts parses the opaque ports annotation into a list of
 // port ranges, including validating port ranges and converting named ports
 // into their port number equivalents.
-func ParseContainerOpaquePorts(override string, containers []corev1.Container) []PortRange {
+func ParseContainerOpaquePorts(override string, namedPorts map[string]int32) []PortRange {
 	portRanges := GetPortRanges(override)
 	var values []PortRange
 	for _, pr := range portRanges {
-		port, named := isNamed(pr, containers)
+		port, named := namedPorts[pr]
 		if named {
 			values = append(values, PortRange{UpperBound: int(port), LowerBound: int(port)})
 		} else {
@@ -50,6 +50,19 @@ func ParseContainerOpaquePorts(override string, containers []corev1.Container) [
 	return values
 }
 
+func GetNamedPorts(containers []corev1.Container) map[string]int32 {
+	namedPorts := make(map[string]int32)
+	for _, container := range containers {
+		for _, p := range container.Ports {
+			if p.Name != "" {
+				namedPorts[p.Name] = p.ContainerPort
+			}
+		}
+	}
+
+	return namedPorts
+}
+
 // GetPortRanges gets port ranges from an override annotation
 func GetPortRanges(override string) []string {
 	var ports []string
@@ -58,20 +71,6 @@ func GetPortRanges(override string) []string {
 	}
 
 	return ports
-}
-
-// isNamed checks if a port range is actually a container named port (e.g.
-// `123-456` is a valid name, but also is a valid range); all port names must
-// be checked before making it a list.
-func isNamed(pr string, containers []corev1.Container) (int32, bool) {
-	for _, c := range containers {
-		for _, p := range c.Ports {
-			if p.Name == pr {
-				return p.ContainerPort, true
-			}
-		}
-	}
-	return 0, false
 }
 
 // ContainsString checks if a string collections contains the given string.
