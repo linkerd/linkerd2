@@ -1030,7 +1030,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 	// Repair mirror service endpoints.
 	mirrorServices, err := rcsw.getMirrorServices()
 	if err != nil {
-		rcsw.log.Errorf("Failed to list mirror services: %s", err)
+		return RetryableError{[]error{fmt.Errorf("Failed to list mirror services: %w", err)}}
 	}
 	for _, svc := range mirrorServices.Items {
 		svc := svc
@@ -1057,6 +1057,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints(ctx context.Context) er
 			endpoints, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
 			if err != nil {
 				rcsw.log.Errorf("Failed to get local endpoints %s/%s: %s", svc.Namespace, svc.Name, err)
+				continue
 			}
 		}
 		updatedEndpoints := endpoints.DeepCopy()
