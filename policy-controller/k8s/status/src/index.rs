@@ -102,6 +102,23 @@ struct HttpRoute {
 
 type GrpcRoute = HttpRoute;
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub(crate) enum RouteType {
+    Grpc,
+    Http,
+}
+
+impl core::fmt::Display for RouteType {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .write_str(match self {
+                Self::Grpc => "GRPC",
+                Self::Http => "HTTP",
+            })
+            .and_then(|_| formatter.write_str("Route"))
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Update {
     pub id: NamespaceGroupKindName,
@@ -345,8 +362,18 @@ impl Index {
 
     // If the route is new or its contents have changed, return true, so that a
     // patch is generated; otherwise return false.
-    fn update_http_route(&mut self, id: NamespaceGroupKindName, route: &HttpRoute) -> bool {
-        match self.http_route_refs.entry(id) {
+    fn update_route(
+        &mut self,
+        id: NamespaceGroupKindName,
+        route: &GrpcRoute,
+        route_type: RouteType,
+    ) -> bool {
+        let route_refs = match route_type {
+            RouteType::Grpc => &mut self.grpc_route_refs,
+            RouteType::Http => &mut self.http_route_refs,
+        };
+
+        match route_refs.entry(id) {
             Entry::Vacant(entry) => {
                 entry.insert(route.clone());
             }
@@ -437,10 +464,11 @@ impl Index {
         }
     }
 
-    fn make_http_route_patch(
+    fn make_route_patch(
         &self,
         id: &NamespaceGroupKindName,
         route: &HttpRoute,
+        route_type: RouteType,
     ) -> Option<k8s::Patch<serde_json::Value>> {
         // To preserve any statuses from other controllers, we copy those
         // statuses.
@@ -469,12 +497,22 @@ impl Index {
                 parents: all_statuses,
             },
         };
-        Some(make_patch(&id.gkn.name, status))
+
+        Some(make_patch(&id.gkn.name, status, route_type))
     }
 
     fn reconcile(&self) {
-        for (id, route) in self.http_route_refs.iter() {
-            if let Some(patch) = self.make_http_route_patch(id, route) {
+        for (id, route, route_type) in self
+            .grpc_route_refs
+            .iter()
+            .map(|(id, route)| (id, route, RouteType::Grpc))
+            .chain(
+                self.http_route_refs
+                    .iter()
+                    .map(|(id, route)| (id, route, RouteType::Http)),
+            )
+        {
+            if let Some(patch) = self.make_route_patch(id, route, route_type) {
                 match self.updates.try_send(Update {
                     id: id.clone(),
                     patch,
@@ -484,7 +522,7 @@ impl Index {
                     }
                     Err(error) => {
                         self.metrics.patch_channel_full.inc();
-                        tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send HTTPRoute patch");
+                        tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send {route_type} patch");
                     }
                 }
             }
@@ -535,7 +573,8 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
             backends,
             statuses,
         };
-        self.index_httproute(id, route);
+
+        self.index_route(id, route, RouteType::Http);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -597,7 +636,8 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
             backends,
             statuses,
         };
-        self.index_httproute(id, route);
+
+        self.index_route(id, route, RouteType::Http);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -659,7 +699,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Inde
             backends,
             statuses,
         };
-        self.index_grpcroute(id, route);
+        self.index_route(id, route, RouteType::Grpc);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -742,15 +782,10 @@ impl kubert::index::IndexNamespacedResource<k8s::Service> for Index {
 }
 
 impl Index {
-    #[allow(unused_mut, unused_variables)]
-    fn index_grpcroute(&mut self, id: NamespaceGroupKindName, route: GrpcRoute) {
-        todo!()
-    }
-
-    fn index_httproute(&mut self, id: NamespaceGroupKindName, route: HttpRoute) {
+    fn index_route(&mut self, id: NamespaceGroupKindName, route: GrpcRoute, route_type: RouteType) {
         // Insert into the index; if the HTTPRoute is already in the index and it hasn't
         // changed, skip creating a patch.
-        if !self.update_http_route(id.clone(), &route) {
+        if !self.update_route(id.clone(), &route, route_type) {
             return;
         }
 
@@ -763,7 +798,7 @@ impl Index {
 
         // Create a patch for the HTTPRoute and send it to the Controller so
         // that it is applied.
-        if let Some(patch) = self.make_http_route_patch(&id, &route) {
+        if let Some(patch) = self.make_route_patch(&id, &route, route_type) {
             match self.updates.try_send(Update {
                 id: id.clone(),
                 patch,
@@ -773,7 +808,7 @@ impl Index {
                 }
                 Err(error) => {
                     self.metrics.patch_channel_full.inc();
-                    tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send HTTPRoute patch");
+                    tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send {route_type} patch");
                 }
             }
         }
@@ -783,12 +818,13 @@ impl Index {
 pub(crate) fn make_patch(
     name: &str,
     status: gateway::HttpRouteStatus,
+    route_type: RouteType,
 ) -> k8s::Patch<serde_json::Value> {
     let value = serde_json::json!({
         "apiVersion": POLICY_API_VERSION,
-            "kind": "HTTPRoute",
-            "name": name,
-            "status": status,
+        "kind": route_type.to_string(),
+        "name": name,
+        "status": status,
     });
     k8s::Patch::Merge(value)
 }

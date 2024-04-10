@@ -1,3 +1,4 @@
+use crate::index::RouteType;
 use crate::{
     index::{self, POLICY_API_GROUP},
     resource_id::NamespaceGroupKindName,
@@ -42,7 +43,7 @@ fn http_route_accepted_after_server_create() {
     let parent_status =
         make_parent_status("ns-0", "srv-8080", "Accepted", "False", "NoMatchingParent");
     let status = make_status(vec![parent_status]);
-    let patch = index::make_patch("route-foo", status);
+    let patch = index::make_patch("route-foo", status, RouteType::Http);
 
     // The first update will be that the HTTPRoute is not accepted because the
     // Server has been created yet.
@@ -72,7 +73,7 @@ fn http_route_accepted_after_server_create() {
     };
     let parent_status = make_parent_status("ns-0", "srv-8080", "Accepted", "True", "Accepted");
     let status = make_status(vec![parent_status]);
-    let patch = index::make_patch("route-foo", status);
+    let patch = index::make_patch("route-foo", status, RouteType::Http);
 
     // The second update will be that the HTTPRoute is accepted because the
     // Server has been created.
@@ -125,7 +126,7 @@ fn http_route_rejected_after_server_delete() {
     };
     let parent_status = make_parent_status("ns-0", "srv-8080", "Accepted", "True", "Accepted");
     let status = make_status(vec![parent_status]);
-    let patch = index::make_patch("route-foo", status);
+    let patch = index::make_patch("route-foo", status, RouteType::Http);
 
     // The second update will be that the HTTPRoute is accepted because the
     // Server has been created.
@@ -154,7 +155,7 @@ fn http_route_rejected_after_server_delete() {
     let parent_status =
         make_parent_status("ns-0", "srv-8080", "Accepted", "False", "NoMatchingParent");
     let status = make_status(vec![parent_status]);
-    let patch = index::make_patch("route-foo", status);
+    let patch = index::make_patch("route-foo", status, RouteType::Http);
 
     // The third update will be that the HTTPRoute is not accepted because the
     // Server has been deleted.
