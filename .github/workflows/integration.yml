@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
       - id: tag
         run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
-      - uses: tj-actions/changed-files@2d756ea4c53f7f6b397767d8723b3a10a9f35bf2
+      - uses: tj-actions/changed-files@635f118699dd888d737c15018cd30aff2e0274f8
         id: core
         with:
           files: |
@@ -45,7 +45,7 @@ jobs:
             .devcontainer/**
             **/Chart.yaml
             **/README*
-      - uses: tj-actions/changed-files@2d756ea4c53f7f6b397767d8723b3a10a9f35bf2
+      - uses: tj-actions/changed-files@635f118699dd888d737c15018cd30aff2e0274f8
         id: policy
         with:
           files: |
@@ -61,7 +61,7 @@ jobs:
           files_ignore: |
             **/Chart.yaml
             **/README*
-      - uses: tj-actions/changed-files@2d756ea4c53f7f6b397767d8723b3a10a9f35bf2
+      - uses: tj-actions/changed-files@635f118699dd888d737c15018cd30aff2e0274f8
         id: multicluster
         with:
           files: |
@@ -73,7 +73,7 @@ jobs:
           files_ignore: |
             **/Chart.yaml
             **/README*
-      - uses: tj-actions/changed-files@2d756ea4c53f7f6b397767d8723b3a10a9f35bf2
+      - uses: tj-actions/changed-files@635f118699dd888d737c15018cd30aff2e0274f8
         id: viz
         with:
           files: |
