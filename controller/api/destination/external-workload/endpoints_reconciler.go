@@ -116,7 +116,7 @@ func (r *endpointsReconciler) reconcile(svc *corev1.Service, ews []*ewv1beta1.Ex
 	return utilerrors.NewAggregate(errs)
 }
 
-// reconcileIPv4Endpoints operates on a set of external workloads, their
+// reconcileByAddressType operates on a set of external workloads, their
 // service, and any endpointslices that have been created by the controller. It
 // will compute the diff that needs to be written to the API Server.
 func (r *endpointsReconciler) reconcileByAddressType(svc *corev1.Service, extWorkloads []*ewv1beta1.ExternalWorkload, existingSlices []*discoveryv1.EndpointSlice, addrType discoveryv1.AddressType) error {
