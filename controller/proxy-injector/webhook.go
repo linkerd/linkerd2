@@ -12,7 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/inject"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,6 +24,8 @@ const (
 	eventTypeSkipped  = "InjectionSkipped"
 	eventTypeInjected = "Injected"
 )
+
+var log = logrus.New()
 
 // Inject returns the function that produces an AdmissionResponse containing
 // the patch, if any, to apply to the pod (proxy sidecar and eventually the
@@ -74,7 +76,7 @@ func Inject(linkerdNamespace string) webhook.Handler {
 		if ownerRef := resourceConfig.GetOwnerRef(); ownerRef != nil {
 			res, err := k8s.GetAPIResource(ownerRef.Kind)
 			if err != nil {
-				log.Warningf("skipping event for parent %s: %s", ownerRef.Kind, err)
+				log.Tracef("skipping event for parent %s: %s", ownerRef.Kind, err)
 			} else {
 				objs, err := api.GetByNamespaceFiltered(res, request.Namespace, ownerRef.Name, labels.Everything())
 				if err != nil {
@@ -99,7 +101,7 @@ func Inject(linkerdNamespace string) webhook.Handler {
 
 			// If namespace has annotations that do not exist on pod then copy them
 			// over to pod's template.
-			resourceConfig.AppendNamespaceAnnotations()
+			inject.AppendNamespaceAnnotations(resourceConfig.GetOverrideAnnotations(), resourceConfig.GetNsAnnotations(), resourceConfig.GetWorkloadAnnotations())
 
 			// If the pod did not inherit the opaque ports annotation from the
 			// namespace, then add the default value from the config values. This

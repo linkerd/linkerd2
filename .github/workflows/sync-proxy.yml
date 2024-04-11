@@ -1,0 +1,122 @@
+name: Sync proxy
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "The version of the proxy to sync"
+        required: true
+        default: "latest"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  meta:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    env:
+      GH_REPO: ${{ vars.LINKERD2_PROXY_REPO || 'linkerd/linkerd2-proxy' }}
+      GH_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN || github.token }}
+    steps:
+      - if: inputs.version == 'latest' || inputs.version == ''
+        id: latest
+        run: gh release view --json tagName,name,url | jq -r 'to_entries[] | (.key + "=" + .value)' >> "$GITHUB_OUTPUT"
+      - name: steps.latest.outputs.tagName=${{ steps.latest.outputs.tagName }}
+        run: "true"
+      - name: steps.latest.outputs.name=${{ steps.latest.outputs.name }}
+        run: "true"
+      - name: steps.latest.outputs.url=${{ steps.latest.outputs.url }}
+        run: "true"
+
+      - if: inputs.version != 'latest' && inputs.version != ''
+        id: known
+        env:
+          VERSION: ${{ inputs.version }}
+        run: gh release view "$VERSION" --json tagName,name,url | jq -r 'to_entries[] | (.key + "=" + .value)' >> "$GITHUB_OUTPUT"
+      - name: steps.known.outputs.tagName=${{ steps.known.outputs.tagName }}
+        run: "true"
+      - name: steps.known.outputs.name=${{ steps.known.outputs.name }}
+        run: "true"
+      - name: steps.known.outputs.url=${{ steps.known.outputs.url }}
+        run: "true"
+
+      - name: Verify tagName
+        if: steps.latest.outputs.tagName == '' && steps.known.outputs.tagName == ''
+        run: exit 1
+      - name: Verify name
+        if: steps.latest.outputs.name == '' && steps.known.outputs.name == ''
+        run: exit 1
+      - name: Verify url
+        if: steps.latest.outputs.url == '' && steps.known.outputs.url == ''
+        run: exit 1
+
+    outputs:
+      tagName: ${{ steps.latest.outputs.tagName || steps.known.outputs.tagName }}
+      name: ${{ steps.latest.outputs.name || steps.known.outputs.name }}
+      url: ${{ steps.latest.outputs.url || steps.known.outputs.url }}
+
+  changed:
+    needs: meta
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    env:
+      VERSION: ${{ needs.meta.outputs.name }}
+    steps:
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+        with:
+          token: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN || github.token }}
+      - name: Check if proxy version has changed
+        id: changed
+        run: |
+          if [ "$(cat .proxy-version)" != "$VERSION" ]; then
+            echo changed=true >> "$GITHUB_OUTPUT"
+          fi
+      - name: steps.changed.outputs.changed=${{ steps.changed.outputs.changed == 'true' }}
+        run: "true"
+    outputs:
+      changed: ${{ steps.changed.outputs.changed == 'true' }}
+
+  sync-proxy:
+    needs: [meta, changed]
+    if: needs.changed.outputs.changed == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      checks: read
+      contents: write
+      pull-requests: write
+    env:
+      VERSION: ${{ needs.meta.outputs.name }}
+      URL: ${{ needs.meta.outputs.url }}
+    steps:
+      - name: Configure git
+        env:
+          GITHUB_USERNAME: ${{ vars.LINKERD2_PROXY_GITHUB_USERNAME || 'github-actions[bot]' }}
+        run: |
+          git config --global --add safe.directory "$PWD" # actions/runner#2033
+          git config --global user.name "$GITHUB_USERNAME"
+          git config --global user.email "$GITHUB_USERNAME"@users.noreply.github.com
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+        with:
+          token: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN || github.token }}
+      - name: Commit proxy version
+        run: |
+          set -eu
+          git fetch origin bot/sync-proxy/"$VERSION" || true
+          git switch -c bot/sync-proxy/"$VERSION"
+          echo "$VERSION" > .proxy-version
+          git add .proxy-version
+          (
+            echo "proxy: $VERSION"
+            echo
+            echo "Release notes: $URL"
+          ) >"$RUNNER_TEMP"/commit.txt
+          git commit --signoff -F "$RUNNER_TEMP"/commit.txt
+          git push origin bot/sync-proxy/"$VERSION"
+      - env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.LINKERD2_PROXY_GITHUB_TOKEN || github.token }}
+        run: |
+          gh pr create --title "proxy: $VERSION" --body "Release notes: $URL" --label bot/sync-proxy

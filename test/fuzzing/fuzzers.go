@@ -36,7 +36,7 @@ func FuzzParseContainerOpaquePorts(data []byte) int {
 	if err != nil {
 		return 0
 	}
-	_ = util.ParseContainerOpaquePorts(override, containers)
+	_ = util.ParseContainerOpaquePorts(override, util.GetNamedPorts(containers))
 	return 1
 }
 

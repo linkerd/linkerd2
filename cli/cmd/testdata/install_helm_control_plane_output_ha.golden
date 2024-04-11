@@ -471,6 +471,7 @@ webhooks:
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods", "services"]
+    scope: "Namespaced"
   sideEffects: None
   timeoutSeconds: 10
 ---
@@ -526,6 +527,7 @@ data:
         limit: 250Mi
         request: 50Mi
     disableHeartBeat: false
+    disableIPv6: false
     enableEndpointSlices: true
     enableH2Upgrade: true
     enablePodAntiAffinity: true
@@ -1806,7 +1808,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: ad1eab4440b4ef2451cb9baabdd6574b9b302c8fd00a195fa816ae3edee292f8
+        checksum/config: fd3a1b10afd0c6c39c7c63f51aece4a849b0e47ba992a6612a1a5fa99211b084
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"

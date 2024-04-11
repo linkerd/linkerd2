@@ -6,6 +6,7 @@ import (
 	"github.com/go-test/deep"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/util"
 	"github.com/linkerd/linkerd2/pkg/version"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -301,7 +302,6 @@ func TestGetOverriddenValues(t *testing.T) {
 			expected: func() *l5dcharts.Values {
 				values, _ := l5dcharts.NewValues()
 				values.Proxy.OpaquePorts = "3306"
-				values.Proxy.PodInboundPorts = "3306"
 				return values
 			},
 		},
@@ -321,8 +321,12 @@ func TestGetOverriddenValues(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			resourceConfig.AppendNamespaceAnnotations()
-			actual, err := resourceConfig.GetOverriddenValues()
+			AppendNamespaceAnnotations(resourceConfig.GetOverrideAnnotations(), resourceConfig.GetNsAnnotations(), resourceConfig.GetWorkloadAnnotations())
+			actual, err := GetOverriddenValues(
+				resourceConfig.values,
+				resourceConfig.getAnnotationOverrides(),
+				util.GetNamedPorts(resourceConfig.pod.spec.Containers),
+			)
 			if err != nil {
 				t.Fatal(err)
 			}

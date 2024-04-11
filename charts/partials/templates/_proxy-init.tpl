@@ -7,6 +7,9 @@ args:
 - "iptables-nft-save"
 {{- else if not (eq .Values.proxyInit.iptablesMode "legacy") }}
 {{ fail (printf "Unsupported value \"%s\" for proxyInit.iptablesMode\nValid values: [\"nft\", \"legacy\"]" .Values.proxyInit.iptablesMode) }}
+{{end -}}
+{{- if .Values.disableIPv6 }}
+- --ipv6=false
 {{- end }}
 - --incoming-proxy-port
 - {{.Values.proxy.ports.inbound | quote}}

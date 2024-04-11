@@ -41,7 +41,7 @@ spec:
 apiVersion: discovery.k8s.io/v1
 kind: EndpointSlice
 metadata:
-  name: name1
+  name: name1-ipv4
   namespace: ns
   labels:
     kubernetes.io/service-name: name1
@@ -49,6 +49,25 @@ addressType: IPv4
 endpoints:
 - addresses:
   - 172.17.0.12
+  targetRef:
+    kind: Pod
+    name: name1-1
+    namespace: ns
+ports:
+- port: 8989
+  protocol: TCP`,
+		`
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: name1-ipv6
+  namespace: ns
+  labels:
+    kubernetes.io/service-name: name1
+addressType: IPv6
+endpoints:
+- addresses:
+  - 2001:db8::90
   targetRef:
     kind: Pod
     name: name1-1
@@ -66,6 +85,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   podIP: 172.17.0.12
   podIPs:
   - ip: 172.17.0.12
@@ -146,6 +168,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   podIP: 172.17.0.13
   podIPs:
   - ip: 172.17.0.13`
@@ -193,6 +218,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   podIP: 172.17.0.14
   podIPs:
   - ip: 172.17.0.14
@@ -258,6 +286,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   podIP: 172.17.0.15
   podIPs:
   - ip: 172.17.0.15
@@ -311,6 +342,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   podIP: 172.17.13.15
   podIPs:
   - ip: 172.17.13.15`,
@@ -358,6 +392,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   podIP: 172.17.0.16
   podIPs:
   - ip: 172.17.0.16
@@ -408,6 +445,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   hostIP: 192.168.1.20
   podIP: 172.17.0.17
   podIPs:
@@ -466,6 +506,9 @@ metadata:
   namespace: ns
 status:
   phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
   podIP: 172.17.55.1
   podIPs:
   - ip: 172.17.55.1
@@ -528,7 +571,7 @@ spec:
     port: 4143
 status:
   conditions:
-  ready: true`,
+  - ready: true`,
 		`
 apiVersion: workload.linkerd.io/v1beta1
 kind: ExternalWorkload
@@ -651,7 +694,7 @@ spec:
 		t.Fatalf("can't create cluster store: %s", err)
 	}
 
-	// Sync after creating watchers so that the the indexers added get updated
+	// Sync after creating watchers so that the indexers added get updated
 	// properly
 	k8sAPI.Sync(nil)
 	metadataAPI.Sync(nil)
