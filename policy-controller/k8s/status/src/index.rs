@@ -79,9 +79,7 @@ pub struct Index {
 
     /// Maps HttpRoute ids to a list of their parent and backend refs,
     /// regardless of if those parents have accepted the route.
-    http_route_refs: HashMap<NamespaceGroupKindName, HttpRoute>,
-    /// GrpcRoute mapping behavior matches HttpRoute
-    grpc_route_refs: HashMap<NamespaceGroupKindName, GrpcRoute>,
+    route_refs: HashMap<NamespaceGroupKindName, RouteRef>,
     servers: HashSet<ResourceId>,
     services: HashMap<ResourceId, Service>,
 
@@ -93,19 +91,18 @@ pub struct IndexMetrics {
     patch_channel_full: Counter,
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+enum RouteType {
+    Grpc,
+    Http,
+}
+
 #[derive(Clone, PartialEq)]
-struct HttpRoute {
+struct RouteRef {
     parents: Vec<ParentReference>,
     backends: Vec<BackendReference>,
     statuses: Vec<gateway::RouteParentStatus>,
-}
-
-type GrpcRoute = HttpRoute;
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub(crate) enum RouteType {
-    Grpc,
-    Http,
+    r#type: RouteType,
 }
 
 impl core::fmt::Display for RouteType {
@@ -317,8 +314,7 @@ impl Index {
             name: name.to_string(),
             claims,
             updates,
-            http_route_refs: HashMap::new(),
-            grpc_route_refs: HashMap::new(),
+            route_refs: HashMap::new(),
             servers: HashSet::new(),
             services: HashMap::new(),
             metrics,
@@ -362,18 +358,8 @@ impl Index {
 
     // If the route is new or its contents have changed, return true, so that a
     // patch is generated; otherwise return false.
-    fn update_route(
-        &mut self,
-        id: NamespaceGroupKindName,
-        route: &GrpcRoute,
-        route_type: RouteType,
-    ) -> bool {
-        let route_refs = match route_type {
-            RouteType::Grpc => &mut self.grpc_route_refs,
-            RouteType::Http => &mut self.http_route_refs,
-        };
-
-        match route_refs.entry(id) {
+    fn update_route(&mut self, id: NamespaceGroupKindName, route: &RouteRef) -> bool {
+        match self.route_refs.entry(id) {
             Entry::Vacant(entry) => {
                 entry.insert(route.clone());
             }
@@ -467,8 +453,7 @@ impl Index {
     fn make_route_patch(
         &self,
         id: &NamespaceGroupKindName,
-        route: &HttpRoute,
-        route_type: RouteType,
+        route: &RouteRef,
     ) -> Option<k8s::Patch<serde_json::Value>> {
         // To preserve any statuses from other controllers, we copy those
         // statuses.
@@ -498,21 +483,12 @@ impl Index {
             },
         };
 
-        Some(make_patch(&id.gkn.name, status, route_type))
+        Some(make_patch(&id.gkn.name, status, route.r#type))
     }
 
     fn reconcile(&self) {
-        for (id, route, route_type) in self
-            .grpc_route_refs
-            .iter()
-            .map(|(id, route)| (id, route, RouteType::Grpc))
-            .chain(
-                self.http_route_refs
-                    .iter()
-                    .map(|(id, route)| (id, route, RouteType::Http)),
-            )
-        {
-            if let Some(patch) = self.make_route_patch(id, route, route_type) {
+        for (id, route) in self.route_refs.iter() {
+            if let Some(patch) = self.make_route_patch(id, route) {
                 match self.updates.try_send(Update {
                     id: id.clone(),
                     patch,
@@ -522,7 +498,7 @@ impl Index {
                     }
                     Err(error) => {
                         self.metrics.patch_channel_full.inc();
-                        tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send {route_type} patch");
+                        tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send {} patch", route.r#type);
                     }
                 }
             }
@@ -532,29 +508,17 @@ impl Index {
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
     fn apply(&mut self, resource: k8s::policy::HttpRoute) {
-        let namespace = resource
-            .namespace()
-            .expect("HTTPRoute must have a namespace");
-        let name = resource.name_unchecked();
-        let id = NamespaceGroupKindName {
-            namespace: namespace.clone(),
-            gkn: GroupKindName {
-                group: k8s::policy::HttpRoute::group(&()),
-                kind: k8s::policy::HttpRoute::kind(&()),
-                name: name.into(),
-            },
-        };
-
+        let id = NamespaceGroupKindName::from(&resource);
         // Create the route parents
-        let parents = http_route::make_parents(&namespace, &resource.spec.inner);
+        let parents = http_route::make_parents(&id.namespace, &resource.spec.inner);
 
         // Create the route backends
         let backends = http_route::make_backends(
-            &namespace,
+            &id.namespace,
             resource
                 .spec
                 .rules
-                .into_iter()
+                .iter()
                 .flatten()
                 .flat_map(|rule| rule.backend_refs)
                 .flatten(),
@@ -568,13 +532,14 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
 
         // Construct route and insert into the index; if the HTTPRoute is
         // already in the index and it hasn't changed, skip creating a patch.
-        let route = HttpRoute {
+        let route = RouteRef {
             parents,
             backends,
             statuses,
+            r#type: RouteType::Http,
         };
 
-        self.index_route(id, route, RouteType::Http);
+        self.index_route(id, route);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -586,7 +551,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
                 name: name.into(),
             },
         };
-        self.http_route_refs.remove(&id);
+        self.route_refs.remove(&id);
     }
 
     // Since apply only reindexes a single HTTPRoute at a time, there's no need
@@ -595,25 +560,14 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
 
 impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
     fn apply(&mut self, resource: k8s_gateway_api::HttpRoute) {
-        let namespace = resource
-            .namespace()
-            .expect("HTTPRoute must have a namespace");
-        let name = resource.name_unchecked();
-        let id = NamespaceGroupKindName {
-            namespace: namespace.clone(),
-            gkn: GroupKindName {
-                group: k8s_gateway_api::HttpRoute::group(&()),
-                kind: k8s_gateway_api::HttpRoute::kind(&()),
-                name: name.into(),
-            },
-        };
+        let id = NamespaceGroupKindName::from(&resource);
 
         // Create the route parents
-        let parents = http_route::make_parents(&namespace, &resource.spec.inner);
+        let parents = http_route::make_parents(&id.namespace, &resource.spec.inner);
 
         // Create the route backends
         let backends = http_route::make_backends(
-            &namespace,
+            &id.namespace,
             resource
                 .spec
                 .rules
@@ -631,13 +585,14 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
 
         // Construct route and insert into the index; if the HTTPRoute is
         // already in the index and it hasn't changed, skip creating a patch.
-        let route = HttpRoute {
+        let route = RouteRef {
             parents,
             backends,
             statuses,
+            r#type: RouteType::Http,
         };
 
-        self.index_route(id, route, RouteType::Http);
+        self.index_route(id, route);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -649,7 +604,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
                 name: name.into(),
             },
         };
-        self.http_route_refs.remove(&id);
+        self.route_refs.remove(&id);
     }
 
     // Since apply only reindexes a single HTTPRoute at a time, there's no need
@@ -658,25 +613,14 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
 
 impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Index {
     fn apply(&mut self, resource: k8s_gateway_api::GrpcRoute) {
-        let namespace = resource
-            .namespace()
-            .expect("HTTPRoute must have a namespace");
-        let name = resource.name_unchecked();
-        let id = NamespaceGroupKindName {
-            namespace: namespace.clone(),
-            gkn: GroupKindName {
-                group: k8s_gateway_api::HttpRoute::group(&()),
-                kind: k8s_gateway_api::HttpRoute::kind(&()),
-                name: name.into(),
-            },
-        };
+        let id = NamespaceGroupKindName::from(&resource);
 
         // Create the route parents
-        let parents = http_route::make_parents(&namespace, &resource.spec.inner);
+        let parents = http_route::make_parents(&id.namespace, &resource.spec.inner);
 
         // Create the route backends
         let backends = grpc_route::make_backends(
-            &namespace,
+            &id.namespace,
             resource
                 .spec
                 .rules
@@ -694,12 +638,14 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Inde
 
         // Construct route and insert into the index; if the HTTPRoute is
         // already in the index and it hasn't changed, skip creating a patch.
-        let route = GrpcRoute {
+        let route = RouteRef {
             parents,
             backends,
             statuses,
+            r#type: RouteType::Grpc,
         };
-        self.index_route(id, route, RouteType::Grpc);
+
+        self.index_route(id, route);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -711,7 +657,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Inde
                 name: name.into(),
             },
         };
-        self.http_route_refs.remove(&id);
+        self.route_refs.remove(&id);
     }
 }
 
@@ -782,10 +728,10 @@ impl kubert::index::IndexNamespacedResource<k8s::Service> for Index {
 }
 
 impl Index {
-    fn index_route(&mut self, id: NamespaceGroupKindName, route: GrpcRoute, route_type: RouteType) {
+    fn index_route(&mut self, id: NamespaceGroupKindName, route: RouteRef) {
         // Insert into the index; if the HTTPRoute is already in the index and it hasn't
         // changed, skip creating a patch.
-        if !self.update_route(id.clone(), &route, route_type) {
+        if !self.update_route(id.clone(), &route) {
             return;
         }
 
@@ -798,7 +744,7 @@ impl Index {
 
         // Create a patch for the HTTPRoute and send it to the Controller so
         // that it is applied.
-        if let Some(patch) = self.make_route_patch(&id, &route, route_type) {
+        if let Some(patch) = self.make_route_patch(&id, &route) {
             match self.updates.try_send(Update {
                 id: id.clone(),
                 patch,
@@ -808,7 +754,7 @@ impl Index {
                 }
                 Err(error) => {
                     self.metrics.patch_channel_full.inc();
-                    tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send {route_type} patch");
+                    tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send {} patch", route.r#type);
                 }
             }
         }
@@ -820,13 +766,13 @@ pub(crate) fn make_patch(
     status: gateway::HttpRouteStatus,
     route_type: RouteType,
 ) -> k8s::Patch<serde_json::Value> {
-    let value = serde_json::json!({
+    let patch = serde_json::json!({
         "apiVersion": POLICY_API_VERSION,
         "kind": route_type.to_string(),
         "name": name,
         "status": status,
     });
-    k8s::Patch::Merge(value)
+    k8s::Patch::Merge(patch)
 }
 
 fn now() -> DateTime<Utc> {
