@@ -92,7 +92,7 @@ pub struct IndexMetrics {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-enum RouteType {
+pub(crate) enum RouteType {
     Grpc,
     Http,
 }
@@ -518,7 +518,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
             resource
                 .spec
                 .rules
-                .iter()
+                .into_iter()
                 .flatten()
                 .flat_map(|rule| rule.backend_refs)
                 .flatten(),

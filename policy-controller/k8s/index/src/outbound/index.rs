@@ -584,7 +584,7 @@ impl Namespace {
     #[allow(unused_variables)]
     fn convert_gateway_grpc_rule(
         &self,
-        rule: k8s_gateway_api::GRPCRouteRule,
+        rule: k8s_gateway_api::GrpcRouteRule,
         cluster: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
     ) -> Result<HttpRouteRule> {
