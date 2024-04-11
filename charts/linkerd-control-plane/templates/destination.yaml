@@ -344,9 +344,8 @@ spec:
             path: /ready
             port: admin-http
           initialDelaySeconds: 10
-        {{- $res := .Values.policyController.resources | default .Values.destinationResources }}
-        {{- if $res }}
-        {{- include "partials.resources" $res | nindent 8 }}
+        {{- if .Values.policyController.resources }}
+        {{- include "partials.resources" .Values.policyController.resources | nindent 8 }}
         {{- end }}
         securityContext:
           capabilities:

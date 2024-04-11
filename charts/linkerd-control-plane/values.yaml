@@ -99,7 +99,6 @@ policyController:
     - "::/0"
 
   # -- policy controller resource requests & limits
-  # @default -- destinationResources
   resources:
     cpu:
       # -- Maximum amount of CPU units that the policy controller can use
@@ -561,9 +560,6 @@ policyValidator:
   # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource)
   # for more information.
   injectCaFromSecret: ""
-
-# -|- CPU, Memory and Ephemeral Storage resources required by the policy controller
-#policyControllerResources:
 
 # -- NodeSelector section, See the [K8S
 # documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector)
