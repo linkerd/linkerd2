@@ -2,6 +2,7 @@ package destination
 
 import (
 	"fmt"
+	"net/netip"
 	"sort"
 	"strings"
 	"sync"
@@ -23,6 +24,26 @@ import (
 var (
 	pod1 = watcher.Address{
 		IP:   "1.1.1.1",
+		Port: 1,
+		Pod: &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod1",
+				Namespace: "ns",
+				Labels: map[string]string{
+					k8s.ControllerNSLabel:    "linkerd",
+					k8s.ProxyDeploymentLabel: "deployment-name",
+				},
+			},
+			Spec: corev1.PodSpec{
+				ServiceAccountName: "serviceaccount-name",
+			},
+		},
+		OwnerKind: "replicationcontroller",
+		OwnerName: "rc-name",
+	}
+
+	pod1IPv6 = watcher.Address{
+		IP:   "2001:0db8:85a3:0000:0000:8a2e:0370:7333",
 		Port: 1,
 		Pod: &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -400,8 +421,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		translator.Start()
 		defer translator.Stop()
 
-		translator.Add(mkAddressSetForPods(pod1, pod2))
-		translator.Remove(mkAddressSetForPods(pod2))
+		translator.Add(mkAddressSetForPods(t, pod1, pod2))
+		translator.Remove(mkAddressSetForPods(t, pod2))
 
 		expectedNumUpdates := 2
 		<-mockGetServer.updatesReceived // Add
@@ -417,8 +438,8 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		translator.Start()
 		defer translator.Stop()
 
-		translator.Add(mkAddressSetForPods(pod1, pod2, pod3))
-		translator.Remove(mkAddressSetForPods(pod3))
+		translator.Add(mkAddressSetForPods(t, pod1, pod2, pod3))
+		translator.Remove(mkAddressSetForPods(t, pod3))
 
 		addressesAdded := (<-mockGetServer.updatesReceived).GetAdd().Addrs
 		actualNumberOfAdded := len(addressesAdded)
@@ -447,7 +468,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		translator.Start()
 		defer translator.Stop()
 
-		translator.Add(mkAddressSetForPods(pod1))
+		translator.Add(mkAddressSetForPods(t, pod1))
 
 		update := <-mockGetServer.updatesReceived
 
@@ -479,7 +500,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		translator.Start()
 		defer translator.Stop()
 
-		translator.Add(mkAddressSetForPods(pod1))
+		translator.Add(mkAddressSetForPods(t, pod1))
 
 		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
 		if len(addrs) != 1 {
@@ -516,6 +537,56 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 		actualProtocolHint := addrs[0].GetProtocolHint()
 		if diff := deep.Equal(actualProtocolHint, expectedProtocolHint); diff != nil {
 			t.Fatalf("ProtocolHint: %v", diff)
+		}
+	})
+
+	t.Run("Sends IPv6 only when pod has both IPv4 and IPv6", func(t *testing.T) {
+		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
+
+		translator.Add(mkAddressSetForPods(t, pod1, pod1IPv6))
+
+		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
+		if len(addrs) != 1 {
+			t.Fatalf("Expected [1] address returned, got %v", addrs)
+		}
+		if ipPort := addr.ProxyAddressToString(addrs[0].GetAddr()); ipPort != "[2001:db8:85a3::8a2e:370:7333]:1" {
+			t.Fatalf("Expected address to be [%s], got [%s]", "[2001:db8:85a3::8a2e:370:7333]:1", ipPort)
+		}
+
+		if updates := len(mockGetServer.updatesReceived); updates > 0 {
+			t.Fatalf("Expected to receive no more messages, received [%d]", updates)
+		}
+	})
+
+	t.Run("Sends IPv4 only when pod has both IPv4 and IPv6 but the latter in another zone ", func(t *testing.T) {
+		mockGetServer, translator := makeEndpointTranslator(t)
+		translator.Start()
+		defer translator.Stop()
+
+		pod1West1a := pod1
+		pod1West1a.ForZones = []v1.ForZone{
+			{Name: "west-1a"},
+		}
+
+		pod1IPv6West1b := pod1IPv6
+		pod1IPv6West1b.ForZones = []v1.ForZone{
+			{Name: "west-1b"},
+		}
+
+		translator.Add(mkAddressSetForPods(t, pod1West1a, pod1IPv6West1b))
+
+		addrs := (<-mockGetServer.updatesReceived).GetAdd().GetAddrs()
+		if len(addrs) != 1 {
+			t.Fatalf("Expected [1] address returned, got %v", addrs)
+		}
+		if ipPort := addr.ProxyAddressToString(addrs[0].GetAddr()); ipPort != "1.1.1.1:1" {
+			t.Fatalf("Expected address to be [%s], got [%s]", "1.1.1.1:1", ipPort)
+		}
+
+		if updates := len(mockGetServer.updatesReceived); updates > 0 {
+			t.Fatalf("Expected to receive no more messages, received [%d]", updates)
 		}
 	})
 }
@@ -809,13 +880,30 @@ func mkAddressSetForServices(gatewayAddresses ...watcher.Address) watcher.Addres
 	return set
 }
 
-func mkAddressSetForPods(podAddresses ...watcher.Address) watcher.AddressSet {
+func mkAddressSetForPods(t *testing.T, podAddresses ...watcher.Address) watcher.AddressSet {
+	t.Helper()
+
 	set := watcher.AddressSet{
 		Addresses: make(map[watcher.PodID]watcher.Address),
 		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
 	}
 	for _, p := range podAddresses {
-		id := watcher.PodID{Name: p.Pod.Name, Namespace: p.Pod.Namespace}
+		// The IP family is set on the PodID used to index the
+		// watcher.Address; here we simply detect it
+		fam := corev1.IPv4Protocol
+		addr, err := netip.ParseAddr(p.IP)
+		if err != nil {
+			t.Fatalf("Invalid IP '%s': %s", p.IP, err)
+		}
+		if addr.Is6() {
+			fam = corev1.IPv6Protocol
+		}
+
+		id := watcher.PodID{
+			Name:      p.Pod.Name,
+			Namespace: p.Pod.Namespace,
+			IPFamily:  fam,
+		}
 		set.Addresses[id] = p
 	}
 	return set

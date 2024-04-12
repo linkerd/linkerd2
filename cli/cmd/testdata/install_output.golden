@@ -1397,6 +1397,7 @@ spec:
         - -cluster-domain=cluster.local
         - -identity-trust-domain=cluster.local
         - -default-opaque-ports=25,443,587,3306,5432,11211
+        - -enable-ipv6=true
         - -enable-pprof=false
         image: ControllerImage:LinkerdVersion
         imagePullPolicy: ImagePullPolicy

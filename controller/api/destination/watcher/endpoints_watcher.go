@@ -60,6 +60,12 @@ type (
 	}
 
 	// AddressSet is a set of Address, indexed by ID.
+	// The ID can be either:
+	// 1) A reference to service: id.Name contains both the service name and
+	// the target IP and port (see newServiceRefAddress)
+	// 2) A reference to a pod: id.Name refers to the pod's name, and
+	// id.IPFamily refers to the ES AddressType (see newPodRefAddress).
+	// 3) A reference to an ExternalWorkload: id.Name refers to the EW's name.
 	AddressSet struct {
 		Addresses          map[ID]Address
 		Labels             map[string]string
@@ -365,7 +371,7 @@ func (ew *EndpointsWatcher) addEndpoints(obj interface{}) {
 		return
 	}
 
-	id := ServiceID{endpoints.Namespace, endpoints.Name}
+	id := ServiceID{Namespace: endpoints.Namespace, Name: endpoints.Name}
 	sp := ew.getOrNewServicePublisher(id)
 	sp.updateEndpoints(endpoints)
 }
@@ -389,7 +395,7 @@ func (ew *EndpointsWatcher) updateEndpoints(oldObj interface{}, newObj interface
 		endpointsInformerLag.Observe(delta.Seconds())
 	}
 
-	id := ServiceID{newEndpoints.Namespace, newEndpoints.Name}
+	id := ServiceID{Namespace: newEndpoints.Namespace, Name: newEndpoints.Name}
 	sp := ew.getOrNewServicePublisher(id)
 	sp.updateEndpoints(newEndpoints)
 }
@@ -601,7 +607,8 @@ func (sp *servicePublisher) deleteEndpoints() {
 func (sp *servicePublisher) addEndpointSlice(newSlice *discovery.EndpointSlice) {
 	sp.Lock()
 	defer sp.Unlock()
-	sp.log.Debugf("Adding EndpointSlice for %s", sp.id)
+
+	sp.log.Debugf("Adding ES %s/%s", newSlice.Namespace, newSlice.Name)
 	for _, port := range sp.ports {
 		port.addEndpointSlice(newSlice)
 	}
@@ -610,7 +617,8 @@ func (sp *servicePublisher) addEndpointSlice(newSlice *discovery.EndpointSlice) 
 func (sp *servicePublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, newSlice *discovery.EndpointSlice) {
 	sp.Lock()
 	defer sp.Unlock()
-	sp.log.Debugf("Updating EndpointSlice for %s", sp.id)
+
+	sp.log.Debugf("Updating ES %s/%s", oldSlice.Namespace, oldSlice.Name)
 	for _, port := range sp.ports {
 		port.updateEndpointSlice(oldSlice, newSlice)
 	}
@@ -619,7 +627,8 @@ func (sp *servicePublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlic
 func (sp *servicePublisher) deleteEndpointSlice(es *discovery.EndpointSlice) {
 	sp.Lock()
 	defer sp.Unlock()
-	sp.log.Debugf("Deleting EndpointSlice for %s", sp.id)
+
+	sp.log.Debugf("Deleting ES %s/%s", es.Namespace, es.Name)
 	for _, port := range sp.ports {
 		port.deleteEndpointSlice(es)
 	}
@@ -926,7 +935,13 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 
 		if endpoint.TargetRef.Kind == endpointTargetRefPod {
 			for _, IPAddr := range endpoint.Addresses {
-				address, id, err := pp.newPodRefAddress(resolvedPort, IPAddr, endpoint.TargetRef.Name, endpoint.TargetRef.Namespace)
+				address, id, err := pp.newPodRefAddress(
+					resolvedPort,
+					es.AddressType,
+					IPAddr,
+					endpoint.TargetRef.Name,
+					endpoint.TargetRef.Namespace,
+				)
 				if err != nil {
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
@@ -1023,6 +1038,7 @@ func (pp *portPublisher) endpointSliceToIDs(es *discovery.EndpointSlice) []ID {
 			ids = append(ids, PodID{
 				Name:      endpoint.TargetRef.Name,
 				Namespace: endpoint.TargetRef.Namespace,
+				IPFamily:  corev1.IPFamily(es.AddressType),
 			})
 		} else if endpoint.TargetRef.Kind == endpointTargetRefExternalWorkload {
 			ids = append(ids, ExternalWorkloadID{
@@ -1062,7 +1078,13 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 			}
 
 			if endpoint.TargetRef.Kind == endpointTargetRefPod {
-				address, id, err := pp.newPodRefAddress(resolvedPort, endpoint.IP, endpoint.TargetRef.Name, endpoint.TargetRef.Namespace)
+				address, id, err := pp.newPodRefAddress(
+					resolvedPort,
+					"",
+					endpoint.IP,
+					endpoint.TargetRef.Name,
+					endpoint.TargetRef.Namespace,
+				)
 				if err != nil {
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
@@ -1095,10 +1117,17 @@ func (pp *portPublisher) newServiceRefAddress(endpointPort Port, endpointIP, ser
 	return Address{IP: endpointIP, Port: endpointPort}, id
 }
 
-func (pp *portPublisher) newPodRefAddress(endpointPort Port, endpointIP, podName, podNamespace string) (Address, PodID, error) {
+func (pp *portPublisher) newPodRefAddress(
+	endpointPort Port,
+	ipFamily discovery.AddressType,
+	endpointIP,
+	podName,
+	podNamespace string,
+) (Address, PodID, error) {
 	id := PodID{
 		Name:      podName,
 		Namespace: podNamespace,
+		IPFamily:  corev1.IPFamily(ipFamily),
 	}
 	pod, err := pp.k8sAPI.Pod().Lister().Pods(id.Namespace).Get(id.Name)
 	if err != nil {
@@ -1462,12 +1491,12 @@ func getEndpointSliceServiceID(es *discovery.EndpointSlice) (ServiceID, error) {
 	}
 
 	if svc, ok := es.Labels[discovery.LabelServiceName]; ok {
-		return ServiceID{es.Namespace, svc}, nil
+		return ServiceID{Namespace: es.Namespace, Name: svc}, nil
 	}
 
 	for _, ref := range es.OwnerReferences {
 		if ref.Kind == "Service" && ref.Name != "" {
-			return ServiceID{es.Namespace, ref.Name}, nil
+			return ServiceID{Namespace: es.Namespace, Name: ref.Name}, nil
 		}
 	}
 
