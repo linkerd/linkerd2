@@ -323,7 +323,8 @@ func GetProxyReady(pod corev1.Pod) bool {
 
 // GetProxyVersion returns the container proxy's version, if any
 func GetProxyVersion(pod corev1.Pod) string {
-	for _, container := range pod.Spec.Containers {
+	containers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
+	for _, container := range containers {
 		if container.Name == ProxyContainerName {
 			if strings.Contains(container.Image, "@") {
 				// Proxy container image is specified with digest instead of
