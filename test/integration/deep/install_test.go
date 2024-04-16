@@ -122,6 +122,10 @@ func TestInstall(t *testing.T) {
 		cmd = append(cmd, "--linkerd-cni-enabled")
 	}
 
+	if TestHelper.NativeSidecar() {
+		cmd = append(cmd, "--set", "proxy.nativeSidecar=true")
+	}
+
 	// Pipe cmd & args to `linkerd`
 	out, err = TestHelper.LinkerdRun(cmd...)
 	if err != nil {
@@ -134,5 +138,9 @@ func TestInstall(t *testing.T) {
 			"'kubectl apply' command failed\n%s", out)
 	}
 
-	TestHelper.WaitRollout(t, testutil.LinkerdDeployReplicasEdge)
+	out, err = TestHelper.LinkerdRun("check", "--wait=3m")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd check' command failed",
+			"'linkerd check' command failed\n%s", out)
+	}
 }

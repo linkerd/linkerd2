@@ -185,6 +185,7 @@ jobs:
         test:
           - cni-calico-deep
           - deep
+          - deep-native-sidecar
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
