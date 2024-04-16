@@ -30,6 +30,30 @@ status:
 `,
 		},
 		{
+			desc:     "Pod with proxy native sidecar is running",
+			expected: "Running",
+			pod: `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emoji
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+    linkerd.io/control-plane-ns: linkerd
+spec:
+    initContainers:
+    - name: linkerd-proxy
+      restartPolicy: Always
+status:
+  phase: Running
+  initContainerStatuses:
+  - name: linkerd-proxy
+    ready: true
+    started: true
+`,
+		},
+		{
 			desc:     "Pod's reason is filled",
 			expected: "podReason",
 			pod: `
@@ -165,6 +189,9 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+spec:
+    initContainers:
+    - name: foo
 status:
   phase: Running
   containerStatuses:
@@ -172,7 +199,8 @@ status:
       running:
         startedAt: 1995-02-10T00:42:42Z
   initContainerStatuses:
-  - state:
+  - name: foo
+    state:
       terminated:
         exitCode: 0
         reason: Completed
@@ -190,14 +218,21 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+spec:
+    initContainers:
+    - name: foo
+    containers:
+    - name: bar
 status:
   phase: Running
   containerStatuses:
-  - state:
+  - name: bar
+    state:
       running:
         startedAt: 1995-02-10T00:42:42Z
   initContainerStatuses:
-  - state:
+  - name: foo
+    state:
       terminated:
         exitCode: 2
 `,
@@ -214,14 +249,21 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+spec:
+    initContainers:
+    - name: foo
+    containers:
+    - name: bar
 status:
   phase: Running
   containerStatuses:
-  - state:
+  - name: bar
+    state:
       running:
         startedAt: 1995-02-10T00:42:42Z
   initContainerStatuses:
-  - state:
+  - name: foo
+    state:
       terminated:
         signal: 9
 `,
@@ -238,10 +280,14 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+spec:
+    initContainers:
+    - name: foo
 status:
   phase: Pending
   initContainerStatuses:
-  - state:
+  - name: foo
+    state:
       terminated:
         exitCode: 2
         reason: CrashLoopBackOff
@@ -259,17 +305,21 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+spec:
+    initContainers:
+    - name: foo
 status:
   phase: Pending
   initContainerStatuses:
-  - state:
+  - name: foo
+    state:
       waiting:
         reason: someReason
 `,
 		},
 		{
 			desc:     "Pod init container is waiting on PodInitializing",
-			expected: "Init:0/0",
+			expected: "Init:0/1",
 			pod: `
 apiVersion: v1
 kind: Pod
@@ -279,10 +329,14 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+spec:
+    initContainers:
+    - name: foo
 status:
   phase: Pending
   initContainerStatuses:
-  - state:
+  - name: foo
+    state:
       waiting:
         reason: PodInitializing
 `,

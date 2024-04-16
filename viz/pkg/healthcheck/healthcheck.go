@@ -474,7 +474,8 @@ func (hc *HealthChecker) checkPromAuthorized(ctx context.Context) error {
 			// default inbound policy is `deny`, there won't be an override
 			// annotation, but the proxy-injector will have set the env variable
 			// directly.
-			for _, c := range pod.Spec.Containers {
+			containers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
+			for _, c := range containers {
 				if c.Name == k8s.ProxyContainerName {
 					for _, env := range c.Env {
 						if env.Name == "LINKERD2_PROXY_INBOUND_DEFAULT_POLICY" && env.Value == "deny" {
