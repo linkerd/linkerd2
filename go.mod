@@ -1,6 +1,7 @@
 module github.com/linkerd/linkerd2
 
 go 1.22
+toolchain go1.22.2
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
@@ -42,10 +43,10 @@ require (
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v2 v2.4.0
 	helm.sh/helm/v3 v3.14.4
-	k8s.io/api v0.29.3
+	k8s.io/api v0.30.0
 	k8s.io/apiextensions-apiserver v0.29.3
-	k8s.io/apimachinery v0.29.3
-	k8s.io/client-go v0.29.3
+	k8s.io/apimachinery v0.30.0
+	k8s.io/client-go v0.30.0
 	k8s.io/code-generator v0.29.3
 	k8s.io/endpointslice v0.29.3
 	k8s.io/klog/v2 v2.120.1
@@ -155,7 +156,8 @@ require (
 	k8s.io/cli-runtime v0.29.0 // indirect
 	k8s.io/component-base v0.29.3 // indirect
 	k8s.io/gengo v0.0.0-20240110203215-22eea95d1e7a // indirect
-	k8s.io/kube-openapi v0.0.0-20240117194847-208609032b15 // indirect
+	k8s.io/gengo/v2 v2.0.0-20240228010128-51d4e06bde70 // indirect
+	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
 	oras.land/oras-go v1.2.4 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/kustomize/api v0.13.5-0.20230601165947-6ce0bf390ce3 // indirect
