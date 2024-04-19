@@ -192,7 +192,7 @@ jobs:
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: "1.22"
-      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
+      - uses: actions/download-artifact@8caf195ad4b1dee92908e23f56eeb0696f1dd42d
         with:
           pattern: image-archives-*
           path: image-archives
@@ -224,7 +224,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: olix0r/cargo-action-fmt/setup@9269f3aa1ff01775d95efc97037e2cbdb41d9684
       - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
+      - uses: actions/download-artifact@8caf195ad4b1dee92908e23f56eeb0696f1dd42d
         with:
           pattern: image-archives-*
           path: image-archives
@@ -320,7 +320,7 @@ jobs:
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: "1.22"
-      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
+      - uses: actions/download-artifact@8caf195ad4b1dee92908e23f56eeb0696f1dd42d
         with:
           pattern: image-archives-*
           path: image-archives
@@ -345,7 +345,7 @@ jobs:
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: "1.22"
-      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
+      - uses: actions/download-artifact@8caf195ad4b1dee92908e23f56eeb0696f1dd42d
         with:
           pattern: image-archives-*
           path: image-archives
@@ -379,7 +379,7 @@ jobs:
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: "1.22"
-      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
+      - uses: actions/download-artifact@8caf195ad4b1dee92908e23f56eeb0696f1dd42d
         with:
           pattern: image-archives-*
           path: image-archives
