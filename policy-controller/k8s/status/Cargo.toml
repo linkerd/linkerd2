@@ -10,7 +10,7 @@ ahash = "0.8"
 anyhow = "1"
 # Fix for https://github.com/chronotope/chrono/issues/602
 chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
-k8s-gateway-api = "0.15"
+k8s-gateway-api = { version = "0.15", default-features = true }
 kubert = { version = "0.21.1", default-features = false, features = [
     "index",
     "lease",
@@ -25,6 +25,11 @@ thiserror = "1"
 tokio = { version = "1", features = ["macros"] }
 tracing = "0.1.40"
 
-[dev-dependencies.tokio]
-version = "1"
-features = ["macros"]
+[dev-dependencies]
+rstest = "^0.19"
+pretty_assertions = "^1.4"
+tokio = { version = "1", features = ["macros"] }
+
+[features]
+default = []
+experimental = ["k8s-gateway-api/experimental"]
