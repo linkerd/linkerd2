@@ -1,6 +1,7 @@
+use crate::routes::RouteType;
 use crate::{
-    http_route::{self, BackendReference, ParentReference},
     resource_id::{NamespaceGroupKindName, ResourceId},
+    routes::{BackendReference, ParentReference},
     service::Service,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
@@ -21,9 +22,6 @@ use tokio::{
     sync::{mpsc, watch::Receiver},
     time::{self, Duration},
 };
-
-pub(crate) const POLICY_API_GROUP: &str = "policy.linkerd.io";
-const POLICY_API_VERSION: &str = "policy.linkerd.io/v1alpha1";
 
 mod conditions {
     pub const RESOLVED_REFS: &str = "ResolvedRefs";
@@ -51,7 +49,7 @@ pub struct Controller {
     updates: mpsc::Receiver<Update>,
     patch_timeout: Duration,
 
-    /// True if this policy controller is the leader — false otherwise.
+    /// True if this policy controller is the leader, false otherwise.
     leader: bool,
 
     metrics: ControllerMetrics,
@@ -78,7 +76,7 @@ pub struct Index {
 
     /// Maps HttpRoute ids to a list of their parent and backend refs,
     /// regardless of if those parents have accepted the route.
-    http_route_refs: HashMap<NamespaceGroupKindName, HttpRoute>,
+    route_refs: HashMap<NamespaceGroupKindName, RouteRef>,
     servers: HashSet<ResourceId>,
     services: HashMap<ResourceId, Service>,
 
@@ -91,10 +89,11 @@ pub struct IndexMetrics {
 }
 
 #[derive(Clone, PartialEq)]
-struct HttpRoute {
+struct RouteRef {
     parents: Vec<ParentReference>,
     backends: Vec<BackendReference>,
     statuses: Vec<gateway::RouteParentStatus>,
+    r#type: crate::routes::RouteType,
 }
 
 #[derive(Debug, PartialEq)]
@@ -204,7 +203,7 @@ impl Controller {
     }
 
     /// Process updates received from the index; each update is a patch that
-    /// should be applied to update the status of an HTTPRoute. A patch should
+    /// should be applied to update the status of a route. A patch should
     /// only be applied if we are the holder of the write lease.
     pub async fn run(mut self) {
         // Select between the write lease claim changing and receiving updates
@@ -254,7 +253,7 @@ impl Controller {
         <K as Resource>::DynamicType: Default,
         K: DeserializeOwned,
     {
-        let patch_params = k8s::PatchParams::apply(POLICY_API_GROUP);
+        let patch_params = k8s::PatchParams::apply(&gateway::HttpRoute::group(&()));
         let api = k8s::Api::<K>::namespaced(self.client.clone(), namespace);
         let start = time::Instant::now();
         match time::timeout(
@@ -295,19 +294,19 @@ impl Index {
             name: name.to_string(),
             claims,
             updates,
-            http_route_refs: HashMap::new(),
+            route_refs: HashMap::new(),
             servers: HashSet::new(),
             services: HashMap::new(),
             metrics,
         }))
     }
 
-    /// When the write lease holder changes or a time duration has elapsed,
-    /// the index reconciles the statuses for all HTTPRoutes on the cluster.
+    /// When the write leaseholder changes or a time duration has elapsed,
+    /// the index reconciles the statuses for all routes on the cluster.
     ///
     /// This reconciliation loop ensures that if errors occur when the
-    /// Controller applies patches or the write lease holder changes, all
-    /// HTTPRoutes have an up-to-date status.
+    /// Controller applies patches or the write leaseholder changes, all
+    /// routes have an up-to-date status.
     pub async fn run(index: Arc<RwLock<Self>>, reconciliation_period: Duration) {
         // Clone the claims watch out of the index. This will immediately
         // drop the read lock on the index so that it is not held for the
@@ -324,7 +323,7 @@ impl Index {
             }
 
             // The claimant has changed, or we should attempt to reconcile all
-            // HTTPRoutes to account for any errors. In either case, we should
+            // routes to account for any errors. In either case, we should
             // only proceed if we are the current leader.
             let claims = claims.borrow_and_update();
             let index = index.read();
@@ -339,8 +338,8 @@ impl Index {
 
     // If the route is new or its contents have changed, return true, so that a
     // patch is generated; otherwise return false.
-    fn update_http_route(&mut self, id: NamespaceGroupKindName, route: &HttpRoute) -> bool {
-        match self.http_route_refs.entry(id) {
+    fn update_route(&mut self, id: NamespaceGroupKindName, route: &RouteRef) -> bool {
+        match self.route_refs.entry(id) {
             Entry::Vacant(entry) => {
                 entry.insert(route.clone());
             }
@@ -358,6 +357,7 @@ impl Index {
         &self,
         parent_ref: &ParentReference,
         backend_condition: k8s::Condition,
+        route_type: &RouteType,
     ) -> Option<gateway::RouteParentStatus> {
         match parent_ref {
             ParentReference::Server(server) => {
@@ -369,7 +369,7 @@ impl Index {
 
                 Some(gateway::RouteParentStatus {
                     parent_ref: gateway::ParentReference {
-                        group: Some(POLICY_API_GROUP.to_string()),
+                        group: Some(route_type.k8s_group().into()),
                         kind: Some("Server".to_string()),
                         namespace: Some(server.namespace.clone()),
                         name: server.name.clone(),
@@ -394,6 +394,9 @@ impl Index {
 
                 Some(gateway::RouteParentStatus {
                     parent_ref: gateway::ParentReference {
+                        // TODO(the-wondersmith): determine whether "core" is the correct
+                        //                        value for the `group` field here.
+                        //                        ref: https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io%2fv1.ParentReference
                         group: Some("core".to_string()),
                         kind: Some("Service".to_string()),
                         namespace: Some(service.namespace.clone()),
@@ -419,7 +422,7 @@ impl Index {
             return invalid_backend_kind();
         }
 
-        // If all references have been resolved (i.e exist in our services cache),
+        // If all references have been resolved (i.e. exist in our services cache),
         // return positive status, otherwise, one of them does not exist
         if backend_refs.iter().any(|backend_ref| match backend_ref {
             BackendReference::Service(service) => self.services.contains_key(service),
@@ -431,10 +434,10 @@ impl Index {
         }
     }
 
-    fn make_http_route_patch(
+    fn make_route_patch(
         &self,
         id: &NamespaceGroupKindName,
-        route: &HttpRoute,
+        route: &RouteRef,
     ) -> Option<k8s::Patch<serde_json::Value>> {
         // To preserve any statuses from other controllers, we copy those
         // statuses.
@@ -446,10 +449,9 @@ impl Index {
 
         // Compute a status for each parent_ref which has a kind we support.
         let backend_condition = self.backend_condition(&route.backends);
-        let parent_statuses = route
-            .parents
-            .iter()
-            .filter_map(|parent_ref| self.parent_status(parent_ref, backend_condition.clone()));
+        let parent_statuses = route.parents.iter().filter_map(|parent_ref| {
+            self.parent_status(parent_ref, backend_condition.clone(), &route.r#type)
+        });
 
         let all_statuses = unowned_statuses.chain(parent_statuses).collect::<Vec<_>>();
         if eq_time_insensitive(&all_statuses, &route.statuses) {
@@ -463,12 +465,13 @@ impl Index {
                 parents: all_statuses,
             },
         };
-        Some(make_patch(&id.gkn.name, status))
+
+        Some(make_patch(&id.gkn.name, status, route.r#type))
     }
 
     fn reconcile(&self) {
-        for (id, route) in self.http_route_refs.iter() {
-            if let Some(patch) = self.make_http_route_patch(id, route) {
+        for (id, route) in self.route_refs.iter() {
+            if let Some(patch) = self.make_route_patch(id, route) {
                 match self.updates.try_send(Update {
                     id: id.clone(),
                     patch,
@@ -478,7 +481,7 @@ impl Index {
                     }
                     Err(error) => {
                         self.metrics.patch_channel_full.inc();
-                        tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send HTTPRoute patch");
+                        tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send {} patch", route.r#type);
                     }
                 }
             }
@@ -502,10 +505,10 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         };
 
         // Create the route parents
-        let parents = http_route::make_parents(&namespace, &resource.spec.inner);
+        let parents = crate::routes::http::make_parents(&namespace, &resource.spec.inner);
 
         // Create the route backends
-        let backends = http_route::make_backends(
+        let backends = crate::routes::http::make_backends(
             &namespace,
             resource
                 .spec
@@ -523,13 +526,14 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
             .collect();
 
         // Construct route and insert into the index; if the HTTPRoute is
-        // already in the index and it hasn't changed, skip creating a patch.
-        let route = HttpRoute {
+        // already in the index, and it hasn't changed, skip creating a patch.
+        let route = RouteRef {
             parents,
             backends,
             statuses,
+            r#type: crate::routes::RouteType::LinkerdHttp,
         };
-        self.index_httproute(id, route);
+        self.index_route(id, route);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -541,7 +545,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
                 name: name.into(),
             },
         };
-        self.http_route_refs.remove(&id);
+        self.route_refs.remove(&id);
     }
 
     // Since apply only reindexes a single HTTPRoute at a time, there's no need
@@ -564,10 +568,10 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         };
 
         // Create the route parents
-        let parents = http_route::make_parents(&namespace, &resource.spec.inner);
+        let parents = crate::routes::http::make_parents(&namespace, &resource.spec.inner);
 
         // Create the route backends
-        let backends = http_route::make_backends(
+        let backends = crate::routes::http::make_backends(
             &namespace,
             resource
                 .spec
@@ -585,13 +589,14 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
             .collect();
 
         // Construct route and insert into the index; if the HTTPRoute is
-        // already in the index and it hasn't changed, skip creating a patch.
-        let route = HttpRoute {
+        // already in the index, and it hasn't changed, skip creating a patch.
+        let route = RouteRef {
             parents,
             backends,
             statuses,
+            r#type: crate::routes::RouteType::GatewayHttp,
         };
-        self.index_httproute(id, route);
+        self.index_route(id, route);
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -603,11 +608,62 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
                 name: name.into(),
             },
         };
-        self.http_route_refs.remove(&id);
+        self.route_refs.remove(&id);
     }
 
     // Since apply only reindexes a single HTTPRoute at a time, there's no need
     // to handle resets specially.
+}
+
+#[cfg(feature = "experimental")]
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Index {
+    fn apply(&mut self, resource: k8s_gateway_api::GrpcRoute) {
+        let id = NamespaceGroupKindName::from(&resource);
+
+        // Create the route parents
+        let parents = crate::routes::grpc::make_parents(&id.namespace, &resource.spec.inner);
+
+        // Create the route backends
+        let backends = crate::routes::grpc::make_backends(
+            &id.namespace,
+            resource
+                .spec
+                .rules
+                .into_iter()
+                .flatten()
+                .flat_map(|rule| rule.backend_refs)
+                .flatten(),
+        );
+
+        let statuses = resource
+            .status
+            .into_iter()
+            .flat_map(|status| status.inner.parents)
+            .collect();
+
+        // Construct route and insert into the index; if the route is
+        // already in the index, and it hasn't changed, skip creating a patch.
+        let route = RouteRef {
+            parents,
+            backends,
+            statuses,
+            r#type: crate::routes::RouteType::GatewayGrpc,
+        };
+
+        self.index_route(id, route);
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let id = NamespaceGroupKindName {
+            namespace,
+            gkn: GroupKindName {
+                group: k8s_gateway_api::GrpcRoute::group(&()),
+                kind: k8s_gateway_api::GrpcRoute::kind(&()),
+                name: name.into(),
+            },
+        };
+        self.route_refs.remove(&id);
+    }
 }
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
@@ -677,10 +733,10 @@ impl kubert::index::IndexNamespacedResource<k8s::Service> for Index {
 }
 
 impl Index {
-    fn index_httproute(&mut self, id: NamespaceGroupKindName, route: HttpRoute) {
-        // Insert into the index; if the HTTPRoute is already in the index and it hasn't
-        // changed, skip creating a patch.
-        if !self.update_http_route(id.clone(), &route) {
+    fn index_route(&mut self, id: NamespaceGroupKindName, route: RouteRef) {
+        // Insert into the index; if the route is already in the index,
+        // and it hasn't changed, skip creating a patch.
+        if !self.update_route(id.clone(), &route) {
             return;
         }
 
@@ -691,9 +747,9 @@ impl Index {
             return;
         }
 
-        // Create a patch for the HTTPRoute and send it to the Controller so
+        // Create a patch for the route and send it to the Controller so
         // that it is applied.
-        if let Some(patch) = self.make_http_route_patch(&id, &route) {
+        if let Some(patch) = self.make_route_patch(&id, &route) {
             match self.updates.try_send(Update {
                 id: id.clone(),
                 patch,
@@ -703,7 +759,7 @@ impl Index {
                 }
                 Err(error) => {
                     self.metrics.patch_channel_full.inc();
-                    tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send HTTPRoute patch");
+                    tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send {} patch", route.r#type);
                 }
             }
         }
@@ -713,14 +769,15 @@ impl Index {
 pub(crate) fn make_patch(
     name: &str,
     status: gateway::HttpRouteStatus,
+    route_type: crate::routes::RouteType,
 ) -> k8s::Patch<serde_json::Value> {
-    let value = serde_json::json!({
-        "apiVersion": POLICY_API_VERSION,
-            "kind": "HTTPRoute",
-            "name": name,
-            "status": status,
+    let patch = serde_json::json!({
+        "apiVersion": route_type.k8s_api_version(),
+        "kind": route_type.to_string(),
+        "name": name,
+        "status": status,
     });
-    k8s::Patch::Merge(value)
+    k8s::Patch::Merge(patch)
 }
 
 fn now() -> DateTime<Utc> {
