@@ -21,7 +21,7 @@ jobs:
   tag:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f
       - run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
         id: tag
     outputs:
@@ -48,7 +48,7 @@ jobs:
     # policy-controller docker builds have occasionally hit a 30-minute timeout.
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f
       - name: Set tag
         run: echo 'TAG=${{ needs.tag.outputs.tag }}' >> "$GITHUB_ENV"
       - uses: ./.github/actions/docker-build
@@ -95,7 +95,7 @@ jobs:
     needs: [docker_build]
     steps:
       - name: Checkout code
-        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+        uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: "1.22"
@@ -128,7 +128,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+        uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: "1.22"
@@ -152,7 +152,7 @@ jobs:
     runs-on: [self-hosted, Linux, ARM64]
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
         with:
           go-version: "1.22"
@@ -200,7 +200,7 @@ jobs:
     steps:
       - name: Checkout code
         if: startsWith(github.ref, 'refs/tags/stable')
-        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+        uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f
       - name: Chocolatey - update nuspec
         if: startsWith(github.ref, 'refs/tags/stable')
         run: |
@@ -230,7 +230,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f
       # - name: Download choco package
       #   if: startsWith(github.ref, 'refs/tags/stable')
       #   uses: actions/download-artifact@8caf195ad4b1dee92908e23f56eeb0696f1dd42d
@@ -278,7 +278,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f
       - name: Set install target for stable
         if: startsWith(github.ref, 'refs/tags/stable')
         run: echo "INSTALL=install" >> "$GITHUB_ENV"
@@ -306,7 +306,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+        uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f
       - name: Log into GCP
         uses: "google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c"
         with:
