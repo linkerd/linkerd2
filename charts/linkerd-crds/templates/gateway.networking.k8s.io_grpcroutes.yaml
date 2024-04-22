@@ -1,4 +1,4 @@
-{{ if .Values.enableGrpcRoutes }}
+{{ if (and .Values.enableGrpcRoutes (include "partials.crdInstalled" "grpcroutes.gateway.networking.k8s.io" | empty)) }}
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
