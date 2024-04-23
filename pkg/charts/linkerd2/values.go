@@ -139,7 +139,14 @@ type (
 
 		AdditionalEnv   []corev1.EnvVar `json:"additionalEnv"`
 		ExperimentalEnv []corev1.EnvVar `json:"experimentalEnv"`
+
+		Inbound  ProxyParams `json:"inbound,omitempty"`
+		Outbound ProxyParams `json:"outbound,omitempty"`
 	}
+
+	ProxyParams      = map[string]ProxyScopeParams
+	ProxyScopeParams = map[string]ProxyProtoParams
+	ProxyProtoParams = map[string]interface{}
 
 	ProxyControl struct {
 		Streams *ProxyControlStreams `json:"streams"`
