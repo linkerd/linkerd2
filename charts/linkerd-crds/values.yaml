@@ -1,3 +1,2 @@
----
-enableGrpcRoutes: false
+enableGrpcRoutes: true
 enableHttpRoutes: true
