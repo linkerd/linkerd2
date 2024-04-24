@@ -70,8 +70,9 @@ func TestNoRelay(t *testing.T) {
 
 // TestRelay validates the previous test by running the same scenario but
 // forcing an open relay by changing the value of
-// LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR from 127.0.0.1:4140 to 0.0.0.0:4140,
-// which is not possible without manually changing the injected proxy yaml
+// LINKERD2_PROXY_OUTBOUND_LISTEN_ADDRS from 127.0.0.1:4140,[::1]:4140 to
+// 0.0.0.0:4140, which is not possible without manually changing the injected
+// proxy yaml
 //
 // We don't care if this behavior breaks--it's not a supported configuration.
 // However, this test is oddly useful in finding bugs in ingress-mode proxy
@@ -79,7 +80,11 @@ func TestNoRelay(t *testing.T) {
 func TestRelay(t *testing.T) {
 	ctx := context.Background()
 	deployments := getDeployments(t)
-	deployments["server-relay"] = strings.ReplaceAll(deployments["server-relay"], "127.0.0.1:4140", "0.0.0.0:4140")
+	deployments["server-relay"] = strings.ReplaceAll(
+		deployments["server-relay"],
+		"127.0.0.1:4140,[::1]:4140",
+		"0.0.0.0:4140",
+	)
 	TestHelper.WithDataPlaneNamespace(ctx, "relay-test", map[string]string{}, t, func(t *testing.T, ns string) {
 		for name, res := range deployments {
 			out, err := TestHelper.KubectlApply(res, ns)

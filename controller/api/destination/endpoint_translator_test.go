@@ -790,6 +790,39 @@ func TestConcurrency(t *testing.T) {
 	wg.Wait()
 }
 
+func TestGetInboundPort(t *testing.T) {
+	podSpec := &corev1.PodSpec{
+		Containers: []corev1.Container{
+			{
+				Name: k8s.ProxyContainerName,
+				Env: []corev1.EnvVar{
+					{
+						Name:  envInboundListenAddr,
+						Value: "1.2.3.4:8080",
+					},
+				},
+			},
+		},
+	}
+
+	port, err := getInboundPort(podSpec)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	if port != 8080 {
+		t.Fatalf("Expecting port [%d], got [%d]", 8080, port)
+	}
+
+	podSpec.Containers[0].Env[0].Value = "[2001:db8::94]:8080"
+	port, err = getInboundPort(podSpec)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	if port != 8080 {
+		t.Fatalf("Expecting port [%d], got [%d]", 8080, port)
+	}
+}
+
 func mkAddressSetForServices(gatewayAddresses ...watcher.Address) watcher.AddressSet {
 	set := watcher.AddressSet{
 		Addresses: make(map[watcher.ServiceID]watcher.Address),
