@@ -357,6 +357,32 @@ func TestUninjectAndInject(t *testing.T) {
 				return values
 			}(),
 		},
+		{
+			inputFileName:  "inject_emojivoto_deployment.input.yml",
+			goldenFileName: "inject_emojivoto_deployment_params.golden.yml",
+			reportFileName: "inject_emojivoto_deployment.report",
+			injectProxy:    true,
+			testInjectConfig: func() *linkerd2.Values {
+				values := defaultConfig()
+				values.Proxy.Inbound = linkerd2.ProxyParams{
+					"scope": linkerd2.ProxyScopeParams{
+						"proto": linkerd2.ProxyProtoParams{
+							"appleSauce": "valueA",
+							"blueberry":  3.14,
+						},
+					},
+				}
+				values.Proxy.Outbound = linkerd2.ProxyParams{
+					"scope": linkerd2.ProxyScopeParams{
+						"proto": linkerd2.ProxyProtoParams{
+							"applesauce": "valueA",
+							"blueBerry":  true,
+						},
+					},
+				}
+				return values
+			}(),
+		},
 	}
 
 	for i, tc := range testCases {
@@ -382,6 +408,8 @@ type injectCmd struct {
 }
 
 func testInjectCmd(t *testing.T, tc injectCmd) {
+	t.Helper()
+
 	testConfig := tc.values
 	if testConfig == nil {
 		var err error
