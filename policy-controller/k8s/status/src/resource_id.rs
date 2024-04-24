@@ -19,11 +19,11 @@ pub struct NamespaceGroupKindName {
     pub gkn: GroupKindName,
 }
 
-impl<'resource, Resrc> From<&'resource Resrc> for NamespaceGroupKindName
+impl<Resrc> From<&Resrc> for NamespaceGroupKindName
 where
     Resrc: Resource<DynamicType = ()> + ResourceExt,
 {
-    fn from(resource: &'resource Resrc) -> Self {
+    fn from(resource: &Resrc) -> Self {
         let (group, kind, name) = (
             Resrc::group(&()),
             Resrc::kind(&()),
