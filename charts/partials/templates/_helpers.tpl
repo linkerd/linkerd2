@@ -12,12 +12,3 @@ For example "11,22,55,44" will become "11","22","55","44"
 {{- end -}}
 {{- end -}}
 {{- end -}}
-
-{{/* vim: set filetype=mustache: */}}
-{{/* Check if the specified CRD exists in the target cluster */}}
-{{- define "partials.crdInstalled" -}}
-    {{- $target := ( required "a valid, non-empty crd name is required" . | toString) -}}
-    {{- $result := (lookup "apiextensions.k8s.io/v1" "CustomResourceDefinition" "" $target) -}}
-    {{- $crdName := (dig "metadata" "name" "missing" $result | toString) -}}
-    {{- ternary "1" "" (eq $target $crdName) -}}
-{{- end -}}
