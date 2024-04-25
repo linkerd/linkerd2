@@ -22,6 +22,7 @@ metadata:
   namespace: linkerd-multicluster
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       app: linkerd-gateway
@@ -38,7 +39,7 @@ spec:
         app: linkerd-gateway
         linkerd.io/extension: multicluster
     spec:
-
+      
       containers:
         - name: pause
           image: gcr.io/google_containers/pause:3.2

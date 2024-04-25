@@ -45,6 +45,9 @@ enablePSP: false
 # -- Default UID for all the jaeger components
 defaultUID: 2103
 
+# -- Specifies the number of old ReplicaSets to retain to allow rollback.
+revisionHistoryLimit: 10
+
 # -- Kubernetes DNS Domain name to use
 clusterDomain: cluster.local
 collector:
