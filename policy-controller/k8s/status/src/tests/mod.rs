@@ -1,1 +1,1 @@
-mod http_routes;
+mod routes;

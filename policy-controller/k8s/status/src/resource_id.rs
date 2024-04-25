@@ -1,4 +1,9 @@
+use crate::index::{GATEWAY_API_GROUP, POLICY_API_GROUP};
 use linkerd_policy_controller_core::http_route::GroupKindName;
+use linkerd_policy_controller_k8s_api::{
+    gateway as k8s_gateway_api, policy as linkerd_k8s_api, Resource,
+};
+use std::borrow::Cow;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ResourceId {
@@ -16,4 +21,18 @@ impl ResourceId {
 pub struct NamespaceGroupKindName {
     pub namespace: String,
     pub gkn: GroupKindName,
+}
+
+impl NamespaceGroupKindName {
+    pub fn api_version(&self) -> Result<Cow<'static, str>, String> {
+        match (self.gkn.group.as_ref(), self.gkn.kind.as_ref()) {
+            (POLICY_API_GROUP, "HTTPRoute") => Ok(linkerd_k8s_api::HttpRoute::api_version(&())),
+            (GATEWAY_API_GROUP, "HTTPRoute") => Ok(k8s_gateway_api::HttpRoute::api_version(&())),
+            (GATEWAY_API_GROUP, "GRPCRoute") => Ok(k8s_gateway_api::GrpcRoute::api_version(&())),
+            (group, kind) => Err(format!(
+                "unknown group + kind combination: ({}, {})",
+                group, kind
+            )),
+        }
+    }
 }
