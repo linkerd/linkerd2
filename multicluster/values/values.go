@@ -36,6 +36,7 @@ type Values struct {
 	RemoteMirrorServiceAccountName string   `json:"remoteMirrorServiceAccountName"`
 	TargetClusterName              string   `json:"targetClusterName"`
 	EnablePodAntiAffinity          bool     `json:"enablePodAntiAffinity"`
+	RevisionHistoryLimit           uint32   `json:"revisionHistoryLimit"`
 }
 
 // Gateway contains all options related to the Gateway Service

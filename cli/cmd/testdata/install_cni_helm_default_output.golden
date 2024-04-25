@@ -84,6 +84,7 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       k8s-app: linkerd-cni
