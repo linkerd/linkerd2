@@ -42,7 +42,8 @@ func TestRenderCniHelm(t *testing.T) {
   			"destCNIBinDir": "/opt/cni/bin-test",
   			"useWaitFlag": true,
 			"cliVersion": "test-version",
-			"priorityClassName": "system-node-critical"
+			"priorityClassName": "system-node-critical",
+			"revisionHistoryLimir": 10
 		}`
 
 		var overrideConfig chartutil.Values

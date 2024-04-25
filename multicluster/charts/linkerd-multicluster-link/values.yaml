@@ -49,3 +49,6 @@ tolerations: {}
 # set to true on the extension and control plane install. Note PSP has been
 # deprecated since k8s v1.21
 enablePSP: false
+
+# -- Specifies the number of old ReplicaSets to retain to allow rollback.
+revisionHistoryLimit: 10
