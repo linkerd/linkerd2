@@ -369,6 +369,15 @@ controllerUID: 2103
 # destinationProxyResources -- CPU, Memory and Ephemeral Storage resources required by proxy injected into destination pod (see `proxy.resources` for sub-fields)
 #destinationProxyResources:
 
+destinationController:
+  meshedHttp2ClientProtobuf:
+    keep_alive:
+      interval:
+        seconds: 10
+      timeout:
+        seconds: 3
+      while_idle: true
+
 # debug configuration
 debugContainer:
   image:

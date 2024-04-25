@@ -17,6 +17,8 @@ type endpointProfileTranslator struct {
 	identityTrustDomain string
 	defaultOpaquePorts  map[uint32]struct{}
 
+	meshedHttp2ClientParams *pb.Http2ClientParams
+
 	stream    pb.Destination_GetProfileServer
 	endStream chan struct{}
 
@@ -46,6 +48,7 @@ func newEndpointProfileTranslator(
 	controllerNS,
 	identityTrustDomain string,
 	defaultOpaquePorts map[uint32]struct{},
+	meshedHTTP2ClientParams *pb.Http2ClientParams,
 	stream pb.Destination_GetProfileServer,
 	endStream chan struct{},
 	log *logging.Entry,
@@ -55,6 +58,8 @@ func newEndpointProfileTranslator(
 		controllerNS:        controllerNS,
 		identityTrustDomain: identityTrustDomain,
 		defaultOpaquePorts:  defaultOpaquePorts,
+
+		meshedHttp2ClientParams: meshedHTTP2ClientParams,
 
 		stream:    stream,
 		endStream: endStream,
@@ -127,6 +132,7 @@ func (ept *endpointProfileTranslator) update(address *watcher.Address) {
 			address.IP, address.Port, err)
 		return
 	}
+	ept.log.Debugf("Created endpoint: %+v", endpoint)
 
 	_, opaqueProtocol := opaquePorts[address.Port]
 	profile := &pb.DestinationProfile{
@@ -152,9 +158,10 @@ func (ept *endpointProfileTranslator) createEndpoint(address watcher.Address, op
 	var weightedAddr *pb.WeightedAddr
 	var err error
 	if address.ExternalWorkload != nil {
-		weightedAddr, err = createWeightedAddrForExternalWorkload(address, opaquePorts)
+		weightedAddr, err = createWeightedAddrForExternalWorkload(address, opaquePorts, ept.meshedHttp2ClientParams)
 	} else {
-		weightedAddr, err = createWeightedAddr(address, opaquePorts, ept.enableH2Upgrade, ept.identityTrustDomain, ept.controllerNS)
+		weightedAddr, err = createWeightedAddr(address, opaquePorts,
+			ept.enableH2Upgrade, ept.identityTrustDomain, ept.controllerNS, ept.meshedHttp2ClientParams)
 	}
 	if err != nil {
 		return nil, err

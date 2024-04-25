@@ -514,6 +514,14 @@ data:
       rollingUpdate:
         maxSurge: 25%
         maxUnavailable: 25%
+    destinationController:
+      meshedHttp2ClientProtobuf:
+        keep_alive:
+          interval:
+            seconds: 10
+          timeout:
+            seconds: 3
+          while_idle: true
     destinationProxyResources: null
     destinationResources: null
     disableHeartBeat: false
@@ -1458,6 +1466,7 @@ spec:
         - -identity-trust-domain=example.com
         - -default-opaque-ports=25,587,3306,4444,5432,6379,9300,11211
         - -enable-pprof=false
+        - --meshed-http-client-params={"keep_alive":{"interval":{"seconds":10},"timeout":{"seconds":3},"while_idle":true}}
         image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

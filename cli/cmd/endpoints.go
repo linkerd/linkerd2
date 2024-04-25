@@ -40,6 +40,7 @@ type (
 		ip      string
 		weight  uint32
 		labels  map[string]string
+		http2   *destinationPb.Http2ClientParams
 	}
 )
 
@@ -207,6 +208,7 @@ func requestEndpointsFromAPI(client destinationPb.DestinationClient, token strin
 					ip:      getIP(tcpAddr),
 					weight:  addr.GetWeight(),
 					labels:  addr.GetMetricLabels(),
+					http2:   addr.GetHttp2(),
 				})
 			}
 		}
@@ -239,6 +241,8 @@ type rowEndpoint struct {
 	Service   string `json:"service"`
 	Weight    uint32 `json:"weight"`
 
+	Http2 *destinationPb.Http2ClientParams `json:"http2,omitempty"`
+
 	Labels map[string]string `json:"labels"`
 }
 
@@ -267,6 +271,7 @@ func writeEndpointsToBuffer(endpoints endpointsInfo, w *tabwriter.Writer, option
 					Service:   serviceID,
 					Weight:    pod.weight,
 					Labels:    pod.labels,
+					Http2:     pod.http2,
 				}
 
 				endpointsTables[namespace] = append(endpointsTables[namespace], row)
