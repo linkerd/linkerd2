@@ -788,6 +788,7 @@ data:
       memory:
         limit: 250Mi
         request: 50Mi
+    revisionHistoryLimit: 10
     tolerations: null
     webhookFailurePolicy: Fail
 ---
@@ -916,6 +917,7 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 2
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/control-plane-component: identity
@@ -1347,6 +1349,7 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 2
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/control-plane-component: destination
@@ -1819,6 +1822,7 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 2
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector

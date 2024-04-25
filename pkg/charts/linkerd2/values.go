@@ -57,6 +57,7 @@ type (
 		PrometheusURL                string                 `json:"prometheusUrl"`
 		ImagePullSecrets             []map[string]string    `json:"imagePullSecrets"`
 		LinkerdVersion               string                 `json:"linkerdVersion"`
+		RevisionHistoryLimit         uint                   `json:"revisionHistoryLimit"`
 
 		PodAnnotations    map[string]string `json:"podAnnotations"`
 		PodLabels         map[string]string `json:"podLabels"`

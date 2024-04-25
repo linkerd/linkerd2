@@ -752,6 +752,7 @@ data:
           - cert-manager
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
+    revisionHistoryLimit: 10
     tolerations: null
     webhookFailurePolicy: Ignore
 ---
@@ -864,6 +865,7 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/control-plane-component: identity
@@ -1240,6 +1242,7 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/control-plane-component: destination
@@ -1667,6 +1670,7 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector

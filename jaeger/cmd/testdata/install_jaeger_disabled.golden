@@ -23,6 +23,7 @@ metadata:
   namespace: linkerd-jaeger
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/extension: jaeger
@@ -41,6 +42,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
@@ -421,6 +423,7 @@ metadata:
   namespace: linkerd-jaeger
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       component: collector
@@ -443,6 +446,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - command:
         - /otelcol-contrib

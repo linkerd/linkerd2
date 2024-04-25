@@ -62,6 +62,7 @@ Kubernetes: `>=1.22.0-0`
 | resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the cni container requests |
 | resources.memory.limit | string | `""` | Maximum amount of memory that the cni container can use |
 | resources.memory.request | string | `""` | Amount of memory that the cni container requests |
+| revisionHistoryLimit | int | `10` | Specifies the number of old ReplicaSets to retain to allow rollback. |
 | tolerations[0] | object | `{"operator":"Exists"}` | toleration properties |
 | useWaitFlag | bool | `false` | Configures the CNI plugin to use the -w flag for the iptables command |
 

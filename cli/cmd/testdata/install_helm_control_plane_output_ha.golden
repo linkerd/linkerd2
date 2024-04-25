@@ -765,6 +765,7 @@ data:
       memory:
         limit: 250Mi
         request: 50Mi
+    revisionHistoryLimit: 10
     tap:
       caBundle: test-tap-ca-bundle
       externalSecret: true
@@ -889,6 +890,7 @@ metadata:
   namespace: linkerd-dev
 spec:
   replicas: 3
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/control-plane-component: identity
@@ -1322,6 +1324,7 @@ metadata:
   namespace: linkerd-dev
 spec:
   replicas: 3
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/control-plane-component: destination
@@ -1798,6 +1801,7 @@ metadata:
   namespace: linkerd-dev
 spec:
   replicas: 3
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector

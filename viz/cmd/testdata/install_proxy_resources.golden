@@ -400,6 +400,7 @@ metadata:
   namespace: linkerd-viz
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/extension: viz
@@ -418,6 +419,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - -controller-namespace=linkerd
@@ -706,6 +708,7 @@ metadata:
   namespace: linkerd-viz
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/extension: viz
@@ -867,6 +870,7 @@ metadata:
   namespace: linkerd-viz
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/extension: viz
@@ -891,6 +895,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - api
@@ -1089,6 +1094,7 @@ metadata:
   namespace: linkerd-viz
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       component: tap-injector
@@ -1106,6 +1112,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - injector
@@ -1223,6 +1230,7 @@ metadata:
     namespace: linkerd-viz
   annotations:
     linkerd.io/created-by: linkerd/helm dev-undefined
+    
     linkerd.io/inject: enabled
 spec:
   type: ClusterIP
@@ -1255,6 +1263,7 @@ metadata:
   namespace: linkerd-viz
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/extension: viz
@@ -1278,6 +1287,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      
       containers:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.linkerd-viz.svc.cluster.local:8085
