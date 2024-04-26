@@ -29,7 +29,6 @@ const fullyQualifiedNameOpaque = "name3.ns.svc.mycluster.local"
 const fullyQualifiedNameOpaqueService = "name4.ns.svc.mycluster.local"
 const fullyQualifiedNameSkipped = "name5.ns.svc.mycluster.local"
 const fullyQualifiedPodDNS = "pod-0.statefulset-svc.ns.svc.mycluster.local"
-const fullyQualifiedNamePolicy = "policy-test.ns.svc.mycluster.local"
 const clusterIP = "172.17.12.0"
 const clusterIPv6 = "2001:db8::88"
 const clusterIPOpaque = "172.17.12.1"
@@ -160,95 +159,11 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("Return endpoint opaque protocol controlled by a server", func(t *testing.T) {
-		server, client := getServerWithClient(t)
-		defer server.clusterStore.UnregisterGauges()
+		testOpaque(t, "policy-test")
+	})
 
-		stream := &bufferingGetStream{
-			updates:          make(chan *pb.Update, 50),
-			MockServerStream: util.NewMockServerStream(),
-		}
-		defer stream.Cancel()
-		errs := make(chan error)
-
-		path := fmt.Sprintf("%s:%d", fullyQualifiedNamePolicy, 80)
-
-		// server.Get blocks until the grpc stream is complete so we call it
-		// in a goroutine and watch stream.updates for updates.
-		go func() {
-			err := server.Get(&pb.GetDestination{
-				Scheme: "k8s",
-				Path:   path,
-			}, stream)
-			if err != nil {
-				errs <- err
-			}
-		}()
-
-		select {
-		case err := <-errs:
-			t.Fatalf("Got error: %s", err)
-		case update := <-stream.updates:
-			addrs := update.GetAdd().Addrs
-			if len(addrs) == 0 {
-				t.Fatalf("Expected len(addrs) to be > 0")
-			}
-
-			if addrs[0].GetProtocolHint().GetOpaqueTransport() == nil {
-				t.Fatalf("Expected opaque transport for %s but was nil", path)
-			}
-		}
-
-		// Update the Server's pod selector so that it no longer selects the
-		// pod. This should result in the proxy protocol no longer being marked
-		// as opaque.
-		srv, err := client.ServerV1beta2().Servers("ns").Get(context.Background(), "srv", metav1.GetOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		// PodSelector is updated to NOT select the pod
-		srv.Spec.PodSelector.MatchLabels = map[string]string{"app": "FOOBAR"}
-		_, err = client.ServerV1beta2().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		select {
-		case update := <-stream.updates:
-			addrs := update.GetAdd().Addrs
-			if len(addrs) == 0 {
-				t.Fatalf("Expected len(addrs) to be > 0")
-			}
-
-			if addrs[0].GetProtocolHint().GetOpaqueTransport() != nil {
-				t.Fatalf("Expected opaque transport to be nil for %s but was %+v", path, *addrs[0].GetProtocolHint().GetOpaqueTransport())
-			}
-		case err := <-errs:
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// Update the Server's pod selector so that it once again selects the
-		// pod. This should result in the proxy protocol once again being marked
-		// as opaque.
-		srv.Spec.PodSelector.MatchLabels = map[string]string{"app": "policy-test"}
-
-		_, err = client.ServerV1beta2().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		select {
-		case update := <-stream.updates:
-			addrs := update.GetAdd().Addrs
-			if len(addrs) == 0 {
-				t.Fatalf("Expected len(addrs) to be > 0")
-			}
-
-			if addrs[0].GetProtocolHint().GetOpaqueTransport() == nil {
-				t.Fatalf("Expected opaque transport for %s but was nil", path)
-			}
-		case err := <-errs:
-			t.Fatalf("Got error: %s", err)
-		}
+	t.Run("Return endpoint opaque protocol controlled by a server (native sidecar)", func(t *testing.T) {
+		testOpaque(t, "native")
 	})
 
 	t.Run("Remote discovery", func(t *testing.T) {
@@ -288,6 +203,98 @@ func TestGet(t *testing.T) {
 			t.Fatalf("Got error: %s", err)
 		}
 	})
+}
+
+func testOpaque(t *testing.T, name string) {
+	server, client := getServerWithClient(t)
+	defer server.clusterStore.UnregisterGauges()
+
+	stream := &bufferingGetStream{
+		updates:          make(chan *pb.Update, 50),
+		MockServerStream: util.NewMockServerStream(),
+	}
+	defer stream.Cancel()
+	errs := make(chan error)
+
+	path := fmt.Sprintf("%s.ns.svc.mycluster.local:%d", name, 80)
+
+	// server.Get blocks until the grpc stream is complete so we call it
+	// in a goroutine and watch stream.updates for updates.
+	go func() {
+		err := server.Get(&pb.GetDestination{
+			Scheme: "k8s",
+			Path:   path,
+		}, stream)
+		if err != nil {
+			errs <- err
+		}
+	}()
+
+	select {
+	case err := <-errs:
+		t.Fatalf("Got error: %s", err)
+	case update := <-stream.updates:
+		addrs := update.GetAdd().Addrs
+		if len(addrs) == 0 {
+			t.Fatalf("Expected len(addrs) to be > 0")
+		}
+
+		if addrs[0].GetProtocolHint().GetOpaqueTransport() == nil {
+			t.Fatalf("Expected opaque transport for %s but was nil", path)
+		}
+	}
+
+	// Update the Server's pod selector so that it no longer selects the
+	// pod. This should result in the proxy protocol no longer being marked
+	// as opaque.
+	srv, err := client.ServerV1beta2().Servers("ns").Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// PodSelector is updated to NOT select the pod
+	srv.Spec.PodSelector.MatchLabels = map[string]string{"app": "FOOBAR"}
+	_, err = client.ServerV1beta2().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case update := <-stream.updates:
+		addrs := update.GetAdd().Addrs
+		if len(addrs) == 0 {
+			t.Fatalf("Expected len(addrs) to be > 0")
+		}
+
+		if addrs[0].GetProtocolHint().GetOpaqueTransport() != nil {
+			t.Fatalf("Expected opaque transport to be nil for %s but was %+v", path, *addrs[0].GetProtocolHint().GetOpaqueTransport())
+		}
+	case err := <-errs:
+		t.Fatalf("Got error: %s", err)
+	}
+
+	// Update the Server's pod selector so that it once again selects the
+	// pod. This should result in the proxy protocol once again being marked
+	// as opaque.
+	srv.Spec.PodSelector.MatchLabels = map[string]string{"app": name}
+
+	_, err = client.ServerV1beta2().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case update := <-stream.updates:
+		addrs := update.GetAdd().Addrs
+		if len(addrs) == 0 {
+			t.Fatalf("Expected len(addrs) to be > 0")
+		}
+
+		if addrs[0].GetProtocolHint().GetOpaqueTransport() == nil {
+			t.Fatalf("Expected opaque transport for %s but was nil", path)
+		}
+	case err := <-errs:
+		t.Fatalf("Got error: %s", err)
+	}
 }
 
 func TestGetProfiles(t *testing.T) {

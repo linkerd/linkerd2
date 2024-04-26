@@ -229,10 +229,14 @@ metadata:
   labels:
     app: emoji-svc
     linkerd.io/control-plane-ns: linkerd
+spec:
+    initContainers:
+    - name: foo
 status:
   phase: Pending
   initContainerStatuses:
-  - state:
+  - name: foo
+    state:
       waiting:
         reason: PodInitializing
 `,
@@ -249,7 +253,7 @@ status:
 					TimeWindow: "1m",
 				},
 				expectedResponse: GenStatSummaryResponse("emoji", pkgK8s.Pod, []string{"emojivoto"}, &PodCounts{
-					Status:      "Init:0/0",
+					Status:      "Init:0/1",
 					MeshedPods:  1,
 					RunningPods: 1,
 					FailedPods:  0,
@@ -259,7 +263,8 @@ status:
 								{
 									Error: &pb.PodErrors_PodError_Container{
 										Container: &pb.PodErrors_PodError_ContainerError{
-											Reason: "PodInitializing",
+											Container: "foo",
+											Reason:    "PodInitializing",
 										},
 									},
 								},

@@ -665,7 +665,8 @@ func newEmptyAddressSet() watcher.AddressSet {
 // getInboundPort gets the inbound port from the proxy container's environment
 // variable.
 func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
-	for _, containerSpec := range podSpec.Containers {
+	containers := append(podSpec.InitContainers, podSpec.Containers...)
+	for _, containerSpec := range containers {
 		if containerSpec.Name != pkgK8s.ProxyContainerName {
 			continue
 		}
