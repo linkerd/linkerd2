@@ -824,10 +824,14 @@ func TestGcOrphanedServicesMirroring(t *testing.T) {
 			environment: gcTriggered,
 			expectedLocalServices: []*corev1.Service{
 				mirrorService("test-service-1-remote", "test-namespace", "", nil),
+				headlessMirrorService("test-headless-service-remote", "test-namespace", "", nil),
+				endpointMirrorService("pod-0", "test-headless-service-remote", "test-namespace", "", nil),
 			},
 
 			expectedLocalEndpoints: []*corev1.Endpoints{
 				endpoints("test-service-1-remote", "test-namespace", "", "", nil),
+				headlessMirrorEndpoints("test-headless-service-remote", "test-namespace", "pod-0", "", "", nil),
+				endpointMirrorEndpoints("test-headless-service-remote", "test-namespace", "pod-0", "", "", nil),
 			},
 		},
 	} {

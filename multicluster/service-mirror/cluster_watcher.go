@@ -309,7 +309,14 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices(ctx context.Con
 
 	var errors []error
 	for _, srv := range servicesOnLocalCluster {
-		_, err := rcsw.remoteAPIClient.Svc().Lister().Services(srv.Namespace).Get(rcsw.originalResourceName(srv.Name))
+		mirroredName := srv.Name
+		// For headless services with cluster IPs representing the backing pods, the mirrored service name
+		// is the root headless service in the source cluster
+		if remoteHeadlessSvcName, headlessMirror := srv.Labels[consts.MirroredHeadlessSvcNameLabel]; headlessMirror {
+			mirroredName = remoteHeadlessSvcName
+		}
+		remoteServiceName := rcsw.originalResourceName(mirroredName)
+		_, err := rcsw.remoteAPIClient.Svc().Lister().Services(srv.Namespace).Get(remoteServiceName)
 		if err != nil {
 			if kerrors.IsNotFound(err) {
 				// service does not exist anymore. Need to delete
