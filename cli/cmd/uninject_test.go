@@ -62,6 +62,11 @@ func TestUninjectYAML(t *testing.T) {
 			reportFileName: "inject_emojivoto_pod_uninject.report",
 		},
 		{
+			inputFileName:  "inject_emojivoto_pod_nativesidecar.golden.yml",
+			goldenFileName: "inject_emojivoto_pod.input.yml",
+			reportFileName: "inject_emojivoto_pod_uninject.report",
+		},
+		{
 			inputFileName:  "inject_emojivoto_deployment_udp.golden.yml",
 			goldenFileName: "inject_emojivoto_deployment_udp.input.yml",
 			reportFileName: "inject_emojivoto_deployment_udp_uninject.report",

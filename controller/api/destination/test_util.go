@@ -376,7 +376,7 @@ endpoints:
   - 172.17.0.16
   targetRef:
     kind: Pod
-    name: pod-policyResources
+    name: policy-test
     namespace: ns
 ports:
 - port: 80
@@ -388,7 +388,7 @@ metadata:
   labels:
     linkerd.io/control-plane-ns: linkerd
     app: policy-test
-  name: pod-policyResources
+  name: policy-test
   namespace: ns
 status:
   phase: Running
@@ -414,7 +414,7 @@ spec:
 apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
-  name: srv
+  name: policy-test
   namespace: ns
 spec:
   podSelector:
@@ -426,12 +426,86 @@ spec:
 apiVersion: policy.linkerd.io/v1beta2
 kind: Server
 metadata:
-  name: srv-external-workload
+  name: policy-test-external-workload
   namespace: ns
 spec:
   externalWorkloadSelector:
     matchLabels:
       app: external-workload-policy-test
+  port: 80
+  proxyProtocol: opaque`,
+	}
+
+	policyResourcesNativeSidecar := []string{
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: native
+  namespace: ns
+spec:
+  type: LoadBalancer
+  clusterIP: 172.17.12.4
+  ports:
+  - port: 80`,
+		`
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: native
+  namespace: ns
+  labels:
+    kubernetes.io/service-name: native
+addressType: IPv4
+endpoints:
+- addresses:
+  - 172.17.0.18
+  targetRef:
+    kind: Pod
+    name: native
+    namespace: ns
+ports:
+- port: 80
+  protocol: TCP`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+    app: native
+  name: native
+  namespace: ns
+status:
+  phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
+  podIP: 172.17.0.18
+  podIPs:
+  - ip: 172.17.0.18
+spec:
+  initContainers:
+    - name: linkerd-proxy
+      env:
+      - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+        value: 0.0.0.0:4143
+    - name: app
+      image: nginx
+      ports:
+      - containerPort: 80
+        name: http
+        protocol: TCP`,
+		`
+apiVersion: policy.linkerd.io/v1beta2
+kind: Server
+metadata:
+  name: native
+  namespace: ns
+spec:
+  podSelector:
+    matchLabels:
+      app: native
   port: 80
   proxyProtocol: opaque`,
 	}
@@ -643,6 +717,7 @@ spec:
 	res = append(res, meshedSkippedPodResource...)
 	res = append(res, meshedStatefulSetPodResource...)
 	res = append(res, policyResources...)
+	res = append(res, policyResourcesNativeSidecar...)
 	res = append(res, hostPortMapping...)
 	res = append(res, mirrorServiceResources...)
 	res = append(res, destinationCredentialsResources...)

@@ -46,6 +46,16 @@ func TestHasExistingSidecars(t *testing.T) {
 		},
 		{
 			podSpec: &corev1.PodSpec{
+				InitContainers: []corev1.Container{
+					{
+						Name: k8s.ProxyContainerName,
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			podSpec: &corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
 						Name: "istio-proxy",
