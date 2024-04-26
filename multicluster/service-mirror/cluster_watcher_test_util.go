@@ -485,9 +485,14 @@ var gcTriggered = &testEnvironment{
 		endpointsAsYaml("test-service-1-remote", "test-namespace", "", "", nil),
 		mirrorServiceAsYaml("test-service-2-remote", "test-namespace", "", nil),
 		endpointsAsYaml("test-service-2-remote", "test-namespace", "", "", nil),
+		headlessMirrorAsYaml("test-headless-service-remote", "test-namespace", "", nil),
+		endpointMirrorAsYaml("pod-0", "test-headless-service-remote", "test-namespace", "", nil),
+		headlessMirrorEndpointsAsYaml("test-headless-service-remote", "test-namespace", "pod-0", "", "", nil),
+		endpointMirrorEndpointsAsYaml("test-headless-service-remote", "test-namespace", "pod-0", "", "", nil),
 	},
 	remoteResources: []string{
 		remoteServiceAsYaml("test-service-1", "test-namespace", "", nil),
+		remoteHeadlessSvcAsYaml("test-headless-service", "test-namespace", "", nil),
 	},
 	link: multicluster.Link{
 		TargetClusterName: clusterName,
