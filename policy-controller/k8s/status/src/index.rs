@@ -77,7 +77,7 @@ pub struct Index {
     claims: Receiver<Arc<Claim>>,
     updates: mpsc::Sender<Update>,
 
-    /// Maps HttpRoute ids to a list of their parent and backend refs,
+    /// Maps route ids to a list of their parent and backend refs,
     /// regardless of if those parents have accepted the route.
     route_refs: HashMap<NamespaceGroupKindName, RouteRef>,
     servers: HashSet<ResourceId>,
@@ -511,7 +511,7 @@ impl Index {
                     }
                     Err(error) => {
                         self.metrics.patch_channel_full.inc();
-                        tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send {} patch", id.gkn.group.as_ref());
+                        tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send route patch");
                     }
                 }
             }
@@ -798,7 +798,7 @@ impl Index {
                 }
                 Err(error) => {
                     self.metrics.patch_channel_full.inc();
-                    tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send {} patch", id.gkn.kind.as_ref());
+                    tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send route patch");
                 }
             }
         }
