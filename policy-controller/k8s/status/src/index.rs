@@ -77,8 +77,9 @@ pub struct Index {
     claims: Receiver<Arc<Claim>>,
     updates: mpsc::Sender<Update>,
 
-    /// Maps route ids to a list of their parent and backend refs,
-    /// regardless of if those parents have accepted the route.
+    /// Maps HttpRoute and GrpcRoute ids to a list of their parent and
+    /// backend refs, regardless of if those parents have accepted the
+    /// route.
     route_refs: HashMap<NamespaceGroupKindName, RouteRef>,
     servers: HashSet<ResourceId>,
     services: HashMap<ResourceId, Service>,
