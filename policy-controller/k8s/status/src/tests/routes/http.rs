@@ -415,6 +415,7 @@ fn make_gateway_route(
             hostnames: None,
             rules: Some(vec![k8s_gateway_api::HttpRouteRule {
                 filters: None,
+                timeouts: None,
                 backend_refs: None,
                 matches: Some(vec![k8s_gateway_api::HttpRouteMatch {
                     headers: None,
