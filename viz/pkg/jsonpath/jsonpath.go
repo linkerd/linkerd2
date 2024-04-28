@@ -22,7 +22,7 @@ func GetJsonPathFlagVal(flagVal string) (string, error) {
 
 }
 
-// GetJSONPathExpression get jsonpath filter from flag and attempts to be flexible with JSONPath expressions, it accepts:
+// GetFormatedJSONPathExpression get jsonpath filter from flag and attempts to be flexible with JSONPath expressions, it accepts:
 //   - metadata.name (no leading '.' or curly braces '{...}'
 //   - {metadata.name} (no leading '.')
 //   - .metadata.name (no curly braces '{...}')

@@ -275,7 +275,7 @@ func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, hostname string
 	sp.unsubscribe(port, hostname, listener)
 }
 
-// removeHanders will de-register any event handlers used by the
+// removeHandlers will de-register any event handlers used by the
 // EndpointsWatcher's informers.
 func (ew *EndpointsWatcher) removeHandlers() {
 	ew.Lock()
