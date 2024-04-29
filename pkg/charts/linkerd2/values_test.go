@@ -161,6 +161,22 @@ func TestNewValues(t *testing.T) {
 					Lifetime:       "1h",
 				},
 			},
+			Inbound: ProxyParams{
+				"server": ProxyScopeParams{
+					"http2": ProxyProtoParams{
+						"keepAliveInterval": "10s",
+						"keepAliveTimeout":  "3s",
+					},
+				},
+			},
+			Outbound: ProxyParams{
+				"server": ProxyScopeParams{
+					"http2": ProxyProtoParams{
+						"keepAliveInterval": "10s",
+						"keepAliveTimeout":  "3s",
+					},
+				},
+			},
 		},
 		ProxyInit: &ProxyInit{
 			IptablesMode:        "legacy",
