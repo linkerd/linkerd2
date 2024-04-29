@@ -3,6 +3,7 @@ package norelay
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"testing"
@@ -48,18 +49,10 @@ func TestNoRelay(t *testing.T) {
 			}
 		}
 
-		ip, err := TestHelper.Kubectl(
-			"", "-n", ns, "get", "po", "-l", "app=server-relay",
-			"-o", "jsonpath='{range .items[*]}{@.status.podIP}{end}'",
-		)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "failed to retrieve server-relay IP",
-				"failed to retrieve server-relay IP: %s\n%s", err, ip)
-		}
-		relayIP := strings.Trim(ip, "'")
+		relayIPPort := getPodIPPort(t, ns, "app=server-relay", 4140)
 		o, err := TestHelper.Kubectl(
 			"", "-n", ns, "exec", "deploy/client",
-			"--", "curl", "-f", "-H", "l5d-dst-override: server-hello."+ns+".svc.cluster.local:8080", "http://"+relayIP+":4140",
+			"--", "curl", "-f", "-H", "l5d-dst-override: server-hello."+ns+".svc.cluster.local:8080", "http://"+relayIPPort,
 		)
 		if err == nil || err.Error() != "exit status 22" {
 			testutil.AnnotatedFatalf(t, "no error or unexpected error returned",
@@ -83,7 +76,7 @@ func TestRelay(t *testing.T) {
 	deployments["server-relay"] = strings.ReplaceAll(
 		deployments["server-relay"],
 		"127.0.0.1:4140,[::1]:4140",
-		"0.0.0.0:4140",
+		"'[::]:4140'",
 	)
 	TestHelper.WithDataPlaneNamespace(ctx, "relay-test", map[string]string{}, t, func(t *testing.T, ns string) {
 		for name, res := range deployments {
@@ -96,12 +89,12 @@ func TestRelay(t *testing.T) {
 			}
 		}
 		waitForPods(t, ctx, ns, deployments)
-		relayIP := getPodIp(t, ns, "app=server-relay")
+		relayIPPort := getPodIPPort(t, ns, "app=server-relay", 4140)
 
 		// Send a request to the outbound proxy port with a header that should route internally.
 		o, err := TestHelper.Kubectl(
 			"", "-n", ns, "exec", "deploy/client",
-			"--", "curl", "-fsv", "-H", "l5d-dst-override: server-hello."+ns+".svc.cluster.local:8080", "http://"+relayIP+":4140",
+			"--", "curl", "-fsv", "-H", "l5d-dst-override: server-hello."+ns+".svc.cluster.local:8080", "http://"+relayIPPort,
 		)
 		if err != nil {
 			log, err := TestHelper.Kubectl(
@@ -153,7 +146,7 @@ func getDeployments(t *testing.T) map[string]string {
 	return deploys
 }
 
-func getPodIp(t *testing.T, ns, selector string) string {
+func getPodIPPort(t *testing.T, ns, selector string, port int) string {
 	t.Helper()
 	ip, err := TestHelper.Kubectl(
 		"", "-n", ns, "get", "po", "-l", selector,
@@ -163,7 +156,16 @@ func getPodIp(t *testing.T, ns, selector string) string {
 		testutil.AnnotatedFatalf(t, "failed to retrieve pod IP",
 			"failed to retrieve pod IP: %s", err)
 	}
-	return strings.Trim(ip, "'")
+	ip = strings.Trim(ip, "'")
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		testutil.AnnotatedFatalf(t, "invalid pod IP",
+			"invalid pod IP: %s", err)
+	}
+	if parsedIP.To4() != nil {
+		return fmt.Sprintf("%s:%d", ip, port)
+	}
+	return fmt.Sprintf("[%s]:%d", ip, port)
 }
 
 func waitForPods(t *testing.T, ctx context.Context, ns string, deployments map[string]string) {
