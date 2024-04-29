@@ -941,14 +941,14 @@ dependencies = [
 [[package]]
 name = "k8s-gateway-api"
 version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ae4cd917edb1eba13a1413b46b98d292fd10919d86a573311a564ee4f208f44"
+source = "git+https://github.com/the-wondersmith/k8s-gateway-api-rs?branch=feat-grpcroute-support#436a171670c02e6034f2f4183e6ade11acbb9640"
 dependencies = [
  "k8s-openapi",
  "kube",
  "schemars",
  "serde",
  "serde_json",
+ "thiserror",
 ]
 
 [[package]]
@@ -1282,7 +1282,6 @@ dependencies = [
  "ahash",
  "anyhow",
  "chrono",
- "k8s-gateway-api",
  "kubert",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
