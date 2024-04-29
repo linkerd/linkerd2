@@ -312,7 +312,6 @@ jobs:
           - helm-upgrade
           - uninstall
           - upgrade-edge
-          - upgrade-stable
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
