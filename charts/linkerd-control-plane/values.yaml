@@ -238,6 +238,20 @@ proxy:
       # -- The maximum duration for a response stream (i.e. before it will be
       # reinitialized).
       lifetime: "1h"
+  inbound:
+    server:
+      http2:
+        # -- The interval at which PINGs are issued to remote HTTP/2 clients.
+        keepAliveInterval: "10s"
+        # -- The timeout within which keep-alive PINGs must be acknowledged on inbound HTTP/2 connections.
+        keepAliveTimeout: "3s"
+  outbound:
+    server:
+      http2:
+        # -- The interval at which PINGs are issued to local application HTTP/2 clients.
+        keepAliveInterval: "10s"
+        # -- The timeout within which keep-alive PINGs must be acknowledged on outbound HTTP/2 connections.
+        keepAliveTimeout: "3s"
 
 # proxy-init configuration
 proxyInit:
