@@ -125,7 +125,7 @@ func TestGateways(t *testing.T) {
 	}
 }
 
-// TestCheckAfterRepairEndpoints calls `linkerd mc check` again after 1 minute,
+// TestCheckGatewayAfterRepairEndpoints calls `linkerd mc check` again after 1 minute,
 // so that the RepairEndpoints event has already been processed, making sure
 // that resyncing didn't break things.
 func TestCheckGatewayAfterRepairEndpoints(t *testing.T) {
