@@ -206,6 +206,9 @@ spec:
         - -identity-trust-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
         - -default-opaque-ports={{.Values.proxy.opaquePorts}}
         - -enable-pprof={{.Values.enablePprof | default false}}
+        {{- if (.Values.destinationController).meshedHttp2ClientProtobuf }}
+        - --meshed-http2-client-params={{ toJson .Values.destinationController.meshedHttp2ClientProtobuf }}
+        {{- end }}
         {{- range (.Values.destinationController).additionalArgs }}
         - {{ . }}
         {{- end }}

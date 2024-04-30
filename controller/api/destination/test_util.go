@@ -13,6 +13,7 @@ import (
 )
 
 func makeServer(t *testing.T) *server {
+	t.Helper()
 	srv, _ := getServerWithClient(t)
 	return srv
 }
@@ -100,6 +101,58 @@ spec:
       name: linkerd-proxy`,
 		`
 apiVersion: v1
+kind: Service
+metadata:
+  name: name2
+  namespace: ns
+spec:
+  type: LoadBalancer
+  clusterIP: 172.17.99.0
+  clusterIPs:
+  - 172.17.99.0
+  - 2001:db8::99
+  ports:
+  - port: 8989`,
+		`
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: name2-ipv4
+  namespace: ns
+  labels:
+    kubernetes.io/service-name: name2
+addressType: IPv4
+endpoints:
+- addresses:
+  - 172.17.0.13
+  targetRef:
+    kind: Pod
+    name: name2-2
+    namespace: ns
+ports:
+- port: 8989
+  protocol: TCP`,
+		`
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: name2-ipv6
+  namespace: ns
+  labels:
+    kubernetes.io/service-name: name2
+addressType: IPv6
+endpoints:
+- addresses:
+  - 2001:db8::78
+  targetRef:
+    kind: Pod
+    name: name2-2
+    namespace: ns
+ports:
+- port: 8989
+  protocol: TCP`,
+		`
+apiVersion: v1
 kind: Pod
 metadata:
   name: name2-2
@@ -108,7 +161,8 @@ status:
   phase: Succeeded
   podIP: 172.17.0.13
   podIPs:
-  - ip: 172.17.0.13`,
+  - ip: 172.17.0.13
+  - ip: 2001:db8::78`,
 		`
 apiVersion: v1
 kind: Pod
@@ -876,6 +930,7 @@ metadata:
 		true,
 		true,  // enableEndpointFiltering
 		false, // extEndpointZoneWeights
+		nil,   // meshedHttp2ClientParams
 		"service-name.service-ns",
 		"test-123",
 		map[uint32]struct{}{},

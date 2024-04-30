@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	gonet "net"
+	"reflect"
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/ptypes/duration"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
@@ -108,6 +110,90 @@ func TestGet(t *testing.T) {
 
 			if len(stream.updates) != 0 {
 				t.Fatalf("Expected 1 update but got %d: %v", 1+len(stream.updates), stream.updates)
+			}
+		case err := <-errs:
+			t.Fatalf("Got error: %s", err)
+		}
+	})
+
+	t.Run("Sets meshed HTTP/2 client params", func(t *testing.T) {
+		server := makeServer(t)
+		http2Params := pb.Http2ClientParams{
+			KeepAlive: &pb.Http2ClientParams_KeepAlive{
+				Timeout:  &duration.Duration{Seconds: 10},
+				Interval: &duration.Duration{Seconds: 20},
+			},
+		}
+		server.config.MeshedHttp2ClientParams = &http2Params
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := &bufferingGetStream{
+			updates:          make(chan *pb.Update, 50),
+			MockServerStream: util.NewMockServerStream(),
+		}
+		defer stream.Cancel()
+		errs := make(chan error)
+
+		// server.Get blocks until the grpc stream is complete so we call it
+		// in a goroutine and watch stream.updates for updates.
+		go func() {
+			err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", fullyQualifiedName, port)}, stream)
+			if err != nil {
+				errs <- err
+			}
+		}()
+
+		select {
+		case update := <-stream.updates:
+			add, ok := update.GetUpdate().(*pb.Update_Add)
+			if !ok {
+				t.Fatalf("Update expected to be an add, but was %+v", update)
+			}
+			addr := add.Add.Addrs[0]
+			if !reflect.DeepEqual(addr.GetHttp2(), &http2Params) {
+				t.Fatalf("Expected HTTP/2 client params to be %v, but got %v", &http2Params, addr.GetHttp2())
+			}
+		case err := <-errs:
+			t.Fatalf("Got error: %s", err)
+		}
+	})
+
+	t.Run("Does not set unmeshed HTTP/2 client params", func(t *testing.T) {
+		server := makeServer(t)
+		http2Params := pb.Http2ClientParams{
+			KeepAlive: &pb.Http2ClientParams_KeepAlive{
+				Timeout:  &duration.Duration{Seconds: 10},
+				Interval: &duration.Duration{Seconds: 20},
+			},
+		}
+		server.config.MeshedHttp2ClientParams = &http2Params
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := &bufferingGetStream{
+			updates:          make(chan *pb.Update, 50),
+			MockServerStream: util.NewMockServerStream(),
+		}
+		defer stream.Cancel()
+		errs := make(chan error)
+
+		// server.Get blocks until the grpc stream is complete so we call it
+		// in a goroutine and watch stream.updates for updates.
+		go func() {
+			err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", "name2.ns.svc.mycluster.local", port)}, stream)
+			if err != nil {
+				errs <- err
+			}
+		}()
+
+		select {
+		case update := <-stream.updates:
+			add, ok := update.GetUpdate().(*pb.Update_Add)
+			if !ok {
+				t.Fatalf("Update expected to be an add, but was %+v", update)
+			}
+			addr := add.Add.Addrs[0]
+			if addr.GetHttp2() != nil {
+				t.Fatalf("Expected HTTP/2 client params to be nil, but got %v", addr.GetHttp2())
 			}
 		case err := <-errs:
 			t.Fatalf("Got error: %s", err)
@@ -466,6 +552,13 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with endpoint when using pod IP", func(t *testing.T) {
 		server := makeServer(t)
+		http2Params := pb.Http2ClientParams{
+			KeepAlive: &pb.Http2ClientParams_KeepAlive{
+				Timeout:  &duration.Duration{Seconds: 10},
+				Interval: &duration.Duration{Seconds: 20},
+			},
+		}
+		server.config.MeshedHttp2ClientParams = &http2Params
 		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, podIP1, port, "ns:ns")
@@ -505,6 +598,9 @@ func TestGetProfiles(t *testing.T) {
 		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
+		}
+		if !reflect.DeepEqual(first.Endpoint.GetHttp2(), &http2Params) {
+			t.Fatalf("Expected HTTP/2 client params to be %v, but got %v", &http2Params, first.Endpoint.GetHttp2())
 		}
 	})
 
@@ -554,6 +650,13 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with endpoint when using externalworkload IP", func(t *testing.T) {
 		server := makeServer(t)
+		http2Params := pb.Http2ClientParams{
+			KeepAlive: &pb.Http2ClientParams_KeepAlive{
+				Timeout:  &duration.Duration{Seconds: 10},
+				Interval: &duration.Duration{Seconds: 20},
+			},
+		}
+		server.config.MeshedHttp2ClientParams = &http2Params
 		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, externalWorkloadIP, port, "ns:ns")
@@ -594,6 +697,9 @@ func TestGetProfiles(t *testing.T) {
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
 		}
+		if !reflect.DeepEqual(first.Endpoint.GetHttp2(), &http2Params) {
+			t.Fatalf("Expected HTTP/2 client params to be %v, but got %v", &http2Params, first.Endpoint.GetHttp2())
+		}
 	})
 
 	t.Run("Return default profile when IP does not map to service or pod", func(t *testing.T) {
@@ -622,6 +728,9 @@ func TestGetProfiles(t *testing.T) {
 
 		if profile.Endpoint.GetProtocolHint().GetOpaqueTransport() != nil {
 			t.Fatalf("Expected no opaque transport but found one")
+		}
+		if profile.GetEndpoint().GetHttp2() != nil {
+			t.Fatalf("Expected no HTTP/2 client parameters but found one")
 		}
 	})
 
@@ -1060,6 +1169,7 @@ func TestTokenStructure(t *testing.T) {
 }
 
 func updateAddAddress(t *testing.T, update *pb.Update) []string {
+	t.Helper()
 	add, ok := update.GetUpdate().(*pb.Update_Add)
 	if !ok {
 		t.Fatalf("Update expected to be an add, but was %+v", update)

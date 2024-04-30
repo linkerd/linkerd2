@@ -59,6 +59,8 @@ type (
 		LinkerdVersion               string                 `json:"linkerdVersion"`
 		RevisionHistoryLimit         uint                   `json:"revisionHistoryLimit"`
 
+		DestinationController map[string]interface{} `json:"destinationController"`
+
 		PodAnnotations    map[string]string `json:"podAnnotations"`
 		PodLabels         map[string]string `json:"podLabels"`
 		PriorityClassName string            `json:"priorityClassName"`
