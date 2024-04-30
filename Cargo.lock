@@ -941,14 +941,13 @@ dependencies = [
 [[package]]
 name = "k8s-gateway-api"
 version = "0.15.0"
-source = "git+https://github.com/the-wondersmith/k8s-gateway-api-rs?branch=feat-grpcroute-support#436a171670c02e6034f2f4183e6ade11acbb9640"
+source = "git+https://github.com/the-wondersmith/k8s-gateway-api-rs?branch=feat-grpcroute-support#c2ef584565dd1e775edf64b82c066329d214df39"
 dependencies = [
  "k8s-openapi",
  "kube",
  "schemars",
  "serde",
  "serde_json",
- "thiserror",
 ]
 
 [[package]]
