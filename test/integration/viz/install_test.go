@@ -84,6 +84,10 @@ func TestInstallVizHA(t *testing.T) {
 		"--ha",
 	}
 
+	if TestHelper.NativeSidecar() {
+		cmd = append(cmd, "--set", "proxy.nativeSidecar=true")
+	}
+
 	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
