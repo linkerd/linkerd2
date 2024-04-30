@@ -12,7 +12,7 @@ testdir="$bindir"/../test/integration
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep viz external helm-upgrade uninstall upgrade-edge default-policy-deny rsa-ca)
+export default_test_names=(deep deep-native-sidecar viz external helm-upgrade uninstall upgrade-edge default-policy-deny rsa-ca)
 export external_resource_test_names=(external-resources)
 export all_test_names=(cluster-domain cni-calico-deep multicluster "${default_test_names[*]}" "${external_resource_test_names[*]}")
 images_load_default=(proxy controller policy-controller web metrics-api tap)
@@ -23,7 +23,7 @@ tests_usage() {
 
 Optionally specify a test with the --name flag: [${all_test_names[*]}]
 
-Note: The cluster-domain, cni-calico-deep and multicluster tests require a custom cluster configuration (see bin/_test-helpers.sh)
+Note: The cluster-domain, deep-native-sidecar cni-calico-deep and multicluster tests require a custom cluster configuration (see bin/_test-helpers.sh)
 
 Usage:
     ${progname} [--images docker|archive|skip] [--name test-name] [--skip-cluster-create] /path/to/linkerd
@@ -442,6 +442,10 @@ run_multicluster_test() {
 
 run_deep_test() {
   run_test "$testdir/deep/..."
+}
+
+run_deep-native-sidecar_test() {
+  run_test "$testdir/deep/..." --native-sidecar
 }
 
 run_default-policy-deny_test() {
