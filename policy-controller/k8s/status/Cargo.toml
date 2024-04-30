@@ -11,7 +11,7 @@ anyhow = "1"
 # Fix for https://github.com/chronotope/chrono/issues/602
 chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
 k8s-gateway-api = "0.15"
-kubert = { version = "0.21.1", default-features = false, features = [
+kubert = { version = "0.21", default-features = false, features = [
     "index",
     "lease",
 ] }
