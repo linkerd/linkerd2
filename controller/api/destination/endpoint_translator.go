@@ -43,6 +43,8 @@ type (
 		enableEndpointFiltering,
 		extEndpointZoneWeights bool
 
+		meshedHTTP2ClientParams *pb.Http2ClientParams
+
 		availableEndpoints watcher.AddressSet
 		filteredSnapshot   watcher.AddressSet
 		stream             pb.Destination_GetServer
@@ -83,6 +85,7 @@ func newEndpointTranslator(
 	enableH2Upgrade,
 	enableEndpointFiltering,
 	extEndpointZoneWeights bool,
+	meshedHTTP2ClientParams *pb.Http2ClientParams,
 	service string,
 	srcNodeName string,
 	defaultOpaquePorts map[uint32]struct{},
@@ -113,6 +116,8 @@ func newEndpointTranslator(
 		enableH2Upgrade,
 		enableEndpointFiltering,
 		extEndpointZoneWeights,
+		meshedHTTP2ClientParams,
+
 		availableEndpoints,
 		filteredSnapshot,
 		stream,
@@ -375,14 +380,15 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 		)
 		if address.Pod != nil {
 			opaquePorts = watcher.GetAnnotatedOpaquePorts(address.Pod, et.defaultOpaquePorts)
-			wa, err = createWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS)
+			wa, err = createWeightedAddr(address, opaquePorts,
+				et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.meshedHTTP2ClientParams)
 			if err != nil {
 				et.log.Errorf("Failed to translate Pod endpoints to weighted addr: %s", err)
 				continue
 			}
 		} else if address.ExternalWorkload != nil {
 			opaquePorts = watcher.GetAnnotatedOpaquePortsForExternalWorkload(address.ExternalWorkload, et.defaultOpaquePorts)
-			wa, err = createWeightedAddrForExternalWorkload(address, opaquePorts)
+			wa, err = createWeightedAddrForExternalWorkload(address, opaquePorts, et.meshedHTTP2ClientParams)
 			if err != nil {
 				et.log.Errorf("Failed to translate ExternalWorkload endpoints to weighted addr: %s", err)
 				continue
@@ -424,6 +430,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 						},
 					}
 				}
+				wa.Http2 = et.meshedHTTP2ClientParams
 			}
 		}
 
@@ -488,6 +495,7 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 func createWeightedAddrForExternalWorkload(
 	address watcher.Address,
 	opaquePorts map[uint32]struct{},
+	http2 *pb.Http2ClientParams,
 ) (*pb.WeightedAddr, error) {
 	tcpAddr, err := toAddr(address)
 	if err != nil {
@@ -508,6 +516,8 @@ func createWeightedAddrForExternalWorkload(
 	}
 
 	weightedAddr.ProtocolHint = &pb.ProtocolHint{}
+	weightedAddr.Http2 = http2
+
 	_, opaquePort := opaquePorts[address.Port]
 	// If address is set as opaque by a Server, or its port is set as
 	// opaque by annotation or default value, then set the hinted protocol to
@@ -559,6 +569,7 @@ func createWeightedAddr(
 	enableH2Upgrade bool,
 	identityTrustDomain string,
 	controllerNS string,
+	meshedHttp2 *pb.Http2ClientParams,
 ) (*pb.WeightedAddr, error) {
 	tcpAddr, err := toAddr(address)
 	if err != nil {
@@ -593,6 +604,7 @@ func createWeightedAddr(
 	_, isSkippedInboundPort := skippedInboundPorts[address.Port]
 
 	if controllerNSLabel != "" && !isSkippedInboundPort {
+		weightedAddr.Http2 = meshedHttp2
 		weightedAddr.ProtocolHint = &pb.ProtocolHint{}
 
 		_, opaquePort := opaquePorts[address.Port]
