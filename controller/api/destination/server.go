@@ -34,6 +34,8 @@ type (
 		EnableEndpointSlices,
 		ExtEndpointZoneWeights bool
 
+		MeshedHttp2ClientParams *pb.Http2ClientParams
+
 		DefaultOpaquePorts map[uint32]struct{}
 	}
 
@@ -187,6 +189,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			s.config.EnableH2Upgrade,
 			false, // Disable endpoint filtering for remote discovery.
 			s.config.ExtEndpointZoneWeights,
+			s.config.MeshedHttp2ClientParams,
 			fmt.Sprintf("%s.%s.svc.%s:%d", remoteSvc, service.Namespace, remoteConfig.ClusterDomain, port),
 			token.NodeName,
 			s.config.DefaultOpaquePorts,
@@ -218,6 +221,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			s.config.EnableH2Upgrade,
 			true,
 			s.config.ExtEndpointZoneWeights,
+			s.config.MeshedHttp2ClientParams,
 			dest.GetPath(),
 			token.NodeName,
 			s.config.DefaultOpaquePorts,
@@ -509,6 +513,7 @@ func (s *server) subscribeToEndpointProfile(
 		s.config.ControllerNS,
 		s.config.IdentityTrustDomain,
 		s.config.DefaultOpaquePorts,
+		s.config.MeshedHttp2ClientParams,
 		stream,
 		streamEnd,
 		log,

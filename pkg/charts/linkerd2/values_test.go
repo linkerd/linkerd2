@@ -89,6 +89,15 @@ func TestNewValues(t *testing.T) {
 			ServiceMirror: &PodMonitorComponent{Enabled: true},
 			Proxy:         &PodMonitorComponent{Enabled: true},
 		},
+		DestinationController: map[string]interface{}{
+			"meshedHttp2ClientProtobuf": map[string]interface{}{
+				"keep_alive": map[string]interface{}{
+					"interval":   map[string]interface{}{"seconds": 10.0},
+					"timeout":    map[string]interface{}{"seconds": 3.0},
+					"while_idle": true,
+				},
+			},
+		},
 		PolicyController: &PolicyController{
 			Image: &Image{
 				Name: "cr.l5d.io/linkerd/policy-controller",
