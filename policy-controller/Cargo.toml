@@ -47,7 +47,7 @@ default-features = false
 features = ["admission", "derive"]
 
 [dependencies.kubert]
-version = "0.21.1"
+version = "0.21.2"
 default-features = false
 features = [
     "clap",
