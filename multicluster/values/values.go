@@ -8,6 +8,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -37,6 +38,9 @@ type Values struct {
 	TargetClusterName              string   `json:"targetClusterName"`
 	EnablePodAntiAffinity          bool     `json:"enablePodAntiAffinity"`
 	RevisionHistoryLimit           uint32   `json:"revisionHistoryLimit"`
+
+	ServiceMirrorAdditionalEnv   []corev1.EnvVar `json:"serviceMirrorAdditionalEnv"`
+	ServiceMirrorExperimentalEnv []corev1.EnvVar `json:"serviceMirrorExperimentalEnv"`
 }
 
 // Gateway contains all options related to the Gateway Service
