@@ -535,6 +535,7 @@ data:
     enableH2Upgrade: true
     enablePodAntiAffinity: true
     enablePodDisruptionBudget: true
+    heartbeat: null
     heartbeatResources:
       cpu:
         limit: ""
@@ -548,6 +549,8 @@ data:
     heartbeatSchedule: 1 2 3 4 5
     highAvailability: true
     identity:
+      additionalEnv: null
+      experimentalEnv: null
       externalCA: false
       issuer:
         clockSkewAllowance: 20s
@@ -751,8 +754,10 @@ data:
         name: linkerd-proxy-init-xtables-lock
         readOnly: false
     proxyInjector:
+      additionalEnv: null
       caBundle: test-proxy-injector-ca-bundle
       crtPEM: ""
+      experimentalEnv: null
       externalSecret: true
       injectCaFrom: ""
       injectCaFromSecret: ""
@@ -774,6 +779,7 @@ data:
         limit: 250Mi
         request: 50Mi
     revisionHistoryLimit: 10
+    spValidator: null
     tap:
       caBundle: test-tap-ca-bundle
       externalSecret: true
