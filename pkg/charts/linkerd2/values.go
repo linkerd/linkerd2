@@ -60,6 +60,8 @@ type (
 		RevisionHistoryLimit         uint                   `json:"revisionHistoryLimit"`
 
 		DestinationController map[string]interface{} `json:"destinationController"`
+		Heartbeat             map[string]interface{} `json:"heartbeat"`
+		SPValidator           map[string]interface{} `json:"spValidator"`
 
 		PodAnnotations    map[string]string `json:"podAnnotations"`
 		PodLabels         map[string]string `json:"podLabels"`
@@ -72,7 +74,7 @@ type (
 		NetworkValidator *NetworkValidator `json:"networkValidator"`
 		Identity         *Identity         `json:"identity"`
 		DebugContainer   *DebugContainer   `json:"debugContainer"`
-		ProxyInjector    *Webhook          `json:"proxyInjector"`
+		ProxyInjector    *ProxyInjector    `json:"proxyInjector"`
 		ProfileValidator *Webhook          `json:"profileValidator"`
 		PolicyValidator  *Webhook          `json:"policyValidator"`
 		NodeSelector     map[string]string `json:"nodeSelector"`
@@ -285,6 +287,9 @@ type (
 		ServiceAccountTokenProjection bool     `json:"serviceAccountTokenProjection"`
 		Issuer                        *Issuer  `json:"issuer"`
 		KubeAPI                       *KubeAPI `json:"kubeAPI"`
+
+		AdditionalEnv   []corev1.EnvVar `json:"additionalEnv"`
+		ExperimentalEnv []corev1.EnvVar `json:"experimentalEnv"`
 	}
 
 	// Issuer has the Helm variables of the identity issuer
@@ -299,6 +304,13 @@ type (
 	KubeAPI struct {
 		ClientQPS   float32 `json:"clientQPS"`
 		ClientBurst int     `json:"clientBurst"`
+	}
+
+	// ProxyInjector configures the proxy-injector webhook
+	ProxyInjector struct {
+		Webhook
+		AdditionalEnv   []corev1.EnvVar `json:"additionalEnv"`
+		ExperimentalEnv []corev1.EnvVar `json:"experimentalEnv"`
 	}
 
 	// Webhook Helm variables for a webhook
