@@ -11,6 +11,7 @@ use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_core as core;
+use linkerd_policy_controller_k8s_api::gateway as k8s_gateway_api;
 use linkerd_policy_controller_k8s_index as index;
 use serde::de::DeserializeOwned;
 use std::task;
