@@ -12,6 +12,7 @@ use linkerd_policy_controller::{
     grpc, inbound, index_list::IndexList, k8s, outbound, Admission, ClusterInfo, DefaultPolicy,
     InboundDiscover, IpNet, OutboundDiscover,
 };
+use linkerd_policy_controller_k8s_api::gateway as k8s_gateway_api;
 use linkerd_policy_controller_k8s_index::ports::parse_portset;
 use linkerd_policy_controller_k8s_status::{self as status};
 use prometheus_client::registry::Registry;
@@ -248,6 +249,13 @@ async fn main() -> Result<()> {
     tokio::spawn(
         kubert::index::namespaced(http_routes_indexes, gateway_http_routes)
             .instrument(info_span!("httproutes.gateway.networking.k8s.io")),
+    );
+
+    let gateway_grpc_routes =
+        runtime.watch_all::<k8s_gateway_api::GrpcRoute>(watcher::Config::default());
+    tokio::spawn(
+        kubert::index::namespaced(status_index.clone(), gateway_grpc_routes)
+            .instrument(info_span!("grpcroutes.gateway.networking.k8s.io")),
     );
 
     let services = runtime.watch_all::<k8s::Service>(watcher::Config::default());
