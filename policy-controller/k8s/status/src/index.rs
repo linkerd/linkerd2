@@ -107,7 +107,7 @@ impl ControllerMetrics {
     pub fn register(prom: &mut Registry) -> Self {
         let patch_succeeded = Counter::default();
         prom.register(
-            "patchs",
+            "patches",
             "Count of successful patch operations",
             patch_succeeded.clone(),
         );
