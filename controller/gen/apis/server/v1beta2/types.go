@@ -29,8 +29,8 @@ type Server struct {
 
 // ServerSpec specifies a Server resource.
 type ServerSpec struct {
-	PodSelector              *metav1.LabelSelector `json:"podSelector"`
-	ExternalWorkloadSelector *metav1.LabelSelector `json:"externalWorkloadSelector"`
+	PodSelector              *metav1.LabelSelector `json:"podSelector,omitempty"`
+	ExternalWorkloadSelector *metav1.LabelSelector `json:"externalWorkloadSelector,omitempty"`
 	Port                     intstr.IntOrString    `json:"port,omitempty"`
 	ProxyProtocol            string                `json:"proxyProtocol,omitempty"`
 }
