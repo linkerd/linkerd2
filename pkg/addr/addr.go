@@ -46,7 +46,7 @@ func PublicIPToString(ip *l5dNetPb.IPAddress) string {
 
 // ProxyAddressToString formats a Proxy API TCPAddress as a string.
 func ProxyAddressToString(addr *pb.TcpAddress) string {
-	vizIP := proxyToVizIPAddr(addr.GetIp())
+	vizIP := FromProxyAPI(addr.GetIp())
 	if vizIP == nil {
 		return ""
 	}
@@ -90,13 +90,13 @@ func ParsePublicIP(ip string) (*l5dNetPb.IPAddress, error) {
 	if err != nil {
 		return nil, err
 	}
-	return proxyToVizIPAddr(addr), nil
+	return FromProxyAPI(addr), nil
 }
 
 // NetToPublic converts a Proxy API TCPAddress to a Viz API
 // TCPAddress.
 func NetToPublic(net *pb.TcpAddress) *l5dNetPb.TcpAddress {
-	ip := proxyToVizIPAddr(net.GetIp())
+	ip := FromProxyAPI(net.GetIp())
 
 	return &l5dNetPb.TcpAddress{
 		Ip:   ip,
@@ -104,7 +104,9 @@ func NetToPublic(net *pb.TcpAddress) *l5dNetPb.TcpAddress {
 	}
 }
 
-func proxyToVizIPAddr(net *pb.IPAddress) *l5dNetPb.IPAddress {
+// FromProxyAPI casts an IPAddress from the linkerd2-proxy-api.go.net package
+// to the linkerd2.controller.gen.common.net package
+func FromProxyAPI(net *pb.IPAddress) *l5dNetPb.IPAddress {
 	switch ip := net.GetIp().(type) {
 	case *pb.IPAddress_Ipv6:
 		return &l5dNetPb.IPAddress{
