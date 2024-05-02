@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	gonet "net"
+	"net/netip"
 	"reflect"
 	"testing"
 	"time"
@@ -27,6 +28,8 @@ import (
 )
 
 const fullyQualifiedName = "name1.ns.svc.mycluster.local"
+const fullyQualifiedNameIPv6 = "name-ipv6.ns.svc.mycluster.local"
+const fullyQualifiedNameDual = "name-ds.ns.svc.mycluster.local"
 const fullyQualifiedNameOpaque = "name3.ns.svc.mycluster.local"
 const fullyQualifiedNameOpaqueService = "name4.ns.svc.mycluster.local"
 const fullyQualifiedNameSkipped = "name5.ns.svc.mycluster.local"
@@ -36,6 +39,7 @@ const clusterIPv6 = "2001:db8::88"
 const clusterIPOpaque = "172.17.12.1"
 const podIP1 = "172.17.0.12"
 const podIP1v6 = "2001:db8::68"
+const podIPv6Dual = "2001:db8::94"
 const podIP2 = "172.17.0.13"
 const podIPOpaque = "172.17.0.14"
 const podIPSkipped = "172.17.0.15"
@@ -82,38 +86,16 @@ func TestGet(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns endpoints", func(t *testing.T) {
-		server := makeServer(t)
-		defer server.clusterStore.UnregisterGauges()
+	t.Run("Returns endpoints (IPv4)", func(t *testing.T) {
+		testReturnEndpoints(t, fullyQualifiedName, podIP1, port)
+	})
 
-		stream := &bufferingGetStream{
-			updates:          make(chan *pb.Update, 50),
-			MockServerStream: util.NewMockServerStream(),
-		}
-		defer stream.Cancel()
-		errs := make(chan error)
+	t.Run("Returns endpoints (IPv6)", func(t *testing.T) {
+		testReturnEndpoints(t, fullyQualifiedNameIPv6, podIP1v6, port)
+	})
 
-		// server.Get blocks until the grpc stream is complete so we call it
-		// in a goroutine and watch stream.updates for updates.
-		go func() {
-			err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", fullyQualifiedName, port)}, stream)
-			if err != nil {
-				errs <- err
-			}
-		}()
-
-		select {
-		case update := <-stream.updates:
-			if updateAddAddress(t, update)[0] != fmt.Sprintf("%s:%d", podIP1, port) {
-				t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, update)[0])
-			}
-
-			if len(stream.updates) != 0 {
-				t.Fatalf("Expected 1 update but got %d: %v", 1+len(stream.updates), stream.updates)
-			}
-		case err := <-errs:
-			t.Fatalf("Got error: %s", err)
-		}
+	t.Run("Returns endpoints (dual-stack)", func(t *testing.T) {
+		testReturnEndpoints(t, fullyQualifiedNameDual, podIPv6Dual, port)
 	})
 
 	t.Run("Sets meshed HTTP/2 client params", func(t *testing.T) {
@@ -494,7 +476,7 @@ func TestGetProfiles(t *testing.T) {
 		stream := profileStream(t, server, clusterIPv6, port, "")
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
-		if profile.FullyQualifiedName != fullyQualifiedName {
+		if profile.FullyQualifiedName != fullyQualifiedNameDual {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, profile.FullyQualifiedName)
 		}
 		if profile.OpaqueProtocol {
@@ -608,10 +590,10 @@ func TestGetProfiles(t *testing.T) {
 		server := makeServer(t)
 		defer server.clusterStore.UnregisterGauges()
 
-		stream := profileStream(t, server, podIP1v6, port, "ns:ns")
+		stream := profileStream(t, server, podIPv6Dual, port, "ns:ns")
 		defer stream.Cancel()
 
-		epAddr, err := toAddress(podIP1v6, port)
+		epAddr, err := toAddress(podIPv6Dual, port)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
 		}
@@ -1181,6 +1163,19 @@ func updateAddAddress(t *testing.T, update *pb.Update) []string {
 	return ips
 }
 
+func updateRemoveAddress(t *testing.T, update *pb.Update) []string {
+	t.Helper()
+	add, ok := update.GetUpdate().(*pb.Update_Remove)
+	if !ok {
+		t.Fatalf("Update expected to be a remove, but was %+v", update)
+	}
+	ips := []string{}
+	for _, ip := range add.Remove.Addrs {
+		ips = append(ips, addr.ProxyAddressToString(ip))
+	}
+	return ips
+}
+
 func toAddress(path string, port uint32) (*net.TcpAddress, error) {
 	ip, err := addr.ParseProxyIP(path)
 	if err != nil {
@@ -1196,7 +1191,6 @@ func TestIpWatcherGetSvcID(t *testing.T) {
 	name := "service"
 	namespace := "test"
 	clusterIP := "10.245.0.1"
-	clusterIPv6 := "2001:db8::68"
 	k8sConfigs := `
 apiVersion: v1
 kind: Service
@@ -1208,7 +1202,7 @@ spec:
   clusterIP: 10.245.0.1
   clusterIPs:
   - 10.245.0.1
-  - 2001:db8::68
+  - 2001:db8::88
   ports:
   - port: 1234`
 
@@ -1262,6 +1256,57 @@ spec:
 			t.Fatalf("Expected not to find service mapped to [%s]", badClusterIP)
 		}
 	})
+}
+
+func testReturnEndpoints(t *testing.T, fqdn, ip string, port uint32) {
+	t.Helper()
+
+	server := makeServer(t)
+	defer server.clusterStore.UnregisterGauges()
+
+	stream := &bufferingGetStream{
+		updates:          make(chan *pb.Update, 50),
+		MockServerStream: util.NewMockServerStream(),
+	}
+	defer stream.Cancel()
+
+	testReturnEndpointsForServer(t, server, stream, fqdn, ip, port)
+}
+
+func testReturnEndpointsForServer(t *testing.T, server *server, stream *bufferingGetStream, fqdn, ip string, port uint32) {
+	t.Helper()
+
+	errs := make(chan error)
+	// server.Get blocks until the grpc stream is complete so we call it
+	// in a goroutine and watch stream.updates for updates.
+	go func() {
+		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", fqdn, port)}, stream)
+		if err != nil {
+			errs <- err
+		}
+	}()
+
+	addr := fmt.Sprintf("%s:%d", ip, port)
+	parsedIP, err := netip.ParseAddr(ip)
+	if err != nil {
+		t.Fatalf("Invalid IP [%s]: %s", ip, err)
+	}
+	if parsedIP.Is6() {
+		addr = fmt.Sprintf("[%s]:%d", ip, port)
+	}
+
+	select {
+	case update := <-stream.updates:
+		if updateAddAddress(t, update)[0] != addr {
+			t.Fatalf("Expected %s but got %s", addr, updateAddAddress(t, update)[0])
+		}
+
+		if len(stream.updates) != 0 {
+			t.Fatalf("Expected 1 update but got %d: %v", 1+len(stream.updates), stream.updates)
+		}
+	case err := <-errs:
+		t.Fatalf("Got error: %s", err)
+	}
 }
 
 func assertSingleProfile(t *testing.T, updates []*pb.DestinationProfile) *pb.DestinationProfile {
