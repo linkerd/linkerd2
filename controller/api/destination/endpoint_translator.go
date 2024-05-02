@@ -2,9 +2,8 @@ package destination
 
 import (
 	"fmt"
+	"net/netip"
 	"reflect"
-	"strconv"
-	"strings"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
@@ -686,12 +685,12 @@ func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
 			if envVar.Name != envInboundListenAddr {
 				continue
 			}
-			addr := strings.Split(envVar.Value, ":")
-			port, err := strconv.ParseUint(addr[1], 10, 32)
+			addrPort, err := netip.ParseAddrPort(envVar.Value)
 			if err != nil {
 				return 0, fmt.Errorf("failed to parse inbound port for proxy container: %w", err)
 			}
-			return uint32(port), nil
+
+			return uint32(addrPort.Port()), nil
 		}
 	}
 	return 0, fmt.Errorf("failed to find %s environment variable in any container for given pod spec", envInboundListenAddr)
