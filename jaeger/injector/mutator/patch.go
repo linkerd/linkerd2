@@ -44,13 +44,13 @@ const tpl = `[
     "value": {
        "downwardAPI": {
          "items": [
-     {
-             "fieldRef": {
-               "fieldPath": "metadata.labels"
-       },
-             "path": "labels"
-     }
-   ]
+            {
+              "fieldRef": {
+                "fieldPath": "metadata.labels"
+              },
+              "path": "labels"
+            }
+          ]
        },
        "name": "linkerd-podinfo"
      }
