@@ -12,7 +12,3 @@ members = [
 
 [profile.release]
 lto = "thin"
-
-# FIXME(the-wondersmith): For end-to-end testing before merging upstream changes.
-[patch.crates-io]
-k8s-gateway-api = { git = "https://github.com/the-wondersmith/k8s-gateway-api-rs", branch = "feat-grpcroute-support" }
