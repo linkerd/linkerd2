@@ -47,7 +47,7 @@ fn linkerd_route_accepted_after_server_create() {
         "NoMatchingParent",
     );
     let status = make_status(vec![parent_status]);
-    let patch = crate::index::make_patch(&id, status);
+    let patch = crate::index::make_patch(&id, status).unwrap();
 
     // The first update will be that the HTTPRoute is not accepted because the
     // Server has been created yet.
@@ -78,7 +78,7 @@ fn linkerd_route_accepted_after_server_create() {
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
     let status = make_status(vec![parent_status]);
-    let patch = crate::index::make_patch(&id, status);
+    let patch = crate::index::make_patch(&id, status).unwrap();
 
     // The second update will be that the HTTPRoute is accepted because the
     // Server has been created.
@@ -127,7 +127,7 @@ fn gateway_route_accepted_after_server_create() {
         "NoMatchingParent",
     );
     let status = make_status(vec![parent_status]);
-    let patch = crate::index::make_patch(&id, status);
+    let patch = crate::index::make_patch(&id, status).unwrap();
 
     // The first update will be that the HTTPRoute is not accepted because the
     // Server has been created yet.
@@ -158,7 +158,7 @@ fn gateway_route_accepted_after_server_create() {
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
     let status = make_status(vec![parent_status]);
-    let patch = crate::index::make_patch(&id, status);
+    let patch = crate::index::make_patch(&id, status).unwrap();
 
     // The second update will be that the HTTPRoute is accepted because the
     // Server has been created.
@@ -301,7 +301,7 @@ fn gateway_route_rejected_after_server_delete() {
     let parent_status =
         make_parent_status(&id.namespace, "srv-8080", "Accepted", "True", "Accepted");
     let status = make_status(vec![parent_status]);
-    let patch = crate::index::make_patch(&id, status);
+    let patch = crate::index::make_patch(&id, status).unwrap();
 
     // The second update will be that the HTTPRoute is accepted because the
     // Server has been created.
@@ -330,7 +330,7 @@ fn gateway_route_rejected_after_server_delete() {
     let parent_status =
         make_parent_status("ns-0", "srv-8080", "Accepted", "False", "NoMatchingParent");
     let status = make_status(vec![parent_status]);
-    let patch = crate::index::make_patch(&id, status);
+    let patch = crate::index::make_patch(&id, status).unwrap();
 
     // The third update will be that the HTTPRoute is not accepted because the
     // Server has been deleted.

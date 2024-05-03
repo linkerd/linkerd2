@@ -476,7 +476,7 @@ impl Index {
                     },
                 };
 
-                Some(make_patch(id, status))
+                make_patch(id, status)
             }
             (GATEWAY_API_GROUP, "HTTPRoute") => {
                 let status = k8s_gateway_api::HttpRouteStatus {
@@ -485,7 +485,7 @@ impl Index {
                     },
                 };
 
-                Some(make_patch(id, status))
+                make_patch(id, status)
             }
             (GATEWAY_API_GROUP, "GRPCRoute") => {
                 let status = k8s_gateway_api::GrpcRouteStatus {
@@ -494,7 +494,7 @@ impl Index {
                     },
                 };
 
-                Some(make_patch(id, status))
+                make_patch(id, status)
             }
             _ => None,
         }
@@ -809,22 +809,26 @@ impl Index {
 pub(crate) fn make_patch<RouteStatus>(
     route_id: &NamespaceGroupKindName,
     status: RouteStatus,
-) -> k8s_core_api::Patch<serde_json::Value>
+) -> Option<k8s_core_api::Patch<serde_json::Value>>
 where
     RouteStatus: serde::Serialize,
 {
-    let api_version = route_id
-        .api_version()
-        .expect("failed to create patch for route");
+    match route_id.api_version() {
+        Err(error) => {
+            tracing::error!(error = %error, "failed to create patch for route");
+            None
+        }
+        Ok(api_version) => {
+            let patch = serde_json::json!({
+                "apiVersion": api_version,
+                    "kind": &route_id.gkn.kind,
+                    "name": &route_id.gkn.name,
+                    "status": status,
+            });
 
-    let patch = serde_json::json!({
-        "apiVersion": api_version,
-            "kind": &route_id.gkn.kind,
-            "name": &route_id.gkn.name,
-            "status": status,
-    });
-
-    k8s_core_api::Patch::Merge(patch)
+            Some(k8s_core_api::Patch::Merge(patch))
+        }
+    }
 }
 
 fn now() -> DateTime<Utc> {
