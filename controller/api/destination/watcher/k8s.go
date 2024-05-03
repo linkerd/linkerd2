@@ -33,6 +33,9 @@ type (
 	ID struct {
 		Namespace string
 		Name      string
+
+		// Only used for PodID
+		IPFamily corev1.IPFamily
 	}
 	// ServiceID is the namespace-qualified name of a service.
 	ServiceID = ID

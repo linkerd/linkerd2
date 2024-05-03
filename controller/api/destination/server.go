@@ -32,6 +32,7 @@ type (
 
 		EnableH2Upgrade,
 		EnableEndpointSlices,
+		EnableIPv6,
 		ExtEndpointZoneWeights bool
 
 		MeshedHttp2ClientParams *pb.Http2ClientParams
@@ -188,6 +189,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			remoteConfig.TrustDomain,
 			s.config.EnableH2Upgrade,
 			false, // Disable endpoint filtering for remote discovery.
+			s.config.EnableIPv6,
 			s.config.ExtEndpointZoneWeights,
 			s.config.MeshedHttp2ClientParams,
 			fmt.Sprintf("%s.%s.svc.%s:%d", remoteSvc, service.Namespace, remoteConfig.ClusterDomain, port),
@@ -220,6 +222,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			s.config.IdentityTrustDomain,
 			s.config.EnableH2Upgrade,
 			true,
+			s.config.EnableIPv6,
 			s.config.ExtEndpointZoneWeights,
 			s.config.MeshedHttp2ClientParams,
 			dest.GetPath(),

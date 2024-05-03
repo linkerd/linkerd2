@@ -36,6 +36,8 @@ func Main(args []string) {
 		"Enable transparently upgraded HTTP2 connections among pods in the service mesh")
 	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", true,
 		"Enable the usage of EndpointSlice informers and resources")
+	enableIPv6 := cmd.Bool("enable-ipv6", true,
+		"Set to true to allow discovering IPv6 endpoints and preferring IPv6 when both IPv4 and IPv6 are available")
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
 	defaultOpaquePorts := cmd.String("default-opaque-ports", "", "configures the default opaque ports")
@@ -61,6 +63,10 @@ func Main(args []string) {
 		"HTTP/2 client parameters for meshed connections in JSON format")
 
 	flags.ConfigureAndParse(cmd, args)
+
+	if *enableIPv6 && !*enableEndpointSlices {
+		log.Fatal("If --enable-ipv6=true then --enable-endpoint-slices needs to be true")
+	}
 
 	var meshedHTTP2ClientParams *pb.Http2ClientParams
 	if meshedHTTP2ClientParamsJSON != nil && *meshedHTTP2ClientParamsJSON != "" {
@@ -167,6 +173,7 @@ func Main(args []string) {
 		DefaultOpaquePorts:      opaquePorts,
 		EnableH2Upgrade:         *enableH2Upgrade,
 		EnableEndpointSlices:    *enableEndpointSlices,
+		EnableIPv6:              *enableIPv6,
 		ExtEndpointZoneWeights:  *extEndpointZoneWeights,
 		MeshedHttp2ClientParams: meshedHTTP2ClientParams,
 	}
