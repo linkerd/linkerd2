@@ -130,7 +130,7 @@ extensions:
 
 ## Requirements
 
-Kubernetes: `>=1.22.0-0`
+Kubernetes: `>=1.25.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
