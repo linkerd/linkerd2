@@ -40,6 +40,8 @@ type (
 
 		enableH2Upgrade,
 		enableEndpointFiltering,
+		enableIPv6,
+
 		extEndpointZoneWeights bool
 
 		meshedHTTP2ClientParams *pb.Http2ClientParams
@@ -83,6 +85,7 @@ func newEndpointTranslator(
 	identityTrustDomain string,
 	enableH2Upgrade,
 	enableEndpointFiltering,
+	enableIPv6,
 	extEndpointZoneWeights bool,
 	meshedHTTP2ClientParams *pb.Http2ClientParams,
 	service string,
@@ -114,6 +117,7 @@ func newEndpointTranslator(
 		defaultOpaquePorts,
 		enableH2Upgrade,
 		enableEndpointFiltering,
+		enableIPv6,
 		extEndpointZoneWeights,
 		meshedHTTP2ClientParams,
 
@@ -239,6 +243,7 @@ func (et *endpointTranslator) noEndpoints(exists bool) {
 
 func (et *endpointTranslator) sendFilteredUpdate() {
 	filtered := et.filterAddresses()
+	filtered = et.selectAddressFamily(filtered)
 	diffAdd, diffRemove := et.diffEndpoints(filtered)
 
 	if len(diffAdd.Addresses) > 0 {
@@ -249,6 +254,33 @@ func (et *endpointTranslator) sendFilteredUpdate() {
 	}
 
 	et.filteredSnapshot = filtered
+}
+
+func (et *endpointTranslator) selectAddressFamily(addresses watcher.AddressSet) watcher.AddressSet {
+	filtered := make(map[watcher.ID]watcher.Address)
+	for id, addr := range addresses.Addresses {
+		if id.IPFamily == corev1.IPv6Protocol && !et.enableIPv6 {
+			continue
+		}
+
+		if id.IPFamily == corev1.IPv4Protocol && et.enableIPv6 {
+			// Only consider IPv4 address for which there's not already an IPv6
+			// alternative
+			altID := id
+			altID.IPFamily = corev1.IPv6Protocol
+			if _, ok := addresses.Addresses[altID]; ok {
+				continue
+			}
+		}
+
+		filtered[id] = addr
+	}
+
+	return watcher.AddressSet{
+		Addresses:          filtered,
+		Labels:             addresses.Labels,
+		LocalTrafficPolicy: addresses.LocalTrafficPolicy,
+	}
 }
 
 // filterAddresses is responsible for filtering endpoints based on the node's

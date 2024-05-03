@@ -3,11 +3,9 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"sort"
 	"strings"
@@ -17,6 +15,7 @@ import (
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	netPb "github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination"
+	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -218,10 +217,11 @@ func requestEndpointsFromAPI(client destinationPb.DestinationClient, token strin
 }
 
 func getIP(tcpAddr *netPb.TcpAddress) string {
-	ip := tcpAddr.GetIp().GetIpv4()
-	b := make([]byte, 4)
-	binary.BigEndian.PutUint32(b, ip)
-	return net.IP(b).String()
+	ip := addr.FromProxyAPI(tcpAddr.GetIp())
+	if ip == nil {
+		return ""
+	}
+	return addr.PublicIPToString(ip)
 }
 
 func renderEndpoints(endpoints endpointsInfo, options *endpointsOptions) string {

@@ -32,10 +32,11 @@ metadata:
   namespace: ns
 spec:
   type: LoadBalancer
+  ipFamilies:
+  - IPv4
   clusterIP: 172.17.12.0
   clusterIPs:
   - 172.17.12.0
-  - 2001:db8::88
   ports:
   - port: 8989`,
 		`
@@ -50,25 +51,6 @@ addressType: IPv4
 endpoints:
 - addresses:
   - 172.17.0.12
-  targetRef:
-    kind: Pod
-    name: name1-1
-    namespace: ns
-ports:
-- port: 8989
-  protocol: TCP`,
-		`
-apiVersion: discovery.k8s.io/v1
-kind: EndpointSlice
-metadata:
-  name: name1-ipv6
-  namespace: ns
-  labels:
-    kubernetes.io/service-name: name1
-addressType: IPv6
-endpoints:
-- addresses:
-  - 2001:db8::90
   targetRef:
     kind: Pod
     name: name1-1
@@ -92,7 +74,6 @@ status:
   podIP: 172.17.0.12
   podIPs:
   - ip: 172.17.0.12
-  - ip: 2001:db8::68
 spec:
   containers:
     - env:
@@ -752,7 +733,8 @@ ports:
 - port: 80
   protocol: TCP`,
 	}
-	extenalNameResources := []string{
+
+	externalNameResources := []string{
 		`
 apiVersion: v1
 kind: Service
@@ -762,6 +744,158 @@ metadata:
 spec:
   type: ExternalName
   externalName: linkerd.io`,
+	}
+
+	ipv6 := []string{
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name-ipv6
+  namespace: ns
+spec:
+  type: ClusterIP
+  ipFamilies:
+  - IPv6
+  clusterIP: 2001:db8::93
+  clusterIPs:
+  - 2001:db8::93
+  ports:
+  - port: 8989`,
+		`
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: name-ipv6
+  namespace: ns
+  labels:
+    kubernetes.io/service-name: name-ipv6
+addressType: IPv6
+endpoints:
+- addresses:
+  - 2001:db8::68
+  targetRef:
+    kind: Pod
+    name: name-ipv6
+    namespace: ns
+ports:
+- port: 8989
+  protocol: TCP`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  name: name-ipv6
+  namespace: ns
+status:
+  phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
+  podIP: 2001:db8::68
+  podIPs:
+  - ip: 2001:db8::68
+spec:
+  containers:
+    - env:
+      - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+        value: 0.0.0.0:4143
+      name: linkerd-proxy`,
+	}
+
+	dualStack := []string{
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name-ds
+  namespace: ns
+spec:
+  type: ClusterIP
+  ipFamilies:
+  - IPv4
+  - IPv6
+  clusterIP: 172.17.13.0
+  clusterIPs:
+  - 172.17.13.0
+  - 2001:db8::88
+  ports:
+  - port: 8989`,
+		`
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: name-ds-ipv4
+  namespace: ns
+  labels:
+    kubernetes.io/service-name: name-ds
+addressType: IPv4
+endpoints:
+- addresses:
+  - 172.17.0.19
+  targetRef:
+    kind: Pod
+    name: name-ds
+    namespace: ns
+ports:
+- port: 8989
+  protocol: TCP`,
+		`
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: name-ds-ipv6
+  namespace: ns
+  labels:
+    kubernetes.io/service-name: name-ds
+addressType: IPv6
+endpoints:
+- addresses:
+  - 2001:db8::94
+  targetRef:
+    kind: Pod
+    name: name-ds
+    namespace: ns
+ports:
+- port: 8989
+  protocol: TCP`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  name: name-ds
+  namespace: ns
+status:
+  phase: Running
+  conditions:
+  - type: Ready
+    status: "True"
+  podIP: 172.17.0.19
+  podIPs:
+  - ip: 172.17.0.19
+  - ip: 2001:db8::94
+spec:
+  containers:
+    - env:
+      - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+        value: 0.0.0.0:4143
+      name: linkerd-proxy`,
+		`
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: name-ds.ns.svc.mycluster.local
+  namespace: ns
+spec:
+  routes:
+  - name: route1
+    isRetryable: false
+    condition:
+      pathRegex: "/a/b/c"`,
 	}
 
 	res := append(meshedPodResources, clientSP...)
@@ -776,7 +910,9 @@ spec:
 	res = append(res, mirrorServiceResources...)
 	res = append(res, destinationCredentialsResources...)
 	res = append(res, externalWorkloads...)
-	res = append(res, extenalNameResources...)
+	res = append(res, externalNameResources...)
+	res = append(res, ipv6...)
+	res = append(res, dualStack...)
 	k8sAPI, l5dClient, err := k8s.NewFakeAPIWithL5dClient(res...)
 	if err != nil {
 		t.Fatalf("NewFakeAPIWithL5dClient returned an error: %s", err)
@@ -833,6 +969,7 @@ spec:
 		pb.UnimplementedDestinationServer{},
 		Config{
 			EnableH2Upgrade:     true,
+			EnableIPv6:          true,
 			ControllerNS:        "linkerd",
 			ClusterDomain:       "mycluster.local",
 			IdentityTrustDomain: "trust.domain",
@@ -927,6 +1064,7 @@ metadata:
 	translator := newEndpointTranslator(
 		"linkerd",
 		"trust.domain",
+		true,
 		true,
 		true,  // enableEndpointFiltering
 		false, // extEndpointZoneWeights
