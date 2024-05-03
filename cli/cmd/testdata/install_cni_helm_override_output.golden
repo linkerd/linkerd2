@@ -46,6 +46,7 @@ data:
   dest_cni_bin_dir: "/opt/cni/bin-test"
   # The CNI network configuration to install on each node. The special
   # values in this config will be automatically populated.
+  # iptables-mode and ipv6 flags are only considered as of linkerd-cni v1.4.0
   cni_network_config: |-
     {
       "name": "linkerd-cni",
@@ -66,7 +67,9 @@ data:
         "ports-to-redirect": [],
         "inbound-ports-to-ignore": ["4191","4190"],
         "simulate": false,
-        "use-wait-flag": true
+        "use-wait-flag": true,
+        "iptables-mode": "legacy",
+        "ipv6": true
       }
     }
 ---
@@ -81,6 +84,7 @@ metadata:
   annotations:
     linkerd.io/created-by: test-version
 spec:
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       k8s-app: linkerd-cni
@@ -112,7 +116,7 @@ spec:
       # script copies the files into place and then sleeps so
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
-        image: cr.l5d.io/linkerd/cni-plugin:v1.3.0
+        image: cr.l5d.io/linkerd/cni-plugin:v1.4.0
         imagePullPolicy: IfNotPresent
         env:
         - name: DEST_CNI_NET_DIR

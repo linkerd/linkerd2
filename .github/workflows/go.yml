@@ -8,8 +8,8 @@ jobs:
   meta:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-      - uses: tj-actions/changed-files@2d756ea4c53f7f6b397767d8723b3a10a9f35bf2
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
+      - uses: tj-actions/changed-files@0874344d6ebbaa00a27da73276ae7162fadcaf69
         id: changed
         with:
           files: |
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-22.04
     container: ghcr.io/linkerd/dev:v43-go
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just go-lint --verbose --timeout=10m
 
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-22.04
     container: ghcr.io/linkerd/dev:v43-go
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just go-fmt
 
@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-22.04
     container: ghcr.io/linkerd/dev:v43-go
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: just go-fetch
       - run: just go-test

@@ -2257,7 +2257,8 @@ func GetMeshedPodsIdentityData(ctx context.Context, api kubernetes.Interface, da
 	}
 	pods := []MeshedPodIdentityData{}
 	for _, pod := range podList.Items {
-		for _, containerSpec := range pod.Spec.Containers {
+		containers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
+		for _, containerSpec := range containers {
 			if containerSpec.Name != k8s.ProxyContainerName {
 				continue
 			}
@@ -2937,7 +2938,8 @@ func CheckIfDataPlanePodsExist(pods []corev1.Pod) error {
 }
 
 func containsProxy(pod corev1.Pod) bool {
-	for _, containerSpec := range pod.Spec.Containers {
+	containers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
+	for _, containerSpec := range containers {
 		if containerSpec.Name == k8s.ProxyContainerName {
 			return true
 		}

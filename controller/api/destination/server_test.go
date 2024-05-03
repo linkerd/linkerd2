@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	gonet "net"
+	"net/netip"
+	"reflect"
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/ptypes/duration"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
@@ -25,16 +28,18 @@ import (
 )
 
 const fullyQualifiedName = "name1.ns.svc.mycluster.local"
+const fullyQualifiedNameIPv6 = "name-ipv6.ns.svc.mycluster.local"
+const fullyQualifiedNameDual = "name-ds.ns.svc.mycluster.local"
 const fullyQualifiedNameOpaque = "name3.ns.svc.mycluster.local"
 const fullyQualifiedNameOpaqueService = "name4.ns.svc.mycluster.local"
 const fullyQualifiedNameSkipped = "name5.ns.svc.mycluster.local"
 const fullyQualifiedPodDNS = "pod-0.statefulset-svc.ns.svc.mycluster.local"
-const fullyQualifiedNamePolicy = "policy-test.ns.svc.mycluster.local"
 const clusterIP = "172.17.12.0"
 const clusterIPv6 = "2001:db8::88"
 const clusterIPOpaque = "172.17.12.1"
 const podIP1 = "172.17.0.12"
 const podIP1v6 = "2001:db8::68"
+const podIPv6Dual = "2001:db8::94"
 const podIP2 = "172.17.0.13"
 const podIPOpaque = "172.17.0.14"
 const podIPSkipped = "172.17.0.15"
@@ -81,8 +86,27 @@ func TestGet(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns endpoints", func(t *testing.T) {
+	t.Run("Returns endpoints (IPv4)", func(t *testing.T) {
+		testReturnEndpoints(t, fullyQualifiedName, podIP1, port)
+	})
+
+	t.Run("Returns endpoints (IPv6)", func(t *testing.T) {
+		testReturnEndpoints(t, fullyQualifiedNameIPv6, podIP1v6, port)
+	})
+
+	t.Run("Returns endpoints (dual-stack)", func(t *testing.T) {
+		testReturnEndpoints(t, fullyQualifiedNameDual, podIPv6Dual, port)
+	})
+
+	t.Run("Sets meshed HTTP/2 client params", func(t *testing.T) {
 		server := makeServer(t)
+		http2Params := pb.Http2ClientParams{
+			KeepAlive: &pb.Http2ClientParams_KeepAlive{
+				Timeout:  &duration.Duration{Seconds: 10},
+				Interval: &duration.Duration{Seconds: 20},
+			},
+		}
+		server.config.MeshedHttp2ClientParams = &http2Params
 		defer server.clusterStore.UnregisterGauges()
 
 		stream := &bufferingGetStream{
@@ -103,12 +127,55 @@ func TestGet(t *testing.T) {
 
 		select {
 		case update := <-stream.updates:
-			if updateAddAddress(t, update)[0] != fmt.Sprintf("%s:%d", podIP1, port) {
-				t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, update)[0])
+			add, ok := update.GetUpdate().(*pb.Update_Add)
+			if !ok {
+				t.Fatalf("Update expected to be an add, but was %+v", update)
 			}
+			addr := add.Add.Addrs[0]
+			if !reflect.DeepEqual(addr.GetHttp2(), &http2Params) {
+				t.Fatalf("Expected HTTP/2 client params to be %v, but got %v", &http2Params, addr.GetHttp2())
+			}
+		case err := <-errs:
+			t.Fatalf("Got error: %s", err)
+		}
+	})
 
-			if len(stream.updates) != 0 {
-				t.Fatalf("Expected 1 update but got %d: %v", 1+len(stream.updates), stream.updates)
+	t.Run("Does not set unmeshed HTTP/2 client params", func(t *testing.T) {
+		server := makeServer(t)
+		http2Params := pb.Http2ClientParams{
+			KeepAlive: &pb.Http2ClientParams_KeepAlive{
+				Timeout:  &duration.Duration{Seconds: 10},
+				Interval: &duration.Duration{Seconds: 20},
+			},
+		}
+		server.config.MeshedHttp2ClientParams = &http2Params
+		defer server.clusterStore.UnregisterGauges()
+
+		stream := &bufferingGetStream{
+			updates:          make(chan *pb.Update, 50),
+			MockServerStream: util.NewMockServerStream(),
+		}
+		defer stream.Cancel()
+		errs := make(chan error)
+
+		// server.Get blocks until the grpc stream is complete so we call it
+		// in a goroutine and watch stream.updates for updates.
+		go func() {
+			err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", "name2.ns.svc.mycluster.local", port)}, stream)
+			if err != nil {
+				errs <- err
+			}
+		}()
+
+		select {
+		case update := <-stream.updates:
+			add, ok := update.GetUpdate().(*pb.Update_Add)
+			if !ok {
+				t.Fatalf("Update expected to be an add, but was %+v", update)
+			}
+			addr := add.Add.Addrs[0]
+			if addr.GetHttp2() != nil {
+				t.Fatalf("Expected HTTP/2 client params to be nil, but got %v", addr.GetHttp2())
 			}
 		case err := <-errs:
 			t.Fatalf("Got error: %s", err)
@@ -160,95 +227,11 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("Return endpoint opaque protocol controlled by a server", func(t *testing.T) {
-		server, client := getServerWithClient(t)
-		defer server.clusterStore.UnregisterGauges()
+		testOpaque(t, "policy-test")
+	})
 
-		stream := &bufferingGetStream{
-			updates:          make(chan *pb.Update, 50),
-			MockServerStream: util.NewMockServerStream(),
-		}
-		defer stream.Cancel()
-		errs := make(chan error)
-
-		path := fmt.Sprintf("%s:%d", fullyQualifiedNamePolicy, 80)
-
-		// server.Get blocks until the grpc stream is complete so we call it
-		// in a goroutine and watch stream.updates for updates.
-		go func() {
-			err := server.Get(&pb.GetDestination{
-				Scheme: "k8s",
-				Path:   path,
-			}, stream)
-			if err != nil {
-				errs <- err
-			}
-		}()
-
-		select {
-		case err := <-errs:
-			t.Fatalf("Got error: %s", err)
-		case update := <-stream.updates:
-			addrs := update.GetAdd().Addrs
-			if len(addrs) == 0 {
-				t.Fatalf("Expected len(addrs) to be > 0")
-			}
-
-			if addrs[0].GetProtocolHint().GetOpaqueTransport() == nil {
-				t.Fatalf("Expected opaque transport for %s but was nil", path)
-			}
-		}
-
-		// Update the Server's pod selector so that it no longer selects the
-		// pod. This should result in the proxy protocol no longer being marked
-		// as opaque.
-		srv, err := client.ServerV1beta2().Servers("ns").Get(context.Background(), "srv", metav1.GetOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		// PodSelector is updated to NOT select the pod
-		srv.Spec.PodSelector.MatchLabels = map[string]string{"app": "FOOBAR"}
-		_, err = client.ServerV1beta2().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		select {
-		case update := <-stream.updates:
-			addrs := update.GetAdd().Addrs
-			if len(addrs) == 0 {
-				t.Fatalf("Expected len(addrs) to be > 0")
-			}
-
-			if addrs[0].GetProtocolHint().GetOpaqueTransport() != nil {
-				t.Fatalf("Expected opaque transport to be nil for %s but was %+v", path, *addrs[0].GetProtocolHint().GetOpaqueTransport())
-			}
-		case err := <-errs:
-			t.Fatalf("Got error: %s", err)
-		}
-
-		// Update the Server's pod selector so that it once again selects the
-		// pod. This should result in the proxy protocol once again being marked
-		// as opaque.
-		srv.Spec.PodSelector.MatchLabels = map[string]string{"app": "policy-test"}
-
-		_, err = client.ServerV1beta2().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		select {
-		case update := <-stream.updates:
-			addrs := update.GetAdd().Addrs
-			if len(addrs) == 0 {
-				t.Fatalf("Expected len(addrs) to be > 0")
-			}
-
-			if addrs[0].GetProtocolHint().GetOpaqueTransport() == nil {
-				t.Fatalf("Expected opaque transport for %s but was nil", path)
-			}
-		case err := <-errs:
-			t.Fatalf("Got error: %s", err)
-		}
+	t.Run("Return endpoint opaque protocol controlled by a server (native sidecar)", func(t *testing.T) {
+		testOpaque(t, "native")
 	})
 
 	t.Run("Remote discovery", func(t *testing.T) {
@@ -288,6 +271,98 @@ func TestGet(t *testing.T) {
 			t.Fatalf("Got error: %s", err)
 		}
 	})
+}
+
+func testOpaque(t *testing.T, name string) {
+	server, client := getServerWithClient(t)
+	defer server.clusterStore.UnregisterGauges()
+
+	stream := &bufferingGetStream{
+		updates:          make(chan *pb.Update, 50),
+		MockServerStream: util.NewMockServerStream(),
+	}
+	defer stream.Cancel()
+	errs := make(chan error)
+
+	path := fmt.Sprintf("%s.ns.svc.mycluster.local:%d", name, 80)
+
+	// server.Get blocks until the grpc stream is complete so we call it
+	// in a goroutine and watch stream.updates for updates.
+	go func() {
+		err := server.Get(&pb.GetDestination{
+			Scheme: "k8s",
+			Path:   path,
+		}, stream)
+		if err != nil {
+			errs <- err
+		}
+	}()
+
+	select {
+	case err := <-errs:
+		t.Fatalf("Got error: %s", err)
+	case update := <-stream.updates:
+		addrs := update.GetAdd().Addrs
+		if len(addrs) == 0 {
+			t.Fatalf("Expected len(addrs) to be > 0")
+		}
+
+		if addrs[0].GetProtocolHint().GetOpaqueTransport() == nil {
+			t.Fatalf("Expected opaque transport for %s but was nil", path)
+		}
+	}
+
+	// Update the Server's pod selector so that it no longer selects the
+	// pod. This should result in the proxy protocol no longer being marked
+	// as opaque.
+	srv, err := client.ServerV1beta2().Servers("ns").Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// PodSelector is updated to NOT select the pod
+	srv.Spec.PodSelector.MatchLabels = map[string]string{"app": "FOOBAR"}
+	_, err = client.ServerV1beta2().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case update := <-stream.updates:
+		addrs := update.GetAdd().Addrs
+		if len(addrs) == 0 {
+			t.Fatalf("Expected len(addrs) to be > 0")
+		}
+
+		if addrs[0].GetProtocolHint().GetOpaqueTransport() != nil {
+			t.Fatalf("Expected opaque transport to be nil for %s but was %+v", path, *addrs[0].GetProtocolHint().GetOpaqueTransport())
+		}
+	case err := <-errs:
+		t.Fatalf("Got error: %s", err)
+	}
+
+	// Update the Server's pod selector so that it once again selects the
+	// pod. This should result in the proxy protocol once again being marked
+	// as opaque.
+	srv.Spec.PodSelector.MatchLabels = map[string]string{"app": name}
+
+	_, err = client.ServerV1beta2().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case update := <-stream.updates:
+		addrs := update.GetAdd().Addrs
+		if len(addrs) == 0 {
+			t.Fatalf("Expected len(addrs) to be > 0")
+		}
+
+		if addrs[0].GetProtocolHint().GetOpaqueTransport() == nil {
+			t.Fatalf("Expected opaque transport for %s but was nil", path)
+		}
+	case err := <-errs:
+		t.Fatalf("Got error: %s", err)
+	}
 }
 
 func TestGetProfiles(t *testing.T) {
@@ -401,7 +476,7 @@ func TestGetProfiles(t *testing.T) {
 		stream := profileStream(t, server, clusterIPv6, port, "")
 		defer stream.Cancel()
 		profile := assertSingleProfile(t, stream.Updates())
-		if profile.FullyQualifiedName != fullyQualifiedName {
+		if profile.FullyQualifiedName != fullyQualifiedNameDual {
 			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, profile.FullyQualifiedName)
 		}
 		if profile.OpaqueProtocol {
@@ -459,6 +534,13 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with endpoint when using pod IP", func(t *testing.T) {
 		server := makeServer(t)
+		http2Params := pb.Http2ClientParams{
+			KeepAlive: &pb.Http2ClientParams_KeepAlive{
+				Timeout:  &duration.Duration{Seconds: 10},
+				Interval: &duration.Duration{Seconds: 20},
+			},
+		}
+		server.config.MeshedHttp2ClientParams = &http2Params
 		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, podIP1, port, "ns:ns")
@@ -499,16 +581,19 @@ func TestGetProfiles(t *testing.T) {
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
 		}
+		if !reflect.DeepEqual(first.Endpoint.GetHttp2(), &http2Params) {
+			t.Fatalf("Expected HTTP/2 client params to be %v, but got %v", &http2Params, first.Endpoint.GetHttp2())
+		}
 	})
 
 	t.Run("Return profile with endpoint when using pod secondary IP", func(t *testing.T) {
 		server := makeServer(t)
 		defer server.clusterStore.UnregisterGauges()
 
-		stream := profileStream(t, server, podIP1v6, port, "ns:ns")
+		stream := profileStream(t, server, podIPv6Dual, port, "ns:ns")
 		defer stream.Cancel()
 
-		epAddr, err := toAddress(podIP1v6, port)
+		epAddr, err := toAddress(podIPv6Dual, port)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
 		}
@@ -547,6 +632,13 @@ func TestGetProfiles(t *testing.T) {
 
 	t.Run("Return profile with endpoint when using externalworkload IP", func(t *testing.T) {
 		server := makeServer(t)
+		http2Params := pb.Http2ClientParams{
+			KeepAlive: &pb.Http2ClientParams_KeepAlive{
+				Timeout:  &duration.Duration{Seconds: 10},
+				Interval: &duration.Duration{Seconds: 20},
+			},
+		}
+		server.config.MeshedHttp2ClientParams = &http2Params
 		defer server.clusterStore.UnregisterGauges()
 
 		stream := profileStream(t, server, externalWorkloadIP, port, "ns:ns")
@@ -587,6 +679,9 @@ func TestGetProfiles(t *testing.T) {
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
 		}
+		if !reflect.DeepEqual(first.Endpoint.GetHttp2(), &http2Params) {
+			t.Fatalf("Expected HTTP/2 client params to be %v, but got %v", &http2Params, first.Endpoint.GetHttp2())
+		}
 	})
 
 	t.Run("Return default profile when IP does not map to service or pod", func(t *testing.T) {
@@ -615,6 +710,9 @@ func TestGetProfiles(t *testing.T) {
 
 		if profile.Endpoint.GetProtocolHint().GetOpaqueTransport() != nil {
 			t.Fatalf("Expected no opaque transport but found one")
+		}
+		if profile.GetEndpoint().GetHttp2() != nil {
+			t.Fatalf("Expected no HTTP/2 client parameters but found one")
 		}
 	})
 
@@ -1053,6 +1151,7 @@ func TestTokenStructure(t *testing.T) {
 }
 
 func updateAddAddress(t *testing.T, update *pb.Update) []string {
+	t.Helper()
 	add, ok := update.GetUpdate().(*pb.Update_Add)
 	if !ok {
 		t.Fatalf("Update expected to be an add, but was %+v", update)
@@ -1060,6 +1159,19 @@ func updateAddAddress(t *testing.T, update *pb.Update) []string {
 	ips := []string{}
 	for _, ip := range add.Add.Addrs {
 		ips = append(ips, addr.ProxyAddressToString(ip.GetAddr()))
+	}
+	return ips
+}
+
+func updateRemoveAddress(t *testing.T, update *pb.Update) []string {
+	t.Helper()
+	add, ok := update.GetUpdate().(*pb.Update_Remove)
+	if !ok {
+		t.Fatalf("Update expected to be a remove, but was %+v", update)
+	}
+	ips := []string{}
+	for _, ip := range add.Remove.Addrs {
+		ips = append(ips, addr.ProxyAddressToString(ip))
 	}
 	return ips
 }
@@ -1079,7 +1191,6 @@ func TestIpWatcherGetSvcID(t *testing.T) {
 	name := "service"
 	namespace := "test"
 	clusterIP := "10.245.0.1"
-	clusterIPv6 := "2001:db8::68"
 	k8sConfigs := `
 apiVersion: v1
 kind: Service
@@ -1091,7 +1202,7 @@ spec:
   clusterIP: 10.245.0.1
   clusterIPs:
   - 10.245.0.1
-  - 2001:db8::68
+  - 2001:db8::88
   ports:
   - port: 1234`
 
@@ -1145,6 +1256,57 @@ spec:
 			t.Fatalf("Expected not to find service mapped to [%s]", badClusterIP)
 		}
 	})
+}
+
+func testReturnEndpoints(t *testing.T, fqdn, ip string, port uint32) {
+	t.Helper()
+
+	server := makeServer(t)
+	defer server.clusterStore.UnregisterGauges()
+
+	stream := &bufferingGetStream{
+		updates:          make(chan *pb.Update, 50),
+		MockServerStream: util.NewMockServerStream(),
+	}
+	defer stream.Cancel()
+
+	testReturnEndpointsForServer(t, server, stream, fqdn, ip, port)
+}
+
+func testReturnEndpointsForServer(t *testing.T, server *server, stream *bufferingGetStream, fqdn, ip string, port uint32) {
+	t.Helper()
+
+	errs := make(chan error)
+	// server.Get blocks until the grpc stream is complete so we call it
+	// in a goroutine and watch stream.updates for updates.
+	go func() {
+		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", fqdn, port)}, stream)
+		if err != nil {
+			errs <- err
+		}
+	}()
+
+	addr := fmt.Sprintf("%s:%d", ip, port)
+	parsedIP, err := netip.ParseAddr(ip)
+	if err != nil {
+		t.Fatalf("Invalid IP [%s]: %s", ip, err)
+	}
+	if parsedIP.Is6() {
+		addr = fmt.Sprintf("[%s]:%d", ip, port)
+	}
+
+	select {
+	case update := <-stream.updates:
+		if updateAddAddress(t, update)[0] != addr {
+			t.Fatalf("Expected %s but got %s", addr, updateAddAddress(t, update)[0])
+		}
+
+		if len(stream.updates) != 0 {
+			t.Fatalf("Expected 1 update but got %d: %v", 1+len(stream.updates), stream.updates)
+		}
+	case err := <-errs:
+		t.Fatalf("Got error: %s", err)
+	}
 }
 
 func assertSingleProfile(t *testing.T, updates []*pb.DestinationProfile) *pb.DestinationProfile {

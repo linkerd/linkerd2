@@ -120,22 +120,26 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             ports_annotation(service.annotations(), "config.linkerd.io/opaque-ports")
                 .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
 
-        if let Some(cluster_ip) = service
+        if let Some(cluster_ips) = service
             .spec
             .as_ref()
-            .and_then(|spec| spec.cluster_ip.as_deref())
-            .filter(|ip| !ip.is_empty() && *ip != "None")
+            .and_then(|spec| spec.cluster_ips.as_deref())
         {
-            match cluster_ip.parse() {
-                Ok(addr) => {
-                    let service_ref = ServiceRef {
-                        name,
-                        namespace: ns.clone(),
-                    };
-                    self.services_by_ip.insert(addr, service_ref);
+            for cluster_ip in cluster_ips {
+                if cluster_ip == "None" {
+                    continue;
                 }
-                Err(error) => {
-                    tracing::error!(%error, service=name, cluster_ip, "invalid cluster ip");
+                match cluster_ip.parse() {
+                    Ok(addr) => {
+                        let service_ref = ServiceRef {
+                            name: name.clone(),
+                            namespace: ns.clone(),
+                        };
+                        self.services_by_ip.insert(addr, service_ref);
+                    }
+                    Err(error) => {
+                        tracing::error!(%error, service=name, cluster_ip, "invalid cluster ip");
+                    }
                 }
             }
         }

@@ -23,6 +23,7 @@ metadata:
   namespace: linkerd-jaeger
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/extension: jaeger
@@ -30,7 +31,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 86385686bca3c64713b2759edabf06ea7e7fdfa14ab0bfa02e9a734dcab4626f
+        checksum/config: ef6a752f286d2259e5083a5a8477ccee1dfbaebb7b1c35374e7f8d8fe305aaff
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
@@ -41,7 +42,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
@@ -272,6 +273,7 @@ webhooks:
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods"]
+    scope: "Namespaced"
   sideEffects: None
 ---
 ###
@@ -432,6 +434,7 @@ metadata:
   namespace: linkerd-jaeger
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       component: collector
@@ -454,7 +457,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - command:
         - /otelcol-contrib
@@ -551,6 +554,7 @@ metadata:
   namespace: linkerd-jaeger
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       component: jaeger
@@ -569,7 +573,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - --query.base-path=/jaeger

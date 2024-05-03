@@ -23,6 +23,7 @@ metadata:
   namespace: linkerd-jaeger
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/extension: jaeger
@@ -30,7 +31,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: e51bdbaf37450b54e9daa9d8e09de78005be8cdbcbabc74ea314492a0fc74768
+        checksum/config: a04ba1a16e496979281fa0f89ce6fd006f36147cdb900269800f775b187baf7e
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-await: "enabled"
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
@@ -41,7 +42,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
@@ -229,6 +230,7 @@ webhooks:
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods"]
+    scope: "Namespaced"
   sideEffects: None
 ---
 ###
@@ -277,6 +279,7 @@ metadata:
   namespace: linkerd-jaeger
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       component: jaeger
@@ -295,7 +298,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-
+      
       containers:
       - args:
         - --query.base-path=/jaeger

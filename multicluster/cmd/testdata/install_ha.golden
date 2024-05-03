@@ -22,6 +22,7 @@ metadata:
   namespace: linkerd-multicluster
 spec:
   replicas: 3
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       app: linkerd-gateway

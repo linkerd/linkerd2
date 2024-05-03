@@ -35,14 +35,15 @@ func TestRenderCniHelm(t *testing.T) {
   			"logLevel": "debug",
 			"image": {
 				"name": "cr.l5d.io/linkerd/cni-plugin",
-				"version": "v1.3.0"
+				"version": "v1.4.0"
 			},
   			"proxyUID": 1111,
   			"destCNINetDir": "/etc/cni/net.d-test",
   			"destCNIBinDir": "/opt/cni/bin-test",
   			"useWaitFlag": true,
 			"cliVersion": "test-version",
-			"priorityClassName": "system-node-critical"
+			"priorityClassName": "system-node-critical",
+			"revisionHistoryLimir": 10
 		}`
 
 		var overrideConfig chartutil.Values

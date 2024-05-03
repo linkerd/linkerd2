@@ -159,6 +159,7 @@ Kubernetes: `>=1.22.0-0`
 | debugContainer.image.version | string | linkerdVersion | Tag for the debug container image |
 | deploymentStrategy | object | `{"rollingUpdate":{"maxSurge":"25%","maxUnavailable":"25%"}}` | default kubernetes deployment strategy |
 | disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob |
+| disableIPv6 | bool | `false` | disables routing IPv6 traffic in addition to IPv4 traffic through the proxy (IPv6 routing only available as of proxy-init v2.3.0 and linkerd-cni v1.4.0) |
 | enableEndpointSlices | bool | `true` | enables the use of EndpointSlice informers for the destination service; enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on |
 | enableH2Upgrade | bool | `true` | Allow proxies to perform transparent HTTP/2 upgrading |
 | enablePSP | bool | `false` | Add a PSP resource and bind it to the control plane ServiceAccounts. Note PSP has been deprecated since k8s v1.21 |
@@ -204,7 +205,7 @@ Kubernetes: `>=1.22.0-0`
 | policyController.image.version | string | linkerdVersion | Tag for the policy controller container image |
 | policyController.logLevel | string | `"info"` | Log level for the policy controller |
 | policyController.probeNetworks | list | `["0.0.0.0/0","::/0"]` | The networks from which probes are performed.  By default, all networks are allowed so that all probes are authorized. |
-| policyController.resources | object | destinationResources | policy controller resource requests & limits |
+| policyController.resources | object | `{"cpu":{"limit":"","request":""},"ephemeral-storage":{"limit":"","request":""},"memory":{"limit":"","request":""}}` | policy controller resource requests & limits |
 | policyController.resources.cpu.limit | string | `""` | Maximum amount of CPU units that the policy controller can use |
 | policyController.resources.cpu.request | string | `""` | Amount of CPU units that the policy controller requests |
 | policyController.resources.ephemeral-storage.limit | string | `""` | Maximum amount of ephemeral storage that the policy controller can use |
@@ -271,7 +272,7 @@ Kubernetes: `>=1.22.0-0`
 | proxyInit.ignoreOutboundPorts | string | `"4567,4568"` | Default set of outbound ports to skip via iptables - Galera (4567,4568) |
 | proxyInit.image.name | string | `"cr.l5d.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
 | proxyInit.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy-init container image |
-| proxyInit.image.version | string | `"v2.2.4"` | Tag for the proxy-init container image |
+| proxyInit.image.version | string | `"v2.4.0"` | Tag for the proxy-init container image |
 | proxyInit.iptablesMode | string | `"legacy"` | Variant of iptables that will be used to configure routing. Currently, proxy-init can be run either in 'nft' or in 'legacy' mode. The mode will control which utility binary will be called. The host must support whichever mode will be used |
 | proxyInit.kubeAPIServerPorts | string | `"443,6443"` | Default set of ports to skip via iptables for control plane components so they can communicate with the Kubernetes API Server |
 | proxyInit.logFormat | string | plain | Log format (`plain` or `json`) for the proxy-init |
@@ -297,6 +298,7 @@ Kubernetes: `>=1.22.0-0`
 | proxyInjector.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]},{"key":"kubernetes.io/metadata.name","operator":"NotIn","values":["kube-system","cert-manager"]}]}` | Namespace selector used by admission webhook. |
 | proxyInjector.objectSelector | object | `{"matchExpressions":[{"key":"linkerd.io/control-plane-component","operator":"DoesNotExist"},{"key":"linkerd.io/cni-resource","operator":"DoesNotExist"}]}` | Object selector used by admission webhook. |
 | proxyInjector.timeoutSeconds | int | `10` | Timeout in seconds before the API Server cancels a request to the proxy injector. If timeout is exceeded, the webhookfailurePolicy is used. |
+| revisionHistoryLimit | int | `10` | Specifies the number of old ReplicaSets to retain to allow rollback. |
 | runtimeClassName | string | `""` | Runtime Class Name for all the pods |
 | webhookFailurePolicy | string | `"Ignore"` | Failure policy for the proxy injector |
 

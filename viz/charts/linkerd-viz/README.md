@@ -141,6 +141,7 @@ Kubernetes: `>=1.22.0-0`
 | prometheus.image.tag | string | `"v2.48.1"` | Docker image tag for the prometheus instance |
 | prometheus.logFormat | string | defaultLogLevel | log format (plain, json) of the prometheus instance |
 | prometheus.logLevel | string | defaultLogLevel | log level of the prometheus instance |
+| prometheus.metricRelabelConfigs | string | `nil` | A metricRelabelConfigs section allows to drop high cardinality metrics. *NOTE:* Please use with caution. Some metrics are needed for linkerd-viz to function properly. |
 | prometheus.nodeSelector | object | `{"kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | prometheus.podAnnotations | object | `{}` | annotations for the prometheus pod |
 | prometheus.proxy | string | `nil` |  |
@@ -157,6 +158,7 @@ Kubernetes: `>=1.22.0-0`
 | prometheus.sidecarContainers | string | `nil` | A sidecarContainers section specifies a list of secondary containers to run in the prometheus pod e.g. to export data to non-prometheus systems |
 | prometheus.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | prometheusUrl | string | `""` | url of external prometheus instance |
+| revisionHistoryLimit | int | `10` | Specifies the number of old ReplicaSets to retain to allow rollback. |
 | tap.UID | string | `nil` | UID for the dashboard resource |
 | tap.caBundle | string | `""` | Bundle of CA certificates for tap. If not provided nor injected with cert-manager, then Helm will use the certificate generated for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value, injectCaFrom, or injectCaFromSecret must be set, as no certificate will be generated. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information. |
 | tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided and not using an external secret then Helm will generate one. |

@@ -474,6 +474,7 @@ webhooks:
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods", "services"]
+    scope: "Namespaced"
   sideEffects: None
   timeoutSeconds: 10
 ---
@@ -513,17 +514,29 @@ data:
       rollingUpdate:
         maxSurge: 25%
         maxUnavailable: 25%
+    destinationController:
+      meshedHttp2ClientProtobuf:
+        keep_alive:
+          interval:
+            seconds: 10
+          timeout:
+            seconds: 3
+          while_idle: true
     destinationProxyResources: null
     destinationResources: null
     disableHeartBeat: false
+    disableIPv6: false
     enableEndpointSlices: true
     enableH2Upgrade: true
     enablePodAntiAffinity: false
     enablePodDisruptionBudget: false
+    heartbeat: null
     heartbeatResources: null
     heartbeatSchedule: 1 2 3 4 5
     highAvailability: false
     identity:
+      additionalEnv: null
+      experimentalEnv: null
       externalCA: false
       issuer:
         clockSkewAllowance: 20s
@@ -657,6 +670,11 @@ data:
         name: cr.l5d.io/linkerd/proxy
         pullPolicy: ""
         version: install-proxy-version
+      inbound:
+        server:
+          http2:
+            keepAliveInterval: 10s
+            keepAliveTimeout: 3s
       inboundConnectTimeout: 100ms
       inboundDiscoveryCacheUnusedTimeout: 90s
       isGateway: false
@@ -668,6 +686,11 @@ data:
       logLevel: warn,linkerd=info,trust_dns=error
       nativeSidecar: false
       opaquePorts: 25,587,3306,4444,5432,6379,9300,11211
+      outbound:
+        server:
+          http2:
+            keepAliveInterval: 10s
+            keepAliveTimeout: 3s
       outboundConnectTimeout: 1000ms
       outboundDiscoveryCacheUnusedTimeout: 5s
       podInboundPorts: ""
@@ -707,7 +730,7 @@ data:
       image:
         name: cr.l5d.io/linkerd/proxy-init
         pullPolicy: ""
-        version: v2.2.4
+        version: v2.4.0
       iptablesMode: legacy
       kubeAPIServerPorts: 443,6443
       logFormat: ""
@@ -732,8 +755,10 @@ data:
         name: linkerd-proxy-init-xtables-lock
         readOnly: false
     proxyInjector:
+      additionalEnv: null
       caBundle: proxy injector CA bundle
       crtPEM: ""
+      experimentalEnv: null
       externalSecret: true
       injectCaFrom: ""
       injectCaFromSecret: ""
@@ -750,6 +775,8 @@ data:
           - cert-manager
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
+    revisionHistoryLimit: 10
+    spValidator: null
     tolerations: null
     webhookFailurePolicy: Ignore
 ---
@@ -862,6 +889,7 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/control-plane-component: identity
@@ -984,13 +1012,15 @@ spec:
         - name: LINKERD2_PROXY_INBOUND_DISCOVERY_IDLE_TIMEOUT
           value: "90s"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
-          value: 0.0.0.0:4190
+          value: "[::]:4190"
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
-          value: 0.0.0.0:4191
+          value: "[::]:4191"
         - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
-          value: 127.0.0.1:4140
+          value: "127.0.0.1:4140"
+        - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDRS
+          value: "127.0.0.1:4140,[::1]:4140"
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
-          value: 0.0.0.0:4143
+          value: "[::]:4143"
         - name: LINKERD2_PROXY_INBOUND_IPS
           valueFrom:
             fieldRef:
@@ -1003,6 +1033,14 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_INTERVAL
+          value: "10s"
+        - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_TIMEOUT
+          value: "3s"
+        - name: LINKERD2_PROXY_OUTBOUND_SERVER_HTTP2_KEEP_ALIVE_INTERVAL
+          value: "10s"
+        - name: LINKERD2_PROXY_OUTBOUND_SERVER_HTTP2_KEEP_ALIVE_TIMEOUT
+          value: "3s"
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
           value: "25,587,3306,4444,5432,6379,9300,11211"
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
@@ -1084,7 +1122,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy-init:v2.2.4
+        image: cr.l5d.io/linkerd/proxy-init:v2.4.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1247,6 +1285,7 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/control-plane-component: destination
@@ -1320,13 +1359,15 @@ spec:
         - name: LINKERD2_PROXY_INBOUND_DISCOVERY_IDLE_TIMEOUT
           value: "90s"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
-          value: 0.0.0.0:4190
+          value: "[::]:4190"
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
-          value: 0.0.0.0:4191
+          value: "[::]:4191"
         - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
-          value: 127.0.0.1:4140
+          value: "127.0.0.1:4140"
+        - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDRS
+          value: "127.0.0.1:4140,[::1]:4140"
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
-          value: 0.0.0.0:4143
+          value: "[::]:4143"
         - name: LINKERD2_PROXY_INBOUND_IPS
           valueFrom:
             fieldRef:
@@ -1339,6 +1380,14 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_INTERVAL
+          value: "10s"
+        - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_TIMEOUT
+          value: "3s"
+        - name: LINKERD2_PROXY_OUTBOUND_SERVER_HTTP2_KEEP_ALIVE_INTERVAL
+          value: "10s"
+        - name: LINKERD2_PROXY_OUTBOUND_SERVER_HTTP2_KEEP_ALIVE_TIMEOUT
+          value: "3s"
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
           value: "25,587,3306,4444,5432,6379,9300,11211"
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
@@ -1426,7 +1475,9 @@ spec:
         - -cluster-domain=cluster.local
         - -identity-trust-domain=cluster.local
         - -default-opaque-ports=25,587,3306,4444,5432,6379,9300,11211
+        - -enable-ipv6=true
         - -enable-pprof=false
+        - --meshed-http2-client-params={"keep_alive":{"interval":{"seconds":10},"timeout":{"seconds":3},"while_idle":true}}
         image: cr.l5d.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1554,7 +1605,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy-init:v2.2.4
+        image: cr.l5d.io/linkerd/proxy-init:v2.4.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1683,6 +1734,7 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector
@@ -1693,7 +1745,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: d7c6dbb14a36b7d04bd84ba861c9c95d37a03e6cb0562d5e97fb9176081cd211
+        checksum/config: cd0cf730780be444ab96a4a835a244033ffb7c8cf4a8796d0e6ae5c72aa9ff31
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: install-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1755,13 +1807,15 @@ spec:
         - name: LINKERD2_PROXY_INBOUND_DISCOVERY_IDLE_TIMEOUT
           value: "90s"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
-          value: 0.0.0.0:4190
+          value: "[::]:4190"
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
-          value: 0.0.0.0:4191
+          value: "[::]:4191"
         - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
-          value: 127.0.0.1:4140
+          value: "127.0.0.1:4140"
+        - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDRS
+          value: "127.0.0.1:4140,[::1]:4140"
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
-          value: 0.0.0.0:4143
+          value: "[::]:4143"
         - name: LINKERD2_PROXY_INBOUND_IPS
           valueFrom:
             fieldRef:
@@ -1774,6 +1828,14 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_INTERVAL
+          value: "10s"
+        - name: LINKERD2_PROXY_INBOUND_SERVER_HTTP2_KEEP_ALIVE_TIMEOUT
+          value: "3s"
+        - name: LINKERD2_PROXY_OUTBOUND_SERVER_HTTP2_KEEP_ALIVE_INTERVAL
+          value: "10s"
+        - name: LINKERD2_PROXY_OUTBOUND_SERVER_HTTP2_KEEP_ALIVE_TIMEOUT
+          value: "3s"
         - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
           value: "25,587,3306,4444,5432,6379,9300,11211"
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
@@ -1904,7 +1966,7 @@ spec:
         - "4190,4191,4567,4568"
         - --outbound-ports-to-ignore
         - "443,6443"
-        image: cr.l5d.io/linkerd/proxy-init:v2.2.4
+        image: cr.l5d.io/linkerd/proxy-init:v2.4.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

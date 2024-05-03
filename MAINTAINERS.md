@@ -18,6 +18,10 @@ The Linkerd directors are:
 
 The Linkerd Steering Committee members are:
 
+* Steve Gray (ZeroFlucs) @steve-gray
+* Christian Hüning (BWI) @christianhuening
+* Dan Williams (LoveHolidays) @dwilliams782
+
 ## Emeriti
 
 Former maintainers include:

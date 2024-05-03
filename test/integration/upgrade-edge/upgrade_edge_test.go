@@ -213,9 +213,9 @@ func TestUpgradeCli(t *testing.T) {
 	cmdOut, err = TestHelper.KubectlApplyWithArgs(out, []string{
 		"--prune",
 		"-l", "linkerd.io/control-plane-ns=linkerd",
-		"--prune-whitelist", "apps/v1/deployment",
-		"--prune-whitelist", "core/v1/service",
-		"--prune-whitelist", "core/v1/configmap",
+		"--prune-allowlist", "apps/v1/deployment",
+		"--prune-allowlist", "core/v1/service",
+		"--prune-allowlist", "core/v1/configmap",
 	}...)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",

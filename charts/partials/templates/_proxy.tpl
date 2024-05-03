@@ -76,13 +76,16 @@ env:
   value: "365d"
 {{ end -}}
 - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
-  value: 0.0.0.0:{{.Values.proxy.ports.control}}
+  value: "[::]:{{.Values.proxy.ports.control}}"
 - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
-  value: 0.0.0.0:{{.Values.proxy.ports.admin}}
+  value: "[::]:{{.Values.proxy.ports.admin}}"
+{{- /* Deprecated, superseded by LINKERD2_PROXY_OUTBOUND_LISTEN_ADDRS since proxy's v2.228.0 (deployed since edge-24.4.5) */}}
 - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
-  value: 127.0.0.1:{{.Values.proxy.ports.outbound}}
+  value: "127.0.0.1:{{.Values.proxy.ports.outbound}}"
+- name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDRS
+  value: "127.0.0.1:{{.Values.proxy.ports.outbound}},[::1]:{{.Values.proxy.ports.outbound}}"
 - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
-  value: 0.0.0.0:{{.Values.proxy.ports.inbound}}
+  value: "[::]:{{.Values.proxy.ports.inbound}}"
 - name: LINKERD2_PROXY_INBOUND_IPS
   valueFrom:
     fieldRef:
@@ -104,6 +107,17 @@ env:
   value: 10000ms
 - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
   value: 10000ms
+{{- /* Configure inbound and outbound parameters, e.g. for HTTP/2 servers. */}}
+{{ range $proxyK, $proxyV := (dict "inbound" .Values.proxy.inbound "outbound" .Values.proxy.outbound) -}}
+{{   range $scopeK, $scopeV := $proxyV -}}
+{{     range $protoK, $protoV := $scopeV -}}
+{{       range $paramK, $paramV := $protoV -}}
+- name: LINKERD2_PROXY_{{snakecase $proxyK | upper}}_{{snakecase $scopeK | upper}}_{{snakecase $protoK | upper}}_{{snakecase $paramK | upper}}
+  value: {{ quote $paramV }}
+{{       end -}}
+{{     end -}}
+{{   end -}}
+{{ end -}}
 {{ if .Values.proxy.opaquePorts -}}
 - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
   value: {{.Values.proxy.opaquePorts | quote}}

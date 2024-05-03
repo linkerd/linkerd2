@@ -202,7 +202,7 @@ func TestGetPodPatch(t *testing.T) {
 
 		// The namespace has two config annotations: one valid and one invalid
 		// the pod patch should only contain the valid annotation.
-		conf.AppendNamespaceAnnotations()
+		inject.AppendNamespaceAnnotations(conf.GetOverrideAnnotations(), conf.GetNsAnnotations(), conf.GetWorkloadAnnotations())
 		patchJSON, err := conf.GetPodPatch(true)
 		if err != nil {
 			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)

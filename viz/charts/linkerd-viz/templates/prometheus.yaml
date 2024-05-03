@@ -137,6 +137,10 @@ data:
       # Copy tmp labels into real labels
       - action: labelmap
         regex: __tmp_pod_label_(.+)
+      {{- if .Values.prometheus.metricRelabelConfigs }}
+      metric_relabel_configs:
+      {{- toYaml .Values.prometheus.metricRelabelConfigs | trim | nindent 6 }}
+      {{- end}}
 
     {{- if .Values.prometheus.scrapeConfigs }}
     {{- toYaml .Values.prometheus.scrapeConfigs | trim | nindent 4 }}
@@ -201,6 +205,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
+  revisionHistoryLimit: {{.Values.revisionHistoryLimit}}
   {{- if .Values.prometheus.persistence }}
   strategy:
     type: Recreate

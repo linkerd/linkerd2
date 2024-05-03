@@ -15,6 +15,8 @@ commonLabels: {}
 # -- Trust domain used for identity
 # @default -- clusterDomain
 identityTrustDomain: ""
+# -- Specifies the number of old ReplicaSets to retain to allow rollback.
+revisionHistoryLimit: 10
 
 # -- Docker registry for all viz components
 defaultRegistry: cr.l5d.io/linkerd
@@ -498,6 +500,18 @@ prometheus:
   #   relabel_configs:
   #   - action: labelmap
   #     regex: __meta_kubernetes_node_label_(.+)
+
+  # -- A metricRelabelConfigs section allows to drop high cardinality metrics.
+  # *NOTE:* Please use with caution. Some metrics are needed for linkerd-viz to
+  # function properly.
+  metricRelabelConfigs:
+  # This allows us to fine tune prometheus cardinality by dropping certain
+  # metrics as suggested here: https://itnext.io/optimizing-linkerd-metrics-in-prometheus-de607ec10f6b
+  #
+  # Ex:
+  # - action: keep
+  #   source_labels: [le]
+  #   regex: "(?i)(|10|50|100|500|1000|10000|30000|\\+Inf)"
 
   # -- A sidecarContainers section specifies a list of secondary containers to run
   # in the prometheus pod e.g. to export data to non-prometheus systems
