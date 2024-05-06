@@ -5,7 +5,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     api-approved.kubernetes.io: https://github.com/kubernetes-sigs/gateway-api/pull/1923
-    gateway.networking.k8s.io/bundle-version: v0.7.1-dev
+    gateway.networking.k8s.io/bundle-version: v0.7.1
     gateway.networking.k8s.io/channel: experimental
     {{ include "partials.annotations.created-by" . }}
   labels:
@@ -61,14 +61,12 @@ spec:
                 description: "Hostnames defines a set of hostname that should match
                   against the HTTP Host header to select a HTTPRoute used to process
                   the request. Implementations MUST ignore any port value specified
-                  in the HTTP Host header while performing a match and (absent of
-                  any applicable header modification configuration) MUST forward this
-                  header unmodified to the backend. \n Valid values for Hostnames
-                  are determined by RFC 1123 definition of a hostname with 2 notable
-                  exceptions: \n 1. IPs are not allowed. 2. A hostname may be prefixed
-                  with a wildcard label (`*.`). The wildcard label must appear by
-                  itself as the first label. \n If a hostname is specified by both
-                  the Listener and HTTPRoute, there must be at least one intersecting
+                  in the HTTP Host header while performing a match. \n Valid values
+                  for Hostnames are determined by RFC 1123 definition of a hostname
+                  with 2 notable exceptions: \n 1. IPs are not allowed. 2. A hostname
+                  may be prefixed with a wildcard label (`*.`). The wildcard label
+                  must appear by itself as the first label. \n If a hostname is specified
+                  by both the Listener and HTTPRoute, there must be at least one intersecting
                   hostname for the HTTPRoute to be attached to the Listener. For example:
                   \n * A Listener with `test.example.com` as the hostname matches
                   HTTPRoutes that have either not specified any hostnames, or have
@@ -558,9 +556,8 @@ spec:
                                             the value with which to replace the prefix
                                             match of a request during a rewrite or
                                             redirect. For example, a request to \"/foo/bar\"
-                                            with a prefix match of \"/foo\" and a
-                                            ReplacePrefixMatch of \"/xyz\" would be
-                                            modified to \"/xyz/bar\". \n Note that
+                                            with a prefix match of \"/foo\" would
+                                            be modified to \"/bar\". \n Note that
                                             this matches the behavior of the PathPrefix
                                             match type. This matches full path elements.
                                             A path element refers to the list of labels
@@ -568,23 +565,7 @@ spec:
                                             When specified, a trailing `/` is ignored.
                                             For example, the paths `/abc`, `/abc/`,
                                             and `/abc/def` would all match the prefix
-                                            `/abc`, but the path `/abcd` would not.
-                                            \n Request Path | Prefix Match | Replace
-                                            Prefix | Modified Path -------------|--------------|----------------|----------
-                                            /foo/bar     | /foo         | /xyz           |
-                                            /xyz/bar /foo/bar     | /foo         |
-                                            /xyz/          | /xyz/bar /foo/bar     |
-                                            /foo/        | /xyz           | /xyz/bar
-                                            /foo/bar     | /foo/        | /xyz/          |
-                                            /xyz/bar /foo         | /foo         |
-                                            /xyz           | /xyz /foo/        | /foo
-                                            \        | /xyz           | /xyz/ /foo/bar
-                                            \    | /foo         | <empty string> |
-                                            /bar /foo/        | /foo         | <empty
-                                            string> | / /foo         | /foo         |
-                                            <empty string> | / /foo/        | /foo
-                                            \        | /              | / /foo         |
-                                            /foo         | /              | /"
+                                            `/abc`, but the path `/abcd` would not."
                                           maxLength: 1024
                                           type: string
                                         type:
@@ -840,9 +821,8 @@ spec:
                                             the value with which to replace the prefix
                                             match of a request during a rewrite or
                                             redirect. For example, a request to \"/foo/bar\"
-                                            with a prefix match of \"/foo\" and a
-                                            ReplacePrefixMatch of \"/xyz\" would be
-                                            modified to \"/xyz/bar\". \n Note that
+                                            with a prefix match of \"/foo\" would
+                                            be modified to \"/bar\". \n Note that
                                             this matches the behavior of the PathPrefix
                                             match type. This matches full path elements.
                                             A path element refers to the list of labels
@@ -850,23 +830,7 @@ spec:
                                             When specified, a trailing `/` is ignored.
                                             For example, the paths `/abc`, `/abc/`,
                                             and `/abc/def` would all match the prefix
-                                            `/abc`, but the path `/abcd` would not.
-                                            \n Request Path | Prefix Match | Replace
-                                            Prefix | Modified Path -------------|--------------|----------------|----------
-                                            /foo/bar     | /foo         | /xyz           |
-                                            /xyz/bar /foo/bar     | /foo         |
-                                            /xyz/          | /xyz/bar /foo/bar     |
-                                            /foo/        | /xyz           | /xyz/bar
-                                            /foo/bar     | /foo/        | /xyz/          |
-                                            /xyz/bar /foo         | /foo         |
-                                            /xyz           | /xyz /foo/        | /foo
-                                            \        | /xyz           | /xyz/ /foo/bar
-                                            \    | /foo         | <empty string> |
-                                            /bar /foo/        | /foo         | <empty
-                                            string> | / /foo         | /foo         |
-                                            <empty string> | / /foo/        | /foo
-                                            \        | /              | / /foo         |
-                                            /foo         | /              | /"
+                                            `/abc`, but the path `/abcd` would not."
                                           maxLength: 1024
                                           type: string
                                         type:
@@ -1250,8 +1214,7 @@ spec:
                                       value with which to replace the prefix match
                                       of a request during a rewrite or redirect. For
                                       example, a request to \"/foo/bar\" with a prefix
-                                      match of \"/foo\" and a ReplacePrefixMatch of
-                                      \"/xyz\" would be modified to \"/xyz/bar\".
+                                      match of \"/foo\" would be modified to \"/bar\".
                                       \n Note that this matches the behavior of the
                                       PathPrefix match type. This matches full path
                                       elements. A path element refers to the list
@@ -1259,21 +1222,7 @@ spec:
                                       When specified, a trailing `/` is ignored. For
                                       example, the paths `/abc`, `/abc/`, and `/abc/def`
                                       would all match the prefix `/abc`, but the path
-                                      `/abcd` would not. \n Request Path | Prefix
-                                      Match | Replace Prefix | Modified Path -------------|--------------|----------------|----------
-                                      /foo/bar     | /foo         | /xyz           |
-                                      /xyz/bar /foo/bar     | /foo         | /xyz/
-                                      \         | /xyz/bar /foo/bar     | /foo/        |
-                                      /xyz           | /xyz/bar /foo/bar     | /foo/
-                                      \       | /xyz/          | /xyz/bar /foo         |
-                                      /foo         | /xyz           | /xyz /foo/        |
-                                      /foo         | /xyz           | /xyz/ /foo/bar
-                                      \    | /foo         | <empty string> | /bar
-                                      /foo/        | /foo         | <empty string>
-                                      | / /foo         | /foo         | <empty string>
-                                      | / /foo/        | /foo         | /              |
-                                      / /foo         | /foo         | /              |
-                                      /"
+                                      `/abcd` would not."
                                     maxLength: 1024
                                     type: string
                                   type:
@@ -1512,8 +1461,7 @@ spec:
                                       value with which to replace the prefix match
                                       of a request during a rewrite or redirect. For
                                       example, a request to \"/foo/bar\" with a prefix
-                                      match of \"/foo\" and a ReplacePrefixMatch of
-                                      \"/xyz\" would be modified to \"/xyz/bar\".
+                                      match of \"/foo\" would be modified to \"/bar\".
                                       \n Note that this matches the behavior of the
                                       PathPrefix match type. This matches full path
                                       elements. A path element refers to the list
@@ -1521,21 +1469,7 @@ spec:
                                       When specified, a trailing `/` is ignored. For
                                       example, the paths `/abc`, `/abc/`, and `/abc/def`
                                       would all match the prefix `/abc`, but the path
-                                      `/abcd` would not. \n Request Path | Prefix
-                                      Match | Replace Prefix | Modified Path -------------|--------------|----------------|----------
-                                      /foo/bar     | /foo         | /xyz           |
-                                      /xyz/bar /foo/bar     | /foo         | /xyz/
-                                      \         | /xyz/bar /foo/bar     | /foo/        |
-                                      /xyz           | /xyz/bar /foo/bar     | /foo/
-                                      \       | /xyz/          | /xyz/bar /foo         |
-                                      /foo         | /xyz           | /xyz /foo/        |
-                                      /foo         | /xyz           | /xyz/ /foo/bar
-                                      \    | /foo         | <empty string> | /bar
-                                      /foo/        | /foo         | <empty string>
-                                      | / /foo         | /foo         | <empty string>
-                                      | / /foo/        | /foo         | /              |
-                                      / /foo         | /foo         | /              |
-                                      /"
+                                      `/abcd` would not."
                                     maxLength: 1024
                                     type: string
                                   type:
@@ -2011,7 +1945,7 @@ spec:
         required:
         - spec
         type: object
-    served: false
+    served: true
     storage: false
     subresources:
       status: {}
@@ -2049,14 +1983,12 @@ spec:
                 description: "Hostnames defines a set of hostname that should match
                   against the HTTP Host header to select a HTTPRoute used to process
                   the request. Implementations MUST ignore any port value specified
-                  in the HTTP Host header while performing a match and (absent of
-                  any applicable header modification configuration) MUST forward this
-                  header unmodified to the backend. \n Valid values for Hostnames
-                  are determined by RFC 1123 definition of a hostname with 2 notable
-                  exceptions: \n 1. IPs are not allowed. 2. A hostname may be prefixed
-                  with a wildcard label (`*.`). The wildcard label must appear by
-                  itself as the first label. \n If a hostname is specified by both
-                  the Listener and HTTPRoute, there must be at least one intersecting
+                  in the HTTP Host header while performing a match. \n Valid values
+                  for Hostnames are determined by RFC 1123 definition of a hostname
+                  with 2 notable exceptions: \n 1. IPs are not allowed. 2. A hostname
+                  may be prefixed with a wildcard label (`*.`). The wildcard label
+                  must appear by itself as the first label. \n If a hostname is specified
+                  by both the Listener and HTTPRoute, there must be at least one intersecting
                   hostname for the HTTPRoute to be attached to the Listener. For example:
                   \n * A Listener with `test.example.com` as the hostname matches
                   HTTPRoutes that have either not specified any hostnames, or have
@@ -2546,9 +2478,8 @@ spec:
                                             the value with which to replace the prefix
                                             match of a request during a rewrite or
                                             redirect. For example, a request to \"/foo/bar\"
-                                            with a prefix match of \"/foo\" and a
-                                            ReplacePrefixMatch of \"/xyz\" would be
-                                            modified to \"/xyz/bar\". \n Note that
+                                            with a prefix match of \"/foo\" would
+                                            be modified to \"/bar\". \n Note that
                                             this matches the behavior of the PathPrefix
                                             match type. This matches full path elements.
                                             A path element refers to the list of labels
@@ -2556,23 +2487,7 @@ spec:
                                             When specified, a trailing `/` is ignored.
                                             For example, the paths `/abc`, `/abc/`,
                                             and `/abc/def` would all match the prefix
-                                            `/abc`, but the path `/abcd` would not.
-                                            \n Request Path | Prefix Match | Replace
-                                            Prefix | Modified Path -------------|--------------|----------------|----------
-                                            /foo/bar     | /foo         | /xyz           |
-                                            /xyz/bar /foo/bar     | /foo         |
-                                            /xyz/          | /xyz/bar /foo/bar     |
-                                            /foo/        | /xyz           | /xyz/bar
-                                            /foo/bar     | /foo/        | /xyz/          |
-                                            /xyz/bar /foo         | /foo         |
-                                            /xyz           | /xyz /foo/        | /foo
-                                            \        | /xyz           | /xyz/ /foo/bar
-                                            \    | /foo         | <empty string> |
-                                            /bar /foo/        | /foo         | <empty
-                                            string> | / /foo         | /foo         |
-                                            <empty string> | / /foo/        | /foo
-                                            \        | /              | / /foo         |
-                                            /foo         | /              | /"
+                                            `/abc`, but the path `/abcd` would not."
                                           maxLength: 1024
                                           type: string
                                         type:
@@ -2828,9 +2743,8 @@ spec:
                                             the value with which to replace the prefix
                                             match of a request during a rewrite or
                                             redirect. For example, a request to \"/foo/bar\"
-                                            with a prefix match of \"/foo\" and a
-                                            ReplacePrefixMatch of \"/xyz\" would be
-                                            modified to \"/xyz/bar\". \n Note that
+                                            with a prefix match of \"/foo\" would
+                                            be modified to \"/bar\". \n Note that
                                             this matches the behavior of the PathPrefix
                                             match type. This matches full path elements.
                                             A path element refers to the list of labels
@@ -2838,23 +2752,7 @@ spec:
                                             When specified, a trailing `/` is ignored.
                                             For example, the paths `/abc`, `/abc/`,
                                             and `/abc/def` would all match the prefix
-                                            `/abc`, but the path `/abcd` would not.
-                                            \n Request Path | Prefix Match | Replace
-                                            Prefix | Modified Path -------------|--------------|----------------|----------
-                                            /foo/bar     | /foo         | /xyz           |
-                                            /xyz/bar /foo/bar     | /foo         |
-                                            /xyz/          | /xyz/bar /foo/bar     |
-                                            /foo/        | /xyz           | /xyz/bar
-                                            /foo/bar     | /foo/        | /xyz/          |
-                                            /xyz/bar /foo         | /foo         |
-                                            /xyz           | /xyz /foo/        | /foo
-                                            \        | /xyz           | /xyz/ /foo/bar
-                                            \    | /foo         | <empty string> |
-                                            /bar /foo/        | /foo         | <empty
-                                            string> | / /foo         | /foo         |
-                                            <empty string> | / /foo/        | /foo
-                                            \        | /              | / /foo         |
-                                            /foo         | /              | /"
+                                            `/abc`, but the path `/abcd` would not."
                                           maxLength: 1024
                                           type: string
                                         type:
@@ -3238,8 +3136,7 @@ spec:
                                       value with which to replace the prefix match
                                       of a request during a rewrite or redirect. For
                                       example, a request to \"/foo/bar\" with a prefix
-                                      match of \"/foo\" and a ReplacePrefixMatch of
-                                      \"/xyz\" would be modified to \"/xyz/bar\".
+                                      match of \"/foo\" would be modified to \"/bar\".
                                       \n Note that this matches the behavior of the
                                       PathPrefix match type. This matches full path
                                       elements. A path element refers to the list
@@ -3247,21 +3144,7 @@ spec:
                                       When specified, a trailing `/` is ignored. For
                                       example, the paths `/abc`, `/abc/`, and `/abc/def`
                                       would all match the prefix `/abc`, but the path
-                                      `/abcd` would not. \n Request Path | Prefix
-                                      Match | Replace Prefix | Modified Path -------------|--------------|----------------|----------
-                                      /foo/bar     | /foo         | /xyz           |
-                                      /xyz/bar /foo/bar     | /foo         | /xyz/
-                                      \         | /xyz/bar /foo/bar     | /foo/        |
-                                      /xyz           | /xyz/bar /foo/bar     | /foo/
-                                      \       | /xyz/          | /xyz/bar /foo         |
-                                      /foo         | /xyz           | /xyz /foo/        |
-                                      /foo         | /xyz           | /xyz/ /foo/bar
-                                      \    | /foo         | <empty string> | /bar
-                                      /foo/        | /foo         | <empty string>
-                                      | / /foo         | /foo         | <empty string>
-                                      | / /foo/        | /foo         | /              |
-                                      / /foo         | /foo         | /              |
-                                      /"
+                                      `/abcd` would not."
                                     maxLength: 1024
                                     type: string
                                   type:
@@ -3500,8 +3383,7 @@ spec:
                                       value with which to replace the prefix match
                                       of a request during a rewrite or redirect. For
                                       example, a request to \"/foo/bar\" with a prefix
-                                      match of \"/foo\" and a ReplacePrefixMatch of
-                                      \"/xyz\" would be modified to \"/xyz/bar\".
+                                      match of \"/foo\" would be modified to \"/bar\".
                                       \n Note that this matches the behavior of the
                                       PathPrefix match type. This matches full path
                                       elements. A path element refers to the list
@@ -3509,21 +3391,7 @@ spec:
                                       When specified, a trailing `/` is ignored. For
                                       example, the paths `/abc`, `/abc/`, and `/abc/def`
                                       would all match the prefix `/abc`, but the path
-                                      `/abcd` would not. \n Request Path | Prefix
-                                      Match | Replace Prefix | Modified Path -------------|--------------|----------------|----------
-                                      /foo/bar     | /foo         | /xyz           |
-                                      /xyz/bar /foo/bar     | /foo         | /xyz/
-                                      \         | /xyz/bar /foo/bar     | /foo/        |
-                                      /xyz           | /xyz/bar /foo/bar     | /foo/
-                                      \       | /xyz/          | /xyz/bar /foo         |
-                                      /foo         | /xyz           | /xyz /foo/        |
-                                      /foo         | /xyz           | /xyz/ /foo/bar
-                                      \    | /foo         | <empty string> | /bar
-                                      /foo/        | /foo         | <empty string>
-                                      | / /foo         | /foo         | <empty string>
-                                      | / /foo/        | /foo         | /              |
-                                      / /foo         | /foo         | /              |
-                                      /"
+                                      `/abcd` would not."
                                     maxLength: 1024
                                     type: string
                                   type:
@@ -4010,3 +3878,4 @@ status:
   conditions: null
   storedVersions: null
 {{- end }}
+
