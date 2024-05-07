@@ -1,6 +1,7 @@
 use super::*;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1 as metav1;
 use linkerd_policy_controller_core::{http_route, inbound};
+use linkerd_policy_controller_k8s_api::gateway as k8s_gateway_api;
 
 #[test]
 fn links_authorization_policy_with_mtls_name() {
@@ -329,12 +330,12 @@ fn authorization_policy_prevents_index_deletion() {
     test.index.write().apply(net_authn.clone());
 
     // Now we delete the server, and HTTPRoute.
-    <Index as kubert::index::IndexNamespacedResource<k8s::policy::Server>>::delete(
+    <Index as IndexNamespacedResource<k8s::policy::Server>>::delete(
         &mut test.index.write(),
         "ns-0".to_string(),
         "srv-8080".to_string(),
     );
-    <Index as kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute>>::delete(
+    <Index as IndexNamespacedResource<k8s::policy::HttpRoute>>::delete(
         &mut test.index.write(),
         "ns-0".to_string(),
         "route-foo".to_string(),

@@ -1,13 +1,12 @@
 use anyhow::{anyhow, bail, Result};
-use k8s_gateway_api as api;
 use kube::{Resource, ResourceExt};
 use linkerd_policy_controller_core::http_route::{self, GroupKindName, GroupKindNamespaceName};
-use linkerd_policy_controller_k8s_api::policy;
+use linkerd_policy_controller_k8s_api::{gateway as api, policy};
 use std::num::NonZeroU16;
 
 #[derive(Debug, Clone)]
 pub(crate) enum HttpRouteResource {
-    Linkerd(linkerd_policy_controller_k8s_api::policy::HttpRoute),
+    Linkerd(policy::HttpRoute),
     Gateway(api::HttpRoute),
 }
 
@@ -211,7 +210,7 @@ fn path_modifier(path_modifier: api::HttpPathModifier) -> Result<http_route::Pat
 
 pub(crate) fn gkn_for_resource<T>(t: &T) -> GroupKindName
 where
-    T: kube::Resource<DynamicType = ()>,
+    T: Resource<DynamicType = ()>,
 {
     let kind = T::kind(&());
     let group = T::group(&());

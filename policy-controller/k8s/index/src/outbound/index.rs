@@ -5,7 +5,6 @@ use crate::{
 };
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
-use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
 use linkerd_policy_controller_core::{
     http_route::GroupKindNamespaceName,
     outbound::{
@@ -13,7 +12,10 @@ use linkerd_policy_controller_core::{
         WeightedService,
     },
 };
-use linkerd_policy_controller_k8s_api::{policy as api, ResourceExt, Service, Time};
+use linkerd_policy_controller_k8s_api::{
+    gateway::{self as k8s_gateway_api, BackendObjectReference, HttpBackendRef, ParentReference},
+    policy as api, ResourceExt, Service, Time,
+};
 use parking_lot::RwLock;
 use std::{hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time};
 use tokio::sync::watch;
@@ -885,7 +887,7 @@ fn parse_duration(s: &str) -> Result<time::Duration> {
         "m" => 1000 * 60,
         "h" => 1000 * 60 * 60,
         "d" => 1000 * 60 * 60 * 24,
-        _ => anyhow::bail!(
+        _ => bail!(
             "invalid duration unit {} (expected one of 'ms', 's', 'm', 'h', or 'd')",
             unit
         ),

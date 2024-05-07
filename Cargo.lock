@@ -1257,7 +1257,6 @@ dependencies = [
  "chrono",
  "futures",
  "http",
- "k8s-gateway-api",
  "k8s-openapi",
  "kube",
  "kubert",

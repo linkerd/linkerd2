@@ -1,10 +1,11 @@
 use crate::http_route;
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Error, Result};
-use k8s_gateway_api as api;
-use linkerd_policy_controller_core::http_route::{HttpRouteMatch, Method};
-use linkerd_policy_controller_core::inbound::{Filter, HttpRoute, HttpRouteRule};
-use linkerd_policy_controller_core::POLICY_CONTROLLER_NAME;
+use linkerd_policy_controller_core::{
+    http_route::{HttpRouteMatch, Method},
+    inbound::{Filter, HttpRoute, HttpRouteRule},
+    POLICY_CONTROLLER_NAME,
+};
 use linkerd_policy_controller_k8s_api::{
     self as k8s, gateway,
     policy::{httproute as policy, Server},
@@ -52,10 +53,10 @@ pub enum InvalidParentRef {
     SpecifiesSection,
 }
 
-impl TryFrom<api::HttpRoute> for RouteBinding {
+impl TryFrom<gateway::HttpRoute> for RouteBinding {
     type Error = Error;
 
-    fn try_from(route: api::HttpRoute) -> Result<Self, Self::Error> {
+    fn try_from(route: gateway::HttpRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
         let creation_timestamp = route.metadata.creation_timestamp.map(|k8s::Time(t)| t);
         let parents = ParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
@@ -73,7 +74,7 @@ impl TryFrom<api::HttpRoute> for RouteBinding {
             .into_iter()
             .flatten()
             .map(
-                |api::HttpRouteRule {
+                |gateway::HttpRouteRule {
                      matches,
                      filters,
                      backend_refs: _,
@@ -162,12 +163,12 @@ impl RouteBinding {
     }
 
     pub fn try_match(
-        api::HttpRouteMatch {
+        gateway::HttpRouteMatch {
             path,
             headers,
             query_params,
             method,
-        }: api::HttpRouteMatch,
+        }: gateway::HttpRouteMatch,
     ) -> Result<HttpRouteMatch> {
         let path = path.map(http_route::path_match).transpose()?;
 
@@ -194,7 +195,7 @@ impl RouteBinding {
     }
 
     fn try_rule<F>(
-        matches: Option<Vec<api::HttpRouteMatch>>,
+        matches: Option<Vec<gateway::HttpRouteMatch>>,
         filters: Option<Vec<F>>,
         try_filter: impl Fn(F) -> Result<Filter>,
     ) -> Result<HttpRouteRule> {
@@ -213,34 +214,34 @@ impl RouteBinding {
         Ok(HttpRouteRule { matches, filters })
     }
 
-    fn try_gateway_filter(filter: api::HttpRouteFilter) -> Result<Filter> {
+    fn try_gateway_filter(filter: gateway::HttpRouteFilter) -> Result<Filter> {
         let filter = match filter {
-            api::HttpRouteFilter::RequestHeaderModifier {
+            gateway::HttpRouteFilter::RequestHeaderModifier {
                 request_header_modifier,
             } => {
                 let filter = http_route::header_modifier(request_header_modifier)?;
                 Filter::RequestHeaderModifier(filter)
             }
 
-            api::HttpRouteFilter::ResponseHeaderModifier {
+            gateway::HttpRouteFilter::ResponseHeaderModifier {
                 response_header_modifier,
             } => {
                 let filter = http_route::header_modifier(response_header_modifier)?;
                 Filter::ResponseHeaderModifier(filter)
             }
 
-            api::HttpRouteFilter::RequestRedirect { request_redirect } => {
+            gateway::HttpRouteFilter::RequestRedirect { request_redirect } => {
                 let filter = http_route::req_redirect(request_redirect)?;
                 Filter::RequestRedirect(filter)
             }
 
-            api::HttpRouteFilter::RequestMirror { .. } => {
+            gateway::HttpRouteFilter::RequestMirror { .. } => {
                 bail!("RequestMirror filter is not supported")
             }
-            api::HttpRouteFilter::URLRewrite { .. } => {
+            gateway::HttpRouteFilter::URLRewrite { .. } => {
                 bail!("URLRewrite filter is not supported")
             }
-            api::HttpRouteFilter::ExtensionRef { .. } => {
+            gateway::HttpRouteFilter::ExtensionRef { .. } => {
                 bail!("ExtensionRef filter is not supported")
             }
         };
@@ -275,7 +276,7 @@ impl RouteBinding {
 impl ParentRef {
     fn collect_from(
         route_ns: Option<&str>,
-        parent_refs: Option<Vec<api::ParentReference>>,
+        parent_refs: Option<Vec<gateway::ParentReference>>,
     ) -> Result<Vec<Self>, InvalidParentRef> {
         let parents = parent_refs
             .into_iter()
@@ -288,14 +289,14 @@ impl ParentRef {
 
     fn from_parent_ref(
         route_ns: Option<&str>,
-        parent_ref: api::ParentReference,
+        parent_ref: gateway::ParentReference,
     ) -> Option<Result<Self, InvalidParentRef>> {
         // Skip parent refs that don't target a `Server` resource.
         if !policy::parent_ref_targets_kind::<Server>(&parent_ref) || parent_ref.name.is_empty() {
             return None;
         }
 
-        let api::ParentReference {
+        let gateway::ParentReference {
             group: _,
             kind: _,
             namespace,

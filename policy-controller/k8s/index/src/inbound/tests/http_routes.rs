@@ -91,7 +91,7 @@ fn routes_created_for_probes() {
     let test = TestConfig::from_default_policy_with_probes(policy, probe_networks);
 
     // Create a pod.
-    let container = k8s::Container {
+    let container = Container {
         liveness_probe: Some(k8s::Probe {
             http_get: Some(k8s::HTTPGetAction {
                 path: Some("/liveness-container-1".to_string()),
@@ -250,10 +250,10 @@ fn mk_route(
                 timeouts: None,
             }]),
         },
-        status: Some(k8s::policy::httproute::HttpRouteStatus {
-            inner: k8s::gateway::RouteStatus {
+        status: Some(HttpRouteStatus {
+            inner: RouteStatus {
                 parents: vec![k8s::gateway::RouteParentStatus {
-                    parent_ref: k8s::gateway::ParentReference {
+                    parent_ref: ParentReference {
                         group: Some(POLICY_API_GROUP.to_string()),
                         kind: Some("Server".to_string()),
                         namespace: None,
@@ -263,7 +263,7 @@ fn mk_route(
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
                     conditions: vec![k8s::Condition {
-                        last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
+                        last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
                         message: "".to_string(),
                         observed_generation: None,
                         reason: "Accepted".to_string(),

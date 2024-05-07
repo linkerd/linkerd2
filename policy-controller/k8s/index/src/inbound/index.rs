@@ -26,7 +26,8 @@ use linkerd_policy_controller_core::{
     IdentityMatch, Ipv4Net, Ipv6Net, NetworkMatch,
 };
 use linkerd_policy_controller_k8s_api::{
-    self as k8s, policy::server::Port, policy::server::Selector, ResourceExt,
+    self as k8s, gateway as k8s_gateway_api, policy::server::Port, policy::server::Selector,
+    ResourceExt,
 };
 use parking_lot::RwLock;
 use std::{
@@ -883,7 +884,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
     }
 }
 
-// === impl NemspaceIndex ===
+// === impl NamespaceIndex ===
 
 impl NamespaceIndex {
     fn get_or_default(&mut self, ns: String) -> &mut Namespace {
@@ -1084,7 +1085,7 @@ impl Pod {
 
     /// Updates a pod-port to use the given named server.
     ///
-    /// The name is used explicity (and not derived from the `server` itself) to
+    /// The name is used explicitly (and not derived from the `server` itself) to
     /// ensure that we're not handling a default server.
     fn update_server(&mut self, port: NonZeroU16, name: &str, server: InboundServer) {
         match self.port_servers.entry(port) {

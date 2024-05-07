@@ -13,7 +13,7 @@ pub(crate) struct ServerAuthz {
     pub server_selector: ServerSelector,
 }
 
-/// Selects `Server`s for a `ServerAuthoriation`
+/// Selects `Server`s for a `ServerAuthorization`
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum ServerSelector {
     Name(String),

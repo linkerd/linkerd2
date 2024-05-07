@@ -14,7 +14,7 @@ impl Spec {
     pub(crate) fn try_from_resource(
         ma: MeshTLSAuthentication,
         cluster: &ClusterInfo,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self> {
         let namespace = ma
             .namespace()
             .expect("MeshTLSAuthentication must have a namespace");
