@@ -25,10 +25,10 @@
 
 mod cluster_info;
 mod defaults;
-pub mod http_route;
 pub mod inbound;
 pub mod outbound;
 pub mod ports;
+pub mod routes;
 
 pub use cluster_info::ClusterInfo;
 pub use defaults::DefaultPolicy;

@@ -1,6 +1,10 @@
 use crate::{
-    http_route::{self, gkn_for_gateway_http_route, gkn_for_linkerd_http_route, HttpRouteResource},
     ports::{ports_annotation, PortSet},
+    routes::{
+        self,
+        http::{gkn_for_gateway_http_route, gkn_for_linkerd_http_route},
+        RouteResource,
+    },
     ClusterInfo,
 };
 use ahash::AHashMap as HashMap;
@@ -87,7 +91,7 @@ struct RoutesWatch {
 
 impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
     fn apply(&mut self, route: api::HttpRoute) {
-        self.apply(HttpRouteResource::Linkerd(route))
+        self.apply(RouteResource::LinkerdHttp(route))
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -100,7 +104,7 @@ impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
 
 impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
     fn apply(&mut self, route: k8s_gateway_api::HttpRoute) {
-        self.apply(HttpRouteResource::Gateway(route))
+        self.apply(RouteResource::GatewayHttp(route))
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -220,7 +224,7 @@ impl Index {
         self.services_by_ip.get(&addr).cloned()
     }
 
-    fn apply(&mut self, route: HttpRouteResource) {
+    fn apply(&mut self, route: RouteResource) {
         tracing::debug!(name = route.name(), "indexing route");
 
         for parent_ref in route.inner().parent_refs.iter().flatten() {
@@ -255,7 +259,7 @@ impl Index {
 impl Namespace {
     fn apply(
         &mut self,
-        route: HttpRouteResource,
+        route: RouteResource,
         parent_ref: &ParentReference,
         cluster_info: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
@@ -393,18 +397,18 @@ impl Namespace {
 
     fn convert_route(
         &self,
-        route: HttpRouteResource,
+        route: RouteResource,
         cluster: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
     ) -> Result<HttpRoute> {
         match route {
-            HttpRouteResource::Linkerd(route) => {
+            RouteResource::LinkerdHttp(route) => {
                 let hostnames = route
                     .spec
                     .hostnames
                     .into_iter()
                     .flatten()
-                    .map(http_route::host_match)
+                    .map(routes::http::host_match)
                     .collect();
 
                 let rules = route
@@ -423,13 +427,13 @@ impl Namespace {
                     creation_timestamp,
                 })
             }
-            HttpRouteResource::Gateway(route) => {
+            RouteResource::GatewayHttp(route) => {
                 let hostnames = route
                     .spec
                     .hostnames
                     .into_iter()
                     .flatten()
-                    .map(http_route::host_match)
+                    .map(routes::http::host_match)
                     .collect();
 
                 let rules = route
@@ -437,7 +441,32 @@ impl Namespace {
                     .rules
                     .into_iter()
                     .flatten()
-                    .map(|r| self.convert_gateway_rule(r, cluster, service_info))
+                    .map(|r| self.convert_gateway_http_rule(r, cluster, service_info))
+                    .collect::<Result<_>>()?;
+
+                let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
+
+                Ok(HttpRoute {
+                    hostnames,
+                    rules,
+                    creation_timestamp,
+                })
+            }
+            RouteResource::GatewayGrpc(route) => {
+                let hostnames = route
+                    .spec
+                    .hostnames
+                    .into_iter()
+                    .flatten()
+                    .map(routes::http::host_match)
+                    .collect();
+
+                let rules = route
+                    .spec
+                    .rules
+                    .into_iter()
+                    .flatten()
+                    .map(|r| self.convert_gateway_grpc_rule(r, cluster, service_info))
                     .collect::<Result<_>>()?;
 
                 let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
@@ -461,7 +490,7 @@ impl Namespace {
             .matches
             .into_iter()
             .flatten()
-            .map(http_route::try_match)
+            .map(routes::http::try_match)
             .collect::<Result<_>>()?;
 
         let backends = rule
@@ -512,7 +541,7 @@ impl Namespace {
         })
     }
 
-    fn convert_gateway_rule(
+    fn convert_gateway_http_rule(
         &self,
         rule: k8s_gateway_api::HttpRouteRule,
         cluster: &ClusterInfo,
@@ -522,7 +551,7 @@ impl Namespace {
             .matches
             .into_iter()
             .flatten()
-            .map(http_route::try_match)
+            .map(routes::http::try_match)
             .collect::<Result<_>>()?;
 
         let backends = rule
@@ -546,6 +575,45 @@ impl Namespace {
             backend_request_timeout: None,
             filters,
         })
+    }
+
+    #[allow(unused_variables)]
+    fn convert_gateway_grpc_rule(
+        &self,
+        rule: k8s_gateway_api::GrpcRouteRule,
+        cluster: &ClusterInfo,
+        service_info: &HashMap<ServiceRef, ServiceInfo>,
+    ) -> Result<HttpRouteRule> {
+        // let matches = rule
+        //     .matches
+        //     .into_iter()
+        //     .flatten()
+        //     .map(routes::http::try_match)
+        //     .collect::<Result<_>>()?;
+        //
+        // let backends = rule
+        //     .backend_refs
+        //     .into_iter()
+        //     .flatten()
+        //     .filter_map(|b| convert_backend(&self.namespace, b, cluster, service_info))
+        //     .collect();
+        //
+        // let filters = rule
+        //     .filters
+        //     .into_iter()
+        //     .flatten()
+        //     .map(convert_gateway_filter)
+        //     .collect::<Result<_>>()?;
+        //
+        // Ok(HttpRouteRule {
+        //     matches,
+        //     backends,
+        //     request_timeout: None,
+        //     backend_request_timeout: None,
+        //     filters,
+        // })
+
+        todo!()
     }
 }
 
@@ -628,19 +696,19 @@ fn convert_linkerd_filter(filter: api::httproute::HttpRouteFilter) -> Result<Fil
         api::httproute::HttpRouteFilter::RequestHeaderModifier {
             request_header_modifier,
         } => {
-            let filter = http_route::header_modifier(request_header_modifier)?;
+            let filter = routes::http::header_modifier(request_header_modifier)?;
             Filter::RequestHeaderModifier(filter)
         }
 
         api::httproute::HttpRouteFilter::ResponseHeaderModifier {
             response_header_modifier,
         } => {
-            let filter = http_route::header_modifier(response_header_modifier)?;
+            let filter = routes::http::header_modifier(response_header_modifier)?;
             Filter::RequestHeaderModifier(filter)
         }
 
         api::httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
-            let filter = http_route::req_redirect(request_redirect)?;
+            let filter = routes::http::req_redirect(request_redirect)?;
             Filter::RequestRedirect(filter)
         }
     };
@@ -652,19 +720,19 @@ fn convert_gateway_filter(filter: k8s_gateway_api::HttpRouteFilter) -> Result<Fi
         k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
             request_header_modifier,
         } => {
-            let filter = http_route::header_modifier(request_header_modifier)?;
+            let filter = routes::http::header_modifier(request_header_modifier)?;
             Filter::RequestHeaderModifier(filter)
         }
 
         k8s_gateway_api::HttpRouteFilter::ResponseHeaderModifier {
             response_header_modifier,
         } => {
-            let filter = http_route::header_modifier(response_header_modifier)?;
+            let filter = routes::http::header_modifier(response_header_modifier)?;
             Filter::ResponseHeaderModifier(filter)
         }
 
         k8s_gateway_api::HttpRouteFilter::RequestRedirect { request_redirect } => {
-            let filter = http_route::req_redirect(request_redirect)?;
+            let filter = routes::http::req_redirect(request_redirect)?;
             Filter::RequestRedirect(filter)
         }
         k8s_gateway_api::HttpRouteFilter::RequestMirror { .. } => {

@@ -7,12 +7,15 @@
 //! kubernetes resources.
 
 use super::{
-    authorization_policy, http_route::RouteBinding, meshtls_authentication, network_authentication,
+    authorization_policy, meshtls_authentication, network_authentication, routes::RouteBinding,
     server, server_authorization, workload,
 };
 use crate::{
-    http_route::{gkn_for_gateway_http_route, gkn_for_linkerd_http_route, gkn_for_resource},
     ports::{PortHasher, PortMap, PortSet},
+    routes::{
+        gkn_for_resource,
+        http::{gkn_for_gateway_http_route, gkn_for_linkerd_http_route},
+    },
     ClusterInfo, DefaultPolicy,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};

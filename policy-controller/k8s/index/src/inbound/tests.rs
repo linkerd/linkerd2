@@ -1,6 +1,6 @@
 mod annotation;
 mod authorization_policy;
-mod http_routes;
+mod routes;
 mod server_authorization;
 
 use crate::{

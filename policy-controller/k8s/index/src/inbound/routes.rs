@@ -1,4 +1,4 @@
-use crate::http_route;
+use crate::routes;
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Error, Result};
 use linkerd_policy_controller_core::{
@@ -11,6 +11,9 @@ use linkerd_policy_controller_k8s_api::{
     policy::{httproute as policy, Server},
 };
 use std::fmt;
+
+pub(crate) mod grpc;
+pub(crate) mod http;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RouteBinding {
@@ -65,7 +68,7 @@ impl TryFrom<gateway::HttpRoute> for RouteBinding {
             .hostnames
             .into_iter()
             .flatten()
-            .map(http_route::host_match)
+            .map(routes::http::host_match)
             .collect();
 
         let rules = route
@@ -111,7 +114,7 @@ impl TryFrom<policy::HttpRoute> for RouteBinding {
             .hostnames
             .into_iter()
             .flatten()
-            .map(http_route::host_match)
+            .map(routes::http::host_match)
             .collect();
 
         let rules = route
@@ -170,18 +173,18 @@ impl RouteBinding {
             method,
         }: gateway::HttpRouteMatch,
     ) -> Result<HttpRouteMatch> {
-        let path = path.map(http_route::path_match).transpose()?;
+        let path = path.map(routes::http::path_match).transpose()?;
 
         let headers = headers
             .into_iter()
             .flatten()
-            .map(http_route::header_match)
+            .map(routes::http::header_match)
             .collect::<Result<_>>()?;
 
         let query_params = query_params
             .into_iter()
             .flatten()
-            .map(http_route::query_param_match)
+            .map(routes::http::query_param_match)
             .collect::<Result<_>>()?;
 
         let method = method.as_deref().map(Method::try_from).transpose()?;
@@ -219,19 +222,19 @@ impl RouteBinding {
             gateway::HttpRouteFilter::RequestHeaderModifier {
                 request_header_modifier,
             } => {
-                let filter = http_route::header_modifier(request_header_modifier)?;
+                let filter = routes::http::header_modifier(request_header_modifier)?;
                 Filter::RequestHeaderModifier(filter)
             }
 
             gateway::HttpRouteFilter::ResponseHeaderModifier {
                 response_header_modifier,
             } => {
-                let filter = http_route::header_modifier(response_header_modifier)?;
+                let filter = routes::http::header_modifier(response_header_modifier)?;
                 Filter::ResponseHeaderModifier(filter)
             }
 
             gateway::HttpRouteFilter::RequestRedirect { request_redirect } => {
-                let filter = http_route::req_redirect(request_redirect)?;
+                let filter = routes::http::req_redirect(request_redirect)?;
                 Filter::RequestRedirect(filter)
             }
 
@@ -253,19 +256,19 @@ impl RouteBinding {
             policy::HttpRouteFilter::RequestHeaderModifier {
                 request_header_modifier,
             } => {
-                let filter = http_route::header_modifier(request_header_modifier)?;
+                let filter = routes::http::header_modifier(request_header_modifier)?;
                 Filter::RequestHeaderModifier(filter)
             }
 
             policy::HttpRouteFilter::ResponseHeaderModifier {
                 response_header_modifier,
             } => {
-                let filter = http_route::header_modifier(response_header_modifier)?;
+                let filter = routes::http::header_modifier(response_header_modifier)?;
                 Filter::ResponseHeaderModifier(filter)
             }
 
             policy::HttpRouteFilter::RequestRedirect { request_redirect } => {
-                let filter = http_route::req_redirect(request_redirect)?;
+                let filter = routes::http::req_redirect(request_redirect)?;
                 Filter::RequestRedirect(filter)
             }
         };
