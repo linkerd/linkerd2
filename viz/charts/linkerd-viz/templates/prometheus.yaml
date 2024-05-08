@@ -205,6 +205,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
+  revisionHistoryLimit: {{.Values.revisionHistoryLimit}}
   {{- if .Values.prometheus.persistence }}
   strategy:
     type: Recreate

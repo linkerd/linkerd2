@@ -104,3 +104,6 @@ enablePodAntiAffinity: false
 # -- Creates a Job that adds necessary metadata to the extension's namespace
 # during install; disable if lack of privileges require doing this manually
 createNamespaceMetadataJob: true
+
+# -- Specifies the number of old ReplicaSets to retain to allow rollback.
+revisionHistoryLimit: 10

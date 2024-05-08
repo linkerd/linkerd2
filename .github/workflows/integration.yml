@@ -25,10 +25,10 @@ jobs:
   meta:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b
       - id: tag
         run: echo "tag=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> "$GITHUB_OUTPUT"
-      - uses: tj-actions/changed-files@635f118699dd888d737c15018cd30aff2e0274f8
+      - uses: tj-actions/changed-files@0874344d6ebbaa00a27da73276ae7162fadcaf69
         id: core
         with:
           files: |
@@ -45,7 +45,7 @@ jobs:
             .devcontainer/**
             **/Chart.yaml
             **/README*
-      - uses: tj-actions/changed-files@635f118699dd888d737c15018cd30aff2e0274f8
+      - uses: tj-actions/changed-files@0874344d6ebbaa00a27da73276ae7162fadcaf69
         id: policy
         with:
           files: |
@@ -61,7 +61,7 @@ jobs:
           files_ignore: |
             **/Chart.yaml
             **/README*
-      - uses: tj-actions/changed-files@635f118699dd888d737c15018cd30aff2e0274f8
+      - uses: tj-actions/changed-files@0874344d6ebbaa00a27da73276ae7162fadcaf69
         id: multicluster
         with:
           files: |
@@ -73,7 +73,7 @@ jobs:
           files_ignore: |
             **/Chart.yaml
             **/README*
-      - uses: tj-actions/changed-files@635f118699dd888d737c15018cd30aff2e0274f8
+      - uses: tj-actions/changed-files@0874344d6ebbaa00a27da73276ae7162fadcaf69
         id: viz
         with:
           files: |
@@ -120,7 +120,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -135,7 +135,7 @@ jobs:
           docker cp "$id:/out/linkerd-linux-amd64" /home/runner/archives/linkerd
           v=$(/home/runner/archives/linkerd version --short --client)
           [[ "$v" == '${{ needs.meta.outputs.tag }}' ]] || exit 1
-      - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
+      - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
         with:
           name: image-archives-cli
           path: /home/runner/archives
@@ -158,7 +158,7 @@ jobs:
           - proxy
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b
       - uses: ./.github/actions/docker-build
         id: build
         env:
@@ -172,7 +172,7 @@ jobs:
         run: |
           mkdir -p /home/runner/archives
           docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
-      - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
+      - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
         with:
           name: image-archives-${{ matrix.component }}
           path: /home/runner/archives
@@ -185,14 +185,15 @@ jobs:
         test:
           - cni-calico-deep
           - deep
+          - deep-native-sidecar
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
           go-version: "1.22"
-      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
+      - uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e
         with:
           pattern: image-archives-*
           path: image-archives
@@ -223,8 +224,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: olix0r/cargo-action-fmt/setup@9269f3aa1ff01775d95efc97037e2cbdb41d9684
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b
+      - uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e
         with:
           pattern: image-archives-*
           path: image-archives
@@ -281,7 +282,7 @@ jobs:
           - web
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b
       - uses: ./.github/actions/docker-build
         id: build
         with:
@@ -293,7 +294,7 @@ jobs:
         run: |
           mkdir -p /home/runner/archives
           docker save '${{ steps.build.outputs.image }}' >'/home/runner/archives/${{ matrix.component }}.tar'
-      - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
+      - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
         with:
           name: image-archives-${{ matrix.component }}
           path: /home/runner/archives
@@ -312,15 +313,14 @@ jobs:
           - helm-upgrade
           - uninstall
           - upgrade-edge
-          - upgrade-stable
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
           go-version: "1.22"
-      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
+      - uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e
         with:
           pattern: image-archives-*
           path: image-archives
@@ -341,11 +341,11 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
           go-version: "1.22"
-      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
+      - uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e
         with:
           pattern: image-archives-*
           path: image-archives
@@ -375,11 +375,11 @@ jobs:
       - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633
-      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
           go-version: "1.22"
-      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
+      - uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e
         with:
           pattern: image-archives-*
           path: image-archives

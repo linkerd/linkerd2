@@ -141,6 +141,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: {{.Values.controllerReplicas}}
+  revisionHistoryLimit: {{.Values.revisionHistoryLimit}}
   selector:
     matchLabels:
       linkerd.io/control-plane-component: destination
@@ -204,7 +205,11 @@ spec:
         - -cluster-domain={{.Values.clusterDomain}}
         - -identity-trust-domain={{.Values.identityTrustDomain | default .Values.clusterDomain}}
         - -default-opaque-ports={{.Values.proxy.opaquePorts}}
+        - -enable-ipv6={{not .Values.disableIPv6}}
         - -enable-pprof={{.Values.enablePprof | default false}}
+        {{- if (.Values.destinationController).meshedHttp2ClientProtobuf }}
+        - --meshed-http2-client-params={{ toJson .Values.destinationController.meshedHttp2ClientProtobuf }}
+        {{- end }}
         {{- range (.Values.destinationController).additionalArgs }}
         - {{ . }}
         {{- end }}

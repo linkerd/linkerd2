@@ -36,10 +36,13 @@ func (conf *ResourceConfig) uninjectPodSpec(report *Report) {
 	t := conf.pod.spec
 	initContainers := []v1.Container{}
 	for _, container := range t.InitContainers {
-		if container.Name != k8s.InitContainerName {
-			initContainers = append(initContainers, container)
-		} else {
+		switch container.Name {
+		case k8s.InitContainerName:
 			report.Uninjected.ProxyInit = true
+		case k8s.ProxyContainerName:
+			report.Uninjected.Proxy = true
+		default:
+			initContainers = append(initContainers, container)
 		}
 	}
 	t.InitContainers = initContainers

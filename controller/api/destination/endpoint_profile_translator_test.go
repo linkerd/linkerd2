@@ -40,7 +40,7 @@ func TestEndpointProfileTranslator(t *testing.T) {
 		}
 		log := logging.WithField("test", t.Name())
 		translator := newEndpointProfileTranslator(
-			true, "cluster", "identity", make(map[uint32]struct{}),
+			true, "cluster", "identity", make(map[uint32]struct{}), nil,
 			mockGetProfileServer,
 			nil,
 			log,
@@ -84,13 +84,14 @@ func TestEndpointProfileTranslator(t *testing.T) {
 		log := logging.WithField("test", t.Name())
 		endStream := make(chan struct{})
 		translator := newEndpointProfileTranslator(
-			true, "cluster", "identity", make(map[uint32]struct{}),
+			true, "cluster", "identity", make(map[uint32]struct{}), nil,
 			mockGetProfileServer,
 			endStream,
 			log,
 		)
-		translator.Start()
-		defer translator.Stop()
+
+		// We avoid starting the translator so that it doesn't drain its update
+		// queue and we can test the overflow behavior.
 
 		for i := 0; i < updateQueueCapacity/2; i++ {
 			if err := translator.Update(podAddr); err != nil {

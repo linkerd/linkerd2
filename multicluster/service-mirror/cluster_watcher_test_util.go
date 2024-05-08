@@ -485,9 +485,14 @@ var gcTriggered = &testEnvironment{
 		endpointsAsYaml("test-service-1-remote", "test-namespace", "", "", nil),
 		mirrorServiceAsYaml("test-service-2-remote", "test-namespace", "", nil),
 		endpointsAsYaml("test-service-2-remote", "test-namespace", "", "", nil),
+		headlessMirrorAsYaml("test-headless-service-remote", "test-namespace", "", nil),
+		endpointMirrorAsYaml("pod-0", "test-headless-service-remote", "test-namespace", "", nil),
+		headlessMirrorEndpointsAsYaml("test-headless-service-remote", "test-namespace", "pod-0", "", "", nil),
+		endpointMirrorEndpointsAsYaml("test-headless-service-remote", "test-namespace", "pod-0", "", "", nil),
 	},
 	remoteResources: []string{
 		remoteServiceAsYaml("test-service-1", "test-namespace", "", nil),
+		remoteHeadlessSvcAsYaml("test-headless-service", "test-namespace", "", nil),
 	},
 	link: multicluster.Link{
 		TargetClusterName: clusterName,
@@ -1223,7 +1228,7 @@ func endpointMirrorEndpointsAsYaml(name, namespace, hostname, gatewayIP, gateway
 	return string(bytes)
 }
 
-// createEmptySelectorEnv will create a test environment with two services. It
+// createEnvWithSelector will create a test environment with two services. It
 // accepts a default and a remote discovery selector which it will use for the
 // link creation. This function is used to create environments that differ only
 // in the selector used in the link.

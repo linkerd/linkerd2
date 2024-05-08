@@ -106,7 +106,7 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 	}
 
 	if iv.AdminPort != 0 {
-		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_ADMIN_LISTEN_ADDR", fmt.Sprintf("0.0.0.0:%d", iv.AdminPort)); err != nil {
+		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_ADMIN_LISTEN_ADDR", fmt.Sprintf("[::]:%d", iv.AdminPort)); err != nil {
 			return err
 		}
 		if proxyContainer.LivenessProbe.HTTPGet.Port.IntVal != int32(iv.AdminPort) {
@@ -122,7 +122,7 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 	}
 
 	if iv.ControlPort != 0 {
-		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_CONTROL_LISTEN_ADDR", fmt.Sprintf("0.0.0.0:%d", iv.ControlPort)); err != nil {
+		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_CONTROL_LISTEN_ADDR", fmt.Sprintf("[::]:%d", iv.ControlPort)); err != nil {
 			return err
 		}
 	}
@@ -140,7 +140,7 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 	}
 
 	if iv.InboundPort != 0 {
-		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_INBOUND_LISTEN_ADDR", fmt.Sprintf("0.0.0.0:%d", iv.InboundPort)); err != nil {
+		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_INBOUND_LISTEN_ADDR", fmt.Sprintf("[::]:%d", iv.InboundPort)); err != nil {
 			return err
 		}
 		if proxyContainer.LivenessProbe.HTTPGet.Port.IntVal != int32(iv.AdminPort) {
@@ -155,7 +155,11 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 	}
 
 	if iv.OutboundPort != 0 {
-		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR", fmt.Sprintf("127.0.0.1:%d", iv.OutboundPort)); err != nil {
+		if err := iv.validateEnvVar(
+			proxyContainer,
+			"LINKERD2_PROXY_OUTBOUND_LISTEN_ADDRS",
+			fmt.Sprintf("127.0.0.1:%d,[::1]:%d", iv.OutboundPort, iv.OutboundPort),
+		); err != nil {
 			return err
 		}
 	}

@@ -43,7 +43,8 @@ func getAllContainersWithPort(
 	}
 	var containers []corev1.Container
 
-	for _, c := range pod.Spec.Containers {
+	allContainers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
+	for _, c := range allContainers {
 		for _, p := range c.Ports {
 			if p.Name == portName {
 				containers = append(containers, c)

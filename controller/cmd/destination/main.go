@@ -2,6 +2,7 @@ package destination
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"net"
@@ -10,6 +11,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination"
 	externalworkload "github.com/linkerd/linkerd2/controller/api/destination/external-workload"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
@@ -34,6 +36,8 @@ func Main(args []string) {
 		"Enable transparently upgraded HTTP2 connections among pods in the service mesh")
 	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", true,
 		"Enable the usage of EndpointSlice informers and resources")
+	enableIPv6 := cmd.Bool("enable-ipv6", true,
+		"Set to true to allow discovering IPv6 endpoints and preferring IPv6 when both IPv4 and IPv6 are available")
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
 	defaultOpaquePorts := cmd.String("default-opaque-ports", "", "configures the default opaque ports")
@@ -50,7 +54,27 @@ func Main(args []string) {
 	extEndpointZoneWeights := cmd.Bool("ext-endpoint-zone-weights", false,
 		"Enable setting endpoint weighting based on zone locality")
 
+	// Cluster-wide defaults for meshed HTTP/2 client parameters.. These only
+	// apply to meshed connections, as we don't want to conflict with HTTP/2
+	// servers that enforce policies that limit client keep-alive behavior. The
+	// inbound proxy does not enforce such policies, so we're free to use
+	// defaults for meshed HTTP/2 connections.
+	meshedHTTP2ClientParamsJSON := cmd.String("meshed-http2-client-params", "",
+		"HTTP/2 client parameters for meshed connections in JSON format")
+
 	flags.ConfigureAndParse(cmd, args)
+
+	if *enableIPv6 && !*enableEndpointSlices {
+		log.Fatal("If --enable-ipv6=true then --enable-endpoint-slices needs to be true")
+	}
+
+	var meshedHTTP2ClientParams *pb.Http2ClientParams
+	if meshedHTTP2ClientParamsJSON != nil && *meshedHTTP2ClientParamsJSON != "" {
+		meshedHTTP2ClientParams = &pb.Http2ClientParams{}
+		if err := json.Unmarshal([]byte(*meshedHTTP2ClientParamsJSON), meshedHTTP2ClientParams); err != nil {
+			log.Fatalf("Failed to parse meshed HTTP/2 client parameters: %s", err)
+		}
+	}
 
 	ready := false
 	adminServer := admin.NewServer(*metricsAddr, *enablePprof, &ready)
@@ -143,13 +167,15 @@ func Main(args []string) {
 	}
 
 	config := destination.Config{
-		ControllerNS:           *controllerNamespace,
-		IdentityTrustDomain:    *trustDomain,
-		ClusterDomain:          *clusterDomain,
-		DefaultOpaquePorts:     opaquePorts,
-		EnableH2Upgrade:        *enableH2Upgrade,
-		EnableEndpointSlices:   *enableEndpointSlices,
-		ExtEndpointZoneWeights: *extEndpointZoneWeights,
+		ControllerNS:            *controllerNamespace,
+		IdentityTrustDomain:     *trustDomain,
+		ClusterDomain:           *clusterDomain,
+		DefaultOpaquePorts:      opaquePorts,
+		EnableH2Upgrade:         *enableH2Upgrade,
+		EnableEndpointSlices:    *enableEndpointSlices,
+		EnableIPv6:              *enableIPv6,
+		ExtEndpointZoneWeights:  *extEndpointZoneWeights,
+		MeshedHttp2ClientParams: meshedHTTP2ClientParams,
 	}
 	server, err := destination.NewServer(
 		*addr,

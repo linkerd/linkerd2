@@ -2,9 +2,8 @@ package destination
 
 import (
 	"fmt"
+	"net/netip"
 	"reflect"
-	"strconv"
-	"strings"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
@@ -41,7 +40,11 @@ type (
 
 		enableH2Upgrade,
 		enableEndpointFiltering,
+		enableIPv6,
+
 		extEndpointZoneWeights bool
+
+		meshedHTTP2ClientParams *pb.Http2ClientParams
 
 		availableEndpoints watcher.AddressSet
 		filteredSnapshot   watcher.AddressSet
@@ -82,7 +85,9 @@ func newEndpointTranslator(
 	identityTrustDomain string,
 	enableH2Upgrade,
 	enableEndpointFiltering,
+	enableIPv6,
 	extEndpointZoneWeights bool,
+	meshedHTTP2ClientParams *pb.Http2ClientParams,
 	service string,
 	srcNodeName string,
 	defaultOpaquePorts map[uint32]struct{},
@@ -112,7 +117,10 @@ func newEndpointTranslator(
 		defaultOpaquePorts,
 		enableH2Upgrade,
 		enableEndpointFiltering,
+		enableIPv6,
 		extEndpointZoneWeights,
+		meshedHTTP2ClientParams,
+
 		availableEndpoints,
 		filteredSnapshot,
 		stream,
@@ -235,6 +243,7 @@ func (et *endpointTranslator) noEndpoints(exists bool) {
 
 func (et *endpointTranslator) sendFilteredUpdate() {
 	filtered := et.filterAddresses()
+	filtered = et.selectAddressFamily(filtered)
 	diffAdd, diffRemove := et.diffEndpoints(filtered)
 
 	if len(diffAdd.Addresses) > 0 {
@@ -245,6 +254,33 @@ func (et *endpointTranslator) sendFilteredUpdate() {
 	}
 
 	et.filteredSnapshot = filtered
+}
+
+func (et *endpointTranslator) selectAddressFamily(addresses watcher.AddressSet) watcher.AddressSet {
+	filtered := make(map[watcher.ID]watcher.Address)
+	for id, addr := range addresses.Addresses {
+		if id.IPFamily == corev1.IPv6Protocol && !et.enableIPv6 {
+			continue
+		}
+
+		if id.IPFamily == corev1.IPv4Protocol && et.enableIPv6 {
+			// Only consider IPv4 address for which there's not already an IPv6
+			// alternative
+			altID := id
+			altID.IPFamily = corev1.IPv6Protocol
+			if _, ok := addresses.Addresses[altID]; ok {
+				continue
+			}
+		}
+
+		filtered[id] = addr
+	}
+
+	return watcher.AddressSet{
+		Addresses:          filtered,
+		Labels:             addresses.Labels,
+		LocalTrafficPolicy: addresses.LocalTrafficPolicy,
+	}
 }
 
 // filterAddresses is responsible for filtering endpoints based on the node's
@@ -375,14 +411,15 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 		)
 		if address.Pod != nil {
 			opaquePorts = watcher.GetAnnotatedOpaquePorts(address.Pod, et.defaultOpaquePorts)
-			wa, err = createWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS)
+			wa, err = createWeightedAddr(address, opaquePorts,
+				et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.meshedHTTP2ClientParams)
 			if err != nil {
 				et.log.Errorf("Failed to translate Pod endpoints to weighted addr: %s", err)
 				continue
 			}
 		} else if address.ExternalWorkload != nil {
 			opaquePorts = watcher.GetAnnotatedOpaquePortsForExternalWorkload(address.ExternalWorkload, et.defaultOpaquePorts)
-			wa, err = createWeightedAddrForExternalWorkload(address, opaquePorts)
+			wa, err = createWeightedAddrForExternalWorkload(address, opaquePorts, et.meshedHTTP2ClientParams)
 			if err != nil {
 				et.log.Errorf("Failed to translate ExternalWorkload endpoints to weighted addr: %s", err)
 				continue
@@ -424,6 +461,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 						},
 					}
 				}
+				wa.Http2 = et.meshedHTTP2ClientParams
 			}
 		}
 
@@ -488,6 +526,7 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 func createWeightedAddrForExternalWorkload(
 	address watcher.Address,
 	opaquePorts map[uint32]struct{},
+	http2 *pb.Http2ClientParams,
 ) (*pb.WeightedAddr, error) {
 	tcpAddr, err := toAddr(address)
 	if err != nil {
@@ -508,6 +547,8 @@ func createWeightedAddrForExternalWorkload(
 	}
 
 	weightedAddr.ProtocolHint = &pb.ProtocolHint{}
+	weightedAddr.Http2 = http2
+
 	_, opaquePort := opaquePorts[address.Port]
 	// If address is set as opaque by a Server, or its port is set as
 	// opaque by annotation or default value, then set the hinted protocol to
@@ -559,6 +600,7 @@ func createWeightedAddr(
 	enableH2Upgrade bool,
 	identityTrustDomain string,
 	controllerNS string,
+	meshedHttp2 *pb.Http2ClientParams,
 ) (*pb.WeightedAddr, error) {
 	tcpAddr, err := toAddr(address)
 	if err != nil {
@@ -593,6 +635,7 @@ func createWeightedAddr(
 	_, isSkippedInboundPort := skippedInboundPorts[address.Port]
 
 	if controllerNSLabel != "" && !isSkippedInboundPort {
+		weightedAddr.Http2 = meshedHttp2
 		weightedAddr.ProtocolHint = &pb.ProtocolHint{}
 
 		_, opaquePort := opaquePorts[address.Port]
@@ -665,7 +708,8 @@ func newEmptyAddressSet() watcher.AddressSet {
 // getInboundPort gets the inbound port from the proxy container's environment
 // variable.
 func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
-	for _, containerSpec := range podSpec.Containers {
+	containers := append(podSpec.InitContainers, podSpec.Containers...)
+	for _, containerSpec := range containers {
 		if containerSpec.Name != pkgK8s.ProxyContainerName {
 			continue
 		}
@@ -673,12 +717,12 @@ func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
 			if envVar.Name != envInboundListenAddr {
 				continue
 			}
-			addr := strings.Split(envVar.Value, ":")
-			port, err := strconv.ParseUint(addr[1], 10, 32)
+			addrPort, err := netip.ParseAddrPort(envVar.Value)
 			if err != nil {
 				return 0, fmt.Errorf("failed to parse inbound port for proxy container: %w", err)
 			}
-			return uint32(port), nil
+
+			return uint32(addrPort.Port()), nil
 		}
 	}
 	return 0, fmt.Errorf("failed to find %s environment variable in any container for given pod spec", envInboundListenAddr)

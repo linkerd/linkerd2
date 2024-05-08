@@ -239,7 +239,8 @@ func PodIdentity(pod *corev1.Pod) (string, error) {
 
 	podsa := pod.Spec.ServiceAccountName
 	podns := pod.ObjectMeta.Namespace
-	for _, c := range pod.Spec.Containers {
+	containers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
+	for _, c := range containers {
 		if c.Name == ProxyContainerName {
 			for _, env := range c.Env {
 				if env.Name == "LINKERD2_PROXY_IDENTITY_LOCAL_NAME" {

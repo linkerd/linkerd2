@@ -212,7 +212,7 @@ func validateAuthzRows(name string, rowStats map[string]*testutil.RowStat, isSer
 	return nil
 }
 
-// ParseRows parses the output of linkerd stat on a policy resource
+// ParseAuthzRows parses the output of linkerd stat on a policy resource
 func ParseAuthzRows(out string, expectedRowCount, expectedColumnCount int, isServer bool) (map[string]*testutil.RowStat, error) {
 	rows, err := testutil.CheckRowCount(out, expectedRowCount)
 	if err != nil {

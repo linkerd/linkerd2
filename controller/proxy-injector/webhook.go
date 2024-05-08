@@ -105,7 +105,7 @@ func Inject(linkerdNamespace string) webhook.Handler {
 
 			// If the pod did not inherit the opaque ports annotation from the
 			// namespace, then add the default value from the config values. This
-			// ensures that the generated patch always sets the opaue ports
+			// ensures that the generated patch always sets the opaque ports
 			// annotation.
 			if !resourceConfig.HasWorkloadAnnotation(pkgK8s.ProxyOpaquePortsAnnotation) {
 				defaultPorts := strings.Split(resourceConfig.GetValues().Proxy.OpaquePorts, ",")

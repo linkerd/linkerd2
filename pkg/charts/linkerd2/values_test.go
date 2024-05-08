@@ -44,6 +44,7 @@ func TestNewValues(t *testing.T) {
 	expected := &Values{
 		ControllerImage:              "cr.l5d.io/linkerd/controller",
 		ControllerReplicas:           1,
+		RevisionHistoryLimit:         10,
 		ControllerUID:                2103,
 		EnableH2Upgrade:              true,
 		EnablePodAntiAffinity:        false,
@@ -87,6 +88,15 @@ func TestNewValues(t *testing.T) {
 			},
 			ServiceMirror: &PodMonitorComponent{Enabled: true},
 			Proxy:         &PodMonitorComponent{Enabled: true},
+		},
+		DestinationController: map[string]interface{}{
+			"meshedHttp2ClientProtobuf": map[string]interface{}{
+				"keep_alive": map[string]interface{}{
+					"interval":   map[string]interface{}{"seconds": 10.0},
+					"timeout":    map[string]interface{}{"seconds": 3.0},
+					"while_idle": true,
+				},
+			},
 		},
 		PolicyController: &PolicyController{
 			Image: &Image{
@@ -160,6 +170,22 @@ func TestNewValues(t *testing.T) {
 					Lifetime:       "1h",
 				},
 			},
+			Inbound: ProxyParams{
+				"server": ProxyScopeParams{
+					"http2": ProxyProtoParams{
+						"keepAliveInterval": "10s",
+						"keepAliveTimeout":  "3s",
+					},
+				},
+			},
+			Outbound: ProxyParams{
+				"server": ProxyScopeParams{
+					"http2": ProxyProtoParams{
+						"keepAliveInterval": "10s",
+						"keepAliveTimeout":  "3s",
+					},
+				},
+			},
 		},
 		ProxyInit: &ProxyInit{
 			IptablesMode:        "legacy",
@@ -220,7 +246,7 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 
-		ProxyInjector:    &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorInjector},
+		ProxyInjector:    &ProxyInjector{Webhook: Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorInjector}},
 		ProfileValidator: &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorSimple},
 		PolicyValidator:  &Webhook{TLS: &TLS{}, NamespaceSelector: namespaceSelectorSimple},
 	}

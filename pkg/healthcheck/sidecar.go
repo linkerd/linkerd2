@@ -10,7 +10,8 @@ import (
 // HasExistingSidecars returns true if the pod spec already has the proxy init
 // and sidecar containers injected. Otherwise, it returns false.
 func HasExistingSidecars(podSpec *corev1.PodSpec) bool {
-	for _, container := range podSpec.Containers {
+	containers := append(podSpec.InitContainers, podSpec.Containers...)
+	for _, container := range containers {
 		if strings.HasPrefix(container.Image, "cr.l5d.io/linkerd/proxy:") ||
 			strings.HasPrefix(container.Image, "gcr.io/istio-release/proxyv2:") ||
 			container.Name == k8s.ProxyContainerName ||

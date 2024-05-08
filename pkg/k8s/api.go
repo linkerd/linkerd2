@@ -229,11 +229,16 @@ func (kubeAPI *KubernetesAPI) GetNamespaceWithExtensionLabel(ctx context.Context
 
 // GetPodStatus receives a pod and returns the pod status, based on `kubectl` logic.
 // This logic is imported and adapted from the github.com/kubernetes/kubernetes project:
-// https://github.com/kubernetes/kubernetes/blob/33a3e325f754d179b25558dee116fca1c67d353a/pkg/printers/internalversion/printers.go#L558-L640
+// https://github.com/kubernetes/kubernetes/blob/v1.31.0-alpha.0/pkg/printers/internalversion/printers.go#L860
 func GetPodStatus(pod corev1.Pod) string {
 	reason := string(pod.Status.Phase)
 	if pod.Status.Reason != "" {
 		reason = pod.Status.Reason
+	}
+
+	initContainers := make(map[string]*corev1.Container)
+	for i := range pod.Spec.InitContainers {
+		initContainers[pod.Spec.InitContainers[i].Name] = &pod.Spec.InitContainers[i]
 	}
 
 	initializing := false
@@ -241,6 +246,9 @@ func GetPodStatus(pod corev1.Pod) string {
 		container := pod.Status.InitContainerStatuses[i]
 		switch {
 		case container.State.Terminated != nil && container.State.Terminated.ExitCode == 0 && container.State.Terminated.Signal == 0:
+			continue
+		case isRestartableInitContainer(initContainers[container.Name]) &&
+			container.Started != nil && *container.Started && container.Ready:
 			continue
 		case container.State.Terminated != nil:
 			// initialization is failed
@@ -292,9 +300,20 @@ func GetPodStatus(pod corev1.Pod) string {
 	return reason
 }
 
+// Borrowed from
+// https://github.com/kubernetes/kubernetes/blob/v1.31.0-alpha.0/pkg/printers/internalversion/printers.go#L3209
+func isRestartableInitContainer(initContainer *corev1.Container) bool {
+	if initContainer.RestartPolicy == nil {
+		return false
+	}
+
+	return *initContainer.RestartPolicy == corev1.ContainerRestartPolicyAlways
+}
+
 // GetProxyReady returns true if the pod contains a proxy that is ready
 func GetProxyReady(pod corev1.Pod) bool {
-	for _, container := range pod.Status.ContainerStatuses {
+	statuses := append(pod.Status.InitContainerStatuses, pod.Status.ContainerStatuses...)
+	for _, container := range statuses {
 		if container.Name == ProxyContainerName {
 			return container.Ready
 		}
@@ -304,7 +323,8 @@ func GetProxyReady(pod corev1.Pod) bool {
 
 // GetProxyVersion returns the container proxy's version, if any
 func GetProxyVersion(pod corev1.Pod) string {
-	for _, container := range pod.Spec.Containers {
+	containers := append(pod.Spec.InitContainers, pod.Spec.Containers...)
+	for _, container := range containers {
 		if container.Name == ProxyContainerName {
 			if strings.Contains(container.Image, "@") {
 				// Proxy container image is specified with digest instead of

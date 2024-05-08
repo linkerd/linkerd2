@@ -32,6 +32,8 @@ iptablesMode: "legacy"
 disableIPv6: false
 # -- Kubernetes priorityClassName for the CNI plugin's Pods
 priorityClassName: ""
+# -- Specifies the number of old ReplicaSets to retain to allow rollback.
+revisionHistoryLimit: 10
 
 # -- Add a PSP resource and bind it to the linkerd-cni ServiceAccounts.
 # Note PSP has been deprecated since k8s v1.21
@@ -57,7 +59,7 @@ image:
   # -- Docker image for the CNI plugin
   name: "cr.l5d.io/linkerd/cni-plugin"
   # -- Tag for the CNI container Docker image
-  version: "v1.4.0"
+  version: "v1.5.0"
   # -- Pull policy for the linkerd-cni container
   pullPolicy: IfNotPresent
 
