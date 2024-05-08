@@ -15,12 +15,7 @@ use linkerd_policy_controller_core::{
 };
 use linkerd_policy_controller_k8s_api::{policy as api, ResourceExt, Service, Time};
 use parking_lot::RwLock;
-use prometheus_client::{
-    collector::Collector,
-    encoding::{DescriptorEncoder, EncodeMetric},
-    metrics::{gauge::ConstGauge, MetricType},
-};
-use std::{hash::Hash, net::IpAddr, num::NonZeroU16, ops::Deref, sync::Arc, time};
+use std::{hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time};
 use tokio::sync::watch;
 
 #[derive(Debug)]
@@ -29,8 +24,10 @@ pub struct Index {
     services_by_ip: HashMap<IpAddr, ServiceRef>,
     service_info: HashMap<ServiceRef, ServiceInfo>,
 }
-#[derive(Clone, Debug)]
-pub struct SharedIndex(pub Arc<RwLock<Index>>);
+
+pub mod metrics;
+
+pub type SharedIndex = Arc<RwLock<Index>>;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ServiceRef {
@@ -182,14 +179,14 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
 
 impl Index {
     pub fn shared(cluster_info: Arc<ClusterInfo>) -> SharedIndex {
-        SharedIndex(Arc::new(RwLock::new(Self {
+        Arc::new(RwLock::new(Self {
             namespaces: NamespaceIndex {
                 by_ns: HashMap::default(),
                 cluster_info,
             },
             services_by_ip: HashMap::default(),
             service_info: HashMap::default(),
-        })))
+        }))
     }
 
     pub fn outbound_policy_rx(
@@ -549,66 +546,6 @@ impl Namespace {
             backend_request_timeout: None,
             filters,
         })
-    }
-}
-
-impl Deref for SharedIndex {
-    type Target = RwLock<Index>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Collector for SharedIndex {
-    fn encode(&self, mut encoder: DescriptorEncoder<'_>) -> Result<(), std::fmt::Error> {
-        let this = self.0.read();
-
-        let service_encoder = encoder.encode_descriptor(
-            "service_index_size",
-            "The number of entires in service index",
-            None,
-            MetricType::Gauge,
-        )?;
-        let services = ConstGauge::new(this.services_by_ip.len() as u32);
-        services.encode(service_encoder)?;
-
-        let service_info_encoder = encoder.encode_descriptor(
-            "service_info_index_size",
-            "The number of entires in the service info index",
-            None,
-            MetricType::Gauge,
-        )?;
-        let service_infos = ConstGauge::new(this.service_info.len() as u32);
-        service_infos.encode(service_info_encoder)?;
-
-        let mut service_route_encoder = encoder.encode_descriptor(
-            "service_route_index_size",
-            "The number of entires in the service route index",
-            None,
-            MetricType::Gauge,
-        )?;
-        for (ns, index) in &this.namespaces.by_ns {
-            let labels = vec![("namespace", ns.as_str())];
-            let service_routes = ConstGauge::new(index.service_routes.len() as u32);
-            let service_route_encoder = service_route_encoder.encode_family(&labels)?;
-            service_routes.encode(service_route_encoder)?;
-        }
-
-        let mut service_port_route_encoder = encoder.encode_descriptor(
-            "service_port_route_index_size",
-            "The number of entires in the service port route index",
-            None,
-            MetricType::Gauge,
-        )?;
-        for (ns, index) in &this.namespaces.by_ns {
-            let labels = vec![("namespace", ns.as_str())];
-            let service_port_routes = ConstGauge::new(index.service_port_routes.len() as u32);
-            let service_port_route_encoder = service_port_route_encoder.encode_family(&labels)?;
-            service_port_routes.encode(service_port_route_encoder)?;
-        }
-
-        Ok(())
     }
 }
 

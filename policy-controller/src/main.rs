@@ -149,8 +149,10 @@ async fn main() -> Result<()> {
     let status_metrics = status::ControllerMetrics::register(resource_status);
     let status_index_metrcs = status::IndexMetrics::register(resource_status);
 
-    prom.sub_registry_with_prefix("outbound_index")
-        .register_collector(Box::new(outbound_index.clone()));
+    outbound::metrics::register(
+        prom.sub_registry_with_prefix("outbound_index"),
+        outbound_index.clone(),
+    );
 
     let mut runtime = kubert::Runtime::builder()
         .with_log(log_level, log_format)
@@ -238,7 +240,7 @@ async fn main() -> Result<()> {
 
     let http_routes = runtime.watch_all::<k8s::policy::HttpRoute>(watcher::Config::default());
     let http_routes_indexes = IndexList::new(inbound_index.clone())
-        .push(outbound_index.0.clone())
+        .push(outbound_index.clone())
         .push(status_index.clone())
         .shared();
     tokio::spawn(
@@ -254,7 +256,7 @@ async fn main() -> Result<()> {
     );
 
     let services = runtime.watch_all::<k8s::Service>(watcher::Config::default());
-    let services_indexes = IndexList::new(outbound_index.0.clone())
+    let services_indexes = IndexList::new(outbound_index.clone())
         .push(status_index.clone())
         .shared();
     tokio::spawn(
