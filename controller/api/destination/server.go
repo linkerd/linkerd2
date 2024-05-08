@@ -120,7 +120,7 @@ func NewServer(
 		shutdown,
 	}
 
-	s := prometheus.NewGrpcServer()
+	s := prometheus.NewGrpcServer(grpc.MaxConcurrentStreams(0))
 	// linkerd2-proxy-api/destination.Destination (proxy-facing)
 	pb.RegisterDestinationServer(s, &srv)
 	return s, nil

@@ -571,7 +571,7 @@ func newGRPCTapServer(
 		ignoreHeaders:       ignoreHeaders,
 	}
 
-	s := prometheus.NewGrpcServer()
+	s := prometheus.NewGrpcServer(grpc.MaxConcurrentStreams(0))
 	tapPb.RegisterTapServer(s, srv)
 
 	return srv
