@@ -1,24 +1,20 @@
 use crate::{
     ports::{ports_annotation, PortSet},
-    routes::{
-        self,
-        http::{gkn_for_gateway_http_route, gkn_for_linkerd_http_route},
-        RouteResource,
-    },
+    routes::{self, RouteResource},
     ClusterInfo,
 };
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
 use linkerd_policy_controller_core::{
-    http_route::GroupKindNamespaceName,
     outbound::{
-        Backend, Backoff, FailureAccrual, Filter, HttpRoute, HttpRouteRule, OutboundPolicy,
+        Backend, Backoff, FailureAccrual, Filter, OutboundPolicy, OutboundRoute, OutboundRouteRule,
         WeightedService,
     },
+    routes::GroupKindNamespaceName,
 };
 use linkerd_policy_controller_k8s_api::{
     gateway::{self as k8s_gateway_api, BackendObjectReference, HttpBackendRef, ParentReference},
-    policy as api, ResourceExt, Service, Time,
+    policy as linkerd_k8s_api, ResourceExt, Service, Time,
 };
 use parking_lot::RwLock;
 use std::{hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time};
@@ -54,7 +50,7 @@ struct Namespace {
     service_port_routes: HashMap<ServicePort, ServiceRoutes>,
     /// Stores the route resources (by service name) that do not
     /// explicitly target a port.
-    service_routes: HashMap<String, HashMap<GroupKindNamespaceName, HttpRoute>>,
+    service_routes: HashMap<String, HashMap<GroupKindNamespaceName, OutboundRoute>>,
     namespace: Arc<String>,
 }
 
@@ -85,17 +81,17 @@ struct ServiceRoutes {
 struct RoutesWatch {
     opaque: bool,
     accrual: Option<FailureAccrual>,
-    routes: HashMap<GroupKindNamespaceName, HttpRoute>,
+    routes: HashMap<GroupKindNamespaceName, OutboundRoute>,
     watch: watch::Sender<OutboundPolicy>,
 }
 
-impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
-    fn apply(&mut self, route: api::HttpRoute) {
+impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::HttpRoute> for Index {
+    fn apply(&mut self, route: linkerd_k8s_api::HttpRoute) {
         self.apply(RouteResource::LinkerdHttp(route))
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        let gknn = gkn_for_linkerd_http_route(name).namespaced(namespace);
+        let gknn = routes::http::gkn_for_linkerd_http_route(name).namespaced(namespace);
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete(&gknn);
         }
@@ -400,7 +396,7 @@ impl Namespace {
         route: RouteResource,
         cluster: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
-    ) -> Result<HttpRoute> {
+    ) -> Result<OutboundRoute> {
         match route {
             RouteResource::LinkerdHttp(route) => {
                 let hostnames = route
@@ -421,7 +417,7 @@ impl Namespace {
 
                 let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
 
-                Ok(HttpRoute {
+                Ok(OutboundRoute {
                     hostnames,
                     rules,
                     creation_timestamp,
@@ -446,7 +442,7 @@ impl Namespace {
 
                 let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
 
-                Ok(HttpRoute {
+                Ok(OutboundRoute {
                     hostnames,
                     rules,
                     creation_timestamp,
@@ -471,7 +467,7 @@ impl Namespace {
 
                 let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
 
-                Ok(HttpRoute {
+                Ok(OutboundRoute {
                     hostnames,
                     rules,
                     creation_timestamp,
@@ -482,10 +478,10 @@ impl Namespace {
 
     fn convert_linkerd_rule(
         &self,
-        rule: api::httproute::HttpRouteRule,
+        rule: linkerd_k8s_api::httproute::HttpRouteRule,
         cluster: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
-    ) -> Result<HttpRouteRule> {
+    ) -> Result<OutboundRouteRule> {
         let matches = rule
             .matches
             .into_iter()
@@ -518,21 +514,20 @@ impl Namespace {
             Some(timeout)
         });
 
-        let backend_request_timeout =
-            rule.timeouts
-                .as_ref()
-                .and_then(|timeouts: &api::httproute::HttpRouteTimeouts| {
-                    let timeout = time::Duration::from(timeouts.backend_request?);
+        let backend_request_timeout = rule.timeouts.as_ref().and_then(
+            |timeouts: &linkerd_k8s_api::httproute::HttpRouteTimeouts| {
+                let timeout = time::Duration::from(timeouts.backend_request?);
 
-                    // zero means "no timeout", per GEP-1742
-                    if timeout == time::Duration::from_nanos(0) {
-                        return None;
-                    }
+                // zero means "no timeout", per GEP-1742
+                if timeout == time::Duration::from_nanos(0) {
+                    return None;
+                }
 
-                    Some(timeout)
-                });
+                Some(timeout)
+            },
+        );
 
-        Ok(HttpRouteRule {
+        Ok(OutboundRouteRule {
             matches,
             backends,
             request_timeout,
@@ -546,7 +541,7 @@ impl Namespace {
         rule: k8s_gateway_api::HttpRouteRule,
         cluster: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
-    ) -> Result<HttpRouteRule> {
+    ) -> Result<OutboundRouteRule> {
         let matches = rule
             .matches
             .into_iter()
@@ -568,7 +563,7 @@ impl Namespace {
             .map(convert_gateway_filter)
             .collect::<Result<_>>()?;
 
-        Ok(HttpRouteRule {
+        Ok(OutboundRouteRule {
             matches,
             backends,
             request_timeout: None,
@@ -691,23 +686,23 @@ fn convert_backend(
     }))
 }
 
-fn convert_linkerd_filter(filter: api::httproute::HttpRouteFilter) -> Result<Filter> {
+fn convert_linkerd_filter(filter: linkerd_k8s_api::httproute::HttpRouteFilter) -> Result<Filter> {
     let filter = match filter {
-        api::httproute::HttpRouteFilter::RequestHeaderModifier {
+        linkerd_k8s_api::httproute::HttpRouteFilter::RequestHeaderModifier {
             request_header_modifier,
         } => {
             let filter = routes::http::header_modifier(request_header_modifier)?;
             Filter::RequestHeaderModifier(filter)
         }
 
-        api::httproute::HttpRouteFilter::ResponseHeaderModifier {
+        linkerd_k8s_api::httproute::HttpRouteFilter::ResponseHeaderModifier {
             response_header_modifier,
         } => {
             let filter = routes::http::header_modifier(response_header_modifier)?;
             Filter::RequestHeaderModifier(filter)
         }
 
-        api::httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
+        linkerd_k8s_api::httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
             let filter = routes::http::req_redirect(request_redirect)?;
             Filter::RequestRedirect(filter)
         }
@@ -715,7 +710,10 @@ fn convert_linkerd_filter(filter: api::httproute::HttpRouteFilter) -> Result<Fil
     Ok(filter)
 }
 
-fn convert_gateway_filter(filter: k8s_gateway_api::HttpRouteFilter) -> Result<Filter> {
+fn convert_gateway_filter<RouteFilter: Into<k8s_gateway_api::HttpRouteFilter>>(
+    filter: RouteFilter,
+) -> Result<Filter> {
+    let filter = filter.into();
     let filter = match filter {
         k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
             request_header_modifier,
@@ -806,7 +804,7 @@ impl ServiceRoutes {
             .unwrap_or_default();
         self.watches_by_ns.entry(namespace).or_insert_with(|| {
             let (sender, _) = watch::channel(OutboundPolicy {
-                http_routes: Default::default(),
+                routes: Default::default(),
                 authority: self.authority.clone(),
                 name: self.name.to_string(),
                 namespace: self.namespace.to_string(),
@@ -823,7 +821,7 @@ impl ServiceRoutes {
         })
     }
 
-    fn apply(&mut self, gknn: GroupKindNamespaceName, route: HttpRoute) {
+    fn apply(&mut self, gknn: GroupKindNamespaceName, route: OutboundRoute) {
         if *gknn.namespace == *self.namespace {
             // This is a producer namespace route.
             let watch = self.watch_for_ns_or_default(gknn.namespace.to_string());
@@ -868,8 +866,8 @@ impl RoutesWatch {
     fn send_if_modified(&mut self) {
         self.watch.send_if_modified(|policy| {
             let mut modified = false;
-            if self.routes != policy.http_routes {
-                policy.http_routes = self.routes.clone();
+            if self.routes != policy.routes {
+                policy.routes = self.routes.clone();
                 modified = true;
             }
             if self.opaque != policy.opaque {
