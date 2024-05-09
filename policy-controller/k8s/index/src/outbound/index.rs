@@ -104,7 +104,20 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        let gknn = gkn_for_gateway_http_route(name).namespaced(namespace);
+        let gknn = routes::http::gkn_for_gateway_http_route(name).namespaced(namespace);
+        for ns_index in self.namespaces.by_ns.values_mut() {
+            ns_index.delete(&gknn);
+        }
+    }
+}
+
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Index {
+    fn apply(&mut self, route: k8s_gateway_api::GrpcRoute) {
+        self.apply(RouteResource::GatewayGrpc(route))
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let gknn = routes::grpc::gkn_for_gateway_grpc_route(name).namespaced(namespace);
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete(&gknn);
         }
@@ -572,52 +585,50 @@ impl Namespace {
         })
     }
 
-    #[allow(unused_variables)]
     fn convert_gateway_grpc_rule(
         &self,
         rule: k8s_gateway_api::GrpcRouteRule,
         cluster: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
-    ) -> Result<HttpRouteRule> {
-        // let matches = rule
-        //     .matches
-        //     .into_iter()
-        //     .flatten()
-        //     .map(routes::http::try_match)
-        //     .collect::<Result<_>>()?;
-        //
-        // let backends = rule
-        //     .backend_refs
-        //     .into_iter()
-        //     .flatten()
-        //     .filter_map(|b| convert_backend(&self.namespace, b, cluster, service_info))
-        //     .collect();
-        //
-        // let filters = rule
-        //     .filters
-        //     .into_iter()
-        //     .flatten()
-        //     .map(convert_gateway_filter)
-        //     .collect::<Result<_>>()?;
-        //
-        // Ok(HttpRouteRule {
-        //     matches,
-        //     backends,
-        //     request_timeout: None,
-        //     backend_request_timeout: None,
-        //     filters,
-        // })
+    ) -> Result<OutboundRouteRule> {
+        let matches = rule
+            .matches
+            .into_iter()
+            .flatten()
+            .map(routes::grpc::try_match)
+            .collect::<Result<_>>()?;
 
-        todo!()
+        let backends = rule
+            .backend_refs
+            .into_iter()
+            .flatten()
+            .filter_map(|b| convert_backend(&self.namespace, b, cluster, service_info))
+            .collect();
+
+        let filters = rule
+            .filters
+            .into_iter()
+            .flatten()
+            .map(convert_gateway_filter)
+            .collect::<Result<_>>()?;
+
+        Ok(OutboundRouteRule {
+            matches,
+            backends,
+            request_timeout: None,
+            backend_request_timeout: None,
+            filters,
+        })
     }
 }
 
-fn convert_backend(
+fn convert_backend<BackendRef: Into<HttpBackendRef>>(
     ns: &str,
-    backend: HttpBackendRef,
+    backend: BackendRef,
     cluster: &ClusterInfo,
     services: &HashMap<ServiceRef, ServiceInfo>,
 ) -> Option<Backend> {
+    let backend = backend.into();
     let filters = backend.filters;
     let backend = backend.backend_ref?;
     if !is_backend_service(&backend.inner) {
