@@ -1,4 +1,5 @@
 use anyhow::Result;
+
 pub use http::{
     header::{HeaderName, HeaderValue},
     uri::Scheme,
@@ -8,7 +9,6 @@ use regex::Regex;
 use std::{borrow::Cow, num::NonZeroU16};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-
 pub struct GroupKindName {
     pub group: Cow<'static, str>,
     pub kind: Cow<'static, str>,
@@ -65,11 +65,23 @@ pub struct Ratio {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GrpcRouteMatch {
+    pub headers: Vec<HeaderMatch>,
+    pub method: Option<GrpcMethodMatch>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HttpRouteMatch {
     pub path: Option<PathMatch>,
     pub headers: Vec<HeaderMatch>,
     pub query_params: Vec<QueryParamMatch>,
     pub method: Option<Method>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RouteMatch {
+    Http(HttpRouteMatch),
+    Grpc(GrpcRouteMatch),
 }
 
 #[derive(Clone, Debug)]
@@ -89,6 +101,12 @@ pub enum HeaderMatch {
 pub enum QueryParamMatch {
     Exact(String, String),
     Regex(String, Regex),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GrpcMethodMatch {
+    pub method: Option<String>,
+    pub service: Option<String>,
 }
 
 // === impl GroupKindName ===
