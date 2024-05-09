@@ -1,10 +1,10 @@
 use crate::{
-    http_route::{
-        FailureInjectorFilter, GroupKindName, HeaderModifierFilter, HostMatch, HttpRouteMatch,
-        PathMatch, RequestRedirectFilter,
-    },
     identity_match::IdentityMatch,
     network_match::NetworkMatch,
+    routes::{
+        FailureInjectorFilter, GroupKindName, HeaderModifierFilter, HostMatch, HttpRouteMatch,
+        PathMatch, RequestRedirectFilter, RouteMatch,
+    },
 };
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
@@ -26,7 +26,7 @@ pub enum AuthorizationRef {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum HttpRouteRef {
+pub enum InboundRouteRef {
     Default(&'static str),
     Linkerd(GroupKindName),
 }
@@ -89,13 +89,13 @@ pub struct InboundServer {
 
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
-    pub http_routes: HashMap<HttpRouteRef, HttpRoute>,
+    pub routes: HashMap<InboundRouteRef, InboundRoute>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HttpRoute {
+pub struct InboundRoute {
     pub hostnames: Vec<HostMatch>,
-    pub rules: Vec<HttpRouteRule>,
+    pub rules: Vec<InboundRouteRule>,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
 
     /// This is required for ordering returned `HttpRoute`s by their creation
@@ -104,8 +104,8 @@ pub struct HttpRoute {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HttpRouteRule {
-    pub matches: Vec<HttpRouteMatch>,
+pub struct InboundRouteRule {
+    pub matches: Vec<RouteMatch>,
     pub filters: Vec<Filter>,
 }
 
@@ -121,17 +121,17 @@ pub enum Filter {
 
 /// The default `InboundHttpRoute` used for any `InboundServer` that
 /// does not have routes.
-impl Default for HttpRoute {
+impl Default for InboundRoute {
     fn default() -> Self {
         Self {
             hostnames: vec![],
-            rules: vec![HttpRouteRule {
-                matches: vec![HttpRouteMatch {
+            rules: vec![InboundRouteRule {
+                matches: vec![RouteMatch::Http(HttpRouteMatch {
                     path: Some(PathMatch::Prefix("/".to_string())),
                     headers: vec![],
                     query_params: vec![],
                     method: None,
-                }],
+                })],
                 filters: vec![],
             }],
             // Default routes do not have authorizations; the default policy's
@@ -145,7 +145,7 @@ impl Default for HttpRoute {
 
 // === impl InboundHttpRouteRef ===
 
-impl Ord for HttpRouteRef {
+impl Ord for InboundRouteRef {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
             (Self::Default(a), Self::Default(b)) => a.cmp(b),
@@ -158,7 +158,7 @@ impl Ord for HttpRouteRef {
     }
 }
 
-impl PartialOrd for HttpRouteRef {
+impl PartialOrd for InboundRouteRef {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
