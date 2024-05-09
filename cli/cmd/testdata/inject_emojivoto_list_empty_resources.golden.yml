@@ -74,7 +74,7 @@ items:
           - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
             value: 127.0.0.1:4140
           - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDRS
-            value: 127.0.0.1:4140,[::1]:4140
+            value: 127.0.0.1:4140
           - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
             value: '[::]:4143'
           - name: LINKERD2_PROXY_INBOUND_IPS
@@ -194,6 +194,7 @@ items:
             name: http
         initContainers:
         - args:
+          - --ipv6=false
           - --incoming-proxy-port
           - "4143"
           - --outgoing-proxy-port
@@ -317,7 +318,7 @@ items:
           - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
             value: 127.0.0.1:4140
           - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDRS
-            value: 127.0.0.1:4140,[::1]:4140
+            value: 127.0.0.1:4140
           - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
             value: '[::]:4143'
           - name: LINKERD2_PROXY_INBOUND_IPS
@@ -432,6 +433,7 @@ items:
             protocol: TCP
         initContainers:
         - args:
+          - --ipv6=false
           - --incoming-proxy-port
           - "4143"
           - --outgoing-proxy-port
