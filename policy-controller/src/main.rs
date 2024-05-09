@@ -153,6 +153,10 @@ async fn main() -> Result<()> {
         prom.sub_registry_with_prefix("outbound_index"),
         outbound_index.clone(),
     );
+    inbound::metrics::register(
+        prom.sub_registry_with_prefix("inbound_index"),
+        inbound_index.clone(),
+    );
 
     let mut runtime = kubert::Runtime::builder()
         .with_log(log_level, log_format)

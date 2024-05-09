@@ -37,6 +37,8 @@ use std::{
 use tokio::sync::watch;
 use tracing::info_span;
 
+pub mod metrics;
+
 pub type SharedIndex = Arc<RwLock<Index>>;
 
 /// Holds all indexing state. Owned and updated by a single task that processes
@@ -1269,7 +1271,6 @@ impl ExternalWorkloadIndex {
     }
 }
 
-//
 impl ExternalWorkload {
     /// Determines the policies for ports on this workload
     fn reindex_servers(&mut self, policy: &PolicyIndex, authentications: &AuthenticationNsIndex) {
