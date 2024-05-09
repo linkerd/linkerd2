@@ -1,6 +1,5 @@
-use kube::{Resource, ResourceExt};
 use linkerd_policy_controller_core::routes::{GroupKindName, GroupKindNamespaceName};
-use linkerd_policy_controller_k8s_api::{gateway as api, policy};
+use linkerd_policy_controller_k8s_api::{gateway as api, policy, Resource, ResourceExt};
 
 pub mod grpc;
 pub mod http;
@@ -53,22 +52,42 @@ impl RouteResource {
 
     pub(crate) fn gknn(&self) -> GroupKindNamespaceName {
         match self {
-            RouteResource::LinkerdHttp(route) => gkn_for_resource(route)
+            RouteResource::LinkerdHttp(route) => route
+                .gkn()
                 .namespaced(route.namespace().expect("Route must have namespace")),
-            RouteResource::GatewayHttp(route) => gkn_for_resource(route)
+            RouteResource::GatewayHttp(route) => route
+                .gkn()
                 .namespaced(route.namespace().expect("Route must have namespace")),
-            RouteResource::GatewayGrpc(route) => gkn_for_resource(route)
+            RouteResource::GatewayGrpc(route) => route
+                .gkn()
                 .namespaced(route.namespace().expect("Route must have namespace")),
         }
     }
 }
 
-pub(crate) fn gkn_for_resource<T>(t: &T) -> GroupKindName
-where
-    T: Resource<DynamicType = ()>,
-{
-    let kind = T::kind(&());
-    let group = T::group(&());
-    let name = t.name_unchecked().into();
-    GroupKindName { group, kind, name }
+pub trait ExplicitGKN {
+    fn gkn<R: Resource<DynamicType = ()>>(&self) -> GroupKindName;
+}
+pub trait ImpliedGKN {
+    fn gkn(&self) -> GroupKindName;
+}
+
+impl<R: Sized + Resource<DynamicType = ()>> ImpliedGKN for R {
+    fn gkn(&self) -> GroupKindName {
+        let (kind, group, name) = (
+            Self::kind(&()),
+            Self::group(&()),
+            self.name_unchecked().into(),
+        );
+
+        GroupKindName { group, kind, name }
+    }
+}
+
+impl ExplicitGKN for str {
+    fn gkn<R: Resource<DynamicType = ()>>(&self) -> GroupKindName {
+        let (kind, group, name) = (R::kind(&()), R::group(&()), self.to_string().into());
+
+        GroupKindName { group, kind, name }
+    }
 }
