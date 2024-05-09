@@ -1,5 +1,5 @@
 use crate::index::{GATEWAY_API_GROUP, POLICY_API_GROUP};
-use linkerd_policy_controller_core::http_route::GroupKindName;
+use linkerd_policy_controller_core::routes::GroupKindName;
 use linkerd_policy_controller_k8s_api::{
     gateway as k8s_gateway_api, policy as linkerd_k8s_api, Resource,
 };
