@@ -158,7 +158,7 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 		if err := iv.validateEnvVar(
 			proxyContainer,
 			"LINKERD2_PROXY_OUTBOUND_LISTEN_ADDRS",
-			fmt.Sprintf("127.0.0.1:%d,[::1]:%d", iv.OutboundPort, iv.OutboundPort),
+			fmt.Sprintf("127.0.0.1:%d", iv.OutboundPort),
 		); err != nil {
 			return err
 		}
