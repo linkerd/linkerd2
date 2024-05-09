@@ -535,7 +535,7 @@ data:
         limit: 250Mi
         request: 50Mi
     disableHeartBeat: false
-    disableIPv6: false
+    disableIPv6: true
     enableEndpointSlices: true
     enableH2Upgrade: true
     enablePodAntiAffinity: true
@@ -1068,7 +1068,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
           value: "127.0.0.1:4140"
         - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDRS
-          value: "127.0.0.1:4140,[::1]:4140"
+          value: "127.0.0.1:4140"
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: "[::]:4143"
         - name: LINKERD2_PROXY_INBOUND_IPS
@@ -1167,6 +1167,7 @@ spec:
           name: linkerd-identity-token
       initContainers:
       - args:
+        - --ipv6=false
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
@@ -1457,7 +1458,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
           value: "127.0.0.1:4140"
         - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDRS
-          value: "127.0.0.1:4140,[::1]:4140"
+          value: "127.0.0.1:4140"
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: "[::]:4143"
         - name: LINKERD2_PROXY_INBOUND_IPS
@@ -1572,7 +1573,7 @@ spec:
         - -cluster-domain=cluster.local
         - -identity-trust-domain=test.trust.domain
         - -default-opaque-ports=25,587,3306,4444,5432,6379,9300,11211
-        - -enable-ipv6=true
+        - -enable-ipv6=false
         - -enable-pprof=false
         - --meshed-http2-client-params={"keep_alive":{"interval":{"seconds":10},"timeout":{"seconds":3},"while_idle":true}}
         image: cr.l5d.io/linkerd/controller:linkerd-version
@@ -1698,6 +1699,7 @@ spec:
           readOnly: true
       initContainers:
       - args:
+        - --ipv6=false
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
@@ -1945,7 +1947,7 @@ spec:
         - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
           value: "127.0.0.1:4140"
         - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDRS
-          value: "127.0.0.1:4140,[::1]:4140"
+          value: "127.0.0.1:4140"
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: "[::]:4143"
         - name: LINKERD2_PROXY_INBOUND_IPS
@@ -2099,6 +2101,7 @@ spec:
           readOnly: true
       initContainers:
       - args:
+        - --ipv6=false
         - --incoming-proxy-port
         - "4143"
         - --outgoing-proxy-port
