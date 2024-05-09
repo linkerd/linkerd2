@@ -1,7 +1,8 @@
 use super::{super::*, *};
 use crate::routes::http::gkn_for_linkerd_http_route;
+use k8s::policy::httproute::*;
 use linkerd_policy_controller_core::{
-    http_route::{HttpRouteMatch, Method, PathMatch},
+    routes::{HttpRouteMatch, Method, PathMatch, RouteMatch},
     POLICY_CONTROLLER_NAME,
 };
 
@@ -37,7 +38,7 @@ fn route_attaches_to_server() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(),
+            routes: mk_default_routes(),
         },
     );
 
@@ -52,8 +53,8 @@ fn route_attaches_to_server() {
     );
     assert!(rx
         .borrow_and_update()
-        .http_routes
-        .contains_key(&HttpRouteRef::Linkerd(gkn_for_linkerd_http_route(
+        .routes
+        .contains_key(&InboundRouteRef::Linkerd(gkn_for_linkerd_http_route(
             "route-foo".to_string()
         ))));
 
@@ -71,8 +72,8 @@ fn route_attaches_to_server() {
     ));
 
     assert!(rx.has_changed().unwrap());
-    assert!(rx.borrow().http_routes
-        [&HttpRouteRef::Linkerd(gkn_for_linkerd_http_route("route-foo".to_string()))]
+    assert!(rx.borrow().routes
+        [&InboundRouteRef::Linkerd(gkn_for_linkerd_http_route("route-foo".to_string()))]
         .authorizations
         .contains_key(&AuthorizationRef::AuthorizationPolicy(
             "authz-foo".to_string()
@@ -127,25 +128,25 @@ fn routes_created_for_probes() {
             authentication: ClientAuthentication::Unauthenticated,
         },
     );
-    let liveness_match = HttpRouteMatch {
+    let liveness_match = RouteMatch::Http(HttpRouteMatch {
         path: Some(PathMatch::Exact("/liveness-container-1".to_string())),
         headers: vec![],
         query_params: vec![],
         method: Some(Method::GET),
-    };
-    let ready_match = HttpRouteMatch {
+    });
+    let ready_match = RouteMatch::Http(HttpRouteMatch {
         path: Some(PathMatch::Exact("/ready-container-1".to_string())),
         headers: vec![],
         query_params: vec![],
         method: Some(Method::GET),
-    };
+    });
 
     // No Server is configured for the port, so expect the probe paths to be
     // authorized.
     let update = rx.borrow_and_update();
     let probes = update
-        .http_routes
-        .get(&HttpRouteRef::Default("probe"))
+        .routes
+        .get(&InboundRouteRef::Default("probe"))
         .unwrap();
     let probes_rules = probes.rules.first().unwrap();
     assert!(
@@ -176,8 +177,8 @@ fn routes_created_for_probes() {
     // // Pod's probe paths to be authorized.
     let update = rx.borrow_and_update();
     let probes = update
-        .http_routes
-        .get(&HttpRouteRef::Default("probe"))
+        .routes
+        .get(&InboundRouteRef::Default("probe"))
         .unwrap();
     let probes_rules = probes.rules.first().unwrap();
     assert!(
@@ -203,23 +204,16 @@ fn routes_created_for_probes() {
     // should not be automatically authorized.
     assert!(!rx
         .borrow_and_update()
-        .http_routes
-        .contains_key(&HttpRouteRef::Default("probes")));
+        .routes
+        .contains_key(&InboundRouteRef::Default("probes")));
 }
 
-fn mk_route(
-    ns: impl ToString,
-    name: impl ToString,
-    server: impl ToString,
-) -> k8s::policy::HttpRoute {
-    use chrono::Utc;
-    use k8s::{policy::httproute::*, Time};
-
+fn mk_route(ns: impl ToString, name: impl ToString, server: impl ToString) -> HttpRoute {
     HttpRoute {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
-            creation_timestamp: Some(Time(Utc::now())),
+            creation_timestamp: Some(k8s::Time(chrono::Utc::now())),
             ..Default::default()
         },
         spec: HttpRouteSpec {
@@ -235,7 +229,7 @@ fn mk_route(
             },
             hostnames: None,
             rules: Some(vec![HttpRouteRule {
-                matches: Some(vec![HttpRouteMatch {
+                matches: Some(vec![k8s::gateway::HttpRouteMatch {
                     path: Some(HttpPathMatch::PathPrefix {
                         value: "/foo/bar".to_string(),
                     }),
@@ -261,7 +255,7 @@ fn mk_route(
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
                     conditions: vec![k8s::Condition {
-                        last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
+                        last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
                         message: "".to_string(),
                         observed_generation: None,
                         reason: "Accepted".to_string(),
