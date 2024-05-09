@@ -2,8 +2,8 @@ use crate::routes;
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Error, Result};
 use linkerd_policy_controller_core::{
-    http_route::{HttpRouteMatch, Method},
-    inbound::{Filter, HttpRoute, HttpRouteRule},
+    inbound::{Filter, InboundRoute, InboundRouteRule},
+    routes::{GrpcMethodMatch, GrpcRouteMatch, HttpRouteMatch, Method, RouteMatch},
     POLICY_CONTROLLER_NAME,
 };
 use linkerd_policy_controller_k8s_api::{
@@ -18,7 +18,7 @@ pub(crate) mod http;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RouteBinding {
     pub parents: Vec<ParentRef>,
-    pub route: HttpRoute,
+    pub route: InboundRoute,
     pub statuses: Vec<Status>,
 }
 
@@ -81,7 +81,7 @@ impl TryFrom<gateway::HttpRoute> for RouteBinding {
                      matches,
                      filters,
                      backend_refs: _,
-                 }| Self::try_rule(matches, filters, Self::try_gateway_filter),
+                 }| Self::try_http_rule(matches, filters, Self::try_gateway_filter),
             )
             .collect::<Result<_>>()?;
 
@@ -91,7 +91,53 @@ impl TryFrom<gateway::HttpRoute> for RouteBinding {
 
         Ok(RouteBinding {
             parents,
-            route: HttpRoute {
+            route: InboundRoute {
+                hostnames,
+                rules,
+                authorizations: HashMap::default(),
+                creation_timestamp,
+            },
+            statuses,
+        })
+    }
+}
+
+impl TryFrom<gateway::GrpcRoute> for RouteBinding {
+    type Error = Error;
+
+    fn try_from(route: gateway::GrpcRoute) -> Result<Self, Self::Error> {
+        let route_ns = route.metadata.namespace.as_deref();
+        let creation_timestamp = route.metadata.creation_timestamp.map(|k8s::Time(t)| t);
+        let parents = ParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
+        let hostnames = route
+            .spec
+            .hostnames
+            .into_iter()
+            .flatten()
+            .map(routes::http::host_match)
+            .collect();
+
+        let rules = route
+            .spec
+            .rules
+            .into_iter()
+            .flatten()
+            .map(
+                |gateway::GrpcRouteRule {
+                     matches,
+                     filters,
+                     backend_refs: _,
+                 }| Self::try_grpc_rule(matches, filters, Self::try_gateway_filter),
+            )
+            .collect::<Result<_>>()?;
+
+        let statuses = route
+            .status
+            .map_or_else(Vec::new, |status| Status::collect_from(status.inner));
+
+        Ok(RouteBinding {
+            parents,
+            route: InboundRoute {
                 hostnames,
                 rules,
                 authorizations: HashMap::default(),
@@ -125,7 +171,9 @@ impl TryFrom<policy::HttpRoute> for RouteBinding {
             .map(
                 |policy::HttpRouteRule {
                      matches, filters, ..
-                 }| { Self::try_rule(matches, filters, Self::try_policy_filter) },
+                 }| {
+                    Self::try_http_rule(matches, filters, Self::try_policy_filter)
+                },
             )
             .collect::<Result<_>>()?;
 
@@ -135,7 +183,7 @@ impl TryFrom<policy::HttpRoute> for RouteBinding {
 
         Ok(RouteBinding {
             parents,
-            route: HttpRoute {
+            route: InboundRoute {
                 hostnames,
                 rules,
                 authorizations: HashMap::default(),
@@ -165,14 +213,14 @@ impl RouteBinding {
         })
     }
 
-    pub fn try_match(
+    pub fn try_http_match(
         gateway::HttpRouteMatch {
             path,
             headers,
             query_params,
             method,
         }: gateway::HttpRouteMatch,
-    ) -> Result<HttpRouteMatch> {
+    ) -> Result<RouteMatch> {
         let path = path.map(routes::http::path_match).transpose()?;
 
         let headers = headers
@@ -189,23 +237,42 @@ impl RouteBinding {
 
         let method = method.as_deref().map(Method::try_from).transpose()?;
 
-        Ok(HttpRouteMatch {
+        Ok(RouteMatch::Http(HttpRouteMatch {
             path,
             headers,
             query_params,
             method,
-        })
+        }))
     }
 
-    fn try_rule<F>(
+    pub fn try_grpc_match(
+        gateway::GrpcRouteMatch { headers, method }: gateway::GrpcRouteMatch,
+    ) -> Result<RouteMatch> {
+        use gateway::GrpcMethodMatch::*;
+
+        let headers = headers
+            .into_iter()
+            .flatten()
+            .map(routes::http::header_match)
+            .collect::<Result<_>>()?;
+
+        let method = method.map(|value| match value {
+            Exact { method, service } | RegularExpression { method, service } => {
+                GrpcMethodMatch { method, service }
+            }
+        });
+
+        Ok(RouteMatch::Grpc(GrpcRouteMatch { headers, method }))
+    }
+    fn try_http_rule<F>(
         matches: Option<Vec<gateway::HttpRouteMatch>>,
         filters: Option<Vec<F>>,
         try_filter: impl Fn(F) -> Result<Filter>,
-    ) -> Result<HttpRouteRule> {
+    ) -> Result<InboundRouteRule> {
         let matches = matches
             .into_iter()
             .flatten()
-            .map(Self::try_match)
+            .map(Self::try_http_match)
             .collect::<Result<_>>()?;
 
         let filters = filters
@@ -214,11 +281,33 @@ impl RouteBinding {
             .map(try_filter)
             .collect::<Result<_>>()?;
 
-        Ok(HttpRouteRule { matches, filters })
+        Ok(InboundRouteRule { matches, filters })
     }
 
-    fn try_gateway_filter(filter: gateway::HttpRouteFilter) -> Result<Filter> {
-        let filter = match filter {
+    fn try_grpc_rule<F>(
+        matches: Option<Vec<gateway::GrpcRouteMatch>>,
+        filters: Option<Vec<F>>,
+        try_filter: impl Fn(F) -> Result<Filter>,
+    ) -> Result<InboundRouteRule> {
+        let matches = matches
+            .into_iter()
+            .flatten()
+            .map(Self::try_grpc_match)
+            .collect::<Result<_>>()?;
+
+        let filters = filters
+            .into_iter()
+            .flatten()
+            .map(try_filter)
+            .collect::<Result<_>>()?;
+
+        Ok(InboundRouteRule { matches, filters })
+    }
+
+    fn try_gateway_filter<RouteFilter: Into<gateway::HttpRouteFilter>>(
+        filter: RouteFilter,
+    ) -> Result<Filter> {
+        let filter = match filter.into() {
             gateway::HttpRouteFilter::RequestHeaderModifier {
                 request_header_modifier,
             } => {
