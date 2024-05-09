@@ -1,15 +1,14 @@
 use kube::{Resource, ResourceExt};
-use linkerd_policy_controller_core::http_route::{GroupKindName, GroupKindNamespaceName};
+use linkerd_policy_controller_core::routes::{GroupKindName, GroupKindNamespaceName};
 use linkerd_policy_controller_k8s_api::{gateway as api, policy};
 
-pub(crate) mod grpc;
-pub(crate) mod http;
+pub mod grpc;
+pub mod http;
 
 #[derive(Debug, Clone)]
 pub(crate) enum RouteResource {
     LinkerdHttp(policy::HttpRoute),
     GatewayHttp(api::HttpRoute),
-    #[allow(dead_code)]
     GatewayGrpc(api::GrpcRoute),
 }
 
