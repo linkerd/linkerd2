@@ -795,15 +795,18 @@ func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 	newAddressSet := pp.endpointSliceToAddresses(slice)
 	for id, addr := range pp.addresses.Addresses {
-		newAddressSet.Addresses[id] = addr
-		newAddressSet.LocalTrafficPolicy = pp.localTrafficPolicy
+		if _, ok := newAddressSet.Addresses[id]; !ok {
+			newAddressSet.Addresses[id] = addr
+		}
 	}
 
 	add, _ := diffAddresses(pp.addresses, newAddressSet)
-	if len(add.Addresses) > 0 {
-		for _, listener := range pp.listeners {
-			listener.Add(add)
-		}
+	if len(add.Addresses) == 0 {
+		return
+	}
+
+	for _, listener := range pp.listeners {
+		listener.Add(add)
 	}
 
 	pp.addresses = newAddressSet

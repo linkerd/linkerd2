@@ -83,7 +83,7 @@ env:
 - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
   value: "127.0.0.1:{{.Values.proxy.ports.outbound}}"
 - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDRS
-  value: "127.0.0.1:{{.Values.proxy.ports.outbound}},[::1]:{{.Values.proxy.ports.outbound}}"
+  value: "127.0.0.1:{{.Values.proxy.ports.outbound}}{{ if not .Values.disableIPv6}},[::1]:{{.Values.proxy.ports.outbound}}{{ end }}"
 - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
   value: "[::]:{{.Values.proxy.ports.inbound}}"
 - name: LINKERD2_PROXY_INBOUND_IPS
