@@ -1,4 +1,4 @@
-use crate::{http_route, workload::Workload};
+use crate::{routes, workload::Workload};
 use futures::prelude::*;
 use linkerd2_proxy_api::{
     self as api,
@@ -8,11 +8,12 @@ use linkerd2_proxy_api::{
     },
     meta::{metadata, Metadata},
 };
+use linkerd_policy_controller_core::routes::RouteMatch;
 use linkerd_policy_controller_core::{
     inbound::{
         AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer, Filter,
-        HttpRoute, HttpRouteRef, HttpRouteRule, InboundServer, InboundServerStream, ProxyProtocol,
-        ServerRef,
+        InboundRoute, InboundRouteRef, InboundRouteRule, InboundServer, InboundServerStream,
+        ProxyProtocol, ServerRef,
     },
     IdentityMatch, IpNet, NetworkMatch,
 };
@@ -129,7 +130,7 @@ fn response_stream(
 
                 // If the server starts shutting down, close the stream so that it doesn't hold the
                 // server open.
-                _ = (&mut shutdown) => {
+                _ = &mut shutdown => {
                     return;
                 }
             }
@@ -144,17 +145,17 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
             ProxyProtocol::Detect { timeout } => Some(proto::proxy_protocol::Kind::Detect(
                 proto::proxy_protocol::Detect {
                     timeout: timeout.try_into().map_err(|error| tracing::warn!(%error, "failed to convert protocol detect timeout to protobuf")).ok(),
-                    http_routes: to_http_route_list(&srv.http_routes, cluster_networks),
+                    http_routes: to_http_route_list(&srv.routes, cluster_networks),
                 },
             )),
             ProxyProtocol::Http1 => Some(proto::proxy_protocol::Kind::Http1(
                 proto::proxy_protocol::Http1 {
-                    routes: to_http_route_list(&srv.http_routes, cluster_networks),
+                    routes: to_http_route_list(&srv.routes, cluster_networks),
                 },
             )),
             ProxyProtocol::Http2 => Some(proto::proxy_protocol::Kind::Http2(
                 proto::proxy_protocol::Http2 {
-                    routes: to_http_route_list(&srv.http_routes, cluster_networks),
+                    routes: to_http_route_list(&srv.routes, cluster_networks),
                 },
             )),
             ProxyProtocol::Grpc => Some(proto::proxy_protocol::Kind::Grpc(
@@ -325,7 +326,7 @@ fn to_authz(
 }
 
 fn to_http_route_list<'r>(
-    routes: impl IntoIterator<Item = (&'r HttpRouteRef, &'r HttpRoute)>,
+    routes: impl IntoIterator<Item = (&'r InboundRouteRef, &'r InboundRoute)>,
     cluster_networks: &[IpNet],
 ) -> Vec<proto::HttpRoute> {
     // Per the Gateway API spec:
@@ -359,19 +360,19 @@ fn to_http_route_list<'r>(
 }
 
 fn to_http_route(
-    reference: &HttpRouteRef,
-    HttpRoute {
+    reference: &InboundRouteRef,
+    InboundRoute {
         hostnames,
         rules,
         authorizations,
         creation_timestamp: _,
-    }: HttpRoute,
+    }: InboundRoute,
     cluster_networks: &[IpNet],
 ) -> proto::HttpRoute {
     let metadata = Metadata {
         kind: Some(match reference {
-            HttpRouteRef::Default(name) => metadata::Kind::Default(name.to_string()),
-            HttpRouteRef::Linkerd(gkn) => metadata::Kind::Resource(api::meta::Resource {
+            InboundRouteRef::Default(name) => metadata::Kind::Default(name.to_string()),
+            InboundRouteRef::Linkerd(gkn) => metadata::Kind::Resource(api::meta::Resource {
                 group: gkn.group.to_string(),
                 kind: gkn.kind.to_string(),
                 name: gkn.name.to_string(),
@@ -382,14 +383,23 @@ fn to_http_route(
 
     let hosts = hostnames
         .into_iter()
-        .map(http_route::convert_host_match)
+        .map(routes::convert_host_match)
         .collect();
 
     let rules = rules
         .into_iter()
         .map(
-            |HttpRouteRule { matches, filters }| proto::http_route::Rule {
-                matches: matches.into_iter().map(http_route::convert_match).collect(),
+            |InboundRouteRule { matches, filters }| proto::http_route::Rule {
+                matches: matches
+                    .into_iter()
+                    .filter_map(|rule| {
+                        if let RouteMatch::Http(rule) = rule {
+                            Some(routes::http::convert_match(rule))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect(),
                 filters: filters.into_iter().filter_map(convert_filter).collect(),
             },
         )
@@ -413,13 +423,13 @@ fn convert_filter(filter: Filter) -> Option<proto::http_route::Filter> {
 
     let kind = match filter {
         Filter::FailureInjector(f) => Some(Kind::FailureInjector(
-            http_route::convert_failure_injector_filter(f),
+            routes::convert_failure_injector_filter(f),
         )),
         Filter::RequestHeaderModifier(f) => Some(Kind::RequestHeaderModifier(
-            http_route::convert_request_header_modifier_filter(f),
+            routes::convert_request_header_modifier_filter(f),
         )),
         Filter::ResponseHeaderModifier(_) => None,
-        Filter::RequestRedirect(f) => Some(Kind::Redirect(http_route::convert_redirect_filter(f))),
+        Filter::RequestRedirect(f) => Some(Kind::Redirect(routes::convert_redirect_filter(f))),
     };
 
     kind.map(|kind| proto::http_route::Filter { kind: Some(kind) })
