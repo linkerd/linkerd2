@@ -1,5 +1,6 @@
-use crate::http_route::{
-    GroupKindNamespaceName, HeaderModifierFilter, HostMatch, HttpRouteMatch, RequestRedirectFilter,
+use crate::routes::{
+    FailureInjectorFilter, GroupKindNamespaceName, HeaderModifierFilter, HostMatch,
+    RequestRedirectFilter, RouteMatch,
 };
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
@@ -28,7 +29,7 @@ pub struct OutboundDiscoverTarget {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OutboundPolicy {
-    pub http_routes: HashMap<GroupKindNamespaceName, HttpRoute>,
+    pub routes: HashMap<GroupKindNamespaceName, OutboundRoute>,
     pub authority: String,
     pub name: String,
     pub namespace: String,
@@ -38,9 +39,9 @@ pub struct OutboundPolicy {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HttpRoute {
+pub struct OutboundRoute {
     pub hostnames: Vec<HostMatch>,
-    pub rules: Vec<HttpRouteRule>,
+    pub rules: Vec<OutboundRouteRule>,
 
     /// This is required for ordering returned `HttpRoute`s by their creation
     /// timestamp.
@@ -48,8 +49,8 @@ pub struct HttpRoute {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HttpRouteRule {
-    pub matches: Vec<HttpRouteMatch>,
+pub struct OutboundRouteRule {
+    pub matches: Vec<RouteMatch>,
     pub backends: Vec<Backend>,
     pub request_timeout: Option<time::Duration>,
     pub backend_request_timeout: Option<time::Duration>,
