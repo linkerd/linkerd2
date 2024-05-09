@@ -98,4 +98,5 @@ pub enum Filter {
     RequestHeaderModifier(HeaderModifierFilter),
     ResponseHeaderModifier(HeaderModifierFilter),
     RequestRedirect(RequestRedirectFilter),
+    FailureInjector(FailureInjectorFilter),
 }
