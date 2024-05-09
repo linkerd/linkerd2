@@ -12,20 +12,17 @@ use super::{
 };
 use crate::{
     ports::{PortHasher, PortMap, PortSet},
-    routes::{
-        gkn_for_resource,
-        http::{gkn_for_gateway_http_route, gkn_for_linkerd_http_route},
-    },
+    routes::{ExplicitGKN, ImpliedGKN},
     ClusterInfo, DefaultPolicy,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
-    http_route::{GroupKindName, HttpRouteMatch, Method, PathMatch},
     inbound::{
-        AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRoute, HttpRouteRef,
-        HttpRouteRule, InboundServer, ProxyProtocol, ServerRef,
+        AuthorizationRef, ClientAuthentication, ClientAuthorization, InboundRoute, InboundRouteRef,
+        InboundRouteRule, InboundServer, ProxyProtocol, ServerRef,
     },
+    routes::{GroupKindName, HttpRouteMatch, Method, PathMatch, RouteMatch},
     IdentityMatch, Ipv4Net, Ipv6Net, NetworkMatch,
 };
 use linkerd_policy_controller_k8s_api::{
@@ -161,7 +158,7 @@ struct PolicyIndex {
     server_authorizations: HashMap<String, server_authorization::ServerAuthz>,
 
     authorization_policies: HashMap<String, authorization_policy::Spec>,
-    http_routes: HashMap<GroupKindName, RouteBinding>,
+    routes: HashMap<GroupKindName, RouteBinding>,
 }
 
 #[derive(Debug, Default)]
@@ -273,7 +270,7 @@ impl Index {
     {
         let ns = route.namespace().expect("HttpRoute must have a namespace");
         let name = route.name_unchecked();
-        let gkn = gkn_for_resource(&route);
+        let gkn = route.gkn();
         let _span = info_span!("apply", %ns, %name).entered();
 
         let route_binding = match route.try_into() {
@@ -284,7 +281,7 @@ impl Index {
             }
         };
 
-        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_http_route(gkn, route_binding))
+        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_route(gkn, route_binding))
     }
 
     fn reset_route<R>(&mut self, routes: Vec<R>, deleted: HashMap<String, HashSet<String>>)
@@ -302,7 +299,7 @@ impl Index {
         for route in routes.into_iter() {
             let namespace = route.namespace().expect("HttpRoute must be namespaced");
             let name = route.name_unchecked();
-            let gkn = gkn_for_resource(&route);
+            let gkn = route.gkn();
             let route_binding = match route.try_into() {
                 Ok(binding) => binding,
                 Err(error) => {
@@ -335,7 +332,7 @@ impl Index {
                 // clear out all resources for the namespace (and then drop the
                 // whole namespace, if necessary).
                 self.ns_with_reindex(namespace, |ns| {
-                    ns.policy.http_routes.clear();
+                    ns.policy.routes.clear();
                     true
                 });
             } else {
@@ -345,10 +342,10 @@ impl Index {
                 self.ns_or_default_with_reindex(namespace, |ns| {
                     let mut changed = !removed.is_empty();
                     for gkn in removed.into_iter() {
-                        ns.policy.http_routes.remove(&gkn);
+                        ns.policy.routes.remove(&gkn);
                     }
                     for (gkn, route_binding) in added.into_iter() {
-                        changed = ns.policy.update_http_route(gkn, route_binding) || changed;
+                        changed = ns.policy.update_route(gkn, route_binding) || changed;
                     }
                     changed
                 });
@@ -358,7 +355,7 @@ impl Index {
 
     fn delete_route(&mut self, ns: String, gkn: GroupKindName) {
         let _span = info_span!("delete", %ns, route = ?gkn).entered();
-        self.ns_with_reindex(ns, |ns| ns.policy.http_routes.remove(&gkn).is_some())
+        self.ns_with_reindex(ns, |ns| ns.policy.routes.remove(&gkn).is_some())
     }
 }
 
@@ -855,7 +852,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
     }
 
     fn delete(&mut self, ns: String, name: String) {
-        let gkn = gkn_for_linkerd_http_route(name);
+        let gkn = name.gkn::<k8s::policy::HttpRoute>();
         self.delete_route(ns, gkn)
     }
 
@@ -874,13 +871,32 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
     }
 
     fn delete(&mut self, ns: String, name: String) {
-        let gkn = gkn_for_gateway_http_route(name);
+        let gkn = name.gkn::<k8s_gateway_api::HttpRoute>();
         self.delete_route(ns, gkn)
     }
 
     fn reset(
         &mut self,
         routes: Vec<k8s_gateway_api::HttpRoute>,
+        deleted: HashMap<String, HashSet<String>>,
+    ) {
+        self.reset_route(routes, deleted)
+    }
+}
+
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Index {
+    fn apply(&mut self, route: k8s_gateway_api::GrpcRoute) {
+        self.apply_route(route)
+    }
+
+    fn delete(&mut self, ns: String, name: String) {
+        let gkn = name.gkn::<k8s_gateway_api::GrpcRoute>();
+        self.delete_route(ns, gkn)
+    }
+
+    fn reset(
+        &mut self,
+        routes: Vec<k8s_gateway_api::GrpcRoute>,
         deleted: HashMap<String, HashSet<String>>,
     ) {
         self.reset_route(routes, deleted)
@@ -953,7 +969,7 @@ impl Namespace {
                 servers: HashMap::default(),
                 server_authorizations: HashMap::default(),
                 authorization_policies: HashMap::default(),
-                http_routes: HashMap::default(),
+                routes: HashMap::default(),
             },
         }
     }
@@ -1465,7 +1481,7 @@ impl PolicyIndex {
         self.servers.is_empty()
             && self.server_authorizations.is_empty()
             && self.authorization_policies.is_empty()
-            && self.http_routes.is_empty()
+            && self.routes.is_empty()
     }
 
     fn update_server(&mut self, name: String, server: server::Server) -> bool {
@@ -1549,13 +1565,13 @@ impl PolicyIndex {
 
         let authorizations = policy.default_authzs(config);
 
-        let http_routes = config.default_inbound_http_routes(probe_paths);
+        let routes = config.default_inbound_routes(probe_paths);
 
         InboundServer {
             reference: ServerRef::Default(policy.as_str()),
             protocol,
             authorizations,
-            http_routes,
+            routes,
         }
     }
 
@@ -1568,13 +1584,13 @@ impl PolicyIndex {
     ) -> InboundServer {
         tracing::trace!(%name, ?server, "Creating inbound server");
         let authorizations = self.client_authzs(&name, server, authentications);
-        let http_routes = self.http_routes(&name, authentications, probe_paths);
+        let routes = self.routes(&name, authentications, probe_paths);
 
         InboundServer {
             reference: ServerRef::Server(name),
             authorizations,
             protocol: server.protocol.clone(),
-            http_routes,
+            routes,
         }
     }
 
@@ -1697,27 +1713,27 @@ impl PolicyIndex {
         authzs
     }
 
-    fn http_routes<'p>(
+    fn routes<'p>(
         &self,
         server_name: &str,
         authentications: &AuthenticationNsIndex,
         probe_paths: impl Iterator<Item = &'p str>,
-    ) -> HashMap<HttpRouteRef, HttpRoute> {
+    ) -> HashMap<InboundRouteRef, InboundRoute> {
         let routes = self
-            .http_routes
+            .routes
             .iter()
             .filter(|(_, route)| route.selects_server(server_name))
             .filter(|(_, route)| route.accepted_by_server(server_name))
             .map(|(gkn, route)| {
                 let mut route = route.route.clone();
                 route.authorizations = self.route_client_authzs(gkn, authentications);
-                (HttpRouteRef::Linkerd(gkn.clone()), route)
+                (InboundRouteRef::Linkerd(gkn.clone()), route)
             })
             .collect::<HashMap<_, _>>();
         if !routes.is_empty() {
             return routes;
         }
-        self.cluster_info.default_inbound_http_routes(probe_paths)
+        self.cluster_info.default_inbound_routes(probe_paths)
     }
 
     fn policy_client_authz(
@@ -1825,8 +1841,8 @@ impl PolicyIndex {
         })
     }
 
-    fn update_http_route(&mut self, gkn: GroupKindName, route: RouteBinding) -> bool {
-        match self.http_routes.entry(gkn) {
+    fn update_route(&mut self, gkn: GroupKindName, route: RouteBinding) -> bool {
+        match self.routes.entry(gkn) {
             Entry::Vacant(entry) => {
                 entry.insert(route);
             }
@@ -1910,16 +1926,16 @@ impl<K, T> Default for NsUpdate<K, T> {
 // === impl ClusterInfo ===
 
 impl ClusterInfo {
-    fn default_inbound_http_routes<'p>(
+    fn default_inbound_routes<'p>(
         &self,
         probe_paths: impl Iterator<Item = &'p str>,
-    ) -> HashMap<HttpRouteRef, HttpRoute> {
+    ) -> HashMap<InboundRouteRef, InboundRoute> {
         let mut routes = HashMap::with_capacity(2);
 
         // If no routes are defined for the server, use a default route that
         // matches all requests. Default authorizations are instrumented on
         // the server.
-        routes.insert(HttpRouteRef::Default("default"), HttpRoute::default());
+        routes.insert(InboundRouteRef::Default("default"), InboundRoute::default());
 
         // If there are no probe networks, there are no probe routes to
         // authorize.
@@ -1929,12 +1945,14 @@ impl ClusterInfo {
 
         // Generate an `Exact` path match for each probe path defined on the
         // pod.
-        let matches: Vec<HttpRouteMatch> = probe_paths
-            .map(|path| HttpRouteMatch {
-                path: Some(PathMatch::Exact(path.to_string())),
-                headers: vec![],
-                query_params: vec![],
-                method: Some(Method::GET),
+        let matches: Vec<RouteMatch> = probe_paths
+            .map(|path| {
+                RouteMatch::Http(HttpRouteMatch {
+                    path: Some(PathMatch::Exact(path.to_string())),
+                    headers: vec![],
+                    query_params: vec![],
+                    method: Some(Method::GET),
+                })
             })
             .collect();
 
@@ -1958,16 +1976,16 @@ impl ClusterInfo {
         ))
         .collect();
 
-        let probe_route = HttpRoute {
+        let probe_route = InboundRoute {
             hostnames: Vec::new(),
-            rules: vec![HttpRouteRule {
+            rules: vec![InboundRouteRule {
                 matches,
                 filters: Vec::new(),
             }],
             authorizations,
             creation_timestamp: None,
         };
-        routes.insert(HttpRouteRef::Default("probe"), probe_route);
+        routes.insert(InboundRouteRef::Default("probe"), probe_route);
 
         routes
     }

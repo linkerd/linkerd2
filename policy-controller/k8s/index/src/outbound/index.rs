@@ -1,6 +1,6 @@
 use crate::{
     ports::{ports_annotation, PortSet},
-    routes::{self, RouteResource},
+    routes::{self, ExplicitGKN, RouteResource},
     ClusterInfo,
 };
 use ahash::AHashMap as HashMap;
@@ -91,7 +91,9 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::HttpRoute> for Inde
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        let gknn = routes::http::gkn_for_linkerd_http_route(name).namespaced(namespace);
+        let gknn = name
+            .gkn::<linkerd_k8s_api::HttpRoute>()
+            .namespaced(namespace);
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete(&gknn);
         }
@@ -104,7 +106,9 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        let gknn = routes::http::gkn_for_gateway_http_route(name).namespaced(namespace);
+        let gknn = name
+            .gkn::<k8s_gateway_api::HttpRoute>()
+            .namespaced(namespace);
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete(&gknn);
         }
