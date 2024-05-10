@@ -1,5 +1,6 @@
 use crate::{routes, workload};
 use futures::prelude::*;
+use itertools::{Either, Itertools};
 use linkerd2_proxy_api::{
     self as api, destination,
     meta::{metadata, Metadata},
@@ -208,6 +209,7 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
         })
     } else {
         let mut routes = outbound.routes.into_iter().collect::<Vec<_>>();
+
         routes.sort_by(|(a_name, a_route), (b_name, b_route)| {
             let by_ts = match (&a_route.creation_timestamp, &b_route.creation_timestamp) {
                 (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
@@ -219,13 +221,21 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
             by_ts.then_with(|| a_name.name.cmp(&b_name.name))
         });
 
-        let mut routes: Vec<_> = routes
-            .into_iter()
-            .map(|(gknn, route)| convert_outbound_http_route(gknn, route, backend.clone()))
-            .collect();
+        let (mut http_routes, mut grpc_routes): (Vec<_>, Vec<_>) =
+            routes.into_iter().partition_map(|(gknn, route)| {
+                if gknn.kind.as_ref() == "GRPCRoute" {
+                    Either::Right(convert_outbound_grpc_route(gknn, route, backend.clone()))
+                } else {
+                    Either::Left(convert_outbound_http_route(gknn, route, backend.clone()))
+                }
+            });
 
-        if routes.is_empty() {
-            routes = vec![default_outbound_http_route(backend.clone())];
+        if http_routes.is_empty() {
+            http_routes = vec![default_outbound_http_route(backend.clone())];
+        }
+
+        if grpc_routes.is_empty() {
+            grpc_routes = vec![default_outbound_grpc_route(backend.clone())];
         }
 
         let accrual = outbound.accrual.map(|accrual| outbound::FailureAccrual {
@@ -256,11 +266,15 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
                 routes: vec![default_outbound_opaq_route(backend)],
             }),
             http1: Some(outbound::proxy_protocol::Http1 {
-                routes: routes.clone(),
+                routes: http_routes.clone(),
                 failure_accrual: accrual.clone(),
             }),
             http2: Some(outbound::proxy_protocol::Http2 {
-                routes,
+                routes: http_routes,
+                failure_accrual: accrual.clone(),
+            }),
+            grpc: Some(outbound::proxy_protocol::Grpc {
+                routes: grpc_routes,
                 failure_accrual: accrual,
             }),
         })
@@ -365,7 +379,6 @@ fn convert_outbound_http_route(
     }
 }
 
-#[allow(dead_code)]
 fn convert_outbound_grpc_route(
     gknn: GroupKindNamespaceName,
     OutboundRoute {
@@ -688,7 +701,6 @@ fn default_outbound_http_route(backend: outbound::Backend) -> outbound::HttpRout
     }
 }
 
-#[allow(dead_code)]
 fn default_outbound_grpc_route(backend: outbound::Backend) -> outbound::GrpcRoute {
     let metadata = Some(Metadata {
         kind: Some(metadata::Kind::Default("grpc".to_string())),
