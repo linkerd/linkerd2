@@ -11,6 +11,7 @@ async-trait = "0.1"
 http = "0.2"
 drain = "0.1"
 hyper = { version = "0.14", features = ["http2", "server", "tcp"] }
+itertools = "^0.12"
 futures = { version = "0.3", default-features = false }
 linkerd-policy-controller-core = { path = "../core" }
 maplit = "1"
