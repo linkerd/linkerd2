@@ -7,7 +7,6 @@ mod proto {
     };
 }
 
-#[allow(dead_code)]
 pub(crate) fn convert_match(
     GrpcRouteMatch { headers, method }: GrpcRouteMatch,
 ) -> proto::GrpcRouteMatch {
