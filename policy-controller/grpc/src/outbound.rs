@@ -1,6 +1,7 @@
 use crate::{routes, workload};
+use ahash::AHashMap as HashMap;
 use futures::prelude::*;
-use itertools::{Either, Itertools};
+use itertools::Itertools;
 use linkerd2_proxy_api::{
     self as api, destination,
     meta::{metadata, Metadata},
@@ -208,36 +209,6 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
             routes: vec![default_outbound_opaq_route(backend)],
         })
     } else {
-        let mut routes = outbound.routes.into_iter().collect::<Vec<_>>();
-
-        routes.sort_by(|(a_name, a_route), (b_name, b_route)| {
-            let by_ts = match (&a_route.creation_timestamp, &b_route.creation_timestamp) {
-                (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
-                (None, None) => std::cmp::Ordering::Equal,
-                // Routes with timestamps are preferred over routes without.
-                (Some(_), None) => return std::cmp::Ordering::Less,
-                (None, Some(_)) => return std::cmp::Ordering::Greater,
-            };
-            by_ts.then_with(|| a_name.name.cmp(&b_name.name))
-        });
-
-        let (mut http_routes, mut grpc_routes): (Vec<_>, Vec<_>) =
-            routes.into_iter().partition_map(|(gknn, route)| {
-                if gknn.kind.as_ref() == "GRPCRoute" {
-                    Either::Right(convert_outbound_grpc_route(gknn, route, backend.clone()))
-                } else {
-                    Either::Left(convert_outbound_http_route(gknn, route, backend.clone()))
-                }
-            });
-
-        if http_routes.is_empty() {
-            http_routes = vec![default_outbound_http_route(backend.clone())];
-        }
-
-        if grpc_routes.is_empty() {
-            grpc_routes = vec![default_outbound_grpc_route(backend.clone())];
-        }
-
         let accrual = outbound.accrual.map(|accrual| outbound::FailureAccrual {
             kind: Some(match accrual {
                 linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
@@ -256,28 +227,67 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
             }),
         });
 
-        outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
-            timeout: Some(
-                time::Duration::from_secs(10)
-                    .try_into()
-                    .expect("failed to convert detect timeout to protobuf"),
-            ),
-            opaque: Some(outbound::proxy_protocol::Opaque {
-                routes: vec![default_outbound_opaq_route(backend)],
-            }),
-            http1: Some(outbound::proxy_protocol::Http1 {
-                routes: http_routes.clone(),
-                failure_accrual: accrual.clone(),
-            }),
-            http2: Some(outbound::proxy_protocol::Http2 {
-                routes: http_routes,
-                failure_accrual: accrual.clone(),
-            }),
-            grpc: Some(outbound::proxy_protocol::Grpc {
-                routes: grpc_routes,
+        let mut route_types = outbound
+            .routes
+            .into_iter()
+            .into_grouping_map_by(|(id, _)| id.kind.to_string())
+            .collect::<HashMap<GroupKindNamespaceName, OutboundRoute>>();
+
+        if route_types.len() > 1 {
+            tracing::error!(route_types = ?route_types.keys().map(Clone::clone).collect::<Vec<String>>(), "mixed collection of route types detected! dropping all non-http route types");
+            route_types.retain(|key, _| key == "HTTPRoute");
+        };
+
+        let kind = if let Some((_, routes)) = route_types.remove_entry("GRPCRoute") {
+            let routes = routes
+                .into_iter()
+                .sorted_by(timestamp_then_name)
+                .map(|(gknn, route)| convert_outbound_grpc_route(gknn, route, backend.clone()))
+                .collect::<Vec<_>>();
+
+            outbound::proxy_protocol::Kind::Grpc(outbound::proxy_protocol::Grpc {
+                routes,
                 failure_accrual: accrual,
-            }),
-        })
+            })
+        } else {
+            let mut routes = route_types
+                .remove_entry("HTTPRoute")
+                .map(|(_, routes)| routes)
+                .unwrap_or_default()
+                .into_iter()
+                .sorted_by(timestamp_then_name)
+                .map(|(gknn, route)| convert_outbound_http_route(gknn, route, backend.clone()))
+                .collect::<Vec<_>>();
+
+            if routes.is_empty() {
+                routes = vec![default_outbound_http_route(backend.clone())];
+            }
+
+            outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
+                timeout: Some(
+                    time::Duration::from_secs(10)
+                        .try_into()
+                        .expect("failed to convert detect timeout to protobuf"),
+                ),
+                opaque: Some(outbound::proxy_protocol::Opaque {
+                    routes: vec![default_outbound_opaq_route(backend)],
+                }),
+                http1: Some(outbound::proxy_protocol::Http1 {
+                    routes: routes.clone(),
+                    failure_accrual: accrual.clone(),
+                }),
+                http2: Some(outbound::proxy_protocol::Http2 {
+                    routes,
+                    failure_accrual: accrual.clone(),
+                }),
+            })
+        };
+
+        if !route_types.is_empty() {
+            tracing::error!(route_types = ?route_types.keys().map(Clone::clone).collect::<Vec<String>>(), "unhandled, unknown route types detected!");
+        }
+
+        kind
     };
 
     let metadata = Metadata {
@@ -295,6 +305,24 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
         metadata: Some(metadata),
         protocol: Some(outbound::ProxyProtocol { kind: Some(kind) }),
     }
+}
+
+fn timestamp_then_name(
+    (left_id, left_route): &(GroupKindNamespaceName, OutboundRoute),
+    (right_id, right_route): &(GroupKindNamespaceName, OutboundRoute),
+) -> std::cmp::Ordering {
+    let by_ts = match (
+        &left_route.creation_timestamp,
+        &right_route.creation_timestamp,
+    ) {
+        (Some(left_ts), Some(right_ts)) => left_ts.cmp(right_ts),
+        (None, None) => std::cmp::Ordering::Equal,
+        // Routes with timestamps are preferred over routes without.
+        (Some(_), None) => return std::cmp::Ordering::Less,
+        (None, Some(_)) => return std::cmp::Ordering::Greater,
+    };
+
+    by_ts.then_with(|| left_id.name.cmp(&right_id.name))
 }
 
 fn convert_outbound_http_route(
@@ -695,39 +723,6 @@ fn default_outbound_http_route(backend: outbound::Backend) -> outbound::HttpRout
         request_timeout: None,
     }];
     outbound::HttpRoute {
-        metadata,
-        rules,
-        ..Default::default()
-    }
-}
-
-fn default_outbound_grpc_route(backend: outbound::Backend) -> outbound::GrpcRoute {
-    let metadata = Some(Metadata {
-        kind: Some(metadata::Kind::Default("grpc".to_string())),
-    });
-    let rules = vec![outbound::grpc_route::Rule {
-        matches: vec![api::grpc_route::GrpcRouteMatch {
-            rpc: Some(api::grpc_route::GrpcRpcMatch {
-                method: String::new(),
-                service: String::new(),
-            }),
-            ..Default::default()
-        }],
-        backends: Some(outbound::grpc_route::Distribution {
-            kind: Some(outbound::grpc_route::distribution::Kind::FirstAvailable(
-                outbound::grpc_route::distribution::FirstAvailable {
-                    backends: vec![outbound::grpc_route::RouteBackend {
-                        backend: Some(backend),
-                        filters: vec![],
-                        request_timeout: None,
-                    }],
-                },
-            )),
-        }),
-        filters: Default::default(),
-        request_timeout: None,
-    }];
-    outbound::GrpcRoute {
         metadata,
         rules,
         ..Default::default()
