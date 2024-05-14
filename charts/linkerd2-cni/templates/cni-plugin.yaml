@@ -59,6 +59,8 @@ spec:
     rule: RunAsAny
   runAsUser:
     rule: RunAsAny
+  runAsGroup:
+    rule: RunAsAny
   seLinux:
     rule: RunAsAny
   supplementalGroups:
@@ -168,6 +170,9 @@ data:
         "incoming-proxy-port": {{.Values.inboundProxyPort}},
         "outgoing-proxy-port": {{.Values.outboundProxyPort}},
         "proxy-uid": {{.Values.proxyUID}},
+        {{- if ge (int .Values.proxyGID) 0 }}
+        "proxy-gid": {{.Values.proxyGID}},
+        {{- end }}
         "ports-to-redirect": [{{.Values.portsToRedirect}}],
         "inbound-ports-to-ignore": ["{{- .Values.proxyAdminPort }}","{{ .Values.proxyControlPort }}"
         {{- if .Values.ignoreInboundPorts }},{{- include "partials.splitStringList" .Values.ignoreInboundPorts -}}{{- end }}],

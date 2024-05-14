@@ -708,6 +708,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	values.Proxy.Ports.Inbound = 4144
 	values.Proxy.Ports.Outbound = 4141
 	values.Proxy.UID = 999
+	values.Proxy.GID = 999
 	values.Proxy.LogLevel = "debug"
 	values.Proxy.LogFormat = "cool"
 	values.Proxy.EnableExternalProfiles = true
@@ -729,6 +730,7 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 		k8s.ProxyInboundPortAnnotation:         "4144",
 		k8s.ProxyOutboundPortAnnotation:        "4141",
 		k8s.ProxyUIDAnnotation:                 "999",
+		k8s.ProxyGIDAnnotation:                 "999",
 		k8s.ProxyLogLevelAnnotation:            "debug",
 		k8s.ProxyLogFormatAnnotation:           "cool",
 

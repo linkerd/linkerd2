@@ -39,6 +39,8 @@ resources: {}
 serviceMirrorRetryLimit: 3
 # -- User id under which the Service Mirror shall be ran
 serviceMirrorUID: 2103
+# -- Group id under which the Service Mirror shall be ran
+serviceMirrorGID: 2103
 # -- Name of the target cluster that's going to be linked
 targetClusterName: ""
 # -- Tolerations for the Service mirror pod

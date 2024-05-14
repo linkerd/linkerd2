@@ -77,6 +77,7 @@ func TestInjectManualParams(t *testing.T) {
 		CPULimit:               "20m",
 		MemoryLimit:            "20Mi",
 		UID:                    1337,
+		GID:                    1337,
 		LogLevel:               "off",
 		EnableExternalProfiles: true,
 	}
@@ -138,6 +139,7 @@ func TestInjectAutoParams(t *testing.T) {
 			Image:                   "proxy-image",
 			LogLevel:                "proxy-log-level",
 			UID:                     10,
+			GID:                     10,
 			Version:                 "proxy-version",
 			RequireIdentityOnPorts:  "8884,8885",
 			OpaquePorts:             "8888,8889",
@@ -387,6 +389,7 @@ func TestInjectAutoPod(t *testing.T) {
 	truthy := true
 	falsy := false
 	initUser := int64(65534)
+	initGroup := int64(65534)
 	seccompProfile := &v1.SeccompProfile{Type: v1.SeccompProfileTypeRuntimeDefault}
 	reg := "cr.l5d.io/linkerd"
 	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
@@ -400,6 +403,7 @@ func TestInjectAutoPod(t *testing.T) {
 			"--incoming-proxy-port", "4143",
 			"--outgoing-proxy-port", "4140",
 			"--proxy-uid", "2102",
+			"--proxy-gid", "2102",
 			// 1234,5678 were added at install time in `install_test.go`'s helmOverridesEdge()
 			"--inbound-ports-to-ignore", "4190,4191,1234,5678",
 			"--outbound-ports-to-ignore", "4567,4568",
@@ -436,6 +440,7 @@ func TestInjectAutoPod(t *testing.T) {
 			AllowPrivilegeEscalation: &falsy,
 			ReadOnlyRootFilesystem:   &truthy,
 			RunAsUser:                &initUser,
+			RunAsGroup:               &initGroup,
 			SeccompProfile:           seccompProfile,
 		},
 		TerminationMessagePolicy: v1.TerminationMessagePolicy("FallbackToLogsOnError"),

@@ -129,6 +129,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.tap.UID | default .Values.defaultUID}}
+          runAsGroup: {{.Values.tap.GID | default .Values.defaultGID}}
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:

@@ -74,6 +74,7 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
           seccompProfile:
@@ -500,6 +501,7 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
           seccompProfile:
@@ -595,6 +597,7 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
+          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
           seccompProfile:

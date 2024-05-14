@@ -81,6 +81,12 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 				return nil
 			}),
 
+		flag.NewInt64Flag(installUpgradeFlags, "controller-gid", defaults.ControllerGID,
+			"Run the control plane components under this group ID", func(values *l5dcharts.Values, value int64) error {
+				values.ControllerGID = value
+				return nil
+			}),
+
 		flag.NewBoolFlag(installUpgradeFlags, "disable-h2-upgrade", !defaults.EnableH2Upgrade,
 			"Prevents the controller from instructing proxies to perform transparent HTTP/2 upgrading (default false)",
 			func(values *l5dcharts.Values, value bool) error {
@@ -252,7 +258,6 @@ func makeInstallFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) 
 // configured.  These flags are available to the inject command and to the
 // install and upgrade commands.
 func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
-
 	proxyFlags := pflag.NewFlagSet("proxy", pflag.ExitOnError)
 
 	flags := []flag.Flag{
@@ -310,6 +315,12 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 		flag.NewInt64Flag(proxyFlags, "proxy-uid", defaults.Proxy.UID, "Run the proxy under this user ID",
 			func(values *l5dcharts.Values, value int64) error {
 				values.Proxy.UID = value
+				return nil
+			}),
+
+		flag.NewInt64Flag(proxyFlags, "proxy-gid", defaults.Proxy.GID, "Run the proxy under this group ID",
+			func(values *l5dcharts.Values, value int64) error {
+				values.Proxy.GID = value
 				return nil
 			}),
 

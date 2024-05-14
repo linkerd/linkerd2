@@ -64,6 +64,7 @@ data:
         "incoming-proxy-port": 1234,
         "outgoing-proxy-port": 5678,
         "proxy-uid": 1111,
+        "proxy-gid": 1111,
         "ports-to-redirect": [],
         "inbound-ports-to-ignore": ["4191","4190"],
         "simulate": false,

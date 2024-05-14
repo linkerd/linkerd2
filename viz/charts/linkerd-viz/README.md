@@ -68,6 +68,7 @@ Kubernetes: `>=1.22.0-0`
 | clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use |
 | commonLabels | object | `{}` | Labels to apply to all resources |
 | createNamespaceMetadataJob | bool | `true` | Creates a Job that adds necessary metadata to the extension's namespace during install; disable if lack of privileges require doing this manually |
+| dashboard.GID | string | `nil` | GID for the dashboard resource |
 | dashboard.UID | string | `nil` | UID for the dashboard resource |
 | dashboard.enforcedHostRegexp | string | `""` | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information |
 | dashboard.image.name | string | `"web"` | Docker image name for the web instance |
@@ -87,6 +88,7 @@ Kubernetes: `>=1.22.0-0`
 | dashboard.restrictPrivileges | bool | `false` | Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check |
 | dashboard.service | object | `{"annotations":{}}` | dashboard service configuration |
 | dashboard.service.annotations | object | `{}` | Additional annotations to add to dashboard service |
+| defaultGID | int | `2103` | GID for all the viz components |
 | defaultImagePullPolicy | string | `"IfNotPresent"` | Docker imagePullPolicy for all viz components |
 | defaultLogFormat | string | `"plain"` | Log format (`plain` or `json`) for all the viz components. |
 | defaultLogLevel | string | `"info"` | Log level for all the viz components |
@@ -104,6 +106,7 @@ Kubernetes: `>=1.22.0-0`
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
 | metricsAPI.UID | string | `nil` | UID for the metrics-api resource |
+| metricsAPI.gID | string | `nil` | GID for the metrics-api resource |
 | metricsAPI.image.name | string | `"metrics-api"` | Docker image name for the metrics-api component |
 | metricsAPI.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the metrics-api component |
 | metricsAPI.image.registry | string | defaultRegistry | Docker registry for the metrics-api component |
@@ -159,6 +162,7 @@ Kubernetes: `>=1.22.0-0`
 | prometheus.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | prometheusUrl | string | `""` | url of external prometheus instance |
 | revisionHistoryLimit | int | `10` | Specifies the number of old ReplicaSets to retain to allow rollback. |
+| tap.GID | string | `nil` | GID for the dashboard resource |
 | tap.UID | string | `nil` | UID for the dashboard resource |
 | tap.caBundle | string | `""` | Bundle of CA certificates for tap. If not provided nor injected with cert-manager, then Helm will use the certificate generated for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value, injectCaFrom, or injectCaFromSecret must be set, as no certificate will be generated. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information. |
 | tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided and not using an external secret then Helm will generate one. |
@@ -183,6 +187,7 @@ Kubernetes: `>=1.22.0-0`
 | tap.resources.memory.request | string | `nil` | Amount of memory that the tap container requests |
 | tap.service | object | `{"annotations":{}}` | tap service configuration |
 | tap.service.annotations | object | `{}` | Additional annotations to add to tap service |
+| tapInjector.GID | string | `nil` | GID for the tapInjector resource |
 | tapInjector.UID | string | `nil` | UID for the tapInjector resource |
 | tapInjector.caBundle | string | `""` | Bundle of CA certificates for the tapInjector. If not provided nor injected with cert-manager, then Helm will use the certificate generated for `tapInjector.crtPEM`. If `tapInjector.externalSecret` is set to true, this value, injectCaFrom, or injectCaFromSecret must be set, as no certificate will be generated. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information. |
 | tapInjector.crtPEM | string | `""` | Certificate for the tapInjector. If not provided and not using an external secret then Helm will generate one. |
