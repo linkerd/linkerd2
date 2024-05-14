@@ -7,7 +7,7 @@ pub mod curl;
 pub mod grpc;
 pub mod web;
 
-use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway as k8s_gateway_api, ResourceExt};
 use maplit::{btreemap, convert_args};
 use tokio::time;
 use tracing::Instrument;

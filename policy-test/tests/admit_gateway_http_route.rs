@@ -1,18 +1,12 @@
-use k8s_gateway_api::BackendObjectReference;
-use k8s_gateway_api::CommonRouteSpec;
-use k8s_gateway_api::HttpPathMatch;
-use k8s_gateway_api::HttpPathModifier;
-use k8s_gateway_api::HttpRequestMirrorFilter;
-use k8s_gateway_api::HttpRequestRedirectFilter;
-use k8s_gateway_api::HttpRoute;
-use k8s_gateway_api::HttpRouteFilter;
-use k8s_gateway_api::HttpRouteMatch;
-use k8s_gateway_api::HttpRouteRule;
-use k8s_gateway_api::HttpRouteSpec;
-use k8s_gateway_api::HttpUrlRewriteFilter;
-use k8s_gateway_api::LocalObjectReference;
-use k8s_gateway_api::ParentReference;
-use linkerd_policy_controller_k8s_api::{self as api};
+use linkerd_policy_controller_k8s_api::{
+    self as api,
+    gateway::{
+        BackendObjectReference, CommonRouteSpec, HttpPathMatch, HttpPathModifier,
+        HttpRequestMirrorFilter, HttpRequestRedirectFilter, HttpRoute, HttpRouteFilter,
+        HttpRouteMatch, HttpRouteRule, HttpRouteSpec, HttpUrlRewriteFilter, LocalObjectReference,
+        ParentReference,
+    },
+};
 use linkerd_policy_test::admission;
 
 #[tokio::test(flavor = "current_thread")]

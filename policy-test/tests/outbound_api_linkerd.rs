@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, time::Duration};
 
 use futures::prelude::*;
 use kube::ResourceExt;
-use linkerd_policy_controller_k8s_api as k8s;
+use linkerd_policy_controller_k8s_api::{self as k8s, gateway as k8s_gateway_api};
 use linkerd_policy_test::{
     assert_default_accrual_backoff, assert_svc_meta, create, create_annotated_service,
     create_cluster_scoped, create_opaque_service, create_service, delete_cluster_scoped, grpc,
