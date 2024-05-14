@@ -1,5 +1,5 @@
 use super::{super::*, *};
-use crate::routes::grpc::gkn_for_gateway_grpc_route;
+use crate::routes::ExplicitGKN;
 use linkerd_policy_controller_core::{
     routes::{GrpcMethodMatch, GrpcRouteMatch, RouteMatch},
     POLICY_CONTROLLER_NAME,
@@ -63,9 +63,9 @@ fn route_attaches_to_server() {
     assert!(rx
         .borrow_and_update()
         .routes
-        .contains_key(&InboundRouteRef::Linkerd(gkn_for_gateway_grpc_route(
-            "route-foo".to_string()
-        ))));
+        .contains_key(&InboundRouteRef::Linkerd(
+            "route-foo".gkn::<k8s::gateway::GrpcRoute>()
+        )));
 
     // Create authz policy.
     test.index.write().apply(mk_authorization_policy(
@@ -83,7 +83,7 @@ fn route_attaches_to_server() {
     assert!(rx.has_changed().unwrap());
 
     assert!(rx.borrow().routes
-        [&InboundRouteRef::Linkerd(gkn_for_gateway_grpc_route("route-foo".to_string()))]
+        [&InboundRouteRef::Linkerd("route-foo".gkn::<k8s::gateway::GrpcRoute>())]
         .authorizations
         .contains_key(&AuthorizationRef::AuthorizationPolicy(
             "authz-foo".to_string()
