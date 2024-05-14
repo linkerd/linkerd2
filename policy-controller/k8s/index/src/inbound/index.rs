@@ -270,7 +270,7 @@ impl Index {
         RouteBinding: TryFrom<R>,
         <RouteBinding as TryFrom<R>>::Error: std::fmt::Display,
     {
-        let ns = route.namespace().expect("HttpRoute must have a namespace");
+        let ns = route.namespace().expect("routes must have a namespace");
         let name = route.name_unchecked();
         let gkn = route.gkn();
         let _span = info_span!("apply", %ns, %name).entered();
@@ -278,7 +278,7 @@ impl Index {
         let route_binding = match route.try_into() {
             Ok(binding) => binding,
             Err(error) => {
-                tracing::info!(%ns, %name, %error, "Ignoring HTTPRoute");
+                tracing::info!(%ns, %name, %error, "Ignoring route");
                 return;
             }
         };
@@ -1680,7 +1680,7 @@ impl PolicyIndex {
                         authorizationpolicy = %name,
                         route = ?gkn,
                         target = ?spec.target,
-                        "AuthorizationPolicy does not target HttpRoute",
+                        "AuthorizationPolicy does not target route",
                     );
                     continue;
                 }
@@ -1690,7 +1690,7 @@ impl PolicyIndex {
                 ns = %self.namespace,
                 authorizationpolicy = %name,
                 route = ?gkn,
-                "AuthorizationPolicy targets HttpRoute",
+                "AuthorizationPolicy targets route",
             );
             tracing::trace!(authns = ?spec.authentications);
 
