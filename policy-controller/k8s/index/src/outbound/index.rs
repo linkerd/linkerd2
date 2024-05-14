@@ -121,7 +121,9 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Inde
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        let gknn = routes::grpc::gkn_for_gateway_grpc_route(name).namespaced(namespace);
+        let gknn = name
+            .gkn::<k8s_gateway_api::GrpcRoute>()
+            .namespaced(namespace);
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete(&gknn);
         }
