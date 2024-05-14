@@ -43,8 +43,8 @@ pub struct OutboundRoute {
     pub hostnames: Vec<HostMatch>,
     pub rules: Vec<OutboundRouteRule>,
 
-    /// This is required for ordering returned `HttpRoute`s by their creation
-    /// timestamp.
+    /// This is required for ordering returned routes
+    /// by their creation timestamp.
     pub creation_timestamp: Option<DateTime<Utc>>,
 }
 
