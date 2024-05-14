@@ -940,7 +940,7 @@ dependencies = [
 [[package]]
 name = "k8s-gateway-api"
 version = "0.15.0"
-source = "git+https://github.com/the-wondersmith/k8s-gateway-api-rs?branch=feat-grpcroute-support#6d469f43eb2db12bb979a5186b3d51e41eb7ab4e"
+source = "git+https://github.com/the-wondersmith/k8s-gateway-api-rs?branch=feat-grpcroute-support#6329611f5ba7bd52f10fdb8376feb37551aca617"
 dependencies = [
  "k8s-openapi",
  "kube",
@@ -1213,6 +1213,7 @@ dependencies = [
 name = "linkerd-policy-controller-grpc"
 version = "0.1.0"
 dependencies = [
+ "ahash",
  "async-stream",
  "async-trait",
  "drain",
