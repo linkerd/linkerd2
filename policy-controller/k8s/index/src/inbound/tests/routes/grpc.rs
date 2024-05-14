@@ -6,7 +6,7 @@ use linkerd_policy_controller_core::{
 };
 
 #[test]
-#[ignore = "requires changes to linkerd2-proxy-api"]
+#[ignore = "not implemented yet"]
 fn route_attaches_to_server() {
     let test = TestConfig::default();
 
@@ -91,7 +91,7 @@ fn route_attaches_to_server() {
 }
 
 #[test]
-#[ignore = "requires changes to linkerd2-proxy-api"]
+#[ignore = "not implemented yet"]
 fn routes_created_for_probes() {
     let policy = DefaultPolicy::Allow {
         authenticated_only: false,
