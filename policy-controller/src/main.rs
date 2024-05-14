@@ -148,7 +148,7 @@ async fn main() -> Result<()> {
     let mut prom = <Registry>::default();
     let resource_status = prom.sub_registry_with_prefix("resource_status");
     let status_metrics = status::ControllerMetrics::register(resource_status);
-    let status_index_metrcs = status::IndexMetrics::register(resource_status);
+    let status_index_metrics = status::IndexMetrics::register(resource_status);
 
     inbound::metrics::register(
         prom.sub_registry_with_prefix("inbound_index"),
@@ -185,7 +185,7 @@ async fn main() -> Result<()> {
         hostname.clone(),
         claims.clone(),
         updates_tx,
-        status_index_metrcs,
+        status_index_metrics,
     );
 
     // Spawn resource watches.
