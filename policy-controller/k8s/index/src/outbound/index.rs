@@ -283,7 +283,7 @@ impl Namespace {
         let outbound_route = match self.convert_route(route.clone(), cluster_info, service_info) {
             Ok(route) => route,
             Err(error) => {
-                tracing::error!(%error, "failed to convert HttpRoute");
+                tracing::error!(%error, "failed to convert route");
                 return;
             }
         };
@@ -363,8 +363,8 @@ impl Namespace {
                     None => (false, None),
                 };
 
-                // The HttpRoutes which target this Service but don't specify
-                // a port apply to all ports. Therefore we include them.
+                // The routes which target this Service but don't specify
+                // a port apply to all ports. Therefore, we include them.
                 let routes = self
                     .service_routes
                     .get(&sp.service)
@@ -813,7 +813,7 @@ fn is_service(group: Option<&str>, kind: &str) -> bool {
 impl ServiceRoutes {
     fn watch_for_ns_or_default(&mut self, namespace: String) -> &mut RoutesWatch {
         // The routes from the producer namespace apply to watches in all
-        // namespaces so we copy them.
+        // namespaces, so we copy them.
         let routes = self
             .watches_by_ns
             .get(self.namespace.as_ref())
