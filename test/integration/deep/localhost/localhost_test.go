@@ -3,6 +3,7 @@ package localhost
 import (
 	"context"
 	"fmt"
+	"net/netip"
 	"os"
 	"regexp"
 	"testing"
@@ -163,7 +164,16 @@ func TestLocalhostRouting(t *testing.T) {
 				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: no IP address found for %s/%s", ns, podName)
 			}
 
-			statusCode, err := TestHelper.Kubectl("", append(execCommand, podIP)...)
+			addr, err := netip.ParseAddr(podIP)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "Invalid IP", "Invalid IP '%s': %s", podIP, err)
+			}
+			if addr.Is6() {
+				podIP = fmt.Sprintf("[%s]", podIP)
+			}
+			url := fmt.Sprintf("http://%s:80", podIP)
+
+			statusCode, err := TestHelper.Kubectl("", append(execCommand, url)...)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "unexpected error received when calling 'kubectl exec'", "unexpected error received when calling 'kubectl exec': %v", err)
 			}
