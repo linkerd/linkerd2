@@ -86,7 +86,6 @@ pub type InboundServerStream = Pin<Box<dyn Stream<Item = InboundServer> + Send +
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InboundServer {
     pub reference: ServerRef,
-
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
     pub routes: HashMap<InboundRouteRef, InboundRoute>,
@@ -98,8 +97,8 @@ pub struct InboundRoute {
     pub rules: Vec<InboundRouteRule>,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
 
-    /// This is required for ordering returned `HttpRoute`s by their creation
-    /// timestamp.
+    /// Required for ordering returned
+    /// routes by their creation timestamp
     pub creation_timestamp: Option<DateTime<Utc>>,
 }
 
@@ -117,9 +116,9 @@ pub enum Filter {
     FailureInjector(FailureInjectorFilter),
 }
 
-// === impl InboundHttpRoute ===
+// === impl InboundRoute ===
 
-/// The default `InboundHttpRoute` used for any `InboundServer` that
+/// The default `InboundRoute` used for any `InboundServer` that
 /// does not have routes.
 impl Default for InboundRoute {
     fn default() -> Self {
@@ -143,7 +142,7 @@ impl Default for InboundRoute {
     }
 }
 
-// === impl InboundHttpRouteRef ===
+// === impl InboundRouteRef ===
 
 impl Ord for InboundRouteRef {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
