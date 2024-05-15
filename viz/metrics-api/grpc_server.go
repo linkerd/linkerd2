@@ -65,8 +65,7 @@ func NewGrpcServer(
 		ignoredNamespaces:   ignoredNamespaces,
 	}
 
-	pb.RegisterApiServer(prometheus.NewGrpcServer(), server)
-	s := prometheus.NewGrpcServer()
+	s := prometheus.NewGrpcServer(grpc.MaxConcurrentStreams(0))
 	pb.RegisterApiServer(s, server)
 
 	return s
