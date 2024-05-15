@@ -10,7 +10,7 @@ require (
 	github.com/clarketm/json v1.15.7
 	github.com/emicklei/proto v1.13.2
 	github.com/evanphx/json-patch v5.9.0+incompatible
-	github.com/fatih/color v1.16.0
+	github.com/fatih/color v1.17.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-openapi/spec v0.21.0
 	github.com/go-test/deep v1.1.0
@@ -26,7 +26,7 @@ require (
 	github.com/nsf/termbox-go v1.1.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/browser v0.0.0-20170505125900-c90ca0c84f15
-	github.com/prometheus/client_golang v1.19.0
+	github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/client_model v0.6.1
 	github.com/prometheus/common v0.53.0
 	github.com/sergi/go-diff v1.3.1

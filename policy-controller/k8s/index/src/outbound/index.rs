@@ -27,6 +27,8 @@ pub struct Index {
     service_info: HashMap<ServiceRef, ServiceInfo>,
 }
 
+pub mod metrics;
+
 pub type SharedIndex = Arc<RwLock<Index>>;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

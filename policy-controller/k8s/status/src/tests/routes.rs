@@ -3,6 +3,25 @@ use linkerd_policy_controller_k8s_api::{self as k8s_core_api, policy as linkerd_
 mod grpc;
 mod http;
 
+fn make_service(
+    namespace: impl ToString,
+    name: impl ToString,
+) -> k8s_core_api::api::core::v1::Service {
+    k8s_core_api::api::core::v1::Service {
+        metadata: k8s_core_api::ObjectMeta {
+            namespace: Some(namespace.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: Some(k8s_core_api::ServiceSpec {
+            cluster_ip: Some("1.2.3.4".to_string()),
+            cluster_ips: Some(vec!["1.2.3.4".to_string()]),
+            ..Default::default()
+        }),
+        status: None,
+    }
+}
+
 fn make_server(
     namespace: impl ToString,
     name: impl ToString,

@@ -150,6 +150,10 @@ async fn main() -> Result<()> {
     let status_metrics = status::ControllerMetrics::register(resource_status);
     let status_index_metrics = status::IndexMetrics::register(resource_status);
 
+    outbound::metrics::register(
+        prom.sub_registry_with_prefix("outbound_index"),
+        outbound_index.clone(),
+    );
     inbound::metrics::register(
         prom.sub_registry_with_prefix("inbound_index"),
         inbound_index.clone(),
