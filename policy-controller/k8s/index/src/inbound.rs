@@ -7,7 +7,7 @@ mod server;
 pub mod server_authorization;
 mod workload;
 
-pub use index::{Index, SharedIndex};
+pub use index::{metrics, Index, SharedIndex};
 
 #[cfg(test)]
 mod tests;

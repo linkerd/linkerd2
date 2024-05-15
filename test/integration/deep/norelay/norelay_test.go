@@ -73,11 +73,19 @@ func TestNoRelay(t *testing.T) {
 func TestRelay(t *testing.T) {
 	ctx := context.Background()
 	deployments := getDeployments(t)
+
+	// account for both when IPv6 is enabled or disabled
 	deployments["server-relay"] = strings.ReplaceAll(
 		deployments["server-relay"],
 		"127.0.0.1:4140,[::1]:4140",
 		"'[::]:4140'",
 	)
+	deployments["server-relay"] = strings.ReplaceAll(
+		deployments["server-relay"],
+		"127.0.0.1:4140",
+		"0.0.0.0:4140",
+	)
+
 	TestHelper.WithDataPlaneNamespace(ctx, "relay-test", map[string]string{}, t, func(t *testing.T, ns string) {
 		for name, res := range deployments {
 			out, err := TestHelper.KubectlApply(res, ns)
