@@ -248,7 +248,7 @@ fn route_with_invalid_backend() {
                 inner: k8s_gateway_api::BackendObjectReference {
                     group: Some("core".to_string()),
                     kind: Some("Service".to_string()),
-                    name: "nonexistant-backend".to_string(),
+                    name: "nonexistent-backend".to_string(),
                     namespace: backend.namespace(),
                     port: Some(8080),
                 },
