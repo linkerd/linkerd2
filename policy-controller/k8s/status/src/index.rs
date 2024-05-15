@@ -429,7 +429,7 @@ impl Index {
 
         // If all references have been resolved (i.e exist in our services cache),
         // return positive status, otherwise, one of them does not exist
-        if backend_refs.iter().any(|backend_ref| match backend_ref {
+        if backend_refs.iter().all(|backend_ref| match backend_ref {
             routes::BackendReference::Service(service) => self.services.contains_key(service),
             _ => false,
         }) {
