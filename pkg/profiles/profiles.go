@@ -15,6 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
+	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 )
 
@@ -210,7 +211,7 @@ func buildConfig(namespace, service, clusterDomain string) *profileTemplateConfi
 
 // RenderProfileTemplate renders a ServiceProfile template to a buffer, given a
 // namespace, service, and control plane namespace.
-func RenderProfileTemplate(namespace, service, clusterDomain string, w io.Writer) error {
+func RenderProfileTemplate(namespace, service, clusterDomain string, w io.Writer, format string) error {
 	config := buildConfig(namespace, service, clusterDomain)
 	template, err := template.New("profile").Parse(Template)
 	if err != nil {
@@ -222,8 +223,20 @@ func RenderProfileTemplate(namespace, service, clusterDomain string, w io.Writer
 		return err
 	}
 
-	_, err = w.Write(buf.Bytes())
-	return err
+	if format == "json" {
+		bytes, err := yamlDecoder.ToJSON(buf.Bytes())
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(append(bytes, '\n'))
+		return err
+	}
+	if format == "yaml" {
+		_, err = w.Write(buf.Bytes())
+		return err
+	}
+
+	return fmt.Errorf("unknown output format: %s", format)
 }
 
 func readFile(fileName string) (io.Reader, error) {

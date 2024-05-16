@@ -120,10 +120,7 @@ func newCmdProfile() *cobra.Command {
 
 			var profile *sp.ServiceProfile
 			if options.template {
-				if options.output != "yaml" {
-					return errors.New("the --template flag is only compatible with yaml output")
-				}
-				return profiles.RenderProfileTemplate(options.namespace, options.name, clusterDomain, os.Stdout)
+				return profiles.RenderProfileTemplate(options.namespace, options.name, clusterDomain, os.Stdout, options.output)
 			} else if options.openAPI != "" {
 				profile, err = profiles.RenderOpenAPI(options.openAPI, options.namespace, options.name, clusterDomain)
 			} else if options.proto != "" {
