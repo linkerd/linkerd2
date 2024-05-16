@@ -116,7 +116,7 @@ func TestUninjectYAML(t *testing.T) {
 			output := new(bytes.Buffer)
 			report := new(bytes.Buffer)
 
-			exitCode := runUninjectCmd(read, report, output, values)
+			exitCode := runUninjectCmd(read, report, output, values, "yaml")
 			if exitCode != 0 {
 				t.Errorf("Failed to uninject %s", tc.inputFileName)
 			}

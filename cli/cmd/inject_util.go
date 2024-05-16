@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/linkerd/linkerd2/pkg/inject"
 	corev1 "k8s.io/api/core/v1"
@@ -26,12 +27,12 @@ type resourceTransformer interface {
 }
 
 // Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
-func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resourceTransformer) int {
+func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resourceTransformer, format string) int {
 	postInjectBuf := &bytes.Buffer{}
 	reportBuf := &bytes.Buffer{}
 
 	for _, input := range inputs {
-		errs := processYAML(input, postInjectBuf, reportBuf, rt)
+		errs := processYAML(input, postInjectBuf, reportBuf, rt, format)
 		if len(errs) > 0 {
 			fmt.Fprintf(errWriter, "Error transforming resources:\n%v", concatErrors(errs, "\n"))
 			return 1
@@ -51,8 +52,16 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 }
 
 // processYAML takes an input stream of YAML, outputting injected/uninjected YAML to out.
-func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTransformer) []error {
-	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
+func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTransformer, format string) []error {
+	var reader yamlDecoder.Reader
+	buffer, _, isJSON := guessJSONStream(in, 4096)
+	if isJSON {
+		// We assume that json documents will be separated by newlines.
+		reader = &lineReader{reader: buffer}
+
+	} else {
+		reader = yamlDecoder.NewYAMLReader(buffer)
+	}
 
 	reports := []inject.Report{}
 
@@ -86,9 +95,26 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 		}
 		reports = append(reports, irs...)
 
+		// If the format is set to json, we need to convert the yaml to json
+		if format == "json" {
+			result, err = yaml.YAMLToJSON(result)
+			if err != nil {
+				errs = append(errs, err)
+			}
+		} else if format == "yaml" {
+			// result is already in yaml format: noop.
+		} else {
+			errs = append(errs, fmt.Errorf("unsupported format %s", format))
+		}
+
 		if len(errs) == 0 {
 			out.Write(result)
-			out.Write([]byte("---\n"))
+			if format == "yaml" {
+				out.Write([]byte("---\n"))
+			}
+			if format == "json" {
+				out.Write([]byte("\n"))
+			}
 		}
 	}
 
@@ -238,4 +264,54 @@ func concatErrors(errs []error, delimiter string) error {
 		message = fmt.Sprintf("%s%s%s", message, delimiter, err.Error())
 	}
 	return errors.New(message)
+}
+
+// We copy lineReader, guessJSONStream, hasJSONPrefix, jsonPrefix, and hasPrefix
+// from https://github.com/kubernetes/apimachinery/blob/1da46c3f5a5b4a0cc756cb6050df0cf6f06b64c2/pkg/util/yaml/decoder.go#L347
+// because lineReader does not have a public constructor and so that we can
+// refine the return type of guessJSONStream from *io.Reader to *bufio.Reader.
+type lineReader struct {
+	reader *bufio.Reader
+}
+
+// Read returns a single line (with '\n' ended) from the underlying reader.
+// An error is returned iff there is an error with the underlying reader.
+func (r *lineReader) Read() ([]byte, error) {
+	var (
+		isPrefix bool  = true
+		err      error = nil
+		line     []byte
+		buffer   bytes.Buffer
+	)
+
+	for isPrefix && err == nil {
+		line, isPrefix, err = r.reader.ReadLine()
+		buffer.Write(line)
+	}
+	buffer.WriteByte('\n')
+	return buffer.Bytes(), err
+}
+
+// guessJSONStream scans the provided reader up to size, looking
+// for an open brace indicating this is JSON. It will return the
+// bufio.Reader it creates for the consumer.
+func guessJSONStream(r io.Reader, size int) (*bufio.Reader, []byte, bool) {
+	buffer := bufio.NewReaderSize(r, size)
+	b, _ := buffer.Peek(size)
+	return buffer, b, hasJSONPrefix(b)
+}
+
+var jsonPrefix = []byte("{")
+
+// hasJSONPrefix returns true if the provided buffer appears to start with
+// a JSON open brace.
+func hasJSONPrefix(buf []byte) bool {
+	return hasPrefix(buf, jsonPrefix)
+}
+
+// Return true if the first non-whitespace bytes in buf is
+// prefix.
+func hasPrefix(buf []byte, prefix []byte) bool {
+	trim := bytes.TrimLeftFunc(buf, unicode.IsSpace)
+	return bytes.HasPrefix(trim, prefix)
 }
