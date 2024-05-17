@@ -12,8 +12,8 @@ use linkerd_policy_controller_k8s_api::{
 };
 use std::fmt;
 
-pub(crate) mod grpc;
-pub(crate) mod http;
+pub(crate) mod grpc {}
+pub(crate) mod http {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RouteBinding {
