@@ -110,11 +110,13 @@ func init() {
 }
 
 // NewGrpcServer returns a grpc server pre-configured with prometheus interceptors and oc-grpc handler
-func NewGrpcServer() *grpc.Server {
+func NewGrpcServer(opt ...grpc.ServerOption) *grpc.Server {
 	server := grpc.NewServer(
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		grpc.StatsHandler(&ocgrpc.ServerHandler{}),
+		append([]grpc.ServerOption{
+			grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+			grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+			grpc.StatsHandler(&ocgrpc.ServerHandler{}),
+		}, opt...)...,
 	)
 
 	grpc_prometheus.EnableHandlingTimeHistogram()
