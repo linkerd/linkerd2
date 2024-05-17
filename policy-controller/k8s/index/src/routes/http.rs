@@ -10,7 +10,7 @@ pub fn try_match(
         query_params,
         method,
     }: api::HttpRouteMatch,
-) -> Result<routes::RouteMatch> {
+) -> Result<routes::HttpRouteMatch> {
     let path = path.map(path_match).transpose()?;
 
     let headers = headers
@@ -30,12 +30,12 @@ pub fn try_match(
         .map(routes::Method::try_from)
         .transpose()?;
 
-    Ok(routes::RouteMatch::Http(routes::HttpRouteMatch {
+    Ok(routes::HttpRouteMatch {
         path,
         headers,
         query_params,
         method,
-    }))
+    })
 }
 
 pub fn path_match(path_match: api::HttpPathMatch) -> Result<routes::PathMatch> {

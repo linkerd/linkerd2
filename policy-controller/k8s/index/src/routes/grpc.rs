@@ -1,10 +1,10 @@
 use anyhow::Result;
-use linkerd_policy_controller_core::routes::{self, GrpcRouteMatch};
+use linkerd_policy_controller_core::routes;
 use linkerd_policy_controller_k8s_api::gateway as k8s_gateway_api;
 
 pub fn try_match(
     k8s_gateway_api::GrpcRouteMatch { headers, method }: k8s_gateway_api::GrpcRouteMatch,
-) -> Result<routes::RouteMatch> {
+) -> Result<routes::GrpcRouteMatch> {
     let headers = headers
         .into_iter()
         .flatten()
@@ -18,5 +18,5 @@ pub fn try_match(
         }
     });
 
-    Ok(routes::RouteMatch::Grpc(GrpcRouteMatch { headers, method }))
+    Ok(routes::GrpcRouteMatch { headers, method })
 }
