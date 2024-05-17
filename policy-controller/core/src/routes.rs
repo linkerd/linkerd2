@@ -144,6 +144,20 @@ impl GroupKindName {
     }
 }
 
+// === impl RouteMatch ===
+
+impl From<GrpcRouteMatch> for RouteMatch {
+    fn from(value: GrpcRouteMatch) -> Self {
+        Self::Grpc(value)
+    }
+}
+
+impl From<HttpRouteMatch> for RouteMatch {
+    fn from(value: HttpRouteMatch) -> Self {
+        Self::Http(value)
+    }
+}
+
 // === impl PathMatch ===
 
 impl PartialEq for PathMatch {
