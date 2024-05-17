@@ -166,7 +166,7 @@ displayed.`,
 	}
 
 	cmd.PersistentFlags().StringVar(&options.destinationPod, "destination-pod", "", "Target a specific destination Pod when there are multiple running")
-	cmd.PersistentFlags().StringVar(&options.contextToken, "token", "default:diagnostics", "Token to use when querying the destination service")
+	cmd.PersistentFlags().StringVar(&options.contextToken, "token", "default:diagnostics", "Token to use when querying the policy service")
 	cmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", namespace, "Namespace of resource")
 	cmd.PersistentFlags().StringVarP(&output, "output", "o", output, "Output format. One of: yaml, json")
 
