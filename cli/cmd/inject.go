@@ -143,7 +143,7 @@ sub-folders, or coming from stdin.`,
 
 func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, transformer *resourceTransformerInject, output string) int {
 	var out bytes.Buffer
-	if exitCode := runUninjectSilentCmd(inputs, errWriter, &out, transformer.values, output); exitCode != 0 {
+	if exitCode := runUninjectSilentCmd(inputs, errWriter, &out, transformer.values, "yaml"); exitCode != 0 {
 		return exitCode
 	}
 	return runInjectCmd([]io.Reader{&out}, errWriter, outWriter, transformer, output)
