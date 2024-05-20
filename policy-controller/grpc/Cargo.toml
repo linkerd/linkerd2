@@ -14,7 +14,7 @@ hyper = { version = "0.14", features = ["http2", "server", "tcp"] }
 futures = { version = "0.3", default-features = false }
 linkerd-policy-controller-core = { path = "../core" }
 maplit = "1"
-prost-types = "0.12.4"
+prost-types = "0.12.6"
 tokio = { version = "1", features = ["macros"] }
 tonic = { version = "0.10", default-features = false }
 tracing = "0.1"
