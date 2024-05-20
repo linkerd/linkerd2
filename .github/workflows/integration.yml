@@ -284,7 +284,7 @@ jobs:
     needs: [meta, build-cli, build-core, build-ext]
     if: needs.meta.outputs.changed == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
