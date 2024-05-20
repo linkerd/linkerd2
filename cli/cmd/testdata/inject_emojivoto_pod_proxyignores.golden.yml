@@ -28,6 +28,10 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName
+    - name: LINKERD2_PROXY_TRACE_SERVICE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.annotations['jaeger.linkerd.io/proxy-service-name']
     - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
       value: "false"
     - name: LINKERD2_PROXY_LOG

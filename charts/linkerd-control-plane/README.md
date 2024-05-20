@@ -273,7 +273,6 @@ Kubernetes: `>=1.22.0-0`
 | proxy.resources.memory.limit | string | `""` | Maximum amount of memory that the proxy can use |
 | proxy.resources.memory.request | string | `""` | Maximum amount of memory that the proxy requests |
 | proxy.shutdownGracePeriod | string | `""` | Grace period for graceful proxy shutdowns. If this timeout elapses before all open connections have completed, the proxy will terminate forcefully, closing any remaining connections. |
-| proxy.tracingServiceName | string | `""` | Service name used for tracing the proxy. |
 | proxy.startupProbe.failureThreshold | int | `120` |  |
 | proxy.startupProbe.initialDelaySeconds | int | `0` |  |
 | proxy.startupProbe.periodSeconds | int | `1` |  |
