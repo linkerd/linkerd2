@@ -16,6 +16,10 @@ env:
   valueFrom:
     fieldRef:
       fieldPath: spec.nodeName
+- name: LINKERD2_PROXY_TRACE_SERVICE_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.annotations['jaeger.linkerd.io/proxy-service-name']
 {{- if .Values.proxy.cores }}
 - name: LINKERD2_PROXY_CORES
   value: {{.Values.proxy.cores | quote}}
@@ -173,10 +177,6 @@ be used in other contexts.
 {{ if .Values.proxy.shutdownGracePeriod -}}
 - name: LINKERD2_PROXY_SHUTDOWN_GRACE_PERIOD
   value: {{.Values.proxy.shutdownGracePeriod | quote}}
-{{ end -}}
-{{ if .Values.proxy.tracingServiceName -}}
-- name: LINKERD2_PROXY_TRACING_SERVICE_NAME
-  value: {{.Values.proxy.tracingServiceName | quote}}
 {{ end -}}
 {{ if .Values.proxy.additionalEnv -}}
 {{ toYaml .Values.proxy.additionalEnv }}
