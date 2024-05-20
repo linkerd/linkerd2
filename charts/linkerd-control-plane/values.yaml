@@ -216,8 +216,6 @@ proxy:
   opaquePorts: "25,587,3306,4444,5432,6379,9300,11211"
   # -- Grace period for graceful proxy shutdowns. If this timeout elapses before all open connections have completed, the proxy will terminate forcefully, closing any remaining connections.
   shutdownGracePeriod: ""
-  # -- Service name used for tracing the proxy
-  tracingServiceName: ""
   # -- The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated",
   # "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny", "audit"
   # @default -- "all-unauthenticated"

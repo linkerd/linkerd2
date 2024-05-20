@@ -72,7 +72,6 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxySkipSubnetsAnnotation:                   "172.17.0.0/16",
 							k8s.ProxyAccessLogAnnotation:                     "apache",
 							k8s.ProxyShutdownGracePeriodAnnotation:           "30s",
-							k8s.ProxyTracingServiceNameAnnotation:            "test-proxy",
 							k8s.ProxyOutboundDiscoveryCacheUnusedTimeout:     "50000ms",
 							k8s.ProxyInboundDiscoveryCacheUnusedTimeout:      "900s",
 							k8s.ProxyDisableOutboundProtocolDetectTimeout:    "true",
@@ -127,7 +126,6 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Proxy.Await = true
 				values.Proxy.AccessLog = "apache"
 				values.Proxy.ShutdownGracePeriod = "30000ms"
-				values.Proxy.TracingServiceName = "test-proxy"
 				values.Proxy.OutboundDiscoveryCacheUnusedTimeout = "50s"
 				values.Proxy.InboundDiscoveryCacheUnusedTimeout = "900s"
 				values.Proxy.DisableOutboundProtocolDetectTimeout = true
