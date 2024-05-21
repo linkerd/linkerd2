@@ -395,8 +395,9 @@ fn convert_http_backend(
             }
         }
         Backend::Service(svc) => {
-            let filters = svc.filters.into_iter().map(convert_filter).collect();
-            outbound::http_route::WeightedRouteBackend {
+            if svc.exists {
+                let filters = svc.filters.into_iter().map(convert_filter).collect();
+                outbound::http_route::WeightedRouteBackend {
                 weight: svc.weight,
                 backend: Some(outbound::http_route::RouteBackend {
                     backend: Some(outbound::Backend {
@@ -427,6 +428,30 @@ fn convert_http_backend(
                     filters,
                     request_timeout,
                 }),
+            }
+            } else {
+                outbound::http_route::WeightedRouteBackend {
+                    weight: svc.weight,
+                    backend: Some(outbound::http_route::RouteBackend {
+                        backend: Some(outbound::Backend {
+                            metadata: Some(Metadata {
+                                kind: Some(metadata::Kind::Default("invalid".to_string())),
+                            }),
+                            queue: Some(default_queue_config()),
+                            kind: None,
+                        }),
+                        filters: vec![outbound::http_route::Filter {
+                            kind: Some(outbound::http_route::filter::Kind::FailureInjector(
+                                api::http_route::HttpFailureInjector {
+                                    status: 500,
+                                    message: format!("Service not found {}", svc.name),
+                                    ratio: None,
+                                },
+                            )),
+                        }],
+                        request_timeout,
+                    }),
+                }
             }
         }
         Backend::Invalid { weight, message } => outbound::http_route::WeightedRouteBackend {
