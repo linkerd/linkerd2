@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -36,12 +37,14 @@ type profileOptions struct {
 	tap           string
 	tapDuration   time.Duration
 	tapRouteLimit uint
+	output        string
 }
 
 func newProfileOptions() *profileOptions {
 	return &profileOptions{
 		tapDuration:   5 * time.Second,
 		tapRouteLimit: 20,
+		output:        "yaml",
 	}
 }
 
@@ -136,13 +139,14 @@ func newCmdProfile() *cobra.Command {
 			if cd := values.ClusterDomain; cd != "" {
 				clusterDomain = cd
 			}
-			return renderTapOutputProfile(cmd.Context(), k8sAPI, options.tap, options.namespace, options.name, clusterDomain, options.tapDuration, int(options.tapRouteLimit), os.Stdout)
+			return renderTapOutputProfile(cmd.Context(), k8sAPI, options.tap, options.namespace, options.name, clusterDomain, options.tapDuration, int(options.tapRouteLimit), options.output, os.Stdout)
 		},
 	}
 	cmd.PersistentFlags().StringVar(&options.tap, "tap", options.tap, "Output a service profile based on tap data for the given target resource")
 	cmd.PersistentFlags().DurationVar(&options.tapDuration, "tap-duration", options.tapDuration, "Duration over which tap data is collected (for example: \"10s\", \"1m\", \"10m\")")
 	cmd.PersistentFlags().UintVar(&options.tapRouteLimit, "tap-route-limit", options.tapRouteLimit, "Max number of routes to add to the profile")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the service")
+	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: yaml, json")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"namespace"},
@@ -153,7 +157,7 @@ func newCmdProfile() *cobra.Command {
 // renderTapOutputProfile performs a tap on the desired resource and generates
 // a service profile with routes pre-populated from the tap data
 // Only inbound tap traffic is considered.
-func renderTapOutputProfile(ctx context.Context, k8sAPI *k8s.KubernetesAPI, tapResource, namespace, name, clusterDomain string, tapDuration time.Duration, routeLimit int, w io.Writer) error {
+func renderTapOutputProfile(ctx context.Context, k8sAPI *k8s.KubernetesAPI, tapResource, namespace, name, clusterDomain string, tapDuration time.Duration, routeLimit int, format string, w io.Writer) error {
 	requestParams := pkg.TapRequestParams{
 		Resource:  tapResource,
 		Namespace: namespace,
@@ -167,7 +171,14 @@ func renderTapOutputProfile(ctx context.Context, k8sAPI *k8s.KubernetesAPI, tapR
 	if err != nil {
 		return err
 	}
-	output, err := yaml.Marshal(profile)
+	var output []byte
+	if format == "yaml" {
+		output, err = yaml.Marshal(profile)
+	} else if format == "json" {
+		output, err = json.Marshal(profile)
+	} else {
+		return errors.New("output format must be one of yaml or json")
+	}
 	if err != nil {
 		return fmt.Errorf("Error writing Service Profile: %w", err)
 	}

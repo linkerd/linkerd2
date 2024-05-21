@@ -21,31 +21,31 @@ const (
 // RenderOpenAPI reads an OpenAPI spec file and renders the corresponding
 // ServiceProfile to a buffer, given a namespace, service, and control plane
 // namespace.
-func RenderOpenAPI(fileName, namespace, name, clusterDomain string, w io.Writer) error {
+func RenderOpenAPI(fileName, namespace, name, clusterDomain string) (*sp.ServiceProfile, error) {
 
 	input, err := readFile(fileName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	bytes, err := io.ReadAll(input)
 	if err != nil {
-		return fmt.Errorf("Error reading file: %w", err)
+		return nil, fmt.Errorf("Error reading file: %w", err)
 	}
 	json, err := yaml.YAMLToJSON(bytes)
 	if err != nil {
-		return fmt.Errorf("Error parsing yaml: %w", err)
+		return nil, fmt.Errorf("Error parsing yaml: %w", err)
 	}
 
 	swagger := spec.Swagger{}
 	err = swagger.UnmarshalJSON(json)
 	if err != nil {
-		return fmt.Errorf("Error parsing OpenAPI spec: %w", err)
+		return nil, fmt.Errorf("Error parsing OpenAPI spec: %w", err)
 	}
 
 	profile := swaggerToServiceProfile(swagger, namespace, name, clusterDomain)
 
-	return writeProfile(profile, w)
+	return &profile, nil
 }
 
 func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomain string) sp.ServiceProfile {
