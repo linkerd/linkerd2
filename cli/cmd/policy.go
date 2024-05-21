@@ -89,7 +89,7 @@ displayed.`,
 				}
 			}
 
-			conn, err := grpc.Dial(apiAddr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithStatsHandler(&ocgrpc.ClientHandler{}))
+			conn, err := grpc.NewClient(apiAddr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithStatsHandler(&ocgrpc.ClientHandler{}))
 			if err != nil {
 				return err
 			}
