@@ -18,7 +18,7 @@ const (
 // NewInternalClient creates a new Viz API client intended to run inside a
 // Kubernetes cluster.
 func NewInternalClient(addr string) (pb.ApiClient, error) {
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithStatsHandler(&ocgrpc.ClientHandler{}))
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithStatsHandler(&ocgrpc.ClientHandler{}))
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func NewExternalClient(ctx context.Context, namespace string, kubeAPI *k8s.Kuber
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithStatsHandler(&ocgrpc.ClientHandler{}))
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithStatsHandler(&ocgrpc.ClientHandler{}))
 	if err != nil {
 		return nil, err
 	}
