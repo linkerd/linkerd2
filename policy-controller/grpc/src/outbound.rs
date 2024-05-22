@@ -274,6 +274,8 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
                     routes = vec![default_outbound_http_route(backend.clone())];
                 }
 
+                // TODO(the-wondersmith): determine what (if any) contracts
+                //  would need to be updated if we return `Kind::Http` here
                 outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
                     timeout: Some(
                         time::Duration::from_secs(10)
