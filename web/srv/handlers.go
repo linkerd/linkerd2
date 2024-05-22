@@ -74,7 +74,7 @@ func (h *handler) handleProfileDownload(w http.ResponseWriter, req *http.Request
 	}
 
 	profileYaml := &bytes.Buffer{}
-	err := profiles.RenderProfileTemplate(namespace, service, h.clusterDomain, profileYaml)
+	err := profiles.RenderProfileTemplate(namespace, service, h.clusterDomain, profileYaml, "yaml")
 
 	if err != nil {
 		log.Error(err)

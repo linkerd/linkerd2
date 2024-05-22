@@ -42,11 +42,9 @@ func FuzzRenderProto(data []byte) int {
 	if err != nil {
 		return 0
 	}
-	w, err := os.OpenFile("/dev/null", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	_, err = RenderProto(protofile.Name(), namespace, name, clusterDomain)
 	if err != nil {
 		return 0
 	}
-	defer w.Close()
-	_ = RenderProto(protofile.Name(), namespace, name, clusterDomain, w)
 	return 1
 }

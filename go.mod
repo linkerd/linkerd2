@@ -49,7 +49,7 @@ require (
 	k8s.io/code-generator v0.30.1
 	k8s.io/endpointslice v0.30.1
 	k8s.io/klog/v2 v2.120.1
-	k8s.io/kube-aggregator v0.30.0
+	k8s.io/kube-aggregator v0.30.1
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 	sigs.k8s.io/gateway-api v0.8.1
 	sigs.k8s.io/yaml v1.4.0

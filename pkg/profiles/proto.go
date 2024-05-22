@@ -2,7 +2,6 @@ package profiles
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -15,20 +14,15 @@ import (
 // RenderProto reads a protobuf definition file and renders the corresponding
 // ServiceProfile to a buffer, given a namespace, service, and control plane
 // namespace.
-func RenderProto(fileName, namespace, name, clusterDomain string, w io.Writer) error {
+func RenderProto(fileName, namespace, name, clusterDomain string) (*sp.ServiceProfile, error) {
 	input, err := readFile(fileName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	parser := proto.NewParser(input)
 
-	profile, err := protoToServiceProfile(parser, namespace, name, clusterDomain)
-	if err != nil {
-		return err
-	}
-
-	return writeProfile(*profile, w)
+	return protoToServiceProfile(parser, namespace, name, clusterDomain)
 }
 
 func protoToServiceProfile(parser *proto.Parser, namespace, name, clusterDomain string) (*sp.ServiceProfile, error) {

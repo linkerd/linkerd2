@@ -795,8 +795,9 @@ func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 	newAddressSet := pp.endpointSliceToAddresses(slice)
 	for id, addr := range pp.addresses.Addresses {
-		newAddressSet.Addresses[id] = addr
-		newAddressSet.LocalTrafficPolicy = pp.localTrafficPolicy
+		if _, ok := newAddressSet.Addresses[id]; !ok {
+			newAddressSet.Addresses[id] = addr
+		}
 	}
 
 	add, _ := diffAddresses(pp.addresses, newAddressSet)
@@ -805,6 +806,11 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 			listener.Add(add)
 		}
 	}
+
+	// even if the ES doesn't have addresses yet we need to create a new
+	// pp.addresses entry with the appropriate Labels and LocalTrafficPolicy,
+	// which isn't going to be captured during the ES update event when
+	// addresses get added
 
 	pp.addresses = newAddressSet
 	pp.exists = true
