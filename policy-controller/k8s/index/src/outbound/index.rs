@@ -441,41 +441,17 @@ impl Namespace {
                     watches_by_ns: Default::default(),
                 };
 
-                if let Some(routes) = routes {
-                    // Producer routes are routes in the same namespace as
-                    // their parent service. Consumer routes are routes in
-                    // other namespaces.
-                    let (producer_routes, consumer_routes): (Vec<_>, Vec<_>) = routes
-                        .into_iter()
-                        .partition(|(gknn, _)| *gknn.namespace == *self.namespace);
-
-                    for (consumer_gknn, consumer_route) in consumer_routes {
-                        // Consumer routes should only apply to watches from the
-                        // consumer namespace.
-                        let consumer_watch = service_routes
-                            .watch_for_ns_or_default(consumer_gknn.namespace.to_string());
-
-                        consumer_watch.insert_route(consumer_gknn.clone(), consumer_route.clone());
-                    }
-
-                    for (producer_gknn, producer_route) in producer_routes {
-                        // Insert the route into the producer namespace.
-                        let producer_watch = service_routes
-                            .watch_for_ns_or_default(producer_gknn.namespace.to_string());
-
-                        producer_watch.insert_route(producer_gknn.clone(), producer_route.clone());
-
-                        // Producer routes apply to clients in all namespaces, so
-                        // apply it to watches for all other namespaces too.
+                match routes {
+                    None => {}
+                    Some(OutboundRouteCollection::Grpc(routes)) => {
                         service_routes
-                            .watches_by_ns
-                            .iter_mut()
-                            .filter(|(namespace, _)| namespace != &producer_gknn.namespace.as_ref())
-                            .for_each(|(_, watch)| {
-                                watch.insert_route(producer_gknn.clone(), producer_route.clone())
-                            });
+                            .insert_producer_and_consumer_routes(routes, self.namespace.as_str());
                     }
-                }
+                    Some(OutboundRouteCollection::Http(routes)) => {
+                        service_routes
+                            .insert_producer_and_consumer_routes(routes, self.namespace.as_str());
+                    }
+                };
 
                 service_routes
             })
@@ -949,6 +925,43 @@ impl ServiceRoutes {
             watch.remove_route(gknn);
         });
     }
+
+    fn insert_producer_and_consumer_routes<Route: Clone + Into<TypedOutboundRoute>>(
+        &mut self,
+        routes: HashMap<GroupKindNamespaceName, Route>,
+        namespace: &str,
+    ) {
+        // Producer routes are routes in the same namespace as
+        // their parent service. Consumer routes are routes in
+        // other namespaces.
+        let (producer_routes, consumer_routes): (Vec<_>, Vec<_>) = routes
+            .into_iter()
+            .partition(|(gknn, _)| gknn.namespace.as_ref() == namespace);
+
+        for (consumer_gknn, consumer_route) in consumer_routes {
+            // Consumer routes should only apply to watches from the
+            // consumer namespace.
+            let consumer_watch = self.watch_for_ns_or_default(consumer_gknn.namespace.to_string());
+
+            consumer_watch.insert_route(consumer_gknn.clone(), consumer_route.clone());
+        }
+
+        for (producer_gknn, producer_route) in producer_routes {
+            // Insert the route into the producer namespace.
+            let producer_watch = self.watch_for_ns_or_default(producer_gknn.namespace.to_string());
+
+            producer_watch.insert_route(producer_gknn.clone(), producer_route.clone());
+
+            // Producer routes apply to clients in all namespaces, so
+            // apply it to watches for all other namespaces too.
+            self.watches_by_ns
+                .iter_mut()
+                .filter(|(namespace, _)| namespace.as_str() != producer_gknn.namespace.as_ref())
+                .for_each(|(_, watch)| {
+                    watch.insert_route(producer_gknn.clone(), producer_route.clone())
+                });
+        }
+    }
 }
 
 impl RoutesWatch {
@@ -975,7 +988,11 @@ impl RoutesWatch {
         });
     }
 
-    fn insert_route(&mut self, gknn: GroupKindNamespaceName, route: TypedOutboundRoute) {
+    fn insert_route<Route: Into<TypedOutboundRoute>>(
+        &mut self,
+        gknn: GroupKindNamespaceName,
+        route: Route,
+    ) {
         match &mut self.routes {
             Some(routes) => {
                 routes
@@ -984,6 +1001,7 @@ impl RoutesWatch {
                     .transpose();
             }
             None => {
+                let route = route.into();
                 let mut routes = default_collection_for(&route);
                 routes
                     .insert(gknn, route)
