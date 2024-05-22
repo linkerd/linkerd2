@@ -205,17 +205,6 @@ fn response_stream(drain: drain::Watch, mut rx: OutboundPolicyStream) -> BoxWatc
 fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
     let backend = default_backend(&outbound);
 
-    let metadata = Metadata {
-        kind: Some(metadata::Kind::Resource(api::meta::Resource {
-            group: "core".to_string(),
-            kind: "Service".to_string(),
-            namespace: outbound.namespace,
-            name: outbound.name,
-            port: u16::from(outbound.port).into(),
-            ..Default::default()
-        })),
-    };
-
     let kind = if outbound.opaque {
         outbound::proxy_protocol::Kind::Opaque(outbound::proxy_protocol::Opaque {
             routes: vec![default_outbound_opaq_route(backend)],
@@ -305,6 +294,17 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
                 })
             }
         }
+    };
+
+    let metadata = Metadata {
+        kind: Some(metadata::Kind::Resource(api::meta::Resource {
+            group: "core".to_string(),
+            kind: "Service".to_string(),
+            namespace: outbound.namespace,
+            name: outbound.name,
+            port: u16::from(outbound.port).into(),
+            ..Default::default()
+        })),
     };
 
     outbound::OutboundPolicy {
