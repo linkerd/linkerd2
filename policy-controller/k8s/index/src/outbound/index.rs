@@ -231,7 +231,8 @@ impl Index {
             .entry(service_namespace.clone())
             .or_insert_with(|| Namespace {
                 namespace: Arc::new(service_namespace.to_string()),
-                ..Default::default()
+                service_routes: Default::default(),
+                service_port_routes: Default::default(),
             });
 
         let key = ServicePort {
