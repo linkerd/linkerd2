@@ -158,8 +158,11 @@ Kubernetes: `>=1.22.0-0`
 | debugContainer.image.pullPolicy | string | imagePullPolicy | Pull policy for the debug container image |
 | debugContainer.image.version | string | linkerdVersion | Tag for the debug container image |
 | deploymentStrategy | object | `{"rollingUpdate":{"maxSurge":"25%","maxUnavailable":"25%"}}` | default kubernetes deployment strategy |
+| destinationController.meshedHttp2ClientProtobuf.keep_alive.interval.seconds | int | `10` |  |
+| destinationController.meshedHttp2ClientProtobuf.keep_alive.timeout.seconds | int | `3` |  |
+| destinationController.meshedHttp2ClientProtobuf.keep_alive.while_idle | bool | `true` |  |
 | disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob |
-| disableIPv6 | bool | `false` | disables routing IPv6 traffic in addition to IPv4 traffic through the proxy (IPv6 routing only available as of proxy-init v2.3.0 and linkerd-cni v1.4.0) |
+| disableIPv6 | bool | `true` | disables routing IPv6 traffic in addition to IPv4 traffic through the proxy (IPv6 routing only available as of proxy-init v2.3.0 and linkerd-cni v1.4.0) |
 | enableEndpointSlices | bool | `true` | enables the use of EndpointSlice informers for the destination service; enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on |
 | enableH2Upgrade | bool | `true` | Allow proxies to perform transparent HTTP/2 upgrading |
 | enablePSP | bool | `false` | Add a PSP resource and bind it to the control plane ServiceAccounts. Note PSP has been deprecated since k8s v1.21 |
@@ -240,6 +243,8 @@ Kubernetes: `>=1.22.0-0`
 | proxy.image.name | string | `"cr.l5d.io/linkerd/proxy"` | Docker image for the proxy |
 | proxy.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy container image |
 | proxy.image.version | string | linkerdVersion | Tag for the proxy container image |
+| proxy.inbound.server.http2.keepAliveInterval | string | `"10s"` | The interval at which PINGs are issued to remote HTTP/2 clients. |
+| proxy.inbound.server.http2.keepAliveTimeout | string | `"3s"` | The timeout within which keep-alive PINGs must be acknowledged on inbound HTTP/2 connections. |
 | proxy.inboundConnectTimeout | string | `"100ms"` | Maximum time allowed for the proxy to establish an inbound TCP connection |
 | proxy.inboundDiscoveryCacheUnusedTimeout | string | `"90s"` | Maximum time allowed before an unused inbound discovery result is evicted from the cache |
 | proxy.livenessProbe | object | `{"initialDelaySeconds":10,"timeoutSeconds":1}` | LivenessProbe timeout and delay configuration |
@@ -247,6 +252,8 @@ Kubernetes: `>=1.22.0-0`
 | proxy.logLevel | string | `"warn,linkerd=info,trust_dns=error"` | Log level for the proxy |
 | proxy.nativeSidecar | bool | `false` | Enable KEP-753 native sidecars This is an experimental feature. It requires Kubernetes >= 1.29. If enabled, .proxy.waitBeforeExitSeconds should not be used. |
 | proxy.opaquePorts | string | `"25,587,3306,4444,5432,6379,9300,11211"` | Default set of opaque ports - SMTP (25,587) server-first - MYSQL (3306) server-first - Galera (4444) server-first - PostgreSQL (5432) server-first - Redis (6379) server-first - ElasticSearch (9300) server-first - Memcached (11211) clients do not issue any preamble, which breaks detection |
+| proxy.outbound.server.http2.keepAliveInterval | string | `"10s"` | The interval at which PINGs are issued to local application HTTP/2 clients. |
+| proxy.outbound.server.http2.keepAliveTimeout | string | `"3s"` | The timeout within which keep-alive PINGs must be acknowledged on outbound HTTP/2 connections. |
 | proxy.outboundConnectTimeout | string | `"1000ms"` | Maximum time allowed for the proxy to establish an outbound TCP connection |
 | proxy.outboundDiscoveryCacheUnusedTimeout | string | `"5s"` | Maximum time allowed before an unused outbound discovery result is evicted from the cache |
 | proxy.ports.admin | int | `4191` | Admin port for the proxy container |
