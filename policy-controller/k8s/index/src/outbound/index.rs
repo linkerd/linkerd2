@@ -275,7 +275,8 @@ impl Index {
                 .entry(ns.clone())
                 .or_insert_with(|| Namespace {
                     namespace: Arc::new(ns),
-                    ..Default::default()
+                    service_routes: Default::default(),
+                    service_port_routes: Default::default(),
                 })
                 .apply(
                     route.clone(),
@@ -283,16 +284,6 @@ impl Index {
                     &self.namespaces.cluster_info,
                     &self.service_info,
                 );
-        }
-    }
-}
-
-impl Default for Namespace {
-    fn default() -> Self {
-        Self {
-            service_routes: HashMap::new(),
-            service_port_routes: HashMap::new(),
-            namespace: Arc::new("default".to_string()),
         }
     }
 }
