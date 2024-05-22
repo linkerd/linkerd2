@@ -55,7 +55,7 @@ impl TestConfig {
             default_opaque_ports: Default::default(),
             probe_networks,
         };
-        let index = Index::shared(Arc::new(cluster.clone()));
+        let index = Index::shared(Arc::new(cluster));
         Self { index }
     }
 }
