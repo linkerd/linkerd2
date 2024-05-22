@@ -88,11 +88,6 @@ struct RoutesWatch {
 }
 
 #[inline]
-fn log_failed_route_insertion(error: anyhow::Error) {
-    tracing::warn!(?error)
-}
-
-#[inline]
 fn default_collection_for(route: &TypedOutboundRoute) -> OutboundRouteCollection {
     match route {
         TypedOutboundRoute::Grpc(_) => OutboundRouteCollection::Grpc(Default::default()),
@@ -361,14 +356,14 @@ impl Namespace {
                 Some(routes) => {
                     routes
                         .insert(route.gknn(), outbound_route)
-                        .map_err(log_failed_route_insertion)
+                        .map_err(|error| tracing::warn!(?error))
                         .transpose();
                 }
                 None => {
                     let mut routes = default_collection_for(&outbound_route);
                     routes
                         .insert(route.gknn(), outbound_route)
-                        .map_err(log_failed_route_insertion)
+                        .map_err(|error| tracing::warn!(?error))
                         .transpose();
                     self.service_routes
                         .insert(parent_ref.name.clone(), Some(routes));
@@ -1003,7 +998,7 @@ impl RoutesWatch {
             Some(routes) => {
                 routes
                     .insert(gknn, route)
-                    .map_err(log_failed_route_insertion)
+                    .map_err(|error| tracing::warn!(?error))
                     .transpose();
             }
             None => {
@@ -1011,7 +1006,7 @@ impl RoutesWatch {
                 let mut routes = default_collection_for(&route);
                 routes
                     .insert(gknn, route)
-                    .map_err(log_failed_route_insertion)
+                    .map_err(|error| tracing::warn!(?error))
                     .transpose();
                 self.routes = Some(routes);
             }
