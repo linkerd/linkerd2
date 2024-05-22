@@ -18,7 +18,7 @@ const (
 // NewClient creates a client for the control plane Destination API that
 // implements the Destination service.
 func NewClient(addr string) (pb.DestinationClient, *grpc.ClientConn, error) {
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithStatsHandler(&ocgrpc.ClientHandler{}))
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithStatsHandler(&ocgrpc.ClientHandler{}))
 	if err != nil {
 		return nil, nil, err
 	}

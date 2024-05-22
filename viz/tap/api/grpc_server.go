@@ -308,7 +308,7 @@ func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *pro
 	strPort := strconv.Itoa(int(s.tapPort))
 	tapAddr := net.JoinHostPort(addr, strPort)
 	log.Infof("Establishing tap on %s", tapAddr)
-	conn, err := grpc.DialContext(ctx, tapAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(tapAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Error(err)
 		return
