@@ -396,8 +396,14 @@ impl Namespace {
             service.delete(gknn);
         }
 
-        for routes in self.service_routes.values_mut().flatten() {
-            routes.remove(gknn);
+        for entry in self.service_routes.values_mut() {
+            if let Some(routes) = entry.as_mut() {
+                routes.remove(gknn);
+
+                if routes.is_empty() {
+                    *entry = None;
+                }
+            }
         }
     }
 
@@ -1017,6 +1023,10 @@ impl RoutesWatch {
     fn remove_route(&mut self, gknn: &GroupKindNamespaceName) {
         if let Some(routes) = &mut self.routes {
             routes.remove(gknn);
+
+            if routes.is_empty() {
+                self.routes = None;
+            }
         }
 
         self.send_if_modified();
