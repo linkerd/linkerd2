@@ -52,7 +52,7 @@ struct Namespace {
     service_port_routes: HashMap<ServicePort, ServiceRoutes>,
     /// Stores the route resources (by service name) that do not
     /// explicitly target a port.
-    service_routes: HashMap<String, Option<OutboundRouteCollection>>,
+    service_routes: HashMap<String, OutboundRouteCollection>,
     namespace: Arc<String>,
 }
 
@@ -340,27 +340,12 @@ impl Namespace {
 
             // Also add the route to the list of routes that target the
             // Service without specifying a port.
-            match self
-                .service_routes
+            self.service_routes
                 .entry(parent_ref.name.clone())
-                .or_insert_with(|| Some(default_collection_for(&outbound_route)))
-            {
-                Some(routes) => {
-                    routes
-                        .insert(route.gknn(), outbound_route)
-                        .map_err(|error| tracing::warn!(?error))
-                        .transpose();
-                }
-                None => {
-                    let mut routes = default_collection_for(&outbound_route);
-                    routes
-                        .insert(route.gknn(), outbound_route)
-                        .map_err(|error| tracing::warn!(?error))
-                        .transpose();
-                    self.service_routes
-                        .insert(parent_ref.name.clone(), Some(routes));
-                }
-            };
+                .or_insert_with(|| default_collection_for(&outbound_route))
+                .insert(route.gknn(), outbound_route)
+                .map_err(|error| tracing::warn!(?error))
+                .transpose();
         }
     }
 
@@ -383,15 +368,10 @@ impl Namespace {
             service.delete(gknn);
         }
 
-        for entry in self.service_routes.values_mut() {
-            if let Some(routes) = entry.as_mut() {
-                routes.remove(gknn);
-
-                if routes.is_empty() {
-                    *entry = None;
-                }
-            }
-        }
+        self.service_routes.retain(|_, routes| {
+            routes.remove(gknn);
+            !routes.is_empty()
+        });
     }
 
     fn service_routes_or_default(
@@ -418,11 +398,7 @@ impl Namespace {
 
                 // The routes which target this Service but don't specify
                 // a port apply to all ports. Therefore, we include them.
-                let routes = self
-                    .service_routes
-                    .get(&sp.service)
-                    .cloned()
-                    .unwrap_or_else(|| None);
+                let routes = self.service_routes.get(&sp.service).cloned();
 
                 let mut service_routes = ServiceRoutes {
                     opaque,
