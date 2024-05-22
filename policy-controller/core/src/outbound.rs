@@ -6,10 +6,7 @@ use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use chrono::{offset::Utc, DateTime};
 use futures::prelude::*;
-use std::{
-    any::type_name_of_val as type_of, net::IpAddr, num::NonZeroU16, pin::Pin, time,
-    vec::IntoIter as IntoVecIter,
-};
+use std::{net::IpAddr, num::NonZeroU16, pin::Pin, time};
 
 /// Models outbound policy discovery.
 #[async_trait::async_trait]
@@ -139,27 +136,14 @@ impl From<OutboundRoute<HttpRouteMatch>> for TypedOutboundRoute {
 
 // === impl OutboundRouteCollection ===
 
-impl IntoIterator for OutboundRouteCollection {
-    type Item = (GroupKindNamespaceName, TypedOutboundRoute);
-    type IntoIter = IntoVecIter<(GroupKindNamespaceName, TypedOutboundRoute)>;
-
-    fn into_iter(self) -> Self::IntoIter {
+impl OutboundRouteCollection {
+    pub fn is_empty(&self) -> bool {
         match self {
-            Self::Grpc(routes) => routes
-                .into_iter()
-                .map(TypedOutboundRoute::from_gknn_and_route)
-                .collect::<Vec<(GroupKindNamespaceName, TypedOutboundRoute)>>()
-                .into_iter(),
-            Self::Http(routes) => routes
-                .into_iter()
-                .map(|(key, value)| (key, TypedOutboundRoute::from(value)))
-                .collect::<Vec<(GroupKindNamespaceName, TypedOutboundRoute)>>()
-                .into_iter(),
+            Self::Grpc(routes) => routes.is_empty(),
+            Self::Http(routes) => routes.is_empty(),
         }
     }
-}
 
-impl OutboundRouteCollection {
     pub fn for_gknn(gknn: &GroupKindNamespaceName) -> Option<Self> {
         match gknn.kind.as_ref() {
             "GRPCRoute" => Some(Self::Grpc(Default::default())),
@@ -167,6 +151,7 @@ impl OutboundRouteCollection {
             _ => None,
         }
     }
+
     pub fn remove(&mut self, key: &GroupKindNamespaceName) {
         match self {
             Self::Grpc(routes) => {
@@ -183,20 +168,19 @@ impl OutboundRouteCollection {
         key: GroupKindNamespaceName,
         route: Route,
     ) -> Result<Option<TypedOutboundRoute>> {
-        let route = route.into();
-
-        match (self, route) {
+        match (self, route.into()) {
+            (Self::Http(_), TypedOutboundRoute::Grpc(_)) => {
+                anyhow::bail!("cannot insert an http route into a grpc route collection")
+            }
+            (Self::Grpc(_), TypedOutboundRoute::Http(_)) => {
+                anyhow::bail!("cannot insert a grpc route into an http route collection")
+            }
             (Self::Http(routes), TypedOutboundRoute::Http(route)) => {
                 Ok(routes.insert(key, route).map(Into::into))
             }
             (Self::Grpc(routes), TypedOutboundRoute::Grpc(route)) => {
                 Ok(routes.insert(key, route).map(Into::into))
             }
-            (routes, route) => anyhow::bail!(
-                "cannot insert a {:?}-type route into a {:?}-type collection",
-                type_of(&route),
-                type_of(routes)
-            ),
         }
     }
 }
