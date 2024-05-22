@@ -17,6 +17,7 @@ func newCmdPrune() *cobra.Command {
 	var cniEnabled bool
 	var wait time.Duration
 	var options values.Options
+	var output string
 
 	cmd := &cobra.Command{
 		Use:   "prune [flags]",
@@ -47,11 +48,12 @@ func newCmdPrune() *cobra.Command {
 			}
 
 			label := fmt.Sprintf("%s=%s", k8s.LinkerdExtensionLabel, JaegerExtensionName)
-			return pkgCmd.Prune(cmd.Context(), hc.KubeAPIClient(), manifests.String(), label)
+			return pkgCmd.Prune(cmd.Context(), hc.KubeAPIClient(), manifests.String(), label, output)
 		},
 	}
 
 	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for extension components to be available")
+	cmd.PersistentFlags().StringVarP(&output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	flags.AddValueOptionsFlags(cmd.Flags(), &options)
 

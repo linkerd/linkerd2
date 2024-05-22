@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -29,6 +31,7 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 )
 
@@ -88,6 +91,7 @@ func newCmdInstall() *cobra.Command {
 	}
 	var crds bool
 	var options valuespkg.Options
+	var output string
 
 	installOnlyFlags, installOnlyFlagSet := makeInstallFlags(values)
 	installUpgradeFlags, installUpgradeFlagSet, err := makeInstallUpgradeFlags(values)
@@ -132,7 +136,7 @@ A full list of configurable values can be found at https://artifacthub.io/packag
 
 				if !crds {
 					crds := bytes.Buffer{}
-					err := renderCRDs(&crds, options)
+					err := renderCRDs(&crds, options, "yaml")
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "%q", err)
 						os.Exit(1)
@@ -148,7 +152,7 @@ A full list of configurable values can be found at https://artifacthub.io/packag
 			if crds {
 				// The CRD chart is not configurable.
 				// TODO(ver): Error if values have been configured?
-				if err = installCRDs(cmd.Context(), k8sAPI, os.Stdout, options); err != nil {
+				if err = installCRDs(cmd.Context(), k8sAPI, os.Stdout, options, output); err != nil {
 					return err
 				}
 
@@ -158,7 +162,7 @@ A full list of configurable values can be found at https://artifacthub.io/packag
 				return nil
 			}
 
-			return installControlPlane(cmd.Context(), k8sAPI, os.Stdout, values, flags, options)
+			return installControlPlane(cmd.Context(), k8sAPI, os.Stdout, values, flags, options, output)
 		},
 	}
 
@@ -168,6 +172,7 @@ A full list of configurable values can be found at https://artifacthub.io/packag
 	cmd.Flags().BoolVar(&crds, "crds", false, "Install Linkerd CRDs")
 	cmd.PersistentFlags().BoolVar(&ignoreCluster, "ignore-cluster", false,
 		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)")
+	cmd.PersistentFlags().StringVarP(&output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
 
@@ -193,15 +198,15 @@ func checkNoConfig(ctx context.Context, k8sAPI *k8s.KubernetesAPI) error {
 	return nil
 }
 
-func installCRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, options valuespkg.Options) error {
+func installCRDs(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, options valuespkg.Options, format string) error {
 	if err := checkNoConfig(ctx, k8sAPI); err != nil {
 		return err
 	}
 
-	return renderCRDs(w, options)
+	return renderCRDs(w, options, format)
 }
 
-func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, options valuespkg.Options) error {
+func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, options valuespkg.Options, format string) error {
 	err := flag.ApplySetFlags(values, flags)
 	if err != nil {
 		return err
@@ -255,7 +260,7 @@ func installControlPlane(ctx context.Context, k8sAPI *k8s.KubernetesAPI, w io.Wr
 		return err
 	}
 
-	return renderControlPlane(w, values, valuesOverrides)
+	return renderControlPlane(w, values, valuesOverrides, format)
 }
 
 func isRunAsRoot(values map[string]interface{}) bool {
@@ -320,7 +325,7 @@ func renderChartToBuffer(files []*loader.BufferedFile, values map[string]interfa
 	return &buf, vals, nil
 }
 
-func renderCRDs(w io.Writer, options valuespkg.Options) error {
+func renderCRDs(w io.Writer, options valuespkg.Options, format string) error {
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
@@ -358,11 +363,34 @@ func renderCRDs(w io.Writer, options valuespkg.Options) error {
 		return err
 	}
 
-	_, err = w.Write(buf.Bytes())
-	return err
+	if format == "json" {
+		reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(buf, 4096))
+		for {
+			manifest, err := reader.Read()
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return err
+			}
+			bytes, err := yaml.YAMLToJSON(manifest)
+			if err != nil {
+				return err
+			}
+			_, err = w.Write(append(bytes, '\n'))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	} else if format == "yaml" {
+		_, err = w.Write(buf.Bytes())
+		return err
+	}
+	return fmt.Errorf("unsupported format %s", format)
 }
 
-func renderControlPlane(w io.Writer, values *l5dcharts.Values, valuesOverrides map[string]interface{}) error {
+func renderControlPlane(w io.Writer, values *l5dcharts.Values, valuesOverrides map[string]interface{}, format string) error {
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
@@ -389,8 +417,31 @@ func renderControlPlane(w io.Writer, values *l5dcharts.Values, valuesOverrides m
 	buf.WriteString(yamlSep)
 	buf.WriteString(string(overrides))
 
-	_, err = w.Write(buf.Bytes())
-	return err
+	if format == "json" {
+		reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(buf, 4096))
+		for {
+			manifest, err := reader.Read()
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return err
+			}
+			bytes, err := yaml.YAMLToJSON(manifest)
+			if err != nil {
+				return err
+			}
+			_, err = w.Write(append(bytes, '\n'))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	} else if format == "yaml" {
+		_, err = w.Write(buf.Bytes())
+		return err
+	}
+	return fmt.Errorf("unsupported format %s", format)
 }
 
 // renderOverrides outputs the Secret/linkerd-config-overrides resource which

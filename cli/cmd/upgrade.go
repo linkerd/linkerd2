@@ -54,6 +54,8 @@ func newCmdUpgrade() *cobra.Command {
 
 	var crds bool
 	var options valuespkg.Options
+	var output string
+
 	installUpgradeFlags, installUpgradeFlagSet, err := makeInstallUpgradeFlags(values)
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
@@ -90,7 +92,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 			if crds {
 				// The CRD chart is not configurable.
 				// TODO(ver): Error if values have been configured?
-				if _, err := upgradeCRDs(options).WriteTo(os.Stdout); err != nil {
+				if _, err := upgradeCRDs(options, output).WriteTo(os.Stdout); err != nil {
 					fmt.Fprintln(os.Stderr, err.Error())
 					os.Exit(1)
 				}
@@ -102,7 +104,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 				return fmt.Errorf("failed to create a kubernetes client: %w", err)
 			}
 
-			if err = upgradeControlPlaneRunE(cmd.Context(), k, flags, options, manifests); err != nil {
+			if err = upgradeControlPlaneRunE(cmd.Context(), k, flags, options, manifests, output); err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
 			}
@@ -115,6 +117,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 	cmd.PersistentFlags().AddFlagSet(upgradeFlagSet)
 	flagspkg.AddValueOptionsFlags(cmd.Flags(), &options)
 	cmd.Flags().BoolVar(&crds, "crds", false, "Upgrade Linkerd CRDs")
+	cmd.PersistentFlags().StringVarP(&output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	return cmd
 }
@@ -161,10 +164,10 @@ func makeUpgradeFlags() *pflag.FlagSet {
 	return upgradeFlags
 }
 
-func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, options valuespkg.Options, localManifestPath string) error {
+func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, options valuespkg.Options, localManifestPath string, format string) error {
 
 	crds := bytes.Buffer{}
-	err := renderCRDs(&crds, options)
+	err := renderCRDs(&crds, options, "yaml")
 	if err != nil {
 		return err
 	}
@@ -180,7 +183,7 @@ func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []
 		return err
 	}
 
-	buf, err := upgradeControlPlane(ctx, k, flags, options)
+	buf, err := upgradeControlPlane(ctx, k, flags, options, format)
 	if err != nil {
 		return err
 	}
@@ -195,15 +198,15 @@ func upgradeControlPlaneRunE(ctx context.Context, k *k8s.KubernetesAPI, flags []
 	return err
 }
 
-func upgradeCRDs(options valuespkg.Options) *bytes.Buffer {
+func upgradeCRDs(options valuespkg.Options, format string) *bytes.Buffer {
 	var buf bytes.Buffer
-	if err := renderCRDs(&buf, options); err != nil {
+	if err := renderCRDs(&buf, options, format); err != nil {
 		upgradeErrorf("Could not render upgrade configuration: %s", err)
 	}
 	return &buf
 }
 
-func upgradeControlPlane(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, options valuespkg.Options) (*bytes.Buffer, error) {
+func upgradeControlPlane(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, options valuespkg.Options, format string) (*bytes.Buffer, error) {
 	values, err := loadStoredValues(ctx, k)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load stored values: %w", err)
@@ -252,7 +255,7 @@ func upgradeControlPlane(ctx context.Context, k *k8s.KubernetesAPI, flags []flag
 	}
 
 	var buf bytes.Buffer
-	if err = renderControlPlane(&buf, values, valuesOverrides); err != nil {
+	if err = renderControlPlane(&buf, values, valuesOverrides, format); err != nil {
 		upgradeErrorf("Could not render upgrade configuration: %s", err)
 	}
 	return &buf, nil

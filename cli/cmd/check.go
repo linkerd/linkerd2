@@ -143,7 +143,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 	}
 
 	crdManifest := bytes.Buffer{}
-	err = renderCRDs(&crdManifest, valuespkg.Options{})
+	err = renderCRDs(&crdManifest, valuespkg.Options{}, "yaml")
 	if err != nil {
 		return err
 	}
@@ -288,7 +288,7 @@ func renderInstallManifest(ctx context.Context) (*charts.Values, string, error) 
 
 	// Use empty valuesOverrides because there are no option values to merge.
 	var b strings.Builder
-	err = renderControlPlane(&b, values, map[string]interface{}{})
+	err = renderControlPlane(&b, values, map[string]interface{}{}, "yaml")
 	if err != nil {
 		return nil, "", err
 	}
