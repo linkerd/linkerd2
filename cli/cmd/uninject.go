@@ -18,15 +18,17 @@ type resourceTransformerUninjectSilent struct {
 	values *linkerd2.Values
 }
 
-func runUninjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, values *linkerd2.Values) int {
-	return transformInput(inputs, errWriter, outWriter, resourceTransformerUninject{values})
+func runUninjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, values *linkerd2.Values, output string) int {
+	return transformInput(inputs, errWriter, outWriter, resourceTransformerUninject{values}, output)
 }
 
-func runUninjectSilentCmd(inputs []io.Reader, errWriter, outWriter io.Writer, values *linkerd2.Values) int {
-	return transformInput(inputs, errWriter, outWriter, resourceTransformerUninjectSilent{values})
+func runUninjectSilentCmd(inputs []io.Reader, errWriter, outWriter io.Writer, values *linkerd2.Values, output string) int {
+	return transformInput(inputs, errWriter, outWriter, resourceTransformerUninjectSilent{values}, output)
 }
 
 func newCmdUninject() *cobra.Command {
+	var output string
+
 	cmd := &cobra.Command{
 		Use:   "uninject [flags] CONFIG-FILE",
 		Short: "Remove the Linkerd proxy from a Kubernetes config",
@@ -53,11 +55,13 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			exitCode := runUninjectCmd(in, os.Stderr, os.Stdout, nil)
+			exitCode := runUninjectCmd(in, os.Stderr, os.Stdout, nil, output)
 			os.Exit(exitCode)
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVarP(&output, "output", "o", "yaml", "Output format, one of: json|yaml")
 
 	return cmd
 }
