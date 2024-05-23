@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -24,6 +25,7 @@ import (
 	valuespkg "helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/engine"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 )
 
@@ -53,6 +55,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	var valuesOptions valuespkg.Options
 	var ignoreCluster bool
 	var cniEnabled bool
+	var output string
 
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -84,7 +87,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				hc.RunWithExitOnError()
 				cniEnabled = hc.CNIEnabled
 			}
-			return install(cmd.Context(), stdout, options, valuesOptions, ha, ignoreCluster, cniEnabled)
+			return install(cmd.Context(), stdout, options, valuesOptions, ha, ignoreCluster, cniEnabled, output)
 		},
 	}
 
@@ -99,6 +102,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
 	cmd.Flags().BoolVar(&ignoreCluster, "ignore-cluster", false,
 		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)")
+	cmd.PersistentFlags().StringVarP(&output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
@@ -114,7 +118,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	return cmd
 }
 
-func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptions, valuesOptions valuespkg.Options, ha, ignoreCluster, cniEnabled bool) error {
+func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptions, valuesOptions valuespkg.Options, ha, ignoreCluster, cniEnabled bool, format string) error {
 	values, err := buildMulticlusterInstallValues(ctx, options, ignoreCluster)
 	if err != nil {
 		return err
@@ -137,10 +141,10 @@ func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptio
 		valuesOverrides["cniEnabled"] = true
 	}
 
-	return render(w, values, valuesOverrides)
+	return render(w, values, valuesOverrides, format)
 }
 
-func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string]interface{}) error {
+func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string]interface{}, format string) error {
 	var files []*loader.BufferedFile
 	for _, template := range TemplatesMulticluster {
 		files = append(files, &loader.BufferedFile{Name: template})
@@ -207,10 +211,36 @@ func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string
 			return err
 		}
 	}
-	w.Write(buf.Bytes())
-	w.Write([]byte("---\n"))
 
-	return nil
+	if format == "json" {
+		reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(&buf, 4096))
+		for {
+			manifest, err := reader.Read()
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return err
+			}
+			bytes, err := yaml.YAMLToJSON(manifest)
+			if err != nil {
+				return err
+			}
+			_, err = w.Write(append(bytes, '\n'))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	} else if format == "yaml" {
+		_, err = w.Write(buf.Bytes())
+		if err != nil {
+			return err
+		}
+		_, err = w.Write([]byte("---\n"))
+		return err
+	}
+	return fmt.Errorf("unsupported format %s", format)
 }
 
 func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, error) {

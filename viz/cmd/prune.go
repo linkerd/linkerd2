@@ -44,7 +44,7 @@ func newCmdPrune() *cobra.Command {
 
 			manifests := strings.Builder{}
 
-			err := install(&manifests, options, ha, cniEnabled)
+			err := install(&manifests, options, ha, cniEnabled, "yaml")
 			if err != nil {
 				return err
 			}

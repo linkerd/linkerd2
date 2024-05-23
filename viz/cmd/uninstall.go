@@ -67,7 +67,7 @@ func uninstallRunE(ctx context.Context, format string) error {
 	}
 
 	for _, authz := range authzs.Items {
-		if err := deleteResource(authz.TypeMeta, authz.ObjectMeta); err != nil {
+		if err := deleteResource(authz.TypeMeta, authz.ObjectMeta, format); err != nil {
 			return err
 		}
 	}
@@ -78,7 +78,7 @@ func uninstallRunE(ctx context.Context, format string) error {
 	}
 
 	for _, rt := range rts.Items {
-		if err := deleteResource(rt.TypeMeta, rt.ObjectMeta); err != nil {
+		if err := deleteResource(rt.TypeMeta, rt.ObjectMeta, format); err != nil {
 			return err
 		}
 	}
@@ -89,7 +89,7 @@ func uninstallRunE(ctx context.Context, format string) error {
 	}
 
 	for _, srv := range srvs.Items {
-		if err := deleteResource(srv.TypeMeta, srv.ObjectMeta); err != nil {
+		if err := deleteResource(srv.TypeMeta, srv.ObjectMeta, format); err != nil {
 			return err
 		}
 	}
@@ -97,10 +97,18 @@ func uninstallRunE(ctx context.Context, format string) error {
 	return nil
 }
 
-func deleteResource(ty metav1.TypeMeta, meta metav1.ObjectMeta) error {
+func deleteResource(ty metav1.TypeMeta, meta metav1.ObjectMeta, format string) error {
 	r := resource.NewNamespaced(ty.APIVersion, ty.Kind, meta.Name, meta.Namespace)
-	if err := r.RenderResource(os.Stdout); err != nil {
-		return fmt.Errorf("error rendering Kubernetes resource: %w", err)
+	if format == "json" {
+		if err := r.RenderResourceJSON(os.Stdout); err != nil {
+			return fmt.Errorf("error rendering Kubernetes resource: %w", err)
+		}
+		return nil
+	} else if format == "yaml" {
+		if err := r.RenderResourceJSON(os.Stdout); err != nil {
+			return fmt.Errorf("error rendering Kubernetes resource: %w", err)
+		}
+		return nil
 	}
-	return nil
+	return fmt.Errorf("unsupported output format: %s", format)
 }

@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -17,6 +20,8 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/engine"
+	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
+	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -50,6 +55,7 @@ func newCmdInstall() *cobra.Command {
 	var cniEnabled bool
 	var wait time.Duration
 	var options values.Options
+	var output string
 
 	cmd := &cobra.Command{
 		Use:   "install [flags]",
@@ -77,7 +83,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 				hc.RunWithExitOnError()
 				cniEnabled = hc.CNIEnabled
 			}
-			return install(os.Stdout, options, ha, cniEnabled)
+			return install(os.Stdout, options, ha, cniEnabled, output)
 		},
 	}
 
@@ -86,13 +92,14 @@ A full list of configurable values can be found at https://www.github.com/linker
 		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)")
 	cmd.Flags().BoolVar(&ha, "ha", false, `Install Viz Extension in High Availability mode.`)
 	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
+	cmd.PersistentFlags().StringVarP(&output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	flags.AddValueOptionsFlags(cmd.Flags(), &options)
 
 	return cmd
 }
 
-func install(w io.Writer, options values.Options, ha, cniEnabled bool) error {
+func install(w io.Writer, options values.Options, ha, cniEnabled bool, format string) error {
 
 	// Create values override
 	valuesOverrides, err := options.MergeValues(nil)
@@ -121,10 +128,10 @@ func install(w io.Writer, options values.Options, ha, cniEnabled bool) error {
 
 	// TODO: Add any validation logic here
 
-	return render(w, valuesOverrides)
+	return render(w, valuesOverrides, format)
 }
 
-func render(w io.Writer, valuesOverrides map[string]interface{}) error {
+func render(w io.Writer, valuesOverrides map[string]interface{}, format string) error {
 
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
@@ -193,6 +200,29 @@ func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 		}
 	}
 
-	_, err = w.Write(buf.Bytes())
-	return err
+	if format == "json" {
+		reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(&buf, 4096))
+		for {
+			manifest, err := reader.Read()
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return err
+			}
+			bytes, err := yaml.YAMLToJSON(manifest)
+			if err != nil {
+				return err
+			}
+			_, err = w.Write(append(bytes, '\n'))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	} else if format == "yaml" {
+		_, err = w.Write(buf.Bytes())
+		return err
+	}
+	return fmt.Errorf("unsupported format %s", format)
 }
