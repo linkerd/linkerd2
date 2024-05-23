@@ -226,10 +226,10 @@ tap:
     # into the tap component
     # resources:
 
-  # -- UID for the dashboard resource
+  # -- UID for the tap component
   UID:
 
-  # -- GID for the dashboard resource
+  # -- GID for the tap component
   GID:
 
   # -- tap service configuration
