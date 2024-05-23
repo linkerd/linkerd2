@@ -738,7 +738,7 @@ impl ServiceRoutes {
             .unwrap_or_default();
         self.watches_by_ns.entry(namespace).or_insert_with(|| {
             let (sender, _) = watch::channel(OutboundPolicy {
-                http_routes: Default::default(),
+                http_routes: routes.clone(),
                 authority: self.authority.clone(),
                 name: self.name.to_string(),
                 namespace: self.namespace.to_string(),
