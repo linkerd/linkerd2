@@ -128,7 +128,7 @@ metricsAPI:
   UID:
 
   # -- GID for the metrics-api resource
-  gID:
+  GID:
 
   # -- NodeSelector section, See the
   # [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information

@@ -105,8 +105,8 @@ Kubernetes: `>=1.22.0-0`
 | jaegerUrl | string | `""` | url of external jaeger instance Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>:16686` if you plan to use jaeger extension |
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
+| metricsAPI.GID | string | `nil` | GID for the metrics-api resource |
 | metricsAPI.UID | string | `nil` | UID for the metrics-api resource |
-| metricsAPI.gID | string | `nil` | GID for the metrics-api resource |
 | metricsAPI.image.name | string | `"metrics-api"` | Docker image name for the metrics-api component |
 | metricsAPI.image.pullPolicy | string | defaultImagePullPolicy | Pull policy for the metrics-api component |
 | metricsAPI.image.registry | string | defaultRegistry | Docker registry for the metrics-api component |
