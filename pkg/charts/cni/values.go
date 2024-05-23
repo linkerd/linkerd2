@@ -55,6 +55,7 @@ type Values struct {
 	LogLevel             string              `json:"logLevel"`
 	PortsToRedirect      string              `json:"portsToRedirect"`
 	ProxyUID             int64               `json:"proxyUID"`
+	ProxyGID             int64               `json:"proxyGID"`
 	DestCNINetDir        string              `json:"destCNINetDir"`
 	DestCNIBinDir        string              `json:"destCNIBinDir"`
 	UseWaitFlag          bool                `json:"useWaitFlag"`

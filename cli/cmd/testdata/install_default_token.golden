@@ -500,6 +500,7 @@ data:
     controller:
       podDisruptionBudget:
         maxUnavailable: 1
+    controllerGID: -1
     controllerImage: cr.l5d.io/linkerd/controller
     controllerLogFormat: plain
     controllerLogLevel: info
@@ -666,6 +667,7 @@ data:
       disableOutboundProtocolDetectTimeout: false
       enableExternalProfiles: false
       experimentalEnv: null
+      gid: -1
       image:
         name: cr.l5d.io/linkerd/proxy
         pullPolicy: ""
@@ -746,6 +748,7 @@ data:
         memory:
           limit: 20Mi
           request: 20Mi
+      runAsGroup: 65534
       runAsRoot: false
       runAsUser: 65534
       saMountPath: null
@@ -1140,6 +1143,7 @@ spec:
           privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          runAsGroup: 65534
           readOnlyRootFilesystem: true
           seccompProfile:
             type: RuntimeDefault
@@ -1615,6 +1619,7 @@ spec:
           privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          runAsGroup: 65534
           readOnlyRootFilesystem: true
           seccompProfile:
             type: RuntimeDefault
@@ -1968,6 +1973,7 @@ spec:
           privileged: false
           runAsNonRoot: true
           runAsUser: 65534
+          runAsGroup: 65534
           readOnlyRootFilesystem: true
           seccompProfile:
             type: RuntimeDefault

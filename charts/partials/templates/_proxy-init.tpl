@@ -17,6 +17,10 @@ args:
 - {{.Values.proxy.ports.outbound | quote}}
 - --proxy-uid
 - {{.Values.proxy.uid | quote}}
+{{- if ge (int .Values.proxy.gid) 0 }}
+- --proxy-gid
+- {{.Values.proxy.gid | quote}}
+{{- end }}
 - --inbound-ports-to-ignore
 - "{{.Values.proxy.ports.control}},{{.Values.proxy.ports.admin}}{{ternary (printf ",%s" (.Values.proxyInit.ignoreInboundPorts | toString)) "" (not (empty .Values.proxyInit.ignoreInboundPorts)) }}"
 {{- if .Values.proxyInit.ignoreOutboundPorts }}
@@ -67,11 +71,13 @@ securityContext:
   privileged: false
   {{- end }}
   {{- if .Values.proxyInit.runAsRoot }}
+  runAsGroup: 0
   runAsNonRoot: false
   runAsUser: 0
   {{- else }}
   runAsNonRoot: true
   runAsUser: {{ .Values.proxyInit.runAsUser | int | eq 0 | ternary 65534 .Values.proxyInit.runAsUser }}
+  runAsGroup: {{ .Values.proxyInit.runAsGroup | int | eq 0 | ternary 65534 .Values.proxyInit.runAsGroup }}
   {{- end }}
   readOnlyRootFilesystem: true
   seccompProfile:

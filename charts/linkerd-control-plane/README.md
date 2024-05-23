@@ -148,6 +148,7 @@ Kubernetes: `>=1.22.0-0`
 | controlPlaneTracingNamespace | string | `"linkerd-jaeger"` | namespace to send control plane traces to |
 | controller.podDisruptionBudget | object | `{"maxUnavailable":1}` | sets pod disruption budget parameter for all deployments |
 | controller.podDisruptionBudget.maxUnavailable | int | `1` | Maximum number of pods that can be unavailable during disruption |
+| controllerGID | int | `-1` | Optional customisation of the group ID for the control plane components (the group ID will be omitted if lower than 0) |
 | controllerImage | string | `"cr.l5d.io/linkerd/controller"` | Docker image for the destination and identity components |
 | controllerImageVersion | string | `""` | Optionally allow a specific container image Tag (or SHA) to be specified for the controllerImage. |
 | controllerLogFormat | string | `"plain"` | Log format for the control plane components |
@@ -240,6 +241,7 @@ Kubernetes: `>=1.22.0-0`
 | proxy.disableInboundProtocolDetectTimeout | bool | `false` | When set to true, disables the protocol detection timeout on the inbound side of the proxy by setting it to a very high value |
 | proxy.disableOutboundProtocolDetectTimeout | bool | `false` | When set to true, disables the protocol detection timeout on the outbound side of the proxy by setting it to a very high value |
 | proxy.enableExternalProfiles | bool | `false` | Enable service profiles for non-Kubernetes services |
+| proxy.gid | int | `-1` | Optional customisation of the group id under which the proxy runs (the group ID will be omitted if lower than 0) |
 | proxy.image.name | string | `"cr.l5d.io/linkerd/proxy"` | Docker image for the proxy |
 | proxy.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy container image |
 | proxy.image.version | string | linkerdVersion | Tag for the proxy container image |
@@ -291,6 +293,7 @@ Kubernetes: `>=1.22.0-0`
 | proxyInit.resources.ephemeral-storage.request | string | `""` | Amount of ephemeral storage that the proxy-init container requests |
 | proxyInit.resources.memory.limit | string | `"20Mi"` | Maximum amount of memory that the proxy-init container can use |
 | proxyInit.resources.memory.request | string | `"20Mi"` | Amount of memory that the proxy-init container requests |
+| proxyInit.runAsGroup | int | `65534` | This value is used only if runAsRoot is false; otherwise runAsGroup will be 0 |
 | proxyInit.runAsRoot | bool | `false` | Allow overriding the runAsNonRoot behaviour (<https://github.com/linkerd/linkerd2/issues/7308>) |
 | proxyInit.runAsUser | int | `65534` | This value is used only if runAsRoot is false; otherwise runAsUser will be 0 |
 | proxyInit.skipSubnets | string | `""` | Comma-separated list of subnets in valid CIDR format that should be skipped by the proxy |

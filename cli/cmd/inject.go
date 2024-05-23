@@ -438,6 +438,10 @@ func getOverrideAnnotations(values *linkerd2.Values, base *linkerd2.Values) map[
 		overrideAnnotations[k8s.ProxyUIDAnnotation] = strconv.FormatInt(proxy.UID, 10)
 	}
 
+	if proxy.GID >= 0 && (baseProxy.GID < 0 || proxy.GID != baseProxy.GID) {
+		overrideAnnotations[k8s.ProxyGIDAnnotation] = strconv.FormatInt(proxy.GID, 10)
+	}
+
 	if proxy.LogLevel != baseProxy.LogLevel {
 		overrideAnnotations[k8s.ProxyLogLevelAnnotation] = proxy.LogLevel
 	}

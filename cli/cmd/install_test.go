@@ -22,18 +22,27 @@ const (
 )
 
 func TestRender(t *testing.T) {
-	defaultValues, err := testInstallOptions()
+	defaultValues, err := testInstallOptionsFakeCerts()
 	if err != nil {
 		t.Fatal(err)
 	}
-	addFakeTLSSecrets(defaultValues)
+
+	gidValues, err := testInstallOptionsFakeCerts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	gidValues.ControllerGID = 1234
+	gidValues.Proxy.GID = 4321
 
 	// A configuration that shows that all config setting strings are honored
 	// by `render()`.
+	var controllerGID int64 = 2103
+	var proxyGID int64 = 2102
 	metaValues := &charts.Values{
 		ControllerImage:         "ControllerImage",
 		LinkerdVersion:          "LinkerdVersion",
 		ControllerUID:           2103,
+		ControllerGID:           controllerGID,
 		EnableH2Upgrade:         true,
 		WebhookFailurePolicy:    "WebhookFailurePolicy",
 		HeartbeatSchedule:       "1 2 3 4 5",
@@ -98,6 +107,7 @@ func TestRender(t *testing.T) {
 				Outbound: 4140,
 			},
 			UID:                  2102,
+			GID:                  proxyGID,
 			OpaquePorts:          "25,443,587,3306,5432,11211",
 			Await:                true,
 			DefaultInboundPolicy: "default-allow-policy",
@@ -132,8 +142,9 @@ func TestRender(t *testing.T) {
 				MountPath: "/run",
 				Name:      "linkerd-proxy-init-xtables-lock",
 			},
-			RunAsRoot: false,
-			RunAsUser: 65534,
+			RunAsRoot:  false,
+			RunAsUser:  65534,
+			RunAsGroup: 65534,
 		},
 		NetworkValidator: &charts.NetworkValidator{
 			LogLevel:    "debug",
@@ -249,6 +260,7 @@ func TestRender(t *testing.T) {
 		{defaultValues, "install_custom_domain.golden", values.Options{}},
 		{defaultValues, "install_values_file.golden", values.Options{ValueFiles: []string{filepath.Join("testdata", "install_config.yaml")}}},
 		{defaultValues, "install_default_token.golden", values.Options{Values: []string{"identity.serviceAccountTokenProjection=false"}}},
+		{gidValues, "install_gid_output.golden", values.Options{}},
 	}
 
 	for i, tc := range testCases {
@@ -262,6 +274,7 @@ func TestRender(t *testing.T) {
 			if err := renderControlPlane(&buf, tc.values, valuesOverrides); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
+
 			if err := testDataDiffer.DiffTestYAML(tc.goldenFileName, buf.String()); err != nil {
 				t.Error(err)
 			}
@@ -322,6 +335,15 @@ func TestValidateAndBuild_Errors(t *testing.T) {
 			t.Fatal("expected error but got nothing")
 		}
 	})
+}
+
+func testInstallOptionsFakeCerts() (*charts.Values, error) {
+	values, err := testInstallOptions()
+	if err != nil {
+		return nil, err
+	}
+	addFakeTLSSecrets(values)
+	return values, nil
 }
 
 func testInstallOptions() (*charts.Values, error) {

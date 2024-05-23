@@ -35,6 +35,16 @@ func TestRenderHelm(t *testing.T) {
 		testRenderHelm(t, chartControlPlane, "install_helm_control_plane_output_ha.golden")
 	})
 
+	t.Run("HA mode with GID", func(t *testing.T) {
+		additionalConfig := `
+controllerGID: 1324
+proxy:
+  gid: 4231
+`
+		chartControlPlane := chartControlPlane(t, true, additionalConfig, "111", "222")
+		testRenderHelm(t, chartControlPlane, "install_helm_control_plane_output_ha_with_gid.golden")
+	})
+
 	t.Run("HA mode with podLabels and podAnnotations", func(t *testing.T) {
 		additionalConfig := `
 podLabels:

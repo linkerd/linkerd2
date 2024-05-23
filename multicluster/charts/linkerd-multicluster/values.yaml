@@ -44,6 +44,9 @@ gateway:
   # -- User id under which the gateway shall be ran
   UID: 2103
 
+  # -- Group id under which the gateway shall be ran
+  GID: 2103
+
 # -- Control plane version
 linkerdVersion: linkerdVersionValue
 # -- Additional labels to add to all pods
