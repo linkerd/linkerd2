@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/helm.yml
       - bin/helm*
+      - "charts/**"
       - "**/charts/**"
 
 permissions:
