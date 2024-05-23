@@ -89,7 +89,7 @@ displayed.`,
 				}
 			}
 
-			conn, err := grpc.Dial(apiAddr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithStatsHandler(&ocgrpc.ClientHandler{}))
+			conn, err := grpc.NewClient(apiAddr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithStatsHandler(&ocgrpc.ClientHandler{}))
 			if err != nil {
 				return err
 			}
@@ -132,7 +132,7 @@ displayed.`,
 				client := outbound.NewOutboundPoliciesClient(conn)
 
 				result, err = client.Get(cmd.Context(), &outbound.TrafficSpec{
-					SourceWorkload: "default:diagnostics",
+					SourceWorkload: options.contextToken,
 					Target:         &outbound.TrafficSpec_Authority{Authority: fmt.Sprintf("%s.%s.svc:%d", name, namespace, port)},
 				})
 				if err != nil {
@@ -166,6 +166,7 @@ displayed.`,
 	}
 
 	cmd.PersistentFlags().StringVar(&options.destinationPod, "destination-pod", "", "Target a specific destination Pod when there are multiple running")
+	cmd.PersistentFlags().StringVar(&options.contextToken, "token", "default:diagnostics", "Token to use when querying the policy service")
 	cmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", namespace, "Namespace of resource")
 	cmd.PersistentFlags().StringVarP(&output, "output", "o", output, "Output format. One of: yaml, json")
 

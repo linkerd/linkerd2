@@ -52,7 +52,7 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 		allowNsInject:       true,
 	}
 
-	if exitCode := uninjectAndInject([]io.Reader{read}, report, output, transformer); exitCode != 0 {
+	if exitCode := uninjectAndInject([]io.Reader{read}, report, output, transformer, "yaml"); exitCode != 0 {
 		t.Errorf("Unexpected error injecting YAML: %v", report)
 	}
 	if err := testDataDiffer.DiffTestYAML(tc.goldenFileName, output.String()); err != nil {
@@ -432,7 +432,7 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 		injectProxy: tc.injectProxy,
 		values:      testConfig,
 	}
-	exitCode := runInjectCmd([]io.Reader{in}, errBuffer, outBuffer, transformer)
+	exitCode := runInjectCmd([]io.Reader{in}, errBuffer, outBuffer, transformer, "yaml")
 	if exitCode != tc.exitCode {
 		t.Fatalf("Expected exit code to be %d but got: %d", tc.exitCode, exitCode)
 	}
@@ -538,7 +538,7 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 		injectProxy: true,
 		values:      values,
 	}
-	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
+	if exitCode := runInjectCmd(in, errBuf, actual, transformer, "yaml"); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}
 	if err := testDataDiffer.DiffTestYAML(tc.expectedFile, actual.String()); err != nil {
@@ -565,7 +565,7 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 		injectProxy: true,
 		values:      values,
 	}
-	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
+	if exitCode := runInjectCmd(in, errBuf, actual, transformer, "yaml"); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
 	}
 

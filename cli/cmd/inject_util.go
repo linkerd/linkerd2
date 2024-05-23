@@ -26,12 +26,12 @@ type resourceTransformer interface {
 }
 
 // Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
-func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resourceTransformer) int {
+func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resourceTransformer, format string) int {
 	postInjectBuf := &bytes.Buffer{}
 	reportBuf := &bytes.Buffer{}
 
 	for _, input := range inputs {
-		errs := processYAML(input, postInjectBuf, reportBuf, rt)
+		errs := processYAML(input, postInjectBuf, reportBuf, rt, format)
 		if len(errs) > 0 {
 			fmt.Fprintf(errWriter, "Error transforming resources:\n%v", concatErrors(errs, "\n"))
 			return 1
@@ -51,7 +51,7 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 }
 
 // processYAML takes an input stream of YAML, outputting injected/uninjected YAML to out.
-func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTransformer) []error {
+func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTransformer, format string) []error {
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
 
 	reports := []inject.Report{}
@@ -86,9 +86,26 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 		}
 		reports = append(reports, irs...)
 
+		// If the format is set to json, we need to convert the yaml to json
+		if format == "json" {
+			result, err = yaml.YAMLToJSON(result)
+			if err != nil {
+				errs = append(errs, err)
+			}
+		} else if format == "yaml" {
+			// result is already in yaml format: noop.
+		} else {
+			errs = append(errs, fmt.Errorf("unsupported format %s", format))
+		}
+
 		if len(errs) == 0 {
 			out.Write(result)
-			out.Write([]byte("---\n"))
+			if format == "yaml" {
+				out.Write([]byte("---\n"))
+			}
+			if format == "json" {
+				out.Write([]byte("\n"))
+			}
 		}
 	}
 
