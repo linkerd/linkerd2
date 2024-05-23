@@ -22,7 +22,7 @@ use linkerd_policy_controller_core::{
         AuthorizationRef, ClientAuthentication, ClientAuthorization, InboundRoute, InboundRouteRef,
         InboundRouteRule, InboundServer, ProxyProtocol, ServerRef,
     },
-    routes::{GroupKindName, HttpRouteMatch, Method, PathMatch, RouteMatch},
+    routes::{GroupKindName, HttpRouteMatch, Method, PathMatch},
     IdentityMatch, Ipv4Net, Ipv6Net, NetworkMatch,
 };
 use linkerd_policy_controller_k8s_api::{
@@ -1946,14 +1946,12 @@ impl ClusterInfo {
 
         // Generate an `Exact` path match for each probe path defined on the
         // pod.
-        let matches: Vec<RouteMatch> = probe_paths
-            .map(|path| {
-                RouteMatch::Http(HttpRouteMatch {
-                    path: Some(PathMatch::Exact(path.to_string())),
-                    headers: vec![],
-                    query_params: vec![],
-                    method: Some(Method::GET),
-                })
+        let matches: Vec<HttpRouteMatch> = probe_paths
+            .map(|path| HttpRouteMatch {
+                path: Some(PathMatch::Exact(path.to_string())),
+                headers: vec![],
+                query_params: vec![],
+                method: Some(Method::GET),
             })
             .collect();
 

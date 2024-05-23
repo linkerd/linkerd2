@@ -8,7 +8,6 @@ use linkerd2_proxy_api::{
     },
     meta::{metadata, Metadata},
 };
-use linkerd_policy_controller_core::routes::RouteMatch;
 use linkerd_policy_controller_core::{
     inbound::{
         AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer, Filter,
@@ -392,13 +391,7 @@ fn to_http_route(
             |InboundRouteRule { matches, filters }| proto::http_route::Rule {
                 matches: matches
                     .into_iter()
-                    .filter_map(|rule| {
-                        if let RouteMatch::Http(rule) = rule {
-                            Some(routes::http::convert_match(rule))
-                        } else {
-                            None
-                        }
-                    })
+                    .map(routes::http::convert_match)
                     .collect(),
                 filters: filters.into_iter().filter_map(convert_filter).collect(),
             },

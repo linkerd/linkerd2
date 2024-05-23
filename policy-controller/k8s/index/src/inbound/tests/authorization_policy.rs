@@ -369,12 +369,12 @@ fn authorization_policy_prevents_index_deletion() {
                 name: "route-foo".into(),
             }) => InboundRoute {
                 rules: vec![inbound::InboundRouteRule {
-                    matches: vec![routes::RouteMatch::Http(routes::HttpRouteMatch{
+                    matches: vec![routes::HttpRouteMatch{
                         path: Some(routes::PathMatch::Prefix("/foo".to_string())),
                         headers: vec![],
                         query_params: vec![],
                         method: None,
-                    })],
+                    }],
                     filters: vec![],
                 }],
                 authorizations: hashmap!(

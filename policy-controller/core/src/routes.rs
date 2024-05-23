@@ -78,12 +78,6 @@ pub struct HttpRouteMatch {
     pub method: Option<Method>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum RouteMatch {
-    Http(HttpRouteMatch),
-    Grpc(GrpcRouteMatch),
-}
-
 #[derive(Clone, Debug)]
 pub enum PathMatch {
     Exact(String),
@@ -141,20 +135,6 @@ impl GroupKindName {
             namespace: namespace.into(),
             name: self.name,
         }
-    }
-}
-
-// === impl RouteMatch ===
-
-impl From<GrpcRouteMatch> for RouteMatch {
-    fn from(value: GrpcRouteMatch) -> Self {
-        Self::Grpc(value)
-    }
-}
-
-impl From<HttpRouteMatch> for RouteMatch {
-    fn from(value: HttpRouteMatch) -> Self {
-        Self::Http(value)
     }
 }
 

@@ -2,7 +2,7 @@ use super::{super::*, *};
 use crate::routes::ExplicitGKN;
 use k8s::policy::httproute::*;
 use linkerd_policy_controller_core::{
-    routes::{HttpRouteMatch, Method, PathMatch, RouteMatch},
+    routes::{HttpRouteMatch, Method, PathMatch},
     POLICY_CONTROLLER_NAME,
 };
 
@@ -127,18 +127,18 @@ fn routes_created_for_probes() {
             authentication: ClientAuthentication::Unauthenticated,
         },
     );
-    let liveness_match = RouteMatch::Http(HttpRouteMatch {
+    let liveness_match = HttpRouteMatch {
         path: Some(PathMatch::Exact("/liveness-container-1".to_string())),
         headers: vec![],
         query_params: vec![],
         method: Some(Method::GET),
-    });
-    let ready_match = RouteMatch::Http(HttpRouteMatch {
+    };
+    let ready_match = HttpRouteMatch {
         path: Some(PathMatch::Exact("/ready-container-1".to_string())),
         headers: vec![],
         query_params: vec![],
         method: Some(Method::GET),
-    });
+    };
 
     // No Server is configured for the port, so expect the probe paths to be
     // authorized.

@@ -3,7 +3,7 @@ use crate::{
     network_match::NetworkMatch,
     routes::{
         FailureInjectorFilter, GroupKindName, HeaderModifierFilter, HostMatch, HttpRouteMatch,
-        PathMatch, RequestRedirectFilter, RouteMatch,
+        PathMatch, RequestRedirectFilter,
     },
 };
 use ahash::AHashMap as HashMap;
@@ -104,7 +104,7 @@ pub struct InboundRoute {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InboundRouteRule {
-    pub matches: Vec<RouteMatch>,
+    pub matches: Vec<HttpRouteMatch>,
     pub filters: Vec<Filter>,
 }
 
@@ -125,12 +125,12 @@ impl Default for InboundRoute {
         Self {
             hostnames: vec![],
             rules: vec![InboundRouteRule {
-                matches: vec![RouteMatch::Http(HttpRouteMatch {
+                matches: vec![HttpRouteMatch {
                     path: Some(PathMatch::Prefix("/".to_string())),
                     headers: vec![],
                     query_params: vec![],
                     method: None,
-                })],
+                }],
                 filters: vec![],
             }],
             // Default routes do not have authorizations; the default policy's
