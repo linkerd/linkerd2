@@ -5,13 +5,13 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: ipfamilies-server
+      app: server
   template:
     metadata:
       annotations:
         linkerd.io/inject: enabled
       labels:
-        app.kubernetes.io/name: ipfamilies-server
+        app: server
     spec:
       containers:
       - image: ghcr.io/alpeb/family-server:v1
@@ -48,7 +48,7 @@ spec:
     protocol: TCP
     targetPort: http
   selector:
-    app.kubernetes.io/name: ipfamilies-server
+    app: server
   type: ClusterIP
 ---
 apiVersion: apps/v1

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -56,15 +57,16 @@ func TestDualStack(t *testing.T) {
 		checkPods(t, ns, "ipfamilies-server")
 		checkPods(t, ns, "client")
 
-		var ipv4, ipv6 string
+		var clientIPv6, serverIPv4, serverIPv6 string
 
 		t.Run("Retrieve pod IPs", func(t *testing.T) {
-			out, err = TestHelper.Kubectl("",
+			cmd := []string{
 				"get", "po",
-				"-l", "app.kubernetes.io/name=ipfamilies-server",
 				"-o", "jsonpath='{.items[*].status.podIPs}'",
 				"-n", ns,
-			)
+			}
+
+			out, err = TestHelper.Kubectl("", append(cmd, "-l", "app=server")...)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\noutput:\n%s", err, out)
 			}
@@ -77,8 +79,39 @@ func TestDualStack(t *testing.T) {
 			if len(IPs) != 2 {
 				testutil.AnnotatedFatalf(t, "unexpected number of IPs", "expected 2 IPs, got %s", fmt.Sprint(len(IPs)))
 			}
-			ipv4 = IPs[0].IP
-			ipv6 = IPs[1].IP
+			serverIPv4 = IPs[0].IP
+			serverIPv6 = IPs[1].IP
+
+			out, err = TestHelper.Kubectl("", append(cmd, "-l", "app=client")...)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\noutput:\n%s", err, out)
+			}
+
+			out = strings.Trim(out, "'")
+			if err = json.Unmarshal([]byte(out), &IPs); err != nil {
+				testutil.AnnotatedFatalf(t, "error unmarshaling JSON", "error unmarshaling JSON '%s': %s", out, err)
+			}
+			if len(IPs) != 2 {
+				testutil.AnnotatedFatalf(t, "unexpected number of IPs", "expected 2 IPs, got %s", fmt.Sprint(len(IPs)))
+			}
+			clientIPv6 = IPs[1].IP
+		})
+
+		t.Run("Apply policy", func(t *testing.T) {
+			file, err := os.Open("testdata/ipfamilies-policy.yml")
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v", err)
+			}
+			defer file.Close()
+			manifest, err := io.ReadAll(file)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v", err)
+			}
+			in := strings.ReplaceAll(string(manifest), "{IPv6}", clientIPv6)
+			out, err = TestHelper.KubectlApply(in, ns)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\noutput:\n%s", err, out)
+			}
 		})
 
 		t.Run("Hit IPv4 addr directly", func(t *testing.T) {
@@ -87,7 +120,7 @@ func TestDualStack(t *testing.T) {
 				"-c", "curl",
 				"-n", ns,
 				"--",
-				"curl", "-s", "http://"+ipv4+":8080",
+				"curl", "-s", "http://"+serverIPv4+":8080",
 			)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\noutput:\n%s", err, out)
@@ -103,7 +136,7 @@ func TestDualStack(t *testing.T) {
 				"-c", "curl",
 				"-n", ns,
 				"--",
-				"curl", "-s", "http://["+ipv6+"]:8080",
+				"curl", "-s", "http://["+serverIPv6+"]:8080",
 			)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\noutput:\n%s", err, out)
