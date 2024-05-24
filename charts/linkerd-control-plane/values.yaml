@@ -184,6 +184,9 @@ proxy:
       request: ""
   # -- User id under which the proxy runs
   uid: 2102
+  # -- (int) Optional customisation of the group id under which the proxy runs (the group ID will be omitted if lower than 0)
+  gid: -1
+
   # -- If set the injected proxy sidecars in the data plane will stay alive for
   # at least the given period before receiving the SIGTERM signal from
   # Kubernetes but no longer than the pod's `terminationGracePeriodSeconds`.
@@ -313,6 +316,8 @@ proxyInit:
   runAsRoot: false
   # -- This value is used only if runAsRoot is false; otherwise runAsUser will be 0
   runAsUser: 65534
+  # -- This value is used only if runAsRoot is false; otherwise runAsGroup will be 0
+  runAsGroup: 65534
   xtMountPath:
     mountPath: /run
     name: linkerd-proxy-init-xtables-lock
@@ -360,6 +365,8 @@ controllerImageVersion: ""
 controllerReplicas: 1
 # -- User ID for the control plane components
 controllerUID: 2103
+# -- (int) Optional customisation of the group ID for the control plane components (the group ID will be omitted if lower than 0)
+controllerGID: -1
 
 # destination configuration
 # set resources for the sp-validator and its linkerd proxy respectively

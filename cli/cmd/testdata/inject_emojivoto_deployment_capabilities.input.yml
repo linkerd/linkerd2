@@ -39,3 +39,4 @@ spec:
             drop:
             - ALL
           runAsUser: 33
+          runAsGroup: 33

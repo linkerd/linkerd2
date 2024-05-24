@@ -209,6 +209,10 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Run the proxy under this user ID",
 		},
 		{
+			Name:        k8s.ProxyGIDAnnotation,
+			Description: "Run the proxy under this group ID",
+		},
+		{
 			Name:        k8s.ProxyLogLevelAnnotation,
 			Description: "Log level for the proxy",
 		},

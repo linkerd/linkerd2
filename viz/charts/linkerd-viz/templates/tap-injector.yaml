@@ -114,6 +114,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.tapInjector.UID | default .Values.defaultUID}}
+          runAsGroup: {{.Values.tapInjector.GID | default .Values.defaultGID}}
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:

@@ -159,6 +159,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.serviceMirrorUID}}
+          runAsGroup: {{.Values.serviceMirrorGID}}
           seccompProfile:
             type: RuntimeDefault
         ports:

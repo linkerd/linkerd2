@@ -69,6 +69,7 @@ Kubernetes: `>=1.22.0-0`
 | createNamespaceMetadataJob | bool | `true` | Creates a Job that adds necessary metadata to the extension's namespace during install; disable if lack of privileges require doing this manually |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
+| gateway.GID | int | `2103` | Group id under which the gateway shall be ran |
 | gateway.UID | int | `2103` | User id under which the gateway shall be ran |
 | gateway.deploymentAnnotations | object | `{}` | Annotations to add to the gateway deployment |
 | gateway.enabled | bool | `true` | If the gateway component should be installed |
