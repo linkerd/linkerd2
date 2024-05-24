@@ -285,12 +285,12 @@ impl RouteBinding {
         Ok(InboundRouteRule { matches, filters })
     }
 
-    #[allow(dead_code, unused_variables)]
     fn try_grpc_rule<F>(
-        matches: Option<Vec<gateway::GrpcRouteMatch>>,
-        filters: Option<Vec<F>>,
-        try_filter: impl Fn(F) -> Result<Filter>,
+        _matches: Option<Vec<gateway::GrpcRouteMatch>>,
+        _filters: Option<Vec<F>>,
+        _try_filter: impl Fn(F) -> Result<Filter>,
     ) -> Result<InboundRouteRule> {
+        // TODO(the-wondersmith): uncomment when inbound grpcroute support is fully implemented
         // let matches = matches
         //     .into_iter()
         //     .flatten()
@@ -304,7 +304,10 @@ impl RouteBinding {
         //     .collect::<Result<_>>()?;
         //
         // Ok(InboundRouteRule { matches, filters })
-        todo!("uncomment the code above once the generic-route-match pattern has been applied to inbound")
+        Ok(InboundRouteRule {
+            filters: Default::default(),
+            matches: Default::default(),
+        })
     }
 
     fn try_gateway_filter<RouteFilter: Into<gateway::HttpRouteFilter>>(
