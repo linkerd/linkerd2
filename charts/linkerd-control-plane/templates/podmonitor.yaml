@@ -31,6 +31,10 @@ spec:
             - __meta_kubernetes_pod_container_name
           action: replace
           targetLabel: component
+      {{- with $podMonitor.controller.metricRelabelings }}
+      metricRelabelings:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 {{- end }}
 {{- if and $podMonitor.enabled $podMonitor.serviceMirror.enabled }}
 ---
@@ -66,7 +70,10 @@ spec:
             - __meta_kubernetes_pod_container_name
           action: replace
           targetLabel: component
-{{- end }}
+      {{- with $podMonitor.serviceMirror.metricRelabelings }}
+      metricRelabelings:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 {{- if and $podMonitor.enabled $podMonitor.proxy.enabled }}
 ---
 ###
@@ -125,4 +132,8 @@ spec:
           regex: __tmp_pod_label_linkerd_io_(.+)
         - action: labelmap
           regex: __tmp_pod_label_(.+)
+      {{- with $podMonitor.serviceMirror.metricRelabelings }}
+      metricRelabelings:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 {{- end }}

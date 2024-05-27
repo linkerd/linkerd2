@@ -635,9 +635,15 @@ podMonitor:
         - {{ .Release.Namespace }}
         - linkerd-viz
         - linkerd-jaeger
+    # -- MetricRelabelConfigs to apply to samples before ingestion
+    metricRelabelings: []
   serviceMirror:
     # -- Enables the creation of PodMonitor for the Service Mirror component
     enabled: true
+    # -- MetricRelabelConfigs to apply to samples before ingestion
+    metricRelabelings: []
   proxy:
     # -- Enables the creation of PodMonitor for the data-plane
     enabled: true
+    # -- MetricRelabelConfigs to apply to samples before ingestion
+    metricRelabelings: []
