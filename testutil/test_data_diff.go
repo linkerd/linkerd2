@@ -2,11 +2,15 @@ package testutil
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 	"text/template"
 
@@ -22,23 +26,117 @@ type TestDataDiffer struct {
 	RejectPath     string
 }
 
-// DiffTestYAML compares a YAML structure to a fixture on the filestystem.
+func NewTestDataDiffer() TestDataDiffer {
+	differ := TestDataDiffer{
+		RejectPath:     "",
+		PrettyDiff:     false,
+		UpdateFixtures: false,
+	}
+
+	prettyDiff := os.Getenv("LINKERD_TEST_PRETTY_DIFF") != ""
+
+	flag.BoolVar(&differ.UpdateFixtures, "update", false, "update text fixtures in place")
+	flag.BoolVar(&differ.PrettyDiff, "pretty-diff", prettyDiff, "display the full text when diffing")
+	flag.StringVar(&differ.RejectPath, "reject-path", "", "write results for failed tests to this path (path is relative to the test location)")
+
+	flag.Parse()
+
+	return differ
+}
+
+// DiffTestFileHashes checks the SHA256 hashes of the specified go source file
+// and its associated rendered values file with the "golden" hashes for each
+func (td *TestDataDiffer) DiffTestFileHashes(state *testing.T, goFile string, renderedFile string, goldenHashes string) {
+
+	fileHashes := make(map[string]string)
+	decoder := yaml.NewDecoder(strings.NewReader(ReadTestdata(goldenHashes)))
+
+	if err := decoder.Decode(&fileHashes); err != nil {
+		if !errors.Is(err, io.EOF) {
+			state.Fatal(err)
+		}
+	}
+
+	sourceHash := getFileHash(state, goFile)
+	renderedHash := getFileHash(state, renderedFile)
+
+	if td.UpdateFixtures {
+
+		fileHashes[goFile] = sourceHash
+		fileHashes[renderedFile] = renderedHash
+
+		buffer := bytes.NewBufferString("---\n")
+		encoder := yaml.NewEncoder(buffer)
+
+		if err := encoder.Encode(fileHashes); err != nil {
+			state.Fatal("could not encode updated golden hash data", err)
+		}
+
+		writeTestdata(goldenHashes, buffer.Bytes())
+
+		return
+	}
+
+	expectedSourceHash, hashFound := fileHashes[goFile]
+
+	if !hashFound {
+		state.Fatalf("Missing expected hash for go source file %s", goFile)
+	}
+
+	expectedRenderedHash, hashFound := fileHashes[renderedFile]
+
+	if !hashFound {
+		state.Fatalf("Missing expected hash for rendered values file %s", renderedFile)
+	}
+
+	errLog := ""
+
+	if sourceHash != expectedSourceHash {
+		errLog += fmt.Sprintf("Hash mismatch for go source file %s: [actual: %s expected: %s]\n", goFile, sourceHash, expectedSourceHash)
+		fileHashes[goFile+".rejected"] = sourceHash
+	}
+
+	if renderedHash != expectedRenderedHash {
+		errLog += fmt.Sprintf("Hash mismatch for rendered values file %s: [actual: %s expected: %s]", renderedFile, renderedHash, expectedRenderedHash)
+		fileHashes[renderedFile+".rejected"] = renderedHash
+	}
+
+	if errLog != "" {
+
+		if td.RejectPath != "" {
+
+			buffer := bytes.NewBufferString("---\n")
+			encoder := yaml.NewEncoder(buffer)
+
+			if err := encoder.Encode(fileHashes); err != nil {
+				state.Fatal("could not encode rejected hash data", err)
+			}
+
+			writeRejects(goldenHashes, buffer.Bytes(), td.RejectPath)
+		}
+
+		state.Fatal(errLog)
+	}
+
+}
+
+// DiffTestYAML compares a YAML structure to a fixture on the filesystem.
 func (td *TestDataDiffer) DiffTestYAML(path string, actualYAML string) error {
 	expectedYAML := ReadTestdata(path)
 	return td.diffTestYAML(path, actualYAML, expectedYAML)
 }
 
-// DiffTestYAMLTemplate compares a YAML structure to a parameterized fixture on the filestystem.
+// DiffTestYAMLTemplate compares a YAML structure to a parameterized fixture on the filesystem.
 func (td *TestDataDiffer) DiffTestYAMLTemplate(path string, actualYAML string, params any) error {
 	file := filepath.Join("testdata", path)
 	t, err := template.New(path).ParseFiles(file)
 	if err != nil {
-		return fmt.Errorf("Failed to read YAML template from %s: %w", path, err)
+		return fmt.Errorf("failed to read YAML template from %s: %w", path, err)
 	}
 	var buf bytes.Buffer
 	err = t.Execute(&buf, params)
 	if err != nil {
-		return fmt.Errorf("Failed to build YAML from template %s: %w", path, err)
+		return fmt.Errorf("failed to build YAML from template %s: %w", path, err)
 	}
 	return td.diffTestYAML(path, actualYAML, buf.String())
 }
@@ -46,11 +144,11 @@ func (td *TestDataDiffer) DiffTestYAMLTemplate(path string, actualYAML string, p
 func (td *TestDataDiffer) diffTestYAML(path, actualYAML, expectedYAML string) error {
 	actual, err := unmarshalYAML([]byte(actualYAML))
 	if err != nil {
-		return fmt.Errorf("Failed to unmarshal generated YAML: %w", err)
+		return fmt.Errorf("failed to unmarshal generated YAML: %w", err)
 	}
 	expected, err := unmarshalYAML([]byte(expectedYAML))
 	if err != nil {
-		return fmt.Errorf("Failed to unmarshal expected YAML: %w", err)
+		return fmt.Errorf("failed to unmarshal expected YAML: %w", err)
 	}
 	diff := deep.Equal(expected, actual)
 	if diff == nil {
@@ -99,12 +197,12 @@ func (td *TestDataDiffer) storeActual(path string, actual []byte) {
 func ReadTestdata(fileName string) string {
 	file, err := os.Open(filepath.Join("testdata", fileName))
 	if err != nil {
-		panic(fmt.Sprintf("Failed to open expected output file: %v", err))
+		panic(fmt.Sprintf("failed to open expected output file: %v", err))
 	}
 
 	fixture, err := io.ReadAll(file)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to read expected output file: %v", err))
+		panic(fmt.Sprintf("failed to read expected output file: %v", err))
 	}
 
 	return string(fixture)
@@ -139,4 +237,38 @@ func writeRejects(origFileName string, data []byte, rejectPath string) {
 	if err := os.WriteFile(p, data, 0600); err != nil {
 		panic(err)
 	}
+}
+
+func getFileHash(state *testing.T, target string) string {
+	if !path.IsAbs(target) {
+		var err error
+		target, err = filepath.Abs(target)
+
+		if err != nil {
+			state.Fatal(err)
+		}
+	}
+
+	data, err := os.Open(target)
+
+	if err != nil {
+		state.Fatal(err)
+	}
+
+	defer func(f *os.File) {
+		err := f.Close()
+
+		if err != nil {
+			state.Fatal(err)
+		}
+
+	}(data)
+
+	fileHash := sha256.New()
+
+	if _, err := io.Copy(fileHash, data); err != nil {
+		state.Fatal(err)
+	}
+
+	return fmt.Sprintf("%x", fileHash.Sum(nil))
 }
