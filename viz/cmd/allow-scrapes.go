@@ -1,12 +1,18 @@
 package cmd
 
 import (
-	"os"
+	"bufio"
+	"bytes"
+	"errors"
+	"fmt"
+	"io"
 	"text/template"
 
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
+	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -118,6 +124,7 @@ type templateOptions struct {
 
 // newCmdAllowScrapes creates a new cobra command `allow-scrapes`
 func newCmdAllowScrapes() *cobra.Command {
+	output := "yaml"
 	options := templateOptions{
 		ExtensionName: ExtensionName,
 		ChartName:     vizChartName,
@@ -136,10 +143,41 @@ linkerd viz allow-scrapes --namespace emojivoto | kubectl apply -f -`,
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			t := template.Must(template.New("allow-scrapes").Parse(allowScrapePolicy))
-			return t.Execute(os.Stdout, options)
+			var buf bytes.Buffer
+			err := t.Execute(&buf, options)
+			if err != nil {
+				return err
+			}
+
+			if output == "json" {
+				reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(&buf, 4096))
+				for {
+					manifest, err := reader.Read()
+					if err != nil {
+						if errors.Is(err, io.EOF) {
+							break
+						}
+						return err
+					}
+					bytes, err := yaml.YAMLToJSON(manifest)
+					if err != nil {
+						return err
+					}
+					_, err = stdout.Write(append(bytes, '\n'))
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			} else if output == "yaml" {
+				_, err = stdout.Write(append(buf.Bytes(), '\n'))
+				return err
+			}
+			return fmt.Errorf("unsupported output format: %s", output)
 		},
 	}
 	cmd.Flags().StringVarP(&options.TargetNs, "namespace", "n", options.TargetNs, "The namespace in which to authorize Prometheus scrapes.")
+	cmd.Flags().StringVarP(&output, "output", "o", output, "Output format. One of: json|yaml")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"n", "namespace"},

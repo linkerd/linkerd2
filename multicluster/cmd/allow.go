@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/linkerd/linkerd2/multicluster/static"
 	mccharts "github.com/linkerd/linkerd2/multicluster/values"
@@ -16,6 +18,7 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 )
 
@@ -24,6 +27,7 @@ type (
 		namespace          string
 		serviceAccountName string
 		ignoreCluster      bool
+		output             string
 	}
 )
 
@@ -31,6 +35,7 @@ func newAllowCommand() *cobra.Command {
 	opts := allowOptions{
 		namespace:     defaultMulticlusterNamespace,
 		ignoreCluster: false,
+		output:        "yaml",
 	}
 
 	cmd := &cobra.Command{
@@ -69,16 +74,40 @@ func newAllowCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			stdout.Write(buf.Bytes())
-			stdout.Write([]byte("---\n"))
 
-			return nil
+			if opts.output == "json" {
+				reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(&buf, 4096))
+				for {
+					manifest, err := reader.Read()
+					if err != nil {
+						if errors.Is(err, io.EOF) {
+							break
+						}
+						return err
+					}
+					bytes, err := yaml.YAMLToJSON(manifest)
+					if err != nil {
+						return err
+					}
+					_, err = stdout.Write(append(bytes, '\n'))
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			} else if opts.output == "yaml" {
+				stdout.Write(buf.Bytes())
+				stdout.Write([]byte("---\n"))
+				return nil
+			}
+			return fmt.Errorf("Invalid output format: %s", opts.output)
 		},
 	}
 
 	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "The destination namespace for the service account.")
 	cmd.Flags().BoolVar(&opts.ignoreCluster, "ignore-cluster", false, "Ignore cluster configuration")
 	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", "", "The name of the multicluster access service account")
+	cmd.PersistentFlags().StringVarP(&opts.output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"namespace"},
