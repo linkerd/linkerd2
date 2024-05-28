@@ -126,6 +126,10 @@ func TestInstall(t *testing.T) {
 		cmd = append(cmd, "--set", "proxy.nativeSidecar=true")
 	}
 
+	if TestHelper.DualStack() {
+		cmd = append(cmd, "--set", "disableIPv6=false")
+	}
+
 	// Pipe cmd & args to `linkerd`
 	out, err = TestHelper.LinkerdRun(cmd...)
 	if err != nil {

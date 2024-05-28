@@ -14,8 +14,8 @@ import (
 var TestHelper *testutil.TestHelper
 
 var (
-	skipPortsNs         = "skip-ports-test"
-	booksappDeployments = []string{"books", "traffic", "authors", "webapp"}
+	skipPortsNs          = "skip-ports-test"
+	emojivotoDeployments = []string{"emoji", "vote-bot", "voting", "web"}
 )
 
 func secureRequestMatcher(dst string) *prommatch.Matcher {
@@ -65,8 +65,8 @@ func TestSkipInboundPorts(t *testing.T) {
 				"'kubectl apply' command failed\n%s", out)
 		}
 
-		// Check all booksapp deployments are up and running
-		for _, deploy := range booksappDeployments {
+		// Check all emojivoto deployments are up and running
+		for _, deploy := range emojivotoDeployments {
 			if err := TestHelper.CheckPods(ctx, ns, deploy, 1); err != nil {
 				//nolint:errorlint
 				if rce, ok := err.(*testutil.RestartCountError); ok {
@@ -81,7 +81,7 @@ func TestSkipInboundPorts(t *testing.T) {
 			// Wait for slow-cookers to start sending requests by using a short
 			// time window through RetryFor.
 			err := testutil.RetryFor(30*time.Second, func() error {
-				pods, err := TestHelper.GetPods(ctx, ns, map[string]string{"app": "webapp"})
+				pods, err := TestHelper.GetPods(ctx, ns, map[string]string{"app": "web-svc"})
 				if err != nil {
 					return fmt.Errorf("error getting pods\n%w", err)
 				}
@@ -94,10 +94,10 @@ func TestSkipInboundPorts(t *testing.T) {
 					return fmt.Errorf("error getting metrics for pod\n%w", err)
 				}
 				s := prommatch.Suite{}.
-					MustContain("secure requests to authors", secureRequestMatcher("authors")).
-					MustContain("insecure requests to books", insecureRequestMatcher("books")).
-					MustNotContain("insecure requests to authors", insecureRequestMatcher("authors")).
-					MustNotContain("secure requests to books", secureRequestMatcher("books"))
+					MustContain("secure requests to emoji-svc", secureRequestMatcher("emoji-svc")).
+					MustContain("insecure requests to voting-svc", insecureRequestMatcher("voting-svc")).
+					MustNotContain("insecure requests to emoji-svc", insecureRequestMatcher("emoji-svc")).
+					MustNotContain("secure requests to voting-svc", secureRequestMatcher("voting-svc"))
 				if err := s.CheckString(metrics); err != nil {
 					return fmt.Errorf("error matching metrics\n%w", err)
 				}
