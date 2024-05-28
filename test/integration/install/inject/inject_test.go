@@ -387,6 +387,7 @@ func TestInjectAutoPod(t *testing.T) {
 	truthy := true
 	falsy := false
 	initUser := int64(65534)
+	initGroup := int64(65534)
 	seccompProfile := &v1.SeccompProfile{Type: v1.SeccompProfileTypeRuntimeDefault}
 	reg := "cr.l5d.io/linkerd"
 	if override := os.Getenv(flags.EnvOverrideDockerRegistry); override != "" {
@@ -436,6 +437,7 @@ func TestInjectAutoPod(t *testing.T) {
 			AllowPrivilegeEscalation: &falsy,
 			ReadOnlyRootFilesystem:   &truthy,
 			RunAsUser:                &initUser,
+			RunAsGroup:               &initGroup,
 			SeccompProfile:           seccompProfile,
 		},
 		TerminationMessagePolicy: v1.TerminationMessagePolicy("FallbackToLogsOnError"),

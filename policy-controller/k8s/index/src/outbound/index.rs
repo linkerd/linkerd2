@@ -104,6 +104,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::HttpRoute> for Inde
         let gknn = name
             .gkn::<linkerd_k8s_api::HttpRoute>()
             .namespaced(namespace);
+        tracing::debug!(?gknn, "deleting route");
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete(&gknn);
         }
@@ -134,6 +135,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Inde
         let gknn = name
             .gkn::<k8s_gateway_api::GrpcRoute>()
             .namespaced(namespace);
+        tracing::debug!(?gknn, "deleting route");
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete(&gknn);
         }
@@ -144,6 +146,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
     fn apply(&mut self, service: Service) {
         let name = service.name_unchecked();
         let ns = service.namespace().expect("Service must have a namespace");
+        tracing::debug!(name, ns, "indexing service");
         let accrual = parse_accrual_config(service.annotations())
             .map_err(|error| tracing::error!(%error, service=name, namespace=ns, "failed to parse accrual config"))
             .unwrap_or_default();
@@ -197,12 +200,17 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             },
             service_info,
         );
+
+        self.reindex_services()
     }
 
     fn delete(&mut self, namespace: String, name: String) {
+        tracing::debug!(name, namespace, "deleting service");
         let service_ref = ServiceRef { name, namespace };
         self.service_info.remove(&service_ref);
         self.services_by_ip.retain(|_, v| *v != service_ref);
+
+        self.reindex_services()
     }
 }
 
@@ -287,6 +295,12 @@ impl Index {
                 );
         }
     }
+
+    fn reindex_services(&mut self) {
+        for ns in self.namespaces.by_ns.values_mut() {
+            ns.reindex_services(&self.service_info);
+        }
+    }
 }
 
 impl Namespace {
@@ -346,6 +360,50 @@ impl Namespace {
                 .insert(route.gknn(), outbound_route)
                 .map_err(|error| tracing::warn!(?error))
                 .transpose();
+        }
+    }
+
+    fn reindex_services(&mut self, service_info: &HashMap<ServiceRef, ServiceInfo>) {
+        for routes in self.service_port_routes.values_mut() {
+            for routes in routes.watches_by_ns.values_mut() {
+                match routes.routes.as_mut() {
+                    None => continue,
+                    Some(OutboundRouteCollection::Http(routes)) => {
+                        for route in routes.values_mut() {
+                            for rule in route.rules.iter_mut() {
+                                for backend in rule.backends.iter_mut() {
+                                    if let Backend::Service(svc) = backend {
+                                        let service_ref = ServiceRef {
+                                            name: svc.name.clone(),
+                                            namespace: svc.namespace.clone(),
+                                        };
+                                        svc.exists = service_info.contains_key(&service_ref);
+                                    } else {
+                                        tracing::trace!(?backend, "got fucked backend");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Some(OutboundRouteCollection::Grpc(routes)) => {
+                        for route in routes.values_mut() {
+                            for rule in route.rules.iter_mut() {
+                                for backend in rule.backends.iter_mut() {
+                                    if let Backend::Service(svc) = backend {
+                                        let service_ref = ServiceRef {
+                                            name: svc.name.clone(),
+                                            namespace: svc.namespace.clone(),
+                                        };
+                                        svc.exists = service_info.contains_key(&service_ref);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                routes.send_if_modified();
+            }
         }
     }
 
@@ -687,12 +745,6 @@ fn convert_backend<BackendRef: Into<HttpBackendRef>>(
         name: name.clone(),
         namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
     };
-    if !services.contains_key(&service_ref) {
-        return Some(Backend::Invalid {
-            weight: weight.into(),
-            message: format!("Service not found {name}"),
-        });
-    }
 
     let filters = match filters
         .into_iter()
@@ -716,6 +768,7 @@ fn convert_backend<BackendRef: Into<HttpBackendRef>>(
         namespace: service_ref.namespace.to_string(),
         port,
         filters,
+        exists: services.contains_key(&service_ref),
     }))
 }
 

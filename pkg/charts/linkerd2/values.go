@@ -29,6 +29,7 @@ type (
 		ControllerImage              string                 `json:"controllerImage"`
 		ControllerReplicas           uint                   `json:"controllerReplicas"`
 		ControllerUID                int64                  `json:"controllerUID"`
+		ControllerGID                int64                  `json:"controllerGID"`
 		EnableH2Upgrade              bool                   `json:"enableH2Upgrade"`
 		EnablePodAntiAffinity        bool                   `json:"enablePodAntiAffinity"`
 		NodeAffinity                 map[string]interface{} `json:"nodeAffinity"`
@@ -120,6 +121,7 @@ type (
 		Ports                                *Ports           `json:"ports"`
 		Resources                            *Resources       `json:"resources"`
 		UID                                  int64            `json:"uid"`
+		GID                                  int64            `json:"gid"`
 		WaitBeforeExitSeconds                uint64           `json:"waitBeforeExitSeconds"`
 		IsGateway                            bool             `json:"isGateway"`
 		IsIngress                            bool             `json:"isIngress"`
@@ -180,6 +182,7 @@ type (
 		Privileged           bool             `json:"privileged"`
 		RunAsRoot            bool             `json:"runAsRoot"`
 		RunAsUser            int64            `json:"runAsUser"`
+		RunAsGroup           int64            `json:"runAsGroup"`
 		IptablesMode         string           `json:"iptablesMode"`
 	}
 

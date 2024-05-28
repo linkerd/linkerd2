@@ -91,6 +91,7 @@ pub struct WeightedService {
     pub namespace: String,
     pub port: NonZeroU16,
     pub filters: Vec<Filter>,
+    pub exists: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]

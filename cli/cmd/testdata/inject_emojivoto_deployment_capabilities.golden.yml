@@ -202,6 +202,7 @@ spec:
             - NET_BIND_SERVICE
             drop:
             - ALL
+          runAsGroup: 33
           runAsUser: 33
       initContainers:
       - args:
@@ -237,6 +238,7 @@ spec:
             - ALL
           privileged: false
           readOnlyRootFilesystem: true
+          runAsGroup: 65534
           runAsNonRoot: true
           runAsUser: 65534
           seccompProfile:

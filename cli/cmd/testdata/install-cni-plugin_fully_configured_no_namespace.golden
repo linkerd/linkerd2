@@ -71,6 +71,7 @@ data:
         "incoming-proxy-port": 5143,
         "outgoing-proxy-port": 5140,
         "proxy-uid": 12102,
+        "proxy-gid": 12102,
         "ports-to-redirect": [],
         "inbound-ports-to-ignore": ["4191","4190"],
         "simulate": false,
@@ -124,7 +125,7 @@ spec:
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
         image: my-docker-registry.io/awesome/cni-plugin-test-image:v1.4.0
-        imagePullPolicy:
+        imagePullPolicy: 
         env:
         - name: DEST_CNI_NET_DIR
           valueFrom:

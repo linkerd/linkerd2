@@ -61,6 +61,7 @@ var (
 		k8s.ProxyEphemeralStorageLimitAnnotation,
 		k8s.ProxyEphemeralStorageRequestAnnotation,
 		k8s.ProxyUIDAnnotation,
+		k8s.ProxyGIDAnnotation,
 		k8s.ProxyVersionOverrideAnnotation,
 		k8s.ProxyRequireIdentityOnInboundPortsAnnotation,
 		k8s.ProxyIgnoreInboundPortsAnnotation,
@@ -412,6 +413,13 @@ func applyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 		v, err := strconv.ParseInt(override, 10, 64)
 		if err == nil {
 			values.Proxy.UID = v
+		}
+	}
+
+	if override, ok := annotations[k8s.ProxyGIDAnnotation]; ok {
+		v, err := strconv.ParseInt(override, 10, 64)
+		if err == nil {
+			values.Proxy.GID = v
 		}
 	}
 

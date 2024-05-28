@@ -1738,13 +1738,14 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v2.3.0","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","proxyGid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v2.3.0","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
     controllerImage: ControllerImage
     controllerReplicas: 1
     controllerUID: 2103
+    controllerGID: 2103
     debugContainer: null
     destinationProxyResources: null
     destinationResources: null
@@ -1788,6 +1789,7 @@ data:
       resources: null
       saMountPath: null
       uid: 2102
+      gid: 2102
       waitBeforeExitSeconds: 0
       workloadKind: deployment
     proxyContainerName: ProxyContainerName
@@ -1828,6 +1830,7 @@ data:
 			&linkerd2.Values{
 				ControllerImage:      "ControllerImage",
 				ControllerUID:        2103,
+				ControllerGID:        2103,
 				EnableH2Upgrade:      true,
 				WebhookFailurePolicy: "WebhookFailurePolicy",
 				NodeSelector:         defaultValues.NodeSelector,
@@ -1854,6 +1857,7 @@ data:
 						Outbound: 4140,
 					},
 					UID: 2102,
+					GID: 2102,
 				},
 				ProxyInit: &linkerd2.ProxyInit{
 					Image: &linkerd2.Image{
@@ -1891,13 +1895,14 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v2.3.0","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"cr.l5d.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"cr.l5d.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","proxyGid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v2.3.0","debugImage":{"imageName":"cr.l5d.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
     controllerImage: ControllerImage
     controllerReplicas: 1
     controllerUID: 2103
+    controllerGID: 2103
     debugContainer: null
     destinationProxyResources: null
     destinationResources: null
@@ -1941,6 +1946,7 @@ data:
         resources: null
         saMountPath: null
         uid: 2102
+        gid: 2102
         waitBeforeExitSeconds: 0
         workloadKind: deployment
       proxyContainerName: ProxyContainerName
@@ -1981,6 +1987,7 @@ data:
 			&linkerd2.Values{
 				ControllerImage:      "ControllerImage",
 				ControllerUID:        2103,
+				ControllerGID:        2103,
 				EnableH2Upgrade:      true,
 				WebhookFailurePolicy: "WebhookFailurePolicy",
 				NodeSelector:         defaultValues.NodeSelector,
@@ -2007,6 +2014,7 @@ data:
 						Outbound: 4140,
 					},
 					UID: 2102,
+					GID: 2102,
 				},
 				ProxyInit: &linkerd2.ProxyInit{
 					Image: &linkerd2.Image{

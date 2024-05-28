@@ -155,6 +155,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.collector.UID | default .Values.defaultUID}}
+          runAsGroup: {{.Values.collector.GID | default .Values.defaultGID}}
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:
@@ -272,6 +273,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.jaeger.UID | default .Values.defaultUID}}
+          runAsGroup: {{.Values.jaeger.GID | default .Values.defaultGID}}
           seccompProfile:
             type: RuntimeDefault
       dnsPolicy: ClusterFirst

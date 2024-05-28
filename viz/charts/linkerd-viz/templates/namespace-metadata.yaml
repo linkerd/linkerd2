@@ -49,6 +49,7 @@ spec:
           runAsNonRoot: true
           readOnlyRootFilesystem: true
           runAsUser: {{.Values.defaultUID}}
+          runAsUser: {{.Values.defaultGID}}
           seccompProfile:
             type: RuntimeDefault
         args:

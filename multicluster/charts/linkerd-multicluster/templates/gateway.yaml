@@ -59,6 +59,7 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: {{.Values.gateway.UID}}
+            runAsGroup: {{.Values.gateway.GID}}
             seccompProfile:
               type: RuntimeDefault
       securityContext:

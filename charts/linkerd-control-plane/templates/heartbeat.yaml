@@ -85,6 +85,9 @@ spec:
               readOnlyRootFilesystem: true
               runAsNonRoot: true
               runAsUser: {{.Values.controllerUID}}
+              {{- if ge (int .Values.controllerGID) 0 }}
+              runAsGroup: {{.Values.controllerGID}}
+              {{- end }}
               allowPrivilegeEscalation: false
               seccompProfile:
                 type: RuntimeDefault

@@ -57,6 +57,8 @@ spec:
       {{- include "linkerd.affinity" $tree | nindent 6 }}
       containers:
       {{- if not (empty .Values.proxyInjectorProxyResources) }}
+      {{- $c := dig "cores" .Values.proxy.cores .Values.proxyInjectorProxyResources }}
+      {{- $_ := set $tree.Values.proxy "cores" $c }}
       {{- $r := merge .Values.proxyInjectorProxyResources .Values.proxy.resources }}
       {{- $_ := set $tree.Values.proxy "resources" $r }}
       {{- end }}
@@ -117,6 +119,9 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.controllerUID}}
+          {{- if ge (int .Values.controllerGID) 0 }}
+          runAsGroup: {{.Values.controllerGID}}
+          {{- end }}
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault

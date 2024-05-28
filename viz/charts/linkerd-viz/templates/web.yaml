@@ -138,6 +138,7 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.dashboard.UID | default .Values.defaultUID}}
+          runAsGroup: {{.Values.dashboard.GID | default .Values.defaultGID}}
           seccompProfile:
             type: RuntimeDefault
       securityContext:

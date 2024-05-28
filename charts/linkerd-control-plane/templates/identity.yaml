@@ -200,6 +200,9 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: {{.Values.controllerUID}}
+          {{- if ge (int .Values.controllerGID) 0 }}
+          runAsGroup: {{.Values.controllerGID}}
+          {{- end }}
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
@@ -209,6 +212,8 @@ spec:
         - mountPath: /var/run/linkerd/identity/trust-roots/
           name: trust-roots
       {{- if not (empty .Values.identityProxyResources) }}
+      {{- $c := dig "cores" .Values.proxy.cores .Values.identityProxyResources }}
+      {{- $_ := set $tree.Values.proxy "cores" $c }}
       {{- $r := merge .Values.identityProxyResources .Values.proxy.resources }}
       {{- $_ := set $tree.Values.proxy "resources" $r }}
       {{- end }}

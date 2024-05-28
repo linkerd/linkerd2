@@ -68,6 +68,7 @@ Kubernetes: `>=1.22.0-0`
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use |
+| collector.GID | string | `nil` | GID for the collector resource |
 | collector.UID | string | `nil` | UID for the collector resource |
 | collector.command | string | `"/otelcol-contrib"` |  |
 | collector.config | object | see `value.yaml` for actual configuration | OpenTelemetry Collector config, See the [Configuration docs](https://opentelemetry.io/docs/collector/configuration/) for more information |
@@ -87,10 +88,12 @@ Kubernetes: `>=1.22.0-0`
 | collector.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
 | commonLabels | object | `{}` | Labels to apply to all resources |
 | createNamespaceMetadataJob | bool | `true` | Creates a Job that adds necessary metadata to the extension's namespace during install; disable if lack of privileges require doing this manually |
+| defaultGID | int | `2103` | Default GID for all the jaeger components |
 | defaultUID | int | `2103` | Default UID for all the jaeger components |
 | enablePSP | bool | `false` | Create Roles and RoleBindings to associate this extension's ServiceAccounts to the control plane PSP resource. This requires that `enabledPSP` is set to true on the control plane install. Note PSP has been deprecated since k8s v1.21 |
 | enablePodAntiAffinity | bool | `false` | Enables Pod Anti Affinity logic to balance the placement of replicas across hosts and zones for High Availability. Enable this only when you have multiple replicas of components. |
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
+| jaeger.GID | string | `nil` | GID for the jaeger resource |
 | jaeger.UID | string | `nil` | UID for the jaeger resource |
 | jaeger.args | list | `["--query.base-path=/jaeger"]` | CLI arguments for Jaeger, See [Jaeger AIO Memory CLI reference](https://www.jaegertracing.io/docs/1.24/cli/#jaeger-all-in-one-memory) |
 | jaeger.enabled | bool | `true` | Set to false to exclude all-in-one Jaeger installation |
@@ -117,6 +120,7 @@ Kubernetes: `>=1.22.0-0`
 | podLabels | object | `{}` | Additional labels to add to all pods |
 | revisionHistoryLimit | int | `10` | Specifies the number of old ReplicaSets to retain to allow rollback. |
 | tolerations | string | `nil` | Default tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
+| webhook.GID | string | `nil` | GID for the webhook resource |
 | webhook.UID | string | `nil` | UID for the webhook resource |
 | webhook.caBundle | string | `""` | Bundle of CA certificates for webhook. If not provided nor injected with cert-manager, then Helm will use the certificate generated for `webhook.crtPEM`. If `webhook.externalSecret` is set to true, this value, injectCaFrom, or injectCaFromSecret must be set, as no certificate will be generated. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector) for more information. |
 | webhook.collectorSvcAccount | string | `"collector"` | service account associated with the collector instance |

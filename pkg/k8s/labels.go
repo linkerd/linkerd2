@@ -206,6 +206,9 @@ const (
 	// ProxyUIDAnnotation can be used to override the UID config.
 	ProxyUIDAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-uid"
 
+	// ProxyGIDAnnotation can be used to override the GID config.
+	ProxyGIDAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-gid"
+
 	// ProxyLogLevelAnnotation can be used to override the log level config.
 	ProxyLogLevelAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-level"
 

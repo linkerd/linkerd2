@@ -1035,6 +1035,54 @@ async fn producer_route() {
 }
 
 #[tokio::test(flavor = "current_thread")]
+async fn pre_existing_producer_route() {
+    // We test the scenario where outbound policy watches are initiated after
+    // a produce route already exists.
+    with_temp_ns(|client, ns| async move {
+        // Create a service
+        let svc = create_service(&client, &ns, "my-svc", 4191).await;
+
+        // A route created in the same namespace as its parent service is called
+        // a producer route. It should be returned in outbound policy requests
+        // for that service from ALL namespaces.
+        let _route = create(
+            &client,
+            mk_http_route(&ns, "foo-route", &svc, Some(4191)).build(),
+        )
+        .await;
+
+        let mut producer_rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
+        let producer_config = producer_rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?producer_config);
+
+        let mut consumer_rx = retry_watch_outbound_policy(&client, "consumer_ns", &svc, 4191).await;
+        let consumer_config = consumer_rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?consumer_config);
+
+        // The route should be returned in queries from the producer namespace.
+        detect_http_routes(&producer_config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_name_eq(route, "foo-route");
+        });
+
+        // The route should be returned in queries from a consumer namespace.
+        detect_http_routes(&consumer_config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_name_eq(route, "foo-route");
+        });
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
 async fn consumer_route() {
     with_temp_ns(|client, ns| async move {
         // Create a service
