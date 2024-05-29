@@ -27,7 +27,6 @@ fn bare_route(namespace: impl AsRef<str>) -> k8s_gateway_api::GrpcRoute {
         status: None,
         metadata: meta(namespace),
         spec: k8s_gateway_api::GrpcRouteSpec {
-            rules: Some(vec![]),
             inner: k8s_gateway_api::CommonRouteSpec {
                 parent_refs: Some(vec![server_parent_ref(namespace)]),
             },
