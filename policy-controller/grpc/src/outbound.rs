@@ -627,42 +627,67 @@ fn convert_grpc_backend(
             }
         }
         Backend::Service(svc) => {
-            let filters = svc
-                .filters
-                .into_iter()
-                .map(convert_to_grpc_filter)
-                .collect();
-            outbound::grpc_route::WeightedRouteBackend {
-                weight: svc.weight,
-                backend: Some(outbound::grpc_route::RouteBackend {
-                    backend: Some(outbound::Backend {
-                        metadata: Some(Metadata {
-                            kind: Some(metadata::Kind::Resource(api::meta::Resource {
-                                group: "core".to_string(),
-                                kind: "Service".to_string(),
-                                name: svc.name,
-                                namespace: svc.namespace,
-                                section: Default::default(),
-                                port: u16::from(svc.port).into(),
-                            })),
+            if svc.exists {
+                let filters = svc
+                    .filters
+                    .into_iter()
+                    .map(convert_to_grpc_filter)
+                    .collect();
+                outbound::grpc_route::WeightedRouteBackend {
+                    weight: svc.weight,
+                    backend: Some(outbound::grpc_route::RouteBackend {
+                        backend: Some(outbound::Backend {
+                            metadata: Some(Metadata {
+                                kind: Some(metadata::Kind::Resource(api::meta::Resource {
+                                    group: "core".to_string(),
+                                    kind: "Service".to_string(),
+                                    name: svc.name,
+                                    namespace: svc.namespace,
+                                    section: Default::default(),
+                                    port: u16::from(svc.port).into(),
+                                })),
+                            }),
+                            queue: Some(default_queue_config()),
+                            kind: Some(outbound::backend::Kind::Balancer(
+                                outbound::backend::BalanceP2c {
+                                    discovery: Some(outbound::backend::EndpointDiscovery {
+                                        kind: Some(outbound::backend::endpoint_discovery::Kind::Dst(
+                                            outbound::backend::endpoint_discovery::DestinationGet {
+                                                path: svc.authority,
+                                            },
+                                        )),
+                                    }),
+                                    load: Some(default_balancer_config()),
+                                },
+                            )),
                         }),
-                        queue: Some(default_queue_config()),
-                        kind: Some(outbound::backend::Kind::Balancer(
-                            outbound::backend::BalanceP2c {
-                                discovery: Some(outbound::backend::EndpointDiscovery {
-                                    kind: Some(outbound::backend::endpoint_discovery::Kind::Dst(
-                                        outbound::backend::endpoint_discovery::DestinationGet {
-                                            path: svc.authority,
-                                        },
-                                    )),
-                                }),
-                                load: Some(default_balancer_config()),
-                            },
-                        )),
+                        filters,
+                        request_timeout,
                     }),
-                    filters,
-                    request_timeout,
-                }),
+                }
+            } else {
+                outbound::grpc_route::WeightedRouteBackend {
+                    weight: svc.weight,
+                    backend: Some(outbound::grpc_route::RouteBackend {
+                        backend: Some(outbound::Backend {
+                            metadata: Some(Metadata {
+                                kind: Some(metadata::Kind::Default("invalid".to_string())),
+                            }),
+                            queue: Some(default_queue_config()),
+                            kind: None,
+                        }),
+                        filters: vec![outbound::grpc_route::Filter {
+                            kind: Some(outbound::grpc_route::filter::Kind::FailureInjector(
+                                api::grpc_route::GrpcFailureInjector {
+                                    code: 500,
+                                    message: format!("Service not found {}", svc.name),
+                                    ratio: None,
+                                },
+                            )),
+                        }],
+                        request_timeout,
+                    }),
+                }
             }
         }
         Backend::Invalid { weight, message } => outbound::grpc_route::WeightedRouteBackend {
