@@ -555,7 +555,7 @@ impl Namespace {
                     .rules
                     .into_iter()
                     .flatten()
-                    .map(|r| self.convert_gateway_grpc_rule(r, cluster, service_info))
+                    .map(|rule| self.convert_gateway_grpc_rule(rule, cluster, service_info))
                     .collect::<Result<_>>()?;
 
                 let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
@@ -886,8 +886,7 @@ impl ServiceRoutes {
         let routes = self
             .watches_by_ns
             .get(self.namespace.as_ref())
-            .map(|watch| watch.routes.clone())
-            .unwrap_or_else(|| None);
+            .and_then(|watch| watch.routes.clone());
 
         self.watches_by_ns.entry(namespace).or_insert_with(|| {
             let (sender, _) = watch::channel(OutboundPolicy {
