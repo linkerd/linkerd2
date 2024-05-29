@@ -940,7 +940,7 @@ dependencies = [
 [[package]]
 name = "k8s-gateway-api"
 version = "0.15.0"
-source = "git+https://github.com/the-wondersmith/k8s-gateway-api-rs?branch=feat-grpcroute-support#e9e61e9eebff0bf305086060a323645eb9070bef"
+source = "git+https://github.com/the-wondersmith/k8s-gateway-api-rs?branch=feat-grpcroute-support#188cf14b83239114da7981fa284047f70773ef9b"
 dependencies = [
  "k8s-openapi",
  "kube",
