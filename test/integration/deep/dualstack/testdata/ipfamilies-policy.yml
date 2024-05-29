@@ -1,0 +1,32 @@
+apiVersion: policy.linkerd.io/v1beta2
+kind: Server
+metadata:
+  name: ipfamilies
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ipfamilies-server
+  port: http
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: ipfamilies
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: ipfamilies
+  requiredAuthenticationRefs:
+    - name: ipfamilies
+      kind: NetworkAuthentication
+      group: policy.linkerd.io
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  name: ipfamilies
+spec:
+  networks:
+  - cidr: {IPv6}/128

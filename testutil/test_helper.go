@@ -38,6 +38,7 @@ type TestHelper struct {
 	uninstall            bool
 	cni                  bool
 	calico               bool
+	dualStack            bool
 	nativeSidecar        bool
 	defaultInboundPolicy string
 	httpClient           http.Client
@@ -208,6 +209,7 @@ func NewTestHelper() *TestHelper {
 	uninstall := flag.Bool("uninstall", false, "whether to run the 'linkerd uninstall' integration test")
 	cni := flag.Bool("cni", false, "whether to install linkerd with CNI enabled")
 	calico := flag.Bool("calico", false, "whether to install calico CNI plugin")
+	dualStack := flag.Bool("dual-stack", false, "whether to run the dual-stack tests")
 	nativeSidecar := flag.Bool("native-sidecar", false, "whether to install using native sidecar injection")
 	defaultInboundPolicy := flag.String("default-inbound-policy", "", "if non-empty, passed to --set proxy.defaultInboundPolicy at linkerd's install time")
 	flag.Parse()
@@ -254,6 +256,7 @@ func NewTestHelper() *TestHelper {
 		externalPrometheus:   *externalPrometheus,
 		cni:                  *cni,
 		calico:               *calico,
+		dualStack:            *dualStack,
 		nativeSidecar:        *nativeSidecar,
 		uninstall:            *uninstall,
 		defaultInboundPolicy: *defaultInboundPolicy,
@@ -397,6 +400,11 @@ func (h *TestHelper) CNI() bool {
 // Calico determines whether Calico CNI plug-in is enabled
 func (h *TestHelper) Calico() bool {
 	return h.calico
+}
+
+// DualStack determines whether the DualStack tests are run
+func (h *TestHelper) DualStack() bool {
+	return h.dualStack
 }
 
 // NativeSidecar determines whether native sidecar injection is enabled
