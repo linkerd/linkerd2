@@ -8,7 +8,7 @@ use chrono::offset::Utc;
 use chrono::DateTime;
 use k8s::{NamespaceResourceScope, Resource};
 use kubert::lease::Claim;
-use linkerd_policy_controller_core::{http_route::GroupKindName, POLICY_CONTROLLER_NAME};
+use linkerd_policy_controller_core::{routes::GroupKindName, POLICY_CONTROLLER_NAME};
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, ResourceExt};
 use parking_lot::RwLock;
 use prometheus_client::{

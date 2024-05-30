@@ -1,4 +1,4 @@
-use linkerd_policy_controller_core::http_route::GroupKindName;
+use linkerd_policy_controller_core::routes::GroupKindName;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ResourceId {

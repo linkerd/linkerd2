@@ -1,7 +1,7 @@
 use anyhow::{anyhow, bail, Result};
 use k8s_gateway_api as api;
 use kube::{Resource, ResourceExt};
-use linkerd_policy_controller_core::http_route::{self, GroupKindName, GroupKindNamespaceName};
+use linkerd_policy_controller_core::routes::{self, GroupKindName, GroupKindNamespaceName};
 use linkerd_policy_controller_k8s_api::policy;
 use std::num::NonZeroU16;
 
@@ -61,7 +61,7 @@ pub fn try_match(
         query_params,
         method,
     }: api::HttpRouteMatch,
-) -> Result<http_route::HttpRouteMatch> {
+) -> Result<routes::HttpRouteMatch> {
     let path = path.map(path_match).transpose()?;
 
     let headers = headers
@@ -78,10 +78,10 @@ pub fn try_match(
 
     let method = method
         .as_deref()
-        .map(http_route::Method::try_from)
+        .map(routes::Method::try_from)
         .transpose()?;
 
-    Ok(http_route::HttpRouteMatch {
+    Ok(routes::HttpRouteMatch {
         path,
         headers,
         query_params,
@@ -89,23 +89,23 @@ pub fn try_match(
     })
 }
 
-pub fn path_match(path_match: api::HttpPathMatch) -> Result<http_route::PathMatch> {
+pub fn path_match(path_match: api::HttpPathMatch) -> Result<routes::PathMatch> {
     match path_match {
             api::HttpPathMatch::Exact { value } | api::HttpPathMatch::PathPrefix { value }
                 if !value.starts_with('/') =>
             {
                 Err(anyhow!("HttpPathMatch paths must be absolute (begin with `/`); {value:?} is not an absolute path"))
             }
-            api::HttpPathMatch::Exact { value } => Ok(http_route::PathMatch::Exact(value)),
-            api::HttpPathMatch::PathPrefix { value } => Ok(http_route::PathMatch::Prefix(value)),
+            api::HttpPathMatch::Exact { value } => Ok(routes::PathMatch::Exact(value)),
+            api::HttpPathMatch::PathPrefix { value } => Ok(routes::PathMatch::Prefix(value)),
             api::HttpPathMatch::RegularExpression { value } => value
                 .parse()
-                .map(http_route::PathMatch::Regex)
+                .map(routes::PathMatch::Regex)
                 .map_err(Into::into),
         }
 }
 
-pub fn host_match(hostname: api::Hostname) -> http_route::HostMatch {
+pub fn host_match(hostname: api::Hostname) -> routes::HostMatch {
     if hostname.starts_with("*.") {
         let mut reverse_labels = hostname
             .split('.')
@@ -113,41 +113,41 @@ pub fn host_match(hostname: api::Hostname) -> http_route::HostMatch {
             .map(|label| label.to_string())
             .collect::<Vec<String>>();
         reverse_labels.reverse();
-        http_route::HostMatch::Suffix { reverse_labels }
+        routes::HostMatch::Suffix { reverse_labels }
     } else {
-        http_route::HostMatch::Exact(hostname)
+        routes::HostMatch::Exact(hostname)
     }
 }
 
-pub fn header_match(header_match: api::HttpHeaderMatch) -> Result<http_route::HeaderMatch> {
+pub fn header_match(header_match: api::HttpHeaderMatch) -> Result<routes::HeaderMatch> {
     match header_match {
-        api::HttpHeaderMatch::Exact { name, value } => Ok(http_route::HeaderMatch::Exact(
+        api::HttpHeaderMatch::Exact { name, value } => Ok(routes::HeaderMatch::Exact(
             name.parse()?,
             value.parse()?,
         )),
         api::HttpHeaderMatch::RegularExpression { name, value } => Ok(
-            http_route::HeaderMatch::Regex(name.parse()?, value.parse()?),
+            routes::HeaderMatch::Regex(name.parse()?, value.parse()?),
         ),
     }
 }
 
 pub fn query_param_match(
     query_match: api::HttpQueryParamMatch,
-) -> Result<http_route::QueryParamMatch> {
+) -> Result<routes::QueryParamMatch> {
     match query_match {
         api::HttpQueryParamMatch::Exact { name, value } => {
-            Ok(http_route::QueryParamMatch::Exact(name, value))
+            Ok(routes::QueryParamMatch::Exact(name, value))
         }
         api::HttpQueryParamMatch::RegularExpression { name, value } => {
-            Ok(http_route::QueryParamMatch::Regex(name, value.parse()?))
+            Ok(routes::QueryParamMatch::Regex(name, value.parse()?))
         }
     }
 }
 
 pub fn header_modifier(
     api::HttpRequestHeaderFilter { set, add, remove }: api::HttpRequestHeaderFilter,
-) -> Result<http_route::HeaderModifierFilter> {
-    Ok(http_route::HeaderModifierFilter {
+) -> Result<routes::HeaderModifierFilter> {
+    Ok(routes::HeaderModifierFilter {
         add: add
             .into_iter()
             .flatten()
@@ -161,7 +161,7 @@ pub fn header_modifier(
         remove: remove
             .into_iter()
             .flatten()
-            .map(http_route::HeaderName::try_from)
+            .map(routes::HeaderName::try_from)
             .collect::<Result<_, _>>()?,
     })
 }
@@ -174,19 +174,19 @@ pub fn req_redirect(
         port,
         status_code,
     }: api::HttpRequestRedirectFilter,
-) -> Result<http_route::RequestRedirectFilter> {
-    Ok(http_route::RequestRedirectFilter {
+) -> Result<routes::RequestRedirectFilter> {
+    Ok(routes::RequestRedirectFilter {
         scheme: scheme.as_deref().map(TryInto::try_into).transpose()?,
         host: hostname,
         path: path.map(path_modifier).transpose()?,
         port: port.and_then(|p| NonZeroU16::try_from(p).ok()),
         status: status_code
-            .map(http_route::StatusCode::try_from)
+            .map(routes::StatusCode::try_from)
             .transpose()?,
     })
 }
 
-fn path_modifier(path_modifier: api::HttpPathModifier) -> Result<http_route::PathModifier> {
+fn path_modifier(path_modifier: api::HttpPathModifier) -> Result<routes::PathModifier> {
     use api::HttpPathModifier::*;
     match path_modifier {
         ReplaceFullPath {
@@ -201,11 +201,11 @@ fn path_modifier(path_modifier: api::HttpPathModifier) -> Result<http_route::Pat
             )
         }
         ReplaceFullPath { replace_full_path } => {
-            Ok(http_route::PathModifier::Full(replace_full_path))
+            Ok(routes::PathModifier::Full(replace_full_path))
         }
         ReplacePrefixMatch {
             replace_prefix_match,
-        } => Ok(http_route::PathModifier::Prefix(replace_prefix_match)),
+        } => Ok(routes::PathModifier::Prefix(replace_prefix_match)),
     }
 }
 

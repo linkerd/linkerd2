@@ -6,7 +6,7 @@ use crate::{
 use gateway::{BackendObjectReference, BackendRef, HttpBackendRef, ParentReference};
 use k8s::{Resource, ResourceExt};
 use kubert::index::IndexNamespacedResource;
-use linkerd_policy_controller_core::{http_route::GroupKindName, POLICY_CONTROLLER_NAME};
+use linkerd_policy_controller_core::{routes::GroupKindName, POLICY_CONTROLLER_NAME};
 use linkerd_policy_controller_k8s_api::{self as k8s, gateway, policy::server::Port};
 use std::sync::Arc;
 use tokio::sync::{mpsc, watch};

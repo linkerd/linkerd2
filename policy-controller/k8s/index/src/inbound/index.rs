@@ -18,7 +18,7 @@ use crate::{
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
-    http_route::{GroupKindName, HttpRouteMatch, Method, PathMatch},
+    routes::{GroupKindName, HttpRouteMatch, Method, PathMatch},
     inbound::{
         AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRoute, HttpRouteRef,
         HttpRouteRule, InboundServer, ProxyProtocol, ServerRef,

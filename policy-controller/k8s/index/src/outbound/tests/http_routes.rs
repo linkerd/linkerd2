@@ -1,7 +1,7 @@
 use k8s_gateway_api::BackendRef;
 use kube::Resource;
 use linkerd_policy_controller_core::{
-    http_route::GroupKindNamespaceName,
+    routes::GroupKindNamespaceName,
     outbound::{Backend, WeightedService},
     POLICY_CONTROLLER_NAME,
 };

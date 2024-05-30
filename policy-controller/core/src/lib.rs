@@ -1,7 +1,7 @@
 #![deny(warnings, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-pub mod http_route;
+pub mod routes;
 mod identity_match;
 pub mod inbound;
 mod network_match;

@@ -7,7 +7,7 @@ use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
 use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
 use linkerd_policy_controller_core::{
-    http_route::GroupKindNamespaceName,
+    routes::GroupKindNamespaceName,
     outbound::{
         Backend, Backoff, FailureAccrual, Filter, HttpRoute, HttpRouteRule, OutboundPolicy,
         WeightedService,
