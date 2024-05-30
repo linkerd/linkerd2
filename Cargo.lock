@@ -1282,7 +1282,6 @@ dependencies = [
  "ahash",
  "anyhow",
  "chrono",
- "k8s-gateway-api",
  "kubert",
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",

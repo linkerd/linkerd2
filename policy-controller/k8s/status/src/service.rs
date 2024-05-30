@@ -1,4 +1,4 @@
-use linkerd_policy_controller_k8s_api as k8s;
+use linkerd_policy_controller_k8s_api as k8s_core_api;
 
 #[derive(Default)]
 pub(crate) struct Service {
@@ -18,8 +18,8 @@ impl Service {
     }
 }
 
-impl From<k8s::Service> for Service {
-    fn from(svc: k8s::Service) -> Self {
+impl From<k8s_core_api::Service> for Service {
+    fn from(svc: k8s_core_api::Service) -> Self {
         svc.spec
             .map(|spec| Self {
                 cluster_ip: spec.cluster_ip,
