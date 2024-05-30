@@ -153,6 +153,10 @@ proxy:
   logLevel: warn,linkerd=info,trust_dns=error
   # -- Log format (`plain` or `json`) for the proxy
   logFormat: plain
+  # -- If set to false, will prevent the proxy from logging HTTP headers. Note
+  # that setting this to true is not alone sufficient to log HTTP headers; the
+  # proxy logLevel must also be set to debug.
+  logHTTPHeaders: false
   ports:
     # -- Admin port for the proxy container
     admin: 4191

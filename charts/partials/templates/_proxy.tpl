@@ -29,7 +29,7 @@ env:
   value: {{.Values.proxy.requireTLSOnInboundPorts | quote}}
 {{ end -}}
 - name: LINKERD2_PROXY_LOG
-  value: {{.Values.proxy.logLevel | quote}}
+  value: "{{.Values.proxy.logLevel}}{{ if not .Values.proxy.logHTTPHeaders }},linkerd_proxy_http::client[{headers}]=off{{ end }}"
 - name: LINKERD2_PROXY_LOG_FORMAT
   value: {{.Values.proxy.logFormat | quote}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR

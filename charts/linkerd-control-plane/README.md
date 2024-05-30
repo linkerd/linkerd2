@@ -251,6 +251,7 @@ Kubernetes: `>=1.22.0-0`
 | proxy.inboundDiscoveryCacheUnusedTimeout | string | `"90s"` | Maximum time allowed before an unused inbound discovery result is evicted from the cache |
 | proxy.livenessProbe | object | `{"initialDelaySeconds":10,"timeoutSeconds":1}` | LivenessProbe timeout and delay configuration |
 | proxy.logFormat | string | `"plain"` | Log format (`plain` or `json`) for the proxy |
+| proxy.logHTTPHeaders | bool | `false` | If set to false, will prevent the proxy from logging HTTP headers. Note that setting this to true is not alone sufficient to log HTTP headers; the proxy logLevel must also be set to debug. |
 | proxy.logLevel | string | `"warn,linkerd=info,trust_dns=error"` | Log level for the proxy |
 | proxy.nativeSidecar | bool | `false` | Enable KEP-753 native sidecars This is an experimental feature. It requires Kubernetes >= 1.29. If enabled, .proxy.waitBeforeExitSeconds should not be used. |
 | proxy.opaquePorts | string | `"25,587,3306,4444,5432,6379,9300,11211"` | Default set of opaque ports - SMTP (25,587) server-first - MYSQL (3306) server-first - Galera (4444) server-first - PostgreSQL (5432) server-first - Redis (6379) server-first - ElasticSearch (9300) server-first - Memcached (11211) clients do not issue any preamble, which breaks detection |
