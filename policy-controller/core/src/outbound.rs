@@ -1,5 +1,6 @@
 use crate::routes::{
-    GroupKindNamespaceName, HeaderModifierFilter, HostMatch, HttpRouteMatch, RequestRedirectFilter,
+    FailureInjectorFilter, GroupKindNamespaceName, HeaderModifierFilter, HostMatch, HttpRouteMatch,
+    RequestRedirectFilter,
 };
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
@@ -26,9 +27,19 @@ pub struct OutboundDiscoverTarget {
     pub source_namespace: String,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TypedOutboundRoute {
+    Http(OutboundRoute<HttpRouteMatch>),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum OutboundRouteCollection {
+    Http(HashMap<GroupKindNamespaceName, OutboundRoute<HttpRouteMatch>>),
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct OutboundPolicy {
-    pub http_routes: HashMap<GroupKindNamespaceName, HttpRoute>,
+    pub routes: Option<OutboundRouteCollection>,
     pub authority: String,
     pub name: String,
     pub namespace: String,
@@ -38,18 +49,18 @@ pub struct OutboundPolicy {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HttpRoute {
+pub struct OutboundRoute<MatchType> {
     pub hostnames: Vec<HostMatch>,
-    pub rules: Vec<HttpRouteRule>,
+    pub rules: Vec<OutboundRouteRule<MatchType>>,
 
-    /// This is required for ordering returned `HttpRoute`s by their creation
-    /// timestamp.
+    /// This is required for ordering returned routes
+    /// by their creation timestamp.
     pub creation_timestamp: Option<DateTime<Utc>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HttpRouteRule {
-    pub matches: Vec<HttpRouteMatch>,
+pub struct OutboundRouteRule<MatchType> {
+    pub matches: Vec<MatchType>,
     pub backends: Vec<Backend>,
     pub request_timeout: Option<time::Duration>,
     pub backend_request_timeout: Option<time::Duration>,
@@ -98,4 +109,50 @@ pub enum Filter {
     RequestHeaderModifier(HeaderModifierFilter),
     ResponseHeaderModifier(HeaderModifierFilter),
     RequestRedirect(RequestRedirectFilter),
+    FailureInjector(FailureInjectorFilter),
+}
+
+// === impl TypedOutboundRoute ===
+
+impl From<OutboundRoute<HttpRouteMatch>> for TypedOutboundRoute {
+    fn from(route: OutboundRoute<HttpRouteMatch>) -> Self {
+        Self::Http(route)
+    }
+}
+
+// === impl OutboundRouteCollection ===
+
+impl OutboundRouteCollection {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::Http(routes) => routes.is_empty(),
+        }
+    }
+
+    pub fn for_gknn(gknn: &GroupKindNamespaceName) -> Option<Self> {
+        match gknn.kind.as_ref() {
+            "HTTPRoute" => Some(Self::Http(Default::default())),
+            _ => None,
+        }
+    }
+
+    pub fn remove(&mut self, key: &GroupKindNamespaceName) {
+        match self {
+            Self::Http(routes) => {
+                routes.remove(key);
+            }
+        }
+    }
+
+    pub fn insert<Route: Into<TypedOutboundRoute>>(
+        &mut self,
+        key: GroupKindNamespaceName,
+        route: Route,
+    ) -> Result<Option<TypedOutboundRoute>> {
+        match (self, route.into()) {
+            (Self::Http(routes), TypedOutboundRoute::Http(route)) => {
+                Ok(routes.insert(key, route).map(Into::into))
+            }
+        }
+    }
 }

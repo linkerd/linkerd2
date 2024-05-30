@@ -11,8 +11,8 @@ use super::{
     server, server_authorization, workload,
 };
 use crate::{
-    http_route::{gkn_for_gateway_http_route, gkn_for_linkerd_http_route, gkn_for_resource},
     ports::{PortHasher, PortMap, PortSet},
+    routes::{ExplicitGKN, ImpliedGKN},
     ClusterInfo, DefaultPolicy,
 };
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
@@ -26,7 +26,8 @@ use linkerd_policy_controller_core::{
     IdentityMatch, Ipv4Net, Ipv6Net, NetworkMatch,
 };
 use linkerd_policy_controller_k8s_api::{
-    self as k8s, policy::server::Port, policy::server::Selector, ResourceExt,
+    self as k8s, gateway as k8s_gateway_api, policy::server::Port, policy::server::Selector,
+    ResourceExt,
 };
 use parking_lot::RwLock;
 use std::{
@@ -271,7 +272,7 @@ impl Index {
     {
         let ns = route.namespace().expect("HttpRoute must have a namespace");
         let name = route.name_unchecked();
-        let gkn = gkn_for_resource(&route);
+        let gkn = route.gkn();
         let _span = info_span!("apply", %ns, %name).entered();
 
         let route_binding = match route.try_into() {
@@ -300,7 +301,7 @@ impl Index {
         for route in routes.into_iter() {
             let namespace = route.namespace().expect("HttpRoute must be namespaced");
             let name = route.name_unchecked();
-            let gkn = gkn_for_resource(&route);
+            let gkn = route.gkn();
             let route_binding = match route.try_into() {
                 Ok(binding) => binding,
                 Err(error) => {
@@ -853,7 +854,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
     }
 
     fn delete(&mut self, ns: String, name: String) {
-        let gkn = gkn_for_linkerd_http_route(name);
+        let gkn = name.gkn::<k8s::policy::HttpRoute>();
         self.delete_route(ns, gkn)
     }
 
@@ -872,7 +873,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
     }
 
     fn delete(&mut self, ns: String, name: String) {
-        let gkn = gkn_for_gateway_http_route(name);
+        let gkn = name.gkn::<k8s_gateway_api::HttpRoute>();
         self.delete_route(ns, gkn)
     }
 

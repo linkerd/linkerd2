@@ -1,9 +1,10 @@
 use super::*;
-use crate::http_route::gkn_for_linkerd_http_route;
+use crate::routes::ExplicitGKN;
 use linkerd_policy_controller_core::{
     routes::{HttpRouteMatch, Method, PathMatch},
     POLICY_CONTROLLER_NAME,
 };
+use linkerd_policy_controller_k8s_api::policy;
 
 const POLICY_API_GROUP: &str = "policy.linkerd.io";
 
@@ -55,9 +56,9 @@ fn route_attaches_to_server() {
     assert!(rx
         .borrow_and_update()
         .http_routes
-        .contains_key(&HttpRouteRef::Linkerd(gkn_for_linkerd_http_route(
-            "route-foo".to_string()
-        ))));
+        .contains_key(&HttpRouteRef::Linkerd(
+            "route-foo".gkn::<policy::HttpRoute>()
+        )));
 
     // Create authz policy.
     test.index.write().apply(mk_authorization_policy(
@@ -74,7 +75,7 @@ fn route_attaches_to_server() {
 
     assert!(rx.has_changed().unwrap());
     assert!(rx.borrow().http_routes
-        [&HttpRouteRef::Linkerd(gkn_for_linkerd_http_route("route-foo".to_string()))]
+        [&HttpRouteRef::Linkerd("route-foo".gkn::<policy::HttpRoute>())]
         .authorizations
         .contains_key(&AuthorizationRef::AuthorizationPolicy(
             "authz-foo".to_string()

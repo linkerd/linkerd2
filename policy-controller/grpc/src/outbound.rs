@@ -1,5 +1,6 @@
 use crate::{routes, workload};
 use futures::prelude::*;
+use itertools::Itertools;
 use linkerd2_proxy_api::{
     self as api, destination,
     meta::{metadata, Metadata},
@@ -8,10 +9,11 @@ use linkerd2_proxy_api::{
         outbound_policies_server::{OutboundPolicies, OutboundPoliciesServer},
     },
 };
+use linkerd_policy_controller_core::routes::HttpRouteMatch;
 use linkerd_policy_controller_core::{
     outbound::{
-        Backend, DiscoverOutboundPolicy, Filter, HttpRoute, HttpRouteRule, OutboundDiscoverTarget,
-        OutboundPolicy, OutboundPolicyStream,
+        Backend, DiscoverOutboundPolicy, Filter, OutboundDiscoverTarget, OutboundPolicy,
+        OutboundPolicyStream, OutboundRoute, OutboundRouteCollection, OutboundRouteRule,
     },
     routes::GroupKindNamespaceName,
 };
@@ -190,7 +192,7 @@ fn response_stream(drain: drain::Watch, mut rx: OutboundPolicyStream) -> BoxWatc
 
                 // If the server starts shutting down, close the stream so that it doesn't hold the
                 // server open.
-                _ = (&mut shutdown) => {
+                _ = &mut shutdown => {
                     return;
                 }
             }
@@ -202,80 +204,84 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
     let backend = default_backend(&outbound);
 
     let kind = if outbound.opaque {
-        linkerd2_proxy_api::outbound::proxy_protocol::Kind::Opaque(
-            outbound::proxy_protocol::Opaque {
-                routes: vec![default_outbound_opaq_route(backend)],
-            },
-        )
+        outbound::proxy_protocol::Kind::Opaque(outbound::proxy_protocol::Opaque {
+            routes: vec![default_outbound_opaq_route(backend)],
+        })
     } else {
-        let mut http_routes = outbound.http_routes.into_iter().collect::<Vec<_>>();
-        http_routes.sort_by(|(a_name, a_route), (b_name, b_route)| {
-            let by_ts = match (&a_route.creation_timestamp, &b_route.creation_timestamp) {
-                (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
-                (None, None) => std::cmp::Ordering::Equal,
-                // Routes with timestamps are preferred over routes without.
-                (Some(_), None) => return std::cmp::Ordering::Less,
-                (None, Some(_)) => return std::cmp::Ordering::Greater,
-            };
-            by_ts.then_with(|| a_name.name.cmp(&b_name.name))
+        let accrual = outbound.accrual.map(|accrual| outbound::FailureAccrual {
+            kind: Some(match accrual {
+                linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
+                    max_failures,
+                    backoff,
+                } => outbound::failure_accrual::Kind::ConsecutiveFailures(
+                    outbound::failure_accrual::ConsecutiveFailures {
+                        max_failures,
+                        backoff: Some(outbound::ExponentialBackoff {
+                            min_backoff: convert_duration("min_backoff", backoff.min_penalty),
+                            max_backoff: convert_duration("max_backoff", backoff.max_penalty),
+                            jitter_ratio: backoff.jitter,
+                        }),
+                    },
+                ),
+            }),
         });
 
-        let mut http_routes: Vec<_> = http_routes
-            .into_iter()
-            .map(|(gknn, route)| convert_outbound_http_route(gknn, route, backend.clone()))
-            .collect();
+        match outbound.routes {
+            None => {
+                let routes = vec![default_outbound_http_route(backend.clone())];
 
-        if http_routes.is_empty() {
-            http_routes = vec![default_outbound_http_route(backend.clone())];
-        }
-
-        let accrual =
-            outbound
-                .accrual
-                .map(|accrual| linkerd2_proxy_api::outbound::FailureAccrual {
-                    kind: Some(match accrual {
-                        linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
-                            max_failures,
-                            backoff,
-                        } => outbound::failure_accrual::Kind::ConsecutiveFailures(
-                            outbound::failure_accrual::ConsecutiveFailures {
-                                max_failures,
-                                backoff: Some(outbound::ExponentialBackoff {
-                                    min_backoff: convert_duration(
-                                        "min_backoff",
-                                        backoff.min_penalty,
-                                    ),
-                                    max_backoff: convert_duration(
-                                        "max_backoff",
-                                        backoff.max_penalty,
-                                    ),
-                                    jitter_ratio: backoff.jitter,
-                                }),
-                            },
-                        ),
+                outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
+                    timeout: Some(
+                        time::Duration::from_secs(10)
+                            .try_into()
+                            .expect("failed to convert detect timeout to protobuf"),
+                    ),
+                    opaque: Some(outbound::proxy_protocol::Opaque {
+                        routes: vec![default_outbound_opaq_route(backend)],
                     }),
-                });
+                    http1: Some(outbound::proxy_protocol::Http1 {
+                        routes: routes.clone(),
+                        failure_accrual: accrual.clone(),
+                    }),
+                    http2: Some(outbound::proxy_protocol::Http2 {
+                        routes,
+                        failure_accrual: accrual,
+                    }),
+                })
+            }
+            Some(OutboundRouteCollection::Http(routes)) => {
+                let mut routes = routes
+                    .into_iter()
+                    .sorted_by(timestamp_then_name)
+                    .map(|(gknn, route)| convert_outbound_http_route(gknn, route, backend.clone()))
+                    .collect::<Vec<_>>();
 
-        linkerd2_proxy_api::outbound::proxy_protocol::Kind::Detect(
-            outbound::proxy_protocol::Detect {
-                timeout: Some(
-                    time::Duration::from_secs(10)
-                        .try_into()
-                        .expect("failed to convert detect timeout to protobuf"),
-                ),
-                opaque: Some(outbound::proxy_protocol::Opaque {
-                    routes: vec![default_outbound_opaq_route(backend)],
-                }),
-                http1: Some(outbound::proxy_protocol::Http1 {
-                    routes: http_routes.clone(),
-                    failure_accrual: accrual.clone(),
-                }),
-                http2: Some(outbound::proxy_protocol::Http2 {
-                    routes: http_routes,
-                    failure_accrual: accrual,
-                }),
-            },
-        )
+                if routes.is_empty() {
+                    routes = vec![default_outbound_http_route(backend.clone())];
+                }
+
+                // TODO(the-wondersmith): determine what (if any) contracts
+                //  would need to be updated if we return `Kind::Http` here
+                outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
+                    timeout: Some(
+                        time::Duration::from_secs(10)
+                            .try_into()
+                            .expect("failed to convert detect timeout to protobuf"),
+                    ),
+                    opaque: Some(outbound::proxy_protocol::Opaque {
+                        routes: vec![default_outbound_opaq_route(backend)],
+                    }),
+                    http1: Some(outbound::proxy_protocol::Http1 {
+                        routes: routes.clone(),
+                        failure_accrual: accrual.clone(),
+                    }),
+                    http2: Some(outbound::proxy_protocol::Http2 {
+                        routes,
+                        failure_accrual: accrual,
+                    }),
+                })
+            }
+        }
     };
 
     let metadata = Metadata {
@@ -295,13 +301,31 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
     }
 }
 
+fn timestamp_then_name<MatchType>(
+    (left_id, left_route): &(GroupKindNamespaceName, OutboundRoute<MatchType>),
+    (right_id, right_route): &(GroupKindNamespaceName, OutboundRoute<MatchType>),
+) -> std::cmp::Ordering {
+    let by_ts = match (
+        &left_route.creation_timestamp,
+        &right_route.creation_timestamp,
+    ) {
+        (Some(left_ts), Some(right_ts)) => left_ts.cmp(right_ts),
+        (None, None) => std::cmp::Ordering::Equal,
+        // Routes with timestamps are preferred over routes without.
+        (Some(_), None) => return std::cmp::Ordering::Less,
+        (None, Some(_)) => return std::cmp::Ordering::Greater,
+    };
+
+    by_ts.then_with(|| left_id.name.cmp(&right_id.name))
+}
+
 fn convert_outbound_http_route(
     gknn: GroupKindNamespaceName,
-    HttpRoute {
+    OutboundRoute {
         hostnames,
         rules,
         creation_timestamp: _,
-    }: HttpRoute,
+    }: OutboundRoute<HttpRouteMatch>,
     backend: outbound::Backend,
 ) -> outbound::HttpRoute {
     let metadata = Some(Metadata {
@@ -322,7 +346,7 @@ fn convert_outbound_http_route(
     let rules = rules
         .into_iter()
         .map(
-            |HttpRouteRule {
+            |OutboundRouteRule {
                  matches,
                  backends,
                  request_timeout,
@@ -356,7 +380,7 @@ fn convert_outbound_http_route(
                         .map(routes::http::convert_match)
                         .collect(),
                     backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
-                    filters: filters.into_iter().map(convert_filter).collect(),
+                    filters: filters.into_iter().map(convert_to_http_filter).collect(),
                     request_timeout: request_timeout
                         .and_then(|d| convert_duration("request timeout", d)),
                 }
@@ -399,7 +423,11 @@ fn convert_http_backend(
         }
         Backend::Service(svc) => {
             if svc.exists {
-                let filters = svc.filters.into_iter().map(convert_filter).collect();
+                let filters = svc
+                    .filters
+                    .into_iter()
+                    .map(convert_to_http_filter)
+                    .collect();
                 outbound::http_route::WeightedRouteBackend {
                     weight: svc.weight,
                     backend: Some(outbound::http_route::RouteBackend {
@@ -595,7 +623,7 @@ fn convert_duration(name: &'static str, duration: time::Duration) -> Option<pros
         .ok()
 }
 
-fn convert_filter(filter: Filter) -> outbound::http_route::Filter {
+fn convert_to_http_filter(filter: Filter) -> outbound::http_route::Filter {
     use outbound::http_route::filter::Kind;
 
     outbound::http_route::Filter {
@@ -607,6 +635,9 @@ fn convert_filter(filter: Filter) -> outbound::http_route::Filter {
                 Kind::ResponseHeaderModifier(routes::convert_response_header_modifier_filter(f))
             }
             Filter::RequestRedirect(f) => Kind::Redirect(routes::convert_redirect_filter(f)),
+            Filter::FailureInjector(f) => {
+                Kind::FailureInjector(routes::http::convert_failure_injector_filter(f))
+            }
         }),
     }
 }
