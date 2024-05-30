@@ -7,11 +7,11 @@ use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
 use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
 use linkerd_policy_controller_core::{
-    routes::GroupKindNamespaceName,
     outbound::{
         Backend, Backoff, FailureAccrual, Filter, HttpRoute, HttpRouteRule, OutboundPolicy,
         WeightedService,
     },
+    routes::GroupKindNamespaceName,
 };
 use linkerd_policy_controller_k8s_api::{policy as api, ResourceExt, Service, Time};
 use parking_lot::RwLock;

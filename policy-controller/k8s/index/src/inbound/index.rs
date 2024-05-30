@@ -18,11 +18,11 @@ use crate::{
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
-    routes::{GroupKindName, HttpRouteMatch, Method, PathMatch},
     inbound::{
         AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRoute, HttpRouteRef,
         HttpRouteRule, InboundServer, ProxyProtocol, ServerRef,
     },
+    routes::{GroupKindName, HttpRouteMatch, Method, PathMatch},
     IdentityMatch, Ipv4Net, Ipv6Net, NetworkMatch,
 };
 use linkerd_policy_controller_k8s_api::{
