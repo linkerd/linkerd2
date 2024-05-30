@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ipfamilies-server
+spec:
+  selector:
+    matchLabels:
+      app: server
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        app: server
+    spec:
+      containers:
+      - image: ghcr.io/alpeb/family-server:v1
+        image: golang:1.22-alpine
+        name: ipfamilies-server
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - 'go run /go/src/app/main.go'
+        volumeMounts:
+        - name: go-app
+          mountPath: /go/src/app
+      volumes:
+      - name: go-app
+        configMap:
+          name: go-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ipfamilies-server
+spec:
+  ipFamilies:
+  - IPv4
+  - IPv6
+  ipFamilyPolicy: RequireDualStack
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: http
+  selector:
+    app: server
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client
+spec:
+  selector:
+    matchLabels:
+      app: client
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        app: client
+    spec:
+      containers:
+      - name: curl
+        image: curlimages/curl
+        command: [ "sh", "-c", "--" ]
+        args: [ "sleep infinity" ]
