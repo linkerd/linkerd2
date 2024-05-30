@@ -389,7 +389,10 @@ fn to_http_route(
         .into_iter()
         .map(
             |HttpRouteRule { matches, filters }| proto::http_route::Rule {
-                matches: matches.into_iter().map(routes::http::convert_match).collect(),
+                matches: matches
+                    .into_iter()
+                    .map(routes::http::convert_match)
+                    .collect(),
                 filters: filters.into_iter().filter_map(convert_filter).collect(),
             },
         )

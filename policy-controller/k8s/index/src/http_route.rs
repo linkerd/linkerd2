@@ -121,19 +121,16 @@ pub fn host_match(hostname: api::Hostname) -> routes::HostMatch {
 
 pub fn header_match(header_match: api::HttpHeaderMatch) -> Result<routes::HeaderMatch> {
     match header_match {
-        api::HttpHeaderMatch::Exact { name, value } => Ok(routes::HeaderMatch::Exact(
-            name.parse()?,
-            value.parse()?,
-        )),
-        api::HttpHeaderMatch::RegularExpression { name, value } => Ok(
-            routes::HeaderMatch::Regex(name.parse()?, value.parse()?),
-        ),
+        api::HttpHeaderMatch::Exact { name, value } => {
+            Ok(routes::HeaderMatch::Exact(name.parse()?, value.parse()?))
+        }
+        api::HttpHeaderMatch::RegularExpression { name, value } => {
+            Ok(routes::HeaderMatch::Regex(name.parse()?, value.parse()?))
+        }
     }
 }
 
-pub fn query_param_match(
-    query_match: api::HttpQueryParamMatch,
-) -> Result<routes::QueryParamMatch> {
+pub fn query_param_match(query_match: api::HttpQueryParamMatch) -> Result<routes::QueryParamMatch> {
     match query_match {
         api::HttpQueryParamMatch::Exact { name, value } => {
             Ok(routes::QueryParamMatch::Exact(name, value))
@@ -180,9 +177,7 @@ pub fn req_redirect(
         host: hostname,
         path: path.map(path_modifier).transpose()?,
         port: port.and_then(|p| NonZeroU16::try_from(p).ok()),
-        status: status_code
-            .map(routes::StatusCode::try_from)
-            .transpose()?,
+        status: status_code.map(routes::StatusCode::try_from).transpose()?,
     })
 }
 
@@ -200,9 +195,7 @@ fn path_modifier(path_modifier: api::HttpPathModifier) -> Result<routes::PathMod
                     (starting with '/'); {path:?} is not an absolute path"
             )
         }
-        ReplaceFullPath { replace_full_path } => {
-            Ok(routes::PathModifier::Full(replace_full_path))
-        }
+        ReplaceFullPath { replace_full_path } => Ok(routes::PathModifier::Full(replace_full_path)),
         ReplacePrefixMatch {
             replace_prefix_match,
         } => Ok(routes::PathModifier::Prefix(replace_prefix_match)),

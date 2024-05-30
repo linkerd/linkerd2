@@ -1,6 +1,6 @@
 use super::*;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1 as metav1;
-use linkerd_policy_controller_core::{routes, inbound};
+use linkerd_policy_controller_core::{inbound, routes};
 
 #[test]
 fn links_authorization_policy_with_mtls_name() {

@@ -9,11 +9,11 @@ use linkerd2_proxy_api::{
     },
 };
 use linkerd_policy_controller_core::{
-    routes::GroupKindNamespaceName,
     outbound::{
         Backend, DiscoverOutboundPolicy, Filter, HttpRoute, HttpRouteRule, OutboundDiscoverTarget,
         OutboundPolicy, OutboundPolicyStream,
     },
+    routes::GroupKindNamespaceName,
 };
 use std::{net::SocketAddr, num::NonZeroU16, str::FromStr, sync::Arc, time};
 
@@ -351,7 +351,10 @@ fn convert_outbound_http_route(
                     )
                 };
                 outbound::http_route::Rule {
-                    matches: matches.into_iter().map(routes::http::convert_match).collect(),
+                    matches: matches
+                        .into_iter()
+                        .map(routes::http::convert_match)
+                        .collect(),
                     backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
                     filters: filters.into_iter().map(convert_filter).collect(),
                     request_timeout: request_timeout
