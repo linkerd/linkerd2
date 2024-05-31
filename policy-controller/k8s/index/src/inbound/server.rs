@@ -31,10 +31,11 @@ fn proxy_protocol(
     match p {
         None | Some(k8s::policy::server::ProxyProtocol::Unknown) => ProxyProtocol::Detect {
             timeout: cluster.default_detect_timeout,
+            routes: Default::default(),
         },
-        Some(k8s::policy::server::ProxyProtocol::Http1) => ProxyProtocol::Http1,
-        Some(k8s::policy::server::ProxyProtocol::Http2) => ProxyProtocol::Http2,
-        Some(k8s::policy::server::ProxyProtocol::Grpc) => ProxyProtocol::Http2,
+        Some(k8s::policy::server::ProxyProtocol::Http1) => ProxyProtocol::Http1(Default::default()),
+        Some(k8s::policy::server::ProxyProtocol::Http2) => ProxyProtocol::Http2(Default::default()),
+        Some(k8s::policy::server::ProxyProtocol::Grpc) => ProxyProtocol::Grpc,
         Some(k8s::policy::server::ProxyProtocol::Opaque) => ProxyProtocol::Opaque,
         Some(k8s::policy::server::ProxyProtocol::Tls) => ProxyProtocol::Tls,
     }

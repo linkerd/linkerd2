@@ -26,21 +26,22 @@ pub enum AuthorizationRef {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum HttpRouteRef {
+pub enum InboundRouteRef {
     Default(&'static str),
     Linkerd(GroupKindName),
 }
 
 /// Describes how a proxy should handle inbound connections.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ProxyProtocol {
     /// Indicates that the protocol should be discovered dynamically.
     Detect {
         timeout: Duration,
+        routes: HashMap<InboundRouteRef, InboundRoute<HttpRouteMatch>>,
     },
 
-    Http1,
-    Http2,
+    Http1(HashMap<InboundRouteRef, InboundRoute<HttpRouteMatch>>),
+    Http2(HashMap<InboundRouteRef, InboundRoute<HttpRouteMatch>>),
     Grpc,
 
     /// Indicates that connections should be handled opaquely.
@@ -86,26 +87,24 @@ pub type InboundServerStream = Pin<Box<dyn Stream<Item = InboundServer> + Send +
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InboundServer {
     pub reference: ServerRef,
-
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
-    pub http_routes: HashMap<HttpRouteRef, HttpRoute>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HttpRoute {
+pub struct InboundRoute<MatchType> {
     pub hostnames: Vec<HostMatch>,
-    pub rules: Vec<HttpRouteRule>,
+    pub rules: Vec<InboundRouteRule<MatchType>>,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
 
-    /// This is required for ordering returned `HttpRoute`s by their creation
-    /// timestamp.
+    /// Required for ordering returned
+    /// routes by their creation timestamp
     pub creation_timestamp: Option<DateTime<Utc>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HttpRouteRule {
-    pub matches: Vec<HttpRouteMatch>,
+pub struct InboundRouteRule<MatchType> {
+    pub matches: Vec<MatchType>,
     pub filters: Vec<Filter>,
 }
 
@@ -117,15 +116,15 @@ pub enum Filter {
     FailureInjector(FailureInjectorFilter),
 }
 
-// === impl InboundHttpRoute ===
+// === impl InboundRoute ===
 
-/// The default `InboundHttpRoute` used for any `InboundServer` that
+/// The default `InboundRoute` used for any `InboundServer` that
 /// does not have routes.
-impl Default for HttpRoute {
+impl Default for InboundRoute<HttpRouteMatch> {
     fn default() -> Self {
         Self {
             hostnames: vec![],
-            rules: vec![HttpRouteRule {
+            rules: vec![InboundRouteRule {
                 matches: vec![HttpRouteMatch {
                     path: Some(PathMatch::Prefix("/".to_string())),
                     headers: vec![],
@@ -143,9 +142,9 @@ impl Default for HttpRoute {
     }
 }
 
-// === impl InboundHttpRouteRef ===
+// === impl InboundRouteRef ===
 
-impl Ord for HttpRouteRef {
+impl Ord for InboundRouteRef {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
             (Self::Default(a), Self::Default(b)) => a.cmp(b),
@@ -158,7 +157,7 @@ impl Ord for HttpRouteRef {
     }
 }
 
-impl PartialOrd for HttpRouteRef {
+impl PartialOrd for InboundRouteRef {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }

@@ -1,10 +1,10 @@
-use k8s_gateway_api::BackendRef;
 use kube::Resource;
 use linkerd_policy_controller_core::{
     outbound::{Backend, WeightedService},
     routes::GroupKindNamespaceName,
     POLICY_CONTROLLER_NAME,
 };
+use linkerd_policy_controller_k8s_api::gateway::BackendRef;
 use tracing::Level;
 
 use super::*;

@@ -1,6 +1,6 @@
 mod annotation;
 mod authorization_policy;
-mod http_routes;
+mod routes;
 mod server_authorization;
 
 use crate::{
@@ -13,9 +13,10 @@ use ahash::AHashMap as HashMap;
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{
     inbound::{
-        AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRoute, HttpRouteRef,
+        AuthorizationRef, ClientAuthentication, ClientAuthorization, InboundRoute, InboundRouteRef,
         InboundServer, ProxyProtocol, ServerRef,
     },
+    routes::HttpRouteMatch,
     IdentityMatch, IpNet, Ipv4Net, Ipv6Net, NetworkMatch,
 };
 use linkerd_policy_controller_k8s_api::{
@@ -181,8 +182,11 @@ fn mk_default_policy(
     .collect()
 }
 
-fn mk_default_routes() -> HashMap<HttpRouteRef, HttpRoute> {
-    Some((HttpRouteRef::Default("default"), HttpRoute::default()))
+fn mk_default_routes<MatchType>() -> HashMap<InboundRouteRef, InboundRoute<MatchType>>
+where
+    InboundRoute<MatchType>: Default,
+{
+    Some((InboundRouteRef::Default("default"), Default::default()))
         .into_iter()
         .collect()
 }
@@ -225,8 +229,8 @@ impl TestConfig {
             authorizations: mk_default_policy(self.default_policy, self.cluster.networks.clone()),
             protocol: ProxyProtocol::Detect {
                 timeout: self.detect_timeout,
+                routes: mk_default_routes(),
             },
-            http_routes: mk_default_routes(),
         }
     }
 

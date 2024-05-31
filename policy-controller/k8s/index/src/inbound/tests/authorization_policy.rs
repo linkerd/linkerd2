@@ -1,6 +1,7 @@
 use super::*;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1 as metav1;
 use linkerd_policy_controller_core::{inbound, routes};
+use linkerd_policy_controller_k8s_api::gateway as k8s_gateway_api;
 
 #[test]
 fn links_authorization_policy_with_mtls_name() {
@@ -32,8 +33,7 @@ fn links_authorization_policy_with_mtls_name() {
         InboundServer {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
-            protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(),
+            protocol: ProxyProtocol::Http1(mk_default_routes()),
         },
     );
 
@@ -86,8 +86,7 @@ fn links_authorization_policy_with_mtls_name() {
             )
             .into_iter()
             .collect(),
-            protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(),
+            protocol: ProxyProtocol::Http1(mk_default_routes()),
         },
     );
 }
@@ -122,8 +121,7 @@ fn authorization_targets_namespace() {
         InboundServer {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
-            protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(),
+            protocol: ProxyProtocol::Http1(mk_default_routes()),
         },
     );
 
@@ -176,8 +174,7 @@ fn authorization_targets_namespace() {
             )
             .into_iter()
             .collect(),
-            protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(),
+            protocol: ProxyProtocol::Http1(mk_default_routes()),
         },
     );
 }
@@ -212,8 +209,7 @@ fn links_authorization_policy_with_service_account() {
         InboundServer {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
-            protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(),
+            protocol: ProxyProtocol::Http1(mk_default_routes()),
         },
     );
 
@@ -260,8 +256,7 @@ fn links_authorization_policy_with_service_account() {
             )
             .into_iter()
             .collect(),
-            protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(),
+            protocol: ProxyProtocol::Http1(mk_default_routes()),
         },
     );
 }
@@ -329,12 +324,12 @@ fn authorization_policy_prevents_index_deletion() {
     test.index.write().apply(net_authn.clone());
 
     // Now we delete the server, and HTTPRoute.
-    <Index as kubert::index::IndexNamespacedResource<k8s::policy::Server>>::delete(
+    <Index as IndexNamespacedResource<k8s::policy::Server>>::delete(
         &mut test.index.write(),
         "ns-0".to_string(),
         "srv-8080".to_string(),
     );
-    <Index as kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute>>::delete(
+    <Index as IndexNamespacedResource<k8s::policy::HttpRoute>>::delete(
         &mut test.index.write(),
         "ns-0".to_string(),
         "route-foo".to_string(),
@@ -361,14 +356,14 @@ fn authorization_policy_prevents_index_deletion() {
         InboundServer {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
-            protocol: ProxyProtocol::Http1,
-            http_routes: hashmap!(HttpRouteRef::Linkerd(routes::GroupKindName{
+            protocol: ProxyProtocol::Http1(
+                hashmap!(InboundRouteRef::Linkerd(routes::GroupKindName{
                 group: "policy.linkerd.io".into(),
                 kind: "HTTPRoute".into(),
                 name: "route-foo".into(),
-            }) => HttpRoute {
-                rules: vec![inbound::HttpRouteRule {
-                    matches: vec![routes::HttpRouteMatch {
+            }) => InboundRoute {
+                rules: vec![inbound::InboundRouteRule {
+                    matches: vec![HttpRouteMatch{
                         path: Some(routes::PathMatch::Prefix("/foo".to_string())),
                         headers: vec![],
                         query_params: vec![],
@@ -383,8 +378,9 @@ fn authorization_policy_prevents_index_deletion() {
                 .collect(),
                 ..Default::default()
             })
-            .into_iter()
-            .collect(),
+                .into_iter()
+                .collect()
+            ),
         },
     );
 }

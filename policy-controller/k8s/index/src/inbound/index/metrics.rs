@@ -15,10 +15,7 @@ pub fn register(reg: &mut Registry, index: SharedIndex) {
 }
 
 impl Collector for Instrumented {
-    fn encode(
-        &self,
-        mut encoder: DescriptorEncoder<'_>,
-    ) -> std::prelude::v1::Result<(), std::fmt::Error> {
+    fn encode(&self, mut encoder: DescriptorEncoder<'_>) -> Result<(), std::fmt::Error> {
         let this = self.0.read();
 
         let mut meshtls_authn_encoder = encoder.encode_descriptor(
@@ -120,7 +117,7 @@ impl Collector for Instrumented {
         )?;
         for (ns, index) in &this.namespaces.by_ns {
             let labels = [("namespace", ns.as_str())];
-            let http_routes = ConstGauge::new(index.policy.http_routes.len() as u32);
+            let http_routes = ConstGauge::new(index.policy.routes.len() as u32);
             let http_routes_encoder = http_routes_encoder.encode_family(&labels)?;
             http_routes.encode(http_routes_encoder)?;
         }

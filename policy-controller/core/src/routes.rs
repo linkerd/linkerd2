@@ -5,10 +5,14 @@ pub use http::{
     Method, StatusCode,
 };
 use regex::Regex;
-use std::{borrow::Cow, num::NonZeroU16};
+use std::{
+    any::{Any, TypeId},
+    borrow::Cow,
+    num::NonZeroU16,
+    str::FromStr,
+};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-
 pub struct GroupKindName {
     pub group: Cow<'static, str>,
     pub kind: Cow<'static, str>,
@@ -91,6 +95,15 @@ pub enum QueryParamMatch {
     Regex(String, Regex),
 }
 
+pub trait GenericRouteMatch: Any + Default {
+    type MethodType: FromStr;
+    fn set_path(self, path: impl ToString) -> Self;
+    fn set_method(self, method: impl ToString) -> Result<Self>;
+    fn is<MatchType: 'static>() -> bool {
+        TypeId::of::<MatchType>() == TypeId::of::<Self>()
+    }
+}
+
 // === impl GroupKindName ===
 
 impl Ord for GroupKindName {
@@ -123,6 +136,34 @@ impl GroupKindName {
             namespace: namespace.into(),
             name: self.name,
         }
+    }
+}
+
+// === impl HttpRouteMatch ===
+
+impl Default for HttpRouteMatch {
+    fn default() -> Self {
+        Self {
+            method: None,
+            headers: Default::default(),
+            query_params: Default::default(),
+            path: Some(PathMatch::Prefix("/".to_string())),
+        }
+    }
+}
+
+impl GenericRouteMatch for HttpRouteMatch {
+    type MethodType = Method;
+
+    fn set_path(mut self, path: impl ToString) -> Self {
+        self.path = Some(PathMatch::Exact(path.to_string()));
+        self
+    }
+
+    fn set_method(mut self, method: impl ToString) -> Result<Self> {
+        let method = method.to_string().parse()?;
+        self.method = Some(method);
+        Ok(self)
     }
 }
 

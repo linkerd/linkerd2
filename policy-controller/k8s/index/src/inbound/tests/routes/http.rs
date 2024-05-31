@@ -1,11 +1,10 @@
-use super::*;
-use crate::http_route::gkn_for_linkerd_http_route;
+use super::{super::*, *};
+use crate::routes::ExplicitGKN;
+use k8s::policy::httproute::*;
 use linkerd_policy_controller_core::{
     routes::{HttpRouteMatch, Method, PathMatch},
     POLICY_CONTROLLER_NAME,
 };
-
-const POLICY_API_GROUP: &str = "policy.linkerd.io";
 
 #[test]
 fn route_attaches_to_server() {
@@ -38,32 +37,33 @@ fn route_attaches_to_server() {
         InboundServer {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
-            protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(),
+            protocol: ProxyProtocol::Http1(mk_default_routes()),
         },
     );
 
     // Create route.
-    test.index
-        .write()
-        .apply(mk_route("ns-0", "route-foo", "srv-8080"));
+    let route = mk_route("ns-0", "route-foo", "srv-8080");
+    test.index.write().apply(route.clone());
     assert!(rx.has_changed().unwrap());
     assert_eq!(
         rx.borrow().reference,
         ServerRef::Server("srv-8080".to_string())
     );
-    assert!(rx
-        .borrow_and_update()
-        .http_routes
-        .contains_key(&HttpRouteRef::Linkerd(gkn_for_linkerd_http_route(
-            "route-foo".to_string()
-        ))));
+
+    match &rx.borrow_and_update().protocol {
+        ProxyProtocol::Http1(routes) => {
+            assert!(routes.contains_key(&InboundRouteRef::Linkerd("route-foo".gkn::<HttpRoute>())))
+        }
+        protocol => {
+            tracing::error!(?protocol);
+            panic!("expected ProxyProtocol::Http1")
+        }
+    };
 
     // Create authz policy.
     test.index.write().apply(mk_authorization_policy(
-        "ns-0",
         "authz-foo",
-        "route-foo",
+        &route,
         vec![NamespacedTargetRef {
             group: None,
             kind: "ServiceAccount".to_string(),
@@ -73,12 +73,22 @@ fn route_attaches_to_server() {
     ));
 
     assert!(rx.has_changed().unwrap());
-    assert!(rx.borrow().http_routes
-        [&HttpRouteRef::Linkerd(gkn_for_linkerd_http_route("route-foo".to_string()))]
-        .authorizations
-        .contains_key(&AuthorizationRef::AuthorizationPolicy(
-            "authz-foo".to_string()
-        )));
+
+    match &rx.borrow().protocol {
+        ProxyProtocol::Http1(routes) => {
+            assert!(
+                routes[&InboundRouteRef::Linkerd("route-foo".gkn::<HttpRoute>())]
+                    .authorizations
+                    .contains_key(&AuthorizationRef::AuthorizationPolicy(
+                        "authz-foo".to_string()
+                    ))
+            )
+        }
+        protocol => {
+            tracing::error!(?protocol);
+            panic!("expected ProxyProtocol::Http1")
+        }
+    };
 }
 
 #[test]
@@ -91,7 +101,7 @@ fn routes_created_for_probes() {
     let test = TestConfig::from_default_policy_with_probes(policy, probe_networks);
 
     // Create a pod.
-    let container = k8s::Container {
+    let container = Container {
         liveness_probe: Some(k8s::Probe {
             http_get: Some(k8s::HTTPGetAction {
                 path: Some("/liveness-container-1".to_string()),
@@ -145,10 +155,16 @@ fn routes_created_for_probes() {
     // No Server is configured for the port, so expect the probe paths to be
     // authorized.
     let update = rx.borrow_and_update();
-    let probes = update
-        .http_routes
-        .get(&HttpRouteRef::Default("probe"))
-        .unwrap();
+    let probes = match &update.protocol {
+        ProxyProtocol::Detect { routes, .. } => {
+            routes.get(&InboundRouteRef::Default("probe")).unwrap()
+        }
+        protocol => {
+            tracing::error!(?protocol);
+            panic!("expected ProxyProtocol::Detect")
+        }
+    };
+
     let probes_rules = probes.rules.first().unwrap();
     assert!(
         probes_rules.matches.contains(&liveness_match),
@@ -163,7 +179,7 @@ fn routes_created_for_probes() {
     assert_eq!(probes.authorizations, expected_authorizations);
     drop(update);
 
-    // // Create server.
+    // Create server.
     test.index.write().apply(mk_server(
         "ns-0",
         "srv-5432",
@@ -174,13 +190,17 @@ fn routes_created_for_probes() {
     ));
     assert!(rx.has_changed().unwrap());
 
-    // // No routes are configured for the Server, so we should still expect the
-    // // Pod's probe paths to be authorized.
+    // No routes are configured for the Server, so we should still expect the
+    // Pod's probe paths to be authorized.
     let update = rx.borrow_and_update();
-    let probes = update
-        .http_routes
-        .get(&HttpRouteRef::Default("probe"))
-        .unwrap();
+    let probes = match &update.protocol {
+        ProxyProtocol::Http1(routes) => routes.get(&InboundRouteRef::Default("probe")).unwrap(),
+        protocol => {
+            tracing::error!(?protocol);
+            panic!("expected ProxyProtocol::Http1")
+        }
+    };
+
     let probes_rules = probes.rules.first().unwrap();
     assert!(
         probes_rules.matches.contains(&liveness_match),
@@ -203,25 +223,23 @@ fn routes_created_for_probes() {
 
     // A route is now configured for the Server, so the Pod's probe paths
     // should not be automatically authorized.
-    assert!(!rx
-        .borrow_and_update()
-        .http_routes
-        .contains_key(&HttpRouteRef::Default("probes")));
+    match &rx.borrow_and_update().protocol {
+        ProxyProtocol::Http1(routes) => {
+            assert!(routes.contains_key(&InboundRouteRef::Default("probe")))
+        }
+        protocol => {
+            tracing::error!(?protocol);
+            panic!("expected ProxyProtocol::Http1")
+        }
+    };
 }
 
-fn mk_route(
-    ns: impl ToString,
-    name: impl ToString,
-    server: impl ToString,
-) -> k8s::policy::HttpRoute {
-    use chrono::Utc;
-    use k8s::{policy::httproute::*, Time};
-
+fn mk_route(ns: impl ToString, name: impl ToString, server: impl ToString) -> HttpRoute {
     HttpRoute {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
-            creation_timestamp: Some(Time(Utc::now())),
+            creation_timestamp: Some(k8s::Time(chrono::Utc::now())),
             ..Default::default()
         },
         spec: HttpRouteSpec {
@@ -237,7 +255,7 @@ fn mk_route(
             },
             hostnames: None,
             rules: Some(vec![HttpRouteRule {
-                matches: Some(vec![HttpRouteMatch {
+                matches: Some(vec![k8s::gateway::HttpRouteMatch {
                     path: Some(HttpPathMatch::PathPrefix {
                         value: "/foo/bar".to_string(),
                     }),
@@ -250,10 +268,10 @@ fn mk_route(
                 timeouts: None,
             }]),
         },
-        status: Some(k8s::policy::httproute::HttpRouteStatus {
-            inner: k8s::gateway::RouteStatus {
+        status: Some(HttpRouteStatus {
+            inner: RouteStatus {
                 parents: vec![k8s::gateway::RouteParentStatus {
-                    parent_ref: k8s::gateway::ParentReference {
+                    parent_ref: ParentReference {
                         group: Some(POLICY_API_GROUP.to_string()),
                         kind: Some("Server".to_string()),
                         namespace: None,
@@ -273,27 +291,5 @@ fn mk_route(
                 }],
             },
         }),
-    }
-}
-fn mk_authorization_policy(
-    ns: impl ToString,
-    name: impl ToString,
-    route: impl ToString,
-    authns: impl IntoIterator<Item = NamespacedTargetRef>,
-) -> k8s::policy::AuthorizationPolicy {
-    k8s::policy::AuthorizationPolicy {
-        metadata: k8s::ObjectMeta {
-            namespace: Some(ns.to_string()),
-            name: Some(name.to_string()),
-            ..Default::default()
-        },
-        spec: k8s::policy::AuthorizationPolicySpec {
-            target_ref: LocalTargetRef {
-                group: Some(POLICY_API_GROUP.to_string()),
-                kind: "HttpRoute".to_string(),
-                name: route.to_string(),
-            },
-            required_authentication_refs: authns.into_iter().collect(),
-        },
     }
 }
