@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -25,6 +26,11 @@ import (
 var (
 	// DefaultDockerRegistry specifies the default location for Linkerd's images.
 	DefaultDockerRegistry = "cr.l5d.io/linkerd"
+)
+
+const (
+	JsonOutput = "json"
+	YamlOutput = "yaml"
 )
 
 // GetDefaultNamespace fetches the default namespace
@@ -63,11 +69,11 @@ func Uninstall(ctx context.Context, k8sAPI *k8s.KubernetesAPI, selector string, 
 		return errors.New("No resources found to uninstall")
 	}
 	for _, r := range resources {
-		if format == "yaml" {
+		if format == YamlOutput {
 			if err := r.RenderResource(os.Stdout); err != nil {
 				return fmt.Errorf("error rendering Kubernetes resource: %w", err)
 			}
-		} else if format == "json" {
+		} else if format == JsonOutput {
 			if err := r.RenderResourceJSON(os.Stdout); err != nil {
 				return fmt.Errorf("error rendering Kubernetes resource: %w", err)
 			}
@@ -115,9 +121,9 @@ func Prune(ctx context.Context, k8sAPI *k8s.KubernetesAPI, expectedManifests str
 		// If the resource is not in the expected resource list, render it for
 		// pruning.
 		if !resourceListContains(expectedResources, resource) {
-			if format == "yaml" {
+			if format == YamlOutput {
 				err = resource.RenderResource(os.Stdout)
-			} else if format == "json" {
+			} else if format == JsonOutput {
 				err = resource.RenderResourceJSON(os.Stdout)
 			} else {
 				return fmt.Errorf("unsupported format %s", format)
@@ -244,4 +250,36 @@ func RegistryOverride(image, newRegistry string) string {
 		imageName = image[strings.LastIndex(image, "/")+1:]
 	}
 	return registry + imageName
+}
+
+// Given a buffer containing one or more YAML documents separated by `---`,
+// render each document to the writer in the specified format: json or yaml.
+// Json documents are separated by a newline character.
+func RenderYAMLAs(buf *bytes.Buffer, writer io.Writer, format string) error {
+	if format == JsonOutput {
+		reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(buf, 4096))
+		for {
+			manifest, err := reader.Read()
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return err
+			}
+			bytes, err := yaml.YAMLToJSON(manifest)
+			if err != nil {
+				return err
+			}
+			_, err = writer.Write(append(bytes, '\n'))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if format == YamlOutput {
+		_, err := writer.Write(buf.Bytes())
+		return err
+	}
+	return fmt.Errorf("unsupported format %s", format)
 }

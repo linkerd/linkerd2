@@ -99,13 +99,13 @@ func uninstallRunE(ctx context.Context, format string) error {
 
 func deleteResource(ty metav1.TypeMeta, meta metav1.ObjectMeta, format string) error {
 	r := resource.NewNamespaced(ty.APIVersion, ty.Kind, meta.Name, meta.Namespace)
-	if format == "json" {
+	if format == pkgCmd.JsonOutput {
 		if err := r.RenderResourceJSON(os.Stdout); err != nil {
 			return fmt.Errorf("error rendering Kubernetes resource: %w", err)
 		}
 		return nil
-	} else if format == "yaml" {
-		if err := r.RenderResourceJSON(os.Stdout); err != nil {
+	} else if format == pkgCmd.YamlOutput {
+		if err := r.RenderResource(os.Stdout); err != nil {
 			return fmt.Errorf("error rendering Kubernetes resource: %w", err)
 		}
 		return nil

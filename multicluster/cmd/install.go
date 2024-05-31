@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -15,6 +14,7 @@ import (
 	multicluster "github.com/linkerd/linkerd2/multicluster/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	partials "github.com/linkerd/linkerd2/pkg/charts/static"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -25,7 +25,6 @@ import (
 	valuespkg "helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/engine"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
-	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 )
 
@@ -212,35 +211,7 @@ func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string
 		}
 	}
 
-	if format == "json" {
-		reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(&buf, 4096))
-		for {
-			manifest, err := reader.Read()
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					break
-				}
-				return err
-			}
-			bytes, err := yaml.YAMLToJSON(manifest)
-			if err != nil {
-				return err
-			}
-			_, err = w.Write(append(bytes, '\n'))
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	} else if format == "yaml" {
-		_, err = w.Write(buf.Bytes())
-		if err != nil {
-			return err
-		}
-		_, err = w.Write([]byte("---\n"))
-		return err
-	}
-	return fmt.Errorf("unsupported format %s", format)
+	return pkgcmd.RenderYAMLAs(&buf, w, format)
 }
 
 func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, error) {

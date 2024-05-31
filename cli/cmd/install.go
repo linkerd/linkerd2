@@ -1,10 +1,8 @@
 package cmd
 
 import (
-	"bufio"
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,6 +16,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/charts/static"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	flagspkg "github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -31,7 +30,6 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 )
 
@@ -363,31 +361,7 @@ func renderCRDs(w io.Writer, options valuespkg.Options, format string) error {
 		return err
 	}
 
-	if format == "json" {
-		reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(buf, 4096))
-		for {
-			manifest, err := reader.Read()
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					break
-				}
-				return err
-			}
-			bytes, err := yaml.YAMLToJSON(manifest)
-			if err != nil {
-				return err
-			}
-			_, err = w.Write(append(bytes, '\n'))
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	} else if format == "yaml" {
-		_, err = w.Write(buf.Bytes())
-		return err
-	}
-	return fmt.Errorf("unsupported format %s", format)
+	return pkgcmd.RenderYAMLAs(buf, w, format)
 }
 
 func renderControlPlane(w io.Writer, values *l5dcharts.Values, valuesOverrides map[string]interface{}, format string) error {
@@ -417,31 +391,7 @@ func renderControlPlane(w io.Writer, values *l5dcharts.Values, valuesOverrides m
 	buf.WriteString(yamlSep)
 	buf.WriteString(string(overrides))
 
-	if format == "json" {
-		reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(buf, 4096))
-		for {
-			manifest, err := reader.Read()
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					break
-				}
-				return err
-			}
-			bytes, err := yaml.YAMLToJSON(manifest)
-			if err != nil {
-				return err
-			}
-			_, err = w.Write(append(bytes, '\n'))
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	} else if format == "yaml" {
-		_, err = w.Write(buf.Bytes())
-		return err
-	}
-	return fmt.Errorf("unsupported format %s", format)
+	return pkgcmd.RenderYAMLAs(buf, w, format)
 }
 
 // renderOverrides outputs the Secret/linkerd-config-overrides resource which

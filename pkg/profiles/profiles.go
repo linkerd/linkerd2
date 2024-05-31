@@ -12,6 +12,7 @@ import (
 	"time"
 
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2" // TODO: pkg/profiles should not depend on controller/gen
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -223,7 +224,7 @@ func RenderProfileTemplate(namespace, service, clusterDomain string, w io.Writer
 		return err
 	}
 
-	if format == "json" {
+	if format == pkgcmd.JsonOutput {
 		bytes, err := yamlDecoder.ToJSON(buf.Bytes())
 		if err != nil {
 			return err
@@ -231,7 +232,7 @@ func RenderProfileTemplate(namespace, service, clusterDomain string, w io.Writer
 		_, err = w.Write(append(bytes, '\n'))
 		return err
 	}
-	if format == "yaml" {
+	if format == pkgcmd.YamlOutput {
 		_, err = w.Write(buf.Bytes())
 		return err
 	}
