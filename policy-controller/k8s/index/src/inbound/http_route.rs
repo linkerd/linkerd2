@@ -2,8 +2,8 @@ use crate::http_route;
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Error, Result};
 use k8s_gateway_api as api;
-use linkerd_policy_controller_core::http_route::{HttpRouteMatch, Method};
 use linkerd_policy_controller_core::inbound::{Filter, HttpRoute, HttpRouteRule};
+use linkerd_policy_controller_core::routes::{HttpRouteMatch, Method};
 use linkerd_policy_controller_core::POLICY_CONTROLLER_NAME;
 use linkerd_policy_controller_k8s_api::{
     self as k8s, gateway,

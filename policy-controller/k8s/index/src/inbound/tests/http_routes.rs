@@ -1,7 +1,7 @@
 use super::*;
 use crate::http_route::gkn_for_linkerd_http_route;
 use linkerd_policy_controller_core::{
-    http_route::{HttpRouteMatch, Method, PathMatch},
+    routes::{HttpRouteMatch, Method, PathMatch},
     POLICY_CONTROLLER_NAME,
 };
 

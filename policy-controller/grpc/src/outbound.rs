@@ -1,4 +1,4 @@
-use crate::{http_route, workload};
+use crate::{routes, workload};
 use futures::prelude::*;
 use linkerd2_proxy_api::{
     self as api, destination,
@@ -9,11 +9,11 @@ use linkerd2_proxy_api::{
     },
 };
 use linkerd_policy_controller_core::{
-    http_route::GroupKindNamespaceName,
     outbound::{
         Backend, DiscoverOutboundPolicy, Filter, HttpRoute, HttpRouteRule, OutboundDiscoverTarget,
         OutboundPolicy, OutboundPolicyStream,
     },
+    routes::GroupKindNamespaceName,
 };
 use std::{net::SocketAddr, num::NonZeroU16, str::FromStr, sync::Arc, time};
 
@@ -316,7 +316,7 @@ fn convert_outbound_http_route(
 
     let hosts = hostnames
         .into_iter()
-        .map(http_route::convert_host_match)
+        .map(routes::convert_host_match)
         .collect();
 
     let rules = rules
@@ -351,7 +351,10 @@ fn convert_outbound_http_route(
                     )
                 };
                 outbound::http_route::Rule {
-                    matches: matches.into_iter().map(http_route::convert_match).collect(),
+                    matches: matches
+                        .into_iter()
+                        .map(routes::http::convert_match)
+                        .collect(),
                     backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
                     filters: filters.into_iter().map(convert_filter).collect(),
                     request_timeout: request_timeout
@@ -598,12 +601,12 @@ fn convert_filter(filter: Filter) -> outbound::http_route::Filter {
     outbound::http_route::Filter {
         kind: Some(match filter {
             Filter::RequestHeaderModifier(f) => {
-                Kind::RequestHeaderModifier(http_route::convert_request_header_modifier_filter(f))
+                Kind::RequestHeaderModifier(routes::convert_request_header_modifier_filter(f))
             }
             Filter::ResponseHeaderModifier(f) => {
-                Kind::ResponseHeaderModifier(http_route::convert_response_header_modifier_filter(f))
+                Kind::ResponseHeaderModifier(routes::convert_response_header_modifier_filter(f))
             }
-            Filter::RequestRedirect(f) => Kind::Redirect(http_route::convert_redirect_filter(f)),
+            Filter::RequestRedirect(f) => Kind::Redirect(routes::convert_redirect_filter(f)),
         }),
     }
 }

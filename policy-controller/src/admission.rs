@@ -451,7 +451,7 @@ fn validate_match(
     let _ = path.map(http_route::path_match).transpose()?;
     let _ = method
         .as_deref()
-        .map(core::http_route::Method::try_from)
+        .map(core::routes::Method::try_from)
         .transpose()?;
 
     for q in query_params.into_iter().flatten() {

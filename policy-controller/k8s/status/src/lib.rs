@@ -1,6 +1,6 @@
-mod http_route;
 mod index;
 mod resource_id;
+mod routes;
 mod service;
 
 #[cfg(test)]

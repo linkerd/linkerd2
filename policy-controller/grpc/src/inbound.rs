@@ -1,4 +1,4 @@
-use crate::{http_route, workload::Workload};
+use crate::{routes, workload::Workload};
 use futures::prelude::*;
 use linkerd2_proxy_api::{
     self as api,
@@ -382,14 +382,17 @@ fn to_http_route(
 
     let hosts = hostnames
         .into_iter()
-        .map(http_route::convert_host_match)
+        .map(routes::convert_host_match)
         .collect();
 
     let rules = rules
         .into_iter()
         .map(
             |HttpRouteRule { matches, filters }| proto::http_route::Rule {
-                matches: matches.into_iter().map(http_route::convert_match).collect(),
+                matches: matches
+                    .into_iter()
+                    .map(routes::http::convert_match)
+                    .collect(),
                 filters: filters.into_iter().filter_map(convert_filter).collect(),
             },
         )
@@ -413,13 +416,13 @@ fn convert_filter(filter: Filter) -> Option<proto::http_route::Filter> {
 
     let kind = match filter {
         Filter::FailureInjector(f) => Some(Kind::FailureInjector(
-            http_route::convert_failure_injector_filter(f),
+            routes::http::convert_failure_injector_filter(f),
         )),
         Filter::RequestHeaderModifier(f) => Some(Kind::RequestHeaderModifier(
-            http_route::convert_request_header_modifier_filter(f),
+            routes::convert_request_header_modifier_filter(f),
         )),
         Filter::ResponseHeaderModifier(_) => None,
-        Filter::RequestRedirect(f) => Some(Kind::Redirect(http_route::convert_redirect_filter(f))),
+        Filter::RequestRedirect(f) => Some(Kind::Redirect(routes::convert_redirect_filter(f))),
     };
 
     kind.map(|kind| proto::http_route::Filter { kind: Some(kind) })
