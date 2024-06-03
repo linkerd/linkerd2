@@ -1972,11 +1972,14 @@ impl ClusterInfo {
         // Generate an `Exact` path match for each probe path defined on the
         // pod.
         let matches = probe_paths
-            .map(|path| {
+            .filter_map(|path| {
                 MatchType::default()
                     .set_path(path)
                     .set_method("GET")
-                    .unwrap()
+                    .map_err(|error| {
+                        tracing::warn!(%path, ?error, "unable to create default route match for path");
+                    })
+                    .ok()
             })
             .collect::<Vec<_>>();
 
