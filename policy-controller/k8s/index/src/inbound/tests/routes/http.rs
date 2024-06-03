@@ -225,7 +225,7 @@ fn routes_created_for_probes() {
     // should not be automatically authorized.
     match &rx.borrow_and_update().protocol {
         ProxyProtocol::Http1(routes) => {
-            assert!(routes.contains_key(&InboundRouteRef::DEFAULT_PROBE))
+            assert!(!routes.contains_key(&InboundRouteRef::DEFAULT_PROBE))
         }
         protocol => {
             tracing::error!(?protocol);
