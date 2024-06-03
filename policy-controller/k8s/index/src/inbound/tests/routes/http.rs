@@ -133,7 +133,7 @@ fn routes_created_for_probes() {
 
     let mut expected_authorizations = HashMap::default();
     expected_authorizations.insert(
-        AuthorizationRef::Default("probe"),
+        AuthorizationRef::DEFAULT_PROBE,
         ClientAuthorization {
             networks: vec!["10.0.0.1/24".parse::<IpNet>().unwrap().into()],
             authentication: ClientAuthentication::Unauthenticated,
@@ -157,7 +157,7 @@ fn routes_created_for_probes() {
     let update = rx.borrow_and_update();
     let probes = match &update.protocol {
         ProxyProtocol::Detect { routes, .. } => {
-            routes.get(&InboundRouteRef::Default("probe")).unwrap()
+            routes.get(&InboundRouteRef::DEFAULT_PROBE).unwrap()
         }
         protocol => {
             tracing::error!(?protocol);
@@ -194,7 +194,7 @@ fn routes_created_for_probes() {
     // Pod's probe paths to be authorized.
     let update = rx.borrow_and_update();
     let probes = match &update.protocol {
-        ProxyProtocol::Http1(routes) => routes.get(&InboundRouteRef::Default("probe")).unwrap(),
+        ProxyProtocol::Http1(routes) => routes.get(&InboundRouteRef::DEFAULT_PROBE).unwrap(),
         protocol => {
             tracing::error!(?protocol);
             panic!("expected ProxyProtocol::Http1")
@@ -225,7 +225,7 @@ fn routes_created_for_probes() {
     // should not be automatically authorized.
     match &rx.borrow_and_update().protocol {
         ProxyProtocol::Http1(routes) => {
-            assert!(routes.contains_key(&InboundRouteRef::Default("probe")))
+            assert!(routes.contains_key(&InboundRouteRef::DEFAULT_PROBE))
         }
         protocol => {
             tracing::error!(?protocol);

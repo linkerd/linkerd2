@@ -186,7 +186,7 @@ fn mk_default_routes<MatchType>() -> HashMap<InboundRouteRef, InboundRoute<Match
 where
     InboundRoute<MatchType>: Default,
 {
-    Some((InboundRouteRef::Default("default"), Default::default()))
+    Some((InboundRouteRef::DEFAULT_DEFAULT, Default::default()))
         .into_iter()
         .collect()
 }

@@ -1959,7 +1959,7 @@ impl ClusterInfo {
         // matches all requests. Default authorizations are instrumented on
         // the server.
         let mut routes = HashMap::from_iter([(
-            InboundRouteRef::Default("default"),
+            InboundRouteRef::DEFAULT_DEFAULT,
             InboundRoute::<MatchType>::default(),
         )]);
 
@@ -1987,7 +1987,7 @@ impl ClusterInfo {
 
         // Probes are authorized on the configured probe networks only.
         let authorizations = std::iter::once((
-            AuthorizationRef::Default("probe"),
+            AuthorizationRef::DEFAULT_PROBE,
             ClientAuthorization {
                 networks: self
                     .probe_networks
@@ -2009,7 +2009,7 @@ impl ClusterInfo {
             ..Default::default()
         };
 
-        routes.insert(InboundRouteRef::Default("probe"), probe_route);
+        routes.insert(InboundRouteRef::DEFAULT_PROBE, probe_route);
 
         routes
     }
