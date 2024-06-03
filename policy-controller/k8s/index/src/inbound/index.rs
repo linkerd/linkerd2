@@ -1725,8 +1725,7 @@ impl PolicyIndex {
         let routes = self
             .routes
             .iter()
-            .filter(|(_, route)| route.selects_server(server_name))
-            .filter(|(_, route)| route.accepted_by_server(server_name))
+            .filter(|(_, route)| route.selects_and_accepted_by_server(server_name))
             .filter_map(|(gkn, route): (&'r GroupKindName, &'r TypedRouteBinding)| {
                 InboundRoute::<MatchType>::try_from(route)
                     .map(|mut route| {

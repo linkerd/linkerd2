@@ -82,16 +82,9 @@ impl TryFrom<&TypedRouteBinding> for InboundRoute<HttpRouteMatch> {
 
 impl TypedRouteBinding {
     #[inline]
-    pub fn selects_server(&self, name: &str) -> bool {
+    pub fn selects_and_accepted_by_server(&self, name: &str) -> bool {
         match self {
-            Self::Http(binding) => binding.selects_server(name),
-        }
-    }
-
-    #[inline]
-    pub fn accepted_by_server(&self, name: &str) -> bool {
-        match self {
-            Self::Http(binding) => binding.accepted_by_server(name),
+            Self::Http(binding) => binding.selects_server(name) && binding.accepted_by_server(name),
         }
     }
 }
