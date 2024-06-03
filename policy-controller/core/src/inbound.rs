@@ -116,6 +116,12 @@ pub enum Filter {
     FailureInjector(FailureInjectorFilter),
 }
 
+// === impl AuthorizationRef ===
+
+impl AuthorizationRef {
+    pub const DEFAULT_PROBE: Self = Self::Default("probe");
+}
+
 // === impl InboundRoute ===
 
 /// The default `InboundRoute` used for any `InboundServer` that
@@ -161,4 +167,9 @@ impl PartialOrd for InboundRouteRef {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
+}
+
+impl InboundRouteRef {
+    pub const DEFAULT_PROBE: Self = InboundRouteRef::Default("probe");
+    pub const DEFAULT_DEFAULT: Self = InboundRouteRef::Default("default");
 }
