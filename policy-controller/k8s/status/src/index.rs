@@ -79,7 +79,7 @@ pub struct Index {
 
     /// Maps HttpRoute ids to a list of their parent and backend refs,
     /// regardless of if those parents have accepted the route.
-    http_route_refs: HashMap<NamespaceGroupKindName, HttpRoute>,
+    route_refs: HashMap<NamespaceGroupKindName, RouteRef>,
     servers: HashSet<ResourceId>,
     services: HashMap<ResourceId, Service>,
 
