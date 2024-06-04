@@ -226,7 +226,7 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
         });
 
         match outbound.routes {
-            None => {
+            OutboundRouteCollection::Empty => {
                 let routes = vec![default_outbound_http_route(backend.clone())];
 
                 outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
@@ -248,7 +248,7 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
                     }),
                 })
             }
-            Some(OutboundRouteCollection::Http(routes)) => {
+            OutboundRouteCollection::Http(routes) => {
                 let mut routes = routes
                     .into_iter()
                     .sorted_by(timestamp_then_name)

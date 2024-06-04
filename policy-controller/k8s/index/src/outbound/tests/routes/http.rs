@@ -39,11 +39,10 @@ fn backend_service() {
 
     {
         let policy = rx.borrow_and_update();
-        let backend = policy
-            .routes
-            .as_ref()
+        let backend = Some(&policy.routes)
             .map(|routes| match routes {
                 OutboundRouteCollection::Http(routes) => routes,
+                _ => panic!("expected http route collection"),
             })
             .unwrap()
             .get(&GroupKindNamespaceName {
@@ -77,11 +76,10 @@ fn backend_service() {
 
     {
         let policy = rx.borrow_and_update();
-        let backend = policy
-            .routes
-            .as_ref()
+        let backend = Some(&policy.routes)
             .map(|routes| match routes {
                 OutboundRouteCollection::Http(routes) => routes,
+                _ => panic!("expected http route collection"),
             })
             .unwrap()
             .get(&GroupKindNamespaceName {

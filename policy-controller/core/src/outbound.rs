@@ -32,14 +32,16 @@ pub enum TypedOutboundRoute {
     Http(OutboundRoute<HttpRouteMatch>),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum OutboundRouteCollection {
+    #[default]
+    Empty,
     Http(HashMap<GroupKindNamespaceName, OutboundRoute<HttpRouteMatch>>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OutboundPolicy {
-    pub routes: Option<OutboundRouteCollection>,
+    pub routes: OutboundRouteCollection,
     pub authority: String,
     pub name: String,
     pub namespace: String,
@@ -125,22 +127,23 @@ impl From<OutboundRoute<HttpRouteMatch>> for TypedOutboundRoute {
 impl OutboundRouteCollection {
     pub fn is_empty(&self) -> bool {
         match self {
+            Self::Empty => true,
             Self::Http(routes) => routes.is_empty(),
-        }
-    }
-
-    pub fn for_gknn(gknn: &GroupKindNamespaceName) -> Option<Self> {
-        match gknn.kind.as_ref() {
-            "HTTPRoute" => Some(Self::Http(Default::default())),
-            _ => None,
         }
     }
 
     pub fn remove(&mut self, key: &GroupKindNamespaceName) {
         match self {
+            Self::Empty => {
+                return;
+            }
             Self::Http(routes) => {
                 routes.remove(key);
             }
+        }
+
+        if self.is_empty() {
+            let _ = std::mem::replace(self, Self::Empty);
         }
     }
 
@@ -149,9 +152,23 @@ impl OutboundRouteCollection {
         key: GroupKindNamespaceName,
         route: Route,
     ) -> Result<Option<TypedOutboundRoute>> {
-        match (self, route.into()) {
+        let route = route.into();
+
+        if matches!(self, Self::Empty) {
+            let _ = std::mem::replace(
+                self,
+                match &route {
+                    TypedOutboundRoute::Http(_) => Self::Http(Default::default()),
+                },
+            );
+        }
+
+        match (self, route) {
             (Self::Http(routes), TypedOutboundRoute::Http(route)) => {
                 Ok(routes.insert(key, route).map(Into::into))
+            }
+            (Self::Empty, _) => {
+                anyhow::bail!("cannot insert a route into an uninitialized route collection")
             }
         }
     }

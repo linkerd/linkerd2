@@ -83,15 +83,8 @@ struct ServiceRoutes {
 struct RoutesWatch {
     opaque: bool,
     accrual: Option<FailureAccrual>,
-    routes: Option<OutboundRouteCollection>,
+    routes: OutboundRouteCollection,
     watch: watch::Sender<OutboundPolicy>,
-}
-
-#[inline]
-fn default_collection_for(route: &TypedOutboundRoute) -> OutboundRouteCollection {
-    match route {
-        TypedOutboundRoute::Http(_) => OutboundRouteCollection::Http(Default::default()),
-    }
 }
 
 impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::HttpRoute> for Index {
@@ -339,7 +332,7 @@ impl Namespace {
             // Service without specifying a port.
             self.service_routes
                 .entry(parent_ref.name.clone())
-                .or_insert_with(|| default_collection_for(&outbound_route))
+                .or_default()
                 .insert(route.gknn(), outbound_route)
                 .map_err(|error| tracing::warn!(?error))
                 .transpose();
@@ -359,19 +352,17 @@ impl Namespace {
 
         for routes in self.service_port_routes.values_mut() {
             for watch in routes.watches_by_ns.values_mut() {
-                if let Some(collection) = watch.routes.as_mut() {
-                    match collection {
-                        OutboundRouteCollection::Http(routes) => {
-                            routes
-                                .values_mut()
-                                .flat_map(|route| route.rules.iter_mut())
-                                .flat_map(|rule| rule.backends.iter_mut())
-                                .for_each(update_service);
-                        }
+                match &mut watch.routes {
+                    OutboundRouteCollection::Empty => {}
+                    OutboundRouteCollection::Http(routes) => {
+                        routes
+                            .values_mut()
+                            .flat_map(|route| route.rules.iter_mut())
+                            .flat_map(|rule| rule.backends.iter_mut())
+                            .for_each(update_service);
                     }
-
-                    watch.send_if_modified();
                 }
+                watch.send_if_modified();
             }
         }
     }
@@ -438,7 +429,7 @@ impl Namespace {
                 };
 
                 match routes {
-                    None => {}
+                    None | Some(OutboundRouteCollection::Empty) => {}
                     Some(OutboundRouteCollection::Http(routes)) => {
                         service_routes
                             .insert_producer_and_consumer_routes(routes, self.namespace.as_str());
@@ -790,7 +781,8 @@ impl ServiceRoutes {
         let routes = self
             .watches_by_ns
             .get(self.namespace.as_ref())
-            .and_then(|watch| watch.routes.clone());
+            .map(|watch| watch.routes.clone())
+            .unwrap_or_default();
 
         self.watches_by_ns.entry(namespace).or_insert_with(|| {
             let (sender, _) = watch::channel(OutboundPolicy {
@@ -919,36 +911,16 @@ impl RoutesWatch {
         gknn: GroupKindNamespaceName,
         route: Route,
     ) {
-        match &mut self.routes {
-            Some(routes) => {
-                routes
-                    .insert(gknn, route)
-                    .map_err(|error| tracing::warn!(?error))
-                    .transpose();
-            }
-            None => {
-                let route = route.into();
-                let mut routes = default_collection_for(&route);
-                routes
-                    .insert(gknn, route)
-                    .map_err(|error| tracing::warn!(?error))
-                    .transpose();
-                self.routes = Some(routes);
-            }
-        };
+        self.routes
+            .insert(gknn, route)
+            .map_err(|error| tracing::warn!(?error))
+            .transpose();
 
         self.send_if_modified();
     }
 
     fn remove_route(&mut self, gknn: &GroupKindNamespaceName) {
-        if let Some(routes) = &mut self.routes {
-            routes.remove(gknn);
-
-            if routes.is_empty() {
-                self.routes = None;
-            }
-        }
-
+        self.routes.remove(gknn);
         self.send_if_modified();
     }
 }
