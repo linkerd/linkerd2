@@ -9,13 +9,12 @@ use linkerd2_proxy_api::{
         outbound_policies_server::{OutboundPolicies, OutboundPoliciesServer},
     },
 };
-use linkerd_policy_controller_core::routes::HttpRouteMatch;
 use linkerd_policy_controller_core::{
     outbound::{
         Backend, DiscoverOutboundPolicy, Filter, OutboundDiscoverTarget, OutboundPolicy,
         OutboundPolicyStream, OutboundRoute, OutboundRouteCollection, OutboundRouteRule,
     },
-    routes::GroupKindNamespaceName,
+    routes::{GroupKindNamespaceName, HttpRouteMatch},
 };
 use std::{net::SocketAddr, num::NonZeroU16, str::FromStr, sync::Arc, time};
 
