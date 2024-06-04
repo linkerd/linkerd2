@@ -23,7 +23,8 @@ const (
 	defaultCNINamespace     = "linkerd-cni"
 	defaultClusterDomain    = "cluster.local"
 
-	jsonOutput  = healthcheck.JSONOutput
+	jsonOutput  = pkgcmd.JsonOutput
+	yamlOutput  = pkgcmd.YamlOutput
 	tableOutput = healthcheck.TableOutput
 	shortOutput = healthcheck.ShortOutput
 )

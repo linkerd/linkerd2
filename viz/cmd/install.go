@@ -9,6 +9,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/charts"
 	partials "github.com/linkerd/linkerd2/pkg/charts/static"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/viz/static"
@@ -50,6 +51,7 @@ func newCmdInstall() *cobra.Command {
 	var cniEnabled bool
 	var wait time.Duration
 	var options values.Options
+	var output string
 
 	cmd := &cobra.Command{
 		Use:   "install [flags]",
@@ -77,7 +79,7 @@ A full list of configurable values can be found at https://www.github.com/linker
 				hc.RunWithExitOnError()
 				cniEnabled = hc.CNIEnabled
 			}
-			return install(os.Stdout, options, ha, cniEnabled)
+			return install(os.Stdout, options, ha, cniEnabled, output)
 		},
 	}
 
@@ -86,13 +88,14 @@ A full list of configurable values can be found at https://www.github.com/linker
 		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)")
 	cmd.Flags().BoolVar(&ha, "ha", false, `Install Viz Extension in High Availability mode.`)
 	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
+	cmd.PersistentFlags().StringVarP(&output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	flags.AddValueOptionsFlags(cmd.Flags(), &options)
 
 	return cmd
 }
 
-func install(w io.Writer, options values.Options, ha, cniEnabled bool) error {
+func install(w io.Writer, options values.Options, ha, cniEnabled bool, format string) error {
 
 	// Create values override
 	valuesOverrides, err := options.MergeValues(nil)
@@ -121,10 +124,10 @@ func install(w io.Writer, options values.Options, ha, cniEnabled bool) error {
 
 	// TODO: Add any validation logic here
 
-	return render(w, valuesOverrides)
+	return render(w, valuesOverrides, format)
 }
 
-func render(w io.Writer, valuesOverrides map[string]interface{}) error {
+func render(w io.Writer, valuesOverrides map[string]interface{}, format string) error {
 
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
@@ -193,6 +196,5 @@ func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 		}
 	}
 
-	_, err = w.Write(buf.Bytes())
-	return err
+	return pkgcmd.RenderYAMLAs(&buf, w, format)
 }
