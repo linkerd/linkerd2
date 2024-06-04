@@ -813,12 +813,10 @@ impl ServiceRoutes {
 
             // Producer routes apply to clients in all namespaces, so
             // apply it to watches for all other namespaces too.
-            for (_, ns_watch) in self
-                .watches_by_ns
-                .iter_mut()
-                .filter(|(ns, _)| ns != &gknn.namespace.as_ref())
-            {
-                ns_watch.insert_route(gknn.clone(), route.clone());
+            for (ns, ns_watch) in self.watches_by_ns.iter_mut() {
+                if ns != &gknn.namespace {
+                    ns_watch.insert_route(gknn.clone(), route.clone());
+                }
             }
         } else {
             // This is a consumer namespace route and should only apply to
