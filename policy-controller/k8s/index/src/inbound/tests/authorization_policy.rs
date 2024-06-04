@@ -1,6 +1,6 @@
 use super::*;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1 as metav1;
-use linkerd_policy_controller_core::{http_route, inbound};
+use linkerd_policy_controller_core::{inbound, routes};
 
 #[test]
 fn links_authorization_policy_with_mtls_name() {
@@ -362,14 +362,14 @@ fn authorization_policy_prevents_index_deletion() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
-            http_routes: hashmap!(HttpRouteRef::Linkerd(http_route::GroupKindName{
+            http_routes: hashmap!(HttpRouteRef::Linkerd(routes::GroupKindName{
                 group: "policy.linkerd.io".into(),
                 kind: "HTTPRoute".into(),
                 name: "route-foo".into(),
             }) => HttpRoute {
                 rules: vec![inbound::HttpRouteRule {
-                    matches: vec![http_route::HttpRouteMatch {
-                        path: Some(http_route::PathMatch::Prefix("/foo".to_string())),
+                    matches: vec![routes::HttpRouteMatch {
+                        path: Some(routes::PathMatch::Prefix("/foo".to_string())),
                         headers: vec![],
                         query_params: vec![],
                         method: None,
