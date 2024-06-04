@@ -821,12 +821,13 @@ impl ServiceRoutes {
 
             // Producer routes apply to clients in all namespaces, so
             // apply it to watches for all other namespaces too.
-            self.watches_by_ns
+            for (_, ns_watch) in self
+                .watches_by_ns
                 .iter_mut()
                 .filter(|(ns, _)| ns != &gknn.namespace.as_ref())
-                .for_each(|(_, ns_watch)| {
-                    ns_watch.insert_route(gknn.clone(), route.clone());
-                });
+            {
+                ns_watch.insert_route(gknn.clone(), route.clone());
+            }
         } else {
             // This is a consumer namespace route and should only apply to
             // watches from that namespace.
@@ -846,9 +847,9 @@ impl ServiceRoutes {
     }
 
     fn delete(&mut self, gknn: &GroupKindNamespaceName) {
-        self.watches_by_ns.values_mut().for_each(|watch| {
+        for watch in self.watches_by_ns.values_mut() {
             watch.remove_route(gknn);
-        });
+        }
     }
 
     fn insert_producer_and_consumer_routes<Route: Clone + Into<TypedOutboundRoute>>(
