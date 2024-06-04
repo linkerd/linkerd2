@@ -126,24 +126,18 @@ impl From<OutboundRoute<HttpRouteMatch>> for TypedOutboundRoute {
 
 impl OutboundRouteCollection {
     pub fn is_empty(&self) -> bool {
-        match self {
-            Self::Empty => true,
-            Self::Http(routes) => routes.is_empty(),
-        }
+        matches!(self, Self::Empty)
     }
 
     pub fn remove(&mut self, key: &GroupKindNamespaceName) {
         match self {
-            Self::Empty => {
-                return;
-            }
+            Self::Empty => {}
             Self::Http(routes) => {
                 routes.remove(key);
+                if routes.is_empty() {
+                    *self = Self::Empty;
+                }
             }
-        }
-
-        if self.is_empty() {
-            let _ = std::mem::replace(self, Self::Empty);
         }
     }
 
@@ -154,21 +148,15 @@ impl OutboundRouteCollection {
     ) -> Result<Option<TypedOutboundRoute>> {
         let route = route.into();
 
-        if matches!(self, Self::Empty) {
-            let _ = std::mem::replace(
-                self,
-                match &route {
-                    TypedOutboundRoute::Http(_) => Self::Http(Default::default()),
-                },
-            );
-        }
-
         match (self, route) {
+            (this @ Self::Empty, TypedOutboundRoute::Http(route)) => {
+                let mut routes = HashMap::default();
+                let inserted = routes.insert(key, route).map(Into::into);
+                *this = Self::Http(routes);
+                Ok(inserted)
+            }
             (Self::Http(routes), TypedOutboundRoute::Http(route)) => {
                 Ok(routes.insert(key, route).map(Into::into))
-            }
-            (Self::Empty, _) => {
-                anyhow::bail!("cannot insert a route into an uninitialized route collection")
             }
         }
     }
