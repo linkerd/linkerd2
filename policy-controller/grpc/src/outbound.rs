@@ -249,15 +249,11 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
                 })
             }
             OutboundRouteCollection::Http(routes) => {
-                let mut routes = routes
+                let routes = routes
                     .into_iter()
                     .sorted_by(timestamp_then_name)
                     .map(|(gknn, route)| convert_outbound_http_route(gknn, route, backend.clone()))
                     .collect::<Vec<_>>();
-
-                if routes.is_empty() {
-                    routes = vec![default_outbound_http_route(backend.clone())];
-                }
 
                 outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
                     timeout: Some(
