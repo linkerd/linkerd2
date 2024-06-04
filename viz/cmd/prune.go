@@ -19,6 +19,7 @@ func newCmdPrune() *cobra.Command {
 	var cniEnabled bool
 	var wait time.Duration
 	var options values.Options
+	var output string
 
 	cmd := &cobra.Command{
 		Use:   "prune [flags]",
@@ -43,18 +44,19 @@ func newCmdPrune() *cobra.Command {
 
 			manifests := strings.Builder{}
 
-			err := install(&manifests, options, ha, cniEnabled)
+			err := install(&manifests, options, ha, cniEnabled, "yaml")
 			if err != nil {
 				return err
 			}
 
 			label := fmt.Sprintf("%s=%s", k8s.LinkerdExtensionLabel, vizHealthcheck.VizExtensionName)
-			return pkgCmd.Prune(cmd.Context(), hc.KubeAPIClient(), manifests.String(), label)
+			return pkgCmd.Prune(cmd.Context(), hc.KubeAPIClient(), manifests.String(), label, output)
 		},
 	}
 
 	cmd.Flags().BoolVar(&ha, "ha", false, `Set if Linkerd Viz Extension is installed in High Availability mode.`)
 	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for extension components to be available")
+	cmd.PersistentFlags().StringVarP(&output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	flags.AddValueOptionsFlags(cmd.Flags(), &options)
 
