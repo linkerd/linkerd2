@@ -4,8 +4,6 @@ use kube::Resource;
 
 mod http;
 
-const POLICY_API_GROUP: &str = "policy.linkerd.io";
-
 fn mk_authorization_policy<Route: ResourceExt + Resource<DynamicType = ()>>(
     name: impl ToString,
     route: &Route,
