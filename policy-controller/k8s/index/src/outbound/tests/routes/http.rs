@@ -1,21 +1,23 @@
 use kube::Resource;
 use linkerd_policy_controller_core::{
-    outbound::{Backend, WeightedService},
+    outbound::{Backend, OutboundRouteCollection, WeightedService},
     routes::GroupKindNamespaceName,
     POLICY_CONTROLLER_NAME,
 };
 use linkerd_policy_controller_k8s_api::gateway::BackendRef;
 use tracing::Level;
 
-use super::*;
+use super::super::*;
 
 #[test]
 fn backend_service() {
     tracing_subscriber::fmt()
         .with_max_level(Level::TRACE)
-        .init();
+        .try_init()
+        .ok();
 
     let test = TestConfig::default();
+
     // Create apex service.
     let apex = mk_service("ns", "apex", 8080);
     test.index.write().apply(apex);
@@ -37,8 +39,12 @@ fn backend_service() {
 
     {
         let policy = rx.borrow_and_update();
-        let backend = policy
-            .http_routes
+        let backend = Some(&policy.routes)
+            .map(|routes| match routes {
+                OutboundRouteCollection::Http(routes) => routes,
+                _ => panic!("expected http route collection"),
+            })
+            .unwrap()
             .get(&GroupKindNamespaceName {
                 group: k8s::policy::HttpRoute::group(&()),
                 kind: k8s::policy::HttpRoute::kind(&()),
@@ -52,10 +58,13 @@ fn backend_service() {
             .backends
             .first()
             .expect("backend should exist");
+
         let exists = match backend {
+            Backend::Invalid { .. } => &false,
             Backend::Service(WeightedService { exists, .. }) => exists,
-            _ => panic!("backend should be a service"),
+            _ => panic!("backend should be a service, but got {backend:?}"),
         };
+
         // Backend should not exist.
         assert!(!exists);
     }
@@ -67,8 +76,12 @@ fn backend_service() {
 
     {
         let policy = rx.borrow_and_update();
-        let backend = policy
-            .http_routes
+        let backend = Some(&policy.routes)
+            .map(|routes| match routes {
+                OutboundRouteCollection::Http(routes) => routes,
+                _ => panic!("expected http route collection"),
+            })
+            .unwrap()
             .get(&GroupKindNamespaceName {
                 group: k8s::policy::HttpRoute::group(&()),
                 kind: k8s::policy::HttpRoute::kind(&()),
@@ -82,10 +95,12 @@ fn backend_service() {
             .backends
             .first()
             .expect("backend should exist");
+
         let exists = match backend {
             Backend::Service(WeightedService { exists, .. }) => exists,
-            _ => panic!("backend should be a service"),
+            backend => panic!("backend should be a service, but got {:?}", backend),
         };
+
         // Backend should exist.
         assert!(exists);
     }
@@ -146,8 +161,8 @@ fn mk_route(
                 timeouts: None,
             }]),
         },
-        status: Some(k8s::policy::httproute::HttpRouteStatus {
-            inner: k8s::gateway::RouteStatus {
+        status: Some(HttpRouteStatus {
+            inner: RouteStatus {
                 parents: vec![k8s::gateway::RouteParentStatus {
                     parent_ref: ParentReference {
                         group: Some("core".to_string()),
@@ -159,7 +174,7 @@ fn mk_route(
                     },
                     controller_name: POLICY_CONTROLLER_NAME.to_string(),
                     conditions: vec![k8s::Condition {
-                        last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
+                        last_transition_time: Time(chrono::DateTime::<Utc>::MIN_UTC),
                         message: "".to_string(),
                         observed_generation: None,
                         reason: "Accepted".to_string(),

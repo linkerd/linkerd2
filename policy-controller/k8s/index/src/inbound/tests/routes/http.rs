@@ -6,6 +6,8 @@ use linkerd_policy_controller_core::{
     POLICY_CONTROLLER_NAME,
 };
 
+const POLICY_API_GROUP: &str = "policy.linkerd.io";
+
 #[test]
 fn route_attaches_to_server() {
     let test = TestConfig::default();

@@ -5,15 +5,17 @@ use crate::{
 };
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
-use k8s_gateway_api::{BackendObjectReference, HttpBackendRef, ParentReference};
 use linkerd_policy_controller_core::{
     outbound::{
-        Backend, Backoff, FailureAccrual, Filter, HttpRoute, HttpRouteRule, OutboundPolicy,
-        WeightedService,
+        Backend, Backoff, FailureAccrual, Filter, OutboundPolicy, OutboundRoute,
+        OutboundRouteCollection, OutboundRouteRule, TypedOutboundRoute, WeightedService,
     },
-    routes::GroupKindNamespaceName,
+    routes::{GroupKindNamespaceName, HttpRouteMatch},
 };
-use linkerd_policy_controller_k8s_api::{policy as api, ResourceExt, Service, Time};
+use linkerd_policy_controller_k8s_api::{
+    gateway::{self as k8s_gateway_api, BackendObjectReference, HttpBackendRef, ParentReference},
+    policy as linkerd_k8s_api, ResourceExt, Service, Time,
+};
 use parking_lot::RwLock;
 use std::{hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time};
 use tokio::sync::watch;
@@ -50,7 +52,7 @@ struct Namespace {
     service_port_routes: HashMap<ServicePort, ServiceRoutes>,
     /// Stores the route resources (by service name) that do not
     /// explicitly target a port.
-    service_routes: HashMap<String, HashMap<GroupKindNamespaceName, HttpRoute>>,
+    service_routes: HashMap<String, OutboundRouteCollection>,
     namespace: Arc<String>,
 }
 
@@ -81,17 +83,19 @@ struct ServiceRoutes {
 struct RoutesWatch {
     opaque: bool,
     accrual: Option<FailureAccrual>,
-    routes: HashMap<GroupKindNamespaceName, HttpRoute>,
+    routes: OutboundRouteCollection,
     watch: watch::Sender<OutboundPolicy>,
 }
 
-impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
-    fn apply(&mut self, route: api::HttpRoute) {
+impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::HttpRoute> for Index {
+    fn apply(&mut self, route: linkerd_k8s_api::HttpRoute) {
         self.apply(RouteResource::LinkerdHttp(route))
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        let gknn = name.gkn::<api::HttpRoute>().namespaced(namespace);
+        let gknn = name
+            .gkn::<linkerd_k8s_api::HttpRoute>()
+            .namespaced(namespace);
         tracing::debug!(?gknn, "deleting route");
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete(&gknn);
@@ -211,18 +215,23 @@ impl Index {
             .by_ns
             .entry(service_namespace.clone())
             .or_insert_with(|| Namespace {
+                namespace: Arc::new(service_namespace.to_string()),
                 service_routes: Default::default(),
                 service_port_routes: Default::default(),
-                namespace: Arc::new(service_namespace.to_string()),
             });
+
         let key = ServicePort {
             service: service_name,
             port: service_port,
         };
+
         tracing::debug!(?key, "subscribing to service port");
+
         let routes =
             ns.service_routes_or_default(key, &self.namespaces.cluster_info, &self.service_info);
+
         let watch = routes.watch_for_ns_or_default(source_namespace);
+
         Ok(watch.watch.subscribe())
     }
 
@@ -237,20 +246,23 @@ impl Index {
             if !is_parent_service(parent_ref) {
                 continue;
             }
+
             if !route_accepted_by_service(route.status(), &parent_ref.name) {
                 continue;
             }
+
             let ns = parent_ref
                 .namespace
                 .clone()
                 .unwrap_or_else(|| route.namespace());
+
             self.namespaces
                 .by_ns
                 .entry(ns.clone())
                 .or_insert_with(|| Namespace {
+                    namespace: Arc::new(ns),
                     service_routes: Default::default(),
                     service_port_routes: Default::default(),
-                    namespace: Arc::new(ns),
                 })
                 .apply(
                     route.clone(),
@@ -277,28 +289,34 @@ impl Namespace {
         service_info: &HashMap<ServiceRef, ServiceInfo>,
     ) {
         tracing::debug!(?route);
+
         let outbound_route = match self.convert_route(route.clone(), cluster_info, service_info) {
             Ok(route) => route,
             Err(error) => {
-                tracing::error!(%error, "failed to convert HttpRoute");
+                tracing::error!(%error, "failed to convert route");
                 return;
             }
         };
+
         tracing::debug!(?outbound_route);
 
         let port = parent_ref.port.and_then(NonZeroU16::new);
+
         if let Some(port) = port {
             let service_port = ServicePort {
                 port,
                 service: parent_ref.name.clone(),
             };
+
             tracing::debug!(
                 ?service_port,
                 route = route.name(),
                 "inserting route for service"
             );
+
             let service_routes =
                 self.service_routes_or_default(service_port, cluster_info, service_info);
+
             service_routes.apply(route.gknn(), outbound_route);
         } else {
             // If the parent_ref doesn't include a port, apply this route
@@ -310,42 +328,54 @@ impl Namespace {
                     }
                 },
             );
+
             // Also add the route to the list of routes that target the
             // Service without specifying a port.
             self.service_routes
                 .entry(parent_ref.name.clone())
                 .or_default()
-                .insert(route.gknn(), outbound_route);
+                .insert(route.gknn(), outbound_route)
+                .map_err(|error| tracing::warn!(?error))
+                .transpose();
         }
     }
 
     fn reindex_services(&mut self, service_info: &HashMap<ServiceRef, ServiceInfo>) {
+        let update_service = |backend: &mut Backend| {
+            if let Backend::Service(svc) = backend {
+                let service_ref = ServiceRef {
+                    name: svc.name.clone(),
+                    namespace: svc.namespace.clone(),
+                };
+                svc.exists = service_info.contains_key(&service_ref);
+            }
+        };
+
         for routes in self.service_port_routes.values_mut() {
-            for routes in routes.watches_by_ns.values_mut() {
-                for route in routes.routes.values_mut() {
-                    for rule in route.rules.iter_mut() {
-                        for backend in rule.backends.iter_mut() {
-                            if let Backend::Service(svc) = backend {
-                                let service_ref = ServiceRef {
-                                    name: svc.name.clone(),
-                                    namespace: svc.namespace.clone(),
-                                };
-                                svc.exists = service_info.contains_key(&service_ref);
-                            }
-                        }
+            for watch in routes.watches_by_ns.values_mut() {
+                match &mut watch.routes {
+                    OutboundRouteCollection::Empty => {}
+                    OutboundRouteCollection::Http(routes) => {
+                        routes
+                            .values_mut()
+                            .flat_map(|route| route.rules.iter_mut())
+                            .flat_map(|rule| rule.backends.iter_mut())
+                            .for_each(update_service);
                     }
                 }
-                routes.send_if_modified();
+                watch.send_if_modified();
             }
         }
     }
 
     fn update_service(&mut self, name: String, service: &ServiceInfo) {
         tracing::debug!(?name, ?service, "updating service");
+
         for (svc_port, svc_routes) in self.service_port_routes.iter_mut() {
             if svc_port.service != name {
                 continue;
             }
+
             let opaque = service.opaque_ports.contains(&svc_port.port);
 
             svc_routes.update_service(opaque, service.accrual);
@@ -356,9 +386,11 @@ impl Namespace {
         for service in self.service_port_routes.values_mut() {
             service.delete(gknn);
         }
-        for routes in self.service_routes.values_mut() {
+
+        self.service_routes.retain(|_, routes| {
             routes.remove(gknn);
-        }
+            !routes.is_empty()
+        });
     }
 
     fn service_routes_or_default(
@@ -372,57 +404,38 @@ impl Namespace {
             .or_insert_with(|| {
                 let authority =
                     cluster.service_dns_authority(&self.namespace, &sp.service, sp.port);
+
                 let service_ref = ServiceRef {
                     name: sp.service.clone(),
                     namespace: self.namespace.to_string(),
                 };
+
                 let (opaque, accrual) = match service_info.get(&service_ref) {
                     Some(svc) => (svc.opaque_ports.contains(&sp.port), svc.accrual),
                     None => (false, None),
                 };
 
-                // The HttpRoutes which target this Service but don't specify
+                // The routes which target this Service but don't specify
                 // a port apply to all ports. Therefore, we include them.
-                let routes = self
-                    .service_routes
-                    .get(&sp.service)
-                    .cloned()
-                    .unwrap_or_default();
+                let routes = self.service_routes.get(&sp.service).cloned();
 
                 let mut service_routes = ServiceRoutes {
                     opaque,
                     accrual,
                     authority,
-                    namespace: self.namespace.clone(),
-                    name: sp.service,
                     port: sp.port,
+                    name: sp.service,
+                    namespace: self.namespace.clone(),
                     watches_by_ns: Default::default(),
                 };
 
-                // Producer routes are routes in the same namespace as their
-                // parent service. Consumer routes are routes in other
-                // namespaces.
-                let (producer_routes, consumer_routes): (Vec<_>, Vec<_>) = routes
-                    .into_iter()
-                    .partition(|(gknn, _route)| *gknn.namespace == *self.namespace);
-                for (gknn, route) in consumer_routes {
-                    // Consumer routes should only apply to watches from the
-                    // consumer namespace.
-                    let watch = service_routes.watch_for_ns_or_default(gknn.namespace.to_string());
-                    watch.routes.insert(gknn, route);
-                }
-                for (gknn, route) in producer_routes {
-                    // Insert the route into the producer namespace.
-                    let watch = service_routes.watch_for_ns_or_default(gknn.namespace.to_string());
-                    watch.routes.insert(gknn.clone(), route.clone());
-                    // Producer routes apply to clients in all namespaces, so
-                    // apply it to watches for all other namespaces too.
-                    for (ns, watch) in service_routes.watches_by_ns.iter_mut() {
-                        if ns != &gknn.namespace {
-                            watch.routes.insert(gknn.clone(), route.clone());
-                        }
+                match routes {
+                    None | Some(OutboundRouteCollection::Empty) => {}
+                    Some(OutboundRouteCollection::Http(routes)) => {
+                        service_routes
+                            .insert_producer_and_consumer_routes(routes, self.namespace.as_str());
                     }
-                }
+                };
 
                 service_routes
             })
@@ -433,7 +446,7 @@ impl Namespace {
         route: RouteResource,
         cluster: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
-    ) -> Result<HttpRoute> {
+    ) -> Result<TypedOutboundRoute> {
         match route {
             RouteResource::LinkerdHttp(route) => {
                 let hostnames = route
@@ -454,11 +467,11 @@ impl Namespace {
 
                 let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
 
-                Ok(HttpRoute {
+                Ok(TypedOutboundRoute::Http(OutboundRoute {
                     hostnames,
                     rules,
                     creation_timestamp,
-                })
+                }))
             }
             RouteResource::GatewayHttp(route) => {
                 let hostnames = route
@@ -474,26 +487,26 @@ impl Namespace {
                     .rules
                     .into_iter()
                     .flatten()
-                    .map(|r| self.convert_gateway_rule(r, cluster, service_info))
+                    .map(|r| self.convert_gateway_http_rule(r, cluster, service_info))
                     .collect::<Result<_>>()?;
 
                 let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
 
-                Ok(HttpRoute {
+                Ok(TypedOutboundRoute::Http(OutboundRoute {
                     hostnames,
                     rules,
                     creation_timestamp,
-                })
+                }))
             }
         }
     }
 
     fn convert_linkerd_rule(
         &self,
-        rule: api::httproute::HttpRouteRule,
+        rule: linkerd_k8s_api::httproute::HttpRouteRule,
         cluster: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
-    ) -> Result<HttpRouteRule> {
+    ) -> Result<OutboundRouteRule<HttpRouteMatch>> {
         let matches = rule
             .matches
             .into_iter()
@@ -526,21 +539,20 @@ impl Namespace {
             Some(timeout)
         });
 
-        let backend_request_timeout =
-            rule.timeouts
-                .as_ref()
-                .and_then(|timeouts: &api::httproute::HttpRouteTimeouts| {
-                    let timeout = time::Duration::from(timeouts.backend_request?);
+        let backend_request_timeout = rule.timeouts.as_ref().and_then(
+            |timeouts: &linkerd_k8s_api::httproute::HttpRouteTimeouts| {
+                let timeout = time::Duration::from(timeouts.backend_request?);
 
-                    // zero means "no timeout", per GEP-1742
-                    if timeout == time::Duration::from_nanos(0) {
-                        return None;
-                    }
+                // zero means "no timeout", per GEP-1742
+                if timeout == time::Duration::from_nanos(0) {
+                    return None;
+                }
 
-                    Some(timeout)
-                });
+                Some(timeout)
+            },
+        );
 
-        Ok(HttpRouteRule {
+        Ok(OutboundRouteRule {
             matches,
             backends,
             request_timeout,
@@ -549,12 +561,12 @@ impl Namespace {
         })
     }
 
-    fn convert_gateway_rule(
+    fn convert_gateway_http_rule(
         &self,
         rule: k8s_gateway_api::HttpRouteRule,
         cluster: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
-    ) -> Result<HttpRouteRule> {
+    ) -> Result<OutboundRouteRule<HttpRouteMatch>> {
         let matches = rule
             .matches
             .into_iter()
@@ -576,7 +588,7 @@ impl Namespace {
             .map(convert_gateway_filter)
             .collect::<Result<_>>()?;
 
-        Ok(HttpRouteRule {
+        Ok(OutboundRouteRule {
             matches,
             backends,
             request_timeout: None,
@@ -586,12 +598,13 @@ impl Namespace {
     }
 }
 
-fn convert_backend(
+fn convert_backend<BackendRef: Into<HttpBackendRef>>(
     ns: &str,
-    backend: HttpBackendRef,
+    backend: BackendRef,
     cluster: &ClusterInfo,
     services: &HashMap<ServiceRef, ServiceInfo>,
 ) -> Option<Backend> {
+    let backend = backend.into();
     let filters = backend.filters;
     let backend = backend.backend_ref?;
     if !is_backend_service(&backend.inner) {
@@ -655,23 +668,23 @@ fn convert_backend(
     }))
 }
 
-fn convert_linkerd_filter(filter: api::httproute::HttpRouteFilter) -> Result<Filter> {
+fn convert_linkerd_filter(filter: linkerd_k8s_api::httproute::HttpRouteFilter) -> Result<Filter> {
     let filter = match filter {
-        api::httproute::HttpRouteFilter::RequestHeaderModifier {
+        linkerd_k8s_api::httproute::HttpRouteFilter::RequestHeaderModifier {
             request_header_modifier,
         } => {
             let filter = routes::http::header_modifier(request_header_modifier)?;
             Filter::RequestHeaderModifier(filter)
         }
 
-        api::httproute::HttpRouteFilter::ResponseHeaderModifier {
+        linkerd_k8s_api::httproute::HttpRouteFilter::ResponseHeaderModifier {
             response_header_modifier,
         } => {
             let filter = routes::http::header_modifier(response_header_modifier)?;
             Filter::RequestHeaderModifier(filter)
         }
 
-        api::httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
+        linkerd_k8s_api::httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
             let filter = routes::http::req_redirect(request_redirect)?;
             Filter::RequestRedirect(filter)
         }
@@ -679,7 +692,10 @@ fn convert_linkerd_filter(filter: api::httproute::HttpRouteFilter) -> Result<Fil
     Ok(filter)
 }
 
-fn convert_gateway_filter(filter: k8s_gateway_api::HttpRouteFilter) -> Result<Filter> {
+fn convert_gateway_filter<RouteFilter: Into<k8s_gateway_api::HttpRouteFilter>>(
+    filter: RouteFilter,
+) -> Result<Filter> {
+    let filter = filter.into();
     let filter = match filter {
         k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
             request_header_modifier,
@@ -768,45 +784,46 @@ impl ServiceRoutes {
             .get(self.namespace.as_ref())
             .map(|watch| watch.routes.clone())
             .unwrap_or_default();
+
         self.watches_by_ns.entry(namespace).or_insert_with(|| {
             let (sender, _) = watch::channel(OutboundPolicy {
-                http_routes: routes.clone(),
-                authority: self.authority.clone(),
-                name: self.name.to_string(),
-                namespace: self.namespace.to_string(),
                 port: self.port,
                 opaque: self.opaque,
                 accrual: self.accrual,
+                routes: routes.clone(),
+                name: self.name.to_string(),
+                authority: self.authority.clone(),
+                namespace: self.namespace.to_string(),
             });
+
             RoutesWatch {
-                opaque: self.opaque,
-                accrual: self.accrual,
                 routes,
                 watch: sender,
+                opaque: self.opaque,
+                accrual: self.accrual,
             }
         })
     }
 
-    fn apply(&mut self, gknn: GroupKindNamespaceName, route: HttpRoute) {
+    fn apply(&mut self, gknn: GroupKindNamespaceName, route: TypedOutboundRoute) {
         if *gknn.namespace == *self.namespace {
             // This is a producer namespace route.
             let watch = self.watch_for_ns_or_default(gknn.namespace.to_string());
-            watch.routes.insert(gknn.clone(), route.clone());
-            watch.send_if_modified();
+
+            watch.insert_route(gknn.clone(), route.clone());
+
             // Producer routes apply to clients in all namespaces, so
             // apply it to watches for all other namespaces too.
-            for (ns, watch) in self.watches_by_ns.iter_mut() {
+            for (ns, ns_watch) in self.watches_by_ns.iter_mut() {
                 if ns != &gknn.namespace {
-                    watch.routes.insert(gknn.clone(), route.clone());
-                    watch.send_if_modified();
+                    ns_watch.insert_route(gknn.clone(), route.clone());
                 }
             }
         } else {
             // This is a consumer namespace route and should only apply to
             // watches from that namespace.
             let watch = self.watch_for_ns_or_default(gknn.namespace.to_string());
-            watch.routes.insert(gknn, route);
-            watch.send_if_modified();
+            watch.insert_route(gknn, route);
         }
     }
 
@@ -822,8 +839,44 @@ impl ServiceRoutes {
 
     fn delete(&mut self, gknn: &GroupKindNamespaceName) {
         for watch in self.watches_by_ns.values_mut() {
-            watch.routes.remove(gknn);
-            watch.send_if_modified();
+            watch.remove_route(gknn);
+        }
+    }
+
+    fn insert_producer_and_consumer_routes<Route: Clone + Into<TypedOutboundRoute>>(
+        &mut self,
+        routes: HashMap<GroupKindNamespaceName, Route>,
+        namespace: &str,
+    ) {
+        // Producer routes are routes in the same namespace as
+        // their parent service. Consumer routes are routes in
+        // other namespaces.
+        let (producer_routes, consumer_routes): (Vec<_>, Vec<_>) = routes
+            .into_iter()
+            .partition(|(gknn, _)| gknn.namespace.as_ref() == namespace);
+
+        for (consumer_gknn, consumer_route) in consumer_routes {
+            // Consumer routes should only apply to watches from the
+            // consumer namespace.
+            let consumer_watch = self.watch_for_ns_or_default(consumer_gknn.namespace.to_string());
+
+            consumer_watch.insert_route(consumer_gknn.clone(), consumer_route.clone());
+        }
+
+        for (producer_gknn, producer_route) in producer_routes {
+            // Insert the route into the producer namespace.
+            let producer_watch = self.watch_for_ns_or_default(producer_gknn.namespace.to_string());
+
+            producer_watch.insert_route(producer_gknn.clone(), producer_route.clone());
+
+            // Producer routes apply to clients in all namespaces, so
+            // apply it to watches for all other namespaces too.
+            self.watches_by_ns
+                .iter_mut()
+                .filter(|(namespace, _)| namespace.as_str() != producer_gknn.namespace.as_ref())
+                .for_each(|(_, watch)| {
+                    watch.insert_route(producer_gknn.clone(), producer_route.clone())
+                });
         }
     }
 }
@@ -832,20 +885,42 @@ impl RoutesWatch {
     fn send_if_modified(&mut self) {
         self.watch.send_if_modified(|policy| {
             let mut modified = false;
-            if self.routes != policy.http_routes {
-                policy.http_routes = self.routes.clone();
+
+            if self.routes != policy.routes {
+                policy.routes = self.routes.clone();
                 modified = true;
             }
+
             if self.opaque != policy.opaque {
                 policy.opaque = self.opaque;
                 modified = true;
             }
+
             if self.accrual != policy.accrual {
                 policy.accrual = self.accrual;
                 modified = true;
             }
+
             modified
         });
+    }
+
+    fn insert_route<Route: Into<TypedOutboundRoute>>(
+        &mut self,
+        gknn: GroupKindNamespaceName,
+        route: Route,
+    ) {
+        self.routes
+            .insert(gknn, route)
+            .map_err(|error| tracing::warn!(?error))
+            .transpose();
+
+        self.send_if_modified();
+    }
+
+    fn remove_route(&mut self, gknn: &GroupKindNamespaceName) {
+        self.routes.remove(gknn);
+        self.send_if_modified();
     }
 }
 
