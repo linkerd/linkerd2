@@ -685,7 +685,7 @@ data:
         initialDelaySeconds: 10
         timeoutSeconds: 1
       logFormat: plain
-      logHTTPHeaders: false
+      logHTTPHeaders: "false"
       logLevel: warn,linkerd=info,trust_dns=error
       nativeSidecar: false
       opaquePorts: 25,587,3306,4444,5432,6379,9300,11211

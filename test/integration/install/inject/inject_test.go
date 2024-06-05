@@ -77,7 +77,7 @@ func TestInjectManualParams(t *testing.T) {
 		CPULimit:               "20m",
 		MemoryLimit:            "20Mi",
 		UID:                    1337,
-		LogLevel:               "off",
+		LogLevel:               "off,linkerd_proxy_http::client[{headers}]=off",
 		EnableExternalProfiles: true,
 	}
 	flags, _ := injectionValidator.GetFlagsAndAnnotations()
@@ -136,7 +136,7 @@ func TestInjectAutoParams(t *testing.T) {
 			EphemeralStorageLimit:   "50Mi",
 			EphemeralStorageRequest: "10Mi",
 			Image:                   "proxy-image",
-			LogLevel:                "proxy-log-level",
+			LogLevel:                "proxy-log-level,linkerd_proxy_http::client[{headers}]=off",
 			UID:                     10,
 			Version:                 "proxy-version",
 			RequireIdentityOnPorts:  "8884,8885",
