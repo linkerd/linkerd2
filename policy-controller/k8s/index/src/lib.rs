@@ -7,7 +7,7 @@
 //!   objects.
 //! - Each `Server` selects over pods in the same namespace.
 //! - Each `ServerAuthorization` selects over `Server` instances in the same namespace.  When a
-//!   `ServerAuthorization` is updated, we find all of the `Server` instances it selects and update
+//!   `ServerAuthorization` is updated, we find all the `Server` instances it selects and update
 //!   their authorizations and publishes these updates on the server's broadcast channel.
 //!
 //! ```text
@@ -25,10 +25,10 @@
 
 mod cluster_info;
 mod defaults;
-pub mod http_route;
 pub mod inbound;
 pub mod outbound;
 pub mod ports;
+pub mod routes;
 
 pub use cluster_info::ClusterInfo;
 pub use defaults::DefaultPolicy;

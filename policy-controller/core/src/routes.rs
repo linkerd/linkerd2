@@ -1,4 +1,5 @@
 use anyhow::Result;
+
 pub use http::{
     header::{HeaderName, HeaderValue},
     uri::Scheme,
@@ -8,7 +9,6 @@ use regex::Regex;
 use std::{borrow::Cow, num::NonZeroU16};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-
 pub struct GroupKindName {
     pub group: Cow<'static, str>,
     pub kind: Cow<'static, str>,
@@ -122,6 +122,19 @@ impl GroupKindName {
             kind: self.kind,
             namespace: namespace.into(),
             name: self.name,
+        }
+    }
+}
+
+// === impl HttpRouteMatch ===
+
+impl Default for HttpRouteMatch {
+    fn default() -> Self {
+        Self {
+            method: None,
+            headers: vec![],
+            query_params: vec![],
+            path: Some(PathMatch::Prefix("/".to_string())),
         }
     }
 }
