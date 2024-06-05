@@ -439,7 +439,6 @@ impl Validate<ServerAuthorizationSpec> for Admission {
     }
 }
 
-use index::http_route;
 fn validate_match(
     httproute::HttpRouteMatch {
         path,
@@ -448,18 +447,18 @@ fn validate_match(
         method,
     }: httproute::HttpRouteMatch,
 ) -> Result<()> {
-    let _ = path.map(http_route::path_match).transpose()?;
+    let _ = path.map(index::routes::http::path_match).transpose()?;
     let _ = method
         .as_deref()
         .map(core::routes::Method::try_from)
         .transpose()?;
 
     for q in query_params.into_iter().flatten() {
-        http_route::query_param_match(q)?;
+        index::routes::http::query_param_match(q)?;
     }
 
     for h in headers.into_iter().flatten() {
-        http_route::header_match(h)?;
+        index::routes::http::header_match(h)?;
     }
 
     Ok(())
@@ -472,12 +471,12 @@ impl Validate<HttpRouteSpec> for Admission {
             match filter {
                 httproute::HttpRouteFilter::RequestHeaderModifier {
                     request_header_modifier,
-                } => http_route::header_modifier(request_header_modifier).map(|_| ()),
+                } => index::routes::http::header_modifier(request_header_modifier).map(|_| ()),
                 httproute::HttpRouteFilter::ResponseHeaderModifier {
                     response_header_modifier,
-                } => http_route::header_modifier(response_header_modifier).map(|_| ()),
+                } => index::routes::http::header_modifier(response_header_modifier).map(|_| ()),
                 httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
-                    http_route::req_redirect(request_redirect).map(|_| ())
+                    index::routes::http::req_redirect(request_redirect).map(|_| ())
                 }
             }
         }
@@ -545,12 +544,12 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
             match filter {
                 k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
                     request_header_modifier,
-                } => http_route::header_modifier(request_header_modifier).map(|_| ()),
+                } => index::routes::http::header_modifier(request_header_modifier).map(|_| ()),
                 k8s_gateway_api::HttpRouteFilter::ResponseHeaderModifier {
                     response_header_modifier,
-                } => http_route::header_modifier(response_header_modifier).map(|_| ()),
+                } => index::routes::http::header_modifier(response_header_modifier).map(|_| ()),
                 k8s_gateway_api::HttpRouteFilter::RequestRedirect { request_redirect } => {
-                    http_route::req_redirect(request_redirect).map(|_| ())
+                    index::routes::http::req_redirect(request_redirect).map(|_| ())
                 }
                 k8s_gateway_api::HttpRouteFilter::RequestMirror { .. } => Ok(()),
                 k8s_gateway_api::HttpRouteFilter::URLRewrite { .. } => Ok(()),
