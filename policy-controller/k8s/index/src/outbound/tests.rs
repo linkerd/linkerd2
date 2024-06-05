@@ -10,7 +10,7 @@ use linkerd_policy_controller_core::IpNet;
 use linkerd_policy_controller_k8s_api::{self as k8s};
 use tokio::time;
 
-mod http_routes;
+mod routes;
 
 struct TestConfig {
     index: SharedIndex,

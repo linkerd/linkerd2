@@ -14,6 +14,7 @@ import (
 	multicluster "github.com/linkerd/linkerd2/multicluster/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	partials "github.com/linkerd/linkerd2/pkg/charts/static"
+	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -53,6 +54,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	var valuesOptions valuespkg.Options
 	var ignoreCluster bool
 	var cniEnabled bool
+	var output string
 
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -84,7 +86,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				hc.RunWithExitOnError()
 				cniEnabled = hc.CNIEnabled
 			}
-			return install(cmd.Context(), stdout, options, valuesOptions, ha, ignoreCluster, cniEnabled)
+			return install(cmd.Context(), stdout, options, valuesOptions, ha, ignoreCluster, cniEnabled, output)
 		},
 	}
 
@@ -99,6 +101,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().DurationVar(&wait, "wait", 300*time.Second, "Wait for core control-plane components to be available")
 	cmd.Flags().BoolVar(&ignoreCluster, "ignore-cluster", false,
 		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)")
+	cmd.PersistentFlags().StringVarP(&output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
@@ -114,7 +117,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	return cmd
 }
 
-func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptions, valuesOptions valuespkg.Options, ha, ignoreCluster, cniEnabled bool) error {
+func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptions, valuesOptions valuespkg.Options, ha, ignoreCluster, cniEnabled bool, format string) error {
 	values, err := buildMulticlusterInstallValues(ctx, options, ignoreCluster)
 	if err != nil {
 		return err
@@ -137,10 +140,10 @@ func install(ctx context.Context, w io.Writer, options *multiclusterInstallOptio
 		valuesOverrides["cniEnabled"] = true
 	}
 
-	return render(w, values, valuesOverrides)
+	return render(w, values, valuesOverrides, format)
 }
 
-func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string]interface{}) error {
+func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string]interface{}, format string) error {
 	var files []*loader.BufferedFile
 	for _, template := range TemplatesMulticluster {
 		files = append(files, &loader.BufferedFile{Name: template})
@@ -207,10 +210,8 @@ func render(w io.Writer, values *multicluster.Values, valuesOverrides map[string
 			return err
 		}
 	}
-	w.Write(buf.Bytes())
-	w.Write([]byte("---\n"))
 
-	return nil
+	return pkgcmd.RenderYAMLAs(&buf, w, format)
 }
 
 func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, error) {

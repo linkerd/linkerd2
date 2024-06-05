@@ -15,6 +15,8 @@ import (
 
 func newCmdPrune() *cobra.Command {
 
+	var output string
+
 	cmd := &cobra.Command{
 		Use:   "prune [flags]",
 		Args:  cobra.NoArgs,
@@ -49,16 +51,18 @@ Please note this command is only intended for instances of Linkerd that were ins
 
 			manifests := strings.Builder{}
 
-			if err = renderControlPlane(&manifests, values, make(map[string]interface{})); err != nil {
+			if err = renderControlPlane(&manifests, values, make(map[string]interface{}), "yaml"); err != nil {
 				return err
 			}
-			if err = renderCRDs(&manifests, valuespkg.Options{}); err != nil {
+			if err = renderCRDs(&manifests, valuespkg.Options{}, "yaml"); err != nil {
 				return err
 			}
 
-			return pkgCmd.Prune(cmd.Context(), k8sAPI, manifests.String(), k8s.ControllerNSLabel)
+			return pkgCmd.Prune(cmd.Context(), k8sAPI, manifests.String(), k8s.ControllerNSLabel, output)
 		},
 	}
+
+	cmd.PersistentFlags().StringVarP(&output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	return cmd
 }

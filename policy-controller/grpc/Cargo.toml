@@ -10,8 +10,9 @@ async-stream = "0.3"
 async-trait = "0.1"
 http = "0.2"
 drain = "0.1"
-hyper = { version = "0.14", features = ["http2", "server", "tcp"] }
 futures = { version = "0.3", default-features = false }
+hyper = { version = "0.14", features = ["http2", "server", "tcp"] }
+itertools = "0.12"
 linkerd-policy-controller-core = { path = "../core" }
 maplit = "1"
 prost-types = "0.12.6"

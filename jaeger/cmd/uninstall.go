@@ -11,6 +11,8 @@ import (
 )
 
 func newCmdUninstall() *cobra.Command {
+	var output string
+
 	cmd := &cobra.Command{
 		Use:   "uninstall",
 		Args:  cobra.NoArgs,
@@ -20,7 +22,7 @@ func newCmdUninstall() *cobra.Command {
 This command provides all Kubernetes namespace-scoped and cluster-scoped resources (e.g services, deployments, RBACs, etc.) necessary to uninstall the Linkerd-jaeger extension.`,
 		Example: `linkerd uninstall | kubectl delete -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := uninstallRunE(cmd.Context())
+			err := uninstallRunE(cmd.Context(), output)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
@@ -28,11 +30,12 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 			return nil
 		},
 	}
+	cmd.PersistentFlags().StringVarP(&output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	return cmd
 }
 
-func uninstallRunE(ctx context.Context) error {
+func uninstallRunE(ctx context.Context, format string) error {
 	k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return err
@@ -43,5 +46,5 @@ func uninstallRunE(ctx context.Context) error {
 		return err
 	}
 
-	return pkgCmd.Uninstall(ctx, k8sAPI, selector)
+	return pkgCmd.Uninstall(ctx, k8sAPI, selector, format)
 }

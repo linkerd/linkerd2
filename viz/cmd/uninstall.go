@@ -14,6 +14,8 @@ import (
 )
 
 func newCmdUninstall() *cobra.Command {
+	var output string
+
 	cmd := &cobra.Command{
 		Use:   "uninstall",
 		Args:  cobra.NoArgs,
@@ -23,7 +25,7 @@ func newCmdUninstall() *cobra.Command {
 This command provides all Kubernetes namespace-scoped and cluster-scoped resources (e.g services, deployments, RBACs, etc.) necessary to uninstall the Linkerd-viz extension.`,
 		Example: `linkerd viz uninstall | kubectl delete -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := uninstallRunE(cmd.Context())
+			err := uninstallRunE(cmd.Context(), output)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
@@ -31,11 +33,12 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 			return nil
 		},
 	}
+	cmd.PersistentFlags().StringVarP(&output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	return cmd
 }
 
-func uninstallRunE(ctx context.Context) error {
+func uninstallRunE(ctx context.Context, format string) error {
 	k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return err
@@ -48,7 +51,7 @@ func uninstallRunE(ctx context.Context) error {
 
 	// / `Uninstall` deletes cluster-scoped resources created by the extension
 	// (including the extension's namespace).
-	if err := pkgCmd.Uninstall(ctx, k8sAPI, selector); err != nil {
+	if err := pkgCmd.Uninstall(ctx, k8sAPI, selector, format); err != nil {
 		return err
 	}
 
@@ -64,7 +67,7 @@ func uninstallRunE(ctx context.Context) error {
 	}
 
 	for _, authz := range authzs.Items {
-		if err := deleteResource(authz.TypeMeta, authz.ObjectMeta); err != nil {
+		if err := deleteResource(authz.TypeMeta, authz.ObjectMeta, format); err != nil {
 			return err
 		}
 	}
@@ -75,7 +78,7 @@ func uninstallRunE(ctx context.Context) error {
 	}
 
 	for _, rt := range rts.Items {
-		if err := deleteResource(rt.TypeMeta, rt.ObjectMeta); err != nil {
+		if err := deleteResource(rt.TypeMeta, rt.ObjectMeta, format); err != nil {
 			return err
 		}
 	}
@@ -86,7 +89,7 @@ func uninstallRunE(ctx context.Context) error {
 	}
 
 	for _, srv := range srvs.Items {
-		if err := deleteResource(srv.TypeMeta, srv.ObjectMeta); err != nil {
+		if err := deleteResource(srv.TypeMeta, srv.ObjectMeta, format); err != nil {
 			return err
 		}
 	}
@@ -94,10 +97,18 @@ func uninstallRunE(ctx context.Context) error {
 	return nil
 }
 
-func deleteResource(ty metav1.TypeMeta, meta metav1.ObjectMeta) error {
+func deleteResource(ty metav1.TypeMeta, meta metav1.ObjectMeta, format string) error {
 	r := resource.NewNamespaced(ty.APIVersion, ty.Kind, meta.Name, meta.Namespace)
-	if err := r.RenderResource(os.Stdout); err != nil {
-		return fmt.Errorf("error rendering Kubernetes resource: %w", err)
+	if format == pkgCmd.JsonOutput {
+		if err := r.RenderResourceJSON(os.Stdout); err != nil {
+			return fmt.Errorf("error rendering Kubernetes resource: %w", err)
+		}
+		return nil
+	} else if format == pkgCmd.YamlOutput {
+		if err := r.RenderResource(os.Stdout); err != nil {
+			return fmt.Errorf("error rendering Kubernetes resource: %w", err)
+		}
+		return nil
 	}
-	return nil
+	return fmt.Errorf("unsupported output format: %s", format)
 }

@@ -1,58 +1,7 @@
 use anyhow::{anyhow, bail, Result};
-use k8s_gateway_api as api;
-use kube::{Resource, ResourceExt};
-use linkerd_policy_controller_core::routes::{self, GroupKindName, GroupKindNamespaceName};
-use linkerd_policy_controller_k8s_api::policy;
+use linkerd_policy_controller_core::routes;
+use linkerd_policy_controller_k8s_api::gateway as api;
 use std::num::NonZeroU16;
-
-#[derive(Debug, Clone)]
-pub(crate) enum HttpRouteResource {
-    Linkerd(linkerd_policy_controller_k8s_api::policy::HttpRoute),
-    Gateway(api::HttpRoute),
-}
-
-impl HttpRouteResource {
-    pub(crate) fn name(&self) -> String {
-        match self {
-            HttpRouteResource::Linkerd(route) => route.name_unchecked(),
-            HttpRouteResource::Gateway(route) => route.name_unchecked(),
-        }
-    }
-
-    pub(crate) fn namespace(&self) -> String {
-        match self {
-            HttpRouteResource::Linkerd(route) => {
-                route.namespace().expect("HttpRoute must have a namespace")
-            }
-            HttpRouteResource::Gateway(route) => {
-                route.namespace().expect("HttpRoute must have a namespace")
-            }
-        }
-    }
-
-    pub(crate) fn inner(&self) -> &api::CommonRouteSpec {
-        match self {
-            HttpRouteResource::Linkerd(route) => &route.spec.inner,
-            HttpRouteResource::Gateway(route) => &route.spec.inner,
-        }
-    }
-
-    pub(crate) fn status(&self) -> Option<&api::RouteStatus> {
-        match self {
-            HttpRouteResource::Linkerd(route) => route.status.as_ref().map(|status| &status.inner),
-            HttpRouteResource::Gateway(route) => route.status.as_ref().map(|status| &status.inner),
-        }
-    }
-
-    pub(crate) fn gknn(&self) -> GroupKindNamespaceName {
-        match self {
-            HttpRouteResource::Linkerd(route) => gkn_for_resource(route)
-                .namespaced(route.namespace().expect("Route must have namespace")),
-            HttpRouteResource::Gateway(route) => gkn_for_resource(route)
-                .namespaced(route.namespace().expect("Route must have namespace")),
-        }
-    }
-}
 
 pub fn try_match(
     api::HttpRouteMatch {
@@ -91,18 +40,18 @@ pub fn try_match(
 
 pub fn path_match(path_match: api::HttpPathMatch) -> Result<routes::PathMatch> {
     match path_match {
-            api::HttpPathMatch::Exact { value } | api::HttpPathMatch::PathPrefix { value }
-                if !value.starts_with('/') =>
+        api::HttpPathMatch::Exact { value } | api::HttpPathMatch::PathPrefix { value }
+        if !value.starts_with('/') =>
             {
                 Err(anyhow!("HttpPathMatch paths must be absolute (begin with `/`); {value:?} is not an absolute path"))
             }
-            api::HttpPathMatch::Exact { value } => Ok(routes::PathMatch::Exact(value)),
-            api::HttpPathMatch::PathPrefix { value } => Ok(routes::PathMatch::Prefix(value)),
-            api::HttpPathMatch::RegularExpression { value } => value
-                .parse()
-                .map(routes::PathMatch::Regex)
-                .map_err(Into::into),
-        }
+        api::HttpPathMatch::Exact { value } => Ok(routes::PathMatch::Exact(value)),
+        api::HttpPathMatch::PathPrefix { value } => Ok(routes::PathMatch::Prefix(value)),
+        api::HttpPathMatch::RegularExpression { value } => value
+            .parse()
+            .map(routes::PathMatch::Regex)
+            .map_err(Into::into),
+    }
 }
 
 pub fn host_match(hostname: api::Hostname) -> routes::HostMatch {
@@ -199,31 +148,5 @@ fn path_modifier(path_modifier: api::HttpPathModifier) -> Result<routes::PathMod
         ReplacePrefixMatch {
             replace_prefix_match,
         } => Ok(routes::PathModifier::Prefix(replace_prefix_match)),
-    }
-}
-
-pub(crate) fn gkn_for_resource<T>(t: &T) -> GroupKindName
-where
-    T: kube::Resource<DynamicType = ()>,
-{
-    let kind = T::kind(&());
-    let group = T::group(&());
-    let name = t.name_unchecked().into();
-    GroupKindName { group, kind, name }
-}
-
-pub(crate) fn gkn_for_linkerd_http_route(name: String) -> GroupKindName {
-    GroupKindName {
-        group: policy::HttpRoute::group(&()),
-        kind: policy::HttpRoute::kind(&()),
-        name: name.into(),
-    }
-}
-
-pub(crate) fn gkn_for_gateway_http_route(name: String) -> GroupKindName {
-    GroupKindName {
-        group: api::HttpRoute::group(&()),
-        kind: api::HttpRoute::kind(&()),
-        name: name.into(),
     }
 }
