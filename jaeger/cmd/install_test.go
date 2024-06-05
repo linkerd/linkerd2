@@ -45,7 +45,7 @@ func TestRender(t *testing.T) {
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
 			var buf bytes.Buffer
 			// Merge overrides with default
-			if err := render(&buf, charts.MergeMaps(defaultValues, tc.values), ""); err != nil {
+			if err := render(&buf, charts.MergeMaps(defaultValues, tc.values), "", "yaml"); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
 			if err := testDataDiffer.DiffTestYAML(tc.goldenFileName, buf.String()); err != nil {

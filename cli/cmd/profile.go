@@ -148,9 +148,9 @@ func newCmdProfile() *cobra.Command {
 func writeProfile(profile *sp.ServiceProfile, w io.Writer, format string) error {
 	var output []byte
 	var err error
-	if format == "yaml" {
+	if format == yamlOutput {
 		output, err = yaml.Marshal(profile)
-	} else if format == "json" {
+	} else if format == jsonOutput {
 		output, err = json.Marshal(profile)
 	} else {
 		return fmt.Errorf("unknown output format: %s", format)

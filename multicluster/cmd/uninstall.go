@@ -16,6 +16,7 @@ import (
 )
 
 func newMulticlusterUninstallCommand() *cobra.Command {
+	var output string
 
 	cmd := &cobra.Command{
 		Use:   "uninstall",
@@ -58,7 +59,7 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 				return err
 			}
 
-			err = pkgCmd.Uninstall(cmd.Context(), k8sAPI, selector)
+			err = pkgCmd.Uninstall(cmd.Context(), k8sAPI, selector, output)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
@@ -66,6 +67,7 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 			return nil
 		},
 	}
+	cmd.PersistentFlags().StringVarP(&output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	return cmd
 }

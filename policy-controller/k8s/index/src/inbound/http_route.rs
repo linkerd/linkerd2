@@ -1,12 +1,13 @@
-use crate::http_route;
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Error, Result};
 use k8s_gateway_api as api;
-use linkerd_policy_controller_core::inbound::{Filter, HttpRoute, HttpRouteRule};
-use linkerd_policy_controller_core::routes::{HttpRouteMatch, Method};
-use linkerd_policy_controller_core::POLICY_CONTROLLER_NAME;
+use linkerd_policy_controller_core::{
+    inbound::{Filter, HttpRoute, HttpRouteRule},
+    routes::{HttpRouteMatch, Method},
+    POLICY_CONTROLLER_NAME,
+};
 use linkerd_policy_controller_k8s_api::{
-    self as k8s, gateway,
+    self as k8s, gateway, gateway as k8s_gateway_api,
     policy::{httproute as policy, Server},
 };
 use std::fmt;
@@ -64,7 +65,7 @@ impl TryFrom<api::HttpRoute> for RouteBinding {
             .hostnames
             .into_iter()
             .flatten()
-            .map(http_route::host_match)
+            .map(crate::routes::http::host_match)
             .collect();
 
         let rules = route
@@ -110,7 +111,7 @@ impl TryFrom<policy::HttpRoute> for RouteBinding {
             .hostnames
             .into_iter()
             .flatten()
-            .map(http_route::host_match)
+            .map(crate::routes::http::host_match)
             .collect();
 
         let rules = route
@@ -169,18 +170,18 @@ impl RouteBinding {
             method,
         }: api::HttpRouteMatch,
     ) -> Result<HttpRouteMatch> {
-        let path = path.map(http_route::path_match).transpose()?;
+        let path = path.map(crate::routes::http::path_match).transpose()?;
 
         let headers = headers
             .into_iter()
             .flatten()
-            .map(http_route::header_match)
+            .map(crate::routes::http::header_match)
             .collect::<Result<_>>()?;
 
         let query_params = query_params
             .into_iter()
             .flatten()
-            .map(http_route::query_param_match)
+            .map(crate::routes::http::query_param_match)
             .collect::<Result<_>>()?;
 
         let method = method.as_deref().map(Method::try_from).transpose()?;
@@ -218,19 +219,19 @@ impl RouteBinding {
             api::HttpRouteFilter::RequestHeaderModifier {
                 request_header_modifier,
             } => {
-                let filter = http_route::header_modifier(request_header_modifier)?;
+                let filter = crate::routes::http::header_modifier(request_header_modifier)?;
                 Filter::RequestHeaderModifier(filter)
             }
 
             api::HttpRouteFilter::ResponseHeaderModifier {
                 response_header_modifier,
             } => {
-                let filter = http_route::header_modifier(response_header_modifier)?;
+                let filter = crate::routes::http::header_modifier(response_header_modifier)?;
                 Filter::ResponseHeaderModifier(filter)
             }
 
             api::HttpRouteFilter::RequestRedirect { request_redirect } => {
-                let filter = http_route::req_redirect(request_redirect)?;
+                let filter = crate::routes::http::req_redirect(request_redirect)?;
                 Filter::RequestRedirect(filter)
             }
 
@@ -252,19 +253,19 @@ impl RouteBinding {
             policy::HttpRouteFilter::RequestHeaderModifier {
                 request_header_modifier,
             } => {
-                let filter = http_route::header_modifier(request_header_modifier)?;
+                let filter = crate::routes::http::header_modifier(request_header_modifier)?;
                 Filter::RequestHeaderModifier(filter)
             }
 
             policy::HttpRouteFilter::ResponseHeaderModifier {
                 response_header_modifier,
             } => {
-                let filter = http_route::header_modifier(response_header_modifier)?;
+                let filter = crate::routes::http::header_modifier(response_header_modifier)?;
                 Filter::ResponseHeaderModifier(filter)
             }
 
             policy::HttpRouteFilter::RequestRedirect { request_redirect } => {
-                let filter = http_route::req_redirect(request_redirect)?;
+                let filter = crate::routes::http::req_redirect(request_redirect)?;
                 Filter::RequestRedirect(filter)
             }
         };

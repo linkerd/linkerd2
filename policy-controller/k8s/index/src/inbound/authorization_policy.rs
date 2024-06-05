@@ -1,7 +1,7 @@
 use anyhow::Result;
 use linkerd_policy_controller_core::routes::GroupKindName;
 use linkerd_policy_controller_k8s_api::{
-    self as k8s,
+    self as k8s, gateway as k8s_gateway_api,
     policy::{LocalTargetRef, NamespacedTargetRef},
     ServiceAccount,
 };
