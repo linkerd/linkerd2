@@ -1,6 +1,6 @@
 use crate::{
-    http_route::{self, gkn_for_gateway_http_route, gkn_for_linkerd_http_route, HttpRouteResource},
     ports::{ports_annotation, PortSet},
+    routes::{self, ExplicitGKN, RouteResource},
     ClusterInfo,
 };
 use ahash::AHashMap as HashMap;
@@ -87,11 +87,11 @@ struct RoutesWatch {
 
 impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
     fn apply(&mut self, route: api::HttpRoute) {
-        self.apply(HttpRouteResource::Linkerd(route))
+        self.apply(RouteResource::LinkerdHttp(route))
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        let gknn = gkn_for_linkerd_http_route(name).namespaced(namespace);
+        let gknn = name.gkn::<api::HttpRoute>().namespaced(namespace);
         tracing::debug!(?gknn, "deleting route");
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete(&gknn);
@@ -101,11 +101,13 @@ impl kubert::index::IndexNamespacedResource<api::HttpRoute> for Index {
 
 impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
     fn apply(&mut self, route: k8s_gateway_api::HttpRoute) {
-        self.apply(HttpRouteResource::Gateway(route))
+        self.apply(RouteResource::GatewayHttp(route))
     }
 
     fn delete(&mut self, namespace: String, name: String) {
-        let gknn = gkn_for_gateway_http_route(name).namespaced(namespace);
+        let gknn = name
+            .gkn::<k8s_gateway_api::HttpRoute>()
+            .namespaced(namespace);
         tracing::debug!(?gknn, "deleting route");
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete(&gknn);
@@ -228,7 +230,7 @@ impl Index {
         self.services_by_ip.get(&addr).cloned()
     }
 
-    fn apply(&mut self, route: HttpRouteResource) {
+    fn apply(&mut self, route: RouteResource) {
         tracing::debug!(name = route.name(), "indexing route");
 
         for parent_ref in route.inner().parent_refs.iter().flatten() {
@@ -269,7 +271,7 @@ impl Index {
 impl Namespace {
     fn apply(
         &mut self,
-        route: HttpRouteResource,
+        route: RouteResource,
         parent_ref: &ParentReference,
         cluster_info: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
@@ -380,7 +382,7 @@ impl Namespace {
                 };
 
                 // The HttpRoutes which target this Service but don't specify
-                // a port apply to all ports. Therefore we include them.
+                // a port apply to all ports. Therefore, we include them.
                 let routes = self
                     .service_routes
                     .get(&sp.service)
@@ -428,18 +430,18 @@ impl Namespace {
 
     fn convert_route(
         &self,
-        route: HttpRouteResource,
+        route: RouteResource,
         cluster: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
     ) -> Result<HttpRoute> {
         match route {
-            HttpRouteResource::Linkerd(route) => {
+            RouteResource::LinkerdHttp(route) => {
                 let hostnames = route
                     .spec
                     .hostnames
                     .into_iter()
                     .flatten()
-                    .map(http_route::host_match)
+                    .map(routes::http::host_match)
                     .collect();
 
                 let rules = route
@@ -458,13 +460,13 @@ impl Namespace {
                     creation_timestamp,
                 })
             }
-            HttpRouteResource::Gateway(route) => {
+            RouteResource::GatewayHttp(route) => {
                 let hostnames = route
                     .spec
                     .hostnames
                     .into_iter()
                     .flatten()
-                    .map(http_route::host_match)
+                    .map(routes::http::host_match)
                     .collect();
 
                 let rules = route
@@ -496,7 +498,7 @@ impl Namespace {
             .matches
             .into_iter()
             .flatten()
-            .map(http_route::try_match)
+            .map(routes::http::try_match)
             .collect::<Result<_>>()?;
 
         let backends = rule
@@ -557,7 +559,7 @@ impl Namespace {
             .matches
             .into_iter()
             .flatten()
-            .map(http_route::try_match)
+            .map(routes::http::try_match)
             .collect::<Result<_>>()?;
 
         let backends = rule
@@ -658,19 +660,19 @@ fn convert_linkerd_filter(filter: api::httproute::HttpRouteFilter) -> Result<Fil
         api::httproute::HttpRouteFilter::RequestHeaderModifier {
             request_header_modifier,
         } => {
-            let filter = http_route::header_modifier(request_header_modifier)?;
+            let filter = routes::http::header_modifier(request_header_modifier)?;
             Filter::RequestHeaderModifier(filter)
         }
 
         api::httproute::HttpRouteFilter::ResponseHeaderModifier {
             response_header_modifier,
         } => {
-            let filter = http_route::header_modifier(response_header_modifier)?;
+            let filter = routes::http::header_modifier(response_header_modifier)?;
             Filter::RequestHeaderModifier(filter)
         }
 
         api::httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
-            let filter = http_route::req_redirect(request_redirect)?;
+            let filter = routes::http::req_redirect(request_redirect)?;
             Filter::RequestRedirect(filter)
         }
     };
@@ -682,19 +684,19 @@ fn convert_gateway_filter(filter: k8s_gateway_api::HttpRouteFilter) -> Result<Fi
         k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
             request_header_modifier,
         } => {
-            let filter = http_route::header_modifier(request_header_modifier)?;
+            let filter = routes::http::header_modifier(request_header_modifier)?;
             Filter::RequestHeaderModifier(filter)
         }
 
         k8s_gateway_api::HttpRouteFilter::ResponseHeaderModifier {
             response_header_modifier,
         } => {
-            let filter = http_route::header_modifier(response_header_modifier)?;
+            let filter = routes::http::header_modifier(response_header_modifier)?;
             Filter::ResponseHeaderModifier(filter)
         }
 
         k8s_gateway_api::HttpRouteFilter::RequestRedirect { request_redirect } => {
-            let filter = http_route::req_redirect(request_redirect)?;
+            let filter = routes::http::req_redirect(request_redirect)?;
             Filter::RequestRedirect(filter)
         }
         k8s_gateway_api::HttpRouteFilter::RequestMirror { .. } => {
@@ -760,7 +762,7 @@ fn is_service(group: Option<&str>, kind: &str) -> bool {
 impl ServiceRoutes {
     fn watch_for_ns_or_default(&mut self, namespace: String) -> &mut RoutesWatch {
         // The routes from the producer namespace apply to watches in all
-        // namespaces so we copy them.
+        // namespaces, so we copy them.
         let routes = self
             .watches_by_ns
             .get(self.namespace.as_ref())
@@ -917,7 +919,7 @@ fn parse_duration(s: &str) -> Result<time::Duration> {
         "m" => 1000 * 60,
         "h" => 1000 * 60 * 60,
         "d" => 1000 * 60 * 60 * 24,
-        _ => anyhow::bail!(
+        _ => bail!(
             "invalid duration unit {} (expected one of 'ms', 's', 'm', 'h', or 'd')",
             unit
         ),
