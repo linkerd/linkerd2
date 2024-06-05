@@ -17,6 +17,8 @@ const (
 
 func newCmdUninstall() *cobra.Command {
 	var force bool
+	var output string
+
 	cmd := &cobra.Command{
 		Use:   "uninstall",
 		Args:  cobra.NoArgs,
@@ -87,7 +89,7 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 				return err
 			}
 
-			err = pkgCmd.Uninstall(cmd.Context(), k8sAPI, selector)
+			err = pkgCmd.Uninstall(cmd.Context(), k8sAPI, selector, output)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 			}
@@ -97,5 +99,6 @@ This command provides all Kubernetes namespace-scoped and cluster-scoped resourc
 	}
 
 	cmd.Flags().BoolVarP(&force, "force", "f", force, "Force uninstall even if there exist non-control-plane injected pods")
+	cmd.PersistentFlags().StringVarP(&output, "output", "o", "yaml", "Output format. One of: json|yaml")
 	return cmd
 }

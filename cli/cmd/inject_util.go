@@ -87,12 +87,12 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 		reports = append(reports, irs...)
 
 		// If the format is set to json, we need to convert the yaml to json
-		if format == "json" {
+		if format == jsonOutput {
 			result, err = yaml.YAMLToJSON(result)
 			if err != nil {
 				errs = append(errs, err)
 			}
-		} else if format == "yaml" {
+		} else if format == yamlOutput {
 			// result is already in yaml format: noop.
 		} else {
 			errs = append(errs, fmt.Errorf("unsupported format %s", format))
@@ -100,10 +100,10 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 
 		if len(errs) == 0 {
 			out.Write(result)
-			if format == "yaml" {
+			if format == yamlOutput {
 				out.Write([]byte("---\n"))
 			}
-			if format == "json" {
+			if format == jsonOutput {
 				out.Write([]byte("\n"))
 			}
 		}

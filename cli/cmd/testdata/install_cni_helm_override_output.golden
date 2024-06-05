@@ -70,7 +70,7 @@ data:
         "simulate": false,
         "use-wait-flag": true,
         "iptables-mode": "legacy",
-        "ipv6": true
+        "ipv6": false
       }
     }
 ---

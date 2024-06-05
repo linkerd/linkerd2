@@ -465,4 +465,3 @@ spec:
     - kind: ServiceAccount
       name: prometheus
       namespace: linkerd-viz
----

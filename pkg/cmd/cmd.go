@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -25,6 +26,11 @@ import (
 var (
 	// DefaultDockerRegistry specifies the default location for Linkerd's images.
 	DefaultDockerRegistry = "cr.l5d.io/linkerd"
+)
+
+const (
+	JsonOutput = "json"
+	YamlOutput = "yaml"
 )
 
 // GetDefaultNamespace fetches the default namespace
@@ -51,7 +57,7 @@ func GetDefaultNamespace(kubeconfigPath, kubeContext string) string {
 
 // Uninstall prints all cluster-scoped resources matching the given selector
 // for the purposes of deleting them.
-func Uninstall(ctx context.Context, k8sAPI *k8s.KubernetesAPI, selector string) error {
+func Uninstall(ctx context.Context, k8sAPI *k8s.KubernetesAPI, selector string, format string) error {
 	resources, err := resource.FetchKubernetesResources(ctx, k8sAPI,
 		metav1.ListOptions{LabelSelector: selector},
 	)
@@ -63,8 +69,16 @@ func Uninstall(ctx context.Context, k8sAPI *k8s.KubernetesAPI, selector string) 
 		return errors.New("No resources found to uninstall")
 	}
 	for _, r := range resources {
-		if err := r.RenderResource(os.Stdout); err != nil {
-			return fmt.Errorf("error rendering Kubernetes resource: %w", err)
+		if format == YamlOutput {
+			if err := r.RenderResource(os.Stdout); err != nil {
+				return fmt.Errorf("error rendering Kubernetes resource: %w", err)
+			}
+		} else if format == JsonOutput {
+			if err := r.RenderResourceJSON(os.Stdout); err != nil {
+				return fmt.Errorf("error rendering Kubernetes resource: %w", err)
+			}
+		} else {
+			return fmt.Errorf("unsupported format %s", format)
 		}
 	}
 	return nil
@@ -74,7 +88,7 @@ func Uninstall(ctx context.Context, k8sAPI *k8s.KubernetesAPI, selector string) 
 // match the given label selector but are not in the given manifest. Users are
 // expected to pipe these resources to `kubectl delete` to clean up resources
 // left on the cluster which are no longer part of the install manifest.
-func Prune(ctx context.Context, k8sAPI *k8s.KubernetesAPI, expectedManifests string, selector string) error {
+func Prune(ctx context.Context, k8sAPI *k8s.KubernetesAPI, expectedManifests string, selector string, format string) error {
 	expectedResources := []resource.Kubernetes{}
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(strings.NewReader(expectedManifests), 4096))
 	for {
@@ -107,7 +121,14 @@ func Prune(ctx context.Context, k8sAPI *k8s.KubernetesAPI, expectedManifests str
 		// If the resource is not in the expected resource list, render it for
 		// pruning.
 		if !resourceListContains(expectedResources, resource) {
-			if err = resource.RenderResource(os.Stdout); err != nil {
+			if format == YamlOutput {
+				err = resource.RenderResource(os.Stdout)
+			} else if format == JsonOutput {
+				err = resource.RenderResourceJSON(os.Stdout)
+			} else {
+				return fmt.Errorf("unsupported format %s", format)
+			}
+			if err != nil {
 				return fmt.Errorf("error rendering Kubernetes resource: %w\n", err)
 			}
 		}
@@ -229,4 +250,36 @@ func RegistryOverride(image, newRegistry string) string {
 		imageName = image[strings.LastIndex(image, "/")+1:]
 	}
 	return registry + imageName
+}
+
+// Given a buffer containing one or more YAML documents separated by `---`,
+// render each document to the writer in the specified format: json or yaml.
+// Json documents are separated by a newline character.
+func RenderYAMLAs(buf *bytes.Buffer, writer io.Writer, format string) error {
+	if format == JsonOutput {
+		reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(buf, 4096))
+		for {
+			manifest, err := reader.Read()
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return err
+			}
+			bytes, err := yaml.YAMLToJSON(manifest)
+			if err != nil {
+				return err
+			}
+			_, err = writer.Write(append(bytes, '\n'))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if format == YamlOutput {
+		_, err := writer.Write(buf.Bytes())
+		return err
+	}
+	return fmt.Errorf("unsupported format %s", format)
 }

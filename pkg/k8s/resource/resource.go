@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -109,6 +110,22 @@ func (r Kubernetes) RenderResource(w io.Writer) error {
 	}
 
 	_, err = w.Write([]byte(yamlSep))
+	return err
+}
+
+// RenderResource renders a kubernetes object as a json object
+func (r Kubernetes) RenderResourceJSON(w io.Writer) error {
+	b, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write(b)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write([]byte("\n"))
 	return err
 }
 

@@ -172,9 +172,9 @@ func renderTapOutputProfile(ctx context.Context, k8sAPI *k8s.KubernetesAPI, tapR
 		return err
 	}
 	var output []byte
-	if format == "yaml" {
+	if format == pkgcmd.YamlOutput {
 		output, err = yaml.Marshal(profile)
-	} else if format == "json" {
+	} else if format == pkgcmd.JsonOutput {
 		output, err = json.Marshal(profile)
 	} else {
 		return errors.New("output format must be one of yaml or json")
