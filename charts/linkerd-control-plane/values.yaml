@@ -157,7 +157,7 @@ proxy:
   # logging HTTP headers. If set to `insecure`, HTTP headers may be logged
   # verbatim. Note that setting this to `insecure` is not alone sufficient to
   # log HTTP headers; the proxy logLevel must also be set to debug.
-  logHTTPHeaders: off
+  logHTTPHeaders: "off"
   ports:
     # -- Admin port for the proxy container
     admin: 4191
