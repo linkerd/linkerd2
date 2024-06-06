@@ -2,7 +2,7 @@ use crate::routes;
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Error, Result};
 use linkerd_policy_controller_core::{
-    inbound::{Filter, InboundRoute, InboundRouteRef, InboundRouteRule},
+    inbound::{Filter, InboundRoute, InboundRouteRule},
     routes::{HttpRouteMatch, Method},
     POLICY_CONTROLLER_NAME,
 };
@@ -17,11 +17,6 @@ pub struct RouteBinding<MatchType> {
     pub parents: Vec<ParentRef>,
     pub route: InboundRoute<MatchType>,
     pub statuses: Vec<Status>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum TypedRouteBinding {
-    Http(RouteBinding<HttpRouteMatch>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -56,44 +51,6 @@ pub enum InvalidParentRef {
 
     #[error("Route resources may not reference a parent by section name")]
     SpecifiesSection,
-}
-
-pub trait DefaultInboundRoutes<MatchType> {
-    fn default_inbound_routes<'p>(
-        &self,
-        probe_paths: impl Iterator<Item = &'p str>,
-    ) -> HashMap<InboundRouteRef, InboundRoute<MatchType>>;
-}
-
-impl From<RouteBinding<HttpRouteMatch>> for TypedRouteBinding {
-    fn from(binding: RouteBinding<HttpRouteMatch>) -> Self {
-        Self::Http(binding)
-    }
-}
-
-impl From<&RouteBinding<HttpRouteMatch>> for InboundRoute<HttpRouteMatch> {
-    fn from(binding: &RouteBinding<HttpRouteMatch>) -> InboundRoute<HttpRouteMatch> {
-        binding.route.clone()
-    }
-}
-
-impl TryFrom<&TypedRouteBinding> for InboundRoute<HttpRouteMatch> {
-    type Error = Error;
-
-    fn try_from(binding: &TypedRouteBinding) -> Result<Self, Self::Error> {
-        match binding {
-            TypedRouteBinding::Http(binding) => Ok(binding.route.clone()),
-        }
-    }
-}
-
-impl TypedRouteBinding {
-    #[inline]
-    pub fn selects_and_accepted_by_server(&self, name: &str) -> bool {
-        match self {
-            Self::Http(binding) => binding.selects_server(name) && binding.accepted_by_server(name),
-        }
-    }
 }
 
 impl TryFrom<gateway::HttpRoute> for RouteBinding<HttpRouteMatch> {

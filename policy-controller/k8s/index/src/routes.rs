@@ -73,9 +73,13 @@ impl<R: Sized + Resource<DynamicType = ()>> ImpliedGKN for R {
     }
 }
 
-impl ExplicitGKN for str {
+impl<T: AsRef<str>> ExplicitGKN for T {
     fn gkn<R: Resource<DynamicType = ()>>(&self) -> GroupKindName {
-        let (kind, group, name) = (R::kind(&()), R::group(&()), self.to_string().into());
+        let (kind, group, name) = (
+            R::kind(&()),
+            R::group(&()),
+            self.as_ref().to_string().into(),
+        );
 
         GroupKindName { group, kind, name }
     }
