@@ -142,33 +142,28 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
     // Convert the protocol object into a protobuf response.
     let protocol = proto::ProxyProtocol {
         kind: match &srv.protocol {
-            ProxyProtocol::Detect { timeout , routes} => Some(proto::proxy_protocol::Kind::Detect(
-                    proto::proxy_protocol::Detect {
-                        timeout: (*timeout).try_into().map_err(|error| tracing::warn!(%error, "failed to convert protocol detect timeout to protobuf")).ok(),
-                        http_routes: to_http_route_list(routes, cluster_networks),
-                    },
-                )),
-            ProxyProtocol::Http1(routes) => Some(proto::proxy_protocol::Kind::Http1(
-                    proto::proxy_protocol::Http1 {
-                        routes: to_http_route_list(routes, cluster_networks),
-                    },
-                )),
-            ProxyProtocol::Http2(routes) => Some(proto::proxy_protocol::Kind::Http2(
-                    proto::proxy_protocol::Http2 {
-                        routes: to_http_route_list(routes, cluster_networks),
-                    },
-                )),
-            ProxyProtocol::Grpc => Some(proto::proxy_protocol::Kind::Grpc(
-                    proto::proxy_protocol::Grpc {
-                        routes: Default::default(),
-                    },
-                )),
-            ProxyProtocol::Opaque => Some(proto::proxy_protocol::Kind::Opaque(
-                proto::proxy_protocol::Opaque {},
-            )),
-            ProxyProtocol::Tls => Some(proto::proxy_protocol::Kind::Tls(
-                proto::proxy_protocol::Tls {},
-            )),
+            ProxyProtocol::Detect { timeout, routes } => {
+                Some(proto::proxy_protocol::Kind::Detect(proto::proxy_protocol::Detect {
+                    timeout: (*timeout)
+                        .try_into()
+                        .map_err(
+                            |error| tracing::warn!(%error, "failed to convert protocol detect timeout to protobuf"),
+                        )
+                        .ok(),
+                    http_routes: to_http_route_list(routes, cluster_networks),
+                }))
+            }
+            ProxyProtocol::Http1(routes) => Some(proto::proxy_protocol::Kind::Http1(proto::proxy_protocol::Http1 {
+                routes: to_http_route_list(routes, cluster_networks),
+            })),
+            ProxyProtocol::Http2(routes) => Some(proto::proxy_protocol::Kind::Http2(proto::proxy_protocol::Http2 {
+                routes: to_http_route_list(routes, cluster_networks),
+            })),
+            ProxyProtocol::Grpc => Some(proto::proxy_protocol::Kind::Grpc(proto::proxy_protocol::Grpc {
+                routes: Default::default(),
+            })),
+            ProxyProtocol::Opaque => Some(proto::proxy_protocol::Kind::Opaque(proto::proxy_protocol::Opaque {})),
+            ProxyProtocol::Tls => Some(proto::proxy_protocol::Kind::Tls(proto::proxy_protocol::Tls {})),
         },
     };
     trace!(?protocol);
