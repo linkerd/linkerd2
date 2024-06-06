@@ -580,7 +580,7 @@ func (ww *WorkloadWatcher) getEndpointByHostname(hostname string, svcID *Service
 		}
 		for _, slice := range sliceList {
 			for _, ep := range slice.Endpoints {
-				if hostname == *ep.Hostname {
+				if ep.Hostname != nil && hostname == *ep.Hostname {
 					if ep.TargetRef != nil && ep.TargetRef.Kind == "Pod" {
 						podName := ep.TargetRef.Name
 						podNamespace := ep.TargetRef.Namespace
