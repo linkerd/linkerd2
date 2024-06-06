@@ -8,7 +8,7 @@
 
 use super::{
     authorization_policy, meshtls_authentication, network_authentication,
-    routes::{RouteBinding, TypedRouteBinding},
+    routes::{DefaultInboundRoutes, RouteBinding, TypedRouteBinding},
     server, server_authorization, workload,
 };
 use crate::{
@@ -23,7 +23,7 @@ use linkerd_policy_controller_core::{
         AuthorizationRef, ClientAuthentication, ClientAuthorization, InboundRoute, InboundRouteRef,
         InboundRouteRule, InboundServer, ProxyProtocol, ServerRef,
     },
-    routes::{GenericRouteMatch, GroupKindName, HttpRouteMatch},
+    routes::{GroupKindName, HttpRouteMatch, Method, PathMatch},
     IdentityMatch, Ipv4Net, Ipv6Net, NetworkMatch,
 };
 use linkerd_policy_controller_k8s_api::{
@@ -1542,7 +1542,6 @@ impl PolicyIndex {
         } else {
             ProxyProtocol::Detect {
                 timeout: config.default_detect_timeout,
-                routes: config.default_inbound_routes::<HttpRouteMatch>(probe_paths),
             }
         };
 
@@ -1563,6 +1562,11 @@ impl PolicyIndex {
             protocol,
             authorizations,
             reference: ServerRef::Default(policy.as_str()),
+            http_routes:
+                <ClusterInfo as DefaultInboundRoutes<HttpRouteMatch>>::default_inbound_routes(
+                    config,
+                    probe_paths,
+                ),
         }
     }
 
@@ -1575,21 +1579,12 @@ impl PolicyIndex {
     ) -> InboundServer {
         tracing::trace!(%name, ?server,  "Creating inbound server");
         let authorizations = self.client_authzs(name, server, authentications);
-        let mut protocol = server.protocol.clone();
-
-        match &mut protocol {
-            ProxyProtocol::Detect { routes, .. }
-            | ProxyProtocol::Http1(routes)
-            | ProxyProtocol::Http2(routes) => {
-                *routes = self.routes::<HttpRouteMatch>(name, authentications, probe_paths);
-            }
-            _ => {}
-        };
 
         InboundServer {
-            protocol,
             authorizations,
+            protocol: server.protocol.clone(),
             reference: ServerRef::Server(name.to_string()),
+            http_routes: self.routes::<HttpRouteMatch>(name, authentications, probe_paths),
         }
     }
 
@@ -1719,8 +1714,8 @@ impl PolicyIndex {
         probe_paths: impl Iterator<Item = &'p str>,
     ) -> HashMap<InboundRouteRef, InboundRoute<MatchType>>
     where
-        MatchType: GenericRouteMatch + 'r,
-        InboundRoute<MatchType>: Default + TryFrom<&'r TypedRouteBinding, Error = anyhow::Error>,
+        ClusterInfo: DefaultInboundRoutes<MatchType> + 'r,
+        InboundRoute<MatchType>: TryFrom<&'r TypedRouteBinding, Error = anyhow::Error>,
     {
         let routes = self
             .routes
@@ -1749,8 +1744,10 @@ impl PolicyIndex {
             return routes;
         }
 
-        self.cluster_info
-            .default_inbound_routes::<MatchType>(probe_paths)
+        <ClusterInfo as DefaultInboundRoutes<MatchType>>::default_inbound_routes(
+            &self.cluster_info,
+            probe_paths,
+        )
     }
 
     fn policy_client_authz(
@@ -1946,40 +1943,33 @@ impl<K, T> Default for NsUpdate<K, T> {
 
 // === impl ClusterInfo ===
 
-impl ClusterInfo {
-    fn default_inbound_routes<'p, MatchType>(
+impl DefaultInboundRoutes<HttpRouteMatch> for ClusterInfo {
+    fn default_inbound_routes<'p>(
         &self,
         probe_paths: impl Iterator<Item = &'p str>,
-    ) -> HashMap<InboundRouteRef, InboundRoute<MatchType>>
-    where
-        MatchType: GenericRouteMatch,
-        InboundRoute<MatchType>: Default,
-    {
+    ) -> HashMap<InboundRouteRef, InboundRoute<HttpRouteMatch>> {
         // If no routes are defined for the server, use a default route that
         // matches all requests. Default authorizations are instrumented on
         // the server.
         let mut routes = HashMap::from_iter([(
             InboundRouteRef::DEFAULT_DEFAULT,
-            InboundRoute::<MatchType>::default(),
+            InboundRoute::<HttpRouteMatch>::default(),
         )]);
 
         // If there are no probe networks, there are no probe routes to
         // authorize.
-        if self.probe_networks.is_empty() || !MatchType::is::<HttpRouteMatch>() {
+        if self.probe_networks.is_empty() {
             return routes;
         }
 
         // Generate an `Exact` path match for each probe path defined on the
         // pod.
-        let matches = probe_paths
-            .filter_map(|path| {
-                MatchType::default()
-                    .set_path(path)
-                    .set_method("GET")
-                    .map_err(|error| {
-                        tracing::warn!(%path, ?error, "unable to create default route match for path");
-                    })
-                    .ok()
+        let matches: Vec<HttpRouteMatch> = probe_paths
+            .map(|path| HttpRouteMatch {
+                path: Some(PathMatch::Exact(path.to_string())),
+                headers: vec![],
+                query_params: vec![],
+                method: Some(Method::GET),
             })
             .collect::<Vec<_>>();
 
@@ -2003,9 +1993,9 @@ impl ClusterInfo {
         ))
         .collect();
 
-        let probe_route = InboundRoute::<MatchType> {
+        let probe_route = InboundRoute::<HttpRouteMatch> {
             authorizations,
-            rules: vec![InboundRouteRule::<MatchType> {
+            rules: vec![InboundRouteRule::<HttpRouteMatch> {
                 matches,
                 filters: Default::default(),
             }],

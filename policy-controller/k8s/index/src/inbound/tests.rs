@@ -229,8 +229,8 @@ impl TestConfig {
             authorizations: mk_default_policy(self.default_policy, self.cluster.networks.clone()),
             protocol: ProxyProtocol::Detect {
                 timeout: self.detect_timeout,
-                routes: mk_default_routes(),
             },
+            http_routes: mk_default_routes(),
         }
     }
 

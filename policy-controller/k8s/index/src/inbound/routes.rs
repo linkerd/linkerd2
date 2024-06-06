@@ -2,7 +2,7 @@ use crate::routes;
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Error, Result};
 use linkerd_policy_controller_core::{
-    inbound::{Filter, InboundRoute, InboundRouteRule},
+    inbound::{Filter, InboundRoute, InboundRouteRef, InboundRouteRule},
     routes::{HttpRouteMatch, Method},
     POLICY_CONTROLLER_NAME,
 };
@@ -56,6 +56,13 @@ pub enum InvalidParentRef {
 
     #[error("Route resources may not reference a parent by section name")]
     SpecifiesSection,
+}
+
+pub trait DefaultInboundRoutes<MatchType> {
+    fn default_inbound_routes<'p>(
+        &self,
+        probe_paths: impl Iterator<Item = &'p str>,
+    ) -> HashMap<InboundRouteRef, InboundRoute<MatchType>>;
 }
 
 impl From<RouteBinding<HttpRouteMatch>> for TypedRouteBinding {

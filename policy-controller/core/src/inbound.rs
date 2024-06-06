@@ -32,16 +32,15 @@ pub enum InboundRouteRef {
 }
 
 /// Describes how a proxy should handle inbound connections.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ProxyProtocol {
     /// Indicates that the protocol should be discovered dynamically.
     Detect {
         timeout: Duration,
-        routes: HashMap<InboundRouteRef, InboundRoute<HttpRouteMatch>>,
     },
 
-    Http1(HashMap<InboundRouteRef, InboundRoute<HttpRouteMatch>>),
-    Http2(HashMap<InboundRouteRef, InboundRoute<HttpRouteMatch>>),
+    Http1,
+    Http2,
     Grpc,
 
     /// Indicates that connections should be handled opaquely.
@@ -89,6 +88,7 @@ pub struct InboundServer {
     pub reference: ServerRef,
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
+    pub http_routes: HashMap<InboundRouteRef, InboundRoute<HttpRouteMatch>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

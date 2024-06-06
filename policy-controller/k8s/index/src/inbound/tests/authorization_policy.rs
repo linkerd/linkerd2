@@ -33,7 +33,8 @@ fn links_authorization_policy_with_mtls_name() {
         InboundServer {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
-            protocol: ProxyProtocol::Http1(mk_default_routes()),
+            protocol: ProxyProtocol::Http1,
+            http_routes: mk_default_routes()
         },
     );
 
@@ -86,7 +87,8 @@ fn links_authorization_policy_with_mtls_name() {
             )
             .into_iter()
             .collect(),
-            protocol: ProxyProtocol::Http1(mk_default_routes()),
+            protocol: ProxyProtocol::Http1,
+            http_routes: mk_default_routes()
         },
     );
 }
@@ -121,7 +123,8 @@ fn authorization_targets_namespace() {
         InboundServer {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
-            protocol: ProxyProtocol::Http1(mk_default_routes()),
+            protocol: ProxyProtocol::Http1,
+            http_routes: mk_default_routes()
         },
     );
 
@@ -174,7 +177,8 @@ fn authorization_targets_namespace() {
             )
             .into_iter()
             .collect(),
-            protocol: ProxyProtocol::Http1(mk_default_routes()),
+            protocol: ProxyProtocol::Http1,
+            http_routes: mk_default_routes()
         },
     );
 }
@@ -209,7 +213,8 @@ fn links_authorization_policy_with_service_account() {
         InboundServer {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
-            protocol: ProxyProtocol::Http1(mk_default_routes()),
+            protocol: ProxyProtocol::Http1,
+            http_routes: mk_default_routes()
         },
     );
 
@@ -256,7 +261,8 @@ fn links_authorization_policy_with_service_account() {
             )
             .into_iter()
             .collect(),
-            protocol: ProxyProtocol::Http1(mk_default_routes()),
+            protocol: ProxyProtocol::Http1,
+            http_routes: mk_default_routes()
         },
     );
 }
@@ -356,8 +362,8 @@ fn authorization_policy_prevents_index_deletion() {
         InboundServer {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
-            protocol: ProxyProtocol::Http1(
-                hashmap!(InboundRouteRef::Linkerd(routes::GroupKindName{
+            protocol: ProxyProtocol::Http1,
+            http_routes: hashmap!(InboundRouteRef::Linkerd(routes::GroupKindName{
                 group: "policy.linkerd.io".into(),
                 kind: "HTTPRoute".into(),
                 name: "route-foo".into(),
@@ -378,9 +384,8 @@ fn authorization_policy_prevents_index_deletion() {
                 .collect(),
                 ..Default::default()
             })
-                .into_iter()
-                .collect()
-            ),
+            .into_iter()
+            .collect()
         },
     );
 }

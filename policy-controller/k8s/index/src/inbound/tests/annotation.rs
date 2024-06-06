@@ -115,8 +115,8 @@ fn authenticated_annotated() {
                 authorizations: mk_default_policy(policy, test.cluster.networks),
                 protocol: ProxyProtocol::Detect {
                     timeout: test.detect_timeout,
-                    routes: mk_default_routes(),
                 },
+                http_routes: mk_default_routes(),
             }
         };
 
