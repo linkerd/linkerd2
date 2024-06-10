@@ -358,6 +358,8 @@ metadata:
 addressType: IPv4
 endpoints:
 - addresses:
+  - 172.17.13.14 # Endpoint without a targetRef or hostname
+- addresses:
   - 172.17.13.15
   hostname: pod-0
   targetRef:
