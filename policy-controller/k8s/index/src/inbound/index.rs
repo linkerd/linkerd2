@@ -174,18 +174,6 @@ struct NsUpdate<K, T> {
     removed: HashSet<K>,
 }
 
-trait DefaultInboundRoutes<MatchType> {
-    fn default_inbound_routes<'p>(
-        &self,
-        probe_paths: impl Iterator<Item = &'p str>,
-    ) -> HashMap<InboundRouteRef, InboundRoute<MatchType>>;
-}
-
-trait IndexedInboundRoutes<MatchType> {
-    fn routes(&self) -> &HashMap<GroupKindName, RouteBinding<MatchType>>;
-    fn routes_mut(&mut self) -> &mut HashMap<GroupKindName, RouteBinding<MatchType>>;
-}
-
 // === impl Index ===
 
 impl Index {
@@ -276,20 +264,18 @@ impl Index {
         }
     }
 
-    fn apply_route<Route, MatchType>(&mut self, route: Route)
+    fn apply_http_route<Route>(&mut self, route: Route)
     where
-        MatchType: PartialEq,
         Route: ResourceExt<DynamicType = ()>,
-        RouteBinding<MatchType>: TryFrom<Route>,
-        PolicyIndex: IndexedInboundRoutes<MatchType>,
-        <RouteBinding<MatchType> as TryFrom<Route>>::Error: std::fmt::Display,
+        RouteBinding<HttpRouteMatch>: TryFrom<Route>,
+        <RouteBinding<HttpRouteMatch> as TryFrom<Route>>::Error: std::fmt::Display,
     {
         let ns = route.namespace().expect("routes must have a namespace");
         let name = route.name_unchecked();
         let gkn = route.gkn();
         let _span = info_span!("apply", %ns, %name).entered();
 
-        let route_binding = match RouteBinding::<MatchType>::try_from(route) {
+        let route_binding = match RouteBinding::<HttpRouteMatch>::try_from(route) {
             Ok(binding) => binding,
             Err(error) => {
                 tracing::info!(%ns, %name, %error, "Ignoring route");
@@ -297,19 +283,14 @@ impl Index {
             }
         };
 
-        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_route(gkn, route_binding))
+        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_http_route(gkn, route_binding))
     }
 
-    fn reset_route<Route, MatchType>(
-        &mut self,
-        routes: Vec<Route>,
-        deleted: HashMap<String, HashSet<String>>,
-    ) where
-        MatchType: PartialEq,
+    fn reset_route<Route>(&mut self, routes: Vec<Route>, deleted: HashMap<String, HashSet<String>>)
+    where
         Route: ResourceExt<DynamicType = ()>,
-        RouteBinding<MatchType>: TryFrom<Route>,
-        PolicyIndex: IndexedInboundRoutes<MatchType>,
-        <RouteBinding<MatchType> as TryFrom<Route>>::Error: std::fmt::Display,
+        RouteBinding<HttpRouteMatch>: TryFrom<Route>,
+        <RouteBinding<HttpRouteMatch> as TryFrom<Route>>::Error: std::fmt::Display,
     {
         let _span = info_span!("reset").entered();
 
@@ -317,12 +298,12 @@ impl Index {
         // once per namespace.
 
         let mut updates_by_ns =
-            HashMap::<String, NsUpdate<GroupKindName, RouteBinding<MatchType>>>::default();
+            HashMap::<String, NsUpdate<GroupKindName, RouteBinding<HttpRouteMatch>>>::default();
         for route in routes.into_iter() {
             let namespace = route.namespace().expect("Routes must be namespaced");
             let name = route.name_unchecked();
             let gkn = route.gkn();
-            let route_binding = match RouteBinding::<MatchType>::try_from(route) {
+            let route_binding = match RouteBinding::<HttpRouteMatch>::try_from(route) {
                 Ok(binding) => binding,
                 Err(error) => {
                     tracing::info!(ns = %namespace, group = gkn.group.as_ref(), kind = gkn.kind.as_ref(), %name, %error, "Ignoring route");
@@ -340,8 +321,10 @@ impl Index {
             updates_by_ns.entry(ns).or_default().removed = removed;
         }
 
-        for (namespace, NsUpdate::<GroupKindName, RouteBinding<MatchType>> { added, removed }) in
-            updates_by_ns.into_iter()
+        for (
+            namespace,
+            NsUpdate::<GroupKindName, RouteBinding<HttpRouteMatch>> { added, removed },
+        ) in updates_by_ns.into_iter()
         {
             if added.is_empty() {
                 // If there are no live resources in the namespace, we do not
@@ -362,8 +345,7 @@ impl Index {
                         ns.policy.http_routes.remove(&gkn);
                     }
                     for (gkn, route_binding) in added.into_iter() {
-                        changed =
-                            ns.policy.update_route::<MatchType>(gkn, route_binding) || changed;
+                        changed = ns.policy.update_http_route(gkn, route_binding) || changed;
                     }
                     changed
                 });
@@ -871,7 +853,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
     fn apply(&mut self, route: k8s::policy::HttpRoute) {
-        self.apply_route(route)
+        self.apply_http_route(route)
     }
 
     fn delete(&mut self, ns: String, name: String) {
@@ -890,7 +872,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
 
 impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
     fn apply(&mut self, route: k8s_gateway_api::HttpRoute) {
-        self.apply_route(route)
+        self.apply_http_route(route)
     }
 
     fn delete(&mut self, ns: String, name: String) {
@@ -1572,11 +1554,7 @@ impl PolicyIndex {
             protocol,
             authorizations,
             reference: ServerRef::Default(policy.as_str()),
-            http_routes:
-                <ClusterInfo as DefaultInboundRoutes<HttpRouteMatch>>::default_inbound_routes(
-                    config,
-                    probe_paths,
-                ),
+            http_routes: config.default_inbound_http_routes(probe_paths),
         }
     }
 
@@ -1594,7 +1572,7 @@ impl PolicyIndex {
             authorizations,
             protocol: server.protocol.clone(),
             reference: ServerRef::Server(name.to_string()),
-            http_routes: self.routes::<HttpRouteMatch>(name, authentications, probe_paths),
+            http_routes: self.http_routes(name, authentications, probe_paths),
         }
     }
 
@@ -1717,18 +1695,14 @@ impl PolicyIndex {
         authzs
     }
 
-    fn routes<'p, MatchType>(
+    fn http_routes<'p>(
         &self,
         server_name: &str,
         authentications: &AuthenticationNsIndex,
         probe_paths: impl Iterator<Item = &'p str>,
-    ) -> HashMap<InboundRouteRef, InboundRoute<MatchType>>
-    where
-        MatchType: Clone,
-        Self: IndexedInboundRoutes<MatchType>,
-        ClusterInfo: DefaultInboundRoutes<MatchType>,
-    {
-        let routes = IndexedInboundRoutes::<MatchType>::routes(self)
+    ) -> HashMap<InboundRouteRef, InboundRoute<HttpRouteMatch>> {
+        let routes = self
+            .http_routes
             .iter()
             .filter(|(_, route)| {
                 route.selects_server(server_name) && route.accepted_by_server(server_name)
@@ -1744,10 +1718,7 @@ impl PolicyIndex {
             return routes;
         }
 
-        <ClusterInfo as DefaultInboundRoutes<MatchType>>::default_inbound_routes(
-            &self.cluster_info,
-            probe_paths,
-        )
+        self.cluster_info.default_inbound_http_routes(probe_paths)
     }
 
     fn policy_client_authz(
@@ -1855,16 +1826,13 @@ impl PolicyIndex {
         })
     }
 
-    fn update_route<MatchType>(
+    fn update_http_route(
         &mut self,
         key: GroupKindName,
-        route: RouteBinding<MatchType>,
+        route: RouteBinding<HttpRouteMatch>,
     ) -> bool
-    where
-        MatchType: PartialEq,
-        Self: IndexedInboundRoutes<MatchType>,
-    {
-        match IndexedInboundRoutes::<MatchType>::routes_mut(self).entry(key) {
+where {
+        match self.http_routes.entry(key) {
             Entry::Vacant(entry) => {
                 entry.insert(route);
             }
@@ -1876,16 +1844,6 @@ impl PolicyIndex {
             }
         }
         true
-    }
-}
-
-impl IndexedInboundRoutes<HttpRouteMatch> for PolicyIndex {
-    fn routes(&self) -> &HashMap<GroupKindName, RouteBinding<HttpRouteMatch>> {
-        &self.http_routes
-    }
-
-    fn routes_mut(&mut self) -> &mut HashMap<GroupKindName, RouteBinding<HttpRouteMatch>> {
-        &mut self.http_routes
     }
 }
 
@@ -1957,8 +1915,8 @@ impl<K, T> Default for NsUpdate<K, T> {
 
 // === impl ClusterInfo ===
 
-impl DefaultInboundRoutes<HttpRouteMatch> for ClusterInfo {
-    fn default_inbound_routes<'p>(
+impl ClusterInfo {
+    fn default_inbound_http_routes<'p>(
         &self,
         probe_paths: impl Iterator<Item = &'p str>,
     ) -> HashMap<InboundRouteRef, InboundRoute<HttpRouteMatch>> {
