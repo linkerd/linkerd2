@@ -25,7 +25,7 @@ Kubernetes: `>=1.22.0-0`
 | commonLabels | object | `{}` | Labels to apply to all resources |
 | destCNIBinDir | string | `"/opt/cni/bin"` | Directory on the host where the CNI configuration will be placed |
 | destCNINetDir | string | `"/etc/cni/net.d"` | Directory on the host where the CNI plugin binaries reside |
-| disableIPv6 | bool | `false` | Disables adding IPv6 rules on top of IPv4 rules |
+| disableIPv6 | bool | `true` | Disables adding IPv6 rules on top of IPv4 rules |
 | enablePSP | bool | `false` | Add a PSP resource and bind it to the linkerd-cni ServiceAccounts. Note PSP has been deprecated since k8s v1.21 |
 | extraInitContainers | list | `[]` | Add additional initContainers to the daemonset |
 | ignoreInboundPorts | string | `""` | Default set of inbound ports to skip via iptables |

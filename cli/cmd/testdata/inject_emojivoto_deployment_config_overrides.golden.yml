@@ -44,6 +44,8 @@ spec:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_CORES
           value: "1"
+        - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
+          value: "false"
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info,trust_dns=error
         - name: LINKERD2_PROXY_LOG_FORMAT

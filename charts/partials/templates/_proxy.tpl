@@ -28,6 +28,8 @@ env:
 - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_TLS
   value: {{.Values.proxy.requireTLSOnInboundPorts | quote}}
 {{ end -}}
+- name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
+  value: {{.Values.proxy.enableShutdownEndpoint | quote}}
 - name: LINKERD2_PROXY_LOG
   value: {{.Values.proxy.logLevel | quote}}
 - name: LINKERD2_PROXY_LOG_FORMAT

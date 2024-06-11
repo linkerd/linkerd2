@@ -149,6 +149,8 @@ proxy:
     # -- Tag for the proxy container image
     # @default -- linkerdVersion
     version: ""
+  # -- Enables the proxy's /shutdown admin endpoint
+  enableShutdownEndpoint: false
   # -- Log level for the proxy
   logLevel: warn,linkerd=info,trust_dns=error
   # -- Log format (`plain` or `json`) for the proxy
