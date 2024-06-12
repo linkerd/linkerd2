@@ -2404,7 +2404,7 @@ spec:
       serviceAccountName: linkerd-cni
       containers:
       - name: install-cni
-        image: cr.l5d.io/linkerd/cni-plugin:v1.5.0
+        image: cr.l5d.io/linkerd/cni-plugin:v1.5.1
         env:
         - name: DEST_CNI_NET_DIR
           valueFrom:
