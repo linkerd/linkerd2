@@ -1,12 +1,10 @@
 package cmd
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"strings"
@@ -29,7 +27,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/yaml"
@@ -462,40 +459,20 @@ func renderServiceMirror(values *multicluster.Values, valuesOverrides map[string
 	}
 
 	// Merge templates and inject
-	var out bytes.Buffer
+	var yamlBytes bytes.Buffer
 	for _, tmpl := range chart.Templates {
 		t := path.Join(chart.Metadata.Name, tmpl.Name)
-		if _, err := out.WriteString(renderedTemplates[t]); err != nil {
+		if _, err := yamlBytes.WriteString(renderedTemplates[t]); err != nil {
 			return nil, err
 		}
 	}
 
-	if format == "json" {
-		var jsonOut bytes.Buffer
-		reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(&out, 4096))
-		for {
-			manifest, err := reader.Read()
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					break
-				}
-				return nil, err
-			}
-			bytes, err := yaml.YAMLToJSON(manifest)
-			if err != nil {
-				return nil, err
-			}
-
-			_, err = jsonOut.Write(append(bytes, '\n'))
-			if err != nil {
-				return nil, err
-			}
-		}
-		return jsonOut.Bytes(), nil
-	} else if format == "yaml" {
-		return out.Bytes(), nil
+	var out bytes.Buffer
+	err = pkgcmd.RenderYAMLAs(&yamlBytes, &out, format)
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("unsupported format %s", format)
+	return out.Bytes(), nil
 }
 
 func newLinkOptionsWithDefault() (*linkOptions, error) {

@@ -1,18 +1,12 @@
 package cmd
 
 import (
-	"bufio"
 	"bytes"
-	"errors"
-	"fmt"
-	"io"
 	"text/template"
 
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
-	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
-	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -149,31 +143,7 @@ linkerd viz allow-scrapes --namespace emojivoto | kubectl apply -f -`,
 				return err
 			}
 
-			if output == "json" {
-				reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(&buf, 4096))
-				for {
-					manifest, err := reader.Read()
-					if err != nil {
-						if errors.Is(err, io.EOF) {
-							break
-						}
-						return err
-					}
-					bytes, err := yaml.YAMLToJSON(manifest)
-					if err != nil {
-						return err
-					}
-					_, err = stdout.Write(append(bytes, '\n'))
-					if err != nil {
-						return err
-					}
-				}
-				return nil
-			} else if output == "yaml" {
-				_, err = stdout.Write(append(buf.Bytes(), '\n'))
-				return err
-			}
-			return fmt.Errorf("unsupported output format: %s", output)
+			return pkgcmd.RenderYAMLAs(&buf, stdout, output)
 		},
 	}
 	cmd.Flags().StringVarP(&options.TargetNs, "namespace", "n", options.TargetNs, "The namespace in which to authorize Prometheus scrapes.")

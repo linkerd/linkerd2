@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 
 	"github.com/linkerd/linkerd2/multicluster/static"
 	mccharts "github.com/linkerd/linkerd2/multicluster/values"
@@ -18,7 +16,6 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 )
 
@@ -75,32 +72,7 @@ func newAllowCommand() *cobra.Command {
 				return err
 			}
 
-			if opts.output == "json" {
-				reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(&buf, 4096))
-				for {
-					manifest, err := reader.Read()
-					if err != nil {
-						if errors.Is(err, io.EOF) {
-							break
-						}
-						return err
-					}
-					bytes, err := yaml.YAMLToJSON(manifest)
-					if err != nil {
-						return err
-					}
-					_, err = stdout.Write(append(bytes, '\n'))
-					if err != nil {
-						return err
-					}
-				}
-				return nil
-			} else if opts.output == "yaml" {
-				stdout.Write(buf.Bytes())
-				stdout.Write([]byte("---\n"))
-				return nil
-			}
-			return fmt.Errorf("Invalid output format: %s", opts.output)
+			return pkgcmd.RenderYAMLAs(&buf, stdout, opts.output)
 		},
 	}
 
