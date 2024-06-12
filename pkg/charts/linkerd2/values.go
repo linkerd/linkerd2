@@ -117,6 +117,7 @@ type (
 		Image                                *Image           `json:"image"`
 		LogLevel                             string           `json:"logLevel"`
 		LogFormat                            string           `json:"logFormat"`
+		LogHTTPHeaders                       string           `json:"logHTTPHeaders"`
 		SAMountPath                          *VolumeMountPath `json:"saMountPath"`
 		Ports                                *Ports           `json:"ports"`
 		Resources                            *Resources       `json:"resources"`

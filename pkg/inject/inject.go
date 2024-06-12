@@ -56,6 +56,7 @@ var (
 		k8s.ProxyImageAnnotation,
 		k8s.ProxyLogFormatAnnotation,
 		k8s.ProxyLogLevelAnnotation,
+		k8s.ProxyLogHTTPHeaders,
 		k8s.ProxyMemoryLimitAnnotation,
 		k8s.ProxyMemoryRequestAnnotation,
 		k8s.ProxyEphemeralStorageLimitAnnotation,
@@ -252,6 +253,10 @@ func applyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 
 	if override, ok := annotations[k8s.ProxyLogLevelAnnotation]; ok {
 		values.Proxy.LogLevel = override
+	}
+
+	if override, ok := annotations[k8s.ProxyLogHTTPHeaders]; ok {
+		values.Proxy.LogHTTPHeaders = override
 	}
 
 	if override, ok := annotations[k8s.ProxyLogFormatAnnotation]; ok {
