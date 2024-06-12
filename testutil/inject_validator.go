@@ -253,7 +253,8 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 	}
 
 	if iv.LogLevel != "" {
-		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_LOG", iv.LogLevel); err != nil {
+		expectedLogLevel := fmt.Sprintf("%s,linkerd_proxy_http::client[{headers}]=off", iv.LogLevel)
+		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_LOG", expectedLogLevel); err != nil {
 			return err
 		}
 	}

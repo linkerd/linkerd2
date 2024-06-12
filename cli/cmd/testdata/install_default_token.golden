@@ -685,6 +685,7 @@ data:
         initialDelaySeconds: 10
         timeoutSeconds: 1
       logFormat: plain
+      logHTTPHeaders: "off"
       logLevel: warn,linkerd=info,trust_dns=error
       nativeSidecar: false
       opaquePorts: 25,587,3306,4444,5432,6379,9300,11211
@@ -984,7 +985,7 @@ spec:
         - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_TLS
           value: "8080"
         - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info,trust_dns=error"
+          value: "warn,linkerd=info,trust_dns=error,linkerd_proxy_http::client[{headers}]=off"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -1324,7 +1325,7 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info,trust_dns=error"
+          value: "warn,linkerd=info,trust_dns=error,linkerd_proxy_http::client[{headers}]=off"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -1765,7 +1766,7 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info,trust_dns=error"
+          value: "warn,linkerd=info,trust_dns=error,linkerd_proxy_http::client[{headers}]=off"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
