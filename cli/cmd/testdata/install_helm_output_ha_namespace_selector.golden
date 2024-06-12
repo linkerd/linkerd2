@@ -177,6 +177,7 @@ webhooks:
     apiVersions: ["*"]
     resources:
     - httproutes
+    - grpcroutes
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -219,6 +220,7 @@ rules:
       - gateway.networking.k8s.io
     resources:
       - httproutes
+      - grpcroutes
     verbs:
       - get
       - list
@@ -233,8 +235,10 @@ rules:
       - gateway.networking.k8s.io
     resources:
       - httproutes/status
+      - grpcroutes/status
     verbs:
       - patch
+      - create
   - apiGroups:
       - workload.linkerd.io
     resources:
@@ -1367,7 +1371,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 467bcfd10f346970575701d5199fde803e9f61e9039e05d4c765d3c5524804b4
+        checksum/config: 68a532538d399548559f765b2291422ff5e91ee122c6d8c43fa09b19495b38f1
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
