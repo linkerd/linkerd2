@@ -150,7 +150,7 @@ proxy:
     # @default -- linkerdVersion
     version: ""
   # -- Log level for the proxy
-  logLevel: warn,linkerd=info,trust_dns=error
+  logLevel: warn,linkerd=info,hickory=error
   # -- Log format (`plain` or `json`) for the proxy
   logFormat: plain
   # -- (`off` or `insecure`) If set to `off`, will prevent the proxy from
