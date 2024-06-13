@@ -12,7 +12,7 @@ use linkerd2_proxy_api::{
 use linkerd_policy_controller_core::{
     outbound::{
         Backend, DiscoverOutboundPolicy, Filter, OutboundDiscoverTarget, OutboundPolicy,
-        OutboundPolicyStream, OutboundRoute, OutboundRouteCollection, OutboundRouteRule,
+        OutboundPolicyStream, OutboundRoute, OutboundRouteRule,
     },
     routes::{GroupKindNamespaceName, HttpRouteMatch},
 };
@@ -225,56 +225,35 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
             }),
         });
 
-        match outbound.routes {
-            OutboundRouteCollection::Empty => {
-                let routes = vec![default_outbound_http_route(backend.clone())];
+        let mut routes = outbound
+            .http_routes
+            .into_iter()
+            .sorted_by(timestamp_then_name)
+            .map(|(gknn, route)| convert_outbound_http_route(gknn, route, backend.clone()))
+            .collect::<Vec<_>>();
 
-                outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
-                    timeout: Some(
-                        time::Duration::from_secs(10)
-                            .try_into()
-                            .expect("failed to convert detect timeout to protobuf"),
-                    ),
-                    opaque: Some(outbound::proxy_protocol::Opaque {
-                        routes: vec![default_outbound_opaq_route(backend)],
-                    }),
-                    http1: Some(outbound::proxy_protocol::Http1 {
-                        routes: routes.clone(),
-                        failure_accrual: accrual.clone(),
-                    }),
-                    http2: Some(outbound::proxy_protocol::Http2 {
-                        routes,
-                        failure_accrual: accrual,
-                    }),
-                })
-            }
-            OutboundRouteCollection::Http(routes) => {
-                let routes = routes
-                    .into_iter()
-                    .sorted_by(timestamp_then_name)
-                    .map(|(gknn, route)| convert_outbound_http_route(gknn, route, backend.clone()))
-                    .collect::<Vec<_>>();
-
-                outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
-                    timeout: Some(
-                        time::Duration::from_secs(10)
-                            .try_into()
-                            .expect("failed to convert detect timeout to protobuf"),
-                    ),
-                    opaque: Some(outbound::proxy_protocol::Opaque {
-                        routes: vec![default_outbound_opaq_route(backend)],
-                    }),
-                    http1: Some(outbound::proxy_protocol::Http1 {
-                        routes: routes.clone(),
-                        failure_accrual: accrual.clone(),
-                    }),
-                    http2: Some(outbound::proxy_protocol::Http2 {
-                        routes,
-                        failure_accrual: accrual,
-                    }),
-                })
-            }
+        if routes.is_empty() {
+            routes = vec![default_outbound_http_route(backend.clone())];
         }
+
+        outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
+            timeout: Some(
+                time::Duration::from_secs(10)
+                    .try_into()
+                    .expect("failed to convert detect timeout to protobuf"),
+            ),
+            opaque: Some(outbound::proxy_protocol::Opaque {
+                routes: vec![default_outbound_opaq_route(backend)],
+            }),
+            http1: Some(outbound::proxy_protocol::Http1 {
+                routes: routes.clone(),
+                failure_accrual: accrual.clone(),
+            }),
+            http2: Some(outbound::proxy_protocol::Http2 {
+                routes,
+                failure_accrual: accrual,
+            }),
+        })
     };
 
     let metadata = Metadata {
