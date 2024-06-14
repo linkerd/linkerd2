@@ -54,7 +54,7 @@ var (
 		k8s.ProxyCPULimitAnnotation,
 		k8s.ProxyCPURequestAnnotation,
 		k8s.ProxyImageAnnotation,
-		k8s.ProxyEnableShutdownEndpointAnnotation,
+		k8s.ProxyAdminShutdownAnnotation,
 		k8s.ProxyLogFormatAnnotation,
 		k8s.ProxyLogLevelAnnotation,
 		k8s.ProxyLogHTTPHeaders,
@@ -252,12 +252,11 @@ func applyAnnotationOverrides(values *l5dcharts.Values, annotations map[string]s
 		values.Proxy.PodInboundPorts = override
 	}
 
-	if override, ok := annotations[k8s.ProxyEnableShutdownEndpointAnnotation]; ok {
-		value, err := strconv.ParseBool(override)
-		if err == nil {
-			values.Proxy.EnableShutdownEndpoint = value
+	if override, ok := annotations[k8s.ProxyAdminShutdownAnnotation]; ok {
+		if override == k8s.Enabled || override == k8s.Disabled {
+			values.Proxy.EnableShutdownEndpoint = override == k8s.Enabled
 		} else {
-			log.Warnf("unrecognised value used on pod annotation %s: %s", k8s.ProxyEnableShutdownEndpointAnnotation, err.Error())
+			log.Warnf("unrecognized value used for the %s annotation, valid values are: [%s, %s]", k8s.ProxyAdminShutdownAnnotation, k8s.Enabled, k8s.Disabled)
 		}
 	}
 
