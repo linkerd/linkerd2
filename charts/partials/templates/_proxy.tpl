@@ -19,6 +19,10 @@ env:
   valueFrom:
     fieldRef:
       fieldPath: spec.nodeName
+- name: LINKERD2_PROXY_TRACE_SERVICE_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.annotations['jaeger.linkerd.io/proxy-service-name']
 {{- if .Values.proxy.cores }}
 - name: LINKERD2_PROXY_CORES
   value: {{.Values.proxy.cores | quote}}
