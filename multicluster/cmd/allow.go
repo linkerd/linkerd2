@@ -24,6 +24,7 @@ type (
 		namespace          string
 		serviceAccountName string
 		ignoreCluster      bool
+		output             string
 	}
 )
 
@@ -31,6 +32,7 @@ func newAllowCommand() *cobra.Command {
 	opts := allowOptions{
 		namespace:     defaultMulticlusterNamespace,
 		ignoreCluster: false,
+		output:        "yaml",
 	}
 
 	cmd := &cobra.Command{
@@ -69,16 +71,15 @@ func newAllowCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			stdout.Write(buf.Bytes())
-			stdout.Write([]byte("---\n"))
 
-			return nil
+			return pkgcmd.RenderYAMLAs(&buf, stdout, opts.output)
 		},
 	}
 
 	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "The destination namespace for the service account.")
 	cmd.Flags().BoolVar(&opts.ignoreCluster, "ignore-cluster", false, "Ignore cluster configuration")
 	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", "", "The name of the multicluster access service account")
+	cmd.PersistentFlags().StringVarP(&opts.output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"namespace"},
