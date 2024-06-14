@@ -216,6 +216,9 @@ const (
 	// ProxyLogLevelAnnotation can be used to override the log level config.
 	ProxyLogLevelAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-level"
 
+	// ProxyLogHTTPHeaders can be used to override if the proxy is permitted to log HTTP headers.
+	ProxyLogHTTPHeaders = ProxyConfigAnnotationsPrefix + "/proxy-log-http-headers"
+
 	// ProxyLogFormatAnnotation can be used to override the log format config.
 	ProxyLogFormatAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-format"
 
