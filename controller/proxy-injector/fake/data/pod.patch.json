@@ -156,6 +156,10 @@
           }
         },
         {
+          "name": "LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED",
+          "value": "false"
+        },
+        {
           "name": "LINKERD2_PROXY_LOG",
           "value": "warn,linkerd=info,hickory=error,linkerd_proxy_http::client[{headers}]=off"
         },
