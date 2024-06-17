@@ -740,16 +740,7 @@ data:
       logFormat: ""
       logLevel: ""
       privileged: false
-      resources:
-        cpu:
-          limit: 100m
-          request: 100m
-        ephemeral-storage:
-          limit: ""
-          request: ""
-        memory:
-          limit: 20Mi
-          request: 20Mi
+      resources: null
       runAsGroup: 65534
       runAsRoot: false
       runAsUser: 65534
@@ -1122,12 +1113,6 @@ spec:
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         resources:
-          limits:
-            cpu: "100m"
-            memory: "20Mi"
-          requests:
-            cpu: "100m"
-            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1272,6 +1257,7 @@ spec:
     port: 443
     targetPort: policy-https
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1602,12 +1588,6 @@ spec:
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         resources:
-          limits:
-            cpu: "100m"
-            memory: "20Mi"
-          requests:
-            cpu: "100m"
-            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1718,6 +1698,7 @@ spec:
 ###
 ### Proxy Injector
 ###
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1960,12 +1941,6 @@ spec:
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         resources:
-          limits:
-            cpu: "100m"
-            memory: "20Mi"
-          requests:
-            cpu: "100m"
-            memory: "20Mi"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

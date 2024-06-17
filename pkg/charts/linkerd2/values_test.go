@@ -201,16 +201,6 @@ func TestNewValues(t *testing.T) {
 				Name:    "cr.l5d.io/linkerd/proxy-init",
 				Version: testVersion,
 			},
-			Resources: &Resources{
-				CPU: Constraints{
-					Limit:   "100m",
-					Request: "100m",
-				},
-				Memory: Constraints{
-					Limit:   "20Mi",
-					Request: "20Mi",
-				},
-			},
 			XTMountPath: &VolumeMountPath{
 				Name:      "linkerd-proxy-init-xtables-lock",
 				MountPath: "/run",
