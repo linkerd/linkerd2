@@ -391,7 +391,13 @@ fn convert_outbound_http_route(
                             .and_then(|d| convert_duration("response timeout", d)),
                     }),
                     retry: retry.map(|r| outbound::http_route::Retry {
-                        limit: r.limit.into(),
+                        max_retries: r.limit.into(),
+                        max_request_bytes: 64 * 1024,
+                        backoff: Some(outbound::ExponentialBackoff {
+                            min_backoff: Some(time::Duration::from_millis(25).try_into().unwrap()),
+                            max_backoff: Some(time::Duration::from_millis(250).try_into().unwrap()),
+                            jitter_ratio: 1.0,
+                        }),
                         conditions: r
                             .conditions
                             .map(|c| outbound::http_route::retry::Conditions {
