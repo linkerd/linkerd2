@@ -405,16 +405,6 @@ func TestInjectAutoPod(t *testing.T) {
 			"--inbound-ports-to-ignore", "4190,4191,1234,5678",
 			"--outbound-ports-to-ignore", "4567,4568",
 		},
-		Resources: v1.ResourceRequirements{
-			Limits: v1.ResourceList{
-				v1.ResourceName("cpu"):    resource.MustParse("100m"),
-				v1.ResourceName("memory"): resource.MustParse("20Mi"),
-			},
-			Requests: v1.ResourceList{
-				v1.ResourceName("cpu"):    resource.MustParse("100m"),
-				v1.ResourceName("memory"): resource.MustParse("20Mi"),
-			},
-		},
 		VolumeMounts: []v1.VolumeMount{
 			{
 				Name:      "linkerd-proxy-init-xtables-lock",
