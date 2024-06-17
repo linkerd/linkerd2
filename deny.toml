@@ -15,7 +15,15 @@ ignore = []
 
 [licenses]
 unlicensed = "deny"
-allow = ["Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MIT"]
+allow = [
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MIT",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+]
 deny = []
 copyleft = "deny"
 allow-osi-fsf-free = "neither"
@@ -28,16 +36,6 @@ exceptions = [
         "OpenSSL",
     ], name = "ring", version = "*" },
 
-    # The Unicode-DFS--2016 license is necessary for unicode-ident because they
-    # use data from the unicode tables to generate the tables which are
-    # included in the application. We do not distribute those data files so
-    # this is not a problem for us. See https://github.com/dtolnay/unicode-ident/pull/9/files
-    # for more details.
-    { allow = [
-        "MIT",
-        "Apache-2.0",
-        "Unicode-DFS-2016",
-    ], name = "unicode-ident" },
     { allow = [
         "Zlib",
     ], name = "adler32" },

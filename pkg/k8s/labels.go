@@ -209,8 +209,15 @@ const (
 	// ProxyGIDAnnotation can be used to override the GID config.
 	ProxyGIDAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-gid"
 
+	// ProxyAdminShutdownAnnotation can be used to override the
+	// LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED config.
+	ProxyAdminShutdownAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-admin-shutdown"
+
 	// ProxyLogLevelAnnotation can be used to override the log level config.
 	ProxyLogLevelAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-level"
+
+	// ProxyLogHTTPHeaders can be used to override if the proxy is permitted to log HTTP headers.
+	ProxyLogHTTPHeaders = ProxyConfigAnnotationsPrefix + "/proxy-log-http-headers"
 
 	// ProxyLogFormatAnnotation can be used to override the log format config.
 	ProxyLogFormatAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-format"

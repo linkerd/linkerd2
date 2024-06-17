@@ -33,7 +33,7 @@ func newDiagProfileOptions() *diagProfileOptions {
 func newCmdDiagnosticsProfile() *cobra.Command {
 	options := newDiagProfileOptions()
 
-	example := `  # Get the service profile for the service or endopint at 10.20.2.4:8080
+	example := `  # Get the service profile for the service or endpoint at 10.20.2.4:8080
   linkerd diagnostics profile 10.20.2.4:8080`
 
 	cmd := &cobra.Command{

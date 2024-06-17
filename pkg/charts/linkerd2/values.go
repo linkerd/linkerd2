@@ -115,8 +115,10 @@ type (
 		Cores                                int64            `json:"cores,omitempty"`
 		EnableExternalProfiles               bool             `json:"enableExternalProfiles"`
 		Image                                *Image           `json:"image"`
+		EnableShutdownEndpoint               bool             `json:"enableShutdownEndpoint"`
 		LogLevel                             string           `json:"logLevel"`
 		LogFormat                            string           `json:"logFormat"`
+		LogHTTPHeaders                       string           `json:"logHTTPHeaders"`
 		SAMountPath                          *VolumeMountPath `json:"saMountPath"`
 		Ports                                *Ports           `json:"ports"`
 		Resources                            *Resources       `json:"resources"`

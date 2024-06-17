@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"os"
+	"bytes"
 	"text/template"
 
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
@@ -118,6 +118,7 @@ type templateOptions struct {
 
 // newCmdAllowScrapes creates a new cobra command `allow-scrapes`
 func newCmdAllowScrapes() *cobra.Command {
+	output := "yaml"
 	options := templateOptions{
 		ExtensionName: ExtensionName,
 		ChartName:     vizChartName,
@@ -136,10 +137,17 @@ linkerd viz allow-scrapes --namespace emojivoto | kubectl apply -f -`,
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			t := template.Must(template.New("allow-scrapes").Parse(allowScrapePolicy))
-			return t.Execute(os.Stdout, options)
+			var buf bytes.Buffer
+			err := t.Execute(&buf, options)
+			if err != nil {
+				return err
+			}
+
+			return pkgcmd.RenderYAMLAs(&buf, stdout, output)
 		},
 	}
 	cmd.Flags().StringVarP(&options.TargetNs, "namespace", "n", options.TargetNs, "The namespace in which to authorize Prometheus scrapes.")
+	cmd.Flags().StringVarP(&output, "output", "o", output, "Output format. One of: json|yaml")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"n", "namespace"},

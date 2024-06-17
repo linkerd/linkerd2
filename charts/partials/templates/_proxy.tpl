@@ -2,6 +2,9 @@
 {{ if and .Values.proxy.nativeSidecar .Values.proxy.waitBeforeExitSeconds }}
 {{ fail "proxy.nativeSidecar and waitBeforeExitSeconds cannot be used simultaneously" }}
 {{- end }}
+{{- if not (has .Values.proxy.logHTTPHeaders (list "insecure" "off")) }}
+{{- fail "logHTTPHeaders must be one of: insecure | off" }}
+{{- end }}
 {{- $trustDomain := (.Values.identityTrustDomain | default .Values.clusterDomain) -}}
 env:
 - name: _pod_name
@@ -28,8 +31,10 @@ env:
 - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_TLS
   value: {{.Values.proxy.requireTLSOnInboundPorts | quote}}
 {{ end -}}
+- name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
+  value: {{.Values.proxy.enableShutdownEndpoint | quote}}
 - name: LINKERD2_PROXY_LOG
-  value: {{.Values.proxy.logLevel | quote}}
+  value: "{{.Values.proxy.logLevel}}{{ if not (eq .Values.proxy.logHTTPHeaders "insecure") }},linkerd_proxy_http::client[{headers}]=off{{ end }}"
 - name: LINKERD2_PROXY_LOG_FORMAT
   value: {{.Values.proxy.logFormat | quote}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
