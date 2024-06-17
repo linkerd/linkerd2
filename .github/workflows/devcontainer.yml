@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-22.04
     container: ghcr.io/linkerd/dev:v43-rust
     steps:
-      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
       - shell: bash
         run: |
           # Extract current Rust version from the toolchain file.
@@ -40,5 +40,5 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: linkerd/dev/actions/setup-tools@v43
-      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
       - run: just-dev pull-dev-image
