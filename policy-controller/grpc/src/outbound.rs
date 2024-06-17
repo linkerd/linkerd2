@@ -11,8 +11,9 @@ use linkerd2_proxy_api::{
 };
 use linkerd_policy_controller_core::{
     outbound::{
-        Backend, DiscoverOutboundPolicy, Filter, OutboundDiscoverTarget, OutboundPolicy,
-        OutboundPolicyStream, OutboundRoute, OutboundRouteCollection, OutboundRouteRule,
+        Backend, DiscoverOutboundPolicy, Filter, HttpRetryConditions, OutboundDiscoverTarget,
+        OutboundPolicy, OutboundPolicyStream, OutboundRoute, OutboundRouteCollection,
+        OutboundRouteRule,
     },
     routes::{GroupKindNamespaceName, HttpRouteMatch},
 };
@@ -321,6 +322,9 @@ fn convert_outbound_http_route(
     }: OutboundRoute<HttpRouteMatch>,
     backend: outbound::Backend,
 ) -> outbound::HttpRoute {
+    // This encoder sets deprecated timeouts for older proxies.
+    #![allow(deprecated)]
+
     let metadata = Some(Metadata {
         kind: Some(metadata::Kind::Resource(api::meta::Resource {
             group: gknn.group.to_string(),
@@ -342,15 +346,13 @@ fn convert_outbound_http_route(
             |OutboundRouteRule {
                  matches,
                  backends,
-                 request_timeout,
-                 backend_request_timeout,
+                 retry,
+                 timeouts,
                  filters,
              }| {
-                let backend_request_timeout = backend_request_timeout
-                    .and_then(|d| convert_duration("backend request_timeout", d));
                 let backends = backends
                     .into_iter()
-                    .map(|backend| convert_http_backend(backend_request_timeout.clone(), backend))
+                    .map(convert_http_backend)
                     .collect::<Vec<_>>();
                 let dist = if backends.is_empty() {
                     outbound::http_route::distribution::Kind::FirstAvailable(
@@ -358,7 +360,7 @@ fn convert_outbound_http_route(
                             backends: vec![outbound::http_route::RouteBackend {
                                 backend: Some(backend.clone()),
                                 filters: vec![],
-                                request_timeout: backend_request_timeout,
+                                ..Default::default()
                             }],
                         },
                     )
@@ -374,8 +376,42 @@ fn convert_outbound_http_route(
                         .collect(),
                     backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
                     filters: filters.into_iter().map(convert_to_http_filter).collect(),
-                    request_timeout: request_timeout
+                    request_timeout: timeouts
+                        .stream
                         .and_then(|d| convert_duration("request timeout", d)),
+                    timeouts: Some(api::http_route::Timeouts {
+                        stream: timeouts
+                            .stream
+                            .and_then(|d| convert_duration("stream timeout", d)),
+                        idle: timeouts
+                            .idle
+                            .and_then(|d| convert_duration("idle timeout", d)),
+                        response: timeouts
+                            .response
+                            .and_then(|d| convert_duration("response timeout", d)),
+                    }),
+                    retry: retry.map(|r| outbound::http_route::Retry {
+                        limit: r.limit.into(),
+                        conditions: r
+                            .conditions
+                            .map(|c| outbound::http_route::retry::Conditions {
+                                status_ranges: match c {
+                                    HttpRetryConditions::ServerError => {
+                                        vec![outbound::http_route::retry::conditions::StatusRange {
+                                            start: 500,
+                                            end: 599,
+                                        }]
+                                    }
+                                    HttpRetryConditions::GatewayError => {
+                                        vec![outbound::http_route::retry::conditions::StatusRange {
+                                            start: 502,
+                                            end: 504,
+                                        }]
+                                    }
+                                },
+                            }),
+                        timeout: r.timeout.and_then(|d| convert_duration("retry timeout", d)),
+                    }),
                 }
             },
         )
@@ -388,10 +424,7 @@ fn convert_outbound_http_route(
     }
 }
 
-fn convert_http_backend(
-    request_timeout: Option<prost_types::Duration>,
-    backend: Backend,
-) -> outbound::http_route::WeightedRouteBackend {
+fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRouteBackend {
     match backend {
         Backend::Addr(addr) => {
             let socket_addr = SocketAddr::new(addr.addr, addr.port.get());
@@ -410,7 +443,7 @@ fn convert_http_backend(
                         )),
                     }),
                     filters: Default::default(),
-                    request_timeout,
+                    ..Default::default()
                 }),
             }
         }
@@ -450,7 +483,7 @@ fn convert_http_backend(
                             )),
                         }),
                         filters,
-                        request_timeout,
+                        ..Default::default()
                     }),
                 }
             } else {
@@ -473,7 +506,7 @@ fn convert_http_backend(
                                 },
                             )),
                         }],
-                        request_timeout,
+                        ..Default::default()
                     }),
                 }
             }
@@ -497,7 +530,7 @@ fn convert_http_backend(
                         },
                     )),
                 }],
-                request_timeout,
+                ..Default::default()
             }),
         },
     }
@@ -548,13 +581,12 @@ fn default_outbound_http_route(backend: outbound::Backend) -> outbound::HttpRout
                     backends: vec![outbound::http_route::RouteBackend {
                         backend: Some(backend),
                         filters: vec![],
-                        request_timeout: None,
+                        ..Default::default()
                     }],
                 },
             )),
         }),
-        filters: Default::default(),
-        request_timeout: None,
+        ..Default::default()
     }];
     outbound::HttpRoute {
         metadata,

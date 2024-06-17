@@ -7,8 +7,9 @@ use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
 use linkerd_policy_controller_core::{
     outbound::{
-        Backend, Backoff, FailureAccrual, Filter, OutboundPolicy, OutboundRoute,
-        OutboundRouteCollection, OutboundRouteRule, TypedOutboundRoute, WeightedService,
+        Backend, Backoff, FailureAccrual, Filter, HttpRetryConditions, OutboundPolicy,
+        OutboundRoute, OutboundRouteCollection, OutboundRouteRule, RouteRetry, RouteTimeouts,
+        TypedOutboundRoute, WeightedService,
     },
     routes::{GroupKindNamespaceName, HttpRouteMatch},
 };
@@ -448,6 +449,9 @@ impl Namespace {
     ) -> Result<TypedOutboundRoute> {
         match route {
             RouteResource::LinkerdHttp(route) => {
+                let timeouts = parse_timeouts(route.annotations())?;
+                let retry = parse_retry(route.annotations())?;
+
                 let hostnames = route
                     .spec
                     .hostnames
@@ -461,7 +465,15 @@ impl Namespace {
                     .rules
                     .into_iter()
                     .flatten()
-                    .map(|r| self.convert_linkerd_rule(r, cluster, service_info))
+                    .map(|r| {
+                        self.convert_linkerd_rule(
+                            r,
+                            cluster,
+                            service_info,
+                            timeouts.clone(),
+                            retry.clone(),
+                        )
+                    })
                     .collect::<Result<_>>()?;
 
                 let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
@@ -473,6 +485,9 @@ impl Namespace {
                 }))
             }
             RouteResource::GatewayHttp(route) => {
+                let timeouts = parse_timeouts(route.annotations())?;
+                let retry = parse_retry(route.annotations())?;
+
                 let hostnames = route
                     .spec
                     .hostnames
@@ -486,7 +501,15 @@ impl Namespace {
                     .rules
                     .into_iter()
                     .flatten()
-                    .map(|r| self.convert_gateway_http_rule(r, cluster, service_info))
+                    .map(|r| {
+                        self.convert_gateway_http_rule(
+                            r,
+                            cluster,
+                            service_info,
+                            timeouts.clone(),
+                            retry.clone(),
+                        )
+                    })
                     .collect::<Result<_>>()?;
 
                 let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
@@ -505,6 +528,8 @@ impl Namespace {
         rule: linkerd_k8s_api::httproute::HttpRouteRule,
         cluster: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
+        mut timeouts: RouteTimeouts,
+        retry: Option<RouteRetry>,
     ) -> Result<OutboundRouteRule<HttpRouteMatch>> {
         let matches = rule
             .matches
@@ -527,20 +552,9 @@ impl Namespace {
             .map(convert_linkerd_filter)
             .collect::<Result<_>>()?;
 
-        let request_timeout = rule.timeouts.as_ref().and_then(|timeouts| {
-            let timeout = time::Duration::from(timeouts.request?);
-
-            // zero means "no timeout", per GEP-1742
-            if timeout == time::Duration::from_nanos(0) {
-                return None;
-            }
-
-            Some(timeout)
-        });
-
-        let backend_request_timeout = rule.timeouts.as_ref().and_then(
-            |timeouts: &linkerd_k8s_api::httproute::HttpRouteTimeouts| {
-                let timeout = time::Duration::from(timeouts.backend_request?);
+        timeouts.stream = timeouts.stream.or_else(|| {
+            rule.timeouts.as_ref().and_then(|timeouts| {
+                let timeout = time::Duration::from(timeouts.request?);
 
                 // zero means "no timeout", per GEP-1742
                 if timeout == time::Duration::from_nanos(0) {
@@ -548,14 +562,14 @@ impl Namespace {
                 }
 
                 Some(timeout)
-            },
-        );
+            })
+        });
 
         Ok(OutboundRouteRule {
             matches,
             backends,
-            request_timeout,
-            backend_request_timeout,
+            timeouts,
+            retry,
             filters,
         })
     }
@@ -565,6 +579,8 @@ impl Namespace {
         rule: k8s_gateway_api::HttpRouteRule,
         cluster: &ClusterInfo,
         service_info: &HashMap<ServiceRef, ServiceInfo>,
+        timeouts: RouteTimeouts,
+        retry: Option<RouteRetry>,
     ) -> Result<OutboundRouteRule<HttpRouteMatch>> {
         let matches = rule
             .matches
@@ -590,8 +606,8 @@ impl Namespace {
         Ok(OutboundRouteRule {
             matches,
             backends,
-            request_timeout: None,
-            backend_request_timeout: None,
+            timeouts,
+            retry,
             filters,
         })
     }
@@ -976,6 +992,67 @@ fn parse_accrual_config(
             }
         })
         .transpose()
+}
+
+fn parse_timeouts(
+    annotations: &std::collections::BTreeMap<String, String>,
+) -> Result<RouteTimeouts> {
+    let response = annotations
+        .get("timeout.linkerd.io/response")
+        .map(|s| parse_duration(s))
+        .transpose()?;
+    let stream = annotations
+        .get("timeout.linkerd.io/stream")
+        .map(|s| parse_duration(s))
+        .transpose()?;
+    let idle = annotations
+        .get("timeout.linkerd.io/idle")
+        .map(|s| parse_duration(s))
+        .transpose()?;
+    Ok(RouteTimeouts {
+        response,
+        stream,
+        idle,
+    })
+}
+
+fn parse_retry(
+    annotations: &std::collections::BTreeMap<String, String>,
+) -> Result<Option<RouteRetry>> {
+    let limit = annotations
+        .get("retry.linkerd.io/limit")
+        .map(|s| s.parse::<u16>())
+        .transpose()?
+        .filter(|v| *v != 0);
+
+    let timeout = annotations
+        .get("retry.linkerd.io/timeout")
+        .map(|v| parse_duration(v))
+        .transpose()?
+        .filter(|v| *v != time::Duration::ZERO);
+
+    let conditions = annotations
+        .get("retry.linkerd.io/http")
+        .map(|v| {
+            if v == "5xx" {
+                return Ok(HttpRetryConditions::ServerError);
+            }
+            if v == "gateway-error" {
+                return Ok(HttpRetryConditions::GatewayError);
+            }
+            bail!("invalid retry condition: {v}")
+        })
+        .transpose()?;
+
+    if limit.is_none() && timeout.is_none() && conditions.is_none() {
+        return Ok(None);
+    }
+
+    Ok(Some(RouteRetry {
+        limit: limit.unwrap_or(1),
+        timeout,
+        conditions,
+    }))
 }
 
 fn parse_duration(s: &str) -> Result<time::Duration> {

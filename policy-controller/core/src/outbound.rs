@@ -64,8 +64,8 @@ pub struct OutboundRoute<MatchType> {
 pub struct OutboundRouteRule<MatchType> {
     pub matches: Vec<MatchType>,
     pub backends: Vec<Backend>,
-    pub request_timeout: Option<time::Duration>,
-    pub backend_request_timeout: Option<time::Duration>,
+    pub retry: Option<RouteRetry>,
+    pub timeouts: RouteTimeouts,
     pub filters: Vec<Filter>,
 }
 
@@ -112,6 +112,26 @@ pub enum Filter {
     ResponseHeaderModifier(HeaderModifierFilter),
     RequestRedirect(RequestRedirectFilter),
     FailureInjector(FailureInjectorFilter),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RouteTimeouts {
+    pub response: Option<time::Duration>,
+    pub stream: Option<time::Duration>,
+    pub idle: Option<time::Duration>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RouteRetry {
+    pub limit: u16,
+    pub timeout: Option<time::Duration>,
+    pub conditions: Option<HttpRetryConditions>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum HttpRetryConditions {
+    ServerError,
+    GatewayError,
 }
 
 // === impl TypedOutboundRoute ===
