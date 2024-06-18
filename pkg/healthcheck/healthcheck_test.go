@@ -1802,13 +1802,7 @@ data:
         name: ProxyInitImageName
         pullPolicy: ImagePullPolicy
         version: ProxyInitVersion
-      resources:
-        cpu:
-          limit: 100m
-          request: 10m
-        memory:
-          limit: 50Mi
-          request: 10Mi
+      resources: null
       saMountPath: null
       xtMountPath:
         mountPath: /run
@@ -1950,12 +1944,6 @@ data:
           pullPolicy: ImagePullPolicy
           version: ProxyInitVersion
         resources:
-          cpu:
-            limit: 100m
-            request: 10m
-          memory:
-            limit: 50Mi
-            request: 10Mi
         saMountPath: null
         xtMountPath:
           mountPath: /run
