@@ -770,6 +770,8 @@ data:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
+  labels:
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
   name: ext-namespace-metadata-linkerd-config
