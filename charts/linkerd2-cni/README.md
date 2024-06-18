@@ -25,14 +25,14 @@ Kubernetes: `>=1.22.0-0`
 | commonLabels | object | `{}` | Labels to apply to all resources |
 | destCNIBinDir | string | `"/opt/cni/bin"` | Directory on the host where the CNI configuration will be placed |
 | destCNINetDir | string | `"/etc/cni/net.d"` | Directory on the host where the CNI plugin binaries reside |
-| disableIPv6 | bool | `false` | Disables adding IPv6 rules on top of IPv4 rules |
+| disableIPv6 | bool | `true` | Disables adding IPv6 rules on top of IPv4 rules |
 | enablePSP | bool | `false` | Add a PSP resource and bind it to the linkerd-cni ServiceAccounts. Note PSP has been deprecated since k8s v1.21 |
 | extraInitContainers | list | `[]` | Add additional initContainers to the daemonset |
 | ignoreInboundPorts | string | `""` | Default set of inbound ports to skip via iptables |
 | ignoreOutboundPorts | string | `""` | Default set of outbound ports to skip via iptables |
 | image.name | string | `"cr.l5d.io/linkerd/cni-plugin"` | Docker image for the CNI plugin |
 | image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the linkerd-cni container |
-| image.version | string | `"v1.5.0"` | Tag for the CNI container Docker image |
+| image.version | string | `"v1.5.1"` | Tag for the CNI container Docker image |
 | imagePullSecrets | list | `[]` |  |
 | inboundProxyPort | int | `4143` | Inbound port for the proxy container |
 | iptablesMode | string | `"legacy"` | Variant of iptables that will be used to configure routing |

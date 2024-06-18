@@ -76,4 +76,3 @@ subjects:
   - kind: ServiceAccount
     name: {{ .AccountName }}
     namespace: linkerd-multicluster
----

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -56,6 +57,7 @@ type (
 		gatewayPort             uint32
 		ha                      bool
 		enableGateway           bool
+		output                  string
 	}
 )
 
@@ -181,9 +183,19 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				},
 			}
 
-			credsOut, err := yaml.Marshal(creds)
-			if err != nil {
-				return err
+			var credsOut []byte
+			if opts.output == "yaml" {
+				credsOut, err = yaml.Marshal(creds)
+				if err != nil {
+					return err
+				}
+			} else if opts.output == "json" {
+				credsOut, err = json.Marshal(creds)
+				if err != nil {
+					return err
+				}
+			} else {
+				return fmt.Errorf("output format %s not supported", opts.output)
 			}
 
 			destinationCreds := corev1.Secret{
@@ -204,9 +216,20 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 					k8s.ConfigKeyName: kubeconfig,
 				},
 			}
-			destinationCredsOut, err := yaml.Marshal(destinationCreds)
-			if err != nil {
-				return err
+
+			var destinationCredsOut []byte
+			if opts.output == "yaml" {
+				destinationCredsOut, err = yaml.Marshal(destinationCreds)
+				if err != nil {
+					return err
+				}
+			} else if opts.output == "json" {
+				destinationCredsOut, err = json.Marshal(destinationCreds)
+				if err != nil {
+					return err
+				}
+			} else {
+				return fmt.Errorf("output format %s not supported", opts.output)
 			}
 
 			remoteDiscoverySelector, err := metav1.ParseToLabelSelector(opts.remoteDiscoverySelector)
@@ -287,9 +310,20 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 			if err != nil {
 				return err
 			}
-			linkOut, err := yaml.Marshal(obj.Object)
-			if err != nil {
-				return err
+
+			var linkOut []byte
+			if opts.output == "yaml" {
+				linkOut, err = yaml.Marshal(obj.Object)
+				if err != nil {
+					return err
+				}
+			} else if opts.output == "json" {
+				linkOut, err = json.Marshal(obj.Object)
+				if err != nil {
+					return err
+				}
+			} else {
+				return fmt.Errorf("output format %s not supported", opts.output)
 			}
 
 			values, err := buildServiceMirrorValues(opts)
@@ -313,19 +347,23 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 					return err
 				}
 			}
-			serviceMirrorOut, err := renderServiceMirror(values, valuesOverrides, opts.namespace)
+			serviceMirrorOut, err := renderServiceMirror(values, valuesOverrides, opts.namespace, opts.output)
 			if err != nil {
 				return err
 			}
 
+			separator := []byte("---\n")
+			if opts.output == "json" {
+				separator = []byte("\n")
+			}
 			stdout.Write(credsOut)
-			stdout.Write([]byte("---\n"))
+			stdout.Write(separator)
 			stdout.Write(destinationCredsOut)
-			stdout.Write([]byte("---\n"))
+			stdout.Write(separator)
 			stdout.Write(linkOut)
-			stdout.Write([]byte("---\n"))
+			stdout.Write(separator)
 			stdout.Write(serviceMirrorOut)
-			stdout.Write([]byte("---\n"))
+			stdout.Write(separator)
 
 			return nil
 		},
@@ -350,6 +388,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
 	cmd.Flags().BoolVar(&opts.ha, "ha", opts.ha, "Enable HA configuration for the service-mirror deployment (default false)")
 	cmd.Flags().BoolVar(&opts.enableGateway, "gateway", opts.enableGateway, "If false, allows a link to be created against a cluster that does not have a gateway service")
+	cmd.Flags().StringVarP(&opts.output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"namespace", "gateway-namespace"},
@@ -357,7 +396,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 	return cmd
 }
 
-func renderServiceMirror(values *multicluster.Values, valuesOverrides map[string]interface{}, namespace string) ([]byte, error) {
+func renderServiceMirror(values *multicluster.Values, valuesOverrides map[string]interface{}, namespace string, format string) ([]byte, error) {
 	files := []*chartloader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 		{Name: "templates/service-mirror.yaml"},
@@ -420,14 +459,19 @@ func renderServiceMirror(values *multicluster.Values, valuesOverrides map[string
 	}
 
 	// Merge templates and inject
-	var out bytes.Buffer
+	var yamlBytes bytes.Buffer
 	for _, tmpl := range chart.Templates {
 		t := path.Join(chart.Metadata.Name, tmpl.Name)
-		if _, err := out.WriteString(renderedTemplates[t]); err != nil {
+		if _, err := yamlBytes.WriteString(renderedTemplates[t]); err != nil {
 			return nil, err
 		}
 	}
 
+	var out bytes.Buffer
+	err = pkgcmd.RenderYAMLAs(&yamlBytes, &out, format)
+	if err != nil {
+		return nil, err
+	}
 	return out.Bytes(), nil
 }
 
@@ -450,6 +494,7 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 		gatewayPort:             0,
 		ha:                      false,
 		enableGateway:           true,
+		output:                  "yaml",
 	}, nil
 }
 
