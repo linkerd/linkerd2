@@ -2,7 +2,7 @@ use ahash::AHashMap as HashMap;
 use anyhow::{bail, Error, Result};
 use k8s_gateway_api as api;
 use linkerd_policy_controller_core::{
-    inbound::{Filter, HttpRoute, HttpRouteRule},
+    inbound::{Filter, InboundRoute, InboundRouteRule},
     routes::{HttpRouteMatch, Method},
     POLICY_CONTROLLER_NAME,
 };

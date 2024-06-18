@@ -2,8 +2,8 @@ use crate::{
     identity_match::IdentityMatch,
     network_match::NetworkMatch,
     routes::{
-        FailureInjectorFilter, GroupKindName, HeaderModifierFilter, HostMatch, HttpRouteMatch,
-        PathMatch, RequestRedirectFilter,
+        FailureInjectorFilter, GroupKindName, GrpcRouteMatch, HeaderModifierFilter, HostMatch,
+        HttpRouteMatch, PathMatch, RequestRedirectFilter,
     },
 };
 use ahash::AHashMap as HashMap;
@@ -89,13 +89,14 @@ pub struct InboundServer {
 
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
-    pub http_routes: HashMap<HttpRouteRef, HttpRoute>,
+    pub http_routes: HashMap<HttpRouteRef, InboundRoute<HttpRouteMatch>>,
+    pub grpc_routes: HashMap<GroupKindName, InboundRoute<GrpcRouteMatch>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HttpRoute {
+pub struct InboundRoute<MatchType> {
     pub hostnames: Vec<HostMatch>,
-    pub rules: Vec<HttpRouteRule>,
+    pub rules: Vec<InboundRouteRule<MatchType>>,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
 
     /// This is required for ordering returned `HttpRoute`s by their creation
@@ -104,8 +105,8 @@ pub struct HttpRoute {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HttpRouteRule {
-    pub matches: Vec<HttpRouteMatch>,
+pub struct InboundRouteRule<MatchType> {
+    pub matches: Vec<MatchType>,
     pub filters: Vec<Filter>,
 }
 
@@ -117,15 +118,15 @@ pub enum Filter {
     FailureInjector(FailureInjectorFilter),
 }
 
-// === impl InboundHttpRoute ===
+// === impl InboundRoute ===
 
-/// The default `InboundHttpRoute` used for any `InboundServer` that
+/// The default `InboundRoute` used for any `InboundServer` that
 /// does not have routes.
-impl Default for HttpRoute {
+impl Default for InboundRoute<HttpRouteMatch> {
     fn default() -> Self {
         Self {
             hostnames: vec![],
-            rules: vec![HttpRouteRule {
+            rules: vec![InboundRouteRule {
                 matches: vec![HttpRouteMatch {
                     path: Some(PathMatch::Prefix("/".to_string())),
                     headers: vec![],
