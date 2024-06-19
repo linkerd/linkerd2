@@ -93,6 +93,9 @@ pub struct InboundServer {
     pub grpc_routes: HashMap<GroupKindName, InboundRoute<GrpcRouteMatch>>,
 }
 
+pub type HttpRoute = InboundRoute<HttpRouteMatch>;
+pub type GrpcRoute = InboundRoute<GrpcRouteMatch>;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InboundRoute<MatchType> {
     pub hostnames: Vec<HostMatch>,

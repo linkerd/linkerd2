@@ -11,9 +11,10 @@ use linkerd2_proxy_api::{
 use linkerd_policy_controller_core::{
     inbound::{
         AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer, Filter,
-        HttpRoute, HttpRouteRef, HttpRouteRule, InboundServer, InboundServerStream, ProxyProtocol,
-        ServerRef,
+        GrpcRoute, HttpRoute, HttpRouteRef, InboundRouteRule, InboundServer, InboundServerStream,
+        ProxyProtocol, ServerRef,
     },
+    routes::GroupKindName,
     IdentityMatch, IpNet, NetworkMatch,
 };
 use maplit::*;
@@ -158,7 +159,9 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                 },
             )),
             ProxyProtocol::Grpc => Some(proto::proxy_protocol::Kind::Grpc(
-                proto::proxy_protocol::Grpc::default(),
+                proto::proxy_protocol::Grpc {
+                    routes: to_grpc_route_list(&srv.grpc_routes, cluster_networks),
+                },
             )),
             ProxyProtocol::Opaque => Some(proto::proxy_protocol::Kind::Opaque(
                 proto::proxy_protocol::Opaque {},
@@ -388,12 +391,15 @@ fn to_http_route(
     let rules = rules
         .into_iter()
         .map(
-            |HttpRouteRule { matches, filters }| proto::http_route::Rule {
+            |InboundRouteRule { matches, filters }| proto::http_route::Rule {
                 matches: matches
                     .into_iter()
                     .map(routes::http::convert_match)
                     .collect(),
-                filters: filters.into_iter().filter_map(convert_filter).collect(),
+                filters: filters
+                    .into_iter()
+                    .filter_map(convert_http_filter)
+                    .collect(),
             },
         )
         .collect();
@@ -411,7 +417,7 @@ fn to_http_route(
     }
 }
 
-fn convert_filter(filter: Filter) -> Option<proto::http_route::Filter> {
+fn convert_http_filter(filter: Filter) -> Option<proto::http_route::Filter> {
     use proto::http_route::filter::Kind;
 
     let kind = match filter {
@@ -426,4 +432,106 @@ fn convert_filter(filter: Filter) -> Option<proto::http_route::Filter> {
     };
 
     kind.map(|kind| proto::http_route::Filter { kind: Some(kind) })
+}
+
+fn to_grpc_route_list<'r>(
+    routes: impl IntoIterator<Item = (&'r GroupKindName, &'r GrpcRoute)>,
+    cluster_networks: &[IpNet],
+) -> Vec<proto::GrpcRoute> {
+    // Per the Gateway API spec:
+    //
+    // > If ties still exist across multiple Routes, matching precedence MUST be
+    // > determined in order of the following criteria, continuing on ties:
+    // >
+    // >    The oldest Route based on creation timestamp.
+    // >    The Route appearing first in alphabetical order by
+    // >   "{namespace}/{name}".
+    //
+    // Note that we don't need to include the route's namespace in this
+    // comparison, because all these routes will exist in the same
+    // namespace.
+    let mut route_list = routes.into_iter().collect::<Vec<_>>();
+    route_list.sort_by(|(a_ref, a), (b_ref, b)| {
+        let by_ts = match (&a.creation_timestamp, &b.creation_timestamp) {
+            (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
+            (None, None) => std::cmp::Ordering::Equal,
+            // Routes with timestamps are preferred over routes without.
+            (Some(_), None) => return std::cmp::Ordering::Less,
+            (None, Some(_)) => return std::cmp::Ordering::Greater,
+        };
+        by_ts.then_with(|| a_ref.cmp(b_ref))
+    });
+
+    route_list
+        .into_iter()
+        .map(|(route_ref, route)| to_grpc_route(route_ref, route.clone(), cluster_networks))
+        .collect()
+}
+
+fn to_grpc_route(
+    reference: &GroupKindName,
+    GrpcRoute {
+        hostnames,
+        rules,
+        authorizations,
+        creation_timestamp: _,
+    }: GrpcRoute,
+    cluster_networks: &[IpNet],
+) -> proto::GrpcRoute {
+    let metadata = Metadata {
+        kind: Some(metadata::Kind::Resource(api::meta::Resource {
+            group: reference.group.to_string(),
+            kind: reference.kind.to_string(),
+            name: reference.name.to_string(),
+            ..Default::default()
+        })),
+    };
+
+    let hosts = hostnames
+        .into_iter()
+        .map(routes::convert_host_match)
+        .collect();
+
+    let rules = rules
+        .into_iter()
+        .map(
+            |InboundRouteRule { matches, filters }| proto::grpc_route::Rule {
+                matches: matches
+                    .into_iter()
+                    .map(routes::grpc::convert_match)
+                    .collect(),
+                filters: filters
+                    .into_iter()
+                    .filter_map(convert_grpc_filter)
+                    .collect(),
+            },
+        )
+        .collect();
+
+    let authorizations = authorizations
+        .iter()
+        .map(|(n, c)| to_authz(n, c, cluster_networks))
+        .collect();
+
+    proto::GrpcRoute {
+        metadata: Some(metadata),
+        hosts,
+        rules,
+        authorizations,
+    }
+}
+
+fn convert_grpc_filter(filter: Filter) -> Option<proto::grpc_route::Filter> {
+    use proto::grpc_route::filter::Kind;
+
+    let kind = match filter {
+        Filter::FailureInjector(_) => None,
+        Filter::RequestHeaderModifier(f) => Some(Kind::RequestHeaderModifier(
+            routes::convert_request_header_modifier_filter(f),
+        )),
+        Filter::ResponseHeaderModifier(_) => None,
+        Filter::RequestRedirect(_) => None,
+    };
+
+    kind.map(|kind| proto::grpc_route::Filter { kind: Some(kind) })
 }

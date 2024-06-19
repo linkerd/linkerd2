@@ -168,14 +168,8 @@ pub(crate) mod http {
 }
 
 pub(crate) mod grpc {
-    use super::{GrpcRouteMatch, HeaderMatch};
-
-    mod proto {
-        pub(super) use linkerd2_proxy_api::{
-            grpc_route::{GrpcRouteMatch, GrpcRpcMatch},
-            http_route::{header_match::Value as HeaderValue, HeaderMatch},
-        };
-    }
+    use super::{proto as http_proto, GrpcRouteMatch, HeaderMatch};
+    use linkerd2_proxy_api::grpc_route as proto;
 
     pub(crate) fn convert_match(
         GrpcRouteMatch { headers, method }: GrpcRouteMatch,
@@ -183,13 +177,15 @@ pub(crate) mod grpc {
         let headers = headers
             .into_iter()
             .map(|rule| match rule {
-                HeaderMatch::Exact(name, value) => proto::HeaderMatch {
+                HeaderMatch::Exact(name, value) => http_proto::HeaderMatch {
                     name: name.to_string(),
-                    value: Some(proto::HeaderValue::Exact(value.as_bytes().to_vec())),
+                    value: Some(http_proto::header_match::Value::Exact(
+                        value.as_bytes().to_vec(),
+                    )),
                 },
-                HeaderMatch::Regex(name, re) => proto::HeaderMatch {
+                HeaderMatch::Regex(name, re) => http_proto::HeaderMatch {
                     name: name.to_string(),
-                    value: Some(proto::HeaderValue::Regex(re.to_string())),
+                    value: Some(http_proto::header_match::Value::Regex(re.to_string())),
                 },
             })
             .collect();

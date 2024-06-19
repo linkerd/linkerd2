@@ -2,8 +2,8 @@ use ahash::AHashMap as HashMap;
 use anyhow::{bail, Error, Result};
 use k8s_gateway_api as api;
 use linkerd_policy_controller_core::{
-    inbound::{Filter, InboundRoute, InboundRouteRule},
-    routes::{HttpRouteMatch, Method},
+    inbound::{Filter, GrpcRoute, HttpRoute, InboundRoute, InboundRouteRule},
+    routes::{GrpcMethodMatch, GrpcRouteMatch, HttpRouteMatch, Method},
     POLICY_CONTROLLER_NAME,
 };
 use linkerd_policy_controller_k8s_api::{
@@ -53,7 +53,7 @@ pub enum InvalidParentRef {
     SpecifiesSection,
 }
 
-impl TryFrom<api::HttpRoute> for RouteBinding<InboundRoute<HttpRouteMatch>> {
+impl TryFrom<api::HttpRoute> for RouteBinding<HttpRoute> {
     type Error = Error;
 
     fn try_from(route: api::HttpRoute) -> Result<Self, Self::Error> {
@@ -78,7 +78,7 @@ impl TryFrom<api::HttpRoute> for RouteBinding<InboundRoute<HttpRouteMatch>> {
                      matches,
                      filters,
                      backend_refs: _,
-                 }| Self::try_rule(matches, filters, Self::try_gateway_filter),
+                 }| Self::try_http_rule(matches, filters, Self::try_gateway_filter),
             )
             .collect::<Result<_>>()?;
 
@@ -99,7 +99,7 @@ impl TryFrom<api::HttpRoute> for RouteBinding<InboundRoute<HttpRouteMatch>> {
     }
 }
 
-impl TryFrom<policy::HttpRoute> for RouteBinding<InboundRoute<HttpRouteMatch>> {
+impl TryFrom<policy::HttpRoute> for RouteBinding<HttpRoute> {
     type Error = Error;
 
     fn try_from(route: policy::HttpRoute) -> Result<Self, Self::Error> {
@@ -122,7 +122,55 @@ impl TryFrom<policy::HttpRoute> for RouteBinding<InboundRoute<HttpRouteMatch>> {
             .map(
                 |policy::HttpRouteRule {
                      matches, filters, ..
-                 }| { Self::try_rule(matches, filters, Self::try_policy_filter) },
+                 }| {
+                    Self::try_http_rule(matches, filters, Self::try_policy_filter)
+                },
+            )
+            .collect::<Result<_>>()?;
+
+        let statuses = route
+            .status
+            .map_or_else(Vec::new, |status| Status::collect_from(status.inner));
+
+        Ok(RouteBinding {
+            parents,
+            route: InboundRoute {
+                hostnames,
+                rules,
+                authorizations: HashMap::default(),
+                creation_timestamp,
+            },
+            statuses,
+        })
+    }
+}
+
+impl TryFrom<k8s_gateway_api::GrpcRoute> for RouteBinding<GrpcRoute> {
+    type Error = Error;
+
+    fn try_from(route: k8s_gateway_api::GrpcRoute) -> Result<Self, Self::Error> {
+        let route_ns = route.metadata.namespace.as_deref();
+        let creation_timestamp = route.metadata.creation_timestamp.map(|k8s::Time(t)| t);
+        let parents = ParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
+        let hostnames = route
+            .spec
+            .hostnames
+            .into_iter()
+            .flatten()
+            .map(crate::routes::http::host_match)
+            .collect();
+
+        let rules = route
+            .spec
+            .rules
+            .into_iter()
+            .flatten()
+            .map(
+                |k8s_gateway_api::GrpcRouteRule {
+                     matches, filters, ..
+                 }| {
+                    Self::try_grpc_rule(matches, filters, Self::try_grpc_filter)
+                },
             )
             .collect::<Result<_>>()?;
 
@@ -162,7 +210,7 @@ impl<R> RouteBinding<R> {
         })
     }
 
-    pub fn try_match(
+    pub fn try_http_match(
         api::HttpRouteMatch {
             path,
             headers,
@@ -194,7 +242,29 @@ impl<R> RouteBinding<R> {
         })
     }
 
-    fn try_rule<F>(
+    pub fn try_grpc_match(
+        k8s_gateway_api::GrpcRouteMatch { headers, method }: k8s_gateway_api::GrpcRouteMatch,
+    ) -> Result<GrpcRouteMatch> {
+        let headers = headers
+            .into_iter()
+            .flatten()
+            .map(crate::routes::http::header_match)
+            .collect::<Result<_>>()?;
+
+        let method = match method {
+            Some(k8s_gateway_api::GrpcMethodMatch::Exact { method, service }) => {
+                Some(GrpcMethodMatch { method, service })
+            }
+            Some(k8s_gateway_api::GrpcMethodMatch::RegularExpression { .. }) => {
+                bail!("Regular expression gRPC method match is not supported")
+            }
+            None => None,
+        };
+
+        Ok(GrpcRouteMatch { headers, method })
+    }
+
+    fn try_http_rule<F>(
         matches: Option<Vec<api::HttpRouteMatch>>,
         filters: Option<Vec<F>>,
         try_filter: impl Fn(F) -> Result<Filter>,
@@ -202,7 +272,27 @@ impl<R> RouteBinding<R> {
         let matches = matches
             .into_iter()
             .flatten()
-            .map(Self::try_match)
+            .map(Self::try_http_match)
+            .collect::<Result<_>>()?;
+
+        let filters = filters
+            .into_iter()
+            .flatten()
+            .map(try_filter)
+            .collect::<Result<_>>()?;
+
+        Ok(InboundRouteRule { matches, filters })
+    }
+
+    fn try_grpc_rule<F>(
+        matches: Option<Vec<api::GrpcRouteMatch>>,
+        filters: Option<Vec<F>>,
+        try_filter: impl Fn(F) -> Result<Filter>,
+    ) -> Result<InboundRouteRule<GrpcRouteMatch>> {
+        let matches = matches
+            .into_iter()
+            .flatten()
+            .map(Self::try_grpc_match)
             .collect::<Result<_>>()?;
 
         let filters = filters
@@ -267,6 +357,31 @@ impl<R> RouteBinding<R> {
             policy::HttpRouteFilter::RequestRedirect { request_redirect } => {
                 let filter = crate::routes::http::req_redirect(request_redirect)?;
                 Filter::RequestRedirect(filter)
+            }
+        };
+        Ok(filter)
+    }
+
+    fn try_grpc_filter(filter: k8s_gateway_api::GrpcRouteFilter) -> Result<Filter> {
+        let filter = match filter {
+            k8s_gateway_api::GrpcRouteFilter::RequestHeaderModifier {
+                request_header_modifier,
+            } => {
+                let filter = crate::routes::http::header_modifier(request_header_modifier)?;
+                Filter::RequestHeaderModifier(filter)
+            }
+
+            k8s_gateway_api::GrpcRouteFilter::ResponseHeaderModifier {
+                response_header_modifier,
+            } => {
+                let filter = crate::routes::http::header_modifier(response_header_modifier)?;
+                Filter::ResponseHeaderModifier(filter)
+            }
+            k8s_gateway_api::GrpcRouteFilter::RequestMirror { .. } => {
+                bail!("RequestMirror filter is not supported")
+            }
+            k8s_gateway_api::GrpcRouteFilter::ExtensionRef { .. } => {
+                bail!("ExtensionRef filter is not supported")
             }
         };
         Ok(filter)
