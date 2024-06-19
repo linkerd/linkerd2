@@ -13,9 +13,9 @@ use linkerd_policy_controller_k8s_api::{
 use std::fmt;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RouteBinding {
+pub struct RouteBinding<R> {
     pub parents: Vec<ParentRef>,
-    pub route: HttpRoute,
+    pub route: R,
     pub statuses: Vec<Status>,
 }
 
@@ -53,7 +53,7 @@ pub enum InvalidParentRef {
     SpecifiesSection,
 }
 
-impl TryFrom<api::HttpRoute> for RouteBinding {
+impl TryFrom<api::HttpRoute> for RouteBinding<InboundRoute<HttpRouteMatch>> {
     type Error = Error;
 
     fn try_from(route: api::HttpRoute) -> Result<Self, Self::Error> {
@@ -88,7 +88,7 @@ impl TryFrom<api::HttpRoute> for RouteBinding {
 
         Ok(RouteBinding {
             parents,
-            route: HttpRoute {
+            route: InboundRoute {
                 hostnames,
                 rules,
                 authorizations: HashMap::default(),
@@ -99,7 +99,7 @@ impl TryFrom<api::HttpRoute> for RouteBinding {
     }
 }
 
-impl TryFrom<policy::HttpRoute> for RouteBinding {
+impl TryFrom<policy::HttpRoute> for RouteBinding<InboundRoute<HttpRouteMatch>> {
     type Error = Error;
 
     fn try_from(route: policy::HttpRoute) -> Result<Self, Self::Error> {
@@ -132,7 +132,7 @@ impl TryFrom<policy::HttpRoute> for RouteBinding {
 
         Ok(RouteBinding {
             parents,
-            route: HttpRoute {
+            route: InboundRoute {
                 hostnames,
                 rules,
                 authorizations: HashMap::default(),
@@ -143,7 +143,7 @@ impl TryFrom<policy::HttpRoute> for RouteBinding {
     }
 }
 
-impl RouteBinding {
+impl<R> RouteBinding<R> {
     #[inline]
     pub fn selects_server(&self, name: &str) -> bool {
         self.parents
@@ -198,7 +198,7 @@ impl RouteBinding {
         matches: Option<Vec<api::HttpRouteMatch>>,
         filters: Option<Vec<F>>,
         try_filter: impl Fn(F) -> Result<Filter>,
-    ) -> Result<HttpRouteRule> {
+    ) -> Result<InboundRouteRule<HttpRouteMatch>> {
         let matches = matches
             .into_iter()
             .flatten()
@@ -211,7 +211,7 @@ impl RouteBinding {
             .map(try_filter)
             .collect::<Result<_>>()?;
 
-        Ok(HttpRouteRule { matches, filters })
+        Ok(InboundRouteRule { matches, filters })
     }
 
     fn try_gateway_filter(filter: api::HttpRouteFilter) -> Result<Filter> {
