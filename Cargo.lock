@@ -1070,9 +1070,9 @@ dependencies = [
 
 [[package]]
 name = "k8s-gateway-api"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ae4cd917edb1eba13a1413b46b98d292fd10919d86a573311a564ee4f208f44"
+checksum = "84b31e055e9626a2feb83cea00e22f796392edbe634fd4bafc0c73bf6d035ec0"
 dependencies = [
  "k8s-openapi",
  "kube",
