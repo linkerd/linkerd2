@@ -214,7 +214,6 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			return err
 		}
 		defer remoteWatcher.Unsubscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
-
 	} else {
 		// Local discovery
 		translator := newEndpointTranslator(
@@ -247,6 +246,45 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 			return err
 		}
 		defer s.endpoints.Unsubscribe(service, port, instanceID, translator)
+
+		// Look for all remote clusters and build subscribers
+		if _, found := svc.Labels["multicluster.linkerd.io/global-discovery"]; found {
+			log.Infof("Found label for %s/%s", service.Namespace, service.Name)
+			clusters := s.clusterStore.List()
+			for _, cluster := range clusters {
+				log.Infof("Looking at cluster %s", cluster.ClusterName)
+				translator := newEndpointTranslator(
+					s.config.ControllerNS,
+					cluster.Config.TrustDomain,
+					s.config.EnableH2Upgrade,
+					false, // no topology filtering
+					s.config.EnableIPv6,
+					s.config.ExtEndpointZoneWeights,
+					s.config.MeshedHttp2ClientParams,
+					fmt.Sprintf("%s.%s.svc.%s:%d", svc.Name, svc.Namespace, cluster.Config.ClusterDomain, port),
+					token.NodeName,
+					s.config.DefaultOpaquePorts,
+					s.metadataAPI,
+					stream,
+					streamEnd,
+					log,
+				)
+				translator.Start()
+				defer translator.Stop()
+
+				err = cluster.Watcher.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: svc.Name}, port, instanceID, translator)
+				if err != nil {
+					var ise watcher.InvalidService
+					if errors.As(err, &ise) {
+						log.Debugf("Invalid remote discovery service %s", dest.GetPath())
+						return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+					}
+					log.Errorf("Failed to subscribe to remote disocvery service %q in cluster %s: %s", dest.GetPath(), cluster, err)
+					return err
+				}
+				defer cluster.Watcher.Unsubscribe(watcher.ServiceID{Namespace: service.Namespace, Name: svc.Name}, port, instanceID, translator)
+			}
+		}
 	}
 
 	select {

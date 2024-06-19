@@ -173,6 +173,26 @@ func (cs *ClusterStore) Get(clusterName string) (*EndpointsWatcher, clusterConfi
 	return cw.watcher, cw.config, found
 }
 
+type StoreEntry struct {
+	ClusterName string
+	Watcher     *EndpointsWatcher
+	Config      clusterConfig
+}
+
+func (cs *ClusterStore) List() []StoreEntry {
+	entries := []StoreEntry{}
+	cs.RLock()
+	defer cs.RUnlock()
+	for c, rc := range cs.store {
+		entries = append(entries, StoreEntry{
+			ClusterName: c,
+			Watcher:     rc.watcher,
+			Config:      rc.config,
+		})
+	}
+	return entries
+}
+
 // removeCluster is triggered by the cache's Secret informer when a secret is
 // removed. Given a cluster name, it removes the entry from the cache after
 // stopping the associated watcher.
