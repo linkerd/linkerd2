@@ -244,7 +244,6 @@ rules:
       - grpcroutes/status
     verbs:
       - patch
-      - create
   - apiGroups:
       - workload.linkerd.io
     resources:
@@ -1254,7 +1253,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 5e552e38ff3caaa05c66cd5188021d42bb3578044d87a5e869c651a235acec95
+        checksum/config: 7523675f365af90bf6840b8b1eb0b12bbb4c819738cc9353608cbd16a9bf4196
         linkerd.io/created-by: CliVersion
         linkerd.io/proxy-version: ProxyVersion
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
