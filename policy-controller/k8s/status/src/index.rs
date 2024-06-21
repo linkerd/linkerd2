@@ -236,6 +236,8 @@ impl Controller {
                             self.patch_status::<linkerd_k8s_api::HttpRoute>(&id.gkn.name, &id.namespace, patch).await;
                         } else if id.gkn.group == k8s_gateway_api::HttpRoute::group(&()) && id.gkn.kind == k8s_gateway_api::HttpRoute::kind(&()) {
                             self.patch_status::<k8s_gateway_api::HttpRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.gkn.group == k8s_gateway_api::GrpcRoute::group(&()) && id.gkn.kind == k8s_gateway_api::GrpcRoute::kind(&()) {
+                            self.patch_status::<k8s_gateway_api::GrpcRoute>(&id.gkn.name, &id.namespace, patch).await;
                         }
                     } else {
                         self.metrics.patch_drops.inc();
@@ -483,6 +485,15 @@ impl Index {
 
                 make_patch(id, status)
             }
+            (GATEWAY_API_GROUP, "GRPCRoute") => {
+                let status = k8s_gateway_api::GrpcRouteStatus {
+                    inner: k8s_gateway_api::RouteStatus {
+                        parents: all_statuses,
+                    },
+                };
+
+                make_patch(id, status)
+            }
             _ => None,
         }
     }
@@ -628,6 +639,68 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
     }
 
     // Since apply only reindexes a single HTTPRoute at a time, there's no need
+    // to handle resets specially.
+}
+
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Index {
+    fn apply(&mut self, resource: k8s_gateway_api::GrpcRoute) {
+        let namespace = resource
+            .namespace()
+            .expect("GRPCRoute must have a namespace");
+        let name = resource.name_unchecked();
+        let id = NamespaceGroupKindName {
+            namespace: namespace.clone(),
+            gkn: GroupKindName {
+                name: name.into(),
+                kind: k8s_gateway_api::GrpcRoute::kind(&()),
+                group: k8s_gateway_api::GrpcRoute::group(&()),
+            },
+        };
+
+        // Create the route parents
+        let parents = routes::http::make_parents(&namespace, &resource.spec.inner);
+
+        // Create the route backends
+        let backends = routes::grpc::make_backends(
+            &namespace,
+            resource
+                .spec
+                .rules
+                .into_iter()
+                .flatten()
+                .flat_map(|rule| rule.backend_refs)
+                .flatten(),
+        );
+
+        let statuses = resource
+            .status
+            .into_iter()
+            .flat_map(|status| status.inner.parents)
+            .collect();
+
+        // Construct route and insert into the index; if the GRPCRoute is
+        // already in the index and it hasn't changed, skip creating a patch.
+        let route = RouteRef {
+            parents,
+            backends,
+            statuses,
+        };
+        self.index_route(id, route);
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let id = NamespaceGroupKindName {
+            namespace,
+            gkn: GroupKindName {
+                name: name.into(),
+                kind: k8s_gateway_api::GrpcRoute::kind(&()),
+                group: k8s_gateway_api::GrpcRoute::group(&()),
+            },
+        };
+        self.route_refs.remove(&id);
+    }
+
+    // Since apply only reindexes a single GRPCRoute at a time, there's no need
     // to handle resets specially.
 }
 
