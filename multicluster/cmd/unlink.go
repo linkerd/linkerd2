@@ -105,8 +105,16 @@ func newUnlinkCommand() *cobra.Command {
 			}
 
 			for _, r := range resources {
-				if err := r.RenderResource(stdout); err != nil {
-					log.Errorf("failed to render resource %s: %s", r.Name, err)
+				if opts.output == "yaml" {
+					if err := r.RenderResource(stdout); err != nil {
+						log.Errorf("failed to render resource %s: %s", r.Name, err)
+					}
+				} else if opts.output == "json" {
+					if err := r.RenderResourceJSON(stdout); err != nil {
+						log.Errorf("failed to render resource %s: %s", r.Name, err)
+					}
+				} else {
+					return fmt.Errorf("unsupported format: %s", opts.output)
 				}
 			}
 
@@ -116,6 +124,7 @@ func newUnlinkCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "The namespace for the service account")
 	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "Cluster name")
+	cmd.Flags().StringVarP(&opts.output, "output", "o", "yaml", "Output format. One of: json|yaml")
 
 	pkgcmd.ConfigureNamespaceFlagCompletion(
 		cmd, []string{"namespace"},

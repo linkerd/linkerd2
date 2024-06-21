@@ -241,6 +241,7 @@ Kubernetes: `>=1.22.0-0`
 | proxy.disableInboundProtocolDetectTimeout | bool | `false` | When set to true, disables the protocol detection timeout on the inbound side of the proxy by setting it to a very high value |
 | proxy.disableOutboundProtocolDetectTimeout | bool | `false` | When set to true, disables the protocol detection timeout on the outbound side of the proxy by setting it to a very high value |
 | proxy.enableExternalProfiles | bool | `false` | Enable service profiles for non-Kubernetes services |
+| proxy.enableShutdownEndpoint | bool | `false` | Enables the proxy's /shutdown admin endpoint |
 | proxy.gid | int | `-1` | Optional customisation of the group id under which the proxy runs (the group ID will be omitted if lower than 0) |
 | proxy.image.name | string | `"cr.l5d.io/linkerd/proxy"` | Docker image for the proxy |
 | proxy.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy container image |
@@ -252,7 +253,7 @@ Kubernetes: `>=1.22.0-0`
 | proxy.livenessProbe | object | `{"initialDelaySeconds":10,"timeoutSeconds":1}` | LivenessProbe timeout and delay configuration |
 | proxy.logFormat | string | `"plain"` | Log format (`plain` or `json`) for the proxy |
 | proxy.logHTTPHeaders | `off` or `insecure` | `"off"` | If set to `off`, will prevent the proxy from logging HTTP headers. If set to `insecure`, HTTP headers may be logged verbatim. Note that setting this to `insecure` is not alone sufficient to log HTTP headers; the proxy logLevel must also be set to debug. |
-| proxy.logLevel | string | `"warn,linkerd=info,trust_dns=error"` | Log level for the proxy |
+| proxy.logLevel | string | `"warn,linkerd=info,hickory=error"` | Log level for the proxy |
 | proxy.nativeSidecar | bool | `false` | Enable KEP-753 native sidecars This is an experimental feature. It requires Kubernetes >= 1.29. If enabled, .proxy.waitBeforeExitSeconds should not be used. |
 | proxy.opaquePorts | string | `"25,587,3306,4444,5432,6379,9300,11211"` | Default set of opaque ports - SMTP (25,587) server-first - MYSQL (3306) server-first - Galera (4444) server-first - PostgreSQL (5432) server-first - Redis (6379) server-first - ElasticSearch (9300) server-first - Memcached (11211) clients do not issue any preamble, which breaks detection |
 | proxy.outbound.server.http2.keepAliveInterval | string | `"10s"` | The interval at which PINGs are issued to local application HTTP/2 clients. |
@@ -282,7 +283,7 @@ Kubernetes: `>=1.22.0-0`
 | proxyInit.ignoreOutboundPorts | string | `"4567,4568"` | Default set of outbound ports to skip via iptables - Galera (4567,4568) |
 | proxyInit.image.name | string | `"cr.l5d.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
 | proxyInit.image.pullPolicy | string | imagePullPolicy | Pull policy for the proxy-init container image |
-| proxyInit.image.version | string | `"v2.4.0"` | Tag for the proxy-init container image |
+| proxyInit.image.version | string | `"v2.4.1"` | Tag for the proxy-init container image |
 | proxyInit.iptablesMode | string | `"legacy"` | Variant of iptables that will be used to configure routing. Currently, proxy-init can be run either in 'nft' or in 'legacy' mode. The mode will control which utility binary will be called. The host must support whichever mode will be used |
 | proxyInit.kubeAPIServerPorts | string | `"443,6443"` | Default set of ports to skip via iptables for control plane components so they can communicate with the Kubernetes API Server |
 | proxyInit.logFormat | string | plain | Log format (`plain` or `json`) for the proxy-init |

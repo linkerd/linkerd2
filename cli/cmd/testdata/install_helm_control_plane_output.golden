@@ -647,6 +647,7 @@ data:
       disableInboundProtocolDetectTimeout: false
       disableOutboundProtocolDetectTimeout: false
       enableExternalProfiles: false
+      enableShutdownEndpoint: false
       experimentalEnv: null
       gid: -1
       image:
@@ -667,7 +668,7 @@ data:
         timeoutSeconds: 1
       logFormat: plain
       logHTTPHeaders: "off"
-      logLevel: warn,linkerd=info,trust_dns=error
+      logLevel: warn,linkerd=info,hickory=error
       nativeSidecar: false
       opaquePorts: 25,587,3306,4444,5432,6379,9300,11211
       outbound:
@@ -773,6 +774,8 @@ data:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
+  labels:
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
   name: ext-namespace-metadata-linkerd-config
@@ -961,8 +964,10 @@ spec:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_TLS
           value: "8080"
+        - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
+          value: "false"
         - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info,trust_dns=error,linkerd_proxy_http::client[{headers}]=off"
+          value: "warn,linkerd=info,hickory=error,linkerd_proxy_http::client[{headers}]=off"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -1312,8 +1317,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
+          value: "false"
         - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info,trust_dns=error,linkerd_proxy_http::client[{headers}]=off"
+          value: "warn,linkerd=info,hickory=error,linkerd_proxy_http::client[{headers}]=off"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -1766,8 +1773,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
+          value: "false"
         - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info,trust_dns=error,linkerd_proxy_http::client[{headers}]=off"
+          value: "warn,linkerd=info,hickory=error,linkerd_proxy_http::client[{headers}]=off"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
