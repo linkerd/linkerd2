@@ -1,8 +1,10 @@
-use crate::{routes, workload};
+extern crate http as http_crate;
+
+use crate::workload;
 use futures::prelude::*;
-use itertools::Itertools;
+use http_crate::uri::Authority;
 use linkerd2_proxy_api::{
-    self as api, destination,
+    self as api,
     meta::{metadata, Metadata},
     outbound::{
         self,
@@ -12,12 +14,15 @@ use linkerd2_proxy_api::{
 };
 use linkerd_policy_controller_core::{
     outbound::{
-        Backend, DiscoverOutboundPolicy, Filter, OutboundDiscoverTarget, OutboundPolicy,
-        OutboundPolicyStream, OutboundRoute, OutboundRouteRule,
+        DiscoverOutboundPolicy, OutboundDiscoverTarget, OutboundPolicy, OutboundPolicyStream,
+        OutboundRoute,
     },
-    routes::{FailureInjectorFilter, GroupKindNamespaceName, GrpcRouteMatch, HttpRouteMatch},
+    routes::{GroupKindNamespaceName, GrpcRouteMatch, HttpRouteMatch},
 };
-use std::{iter, net::SocketAddr, num::NonZeroU16, str::FromStr, sync::Arc, time};
+use std::{iter, num::NonZeroU16, str::FromStr, sync::Arc, time};
+
+mod grpc;
+mod http;
 
 #[derive(Clone, Debug)]
 pub struct OutboundPolicyServer<T> {
@@ -87,7 +92,7 @@ where
         authority: &str,
     ) -> Result<(String, String, NonZeroU16), tonic::Status> {
         let auth = authority
-            .parse::<http::uri::Authority>()
+            .parse::<Authority>()
             .map_err(|_| tonic::Status::invalid_argument("invalid authority"))?;
 
         let mut host = auth.host();
@@ -226,17 +231,13 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
             }),
         });
 
-        let mut http_routes = outbound
-            .http_routes
-            .into_iter()
-            .sorted_by(timestamp_then_name)
-            .peekable();
+        let mut http_routes = outbound.http_routes.into_iter().collect::<Vec<_>>();
+        http_routes.sort_by(timestamp_then_name);
+        let mut http_routes = http_routes.into_iter().peekable();
 
-        let mut grpc_routes = outbound
-            .grpc_routes
-            .into_iter()
-            .sorted_by(timestamp_then_name)
-            .peekable();
+        let mut grpc_routes = outbound.grpc_routes.into_iter().collect::<Vec<_>>();
+        grpc_routes.sort_by(timestamp_then_name);
+        let mut grpc_routes = grpc_routes.into_iter().peekable();
 
         match (http_routes.peek(), grpc_routes.peek()) {
             (Some(http), Some(grpc)) => {
@@ -276,10 +277,10 @@ fn http_protocol(
 ) -> outbound::proxy_protocol::Kind {
     let opaque_route = default_outbound_opaq_route(default_backend.clone());
     let mut routes = routes
-        .map(|(gknn, route)| convert_outbound_http_route(gknn, route, default_backend.clone()))
+        .map(|(gknn, route)| http::convert_outbound_route(gknn, route, default_backend.clone()))
         .collect::<Vec<_>>();
     if routes.is_empty() {
-        routes.push(default_outbound_http_route(default_backend));
+        routes.push(http::default_outbound_route(default_backend));
     }
     outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
         timeout: Some(
@@ -308,7 +309,7 @@ fn grpc_protocol(
     accrual: Option<FailureAccrual>,
 ) -> outbound::proxy_protocol::Kind {
     let routes = routes
-        .map(|(gknn, route)| convert_outbound_grpc_route(gknn, route, default_backend.clone()))
+        .map(|(gknn, route)| grpc::convert_outbound_route(gknn, route, default_backend.clone()))
         .collect::<Vec<_>>();
     outbound::proxy_protocol::Kind::Grpc(outbound::proxy_protocol::Grpc {
         routes,
@@ -332,388 +333,6 @@ fn timestamp_then_name<LeftMatchType, RightMatchType>(
     };
 
     by_ts.then_with(|| left_id.name.cmp(&right_id.name))
-}
-
-fn convert_outbound_http_route(
-    gknn: GroupKindNamespaceName,
-    OutboundRoute {
-        hostnames,
-        rules,
-        creation_timestamp: _,
-    }: OutboundRoute<HttpRouteMatch>,
-    backend: outbound::Backend,
-) -> outbound::HttpRoute {
-    let metadata = Some(Metadata {
-        kind: Some(metadata::Kind::Resource(api::meta::Resource {
-            group: gknn.group.to_string(),
-            kind: gknn.kind.to_string(),
-            namespace: gknn.namespace.to_string(),
-            name: gknn.name.to_string(),
-            ..Default::default()
-        })),
-    });
-
-    let hosts = hostnames
-        .into_iter()
-        .map(routes::convert_host_match)
-        .collect();
-
-    let rules = rules
-        .into_iter()
-        .map(
-            |OutboundRouteRule {
-                 matches,
-                 backends,
-                 request_timeout,
-                 backend_request_timeout,
-                 filters,
-             }| {
-                let backend_request_timeout = backend_request_timeout
-                    .and_then(|d| convert_duration("backend request_timeout", d));
-                let backends = backends
-                    .into_iter()
-                    .map(|backend| convert_http_backend(backend_request_timeout.clone(), backend))
-                    .collect::<Vec<_>>();
-                let dist = if backends.is_empty() {
-                    outbound::http_route::distribution::Kind::FirstAvailable(
-                        outbound::http_route::distribution::FirstAvailable {
-                            backends: vec![outbound::http_route::RouteBackend {
-                                backend: Some(backend.clone()),
-                                filters: vec![],
-                                request_timeout: backend_request_timeout,
-                            }],
-                        },
-                    )
-                } else {
-                    outbound::http_route::distribution::Kind::RandomAvailable(
-                        outbound::http_route::distribution::RandomAvailable { backends },
-                    )
-                };
-                outbound::http_route::Rule {
-                    matches: matches
-                        .into_iter()
-                        .map(routes::http::convert_match)
-                        .collect(),
-                    backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
-                    filters: filters.into_iter().map(convert_to_http_filter).collect(),
-                    request_timeout: request_timeout
-                        .and_then(|d| convert_duration("request timeout", d)),
-                }
-            },
-        )
-        .collect();
-
-    outbound::HttpRoute {
-        metadata,
-        hosts,
-        rules,
-    }
-}
-
-fn convert_http_backend(
-    request_timeout: Option<prost_types::Duration>,
-    backend: Backend,
-) -> outbound::http_route::WeightedRouteBackend {
-    match backend {
-        Backend::Addr(addr) => {
-            let socket_addr = SocketAddr::new(addr.addr, addr.port.get());
-            outbound::http_route::WeightedRouteBackend {
-                weight: addr.weight,
-                backend: Some(outbound::http_route::RouteBackend {
-                    backend: Some(outbound::Backend {
-                        metadata: None,
-                        queue: Some(default_queue_config()),
-                        kind: Some(outbound::backend::Kind::Forward(
-                            destination::WeightedAddr {
-                                addr: Some(socket_addr.into()),
-                                weight: addr.weight,
-                                ..Default::default()
-                            },
-                        )),
-                    }),
-                    filters: Default::default(),
-                    request_timeout,
-                }),
-            }
-        }
-        Backend::Service(svc) => {
-            if svc.exists {
-                let filters = svc
-                    .filters
-                    .into_iter()
-                    .map(convert_to_http_filter)
-                    .collect();
-                outbound::http_route::WeightedRouteBackend {
-                    weight: svc.weight,
-                    backend: Some(outbound::http_route::RouteBackend {
-                        backend: Some(outbound::Backend {
-                            metadata: Some(Metadata {
-                                kind: Some(metadata::Kind::Resource(api::meta::Resource {
-                                    group: "core".to_string(),
-                                    kind: "Service".to_string(),
-                                    name: svc.name,
-                                    namespace: svc.namespace,
-                                    section: Default::default(),
-                                    port: u16::from(svc.port).into(),
-                                })),
-                            }),
-                            queue: Some(default_queue_config()),
-                            kind: Some(outbound::backend::Kind::Balancer(
-                                outbound::backend::BalanceP2c {
-                                    discovery: Some(outbound::backend::EndpointDiscovery {
-                                        kind: Some(outbound::backend::endpoint_discovery::Kind::Dst(
-                                            outbound::backend::endpoint_discovery::DestinationGet {
-                                                path: svc.authority,
-                                            },
-                                        )),
-                                    }),
-                                    load: Some(default_balancer_config()),
-                                },
-                            )),
-                        }),
-                        filters,
-                        request_timeout,
-                    }),
-                }
-            } else {
-                outbound::http_route::WeightedRouteBackend {
-                    weight: svc.weight,
-                    backend: Some(outbound::http_route::RouteBackend {
-                        backend: Some(outbound::Backend {
-                            metadata: Some(Metadata {
-                                kind: Some(metadata::Kind::Default("invalid".to_string())),
-                            }),
-                            queue: Some(default_queue_config()),
-                            kind: None,
-                        }),
-                        filters: vec![outbound::http_route::Filter {
-                            kind: Some(outbound::http_route::filter::Kind::FailureInjector(
-                                api::http_route::HttpFailureInjector {
-                                    status: 500,
-                                    message: format!("Service not found {}", svc.name),
-                                    ratio: None,
-                                },
-                            )),
-                        }],
-                        request_timeout,
-                    }),
-                }
-            }
-        }
-        Backend::Invalid { weight, message } => outbound::http_route::WeightedRouteBackend {
-            weight,
-            backend: Some(outbound::http_route::RouteBackend {
-                backend: Some(outbound::Backend {
-                    metadata: Some(Metadata {
-                        kind: Some(metadata::Kind::Default("invalid".to_string())),
-                    }),
-                    queue: Some(default_queue_config()),
-                    kind: None,
-                }),
-                filters: vec![outbound::http_route::Filter {
-                    kind: Some(outbound::http_route::filter::Kind::FailureInjector(
-                        api::http_route::HttpFailureInjector {
-                            status: 500,
-                            message,
-                            ratio: None,
-                        },
-                    )),
-                }],
-                request_timeout,
-            }),
-        },
-    }
-}
-
-fn convert_outbound_grpc_route(
-    gknn: GroupKindNamespaceName,
-    OutboundRoute {
-        hostnames,
-        rules,
-        creation_timestamp: _,
-    }: OutboundRoute<GrpcRouteMatch>,
-    backend: outbound::Backend,
-) -> outbound::GrpcRoute {
-    let metadata = Some(Metadata {
-        kind: Some(metadata::Kind::Resource(api::meta::Resource {
-            group: gknn.group.to_string(),
-            kind: gknn.kind.to_string(),
-            namespace: gknn.namespace.to_string(),
-            name: gknn.name.to_string(),
-            ..Default::default()
-        })),
-    });
-
-    let hosts = hostnames
-        .into_iter()
-        .map(routes::convert_host_match)
-        .collect();
-
-    let rules = rules
-        .into_iter()
-        .map(
-            |OutboundRouteRule {
-                 matches,
-                 backends,
-                 request_timeout,
-                 backend_request_timeout,
-                 filters,
-             }| {
-                let backend_request_timeout = backend_request_timeout
-                    .and_then(|d| convert_duration("backend request_timeout", d));
-                let backends = backends
-                    .into_iter()
-                    .map(|backend| convert_grpc_backend(backend_request_timeout.clone(), backend))
-                    .collect::<Vec<_>>();
-                let dist = if backends.is_empty() {
-                    outbound::grpc_route::distribution::Kind::FirstAvailable(
-                        outbound::grpc_route::distribution::FirstAvailable {
-                            backends: vec![outbound::grpc_route::RouteBackend {
-                                backend: Some(backend.clone()),
-                                filters: vec![],
-                                request_timeout: backend_request_timeout,
-                            }],
-                        },
-                    )
-                } else {
-                    outbound::grpc_route::distribution::Kind::RandomAvailable(
-                        outbound::grpc_route::distribution::RandomAvailable { backends },
-                    )
-                };
-                outbound::grpc_route::Rule {
-                    matches: matches
-                        .into_iter()
-                        .map(routes::grpc::convert_match)
-                        .collect(),
-                    backends: Some(outbound::grpc_route::Distribution { kind: Some(dist) }),
-                    filters: filters.into_iter().map(convert_to_grpc_filter).collect(),
-                    request_timeout: request_timeout
-                        .and_then(|d| convert_duration("request timeout", d)),
-                }
-            },
-        )
-        .collect();
-
-    outbound::GrpcRoute {
-        metadata,
-        hosts,
-        rules,
-    }
-}
-
-fn convert_grpc_backend(
-    request_timeout: Option<prost_types::Duration>,
-    backend: Backend,
-) -> outbound::grpc_route::WeightedRouteBackend {
-    match backend {
-        Backend::Addr(addr) => {
-            let socket_addr = SocketAddr::new(addr.addr, addr.port.get());
-            outbound::grpc_route::WeightedRouteBackend {
-                weight: addr.weight,
-                backend: Some(outbound::grpc_route::RouteBackend {
-                    backend: Some(outbound::Backend {
-                        metadata: None,
-                        queue: Some(default_queue_config()),
-                        kind: Some(outbound::backend::Kind::Forward(
-                            destination::WeightedAddr {
-                                addr: Some(socket_addr.into()),
-                                weight: addr.weight,
-                                ..Default::default()
-                            },
-                        )),
-                    }),
-                    filters: Default::default(),
-                    request_timeout,
-                }),
-            }
-        }
-        Backend::Service(svc) => {
-            if svc.exists {
-                let filters = svc
-                    .filters
-                    .into_iter()
-                    .map(convert_to_grpc_filter)
-                    .collect();
-                outbound::grpc_route::WeightedRouteBackend {
-                    weight: svc.weight,
-                    backend: Some(outbound::grpc_route::RouteBackend {
-                        backend: Some(outbound::Backend {
-                            metadata: Some(Metadata {
-                                kind: Some(metadata::Kind::Resource(api::meta::Resource {
-                                    group: "core".to_string(),
-                                    kind: "Service".to_string(),
-                                    name: svc.name,
-                                    namespace: svc.namespace,
-                                    section: Default::default(),
-                                    port: u16::from(svc.port).into(),
-                                })),
-                            }),
-                            queue: Some(default_queue_config()),
-                            kind: Some(outbound::backend::Kind::Balancer(
-                                outbound::backend::BalanceP2c {
-                                    discovery: Some(outbound::backend::EndpointDiscovery {
-                                        kind: Some(outbound::backend::endpoint_discovery::Kind::Dst(
-                                            outbound::backend::endpoint_discovery::DestinationGet {
-                                                path: svc.authority,
-                                            },
-                                        )),
-                                    }),
-                                    load: Some(default_balancer_config()),
-                                },
-                            )),
-                        }),
-                        filters,
-                        request_timeout,
-                    }),
-                }
-            } else {
-                outbound::grpc_route::WeightedRouteBackend {
-                    weight: svc.weight,
-                    backend: Some(outbound::grpc_route::RouteBackend {
-                        backend: Some(outbound::Backend {
-                            metadata: Some(Metadata {
-                                kind: Some(metadata::Kind::Default("invalid".to_string())),
-                            }),
-                            queue: Some(default_queue_config()),
-                            kind: None,
-                        }),
-                        filters: vec![outbound::grpc_route::Filter {
-                            kind: Some(outbound::grpc_route::filter::Kind::FailureInjector(
-                                api::grpc_route::GrpcFailureInjector {
-                                    code: 500,
-                                    message: format!("Service not found {}", svc.name),
-                                    ratio: None,
-                                },
-                            )),
-                        }],
-                        request_timeout,
-                    }),
-                }
-            }
-        }
-        Backend::Invalid { weight, message } => outbound::grpc_route::WeightedRouteBackend {
-            weight,
-            backend: Some(outbound::grpc_route::RouteBackend {
-                backend: Some(outbound::Backend {
-                    metadata: Some(Metadata {
-                        kind: Some(metadata::Kind::Default("invalid".to_string())),
-                    }),
-                    queue: Some(default_queue_config()),
-                    kind: None,
-                }),
-                filters: vec![outbound::grpc_route::Filter {
-                    kind: Some(outbound::grpc_route::filter::Kind::FailureInjector(
-                        api::grpc_route::GrpcFailureInjector {
-                            code: 500,
-                            message,
-                            ratio: None,
-                        },
-                    )),
-                }],
-                request_timeout,
-            }),
-        },
-    }
 }
 
 fn default_backend(outbound: &OutboundPolicy) -> outbound::Backend {
@@ -741,38 +360,6 @@ fn default_backend(outbound: &OutboundPolicy) -> outbound::Backend {
                 load: Some(default_balancer_config()),
             },
         )),
-    }
-}
-
-fn default_outbound_http_route(backend: outbound::Backend) -> outbound::HttpRoute {
-    let metadata = Some(Metadata {
-        kind: Some(metadata::Kind::Default("http".to_string())),
-    });
-    let rules = vec![outbound::http_route::Rule {
-        matches: vec![api::http_route::HttpRouteMatch {
-            path: Some(api::http_route::PathMatch {
-                kind: Some(api::http_route::path_match::Kind::Prefix("/".to_string())),
-            }),
-            ..Default::default()
-        }],
-        backends: Some(outbound::http_route::Distribution {
-            kind: Some(outbound::http_route::distribution::Kind::FirstAvailable(
-                outbound::http_route::distribution::FirstAvailable {
-                    backends: vec![outbound::http_route::RouteBackend {
-                        backend: Some(backend),
-                        filters: vec![],
-                        request_timeout: None,
-                    }],
-                },
-            )),
-        }),
-        filters: Default::default(),
-        request_timeout: None,
-    }];
-    outbound::HttpRoute {
-        metadata,
-        rules,
-        ..Default::default()
     }
 }
 
@@ -820,64 +407,14 @@ fn default_queue_config() -> outbound::Queue {
     }
 }
 
-fn convert_duration(name: &'static str, duration: time::Duration) -> Option<prost_types::Duration> {
+pub(crate) fn convert_duration(
+    name: &'static str,
+    duration: time::Duration,
+) -> Option<prost_types::Duration> {
     duration
         .try_into()
         .map_err(|error| {
             tracing::error!(%error, "Invalid {name} duration");
         })
         .ok()
-}
-
-fn convert_to_http_filter(filter: Filter) -> outbound::http_route::Filter {
-    use outbound::http_route::filter::Kind;
-
-    outbound::http_route::Filter {
-        kind: Some(match filter {
-            Filter::RequestHeaderModifier(f) => {
-                Kind::RequestHeaderModifier(routes::convert_request_header_modifier_filter(f))
-            }
-            Filter::ResponseHeaderModifier(f) => {
-                Kind::ResponseHeaderModifier(routes::convert_response_header_modifier_filter(f))
-            }
-            Filter::RequestRedirect(f) => Kind::Redirect(routes::convert_redirect_filter(f)),
-            Filter::FailureInjector(f) => {
-                Kind::FailureInjector(routes::http::convert_failure_injector_filter(f))
-            }
-        }),
-    }
-}
-
-fn convert_to_grpc_filter(filter: Filter) -> outbound::grpc_route::Filter {
-    use outbound::grpc_route::filter::Kind as GrpcFilterKind;
-
-    outbound::grpc_route::Filter {
-        kind: match filter {
-            Filter::FailureInjector(FailureInjectorFilter {
-                status,
-                message,
-                ratio,
-            }) => Some(GrpcFilterKind::FailureInjector(
-                api::grpc_route::GrpcFailureInjector {
-                    code: u32::from(status.as_u16()),
-                    message,
-                    ratio: Some(api::http_route::Ratio {
-                        numerator: ratio.numerator,
-                        denominator: ratio.denominator,
-                    }),
-                },
-            )),
-            Filter::RequestHeaderModifier(filter) => Some(GrpcFilterKind::RequestHeaderModifier(
-                routes::convert_request_header_modifier_filter(filter),
-            )),
-            Filter::RequestRedirect(filter) => {
-                tracing::warn!(filter = ?filter, "declining to convert invalid filter type for GrpcRoute");
-                None
-            }
-            Filter::ResponseHeaderModifier(filter) => {
-                tracing::warn!(filter = ?filter, "declining to convert invalid filter type for GrpcRoute");
-                None
-            }
-        },
-    }
 }

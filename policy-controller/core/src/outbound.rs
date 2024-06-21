@@ -42,9 +42,9 @@ pub struct OutboundPolicy {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OutboundRoute<MatchType> {
+pub struct OutboundRoute<M> {
     pub hostnames: Vec<HostMatch>,
-    pub rules: Vec<OutboundRouteRule<MatchType>>,
+    pub rules: Vec<OutboundRouteRule<M>>,
 
     /// This is required for ordering returned routes
     /// by their creation timestamp.
@@ -52,8 +52,8 @@ pub struct OutboundRoute<MatchType> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OutboundRouteRule<MatchType> {
-    pub matches: Vec<MatchType>,
+pub struct OutboundRouteRule<M> {
+    pub matches: Vec<M>,
     pub backends: Vec<Backend>,
     pub request_timeout: Option<time::Duration>,
     pub backend_request_timeout: Option<time::Duration>,
