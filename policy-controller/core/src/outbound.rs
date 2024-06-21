@@ -20,7 +20,7 @@ pub trait DiscoverOutboundPolicy<T> {
 
 pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send + Sync + 'static>>;
 
-pub type RouteSet<Match> = HashMap<GroupKindNamespaceName, OutboundRoute<Match>>;
+pub type RouteSet<M> = HashMap<GroupKindNamespaceName, OutboundRoute<M>>;
 
 pub struct OutboundDiscoverTarget {
     pub service_name: String,
