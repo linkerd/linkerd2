@@ -238,6 +238,7 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
         grpc_routes.sort_by(timestamp_then_name);
         let mut grpc_routes = grpc_routes.into_iter().peekable();
 
+        // If both HTTP and gRPC routes are present, we choose the route kind by which has the oldest timestamp.
         match (http_routes.peek(), grpc_routes.peek()) {
             (Some(http), Some(grpc)) => {
                 if timestamp_then_name(http, grpc).is_gt() {
