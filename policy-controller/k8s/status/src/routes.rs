@@ -3,9 +3,10 @@ use linkerd_policy_controller_k8s_api::{
     self as k8s_core_api, gateway as k8s_gateway_api, policy as linkerd_k8s_api,
 };
 
+pub(crate) mod grpc;
 pub(crate) mod http;
 
-/// Represents a route's parent reference from its spec.
+/// Represents an xRoute's parent reference from its spec.
 ///
 /// This is separate from the policy controller index's `InboundParentRef`
 /// because it does not validate that the parent reference is not in another
