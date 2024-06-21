@@ -10,7 +10,21 @@ use linkerd_policy_controller_core::{
     routes::{FailureInjectorFilter, GroupKindNamespaceName, GrpcRouteMatch},
 };
 
-pub(crate) fn convert_outbound_route(
+pub(crate) fn protocol(
+    default_backend: outbound::Backend,
+    routes: impl Iterator<Item = (GroupKindNamespaceName, OutboundRoute<GrpcRouteMatch>)>,
+    accrual: Option<outbound::FailureAccrual>,
+) -> outbound::proxy_protocol::Kind {
+    let routes = routes
+        .map(|(gknn, route)| convert_outbound_route(gknn, route, default_backend.clone()))
+        .collect::<Vec<_>>();
+    outbound::proxy_protocol::Kind::Grpc(outbound::proxy_protocol::Grpc {
+        routes,
+        failure_accrual: accrual,
+    })
+}
+
+fn convert_outbound_route(
     gknn: GroupKindNamespaceName,
     OutboundRoute {
         hostnames,

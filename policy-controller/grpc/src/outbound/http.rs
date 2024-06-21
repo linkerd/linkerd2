@@ -1,6 +1,8 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, time};
 
-use super::{convert_duration, default_balancer_config, default_queue_config};
+use super::{
+    convert_duration, default_balancer_config, default_outbound_opaq_route, default_queue_config,
+};
 use crate::routes::{
     convert_host_match, convert_redirect_filter, convert_request_header_modifier_filter,
     convert_response_header_modifier_filter,
@@ -12,7 +14,40 @@ use linkerd_policy_controller_core::{
     routes::{GroupKindNamespaceName, HttpRouteMatch},
 };
 
-pub(crate) fn convert_outbound_route(
+pub(crate) fn protocol(
+    default_backend: outbound::Backend,
+    routes: impl Iterator<Item = (GroupKindNamespaceName, OutboundRoute<HttpRouteMatch>)>,
+    accrual: Option<outbound::FailureAccrual>,
+) -> outbound::proxy_protocol::Kind {
+    let opaque_route = default_outbound_opaq_route(default_backend.clone());
+    let mut routes = routes
+        .map(|(gknn, route)| convert_outbound_route(gknn, route, default_backend.clone()))
+        .collect::<Vec<_>>();
+    if routes.is_empty() {
+        routes.push(default_outbound_route(default_backend));
+    }
+    outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
+        timeout: Some(
+            time::Duration::from_secs(10)
+                .try_into()
+                .expect("failed to convert detect timeout to protobuf"),
+        ),
+
+        opaque: Some(outbound::proxy_protocol::Opaque {
+            routes: vec![opaque_route],
+        }),
+        http1: Some(outbound::proxy_protocol::Http1 {
+            routes: routes.clone(),
+            failure_accrual: accrual.clone(),
+        }),
+        http2: Some(outbound::proxy_protocol::Http2 {
+            routes,
+            failure_accrual: accrual,
+        }),
+    })
+}
+
+fn convert_outbound_route(
     gknn: GroupKindNamespaceName,
     OutboundRoute {
         hostnames,

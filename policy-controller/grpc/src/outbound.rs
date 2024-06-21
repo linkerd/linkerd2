@@ -9,7 +9,6 @@ use linkerd2_proxy_api::{
     outbound::{
         self,
         outbound_policies_server::{OutboundPolicies, OutboundPoliciesServer},
-        FailureAccrual,
     },
 };
 use linkerd_policy_controller_core::{
@@ -17,7 +16,7 @@ use linkerd_policy_controller_core::{
         DiscoverOutboundPolicy, OutboundDiscoverTarget, OutboundPolicy, OutboundPolicyStream,
         OutboundRoute,
     },
-    routes::{GroupKindNamespaceName, GrpcRouteMatch, HttpRouteMatch},
+    routes::GroupKindNamespaceName,
 };
 use std::{iter, num::NonZeroU16, str::FromStr, sync::Arc, time};
 
@@ -242,14 +241,14 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
         match (http_routes.peek(), grpc_routes.peek()) {
             (Some(http), Some(grpc)) => {
                 if timestamp_then_name(http, grpc).is_gt() {
-                    grpc_protocol(backend, grpc_routes, accrual)
+                    grpc::protocol(backend, grpc_routes, accrual)
                 } else {
-                    http_protocol(backend, http_routes, accrual)
+                    http::protocol(backend, http_routes, accrual)
                 }
             }
-            (Some((_, _http)), None) => http_protocol(backend, http_routes, accrual),
-            (None, Some((_, _grpc))) => grpc_protocol(backend, grpc_routes, accrual),
-            (None, None) => http_protocol(backend, iter::empty(), accrual),
+            (Some((_, _http)), None) => http::protocol(backend, http_routes, accrual),
+            (None, Some((_, _grpc))) => grpc::protocol(backend, grpc_routes, accrual),
+            (None, None) => http::protocol(backend, iter::empty(), accrual),
         }
     };
 
@@ -268,53 +267,6 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
         metadata: Some(metadata),
         protocol: Some(outbound::ProxyProtocol { kind: Some(kind) }),
     }
-}
-
-fn http_protocol(
-    default_backend: outbound::Backend,
-    routes: impl Iterator<Item = (GroupKindNamespaceName, OutboundRoute<HttpRouteMatch>)>,
-    accrual: Option<FailureAccrual>,
-) -> outbound::proxy_protocol::Kind {
-    let opaque_route = default_outbound_opaq_route(default_backend.clone());
-    let mut routes = routes
-        .map(|(gknn, route)| http::convert_outbound_route(gknn, route, default_backend.clone()))
-        .collect::<Vec<_>>();
-    if routes.is_empty() {
-        routes.push(http::default_outbound_route(default_backend));
-    }
-    outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
-        timeout: Some(
-            time::Duration::from_secs(10)
-                .try_into()
-                .expect("failed to convert detect timeout to protobuf"),
-        ),
-
-        opaque: Some(outbound::proxy_protocol::Opaque {
-            routes: vec![opaque_route],
-        }),
-        http1: Some(outbound::proxy_protocol::Http1 {
-            routes: routes.clone(),
-            failure_accrual: accrual.clone(),
-        }),
-        http2: Some(outbound::proxy_protocol::Http2 {
-            routes,
-            failure_accrual: accrual,
-        }),
-    })
-}
-
-fn grpc_protocol(
-    default_backend: outbound::Backend,
-    routes: impl Iterator<Item = (GroupKindNamespaceName, OutboundRoute<GrpcRouteMatch>)>,
-    accrual: Option<FailureAccrual>,
-) -> outbound::proxy_protocol::Kind {
-    let routes = routes
-        .map(|(gknn, route)| grpc::convert_outbound_route(gknn, route, default_backend.clone()))
-        .collect::<Vec<_>>();
-    outbound::proxy_protocol::Kind::Grpc(outbound::proxy_protocol::Grpc {
-        routes,
-        failure_accrual: accrual,
-    })
 }
 
 fn timestamp_then_name<LeftMatchType, RightMatchType>(
