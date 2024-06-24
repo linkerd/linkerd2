@@ -117,6 +117,7 @@ fn authenticated_annotated() {
                     timeout: test.detect_timeout,
                 },
                 http_routes: mk_default_routes(),
+                grpc_routes: Default::default(),
             }
         };
 

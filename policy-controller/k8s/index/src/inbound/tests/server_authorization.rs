@@ -44,6 +44,7 @@ fn link_server_authz(selector: ServerSelector) {
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
             http_routes: mk_default_routes(),
+            grpc_routes: Default::default(),
         },
     );
     test.index.write().apply(mk_server_authz(

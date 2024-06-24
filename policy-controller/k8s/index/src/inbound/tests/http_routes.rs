@@ -41,6 +41,7 @@ fn route_attaches_to_server() {
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
             http_routes: mk_default_routes(),
+            grpc_routes: Default::default(),
         },
     );
 

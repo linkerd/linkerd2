@@ -35,6 +35,7 @@ fn links_authorization_policy_with_mtls_name() {
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
             http_routes: mk_default_routes(),
+            grpc_routes: Default::default(),
         },
     );
 
@@ -89,6 +90,7 @@ fn links_authorization_policy_with_mtls_name() {
             .collect(),
             protocol: ProxyProtocol::Http1,
             http_routes: mk_default_routes(),
+            grpc_routes: Default::default(),
         },
     );
 }
@@ -125,6 +127,7 @@ fn authorization_targets_namespace() {
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
             http_routes: mk_default_routes(),
+            grpc_routes: Default::default(),
         },
     );
 
@@ -179,6 +182,7 @@ fn authorization_targets_namespace() {
             .collect(),
             protocol: ProxyProtocol::Http1,
             http_routes: mk_default_routes(),
+            grpc_routes: Default::default(),
         },
     );
 }
@@ -215,6 +219,7 @@ fn links_authorization_policy_with_service_account() {
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
             http_routes: mk_default_routes(),
+            grpc_routes: Default::default(),
         },
     );
 
@@ -263,6 +268,7 @@ fn links_authorization_policy_with_service_account() {
             .collect(),
             protocol: ProxyProtocol::Http1,
             http_routes: mk_default_routes(),
+            grpc_routes: Default::default(),
         },
     );
 }
@@ -368,7 +374,7 @@ fn authorization_policy_prevents_index_deletion() {
                 kind: "HTTPRoute".into(),
                 name: "route-foo".into(),
             }) => HttpRoute {
-                rules: vec![inbound::HttpRouteRule {
+                rules: vec![inbound::InboundRouteRule {
                     matches: vec![routes::HttpRouteMatch {
                         path: Some(routes::PathMatch::Prefix("/foo".to_string())),
                         headers: vec![],
@@ -386,6 +392,7 @@ fn authorization_policy_prevents_index_deletion() {
             })
             .into_iter()
             .collect(),
+            grpc_routes: Default::default(),
         },
     );
 }
