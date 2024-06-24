@@ -1718,8 +1718,9 @@ impl PolicyIndex {
                     }
                 }
                 authorization_policy::Target::Namespace => {}
-                authorization_policy::Target::HttpRoute(_) => {
-                    // Policies which target HttpRoutes will be attached to
+                authorization_policy::Target::HttpRoute(_)
+                | authorization_policy::Target::GrpcRoute(_) => {
+                    // Policies which target routes will be attached to
                     // the route authorizations and should not be included in
                     // the server authorizations.
                     continue;
@@ -1764,7 +1765,22 @@ impl PolicyIndex {
         for (name, spec) in &self.authorization_policies {
             // Skip the policy if it doesn't apply to the route.
             match &spec.target {
-                authorization_policy::Target::HttpRoute(n) if n.eq_ignore_ascii_case(gkn) => {}
+                authorization_policy::Target::HttpRoute(n) if n.eq_ignore_ascii_case(gkn) => {
+                    tracing::trace!(
+                        ns = %self.namespace,
+                        authorizationpolicy = %name,
+                        route = ?gkn,
+                        "AuthorizationPolicy targets HttpRoute",
+                    );
+                }
+                authorization_policy::Target::GrpcRoute(n) if n.eq_ignore_ascii_case(gkn) => {
+                    tracing::trace!(
+                        ns = %self.namespace,
+                        authorizationpolicy = %name,
+                        route = ?gkn,
+                        "AuthorizationPolicy targets GrpcRoute",
+                    );
+                }
                 _ => {
                     tracing::trace!(
                         ns = %self.namespace,
@@ -1777,12 +1793,6 @@ impl PolicyIndex {
                 }
             }
 
-            tracing::trace!(
-                ns = %self.namespace,
-                authorizationpolicy = %name,
-                route = ?gkn,
-                "AuthorizationPolicy targets HttpRoute",
-            );
             tracing::trace!(authns = ?spec.authentications);
 
             let authz = match self.policy_client_authz(spec, authentications) {

@@ -34,7 +34,7 @@ fn proxy_protocol(
         },
         Some(k8s::policy::server::ProxyProtocol::Http1) => ProxyProtocol::Http1,
         Some(k8s::policy::server::ProxyProtocol::Http2) => ProxyProtocol::Http2,
-        Some(k8s::policy::server::ProxyProtocol::Grpc) => ProxyProtocol::Http2,
+        Some(k8s::policy::server::ProxyProtocol::Grpc) => ProxyProtocol::Grpc,
         Some(k8s::policy::server::ProxyProtocol::Opaque) => ProxyProtocol::Opaque,
         Some(k8s::policy::server::ProxyProtocol::Tls) => ProxyProtocol::Tls,
     }
