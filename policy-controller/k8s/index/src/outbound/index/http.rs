@@ -224,7 +224,7 @@ pub(crate) fn convert_backend<BackendRef: Into<gateway::HttpBackendRef>>(
         Err(error) => {
             return Some(Backend::Invalid {
                 weight: backend.weight.unwrap_or(1).into(),
-                message: format!("unsupported backend filter: {error}", error = error),
+                message: format!("unsupported backend filter: {error}"),
             });
         }
     };
