@@ -295,22 +295,6 @@ proxyInit:
     pullPolicy: ""
     # -- Tag for the proxy-init container image
     version: v2.4.1
-  resources:
-    cpu:
-      # -- Maximum amount of CPU units that the proxy-init container can use
-      limit: 100m
-      # -- Amount of CPU units that the proxy-init container requests
-      request: 100m
-    memory:
-      # -- Maximum amount of memory that the proxy-init container can use
-      limit: 20Mi
-      # -- Amount of memory that the proxy-init container requests
-      request: 20Mi
-    ephemeral-storage:
-      # -- Maximum amount of ephemeral storage that the proxy-init container can use
-      limit: ""
-      # -- Amount of ephemeral storage that the proxy-init container requests
-      request: ""
   closeWaitTimeoutSecs: 0
   # -- Privileged mode allows the container processes to inherit all security
   # capabilities and bypass any security limitations enforced by the kubelet.

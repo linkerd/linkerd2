@@ -205,11 +205,11 @@ spec:
     name: linkerd-init
     resources:
       limits:
-        cpu: 100m
-        memory: 20Mi
+        cpu: 160m
+        memory: 150Mi
       requests:
-        cpu: 100m
-        memory: 20Mi
+        cpu: 110m
+        memory: 100Mi
     securityContext:
       allowPrivilegeEscalation: false
       capabilities:

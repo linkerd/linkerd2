@@ -129,16 +129,6 @@ func TestRender(t *testing.T) {
 				Version:    "ProxyInitVersion",
 			},
 			IgnoreOutboundPorts: "443",
-			Resources: &charts.Resources{
-				CPU: charts.Constraints{
-					Limit:   "100m",
-					Request: "10m",
-				},
-				Memory: charts.Constraints{
-					Limit:   "50Mi",
-					Request: "10Mi",
-				},
-			},
 			XTMountPath: &charts.VolumeMountPath{
 				MountPath: "/run",
 				Name:      "linkerd-proxy-init-xtables-lock",
