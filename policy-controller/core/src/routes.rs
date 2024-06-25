@@ -91,12 +91,6 @@ pub enum QueryParamMatch {
     Regex(String, Regex),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GrpcMethodMatch {
-    pub method: Option<String>,
-    pub service: Option<String>,
-}
-
 // === impl GroupKindName ===
 
 impl Ord for GroupKindName {
