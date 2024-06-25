@@ -72,12 +72,6 @@ pub struct HttpRouteMatch {
     pub method: Option<Method>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GrpcRouteMatch {
-    pub headers: Vec<HeaderMatch>,
-    pub method: Option<GrpcMethodMatch>,
-}
-
 #[derive(Clone, Debug)]
 pub enum PathMatch {
     Exact(String),

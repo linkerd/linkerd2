@@ -7,7 +7,7 @@ use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
 use linkerd_policy_controller_core::{
     outbound::{Backend, Backoff, FailureAccrual, OutboundPolicy, OutboundRoute, RouteSet},
-    routes::{GroupKindNamespaceName, GrpcRouteMatch, HttpRouteMatch},
+    routes::{GroupKindNamespaceName, HttpRouteMatch},
 };
 use linkerd_policy_controller_k8s_api::{
     gateway::{self as k8s_gateway_api, ParentReference},
@@ -51,7 +51,6 @@ struct Namespace {
     /// Stores the route resources (by service name) that do not
     /// explicitly target a port.
     service_http_routes: HashMap<String, RouteSet<HttpRouteMatch>>,
-    service_grpc_routes: HashMap<String, RouteSet<GrpcRouteMatch>>,
     namespace: Arc<String>,
 }
 
@@ -83,7 +82,6 @@ struct RoutesWatch {
     opaque: bool,
     accrual: Option<FailureAccrual>,
     http_routes: RouteSet<HttpRouteMatch>,
-    grpc_routes: RouteSet<GrpcRouteMatch>,
     watch: watch::Sender<OutboundPolicy>,
 }
 
@@ -113,7 +111,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
             .gkn::<k8s_gateway_api::HttpRoute>()
             .namespaced(namespace);
         for ns_index in self.namespaces.by_ns.values_mut() {
-            ns_index.delete_grpc_route(&gknn);
+            ns_index.delete_http_route(&gknn);
         }
     }
 }
@@ -164,7 +162,6 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             .entry(ns.clone())
             .or_insert_with(|| Namespace {
                 service_http_routes: Default::default(),
-                service_grpc_routes: Default::default(),
                 service_port_routes: Default::default(),
                 namespace: Arc::new(ns),
             })
@@ -217,7 +214,6 @@ impl Index {
             .or_insert_with(|| Namespace {
                 namespace: Arc::new(service_namespace.to_string()),
                 service_http_routes: Default::default(),
-                service_grpc_routes: Default::default(),
                 service_port_routes: Default::default(),
             });
 
@@ -263,7 +259,6 @@ impl Index {
                 .or_insert_with(|| Namespace {
                     namespace: Arc::new(ns),
                     service_http_routes: Default::default(),
-                    service_grpc_routes: Default::default(),
                     service_port_routes: Default::default(),
                 })
                 .apply_http_route(
@@ -359,13 +354,8 @@ impl Namespace {
                     .values_mut()
                     .flat_map(|route| route.rules.iter_mut())
                     .flat_map(|rule| rule.backends.iter_mut());
-                let grpc_backends = watch
-                    .grpc_routes
-                    .values_mut()
-                    .flat_map(|route| route.rules.iter_mut())
-                    .flat_map(|rule| rule.backends.iter_mut());
 
-                http_backends.chain(grpc_backends).for_each(update_service);
+                http_backends.for_each(update_service);
                 watch.send_if_modified();
             }
         }
@@ -391,17 +381,6 @@ impl Namespace {
         }
 
         self.service_http_routes.retain(|_, routes| {
-            routes.remove(gknn);
-            !routes.is_empty()
-        });
-    }
-
-    fn delete_grpc_route(&mut self, gknn: &GroupKindNamespaceName) {
-        for service in self.service_port_routes.values_mut() {
-            service.delete_grpc_route(gknn);
-        }
-
-        self.service_grpc_routes.retain(|_, routes| {
             routes.remove(gknn);
             !routes.is_empty()
         });
@@ -436,11 +415,6 @@ impl Namespace {
                     .get(&sp.service)
                     .cloned()
                     .unwrap_or_default();
-                let grpc_routes = self
-                    .service_grpc_routes
-                    .get(&sp.service)
-                    .cloned()
-                    .unwrap_or_default();
 
                 let mut service_routes = ServiceRoutes {
                     opaque,
@@ -458,9 +432,6 @@ impl Namespace {
                 let (producer_http_routes, consumer_http_routes): (Vec<_>, Vec<_>) = http_routes
                     .into_iter()
                     .partition(|(gknn, _)| gknn.namespace == *self.namespace);
-                let (producer_grpc_routes, consumer_grpc_routes): (Vec<_>, Vec<_>) = grpc_routes
-                    .into_iter()
-                    .partition(|(gknn, _)| gknn.namespace == *self.namespace);
 
                 for (consumer_gknn, consumer_route) in consumer_http_routes {
                     // Consumer routes should only apply to watches from the
@@ -469,14 +440,6 @@ impl Namespace {
                         service_routes.watch_for_ns_or_default(consumer_gknn.namespace.to_string());
 
                     consumer_watch.insert_http_route(consumer_gknn.clone(), consumer_route.clone());
-                }
-                for (consumer_gknn, consumer_route) in consumer_grpc_routes {
-                    // Consumer routes should only apply to watches from the
-                    // consumer namespace.
-                    let consumer_watch =
-                        service_routes.watch_for_ns_or_default(consumer_gknn.namespace.to_string());
-
-                    consumer_watch.insert_grpc_route(consumer_gknn.clone(), consumer_route.clone());
                 }
 
                 for (producer_gknn, producer_route) in producer_http_routes {
@@ -496,26 +459,6 @@ impl Namespace {
                         })
                         .for_each(|(_, watch)| {
                             watch.insert_http_route(producer_gknn.clone(), producer_route.clone())
-                        });
-                }
-
-                for (producer_gknn, producer_route) in producer_grpc_routes {
-                    // Insert the route into the producer namespace.
-                    let producer_watch =
-                        service_routes.watch_for_ns_or_default(producer_gknn.namespace.to_string());
-
-                    producer_watch.insert_grpc_route(producer_gknn.clone(), producer_route.clone());
-
-                    // Producer routes apply to clients in all namespaces, so
-                    // apply it to watches for all other namespaces too.
-                    service_routes
-                        .watches_by_ns
-                        .iter_mut()
-                        .filter(|(namespace, _)| {
-                            namespace.as_str() != producer_gknn.namespace.as_ref()
-                        })
-                        .for_each(|(_, watch)| {
-                            watch.insert_grpc_route(producer_gknn.clone(), producer_route.clone())
                         });
                 }
 
@@ -571,11 +514,6 @@ impl ServiceRoutes {
             .get(self.namespace.as_ref())
             .map(|watch| watch.http_routes.clone())
             .unwrap_or_default();
-        let grpc_routes = self
-            .watches_by_ns
-            .get(self.namespace.as_ref())
-            .map(|watch| watch.grpc_routes.clone())
-            .unwrap_or_default();
 
         self.watches_by_ns.entry(namespace).or_insert_with(|| {
             let (sender, _) = watch::channel(OutboundPolicy {
@@ -590,7 +528,6 @@ impl ServiceRoutes {
 
             RoutesWatch {
                 http_routes,
-                grpc_routes,
                 watch: sender,
                 opaque: self.opaque,
                 accrual: self.accrual,
@@ -639,12 +576,6 @@ impl ServiceRoutes {
             watch.remove_http_route(gknn);
         }
     }
-
-    fn delete_grpc_route(&mut self, gknn: &GroupKindNamespaceName) {
-        for watch in self.watches_by_ns.values_mut() {
-            watch.remove_grpc_route(gknn);
-        }
-    }
 }
 
 impl RoutesWatch {
@@ -681,23 +612,8 @@ impl RoutesWatch {
         self.send_if_modified();
     }
 
-    fn insert_grpc_route(
-        &mut self,
-        gknn: GroupKindNamespaceName,
-        route: OutboundRoute<GrpcRouteMatch>,
-    ) {
-        self.grpc_routes.insert(gknn, route);
-
-        self.send_if_modified();
-    }
-
     fn remove_http_route(&mut self, gknn: &GroupKindNamespaceName) {
         self.http_routes.remove(gknn);
-        self.send_if_modified();
-    }
-
-    fn remove_grpc_route(&mut self, gknn: &GroupKindNamespaceName) {
-        self.grpc_routes.remove(gknn);
         self.send_if_modified();
     }
 }
