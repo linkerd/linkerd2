@@ -1220,7 +1220,6 @@ dependencies = [
  "futures",
  "http",
  "hyper",
- "itertools",
  "linkerd-policy-controller-core",
  "linkerd2-proxy-api",
  "maplit",

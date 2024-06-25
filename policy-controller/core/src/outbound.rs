@@ -20,6 +20,8 @@ pub trait DiscoverOutboundPolicy<T> {
 
 pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send + Sync + 'static>>;
 
+pub type RouteSet<M> = HashMap<GroupKindNamespaceName, OutboundRoute<M>>;
+
 pub struct OutboundDiscoverTarget {
     pub service_name: String,
     pub service_namespace: String,
@@ -27,21 +29,9 @@ pub struct OutboundDiscoverTarget {
     pub source_namespace: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum TypedOutboundRoute {
-    Http(OutboundRoute<HttpRouteMatch>),
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub enum OutboundRouteCollection {
-    #[default]
-    Empty,
-    Http(HashMap<GroupKindNamespaceName, OutboundRoute<HttpRouteMatch>>),
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct OutboundPolicy {
-    pub routes: OutboundRouteCollection,
+    pub http_routes: RouteSet<HttpRouteMatch>,
     pub authority: String,
     pub name: String,
     pub namespace: String,
@@ -51,9 +41,9 @@ pub struct OutboundPolicy {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OutboundRoute<MatchType> {
+pub struct OutboundRoute<M> {
     pub hostnames: Vec<HostMatch>,
-    pub rules: Vec<OutboundRouteRule<MatchType>>,
+    pub rules: Vec<OutboundRouteRule<M>>,
 
     /// This is required for ordering returned routes
     /// by their creation timestamp.
@@ -61,8 +51,8 @@ pub struct OutboundRoute<MatchType> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OutboundRouteRule<MatchType> {
-    pub matches: Vec<MatchType>,
+pub struct OutboundRouteRule<M> {
+    pub matches: Vec<M>,
     pub backends: Vec<Backend>,
     pub request_timeout: Option<time::Duration>,
     pub backend_request_timeout: Option<time::Duration>,
@@ -112,52 +102,4 @@ pub enum Filter {
     ResponseHeaderModifier(HeaderModifierFilter),
     RequestRedirect(RequestRedirectFilter),
     FailureInjector(FailureInjectorFilter),
-}
-
-// === impl TypedOutboundRoute ===
-
-impl From<OutboundRoute<HttpRouteMatch>> for TypedOutboundRoute {
-    fn from(route: OutboundRoute<HttpRouteMatch>) -> Self {
-        Self::Http(route)
-    }
-}
-
-// === impl OutboundRouteCollection ===
-
-impl OutboundRouteCollection {
-    pub fn is_empty(&self) -> bool {
-        matches!(self, Self::Empty)
-    }
-
-    pub fn remove(&mut self, key: &GroupKindNamespaceName) {
-        match self {
-            Self::Empty => {}
-            Self::Http(routes) => {
-                routes.remove(key);
-                if routes.is_empty() {
-                    *self = Self::Empty;
-                }
-            }
-        }
-    }
-
-    pub fn insert<Route: Into<TypedOutboundRoute>>(
-        &mut self,
-        key: GroupKindNamespaceName,
-        route: Route,
-    ) -> Result<Option<TypedOutboundRoute>> {
-        let route = route.into();
-
-        match (self, route) {
-            (this @ Self::Empty, TypedOutboundRoute::Http(route)) => {
-                let mut routes = HashMap::default();
-                let inserted = routes.insert(key, route).map(Into::into);
-                *this = Self::Http(routes);
-                Ok(inserted)
-            }
-            (Self::Http(routes), TypedOutboundRoute::Http(route)) => {
-                Ok(routes.insert(key, route).map(Into::into))
-            }
-        }
-    }
 }

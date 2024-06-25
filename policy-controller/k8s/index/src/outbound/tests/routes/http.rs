@@ -1,6 +1,6 @@
 use kube::Resource;
 use linkerd_policy_controller_core::{
-    outbound::{Backend, OutboundRouteCollection, WeightedService},
+    outbound::{Backend, WeightedService},
     routes::GroupKindNamespaceName,
     POLICY_CONTROLLER_NAME,
 };
@@ -39,12 +39,8 @@ fn backend_service() {
 
     {
         let policy = rx.borrow_and_update();
-        let backend = Some(&policy.routes)
-            .map(|routes| match routes {
-                OutboundRouteCollection::Http(routes) => routes,
-                _ => panic!("expected http route collection"),
-            })
-            .unwrap()
+        let backend = policy
+            .http_routes
             .get(&GroupKindNamespaceName {
                 group: k8s::policy::HttpRoute::group(&()),
                 kind: k8s::policy::HttpRoute::kind(&()),
@@ -76,12 +72,8 @@ fn backend_service() {
 
     {
         let policy = rx.borrow_and_update();
-        let backend = Some(&policy.routes)
-            .map(|routes| match routes {
-                OutboundRouteCollection::Http(routes) => routes,
-                _ => panic!("expected http route collection"),
-            })
-            .unwrap()
+        let backend = policy
+            .http_routes
             .get(&GroupKindNamespaceName {
                 group: k8s::policy::HttpRoute::group(&()),
                 kind: k8s::policy::HttpRoute::kind(&()),
