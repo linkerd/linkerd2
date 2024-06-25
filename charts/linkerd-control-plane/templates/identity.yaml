@@ -100,6 +100,12 @@ spec:
 {{ $_ := set $tree.Values.proxy "workloadKind" "deployment" -}}
 {{ $_ := set $tree.Values.proxy "component" "linkerd-identity" -}}
 {{ $_ := set $tree.Values.proxy "waitBeforeExitSeconds" 0 -}}
+{{- if not (empty .Values.identityProxyResources) }}
+{{- $c := dig "cores" .Values.proxy.cores .Values.identityProxyResources }}
+{{- $_ := set $tree.Values.proxy "cores" $c }}
+{{- $r := merge .Values.identityProxyResources .Values.proxy.resources }}
+{{- $_ := set $tree.Values.proxy "resources" $r }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -211,12 +217,6 @@ spec:
           name: identity-issuer
         - mountPath: /var/run/linkerd/identity/trust-roots/
           name: trust-roots
-      {{- if not (empty .Values.identityProxyResources) }}
-      {{- $c := dig "cores" .Values.proxy.cores .Values.identityProxyResources }}
-      {{- $_ := set $tree.Values.proxy "cores" $c }}
-      {{- $r := merge .Values.identityProxyResources .Values.proxy.resources }}
-      {{- $_ := set $tree.Values.proxy "resources" $r }}
-      {{- end }}
       {{- $_ := set $tree.Values.proxy "await" false }}
       {{- $_ := set $tree.Values.proxy "loadTrustBundleFromConfigMap" true }}
       {{- $_ := set $tree.Values.proxy "podInboundPorts" "8080,9990" }}

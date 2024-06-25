@@ -1802,13 +1802,7 @@ data:
         name: ProxyInitImageName
         pullPolicy: ImagePullPolicy
         version: ProxyInitVersion
-      resources:
-        cpu:
-          limit: 100m
-          request: 10m
-        memory:
-          limit: 50Mi
-          request: 10Mi
+      resources: null
       saMountPath: null
       xtMountPath:
         mountPath: /run
@@ -1864,16 +1858,6 @@ data:
 						Name:       "ProxyInitImageName",
 						PullPolicy: "ImagePullPolicy",
 						Version:    "ProxyInitVersion",
-					},
-					Resources: &linkerd2.Resources{
-						CPU: linkerd2.Constraints{
-							Limit:   "100m",
-							Request: "10m",
-						},
-						Memory: linkerd2.Constraints{
-							Limit:   "50Mi",
-							Request: "10Mi",
-						},
 					},
 					XTMountPath: &linkerd2.VolumeMountPath{
 						MountPath: "/run",
@@ -1960,12 +1944,6 @@ data:
           pullPolicy: ImagePullPolicy
           version: ProxyInitVersion
         resources:
-          cpu:
-            limit: 100m
-            request: 10m
-          memory:
-            limit: 50Mi
-            request: 10Mi
         saMountPath: null
         xtMountPath:
           mountPath: /run
@@ -2021,16 +1999,6 @@ data:
 						Name:       "ProxyInitImageName",
 						PullPolicy: "ImagePullPolicy",
 						Version:    "ProxyInitVersion",
-					},
-					Resources: &linkerd2.Resources{
-						CPU: linkerd2.Constraints{
-							Limit:   "100m",
-							Request: "10m",
-						},
-						Memory: linkerd2.Constraints{
-							Limit:   "50Mi",
-							Request: "10Mi",
-						},
 					},
 					XTMountPath: &linkerd2.VolumeMountPath{
 						MountPath: "/run",

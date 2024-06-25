@@ -114,7 +114,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
             .gkn::<k8s_gateway_api::HttpRoute>()
             .namespaced(namespace);
         for ns_index in self.namespaces.by_ns.values_mut() {
-            ns_index.delete_grpc_route(&gknn);
+            ns_index.delete_http_route(&gknn);
         }
     }
 }

@@ -169,23 +169,24 @@ type (
 
 	// ProxyInit contains the fields to set the proxy-init container
 	ProxyInit struct {
-		Capabilities         *Capabilities    `json:"capabilities"`
-		IgnoreInboundPorts   string           `json:"ignoreInboundPorts"`
-		IgnoreOutboundPorts  string           `json:"ignoreOutboundPorts"`
-		KubeAPIServerPorts   string           `json:"kubeAPIServerPorts"`
-		SkipSubnets          string           `json:"skipSubnets"`
-		LogLevel             string           `json:"logLevel"`
-		LogFormat            string           `json:"logFormat"`
-		Image                *Image           `json:"image"`
-		SAMountPath          *VolumeMountPath `json:"saMountPath"`
-		XTMountPath          *VolumeMountPath `json:"xtMountPath"`
-		Resources            *Resources       `json:"resources"`
-		CloseWaitTimeoutSecs int64            `json:"closeWaitTimeoutSecs"`
-		Privileged           bool             `json:"privileged"`
-		RunAsRoot            bool             `json:"runAsRoot"`
-		RunAsUser            int64            `json:"runAsUser"`
-		RunAsGroup           int64            `json:"runAsGroup"`
-		IptablesMode         string           `json:"iptablesMode"`
+		Capabilities        *Capabilities    `json:"capabilities"`
+		IgnoreInboundPorts  string           `json:"ignoreInboundPorts"`
+		IgnoreOutboundPorts string           `json:"ignoreOutboundPorts"`
+		KubeAPIServerPorts  string           `json:"kubeAPIServerPorts"`
+		SkipSubnets         string           `json:"skipSubnets"`
+		LogLevel            string           `json:"logLevel"`
+		LogFormat           string           `json:"logFormat"`
+		Image               *Image           `json:"image"`
+		SAMountPath         *VolumeMountPath `json:"saMountPath"`
+		XTMountPath         *VolumeMountPath `json:"xtMountPath"`
+		/* DEPRECATED: should be removed after stable-2.16.0, left in for bc */
+		Resources            *Resources `json:"resources"`
+		CloseWaitTimeoutSecs int64      `json:"closeWaitTimeoutSecs"`
+		Privileged           bool       `json:"privileged"`
+		RunAsRoot            bool       `json:"runAsRoot"`
+		RunAsUser            int64      `json:"runAsUser"`
+		RunAsGroup           int64      `json:"runAsGroup"`
+		IptablesMode         string     `json:"iptablesMode"`
 	}
 
 	NetworkValidator struct {
