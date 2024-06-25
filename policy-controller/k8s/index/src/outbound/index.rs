@@ -1,6 +1,6 @@
 use crate::{
     ports::{ports_annotation, PortSet},
-    routes::{ExplicitGKN, HttpRouteResource, ImpliedGKN},
+    routes::{ExplicitGKN, HttpRouteResource},
     ClusterInfo,
 };
 use ahash::AHashMap as HashMap;
@@ -24,7 +24,6 @@ pub struct Index {
     service_info: HashMap<ServiceRef, ServiceInfo>,
 }
 
-mod grpc;
 mod http;
 pub mod metrics;
 
@@ -112,21 +111,6 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
     fn delete(&mut self, namespace: String, name: String) {
         let gknn = name
             .gkn::<k8s_gateway_api::HttpRoute>()
-            .namespaced(namespace);
-        for ns_index in self.namespaces.by_ns.values_mut() {
-            ns_index.delete_grpc_route(&gknn);
-        }
-    }
-}
-
-impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Index {
-    fn apply(&mut self, route: k8s_gateway_api::GrpcRoute) {
-        self.apply_grpc(route)
-    }
-
-    fn delete(&mut self, namespace: String, name: String) {
-        let gknn = name
-            .gkn::<k8s_gateway_api::GrpcRoute>()
             .namespaced(namespace);
         for ns_index in self.namespaces.by_ns.values_mut() {
             ns_index.delete_grpc_route(&gknn);
@@ -291,42 +275,6 @@ impl Index {
         }
     }
 
-    fn apply_grpc(&mut self, route: k8s_gateway_api::GrpcRoute) {
-        tracing::debug!(name = route.name_unchecked(), "indexing grpcroute");
-
-        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
-            if !is_parent_service(parent_ref) {
-                continue;
-            }
-
-            if !route_accepted_by_service(route.status.as_ref().map(|s| &s.inner), &parent_ref.name)
-            {
-                continue;
-            }
-
-            let ns = parent_ref
-                .namespace
-                .clone()
-                .unwrap_or_else(|| route.namespace().expect("GrpcRoute must have a namespace"));
-
-            self.namespaces
-                .by_ns
-                .entry(ns.clone())
-                .or_insert_with(|| Namespace {
-                    namespace: Arc::new(ns),
-                    service_http_routes: Default::default(),
-                    service_grpc_routes: Default::default(),
-                    service_port_routes: Default::default(),
-                })
-                .apply_grpc_route(
-                    route.clone(),
-                    parent_ref,
-                    &self.namespaces.cluster_info,
-                    &self.service_info,
-                );
-        }
-    }
-
     fn reindex_services(&mut self) {
         for ns in self.namespaces.by_ns.values_mut() {
             ns.reindex_services(&self.service_info);
@@ -390,68 +338,6 @@ impl Namespace {
                 .entry(parent_ref.name.clone())
                 .or_default()
                 .insert(route.gknn(), outbound_route);
-        }
-    }
-
-    fn apply_grpc_route(
-        &mut self,
-        route: k8s_gateway_api::GrpcRoute,
-        parent_ref: &ParentReference,
-        cluster_info: &ClusterInfo,
-        service_info: &HashMap<ServiceRef, ServiceInfo>,
-    ) {
-        tracing::debug!(?route);
-
-        let outbound_route =
-            match grpc::convert_route(&self.namespace, route.clone(), cluster_info, service_info) {
-                Ok(route) => route,
-                Err(error) => {
-                    tracing::error!(%error, "failed to convert route");
-                    return;
-                }
-            };
-
-        tracing::debug!(?outbound_route);
-
-        let gknn = route
-            .gkn()
-            .namespaced(route.namespace().expect("Route must have namespace"));
-
-        let port = parent_ref.port.and_then(NonZeroU16::new);
-
-        if let Some(port) = port {
-            let service_port = ServicePort {
-                port,
-                service: parent_ref.name.clone(),
-            };
-
-            tracing::debug!(
-                ?service_port,
-                route = route.name_unchecked(),
-                "inserting grpcroute for service"
-            );
-
-            let service_routes =
-                self.service_routes_or_default(service_port, cluster_info, service_info);
-
-            service_routes.apply_grpc_route(gknn, outbound_route);
-        } else {
-            // If the parent_ref doesn't include a port, apply this route
-            // to all ServiceRoutes which match the Service name.
-            self.service_port_routes.iter_mut().for_each(
-                |(ServicePort { service, port: _ }, routes)| {
-                    if service == &parent_ref.name {
-                        routes.apply_grpc_route(gknn.clone(), outbound_route.clone());
-                    }
-                },
-            );
-
-            // Also add the route to the list of routes that target the
-            // Service without specifying a port.
-            self.service_grpc_routes
-                .entry(parent_ref.name.clone())
-                .or_default()
-                .insert(gknn, outbound_route);
         }
     }
 
@@ -697,7 +583,6 @@ impl ServiceRoutes {
                 opaque: self.opaque,
                 accrual: self.accrual,
                 http_routes: http_routes.clone(),
-                grpc_routes: grpc_routes.clone(),
                 name: self.name.to_string(),
                 authority: self.authority.clone(),
                 namespace: self.namespace.to_string(),
@@ -739,32 +624,6 @@ impl ServiceRoutes {
         }
     }
 
-    fn apply_grpc_route(
-        &mut self,
-        gknn: GroupKindNamespaceName,
-        route: OutboundRoute<GrpcRouteMatch>,
-    ) {
-        if *gknn.namespace == *self.namespace {
-            // This is a producer namespace route.
-            let watch = self.watch_for_ns_or_default(gknn.namespace.to_string());
-
-            watch.insert_grpc_route(gknn.clone(), route.clone());
-
-            // Producer routes apply to clients in all namespaces, so
-            // apply it to watches for all other namespaces too.
-            for (ns, ns_watch) in self.watches_by_ns.iter_mut() {
-                if ns != &gknn.namespace {
-                    ns_watch.insert_grpc_route(gknn.clone(), route.clone());
-                }
-            }
-        } else {
-            // This is a consumer namespace route and should only apply to
-            // watches from that namespace.
-            let watch = self.watch_for_ns_or_default(gknn.namespace.to_string());
-            watch.insert_grpc_route(gknn, route);
-        }
-    }
-
     fn update_service(&mut self, opaque: bool, accrual: Option<FailureAccrual>) {
         self.opaque = opaque;
         self.accrual = accrual;
@@ -795,11 +654,6 @@ impl RoutesWatch {
 
             if self.http_routes != policy.http_routes {
                 policy.http_routes = self.http_routes.clone();
-                modified = true;
-            }
-
-            if self.grpc_routes != policy.grpc_routes {
-                policy.grpc_routes = self.grpc_routes.clone();
                 modified = true;
             }
 

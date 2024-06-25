@@ -1,6 +1,6 @@
 use crate::routes::{
-    FailureInjectorFilter, GroupKindNamespaceName, GrpcRouteMatch, HeaderModifierFilter, HostMatch,
-    HttpRouteMatch, RequestRedirectFilter,
+    FailureInjectorFilter, GroupKindNamespaceName, HeaderModifierFilter, HostMatch, HttpRouteMatch,
+    RequestRedirectFilter,
 };
 use ahash::AHashMap as HashMap;
 use anyhow::Result;
@@ -32,7 +32,6 @@ pub struct OutboundDiscoverTarget {
 #[derive(Clone, Debug, PartialEq)]
 pub struct OutboundPolicy {
     pub http_routes: RouteSet<HttpRouteMatch>,
-    pub grpc_routes: RouteSet<GrpcRouteMatch>,
     pub authority: String,
     pub name: String,
     pub namespace: String,
