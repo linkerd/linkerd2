@@ -3,6 +3,7 @@ use linkerd_policy_controller_core::routes::{
     HeaderModifierFilter, HostMatch, PathModifier, RequestRedirectFilter,
 };
 
+pub(crate) mod grpc;
 pub(crate) mod http;
 
 pub(crate) fn convert_host_match(h: HostMatch) -> proto::HostMatch {

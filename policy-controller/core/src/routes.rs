@@ -72,6 +72,12 @@ pub struct HttpRouteMatch {
     pub method: Option<Method>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GrpcRouteMatch {
+    pub headers: Vec<HeaderMatch>,
+    pub method: Option<GrpcMethodMatch>,
+}
+
 #[derive(Clone, Debug)]
 pub enum PathMatch {
     Exact(String),
@@ -89,6 +95,12 @@ pub enum HeaderMatch {
 pub enum QueryParamMatch {
     Exact(String, String),
     Regex(String, Regex),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GrpcMethodMatch {
+    pub method: Option<String>,
+    pub service: Option<String>,
 }
 
 // === impl GroupKindName ===

@@ -1,6 +1,7 @@
 use linkerd_policy_controller_core::routes::{GroupKindName, GroupKindNamespaceName};
 use linkerd_policy_controller_k8s_api::{gateway as api, policy, Resource, ResourceExt};
 
+pub mod grpc;
 pub mod http;
 
 #[derive(Debug, Clone)]
