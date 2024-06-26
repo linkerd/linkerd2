@@ -18,7 +18,7 @@ use linkerd_policy_controller_core::{
     },
     routes::GroupKindNamespaceName,
 };
-use std::{iter, num::NonZeroU16, str::FromStr, sync::Arc, time};
+use std::{num::NonZeroU16, str::FromStr, sync::Arc, time};
 
 mod grpc;
 mod http;
@@ -231,25 +231,14 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
         });
 
         let mut http_routes = outbound.http_routes.into_iter().collect::<Vec<_>>();
-        http_routes.sort_by(timestamp_then_name);
-        let mut http_routes = http_routes.into_iter().peekable();
-
         let mut grpc_routes = outbound.grpc_routes.into_iter().collect::<Vec<_>>();
-        grpc_routes.sort_by(timestamp_then_name);
-        let mut grpc_routes = grpc_routes.into_iter().peekable();
 
-        // If both HTTP and gRPC routes are present, we choose the route kind by which has the oldest timestamp.
-        match (http_routes.peek(), grpc_routes.peek()) {
-            (Some(http), Some(grpc)) => {
-                if timestamp_then_name(http, grpc).is_gt() {
-                    grpc::protocol(backend, grpc_routes, accrual)
-                } else {
-                    http::protocol(backend, http_routes, accrual)
-                }
-            }
-            (Some((_, _http)), None) => http::protocol(backend, http_routes, accrual),
-            (None, Some((_, _grpc))) => grpc::protocol(backend, grpc_routes, accrual),
-            (None, None) => http::protocol(backend, iter::empty(), accrual),
+        if !grpc_routes.is_empty() {
+            grpc_routes.sort_by(timestamp_then_name);
+            grpc::protocol(backend, grpc_routes.into_iter(), accrual)
+        } else {
+            http_routes.sort_by(timestamp_then_name);
+            http::protocol(backend, http_routes.into_iter(), accrual)
         }
     };
 
