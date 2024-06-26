@@ -97,9 +97,9 @@ pub type HttpRoute = InboundRoute<HttpRouteMatch>;
 pub type GrpcRoute = InboundRoute<GrpcRouteMatch>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InboundRoute<MatchType> {
+pub struct InboundRoute<M> {
     pub hostnames: Vec<HostMatch>,
-    pub rules: Vec<InboundRouteRule<MatchType>>,
+    pub rules: Vec<InboundRouteRule<M>>,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
 
     /// This is required for ordering returned `HttpRoute`s by their creation
@@ -108,8 +108,8 @@ pub struct InboundRoute<MatchType> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InboundRouteRule<MatchType> {
-    pub matches: Vec<MatchType>,
+pub struct InboundRouteRule<M> {
+    pub matches: Vec<M>,
     pub filters: Vec<Filter>,
 }
 

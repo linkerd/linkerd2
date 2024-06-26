@@ -9,7 +9,6 @@ use linkerd2_proxy_api::{
     outbound::{
         self,
         outbound_policies_server::{OutboundPolicies, OutboundPoliciesServer},
-        FailureAccrual,
     },
 };
 use linkerd_policy_controller_core::{

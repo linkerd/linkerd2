@@ -38,6 +38,8 @@ use std::{
 use tokio::sync::watch;
 use tracing::info_span;
 
+mod grpc;
+mod http;
 pub mod metrics;
 
 pub type SharedIndex = Arc<RwLock<Index>>;

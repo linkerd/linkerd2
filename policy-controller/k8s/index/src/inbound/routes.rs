@@ -1,15 +1,6 @@
-use ahash::AHashMap as HashMap;
-use anyhow::{bail, Error, Result};
-use k8s_gateway_api as api;
-use linkerd_policy_controller_core::{
-    inbound::{Filter, GrpcRoute, HttpRoute, InboundRoute, InboundRouteRule},
-    routes::{GrpcMethodMatch, GrpcRouteMatch, HttpRouteMatch, Method},
-    POLICY_CONTROLLER_NAME,
-};
-use linkerd_policy_controller_k8s_api::{
-    self as k8s, gateway, gateway as k8s_gateway_api,
-    policy::{httproute as policy, Server},
-};
+use anyhow::Result;
+use linkerd_policy_controller_core::POLICY_CONTROLLER_NAME;
+use linkerd_policy_controller_k8s_api::{gateway, policy};
 use std::fmt;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -53,144 +44,6 @@ pub enum InvalidParentRef {
     SpecifiesSection,
 }
 
-impl TryFrom<api::HttpRoute> for RouteBinding<HttpRoute> {
-    type Error = Error;
-
-    fn try_from(route: api::HttpRoute) -> Result<Self, Self::Error> {
-        let route_ns = route.metadata.namespace.as_deref();
-        let creation_timestamp = route.metadata.creation_timestamp.map(|k8s::Time(t)| t);
-        let parents = ParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
-        let hostnames = route
-            .spec
-            .hostnames
-            .into_iter()
-            .flatten()
-            .map(crate::routes::http::host_match)
-            .collect();
-
-        let rules = route
-            .spec
-            .rules
-            .into_iter()
-            .flatten()
-            .map(
-                |api::HttpRouteRule {
-                     matches,
-                     filters,
-                     backend_refs: _,
-                 }| Self::try_http_rule(matches, filters, Self::try_gateway_filter),
-            )
-            .collect::<Result<_>>()?;
-
-        let statuses = route
-            .status
-            .map_or_else(Vec::new, |status| Status::collect_from(status.inner));
-
-        Ok(RouteBinding {
-            parents,
-            route: InboundRoute {
-                hostnames,
-                rules,
-                authorizations: HashMap::default(),
-                creation_timestamp,
-            },
-            statuses,
-        })
-    }
-}
-
-impl TryFrom<policy::HttpRoute> for RouteBinding<HttpRoute> {
-    type Error = Error;
-
-    fn try_from(route: policy::HttpRoute) -> Result<Self, Self::Error> {
-        let route_ns = route.metadata.namespace.as_deref();
-        let creation_timestamp = route.metadata.creation_timestamp.map(|k8s::Time(t)| t);
-        let parents = ParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
-        let hostnames = route
-            .spec
-            .hostnames
-            .into_iter()
-            .flatten()
-            .map(crate::routes::http::host_match)
-            .collect();
-
-        let rules = route
-            .spec
-            .rules
-            .into_iter()
-            .flatten()
-            .map(
-                |policy::HttpRouteRule {
-                     matches, filters, ..
-                 }| {
-                    Self::try_http_rule(matches, filters, Self::try_policy_filter)
-                },
-            )
-            .collect::<Result<_>>()?;
-
-        let statuses = route
-            .status
-            .map_or_else(Vec::new, |status| Status::collect_from(status.inner));
-
-        Ok(RouteBinding {
-            parents,
-            route: InboundRoute {
-                hostnames,
-                rules,
-                authorizations: HashMap::default(),
-                creation_timestamp,
-            },
-            statuses,
-        })
-    }
-}
-
-impl TryFrom<k8s_gateway_api::GrpcRoute> for RouteBinding<GrpcRoute> {
-    type Error = Error;
-
-    fn try_from(route: k8s_gateway_api::GrpcRoute) -> Result<Self, Self::Error> {
-        let route_ns = route.metadata.namespace.as_deref();
-        let creation_timestamp = route.metadata.creation_timestamp.map(|k8s::Time(t)| t);
-        let parents = ParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
-        let hostnames = route
-            .spec
-            .hostnames
-            .into_iter()
-            .flatten()
-            .map(crate::routes::http::host_match)
-            .collect();
-
-        let rules = route
-            .spec
-            .rules
-            .into_iter()
-            .flatten()
-            .map(
-                |k8s_gateway_api::GrpcRouteRule {
-                     matches, filters, ..
-                 }| {
-                    Self::try_grpc_rule(matches, filters, Self::try_grpc_filter)
-                },
-            )
-            .collect::<Result<_>>()?;
-
-        let statuses = route
-            .status
-            .map_or_else(Vec::new, |status| Status::collect_from(status.inner));
-
-        Ok(RouteBinding {
-            parents,
-            route: InboundRoute {
-                hostnames,
-                rules,
-                authorizations: HashMap::default(),
-                creation_timestamp,
-            },
-            statuses,
-        })
-    }
-}
-
 impl<R> RouteBinding<R> {
     #[inline]
     pub fn selects_server(&self, name: &str) -> bool {
@@ -209,189 +62,12 @@ impl<R> RouteBinding<R> {
                     .any(|condition| condition.type_ == ConditionType::Accepted && condition.status)
         })
     }
-
-    pub fn try_http_match(
-        api::HttpRouteMatch {
-            path,
-            headers,
-            query_params,
-            method,
-        }: api::HttpRouteMatch,
-    ) -> Result<HttpRouteMatch> {
-        let path = path.map(crate::routes::http::path_match).transpose()?;
-
-        let headers = headers
-            .into_iter()
-            .flatten()
-            .map(crate::routes::http::header_match)
-            .collect::<Result<_>>()?;
-
-        let query_params = query_params
-            .into_iter()
-            .flatten()
-            .map(crate::routes::http::query_param_match)
-            .collect::<Result<_>>()?;
-
-        let method = method.as_deref().map(Method::try_from).transpose()?;
-
-        Ok(HttpRouteMatch {
-            path,
-            headers,
-            query_params,
-            method,
-        })
-    }
-
-    pub fn try_grpc_match(
-        k8s_gateway_api::GrpcRouteMatch { headers, method }: k8s_gateway_api::GrpcRouteMatch,
-    ) -> Result<GrpcRouteMatch> {
-        let headers = headers
-            .into_iter()
-            .flatten()
-            .map(crate::routes::http::header_match)
-            .collect::<Result<_>>()?;
-
-        let method = match method {
-            Some(k8s_gateway_api::GrpcMethodMatch::Exact { method, service }) => {
-                Some(GrpcMethodMatch { method, service })
-            }
-            Some(k8s_gateway_api::GrpcMethodMatch::RegularExpression { .. }) => {
-                bail!("Regular expression gRPC method match is not supported")
-            }
-            None => None,
-        };
-
-        Ok(GrpcRouteMatch { headers, method })
-    }
-
-    fn try_http_rule<F>(
-        matches: Option<Vec<api::HttpRouteMatch>>,
-        filters: Option<Vec<F>>,
-        try_filter: impl Fn(F) -> Result<Filter>,
-    ) -> Result<InboundRouteRule<HttpRouteMatch>> {
-        let matches = matches
-            .into_iter()
-            .flatten()
-            .map(Self::try_http_match)
-            .collect::<Result<_>>()?;
-
-        let filters = filters
-            .into_iter()
-            .flatten()
-            .map(try_filter)
-            .collect::<Result<_>>()?;
-
-        Ok(InboundRouteRule { matches, filters })
-    }
-
-    fn try_grpc_rule<F>(
-        matches: Option<Vec<api::GrpcRouteMatch>>,
-        filters: Option<Vec<F>>,
-        try_filter: impl Fn(F) -> Result<Filter>,
-    ) -> Result<InboundRouteRule<GrpcRouteMatch>> {
-        let matches = matches
-            .into_iter()
-            .flatten()
-            .map(Self::try_grpc_match)
-            .collect::<Result<_>>()?;
-
-        let filters = filters
-            .into_iter()
-            .flatten()
-            .map(try_filter)
-            .collect::<Result<_>>()?;
-
-        Ok(InboundRouteRule { matches, filters })
-    }
-
-    fn try_gateway_filter(filter: api::HttpRouteFilter) -> Result<Filter> {
-        let filter = match filter {
-            api::HttpRouteFilter::RequestHeaderModifier {
-                request_header_modifier,
-            } => {
-                let filter = crate::routes::http::header_modifier(request_header_modifier)?;
-                Filter::RequestHeaderModifier(filter)
-            }
-
-            api::HttpRouteFilter::ResponseHeaderModifier {
-                response_header_modifier,
-            } => {
-                let filter = crate::routes::http::header_modifier(response_header_modifier)?;
-                Filter::ResponseHeaderModifier(filter)
-            }
-
-            api::HttpRouteFilter::RequestRedirect { request_redirect } => {
-                let filter = crate::routes::http::req_redirect(request_redirect)?;
-                Filter::RequestRedirect(filter)
-            }
-
-            api::HttpRouteFilter::RequestMirror { .. } => {
-                bail!("RequestMirror filter is not supported")
-            }
-            api::HttpRouteFilter::URLRewrite { .. } => {
-                bail!("URLRewrite filter is not supported")
-            }
-            api::HttpRouteFilter::ExtensionRef { .. } => {
-                bail!("ExtensionRef filter is not supported")
-            }
-        };
-        Ok(filter)
-    }
-
-    fn try_policy_filter(filter: policy::HttpRouteFilter) -> Result<Filter> {
-        let filter = match filter {
-            policy::HttpRouteFilter::RequestHeaderModifier {
-                request_header_modifier,
-            } => {
-                let filter = crate::routes::http::header_modifier(request_header_modifier)?;
-                Filter::RequestHeaderModifier(filter)
-            }
-
-            policy::HttpRouteFilter::ResponseHeaderModifier {
-                response_header_modifier,
-            } => {
-                let filter = crate::routes::http::header_modifier(response_header_modifier)?;
-                Filter::ResponseHeaderModifier(filter)
-            }
-
-            policy::HttpRouteFilter::RequestRedirect { request_redirect } => {
-                let filter = crate::routes::http::req_redirect(request_redirect)?;
-                Filter::RequestRedirect(filter)
-            }
-        };
-        Ok(filter)
-    }
-
-    fn try_grpc_filter(filter: k8s_gateway_api::GrpcRouteFilter) -> Result<Filter> {
-        let filter = match filter {
-            k8s_gateway_api::GrpcRouteFilter::RequestHeaderModifier {
-                request_header_modifier,
-            } => {
-                let filter = crate::routes::http::header_modifier(request_header_modifier)?;
-                Filter::RequestHeaderModifier(filter)
-            }
-
-            k8s_gateway_api::GrpcRouteFilter::ResponseHeaderModifier {
-                response_header_modifier,
-            } => {
-                let filter = crate::routes::http::header_modifier(response_header_modifier)?;
-                Filter::ResponseHeaderModifier(filter)
-            }
-            k8s_gateway_api::GrpcRouteFilter::RequestMirror { .. } => {
-                bail!("RequestMirror filter is not supported")
-            }
-            k8s_gateway_api::GrpcRouteFilter::ExtensionRef { .. } => {
-                bail!("ExtensionRef filter is not supported")
-            }
-        };
-        Ok(filter)
-    }
 }
 
 impl ParentRef {
-    fn collect_from(
+    pub(crate) fn collect_from(
         route_ns: Option<&str>,
-        parent_refs: Option<Vec<api::ParentReference>>,
+        parent_refs: Option<Vec<gateway::ParentReference>>,
     ) -> Result<Vec<Self>, InvalidParentRef> {
         let parents = parent_refs
             .into_iter()
@@ -404,14 +80,16 @@ impl ParentRef {
 
     fn from_parent_ref(
         route_ns: Option<&str>,
-        parent_ref: api::ParentReference,
+        parent_ref: gateway::ParentReference,
     ) -> Option<Result<Self, InvalidParentRef>> {
         // Skip parent refs that don't target a `Server` resource.
-        if !policy::parent_ref_targets_kind::<Server>(&parent_ref) || parent_ref.name.is_empty() {
+        if !policy::httproute::parent_ref_targets_kind::<policy::Server>(&parent_ref)
+            || parent_ref.name.is_empty()
+        {
             return None;
         }
 
-        let api::ParentReference {
+        let gateway::ParentReference {
             group: _,
             kind: _,
             namespace,
