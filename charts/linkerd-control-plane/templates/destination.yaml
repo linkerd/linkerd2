@@ -125,6 +125,12 @@ spec:
 {{ $_ := set $tree.Values.proxy "workloadKind" "deployment" -}}
 {{ $_ := set $tree.Values.proxy "component" "linkerd-destination" -}}
 {{ $_ := set $tree.Values.proxy "waitBeforeExitSeconds" 0 -}}
+{{- if not (empty .Values.destinationProxyResources) }}
+{{- $c := dig "cores" .Values.proxy.cores .Values.destinationProxyResources }}
+{{- $_ := set $tree.Values.proxy "cores" $c }}
+{{- $r := merge .Values.destinationProxyResources .Values.proxy.resources }}
+{{- $_ := set $tree.Values.proxy "resources" $r }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -176,12 +182,6 @@ spec:
       {{- $_ := set $tree "component" "destination" -}}
       {{- include "linkerd.affinity" $tree | nindent 6 }}
       containers:
-      {{- if not (empty .Values.destinationProxyResources) }}
-      {{- $c := dig "cores" .Values.proxy.cores .Values.destinationProxyResources }}
-      {{- $_ := set $tree.Values.proxy "cores" $c }}
-      {{- $r := merge .Values.destinationProxyResources .Values.proxy.resources }}
-      {{- $_ := set $tree.Values.proxy "resources" $r }}
-      {{- end }}
       {{- $_ := set $tree.Values.proxy "await" $tree.Values.proxy.await }}
       {{- $_ := set $tree.Values.proxy "loadTrustBundleFromConfigMap" true }}
       {{- $_ := set $tree.Values.proxy "podInboundPorts" "8086,8090,8443,9443,9990,9996,9997" }}

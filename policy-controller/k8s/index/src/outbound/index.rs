@@ -1,20 +1,17 @@
 use crate::{
     ports::{ports_annotation, PortSet},
-    routes::{self, ExplicitGKN, HttpRouteResource, ImpliedGKN},
+    routes::{ExplicitGKN, HttpRouteResource, ImpliedGKN},
     ClusterInfo,
 };
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
 use linkerd_policy_controller_core::{
-    outbound::{
-        Backend, Backoff, FailureAccrual, Filter, OutboundPolicy, OutboundRoute, OutboundRouteRule,
-        RouteSet, WeightedService,
-    },
+    outbound::{Backend, Backoff, FailureAccrual, OutboundPolicy, OutboundRoute, RouteSet},
     routes::{GroupKindNamespaceName, GrpcRouteMatch, HttpRouteMatch},
 };
 use linkerd_policy_controller_k8s_api::{
-    gateway::{self as k8s_gateway_api, BackendObjectReference, HttpBackendRef, ParentReference},
-    policy as linkerd_k8s_api, ResourceExt, Service, Time,
+    gateway::{self as k8s_gateway_api, ParentReference},
+    policy as linkerd_k8s_api, ResourceExt, Service,
 };
 use parking_lot::RwLock;
 use std::{hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time};
@@ -27,6 +24,8 @@ pub struct Index {
     service_info: HashMap<ServiceRef, ServiceInfo>,
 }
 
+mod grpc;
+mod http;
 pub mod metrics;
 
 pub type SharedIndex = Arc<RwLock<Index>>;
@@ -115,7 +114,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
             .gkn::<k8s_gateway_api::HttpRoute>()
             .namespaced(namespace);
         for ns_index in self.namespaces.by_ns.values_mut() {
-            ns_index.delete_grpc_route(&gknn);
+            ns_index.delete_http_route(&gknn);
         }
     }
 }
@@ -346,7 +345,7 @@ impl Namespace {
         tracing::debug!(?route);
 
         let outbound_route =
-            match self.convert_http_route(route.clone(), cluster_info, service_info) {
+            match http::convert_route(&self.namespace, route.clone(), cluster_info, service_info) {
                 Ok(route) => route,
                 Err(error) => {
                     tracing::error!(%error, "failed to convert route");
@@ -404,7 +403,7 @@ impl Namespace {
         tracing::debug!(?route);
 
         let outbound_route =
-            match self.convert_grpc_route(route.clone(), cluster_info, service_info) {
+            match grpc::convert_route(&self.namespace, route.clone(), cluster_info, service_info) {
                 Ok(route) => route,
                 Err(error) => {
                     tracing::error!(%error, "failed to convert route");
@@ -637,359 +636,15 @@ impl Namespace {
                 service_routes
             })
     }
-
-    fn convert_http_route(
-        &self,
-        route: HttpRouteResource,
-        cluster: &ClusterInfo,
-        service_info: &HashMap<ServiceRef, ServiceInfo>,
-    ) -> Result<OutboundRoute<HttpRouteMatch>> {
-        match route {
-            HttpRouteResource::LinkerdHttp(route) => {
-                let hostnames = route
-                    .spec
-                    .hostnames
-                    .into_iter()
-                    .flatten()
-                    .map(routes::http::host_match)
-                    .collect();
-
-                let rules = route
-                    .spec
-                    .rules
-                    .into_iter()
-                    .flatten()
-                    .map(|r| self.convert_linkerd_rule(r, cluster, service_info))
-                    .collect::<Result<_>>()?;
-
-                let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
-
-                Ok(OutboundRoute {
-                    hostnames,
-                    rules,
-                    creation_timestamp,
-                })
-            }
-            HttpRouteResource::GatewayHttp(route) => {
-                let hostnames = route
-                    .spec
-                    .hostnames
-                    .into_iter()
-                    .flatten()
-                    .map(routes::http::host_match)
-                    .collect();
-
-                let rules = route
-                    .spec
-                    .rules
-                    .into_iter()
-                    .flatten()
-                    .map(|r| self.convert_gateway_http_rule(r, cluster, service_info))
-                    .collect::<Result<_>>()?;
-
-                let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
-
-                Ok(OutboundRoute {
-                    hostnames,
-                    rules,
-                    creation_timestamp,
-                })
-            }
-        }
-    }
-
-    fn convert_grpc_route(
-        &self,
-        route: k8s_gateway_api::GrpcRoute,
-        cluster: &ClusterInfo,
-        service_info: &HashMap<ServiceRef, ServiceInfo>,
-    ) -> Result<OutboundRoute<GrpcRouteMatch>> {
-        let hostnames = route
-            .spec
-            .hostnames
-            .into_iter()
-            .flatten()
-            .map(routes::http::host_match)
-            .collect();
-
-        let rules = route
-            .spec
-            .rules
-            .into_iter()
-            .flatten()
-            .map(|rule| self.convert_gateway_grpc_rule(rule, cluster, service_info))
-            .collect::<Result<_>>()?;
-
-        let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
-
-        Ok(OutboundRoute {
-            hostnames,
-            rules,
-            creation_timestamp,
-        })
-    }
-
-    fn convert_linkerd_rule(
-        &self,
-        rule: linkerd_k8s_api::httproute::HttpRouteRule,
-        cluster: &ClusterInfo,
-        service_info: &HashMap<ServiceRef, ServiceInfo>,
-    ) -> Result<OutboundRouteRule<HttpRouteMatch>> {
-        let matches = rule
-            .matches
-            .into_iter()
-            .flatten()
-            .map(routes::http::try_match)
-            .collect::<Result<_>>()?;
-
-        let backends = rule
-            .backend_refs
-            .into_iter()
-            .flatten()
-            .filter_map(|b| convert_backend(&self.namespace, b, cluster, service_info))
-            .collect();
-
-        let filters = rule
-            .filters
-            .into_iter()
-            .flatten()
-            .map(convert_linkerd_filter)
-            .collect::<Result<_>>()?;
-
-        let request_timeout = rule.timeouts.as_ref().and_then(|timeouts| {
-            let timeout = time::Duration::from(timeouts.request?);
-
-            // zero means "no timeout", per GEP-1742
-            if timeout == time::Duration::from_nanos(0) {
-                return None;
-            }
-
-            Some(timeout)
-        });
-
-        let backend_request_timeout = rule.timeouts.as_ref().and_then(
-            |timeouts: &linkerd_k8s_api::httproute::HttpRouteTimeouts| {
-                let timeout = time::Duration::from(timeouts.backend_request?);
-
-                // zero means "no timeout", per GEP-1742
-                if timeout == time::Duration::from_nanos(0) {
-                    return None;
-                }
-
-                Some(timeout)
-            },
-        );
-
-        Ok(OutboundRouteRule {
-            matches,
-            backends,
-            request_timeout,
-            backend_request_timeout,
-            filters,
-        })
-    }
-
-    fn convert_gateway_http_rule(
-        &self,
-        rule: k8s_gateway_api::HttpRouteRule,
-        cluster: &ClusterInfo,
-        service_info: &HashMap<ServiceRef, ServiceInfo>,
-    ) -> Result<OutboundRouteRule<HttpRouteMatch>> {
-        let matches = rule
-            .matches
-            .into_iter()
-            .flatten()
-            .map(routes::http::try_match)
-            .collect::<Result<_>>()?;
-
-        let backends = rule
-            .backend_refs
-            .into_iter()
-            .flatten()
-            .filter_map(|b| convert_backend(&self.namespace, b, cluster, service_info))
-            .collect();
-
-        let filters = rule
-            .filters
-            .into_iter()
-            .flatten()
-            .map(convert_gateway_filter)
-            .collect::<Result<_>>()?;
-
-        Ok(OutboundRouteRule {
-            matches,
-            backends,
-            request_timeout: None,
-            backend_request_timeout: None,
-            filters,
-        })
-    }
-
-    fn convert_gateway_grpc_rule(
-        &self,
-        rule: k8s_gateway_api::GrpcRouteRule,
-        cluster: &ClusterInfo,
-        service_info: &HashMap<ServiceRef, ServiceInfo>,
-    ) -> Result<OutboundRouteRule<GrpcRouteMatch>> {
-        let matches = rule
-            .matches
-            .into_iter()
-            .flatten()
-            .map(routes::grpc::try_match)
-            .collect::<Result<_>>()?;
-
-        let backends = rule
-            .backend_refs
-            .into_iter()
-            .flatten()
-            .filter_map(|b| convert_backend(&self.namespace, b, cluster, service_info))
-            .collect();
-
-        let filters = rule
-            .filters
-            .into_iter()
-            .flatten()
-            .map(convert_gateway_filter)
-            .collect::<Result<_>>()?;
-
-        Ok(OutboundRouteRule {
-            matches,
-            backends,
-            request_timeout: None,
-            backend_request_timeout: None,
-            filters,
-        })
-    }
 }
 
-fn convert_backend<BackendRef: Into<HttpBackendRef>>(
-    ns: &str,
-    backend: BackendRef,
-    cluster: &ClusterInfo,
-    services: &HashMap<ServiceRef, ServiceInfo>,
-) -> Option<Backend> {
-    let backend = backend.into();
-    let filters = backend.filters;
-    let backend = backend.backend_ref?;
-    if !is_backend_service(&backend.inner) {
-        return Some(Backend::Invalid {
-            weight: backend.weight.unwrap_or(1).into(),
-            message: format!(
-                "unsupported backend type {group} {kind}",
-                group = backend.inner.group.as_deref().unwrap_or("core"),
-                kind = backend.inner.kind.as_deref().unwrap_or("<empty>"),
-            ),
-        });
-    }
-
-    let name = backend.inner.name;
-    let weight = backend.weight.unwrap_or(1);
-
-    // The gateway API dictates:
-    //
-    // Port is required when the referent is a Kubernetes Service.
-    let port = match backend
-        .inner
-        .port
-        .and_then(|p| NonZeroU16::try_from(p).ok())
-    {
-        Some(port) => port,
-        None => {
-            return Some(Backend::Invalid {
-                weight: weight.into(),
-                message: format!("missing port for backend Service {name}"),
-            })
-        }
-    };
-    let service_ref = ServiceRef {
-        name: name.clone(),
-        namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
-    };
-
-    let filters = match filters
-        .into_iter()
-        .flatten()
-        .map(convert_gateway_filter)
-        .collect::<Result<_>>()
-    {
-        Ok(filters) => filters,
-        Err(error) => {
-            return Some(Backend::Invalid {
-                weight: backend.weight.unwrap_or(1).into(),
-                message: format!("unsupported backend filter: {error}", error = error),
-            });
-        }
-    };
-
-    Some(Backend::Service(WeightedService {
-        weight: weight.into(),
-        authority: cluster.service_dns_authority(&service_ref.namespace, &name, port),
-        name,
-        namespace: service_ref.namespace.to_string(),
-        port,
-        filters,
-        exists: services.contains_key(&service_ref),
-    }))
-}
-
-fn convert_linkerd_filter(filter: linkerd_k8s_api::httproute::HttpRouteFilter) -> Result<Filter> {
-    let filter = match filter {
-        linkerd_k8s_api::httproute::HttpRouteFilter::RequestHeaderModifier {
-            request_header_modifier,
-        } => {
-            let filter = routes::http::header_modifier(request_header_modifier)?;
-            Filter::RequestHeaderModifier(filter)
-        }
-
-        linkerd_k8s_api::httproute::HttpRouteFilter::ResponseHeaderModifier {
-            response_header_modifier,
-        } => {
-            let filter = routes::http::header_modifier(response_header_modifier)?;
-            Filter::RequestHeaderModifier(filter)
-        }
-
-        linkerd_k8s_api::httproute::HttpRouteFilter::RequestRedirect { request_redirect } => {
-            let filter = routes::http::req_redirect(request_redirect)?;
-            Filter::RequestRedirect(filter)
-        }
-    };
-    Ok(filter)
-}
-
-fn convert_gateway_filter<RouteFilter: Into<k8s_gateway_api::HttpRouteFilter>>(
-    filter: RouteFilter,
-) -> Result<Filter> {
-    let filter = filter.into();
-    let filter = match filter {
-        k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
-            request_header_modifier,
-        } => {
-            let filter = routes::http::header_modifier(request_header_modifier)?;
-            Filter::RequestHeaderModifier(filter)
-        }
-
-        k8s_gateway_api::HttpRouteFilter::ResponseHeaderModifier {
-            response_header_modifier,
-        } => {
-            let filter = routes::http::header_modifier(response_header_modifier)?;
-            Filter::ResponseHeaderModifier(filter)
-        }
-
-        k8s_gateway_api::HttpRouteFilter::RequestRedirect { request_redirect } => {
-            let filter = routes::http::req_redirect(request_redirect)?;
-            Filter::RequestRedirect(filter)
-        }
-        k8s_gateway_api::HttpRouteFilter::RequestMirror { .. } => {
-            bail!("RequestMirror filter is not supported")
-        }
-        k8s_gateway_api::HttpRouteFilter::URLRewrite { .. } => {
-            bail!("URLRewrite filter is not supported")
-        }
-        k8s_gateway_api::HttpRouteFilter::ExtensionRef { .. } => {
-            bail!("ExtensionRef filter is not supported")
-        }
-    };
-    Ok(filter)
+#[inline]
+fn is_service(group: Option<&str>, kind: &str) -> bool {
+    // If the group is not specified or empty, assume it's 'core'.
+    group
+        .map(|g| g.eq_ignore_ascii_case("core") || g.is_empty())
+        .unwrap_or(true)
+        && kind.eq_ignore_ascii_case("Service")
 }
 
 #[inline]
@@ -1019,24 +674,6 @@ fn route_accepted_by_service(
                     .iter()
                     .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
         })
-}
-
-#[inline]
-fn is_backend_service(backend: &BackendObjectReference) -> bool {
-    is_service(
-        backend.group.as_deref(),
-        // Backends default to `Service` if no kind is specified.
-        backend.kind.as_deref().unwrap_or("Service"),
-    )
-}
-
-#[inline]
-fn is_service(group: Option<&str>, kind: &str) -> bool {
-    // If the group is not specified or empty, assume it's 'core'.
-    group
-        .map(|g| g.eq_ignore_ascii_case("core") || g.is_empty())
-        .unwrap_or(true)
-        && kind.eq_ignore_ascii_case("Service")
 }
 
 impl ServiceRoutes {

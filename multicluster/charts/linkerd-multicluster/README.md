@@ -96,7 +96,7 @@ Kubernetes: `>=1.22.0-0`
 | namespaceMetadata.image.name | string | `"extension-init"` | Docker image name for the namespace-metadata instance |
 | namespaceMetadata.image.pullPolicy | string | imagePullPolicy | Pull policy for the namespace-metadata instance |
 | namespaceMetadata.image.registry | string | `"cr.l5d.io/linkerd"` | Docker registry for the namespace-metadata instance |
-| namespaceMetadata.image.tag | string | `"v0.1.0"` | Docker image tag for the namespace-metadata instance |
+| namespaceMetadata.image.tag | string | `"v0.1.1"` | Docker image tag for the namespace-metadata instance |
 | namespaceMetadata.nodeSelector | object | `{}` | Node selectors for the namespace-metadata instance |
 | namespaceMetadata.tolerations | list | `[]` | Tolerations for the namespace-metadata instance |
 | podLabels | object | `{}` | Additional labels to add to all pods |

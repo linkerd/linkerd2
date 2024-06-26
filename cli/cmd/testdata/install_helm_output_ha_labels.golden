@@ -678,6 +678,7 @@ data:
       disableInboundProtocolDetectTimeout: false
       disableOutboundProtocolDetectTimeout: false
       enableExternalProfiles: false
+      enableShutdownEndpoint: false
       experimentalEnv: null
       gid: -1
       image:
@@ -698,7 +699,7 @@ data:
         timeoutSeconds: 1
       logFormat: plain
       logHTTPHeaders: "off"
-      logLevel: warn,linkerd=info,trust_dns=error
+      logLevel: warn,linkerd=info,hickory=error
       nativeSidecar: false
       opaquePorts: 25,587,3306,4444,5432,6379,9300,11211
       outbound:
@@ -751,16 +752,7 @@ data:
       logFormat: ""
       logLevel: ""
       privileged: false
-      resources:
-        cpu:
-          limit: 100m
-          request: 100m
-        ephemeral-storage:
-          limit: ""
-          request: ""
-        memory:
-          limit: 20Mi
-          request: 20Mi
+      resources: null
       runAsGroup: 65534
       runAsRoot: false
       runAsUser: 65534
@@ -813,6 +805,8 @@ data:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
+  labels:
+    linkerd.io/control-plane-ns: linkerd-dev
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
   name: ext-namespace-metadata-linkerd-config
@@ -1046,8 +1040,10 @@ spec:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_TLS
           value: "8080"
+        - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
+          value: "false"
         - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info,trust_dns=error,linkerd_proxy_http::client[{headers}]=off"
+          value: "warn,linkerd=info,hickory=error,linkerd_proxy_http::client[{headers}]=off"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -1199,8 +1195,7 @@ spec:
         name: linkerd-init
         resources:
           limits:
-            cpu: "100m"
-            memory: "20Mi"
+            memory: "250Mi"
           requests:
             cpu: "100m"
             memory: "20Mi"
@@ -1361,6 +1356,7 @@ spec:
     matchLabels:
       linkerd.io/control-plane-component: destination
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1389,7 +1385,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 5c217dfc0fb1a7f362e2810db31fa01b82c5c76ed3f2934935eb9f97354ec00e
+        checksum/config: 2b4f4db151be1b48cf7ccff4b16df4d7eb45dee57b998d50cfe13eec8efbaac7
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -1441,8 +1437,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
+          value: "false"
         - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info,trust_dns=error,linkerd_proxy_http::client[{headers}]=off"
+          value: "warn,linkerd=info,hickory=error,linkerd_proxy_http::client[{headers}]=off"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -1736,8 +1734,7 @@ spec:
         name: linkerd-init
         resources:
           limits:
-            cpu: "100m"
-            memory: "20Mi"
+            memory: "250Mi"
           requests:
             cpu: "100m"
             memory: "20Mi"
@@ -1860,6 +1857,7 @@ spec:
 ###
 ### Proxy Injector
 ###
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1939,8 +1937,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
+          value: "false"
         - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info,trust_dns=error,linkerd_proxy_http::client[{headers}]=off"
+          value: "warn,linkerd=info,hickory=error,linkerd_proxy_http::client[{headers}]=off"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -2147,8 +2147,7 @@ spec:
         name: linkerd-init
         resources:
           limits:
-            cpu: "100m"
-            memory: "20Mi"
+            memory: "250Mi"
           requests:
             cpu: "100m"
             memory: "20Mi"

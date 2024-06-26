@@ -149,8 +149,10 @@ proxy:
     # -- Tag for the proxy container image
     # @default -- linkerdVersion
     version: ""
+  # -- Enables the proxy's /shutdown admin endpoint
+  enableShutdownEndpoint: false
   # -- Log level for the proxy
-  logLevel: warn,linkerd=info,trust_dns=error
+  logLevel: warn,linkerd=info,hickory=error
   # -- Log format (`plain` or `json`) for the proxy
   logFormat: plain
   # -- (`off` or `insecure`) If set to `off`, will prevent the proxy from
@@ -292,23 +294,7 @@ proxyInit:
     # @default -- imagePullPolicy
     pullPolicy: ""
     # -- Tag for the proxy-init container image
-    version: v2.4.0
-  resources:
-    cpu:
-      # -- Maximum amount of CPU units that the proxy-init container can use
-      limit: 100m
-      # -- Amount of CPU units that the proxy-init container requests
-      request: 100m
-    memory:
-      # -- Maximum amount of memory that the proxy-init container can use
-      limit: 20Mi
-      # -- Amount of memory that the proxy-init container requests
-      request: 20Mi
-    ephemeral-storage:
-      # -- Maximum amount of ephemeral storage that the proxy-init container can use
-      limit: ""
-      # -- Amount of ephemeral storage that the proxy-init container requests
-      request: ""
+    version: v2.4.1
   closeWaitTimeoutSecs: 0
   # -- Privileged mode allows the container processes to inherit all security
   # capabilities and bypass any security limitations enforced by the kubelet.

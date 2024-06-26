@@ -122,7 +122,7 @@ func TestNewValues(t *testing.T) {
 				Name:    "cr.l5d.io/linkerd/proxy",
 				Version: "",
 			},
-			LogLevel:       "warn,linkerd=info,trust_dns=error",
+			LogLevel:       "warn,linkerd=info,hickory=error",
 			LogFormat:      "plain",
 			LogHTTPHeaders: "off",
 			Ports: &Ports{
@@ -200,16 +200,6 @@ func TestNewValues(t *testing.T) {
 			Image: &Image{
 				Name:    "cr.l5d.io/linkerd/proxy-init",
 				Version: testVersion,
-			},
-			Resources: &Resources{
-				CPU: Constraints{
-					Limit:   "100m",
-					Request: "100m",
-				},
-				Memory: Constraints{
-					Limit:   "20Mi",
-					Request: "20Mi",
-				},
 			},
 			XTMountPath: &VolumeMountPath{
 				Name:      "linkerd-proxy-init-xtables-lock",
