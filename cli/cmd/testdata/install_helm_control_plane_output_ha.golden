@@ -900,7 +900,6 @@ spec:
     matchLabels:
       linkerd.io/control-plane-component: identity
 ---
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
