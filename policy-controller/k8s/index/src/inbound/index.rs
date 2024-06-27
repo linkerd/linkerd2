@@ -1609,8 +1609,7 @@ impl PolicyIndex {
                     }
                 }
                 authorization_policy::Target::Namespace => {}
-                authorization_policy::Target::HttpRoute(_)
-                | authorization_policy::Target::GrpcRoute(_) => {
+                authorization_policy::Target::HttpRoute(_) => {
                     // Policies which target routes will be attached to
                     // the route authorizations and should not be included in
                     // the server authorizations.
@@ -1662,14 +1661,6 @@ impl PolicyIndex {
                         authorizationpolicy = %name,
                         route = ?gkn,
                         "AuthorizationPolicy targets HttpRoute",
-                    );
-                }
-                authorization_policy::Target::GrpcRoute(n) if n.eq_ignore_ascii_case(gkn) => {
-                    tracing::trace!(
-                        ns = %self.namespace,
-                        authorizationpolicy = %name,
-                        route = ?gkn,
-                        "AuthorizationPolicy targets GrpcRoute",
                     );
                 }
                 _ => {
