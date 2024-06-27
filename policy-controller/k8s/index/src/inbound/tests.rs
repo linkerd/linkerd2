@@ -1,5 +1,6 @@
 mod annotation;
 mod authorization_policy;
+mod grpc_routes;
 mod http_routes;
 mod server_authorization;
 

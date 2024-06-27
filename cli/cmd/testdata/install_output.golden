@@ -244,7 +244,6 @@ rules:
       - grpcroutes/status
     verbs:
       - patch
-      - create
   - apiGroups:
       - workload.linkerd.io
     resources:
@@ -829,6 +828,7 @@ spec:
     port: 8080
     targetPort: 8080
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:

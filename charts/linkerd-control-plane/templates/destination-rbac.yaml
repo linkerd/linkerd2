@@ -252,7 +252,6 @@ rules:
       - grpcroutes/status
     verbs:
       - patch
-      - create
   - apiGroups:
       - workload.linkerd.io
     resources:

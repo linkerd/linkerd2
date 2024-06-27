@@ -2,8 +2,8 @@ use crate::{
     identity_match::IdentityMatch,
     network_match::NetworkMatch,
     routes::{
-        FailureInjectorFilter, GroupKindName, GrpcRouteMatch, HeaderModifierFilter, HostMatch,
-        HttpRouteMatch, PathMatch, RequestRedirectFilter,
+        FailureInjectorFilter, GroupKindName, GrpcMethodMatch, GrpcRouteMatch,
+        HeaderModifierFilter, HostMatch, HttpRouteMatch, PathMatch, RequestRedirectFilter,
     },
 };
 use ahash::AHashMap as HashMap;
@@ -156,7 +156,10 @@ impl Default for InboundRoute<GrpcRouteMatch> {
             rules: vec![InboundRouteRule {
                 matches: vec![GrpcRouteMatch {
                     headers: vec![],
-                    method: None,
+                    method: Some(GrpcMethodMatch {
+                        method: None,
+                        service: None,
+                    }),
                 }],
                 filters: vec![],
             }],
