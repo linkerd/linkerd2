@@ -19,7 +19,6 @@ use maplit::*;
 use std::{num::NonZeroU16, str::FromStr, sync::Arc};
 use tracing::trace;
 
-mod grpc;
 mod http;
 
 #[derive(Clone, Debug)]
@@ -159,9 +158,9 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                     routes: http::to_route_list(&srv.http_routes, cluster_networks),
                 },
             )),
-            ProxyProtocol::Grpc => Some(proto::proxy_protocol::Kind::Grpc(
-                proto::proxy_protocol::Grpc {
-                    routes: grpc::to_route_list(&srv.grpc_routes, cluster_networks),
+            ProxyProtocol::Grpc => Some(proto::proxy_protocol::Kind::Http2(
+                proto::proxy_protocol::Http2 {
+                    routes: http::to_route_list(&srv.http_routes, cluster_networks),
                 },
             )),
             ProxyProtocol::Opaque => Some(proto::proxy_protocol::Kind::Opaque(

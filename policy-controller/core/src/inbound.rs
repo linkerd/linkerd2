@@ -2,8 +2,8 @@ use crate::{
     identity_match::IdentityMatch,
     network_match::NetworkMatch,
     routes::{
-        FailureInjectorFilter, GroupKindName, GrpcMethodMatch, GrpcRouteMatch,
-        HeaderModifierFilter, HostMatch, HttpRouteMatch, PathMatch, RequestRedirectFilter,
+        FailureInjectorFilter, GroupKindName, HeaderModifierFilter, HostMatch, HttpRouteMatch,
+        PathMatch, RequestRedirectFilter,
     },
 };
 use ahash::AHashMap as HashMap;
@@ -90,11 +90,9 @@ pub struct InboundServer {
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
     pub http_routes: HashMap<RouteRef, InboundRoute<HttpRouteMatch>>,
-    pub grpc_routes: HashMap<RouteRef, InboundRoute<GrpcRouteMatch>>,
 }
 
 pub type HttpRoute = InboundRoute<HttpRouteMatch>;
-pub type GrpcRoute = InboundRoute<GrpcRouteMatch>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InboundRoute<M> {
@@ -135,31 +133,6 @@ impl Default for InboundRoute<HttpRouteMatch> {
                     headers: vec![],
                     query_params: vec![],
                     method: None,
-                }],
-                filters: vec![],
-            }],
-            // Default routes do not have authorizations; the default policy's
-            // authzs will be configured by the default `InboundServer`, not by
-            // the route.
-            authorizations: HashMap::new(),
-            creation_timestamp: None,
-        }
-    }
-}
-
-/// The default `InboundRoute` used for any `InboundServer` that
-/// does not have routes.
-impl Default for InboundRoute<GrpcRouteMatch> {
-    fn default() -> Self {
-        Self {
-            hostnames: vec![],
-            rules: vec![InboundRouteRule {
-                matches: vec![GrpcRouteMatch {
-                    headers: vec![],
-                    method: Some(GrpcMethodMatch {
-                        method: None,
-                        service: None,
-                    }),
                 }],
                 filters: vec![],
             }],
