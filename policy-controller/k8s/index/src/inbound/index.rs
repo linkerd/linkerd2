@@ -20,7 +20,7 @@ use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     inbound::{
         AuthorizationRef, ClientAuthentication, ClientAuthorization, GrpcRoute, HttpRoute,
-        HttpRouteRef, InboundRouteRule, InboundServer, ProxyProtocol, ServerRef,
+        InboundRouteRule, InboundServer, ProxyProtocol, RouteRef, ServerRef,
     },
     routes::{GroupKindName, HttpRouteMatch, Method, PathMatch},
     IdentityMatch, Ipv4Net, Ipv6Net, NetworkMatch,
@@ -1822,7 +1822,7 @@ impl PolicyIndex {
         server_name: &str,
         authentications: &AuthenticationNsIndex,
         probe_paths: impl Iterator<Item = &'p str>,
-    ) -> HashMap<HttpRouteRef, HttpRoute> {
+    ) -> HashMap<RouteRef, HttpRoute> {
         let routes = self
             .http_routes
             .iter()
@@ -1831,7 +1831,7 @@ impl PolicyIndex {
             .map(|(gkn, route)| {
                 let mut route = route.route.clone();
                 route.authorizations = self.route_client_authzs(gkn, authentications);
-                (HttpRouteRef::Linkerd(gkn.clone()), route)
+                (RouteRef::Resource(gkn.clone()), route)
             })
             .collect::<HashMap<_, _>>();
         if !routes.is_empty() {
@@ -1844,17 +1844,22 @@ impl PolicyIndex {
         &self,
         server_name: &str,
         authentications: &AuthenticationNsIndex,
-    ) -> HashMap<GroupKindName, GrpcRoute> {
-        self.grpc_routes
+    ) -> HashMap<RouteRef, GrpcRoute> {
+        let routes = self
+            .grpc_routes
             .iter()
             .filter(|(_, route)| route.selects_server(server_name))
             .filter(|(_, route)| route.accepted_by_server(server_name))
             .map(|(gkn, route)| {
                 let mut route = route.route.clone();
                 route.authorizations = self.route_client_authzs(gkn, authentications);
-                (gkn.clone(), route)
+                (RouteRef::Resource(gkn.clone()), route)
             })
-            .collect::<HashMap<_, _>>()
+            .collect::<HashMap<_, _>>();
+        if !routes.is_empty() {
+            return routes;
+        }
+        [(RouteRef::Default("default"), GrpcRoute::default())].into()
     }
 
     fn policy_client_authz(
@@ -2065,13 +2070,13 @@ impl ClusterInfo {
     fn default_inbound_http_routes<'p>(
         &self,
         probe_paths: impl Iterator<Item = &'p str>,
-    ) -> HashMap<HttpRouteRef, HttpRoute> {
+    ) -> HashMap<RouteRef, HttpRoute> {
         let mut routes = HashMap::with_capacity(2);
 
         // If no routes are defined for the server, use a default route that
         // matches all requests. Default authorizations are instrumented on
         // the server.
-        routes.insert(HttpRouteRef::Default("default"), HttpRoute::default());
+        routes.insert(RouteRef::Default("default"), HttpRoute::default());
 
         // If there are no probe networks, there are no probe routes to
         // authorize.
@@ -2119,7 +2124,7 @@ impl ClusterInfo {
             authorizations,
             creation_timestamp: None,
         };
-        routes.insert(HttpRouteRef::Default("probe"), probe_route);
+        routes.insert(RouteRef::Default("probe"), probe_route);
 
         routes
     }

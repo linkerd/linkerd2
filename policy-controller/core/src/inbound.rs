@@ -26,9 +26,9 @@ pub enum AuthorizationRef {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum HttpRouteRef {
+pub enum RouteRef {
     Default(&'static str),
-    Linkerd(GroupKindName),
+    Resource(GroupKindName),
 }
 
 /// Describes how a proxy should handle inbound connections.
@@ -89,8 +89,8 @@ pub struct InboundServer {
 
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
-    pub http_routes: HashMap<HttpRouteRef, InboundRoute<HttpRouteMatch>>,
-    pub grpc_routes: HashMap<GroupKindName, InboundRoute<GrpcRouteMatch>>,
+    pub http_routes: HashMap<RouteRef, InboundRoute<HttpRouteMatch>>,
+    pub grpc_routes: HashMap<RouteRef, InboundRoute<GrpcRouteMatch>>,
 }
 
 pub type HttpRoute = InboundRoute<HttpRouteMatch>;
@@ -147,22 +147,44 @@ impl Default for InboundRoute<HttpRouteMatch> {
     }
 }
 
-// === impl InboundHttpRouteRef ===
-
-impl Ord for HttpRouteRef {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        match (self, other) {
-            (Self::Default(a), Self::Default(b)) => a.cmp(b),
-            (Self::Linkerd(a), Self::Linkerd(b)) => a.cmp(b),
-            // Route resources are always preferred over default resources, so they should sort
-            // first in a list.
-            (Self::Linkerd(_), Self::Default(_)) => std::cmp::Ordering::Less,
-            (Self::Default(_), Self::Linkerd(_)) => std::cmp::Ordering::Greater,
+/// The default `InboundRoute` used for any `InboundServer` that
+/// does not have routes.
+impl Default for InboundRoute<GrpcRouteMatch> {
+    fn default() -> Self {
+        Self {
+            hostnames: vec![],
+            rules: vec![InboundRouteRule {
+                matches: vec![GrpcRouteMatch {
+                    headers: vec![],
+                    method: None,
+                }],
+                filters: vec![],
+            }],
+            // Default routes do not have authorizations; the default policy's
+            // authzs will be configured by the default `InboundServer`, not by
+            // the route.
+            authorizations: HashMap::new(),
+            creation_timestamp: None,
         }
     }
 }
 
-impl PartialOrd for HttpRouteRef {
+// === impl InboundHttpRouteRef ===
+
+impl Ord for RouteRef {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (Self::Default(a), Self::Default(b)) => a.cmp(b),
+            (Self::Resource(a), Self::Resource(b)) => a.cmp(b),
+            // Route resources are always preferred over default resources, so they should sort
+            // first in a list.
+            (Self::Resource(_), Self::Default(_)) => std::cmp::Ordering::Less,
+            (Self::Default(_), Self::Resource(_)) => std::cmp::Ordering::Greater,
+        }
+    }
+}
+
+impl PartialOrd for RouteRef {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }

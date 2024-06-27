@@ -1,7 +1,6 @@
 use linkerd2_proxy_api::{inbound, meta};
 use linkerd_policy_controller_core::{
-    inbound::{Filter, GrpcRoute, InboundRouteRule},
-    routes::GroupKindName,
+    inbound::{Filter, GrpcRoute, InboundRouteRule, RouteRef},
     IpNet,
 };
 
@@ -10,7 +9,7 @@ use crate::routes;
 use super::to_authz;
 
 pub(crate) fn to_route_list<'r>(
-    routes: impl IntoIterator<Item = (&'r GroupKindName, &'r GrpcRoute)>,
+    routes: impl IntoIterator<Item = (&'r RouteRef, &'r GrpcRoute)>,
     cluster_networks: &[IpNet],
 ) -> Vec<inbound::GrpcRoute> {
     // Per the Gateway API spec:
@@ -44,7 +43,7 @@ pub(crate) fn to_route_list<'r>(
 }
 
 fn to_grpc_route(
-    reference: &GroupKindName,
+    reference: &RouteRef,
     GrpcRoute {
         hostnames,
         rules,
@@ -53,13 +52,18 @@ fn to_grpc_route(
     }: GrpcRoute,
     cluster_networks: &[IpNet],
 ) -> inbound::GrpcRoute {
-    let metadata = meta::Metadata {
-        kind: Some(meta::metadata::Kind::Resource(meta::Resource {
-            group: reference.group.to_string(),
-            kind: reference.kind.to_string(),
-            name: reference.name.to_string(),
-            ..Default::default()
-        })),
+    let metadata = match reference {
+        RouteRef::Resource(gkn) => meta::Metadata {
+            kind: Some(meta::metadata::Kind::Resource(meta::Resource {
+                group: gkn.group.to_string(),
+                kind: gkn.kind.to_string(),
+                name: gkn.name.to_string(),
+                ..Default::default()
+            })),
+        },
+        RouteRef::Default(name) => meta::Metadata {
+            kind: Some(meta::metadata::Kind::Default(name.to_string())),
+        },
     };
 
     let hosts = hostnames

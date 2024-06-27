@@ -34,8 +34,8 @@ fn links_authorization_policy_with_mtls_name() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(),
-            grpc_routes: Default::default(),
+            http_routes: mk_default_http_routes(),
+            grpc_routes: mk_default_grpc_routes(),
         },
     );
 
@@ -89,8 +89,8 @@ fn links_authorization_policy_with_mtls_name() {
             .into_iter()
             .collect(),
             protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(),
-            grpc_routes: Default::default(),
+            http_routes: mk_default_http_routes(),
+            grpc_routes: mk_default_grpc_routes(),
         },
     );
 }
@@ -126,8 +126,8 @@ fn authorization_targets_namespace() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(),
-            grpc_routes: Default::default(),
+            http_routes: mk_default_http_routes(),
+            grpc_routes: mk_default_grpc_routes(),
         },
     );
 
@@ -181,8 +181,8 @@ fn authorization_targets_namespace() {
             .into_iter()
             .collect(),
             protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(),
-            grpc_routes: Default::default(),
+            http_routes: mk_default_http_routes(),
+            grpc_routes: mk_default_grpc_routes(),
         },
     );
 }
@@ -218,8 +218,8 @@ fn links_authorization_policy_with_service_account() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(),
-            grpc_routes: Default::default(),
+            http_routes: mk_default_http_routes(),
+            grpc_routes: mk_default_grpc_routes(),
         },
     );
 
@@ -267,8 +267,8 @@ fn links_authorization_policy_with_service_account() {
             .into_iter()
             .collect(),
             protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(),
-            grpc_routes: Default::default(),
+            http_routes: mk_default_http_routes(),
+            grpc_routes: mk_default_grpc_routes(),
         },
     );
 }
@@ -369,7 +369,7 @@ fn authorization_policy_prevents_index_deletion() {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
-            http_routes: hashmap!(HttpRouteRef::Linkerd(routes::GroupKindName{
+            http_routes: hashmap!(RouteRef::Resource(routes::GroupKindName{
                 group: "policy.linkerd.io".into(),
                 kind: "HTTPRoute".into(),
                 name: "route-foo".into(),
@@ -392,7 +392,7 @@ fn authorization_policy_prevents_index_deletion() {
             })
             .into_iter()
             .collect(),
-            grpc_routes: Default::default(),
+            grpc_routes: mk_default_grpc_routes(),
         },
     );
 }

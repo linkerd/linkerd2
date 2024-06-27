@@ -2,12 +2,12 @@ use super::to_authz;
 use crate::routes;
 use linkerd2_proxy_api::{inbound, meta};
 use linkerd_policy_controller_core::{
-    inbound::{Filter, HttpRoute, HttpRouteRef, InboundRouteRule},
+    inbound::{Filter, HttpRoute, InboundRouteRule, RouteRef},
     IpNet,
 };
 
 pub(crate) fn to_route_list<'r>(
-    routes: impl IntoIterator<Item = (&'r HttpRouteRef, &'r HttpRoute)>,
+    routes: impl IntoIterator<Item = (&'r RouteRef, &'r HttpRoute)>,
     cluster_networks: &[IpNet],
 ) -> Vec<inbound::HttpRoute> {
     // Per the Gateway API spec:
@@ -41,7 +41,7 @@ pub(crate) fn to_route_list<'r>(
 }
 
 fn to_http_route(
-    reference: &HttpRouteRef,
+    reference: &RouteRef,
     HttpRoute {
         hostnames,
         rules,
@@ -52,8 +52,8 @@ fn to_http_route(
 ) -> inbound::HttpRoute {
     let metadata = meta::Metadata {
         kind: Some(match reference {
-            HttpRouteRef::Default(name) => meta::metadata::Kind::Default(name.to_string()),
-            HttpRouteRef::Linkerd(gkn) => meta::metadata::Kind::Resource(meta::Resource {
+            RouteRef::Default(name) => meta::metadata::Kind::Default(name.to_string()),
+            RouteRef::Resource(gkn) => meta::metadata::Kind::Resource(meta::Resource {
                 group: gkn.group.to_string(),
                 kind: gkn.kind.to_string(),
                 name: gkn.name.to_string(),
