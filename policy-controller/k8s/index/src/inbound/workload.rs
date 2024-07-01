@@ -37,7 +37,7 @@ pub(crate) fn pod_tcp_ports_by_name(spec: &k8s::PodSpec) -> HashMap<String, Port
     ports
 }
 
-/// Gets the set of named ports withn `protocol: TCP` from an external workload
+/// Gets the set of named ports within `protocol: TCP` from an external workload
 /// spec.
 ///
 /// Since an external workload has only one set of ports, each name is
@@ -93,7 +93,9 @@ fn container_http_probe_paths(
         }
     }
 
-    (container.liveness_probe.iter())
+    container
+        .liveness_probe
+        .iter()
         .chain(container.readiness_probe.iter())
         .chain(container.startup_probe.iter())
         .filter_map(|p| {

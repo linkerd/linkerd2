@@ -14,7 +14,7 @@ pub(crate) struct Spec {
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Target {
-    HttpRoute(GroupKindName),
+    Route(GroupKindName),
     Server(String),
     Namespace,
 }
@@ -67,7 +67,7 @@ fn target(t: LocalTargetRef) -> Result<Target> {
         t if t.targets_kind::<k8s::policy::HttpRoute>()
             || t.targets_kind::<k8s_gateway_api::HttpRoute>() =>
         {
-            Ok(Target::HttpRoute(GroupKindName {
+            Ok(Target::Route(GroupKindName {
                 group: t.group.unwrap_or_default().into(),
                 kind: t.kind.into(),
                 name: t.name.into(),

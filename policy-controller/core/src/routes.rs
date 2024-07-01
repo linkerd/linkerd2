@@ -144,8 +144,8 @@ impl Default for HttpRouteMatch {
     fn default() -> Self {
         Self {
             method: None,
-            headers: vec![],
-            query_params: vec![],
+            headers: Default::default(),
+            query_params: Default::default(),
             path: Some(PathMatch::Prefix("/".to_string())),
         }
     }

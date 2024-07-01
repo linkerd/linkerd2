@@ -43,7 +43,7 @@ fn link_server_authz(selector: ServerSelector) {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
             protocol: ProxyProtocol::Http1,
-            http_routes: mk_default_routes(),
+            http_routes: mk_default_routes()
         },
     );
     test.index.write().apply(mk_server_authz(
@@ -67,7 +67,7 @@ fn link_server_authz(selector: ServerSelector) {
         rx.borrow().reference,
         ServerRef::Server("srv-8080".to_string())
     );
-    assert_eq!(rx.borrow().protocol, ProxyProtocol::Http1,);
+    assert!(matches!(rx.borrow().protocol, ProxyProtocol::Http1));
     assert!(rx
         .borrow()
         .authorizations

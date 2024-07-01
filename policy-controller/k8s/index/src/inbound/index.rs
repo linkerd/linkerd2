@@ -7,7 +7,7 @@
 //! kubernetes resources.
 
 use super::{
-    authorization_policy, http_route::RouteBinding, meshtls_authentication, network_authentication,
+    authorization_policy, meshtls_authentication, network_authentication, routes::RouteBinding,
     server, server_authorization, workload,
 };
 use crate::{
@@ -19,8 +19,8 @@ use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     inbound::{
-        AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRoute, HttpRouteRef,
-        HttpRouteRule, InboundServer, ProxyProtocol, ServerRef,
+        AuthorizationRef, ClientAuthentication, ClientAuthorization, InboundRoute, InboundRouteRef,
+        InboundRouteRule, InboundServer, ProxyProtocol, ServerRef,
     },
     routes::{GroupKindName, HttpRouteMatch, Method, PathMatch},
     IdentityMatch, Ipv4Net, Ipv6Net, NetworkMatch,
@@ -160,7 +160,7 @@ struct PolicyIndex {
     server_authorizations: HashMap<String, server_authorization::ServerAuthz>,
 
     authorization_policies: HashMap<String, authorization_policy::Spec>,
-    http_routes: HashMap<GroupKindName, RouteBinding>,
+    http_routes: HashMap<GroupKindName, RouteBinding<HttpRouteMatch>>,
 }
 
 #[derive(Debug, Default)]
@@ -264,21 +264,21 @@ impl Index {
         }
     }
 
-    fn apply_route<R>(&mut self, route: R)
+    fn apply_http_route<Route>(&mut self, route: Route)
     where
-        R: ResourceExt<DynamicType = ()>,
-        RouteBinding: TryFrom<R>,
-        <RouteBinding as TryFrom<R>>::Error: std::fmt::Display,
+        Route: ResourceExt<DynamicType = ()>,
+        RouteBinding<HttpRouteMatch>: TryFrom<Route>,
+        <RouteBinding<HttpRouteMatch> as TryFrom<Route>>::Error: std::fmt::Display,
     {
-        let ns = route.namespace().expect("HttpRoute must have a namespace");
+        let ns = route.namespace().expect("routes must have a namespace");
         let name = route.name_unchecked();
         let gkn = route.gkn();
         let _span = info_span!("apply", %ns, %name).entered();
 
-        let route_binding = match route.try_into() {
+        let route_binding = match RouteBinding::<HttpRouteMatch>::try_from(route) {
             Ok(binding) => binding,
             Err(error) => {
-                tracing::info!(%ns, %name, %error, "Ignoring HTTPRoute");
+                tracing::info!(%ns, %name, %error, "Ignoring route");
                 return;
             }
         };
@@ -286,26 +286,27 @@ impl Index {
         self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_http_route(gkn, route_binding))
     }
 
-    fn reset_route<R>(&mut self, routes: Vec<R>, deleted: HashMap<String, HashSet<String>>)
+    fn reset_route<Route>(&mut self, routes: Vec<Route>, deleted: HashMap<String, HashSet<String>>)
     where
-        R: ResourceExt<DynamicType = ()>,
-        RouteBinding: TryFrom<R>,
-        <RouteBinding as TryFrom<R>>::Error: std::fmt::Display,
+        Route: ResourceExt<DynamicType = ()>,
+        RouteBinding<HttpRouteMatch>: TryFrom<Route>,
+        <RouteBinding<HttpRouteMatch> as TryFrom<Route>>::Error: std::fmt::Display,
     {
         let _span = info_span!("reset").entered();
 
-        // Aggregate all of the updates by namespace so that we only reindex
+        // Aggregate all updates by namespace so that we only reindex
         // once per namespace.
-        type Ns = NsUpdate<GroupKindName, RouteBinding>;
-        let mut updates_by_ns = HashMap::<String, Ns>::default();
+
+        let mut updates_by_ns =
+            HashMap::<String, NsUpdate<GroupKindName, RouteBinding<HttpRouteMatch>>>::default();
         for route in routes.into_iter() {
-            let namespace = route.namespace().expect("HttpRoute must be namespaced");
+            let namespace = route.namespace().expect("Routes must be namespaced");
             let name = route.name_unchecked();
             let gkn = route.gkn();
-            let route_binding = match route.try_into() {
+            let route_binding = match RouteBinding::<HttpRouteMatch>::try_from(route) {
                 Ok(binding) => binding,
                 Err(error) => {
-                    tracing::info!(ns = %namespace, %name, %error, "Ignoring HTTPRoute");
+                    tracing::info!(ns = %namespace, group = gkn.group.as_ref(), kind = gkn.kind.as_ref(), %name, %error, "Ignoring route");
                     continue;
                 }
             };
@@ -316,18 +317,15 @@ impl Index {
                 .push((gkn, route_binding));
         }
         for (ns, names) in deleted.into_iter() {
-            let removed = names
-                .into_iter()
-                .map(|name| GroupKindName {
-                    group: R::group(&()),
-                    kind: R::kind(&()),
-                    name: name.into(),
-                })
-                .collect();
+            let removed = names.iter().map(ExplicitGKN::gkn::<Route>).collect();
             updates_by_ns.entry(ns).or_default().removed = removed;
         }
 
-        for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
+        for (
+            namespace,
+            NsUpdate::<GroupKindName, RouteBinding<HttpRouteMatch>> { added, removed },
+        ) in updates_by_ns.into_iter()
+        {
             if added.is_empty() {
                 // If there are no live resources in the namespace, we do not
                 // want to create a default namespace instance, we just want to
@@ -476,17 +474,21 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::Server> for Index {
         self.ns_with_reindex(ns, |ns| ns.policy.servers.remove(&name).is_some())
     }
 
-    fn reset(&mut self, srvs: Vec<k8s::policy::Server>, deleted: HashMap<String, HashSet<String>>) {
+    fn reset(
+        &mut self,
+        servers: Vec<k8s::policy::Server>,
+        deleted: HashMap<String, HashSet<String>>,
+    ) {
         let _span = info_span!("reset").entered();
 
-        // Aggregate all of the updates by namespace so that we only reindex
+        // Aggregate all updates by namespace so that we only reindex
         // once per namespace.
         type Ns = NsUpdate<String, server::Server>;
         let mut updates_by_ns = HashMap::<String, Ns>::default();
-        for srv in srvs.into_iter() {
-            let namespace = srv.namespace().expect("server must be namespaced");
-            let name = srv.name_unchecked();
-            let server = server::Server::from_resource(srv, &self.cluster_info);
+        for server in servers.into_iter() {
+            let namespace = server.namespace().expect("server must be namespaced");
+            let name = server.name_unchecked();
+            let server = server::Server::from_resource(server, &self.cluster_info);
             updates_by_ns
                 .entry(namespace)
                 .or_default()
@@ -549,21 +551,22 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
 
     fn reset(
         &mut self,
-        sazs: Vec<k8s::policy::ServerAuthorization>,
+        server_authorizations: Vec<k8s::policy::ServerAuthorization>,
         deleted: HashMap<String, HashSet<String>>,
     ) {
         let _span = info_span!("reset");
 
-        // Aggregate all of the updates by namespace so that we only reindex
+        // Aggregate all updates by namespace so that we only reindex
         // once per namespace.
         type Ns = NsUpdate<String, server_authorization::ServerAuthz>;
         let mut updates_by_ns = HashMap::<String, Ns>::default();
-        for saz in sazs.into_iter() {
-            let namespace = saz
+        for server_auth in server_authorizations.into_iter() {
+            let namespace = server_auth
                 .namespace()
                 .expect("serverauthorization must be namespaced");
-            let name = saz.name_unchecked();
-            match server_authorization::ServerAuthz::from_resource(saz, &self.cluster_info) {
+            let name = server_auth.name_unchecked();
+            match server_authorization::ServerAuthz::from_resource(server_auth, &self.cluster_info)
+            {
                 Ok(saz) => updates_by_ns
                     .entry(namespace)
                     .or_default()
@@ -574,8 +577,8 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::ServerAuthorization> fo
                 }
             }
         }
-        for (ns, names) in deleted.into_iter() {
-            updates_by_ns.entry(ns).or_default().removed = names;
+        for (namespace, names) in deleted.into_iter() {
+            updates_by_ns.entry(namespace).or_default().removed = names;
         }
 
         for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
@@ -640,7 +643,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::AuthorizationPolicy> fo
         let _span = info_span!("reset");
 
         tracing::trace!(?deleted, ?policies, "Reset");
-        // Aggregate all of the updates by namespace so that we only reindex
+        // Aggregate all updates by namespace so that we only reindex
         // once per namespace.
         type Ns = NsUpdate<String, authorization_policy::Spec>;
         let mut updates_by_ns = HashMap::<String, Ns>::default();
@@ -850,7 +853,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
     fn apply(&mut self, route: k8s::policy::HttpRoute) {
-        self.apply_route(route)
+        self.apply_http_route(route)
     }
 
     fn delete(&mut self, ns: String, name: String) {
@@ -869,7 +872,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
 
 impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
     fn apply(&mut self, route: k8s_gateway_api::HttpRoute) {
-        self.apply_route(route)
+        self.apply_http_route(route)
     }
 
     fn delete(&mut self, ns: String, name: String) {
@@ -886,7 +889,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
     }
 }
 
-// === impl NemspaceIndex ===
+// === impl NamespaceIndex ===
 
 impl NamespaceIndex {
     fn get_or_default(&mut self, ns: String) -> &mut Namespace {
@@ -1049,7 +1052,7 @@ impl Pod {
                 if pod_selector.matches(&self.meta.labels) {
                     for port in self.select_ports(&server.port_ref).into_iter() {
                         // If the port is already matched to a server, then log a warning and skip
-                        // updating it so it doesn't flap between servers.
+                        // updating it, so it doesn't flap between servers.
                         if let Some(prior) = matched_ports.get(&port) {
                             tracing::warn!(
                                 port = %port,
@@ -1060,8 +1063,8 @@ impl Pod {
                             continue;
                         }
 
-                        let s = policy.inbound_server(
-                            srvname.clone(),
+                        let port_server = policy.inbound_server(
+                            srvname,
                             server,
                             authentications,
                             self.probes
@@ -1070,7 +1073,7 @@ impl Pod {
                                 .flatten()
                                 .map(|p| p.as_str()),
                         );
-                        self.update_server(port, srvname, s);
+                        self.update_server(port, srvname, port_server);
 
                         matched_ports.insert(port, srvname.clone());
                         unmatched_ports.remove(&port);
@@ -1087,7 +1090,7 @@ impl Pod {
 
     /// Updates a pod-port to use the given named server.
     ///
-    /// The name is used explicity (and not derived from the `server` itself) to
+    /// The name is used explicitly (and not derived from the `server` itself) to
     /// ensure that we're not handling a default server.
     fn update_server(&mut self, port: NonZeroU16, name: &str, server: InboundServer) {
         match self.port_servers.entry(port) {
@@ -1101,10 +1104,10 @@ impl Pod {
             }
 
             Entry::Occupied(mut entry) => {
-                let ps = entry.get_mut();
+                let workload_server = entry.get_mut();
 
-                ps.watch.send_if_modified(|current| {
-                    if ps.name.as_deref() == Some(name) && *current == server {
+                workload_server.watch.send_if_modified(|current| {
+                    if workload_server.name.as_deref() == Some(name) && *current == server {
                         tracing::trace!(port = %port, server = %name, "Skipped redundant server update");
                         tracing::trace!(?server);
                         return false;
@@ -1114,11 +1117,11 @@ impl Pod {
                     // this can either mean that multiple servers currently match
                     // the pod:port, or that we're in the middle of an update. We
                     // make the opportunistic choice to assume the cluster is
-                    // configured coherently so we take the update. The admission
+                    // configured coherently, so we take the update. The admission
                     // controller should prevent conflicts.
                     tracing::trace!(port = %port, server = %name, "Updating server");
-                    if ps.name.as_deref() != Some(name) {
-                        ps.name = Some(name.to_string());
+                    if workload_server.name.as_deref() != Some(name) {
+                        workload_server.name = Some(name.to_string());
                     }
 
                     *current = server;
@@ -1320,14 +1323,14 @@ impl ExternalWorkload {
                         continue;
                     }
 
-                    let s = policy.inbound_server(
-                        srvname.clone(),
+                    let port_server = policy.inbound_server(
+                        srvname,
                         server,
                         authentications,
                         Vec::new().into_iter(),
                     );
 
-                    self.update_server(port, srvname, s);
+                    self.update_server(port, srvname, port_server);
                     matched_ports.insert(port, srvname.clone());
                     unmatched_ports.remove(&port);
                 }
@@ -1369,7 +1372,7 @@ impl ExternalWorkload {
                     // server, this can either mean that multiple servers
                     // currently match the external_workload:port, or that we're
                     // in the middle of an update. We make the opportunistic
-                    // choice to assume the cluster is configured coherently so
+                    // choice to assume the cluster is configured coherently, so
                     // we take the update. The admission controller should
                     // prevent conflicts.
                     tracing::trace!(port = %port, server = %name, "Updating server");
@@ -1547,32 +1550,29 @@ impl PolicyIndex {
 
         let authorizations = policy.default_authzs(config);
 
-        let http_routes = config.default_inbound_http_routes(probe_paths);
-
         InboundServer {
-            reference: ServerRef::Default(policy.as_str()),
             protocol,
             authorizations,
-            http_routes,
+            reference: ServerRef::Default(policy.as_str()),
+            http_routes: config.default_inbound_http_routes(probe_paths),
         }
     }
 
     fn inbound_server<'p>(
         &self,
-        name: String,
+        name: &str,
         server: &server::Server,
         authentications: &AuthenticationNsIndex,
         probe_paths: impl Iterator<Item = &'p str>,
     ) -> InboundServer {
-        tracing::trace!(%name, ?server, "Creating inbound server");
-        let authorizations = self.client_authzs(&name, server, authentications);
-        let http_routes = self.http_routes(&name, authentications, probe_paths);
+        tracing::trace!(%name, ?server,  "Creating inbound server");
+        let authorizations = self.client_authzs(name, server, authentications);
 
         InboundServer {
-            reference: ServerRef::Server(name),
             authorizations,
             protocol: server.protocol.clone(),
-            http_routes,
+            reference: ServerRef::Server(name.to_string()),
+            http_routes: self.http_routes(name, authentications, probe_paths),
         }
     }
 
@@ -1608,8 +1608,8 @@ impl PolicyIndex {
                     }
                 }
                 authorization_policy::Target::Namespace => {}
-                authorization_policy::Target::HttpRoute(_) => {
-                    // Policies which target HttpRoutes will be attached to
+                authorization_policy::Target::Route(_) => {
+                    // Policies which target routes will be attached to
                     // the route authorizations and should not be included in
                     // the server authorizations.
                     continue;
@@ -1654,14 +1654,14 @@ impl PolicyIndex {
         for (name, spec) in &self.authorization_policies {
             // Skip the policy if it doesn't apply to the route.
             match &spec.target {
-                authorization_policy::Target::HttpRoute(n) if n.eq_ignore_ascii_case(gkn) => {}
+                authorization_policy::Target::Route(n) if n.eq_ignore_ascii_case(gkn) => {}
                 _ => {
                     tracing::trace!(
                         ns = %self.namespace,
                         authorizationpolicy = %name,
                         route = ?gkn,
                         target = ?spec.target,
-                        "AuthorizationPolicy does not target HttpRoute",
+                        "AuthorizationPolicy does not target route",
                     );
                     continue;
                 }
@@ -1671,7 +1671,7 @@ impl PolicyIndex {
                 ns = %self.namespace,
                 authorizationpolicy = %name,
                 route = ?gkn,
-                "AuthorizationPolicy targets HttpRoute",
+                "AuthorizationPolicy targets route",
             );
             tracing::trace!(authns = ?spec.authentications);
 
@@ -1700,21 +1700,24 @@ impl PolicyIndex {
         server_name: &str,
         authentications: &AuthenticationNsIndex,
         probe_paths: impl Iterator<Item = &'p str>,
-    ) -> HashMap<HttpRouteRef, HttpRoute> {
+    ) -> HashMap<InboundRouteRef, InboundRoute<HttpRouteMatch>> {
         let routes = self
             .http_routes
             .iter()
-            .filter(|(_, route)| route.selects_server(server_name))
-            .filter(|(_, route)| route.accepted_by_server(server_name))
+            .filter(|(_, route)| {
+                route.selects_server(server_name) && route.accepted_by_server(server_name)
+            })
             .map(|(gkn, route)| {
                 let mut route = route.route.clone();
                 route.authorizations = self.route_client_authzs(gkn, authentications);
-                (HttpRouteRef::Linkerd(gkn.clone()), route)
+                (InboundRouteRef::Linkerd(gkn.clone()), route)
             })
             .collect::<HashMap<_, _>>();
+
         if !routes.is_empty() {
             return routes;
         }
+
         self.cluster_info.default_inbound_http_routes(probe_paths)
     }
 
@@ -1823,8 +1826,13 @@ impl PolicyIndex {
         })
     }
 
-    fn update_http_route(&mut self, gkn: GroupKindName, route: RouteBinding) -> bool {
-        match self.http_routes.entry(gkn) {
+    fn update_http_route(
+        &mut self,
+        key: GroupKindName,
+        route: RouteBinding<HttpRouteMatch>,
+    ) -> bool
+where {
+        match self.http_routes.entry(key) {
             Entry::Vacant(entry) => {
                 entry.insert(route);
             }
@@ -1911,13 +1919,14 @@ impl ClusterInfo {
     fn default_inbound_http_routes<'p>(
         &self,
         probe_paths: impl Iterator<Item = &'p str>,
-    ) -> HashMap<HttpRouteRef, HttpRoute> {
-        let mut routes = HashMap::with_capacity(2);
-
+    ) -> HashMap<InboundRouteRef, InboundRoute<HttpRouteMatch>> {
         // If no routes are defined for the server, use a default route that
         // matches all requests. Default authorizations are instrumented on
         // the server.
-        routes.insert(HttpRouteRef::Default("default"), HttpRoute::default());
+        let mut routes = HashMap::from_iter([(
+            InboundRouteRef::DEFAULT_DEFAULT,
+            InboundRoute::<HttpRouteMatch>::default(),
+        )]);
 
         // If there are no probe networks, there are no probe routes to
         // authorize.
@@ -1934,7 +1943,7 @@ impl ClusterInfo {
                 query_params: vec![],
                 method: Some(Method::GET),
             })
-            .collect();
+            .collect::<Vec<_>>();
 
         // If there are no matches, then are no probe routes to authorize.
         if matches.is_empty() {
@@ -1943,7 +1952,7 @@ impl ClusterInfo {
 
         // Probes are authorized on the configured probe networks only.
         let authorizations = std::iter::once((
-            AuthorizationRef::Default("probe"),
+            AuthorizationRef::DEFAULT_PROBE,
             ClientAuthorization {
                 networks: self
                     .probe_networks
@@ -1956,16 +1965,16 @@ impl ClusterInfo {
         ))
         .collect();
 
-        let probe_route = HttpRoute {
-            hostnames: Vec::new(),
-            rules: vec![HttpRouteRule {
-                matches,
-                filters: Vec::new(),
-            }],
+        let probe_route = InboundRoute::<HttpRouteMatch> {
             authorizations,
-            creation_timestamp: None,
+            rules: vec![InboundRouteRule::<HttpRouteMatch> {
+                matches,
+                filters: Default::default(),
+            }],
+            ..Default::default()
         };
-        routes.insert(HttpRouteRef::Default("probe"), probe_route);
+
+        routes.insert(InboundRouteRef::DEFAULT_PROBE, probe_route);
 
         routes
     }

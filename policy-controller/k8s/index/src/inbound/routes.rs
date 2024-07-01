@@ -1,21 +1,21 @@
+use crate::routes;
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Error, Result};
-use k8s_gateway_api as api;
 use linkerd_policy_controller_core::{
-    inbound::{Filter, HttpRoute, HttpRouteRule},
+    inbound::{Filter, InboundRoute, InboundRouteRule},
     routes::{HttpRouteMatch, Method},
     POLICY_CONTROLLER_NAME,
 };
 use linkerd_policy_controller_k8s_api::{
-    self as k8s, gateway, gateway as k8s_gateway_api,
+    self as k8s, gateway,
     policy::{httproute as policy, Server},
 };
 use std::fmt;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RouteBinding {
+pub struct RouteBinding<MatchType> {
     pub parents: Vec<ParentRef>,
-    pub route: HttpRoute,
+    pub route: InboundRoute<MatchType>,
     pub statuses: Vec<Status>,
 }
 
@@ -43,20 +43,20 @@ pub enum ConditionType {
 
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum InvalidParentRef {
-    #[error("HTTPRoute resource may not reference a parent Server in an other namespace")]
+    #[error("Route resources may not reference a parent Server in an other namespace")]
     ServerInAnotherNamespace,
 
-    #[error("HTTPRoute resource may not reference a parent by port")]
+    #[error("Route resources may not reference a parent by port")]
     SpecifiesPort,
 
-    #[error("HTTPRoute resource may not reference a parent by section name")]
+    #[error("Route resources may not reference a parent by section name")]
     SpecifiesSection,
 }
 
-impl TryFrom<api::HttpRoute> for RouteBinding {
+impl TryFrom<gateway::HttpRoute> for RouteBinding<HttpRouteMatch> {
     type Error = Error;
 
-    fn try_from(route: api::HttpRoute) -> Result<Self, Self::Error> {
+    fn try_from(route: gateway::HttpRoute) -> Result<Self, Self::Error> {
         let route_ns = route.metadata.namespace.as_deref();
         let creation_timestamp = route.metadata.creation_timestamp.map(|k8s::Time(t)| t);
         let parents = ParentRef::collect_from(route_ns, route.spec.inner.parent_refs)?;
@@ -65,7 +65,7 @@ impl TryFrom<api::HttpRoute> for RouteBinding {
             .hostnames
             .into_iter()
             .flatten()
-            .map(crate::routes::http::host_match)
+            .map(routes::http::host_match)
             .collect();
 
         let rules = route
@@ -74,11 +74,11 @@ impl TryFrom<api::HttpRoute> for RouteBinding {
             .into_iter()
             .flatten()
             .map(
-                |api::HttpRouteRule {
+                |gateway::HttpRouteRule {
                      matches,
                      filters,
                      backend_refs: _,
-                 }| Self::try_rule(matches, filters, Self::try_gateway_filter),
+                 }| Self::try_http_rule(matches, filters, Self::try_gateway_filter),
             )
             .collect::<Result<_>>()?;
 
@@ -88,7 +88,7 @@ impl TryFrom<api::HttpRoute> for RouteBinding {
 
         Ok(RouteBinding {
             parents,
-            route: HttpRoute {
+            route: InboundRoute {
                 hostnames,
                 rules,
                 authorizations: HashMap::default(),
@@ -99,7 +99,7 @@ impl TryFrom<api::HttpRoute> for RouteBinding {
     }
 }
 
-impl TryFrom<policy::HttpRoute> for RouteBinding {
+impl TryFrom<policy::HttpRoute> for RouteBinding<HttpRouteMatch> {
     type Error = Error;
 
     fn try_from(route: policy::HttpRoute) -> Result<Self, Self::Error> {
@@ -111,7 +111,7 @@ impl TryFrom<policy::HttpRoute> for RouteBinding {
             .hostnames
             .into_iter()
             .flatten()
-            .map(crate::routes::http::host_match)
+            .map(routes::http::host_match)
             .collect();
 
         let rules = route
@@ -122,7 +122,9 @@ impl TryFrom<policy::HttpRoute> for RouteBinding {
             .map(
                 |policy::HttpRouteRule {
                      matches, filters, ..
-                 }| { Self::try_rule(matches, filters, Self::try_policy_filter) },
+                 }| {
+                    Self::try_http_rule(matches, filters, Self::try_policy_filter)
+                },
             )
             .collect::<Result<_>>()?;
 
@@ -132,7 +134,7 @@ impl TryFrom<policy::HttpRoute> for RouteBinding {
 
         Ok(RouteBinding {
             parents,
-            route: HttpRoute {
+            route: InboundRoute {
                 hostnames,
                 rules,
                 authorizations: HashMap::default(),
@@ -143,7 +145,7 @@ impl TryFrom<policy::HttpRoute> for RouteBinding {
     }
 }
 
-impl RouteBinding {
+impl<MatchType> RouteBinding<MatchType> {
     #[inline]
     pub fn selects_server(&self, name: &str) -> bool {
         self.parents
@@ -162,26 +164,26 @@ impl RouteBinding {
         })
     }
 
-    pub fn try_match(
-        api::HttpRouteMatch {
+    pub fn try_http_match(
+        gateway::HttpRouteMatch {
             path,
             headers,
             query_params,
             method,
-        }: api::HttpRouteMatch,
+        }: gateway::HttpRouteMatch,
     ) -> Result<HttpRouteMatch> {
-        let path = path.map(crate::routes::http::path_match).transpose()?;
+        let path = path.map(routes::http::path_match).transpose()?;
 
         let headers = headers
             .into_iter()
             .flatten()
-            .map(crate::routes::http::header_match)
+            .map(routes::http::header_match)
             .collect::<Result<_>>()?;
 
         let query_params = query_params
             .into_iter()
             .flatten()
-            .map(crate::routes::http::query_param_match)
+            .map(routes::http::query_param_match)
             .collect::<Result<_>>()?;
 
         let method = method.as_deref().map(Method::try_from).transpose()?;
@@ -194,15 +196,15 @@ impl RouteBinding {
         })
     }
 
-    fn try_rule<F>(
-        matches: Option<Vec<api::HttpRouteMatch>>,
+    fn try_http_rule<F>(
+        matches: Option<Vec<gateway::HttpRouteMatch>>,
         filters: Option<Vec<F>>,
         try_filter: impl Fn(F) -> Result<Filter>,
-    ) -> Result<HttpRouteRule> {
+    ) -> Result<InboundRouteRule<HttpRouteMatch>> {
         let matches = matches
             .into_iter()
             .flatten()
-            .map(Self::try_match)
+            .map(Self::try_http_match)
             .collect::<Result<_>>()?;
 
         let filters = filters
@@ -211,37 +213,39 @@ impl RouteBinding {
             .map(try_filter)
             .collect::<Result<_>>()?;
 
-        Ok(HttpRouteRule { matches, filters })
+        Ok(InboundRouteRule { matches, filters })
     }
 
-    fn try_gateway_filter(filter: api::HttpRouteFilter) -> Result<Filter> {
-        let filter = match filter {
-            api::HttpRouteFilter::RequestHeaderModifier {
+    fn try_gateway_filter<RouteFilter: Into<gateway::HttpRouteFilter>>(
+        filter: RouteFilter,
+    ) -> Result<Filter> {
+        let filter = match filter.into() {
+            gateway::HttpRouteFilter::RequestHeaderModifier {
                 request_header_modifier,
             } => {
-                let filter = crate::routes::http::header_modifier(request_header_modifier)?;
+                let filter = routes::http::header_modifier(request_header_modifier)?;
                 Filter::RequestHeaderModifier(filter)
             }
 
-            api::HttpRouteFilter::ResponseHeaderModifier {
+            gateway::HttpRouteFilter::ResponseHeaderModifier {
                 response_header_modifier,
             } => {
-                let filter = crate::routes::http::header_modifier(response_header_modifier)?;
+                let filter = routes::http::header_modifier(response_header_modifier)?;
                 Filter::ResponseHeaderModifier(filter)
             }
 
-            api::HttpRouteFilter::RequestRedirect { request_redirect } => {
-                let filter = crate::routes::http::req_redirect(request_redirect)?;
+            gateway::HttpRouteFilter::RequestRedirect { request_redirect } => {
+                let filter = routes::http::req_redirect(request_redirect)?;
                 Filter::RequestRedirect(filter)
             }
 
-            api::HttpRouteFilter::RequestMirror { .. } => {
+            gateway::HttpRouteFilter::RequestMirror { .. } => {
                 bail!("RequestMirror filter is not supported")
             }
-            api::HttpRouteFilter::URLRewrite { .. } => {
+            gateway::HttpRouteFilter::URLRewrite { .. } => {
                 bail!("URLRewrite filter is not supported")
             }
-            api::HttpRouteFilter::ExtensionRef { .. } => {
+            gateway::HttpRouteFilter::ExtensionRef { .. } => {
                 bail!("ExtensionRef filter is not supported")
             }
         };
@@ -253,19 +257,19 @@ impl RouteBinding {
             policy::HttpRouteFilter::RequestHeaderModifier {
                 request_header_modifier,
             } => {
-                let filter = crate::routes::http::header_modifier(request_header_modifier)?;
+                let filter = routes::http::header_modifier(request_header_modifier)?;
                 Filter::RequestHeaderModifier(filter)
             }
 
             policy::HttpRouteFilter::ResponseHeaderModifier {
                 response_header_modifier,
             } => {
-                let filter = crate::routes::http::header_modifier(response_header_modifier)?;
+                let filter = routes::http::header_modifier(response_header_modifier)?;
                 Filter::ResponseHeaderModifier(filter)
             }
 
             policy::HttpRouteFilter::RequestRedirect { request_redirect } => {
-                let filter = crate::routes::http::req_redirect(request_redirect)?;
+                let filter = routes::http::req_redirect(request_redirect)?;
                 Filter::RequestRedirect(filter)
             }
         };
@@ -276,7 +280,7 @@ impl RouteBinding {
 impl ParentRef {
     fn collect_from(
         route_ns: Option<&str>,
-        parent_refs: Option<Vec<api::ParentReference>>,
+        parent_refs: Option<Vec<gateway::ParentReference>>,
     ) -> Result<Vec<Self>, InvalidParentRef> {
         let parents = parent_refs
             .into_iter()
@@ -289,14 +293,14 @@ impl ParentRef {
 
     fn from_parent_ref(
         route_ns: Option<&str>,
-        parent_ref: api::ParentReference,
+        parent_ref: gateway::ParentReference,
     ) -> Option<Result<Self, InvalidParentRef>> {
         // Skip parent refs that don't target a `Server` resource.
         if !policy::parent_ref_targets_kind::<Server>(&parent_ref) || parent_ref.name.is_empty() {
             return None;
         }
 
-        let api::ParentReference {
+        let gateway::ParentReference {
             group: _,
             kind: _,
             namespace,
