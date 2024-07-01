@@ -7,7 +7,7 @@
 //! kubernetes resources.
 
 use super::{
-    authorization_policy, http_route::RouteBinding, meshtls_authentication, network_authentication,
+    authorization_policy, meshtls_authentication, network_authentication, routes::RouteBinding,
     server, server_authorization, workload,
 };
 use crate::{
@@ -19,8 +19,8 @@ use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     inbound::{
-        AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRoute, HttpRouteRef,
-        HttpRouteRule, InboundServer, ProxyProtocol, ServerRef,
+        AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRoute, InboundRouteRule,
+        InboundServer, ProxyProtocol, RouteRef, ServerRef,
     },
     routes::{GroupKindName, HttpRouteMatch, Method, PathMatch},
     IdentityMatch, Ipv4Net, Ipv6Net, NetworkMatch,
@@ -38,6 +38,7 @@ use std::{
 use tokio::sync::watch;
 use tracing::info_span;
 
+mod http;
 pub mod metrics;
 
 pub type SharedIndex = Arc<RwLock<Index>>;
@@ -160,7 +161,7 @@ struct PolicyIndex {
     server_authorizations: HashMap<String, server_authorization::ServerAuthz>,
 
     authorization_policies: HashMap<String, authorization_policy::Spec>,
-    http_routes: HashMap<GroupKindName, RouteBinding>,
+    http_routes: HashMap<GroupKindName, RouteBinding<HttpRoute>>,
 }
 
 #[derive(Debug, Default)]
@@ -264,16 +265,16 @@ impl Index {
         }
     }
 
-    fn apply_route<R>(&mut self, route: R)
+    fn apply_http_route<R>(&mut self, route: R)
     where
         R: ResourceExt<DynamicType = ()>,
-        RouteBinding: TryFrom<R>,
-        <RouteBinding as TryFrom<R>>::Error: std::fmt::Display,
+        RouteBinding<HttpRoute>: TryFrom<R>,
+        <RouteBinding<HttpRoute> as TryFrom<R>>::Error: std::fmt::Display,
     {
         let ns = route.namespace().expect("HttpRoute must have a namespace");
         let name = route.name_unchecked();
         let gkn = route.gkn();
-        let _span = info_span!("apply", %ns, %name).entered();
+        let _span = info_span!("apply httproute", %ns, %name).entered();
 
         let route_binding = match route.try_into() {
             Ok(binding) => binding,
@@ -286,17 +287,17 @@ impl Index {
         self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_http_route(gkn, route_binding))
     }
 
-    fn reset_route<R>(&mut self, routes: Vec<R>, deleted: HashMap<String, HashSet<String>>)
+    fn reset_http_route<R>(&mut self, routes: Vec<R>, deleted: HashMap<String, HashSet<String>>)
     where
         R: ResourceExt<DynamicType = ()>,
-        RouteBinding: TryFrom<R>,
-        <RouteBinding as TryFrom<R>>::Error: std::fmt::Display,
+        RouteBinding<HttpRoute>: TryFrom<R>,
+        <RouteBinding<HttpRoute> as TryFrom<R>>::Error: std::fmt::Display,
     {
-        let _span = info_span!("reset").entered();
+        let _span = info_span!("httproute reset").entered();
 
         // Aggregate all of the updates by namespace so that we only reindex
         // once per namespace.
-        type Ns = NsUpdate<GroupKindName, RouteBinding>;
+        type Ns = NsUpdate<GroupKindName, RouteBinding<HttpRoute>>;
         let mut updates_by_ns = HashMap::<String, Ns>::default();
         for route in routes.into_iter() {
             let namespace = route.namespace().expect("HttpRoute must be namespaced");
@@ -355,8 +356,8 @@ impl Index {
         }
     }
 
-    fn delete_route(&mut self, ns: String, gkn: GroupKindName) {
-        let _span = info_span!("delete", %ns, route = ?gkn).entered();
+    fn delete_http_route(&mut self, ns: String, gkn: GroupKindName) {
+        let _span = info_span!("delete httproute", %ns, route = ?gkn).entered();
         self.ns_with_reindex(ns, |ns| ns.policy.http_routes.remove(&gkn).is_some())
     }
 }
@@ -850,12 +851,12 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
 
 impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
     fn apply(&mut self, route: k8s::policy::HttpRoute) {
-        self.apply_route(route)
+        self.apply_http_route(route)
     }
 
     fn delete(&mut self, ns: String, name: String) {
         let gkn = name.gkn::<k8s::policy::HttpRoute>();
-        self.delete_route(ns, gkn)
+        self.delete_http_route(ns, gkn)
     }
 
     fn reset(
@@ -863,18 +864,18 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
         routes: Vec<k8s::policy::HttpRoute>,
         deleted: HashMap<String, HashSet<String>>,
     ) {
-        self.reset_route(routes, deleted)
+        self.reset_http_route(routes, deleted)
     }
 }
 
 impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Index {
     fn apply(&mut self, route: k8s_gateway_api::HttpRoute) {
-        self.apply_route(route)
+        self.apply_http_route(route)
     }
 
     fn delete(&mut self, ns: String, name: String) {
         let gkn = name.gkn::<k8s_gateway_api::HttpRoute>();
-        self.delete_route(ns, gkn)
+        self.delete_http_route(ns, gkn)
     }
 
     fn reset(
@@ -882,7 +883,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         routes: Vec<k8s_gateway_api::HttpRoute>,
         deleted: HashMap<String, HashSet<String>>,
     ) {
-        self.reset_route(routes, deleted)
+        self.reset_http_route(routes, deleted)
     }
 }
 
@@ -1609,7 +1610,7 @@ impl PolicyIndex {
                 }
                 authorization_policy::Target::Namespace => {}
                 authorization_policy::Target::HttpRoute(_) => {
-                    // Policies which target HttpRoutes will be attached to
+                    // Policies which target routes will be attached to
                     // the route authorizations and should not be included in
                     // the server authorizations.
                     continue;
@@ -1654,7 +1655,14 @@ impl PolicyIndex {
         for (name, spec) in &self.authorization_policies {
             // Skip the policy if it doesn't apply to the route.
             match &spec.target {
-                authorization_policy::Target::HttpRoute(n) if n.eq_ignore_ascii_case(gkn) => {}
+                authorization_policy::Target::HttpRoute(n) if n.eq_ignore_ascii_case(gkn) => {
+                    tracing::trace!(
+                        ns = %self.namespace,
+                        authorizationpolicy = %name,
+                        route = ?gkn,
+                        "AuthorizationPolicy targets HttpRoute",
+                    );
+                }
                 _ => {
                     tracing::trace!(
                         ns = %self.namespace,
@@ -1667,12 +1675,6 @@ impl PolicyIndex {
                 }
             }
 
-            tracing::trace!(
-                ns = %self.namespace,
-                authorizationpolicy = %name,
-                route = ?gkn,
-                "AuthorizationPolicy targets HttpRoute",
-            );
             tracing::trace!(authns = ?spec.authentications);
 
             let authz = match self.policy_client_authz(spec, authentications) {
@@ -1700,7 +1702,7 @@ impl PolicyIndex {
         server_name: &str,
         authentications: &AuthenticationNsIndex,
         probe_paths: impl Iterator<Item = &'p str>,
-    ) -> HashMap<HttpRouteRef, HttpRoute> {
+    ) -> HashMap<RouteRef, HttpRoute> {
         let routes = self
             .http_routes
             .iter()
@@ -1709,7 +1711,7 @@ impl PolicyIndex {
             .map(|(gkn, route)| {
                 let mut route = route.route.clone();
                 route.authorizations = self.route_client_authzs(gkn, authentications);
-                (HttpRouteRef::Linkerd(gkn.clone()), route)
+                (RouteRef::Resource(gkn.clone()), route)
             })
             .collect::<HashMap<_, _>>();
         if !routes.is_empty() {
@@ -1823,7 +1825,7 @@ impl PolicyIndex {
         })
     }
 
-    fn update_http_route(&mut self, gkn: GroupKindName, route: RouteBinding) -> bool {
+    fn update_http_route(&mut self, gkn: GroupKindName, route: RouteBinding<HttpRoute>) -> bool {
         match self.http_routes.entry(gkn) {
             Entry::Vacant(entry) => {
                 entry.insert(route);
@@ -1911,13 +1913,13 @@ impl ClusterInfo {
     fn default_inbound_http_routes<'p>(
         &self,
         probe_paths: impl Iterator<Item = &'p str>,
-    ) -> HashMap<HttpRouteRef, HttpRoute> {
+    ) -> HashMap<RouteRef, HttpRoute> {
         let mut routes = HashMap::with_capacity(2);
 
         // If no routes are defined for the server, use a default route that
         // matches all requests. Default authorizations are instrumented on
         // the server.
-        routes.insert(HttpRouteRef::Default("default"), HttpRoute::default());
+        routes.insert(RouteRef::Default("default"), HttpRoute::default());
 
         // If there are no probe networks, there are no probe routes to
         // authorize.
@@ -1958,14 +1960,14 @@ impl ClusterInfo {
 
         let probe_route = HttpRoute {
             hostnames: Vec::new(),
-            rules: vec![HttpRouteRule {
+            rules: vec![InboundRouteRule {
                 matches,
                 filters: Vec::new(),
             }],
             authorizations,
             creation_timestamp: None,
         };
-        routes.insert(HttpRouteRef::Default("probe"), probe_route);
+        routes.insert(RouteRef::Default("probe"), probe_route);
 
         routes
     }
