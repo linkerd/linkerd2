@@ -552,7 +552,7 @@ impl Namespace {
             .map(convert_linkerd_filter)
             .collect::<Result<_>>()?;
 
-        timeouts.stream = timeouts.stream.or_else(|| {
+        timeouts.request = timeouts.request.or_else(|| {
             rule.timeouts.as_ref().and_then(|timeouts| {
                 let timeout = time::Duration::from(timeouts.request?);
 
@@ -1001,8 +1001,8 @@ fn parse_timeouts(
         .get("timeout.linkerd.io/response")
         .map(|s| parse_duration(s))
         .transpose()?;
-    let stream = annotations
-        .get("timeout.linkerd.io/stream")
+    let request = annotations
+        .get("timeout.linkerd.io/request")
         .map(|s| parse_duration(s))
         .transpose()?;
     let idle = annotations
@@ -1011,7 +1011,7 @@ fn parse_timeouts(
         .transpose()?;
     Ok(RouteTimeouts {
         response,
-        stream,
+        request,
         idle,
     })
 }

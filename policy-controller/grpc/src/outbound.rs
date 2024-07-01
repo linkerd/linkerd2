@@ -377,11 +377,11 @@ fn convert_outbound_http_route(
                     backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
                     filters: filters.into_iter().map(convert_to_http_filter).collect(),
                     request_timeout: timeouts
-                        .stream
+                        .request
                         .and_then(|d| convert_duration("request timeout", d)),
                     timeouts: Some(api::http_route::Timeouts {
                         stream: timeouts
-                            .stream
+                            .request
                             .and_then(|d| convert_duration("stream timeout", d)),
                         idle: timeouts
                             .idle

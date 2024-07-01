@@ -117,7 +117,7 @@ pub enum Filter {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RouteTimeouts {
     pub response: Option<time::Duration>,
-    pub stream: Option<time::Duration>,
+    pub request: Option<time::Duration>,
     pub idle: Option<time::Duration>,
 }
 
