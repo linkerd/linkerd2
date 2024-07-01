@@ -17,7 +17,6 @@ spec:
     listKind: ExternalWorkloadList
     plural: externalworkloads
     singular: externalworkload
-    shortNames: []
   scope: Namespaced
   versions:
   - name: v1alpha1

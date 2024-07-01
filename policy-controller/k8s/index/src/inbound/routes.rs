@@ -34,13 +34,13 @@ pub enum ConditionType {
 
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum InvalidParentRef {
-    #[error("HTTPRoute resource may not reference a parent Server in an other namespace")]
+    #[error("route resource may not reference a parent Server in an other namespace")]
     ServerInAnotherNamespace,
 
-    #[error("HTTPRoute resource may not reference a parent by port")]
+    #[error("route resource may not reference a parent by port")]
     SpecifiesPort,
 
-    #[error("HTTPRoute resource may not reference a parent by section name")]
+    #[error("route resource may not reference a parent by section name")]
     SpecifiesSection,
 }
 

@@ -30,12 +30,12 @@ mod conditions {
     pub const RESOLVED_REFS: &str = "ResolvedRefs";
     pub const ACCEPTED: &str = "Accepted";
 }
-
 mod reasons {
     pub const RESOLVED_REFS: &str = "ResolvedRefs";
     pub const BACKEND_NOT_FOUND: &str = "BackendNotFound";
     pub const INVALID_KIND: &str = "InvalidKind";
     pub const NO_MATCHING_PARENT: &str = "NoMatchingParent";
+    pub const ROUTE_REASON_CONFLICTED: &str = "RouteReasonConflicted";
 }
 
 mod cond_statuses {
@@ -360,13 +360,24 @@ impl Index {
 
     fn parent_status(
         &self,
+        id: &NamespaceGroupKindName,
         parent_ref: &routes::ParentReference,
         backend_condition: k8s_core_api::Condition,
     ) -> Option<k8s_gateway_api::RouteParentStatus> {
         match parent_ref {
             routes::ParentReference::Server(server) => {
                 let condition = if self.servers.contains(server) {
-                    accepted()
+                    // If this route is an HTTPRoute and there exists a GRPCRoute
+                    // with the same parent, the HTTPRoute should not be accepted
+                    // because it is less specific.
+                    // https://gateway-api.sigs.k8s.io/geps/gep-1426/#route-types
+                    if id.gkn.kind == k8s_gateway_api::HttpRoute::kind(&())
+                        && self.parent_has_grpcroute_children(parent_ref)
+                    {
+                        route_conflicted()
+                    } else {
+                        accepted()
+                    }
                 } else {
                     no_matching_parent()
                 };
@@ -391,7 +402,17 @@ impl Index {
                     .get(service)
                     .map_or(false, |svc| svc.valid_parent_service())
                 {
-                    accepted()
+                    // If this route is an HTTPRoute and there exists a GRPCRoute
+                    // with the same parent, the HTTPRoute should not be accepted
+                    // because it is less specific.
+                    // https://gateway-api.sigs.k8s.io/geps/gep-1426/#route-types
+                    if id.gkn.kind == k8s_gateway_api::HttpRoute::kind(&())
+                        && self.parent_has_grpcroute_children(parent_ref)
+                    {
+                        route_conflicted()
+                    } else {
+                        accepted()
+                    }
                 } else {
                     no_matching_parent()
                 };
@@ -411,6 +432,13 @@ impl Index {
             }
             routes::ParentReference::UnknownKind => None,
         }
+    }
+
+    fn parent_has_grpcroute_children(&self, parent_ref: &routes::ParentReference) -> bool {
+        self.route_refs.iter().any(|(id, route)| {
+            id.gkn.kind == k8s_gateway_api::GrpcRoute::kind(&())
+                && route.parents.contains(parent_ref)
+        })
     }
 
     fn backend_condition(
@@ -456,7 +484,7 @@ impl Index {
         let parent_statuses = route
             .parents
             .iter()
-            .filter_map(|parent_ref| self.parent_status(parent_ref, backend_condition.clone()));
+            .filter_map(|parent_ref| self.parent_status(id, parent_ref, backend_condition.clone()));
 
         let all_statuses = unowned_statuses.chain(parent_statuses).collect::<Vec<_>>();
 
@@ -785,22 +813,7 @@ impl Index {
             return;
         }
 
-        // Create a patch for the route and send it to the Controller so
-        // that it is applied.
-        if let Some(patch) = self.make_route_patch(&id, &route) {
-            match self.updates.try_send(Update {
-                id: id.clone(),
-                patch,
-            }) {
-                Ok(()) => {
-                    self.metrics.patch_enqueues.inc();
-                }
-                Err(error) => {
-                    self.metrics.patch_channel_full.inc();
-                    tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send route patch");
-                }
-            }
-        }
+        self.reconcile()
     }
 }
 
@@ -843,6 +856,17 @@ fn no_matching_parent() -> k8s_core_api::Condition {
         message: "".to_string(),
         observed_generation: None,
         reason: reasons::NO_MATCHING_PARENT.to_string(),
+        status: cond_statuses::STATUS_FALSE.to_string(),
+        type_: conditions::ACCEPTED.to_string(),
+    }
+}
+
+fn route_conflicted() -> k8s_core_api::Condition {
+    k8s_core_api::Condition {
+        last_transition_time: k8s_core_api::Time(now()),
+        message: "".to_string(),
+        observed_generation: None,
+        reason: reasons::ROUTE_REASON_CONFLICTED.to_string(),
         status: cond_statuses::STATUS_FALSE.to_string(),
         type_: conditions::ACCEPTED.to_string(),
     }
