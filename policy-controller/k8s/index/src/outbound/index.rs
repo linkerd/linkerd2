@@ -14,7 +14,8 @@ use linkerd_policy_controller_core::{
 };
 use linkerd_policy_controller_k8s_api::{
     gateway::{self as k8s_gateway_api, BackendObjectReference, HttpBackendRef, ParentReference},
-    policy as linkerd_k8s_api, ResourceExt, Service, Time,
+    policy as linkerd_k8s_api, traffic_group as linkerd_k8s_multicluster, ResourceExt, Service,
+    Time,
 };
 use parking_lot::RwLock;
 use std::{hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time};
@@ -37,6 +38,12 @@ pub struct ServiceRef {
     pub namespace: String,
 }
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct TrafficGroupRef {
+    pub name: String,
+    pub namespace: String,
+}
+
 /// Holds all `Pod`, `Server`, and `ServerAuthorization` indices by-namespace.
 #[derive(Debug)]
 struct NamespaceIndex {
@@ -53,6 +60,7 @@ struct Namespace {
     /// Stores the route resources (by service name) that do not
     /// explicitly target a port.
     service_routes: HashMap<String, OutboundRouteCollection>,
+    traffic_groups: HashMap<String, TrafficGroupRef>,
     namespace: Arc<String>,
 }
 
@@ -85,6 +93,46 @@ struct RoutesWatch {
     accrual: Option<FailureAccrual>,
     routes: OutboundRouteCollection,
     watch: watch::Sender<OutboundPolicy>,
+}
+
+impl kubert::index::IndexNamespacedResource<linkerd_k8s_multicluster::TrafficGroup> for Index {
+    fn apply(&mut self, group: linkerd_k8s_multicluster::TrafficGroup) {
+        let name = group.name_unchecked();
+        let ns = group
+            .namespace()
+            .expect("TrafficGroup must have a namespace");
+        // Index a TrafficGroup resource
+        for parent_ref in group.spec.parent_refs {
+            if !is_parent_service(&parent_ref) {
+                continue;
+            }
+            // Force parentRef to be in the same namespace as the traffic group
+            // for now.
+            self.namespaces
+                .by_ns
+                .entry(ns.clone())
+                .or_insert_with(|| Namespace {
+                    namespace: Arc::new(ns.clone()),
+                    service_routes: HashMap::new(),
+                    traffic_groups: HashMap::new(),
+                    service_port_routes: HashMap::new(),
+                })
+                .traffic_groups
+                .insert(
+                    parent_ref.name,
+                    TrafficGroupRef {
+                        name: name.clone(),
+                        namespace: ns.clone(),
+                    },
+                );
+        }
+
+        tracing::info!(%name, %ns, "index traffic group");
+    }
+
+    fn delete(&mut self, _: String, _: String) {
+        tracing::info!("delete not yet implemented for TrafficGroup");
+    }
 }
 
 impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::HttpRoute> for Index {
@@ -165,6 +213,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             .or_insert_with(|| Namespace {
                 service_routes: Default::default(),
                 service_port_routes: Default::default(),
+                traffic_groups: Default::default(),
                 namespace: Arc::new(ns),
             })
             .update_service(service.name_unchecked(), &service_info);
@@ -215,6 +264,7 @@ impl Index {
             .entry(service_namespace.clone())
             .or_insert_with(|| Namespace {
                 namespace: Arc::new(service_namespace.to_string()),
+                traffic_groups: Default::default(),
                 service_routes: Default::default(),
                 service_port_routes: Default::default(),
             });
@@ -260,6 +310,7 @@ impl Index {
                 .entry(ns.clone())
                 .or_insert_with(|| Namespace {
                     namespace: Arc::new(ns),
+                    traffic_groups: Default::default(),
                     service_routes: Default::default(),
                     service_port_routes: Default::default(),
                 })

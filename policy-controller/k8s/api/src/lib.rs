@@ -5,6 +5,7 @@ pub mod duration;
 pub mod external_workload;
 pub mod labels;
 pub mod policy;
+pub mod traffic_group;
 
 pub use self::labels::Labels;
 pub use k8s_gateway_api as gateway;
