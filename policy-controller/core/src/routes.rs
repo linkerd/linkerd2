@@ -6,7 +6,7 @@ pub use http::{
     Method, StatusCode,
 };
 use regex::Regex;
-use std::{borrow::Cow, num::NonZeroU16};
+use std::{borrow::Cow, num::NonZeroU16, time};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct GroupKindName {
@@ -72,6 +72,12 @@ pub struct HttpRouteMatch {
     pub method: Option<Method>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GrpcRouteMatch {
+    pub headers: Vec<HeaderMatch>,
+    pub method: Option<GrpcMethodMatch>,
+}
+
 #[derive(Clone, Debug)]
 pub enum PathMatch {
     Exact(String),
@@ -89,6 +95,37 @@ pub enum HeaderMatch {
 pub enum QueryParamMatch {
     Exact(String, String),
     Regex(String, Regex),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RouteTimeouts {
+    pub response: Option<time::Duration>,
+    pub request: Option<time::Duration>,
+    pub idle: Option<time::Duration>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RouteRetry<R> {
+    pub limit: u16,
+    pub timeout: Option<time::Duration>,
+    pub conditions: Option<R>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum HttpRetryConditions {
+    ServerError,
+    GatewayError,
+}
+
+pub enum GrpcRetryConditions {
+    Internal,
+    Cancalled,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GrpcMethodMatch {
+    pub method: Option<String>,
+    pub service: Option<String>,
 }
 
 // === impl GroupKindName ===

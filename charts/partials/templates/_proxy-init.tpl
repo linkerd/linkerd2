@@ -46,7 +46,7 @@ args:
 image: {{.Values.proxyInit.image.name}}:{{.Values.proxyInit.image.version}}
 imagePullPolicy: {{.Values.proxyInit.image.pullPolicy | default .Values.imagePullPolicy}}
 name: linkerd-init
-{{ include "partials.resources" .Values.proxyInit.resources }}
+{{ include "partials.resources" .Values.proxy.resources }}
 securityContext:
   {{- if or .Values.proxyInit.closeWaitTimeoutSecs .Values.proxyInit.privileged }}
   allowPrivilegeEscalation: true

@@ -26,9 +26,9 @@ pub enum AuthorizationRef {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum HttpRouteRef {
+pub enum RouteRef {
     Default(&'static str),
-    Linkerd(GroupKindName),
+    Resource(GroupKindName),
 }
 
 /// Describes how a proxy should handle inbound connections.
@@ -89,13 +89,15 @@ pub struct InboundServer {
 
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
-    pub http_routes: HashMap<HttpRouteRef, HttpRoute>,
+    pub http_routes: HashMap<RouteRef, InboundRoute<HttpRouteMatch>>,
 }
 
+pub type HttpRoute = InboundRoute<HttpRouteMatch>;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HttpRoute {
+pub struct InboundRoute<M> {
     pub hostnames: Vec<HostMatch>,
-    pub rules: Vec<HttpRouteRule>,
+    pub rules: Vec<InboundRouteRule<M>>,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
 
     /// This is required for ordering returned `HttpRoute`s by their creation
@@ -104,8 +106,8 @@ pub struct HttpRoute {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HttpRouteRule {
-    pub matches: Vec<HttpRouteMatch>,
+pub struct InboundRouteRule<M> {
+    pub matches: Vec<M>,
     pub filters: Vec<Filter>,
 }
 
@@ -117,15 +119,15 @@ pub enum Filter {
     FailureInjector(FailureInjectorFilter),
 }
 
-// === impl InboundHttpRoute ===
+// === impl InboundRoute ===
 
-/// The default `InboundHttpRoute` used for any `InboundServer` that
+/// The default `InboundRoute` used for any `InboundServer` that
 /// does not have routes.
-impl Default for HttpRoute {
+impl Default for InboundRoute<HttpRouteMatch> {
     fn default() -> Self {
         Self {
             hostnames: vec![],
-            rules: vec![HttpRouteRule {
+            rules: vec![InboundRouteRule {
                 matches: vec![HttpRouteMatch {
                     path: Some(PathMatch::Prefix("/".to_string())),
                     headers: vec![],
@@ -145,20 +147,20 @@ impl Default for HttpRoute {
 
 // === impl InboundHttpRouteRef ===
 
-impl Ord for HttpRouteRef {
+impl Ord for RouteRef {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
             (Self::Default(a), Self::Default(b)) => a.cmp(b),
-            (Self::Linkerd(a), Self::Linkerd(b)) => a.cmp(b),
+            (Self::Resource(a), Self::Resource(b)) => a.cmp(b),
             // Route resources are always preferred over default resources, so they should sort
             // first in a list.
-            (Self::Linkerd(_), Self::Default(_)) => std::cmp::Ordering::Less,
-            (Self::Default(_), Self::Linkerd(_)) => std::cmp::Ordering::Greater,
+            (Self::Resource(_), Self::Default(_)) => std::cmp::Ordering::Less,
+            (Self::Default(_), Self::Resource(_)) => std::cmp::Ordering::Greater,
         }
     }
 }
 
-impl PartialOrd for HttpRouteRef {
+impl PartialOrd for RouteRef {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }

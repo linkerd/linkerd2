@@ -1,8 +1,10 @@
-use crate::{routes, workload};
+extern crate http as http_crate;
+
+use crate::workload;
 use futures::prelude::*;
-use itertools::Itertools;
+use http_crate::uri::Authority;
 use linkerd2_proxy_api::{
-    self as api, destination,
+    self as api,
     meta::{metadata, Metadata},
     outbound::{
         self,
@@ -11,13 +13,15 @@ use linkerd2_proxy_api::{
 };
 use linkerd_policy_controller_core::{
     outbound::{
-        Backend, DiscoverOutboundPolicy, Filter, HttpRetryConditions, OutboundDiscoverTarget,
-        OutboundPolicy, OutboundPolicyStream, OutboundRoute, OutboundRouteCollection,
-        OutboundRouteRule,
+        DiscoverOutboundPolicy, OutboundDiscoverTarget, OutboundPolicy, OutboundPolicyStream,
+        OutboundRoute,
     },
-    routes::{GroupKindNamespaceName, HttpRouteMatch},
+    routes::GroupKindNamespaceName,
 };
-use std::{net::SocketAddr, num::NonZeroU16, str::FromStr, sync::Arc, time};
+use std::{num::NonZeroU16, str::FromStr, sync::Arc, time};
+
+mod grpc;
+mod http;
 
 #[derive(Clone, Debug)]
 pub struct OutboundPolicyServer<T> {
@@ -87,7 +91,7 @@ where
         authority: &str,
     ) -> Result<(String, String, NonZeroU16), tonic::Status> {
         let auth = authority
-            .parse::<http::uri::Authority>()
+            .parse::<Authority>()
             .map_err(|_| tonic::Status::invalid_argument("invalid authority"))?;
 
         let mut host = auth.host();
@@ -201,7 +205,7 @@ fn response_stream(drain: drain::Watch, mut rx: OutboundPolicyStream) -> BoxWatc
 }
 
 fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
-    let backend = default_backend(&outbound);
+    let backend: outbound::Backend = default_backend(&outbound);
 
     let kind = if outbound.opaque {
         outbound::proxy_protocol::Kind::Opaque(outbound::proxy_protocol::Opaque {
@@ -226,55 +230,15 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
             }),
         });
 
-        match outbound.routes {
-            OutboundRouteCollection::Empty => {
-                let routes = vec![default_outbound_http_route(backend.clone())];
+        let mut http_routes = outbound.http_routes.into_iter().collect::<Vec<_>>();
+        let mut grpc_routes = outbound.grpc_routes.into_iter().collect::<Vec<_>>();
 
-                outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
-                    timeout: Some(
-                        time::Duration::from_secs(10)
-                            .try_into()
-                            .expect("failed to convert detect timeout to protobuf"),
-                    ),
-                    opaque: Some(outbound::proxy_protocol::Opaque {
-                        routes: vec![default_outbound_opaq_route(backend)],
-                    }),
-                    http1: Some(outbound::proxy_protocol::Http1 {
-                        routes: routes.clone(),
-                        failure_accrual: accrual.clone(),
-                    }),
-                    http2: Some(outbound::proxy_protocol::Http2 {
-                        routes,
-                        failure_accrual: accrual,
-                    }),
-                })
-            }
-            OutboundRouteCollection::Http(routes) => {
-                let routes = routes
-                    .into_iter()
-                    .sorted_by(timestamp_then_name)
-                    .map(|(gknn, route)| convert_outbound_http_route(gknn, route, backend.clone()))
-                    .collect::<Vec<_>>();
-
-                outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
-                    timeout: Some(
-                        time::Duration::from_secs(10)
-                            .try_into()
-                            .expect("failed to convert detect timeout to protobuf"),
-                    ),
-                    opaque: Some(outbound::proxy_protocol::Opaque {
-                        routes: vec![default_outbound_opaq_route(backend)],
-                    }),
-                    http1: Some(outbound::proxy_protocol::Http1 {
-                        routes: routes.clone(),
-                        failure_accrual: accrual.clone(),
-                    }),
-                    http2: Some(outbound::proxy_protocol::Http2 {
-                        routes,
-                        failure_accrual: accrual,
-                    }),
-                })
-            }
+        if !grpc_routes.is_empty() {
+            grpc_routes.sort_by(timestamp_then_name);
+            grpc::protocol(backend, grpc_routes.into_iter(), accrual)
+        } else {
+            http_routes.sort_by(timestamp_then_name);
+            http::protocol(backend, http_routes.into_iter(), accrual)
         }
     };
 
@@ -295,9 +259,9 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
     }
 }
 
-fn timestamp_then_name<MatchType>(
-    (left_id, left_route): &(GroupKindNamespaceName, OutboundRoute<MatchType>),
-    (right_id, right_route): &(GroupKindNamespaceName, OutboundRoute<MatchType>),
+fn timestamp_then_name<LM, LR, RM, RR>(
+    (left_id, left_route): &(GroupKindNamespaceName, OutboundRoute<LM, LR>),
+    (right_id, right_route): &(GroupKindNamespaceName, OutboundRoute<RM, RR>),
 ) -> std::cmp::Ordering {
     let by_ts = match (
         &left_route.creation_timestamp,
@@ -311,235 +275,6 @@ fn timestamp_then_name<MatchType>(
     };
 
     by_ts.then_with(|| left_id.name.cmp(&right_id.name))
-}
-
-fn convert_outbound_http_route(
-    gknn: GroupKindNamespaceName,
-    OutboundRoute {
-        hostnames,
-        rules,
-        creation_timestamp: _,
-    }: OutboundRoute<HttpRouteMatch>,
-    backend: outbound::Backend,
-) -> outbound::HttpRoute {
-    // This encoder sets deprecated timeouts for older proxies.
-    #![allow(deprecated)]
-
-    let metadata = Some(Metadata {
-        kind: Some(metadata::Kind::Resource(api::meta::Resource {
-            group: gknn.group.to_string(),
-            kind: gknn.kind.to_string(),
-            namespace: gknn.namespace.to_string(),
-            name: gknn.name.to_string(),
-            ..Default::default()
-        })),
-    });
-
-    let hosts = hostnames
-        .into_iter()
-        .map(routes::convert_host_match)
-        .collect();
-
-    let rules = rules
-        .into_iter()
-        .map(
-            |OutboundRouteRule {
-                 matches,
-                 backends,
-                 retry,
-                 timeouts,
-                 filters,
-             }| {
-                let backends = backends
-                    .into_iter()
-                    .map(convert_http_backend)
-                    .collect::<Vec<_>>();
-                let dist = if backends.is_empty() {
-                    outbound::http_route::distribution::Kind::FirstAvailable(
-                        outbound::http_route::distribution::FirstAvailable {
-                            backends: vec![outbound::http_route::RouteBackend {
-                                backend: Some(backend.clone()),
-                                filters: vec![],
-                                ..Default::default()
-                            }],
-                        },
-                    )
-                } else {
-                    outbound::http_route::distribution::Kind::RandomAvailable(
-                        outbound::http_route::distribution::RandomAvailable { backends },
-                    )
-                };
-                outbound::http_route::Rule {
-                    matches: matches
-                        .into_iter()
-                        .map(routes::http::convert_match)
-                        .collect(),
-                    backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
-                    filters: filters.into_iter().map(convert_to_http_filter).collect(),
-                    request_timeout: timeouts
-                        .request
-                        .and_then(|d| convert_duration("request timeout", d)),
-                    timeouts: Some(api::http_route::Timeouts {
-                        stream: timeouts
-                            .request
-                            .and_then(|d| convert_duration("stream timeout", d)),
-                        idle: timeouts
-                            .idle
-                            .and_then(|d| convert_duration("idle timeout", d)),
-                        response: timeouts
-                            .response
-                            .and_then(|d| convert_duration("response timeout", d)),
-                    }),
-                    retry: retry.map(|r| outbound::http_route::Retry {
-                        max_retries: r.limit.into(),
-                        max_request_bytes: 64 * 1024,
-                        backoff: Some(outbound::ExponentialBackoff {
-                            min_backoff: Some(time::Duration::from_millis(25).try_into().unwrap()),
-                            max_backoff: Some(time::Duration::from_millis(250).try_into().unwrap()),
-                            jitter_ratio: 1.0,
-                        }),
-                        conditions: r
-                            .conditions
-                            .map(|c| outbound::http_route::retry::Conditions {
-                                status_ranges: match c {
-                                    HttpRetryConditions::ServerError => {
-                                        vec![outbound::http_route::retry::conditions::StatusRange {
-                                            start: 500,
-                                            end: 599,
-                                        }]
-                                    }
-                                    HttpRetryConditions::GatewayError => {
-                                        vec![outbound::http_route::retry::conditions::StatusRange {
-                                            start: 502,
-                                            end: 504,
-                                        }]
-                                    }
-                                },
-                            }),
-                        timeout: r.timeout.and_then(|d| convert_duration("retry timeout", d)),
-                    }),
-                }
-            },
-        )
-        .collect();
-
-    outbound::HttpRoute {
-        metadata,
-        hosts,
-        rules,
-    }
-}
-
-fn convert_http_backend(backend: Backend) -> outbound::http_route::WeightedRouteBackend {
-    match backend {
-        Backend::Addr(addr) => {
-            let socket_addr = SocketAddr::new(addr.addr, addr.port.get());
-            outbound::http_route::WeightedRouteBackend {
-                weight: addr.weight,
-                backend: Some(outbound::http_route::RouteBackend {
-                    backend: Some(outbound::Backend {
-                        metadata: None,
-                        queue: Some(default_queue_config()),
-                        kind: Some(outbound::backend::Kind::Forward(
-                            destination::WeightedAddr {
-                                addr: Some(socket_addr.into()),
-                                weight: addr.weight,
-                                ..Default::default()
-                            },
-                        )),
-                    }),
-                    filters: Default::default(),
-                    ..Default::default()
-                }),
-            }
-        }
-        Backend::Service(svc) => {
-            if svc.exists {
-                let filters = svc
-                    .filters
-                    .into_iter()
-                    .map(convert_to_http_filter)
-                    .collect();
-                outbound::http_route::WeightedRouteBackend {
-                    weight: svc.weight,
-                    backend: Some(outbound::http_route::RouteBackend {
-                        backend: Some(outbound::Backend {
-                            metadata: Some(Metadata {
-                                kind: Some(metadata::Kind::Resource(api::meta::Resource {
-                                    group: "core".to_string(),
-                                    kind: "Service".to_string(),
-                                    name: svc.name,
-                                    namespace: svc.namespace,
-                                    section: Default::default(),
-                                    port: u16::from(svc.port).into(),
-                                })),
-                            }),
-                            queue: Some(default_queue_config()),
-                            kind: Some(outbound::backend::Kind::Balancer(
-                                outbound::backend::BalanceP2c {
-                                    discovery: Some(outbound::backend::EndpointDiscovery {
-                                        kind: Some(outbound::backend::endpoint_discovery::Kind::Dst(
-                                            outbound::backend::endpoint_discovery::DestinationGet {
-                                                path: svc.authority,
-                                            },
-                                        )),
-                                    }),
-                                    load: Some(default_balancer_config()),
-                                },
-                            )),
-                        }),
-                        filters,
-                        ..Default::default()
-                    }),
-                }
-            } else {
-                outbound::http_route::WeightedRouteBackend {
-                    weight: svc.weight,
-                    backend: Some(outbound::http_route::RouteBackend {
-                        backend: Some(outbound::Backend {
-                            metadata: Some(Metadata {
-                                kind: Some(metadata::Kind::Default("invalid".to_string())),
-                            }),
-                            queue: Some(default_queue_config()),
-                            kind: None,
-                        }),
-                        filters: vec![outbound::http_route::Filter {
-                            kind: Some(outbound::http_route::filter::Kind::FailureInjector(
-                                api::http_route::HttpFailureInjector {
-                                    status: 500,
-                                    message: format!("Service not found {}", svc.name),
-                                    ratio: None,
-                                },
-                            )),
-                        }],
-                        ..Default::default()
-                    }),
-                }
-            }
-        }
-        Backend::Invalid { weight, message } => outbound::http_route::WeightedRouteBackend {
-            weight,
-            backend: Some(outbound::http_route::RouteBackend {
-                backend: Some(outbound::Backend {
-                    metadata: Some(Metadata {
-                        kind: Some(metadata::Kind::Default("invalid".to_string())),
-                    }),
-                    queue: Some(default_queue_config()),
-                    kind: None,
-                }),
-                filters: vec![outbound::http_route::Filter {
-                    kind: Some(outbound::http_route::filter::Kind::FailureInjector(
-                        api::http_route::HttpFailureInjector {
-                            status: 500,
-                            message,
-                            ratio: None,
-                        },
-                    )),
-                }],
-                ..Default::default()
-            }),
-        },
-    }
 }
 
 fn default_backend(outbound: &OutboundPolicy) -> outbound::Backend {
@@ -567,37 +302,6 @@ fn default_backend(outbound: &OutboundPolicy) -> outbound::Backend {
                 load: Some(default_balancer_config()),
             },
         )),
-    }
-}
-
-fn default_outbound_http_route(backend: outbound::Backend) -> outbound::HttpRoute {
-    let metadata = Some(Metadata {
-        kind: Some(metadata::Kind::Default("http".to_string())),
-    });
-    let rules = vec![outbound::http_route::Rule {
-        matches: vec![api::http_route::HttpRouteMatch {
-            path: Some(api::http_route::PathMatch {
-                kind: Some(api::http_route::path_match::Kind::Prefix("/".to_string())),
-            }),
-            ..Default::default()
-        }],
-        backends: Some(outbound::http_route::Distribution {
-            kind: Some(outbound::http_route::distribution::Kind::FirstAvailable(
-                outbound::http_route::distribution::FirstAvailable {
-                    backends: vec![outbound::http_route::RouteBackend {
-                        backend: Some(backend),
-                        filters: vec![],
-                        ..Default::default()
-                    }],
-                },
-            )),
-        }),
-        ..Default::default()
-    }];
-    outbound::HttpRoute {
-        metadata,
-        rules,
-        ..Default::default()
     }
 }
 
@@ -645,30 +349,14 @@ fn default_queue_config() -> outbound::Queue {
     }
 }
 
-fn convert_duration(name: &'static str, duration: time::Duration) -> Option<prost_types::Duration> {
+pub(crate) fn convert_duration(
+    name: &'static str,
+    duration: time::Duration,
+) -> Option<prost_types::Duration> {
     duration
         .try_into()
         .map_err(|error| {
             tracing::error!(%error, "Invalid {name} duration");
         })
         .ok()
-}
-
-fn convert_to_http_filter(filter: Filter) -> outbound::http_route::Filter {
-    use outbound::http_route::filter::Kind;
-
-    outbound::http_route::Filter {
-        kind: Some(match filter {
-            Filter::RequestHeaderModifier(f) => {
-                Kind::RequestHeaderModifier(routes::convert_request_header_modifier_filter(f))
-            }
-            Filter::ResponseHeaderModifier(f) => {
-                Kind::ResponseHeaderModifier(routes::convert_response_header_modifier_filter(f))
-            }
-            Filter::RequestRedirect(f) => Kind::Redirect(routes::convert_redirect_filter(f)),
-            Filter::FailureInjector(f) => {
-                Kind::FailureInjector(routes::http::convert_failure_injector_filter(f))
-            }
-        }),
-    }
 }
