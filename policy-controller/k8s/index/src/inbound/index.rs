@@ -380,13 +380,12 @@ impl Index {
         self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_grpc_route(gkn, route_binding))
     }
 
+    #[tracing::instrument(skip_all)]
     fn reset_grpc_route(
         &mut self,
         routes: Vec<k8s_gateway_api::GrpcRoute>,
         deleted: HashMap<String, HashSet<String>>,
     ) {
-        let _span = info_span!("gprcroute reset").entered();
-
         // Aggregate all of the updates by namespace so that we only reindex
         // once per namespace.
         type Ns = NsUpdate<GroupKindName, RouteBinding<GrpcRoute>>;
