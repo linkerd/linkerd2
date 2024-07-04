@@ -54,7 +54,7 @@ impl Selector {
         }
     }
 
-    fn from_map(map: Map) -> Self {
+    pub fn from_map(map: Map) -> Self {
         Self {
             match_labels: Some(map),
             match_expressions: None,

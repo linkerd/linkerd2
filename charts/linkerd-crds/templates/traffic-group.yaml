@@ -77,9 +77,18 @@ spec:
               strategy:
                 type: string
                 description: How routing should work for the given group
-              clusters:
+              subsets:
                 type: array
                 items:
-                  type: string
+                  type: object
+                  description: A subset entry
+                  properties:
+                    name:
+                      type: string
+                    labels:
+                      additionalProperties:
+                        type: string
+                        maxLength: 63
+                      type: object
 
 

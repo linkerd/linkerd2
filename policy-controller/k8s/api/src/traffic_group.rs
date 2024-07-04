@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use k8s_gateway_api::ParentReference;
 use kube::CustomResource;
 use schemars::JsonSchema;
@@ -14,5 +16,11 @@ pub struct TrafficGroupSpec {
     #[serde(rename = "parentRefs")]
     pub parent_refs: Vec<ParentReference>,
     pub strategy: String,
-    pub clusters: Vec<String>,
+    pub subsets: Vec<TrafficSubset>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct TrafficSubset {
+    pub name: String,
+    pub labels: BTreeMap<String, String>,
 }

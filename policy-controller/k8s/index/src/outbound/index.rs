@@ -14,6 +14,7 @@ use linkerd_policy_controller_core::{
 };
 use linkerd_policy_controller_k8s_api::{
     gateway::{self as k8s_gateway_api, BackendObjectReference, HttpBackendRef, ParentReference},
+    labels::Selector,
     policy as linkerd_k8s_api, traffic_group as linkerd_k8s_multicluster, ResourceExt, Service,
     Time,
 };
@@ -60,7 +61,8 @@ struct Namespace {
     /// Stores the route resources (by service name) that do not
     /// explicitly target a port.
     service_routes: HashMap<String, OutboundRouteCollection>,
-    traffic_groups: HashMap<String, TrafficGroupRef>,
+    /// Index all traffic groups in a namespace
+    traffic_groups: HashMap<String, TrafficSubsets>,
     namespace: Arc<String>,
 }
 
@@ -68,6 +70,12 @@ struct Namespace {
 struct ServiceInfo {
     opaque_ports: PortSet,
     accrual: Option<FailureAccrual>,
+}
+
+#[derive(Debug, Default, Clone)]
+struct TrafficSubsets {
+    name: String,
+    selectors: HashMap<String, Selector>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -101,6 +109,20 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_multicluster::TrafficGro
         let ns = group
             .namespace()
             .expect("TrafficGroup must have a namespace");
+
+        // Parse label selector from each subset
+        let selectors = group
+            .spec
+            .subsets
+            .into_iter()
+            .map(|subset| (subset.name, Selector::from_map(subset.labels)))
+            .collect::<HashMap<String, Selector>>();
+        // Create TrafficGroup
+        let t_group = TrafficSubsets {
+            name: name.clone(),
+            selectors,
+        };
+
         // Index a TrafficGroup resource
         for parent_ref in group.spec.parent_refs {
             if !is_parent_service(&parent_ref) {
@@ -118,13 +140,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_multicluster::TrafficGro
                     service_port_routes: HashMap::new(),
                 })
                 .traffic_groups
-                .insert(
-                    parent_ref.name,
-                    TrafficGroupRef {
-                        name: name.clone(),
-                        namespace: ns.clone(),
-                    },
-                );
+                .insert(parent_ref.name, t_group.clone());
         }
 
         tracing::info!(%name, %ns, "index traffic group");
