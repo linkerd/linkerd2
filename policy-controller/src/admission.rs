@@ -11,6 +11,7 @@ use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_core as core;
+use linkerd_policy_controller_k8s_api::gateway::{self as k8s_gateway_api, GrpcRoute};
 use linkerd_policy_controller_k8s_index as index;
 use serde::de::DeserializeOwned;
 use std::task;
@@ -125,6 +126,10 @@ impl Admission {
             return self.admit_spec::<k8s_gateway_api::HttpRouteSpec>(req).await;
         }
 
+        if is_kind::<k8s_gateway_api::GrpcRoute>(&req) {
+            return self.admit_spec::<k8s_gateway_api::GrpcRouteSpec>(req).await;
+        }
+
         AdmissionResponse::invalid(format_args!(
             "unsupported resource type: {}.{}.{}",
             req.kind.group, req.kind.version, req.kind.kind
@@ -204,6 +209,10 @@ fn validate_policy_target(ns: &str, tgt: &LocalTargetRef) -> Result<()> {
     }
 
     if tgt.targets_kind::<HttpRoute>() {
+        return Ok(());
+    }
+
+    if tgt.targets_kind::<GrpcRoute>() {
         return Ok(());
     }
 
@@ -439,6 +448,8 @@ impl Validate<ServerAuthorizationSpec> for Admission {
     }
 }
 
+use index::routes::http as http_route;
+
 fn validate_match(
     httproute::HttpRouteMatch {
         path,
@@ -571,6 +582,76 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
 
             for f in filters.into_iter().flatten() {
                 validate_filter(f)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Validate<k8s_gateway_api::GrpcRouteSpec> for Admission {
+    async fn validate(
+        self,
+        _ns: &str,
+        _name: &str,
+        spec: k8s_gateway_api::GrpcRouteSpec,
+    ) -> Result<()> {
+        fn validate_filter(filter: k8s_gateway_api::GrpcRouteFilter) -> Result<()> {
+            match filter {
+                k8s_gateway_api::GrpcRouteFilter::RequestHeaderModifier {
+                    request_header_modifier,
+                } => http_route::header_modifier(request_header_modifier).map(|_| ()),
+                k8s_gateway_api::GrpcRouteFilter::ResponseHeaderModifier {
+                    response_header_modifier,
+                } => http_route::header_modifier(response_header_modifier).map(|_| ()),
+                k8s_gateway_api::GrpcRouteFilter::RequestMirror { .. } => Ok(()),
+                k8s_gateway_api::GrpcRouteFilter::ExtensionRef { .. } => Ok(()),
+            }
+        }
+
+        fn validate_match_rule(
+            k8s_gateway_api::GrpcRouteMatch { method, headers }: k8s_gateway_api::GrpcRouteMatch,
+        ) -> Result<()> {
+            if let Some(method_match) = method {
+                let (method_name, service_name) = match method_match {
+                    k8s_gateway_api::GrpcMethodMatch::Exact { method, service } => {
+                        (method, service)
+                    }
+                    k8s_gateway_api::GrpcMethodMatch::RegularExpression { method, service } => {
+                        (method, service)
+                    }
+                };
+
+                if method_name.as_deref().map(str::is_empty).unwrap_or(true)
+                    && service_name.as_deref().map(str::is_empty).unwrap_or(true)
+                {
+                    bail!("at least one of GrpcMethodMatch.Service and GrpcMethodMatch.Method MUST be a non-empty string")
+                }
+            }
+
+            for rule in headers.into_iter().flatten() {
+                http_route::header_match(rule)?;
+            }
+
+            Ok(())
+        }
+
+        // Validate the rules in this spec.
+        // This is essentially just a check to ensure that none
+        // of the rules are improperly constructed (e.g. include
+        // a `GrpcMethodMatch` rule where neither `method.method`
+        // nor `method.service` actually contain a value)
+        for k8s_gateway_api::GrpcRouteRule {
+            filters, matches, ..
+        } in spec.rules.into_iter().flatten()
+        {
+            for rule in matches.into_iter().flatten() {
+                validate_match_rule(rule)?;
+            }
+
+            for filter in filters.into_iter().flatten() {
+                validate_filter(filter)?;
             }
         }
 

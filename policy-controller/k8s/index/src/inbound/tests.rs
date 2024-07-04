@@ -1,5 +1,6 @@
 mod annotation;
 mod authorization_policy;
+mod grpc_routes;
 mod http_routes;
 mod server_authorization;
 
@@ -13,8 +14,8 @@ use ahash::AHashMap as HashMap;
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::{
     inbound::{
-        AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRoute, HttpRouteRef,
-        InboundServer, ProxyProtocol, ServerRef,
+        AuthorizationRef, ClientAuthentication, ClientAuthorization, GrpcRoute, HttpRoute,
+        InboundServer, ProxyProtocol, RouteRef, ServerRef,
     },
     IdentityMatch, IpNet, Ipv4Net, Ipv6Net, NetworkMatch,
 };
@@ -181,8 +182,14 @@ fn mk_default_policy(
     .collect()
 }
 
-fn mk_default_routes() -> HashMap<HttpRouteRef, HttpRoute> {
-    Some((HttpRouteRef::Default("default"), HttpRoute::default()))
+fn mk_default_http_routes() -> HashMap<RouteRef, HttpRoute> {
+    Some((RouteRef::Default("default"), HttpRoute::default()))
+        .into_iter()
+        .collect()
+}
+
+fn mk_default_grpc_routes() -> HashMap<RouteRef, GrpcRoute> {
+    Some((RouteRef::Default("default"), GrpcRoute::default()))
         .into_iter()
         .collect()
 }
@@ -226,7 +233,8 @@ impl TestConfig {
             protocol: ProxyProtocol::Detect {
                 timeout: self.detect_timeout,
             },
-            http_routes: mk_default_routes(),
+            http_routes: mk_default_http_routes(),
+            grpc_routes: Default::default(),
         }
     }
 

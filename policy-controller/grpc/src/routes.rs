@@ -1,8 +1,10 @@
 use linkerd2_proxy_api::{http_route as proto, http_types};
 use linkerd_policy_controller_core::routes::{
-    FailureInjectorFilter, HeaderMatch, HeaderModifierFilter, HostMatch, HttpRouteMatch, PathMatch,
-    PathModifier, QueryParamMatch, RequestRedirectFilter,
+    HeaderModifierFilter, HostMatch, PathModifier, RequestRedirectFilter,
 };
+
+pub(crate) mod grpc;
+pub(crate) mod http;
 
 pub(crate) fn convert_host_match(h: HostMatch) -> proto::HostMatch {
     proto::HostMatch {
@@ -89,80 +91,5 @@ pub(crate) fn convert_redirect_filter(
         }),
         port: port.map(u16::from).map(u32::from).unwrap_or_default(),
         status: u32::from(status.unwrap_or_default().as_u16()),
-    }
-}
-
-pub(crate) mod http {
-    use super::{
-        proto, FailureInjectorFilter, HeaderMatch, HttpRouteMatch, PathMatch, QueryParamMatch,
-    };
-
-    pub(crate) fn convert_match(
-        HttpRouteMatch {
-            headers,
-            path,
-            query_params,
-            method,
-        }: HttpRouteMatch,
-    ) -> proto::HttpRouteMatch {
-        let headers = headers
-            .into_iter()
-            .map(|hm| match hm {
-                HeaderMatch::Exact(name, value) => proto::HeaderMatch {
-                    name: name.to_string(),
-                    value: Some(proto::header_match::Value::Exact(value.as_bytes().to_vec())),
-                },
-                HeaderMatch::Regex(name, re) => proto::HeaderMatch {
-                    name: name.to_string(),
-                    value: Some(proto::header_match::Value::Regex(re.to_string())),
-                },
-            })
-            .collect();
-
-        let path = path.map(|path| proto::PathMatch {
-            kind: Some(match path {
-                PathMatch::Exact(path) => proto::path_match::Kind::Exact(path),
-                PathMatch::Prefix(prefix) => proto::path_match::Kind::Prefix(prefix),
-                PathMatch::Regex(regex) => proto::path_match::Kind::Regex(regex.to_string()),
-            }),
-        });
-
-        let query_params = query_params
-            .into_iter()
-            .map(|qpm| match qpm {
-                QueryParamMatch::Exact(name, value) => proto::QueryParamMatch {
-                    name,
-                    value: Some(proto::query_param_match::Value::Exact(value)),
-                },
-                QueryParamMatch::Regex(name, re) => proto::QueryParamMatch {
-                    name,
-                    value: Some(proto::query_param_match::Value::Regex(re.to_string())),
-                },
-            })
-            .collect();
-
-        proto::HttpRouteMatch {
-            headers,
-            path,
-            query_params,
-            method: method.map(Into::into),
-        }
-    }
-
-    pub(crate) fn convert_failure_injector_filter(
-        FailureInjectorFilter {
-            status,
-            message,
-            ratio,
-        }: FailureInjectorFilter,
-    ) -> proto::HttpFailureInjector {
-        proto::HttpFailureInjector {
-            status: u32::from(status.as_u16()),
-            message,
-            ratio: Some(proto::Ratio {
-                numerator: ratio.numerator,
-                denominator: ratio.denominator,
-            }),
-        }
     }
 }

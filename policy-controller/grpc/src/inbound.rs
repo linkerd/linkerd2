@@ -1,4 +1,4 @@
-use crate::{routes, workload::Workload};
+use crate::workload::Workload;
 use futures::prelude::*;
 use linkerd2_proxy_api::{
     self as api,
@@ -10,15 +10,17 @@ use linkerd2_proxy_api::{
 };
 use linkerd_policy_controller_core::{
     inbound::{
-        AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer, Filter,
-        HttpRoute, HttpRouteRef, HttpRouteRule, InboundServer, InboundServerStream, ProxyProtocol,
-        ServerRef,
+        AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer,
+        InboundServer, InboundServerStream, ProxyProtocol, ServerRef,
     },
     IdentityMatch, IpNet, NetworkMatch,
 };
 use maplit::*;
 use std::{num::NonZeroU16, str::FromStr, sync::Arc};
 use tracing::trace;
+
+mod grpc;
+mod http;
 
 #[derive(Clone, Debug)]
 pub struct InboundPolicyServer<T> {
@@ -144,21 +146,23 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
             ProxyProtocol::Detect { timeout } => Some(proto::proxy_protocol::Kind::Detect(
                 proto::proxy_protocol::Detect {
                     timeout: timeout.try_into().map_err(|error| tracing::warn!(%error, "failed to convert protocol detect timeout to protobuf")).ok(),
-                    http_routes: to_http_route_list(&srv.http_routes, cluster_networks),
+                    http_routes: http::to_route_list(&srv.http_routes, cluster_networks),
                 },
             )),
             ProxyProtocol::Http1 => Some(proto::proxy_protocol::Kind::Http1(
                 proto::proxy_protocol::Http1 {
-                    routes: to_http_route_list(&srv.http_routes, cluster_networks),
+                    routes: http::to_route_list(&srv.http_routes, cluster_networks),
                 },
             )),
             ProxyProtocol::Http2 => Some(proto::proxy_protocol::Kind::Http2(
                 proto::proxy_protocol::Http2 {
-                    routes: to_http_route_list(&srv.http_routes, cluster_networks),
+                    routes: http::to_route_list(&srv.http_routes, cluster_networks),
                 },
             )),
             ProxyProtocol::Grpc => Some(proto::proxy_protocol::Kind::Grpc(
-                proto::proxy_protocol::Grpc::default(),
+                proto::proxy_protocol::Grpc {
+                    routes: grpc::to_route_list(&srv.grpc_routes, cluster_networks),
+                },
             )),
             ProxyProtocol::Opaque => Some(proto::proxy_protocol::Kind::Opaque(
                 proto::proxy_protocol::Opaque {},
@@ -322,108 +326,4 @@ fn to_authz(
         networks,
         authentication: Some(authn),
     }
-}
-
-fn to_http_route_list<'r>(
-    routes: impl IntoIterator<Item = (&'r HttpRouteRef, &'r HttpRoute)>,
-    cluster_networks: &[IpNet],
-) -> Vec<proto::HttpRoute> {
-    // Per the Gateway API spec:
-    //
-    // > If ties still exist across multiple Routes, matching precedence MUST be
-    // > determined in order of the following criteria, continuing on ties:
-    // >
-    // >    The oldest Route based on creation timestamp.
-    // >    The Route appearing first in alphabetical order by
-    // >   "{namespace}/{name}".
-    //
-    // Note that we don't need to include the route's namespace in this
-    // comparison, because all these routes will exist in the same
-    // namespace.
-    let mut route_list = routes.into_iter().collect::<Vec<_>>();
-    route_list.sort_by(|(a_ref, a), (b_ref, b)| {
-        let by_ts = match (&a.creation_timestamp, &b.creation_timestamp) {
-            (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
-            (None, None) => std::cmp::Ordering::Equal,
-            // Routes with timestamps are preferred over routes without.
-            (Some(_), None) => return std::cmp::Ordering::Less,
-            (None, Some(_)) => return std::cmp::Ordering::Greater,
-        };
-        by_ts.then_with(|| a_ref.cmp(b_ref))
-    });
-
-    route_list
-        .into_iter()
-        .map(|(route_ref, route)| to_http_route(route_ref, route.clone(), cluster_networks))
-        .collect()
-}
-
-fn to_http_route(
-    reference: &HttpRouteRef,
-    HttpRoute {
-        hostnames,
-        rules,
-        authorizations,
-        creation_timestamp: _,
-    }: HttpRoute,
-    cluster_networks: &[IpNet],
-) -> proto::HttpRoute {
-    let metadata = Metadata {
-        kind: Some(match reference {
-            HttpRouteRef::Default(name) => metadata::Kind::Default(name.to_string()),
-            HttpRouteRef::Linkerd(gkn) => metadata::Kind::Resource(api::meta::Resource {
-                group: gkn.group.to_string(),
-                kind: gkn.kind.to_string(),
-                name: gkn.name.to_string(),
-                ..Default::default()
-            }),
-        }),
-    };
-
-    let hosts = hostnames
-        .into_iter()
-        .map(routes::convert_host_match)
-        .collect();
-
-    let rules = rules
-        .into_iter()
-        .map(
-            |HttpRouteRule { matches, filters }| proto::http_route::Rule {
-                matches: matches
-                    .into_iter()
-                    .map(routes::http::convert_match)
-                    .collect(),
-                filters: filters.into_iter().filter_map(convert_filter).collect(),
-            },
-        )
-        .collect();
-
-    let authorizations = authorizations
-        .iter()
-        .map(|(n, c)| to_authz(n, c, cluster_networks))
-        .collect();
-
-    proto::HttpRoute {
-        metadata: Some(metadata),
-        hosts,
-        rules,
-        authorizations,
-    }
-}
-
-fn convert_filter(filter: Filter) -> Option<proto::http_route::Filter> {
-    use proto::http_route::filter::Kind;
-
-    let kind = match filter {
-        Filter::FailureInjector(f) => Some(Kind::FailureInjector(
-            routes::http::convert_failure_injector_filter(f),
-        )),
-        Filter::RequestHeaderModifier(f) => Some(Kind::RequestHeaderModifier(
-            routes::convert_request_header_modifier_filter(f),
-        )),
-        Filter::ResponseHeaderModifier(_) => None,
-        Filter::RequestRedirect(f) => Some(Kind::Redirect(routes::convert_redirect_filter(f))),
-    };
-
-    kind.map(|kind| proto::http_route::Filter { kind: Some(kind) })
 }
