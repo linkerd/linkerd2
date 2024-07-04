@@ -1,0 +1,12 @@
+apiVersion: multicluster.linkerd.io/v1alpha1
+kind: TrafficGroup
+metadata:
+  name: example
+  namespace: default
+spec:
+  parentRefs:
+  - name: nginx
+  subsets:
+    - name: east
+      labels:
+        multicluster.linkerd.io/remote-discovery: east

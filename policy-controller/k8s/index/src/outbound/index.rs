@@ -73,6 +73,7 @@ struct ServiceInfo {
 }
 
 #[derive(Debug, Default, Clone)]
+#[allow(dead_code)]
 struct TrafficSubsets {
     name: String,
     selectors: HashMap<String, Selector>,
