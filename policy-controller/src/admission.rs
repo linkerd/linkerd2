@@ -11,7 +11,7 @@ use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_core as core;
-use linkerd_policy_controller_k8s_api::gateway::{self as k8s_gateway_api};
+use linkerd_policy_controller_k8s_api::gateway::{self as k8s_gateway_api, GrpcRoute};
 use linkerd_policy_controller_k8s_index as index;
 use serde::de::DeserializeOwned;
 use std::task;
@@ -209,6 +209,10 @@ fn validate_policy_target(ns: &str, tgt: &LocalTargetRef) -> Result<()> {
     }
 
     if tgt.targets_kind::<HttpRoute>() {
+        return Ok(());
+    }
+
+    if tgt.targets_kind::<GrpcRoute>() {
         return Ok(());
     }
 

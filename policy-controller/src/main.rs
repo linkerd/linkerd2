@@ -263,6 +263,7 @@ async fn main() -> Result<()> {
     let gateway_grpc_routes =
         runtime.watch_all::<k8s_gateway_api::GrpcRoute>(watcher::Config::default());
     let gateway_grpc_routes_indexes = IndexList::new(outbound_index.clone())
+        .push(inbound_index.clone())
         .push(status_index.clone())
         .shared();
     tokio::spawn(

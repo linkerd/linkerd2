@@ -19,8 +19,8 @@ use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     inbound::{
-        AuthorizationRef, ClientAuthentication, ClientAuthorization, HttpRoute, InboundRouteRule,
-        InboundServer, ProxyProtocol, RouteRef, ServerRef,
+        AuthorizationRef, ClientAuthentication, ClientAuthorization, GrpcRoute, HttpRoute,
+        InboundRouteRule, InboundServer, ProxyProtocol, RouteRef, ServerRef,
     },
     routes::{GroupKindName, HttpRouteMatch, Method, PathMatch},
     IdentityMatch, Ipv4Net, Ipv6Net, NetworkMatch,
@@ -38,6 +38,7 @@ use std::{
 use tokio::sync::watch;
 use tracing::info_span;
 
+mod grpc;
 mod http;
 pub mod metrics;
 
@@ -162,6 +163,7 @@ struct PolicyIndex {
 
     authorization_policies: HashMap<String, authorization_policy::Spec>,
     http_routes: HashMap<GroupKindName, RouteBinding<HttpRoute>>,
+    grpc_routes: HashMap<GroupKindName, RouteBinding<GrpcRoute>>,
 }
 
 #[derive(Debug, Default)]
@@ -359,6 +361,91 @@ impl Index {
     fn delete_http_route(&mut self, ns: String, gkn: GroupKindName) {
         let _span = info_span!("delete httproute", %ns, route = ?gkn).entered();
         self.ns_with_reindex(ns, |ns| ns.policy.http_routes.remove(&gkn).is_some())
+    }
+
+    fn apply_grpc_route(&mut self, route: k8s_gateway_api::GrpcRoute) {
+        let ns = route.namespace().expect("GrpcRoute must have a namespace");
+        let name = route.name_unchecked();
+        let gkn = route.gkn();
+        let _span = info_span!("apply grpcroute", %ns, %name).entered();
+
+        let route_binding = match route.try_into() {
+            Ok(binding) => binding,
+            Err(error) => {
+                tracing::info!(%ns, %name, %error, "Ignoring GrpcRoute");
+                return;
+            }
+        };
+
+        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_grpc_route(gkn, route_binding))
+    }
+
+    #[tracing::instrument(skip_all)]
+    fn reset_grpc_route(
+        &mut self,
+        routes: Vec<k8s_gateway_api::GrpcRoute>,
+        deleted: HashMap<String, HashSet<String>>,
+    ) {
+        // Aggregate all of the updates by namespace so that we only reindex
+        // once per namespace.
+        type Ns = NsUpdate<GroupKindName, RouteBinding<GrpcRoute>>;
+        let mut updates_by_ns = HashMap::<String, Ns>::default();
+        for route in routes.into_iter() {
+            let namespace = route.namespace().expect("GrpcRoute must be namespaced");
+            let name = route.name_unchecked();
+            let gkn = route.gkn();
+            let route_binding = match route.try_into() {
+                Ok(binding) => binding,
+                Err(error) => {
+                    tracing::info!(ns = %namespace, %name, %error, "Ignoring GrpcRoute");
+                    continue;
+                }
+            };
+            updates_by_ns
+                .entry(namespace)
+                .or_default()
+                .added
+                .push((gkn, route_binding));
+        }
+        for (ns, names) in deleted.into_iter() {
+            let removed = names
+                .into_iter()
+                .map(|name| name.gkn::<k8s_gateway_api::GrpcRoute>())
+                .collect();
+            updates_by_ns.entry(ns).or_default().removed = removed;
+        }
+
+        for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
+            if added.is_empty() {
+                // If there are no live resources in the namespace, we do not
+                // want to create a default namespace instance, we just want to
+                // clear out all resources for the namespace (and then drop the
+                // whole namespace, if necessary).
+                self.ns_with_reindex(namespace, |ns| {
+                    ns.policy.grpc_routes.clear();
+                    true
+                });
+            } else {
+                // Otherwise, we take greater care to reindex only when the
+                // state actually changed. The vast majority of resets will see
+                // no actual data change.
+                self.ns_or_default_with_reindex(namespace, |ns| {
+                    let mut changed = !removed.is_empty();
+                    for gkn in removed.into_iter() {
+                        ns.policy.grpc_routes.remove(&gkn);
+                    }
+                    for (gkn, route_binding) in added.into_iter() {
+                        changed = ns.policy.update_grpc_route(gkn, route_binding) || changed;
+                    }
+                    changed
+                });
+            }
+        }
+    }
+
+    fn delete_grpc_route(&mut self, ns: String, gkn: GroupKindName) {
+        let _span = info_span!("delete grpcroute", %ns, route = ?gkn).entered();
+        self.ns_with_reindex(ns, |ns| ns.policy.grpc_routes.remove(&gkn).is_some())
     }
 }
 
@@ -887,6 +974,25 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
     }
 }
 
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Index {
+    fn apply(&mut self, route: k8s_gateway_api::GrpcRoute) {
+        self.apply_grpc_route(route)
+    }
+
+    fn delete(&mut self, ns: String, name: String) {
+        let gkn = name.gkn::<k8s_gateway_api::GrpcRoute>();
+        self.delete_grpc_route(ns, gkn)
+    }
+
+    fn reset(
+        &mut self,
+        routes: Vec<k8s_gateway_api::GrpcRoute>,
+        deleted: HashMap<String, HashSet<String>>,
+    ) {
+        self.reset_grpc_route(routes, deleted)
+    }
+}
+
 // === impl NemspaceIndex ===
 
 impl NamespaceIndex {
@@ -954,6 +1060,7 @@ impl Namespace {
                 server_authorizations: HashMap::default(),
                 authorization_policies: HashMap::default(),
                 http_routes: HashMap::default(),
+                grpc_routes: HashMap::default(),
             },
         }
     }
@@ -1555,6 +1662,7 @@ impl PolicyIndex {
             protocol,
             authorizations,
             http_routes,
+            grpc_routes: HashMap::default(),
         }
     }
 
@@ -1568,12 +1676,14 @@ impl PolicyIndex {
         tracing::trace!(%name, ?server, "Creating inbound server");
         let authorizations = self.client_authzs(&name, server, authentications);
         let http_routes = self.http_routes(&name, authentications, probe_paths);
+        let grpc_routes = self.grpc_routes(&name, authentications);
 
         InboundServer {
             reference: ServerRef::Server(name),
             authorizations,
             protocol: server.protocol.clone(),
             http_routes,
+            grpc_routes,
         }
     }
 
@@ -1609,7 +1719,8 @@ impl PolicyIndex {
                     }
                 }
                 authorization_policy::Target::Namespace => {}
-                authorization_policy::Target::HttpRoute(_) => {
+                authorization_policy::Target::HttpRoute(_)
+                | authorization_policy::Target::GrpcRoute(_) => {
                     // Policies which target routes will be attached to
                     // the route authorizations and should not be included in
                     // the server authorizations.
@@ -1661,6 +1772,14 @@ impl PolicyIndex {
                         authorizationpolicy = %name,
                         route = ?gkn,
                         "AuthorizationPolicy targets HttpRoute",
+                    );
+                }
+                authorization_policy::Target::GrpcRoute(n) if n.eq_ignore_ascii_case(gkn) => {
+                    tracing::trace!(
+                        ns = %self.namespace,
+                        authorizationpolicy = %name,
+                        route = ?gkn,
+                        "AuthorizationPolicy targets GrpcRoute",
                     );
                 }
                 _ => {
@@ -1718,6 +1837,28 @@ impl PolicyIndex {
             return routes;
         }
         self.cluster_info.default_inbound_http_routes(probe_paths)
+    }
+
+    fn grpc_routes(
+        &self,
+        server_name: &str,
+        authentications: &AuthenticationNsIndex,
+    ) -> HashMap<RouteRef, GrpcRoute> {
+        let routes = self
+            .grpc_routes
+            .iter()
+            .filter(|(_, route)| route.selects_server(server_name))
+            .filter(|(_, route)| route.accepted_by_server(server_name))
+            .map(|(gkn, route)| {
+                let mut route = route.route.clone();
+                route.authorizations = self.route_client_authzs(gkn, authentications);
+                (RouteRef::Resource(gkn.clone()), route)
+            })
+            .collect::<HashMap<_, _>>();
+        if !routes.is_empty() {
+            return routes;
+        }
+        [(RouteRef::Default("default"), GrpcRoute::default())].into()
     }
 
     fn policy_client_authz(
@@ -1827,6 +1968,21 @@ impl PolicyIndex {
 
     fn update_http_route(&mut self, gkn: GroupKindName, route: RouteBinding<HttpRoute>) -> bool {
         match self.http_routes.entry(gkn) {
+            Entry::Vacant(entry) => {
+                entry.insert(route);
+            }
+            Entry::Occupied(mut entry) => {
+                if *entry.get() == route {
+                    return false;
+                }
+                entry.insert(route);
+            }
+        }
+        true
+    }
+
+    fn update_grpc_route(&mut self, gkn: GroupKindName, route: RouteBinding<GrpcRoute>) -> bool {
+        match self.grpc_routes.entry(gkn) {
             Entry::Vacant(entry) => {
                 entry.insert(route);
             }
