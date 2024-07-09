@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 pub struct TrafficGroupSpec {
     #[serde(rename = "parentRefs")]
     pub parent_refs: Vec<ParentReference>,
-    pub strategy: String,
+    pub strategy: Option<String>,
     pub subsets: Vec<TrafficSubset>,
 }
 

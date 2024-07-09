@@ -6,15 +6,18 @@ use crate::{
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
 use linkerd_policy_controller_core::{
-    outbound::{Backend, Backoff, FailureAccrual, OutboundPolicy, OutboundRoute, RouteSet},
+    outbound::{
+        Backend, Backoff, FailureAccrual, OutboundPolicy, OutboundRoute, RouteSet, TrafficGroup,
+        TrafficSubsetRef,
+    },
     routes::{GroupKindNamespaceName, GrpcRouteMatch, HttpRouteMatch},
 };
 use linkerd_policy_controller_k8s_api::{
-    gateway::{self as k8s_gateway_api, BackendObjectReference, HttpBackendRef, ParentReference},
     gateway::{self as k8s_gateway_api, ParentReference},
     labels::Selector,
-    policy as linkerd_k8s_api, policy as linkerd_k8s_api,
-    traffic_group as linkerd_k8s_multicluster, ResourceExt, ResourceExt, Service, Service, Time,
+    policy as linkerd_k8s_api,
+    traffic_group::{self as linkerd_k8s_multicluster},
+    Labels, ResourceExt, Service,
 };
 use parking_lot::RwLock;
 use std::{hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time};
@@ -39,12 +42,6 @@ pub struct ServiceRef {
     pub namespace: String,
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct TrafficGroupRef {
-    pub name: String,
-    pub namespace: String,
-}
-
 /// Holds all `Pod`, `Server`, and `ServerAuthorization` indices by-namespace.
 #[derive(Debug)]
 struct NamespaceIndex {
@@ -58,10 +55,11 @@ struct Namespace {
     /// as well as any route resources in the cluster that specify
     /// a port.
     service_port_routes: HashMap<ServicePort, ServiceRoutes>,
-    /// Index all traffic groups in a namespace
-    traffic_groups: HashMap<String, TrafficSubsets>,
     service_http_routes: HashMap<String, RouteSet<HttpRouteMatch>>,
     service_grpc_routes: HashMap<String, RouteSet<GrpcRouteMatch>>,
+    /// Index all traffic groups in a namespace. Stores a handle to a traffic subset for each
+    /// service. This applies for subsets that directly reference a service.
+    traffic_groups: HashMap<ServiceRef, TrafficSubset>,
     namespace: Arc<String>,
 }
 
@@ -69,13 +67,13 @@ struct Namespace {
 struct ServiceInfo {
     opaque_ports: PortSet,
     accrual: Option<FailureAccrual>,
+    labels: Labels,
 }
 
-#[derive(Debug, Default, Clone)]
-#[allow(dead_code)]
-struct TrafficSubsets {
-    name: String,
-    selectors: HashMap<String, Selector>,
+#[derive(Clone, Debug, Default)]
+struct TrafficSubset {
+    subsets: Vec<ServiceRef>,
+    strategy: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -93,12 +91,14 @@ struct ServiceRoutes {
     watches_by_ns: HashMap<String, RoutesWatch>,
     opaque: bool,
     accrual: Option<FailureAccrual>,
+    traffic_group: TrafficGroup,
 }
 
 #[derive(Debug)]
 struct RoutesWatch {
     opaque: bool,
     accrual: Option<FailureAccrual>,
+    traffic_group: TrafficGroup,
     http_routes: RouteSet<HttpRouteMatch>,
     grpc_routes: RouteSet<GrpcRouteMatch>,
     watch: watch::Sender<OutboundPolicy>,
@@ -111,6 +111,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_multicluster::TrafficGro
             .namespace()
             .expect("TrafficGroup must have a namespace");
 
+        tracing::info!(%name, %ns, "index traffic group");
         // Parse label selector from each subset
         let selectors = group
             .spec
@@ -118,11 +119,42 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_multicluster::TrafficGro
             .into_iter()
             .map(|subset| (subset.name, Selector::from_map(subset.labels)))
             .collect::<HashMap<String, Selector>>();
-        // Create TrafficGroup
-        let t_group = TrafficSubsets {
-            name: name.clone(),
-            selectors,
+        let strategy = group.spec.strategy;
+        // Find all backends that apply. NOTE: if we do this, it means whenever a new service is
+        // added, we have to check if it matches a backend somewhere, i.e. 2 way relationship
+        let mut backends = Vec::new();
+        for (backend_name, selector) in &selectors {
+            tracing::info!(%backend_name, "adding backend to subsets");
+            // For now, take just one. We have to be careful since a bad label selector may select
+            // more than one service.
+            let svc_match = self
+                .service_info
+                .iter()
+                .filter(|(svc_ref, _)| &svc_ref.namespace == &ns)
+                .filter(|(_svc_ref, svc_info)| selector.matches(&svc_info.labels))
+                .nth(0)
+                .map(|(svc_ref, _svc_info)| svc_ref);
+            if let Some(svc_ref) = svc_match {
+                backends.push(svc_ref.clone());
+            }
+        }
+
+        let traffic_subsets = TrafficSubset {
+            subsets: backends,
+            strategy,
         };
+
+        let ns_entry = self
+            .namespaces
+            .by_ns
+            .entry(ns.clone())
+            .or_insert_with(|| Namespace {
+                namespace: Arc::new(ns.clone()),
+                traffic_groups: HashMap::new(),
+                service_port_routes: HashMap::new(),
+                service_http_routes: Default::default(),
+                service_grpc_routes: Default::default(),
+            });
 
         // Index a TrafficGroup resource
         for parent_ref in group.spec.parent_refs {
@@ -131,20 +163,21 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_multicluster::TrafficGro
             }
             // Force parentRef to be in the same namespace as the traffic group
             // for now.
-            self.namespaces
-                .by_ns
-                .entry(ns.clone())
-                .or_insert_with(|| Namespace {
-                    namespace: Arc::new(ns.clone()),
-                    service_routes: HashMap::new(),
-                    traffic_groups: HashMap::new(),
-                    service_port_routes: HashMap::new(),
-                })
+            let svc_ref = ServiceRef {
+                name: parent_ref.name,
+                namespace: ns.clone(),
+            };
+            ns_entry
                 .traffic_groups
-                .insert(parent_ref.name, t_group.clone());
+                .insert(svc_ref.clone(), traffic_subsets.clone());
+            if let Some(svc) = self.service_info.get(&svc_ref) {
+                tracing::info!("triggering a service update");
+                ns_entry.update_service(svc_ref.name.clone(), svc, &self.namespaces.cluster_info);
+            }
         }
 
-        tracing::info!(%name, %ns, "index traffic group");
+        tracing::info!("triggering a re-index");
+        self.reindex_services()
     }
 
     fn delete(&mut self, _: String, _: String) {
@@ -234,12 +267,8 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             }
         }
 
-        let service_info = ServiceInfo {
-            opaque_ports,
-            accrual,
-        };
-
-        self.namespaces
+        let entry = self
+            .namespaces
             .by_ns
             .entry(ns.clone())
             .or_insert_with(|| Namespace {
@@ -247,9 +276,21 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                 service_grpc_routes: Default::default(),
                 service_port_routes: Default::default(),
                 traffic_groups: Default::default(),
-                namespace: Arc::new(ns),
-            })
-            .update_service(service.name_unchecked(), &service_info);
+                namespace: Arc::new(ns.clone()),
+            });
+
+        let service_info = ServiceInfo {
+            opaque_ports,
+            accrual,
+            labels: Labels::from(service.labels().clone()),
+        };
+
+        tracing::info!("service {}/{} updated; triggering update", &name, &ns);
+        entry.update_service(
+            service.name_unchecked(),
+            &service_info,
+            &self.namespaces.cluster_info,
+        );
 
         self.service_info.insert(
             ServiceRef {
@@ -310,6 +351,7 @@ impl Index {
 
         tracing::debug!(?key, "subscribing to service port");
 
+        //
         let routes =
             ns.service_routes_or_default(key, &self.namespaces.cluster_info, &self.service_info);
 
@@ -384,6 +426,7 @@ impl Index {
                     service_http_routes: Default::default(),
                     service_grpc_routes: Default::default(),
                     service_port_routes: Default::default(),
+                    traffic_groups: Default::default(),
                 })
                 .apply_grpc_route(
                     route.clone(),
@@ -552,9 +595,13 @@ impl Namespace {
         }
     }
 
-    fn update_service(&mut self, name: String, service: &ServiceInfo) {
+    fn update_service(&mut self, name: String, service: &ServiceInfo, cluster_info: &ClusterInfo) {
         tracing::debug!(?name, ?service, "updating service");
 
+        let svc_ref = ServiceRef {
+            name: name.clone(),
+            namespace: self.namespace.to_string(),
+        };
         for (svc_port, svc_routes) in self.service_port_routes.iter_mut() {
             if svc_port.service != name {
                 continue;
@@ -562,7 +609,37 @@ impl Namespace {
 
             let opaque = service.opaque_ports.contains(&svc_port.port);
 
-            svc_routes.update_service(opaque, service.accrual);
+            // Construct a subset ref from each ServiceRef
+            // ignore accrual for now
+            let traffic_group = self
+                .traffic_groups
+                .get(&svc_ref)
+                .map(|v| v.to_owned())
+                .unwrap_or_default();
+            let subsets = traffic_group
+                .subsets
+                .into_iter()
+                .map(|svc_ref| TrafficSubsetRef {
+                    name: svc_ref.name.clone(),
+                    namespace: svc_ref.namespace.clone(),
+                    authority: cluster_info.service_dns_authority(
+                        &svc_ref.namespace,
+                        &svc_ref.name,
+                        svc_port.port,
+                    ),
+                    port: svc_port.port,
+                    failure_accrual: None,
+                })
+                .collect::<Vec<_>>();
+            tracing::info!(
+                "updating service with {} new traffic subsets",
+                subsets.len()
+            );
+            let traffic_group = TrafficGroup {
+                subsets,
+                strategy: traffic_group.strategy.clone(),
+            };
+            svc_routes.update_service(opaque, service.accrual, traffic_group);
         }
     }
 
@@ -623,10 +700,42 @@ impl Namespace {
                     .cloned()
                     .unwrap_or_default();
 
+                // Construct a subset ref from each ServiceRef
+                // ignore accrual for now
+                tracing::info!(
+                    "establishing watch, got {} traffic groups indexed",
+                    self.traffic_groups.len()
+                );
+                let traffic_subsets = self
+                    .traffic_groups
+                    .get(&service_ref)
+                    .map(|v| v.to_owned())
+                    .unwrap_or_default();
+                let subsets = traffic_subsets
+                    .subsets
+                    .into_iter()
+                    .map(|svc_ref| TrafficSubsetRef {
+                        name: svc_ref.name.clone(),
+                        namespace: svc_ref.namespace.clone(),
+                        authority: cluster.service_dns_authority(
+                            &svc_ref.namespace,
+                            &svc_ref.name,
+                            sp.port,
+                        ),
+                        port: sp.port,
+                        failure_accrual: None,
+                    })
+                    .collect::<Vec<_>>();
+                tracing::info!("establishing watch, got {} subsets", subsets.len());
+                let traffic_group = TrafficGroup {
+                    subsets,
+                    strategy: traffic_subsets.strategy,
+                };
                 let mut service_routes = ServiceRoutes {
                     opaque,
                     accrual,
                     authority,
+                    traffic_group,
                     port: sp.port,
                     name: sp.service,
                     namespace: self.namespace.clone(),
@@ -768,6 +877,7 @@ impl ServiceRoutes {
                 name: self.name.to_string(),
                 authority: self.authority.clone(),
                 namespace: self.namespace.to_string(),
+                traffic_group: self.traffic_group.clone(),
             });
 
             RoutesWatch {
@@ -776,6 +886,7 @@ impl ServiceRoutes {
                 watch: sender,
                 opaque: self.opaque,
                 accrual: self.accrual,
+                traffic_group: self.traffic_group.clone(),
             }
         })
     }
@@ -832,12 +943,19 @@ impl ServiceRoutes {
         }
     }
 
-    fn update_service(&mut self, opaque: bool, accrual: Option<FailureAccrual>) {
+    fn update_service(
+        &mut self,
+        opaque: bool,
+        accrual: Option<FailureAccrual>,
+        traffic_group: TrafficGroup,
+    ) {
         self.opaque = opaque;
         self.accrual = accrual;
+        self.traffic_group = traffic_group.clone();
         for watch in self.watches_by_ns.values_mut() {
             watch.opaque = opaque;
             watch.accrual = accrual;
+            watch.traffic_group = traffic_group.clone();
             watch.send_if_modified();
         }
     }
@@ -877,6 +995,11 @@ impl RoutesWatch {
 
             if self.accrual != policy.accrual {
                 policy.accrual = self.accrual;
+                modified = true;
+            }
+
+            if self.traffic_group != policy.traffic_group {
+                policy.traffic_group = self.traffic_group.clone();
                 modified = true;
             }
 

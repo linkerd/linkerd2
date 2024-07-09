@@ -39,6 +39,14 @@ pub struct OutboundPolicy {
     pub port: NonZeroU16,
     pub opaque: bool,
     pub accrual: Option<FailureAccrual>,
+    // For now just keep the authority
+    pub traffic_group: TrafficGroup,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TrafficGroup {
+    pub subsets: Vec<TrafficSubsetRef>,
+    pub strategy: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -83,6 +91,15 @@ pub struct WeightedService {
     pub port: NonZeroU16,
     pub filters: Vec<Filter>,
     pub exists: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrafficSubsetRef {
+    pub name: String,
+    pub namespace: String,
+    pub authority: String,
+    pub port: NonZeroU16,
+    pub failure_accrual: Option<FailureAccrual>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]

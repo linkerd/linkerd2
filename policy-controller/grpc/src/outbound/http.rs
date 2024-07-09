@@ -14,7 +14,10 @@ use linkerd_policy_controller_core::{
     routes::{GroupKindNamespaceName, HttpRouteMatch},
 };
 
+type Subset = (Option<outbound::FailureAccrual>, outbound::Backend);
 pub(crate) fn protocol(
+    subsets: Vec<Subset>,
+    subset_strategy: Option<&String>,
     default_backend: outbound::Backend,
     routes: impl Iterator<Item = (GroupKindNamespaceName, OutboundRoute<HttpRouteMatch>)>,
     accrual: Option<outbound::FailureAccrual>,
@@ -23,8 +26,13 @@ pub(crate) fn protocol(
     let mut routes = routes
         .map(|(gknn, route)| convert_outbound_route(gknn, route, default_backend.clone()))
         .collect::<Vec<_>>();
-    if routes.is_empty() {
+    if routes.is_empty() && subsets.is_empty() {
+        tracing::info!("subsets is empty {subsets:?}");
         routes.push(default_outbound_route(default_backend));
+    } else {
+        tracing::info!("subsets is NOT empty {subsets:?}");
+        routes.push(default_subset_route(subset_strategy, subsets));
+        tracing::info!("ROUTES:\n{routes:?}");
     }
     outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
         timeout: Some(
@@ -225,6 +233,77 @@ fn convert_backend(
                 request_timeout,
             }),
         },
+    }
+}
+
+pub(crate) fn default_subset_route(
+    subset_strategy: Option<&String>,
+    subsets: Vec<Subset>,
+) -> outbound::HttpRoute {
+    /*
+    let backends = subsets
+        .into_iter()
+        .map(|(_, backend)| outbound::http_route::WeightedRouteBackend {
+            backend: Some(outbound::http_route::RouteBackend {
+                backend: Some(backend),
+                filters: vec![],
+                request_timeout: None,
+            }),
+            weight: 1,
+        })
+        .collect::<Vec<_>>();
+        */
+    let backends = subsets
+        .into_iter()
+        .map(|(_, backend)| outbound::http_route::RouteBackend {
+            backend: Some(backend),
+            filters: vec![],
+            request_timeout: None,
+        })
+        .collect::<Vec<_>>();
+
+    tracing::info!("collected {} backends", backends.len());
+    let backend_kind = match subset_strategy {
+        Some(v) if v == "failover" => {
+            tracing::info!("using failover strategy");
+            outbound::http_route::distribution::Kind::FirstAvailable(
+                outbound::http_route::distribution::FirstAvailable { backends },
+            )
+        }
+        _ => {
+            tracing::info!("using default strategy\nbackends:\n{backends:?}");
+            let backends = backends
+                .into_iter()
+                .map(|backend| outbound::http_route::WeightedRouteBackend {
+                    backend: Some(backend),
+                    weight: 1,
+                })
+                .collect();
+            outbound::http_route::distribution::Kind::RandomAvailable(
+                outbound::http_route::distribution::RandomAvailable { backends },
+            )
+        }
+    };
+    let metadata = Some(meta::Metadata {
+        kind: Some(meta::metadata::Kind::Default("http".to_string())),
+    });
+    let rules = vec![outbound::http_route::Rule {
+        matches: vec![http_route::HttpRouteMatch {
+            path: Some(http_route::PathMatch {
+                kind: Some(http_route::path_match::Kind::Prefix("/".to_string())),
+            }),
+            ..Default::default()
+        }],
+        backends: Some(outbound::http_route::Distribution {
+            kind: Some(backend_kind),
+        }),
+        filters: Default::default(),
+        request_timeout: None,
+    }];
+    outbound::HttpRoute {
+        metadata,
+        rules,
+        ..Default::default()
     }
 }
 

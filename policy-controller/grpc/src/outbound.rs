@@ -205,31 +205,65 @@ fn response_stream(drain: drain::Watch, mut rx: OutboundPolicyStream) -> BoxWatc
 }
 
 fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
+    fn to_failure_accrual(
+        failure_accrual: &Option<linkerd_policy_controller_core::outbound::FailureAccrual>,
+    ) -> Option<outbound::FailureAccrual> {
+        failure_accrual
+            .clone()
+            .map(|accrual| outbound::FailureAccrual {
+                kind: Some(match accrual {
+                    linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
+                        max_failures,
+                        backoff,
+                    } => outbound::failure_accrual::Kind::ConsecutiveFailures(
+                        outbound::failure_accrual::ConsecutiveFailures {
+                            max_failures,
+                            backoff: Some(outbound::ExponentialBackoff {
+                                min_backoff: convert_duration("min_backoff", backoff.min_penalty),
+                                max_backoff: convert_duration("max_backoff", backoff.max_penalty),
+                                jitter_ratio: backoff.jitter,
+                            }),
+                        },
+                    ),
+                }),
+            })
+    }
+
     let backend: outbound::Backend = default_backend(&outbound);
+    // Wire-up cluster agnostic services only for http routes
+    // Push default backend to subsets, in some cases we might want to take this
+    // out
+    let backends = {
+        let subsets = subset_backends(&outbound);
+        tracing::info!("service has {} subsets", subsets.len());
+        if subsets.is_empty() {
+            vec![]
+        } else {
+            let mut backends = vec![(outbound.accrual.clone(), backend.clone())];
+            backends.extend(subsets);
+            backends
+        }
+    };
 
     let kind = if outbound.opaque {
         outbound::proxy_protocol::Kind::Opaque(outbound::proxy_protocol::Opaque {
             routes: vec![default_outbound_opaq_route(backend)],
         })
     } else {
-        let accrual = outbound.accrual.map(|accrual| outbound::FailureAccrual {
-            kind: Some(match accrual {
-                linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
-                    max_failures,
-                    backoff,
-                } => outbound::failure_accrual::Kind::ConsecutiveFailures(
-                    outbound::failure_accrual::ConsecutiveFailures {
-                        max_failures,
-                        backoff: Some(outbound::ExponentialBackoff {
-                            min_backoff: convert_duration("min_backoff", backoff.min_penalty),
-                            max_backoff: convert_duration("max_backoff", backoff.max_penalty),
-                            jitter_ratio: backoff.jitter,
-                        }),
-                    },
-                ),
-            }),
-        });
+        // Convert failure accrual to wire type and do the same if we have any
+        // subsets
+        let accrual = to_failure_accrual(&outbound.accrual);
+        let subsets = backends
+            .iter()
+            .map(|(failure_accrual, backend)| {
+                (to_failure_accrual(failure_accrual), backend.clone())
+            })
+            .collect::<Vec<_>>();
 
+        tracing::info!(
+            "service has {} subsets (including default backend)",
+            subsets.len()
+        );
         let mut http_routes = outbound.http_routes.into_iter().collect::<Vec<_>>();
         let mut grpc_routes = outbound.grpc_routes.into_iter().collect::<Vec<_>>();
 
@@ -237,8 +271,15 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
             grpc_routes.sort_by(timestamp_then_name);
             grpc::protocol(backend, grpc_routes.into_iter(), accrual)
         } else {
+            // For now, only do it in the HTTP route
             http_routes.sort_by(timestamp_then_name);
-            http::protocol(backend, http_routes.into_iter(), accrual)
+            http::protocol(
+                subsets,
+                outbound.traffic_group.strategy.as_ref(),
+                backend,
+                http_routes.into_iter(),
+                accrual,
+            )
         }
     };
 
@@ -275,6 +316,50 @@ fn timestamp_then_name<LeftMatchType, RightMatchType>(
     };
 
     by_ts.then_with(|| left_id.name.cmp(&right_id.name))
+}
+
+// Group together subsets into a vec along with their circuit breaker cfg
+fn subset_backends(
+    outbound: &OutboundPolicy,
+) -> Vec<(
+    Option<linkerd_policy_controller_core::outbound::FailureAccrual>,
+    outbound::Backend,
+)> {
+    outbound
+        .traffic_group
+        .subsets
+        .iter()
+        .map(|subset_ref| {
+            (
+                subset_ref.failure_accrual,
+                outbound::Backend {
+                    metadata: Some(Metadata {
+                        kind: Some(metadata::Kind::Resource(api::meta::Resource {
+                            group: "core".to_string(),
+                            kind: "Service".to_string(),
+                            name: subset_ref.name.clone(),
+                            namespace: subset_ref.namespace.clone(),
+                            section: Default::default(),
+                            port: u16::from(subset_ref.port).into(),
+                        })),
+                    }),
+                    queue: Some(default_queue_config()),
+                    kind: Some(outbound::backend::Kind::Balancer(
+                        outbound::backend::BalanceP2c {
+                            discovery: Some(outbound::backend::EndpointDiscovery {
+                                kind: Some(outbound::backend::endpoint_discovery::Kind::Dst(
+                                    outbound::backend::endpoint_discovery::DestinationGet {
+                                        path: subset_ref.authority.clone(),
+                                    },
+                                )),
+                            }),
+                            load: Some(default_balancer_config()),
+                        },
+                    )),
+                },
+            )
+        })
+        .collect()
 }
 
 fn default_backend(outbound: &OutboundPolicy) -> outbound::Backend {

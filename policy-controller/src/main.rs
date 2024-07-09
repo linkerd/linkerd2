@@ -279,6 +279,13 @@ async fn main() -> Result<()> {
         kubert::index::namespaced(services_indexes, services).instrument(info_span!("services")),
     );
 
+    let traffic_groups =
+        runtime.watch_all::<k8s::traffic_group::TrafficGroup>(watcher::Config::default());
+    tokio::spawn(
+        kubert::index::namespaced(outbound_index.clone(), traffic_groups)
+            .instrument(info_span!("traffic.groups")),
+    );
+
     // Spawn the status Controller reconciliation.
     tokio::spawn(
         status::Index::run(status_index.clone(), RECONCILIATION_PERIOD)
