@@ -323,7 +323,9 @@ networkValidator:
   # -- Log format (`plain` or `json`) for network-validator
   # @default -- plain
   logFormat: plain
-  # -- Address to which the network-validator will attempt to connect. we expect this to be rewritten
+  # -- Address to which the network-validator will attempt to connect. This should be an IP
+  # that the cluster is expected to be able to reach but a port it should not, e.g., a public IP 
+  # for public clusters and a private IP for air-gapped clusters with a port like 20001.
   connectAddr: "1.1.1.1:20001"
   # -- Address to which network-validator listens to requests from itself
   listenAddr: "0.0.0.0:4140"
