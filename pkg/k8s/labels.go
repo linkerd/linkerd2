@@ -307,6 +307,10 @@ const (
 	// Deny denies all connections.
 	Deny = "deny"
 
+	// Audit allows all connections, but logs and emits audit metrics whenever
+	// the default policy is enacted
+	Audit = "audit"
+
 	// ProxyShutdownGracePeriodAnnotation configures the grace period for
 	// graceful shutdowns in the proxy.
 	ProxyShutdownGracePeriodAnnotation = ProxyConfigAnnotationsPrefix + "/shutdown-grace-period"
