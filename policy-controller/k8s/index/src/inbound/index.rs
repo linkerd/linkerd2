@@ -1753,6 +1753,10 @@ impl PolicyIndex {
             authzs.insert(reference, authz);
         }
 
+        if let Some(p) = server.access_policy {
+            authzs.extend(p.default_authzs(&self.cluster_info));
+        }
+
         authzs
     }
 

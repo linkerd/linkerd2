@@ -319,7 +319,8 @@ impl Validate<MeshTLSAuthenticationSpec> for Admission {
 
 #[async_trait::async_trait]
 impl Validate<ServerSpec> for Admission {
-    /// Checks that `spec` doesn't select the same pod/ports as other existing Servers
+    /// Checks that `spec` doesn't select the same pod/ports as other existing Servers, and that
+    /// `accessPolicy` contains a valid value
     //
     // TODO(ver) this isn't rigorous about detecting servers that select the same port if one port
     // specifies a numeric port and the other specifies the port's name.
@@ -344,6 +345,12 @@ impl Validate<ServerSpec> for Admission {
                     server.spec.port,
                 );
             }
+        }
+
+        if let Some(policy) = spec.access_policy {
+            policy
+                .parse::<index::DefaultPolicy>()
+                .map_err(|err| anyhow!("Invalid 'accessPolicy' field: {err}"))?;
         }
 
         Ok(())
