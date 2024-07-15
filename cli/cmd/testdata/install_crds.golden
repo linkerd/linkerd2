@@ -5981,6 +5981,11 @@ spec:
                 - required: [podSelector]
                 - required: [externalWorkloadSelector]
               properties:
+                accessPolicy:
+                  type: string
+                  default: deny
+                  description: >-
+                    Default access policy to apply when the traffic doesn't match any of the policy rules.
                 podSelector:
                   type: object
                   description: >-
@@ -6053,6 +6058,10 @@ spec:
         type: string
         description: The protocol of the server
         jsonPath: .spec.proxyProtocol
+      - name: Access Policy
+        type: string
+        description: The default access policy applied when the traffic doesn't match any of the policy rules
+        jsonPath: .spec.accessPolicy
 ---
 ###
 ### Service Profile CRD
