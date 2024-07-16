@@ -126,7 +126,7 @@ spec:
 `, `
 kind: APIResourceList
 apiVersion: v1beta1
-groupVersion: policy.linkerd.io/v1beta2
+groupVersion: policy.linkerd.io/v1beta3
 resources:
 - name: servers
   singularName: server
@@ -187,7 +187,7 @@ resources:
   shortNames:
   - srv
 `},
-			expectedError: errors.New(`the server could not find the requested resource, GroupVersion "policy.linkerd.io/v1beta2" not found`),
+			expectedError: errors.New(`the server could not find the requested resource, GroupVersion "policy.linkerd.io/v1beta3" not found`),
 		},
 	}
 

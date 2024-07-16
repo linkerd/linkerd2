@@ -11,7 +11,7 @@ import (
 
 const (
 	allowScrapePolicy = `---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   name: proxy-admin
