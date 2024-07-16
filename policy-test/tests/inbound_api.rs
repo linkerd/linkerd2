@@ -32,7 +32,7 @@ async fn server_with_server_authorization() {
 
         // Create a server that selects the pod's proxy admin server and ensure
         // that the update now uses this server, which has no authorizations
-        let server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
+        let server = create(&client, mk_admin_server(&ns, "linkerd-admin", None)).await;
         let config = next_config(&mut rx).await;
         assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
         assert_eq!(config.authorizations, vec![]);
@@ -144,7 +144,7 @@ async fn server_with_authorization_policy() {
 
         // Create a server that selects the pod's proxy admin server and ensure
         // that the update now uses this server, which has no authorizations
-        let server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
+        let server = create(&client, mk_admin_server(&ns, "linkerd-admin", None)).await;
         let config = next_config(&mut rx).await;
         assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
         assert_eq!(config.authorizations, vec![]);
@@ -240,6 +240,68 @@ async fn server_with_authorization_policy() {
 }
 
 #[tokio::test(flavor = "current_thread")]
+async fn server_with_audit_policy() {
+    with_temp_ns(|client, ns| async move {
+        // Create a pod that does nothing. It's injected with a proxy, so we can
+        // attach policies to its admin server.
+        let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
+
+        let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+        assert_is_default_all_unauthenticated!(config);
+        assert_protocol_detect!(config);
+
+        // Create a server with audit access policy that selects the pod's proxy admin server and
+        // ensure that the update now uses this server, and an unauthenticated authorization is
+        // returned
+        let server = create(
+            &client,
+            mk_admin_server(&ns, "linkerd-admin", Some("audit".to_string())),
+        )
+        .await;
+        let config = next_config(&mut rx).await;
+        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
+        assert_eq!(config.authorizations.len(), 1);
+        assert_eq!(
+            config.authorizations.first().unwrap().labels,
+            convert_args!(hashmap!(
+                "group" => "",
+                "kind" => "default",
+                "name" => "audit",
+            ))
+        );
+        assert_eq!(
+            *config
+                .authorizations
+                .first()
+                .unwrap()
+                .authentication
+                .as_ref()
+                .unwrap(),
+            grpc::inbound::Authn {
+                permit: Some(grpc::inbound::authn::Permit::Unauthenticated(
+                    grpc::inbound::authn::PermitUnauthenticated {}
+                )),
+            }
+        );
+        assert_eq!(
+            config.labels,
+            convert_args!(hashmap!(
+                "group" => "policy.linkerd.io",
+                "kind" => "server",
+                "name" => server.name_unchecked()
+            ))
+        );
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
 async fn server_with_http_route() {
     with_temp_ns(|client, ns| async move {
         // Create a pod that does nothing. It's injected with a proxy, so we can
@@ -259,7 +321,7 @@ async fn server_with_http_route() {
         // Create a server that selects the pod's proxy admin server and ensure
         // that the update now uses this server, which has no authorizations
         // and no routes.
-        let _server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
+        let _server = create(&client, mk_admin_server(&ns, "linkerd-admin", None)).await;
         let config = next_config(&mut rx).await;
         assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
         assert_eq!(config.authorizations, vec![]);
@@ -419,7 +481,7 @@ async fn http_routes_ordered_by_creation() {
         // Create a server that selects the pod's proxy admin server and ensure
         // that the update now uses this server, which has no authorizations
         // and no routes.
-        let _server = create(&client, mk_admin_server(&ns, "linkerd-admin")).await;
+        let _server = create(&client, mk_admin_server(&ns, "linkerd-admin", None)).await;
         let config = next_config(&mut rx).await;
         assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
         assert_eq!(config.authorizations, vec![]);
@@ -622,7 +684,7 @@ fn mk_pause(ns: &str, name: &str) -> k8s::Pod {
     }
 }
 
-fn mk_admin_server(ns: &str, name: &str) -> k8s::policy::Server {
+fn mk_admin_server(ns: &str, name: &str, access_policy: Option<String>) -> k8s::policy::Server {
     k8s::policy::Server {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
@@ -633,6 +695,7 @@ fn mk_admin_server(ns: &str, name: &str) -> k8s::policy::Server {
             selector: k8s::policy::server::Selector::Pod(k8s::labels::Selector::default()),
             port: k8s::policy::server::Port::Number(4191.try_into().unwrap()),
             proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
+            access_policy,
         },
     }
 }

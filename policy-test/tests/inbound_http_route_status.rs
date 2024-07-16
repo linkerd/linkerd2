@@ -22,6 +22,7 @@ async fn inbound_accepted_parent() {
                 )),
                 port: k8s::policy::server::Port::Name("http".to_string()),
                 proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
+                access_policy: None,
             },
         };
         let server = create(&client, server).await;
@@ -99,6 +100,7 @@ async fn inbound_multiple_parents() {
                 )),
                 port: k8s::policy::server::Port::Name("http".to_string()),
                 proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
+                access_policy: None,
             },
         };
         let _server = create(&client, server).await;
@@ -147,6 +149,7 @@ async fn inbound_no_parent_ref_patch() {
                 )),
                 port: k8s::policy::server::Port::Name("http".to_string()),
                 proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
+                access_policy: None,
             },
         };
         let server = create(&client, server).await;
@@ -236,6 +239,7 @@ async fn inbound_accepted_reconcile_no_parent() {
                 )),
                 port: k8s::policy::server::Port::Name("http".to_string()),
                 proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
+                access_policy: None,
             },
         };
         create(&client, server).await;
@@ -285,6 +289,7 @@ async fn inbound_accepted_reconcile_parent_delete() {
                 )),
                 port: k8s::policy::server::Port::Name("http".to_string()),
                 proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
+                access_policy: None,
             },
         };
         create(&client, server).await;

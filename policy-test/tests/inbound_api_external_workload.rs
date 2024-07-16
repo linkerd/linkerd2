@@ -459,6 +459,7 @@ fn mk_http_server(ns: &str, name: &str) -> k8s::policy::Server {
             ),
             port: k8s::policy::server::Port::Name("http".to_string()),
             proxy_protocol: Some(k8s::policy::server::ProxyProtocol::Http1),
+            access_policy: None,
         },
     }
 }
