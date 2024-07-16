@@ -17,8 +17,16 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
 data:
+  {{- if .Values.identity.issuer.tls.crtPEM64 }}
+  crt.pem: {{ .Values.identity.issuer.tls.crtPEM64 }}
+  {{- else }}
   crt.pem: {{b64enc (required "Please provide the identity issuer certificate" .Values.identity.issuer.tls.crtPEM | trim)}}
+  {{- end }}
+  {{- if .Values.identity.issuer.tls.keyPEM64 }}
+  key.pem: {{ .Values.identity.issuer.tls.keyPEM64 }}
+  {{- else }}
   key.pem: {{b64enc (required "Please provide the identity issue private key" .Values.identity.issuer.tls.keyPEM | trim)}}
+  {{- end }}
 {{- end}}
 {{ if not (.Values.identity.externalCA) -}}
 ---
