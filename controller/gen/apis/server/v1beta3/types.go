@@ -1,4 +1,4 @@
-package v1beta2
+package v1beta3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,6 +29,7 @@ type Server struct {
 
 // ServerSpec specifies a Server resource.
 type ServerSpec struct {
+	AccessPolicy             string                `json:"accessPolicy,omitempty"`
 	PodSelector              *metav1.LabelSelector `json:"podSelector,omitempty"`
 	ExternalWorkloadSelector *metav1.LabelSelector `json:"externalWorkloadSelector,omitempty"`
 	Port                     intstr.IntOrString    `json:"port,omitempty"`

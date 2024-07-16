@@ -25,6 +25,7 @@ import (
 	policyv1beta3 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1beta3"
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	serverv1beta2 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
+	serverv1beta3 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta3"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	linkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,6 +45,7 @@ var localSchemeBuilder = runtime.SchemeBuilder{
 	policyv1beta3.AddToScheme,
 	serverv1beta1.AddToScheme,
 	serverv1beta2.AddToScheme,
+	serverv1beta3.AddToScheme,
 	serverauthorizationv1beta1.AddToScheme,
 	linkerdv1alpha2.AddToScheme,
 }
