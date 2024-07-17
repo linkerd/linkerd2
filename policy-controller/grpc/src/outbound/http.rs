@@ -8,7 +8,7 @@ use crate::routes::{
 };
 use linkerd2_proxy_api::{destination, http_route, meta, outbound};
 use linkerd_policy_controller_core::{
-    outbound::{Backend, Filter, HttpRetryConditions, HttpRoute, OutboundRouteRule},
+    outbound::{Backend, Filter, HttpRetryCondition, HttpRoute, OutboundRouteRule},
     routes::GroupKindNamespaceName,
 };
 use std::{net::SocketAddr, time};
@@ -125,24 +125,28 @@ fn convert_outbound_route(
                             max_backoff: Some(time::Duration::from_millis(250).try_into().unwrap()),
                             jitter_ratio: 1.0,
                         }),
-                        conditions: r
-                            .conditions
-                            .map(|c| outbound::http_route::retry::Conditions {
-                                status_ranges: match c {
-                                    HttpRetryConditions::ServerError => {
-                                        vec![outbound::http_route::retry::conditions::StatusRange {
-                                            start: 500,
-                                            end: 599,
-                                        }]
-                                    }
-                                    HttpRetryConditions::GatewayError => {
-                                        vec![outbound::http_route::retry::conditions::StatusRange {
-                                            start: 502,
-                                            end: 504,
-                                        }]
-                                    }
+                        conditions: r.conditions.map(|cs| {
+                            cs.iter().fold(
+                                outbound::http_route::retry::Conditions::default(),
+                                |mut cond, c| {
+                                    cond.status_ranges.push(match c {
+                                        HttpRetryCondition::ServerError => {
+                                            outbound::http_route::retry::conditions::StatusRange {
+                                                start: 500,
+                                                end: 599,
+                                            }
+                                        }
+                                        HttpRetryCondition::GatewayError => {
+                                            outbound::http_route::retry::conditions::StatusRange {
+                                                start: 502,
+                                                end: 504,
+                                            }
+                                        }
+                                    });
+                                    cond
                                 },
-                            }),
+                            )
+                        }),
                         timeout: r.timeout.and_then(|d| convert_duration("retry timeout", d)),
                     }),
                 }

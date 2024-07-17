@@ -20,8 +20,8 @@ pub trait DiscoverOutboundPolicy<T> {
 
 pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send + Sync + 'static>>;
 
-pub type HttpRoute = OutboundRoute<HttpRouteMatch, HttpRetryConditions>;
-pub type GrpcRoute = OutboundRoute<GrpcRouteMatch, GrpcRetryConditions>;
+pub type HttpRoute = OutboundRoute<HttpRouteMatch, HttpRetryCondition>;
+pub type GrpcRoute = OutboundRoute<GrpcRouteMatch, GrpcRetryCondition>;
 pub type RouteSet<T> = HashMap<GroupKindNamespaceName, T>;
 
 pub struct OutboundDiscoverTarget {
@@ -118,19 +118,19 @@ pub struct RouteTimeouts {
 pub struct RouteRetry<R> {
     pub limit: u16,
     pub timeout: Option<time::Duration>,
-    pub conditions: Option<R>,
+    pub conditions: Option<Vec<R>>,
 }
 
 // TODO(alex): flesh this out
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum HttpRetryConditions {
+pub enum HttpRetryCondition {
     ServerError,
     GatewayError,
 }
 
 // TODO(alex): flesh this out
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum GrpcRetryConditions {
+pub enum GrpcRetryCondition {
     Cancelled,
     DeadlineExceeded,
     ResourceExhausted,

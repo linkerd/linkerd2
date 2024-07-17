@@ -10,7 +10,7 @@ use anyhow::{bail, Result};
 use kube::ResourceExt;
 use linkerd_policy_controller_core::{
     outbound::{
-        Backend, Filter, HttpRetryConditions, OutboundRoute, OutboundRouteRule, RouteRetry,
+        Backend, Filter, HttpRetryCondition, OutboundRoute, OutboundRouteRule, RouteRetry,
         RouteTimeouts, WeightedService,
     },
     routes::HttpRouteMatch,
@@ -22,7 +22,7 @@ pub(crate) fn convert_route(
     route: HttpRouteResource,
     cluster: &ClusterInfo,
     service_info: &HashMap<ServiceRef, ServiceInfo>,
-) -> Result<OutboundRoute<HttpRouteMatch, HttpRetryConditions>> {
+) -> Result<OutboundRoute<HttpRouteMatch, HttpRetryCondition>> {
     match route {
         HttpRouteResource::LinkerdHttp(route) => {
             let timeouts = parse_timeouts(route.annotations())?;
@@ -107,8 +107,8 @@ fn convert_linkerd_rule(
     cluster: &ClusterInfo,
     service_info: &HashMap<ServiceRef, ServiceInfo>,
     mut timeouts: RouteTimeouts,
-    retry: Option<RouteRetry<HttpRetryConditions>>,
-) -> Result<OutboundRouteRule<HttpRouteMatch, HttpRetryConditions>> {
+    retry: Option<RouteRetry<HttpRetryCondition>>,
+) -> Result<OutboundRouteRule<HttpRouteMatch, HttpRetryCondition>> {
     let matches = rule
         .matches
         .into_iter()
@@ -158,8 +158,8 @@ fn convert_gateway_rule(
     cluster: &ClusterInfo,
     service_info: &HashMap<ServiceRef, ServiceInfo>,
     timeouts: RouteTimeouts,
-    retry: Option<RouteRetry<HttpRetryConditions>>,
-) -> Result<OutboundRouteRule<HttpRouteMatch, HttpRetryConditions>> {
+    retry: Option<RouteRetry<HttpRetryCondition>>,
+) -> Result<OutboundRouteRule<HttpRouteMatch, HttpRetryCondition>> {
     let matches = rule
         .matches
         .into_iter()
@@ -331,7 +331,7 @@ fn is_backend_service(backend: &gateway::BackendObjectReference) -> bool {
 
 fn parse_http_retry(
     annotations: &std::collections::BTreeMap<String, String>,
-) -> Result<Option<RouteRetry<HttpRetryConditions>>> {
+) -> Result<Option<RouteRetry<HttpRetryCondition>>> {
     let limit = annotations
         .get("retry.linkerd.io/limit")
         .map(|s| s.parse::<u16>())
@@ -347,13 +347,18 @@ fn parse_http_retry(
     let conditions = annotations
         .get("retry.linkerd.io/http")
         .map(|v| {
-            if v == "5xx" {
-                return Ok(HttpRetryConditions::ServerError);
-            }
-            if v == "gateway-error" {
-                return Ok(HttpRetryConditions::GatewayError);
-            }
-            bail!("invalid retry condition: {v}")
+            v.split(',')
+                .map(|v| v.trim())
+                .map(|v| {
+                    if v == "5xx" {
+                        Ok(HttpRetryCondition::ServerError)
+                    } else if v == "gateway-error" {
+                        Ok(HttpRetryCondition::GatewayError)
+                    } else {
+                        bail!("invalid retry condition: {v}")
+                    }
+                })
+                .collect::<Result<Vec<_>>>()
         })
         .transpose()?;
 

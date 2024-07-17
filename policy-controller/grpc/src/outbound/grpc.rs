@@ -4,7 +4,7 @@ use crate::routes::{
 };
 use linkerd2_proxy_api::{destination, grpc_route, http_route, meta, outbound};
 use linkerd_policy_controller_core::{
-    outbound::{Backend, Filter, GrpcRetryConditions, GrpcRoute, OutboundRoute, OutboundRouteRule},
+    outbound::{Backend, Filter, GrpcRetryCondition, GrpcRoute, OutboundRoute, OutboundRouteRule},
     routes::{FailureInjectorFilter, GroupKindNamespaceName},
 };
 use std::{net::SocketAddr, time};
@@ -102,21 +102,25 @@ fn convert_outbound_route(
                             max_backoff: Some(time::Duration::from_millis(250).try_into().unwrap()),
                             jitter_ratio: 1.0,
                         }),
-                        conditions: r
-                            .conditions
-                            .map(|c| outbound::grpc_route::retry::Conditions {
-                                cancelled: matches!(c, GrpcRetryConditions::Cancelled),
-                                deadine_exceeded: matches!(
-                                    c,
-                                    GrpcRetryConditions::DeadlineExceeded
-                                ),
-                                internal: matches!(c, GrpcRetryConditions::Internal),
-                                resource_exhausted: matches!(
-                                    c,
-                                    GrpcRetryConditions::ResourceExhausted
-                                ),
-                                unavailable: matches!(c, GrpcRetryConditions::Unavailable),
-                            }),
+                        conditions: r.conditions.map(|cs| {
+                            cs.iter().fold(
+                                outbound::grpc_route::retry::Conditions::default(),
+                                |mut cond, c| {
+                                    match c {
+                                        GrpcRetryCondition::Cancelled => cond.cancelled = true,
+                                        GrpcRetryCondition::DeadlineExceeded => {
+                                            cond.deadine_exceeded = true
+                                        }
+                                        GrpcRetryCondition::Internal => cond.internal = true,
+                                        GrpcRetryCondition::ResourceExhausted => {
+                                            cond.resource_exhausted = true
+                                        }
+                                        GrpcRetryCondition::Unavailable => cond.unavailable = true,
+                                    };
+                                    cond
+                                },
+                            )
+                        }),
                         timeout: r.timeout.and_then(|d| convert_duration("retry timeout", d)),
                     }),
                 }

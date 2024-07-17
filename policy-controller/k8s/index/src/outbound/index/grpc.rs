@@ -7,7 +7,7 @@ use ahash::AHashMap as HashMap;
 use anyhow::{bail, Result};
 use kube::ResourceExt;
 use linkerd_policy_controller_core::outbound::{
-    GrpcRetryConditions, GrpcRoute, OutboundRoute, RouteRetry, RouteTimeouts,
+    GrpcRetryCondition, GrpcRoute, OutboundRoute, RouteRetry, RouteTimeouts,
 };
 use linkerd_policy_controller_core::{outbound::OutboundRouteRule, routes::GrpcRouteMatch};
 use linkerd_policy_controller_k8s_api::{gateway, Time};
@@ -61,8 +61,8 @@ fn convert_rule(
     cluster: &ClusterInfo,
     service_info: &HashMap<ServiceRef, ServiceInfo>,
     timeouts: RouteTimeouts,
-    retry: Option<RouteRetry<GrpcRetryConditions>>,
-) -> Result<OutboundRouteRule<GrpcRouteMatch, GrpcRetryConditions>> {
+    retry: Option<RouteRetry<GrpcRetryCondition>>,
+) -> Result<OutboundRouteRule<GrpcRouteMatch, GrpcRetryCondition>> {
     let matches = rule
         .matches
         .into_iter()
@@ -95,7 +95,7 @@ fn convert_rule(
 
 fn parse_grpc_retry(
     annotations: &std::collections::BTreeMap<String, String>,
-) -> Result<Option<RouteRetry<GrpcRetryConditions>>> {
+) -> Result<Option<RouteRetry<GrpcRetryCondition>>> {
     let limit = annotations
         .get("retry.linkerd.io/limit")
         .map(|s| s.parse::<u16>())
@@ -108,17 +108,29 @@ fn parse_grpc_retry(
         .transpose()?
         .filter(|v| *v != time::Duration::ZERO);
 
-    // TODO(alex): support condition list
     let conditions = annotations
         .get("retry.linkerd.io/grpc")
         .map(|v| {
-            if v == "cancelled" {
-                return Ok(GrpcRetryConditions::Cancelled);
-            }
-            if v == "deadline-exceeded" {
-                return Ok(GrpcRetryConditions::DeadlineExceeded);
-            }
-            bail!("invalid retry condition: {v}")
+            v.split(',')
+                .map(|cond| {
+                    if cond.eq_ignore_ascii_case("cancelled") {
+                        return Ok(GrpcRetryCondition::Cancelled);
+                    }
+                    if cond.eq_ignore_ascii_case("deadline-exceeded") {
+                        return Ok(GrpcRetryCondition::DeadlineExceeded);
+                    }
+                    if cond.eq_ignore_ascii_case("internal") {
+                        return Ok(GrpcRetryCondition::Internal);
+                    }
+                    if cond.eq_ignore_ascii_case("resource-exhausted") {
+                        return Ok(GrpcRetryCondition::ResourceExhausted);
+                    }
+                    if cond.eq_ignore_ascii_case("unavailable") {
+                        return Ok(GrpcRetryCondition::Unavailable);
+                    }
+                    bail!("Unknown grpc retry condition: {cond}");
+                })
+                .collect::<Result<Vec<_>>>()
         })
         .transpose()?;
 
