@@ -102,25 +102,23 @@ fn convert_outbound_route(
                             max_backoff: Some(time::Duration::from_millis(250).try_into().unwrap()),
                             jitter_ratio: 1.0,
                         }),
-                        conditions: r.conditions.map(|cs| {
-                            cs.iter().fold(
-                                outbound::grpc_route::retry::Conditions::default(),
-                                |mut cond, c| {
-                                    match c {
-                                        GrpcRetryCondition::Cancelled => cond.cancelled = true,
-                                        GrpcRetryCondition::DeadlineExceeded => {
-                                            cond.deadine_exceeded = true
-                                        }
-                                        GrpcRetryCondition::Internal => cond.internal = true,
-                                        GrpcRetryCondition::ResourceExhausted => {
-                                            cond.resource_exhausted = true
-                                        }
-                                        GrpcRetryCondition::Unavailable => cond.unavailable = true,
-                                    };
-                                    cond
-                                },
-                            )
-                        }),
+                        conditions: Some(r.conditions.iter().flatten().fold(
+                            outbound::grpc_route::retry::Conditions::default(),
+                            |mut cond, c| {
+                                match c {
+                                    GrpcRetryCondition::Cancelled => cond.cancelled = true,
+                                    GrpcRetryCondition::DeadlineExceeded => {
+                                        cond.deadine_exceeded = true
+                                    }
+                                    GrpcRetryCondition::Internal => cond.internal = true,
+                                    GrpcRetryCondition::ResourceExhausted => {
+                                        cond.resource_exhausted = true
+                                    }
+                                    GrpcRetryCondition::Unavailable => cond.unavailable = true,
+                                };
+                                cond
+                            },
+                        )),
                         timeout: r.timeout.and_then(|d| convert_duration("retry timeout", d)),
                     }),
                 }

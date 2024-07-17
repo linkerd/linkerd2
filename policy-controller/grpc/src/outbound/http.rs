@@ -125,28 +125,26 @@ fn convert_outbound_route(
                             max_backoff: Some(time::Duration::from_millis(250).try_into().unwrap()),
                             jitter_ratio: 1.0,
                         }),
-                        conditions: r.conditions.map(|cs| {
-                            cs.iter().fold(
-                                outbound::http_route::retry::Conditions::default(),
-                                |mut cond, c| {
-                                    cond.status_ranges.push(match c {
-                                        HttpRetryCondition::ServerError => {
-                                            outbound::http_route::retry::conditions::StatusRange {
-                                                start: 500,
-                                                end: 599,
-                                            }
+                        conditions: Some(r.conditions.iter().flatten().fold(
+                            outbound::http_route::retry::Conditions::default(),
+                            |mut cond, c| {
+                                cond.status_ranges.push(match c {
+                                    HttpRetryCondition::ServerError => {
+                                        outbound::http_route::retry::conditions::StatusRange {
+                                            start: 500,
+                                            end: 599,
                                         }
-                                        HttpRetryCondition::GatewayError => {
-                                            outbound::http_route::retry::conditions::StatusRange {
-                                                start: 502,
-                                                end: 504,
-                                            }
+                                    }
+                                    HttpRetryCondition::GatewayError => {
+                                        outbound::http_route::retry::conditions::StatusRange {
+                                            start: 502,
+                                            end: 504,
                                         }
-                                    });
-                                    cond
-                                },
-                            )
-                        }),
+                                    }
+                                });
+                                cond
+                            },
+                        )),
                         timeout: r.timeout.and_then(|d| convert_duration("retry timeout", d)),
                     }),
                 }
