@@ -84,7 +84,7 @@ fn convert_outbound_route(
                         .request
                         .and_then(|d| convert_duration("request timeout", d)),
                     timeouts: Some(http_route::Timeouts {
-                        stream: timeouts
+                        request: timeouts
                             .request
                             .and_then(|d| convert_duration("stream timeout", d)),
                         idle: timeouts
@@ -121,6 +121,7 @@ fn convert_outbound_route(
                         )),
                         timeout: r.timeout.and_then(|d| convert_duration("retry timeout", d)),
                     }),
+                    allow_l5d_request_headers: true,
                 }
             },
         )
