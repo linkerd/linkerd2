@@ -646,7 +646,7 @@ func validateProxyValues(values *l5dcharts.Values) error {
 }
 
 func validatePolicy(policy string) error {
-	validPolicies := []string{"all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny"}
+	validPolicies := []string{"all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny", "audit"}
 	for _, p := range validPolicies {
 		if p == policy {
 			return nil
