@@ -24,9 +24,13 @@ args:
   - --log-level
   - {{ .Values.networkValidator.logLevel }}
   - --connect-addr
-  - {{ .Values.networkValidator.connectAddr }}
+    {{- if .Values.disableIPv6 }}
+  - "1.1.1.1:{{ .Values.networkValidator.connectPort }}"
+    {{- else }}
+  - "[fd00::1]:{{ .Values.networkValidator.connectPort }}"
+    {{- end }}
   - --listen-addr
-  - {{ .Values.networkValidator.listenAddr }}
+  - {{ .Values.networkValidator.listenAddr | quote }}
   - --timeout
   - {{ .Values.networkValidator.timeout }}
 

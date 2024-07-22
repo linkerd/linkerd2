@@ -187,9 +187,9 @@ Kubernetes: `>=1.22.0-0`
 | kubeAPI.clientBurst | int | `200` | Burst value over clientQPS |
 | kubeAPI.clientQPS | int | `100` | Maximum QPS sent to the kube-apiserver before throttling. See [token bucket rate limiter implementation](https://github.com/kubernetes/client-go/blob/v12.0.0/util/flowcontrol/throttle.go) |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
-| networkValidator.connectAddr | string | `"1.1.1.1:20001"` | Address to which the network-validator will attempt to connect. This should be an IP that the cluster is expected to be able to reach but a port it should not, e.g., a public IP  for public clusters and a private IP for air-gapped clusters with a port like 20001. |
+| networkValidator.connectPort | int | `20001` | Port to which the network-validator will attempt to connect |
 | networkValidator.enableSecurityContext | bool | `true` | Include a securityContext in the network-validator pod spec |
-| networkValidator.listenAddr | string | `"0.0.0.0:4140"` | Address to which network-validator listens to requests from itself |
+| networkValidator.listenAddr | string | `"[::]:4140"` | Address to which network-validator listens to requests from itself |
 | networkValidator.logFormat | string | plain | Log format (`plain` or `json`) for network-validator |
 | networkValidator.logLevel | string | debug | Log level for the network-validator |
 | networkValidator.timeout | string | `"10s"` | Timeout before network-validator fails to validate the pod's network connectivity |

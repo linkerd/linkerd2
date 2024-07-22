@@ -140,8 +140,8 @@ func TestRender(t *testing.T) {
 		NetworkValidator: &charts.NetworkValidator{
 			LogLevel:    "debug",
 			LogFormat:   "plain",
-			ConnectAddr: "1.1.1.1:20001",
-			ListenAddr:  "0.0.0.0:4140",
+			ConnectPort: 20001,
+			ListenAddr:  "[::]:4140",
 			Timeout:     "10s",
 		},
 		Configs: charts.ConfigJSONs{

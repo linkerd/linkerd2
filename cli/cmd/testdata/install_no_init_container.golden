@@ -584,9 +584,9 @@ data:
     imagePullSecrets: []
     linkerdVersion: install-control-plane-version
     networkValidator:
-      connectAddr: 1.1.1.1:20001
+      connectPort: 20001
       enableSecurityContext: true
-      listenAddr: 0.0.0.0:4140
+      listenAddr: '[::]:4140'
       logFormat: plain
       logLevel: debug
       timeout: 10s
@@ -875,6 +875,7 @@ spec:
     port: 8080
     targetPort: 8080
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1137,9 +1138,9 @@ spec:
           - --log-level
           - debug
           - --connect-addr
-          - 1.1.1.1:20001
+          - "1.1.1.1:20001"
           - --listen-addr
-          - 0.0.0.0:4140
+          - "[::]:4140"
           - --timeout
           - 10s
       securityContext:
@@ -1612,9 +1613,9 @@ spec:
           - --log-level
           - debug
           - --connect-addr
-          - 1.1.1.1:20001
+          - "1.1.1.1:20001"
           - --listen-addr
-          - 0.0.0.0:4140
+          - "[::]:4140"
           - --timeout
           - 10s
       securityContext:
@@ -1965,9 +1966,9 @@ spec:
           - --log-level
           - debug
           - --connect-addr
-          - 1.1.1.1:20001
+          - "1.1.1.1:20001"
           - --listen-addr
-          - 0.0.0.0:4140
+          - "[::]:4140"
           - --timeout
           - 10s
       securityContext:
