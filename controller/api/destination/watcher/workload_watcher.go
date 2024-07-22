@@ -10,7 +10,7 @@ import (
 	"time"
 
 	ext "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
-	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
+	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta3"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/util"
@@ -299,8 +299,8 @@ func (ww *WorkloadWatcher) submitExternalWorkloadUpdate(externalWorkload *ext.Ex
 }
 
 func (ww *WorkloadWatcher) updateServer(oldObj interface{}, newObj interface{}) {
-	oldServer := oldObj.(*v1beta2.Server)
-	newServer := newObj.(*v1beta2.Server)
+	oldServer := oldObj.(*v1beta3.Server)
+	newServer := newObj.(*v1beta3.Server)
 
 	oldUpdated := latestUpdated(oldServer.ManagedFields)
 	updated := latestUpdated(newServer.ManagedFields)
@@ -314,14 +314,14 @@ func (ww *WorkloadWatcher) updateServer(oldObj interface{}, newObj interface{}) 
 }
 
 func (ww *WorkloadWatcher) addOrDeleteServer(obj interface{}) {
-	server, ok := obj.(*v1beta2.Server)
+	server, ok := obj.(*v1beta3.Server)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			ww.log.Errorf("Couldn't get object from DeletedFinalStateUnknown %#v", obj)
 			return
 		}
-		server, ok = tombstone.Obj.(*v1beta2.Server)
+		server, ok = tombstone.Obj.(*v1beta3.Server)
 		if !ok {
 			ww.log.Errorf("DeletedFinalStateUnknown contained object that is not a Server %#v", obj)
 			return
@@ -334,7 +334,7 @@ func (ww *WorkloadWatcher) addOrDeleteServer(obj interface{}) {
 // whose pod matches the any of the Servers' podSelector or whose
 // externalworkload matches any of the Servers' externalworkload selection. This
 // function is an event handler so it cannot block.
-func (ww *WorkloadWatcher) updateServers(servers ...*v1beta2.Server) {
+func (ww *WorkloadWatcher) updateServers(servers ...*v1beta3.Server) {
 	ww.mu.RLock()
 	defer ww.mu.RUnlock()
 
@@ -390,7 +390,7 @@ func (ww *WorkloadWatcher) updateServers(servers ...*v1beta2.Server) {
 	}
 }
 
-func (ww *WorkloadWatcher) isPodSelectedByAny(pod *corev1.Pod, servers ...*v1beta2.Server) bool {
+func (ww *WorkloadWatcher) isPodSelectedByAny(pod *corev1.Pod, servers ...*v1beta3.Server) bool {
 	for _, s := range servers {
 		selector, err := metav1.LabelSelectorAsSelector(s.Spec.PodSelector)
 		if err != nil {
@@ -404,7 +404,7 @@ func (ww *WorkloadWatcher) isPodSelectedByAny(pod *corev1.Pod, servers ...*v1bet
 	return false
 }
 
-func (ww *WorkloadWatcher) isExternalWorkloadSelectedByAny(ew *ext.ExternalWorkload, servers ...*v1beta2.Server) bool {
+func (ww *WorkloadWatcher) isExternalWorkloadSelectedByAny(ew *ext.ExternalWorkload, servers ...*v1beta3.Server) bool {
 	for _, s := range servers {
 		selector, err := metav1.LabelSelectorAsSelector(s.Spec.ExternalWorkloadSelector)
 		if err != nil {

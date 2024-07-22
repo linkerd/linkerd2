@@ -74,9 +74,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
-          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:
@@ -111,7 +111,7 @@ spec:
     port: 443
     targetPort: jaeger-injector
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -501,9 +501,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
-          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:
@@ -597,9 +597,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
-          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           seccompProfile:
             type: RuntimeDefault
       dnsPolicy: ClusterFirst
@@ -608,7 +608,7 @@ spec:
           type: RuntimeDefault
       serviceAccountName: jaeger
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -625,7 +625,7 @@ spec:
   port: 4317
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -642,7 +642,7 @@ spec:
   port: 4318
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -659,7 +659,7 @@ spec:
   port: 55678
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -675,7 +675,7 @@ spec:
       component: collector
   port: 9411
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -691,7 +691,7 @@ spec:
       component: collector
   port: 14268
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -707,7 +707,7 @@ spec:
       component: collector
   port: 14250
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -832,7 +832,7 @@ spec:
   # allow connections from any pod (meshed or not) sending trace data
   requiredAuthenticationRefs: []
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -869,7 +869,7 @@ spec:
       name: collector
       namespace: linkerd-jaeger
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -907,7 +907,7 @@ spec:
       name: prometheus
       namespace: linkerd-viz
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-jaeger

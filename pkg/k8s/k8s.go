@@ -39,7 +39,7 @@ const (
 	HTTPRoute             = "httproute"
 
 	PolicyAPIGroup         = "policy.linkerd.io"
-	PolicyServerCRDVersion = "v1beta2"
+	PolicyServerCRDVersion = "v1beta3"
 
 	ServiceProfileAPIVersion = "linkerd.io/v1alpha2"
 	ServiceProfileKind       = "ServiceProfile"

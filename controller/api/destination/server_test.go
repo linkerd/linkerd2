@@ -14,7 +14,7 @@ import (
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/api/util"
-	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
+	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta3"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -315,13 +315,13 @@ func testOpaque(t *testing.T, name string) {
 	// Update the Server's pod selector so that it no longer selects the
 	// pod. This should result in the proxy protocol no longer being marked
 	// as opaque.
-	srv, err := client.ServerV1beta2().Servers("ns").Get(context.Background(), name, metav1.GetOptions{})
+	srv, err := client.ServerV1beta3().Servers("ns").Get(context.Background(), name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	// PodSelector is updated to NOT select the pod
 	srv.Spec.PodSelector.MatchLabels = map[string]string{"app": "FOOBAR"}
-	_, err = client.ServerV1beta2().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
+	_, err = client.ServerV1beta3().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +345,7 @@ func testOpaque(t *testing.T, name string) {
 	// as opaque.
 	srv.Spec.PodSelector.MatchLabels = map[string]string{"app": name}
 
-	_, err = client.ServerV1beta2().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
+	_, err = client.ServerV1beta3().Servers("ns").Update(context.Background(), srv, metav1.UpdateOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1072,12 +1072,12 @@ func TestGetProfiles(t *testing.T) {
 		}
 
 		// Server is created, setting the port to opaque
-		l5dClient.ServerV1beta2().Servers("ns").Create(context.Background(), &v1beta2.Server{
+		l5dClient.ServerV1beta3().Servers("ns").Create(context.Background(), &v1beta3.Server{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "srv-hostport-mapping-2",
 				Namespace: "ns",
 			},
-			Spec: v1beta2.ServerSpec{
+			Spec: v1beta3.ServerSpec{
 				PodSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
 						"app": "hostport-mapping-2",

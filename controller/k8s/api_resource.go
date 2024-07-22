@@ -3,7 +3,7 @@ package k8s
 import (
 	"strings"
 
-	serverv1beta2 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
+	serverv1beta3 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta3"
 	sazv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	spv1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -84,7 +84,7 @@ func (res APIResource) GVK() (schema.GroupVersionKind, error) {
 	case SS:
 		return appsv1.SchemeGroupVersion.WithKind("StatefulSet"), nil
 	case Srv:
-		return serverv1beta2.SchemeGroupVersion.WithKind("Server"), nil
+		return serverv1beta3.SchemeGroupVersion.WithKind("Server"), nil
 	case Svc:
 		return v1.SchemeGroupVersion.WithKind("Service"), nil
 	default:

@@ -1,6 +1,6 @@
 {{ if .Values.collector.enabled -}}
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: {{ .Release.Namespace }}
@@ -18,7 +18,7 @@ spec:
   port: 4317
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: {{ .Release.Namespace }}
@@ -35,7 +35,7 @@ spec:
   port: 4318
   proxyProtocol: HTTP/1
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: {{ .Release.Namespace }}
@@ -53,7 +53,7 @@ spec:
   port: 55678
   proxyProtocol: gRPC
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: {{ .Release.Namespace }}
@@ -70,7 +70,7 @@ spec:
       component: collector
   port: 9411
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: {{ .Release.Namespace }}
@@ -87,7 +87,7 @@ spec:
       component: collector
   port: 14268
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: {{ .Release.Namespace }}
@@ -104,7 +104,7 @@ spec:
       component: collector
   port: 14250
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: {{ .Release.Namespace }}
@@ -236,7 +236,7 @@ spec:
   # allow connections from any pod (meshed or not) sending trace data
   requiredAuthenticationRefs: []
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: {{ .Release.Namespace }}
@@ -275,7 +275,7 @@ spec:
       name: collector
       namespace: {{.Release.Namespace}}
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: {{ .Release.Namespace }}
@@ -315,7 +315,7 @@ spec:
       name: prometheus
       namespace: linkerd-viz
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: {{ .Release.Namespace }}
