@@ -237,7 +237,7 @@ Kubernetes: `>=1.22.0-0`
 | proxy.control.streams.initialTimeout | string | `"3s"` | The timeout for the first update from the control plane. |
 | proxy.control.streams.lifetime | string | `"1h"` | The maximum duration for a response stream (i.e. before it will be reinitialized). |
 | proxy.cores | int | `0` | The `cpu.limit` and `cores` should be kept in sync. The value of `cores` must be an integer and should typically be set by rounding up from the limit. E.g. if cpu.limit is '1500m', cores should be 2. |
-| proxy.defaultInboundPolicy | string | "all-unauthenticated" | The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny" |
+| proxy.defaultInboundPolicy | string | "all-unauthenticated" | The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny", "audit" |
 | proxy.disableInboundProtocolDetectTimeout | bool | `false` | When set to true, disables the protocol detection timeout on the inbound side of the proxy by setting it to a very high value |
 | proxy.disableOutboundProtocolDetectTimeout | bool | `false` | When set to true, disables the protocol detection timeout on the outbound side of the proxy by setting it to a very high value |
 | proxy.enableExternalProfiles | bool | `false` | Enable service profiles for non-Kubernetes services |

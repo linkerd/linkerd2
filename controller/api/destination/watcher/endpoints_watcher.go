@@ -11,7 +11,7 @@ import (
 	"time"
 
 	ewv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
-	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
+	"github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta3"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
@@ -536,7 +536,7 @@ func (ew *EndpointsWatcher) getServicePublisher(id ServiceID) (sp *servicePublis
 func (ew *EndpointsWatcher) addServer(obj interface{}) {
 	ew.Lock()
 	defer ew.Unlock()
-	server := obj.(*v1beta2.Server)
+	server := obj.(*v1beta3.Server)
 	for _, sp := range ew.publishers {
 		sp.updateServer(nil, server)
 	}
@@ -546,8 +546,8 @@ func (ew *EndpointsWatcher) updateServer(oldObj interface{}, newObj interface{})
 	ew.Lock()
 	defer ew.Unlock()
 
-	oldServer := oldObj.(*v1beta2.Server)
-	newServer := newObj.(*v1beta2.Server)
+	oldServer := oldObj.(*v1beta3.Server)
+	newServer := newObj.(*v1beta3.Server)
 	if oldServer != nil && newServer != nil {
 		oldUpdated := latestUpdated(oldServer.ManagedFields)
 		updated := latestUpdated(newServer.ManagedFields)
@@ -576,7 +576,7 @@ func (ew *EndpointsWatcher) updateServer(oldObj interface{}, newObj interface{})
 func (ew *EndpointsWatcher) deleteServer(obj interface{}) {
 	ew.Lock()
 	defer ew.Unlock()
-	server := obj.(*v1beta2.Server)
+	server := obj.(*v1beta3.Server)
 	for _, sp := range ew.publishers {
 		sp.updateServer(server, nil)
 	}
@@ -751,7 +751,7 @@ func (sp *servicePublisher) metricsLabels(port Port, hostname string) prometheus
 	return endpointsLabels(sp.cluster, sp.id.Namespace, sp.id.Name, strconv.Itoa(int(port)), hostname)
 }
 
-func (sp *servicePublisher) updateServer(oldServer, newServer *v1beta2.Server) {
+func (sp *servicePublisher) updateServer(oldServer, newServer *v1beta3.Server) {
 	sp.Lock()
 	defer sp.Unlock()
 
@@ -1311,7 +1311,7 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 
 	pp.metrics.setSubscribers(len(pp.listeners))
 }
-func (pp *portPublisher) updateServer(oldServer, newServer *v1beta2.Server) {
+func (pp *portPublisher) updateServer(oldServer, newServer *v1beta3.Server) {
 	updated := false
 	for id, address := range pp.addresses.Addresses {
 
@@ -1335,7 +1335,7 @@ func (pp *portPublisher) updateServer(oldServer, newServer *v1beta2.Server) {
 	}
 }
 
-func (pp *portPublisher) isAddressSelected(address Address, server *v1beta2.Server) bool {
+func (pp *portPublisher) isAddressSelected(address Address, server *v1beta3.Server) bool {
 	if server == nil {
 		return false
 	}

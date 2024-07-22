@@ -71,9 +71,9 @@ spec:
               drop:
               - ALL
             readOnlyRootFilesystem: true
-            runAsGroup: 2103
             runAsNonRoot: true
             runAsUser: 2103
+            runAsGroup: 2103
             seccompProfile:
               type: RuntimeDefault
       securityContext:
@@ -131,7 +131,7 @@ metadata:
   labels:
     linkerd.io/extension: multicluster
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-multicluster
@@ -429,7 +429,7 @@ spec:
     singular: link
     kind: Link
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-multicluster

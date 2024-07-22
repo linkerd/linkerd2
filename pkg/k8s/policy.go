@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	policyv1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
-	serverv1beta2 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
+	serverv1beta3 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta3"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,7 +34,7 @@ var HTTPRouteGVR = policyv1.SchemeGroupVersion.WithResource("httproutes")
 var SazGVR = serverauthorizationv1beta1.SchemeGroupVersion.WithResource("serverauthorizations")
 
 // ServerGVR is the GroupVersionResource for the Server resource.
-var ServerGVR = serverv1beta2.SchemeGroupVersion.WithResource("servers")
+var ServerGVR = serverv1beta3.SchemeGroupVersion.WithResource("servers")
 
 // AuthorizationsForResource returns a list of ServerAuthorizations and
 // AuthorizationPolicies which apply to any Server or HttpRoute which select
@@ -54,22 +54,22 @@ func AuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, names
 	}
 
 	for _, saz := range sazs.Items {
-		var servers []serverv1beta2.Server
+		var servers []serverv1beta3.Server
 
 		if saz.Spec.Server.Name != "" {
-			server, err := k8sAPI.L5dCrdClient.ServerV1beta2().Servers(saz.GetNamespace()).Get(ctx, saz.Spec.Server.Name, metav1.GetOptions{})
+			server, err := k8sAPI.L5dCrdClient.ServerV1beta3().Servers(saz.GetNamespace()).Get(ctx, saz.Spec.Server.Name, metav1.GetOptions{})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "ServerAuthorization/%s targets Server/%s but we failed to get it: %s\n", saz.Name, saz.Spec.Server.Name, err)
 				continue
 			}
-			servers = []serverv1beta2.Server{*server}
+			servers = []serverv1beta3.Server{*server}
 		} else if saz.Spec.Server.Selector != nil {
 			selector, err := metav1.LabelSelectorAsSelector(saz.Spec.Server.Selector)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to parse Server selector for ServerAuthorization/%s: %s\n", saz.Name, err)
 				continue
 			}
-			serverList, err := k8sAPI.L5dCrdClient.ServerV1beta2().Servers(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
+			serverList, err := k8sAPI.L5dCrdClient.ServerV1beta3().Servers(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get Servers for ServerAuthorization/%s: %s\n", saz.Name, err)
 				continue
@@ -95,14 +95,14 @@ func AuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, names
 		os.Exit(1)
 	}
 
-	allServersInNamespace := map[string]*serverv1beta2.ServerList{}
+	allServersInNamespace := map[string]*serverv1beta3.ServerList{}
 
 	for _, p := range policies.Items {
 		target := p.Spec.TargetRef
 		if target.Kind == NamespaceKind && target.Group == K8sCoreAPIGroup {
 			serverList, ok := allServersInNamespace[p.Namespace]
 			if !ok {
-				serverList, err = k8sAPI.L5dCrdClient.ServerV1beta2().Servers(p.Namespace).List(ctx, metav1.ListOptions{})
+				serverList, err = k8sAPI.L5dCrdClient.ServerV1beta3().Servers(p.Namespace).List(ctx, metav1.ListOptions{})
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Failed to get Servers for Namespace/%s: %s\n", p.Namespace, err)
 					continue
@@ -122,7 +122,7 @@ func AuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, names
 				}
 			}
 		} else if target.Kind == ServerKind && target.Group == PolicyAPIGroup {
-			server, err := k8sAPI.L5dCrdClient.ServerV1beta2().Servers(p.Namespace).Get(ctx, string(target.Name), metav1.GetOptions{})
+			server, err := k8sAPI.L5dCrdClient.ServerV1beta3().Servers(p.Namespace).Get(ctx, string(target.Name), metav1.GetOptions{})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "AuthorizationPolicy/%s targets Server/%s but we failed to get it: %s\n", p.Name, target.Name, err)
 				continue
@@ -144,7 +144,7 @@ func AuthorizationsForResource(ctx context.Context, k8sAPI *KubernetesAPI, names
 			for _, parent := range route.Spec.ParentRefs {
 				if parent.Kind != nil && *parent.Kind == ServerKind &&
 					parent.Group != nil && *parent.Group == PolicyAPIGroup {
-					server, err := k8sAPI.L5dCrdClient.ServerV1beta2().Servers(p.Namespace).Get(ctx, string(parent.Name), metav1.GetOptions{})
+					server, err := k8sAPI.L5dCrdClient.ServerV1beta3().Servers(p.Namespace).Get(ctx, string(parent.Name), metav1.GetOptions{})
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "HTTPRoute/%s belongs to Server/%s but we failed to get it: %s\n", target.Name, parent.Name, err)
 						continue
@@ -175,7 +175,7 @@ func ServersForResource(ctx context.Context, k8sAPI *KubernetesAPI, namespace st
 
 	results := make([]string, 0)
 
-	servers, err := k8sAPI.L5dCrdClient.ServerV1beta2().Servers(namespace).List(ctx, metav1.ListOptions{})
+	servers, err := k8sAPI.L5dCrdClient.ServerV1beta3().Servers(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get serverauthorization resources: %s\n", err)
 		os.Exit(1)
@@ -216,7 +216,7 @@ func ServerAuthorizationsForServer(ctx context.Context, k8sAPI *KubernetesAPI, n
 				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
 				os.Exit(1)
 			}
-			serverList, err := k8sAPI.L5dCrdClient.ServerV1beta2().Servers(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
+			serverList, err := k8sAPI.L5dCrdClient.ServerV1beta3().Servers(saz.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to get servers: %s\n", err)
 				os.Exit(1)
@@ -234,7 +234,7 @@ func ServerAuthorizationsForServer(ctx context.Context, k8sAPI *KubernetesAPI, n
 
 // serverIncludesPod returns true the given server selects any of the given pods
 // and that pod uses the server's port.
-func serverIncludesPod(server serverv1beta2.Server, pods []corev1.Pod) bool {
+func serverIncludesPod(server serverv1beta3.Server, pods []corev1.Pod) bool {
 	if server.Spec.PodSelector == nil {
 		return false
 	}

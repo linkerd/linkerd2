@@ -74,9 +74,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
-          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:
@@ -111,7 +111,7 @@ spec:
     port: 443
     targetPort: jaeger-injector
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-jaeger
@@ -321,9 +321,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
-          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           seccompProfile:
             type: RuntimeDefault
       dnsPolicy: ClusterFirst

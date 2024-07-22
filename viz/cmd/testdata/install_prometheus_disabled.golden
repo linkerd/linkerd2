@@ -423,7 +423,7 @@ spec:
           type: RuntimeDefault
       serviceAccountName: metrics-api
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -492,7 +492,7 @@ spec:
   - cidr: "0.0.0.0/0"
   - cidr: "::/0"
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -632,9 +632,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
-          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:
@@ -650,7 +650,7 @@ spec:
         secret:
           secretName: tap-k8s-tls
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -847,9 +847,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
-          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           seccompProfile:
             type: RuntimeDefault
         volumeMounts:
@@ -865,7 +865,7 @@ spec:
         secret:
           secretName: tap-injector-k8s-tls
 ---
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   namespace: linkerd-viz
@@ -1021,9 +1021,9 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
-          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           seccompProfile:
             type: RuntimeDefault
       securityContext:

@@ -613,7 +613,7 @@ func TestValidate(t *testing.T) {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 		values.Proxy.DefaultInboundPolicy = "everybody"
-		expected := "--default-inbound-policy must be one of: all-authenticated, all-unauthenticated, cluster-authenticated, cluster-unauthenticated, deny (got everybody)"
+		expected := "--default-inbound-policy must be one of: all-authenticated, all-unauthenticated, cluster-authenticated, cluster-unauthenticated, deny, audit (got everybody)"
 
 		err = validateValues(context.Background(), nil, values)
 		if err == nil {

@@ -24,7 +24,7 @@ func main() {
 	}
 	client := versioned.NewForConfigOrDie(config)
 
-	srvWatch, err := client.ServerV1beta2().Servers(*namespace).Watch(context.Background(), metav1.ListOptions{})
+	srvWatch, err := client.ServerV1beta3().Servers(*namespace).Watch(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to watch Servers: %s", err)
 		os.Exit(1)
