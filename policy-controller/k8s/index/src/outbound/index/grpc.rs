@@ -12,7 +12,7 @@ use linkerd_policy_controller_core::outbound::{
 use linkerd_policy_controller_core::{outbound::OutboundRouteRule, routes::GrpcRouteMatch};
 use linkerd_policy_controller_k8s_api::{gateway, Time};
 
-pub(crate) fn convert_route(
+pub(super) fn convert_route(
     ns: &str,
     route: gateway::GrpcRoute,
     cluster: &ClusterInfo,
@@ -93,7 +93,7 @@ fn convert_rule(
     })
 }
 
-fn parse_grpc_retry(
+pub fn parse_grpc_retry(
     annotations: &std::collections::BTreeMap<String, String>,
 ) -> Result<Option<RouteRetry<GrpcRetryCondition>>> {
     let limit = annotations

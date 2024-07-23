@@ -17,7 +17,7 @@ use linkerd_policy_controller_core::{
 };
 use linkerd_policy_controller_k8s_api::{gateway, policy, Time};
 
-pub(crate) fn convert_route(
+pub(super) fn convert_route(
     ns: &str,
     route: HttpRouteResource,
     cluster: &ClusterInfo,
@@ -190,7 +190,7 @@ fn convert_gateway_rule(
     })
 }
 
-pub(crate) fn convert_backend<BackendRef: Into<gateway::HttpBackendRef>>(
+pub(super) fn convert_backend<BackendRef: Into<gateway::HttpBackendRef>>(
     ns: &str,
     backend: BackendRef,
     cluster: &ClusterInfo,
@@ -329,7 +329,7 @@ fn is_backend_service(backend: &gateway::BackendObjectReference) -> bool {
     )
 }
 
-fn parse_http_retry(
+pub fn parse_http_retry(
     annotations: &std::collections::BTreeMap<String, String>,
 ) -> Result<Option<RouteRetry<HttpRetryCondition>>> {
     let limit = annotations

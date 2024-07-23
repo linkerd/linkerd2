@@ -27,8 +27,8 @@ pub struct Index {
     service_info: HashMap<ServiceRef, ServiceInfo>,
 }
 
-mod grpc;
-mod http;
+pub mod grpc;
+pub mod http;
 pub mod metrics;
 
 pub type SharedIndex = Arc<RwLock<Index>>;
@@ -651,7 +651,7 @@ fn is_service(group: Option<&str>, kind: &str) -> bool {
 }
 
 #[inline]
-fn is_parent_service(parent: &ParentReference) -> bool {
+pub fn is_parent_service(parent: &ParentReference) -> bool {
     parent
         .kind
         .as_deref()
@@ -835,7 +835,7 @@ impl RoutesWatch {
     }
 }
 
-fn parse_accrual_config(
+pub fn parse_accrual_config(
     annotations: &std::collections::BTreeMap<String, String>,
 ) -> Result<Option<FailureAccrual>> {
     annotations
@@ -890,7 +890,7 @@ fn parse_accrual_config(
         .transpose()
 }
 
-fn parse_timeouts(
+pub fn parse_timeouts(
     annotations: &std::collections::BTreeMap<String, String>,
 ) -> Result<RouteTimeouts> {
     let response = annotations
