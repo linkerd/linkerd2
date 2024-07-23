@@ -584,7 +584,7 @@ data:
     imagePullSecrets: []
     linkerdVersion: install-control-plane-version
     networkValidator:
-      connectPort: 20001
+      connectAddr: ""
       enableSecurityContext: true
       listenAddr: '[::]:4140'
       logFormat: plain

@@ -561,7 +561,7 @@ data:
     imagePullSecrets: []
     linkerdVersion: linkerd-version
     networkValidator:
-      connectPort: 20001
+      connectAddr: ""
       enableSecurityContext: true
       listenAddr: '[::]:4140'
       logFormat: plain

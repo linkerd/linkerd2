@@ -192,7 +192,7 @@ type (
 	NetworkValidator struct {
 		LogLevel              string `json:"logLevel"`
 		LogFormat             string `json:"logFormat"`
-		ConnectPort           int32  `json:"connectPort"`
+		ConnectAddr           string `json:"connectAddr"`
 		ListenAddr            string `json:"listenAddr"`
 		Timeout               string `json:"timeout"`
 		EnableSecurityContext bool   `json:"enableSecurityContext"`

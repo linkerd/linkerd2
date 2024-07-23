@@ -212,7 +212,7 @@ func TestNewValues(t *testing.T) {
 		NetworkValidator: &NetworkValidator{
 			LogLevel:              "debug",
 			LogFormat:             "plain",
-			ConnectPort:           20001,
+			ConnectAddr:           "",
 			ListenAddr:            "[::]:4140",
 			Timeout:               "10s",
 			EnableSecurityContext: true,
