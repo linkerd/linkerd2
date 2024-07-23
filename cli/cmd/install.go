@@ -59,7 +59,7 @@ var (
 		"templates/gateway.networking.k8s.io_httproutes.yaml",
 		"templates/gateway.networking.k8s.io_grpcroutes.yaml",
 		"templates/workload/external-workload.yaml",
-		"templates/traffic-group.yaml",
+		"templates/service-import.yaml",
 	}
 
 	TemplatesControlPlane = []string{
