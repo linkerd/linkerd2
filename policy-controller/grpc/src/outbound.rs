@@ -235,10 +235,22 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
 
         if !grpc_routes.is_empty() {
             grpc_routes.sort_by(timestamp_then_name);
-            grpc::protocol(backend, grpc_routes.into_iter(), accrual)
+            grpc::protocol(
+                backend,
+                grpc_routes.into_iter(),
+                accrual,
+                outbound.grpc_retry,
+                outbound.timeouts,
+            )
         } else {
             http_routes.sort_by(timestamp_then_name);
-            http::protocol(backend, http_routes.into_iter(), accrual)
+            http::protocol(
+                backend,
+                http_routes.into_iter(),
+                accrual,
+                outbound.http_retry,
+                outbound.timeouts,
+            )
         }
     };
 

@@ -41,6 +41,9 @@ pub struct OutboundPolicy {
     pub port: NonZeroU16,
     pub opaque: bool,
     pub accrual: Option<FailureAccrual>,
+    pub http_retry: Option<RouteRetry<HttpRetryCondition>>,
+    pub grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
+    pub timeouts: RouteTimeouts,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -107,7 +110,7 @@ pub enum Filter {
     FailureInjector(FailureInjectorFilter),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct RouteTimeouts {
     pub response: Option<time::Duration>,
     pub request: Option<time::Duration>,

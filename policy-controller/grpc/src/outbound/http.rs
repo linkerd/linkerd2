@@ -8,7 +8,10 @@ use crate::routes::{
 };
 use linkerd2_proxy_api::{destination, http_route, meta, outbound};
 use linkerd_policy_controller_core::{
-    outbound::{Backend, Filter, HttpRetryCondition, HttpRoute, OutboundRouteRule},
+    outbound::{
+        Backend, Filter, HttpRetryCondition, HttpRoute, OutboundRouteRule, RouteRetry,
+        RouteTimeouts,
+    },
     routes::GroupKindNamespaceName,
 };
 use std::{net::SocketAddr, time};
@@ -17,13 +20,27 @@ pub(crate) fn protocol(
     default_backend: outbound::Backend,
     routes: impl Iterator<Item = (GroupKindNamespaceName, HttpRoute)>,
     accrual: Option<outbound::FailureAccrual>,
+    service_retry: Option<RouteRetry<HttpRetryCondition>>,
+    service_timeouts: RouteTimeouts,
 ) -> outbound::proxy_protocol::Kind {
     let opaque_route = default_outbound_opaq_route(default_backend.clone());
     let mut routes = routes
-        .map(|(gknn, route)| convert_outbound_route(gknn, route, default_backend.clone()))
+        .map(|(gknn, route)| {
+            convert_outbound_route(
+                gknn,
+                route,
+                default_backend.clone(),
+                service_retry.clone(),
+                service_timeouts.clone(),
+            )
+        })
         .collect::<Vec<_>>();
     if routes.is_empty() {
-        routes.push(default_outbound_route(default_backend));
+        routes.push(default_outbound_route(
+            default_backend,
+            service_retry.clone(),
+            service_timeouts.clone(),
+        ));
     }
     outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
         timeout: Some(
@@ -54,6 +71,8 @@ fn convert_outbound_route(
         creation_timestamp: _,
     }: HttpRoute,
     backend: outbound::Backend,
+    service_retry: Option<RouteRetry<HttpRetryCondition>>,
+    service_timeouts: RouteTimeouts,
 ) -> outbound::HttpRoute {
     // This encoder sets deprecated timeouts for older proxies.
     #![allow(deprecated)]
@@ -76,8 +95,8 @@ fn convert_outbound_route(
             |OutboundRouteRule {
                  matches,
                  backends,
-                 retry,
-                 timeouts,
+                 mut retry,
+                 mut timeouts,
                  filters,
              }| {
                 let backends = backends
@@ -99,6 +118,12 @@ fn convert_outbound_route(
                         outbound::http_route::distribution::RandomAvailable { backends },
                     )
                 };
+                if timeouts == Default::default() {
+                    timeouts = service_timeouts.clone();
+                }
+                if retry.is_none() {
+                    retry = service_retry.clone();
+                }
                 outbound::http_route::Rule {
                     matches: matches.into_iter().map(convert_match).collect(),
                     backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
@@ -106,47 +131,8 @@ fn convert_outbound_route(
                     request_timeout: timeouts
                         .request
                         .and_then(|d| convert_duration("request timeout", d)),
-                    timeouts: Some(http_route::Timeouts {
-                        request: timeouts
-                            .request
-                            .and_then(|d| convert_duration("stream timeout", d)),
-                        idle: timeouts
-                            .idle
-                            .and_then(|d| convert_duration("idle timeout", d)),
-                        response: timeouts
-                            .response
-                            .and_then(|d| convert_duration("response timeout", d)),
-                    }),
-                    retry: retry.map(|r| outbound::http_route::Retry {
-                        max_retries: r.limit.into(),
-                        max_request_bytes: 64 * 1024,
-                        backoff: Some(outbound::ExponentialBackoff {
-                            min_backoff: Some(time::Duration::from_millis(25).try_into().unwrap()),
-                            max_backoff: Some(time::Duration::from_millis(250).try_into().unwrap()),
-                            jitter_ratio: 1.0,
-                        }),
-                        conditions: Some(r.conditions.iter().flatten().fold(
-                            outbound::http_route::retry::Conditions::default(),
-                            |mut cond, c| {
-                                cond.status_ranges.push(match c {
-                                    HttpRetryCondition::ServerError => {
-                                        outbound::http_route::retry::conditions::StatusRange {
-                                            start: 500,
-                                            end: 599,
-                                        }
-                                    }
-                                    HttpRetryCondition::GatewayError => {
-                                        outbound::http_route::retry::conditions::StatusRange {
-                                            start: 502,
-                                            end: 504,
-                                        }
-                                    }
-                                });
-                                cond
-                            },
-                        )),
-                        timeout: r.timeout.and_then(|d| convert_duration("retry timeout", d)),
-                    }),
+                    timeouts: Some(convert_timeouts(timeouts)),
+                    retry: retry.map(convert_retry),
                     allow_l5d_request_headers: true,
                 }
             },
@@ -268,7 +254,13 @@ fn convert_backend(backend: Backend) -> outbound::http_route::WeightedRouteBacke
     }
 }
 
-pub(crate) fn default_outbound_route(backend: outbound::Backend) -> outbound::HttpRoute {
+pub(crate) fn default_outbound_route(
+    backend: outbound::Backend,
+    service_retry: Option<RouteRetry<HttpRetryCondition>>,
+    service_timeouts: RouteTimeouts,
+) -> outbound::HttpRoute {
+    // This encoder sets deprecated timeouts for older proxies.
+    #![allow(deprecated)]
     let metadata = Some(meta::Metadata {
         kind: Some(meta::metadata::Kind::Default("http".to_string())),
     });
@@ -290,6 +282,11 @@ pub(crate) fn default_outbound_route(backend: outbound::Backend) -> outbound::Ht
                 },
             )),
         }),
+        retry: service_retry.map(convert_retry),
+        request_timeout: service_timeouts
+            .request
+            .and_then(|d| convert_duration("request timeout", d)),
+        timeouts: Some(convert_timeouts(service_timeouts)),
         ..Default::default()
     }];
     outbound::HttpRoute {
@@ -313,5 +310,52 @@ fn convert_to_filter(filter: Filter) -> outbound::http_route::Filter {
             Filter::RequestRedirect(f) => Kind::Redirect(convert_redirect_filter(f)),
             Filter::FailureInjector(f) => Kind::FailureInjector(convert_failure_injector_filter(f)),
         }),
+    }
+}
+
+fn convert_retry(r: RouteRetry<HttpRetryCondition>) -> outbound::http_route::Retry {
+    outbound::http_route::Retry {
+        max_retries: r.limit.into(),
+        max_request_bytes: 64 * 1024,
+        backoff: Some(outbound::ExponentialBackoff {
+            min_backoff: Some(time::Duration::from_millis(25).try_into().unwrap()),
+            max_backoff: Some(time::Duration::from_millis(250).try_into().unwrap()),
+            jitter_ratio: 1.0,
+        }),
+        conditions: Some(r.conditions.iter().flatten().fold(
+            outbound::http_route::retry::Conditions::default(),
+            |mut cond, c| {
+                cond.status_ranges.push(match c {
+                    HttpRetryCondition::ServerError => {
+                        outbound::http_route::retry::conditions::StatusRange {
+                            start: 500,
+                            end: 599,
+                        }
+                    }
+                    HttpRetryCondition::GatewayError => {
+                        outbound::http_route::retry::conditions::StatusRange {
+                            start: 502,
+                            end: 504,
+                        }
+                    }
+                });
+                cond
+            },
+        )),
+        timeout: r.timeout.and_then(|d| convert_duration("retry timeout", d)),
+    }
+}
+
+fn convert_timeouts(timeouts: RouteTimeouts) -> http_route::Timeouts {
+    http_route::Timeouts {
+        request: timeouts
+            .request
+            .and_then(|d| convert_duration("request timeout", d)),
+        idle: timeouts
+            .idle
+            .and_then(|d| convert_duration("idle timeout", d)),
+        response: timeouts
+            .response
+            .and_then(|d| convert_duration("response timeout", d)),
     }
 }

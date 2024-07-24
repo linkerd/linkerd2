@@ -7,8 +7,8 @@ use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
 use linkerd_policy_controller_core::{
     outbound::{
-        Backend, Backoff, FailureAccrual, GrpcRoute, HttpRoute, OutboundPolicy, RouteSet,
-        RouteTimeouts,
+        Backend, Backoff, FailureAccrual, GrpcRetryCondition, GrpcRoute, HttpRetryCondition,
+        HttpRoute, OutboundPolicy, RouteRetry, RouteSet, RouteTimeouts,
     },
     routes::GroupKindNamespaceName,
 };
@@ -63,6 +63,9 @@ struct Namespace {
 struct ServiceInfo {
     opaque_ports: PortSet,
     accrual: Option<FailureAccrual>,
+    http_retry: Option<RouteRetry<HttpRetryCondition>>,
+    grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
+    timeouts: RouteTimeouts,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -80,12 +83,18 @@ struct ServiceRoutes {
     watches_by_ns: HashMap<String, RoutesWatch>,
     opaque: bool,
     accrual: Option<FailureAccrual>,
+    http_retry: Option<RouteRetry<HttpRetryCondition>>,
+    grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
+    timeouts: RouteTimeouts,
 }
 
 #[derive(Debug)]
 struct RoutesWatch {
     opaque: bool,
     accrual: Option<FailureAccrual>,
+    http_retry: Option<RouteRetry<HttpRetryCondition>>,
+    grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
+    timeouts: RouteTimeouts,
     http_routes: RouteSet<HttpRoute>,
     grpc_routes: RouteSet<GrpcRoute>,
     watch: watch::Sender<OutboundPolicy>,
@@ -149,6 +158,17 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             ports_annotation(service.annotations(), "config.linkerd.io/opaque-ports")
                 .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
 
+        let timeouts = parse_timeouts(service.annotations())
+            .map_err(|error| tracing::error!(%error, service=name, namespace=ns, "failed to parse timeouts"))
+            .unwrap_or_default();
+
+        let http_retry = http::parse_http_retry(service.annotations()).map_err(|error| {
+            tracing::error!(%error, service=name, namespace=ns, "failed to parse http retry")
+        }).unwrap_or_default();
+        let grpc_retry = grpc::parse_grpc_retry(service.annotations()).map_err(|error| {
+            tracing::error!(%error, service=name, namespace=ns, "failed to parse grpc retry")
+        }).unwrap_or_default();
+
         if let Some(cluster_ips) = service
             .spec
             .as_ref()
@@ -176,6 +196,9 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         let service_info = ServiceInfo {
             opaque_ports,
             accrual,
+            http_retry,
+            grpc_retry,
+            timeouts,
         };
 
         self.namespaces
@@ -498,7 +521,13 @@ impl Namespace {
 
             let opaque = service.opaque_ports.contains(&svc_port.port);
 
-            svc_routes.update_service(opaque, service.accrual);
+            svc_routes.update_service(
+                opaque,
+                service.accrual,
+                service.http_retry.clone(),
+                service.grpc_retry.clone(),
+                service.timeouts.clone(),
+            );
         }
     }
 
@@ -541,10 +570,18 @@ impl Namespace {
                     namespace: self.namespace.to_string(),
                 };
 
-                let (opaque, accrual) = match service_info.get(&service_ref) {
-                    Some(svc) => (svc.opaque_ports.contains(&sp.port), svc.accrual),
-                    None => (false, None),
-                };
+                let mut opaque = false;
+                let mut accrual = None;
+                let mut http_retry = None;
+                let mut grpc_retry = None;
+                let mut timeouts = Default::default();
+                if let Some(svc) = service_info.get(&service_ref) {
+                    opaque = svc.opaque_ports.contains(&sp.port);
+                    accrual = svc.accrual;
+                    http_retry = svc.http_retry.clone();
+                    grpc_retry = svc.grpc_retry.clone();
+                    timeouts = svc.timeouts.clone();
+                }
 
                 // The routes which target this Service but don't specify
                 // a port apply to all ports. Therefore, we include them.
@@ -562,6 +599,9 @@ impl Namespace {
                 let mut service_routes = ServiceRoutes {
                     opaque,
                     accrual,
+                    http_retry,
+                    grpc_retry,
+                    timeouts,
                     authority,
                     port: sp.port,
                     name: sp.service,
@@ -699,6 +739,9 @@ impl ServiceRoutes {
                 port: self.port,
                 opaque: self.opaque,
                 accrual: self.accrual,
+                http_retry: self.http_retry.clone(),
+                grpc_retry: self.grpc_retry.clone(),
+                timeouts: self.timeouts.clone(),
                 http_routes: http_routes.clone(),
                 grpc_routes: grpc_routes.clone(),
                 name: self.name.to_string(),
@@ -712,6 +755,9 @@ impl ServiceRoutes {
                 watch: sender,
                 opaque: self.opaque,
                 accrual: self.accrual,
+                http_retry: self.http_retry.clone(),
+                grpc_retry: self.grpc_retry.clone(),
+                timeouts: self.timeouts.clone(),
             }
         })
     }
@@ -760,12 +806,25 @@ impl ServiceRoutes {
         }
     }
 
-    fn update_service(&mut self, opaque: bool, accrual: Option<FailureAccrual>) {
+    fn update_service(
+        &mut self,
+        opaque: bool,
+        accrual: Option<FailureAccrual>,
+        http_retry: Option<RouteRetry<HttpRetryCondition>>,
+        grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
+        timeouts: RouteTimeouts,
+    ) {
         self.opaque = opaque;
         self.accrual = accrual;
+        self.http_retry = http_retry.clone();
+        self.grpc_retry = grpc_retry.clone();
+        self.timeouts = timeouts.clone();
         for watch in self.watches_by_ns.values_mut() {
             watch.opaque = opaque;
             watch.accrual = accrual;
+            watch.http_retry = http_retry.clone();
+            watch.grpc_retry = grpc_retry.clone();
+            watch.timeouts = timeouts.clone();
             watch.send_if_modified();
         }
     }
@@ -805,6 +864,21 @@ impl RoutesWatch {
 
             if self.accrual != policy.accrual {
                 policy.accrual = self.accrual;
+                modified = true;
+            }
+
+            if self.http_retry != policy.http_retry {
+                policy.http_retry = self.http_retry.clone();
+                modified = true;
+            }
+
+            if self.grpc_retry != policy.grpc_retry {
+                policy.grpc_retry = self.grpc_retry.clone();
+                modified = true;
+            }
+
+            if self.timeouts != policy.timeouts {
+                policy.timeouts = self.timeouts.clone();
                 modified = true;
             }
 

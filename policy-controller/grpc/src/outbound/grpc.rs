@@ -4,7 +4,10 @@ use crate::routes::{
 };
 use linkerd2_proxy_api::{destination, grpc_route, http_route, meta, outbound};
 use linkerd_policy_controller_core::{
-    outbound::{Backend, Filter, GrpcRetryCondition, GrpcRoute, OutboundRoute, OutboundRouteRule},
+    outbound::{
+        Backend, Filter, GrpcRetryCondition, GrpcRoute, OutboundRoute, OutboundRouteRule,
+        RouteRetry, RouteTimeouts,
+    },
     routes::{FailureInjectorFilter, GroupKindNamespaceName},
 };
 use std::{net::SocketAddr, time};
@@ -13,9 +16,19 @@ pub(crate) fn protocol(
     default_backend: outbound::Backend,
     routes: impl Iterator<Item = (GroupKindNamespaceName, GrpcRoute)>,
     failure_accrual: Option<outbound::FailureAccrual>,
+    service_retry: Option<RouteRetry<GrpcRetryCondition>>,
+    service_timeouts: RouteTimeouts,
 ) -> outbound::proxy_protocol::Kind {
     let routes = routes
-        .map(|(gknn, route)| convert_outbound_route(gknn, route, default_backend.clone()))
+        .map(|(gknn, route)| {
+            convert_outbound_route(
+                gknn,
+                route,
+                default_backend.clone(),
+                service_retry.clone(),
+                service_timeouts.clone(),
+            )
+        })
         .collect::<Vec<_>>();
     outbound::proxy_protocol::Kind::Grpc(outbound::proxy_protocol::Grpc {
         routes,
@@ -31,6 +44,8 @@ fn convert_outbound_route(
         creation_timestamp: _,
     }: GrpcRoute,
     backend: outbound::Backend,
+    service_retry: Option<RouteRetry<GrpcRetryCondition>>,
+    service_timeouts: RouteTimeouts,
 ) -> outbound::GrpcRoute {
     // This encoder sets deprecated timeouts for older proxies.
     #![allow(deprecated)]
@@ -53,8 +68,8 @@ fn convert_outbound_route(
             |OutboundRouteRule {
                  matches,
                  backends,
-                 retry,
-                 timeouts,
+                 mut retry,
+                 mut timeouts,
                  filters,
              }| {
                 let backends = backends
@@ -76,6 +91,12 @@ fn convert_outbound_route(
                         outbound::grpc_route::distribution::RandomAvailable { backends },
                     )
                 };
+                if timeouts == Default::default() {
+                    timeouts = service_timeouts.clone();
+                }
+                if retry.is_none() {
+                    retry = service_retry.clone();
+                }
                 outbound::grpc_route::Rule {
                     matches: matches.into_iter().map(convert_match).collect(),
                     backends: Some(outbound::grpc_route::Distribution { kind: Some(dist) }),
