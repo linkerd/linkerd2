@@ -1,19 +1,19 @@
-package v1beta1
+package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/linkerd/linkerd2/controller/gen/apis/externalworkload"
+	"github.com/linkerd/linkerd2/controller/gen/apis/serviceimport"
 )
 
 var (
 	// SchemeGroupVersion is the identifier for the API which includes the name
 	// of the group and the version of the API.
 	SchemeGroupVersion = schema.GroupVersion{
-		Group:   externalworkload.GroupName,
-		Version: "v1beta1",
+		Group:   serviceimport.GroupName,
+		Version: "v1alpha1",
 	}
 
 	// SchemeBuilder collects functions that add things to a scheme. It's to
@@ -41,8 +41,8 @@ func Resource(resource string) schema.GroupResource {
 // Adds the list of known types to Scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&ExternalWorkload{},
-		&ExternalWorkloadList{},
+		&ServiceImport{},
+		&ServiceImportList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

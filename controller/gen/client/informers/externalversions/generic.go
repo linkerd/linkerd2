@@ -28,6 +28,7 @@ import (
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	v1beta2 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
+	serviceimportv1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/serviceimport/v1alpha1"
 	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
@@ -96,6 +97,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		// Group=serverauthorization, Version=v1beta1
 	case serverauthorizationv1beta1.SchemeGroupVersion.WithResource("serverauthorizations"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Serverauthorization().V1beta1().ServerAuthorizations().Informer()}, nil
+
+		// Group=serviceimport, Version=v1alpha1
+	case serviceimportv1alpha1.SchemeGroupVersion.WithResource("serviceimports"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Serviceimport().V1alpha1().ServiceImports().Informer()}, nil
 
 	}
 

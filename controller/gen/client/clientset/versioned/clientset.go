@@ -29,6 +29,7 @@ import (
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta1"
 	serverv1beta2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta2"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serverauthorization/v1beta1"
+	serviceimportv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceimport/v1alpha1"
 	linkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
@@ -44,6 +45,7 @@ type Interface interface {
 	ServerV1beta1() serverv1beta1.ServerV1beta1Interface
 	ServerV1beta2() serverv1beta2.ServerV1beta2Interface
 	ServerauthorizationV1beta1() serverauthorizationv1beta1.ServerauthorizationV1beta1Interface
+	ServiceimportV1alpha1() serviceimportv1alpha1.ServiceimportV1alpha1Interface
 	LinkerdV1alpha2() linkerdv1alpha2.LinkerdV1alpha2Interface
 }
 
@@ -57,6 +59,7 @@ type Clientset struct {
 	serverV1beta1              *serverv1beta1.ServerV1beta1Client
 	serverV1beta2              *serverv1beta2.ServerV1beta2Client
 	serverauthorizationV1beta1 *serverauthorizationv1beta1.ServerauthorizationV1beta1Client
+	serviceimportV1alpha1      *serviceimportv1alpha1.ServiceimportV1alpha1Client
 	linkerdV1alpha2            *linkerdv1alpha2.LinkerdV1alpha2Client
 }
 
@@ -93,6 +96,11 @@ func (c *Clientset) ServerV1beta2() serverv1beta2.ServerV1beta2Interface {
 // ServerauthorizationV1beta1 retrieves the ServerauthorizationV1beta1Client
 func (c *Clientset) ServerauthorizationV1beta1() serverauthorizationv1beta1.ServerauthorizationV1beta1Interface {
 	return c.serverauthorizationV1beta1
+}
+
+// ServiceimportV1alpha1 retrieves the ServiceimportV1alpha1Client
+func (c *Clientset) ServiceimportV1alpha1() serviceimportv1alpha1.ServiceimportV1alpha1Interface {
+	return c.serviceimportV1alpha1
 }
 
 // LinkerdV1alpha2 retrieves the LinkerdV1alpha2Client
@@ -172,6 +180,10 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 	if err != nil {
 		return nil, err
 	}
+	cs.serviceimportV1alpha1, err = serviceimportv1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
 	cs.linkerdV1alpha2, err = linkerdv1alpha2.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
@@ -204,6 +216,7 @@ func New(c rest.Interface) *Clientset {
 	cs.serverV1beta1 = serverv1beta1.New(c)
 	cs.serverV1beta2 = serverv1beta2.New(c)
 	cs.serverauthorizationV1beta1 = serverauthorizationv1beta1.New(c)
+	cs.serviceimportV1alpha1 = serviceimportv1alpha1.New(c)
 	cs.linkerdV1alpha2 = linkerdv1alpha2.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)

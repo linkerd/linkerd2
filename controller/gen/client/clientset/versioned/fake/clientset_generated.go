@@ -34,6 +34,8 @@ import (
 	fakeserverv1beta2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/server/v1beta2/fake"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serverauthorization/v1beta1"
 	fakeserverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serverauthorization/v1beta1/fake"
+	serviceimportv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceimport/v1alpha1"
+	fakeserviceimportv1alpha1 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceimport/v1alpha1/fake"
 	linkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2"
 	fakelinkerdv1alpha2 "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/typed/serviceprofile/v1alpha2/fake"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -126,6 +128,11 @@ func (c *Clientset) ServerV1beta2() serverv1beta2.ServerV1beta2Interface {
 // ServerauthorizationV1beta1 retrieves the ServerauthorizationV1beta1Client
 func (c *Clientset) ServerauthorizationV1beta1() serverauthorizationv1beta1.ServerauthorizationV1beta1Interface {
 	return &fakeserverauthorizationv1beta1.FakeServerauthorizationV1beta1{Fake: &c.Fake}
+}
+
+// ServiceimportV1alpha1 retrieves the ServiceimportV1alpha1Client
+func (c *Clientset) ServiceimportV1alpha1() serviceimportv1alpha1.ServiceimportV1alpha1Interface {
+	return &fakeserviceimportv1alpha1.FakeServiceimportV1alpha1{Fake: &c.Fake}
 }
 
 // LinkerdV1alpha2 retrieves the LinkerdV1alpha2Client

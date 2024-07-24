@@ -30,6 +30,7 @@ import (
 	policy "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/policy"
 	server "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/server"
 	serverauthorization "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serverauthorization"
+	serviceimport "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceimport"
 	serviceprofile "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -263,6 +264,7 @@ type SharedInformerFactory interface {
 	Policy() policy.Interface
 	Server() server.Interface
 	Serverauthorization() serverauthorization.Interface
+	Serviceimport() serviceimport.Interface
 	Linkerd() serviceprofile.Interface
 }
 
@@ -284,6 +286,10 @@ func (f *sharedInformerFactory) Server() server.Interface {
 
 func (f *sharedInformerFactory) Serverauthorization() serverauthorization.Interface {
 	return serverauthorization.New(f, f.namespace, f.tweakListOptions)
+}
+
+func (f *sharedInformerFactory) Serviceimport() serviceimport.Interface {
+	return serviceimport.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Linkerd() serviceprofile.Interface {
