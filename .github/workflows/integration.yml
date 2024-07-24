@@ -36,6 +36,7 @@ jobs:
             .proxy-version
             go.sum
             **/*.go
+            **/*.rs
             **/Dockerfile*
             charts/**
             justfile
