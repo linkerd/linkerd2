@@ -588,9 +588,9 @@ data:
     imagePullSecrets: null
     linkerdVersion: linkerd-version
     networkValidator:
-      connectAddr: 1.1.1.1:20001
+      connectAddr: ""
       enableSecurityContext: true
-      listenAddr: 0.0.0.0:4140
+      listenAddr: '[::]:4140'
       logFormat: plain
       logLevel: debug
       timeout: 10s
@@ -900,6 +900,7 @@ spec:
     matchLabels:
       linkerd.io/control-plane-component: identity
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
