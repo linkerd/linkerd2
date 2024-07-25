@@ -27,6 +27,7 @@ import (
 	v1beta3 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1beta3"
 	serverv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta1"
 	v1beta2 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta2"
+	serverv1beta3 "github.com/linkerd/linkerd2/controller/gen/apis/server/v1beta3"
 	serverauthorizationv1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/serverauthorization/v1beta1"
 	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -92,6 +93,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		// Group=server, Version=v1beta2
 	case v1beta2.SchemeGroupVersion.WithResource("servers"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Server().V1beta2().Servers().Informer()}, nil
+
+		// Group=server, Version=v1beta3
+	case serverv1beta3.SchemeGroupVersion.WithResource("servers"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Server().V1beta3().Servers().Informer()}, nil
 
 		// Group=serverauthorization, Version=v1beta1
 	case serverauthorizationv1beta1.SchemeGroupVersion.WithResource("serverauthorizations"):

@@ -187,9 +187,9 @@ Kubernetes: `>=1.22.0-0`
 | kubeAPI.clientBurst | int | `200` | Burst value over clientQPS |
 | kubeAPI.clientQPS | int | `100` | Maximum QPS sent to the kube-apiserver before throttling. See [token bucket rate limiter implementation](https://github.com/kubernetes/client-go/blob/v12.0.0/util/flowcontrol/throttle.go) |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
-| networkValidator.connectAddr | string | `"1.1.1.1:20001"` | Address to which the network-validator will attempt to connect. we expect this to be rewritten |
+| networkValidator.connectAddr | string | `""` | Address to which the network-validator will attempt to connect. This should be an IP that the cluster is expected to be able to reach but a port it should not, e.g., a public IP for public clusters and a private IP for air-gapped clusters with a port like 20001. If empty, defaults to 1.1.1.1:20001 and [fd00::1]:20001 for IPv4 and IPv6 respectively. |
 | networkValidator.enableSecurityContext | bool | `true` | Include a securityContext in the network-validator pod spec |
-| networkValidator.listenAddr | string | `"0.0.0.0:4140"` | Address to which network-validator listens to requests from itself |
+| networkValidator.listenAddr | string | `"[::]:4140"` | Address to which network-validator listens to requests from itself |
 | networkValidator.logFormat | string | plain | Log format (`plain` or `json`) for network-validator |
 | networkValidator.logLevel | string | debug | Log level for the network-validator |
 | networkValidator.timeout | string | `"10s"` | Timeout before network-validator fails to validate the pod's network connectivity |
@@ -237,7 +237,7 @@ Kubernetes: `>=1.22.0-0`
 | proxy.control.streams.initialTimeout | string | `"3s"` | The timeout for the first update from the control plane. |
 | proxy.control.streams.lifetime | string | `"1h"` | The maximum duration for a response stream (i.e. before it will be reinitialized). |
 | proxy.cores | int | `0` | The `cpu.limit` and `cores` should be kept in sync. The value of `cores` must be an integer and should typically be set by rounding up from the limit. E.g. if cpu.limit is '1500m', cores should be 2. |
-| proxy.defaultInboundPolicy | string | "all-unauthenticated" | The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny" |
+| proxy.defaultInboundPolicy | string | "all-unauthenticated" | The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated", "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny", "audit" |
 | proxy.disableInboundProtocolDetectTimeout | bool | `false` | When set to true, disables the protocol detection timeout on the inbound side of the proxy by setting it to a very high value |
 | proxy.disableOutboundProtocolDetectTimeout | bool | `false` | When set to true, disables the protocol detection timeout on the outbound side of the proxy by setting it to a very high value |
 | proxy.enableExternalProfiles | bool | `false` | Enable service profiles for non-Kubernetes services |

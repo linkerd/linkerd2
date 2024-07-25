@@ -448,7 +448,7 @@ spec:
         name: http
         protocol: TCP`,
 		`
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   name: policy-test
@@ -460,7 +460,7 @@ spec:
   port: 80
   proxyProtocol: opaque`,
 		`
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   name: policy-test-external-workload
@@ -534,7 +534,7 @@ spec:
         name: http
         protocol: TCP`,
 		`
-apiVersion: policy.linkerd.io/v1beta2
+apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
   name: native

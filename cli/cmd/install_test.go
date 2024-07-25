@@ -141,7 +141,7 @@ func TestRender(t *testing.T) {
 			LogLevel:    "debug",
 			LogFormat:   "plain",
 			ConnectAddr: "1.1.1.1:20001",
-			ListenAddr:  "0.0.0.0:4140",
+			ListenAddr:  "[::]:4140",
 			Timeout:     "10s",
 		},
 		Configs: charts.ConfigJSONs{
@@ -613,7 +613,7 @@ func TestValidate(t *testing.T) {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 		values.Proxy.DefaultInboundPolicy = "everybody"
-		expected := "--default-inbound-policy must be one of: all-authenticated, all-unauthenticated, cluster-authenticated, cluster-unauthenticated, deny (got everybody)"
+		expected := "--default-inbound-policy must be one of: all-authenticated, all-unauthenticated, cluster-authenticated, cluster-unauthenticated, deny, audit (got everybody)"
 
 		err = validateValues(context.Background(), nil, values)
 		if err == nil {

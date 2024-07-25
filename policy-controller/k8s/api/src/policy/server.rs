@@ -8,7 +8,7 @@ use std::{fmt, num::NonZeroU16};
 #[derive(Clone, Debug, PartialEq, Eq, CustomResource, Deserialize, Serialize, JsonSchema)]
 #[kube(
     group = "policy.linkerd.io",
-    version = "v1beta2",
+    version = "v1beta3",
     kind = "Server",
     namespaced
 )]

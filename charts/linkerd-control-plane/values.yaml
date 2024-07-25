@@ -217,7 +217,7 @@ proxy:
   # -- Grace period for graceful proxy shutdowns. If this timeout elapses before all open connections have completed, the proxy will terminate forcefully, closing any remaining connections.
   shutdownGracePeriod: ""
   # -- The default allow policy to use when no `Server` selects a pod.  One of: "all-authenticated",
-  # "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny"
+  # "all-unauthenticated", "cluster-authenticated", "cluster-unauthenticated", "deny", "audit"
   # @default -- "all-unauthenticated"
   defaultInboundPolicy: "all-unauthenticated"
   # -- Enable KEP-753 native sidecars
@@ -323,10 +323,13 @@ networkValidator:
   # -- Log format (`plain` or `json`) for network-validator
   # @default -- plain
   logFormat: plain
-  # -- Address to which the network-validator will attempt to connect. we expect this to be rewritten
-  connectAddr: "1.1.1.1:20001"
+  # -- Address to which the network-validator will attempt to connect. This should be an IP
+  # that the cluster is expected to be able to reach but a port it should not, e.g., a public IP
+  # for public clusters and a private IP for air-gapped clusters with a port like 20001.
+  # If empty, defaults to 1.1.1.1:20001 and [fd00::1]:20001 for IPv4 and IPv6 respectively.
+  connectAddr: ""
   # -- Address to which network-validator listens to requests from itself
-  listenAddr: "0.0.0.0:4140"
+  listenAddr: "[::]:4140"
   # -- Timeout before network-validator fails to validate the pod's network connectivity
   timeout: "10s"
   # -- Include a securityContext in the network-validator pod spec
