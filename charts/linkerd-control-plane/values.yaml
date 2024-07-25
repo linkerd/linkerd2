@@ -408,18 +408,15 @@ identity:
 
     # -- Which scheme is used for the identity issuer secret format
     tls:
+      # -- If the linkerd-identity-issuer Secret has already been created
+      secretName: ""
+
       # -- Issuer certificate (ECDSA). It must be provided during install.
       crtPEM: |
-
-      # Issuer certificate that has already been base64'ed 
-      crtPEM64: ""
 
       # -- Key for the issuer certificate (ECDSA). It must be provided during
       # install
       keyPEM: |
-
-      # Key for the issuer certificate that has already been base64'ed
-      keyPEM64: ""
 
   kubeAPI: *kubeapi
 

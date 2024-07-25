@@ -174,9 +174,10 @@ Kubernetes: `>=1.22.0-0`
 | identity.issuer.clockSkewAllowance | string | `"20s"` | Amount of time to allow for clock skew within a Linkerd cluster |
 | identity.issuer.issuanceLifetime | string | `"24h0m0s"` | Amount of time for which the Identity issuer should certify identity |
 | identity.issuer.scheme | string | `"linkerd.io/tls"` |  |
-| identity.issuer.tls | object | `{"crtPEM":"","crtPEM64":"","keyPEM":"","keyPEM64":""}` | Which scheme is used for the identity issuer secret format |
+| identity.issuer.tls | object | `{"crtPEM":"","keyPEM":"","secretName":""}` | Which scheme is used for the identity issuer secret format |
 | identity.issuer.tls.crtPEM | string | `""` | Issuer certificate (ECDSA). It must be provided during install. |
 | identity.issuer.tls.keyPEM | string | `""` | Key for the issuer certificate (ECDSA). It must be provided during install |
+| identity.issuer.tls.secretName | string | `""` | If the linkerd-identity-issuer Secret has already been created |
 | identity.kubeAPI.clientBurst | int | `200` | Burst value over clientQPS |
 | identity.kubeAPI.clientQPS | int | `100` | Maximum QPS sent to the kube-apiserver before throttling. See [token bucket rate limiter implementation](https://github.com/kubernetes/client-go/blob/v12.0.0/util/flowcontrol/throttle.go) |
 | identity.serviceAccountTokenProjection | bool | `true` | Use [Service Account token Volume projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection) for pod validation instead of the default token |

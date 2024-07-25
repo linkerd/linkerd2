@@ -3,12 +3,12 @@
 ###
 ### Identity Controller Service
 ###
-{{ if and (.Values.identity.issuer) (eq .Values.identity.issuer.scheme "linkerd.io/tls") -}}
+{{ if and (.Values.identity.issuer) (eq .Values.identity.issuer.scheme "linkerd.io/tls") (eq .Values.identity.issuer.tls.secretName "") -}}
 ---
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-identity-issuer
+  name: {{ .Values.identity.issuer.tls.secretName | default "linkerd-identity-issuer" }}
   namespace: {{ .Release.Namespace }}
   labels:
     linkerd.io/control-plane-component: identity
@@ -17,16 +17,8 @@ metadata:
   annotations:
     {{ include "partials.annotations.created-by" . }}
 data:
-  {{- if .Values.identity.issuer.tls.crtPEM64 }}
-  crt.pem: {{ .Values.identity.issuer.tls.crtPEM64 }}
-  {{- else }}
   crt.pem: {{b64enc (required "Please provide the identity issuer certificate" .Values.identity.issuer.tls.crtPEM | trim)}}
-  {{- end }}
-  {{- if .Values.identity.issuer.tls.keyPEM64 }}
-  key.pem: {{ .Values.identity.issuer.tls.keyPEM64 }}
-  {{- else }}
   key.pem: {{b64enc (required "Please provide the identity issue private key" .Values.identity.issuer.tls.keyPEM | trim)}}
-  {{- end }}
 {{- end}}
 {{ if not (.Values.identity.externalCA) -}}
 ---
@@ -261,7 +253,7 @@ spec:
       volumes:
       - name: identity-issuer
         secret:
-          secretName: linkerd-identity-issuer
+          secretName: {{ .Values.identity.issuer.tls.secretName | default "linkerd-identity-issuer" }}
       - configMap:
           name: linkerd-identity-trust-roots
         name: trust-roots
