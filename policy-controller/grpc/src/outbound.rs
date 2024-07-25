@@ -28,6 +28,7 @@ pub struct OutboundPolicyServer<T> {
     index: T,
     // Used to parse named addresses into <svc>.<ns>.svc.<cluster-domain>.
     cluster_domain: Arc<str>,
+    allow_l5d_request_headers: bool,
     drain: drain::Watch,
 }
 
@@ -35,10 +36,16 @@ impl<T> OutboundPolicyServer<T>
 where
     T: DiscoverOutboundPolicy<OutboundDiscoverTarget> + Send + Sync + 'static,
 {
-    pub fn new(discover: T, cluster_domain: impl Into<Arc<str>>, drain: drain::Watch) -> Self {
+    pub fn new(
+        discover: T,
+        cluster_domain: impl Into<Arc<str>>,
+        allow_l5d_request_headers: bool,
+        drain: drain::Watch,
+    ) -> Self {
         Self {
             index: discover,
             cluster_domain: cluster_domain.into(),
+            allow_l5d_request_headers,
             drain,
         }
     }
@@ -149,7 +156,10 @@ where
             })?;
 
         if let Some(policy) = policy {
-            Ok(tonic::Response::new(to_service(policy)))
+            Ok(tonic::Response::new(to_service(
+                policy,
+                self.allow_l5d_request_headers,
+            )))
         } else {
             Err(tonic::Status::not_found("No such policy"))
         }
@@ -170,7 +180,11 @@ where
             .await
             .map_err(|e| tonic::Status::internal(format!("lookup failed: {e}")))?
             .ok_or_else(|| tonic::Status::not_found("unknown server"))?;
-        Ok(tonic::Response::new(response_stream(drain, rx)))
+        Ok(tonic::Response::new(response_stream(
+            drain,
+            rx,
+            self.allow_l5d_request_headers,
+        )))
     }
 }
 
@@ -178,7 +192,11 @@ type BoxWatchStream = std::pin::Pin<
     Box<dyn Stream<Item = Result<outbound::OutboundPolicy, tonic::Status>> + Send + Sync>,
 >;
 
-fn response_stream(drain: drain::Watch, mut rx: OutboundPolicyStream) -> BoxWatchStream {
+fn response_stream(
+    drain: drain::Watch,
+    mut rx: OutboundPolicyStream,
+    allow_l5d_request_headers: bool,
+) -> BoxWatchStream {
     Box::pin(async_stream::try_stream! {
         tokio::pin! {
             let shutdown = drain.signaled();
@@ -189,7 +207,7 @@ fn response_stream(drain: drain::Watch, mut rx: OutboundPolicyStream) -> BoxWatc
                 // When the port is updated with a new server, update the server watch.
                 res = rx.next() => match res {
                     Some(policy) => {
-                        yield to_service(policy);
+                        yield to_service(policy, allow_l5d_request_headers);
                     }
                     None => return,
                 },
@@ -204,7 +222,10 @@ fn response_stream(drain: drain::Watch, mut rx: OutboundPolicyStream) -> BoxWatc
     })
 }
 
-fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
+fn to_service(
+    outbound: OutboundPolicy,
+    allow_l5d_request_headers: bool,
+) -> outbound::OutboundPolicy {
     let backend: outbound::Backend = default_backend(&outbound);
 
     let kind = if outbound.opaque {
@@ -241,6 +262,7 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
                 accrual,
                 outbound.grpc_retry,
                 outbound.timeouts,
+                allow_l5d_request_headers,
             )
         } else {
             http_routes.sort_by(timestamp_then_name);
@@ -250,6 +272,7 @@ fn to_service(outbound: OutboundPolicy) -> outbound::OutboundPolicy {
                 accrual,
                 outbound.http_retry,
                 outbound.timeouts,
+                allow_l5d_request_headers,
             )
         }
     };

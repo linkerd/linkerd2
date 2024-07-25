@@ -22,6 +22,7 @@ pub(crate) fn protocol(
     accrual: Option<outbound::FailureAccrual>,
     service_retry: Option<RouteRetry<HttpRetryCondition>>,
     service_timeouts: RouteTimeouts,
+    allow_l5d_request_headers: bool,
 ) -> outbound::proxy_protocol::Kind {
     let opaque_route = default_outbound_opaq_route(default_backend.clone());
     let mut routes = routes
@@ -32,6 +33,7 @@ pub(crate) fn protocol(
                 default_backend.clone(),
                 service_retry.clone(),
                 service_timeouts.clone(),
+                allow_l5d_request_headers,
             )
         })
         .collect::<Vec<_>>();
@@ -73,6 +75,7 @@ fn convert_outbound_route(
     backend: outbound::Backend,
     service_retry: Option<RouteRetry<HttpRetryCondition>>,
     service_timeouts: RouteTimeouts,
+    allow_l5d_request_headers: bool,
 ) -> outbound::HttpRoute {
     // This encoder sets deprecated timeouts for older proxies.
     #![allow(deprecated)]
@@ -133,7 +136,7 @@ fn convert_outbound_route(
                         .and_then(|d| convert_duration("request timeout", d)),
                     timeouts: Some(convert_timeouts(timeouts)),
                     retry: retry.map(convert_retry),
-                    allow_l5d_request_headers: true,
+                    allow_l5d_request_headers,
                 }
             },
         )
@@ -325,20 +328,11 @@ fn convert_retry(r: RouteRetry<HttpRetryCondition>) -> outbound::http_route::Ret
         conditions: Some(r.conditions.iter().flatten().fold(
             outbound::http_route::retry::Conditions::default(),
             |mut cond, c| {
-                cond.status_ranges.push(match c {
-                    HttpRetryCondition::ServerError => {
-                        outbound::http_route::retry::conditions::StatusRange {
-                            start: 500,
-                            end: 599,
-                        }
-                    }
-                    HttpRetryCondition::GatewayError => {
-                        outbound::http_route::retry::conditions::StatusRange {
-                            start: 502,
-                            end: 504,
-                        }
-                    }
-                });
+                cond.status_ranges
+                    .push(outbound::http_route::retry::conditions::StatusRange {
+                        start: c.status_min,
+                        end: c.status_max,
+                    });
                 cond
             },
         )),

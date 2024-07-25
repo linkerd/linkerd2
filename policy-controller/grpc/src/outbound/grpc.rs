@@ -18,6 +18,7 @@ pub(crate) fn protocol(
     failure_accrual: Option<outbound::FailureAccrual>,
     service_retry: Option<RouteRetry<GrpcRetryCondition>>,
     service_timeouts: RouteTimeouts,
+    allow_l5d_request_headers: bool,
 ) -> outbound::proxy_protocol::Kind {
     let routes = routes
         .map(|(gknn, route)| {
@@ -27,6 +28,7 @@ pub(crate) fn protocol(
                 default_backend.clone(),
                 service_retry.clone(),
                 service_timeouts.clone(),
+                allow_l5d_request_headers,
             )
         })
         .collect::<Vec<_>>();
@@ -46,6 +48,7 @@ fn convert_outbound_route(
     backend: outbound::Backend,
     service_retry: Option<RouteRetry<GrpcRetryCondition>>,
     service_timeouts: RouteTimeouts,
+    allow_l5d_request_headers: bool,
 ) -> outbound::GrpcRoute {
     // This encoder sets deprecated timeouts for older proxies.
     #![allow(deprecated)]
@@ -142,7 +145,7 @@ fn convert_outbound_route(
                         )),
                         timeout: r.timeout.and_then(|d| convert_duration("retry timeout", d)),
                     }),
-                    allow_l5d_request_headers: true,
+                    allow_l5d_request_headers,
                 }
             },
         )

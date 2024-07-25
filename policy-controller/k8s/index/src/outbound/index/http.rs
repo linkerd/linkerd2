@@ -344,19 +344,51 @@ pub fn parse_http_retry(
         .transpose()?
         .filter(|v| *v != time::Duration::ZERO);
 
+    fn to_code(s: &str) -> Option<u32> {
+        let code = s.parse::<u32>().ok()?;
+        if (100..600).contains(&code) {
+            Some(code)
+        } else {
+            None
+        }
+    }
+
     let conditions = annotations
         .get("retry.linkerd.io/http")
         .map(|v| {
             v.split(',')
-                .map(|v| v.trim())
-                .map(|v| {
-                    if v == "5xx" {
-                        Ok(HttpRetryCondition::ServerError)
-                    } else if v == "gateway-error" {
-                        Ok(HttpRetryCondition::GatewayError)
-                    } else {
-                        bail!("invalid retry condition: {v}")
+                .map(|cond| {
+                    if cond.eq_ignore_ascii_case("5xx") {
+                        return Ok(HttpRetryCondition {
+                            status_min: 500,
+                            status_max: 599,
+                        });
                     }
+                    if cond.eq_ignore_ascii_case("gateway-error") {
+                        return Ok(HttpRetryCondition {
+                            status_min: 502,
+                            status_max: 504,
+                        });
+                    }
+
+                    if let Some(code) = to_code(cond) {
+                        return Ok(HttpRetryCondition {
+                            status_min: code,
+                            status_max: code,
+                        });
+                    }
+                    if let Some((start, end)) = cond.split_once('-') {
+                        if let (Some(s), Some(e)) = (to_code(start), to_code(end)) {
+                            if s <= e {
+                                return Ok(HttpRetryCondition {
+                                    status_min: s,
+                                    status_max: e,
+                                });
+                            }
+                        }
+                    }
+
+                    bail!("invalid retry condition: {v}");
                 })
                 .collect::<Result<Vec<_>>>()
         })

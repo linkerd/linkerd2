@@ -124,14 +124,12 @@ pub struct RouteRetry<R> {
     pub conditions: Option<Vec<R>>,
 }
 
-// TODO(alex): flesh this out
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum HttpRetryCondition {
-    ServerError,
-    GatewayError,
+pub struct HttpRetryCondition {
+    pub status_min: u32,
+    pub status_max: u32,
 }
 
-// TODO(alex): flesh this out
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GrpcRetryCondition {
     Cancelled,
