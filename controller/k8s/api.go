@@ -13,6 +13,7 @@ import (
 	l5dcrdinformer "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
 	ewinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/externalworkload/v1beta1"
 	srvinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/server/v1beta2"
+	smpinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceimport/v1alpha1"
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
@@ -63,6 +64,7 @@ type API struct {
 	node     coreinformers.NodeInformer
 	secret   coreinformers.SecretInformer
 	srv      srvinformers.ServerInformer
+	smp      smpinformers.ServiceImportInformer
 
 	syncChecks            []cache.InformerSynced
 	sharedInformers       informers.SharedInformerFactory
@@ -135,6 +137,7 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 			if err != nil {
 				return nil, err
 			}
+		//TODO: smp check
 		default:
 			continue
 		}
@@ -282,6 +285,13 @@ func newAPI(
 			api.srv = l5dCrdSharedInformers.Server().V1beta2().Servers()
 			api.syncChecks = append(api.syncChecks, api.srv.Informer().HasSynced)
 			api.promGauges.addInformerSize(k8s.Server, informerLabels, api.srv.Informer())
+		case Smp:
+			if l5dCrdSharedInformers == nil {
+				panic("Linkerd CRD shared informer not configured")
+			}
+			api.smp = l5dCrdSharedInformers.Serviceimport().V1alpha1().ServiceImports()
+			api.syncChecks = append(api.syncChecks, api.smp.Informer().HasSynced)
+			api.promGauges.addInformerSize(k8s.Server, informerLabels, api.smp.Informer())
 		case SS:
 			api.ss = sharedInformers.Apps().V1().StatefulSets()
 			api.syncChecks = append(api.syncChecks, api.ss.Informer().HasSynced)
@@ -382,6 +392,13 @@ func (api *API) Svc() coreinformers.ServiceInformer {
 		panic("Svc informer not configured")
 	}
 	return api.svc
+}
+
+func (api *API) Smp() smpinformers.ServiceImportInformer {
+	if api.smp == nil {
+		panic("ServiceImport informer not configured")
+	}
+	return api.smp
 }
 
 // Endpoint provides access to a shared informer and lister for Endpoints.

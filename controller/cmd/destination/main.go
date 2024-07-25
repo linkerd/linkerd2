@@ -141,7 +141,7 @@ func Main(args []string) {
 			*kubeConfigPath,
 			true,
 			"local",
-			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv, k8s.ExtWorkload,
+			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.Svc, k8s.SP, k8s.Job, k8s.Srv, k8s.ExtWorkload, k8s.Smp,
 		)
 	} else {
 		k8sAPI, err = k8s.InitializeAPI(

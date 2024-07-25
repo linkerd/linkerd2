@@ -44,6 +44,7 @@ const (
 	Secret
 	Srv
 	Saz
+	Smp // ServiceImport
 )
 
 // GVK returns the GroupVersionKind corresponding for the provided APIResource

@@ -132,6 +132,59 @@ func newEndpointTranslator(
 	}
 }
 
+// Temp public dupe so I don't re-write too much code
+func NewEndpointTranslator(
+	controllerNS string,
+	identityTrustDomain string,
+	enableH2Upgrade,
+	enableEndpointFiltering,
+	enableIPv6,
+	extEndpointZoneWeights bool,
+	meshedHTTP2ClientParams *pb.Http2ClientParams,
+	service string,
+	srcNodeName string,
+	defaultOpaquePorts map[uint32]struct{},
+	k8sAPI *k8s.MetadataAPI,
+	stream pb.Destination_GetServer,
+	endStream chan struct{},
+	log *logging.Entry,
+) *endpointTranslator {
+	log = log.WithFields(logging.Fields{
+		"component": "endpoint-translator",
+		"service":   service,
+	})
+
+	nodeTopologyZone, err := getNodeTopologyZone(k8sAPI, srcNodeName)
+	if err != nil {
+		log.Errorf("Failed to get node topology zone for node %s: %s", srcNodeName, err)
+	}
+	availableEndpoints := newEmptyAddressSet()
+
+	filteredSnapshot := newEmptyAddressSet()
+
+	return &endpointTranslator{
+		controllerNS,
+		identityTrustDomain,
+		nodeTopologyZone,
+		srcNodeName,
+		defaultOpaquePorts,
+		enableH2Upgrade,
+		enableEndpointFiltering,
+		enableIPv6,
+		extEndpointZoneWeights,
+		meshedHTTP2ClientParams,
+
+		availableEndpoints,
+		filteredSnapshot,
+		stream,
+		endStream,
+		log,
+		updatesQueueOverflowCounter.With(prometheus.Labels{"service": service}),
+		make(chan interface{}, updateQueueCapacity),
+		make(chan struct{}),
+	}
+}
+
 func (et *endpointTranslator) Add(set watcher.AddressSet) {
 	et.enqueueUpdate(&addUpdate{set})
 }
