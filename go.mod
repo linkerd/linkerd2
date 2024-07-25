@@ -20,7 +20,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/imdario/mergo v0.3.16
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/linkerd/linkerd2-proxy-api v0.13.1
+	github.com/linkerd/linkerd2-proxy-api v0.14.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mattn/go-runewidth v0.0.15
 	github.com/nsf/termbox-go v1.1.1
@@ -160,5 +160,3 @@ require (
 	sigs.k8s.io/kustomize/kyaml v0.14.3 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 )
-
-replace github.com/linkerd/linkerd2-proxy-api => github.com/linkerd/linkerd2-proxy-api v0.0.0-20240718035918-3581e5ebe9ec
