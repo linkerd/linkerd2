@@ -12,6 +12,7 @@ import (
 	l5dcrdclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	l5dcrdinformer "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
 	ewinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/externalworkload/v1beta1"
+	linkinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/link/v1alpha1"
 	srvinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/server/v1beta2"
 	smpinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceimport/v1alpha1"
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
@@ -65,6 +66,7 @@ type API struct {
 	secret   coreinformers.SecretInformer
 	srv      srvinformers.ServerInformer
 	smp      smpinformers.ServiceImportInformer
+	link     linkinformers.LinkInformer
 
 	syncChecks            []cache.InformerSynced
 	sharedInformers       informers.SharedInformerFactory
@@ -291,7 +293,14 @@ func newAPI(
 			}
 			api.smp = l5dCrdSharedInformers.Serviceimport().V1alpha1().ServiceImports()
 			api.syncChecks = append(api.syncChecks, api.smp.Informer().HasSynced)
-			api.promGauges.addInformerSize(k8s.Server, informerLabels, api.smp.Informer())
+			api.promGauges.addInformerSize(k8s.ServiceImport, informerLabels, api.smp.Informer())
+		case Link:
+			if l5dCrdSharedInformers == nil {
+				panic("Linkerd CRD shared informer not configured")
+			}
+			api.link = l5dCrdSharedInformers.Link().V1alpha1().Links()
+			api.syncChecks = append(api.syncChecks, api.smp.Informer().HasSynced)
+			api.promGauges.addInformerSize(k8s.Link, informerLabels, api.link.Informer())
 		case SS:
 			api.ss = sharedInformers.Apps().V1().StatefulSets()
 			api.syncChecks = append(api.syncChecks, api.ss.Informer().HasSynced)
@@ -399,6 +408,13 @@ func (api *API) Smp() smpinformers.ServiceImportInformer {
 		panic("ServiceImport informer not configured")
 	}
 	return api.smp
+}
+
+func (api *API) Link() linkinformers.LinkInformer {
+	if api.smp == nil {
+		panic("ServiceImport informer not configured")
+	}
+	return api.link
 }
 
 // Endpoint provides access to a shared informer and lister for Endpoints.

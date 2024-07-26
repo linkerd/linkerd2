@@ -34,6 +34,8 @@ const (
 	StatefulSet           = "statefulset"
 	Node                  = "node"
 	Server                = "server"
+	ServiceImport         = "serviceimport"
+	Link                  = "link"
 	ServerAuthorization   = "serverauthorization"
 	AuthorizationPolicy   = "authorizationpolicy"
 	HTTPRoute             = "httproute"
