@@ -18,6 +18,7 @@ pub struct ServerSpec {
     pub selector: Selector,
     pub port: Port,
     pub proxy_protocol: Option<ProxyProtocol>,
+    pub access_policy: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]

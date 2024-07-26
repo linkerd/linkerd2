@@ -47,6 +47,7 @@ fn make_server(
             port,
             selector: linkerd_k8s_api::server::Selector::Pod(pod_labels.into_iter().collect()),
             proxy_protocol,
+            access_policy: None,
         },
     }
 }

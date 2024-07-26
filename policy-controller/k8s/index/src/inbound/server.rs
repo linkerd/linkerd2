@@ -1,4 +1,4 @@
-use crate::ClusterInfo;
+use crate::{ClusterInfo, DefaultPolicy};
 use linkerd_policy_controller_core::inbound::ProxyProtocol;
 use linkerd_policy_controller_k8s_api::{
     self as k8s, policy::server::Port, policy::server::Selector,
@@ -11,6 +11,7 @@ pub(crate) struct Server {
     pub selector: Selector,
     pub port_ref: Port,
     pub protocol: ProxyProtocol,
+    pub access_policy: Option<DefaultPolicy>,
 }
 
 impl Server {
@@ -20,6 +21,7 @@ impl Server {
             selector: srv.spec.selector,
             port_ref: srv.spec.port,
             protocol: proxy_protocol(srv.spec.proxy_protocol, cluster),
+            access_policy: srv.spec.access_policy.and_then(|p| p.parse().ok()),
         }
     }
 }

@@ -109,6 +109,7 @@ fn authenticated_annotated() {
                     authenticated_only: true,
                 },
                 DefaultPolicy::Deny => DefaultPolicy::Deny,
+                DefaultPolicy::Audit => DefaultPolicy::Audit,
             };
             InboundServer {
                 reference: ServerRef::Default(policy.as_str()),

@@ -21,6 +21,9 @@ pub enum DefaultPolicy {
 
     /// Indicates that all traffic is denied unless explicitly permitted by an authorization policy.
     Deny,
+
+    /// Indicates that all traffic is let through, but gets audited
+    Audit,
 }
 
 // === impl DefaultPolicy ===
@@ -47,6 +50,7 @@ impl std::str::FromStr for DefaultPolicy {
                 cluster_only: true,
             }),
             "deny" => Ok(Self::Deny),
+            "audit" => Ok(Self::Audit),
             s => Err(anyhow!("invalid mode: {:?}", s)),
         }
     }
@@ -72,6 +76,7 @@ impl DefaultPolicy {
                 cluster_only: true,
             } => "cluster-unauthenticated",
             Self::Deny => "deny",
+            Self::Audit => "audit",
         }
     }
 
@@ -80,33 +85,47 @@ impl DefaultPolicy {
         config: &ClusterInfo,
     ) -> HashMap<AuthorizationRef, ClientAuthorization> {
         let mut authzs = HashMap::default();
+        let auth_ref = AuthorizationRef::Default(self.as_str());
+
         if let DefaultPolicy::Allow {
             authenticated_only,
             cluster_only,
         } = self
         {
-            let authentication = if authenticated_only {
-                ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Suffix(vec![])])
-            } else {
-                ClientAuthentication::Unauthenticated
-            };
-            let networks = if cluster_only {
-                config.networks.iter().copied().map(Into::into).collect()
-            } else {
-                vec![
-                    "0.0.0.0/0".parse::<IpNet>().unwrap().into(),
-                    "::/0".parse::<IpNet>().unwrap().into(),
-                ]
-            };
             authzs.insert(
-                AuthorizationRef::Default(self.as_str()),
-                ClientAuthorization {
-                    authentication,
-                    networks,
-                },
+                auth_ref,
+                Self::default_client_authz(config, authenticated_only, cluster_only),
             );
-        };
+        } else if let DefaultPolicy::Audit = self {
+            authzs.insert(auth_ref, Self::default_client_authz(config, false, false));
+        }
+
         authzs
+    }
+
+    fn default_client_authz(
+        config: &ClusterInfo,
+        authenticated_only: bool,
+        cluster_only: bool,
+    ) -> ClientAuthorization {
+        let authentication = if authenticated_only {
+            ClientAuthentication::TlsAuthenticated(vec![IdentityMatch::Suffix(vec![])])
+        } else {
+            ClientAuthentication::Unauthenticated
+        };
+        let networks = if cluster_only {
+            config.networks.iter().copied().map(Into::into).collect()
+        } else {
+            vec![
+                "0.0.0.0/0".parse::<IpNet>().unwrap().into(),
+                "::/0".parse::<IpNet>().unwrap().into(),
+            ]
+        };
+
+        ClientAuthorization {
+            authentication,
+            networks,
+        }
     }
 }
 
@@ -140,6 +159,7 @@ mod test {
                 authenticated_only: false,
                 cluster_only: true,
             },
+            DefaultPolicy::Audit,
         ] {
             assert_eq!(
                 default.to_string().parse::<DefaultPolicy>().unwrap(),
