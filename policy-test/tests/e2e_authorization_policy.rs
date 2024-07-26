@@ -16,7 +16,7 @@ async fn meshtls() {
         //
         // The policy requires that all connections are authenticated with MeshTLS.
         let (srv, all_mtls) = tokio::join!(
-            create(&client, web::server(&ns)),
+            create(&client, web::server(&ns, None)),
             create(&client, all_authenticated(&ns))
         );
         create(
@@ -60,7 +60,7 @@ async fn targets_route() {
         //
         // The policy requires that all connections are authenticated with MeshTLS.
         let (srv, all_mtls) = tokio::join!(
-            create(&client, web::server(&ns)),
+            create(&client, web::server(&ns, None)),
             create(&client, all_authenticated(&ns)),
         );
         // Create a route which matches the /allowed path.
@@ -171,7 +171,7 @@ async fn targets_namespace() {
         //
         // The policy requires that all connections are authenticated with MeshTLS.
         let (_srv, all_mtls) = tokio::join!(
-            create(&client, web::server(&ns)),
+            create(&client, web::server(&ns, None)),
             create(&client, all_authenticated(&ns))
         );
         create(
@@ -220,7 +220,7 @@ async fn meshtls_namespace() {
         // The policy requires that all connections are authenticated with MeshTLS
         // and come from service accounts in the given namespace.
         let (srv, mtls_ns) = tokio::join!(
-            create(&client, web::server(&ns)),
+            create(&client, web::server(&ns, None)),
             create(&client, ns_authenticated(&ns))
         );
         create(
@@ -277,7 +277,7 @@ async fn network() {
         // Once we know the IP of the (blocked) pod, create an web
         // authorization policy that permits connections from this pod.
         let (srv, allow_ips) = tokio::join!(
-            create(&client, web::server(&ns)),
+            create(&client, web::server(&ns, None)),
             create(&client, allow_ips(&ns, Some(blessed_ip)))
         );
         create(
@@ -351,7 +351,7 @@ async fn both() {
         // Once we know the IP of the (blocked) pod, create an web
         // authorization policy that permits connections from this pod.
         let (srv, allow_ips, all_mtls) = tokio::join!(
-            create(&client, web::server(&ns)),
+            create(&client, web::server(&ns, None)),
             create(
                 &client,
                 allow_ips(&ns, vec![blessed_injected_ip, blessed_uninjected_ip]),
@@ -451,7 +451,7 @@ async fn either() {
         // Once we know the IP of the (blocked) pod, create an web
         // authorization policy that permits connections from this pod.
         let (srv, allow_ips, all_mtls) = tokio::join!(
-            create(&client, web::server(&ns)),
+            create(&client, web::server(&ns, None)),
             create(&client, allow_ips(&ns, vec![blessed_uninjected_ip])),
             create(&client, all_authenticated(&ns))
         );
@@ -528,7 +528,7 @@ async fn either() {
 async fn empty_authentications() {
     with_temp_ns(|client, ns| async move {
         // Create a policy that does not require any authentications.
-        let srv = create(&client, web::server(&ns)).await;
+        let srv = create(&client, web::server(&ns, None)).await;
         create(
             &client,
             authz_policy(&ns, "web", LocalTargetRef::from_resource(&srv), None),

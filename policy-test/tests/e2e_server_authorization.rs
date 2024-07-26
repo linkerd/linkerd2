@@ -9,7 +9,7 @@ use linkerd_policy_test::{
 #[tokio::test(flavor = "current_thread")]
 async fn meshtls() {
     with_temp_ns(|client, ns| async move {
-        let srv = create(&client, web::server(&ns)).await;
+        let srv = create(&client, web::server(&ns, None)).await;
 
         create(
             &client,
@@ -66,7 +66,7 @@ async fn network() {
 
         // Once we know the IP of the (blocked) pod, create an web
         // authorization policy that permits connections from this pod.
-        let srv = create(&client, web::server(&ns)).await;
+        let srv = create(&client, web::server(&ns, None)).await;
         create(
             &client,
             server_authz(
@@ -143,7 +143,7 @@ async fn both() {
 
         // Once we know the IP of the (blocked) pod, create an web
         // authorization policy that permits connections from this pod.
-        let srv = create(&client, web::server(&ns)).await;
+        let srv = create(&client, web::server(&ns, None)).await;
         create(
             &client,
             server_authz(
@@ -243,7 +243,7 @@ async fn either() {
 
         // Once we know the IP of the (blocked) pod, create an web
         // authorization policy that permits connections from this pod.
-        let srv = create(&client, web::server(&ns)).await;
+        let srv = create(&client, web::server(&ns, None)).await;
         tokio::join!(
             create(
                 &client,

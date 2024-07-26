@@ -16,6 +16,7 @@ async fn accepts_valid() {
             selector: Selector::Pod(api::labels::Selector::default()),
             port: Port::Number(80.try_into().unwrap()),
             proxy_protocol: None,
+            access_policy: None,
         },
     })
     .await;
@@ -34,6 +35,7 @@ async fn accepts_server_updates() {
                 selector: Selector::Pod(api::labels::Selector::from_iter(Some(("app", "test")))),
                 port: Port::Number(80.try_into().unwrap()),
                 proxy_protocol: None,
+                access_policy: None,
             },
         };
 
@@ -60,6 +62,7 @@ async fn rejects_identitical_pod_selector() {
             selector: Selector::Pod(api::labels::Selector::from_iter(Some(("app", "test")))),
             port: Port::Number(80.try_into().unwrap()),
             proxy_protocol: None,
+            access_policy: None,
         };
 
         let api = kube::Api::namespaced(client, &ns);
@@ -106,6 +109,7 @@ async fn rejects_all_pods_selected() {
                 selector: Selector::Pod(api::labels::Selector::from_iter(Some(("app", "test")))),
                 port: Port::Number(80.try_into().unwrap()),
                 proxy_protocol: Some(ProxyProtocol::Http2),
+                access_policy: None,
             },
         };
         api.create(&kube::api::PostParams::default(), &test0)
@@ -123,6 +127,7 @@ async fn rejects_all_pods_selected() {
                 port: Port::Number(80.try_into().unwrap()),
                 // proxy protocol doesn't factor into the selection
                 proxy_protocol: Some(ProxyProtocol::Http1),
+                access_policy: None,
             },
         };
         api.create(&kube::api::PostParams::default(), &test1)
@@ -175,6 +180,24 @@ async fn rejects_invalid_proxy_protocol() {
             selector: Selector::Pod(api::labels::Selector::default()),
             port: Port::Number(80.try_into().unwrap()),
             proxy_protocol: "garbanzo".to_string(),
+        },
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn rejects_invalid_access_policy() {
+    admission::rejects(|ns| Server {
+        metadata: api::ObjectMeta {
+            namespace: Some(ns),
+            name: Some("test".to_string()),
+            ..Default::default()
+        },
+        spec: ServerSpec {
+            selector: Selector::Pod(api::labels::Selector::default()),
+            port: Port::Number(80.try_into().unwrap()),
+            proxy_protocol: None,
+            access_policy: Some("foobar".to_string()),
         },
     })
     .await;

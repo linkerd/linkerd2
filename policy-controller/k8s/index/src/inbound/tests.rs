@@ -45,7 +45,7 @@ struct TestConfig {
     _tracing: tracing::subscriber::DefaultGuard,
 }
 
-const DEFAULTS: [DefaultPolicy; 5] = [
+const DEFAULTS: [DefaultPolicy; 6] = [
     DefaultPolicy::Deny,
     DefaultPolicy::Allow {
         authenticated_only: true,
@@ -63,6 +63,7 @@ const DEFAULTS: [DefaultPolicy; 5] = [
         authenticated_only: false,
         cluster_only: true,
     },
+    DefaultPolicy::Audit,
 ];
 
 pub fn mk_pod_with_containers(
@@ -121,6 +122,7 @@ fn mk_server(
             port,
             selector: k8s::policy::server::Selector::Pod(pod_labels.into_iter().collect()),
             proxy_protocol,
+            access_policy: None,
         },
     }
 }
@@ -175,6 +177,13 @@ fn mk_default_policy(
             ClientAuthorization {
                 authentication: ClientAuthentication::Unauthenticated,
                 networks: cluster_nets,
+            },
+        )),
+        DefaultPolicy::Audit => Some((
+            AuthorizationRef::Default("audit"),
+            ClientAuthorization {
+                authentication: ClientAuthentication::Unauthenticated,
+                networks: all_nets,
             },
         )),
     }
