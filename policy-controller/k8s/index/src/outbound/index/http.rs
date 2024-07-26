@@ -135,7 +135,7 @@ fn convert_linkerd_rule(
             let timeout = time::Duration::from(timeouts.request?);
 
             // zero means "no timeout", per GEP-1742
-            if timeout == time::Duration::from_nanos(0) {
+            if timeout == time::Duration::ZERO {
                 return None;
             }
 
