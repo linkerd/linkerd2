@@ -35,7 +35,7 @@ spec:
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info,hickory=error,linkerd_proxy_http::client[{headers}]=off
+          value: warn,linkerd=info,hickory=error,[{headers}]=off,[{request}]=off
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -265,7 +265,7 @@ spec:
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info,hickory=error,linkerd_proxy_http::client[{headers}]=off
+          value: warn,linkerd=info,hickory=error,[{headers}]=off,[{request}]=off
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR

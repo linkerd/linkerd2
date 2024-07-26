@@ -162,7 +162,7 @@
         },
         {
           "name": "LINKERD2_PROXY_LOG",
-          "value": "warn,linkerd=info,hickory=error,linkerd_proxy_http::client[{headers}]=off"
+          "value": "warn,linkerd=info,hickory=error,[{headers}]=off,[{request}]=off"
         },
         {
           "name": "LINKERD2_PROXY_LOG_FORMAT",
