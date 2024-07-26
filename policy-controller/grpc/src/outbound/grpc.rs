@@ -1,22 +1,36 @@
-use std::net::SocketAddr;
-
 use super::{convert_duration, default_balancer_config, default_queue_config};
 use crate::routes::{
     convert_host_match, convert_request_header_modifier_filter, grpc::convert_match,
 };
 use linkerd2_proxy_api::{destination, grpc_route, http_route, meta, outbound};
 use linkerd_policy_controller_core::{
-    outbound::{Backend, Filter, OutboundRoute, OutboundRouteRule},
-    routes::{FailureInjectorFilter, GroupKindNamespaceName, GrpcRouteMatch},
+    outbound::{
+        Backend, Filter, GrpcRetryCondition, GrpcRoute, OutboundRoute, OutboundRouteRule,
+        RouteRetry, RouteTimeouts,
+    },
+    routes::{FailureInjectorFilter, GroupKindNamespaceName},
 };
+use std::{net::SocketAddr, time};
 
 pub(crate) fn protocol(
     default_backend: outbound::Backend,
-    routes: impl Iterator<Item = (GroupKindNamespaceName, OutboundRoute<GrpcRouteMatch>)>,
+    routes: impl Iterator<Item = (GroupKindNamespaceName, GrpcRoute)>,
     failure_accrual: Option<outbound::FailureAccrual>,
+    service_retry: Option<RouteRetry<GrpcRetryCondition>>,
+    service_timeouts: RouteTimeouts,
+    allow_l5d_request_headers: bool,
 ) -> outbound::proxy_protocol::Kind {
     let routes = routes
-        .map(|(gknn, route)| convert_outbound_route(gknn, route, default_backend.clone()))
+        .map(|(gknn, route)| {
+            convert_outbound_route(
+                gknn,
+                route,
+                default_backend.clone(),
+                service_retry.clone(),
+                service_timeouts.clone(),
+                allow_l5d_request_headers,
+            )
+        })
         .collect::<Vec<_>>();
     outbound::proxy_protocol::Kind::Grpc(outbound::proxy_protocol::Grpc {
         routes,
@@ -30,9 +44,15 @@ fn convert_outbound_route(
         hostnames,
         rules,
         creation_timestamp: _,
-    }: OutboundRoute<GrpcRouteMatch>,
+    }: GrpcRoute,
     backend: outbound::Backend,
+    service_retry: Option<RouteRetry<GrpcRetryCondition>>,
+    service_timeouts: RouteTimeouts,
+    allow_l5d_request_headers: bool,
 ) -> outbound::GrpcRoute {
+    // This encoder sets deprecated timeouts for older proxies.
+    #![allow(deprecated)]
+
     let metadata = Some(meta::Metadata {
         kind: Some(meta::metadata::Kind::Resource(meta::Resource {
             group: gknn.group.to_string(),
@@ -51,15 +71,13 @@ fn convert_outbound_route(
             |OutboundRouteRule {
                  matches,
                  backends,
-                 request_timeout,
-                 backend_request_timeout,
+                 mut retry,
+                 mut timeouts,
                  filters,
              }| {
-                let backend_request_timeout = backend_request_timeout
-                    .and_then(|d| convert_duration("backend request_timeout", d));
                 let backends = backends
                     .into_iter()
-                    .map(|backend| convert_backend(backend_request_timeout.clone(), backend))
+                    .map(convert_backend)
                     .collect::<Vec<_>>();
                 let dist = if backends.is_empty() {
                     outbound::grpc_route::distribution::Kind::FirstAvailable(
@@ -67,7 +85,7 @@ fn convert_outbound_route(
                             backends: vec![outbound::grpc_route::RouteBackend {
                                 backend: Some(backend.clone()),
                                 filters: vec![],
-                                request_timeout: backend_request_timeout,
+                                ..Default::default()
                             }],
                         },
                     )
@@ -76,12 +94,58 @@ fn convert_outbound_route(
                         outbound::grpc_route::distribution::RandomAvailable { backends },
                     )
                 };
+                if timeouts == Default::default() {
+                    timeouts = service_timeouts.clone();
+                }
+                if retry.is_none() {
+                    retry = service_retry.clone();
+                }
                 outbound::grpc_route::Rule {
                     matches: matches.into_iter().map(convert_match).collect(),
                     backends: Some(outbound::grpc_route::Distribution { kind: Some(dist) }),
                     filters: filters.into_iter().map(convert_to_filter).collect(),
-                    request_timeout: request_timeout
+                    request_timeout: timeouts
+                        .request
                         .and_then(|d| convert_duration("request timeout", d)),
+                    timeouts: Some(http_route::Timeouts {
+                        request: timeouts
+                            .request
+                            .and_then(|d| convert_duration("stream timeout", d)),
+                        idle: timeouts
+                            .idle
+                            .and_then(|d| convert_duration("idle timeout", d)),
+                        response: timeouts
+                            .response
+                            .and_then(|d| convert_duration("response timeout", d)),
+                    }),
+                    retry: retry.map(|r| outbound::grpc_route::Retry {
+                        max_retries: r.limit.into(),
+                        max_request_bytes: 64 * 1024,
+                        backoff: Some(outbound::ExponentialBackoff {
+                            min_backoff: Some(time::Duration::from_millis(25).try_into().unwrap()),
+                            max_backoff: Some(time::Duration::from_millis(250).try_into().unwrap()),
+                            jitter_ratio: 1.0,
+                        }),
+                        conditions: Some(r.conditions.iter().flatten().fold(
+                            outbound::grpc_route::retry::Conditions::default(),
+                            |mut cond, c| {
+                                match c {
+                                    GrpcRetryCondition::Cancelled => cond.cancelled = true,
+                                    GrpcRetryCondition::DeadlineExceeded => {
+                                        cond.deadine_exceeded = true
+                                    }
+                                    GrpcRetryCondition::Internal => cond.internal = true,
+                                    GrpcRetryCondition::ResourceExhausted => {
+                                        cond.resource_exhausted = true
+                                    }
+                                    GrpcRetryCondition::Unavailable => cond.unavailable = true,
+                                };
+                                cond
+                            },
+                        )),
+                        timeout: r.timeout.and_then(|d| convert_duration("retry timeout", d)),
+                    }),
+                    allow_l5d_request_headers,
                 }
             },
         )
@@ -94,10 +158,7 @@ fn convert_outbound_route(
     }
 }
 
-fn convert_backend(
-    request_timeout: Option<prost_types::Duration>,
-    backend: Backend,
-) -> outbound::grpc_route::WeightedRouteBackend {
+fn convert_backend(backend: Backend) -> outbound::grpc_route::WeightedRouteBackend {
     match backend {
         Backend::Addr(addr) => {
             let socket_addr = SocketAddr::new(addr.addr, addr.port.get());
@@ -116,7 +177,7 @@ fn convert_backend(
                         )),
                     }),
                     filters: Default::default(),
-                    request_timeout,
+                    ..Default::default()
                 }),
             }
         }
@@ -152,7 +213,7 @@ fn convert_backend(
                             )),
                         }),
                         filters,
-                        request_timeout,
+                        ..Default::default()
                     }),
                 }
             } else {
@@ -175,7 +236,7 @@ fn convert_backend(
                                 },
                             )),
                         }],
-                        request_timeout,
+                        ..Default::default()
                     }),
                 }
             }
@@ -199,7 +260,7 @@ fn convert_backend(
                         },
                     )),
                 }],
-                request_timeout,
+                ..Default::default()
             }),
         },
     }

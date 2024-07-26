@@ -1,5 +1,3 @@
-use std::{net::SocketAddr, time};
-
 use super::{
     convert_duration, default_balancer_config, default_outbound_opaq_route, default_queue_config,
 };
@@ -10,21 +8,41 @@ use crate::routes::{
 };
 use linkerd2_proxy_api::{destination, http_route, meta, outbound};
 use linkerd_policy_controller_core::{
-    outbound::{Backend, Filter, OutboundRoute, OutboundRouteRule},
-    routes::{GroupKindNamespaceName, HttpRouteMatch},
+    outbound::{
+        Backend, Filter, HttpRetryCondition, HttpRoute, OutboundRouteRule, RouteRetry,
+        RouteTimeouts,
+    },
+    routes::GroupKindNamespaceName,
 };
+use std::{net::SocketAddr, time};
 
 pub(crate) fn protocol(
     default_backend: outbound::Backend,
-    routes: impl Iterator<Item = (GroupKindNamespaceName, OutboundRoute<HttpRouteMatch>)>,
+    routes: impl Iterator<Item = (GroupKindNamespaceName, HttpRoute)>,
     accrual: Option<outbound::FailureAccrual>,
+    service_retry: Option<RouteRetry<HttpRetryCondition>>,
+    service_timeouts: RouteTimeouts,
+    allow_l5d_request_headers: bool,
 ) -> outbound::proxy_protocol::Kind {
     let opaque_route = default_outbound_opaq_route(default_backend.clone());
     let mut routes = routes
-        .map(|(gknn, route)| convert_outbound_route(gknn, route, default_backend.clone()))
+        .map(|(gknn, route)| {
+            convert_outbound_route(
+                gknn,
+                route,
+                default_backend.clone(),
+                service_retry.clone(),
+                service_timeouts.clone(),
+                allow_l5d_request_headers,
+            )
+        })
         .collect::<Vec<_>>();
     if routes.is_empty() {
-        routes.push(default_outbound_route(default_backend));
+        routes.push(default_outbound_route(
+            default_backend,
+            service_retry.clone(),
+            service_timeouts.clone(),
+        ));
     }
     outbound::proxy_protocol::Kind::Detect(outbound::proxy_protocol::Detect {
         timeout: Some(
@@ -49,13 +67,19 @@ pub(crate) fn protocol(
 
 fn convert_outbound_route(
     gknn: GroupKindNamespaceName,
-    OutboundRoute {
+    HttpRoute {
         hostnames,
         rules,
         creation_timestamp: _,
-    }: OutboundRoute<HttpRouteMatch>,
+    }: HttpRoute,
     backend: outbound::Backend,
+    service_retry: Option<RouteRetry<HttpRetryCondition>>,
+    service_timeouts: RouteTimeouts,
+    allow_l5d_request_headers: bool,
 ) -> outbound::HttpRoute {
+    // This encoder sets deprecated timeouts for older proxies.
+    #![allow(deprecated)]
+
     let metadata = Some(meta::Metadata {
         kind: Some(meta::metadata::Kind::Resource(meta::Resource {
             group: gknn.group.to_string(),
@@ -74,15 +98,13 @@ fn convert_outbound_route(
             |OutboundRouteRule {
                  matches,
                  backends,
-                 request_timeout,
-                 backend_request_timeout,
+                 mut retry,
+                 mut timeouts,
                  filters,
              }| {
-                let backend_request_timeout = backend_request_timeout
-                    .and_then(|d| convert_duration("backend request_timeout", d));
                 let backends = backends
                     .into_iter()
-                    .map(|backend| convert_backend(backend_request_timeout.clone(), backend))
+                    .map(convert_backend)
                     .collect::<Vec<_>>();
                 let dist = if backends.is_empty() {
                     outbound::http_route::distribution::Kind::FirstAvailable(
@@ -90,7 +112,7 @@ fn convert_outbound_route(
                             backends: vec![outbound::http_route::RouteBackend {
                                 backend: Some(backend.clone()),
                                 filters: vec![],
-                                request_timeout: backend_request_timeout,
+                                ..Default::default()
                             }],
                         },
                     )
@@ -99,12 +121,22 @@ fn convert_outbound_route(
                         outbound::http_route::distribution::RandomAvailable { backends },
                     )
                 };
+                if timeouts == Default::default() {
+                    timeouts = service_timeouts.clone();
+                }
+                if retry.is_none() {
+                    retry = service_retry.clone();
+                }
                 outbound::http_route::Rule {
                     matches: matches.into_iter().map(convert_match).collect(),
                     backends: Some(outbound::http_route::Distribution { kind: Some(dist) }),
                     filters: filters.into_iter().map(convert_to_filter).collect(),
-                    request_timeout: request_timeout
+                    request_timeout: timeouts
+                        .request
                         .and_then(|d| convert_duration("request timeout", d)),
+                    timeouts: Some(convert_timeouts(timeouts)),
+                    retry: retry.map(convert_retry),
+                    allow_l5d_request_headers,
                 }
             },
         )
@@ -117,10 +149,7 @@ fn convert_outbound_route(
     }
 }
 
-fn convert_backend(
-    request_timeout: Option<prost_types::Duration>,
-    backend: Backend,
-) -> outbound::http_route::WeightedRouteBackend {
+fn convert_backend(backend: Backend) -> outbound::http_route::WeightedRouteBackend {
     match backend {
         Backend::Addr(addr) => {
             let socket_addr = SocketAddr::new(addr.addr, addr.port.get());
@@ -139,7 +168,7 @@ fn convert_backend(
                         )),
                     }),
                     filters: Default::default(),
-                    request_timeout,
+                    ..Default::default()
                 }),
             }
         }
@@ -175,7 +204,7 @@ fn convert_backend(
                             )),
                         }),
                         filters,
-                        request_timeout,
+                        ..Default::default()
                     }),
                 }
             } else {
@@ -198,7 +227,7 @@ fn convert_backend(
                                 },
                             )),
                         }],
-                        request_timeout,
+                        ..Default::default()
                     }),
                 }
             }
@@ -222,13 +251,19 @@ fn convert_backend(
                         },
                     )),
                 }],
-                request_timeout,
+                ..Default::default()
             }),
         },
     }
 }
 
-pub(crate) fn default_outbound_route(backend: outbound::Backend) -> outbound::HttpRoute {
+pub(crate) fn default_outbound_route(
+    backend: outbound::Backend,
+    service_retry: Option<RouteRetry<HttpRetryCondition>>,
+    service_timeouts: RouteTimeouts,
+) -> outbound::HttpRoute {
+    // This encoder sets deprecated timeouts for older proxies.
+    #![allow(deprecated)]
     let metadata = Some(meta::Metadata {
         kind: Some(meta::metadata::Kind::Default("http".to_string())),
     });
@@ -245,13 +280,17 @@ pub(crate) fn default_outbound_route(backend: outbound::Backend) -> outbound::Ht
                     backends: vec![outbound::http_route::RouteBackend {
                         backend: Some(backend),
                         filters: vec![],
-                        request_timeout: None,
+                        ..Default::default()
                     }],
                 },
             )),
         }),
-        filters: Default::default(),
-        request_timeout: None,
+        retry: service_retry.map(convert_retry),
+        request_timeout: service_timeouts
+            .request
+            .and_then(|d| convert_duration("request timeout", d)),
+        timeouts: Some(convert_timeouts(service_timeouts)),
+        ..Default::default()
     }];
     outbound::HttpRoute {
         metadata,
@@ -274,5 +313,43 @@ fn convert_to_filter(filter: Filter) -> outbound::http_route::Filter {
             Filter::RequestRedirect(f) => Kind::Redirect(convert_redirect_filter(f)),
             Filter::FailureInjector(f) => Kind::FailureInjector(convert_failure_injector_filter(f)),
         }),
+    }
+}
+
+fn convert_retry(r: RouteRetry<HttpRetryCondition>) -> outbound::http_route::Retry {
+    outbound::http_route::Retry {
+        max_retries: r.limit.into(),
+        max_request_bytes: 64 * 1024,
+        backoff: Some(outbound::ExponentialBackoff {
+            min_backoff: Some(time::Duration::from_millis(25).try_into().unwrap()),
+            max_backoff: Some(time::Duration::from_millis(250).try_into().unwrap()),
+            jitter_ratio: 1.0,
+        }),
+        conditions: Some(r.conditions.iter().flatten().fold(
+            outbound::http_route::retry::Conditions::default(),
+            |mut cond, c| {
+                cond.status_ranges
+                    .push(outbound::http_route::retry::conditions::StatusRange {
+                        start: c.status_min,
+                        end: c.status_max,
+                    });
+                cond
+            },
+        )),
+        timeout: r.timeout.and_then(|d| convert_duration("retry timeout", d)),
+    }
+}
+
+fn convert_timeouts(timeouts: RouteTimeouts) -> http_route::Timeouts {
+    http_route::Timeouts {
+        request: timeouts
+            .request
+            .and_then(|d| convert_duration("request timeout", d)),
+        idle: timeouts
+            .idle
+            .and_then(|d| convert_duration("idle timeout", d)),
+        response: timeouts
+            .response
+            .and_then(|d| convert_duration("response timeout", d)),
     }
 }

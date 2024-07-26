@@ -1,26 +1,33 @@
 use std::{num::NonZeroU16, time};
 
-use super::{is_service, ServiceInfo, ServiceRef};
+use super::{is_service, parse_duration, parse_timeouts, ServiceInfo, ServiceRef};
 use crate::{
     routes::{self, HttpRouteResource},
     ClusterInfo,
 };
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Result};
+use kube::ResourceExt;
 use linkerd_policy_controller_core::{
-    outbound::{Backend, Filter, OutboundRoute, OutboundRouteRule, WeightedService},
+    outbound::{
+        Backend, Filter, HttpRetryCondition, OutboundRoute, OutboundRouteRule, RouteRetry,
+        RouteTimeouts, WeightedService,
+    },
     routes::HttpRouteMatch,
 };
 use linkerd_policy_controller_k8s_api::{gateway, policy, Time};
 
-pub(crate) fn convert_route(
+pub(super) fn convert_route(
     ns: &str,
     route: HttpRouteResource,
     cluster: &ClusterInfo,
     service_info: &HashMap<ServiceRef, ServiceInfo>,
-) -> Result<OutboundRoute<HttpRouteMatch>> {
+) -> Result<OutboundRoute<HttpRouteMatch, HttpRetryCondition>> {
     match route {
         HttpRouteResource::LinkerdHttp(route) => {
+            let timeouts = parse_timeouts(route.annotations())?;
+            let retry = parse_http_retry(route.annotations())?;
+
             let hostnames = route
                 .spec
                 .hostnames
@@ -34,7 +41,16 @@ pub(crate) fn convert_route(
                 .rules
                 .into_iter()
                 .flatten()
-                .map(|r| convert_linkerd_rule(ns, r, cluster, service_info))
+                .map(|r| {
+                    convert_linkerd_rule(
+                        ns,
+                        r,
+                        cluster,
+                        service_info,
+                        timeouts.clone(),
+                        retry.clone(),
+                    )
+                })
                 .collect::<Result<_>>()?;
 
             let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
@@ -46,6 +62,9 @@ pub(crate) fn convert_route(
             })
         }
         HttpRouteResource::GatewayHttp(route) => {
+            let timeouts = parse_timeouts(route.annotations())?;
+            let retry = parse_http_retry(route.annotations())?;
+
             let hostnames = route
                 .spec
                 .hostnames
@@ -59,7 +78,16 @@ pub(crate) fn convert_route(
                 .rules
                 .into_iter()
                 .flatten()
-                .map(|r| convert_gateway_rule(ns, r, cluster, service_info))
+                .map(|r| {
+                    convert_gateway_rule(
+                        ns,
+                        r,
+                        cluster,
+                        service_info,
+                        timeouts.clone(),
+                        retry.clone(),
+                    )
+                })
                 .collect::<Result<_>>()?;
 
             let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
@@ -78,7 +106,9 @@ fn convert_linkerd_rule(
     rule: policy::httproute::HttpRouteRule,
     cluster: &ClusterInfo,
     service_info: &HashMap<ServiceRef, ServiceInfo>,
-) -> Result<OutboundRouteRule<HttpRouteMatch>> {
+    mut timeouts: RouteTimeouts,
+    retry: Option<RouteRetry<HttpRetryCondition>>,
+) -> Result<OutboundRouteRule<HttpRouteMatch, HttpRetryCondition>> {
     let matches = rule
         .matches
         .into_iter()
@@ -100,36 +130,24 @@ fn convert_linkerd_rule(
         .map(convert_linkerd_filter)
         .collect::<Result<_>>()?;
 
-    let request_timeout = rule.timeouts.as_ref().and_then(|timeouts| {
-        let timeout = time::Duration::from(timeouts.request?);
+    timeouts.request = timeouts.request.or_else(|| {
+        rule.timeouts.as_ref().and_then(|timeouts| {
+            let timeout = time::Duration::from(timeouts.request?);
 
-        // zero means "no timeout", per GEP-1742
-        if timeout == time::Duration::from_nanos(0) {
-            return None;
-        }
+            // zero means "no timeout", per GEP-1742
+            if timeout == time::Duration::ZERO {
+                return None;
+            }
 
-        Some(timeout)
+            Some(timeout)
+        })
     });
-
-    let backend_request_timeout =
-        rule.timeouts
-            .as_ref()
-            .and_then(|timeouts: &policy::httproute::HttpRouteTimeouts| {
-                let timeout = time::Duration::from(timeouts.backend_request?);
-
-                // zero means "no timeout", per GEP-1742
-                if timeout == time::Duration::from_nanos(0) {
-                    return None;
-                }
-
-                Some(timeout)
-            });
 
     Ok(OutboundRouteRule {
         matches,
         backends,
-        request_timeout,
-        backend_request_timeout,
+        timeouts,
+        retry,
         filters,
     })
 }
@@ -139,7 +157,9 @@ fn convert_gateway_rule(
     rule: gateway::HttpRouteRule,
     cluster: &ClusterInfo,
     service_info: &HashMap<ServiceRef, ServiceInfo>,
-) -> Result<OutboundRouteRule<HttpRouteMatch>> {
+    timeouts: RouteTimeouts,
+    retry: Option<RouteRetry<HttpRetryCondition>>,
+) -> Result<OutboundRouteRule<HttpRouteMatch, HttpRetryCondition>> {
     let matches = rule
         .matches
         .into_iter()
@@ -164,13 +184,13 @@ fn convert_gateway_rule(
     Ok(OutboundRouteRule {
         matches,
         backends,
-        request_timeout: None,
-        backend_request_timeout: None,
+        timeouts,
+        retry,
         filters,
     })
 }
 
-pub(crate) fn convert_backend<BackendRef: Into<gateway::HttpBackendRef>>(
+pub(super) fn convert_backend<BackendRef: Into<gateway::HttpBackendRef>>(
     ns: &str,
     backend: BackendRef,
     cluster: &ClusterInfo,
@@ -307,4 +327,80 @@ fn is_backend_service(backend: &gateway::BackendObjectReference) -> bool {
         // Backends default to `Service` if no kind is specified.
         backend.kind.as_deref().unwrap_or("Service"),
     )
+}
+
+pub fn parse_http_retry(
+    annotations: &std::collections::BTreeMap<String, String>,
+) -> Result<Option<RouteRetry<HttpRetryCondition>>> {
+    let limit = annotations
+        .get("retry.linkerd.io/limit")
+        .map(|s| s.parse::<u16>())
+        .transpose()?
+        .filter(|v| *v != 0);
+
+    let timeout = annotations
+        .get("retry.linkerd.io/timeout")
+        .map(|v| parse_duration(v))
+        .transpose()?
+        .filter(|v| *v != time::Duration::ZERO);
+
+    fn to_code(s: &str) -> Option<u32> {
+        let code = s.parse::<u32>().ok()?;
+        if (100..600).contains(&code) {
+            Some(code)
+        } else {
+            None
+        }
+    }
+
+    let conditions = annotations
+        .get("retry.linkerd.io/http")
+        .map(|v| {
+            v.split(',')
+                .map(|cond| {
+                    if cond.eq_ignore_ascii_case("5xx") {
+                        return Ok(HttpRetryCondition {
+                            status_min: 500,
+                            status_max: 599,
+                        });
+                    }
+                    if cond.eq_ignore_ascii_case("gateway-error") {
+                        return Ok(HttpRetryCondition {
+                            status_min: 502,
+                            status_max: 504,
+                        });
+                    }
+
+                    if let Some(code) = to_code(cond) {
+                        return Ok(HttpRetryCondition {
+                            status_min: code,
+                            status_max: code,
+                        });
+                    }
+                    if let Some((start, end)) = cond.split_once('-') {
+                        if let (Some(s), Some(e)) = (to_code(start), to_code(end)) {
+                            if s <= e {
+                                return Ok(HttpRetryCondition {
+                                    status_min: s,
+                                    status_max: e,
+                                });
+                            }
+                        }
+                    }
+
+                    bail!("invalid retry condition: {v}");
+                })
+                .collect::<Result<Vec<_>>>()
+        })
+        .transpose()?;
+
+    if limit.is_none() && timeout.is_none() && conditions.is_none() {
+        return Ok(None);
+    }
+
+    Ok(Some(RouteRetry {
+        limit: limit.unwrap_or(1),
+        timeout,
+        conditions,
+    }))
 }

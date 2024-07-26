@@ -5,6 +5,7 @@ pub mod admission;
 pub mod bb;
 pub mod curl;
 pub mod grpc;
+pub mod outbound_api;
 pub mod web;
 
 use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};

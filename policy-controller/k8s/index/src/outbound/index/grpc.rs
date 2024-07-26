@@ -1,18 +1,26 @@
+use std::time;
+
 use super::http::{convert_backend, convert_gateway_filter};
-use super::{ServiceInfo, ServiceRef};
+use super::{parse_duration, parse_timeouts, ServiceInfo, ServiceRef};
 use crate::{routes, ClusterInfo};
 use ahash::AHashMap as HashMap;
-use anyhow::Result;
-use linkerd_policy_controller_core::outbound::OutboundRoute;
+use anyhow::{bail, Result};
+use kube::ResourceExt;
+use linkerd_policy_controller_core::outbound::{
+    GrpcRetryCondition, GrpcRoute, OutboundRoute, RouteRetry, RouteTimeouts,
+};
 use linkerd_policy_controller_core::{outbound::OutboundRouteRule, routes::GrpcRouteMatch};
 use linkerd_policy_controller_k8s_api::{gateway, Time};
 
-pub(crate) fn convert_route(
+pub(super) fn convert_route(
     ns: &str,
     route: gateway::GrpcRoute,
     cluster: &ClusterInfo,
     service_info: &HashMap<ServiceRef, ServiceInfo>,
-) -> Result<OutboundRoute<GrpcRouteMatch>> {
+) -> Result<GrpcRoute> {
+    let timeouts = parse_timeouts(route.annotations())?;
+    let retry = parse_grpc_retry(route.annotations())?;
+
     let hostnames = route
         .spec
         .hostnames
@@ -26,7 +34,16 @@ pub(crate) fn convert_route(
         .rules
         .into_iter()
         .flatten()
-        .map(|rule| convert_rule(ns, rule, cluster, service_info))
+        .map(|rule| {
+            convert_rule(
+                ns,
+                rule,
+                cluster,
+                service_info,
+                timeouts.clone(),
+                retry.clone(),
+            )
+        })
         .collect::<Result<_>>()?;
 
     let creation_timestamp = route.metadata.creation_timestamp.map(|Time(t)| t);
@@ -43,7 +60,9 @@ fn convert_rule(
     rule: gateway::GrpcRouteRule,
     cluster: &ClusterInfo,
     service_info: &HashMap<ServiceRef, ServiceInfo>,
-) -> Result<OutboundRouteRule<GrpcRouteMatch>> {
+    timeouts: RouteTimeouts,
+    retry: Option<RouteRetry<GrpcRetryCondition>>,
+) -> Result<OutboundRouteRule<GrpcRouteMatch, GrpcRetryCondition>> {
     let matches = rule
         .matches
         .into_iter()
@@ -68,8 +87,60 @@ fn convert_rule(
     Ok(OutboundRouteRule {
         matches,
         backends,
-        request_timeout: None,
-        backend_request_timeout: None,
+        timeouts,
+        retry,
         filters,
     })
+}
+
+pub fn parse_grpc_retry(
+    annotations: &std::collections::BTreeMap<String, String>,
+) -> Result<Option<RouteRetry<GrpcRetryCondition>>> {
+    let limit = annotations
+        .get("retry.linkerd.io/limit")
+        .map(|s| s.parse::<u16>())
+        .transpose()?
+        .filter(|v| *v != 0);
+
+    let timeout = annotations
+        .get("retry.linkerd.io/timeout")
+        .map(|v| parse_duration(v))
+        .transpose()?
+        .filter(|v| *v != time::Duration::ZERO);
+
+    let conditions = annotations
+        .get("retry.linkerd.io/grpc")
+        .map(|v| {
+            v.split(',')
+                .map(|cond| {
+                    if cond.eq_ignore_ascii_case("cancelled") {
+                        return Ok(GrpcRetryCondition::Cancelled);
+                    }
+                    if cond.eq_ignore_ascii_case("deadline-exceeded") {
+                        return Ok(GrpcRetryCondition::DeadlineExceeded);
+                    }
+                    if cond.eq_ignore_ascii_case("internal") {
+                        return Ok(GrpcRetryCondition::Internal);
+                    }
+                    if cond.eq_ignore_ascii_case("resource-exhausted") {
+                        return Ok(GrpcRetryCondition::ResourceExhausted);
+                    }
+                    if cond.eq_ignore_ascii_case("unavailable") {
+                        return Ok(GrpcRetryCondition::Unavailable);
+                    }
+                    bail!("Unknown grpc retry condition: {cond}");
+                })
+                .collect::<Result<Vec<_>>>()
+        })
+        .transpose()?;
+
+    if limit.is_none() && timeout.is_none() && conditions.is_none() {
+        return Ok(None);
+    }
+
+    Ok(Some(RouteRetry {
+        limit: limit.unwrap_or(1),
+        timeout,
+        conditions,
+    }))
 }

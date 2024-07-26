@@ -97,6 +97,9 @@ struct Args {
 
     #[clap(long, default_value = "5000")]
     patch_timeout_ms: u64,
+
+    #[clap(long)]
+    allow_l5d_request_headers: bool,
 }
 
 #[tokio::main]
@@ -118,6 +121,7 @@ async fn main() -> Result<()> {
         probe_networks,
         default_opaque_ports,
         patch_timeout_ms,
+        allow_l5d_request_headers,
     } = Args::parse();
 
     let server = if admission_controller_disabled {
@@ -290,6 +294,7 @@ async fn main() -> Result<()> {
         grpc_addr,
         cluster_domain,
         cluster_networks,
+        allow_l5d_request_headers,
         inbound_index,
         outbound_index,
         runtime.shutdown_handle(),
@@ -340,6 +345,7 @@ async fn grpc(
     addr: SocketAddr,
     cluster_domain: String,
     cluster_networks: Vec<IpNet>,
+    allow_l5d_request_headers: bool,
     inbound_index: inbound::SharedIndex,
     outbound_index: outbound::SharedIndex,
     drain: drain::Watch,
@@ -350,9 +356,13 @@ async fn grpc(
             .svc();
 
     let outbound_discover = OutboundDiscover::new(outbound_index);
-    let outbound_svc =
-        grpc::outbound::OutboundPolicyServer::new(outbound_discover, cluster_domain, drain.clone())
-            .svc();
+    let outbound_svc = grpc::outbound::OutboundPolicyServer::new(
+        outbound_discover,
+        cluster_domain,
+        allow_l5d_request_headers,
+        drain.clone(),
+    )
+    .svc();
 
     let (close_tx, close_rx) = tokio::sync::oneshot::channel();
     tokio::pin! {

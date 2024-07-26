@@ -20,7 +20,9 @@ pub trait DiscoverOutboundPolicy<T> {
 
 pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send + Sync + 'static>>;
 
-pub type RouteSet<M> = HashMap<GroupKindNamespaceName, OutboundRoute<M>>;
+pub type HttpRoute = OutboundRoute<HttpRouteMatch, HttpRetryCondition>;
+pub type GrpcRoute = OutboundRoute<GrpcRouteMatch, GrpcRetryCondition>;
+pub type RouteSet<T> = HashMap<GroupKindNamespaceName, T>;
 
 pub struct OutboundDiscoverTarget {
     pub service_name: String,
@@ -31,20 +33,23 @@ pub struct OutboundDiscoverTarget {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OutboundPolicy {
-    pub http_routes: RouteSet<HttpRouteMatch>,
-    pub grpc_routes: RouteSet<GrpcRouteMatch>,
+    pub http_routes: RouteSet<HttpRoute>,
+    pub grpc_routes: RouteSet<GrpcRoute>,
     pub authority: String,
     pub name: String,
     pub namespace: String,
     pub port: NonZeroU16,
     pub opaque: bool,
     pub accrual: Option<FailureAccrual>,
+    pub http_retry: Option<RouteRetry<HttpRetryCondition>>,
+    pub grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
+    pub timeouts: RouteTimeouts,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OutboundRoute<M> {
+pub struct OutboundRoute<M, R> {
     pub hostnames: Vec<HostMatch>,
-    pub rules: Vec<OutboundRouteRule<M>>,
+    pub rules: Vec<OutboundRouteRule<M, R>>,
 
     /// This is required for ordering returned routes
     /// by their creation timestamp.
@@ -52,11 +57,11 @@ pub struct OutboundRoute<M> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OutboundRouteRule<M> {
+pub struct OutboundRouteRule<M, R> {
     pub matches: Vec<M>,
     pub backends: Vec<Backend>,
-    pub request_timeout: Option<time::Duration>,
-    pub backend_request_timeout: Option<time::Duration>,
+    pub retry: Option<RouteRetry<R>>,
+    pub timeouts: RouteTimeouts,
     pub filters: Vec<Filter>,
 }
 
@@ -103,4 +108,33 @@ pub enum Filter {
     ResponseHeaderModifier(HeaderModifierFilter),
     RequestRedirect(RequestRedirectFilter),
     FailureInjector(FailureInjectorFilter),
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct RouteTimeouts {
+    pub response: Option<time::Duration>,
+    pub request: Option<time::Duration>,
+    pub idle: Option<time::Duration>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RouteRetry<R> {
+    pub limit: u16,
+    pub timeout: Option<time::Duration>,
+    pub conditions: Option<Vec<R>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HttpRetryCondition {
+    pub status_min: u32,
+    pub status_max: u32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum GrpcRetryCondition {
+    Cancelled,
+    DeadlineExceeded,
+    ResourceExhausted,
+    Internal,
+    Unavailable,
 }

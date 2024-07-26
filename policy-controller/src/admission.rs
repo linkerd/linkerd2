@@ -12,9 +12,9 @@ use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_core as core;
 use linkerd_policy_controller_k8s_api::gateway::{self as k8s_gateway_api, GrpcRoute};
-use linkerd_policy_controller_k8s_index as index;
+use linkerd_policy_controller_k8s_index::{self as index, outbound::index as outbound_index};
 use serde::de::DeserializeOwned;
-use std::task;
+use std::{collections::BTreeMap, task};
 use thiserror::Error;
 use tracing::{debug, info, trace, warn};
 
@@ -39,7 +39,13 @@ type AdmissionReview = kube::core::admission::AdmissionReview<DynamicObject>;
 
 #[async_trait::async_trait]
 trait Validate<T> {
-    async fn validate(self, ns: &str, name: &str, spec: T) -> Result<()>;
+    async fn validate(
+        self,
+        ns: &str,
+        name: &str,
+        annotations: &BTreeMap<String, String>,
+        spec: T,
+    ) -> Result<()>;
 }
 
 // === impl AdmissionService ===
@@ -144,7 +150,7 @@ impl Admission {
         let rsp = AdmissionResponse::from(&req);
 
         let kind = req.kind.kind.clone();
-        let (ns, name, spec) = match parse_spec::<T>(req) {
+        let (obj, spec) = match parse_spec::<T>(req) {
             Ok(spec) => spec,
             Err(error) => {
                 info!(%error, "Failed to parse {} spec", kind);
@@ -152,7 +158,11 @@ impl Admission {
             }
         };
 
-        if let Err(error) = self.validate(&ns, &name, spec).await {
+        let ns = obj.namespace().unwrap_or_default();
+        let name = obj.name_any();
+        let annotations = obj.annotations();
+
+        if let Err(error) = self.validate(&ns, &name, annotations, spec).await {
             info!(%error, %ns, %name, %kind, "Denied");
             return rsp.deny(error);
         }
@@ -180,15 +190,10 @@ fn json_response(rsp: AdmissionReview) -> Result<Response<Body>, Error> {
         .expect("admission review response must be valid"))
 }
 
-fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, String, T)> {
+fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(DynamicObject, T)> {
     let obj = req
         .object
         .ok_or_else(|| anyhow!("admission request missing 'object"))?;
-
-    let ns = obj
-        .namespace()
-        .ok_or_else(|| anyhow!("admission request missing 'namespace'"))?;
-    let name = obj.name_any();
 
     let spec = {
         let data = obj
@@ -199,7 +204,7 @@ fn parse_spec<T: DeserializeOwned>(req: AdmissionRequest) -> Result<(String, Str
         serde_json::from_value(data)?
     };
 
-    Ok((ns, name, spec))
+    Ok((obj, spec))
 }
 
 /// Validates the target of an `AuthorizationPolicy`.
@@ -228,7 +233,13 @@ fn validate_policy_target(ns: &str, tgt: &LocalTargetRef) -> Result<()> {
 
 #[async_trait::async_trait]
 impl Validate<AuthorizationPolicySpec> for Admission {
-    async fn validate(self, ns: &str, _name: &str, spec: AuthorizationPolicySpec) -> Result<()> {
+    async fn validate(
+        self,
+        ns: &str,
+        _name: &str,
+        _annotations: &BTreeMap<String, String>,
+        spec: AuthorizationPolicySpec,
+    ) -> Result<()> {
         validate_policy_target(ns, &spec.target_ref)?;
 
         let mtls_authns_count = spec
@@ -302,7 +313,13 @@ fn validate_identity_ref(id: &NamespacedTargetRef) -> Result<()> {
 
 #[async_trait::async_trait]
 impl Validate<MeshTLSAuthenticationSpec> for Admission {
-    async fn validate(self, _ns: &str, _name: &str, spec: MeshTLSAuthenticationSpec) -> Result<()> {
+    async fn validate(
+        self,
+        _ns: &str,
+        _name: &str,
+        _annotations: &BTreeMap<String, String>,
+        spec: MeshTLSAuthenticationSpec,
+    ) -> Result<()> {
         for id in spec.identities.iter().flatten() {
             if let Err(err) = validation::validate_identity(id) {
                 bail!("id {} is invalid: {}", id, err);
@@ -323,7 +340,13 @@ impl Validate<ServerSpec> for Admission {
     //
     // TODO(ver) this isn't rigorous about detecting servers that select the same port if one port
     // specifies a numeric port and the other specifies the port's name.
-    async fn validate(self, ns: &str, name: &str, spec: ServerSpec) -> Result<()> {
+    async fn validate(
+        self,
+        ns: &str,
+        name: &str,
+        _annotations: &BTreeMap<String, String>,
+        spec: ServerSpec,
+    ) -> Result<()> {
         // Since we can't ensure that the local index is up-to-date with the API server (i.e.
         // updates may be delayed), we issue an API request to get the latest state of servers in
         // the namespace.
@@ -378,7 +401,13 @@ impl Admission {
 
 #[async_trait::async_trait]
 impl Validate<NetworkAuthenticationSpec> for Admission {
-    async fn validate(self, _ns: &str, _name: &str, spec: NetworkAuthenticationSpec) -> Result<()> {
+    async fn validate(
+        self,
+        _ns: &str,
+        _name: &str,
+        _annotations: &BTreeMap<String, String>,
+        spec: NetworkAuthenticationSpec,
+    ) -> Result<()> {
         if spec.networks.is_empty() {
             bail!("at least one network must be specified");
         }
@@ -407,7 +436,13 @@ impl Validate<NetworkAuthenticationSpec> for Admission {
 
 #[async_trait::async_trait]
 impl Validate<ServerAuthorizationSpec> for Admission {
-    async fn validate(self, _ns: &str, _name: &str, spec: ServerAuthorizationSpec) -> Result<()> {
+    async fn validate(
+        self,
+        _ns: &str,
+        _name: &str,
+        _annotations: &BTreeMap<String, String>,
+        spec: ServerAuthorizationSpec,
+    ) -> Result<()> {
         if let Some(mtls) = spec.client.mesh_tls.as_ref() {
             if spec.client.unauthenticated {
                 bail!("`unauthenticated` must be false if `mesh_tls` is specified");
@@ -477,7 +512,25 @@ fn validate_match(
 
 #[async_trait::async_trait]
 impl Validate<HttpRouteSpec> for Admission {
-    async fn validate(self, _ns: &str, _name: &str, spec: HttpRouteSpec) -> Result<()> {
+    async fn validate(
+        self,
+        _ns: &str,
+        _name: &str,
+        annotations: &BTreeMap<String, String>,
+        spec: HttpRouteSpec,
+    ) -> Result<()> {
+        if spec
+            .inner
+            .parent_refs
+            .iter()
+            .flatten()
+            .any(index::outbound::index::is_parent_service)
+        {
+            index::outbound::index::http::parse_http_retry(annotations)?;
+            index::outbound::index::parse_accrual_config(annotations)?;
+            index::outbound::index::parse_timeouts(annotations)?;
+        }
+
         fn validate_filter(filter: httproute::HttpRouteFilter) -> Result<()> {
             match filter {
                 httproute::HttpRouteFilter::RequestHeaderModifier {
@@ -549,8 +602,21 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
         self,
         _ns: &str,
         _name: &str,
+        annotations: &BTreeMap<String, String>,
         spec: k8s_gateway_api::HttpRouteSpec,
     ) -> Result<()> {
+        if spec
+            .inner
+            .parent_refs
+            .iter()
+            .flatten()
+            .any(outbound_index::is_parent_service)
+        {
+            outbound_index::http::parse_http_retry(annotations)?;
+            outbound_index::parse_accrual_config(annotations)?;
+            outbound_index::parse_timeouts(annotations)?;
+        }
+
         fn validate_filter(filter: k8s_gateway_api::HttpRouteFilter) -> Result<()> {
             match filter {
                 k8s_gateway_api::HttpRouteFilter::RequestHeaderModifier {
@@ -595,8 +661,21 @@ impl Validate<k8s_gateway_api::GrpcRouteSpec> for Admission {
         self,
         _ns: &str,
         _name: &str,
+        annotations: &BTreeMap<String, String>,
         spec: k8s_gateway_api::GrpcRouteSpec,
     ) -> Result<()> {
+        if spec
+            .inner
+            .parent_refs
+            .iter()
+            .flatten()
+            .any(outbound_index::is_parent_service)
+        {
+            outbound_index::grpc::parse_grpc_retry(annotations)?;
+            outbound_index::parse_accrual_config(annotations)?;
+            outbound_index::parse_timeouts(annotations)?;
+        }
+
         fn validate_filter(filter: k8s_gateway_api::GrpcRouteFilter) -> Result<()> {
             match filter {
                 k8s_gateway_api::GrpcRouteFilter::RequestHeaderModifier {
