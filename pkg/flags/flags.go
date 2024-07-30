@@ -42,11 +42,10 @@ func ConfigureAndParse(cmd *flag.FlagSet, args []string) {
 	cmd.Parse(args)
 
 	log.SetFormatter(getFormatter(*logFormat))
-
 	klog.InitFlags(nil)
+	setLogLevel(*logLevel)
 	klog.SetLogger(logrusr.New(log.StandardLogger()))
 
-	setLogLevel(*logLevel)
 	maybePrintVersionAndExit(*printVersion)
 }
 
