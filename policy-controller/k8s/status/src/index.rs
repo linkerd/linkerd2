@@ -397,24 +397,22 @@ impl Index {
             }
             routes::ParentReference::Service(service, port) => {
                 // service is a valid parent if it exists and it has a cluster_ip.
-                let condition = if self
-                    .services
-                    .get(service)
-                    .map_or(false, |svc| svc.valid_parent_service())
-                {
-                    // If this route is an HTTPRoute and there exists a GRPCRoute
-                    // with the same parent, the HTTPRoute should not be accepted
-                    // because it is less specific.
-                    // https://gateway-api.sigs.k8s.io/geps/gep-1426/#route-types
-                    if id.gkn.kind == k8s_gateway_api::HttpRoute::kind(&())
-                        && self.parent_has_grpcroute_children(parent_ref)
-                    {
-                        route_conflicted()
-                    } else {
-                        accepted()
+                let condition = match self.services.get(service) {
+                    Some(svc) if svc.valid_parent_service() => {
+                        // If this route is an HTTPRoute and there exists a GRPCRoute
+                        // with the same parent, the HTTPRoute should not be accepted
+                        // because it is less specific.
+                        // https://gateway-api.sigs.k8s.io/geps/gep-1426/#route-types
+                        if id.gkn.kind == k8s_gateway_api::HttpRoute::kind(&())
+                            && self.parent_has_grpcroute_children(parent_ref)
+                        {
+                            route_conflicted()
+                        } else {
+                            accepted()
+                        }
                     }
-                } else {
-                    no_matching_parent()
+                    Some(_svc) => headless_parent(),
+                    None => no_matching_parent(),
                 };
 
                 Some(k8s_gateway_api::RouteParentStatus {
@@ -854,6 +852,17 @@ fn no_matching_parent() -> k8s_core_api::Condition {
     k8s_core_api::Condition {
         last_transition_time: k8s_core_api::Time(now()),
         message: "".to_string(),
+        observed_generation: None,
+        reason: reasons::NO_MATCHING_PARENT.to_string(),
+        status: cond_statuses::STATUS_FALSE.to_string(),
+        type_: conditions::ACCEPTED.to_string(),
+    }
+}
+
+fn headless_parent() -> k8s_core_api::Condition {
+    k8s_core_api::Condition {
+        last_transition_time: k8s_core_api::Time(now()),
+        message: "parent service must have a ClusterIP".to_string(),
         observed_generation: None,
         reason: reasons::NO_MATCHING_PARENT.to_string(),
         status: cond_statuses::STATUS_FALSE.to_string(),
