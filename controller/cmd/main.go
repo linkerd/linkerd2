@@ -9,6 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/cmd/identity"
 	proxyinjector "github.com/linkerd/linkerd2/controller/cmd/proxy-injector"
 	spvalidator "github.com/linkerd/linkerd2/controller/cmd/sp-validator"
+	importreconciler "github.com/linkerd/linkerd2/multicluster/cmd/import-reconciler"
 	servicemirror "github.com/linkerd/linkerd2/multicluster/cmd/service-mirror"
 )
 
@@ -31,6 +32,8 @@ func main() {
 		spvalidator.Main(os.Args[2:])
 	case "service-mirror":
 		servicemirror.Main(os.Args[2:])
+	case "import-reconciler":
+		importreconciler.Main(os.Args[2:])
 	default:
 		fmt.Printf("unknown subcommand: %s", os.Args[1])
 		os.Exit(1)

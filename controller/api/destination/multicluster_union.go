@@ -83,6 +83,7 @@ func (m *MulticlusterUnion) InitializeAndRunUnion() error {
 			continue
 		}
 
+		m.log.Infof("building translator for %s", cluster)
 		m.Lock()
 		m.registeredWatchers[cluster] = watcher
 		// Create listener

@@ -146,6 +146,24 @@ func ExtWorkloadAccess(ctx context.Context, k8sClient kubernetes.Interface) erro
 	return errors.New("ExternalWorkload CRD not found")
 }
 
+// ExtWorkloadAccess checks whether the ExternalWorkload CRD is installed on the
+// cluster and the client is authorized to access ExternalWorkloads
+func SmpAccess(ctx context.Context, k8sClient kubernetes.Interface) error {
+	groupVersion := fmt.Sprintf("%s/%s", "multicluster.linkerd.io", "v1alpha1")
+	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(groupVersion)
+	if err != nil {
+		return err
+	}
+	if res.GroupVersion == groupVersion {
+		for _, apiRes := range res.APIResources {
+			if apiRes.Kind == "ServiceImport" {
+				return ResourceAuthz(ctx, k8sClient, "", "list", "multicluster.linkerd.io", "", "serviceimports", "")
+			}
+		}
+	}
+	return errors.New("ServiceImport CRD not found")
+}
+
 // EndpointSliceAccess verifies whether the K8s cluster has
 // access to EndpointSlice resources.
 func EndpointSliceAccess(ctx context.Context, k8sClient kubernetes.Interface) error {

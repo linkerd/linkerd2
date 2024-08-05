@@ -37,6 +37,8 @@ type LinkSpec struct {
 	GatewayIdentity               string               `json:"gatewayIdentity,omitempty"`
 	ProbeSpec                     ProbeSpec            `json:"probeSpec,omitempty"`
 	Selector                      metav1.LabelSelector `json:"selector,omitempty"`
+	RemoteDiscoverySelector       metav1.LabelSelector `json:"remoteDiscoverySelector,omitempty"`
+	ClusterAgnosticSelector       metav1.LabelSelector `json:"clusterAgnosticSelector,omitempty"`
 }
 
 // ProbeSpec for gateway health probe

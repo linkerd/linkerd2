@@ -139,6 +139,11 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, dynamicClient dy
 			if err != nil {
 				return nil, err
 			}
+		case res == Smp:
+			err := k8s.SmpAccess(ctx, k8sClient)
+			if err != nil {
+				return nil, err
+			}
 		//TODO: smp check
 		default:
 			continue
@@ -299,7 +304,7 @@ func newAPI(
 				panic("Linkerd CRD shared informer not configured")
 			}
 			api.link = l5dCrdSharedInformers.Link().V1alpha1().Links()
-			api.syncChecks = append(api.syncChecks, api.smp.Informer().HasSynced)
+			api.syncChecks = append(api.syncChecks, api.link.Informer().HasSynced)
 			api.promGauges.addInformerSize(k8s.Link, informerLabels, api.link.Informer())
 		case SS:
 			api.ss = sharedInformers.Apps().V1().StatefulSets()

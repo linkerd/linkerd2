@@ -44,6 +44,7 @@ type (
 		ProbeSpec                     ProbeSpec
 		Selector                      metav1.LabelSelector
 		RemoteDiscoverySelector       metav1.LabelSelector
+		ClusterAgnosticSelector       metav1.LabelSelector
 	}
 )
 
@@ -148,6 +149,18 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		}
 	}
 
+	clusterAgnosticSelector := metav1.LabelSelector{}
+	if selectorObj, ok := specObj["clusterAgnosticSelector"]; ok {
+		bytes, err := json.Marshal(selectorObj)
+		if err != nil {
+			return Link{}, err
+		}
+		err = json.Unmarshal(bytes, &clusterAgnosticSelector)
+		if err != nil {
+			return Link{}, err
+		}
+	}
+
 	return Link{
 		Name:                          u.GetName(),
 		Namespace:                     u.GetNamespace(),
@@ -161,6 +174,7 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		ProbeSpec:                     probeSpec,
 		Selector:                      selector,
 		RemoteDiscoverySelector:       remoteDiscoverySelector,
+		ClusterAgnosticSelector:       clusterAgnosticSelector,
 	}, nil
 }
 
@@ -204,6 +218,16 @@ func (l Link) ToUnstructured() (unstructured.Unstructured, error) {
 	}
 	spec["remoteDiscoverySelector"] = remoteDiscoverySelector
 
+	data, err = json.Marshal(l.ClusterAgnosticSelector)
+	if err != nil {
+		return unstructured.Unstructured{}, err
+	}
+	clusterAgnosticSelector := make(map[string]interface{})
+	err = json.Unmarshal(data, &clusterAgnosticSelector)
+	if err != nil {
+		return unstructured.Unstructured{}, err
+	}
+	spec["clusterAgnosticSelector"] = clusterAgnosticSelector
 	return unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": k8s.LinkAPIGroupVersion,

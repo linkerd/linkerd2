@@ -90,6 +90,8 @@ func (in *LinkSpec) DeepCopyInto(out *LinkSpec) {
 	*out = *in
 	out.ProbeSpec = in.ProbeSpec
 	in.Selector.DeepCopyInto(&out.Selector)
+	in.RemoteDiscoverySelector.DeepCopyInto(&out.RemoteDiscoverySelector)
+	in.ClusterAgnosticSelector.DeepCopyInto(&out.ClusterAgnosticSelector)
 	return
 }
 
