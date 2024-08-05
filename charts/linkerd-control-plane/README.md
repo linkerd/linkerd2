@@ -189,7 +189,7 @@ Kubernetes: `>=1.22.0-0`
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
 | networkValidator.connectAddr | string | `""` | Address to which the network-validator will attempt to connect. This should be an IP that the cluster is expected to be able to reach but a port it should not, e.g., a public IP for public clusters and a private IP for air-gapped clusters with a port like 20001. If empty, defaults to 1.1.1.1:20001 and [fd00::1]:20001 for IPv4 and IPv6 respectively. |
 | networkValidator.enableSecurityContext | bool | `true` | Include a securityContext in the network-validator pod spec |
-| networkValidator.listenAddr | string | `"[::]:4140"` | Address to which network-validator listens to requests from itself |
+| networkValidator.listenAddr | string | `""` | Address to which network-validator listens to requests from itself. If empty, defaults to 0.0.0.0:4140 and [::]:4140 for IPv4 and IPv6 respectively. |
 | networkValidator.logFormat | string | plain | Log format (`plain` or `json`) for network-validator |
 | networkValidator.logLevel | string | debug | Log level for the network-validator |
 | networkValidator.timeout | string | `"10s"` | Timeout before network-validator fails to validate the pod's network connectivity |

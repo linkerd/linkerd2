@@ -32,7 +32,13 @@ args:
   - "[fd00::1]:20001"
     {{- end }}
   - --listen-addr
+    {{- if .Values.networkValidator.listenAddr }}
   - {{ .Values.networkValidator.listenAddr | quote }}
+    {{- else if .Values.disableIPv6}}
+  - "0.0.0.0:4140"
+    {{- else }}
+  - "[::]:4140"
+    {{- end }}
   - --timeout
   - {{ .Values.networkValidator.timeout }}
 

@@ -315,10 +315,10 @@ spec:
           name: sp-tls
           readOnly: true
       - args:
-        - --admin-addr=[::]:9990
+        - --admin-addr={{ if .Values.disableIPv6 }}0.0.0.0{{ else }}[::]{{ end }}:9990
         - --control-plane-namespace={{.Release.Namespace}}
-        - --grpc-addr=[::]:8090
-        - --server-addr=[::]:9443
+        - --grpc-addr={{ if .Values.disableIPv6 }}0.0.0.0{{ else }}[::]{{ end }}:8090
+        - --server-addr={{ if .Values.disableIPv6 }}0.0.0.0{{ else }}[::]{{ end }}:9443
         - --server-tls-key=/var/run/linkerd/tls/tls.key
         - --server-tls-certs=/var/run/linkerd/tls/tls.crt
         - --cluster-networks={{.Values.clusterNetworks}}
