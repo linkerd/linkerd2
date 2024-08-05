@@ -313,7 +313,7 @@ spec:
           - /usr/lib/linkerd/linkerd-cni-repair-controller
         args:
           - --admin-addr
-          - "[::]:9990"
+          - "{{ if .Values.disableIPv6 }}0.0.0.0{{ else }}[::]{{ end }}:9990"
           - --log-format
           - {{ .Values.repairController.logFormat }}
           - --log-level

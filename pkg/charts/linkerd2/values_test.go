@@ -213,7 +213,7 @@ func TestNewValues(t *testing.T) {
 			LogLevel:              "debug",
 			LogFormat:             "plain",
 			ConnectAddr:           "",
-			ListenAddr:            "[::]:4140",
+			ListenAddr:            "",
 			Timeout:               "10s",
 			EnableSecurityContext: true,
 		},
