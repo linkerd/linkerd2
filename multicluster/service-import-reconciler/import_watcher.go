@@ -10,14 +10,11 @@ import (
 	smp "github.com/linkerd/linkerd2/controller/gen/apis/serviceimport/v1alpha1"
 	l5dApi "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	sm "github.com/linkerd/linkerd2/pkg/servicemirror"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/util/workqueue"
@@ -25,7 +22,7 @@ import (
 
 const (
 	// Name of the lease resource the controller will use
-	leaseName = "linkerd-destination-endpoint-write"
+	leaseName = "linkerd-service-import-write"
 
 	// Duration of the lease
 	// Core controllers (kube-controller-manager) has a duration of 15 seconds
@@ -41,22 +38,11 @@ const (
 
 	// Name of the controller. Used as an annotation value for all created
 	// EndpointSlice objects
-	managedBy = "linkerd-external-workloads-controller"
-
-	// Max number of endpoints per EndpointSlice
-	maxEndpointsQuota = 100
+	managedBy = "linkerd-import-reconciler-controller"
 
 	// Max retries for a service to be reconciled
 	maxRetryBudget = 15
 )
-
-/*
-	l5dClient, err := l5dApi.NewForConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("error creating linkerd CRD client, %w", err)
-	}
-
-*/
 
 type ServiceImportWatcher struct {
 	// Index links by cluster name
@@ -89,21 +75,6 @@ type informerHandlers struct {
 	svcHandler  cache.ResourceEventHandlerRegistration
 	linkHandler cache.ResourceEventHandlerRegistration
 }
-
-/* Events */
-type (
-	clusterRegistered struct {
-		link *linkv1alpha1.Link
-	}
-	clusterUpdated struct {
-		link *linkv1alpha1.Link
-	}
-
-	serviceCreated struct {
-		cluster string
-		svc     *corev1.Service
-	}
-)
 
 func NewServiceImportWatcher(
 	localAPI *k8s.API,
@@ -210,16 +181,26 @@ func (sw *ServiceImportWatcher) processQueue() {
 			return
 		}
 
-		sw.log.Infof("processing event (type %T) %#v", event, event)
+		sw.log.Tracef("processing event (type %T) %#v", event, event)
 		var err error
 		switch ev := event.(type) {
-		case *clusterRegistered:
+		case *clusterRegistration:
 			// handle registration
-			err = sw.registerCluster(ev.link)
-		case *clusterUpdated:
+			err = sw.createOrUpdateCluster(ev.link)
+		case *clusterUpdate:
 			// handle update
-		case *serviceCreated:
-			err = sw.reconcileServiceImport(ev.cluster, ev.svc)
+			err = sw.updateOrDeleteCluster(ev.link, ev.deleted)
+		case *clusterDelete:
+			// final delete after all services have been processed
+			sw.Lock()
+			delete(sw.clusters, ev.clusterName)
+			sw.Unlock()
+		case *serviceUpdate:
+			if ev.exported {
+				err = sw.reconcileServiceImport(ev.cluster, ev.svc)
+			} else {
+				err = sw.removeClusterFromImport(ev.cluster, ev.svc)
+			}
 		}
 
 		sw.eventsQueue.Done(event)
@@ -229,6 +210,31 @@ func (sw *ServiceImportWatcher) processQueue() {
 			sw.log.Info("error when processing event: #+v", event)
 		}
 	}
+}
+
+func (sw *ServiceImportWatcher) removeClusterFromImport(clusterName string, service *corev1.Service) error {
+	imp, err := sw.localClient.Smp().Lister().ServiceImports(service.Namespace).Get(service.Name)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			// Nothing to remove
+			return nil
+		} else {
+			return err
+		}
+	}
+
+	// Second, update the service import
+	updatedImp := imp.DeepCopy()
+	clusters := []string{}
+	for _, c := range updatedImp.Status.Clusters {
+		if c != clusterName {
+			clusters = append(clusters, c)
+		}
+	}
+
+	updatedImp.Status.Clusters = clusters
+	_, err = sw.l5dClient.ServiceimportV1alpha1().ServiceImports(service.Namespace).Update(context.TODO(), updatedImp, metav1.UpdateOptions{})
+	return err
 }
 
 func (sw *ServiceImportWatcher) reconcileServiceImport(clusterName string, service *corev1.Service) error {
@@ -269,7 +275,7 @@ func (sw *ServiceImportWatcher) createServiceImport(serviceName, serviceNamespac
 		return nil, err
 	}
 
-	// TODO: DANGER, we only process int ports
+	// TODO (matei): WARNING, we only process int ports. Port type is intorstr.
 	portSpecs := []smp.PortSpec{}
 	for _, pS := range svc.Spec.Ports {
 		portSpecs = append(portSpecs, smp.PortSpec{
@@ -302,114 +308,4 @@ func (sw *ServiceImportWatcher) createServiceImport(serviceName, serviceNamespac
 		},
 	}
 	return sw.l5dClient.ServiceimportV1alpha1().ServiceImports(serviceNamespace).Create(context.TODO(), imp, metav1.CreateOptions{})
-}
-
-func (sw *ServiceImportWatcher) registerCluster(link *linkv1alpha1.Link) error {
-	sw.log.Infof("registering cluster %s", link.Spec.TargetClusterName)
-	secret, err := sw.localClient.Client.CoreV1().Secrets(sw.multiclusterNamespace).Get(context.TODO(), link.Spec.ClusterCredentialsSecret, metav1.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to load credentials secret %s: %w", link.Spec.ClusterCredentialsSecret, err)
-	}
-	creds, err := sm.ParseRemoteClusterSecret(secret)
-	if err != nil {
-		return fmt.Errorf("failed to parse credentials %s: %w", link.Name, err)
-	}
-
-	cfg, err := clientcmd.RESTConfigFromKubeConfig(creds)
-	if err != nil {
-		return fmt.Errorf("failed to parse kube config %s: %w", link.Name, err)
-	}
-
-	remoteAPI, err := k8s.InitializeAPIForConfig(context.TODO(), cfg, false, link.Spec.TargetClusterName, k8s.Svc)
-	if err != nil {
-		return fmt.Errorf("cannot initialize api for target cluster %s: %w", link.Spec.TargetClusterName, err)
-	}
-
-	go func() {
-		remoteAPI.Sync(nil)
-	}()
-
-	cluster := &remoteCluster{
-		name:   link.Spec.TargetClusterName,
-		link:   link,
-		client: remoteAPI,
-		log: sw.log.WithFields(logging.Fields{
-			"cluster": link.Spec.TargetClusterName,
-		}),
-	}
-
-	cluster.svcHandler, err = cluster.client.Svc().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			svc := obj.(*corev1.Service)
-			if !cluster.isClusterAgnostic(svc.Labels) {
-				return
-			}
-
-			sw.eventsQueue.Add(&serviceCreated{cluster.name, svc})
-
-		},
-		UpdateFunc: func(oldObj interface{}, newObj interface{}) {
-			cluster.log.Infof("UpdateFunc not yet implemented")
-		},
-		DeleteFunc: func(obj interface{}) {
-			cluster.log.Infof("DeleteFunc not yet implemented")
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to register callbacks for link %s: %w", link.Name, err)
-	}
-
-	sw.Lock()
-	defer sw.Unlock()
-	sw.clusters[cluster.name] = cluster
-	sw.log.Infof("registered cluster %s", link.Spec.TargetClusterName)
-	return nil
-}
-
-func (sw *ServiceImportWatcher) registerCallbacks() error {
-	sw.log.Info("registering callbacks")
-	sw.Lock()
-	defer sw.Unlock()
-	var err error
-	sw.linkHandler, err = sw.localClient.Link().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(link interface{}) {
-			sw.log.Infof("observed link CREATE")
-			sw.eventsQueue.Add(&clusterRegistered{link.(*linkv1alpha1.Link)})
-		},
-		UpdateFunc: func(_, newL interface{}) {
-			sw.log.Infof("observed link UPDATE")
-			sw.eventsQueue.Add(&clusterUpdated{newL.(*linkv1alpha1.Link)})
-		},
-		DeleteFunc: func(link interface{}) {
-			sw.log.Info("delete not implemented")
-		},
-	})
-	return err
-}
-
-func (sw *ServiceImportWatcher) deregisterCallbacks() error {
-	sw.Lock()
-	defer sw.Unlock()
-	var err error
-	if sw.linkHandler != nil {
-		err = sw.localClient.Link().Informer().RemoveEventHandler(sw.linkHandler)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (rc *remoteCluster) isClusterAgnostic(l map[string]string) bool {
-	if len(rc.link.Spec.ClusterAgnosticSelector.MatchExpressions)+len(rc.link.Spec.ClusterAgnosticSelector.MatchLabels) == 0 {
-		return false
-	}
-
-	clusterAgnosticSel, err := metav1.LabelSelectorAsSelector(&rc.link.Spec.ClusterAgnosticSelector)
-	if err != nil {
-		rc.log.Errorf("Invalid selector: %s", err)
-		return false
-	}
-
-	return clusterAgnosticSel.Matches(labels.Set(l))
 }
