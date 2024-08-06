@@ -51,10 +51,10 @@ spec:
                         within the ports set. Each named port can be referred
                         to by services.
                     port:
-                      format: int32
-                      maximum: 65535
-                      minimum: 1
-                      type: integer
+                      description: >-
+                      A port name or number. Corresponds to a service
+                      targetPort
+                      x-kubernetes-int-or-string: true
                     protocol:
                       description: protocol exposed by the port. Must be UDP or
                         TCP. Defaults to TCP.

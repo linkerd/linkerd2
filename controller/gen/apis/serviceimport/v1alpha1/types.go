@@ -3,6 +3,7 @@ package v1alpha1
 import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // +genclient
@@ -53,7 +54,7 @@ type PortSpec struct {
 	Name string `json:"name,omitempty"`
 	// Number of port exposed on the workload's IP address.
 	// Must be a valid port number, i.e. 0 < x < 65536.
-	Port int32 `json:"port"`
+	Port intstr.IntOrString `json:"port"`
 	// Protocol defines network protocols supported. One of UDP, TCP, or SCTP.
 	// Should coincide with Service selecting the workload.
 	// Defaults to "TCP" if unspecified.

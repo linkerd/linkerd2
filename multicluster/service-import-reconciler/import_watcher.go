@@ -280,7 +280,7 @@ func (sw *ServiceImportWatcher) createServiceImport(serviceName, serviceNamespac
 	for _, pS := range svc.Spec.Ports {
 		portSpecs = append(portSpecs, smp.PortSpec{
 			Name:     pS.Name,
-			Port:     pS.TargetPort.IntVal,
+			Port:     pS.TargetPort,
 			Protocol: pS.Protocol,
 		})
 	}
