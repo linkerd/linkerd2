@@ -25,6 +25,10 @@ spec:
         args:
         - -c
         - 'go run /go/src/app/main.go'
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
         volumeMounts:
         - name: go-app
           mountPath: /go/src/app
