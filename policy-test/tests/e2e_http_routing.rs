@@ -1,5 +1,8 @@
 use linkerd_policy_controller_k8s_api as k8s;
-use linkerd_policy_test::{create, create_ready_pod, curl, web, with_temp_ns, LinkerdInject};
+use linkerd_policy_test::{
+    await_condition, create, create_ready_pod, curl, endpoints_ready, web, with_temp_ns,
+    LinkerdInject,
+};
 
 #[tokio::test(flavor = "current_thread")]
 async fn path_based_routing() {
@@ -39,6 +42,8 @@ async fn path_based_routing() {
             create(&client, web::service(&ns)),
             create_ready_pod(&client, web::pod(&ns))
         );
+
+        await_condition(&client, &ns, "web", endpoints_ready).await;
 
         let curl = curl::Runner::init(&client, &ns).await;
         let (valid, invalid, notfound) = tokio::join!(

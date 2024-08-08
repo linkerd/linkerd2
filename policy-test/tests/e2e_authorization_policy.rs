@@ -36,6 +36,8 @@ async fn meshtls() {
             create_ready_pod(&client, web::pod(&ns))
         );
 
+        await_condition(&client, &ns, "web", endpoints_ready).await;
+
         let curl = curl::Runner::init(&client, &ns).await;
         let (injected, uninjected) = tokio::join!(
             curl.run("curl-injected", "http://web", LinkerdInject::Enabled),
@@ -88,6 +90,8 @@ async fn targets_route() {
             create(&client, web::service(&ns)),
             create_ready_pod(&client, web::pod(&ns))
         );
+
+        await_condition(&client, &ns, "web", endpoints_ready).await;
 
         let curl = curl::Runner::init(&client, &ns).await;
 
@@ -195,6 +199,8 @@ async fn targets_namespace() {
             create_ready_pod(&client, web::pod(&ns))
         );
 
+        await_condition(&client, &ns, "web", endpoints_ready).await;
+
         let curl = curl::Runner::init(&client, &ns).await;
         let (injected, uninjected) = tokio::join!(
             curl.run("curl-injected", "http://web", LinkerdInject::Enabled),
@@ -239,6 +245,8 @@ async fn meshtls_namespace() {
             create(&client, web::service(&ns)),
             create_ready_pod(&client, web::pod(&ns))
         );
+
+        await_condition(&client, &ns, "web", endpoints_ready).await;
 
         let curl = curl::Runner::init(&client, &ns).await;
         let (injected, uninjected) = tokio::join!(
@@ -540,6 +548,8 @@ async fn empty_authentications() {
             create(&client, web::service(&ns)),
             create_ready_pod(&client, web::pod(&ns))
         );
+
+        await_condition(&client, &ns, "web", endpoints_ready).await;
 
         // All requests should work.
         let curl = curl::Runner::init(&client, &ns).await;
