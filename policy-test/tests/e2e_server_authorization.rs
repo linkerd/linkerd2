@@ -34,6 +34,8 @@ async fn meshtls() {
             create_ready_pod(&client, web::pod(&ns))
         );
 
+        await_condition(&client, &ns, "web", endpoints_ready).await;
+
         let curl = curl::Runner::init(&client, &ns).await;
         let (injected, uninjected) = tokio::join!(
             curl.run("curl-injected", "http://web", LinkerdInject::Enabled),
