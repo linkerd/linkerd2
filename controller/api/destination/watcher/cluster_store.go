@@ -36,6 +36,11 @@ type (
 		// kubeconfig, it creates API Server clients
 		decodeFn configDecoder
 
+		// Dispatcher is used to propagate updates to the ClusterStore's state
+		// to other parts of the system that need to react to changes in
+		// added/removed clusters
+		dispatcher *eventDispatcher
+
 		size_gauge prometheus.GaugeFunc
 	}
 
@@ -52,6 +57,15 @@ type (
 	clusterConfig struct {
 		TrustDomain   string
 		ClusterDomain string
+	}
+
+	// eventDispatcher represents a handle to a set of channels that allow
+	// propagating information about the ClusterStore's states to other parts of
+	// the system
+	eventDispatcher struct {
+		added   chan string
+		removed chan string
+		count   int
 	}
 
 	// configDecoder is the type of a function that given a byte buffer, returns
@@ -82,6 +96,41 @@ func (cs *ClusterStore) Sync(stopCh <-chan struct{}) {
 
 func (cs *ClusterStore) UnregisterGauges() {
 	prometheus.Unregister(cs.size_gauge)
+}
+
+func (cs *ClusterStore) Subscribe() (<-chan string, <-chan string) {
+	cs.Lock()
+	defer cs.Unlock()
+
+	if cs.dispatcher == nil {
+		cs.dispatcher = &eventDispatcher{
+			added:   make(chan string, 100),
+			removed: make(chan string, 100),
+		}
+	}
+
+	return cs.dispatcher.added, cs.dispatcher.removed
+}
+
+func (cs *ClusterStore) Unsubscribe() {
+	cs.Lock()
+	defer cs.Unlock()
+	cs.dispatcher.count--
+	if cs.dispatcher.count == 0 {
+		cs.dispatcher = nil
+	}
+}
+
+func (cs *ClusterStore) sendUpdate(clusterName string, removed bool) {
+	if cs.dispatcher == nil {
+		return
+	}
+
+	if removed {
+		cs.dispatcher.removed <- clusterName
+	} else {
+		cs.dispatcher.added <- clusterName
+	}
 }
 
 // newClusterStoreWithDecoder is a helper function that allows the creation of a
@@ -209,6 +258,7 @@ func (cs *ClusterStore) removeCluster(clusterName string) {
 	close(r.stopCh)
 	delete(cs.store, clusterName)
 	cs.log.Infof("Removed cluster %s from ClusterStore", clusterName)
+	go cs.sendUpdate(clusterName, true)
 }
 
 // addCluster is triggered by the cache's Secret informer when a secret is
@@ -265,6 +315,7 @@ func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error 
 	go metadataAPI.Sync(stopCh)
 
 	cs.log.Infof("Added cluster %s to ClusterStore", clusterName)
+	go cs.sendUpdate(clusterName, false)
 
 	return nil
 }
