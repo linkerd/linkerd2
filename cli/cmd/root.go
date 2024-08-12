@@ -130,6 +130,8 @@ func init() {
 	RootCmd.AddCommand(deprecateCmd(viz.NewCmdDashboard()))
 	RootCmd.AddCommand(deprecateCmd(viz.NewCmdEdges()))
 	RootCmd.AddCommand(deprecateCmd(viz.NewCmdStat()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdStatOutbound()))
+	RootCmd.AddCommand(deprecateCmd(viz.NewCmdStatLogicalOutbound()))
 	RootCmd.AddCommand(deprecateCmd(viz.NewCmdTap()))
 	RootCmd.AddCommand(deprecateCmd(viz.NewCmdTop()))
 

@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/table"
 	metricsApi "github.com/linkerd/linkerd2/viz/metrics-api"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
 	pkgUtil "github.com/linkerd/linkerd2/viz/pkg/util"
 	"github.com/prometheus/common/model"
@@ -18,73 +18,31 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type statOptions struct {
-	statOptionsBase
-}
-
-type statOptionsBase struct {
-	// namespace is only referenced from the outer struct statOptions (e.g.
-	// options.namespace where options's type is _not_ this struct).
-	// structcheck issues a false positive for this field as it does not think
-	// it's used.
-	//nolint:structcheck
-	namespace    string
-	timeWindow   string
-	outputFormat string
-}
-
-type rowKey struct {
-	name      string
-	server    string
+type outboundRowKey struct {
+	service   string
+	backend   string
 	route     string
 	routeType string
 }
 
-type row struct {
-	rowKey
+type outboundRow struct {
+	outboundRowKey
 	successes  uint64
 	failures   uint64
 	latencyP50 uint64
 	latencyP95 uint64
 	latencyP99 uint64
+	timeouts   uint64
 }
 
-func newStatOptionsBase() *statOptionsBase {
-	return &statOptionsBase{
-		timeWindow:   "1m",
-		outputFormat: tableOutput,
-	}
-}
-
-func (o *statOptionsBase) validateOutputFormat() error {
-	switch o.outputFormat {
-	case tableOutput, jsonOutput, wideOutput:
-		return nil
-	default:
-		return fmt.Errorf("--output currently only supports %s, %s and %s", tableOutput, jsonOutput, wideOutput)
-	}
-}
-
-type indexedResults struct {
-	ix   int
-	rows []*pb.StatTable_PodGroup_Row
-	err  error
-}
-
-func newStatOptions() *statOptions {
-	return &statOptions{
-		statOptionsBase: *newStatOptionsBase(),
-	}
-}
-
-// NewCmdStat creates a new cobra command `stat` for stat functionality
-func NewCmdStat() *cobra.Command {
+// NewCmdStatOutbound creates a new cobra command `stat-outbound` for stat functionality
+func NewCmdStatOutbound() *cobra.Command {
 	options := newStatOptions()
 
 	cmd := &cobra.Command{
-		Use:   "stat [flags] (RESOURCE)",
-		Short: "Display traffic stats about a resource",
-		Long: `Display traffic stats about a resource.
+		Use:   "stat-outbound [flags] (RESOURCE)",
+		Short: "Display outbound traffic stats about a resource",
+		Long: `Display outbound traffic stats about a resource.
 
   The RESOURCE argument specifies the target resource to aggregate stats over:
   TYPE/NAME
@@ -151,11 +109,9 @@ func NewCmdStat() *cobra.Command {
 			}
 
 			labels := metricsApi.PromQueryLabels(resource)
-			labels["direction"] = "inbound"
-			query := fmt.Sprintf("sum(increase(response_total%s[%s])) by (%s, srv_name, srv_kind, route_name, route_kind, classification)",
+			query := fmt.Sprintf("sum(increase(outbound_http_route_backend_response_statuses_total%s[%s])) by (parent_name, backend_name, route_name, route_kind, http_status, error)",
 				labels,
 				options.timeWindow,
-				metricsApi.PromGroupByLabelNames(resource),
 			)
 
 			res, warn, err := promApi.Query(cmd.Context(), query, time.Time{})
@@ -167,32 +123,40 @@ func NewCmdStat() *cobra.Command {
 			}
 			vector := res.(model.Vector)
 
-			results := make(map[rowKey]row)
+			results := make(map[outboundRowKey]outboundRow)
 			for _, sample := range vector {
 				labels := sample.Metric
-				server := (string)(labels["srv_name"])
-				if labels["srv_kind"] == "default" {
-					server = "[default]"
+				backend := (string)(labels["backend_name"])
+				if labels["backend_kind"] == "default" {
+					backend = (string)(labels["parent_name"])
 				}
-				key := rowKey{
-					name:      (string)(labels[metricsApi.PromResourceType(resource)]),
-					server:    server,
+				key := outboundRowKey{
+					service: (string)(labels["parent_name"]),
+					backend: backend,
+
 					route:     (string)(labels["route_name"]),
 					routeType: (string)(labels["route_kind"]),
 				}
 				row := results[key]
-				row.rowKey = key
-				if labels["classification"] == "success" {
-					row.successes += uint64(sample.Value)
-				} else {
+				row.outboundRowKey = key
+				if strings.HasPrefix((string)(labels["http_status"]), "5") || labels["error"] != "" {
 					row.failures += uint64(sample.Value)
+				} else {
+					row.successes += uint64(sample.Value)
+				}
+				if labels["error"] == "RESPONSE_HEADERS_TIMEOUT" || labels["error"] == "REQUEST_TIMEOUT" {
+					row.timeouts += uint64(sample.Value)
 				}
 				results[key] = row
 			}
 
 			for _, quantile := range []string{"0.5", "0.95", "0.99"} {
 
-				query = fmt.Sprintf("histogram_quantile(%s, sum(irate(response_latency_ms_bucket%s[%s])) by (le, srv_name, srv_kind, route_name, route_kind, %s))", quantile, labels, options.timeWindow, metricsApi.PromGroupByLabelNames(resource))
+				query = fmt.Sprintf("histogram_quantile(%s, sum(irate(outbound_http_route_backend_response_duration_seconds_bucket%s[%s])) by (le, parent_name, backend_name, route_name, route_kind))",
+					quantile,
+					labels,
+					options.timeWindow,
+				)
 				res, warn, err = promApi.Query(cmd.Context(), query, time.Time{})
 				if err != nil {
 					return err
@@ -204,18 +168,105 @@ func NewCmdStat() *cobra.Command {
 
 				for _, sample := range vector {
 					labels := sample.Metric
-					server := (string)(labels["srv_name"])
-					if labels["srv_kind"] == "default" {
-						server = "[default]"
+					backend := (string)(labels["backend_name"])
+					if labels["backend_kind"] == "default" {
+						backend = (string)(labels["parent_name"])
 					}
-					key := rowKey{
-						name:      (string)(labels[metricsApi.PromResourceType(resource)]),
-						server:    server,
+					key := outboundRowKey{
+						service: (string)(labels["parent_name"]),
+						backend: backend,
+
 						route:     (string)(labels["route_name"]),
 						routeType: (string)(labels["route_kind"]),
 					}
 					row := results[key]
-					row.rowKey = key
+					row.outboundRowKey = key
+					switch quantile {
+					case "0.5":
+						row.latencyP50 = uint64(sample.Value)
+					case "0.95":
+						row.latencyP95 = uint64(sample.Value)
+					case "0.99":
+						row.latencyP99 = uint64(sample.Value)
+					}
+					results[key] = row
+				}
+
+			}
+
+			// GRPC
+
+			query = fmt.Sprintf("sum(increase(outbound_grpc_route_backend_response_statuses_total%s[%s])) by (parent_name, backend_name, route_name, route_kind, grpc_status, error)",
+				labels,
+				options.timeWindow,
+			)
+
+			res, warn, err = promApi.Query(cmd.Context(), query, time.Time{})
+			if err != nil {
+				return err
+			}
+			if warn != nil {
+				log.Warnf("%v", warn)
+			}
+			vector = res.(model.Vector)
+
+			for _, sample := range vector {
+				labels := sample.Metric
+				backend := (string)(labels["backend_name"])
+				if labels["backend_kind"] == "default" {
+					backend = (string)(labels["parent_name"])
+				}
+				key := outboundRowKey{
+					service: (string)(labels["parent_name"]),
+					backend: backend,
+
+					route:     (string)(labels["route_name"]),
+					routeType: (string)(labels["route_kind"]),
+				}
+				row := results[key]
+				row.outboundRowKey = key
+				if labels["grpc_status"] != "OK" || labels["error"] != "" {
+					row.failures += uint64(sample.Value)
+				} else {
+					row.successes += uint64(sample.Value)
+				}
+				if labels["error"] == "RESPONSE_HEADERS_TIMEOUT" || labels["error"] == "REQUEST_TIMEOUT" {
+					row.timeouts += uint64(sample.Value)
+				}
+				results[key] = row
+			}
+
+			for _, quantile := range []string{"0.5", "0.95", "0.99"} {
+
+				query = fmt.Sprintf("histogram_quantile(%s, sum(irate(outbound_grpc_route_backend_response_duration_seconds_bucket%s[%s])) by (le, parent_name, backend_name, route_name, route_kind))",
+					quantile,
+					labels,
+					options.timeWindow,
+				)
+				res, warn, err = promApi.Query(cmd.Context(), query, time.Time{})
+				if err != nil {
+					return err
+				}
+				if warn != nil {
+					log.Warnf("%v", warn)
+				}
+				vector = res.(model.Vector)
+
+				for _, sample := range vector {
+					labels := sample.Metric
+					backend := (string)(labels["backend_name"])
+					if labels["backend_kind"] == "default" {
+						backend = (string)(labels["parent_name"])
+					}
+					key := outboundRowKey{
+						service: (string)(labels["parent_name"]),
+						backend: backend,
+
+						route:     (string)(labels["route_name"]),
+						routeType: (string)(labels["route_kind"]),
+					}
+					row := results[key]
+					row.outboundRowKey = key
 					switch quantile {
 					case "0.5":
 						row.latencyP50 = uint64(sample.Value)
@@ -233,8 +284,8 @@ func NewCmdStat() *cobra.Command {
 			windowLength, err := time.ParseDuration(options.timeWindow)
 			for _, row := range results {
 				rows = append(rows, []string{
-					row.name,
-					row.server,
+					row.service,
+					row.backend,
 					row.route,
 					row.routeType,
 					fmt.Sprintf("%.2f%%", (float32)(row.successes)/(float32)(row.successes+row.failures)*100.0),
@@ -242,12 +293,13 @@ func NewCmdStat() *cobra.Command {
 					fmt.Sprintf("%dms", row.latencyP50),
 					fmt.Sprintf("%dms", row.latencyP95),
 					fmt.Sprintf("%dms", row.latencyP99),
+					fmt.Sprintf("%.2f%%", (float32)(row.timeouts)/(float32)(row.successes+row.failures)*100.0),
 				})
 			}
 
 			columns := []table.Column{
-				table.NewColumn("NAME").WithLeftAlign(),
-				table.NewColumn("SERVER").WithLeftAlign(),
+				table.NewColumn("SERVICE").WithLeftAlign(),
+				table.NewColumn("BACKEND").WithLeftAlign(),
 				table.NewColumn("ROUTE").WithLeftAlign(),
 				table.NewColumn("TYPE").WithLeftAlign(),
 				table.NewColumn("SUCCESS"),
@@ -255,6 +307,7 @@ func NewCmdStat() *cobra.Command {
 				table.NewColumn("LATENCY_P50"),
 				table.NewColumn("LATENCY_P95"),
 				table.NewColumn("LATENCY_P99"),
+				table.NewColumn("TIMEOUTS"),
 			}
 
 			table := table.NewTable(columns, rows)
