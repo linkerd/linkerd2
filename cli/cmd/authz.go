@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/linkerd/linkerd2/cli/table"
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/table"
 	"github.com/spf13/cobra"
 )
 

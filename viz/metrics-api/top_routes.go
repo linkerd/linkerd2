@@ -295,13 +295,13 @@ func (s *grpcServer) buildRouteLabels(req *pb.TopRoutesRequest, dsts []string, r
 	switch req.Outbound.(type) {
 
 	case *pb.TopRoutesRequest_ToResource:
-		labels = labels.Merge(promQueryLabels(resource))
+		labels = labels.Merge(PromQueryLabels(resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 		return renderLabels(labels, dsts)
 
 	default:
 		labels = labels.Merge(promDirectionLabels("inbound"))
-		labels = labels.Merge(promQueryLabels(resource))
+		labels = labels.Merge(PromQueryLabels(resource))
 		return renderLabels(labels, dsts)
 	}
 }

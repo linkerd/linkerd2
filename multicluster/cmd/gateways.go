@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/linkerd/linkerd2/cli/table"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/table"
 	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/spf13/cobra"

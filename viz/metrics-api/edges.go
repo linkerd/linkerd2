@@ -38,7 +38,7 @@ func (s *grpcServer) Edges(ctx context.Context, req *pb.EdgesRequest) (*pb.Edges
 		return edgesError(req, "Edges request missing Selector Resource"), nil
 	}
 
-	resourceType := promResourceType(req.GetSelector().GetResource())
+	resourceType := PromResourceType(req.GetSelector().GetResource())
 	dstResourceType := "dst_" + resourceType
 	labelsOutbound := promDirectionLabels("outbound")
 	labelsOutboundStr := generateLabelStringWithExclusion(labelsOutbound, string(resourceType), string(dstResourceType))

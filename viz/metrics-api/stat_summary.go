@@ -430,23 +430,23 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
-		labelNames = promGroupByLabelNames(req.Selector.Resource)
+		labelNames = PromGroupByLabelNames(req.Selector.Resource)
 
 		labels = labels.Merge(promDstQueryLabels(out.ToResource))
-		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
+		labels = labels.Merge(PromQueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	case *pb.StatSummaryRequest_FromResource:
 		labelNames = promDstGroupByLabelNames(req.Selector.Resource)
 
-		labels = labels.Merge(promQueryLabels(out.FromResource))
+		labels = labels.Merge(PromQueryLabels(out.FromResource))
 		labels = labels.Merge(promDstQueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	default:
-		labelNames = promGroupByLabelNames(req.Selector.Resource)
+		labelNames = PromGroupByLabelNames(req.Selector.Resource)
 
-		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
+		labels = labels.Merge(PromQueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("inbound"))
 	}
 
@@ -470,7 +470,7 @@ func buildServiceRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSe
 
 	case *pb.StatSummaryRequest_FromResource:
 		// if --from flag is passed, FromResource is never a service here
-		labels = labels.Merge(promQueryLabels(out.FromResource))
+		labels = labels.Merge(PromQueryLabels(out.FromResource))
 
 	default:
 		// no extra labels needed

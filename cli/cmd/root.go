@@ -129,7 +129,6 @@ func init() {
 	// Viz Extension sub commands
 	RootCmd.AddCommand(deprecateCmd(viz.NewCmdDashboard()))
 	RootCmd.AddCommand(deprecateCmd(viz.NewCmdEdges()))
-	RootCmd.AddCommand(deprecateCmd(viz.NewCmdRoutes()))
 	RootCmd.AddCommand(deprecateCmd(viz.NewCmdStat()))
 	RootCmd.AddCommand(deprecateCmd(viz.NewCmdTap()))
 	RootCmd.AddCommand(deprecateCmd(viz.NewCmdTop()))

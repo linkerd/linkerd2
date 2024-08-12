@@ -249,7 +249,7 @@ func requestEdgesFromAPI(client pb.ApiClient, req *pb.EdgesRequest) (*pb.EdgesRe
 
 func renderEdgeStats(rows []*pb.Edge, options *edgesOptions) string {
 	var buffer bytes.Buffer
-	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
+	w := tabwriter.NewWriter(&buffer, 0, 0, 2, ' ', tabwriter.AlignRight)
 	writeEdgesToBuffer(rows, w, options)
 	w.Flush()
 
@@ -408,8 +408,8 @@ func renderEdges(buffer bytes.Buffer, options *edgesOptions) string {
 		out = buffer.String()
 	default:
 		// strip left padding on the first column
-		out = string(buffer.Bytes()[padding:])
-		out = strings.ReplaceAll(out, "\n"+strings.Repeat(" ", padding), "\n")
+		out = string(buffer.Bytes()[2:])
+		out = strings.ReplaceAll(out, "\n"+strings.Repeat(" ", 2), "\n")
 	}
 
 	return out

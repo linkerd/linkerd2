@@ -93,11 +93,11 @@ func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector,
 
 // add filtering by resource type
 // note that metricToKey assumes the label ordering (namespace, name)
-func promGroupByLabelNames(resource *pb.Resource) model.LabelNames {
+func PromGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	names := model.LabelNames{namespaceLabel}
 
 	if resource.Type != k8s.Namespace {
-		names = append(names, promResourceType(resource))
+		names = append(names, PromResourceType(resource))
 	}
 	return names
 }
@@ -108,15 +108,15 @@ func promDstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	names := model.LabelNames{dstNamespaceLabel}
 
 	if isNonK8sResourceQuery(resource.GetType()) {
-		names = append(names, promResourceType(resource))
+		names = append(names, PromResourceType(resource))
 	} else if resource.Type != k8s.Namespace {
-		names = append(names, "dst_"+promResourceType(resource))
+		names = append(names, "dst_"+PromResourceType(resource))
 	}
 	return names
 }
 
 // query a named resource
-func promQueryLabels(resource *pb.Resource) model.LabelSet {
+func PromQueryLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource != nil {
 		if resource.Name != "" {
@@ -132,7 +132,7 @@ func promQueryLabels(resource *pb.Resource) model.LabelSet {
 			} else if resource.GetType() == k8s.HTTPRoute {
 				set[routeNameLabel] = model.LabelValue(resource.GetName())
 			} else if resource.GetType() != k8s.Service {
-				set[promResourceType(resource)] = model.LabelValue(resource.Name)
+				set[PromResourceType(resource)] = model.LabelValue(resource.Name)
 			}
 		}
 		if shouldAddNamespaceLabel(resource) {
@@ -147,9 +147,9 @@ func promDstQueryLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource.Name != "" {
 		if isNonK8sResourceQuery(resource.GetType()) {
-			set[promResourceType(resource)] = model.LabelValue(resource.Name)
+			set[PromResourceType(resource)] = model.LabelValue(resource.Name)
 		} else {
-			set["dst_"+promResourceType(resource)] = model.LabelValue(resource.Name)
+			set["dst_"+PromResourceType(resource)] = model.LabelValue(resource.Name)
 			if shouldAddNamespaceLabel(resource) {
 				set[dstNamespaceLabel] = model.LabelValue(resource.Namespace)
 			}
@@ -216,7 +216,7 @@ func promPeerLabel(peer string) model.LabelSet {
 	}
 }
 
-func promResourceType(resource *pb.Resource) model.LabelName {
+func PromResourceType(resource *pb.Resource) model.LabelName {
 	l5dLabel := k8s.KindToL5DLabel(resource.Type)
 	return model.LabelName(l5dLabel)
 }
