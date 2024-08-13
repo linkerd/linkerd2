@@ -127,6 +127,14 @@ env:
 - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
   value: {{.Values.proxy.opaquePorts | quote}}
 {{ end -}}
+{{ if .Values.tlsPorts -}}
+- name: LINKERD2_PROXY_OUTBOUND_TLS_PORTS
+  value: {{.Values.tlsPorts | quote}}
+{{ end -}}
+{{ if .Values.tlsHosts -}}
+- name: LINKERD2_PROXY_OUTBOUND_TLS_HOSTS
+  value: {{.Values.tlsHosts | quote}}
+{{ end -}}
 - name: LINKERD2_PROXY_DESTINATION_CONTEXT
   value: |
     {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)", "pod":"$(_pod_name)"}

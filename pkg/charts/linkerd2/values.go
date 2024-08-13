@@ -89,6 +89,8 @@ type (
 		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
+		TlsPorts                    string     `json:"tlsPorts"`
+		TlsHosts                    string     `json:"tlsHosts"`
 	}
 
 	// Controller contains the fields to set the controller container

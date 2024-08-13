@@ -636,3 +636,6 @@ podMonitor:
   proxy:
     # -- Enables the creation of PodMonitor for the data-plane
     enabled: true
+
+tlsPorts: "443"
+tlsHosts: "*"
