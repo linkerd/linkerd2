@@ -52,7 +52,7 @@ spec:
 			if err != nil {
 				t.Fatalf("Unexpected error %s", err)
 			}
-			_, err = getAllContainersWithPort(*pod, "admin-http")
+			_, err = k8s.GetAllContainersWithPort(*pod, "admin-http")
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||

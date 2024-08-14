@@ -82,23 +82,23 @@ func newCmdMetrics() *cobra.Command {
 				return err
 			}
 
-			results := getMetrics(k8sAPI, pods, k8s.ProxyAdminPortName, 30*time.Second, verbose)
+			results := k8s.GetMetrics(k8sAPI, pods, k8s.ProxyAdminPortName, 30*time.Second, verbose)
 
 			var buf bytes.Buffer
 			for i, result := range results {
-				content := fmt.Sprintf("#\n# POD %s (%d of %d)\n#\n", result.pod, i+1, len(results))
+				content := fmt.Sprintf("#\n# POD %s (%d of %d)\n#\n", result.Pod, i+1, len(results))
 				switch {
-				case result.err != nil:
-					content += fmt.Sprintf("# ERROR: %s\n", result.err)
+				case result.Err != nil:
+					content += fmt.Sprintf("# ERROR: %s\n", result.Err)
 				case options.obfuscate:
-					obfuscatedMetrics, err := obfuscateMetrics(result.metrics)
+					obfuscatedMetrics, err := obfuscateMetrics(result.Metrics)
 					if err != nil {
 						content += fmt.Sprintf("# ERROR %s\n", err)
 					} else {
 						content += string(obfuscatedMetrics)
 					}
 				default:
-					content += string(result.metrics)
+					content += string(result.Metrics)
 				}
 
 				buf.WriteString(content)

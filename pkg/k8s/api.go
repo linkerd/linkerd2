@@ -50,7 +50,7 @@ func NewAPI(configPath, kubeContext string, impersonate string, impersonateGroup
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %w", err)
 	}
-	return NewAPIForConfig(config, impersonate, impersonateGroup, timeout, 0, 0)
+	return NewAPIForConfig(config, impersonate, impersonateGroup, timeout, 100, 200)
 }
 
 // NewAPIForConfig uses a Kubernetes config to construct a client for accessing

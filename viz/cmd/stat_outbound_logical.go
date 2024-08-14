@@ -1,20 +1,19 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
+	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/table"
-	metricsApi "github.com/linkerd/linkerd2/viz/metrics-api"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
 	pkgUtil "github.com/linkerd/linkerd2/viz/pkg/util"
 	"github.com/prometheus/common/model"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -98,9 +97,14 @@ func NewCmdStatLogicalOutbound() *cobra.Command {
 				return err
 			}
 
-			promApi, err := api.NewExternalPrometheusClient(context.Background(), k8sAPI)
-			if err != nil {
-				return err
+			var promApi api.MetricsProvider
+			if options.prometheus {
+				promApi, err = api.NewExternalPrometheusClient(cmd.Context(), k8sAPI)
+				if err != nil {
+					return err
+				}
+			} else {
+				promApi = api.NewProxyMetrics(k8sAPI)
 			}
 
 			resource, err := pkgUtil.BuildResource(options.namespace, args[0])
@@ -108,23 +112,145 @@ func NewCmdStatLogicalOutbound() *cobra.Command {
 				return err
 			}
 
-			labels := metricsApi.PromQueryLabels(resource)
-			query := fmt.Sprintf("sum(increase(outbound_http_route_request_statuses_total%s[%s])) by (parent_name, route_name, route_kind, http_status, error)",
-				labels,
-				options.timeWindow,
-			)
+			if !options.prometheus {
+				fmt.Println("Taking initial metrics snapshot...")
+			}
 
-			res, warn, err := promApi.Query(cmd.Context(), query, time.Time{})
+			httpResponseChan := make(chan *model.Sample)
+			go func() {
+				err := promApi.QueryRate(
+					cmd.Context(),
+					"outbound_http_route_request_statuses_total",
+					options.timeWindow,
+					model.LabelSet{},
+					model.LabelNames{"parent_name", "route_name", "route_kind", "http_status", "error"},
+					resource,
+					httpResponseChan,
+				)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}()
+
+			httpRetiesChan := make(chan *model.Sample)
+			go func() {
+				err = promApi.QueryRate(
+					cmd.Context(),
+					"outbound_http_route_retry_requests_total",
+					options.timeWindow,
+					model.LabelSet{},
+					model.LabelNames{"parent_name", "route_name", "route_kind"},
+					resource,
+					httpRetiesChan,
+				)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}()
+
+			httpQuantiles := map[string]chan *model.Sample{
+				"0.5":  make(chan *model.Sample),
+				"0.95": make(chan *model.Sample),
+				"0.99": make(chan *model.Sample),
+			}
+
+			for quantile, resultsChan := range httpQuantiles {
+				quant, _ := strconv.ParseFloat(quantile, 32)
+
+				go func() {
+					err = promApi.QueryQuantile(
+						cmd.Context(),
+						quant,
+						"outbound_http_route_request_duration_seconds_bucket",
+						options.timeWindow,
+						model.LabelSet{},
+						model.LabelNames{"parent_name", "route_name", "route_kind"},
+						resource,
+						resultsChan,
+					)
+					if err != nil {
+						log.Fatal(err)
+					}
+				}()
+			}
+
+			// GRPC
+
+			grpcResponseChan := make(chan *model.Sample)
+			go func() {
+				err = promApi.QueryRate(
+					cmd.Context(),
+					"outbound_grpc_route_request_statuses_total",
+					options.timeWindow,
+					model.LabelSet{},
+					model.LabelNames{"parent_name", "route_name", "route_kind", "grpc_status", "error"},
+					resource,
+					grpcResponseChan,
+				)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}()
+
+			grpcRetiesChan := make(chan *model.Sample)
+			go func() {
+				err = promApi.QueryRate(
+					cmd.Context(),
+					"outbound_grpc_route_retry_requests_total",
+					options.timeWindow,
+					model.LabelSet{},
+					model.LabelNames{"parent_name", "route_name", "route_kind"},
+					resource,
+					grpcRetiesChan,
+				)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}()
+
+			grpcQuantiles := map[string]chan *model.Sample{
+				"0.5":  make(chan *model.Sample),
+				"0.95": make(chan *model.Sample),
+				"0.99": make(chan *model.Sample),
+			}
+			for quantile, resultsChan := range grpcQuantiles {
+				quant, _ := strconv.ParseFloat(quantile, 32)
+
+				go func() {
+					err = promApi.QueryQuantile(
+						cmd.Context(),
+						quant,
+						"outbound_grpc_route_request_duration_seconds_bucket",
+						options.timeWindow,
+						model.LabelSet{},
+						model.LabelNames{"parent_name", "route_name", "route_kind"},
+						resource,
+						resultsChan,
+					)
+
+					if err != nil {
+						log.Fatal(err)
+					}
+				}()
+			}
+
+			windowLength, err := time.ParseDuration(options.timeWindow)
 			if err != nil {
 				return err
 			}
-			if warn != nil {
-				log.Warnf("%v", warn)
+
+			if !options.prometheus {
+				for i := range uint64(windowLength.Seconds()) {
+					fmt.Printf("Waiting [%s]\n", windowLength-(time.Duration(i)*time.Second))
+					time.Sleep(time.Second)
+					fmt.Printf("\033[1A\033[K")
+				}
+				fmt.Println("Taking final metrics snapshot...")
 			}
-			vector := res.(model.Vector)
 
 			results := make(map[outboundLogicalRowKey]outboundLogicalRow)
-			for _, sample := range vector {
+
+			for sample := range httpResponseChan {
 				labels := sample.Metric
 				key := outboundLogicalRowKey{
 					service:   (string)(labels["parent_name"]),
@@ -143,22 +269,7 @@ func NewCmdStatLogicalOutbound() *cobra.Command {
 				}
 				results[key] = row
 			}
-
-			query = fmt.Sprintf("sum(increase(outbound_http_route_retry_requests_total%s[%s])) by (parent_name, route_name, route_kind)",
-				labels,
-				options.timeWindow,
-			)
-
-			res, warn, err = promApi.Query(cmd.Context(), query, time.Time{})
-			if err != nil {
-				return err
-			}
-			if warn != nil {
-				log.Warnf("%v", warn)
-			}
-			vector = res.(model.Vector)
-
-			for _, sample := range vector {
+			for sample := range httpRetiesChan {
 				labels := sample.Metric
 				key := outboundLogicalRowKey{
 					service:   (string)(labels["parent_name"]),
@@ -170,24 +281,8 @@ func NewCmdStatLogicalOutbound() *cobra.Command {
 				row.retries += uint64(sample.Value)
 				results[key] = row
 			}
-
-			for _, quantile := range []string{"0.5", "0.95", "0.99"} {
-
-				query = fmt.Sprintf("histogram_quantile(%s, sum(irate(outbound_http_route_request_duration_seconds_bucket%s[%s])) by (le, parent_name, route_name, route_kind))",
-					quantile,
-					labels,
-					options.timeWindow,
-				)
-				res, warn, err = promApi.Query(cmd.Context(), query, time.Time{})
-				if err != nil {
-					return err
-				}
-				if warn != nil {
-					log.Warnf("%v", warn)
-				}
-				vector = res.(model.Vector)
-
-				for _, sample := range vector {
+			for quantile, resultsChan := range httpQuantiles {
+				for sample := range resultsChan {
 					labels := sample.Metric
 					key := outboundLogicalRowKey{
 						service:   (string)(labels["parent_name"]),
@@ -198,34 +293,17 @@ func NewCmdStatLogicalOutbound() *cobra.Command {
 					row.outboundLogicalRowKey = key
 					switch quantile {
 					case "0.5":
-						row.latencyP50 = uint64(sample.Value)
+						row.latencyP50 = uint64(sample.Value * 1000)
 					case "0.95":
-						row.latencyP95 = uint64(sample.Value)
+						row.latencyP95 = uint64(sample.Value * 1000)
 					case "0.99":
-						row.latencyP99 = uint64(sample.Value)
+						row.latencyP99 = uint64(sample.Value * 1000)
 					}
 					results[key] = row
 				}
-
 			}
 
-			// GRPC
-
-			query = fmt.Sprintf("sum(increase(outbound_grpc_route_request_statuses_total%s[%s])) by (parent_name, route_name, route_kind, grpc_status, error)",
-				labels,
-				options.timeWindow,
-			)
-
-			res, warn, err = promApi.Query(cmd.Context(), query, time.Time{})
-			if err != nil {
-				return err
-			}
-			if warn != nil {
-				log.Warnf("%v", warn)
-			}
-			vector = res.(model.Vector)
-
-			for _, sample := range vector {
+			for sample := range grpcResponseChan {
 				labels := sample.Metric
 				key := outboundLogicalRowKey{
 					service:   (string)(labels["parent_name"]),
@@ -244,22 +322,7 @@ func NewCmdStatLogicalOutbound() *cobra.Command {
 				}
 				results[key] = row
 			}
-
-			query = fmt.Sprintf("sum(increase(outbound_grpc_route_retry_requests_total%s[%s])) by (parent_name, route_name, route_kind)",
-				labels,
-				options.timeWindow,
-			)
-
-			res, warn, err = promApi.Query(cmd.Context(), query, time.Time{})
-			if err != nil {
-				return err
-			}
-			if warn != nil {
-				log.Warnf("%v", warn)
-			}
-			vector = res.(model.Vector)
-
-			for _, sample := range vector {
+			for sample := range grpcRetiesChan {
 				labels := sample.Metric
 				key := outboundLogicalRowKey{
 					service:   (string)(labels["parent_name"]),
@@ -271,24 +334,8 @@ func NewCmdStatLogicalOutbound() *cobra.Command {
 				row.retries += uint64(sample.Value)
 				results[key] = row
 			}
-
-			for _, quantile := range []string{"0.5", "0.95", "0.99"} {
-
-				query = fmt.Sprintf("histogram_quantile(%s, sum(irate(outbound_grpc_route_request_duration_seconds_bucket%s[%s])) by (le, parent_name, route_name, route_kind))",
-					quantile,
-					labels,
-					options.timeWindow,
-				)
-				res, warn, err = promApi.Query(cmd.Context(), query, time.Time{})
-				if err != nil {
-					return err
-				}
-				if warn != nil {
-					log.Warnf("%v", warn)
-				}
-				vector = res.(model.Vector)
-
-				for _, sample := range vector {
+			for quantile, resultsChan := range grpcQuantiles {
+				for sample := range resultsChan {
 					labels := sample.Metric
 					key := outboundLogicalRowKey{
 						service:   (string)(labels["parent_name"]),
@@ -299,19 +346,21 @@ func NewCmdStatLogicalOutbound() *cobra.Command {
 					row.outboundLogicalRowKey = key
 					switch quantile {
 					case "0.5":
-						row.latencyP50 = uint64(sample.Value)
+						row.latencyP50 = uint64(sample.Value * 1000)
 					case "0.95":
-						row.latencyP95 = uint64(sample.Value)
+						row.latencyP95 = uint64(sample.Value * 1000)
 					case "0.99":
-						row.latencyP99 = uint64(sample.Value)
+						row.latencyP99 = uint64(sample.Value * 1000)
 					}
 					results[key] = row
 				}
+			}
 
+			if !options.prometheus {
+				fmt.Printf("\033[1A\033[K\033[1A\033[K")
 			}
 
 			rows := make([][]string, 0)
-			windowLength, err := time.ParseDuration(options.timeWindow)
 			for _, row := range results {
 				rows = append(rows, []string{
 					row.service,
@@ -349,6 +398,8 @@ func NewCmdStatLogicalOutbound() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; one of: \"table\" or \"json\" or \"wide\"")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace")
+	cmd.PersistentFlags().StringVarP(&options.timeWindow, "time-window", "t", options.timeWindow, "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
+	cmd.PersistentFlags().BoolVar(&options.prometheus, "prometheus", options.prometheus, "Use prometheus for querying metrics")
 
 	return cmd
 }

@@ -1,20 +1,19 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
+	"log"
 	"os"
+	"strconv"
 	"time"
 
 	pkgcmd "github.com/linkerd/linkerd2/pkg/cmd"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/table"
 	metricsApi "github.com/linkerd/linkerd2/viz/metrics-api"
-	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	"github.com/linkerd/linkerd2/viz/pkg/api"
 	pkgUtil "github.com/linkerd/linkerd2/viz/pkg/util"
 	"github.com/prometheus/common/model"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -31,6 +30,7 @@ type statOptionsBase struct {
 	namespace    string
 	timeWindow   string
 	outputFormat string
+	prometheus   bool
 }
 
 type rowKey struct {
@@ -51,8 +51,9 @@ type row struct {
 
 func newStatOptionsBase() *statOptionsBase {
 	return &statOptionsBase{
-		timeWindow:   "1m",
+		timeWindow:   "30s",
 		outputFormat: tableOutput,
+		prometheus:   true,
 	}
 }
 
@@ -63,12 +64,6 @@ func (o *statOptionsBase) validateOutputFormat() error {
 	default:
 		return fmt.Errorf("--output currently only supports %s, %s and %s", tableOutput, jsonOutput, wideOutput)
 	}
-}
-
-type indexedResults struct {
-	ix   int
-	rows []*pb.StatTable_PodGroup_Row
-	err  error
 }
 
 func newStatOptions() *statOptions {
@@ -140,9 +135,14 @@ func NewCmdStat() *cobra.Command {
 				return err
 			}
 
-			promApi, err := api.NewExternalPrometheusClient(context.Background(), k8sAPI)
-			if err != nil {
-				return err
+			var promApi api.MetricsProvider
+			if options.prometheus {
+				promApi, err = api.NewExternalPrometheusClient(cmd.Context(), k8sAPI)
+				if err != nil {
+					return err
+				}
+			} else {
+				promApi = api.NewProxyMetrics(k8sAPI)
 			}
 
 			resource, err := pkgUtil.BuildResource(options.namespace, args[0])
@@ -150,25 +150,68 @@ func NewCmdStat() *cobra.Command {
 				return err
 			}
 
-			labels := metricsApi.PromQueryLabels(resource)
-			labels["direction"] = "inbound"
-			query := fmt.Sprintf("sum(increase(response_total%s[%s])) by (%s, srv_name, srv_kind, route_name, route_kind, classification)",
-				labels,
-				options.timeWindow,
-				metricsApi.PromGroupByLabelNames(resource),
-			)
+			if !options.prometheus {
+				fmt.Println("Taking initial metrics snapshot...")
+			}
 
-			res, warn, err := promApi.Query(cmd.Context(), query, time.Time{})
+			responseChan := make(chan *model.Sample)
+			go func() {
+				err = promApi.QueryRate(
+					cmd.Context(),
+					"response_total",
+					options.timeWindow,
+					model.LabelSet{"direction": "inbound"},
+					model.LabelNames{"srv_name", "srv_kind", "route_name", "route_kind", "classification"},
+					resource,
+					responseChan,
+				)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}()
+
+			quantiles := map[string]chan *model.Sample{
+				"0.5":  make(chan *model.Sample),
+				"0.95": make(chan *model.Sample),
+				"0.99": make(chan *model.Sample),
+			}
+
+			for quantile, results := range quantiles {
+				quant, _ := strconv.ParseFloat(quantile, 32)
+				go func() {
+					err = promApi.QueryQuantile(
+						cmd.Context(),
+						quant,
+						"response_latency_ms_bucket",
+						options.timeWindow,
+						model.LabelSet{"direction": "inbound"},
+						model.LabelNames{"srv_name", "srv_kind", "route_name", "route_kind"},
+						resource,
+						results,
+					)
+					if err != nil {
+						log.Fatal(err)
+					}
+				}()
+			}
+
+			windowLength, err := time.ParseDuration(options.timeWindow)
 			if err != nil {
 				return err
 			}
-			if warn != nil {
-				log.Warnf("%v", warn)
+
+			if !options.prometheus {
+				for i := range uint64(windowLength.Seconds()) {
+					fmt.Printf("Waiting [%s]\n", windowLength-(time.Duration(i)*time.Second))
+					time.Sleep(time.Second)
+					fmt.Printf("\033[1A\033[K")
+				}
+				fmt.Println("Taking final metrics snapshot...")
 			}
-			vector := res.(model.Vector)
 
 			results := make(map[rowKey]row)
-			for _, sample := range vector {
+
+			for sample := range responseChan {
 				labels := sample.Metric
 				server := (string)(labels["srv_name"])
 				if labels["srv_kind"] == "default" {
@@ -190,19 +233,8 @@ func NewCmdStat() *cobra.Command {
 				results[key] = row
 			}
 
-			for _, quantile := range []string{"0.5", "0.95", "0.99"} {
-
-				query = fmt.Sprintf("histogram_quantile(%s, sum(irate(response_latency_ms_bucket%s[%s])) by (le, srv_name, srv_kind, route_name, route_kind, %s))", quantile, labels, options.timeWindow, metricsApi.PromGroupByLabelNames(resource))
-				res, warn, err = promApi.Query(cmd.Context(), query, time.Time{})
-				if err != nil {
-					return err
-				}
-				if warn != nil {
-					log.Warnf("%v", warn)
-				}
-				vector = res.(model.Vector)
-
-				for _, sample := range vector {
+			for quantile, resultsChan := range quantiles {
+				for sample := range resultsChan {
 					labels := sample.Metric
 					server := (string)(labels["srv_name"])
 					if labels["srv_kind"] == "default" {
@@ -226,11 +258,12 @@ func NewCmdStat() *cobra.Command {
 					}
 					results[key] = row
 				}
-
 			}
 
+			if !options.prometheus {
+				fmt.Printf("\033[1A\033[K\033[1A\033[K")
+			}
 			rows := make([][]string, 0)
-			windowLength, err := time.ParseDuration(options.timeWindow)
 			for _, row := range results {
 				rows = append(rows, []string{
 					row.name,
@@ -266,6 +299,8 @@ func NewCmdStat() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; one of: \"table\" or \"json\" or \"wide\"")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace")
+	cmd.PersistentFlags().StringVarP(&options.timeWindow, "time-window", "t", options.timeWindow, "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
+	cmd.PersistentFlags().BoolVar(&options.prometheus, "prometheus", options.prometheus, "Use prometheus for querying metrics")
 
 	return cmd
 }

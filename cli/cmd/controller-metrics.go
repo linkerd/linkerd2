@@ -50,16 +50,16 @@ func newCmdControllerMetrics() *cobra.Command {
 				return err
 			}
 
-			results := getMetrics(k8sAPI, pods.Items, k8s.AdminHTTPPortName, options.wait, verbose)
+			results := k8s.GetMetrics(k8sAPI, pods.Items, k8s.AdminHTTPPortName, options.wait, verbose)
 
 			var buf bytes.Buffer
 			for i, result := range results {
-				content := fmt.Sprintf("#\n# POD %s (%d of %d)\n", result.pod, i+1, len(results))
-				if result.err != nil {
-					content += fmt.Sprintf("# ERROR %s\n", result.err)
+				content := fmt.Sprintf("#\n# POD %s (%d of %d)\n", result.Pod, i+1, len(results))
+				if result.Err != nil {
+					content += fmt.Sprintf("# ERROR %s\n", result.Err)
 				} else {
-					content += fmt.Sprintf("# CONTAINER %s \n#\n", result.container)
-					content += string(result.metrics)
+					content += fmt.Sprintf("# CONTAINER %s \n#\n", result.Container)
+					content += string(result.Metrics)
 				}
 				buf.WriteString(content)
 			}
