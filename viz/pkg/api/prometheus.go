@@ -357,8 +357,12 @@ func (p ProxyMetrics) QueryQuantile(
 func intoHistogram(histogram *promModel.Histogram) model.HistogramBuckets {
 	buckets := make(model.HistogramBuckets, len(histogram.Bucket))
 	for i, bucket := range histogram.Bucket {
+		lower := 0.0
+		if i > 0 {
+			lower = histogram.Bucket[i-1].GetUpperBound()
+		}
 		buckets[i] = &model.HistogramBucket{
-			Lower: model.FloatString(bucket.GetUpperBound()),
+			Lower: model.FloatString(lower),
 			Upper: model.FloatString(bucket.GetUpperBound()),
 			Count: model.FloatString(bucket.GetCumulativeCount()),
 		}
@@ -427,6 +431,7 @@ func percentileFromHistogram(histogram model.HistogramBuckets, quantile float64)
 			offset := target - prev
 			size := bucket.Count - prev
 			ratio := offset / size
+			//fmt.Printf("bucket: %v, width: %v, prev: %v, offset: %v, size: %v, ratio: %v\n", bucket, width, prev, offset, size, ratio)
 			return float64(bucket.Lower + width*ratio)
 		}
 	}
