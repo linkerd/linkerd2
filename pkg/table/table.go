@@ -5,6 +5,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 type (
@@ -48,7 +49,7 @@ func NewColumn(header string) Column {
 	return Column{
 		Header:   header,
 		Flexible: true,
-		Width:    len(header),
+		Width:    utf8.RuneCountInString(header),
 	}
 }
 
@@ -74,8 +75,8 @@ func (t *Table) columnWidths() []int {
 		width := col.Width
 		if col.Flexible {
 			for _, row := range t.Data {
-				if len(row[c]) > width {
-					width = len(row[c])
+				if utf8.RuneCountInString(row[c]) > width {
+					width = utf8.RuneCountInString(row[c])
 				}
 			}
 		}
@@ -106,14 +107,18 @@ func (t *Table) renderRow(w io.Writer, row Row, columnWidths []int) {
 			continue
 		}
 		value := row[c]
-		if len(value) > columnWidths[c] {
+		if utf8.RuneCountInString(value) > columnWidths[c] {
 			value = value[:columnWidths[c]]
 		}
-		padding := strings.Repeat(" ", columnWidths[c]-len(value))
+		padding := strings.Repeat(" ", columnWidths[c]-utf8.RuneCountInString(value))
+		spacing := t.ColumnSpacing
+		if strings.HasSuffix(value, "─") && c < len(t.Columns)-1 && strings.HasPrefix(row[c+1], "─") {
+			spacing = "──"
+		}
 		if col.LeftAlign {
-			fmt.Fprintf(w, "%s%s%s", value, padding, t.ColumnSpacing)
+			fmt.Fprintf(w, "%s%s%s", value, padding, spacing)
 		} else {
-			fmt.Fprintf(w, "%s%s%s", padding, value, t.ColumnSpacing)
+			fmt.Fprintf(w, "%s%s%s", padding, value, spacing)
 		}
 	}
 	fmt.Fprint(w, "\n")

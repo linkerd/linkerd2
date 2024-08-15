@@ -431,7 +431,7 @@ func percentileFromHistogram(histogram model.HistogramBuckets, quantile float64)
 			offset := target - prev
 			size := bucket.Count - prev
 			ratio := offset / size
-			//fmt.Printf("bucket: %v, width: %v, prev: %v, offset: %v, size: %v, ratio: %v\n", bucket, width, prev, offset, size, ratio)
+			// fmt.Printf("bucket: %v, width: %v, prev: %v, offset: %v, size: %v, ratio: %v\n", bucket, width, prev, offset, size, ratio)
 			return float64(bucket.Lower + width*ratio)
 		}
 	}
