@@ -116,6 +116,7 @@ func TestReconcilerCreatesNewEndpointSlices(t *testing.T) {
 
 				var matchingES *discoveryv1.EndpointSlice
 				for _, es := range endpointSlices {
+					es := es
 					if es.AddressType == ip.addressType {
 						matchingES = &es
 						break
