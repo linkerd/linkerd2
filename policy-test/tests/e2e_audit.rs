@@ -1,6 +1,9 @@
 use kube::{Client, ResourceExt};
 use linkerd_policy_controller_k8s_api as k8s;
-use linkerd_policy_test::{create, create_ready_pod, curl, web, with_temp_ns, LinkerdInject};
+use linkerd_policy_test::{
+    await_condition, create, create_ready_pod, curl, endpoints_ready, web, with_temp_ns,
+    LinkerdInject,
+};
 
 #[tokio::test(flavor = "current_thread")]
 async fn server_audit() {
@@ -13,6 +16,8 @@ async fn server_audit() {
             create(&client, web::service(&ns)),
             create_ready_pod(&client, web::pod(&ns))
         );
+
+        await_condition(&client, &ns, "web", endpoints_ready).await;
 
         // All requests should fail
         let curl = curl::Runner::init(&client, &ns).await;
@@ -64,6 +69,8 @@ async fn ns_audit() {
             create(&client, web::service(&ns)),
             create_ready_pod(&client, web::pod(&ns))
         );
+
+        await_condition(&client, &ns, "web", endpoints_ready).await;
 
         // Unmeshed requests should fail
         let curl = curl::Runner::init(&client, &ns).await;
