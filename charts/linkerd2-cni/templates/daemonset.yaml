@@ -17,176 +17,6 @@ limitations under the License.
 This file was inspired by
 1) https://github.com/istio/cni/blob/c63a509539b5ed165a6617548c31b686f13c2133/deployments/kubernetes/install/manifests/istio-cni.yaml
 */ -}}
-{{- if eq .Release.Service "CLI" -}}
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: {{.Release.Namespace}}
-  labels:
-    linkerd.io/cni-resource: "true"
-    config.linkerd.io/admission-webhooks: disabled
-    pod-security.kubernetes.io/enforce: privileged
----
-{{ end -}}
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: linkerd-cni
-  namespace: {{ .Release.Namespace }}
-  labels:
-    linkerd.io/cni-resource: "true"
-    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
-{{- if .Values.imagePullSecrets }}
-imagePullSecrets:
-{{ toYaml .Values.imagePullSecrets | indent 2 }}
-{{- end }}
-{{ if .Values.enablePSP -}}
----
-apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
-metadata:
-  name: linkerd-{{.Release.Namespace}}-cni
-  annotations:
-    seccomp.security.alpha.kubernetes.io/allowedProfileNames: "runtime/default"
-  labels:
-    linkerd.io/cni-resource: "true"
-    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
-spec:
-  {{- if not .Values.privileged }}
-  allowPrivilegeEscalation: false
-  {{- end }}
-  fsGroup:
-    rule: RunAsAny
-  runAsUser:
-    rule: RunAsAny
-  runAsGroup:
-    rule: RunAsAny
-  seLinux:
-    rule: RunAsAny
-  supplementalGroups:
-    rule: RunAsAny
-  volumes:
-  - hostPath
-  - secret
-  - emptyDir
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: linkerd-cni
-  namespace: {{ .Release.Namespace }}
-  labels:
-    linkerd.io/cni-resource: "true"
-    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
-rules:
-- apiGroups: ['extensions', 'policy']
-  resources: ['podsecuritypolicies']
-  resourceNames:
-  - linkerd-{{.Release.Namespace}}-cni
-  verbs: ['use']
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: linkerd-cni
-  namespace: {{ .Release.Namespace }}
-  labels:
-    linkerd.io/cni-resource: "true"
-    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: linkerd-cni
-subjects:
-- kind: ServiceAccount
-  name: linkerd-cni
-  namespace: {{.Release.Namespace}}
-{{ end -}}
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-cni
-  labels:
-    linkerd.io/cni-resource: "true"
-    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
-rules:
-- apiGroups: [""]
-  resources: ["pods", "nodes", "namespaces", "services"]
-  verbs: ["list", "get", "watch"]
-{{- if .Values.repairController.enabled }}
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["delete"]
-- apiGroups: ["events.k8s.io"]
-  resources: ["events"]
-  verbs: ["create"]
-{{- end }}
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: linkerd-cni
-  labels:
-    linkerd.io/cni-resource: "true"
-    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: linkerd-cni
-subjects:
-- kind: ServiceAccount
-  name: linkerd-cni
-  namespace: {{.Release.Namespace}}
----
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-cni-config
-  namespace: {{ .Release.Namespace }}
-  labels:
-    linkerd.io/cni-resource: "true"
-    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
-data:
-  dest_cni_net_dir: "{{.Values.destCNINetDir}}"
-  dest_cni_bin_dir: "{{.Values.destCNIBinDir}}"
-  # The CNI network configuration to install on each node. The special
-  # values in this config will be automatically populated.
-  # iptables-mode and ipv6 flags are only considered as of linkerd-cni v1.4.0
-  cni_network_config: |-
-    {
-      "name": "linkerd-cni",
-      "type": "linkerd-cni",
-      "log_level": "{{.Values.logLevel}}",
-      "policy": {
-          "type": "k8s",
-          "k8s_api_root": "https://__KUBERNETES_SERVICE_HOST__:__KUBERNETES_SERVICE_PORT__",
-          "k8s_auth_token": "__SERVICEACCOUNT_TOKEN__"
-      },
-      "kubernetes": {
-          "kubeconfig": "__KUBECONFIG_FILEPATH__"
-      },
-      "linkerd": {
-        "incoming-proxy-port": {{.Values.inboundProxyPort}},
-        "outgoing-proxy-port": {{.Values.outboundProxyPort}},
-        "proxy-uid": {{.Values.proxyUID}},
-        {{- if ge (int .Values.proxyGID) 0 }}
-        "proxy-gid": {{.Values.proxyGID}},
-        {{- end }}
-        "ports-to-redirect": [{{.Values.portsToRedirect}}],
-        "inbound-ports-to-ignore": ["{{- .Values.proxyAdminPort }}","{{ .Values.proxyControlPort }}"
-        {{- if .Values.ignoreInboundPorts }},{{- include "partials.splitStringList" .Values.ignoreInboundPorts -}}{{- end }}],
-        {{- if .Values.ignoreOutboundPorts }}
-        "outbound-ports-to-ignore": [
-          {{- include "partials.splitStringList" .Values.ignoreOutboundPorts -}}
-        ],
-        {{- end }}
-        "simulate": false,
-        "use-wait-flag": {{.Values.useWaitFlag}},
-        "iptables-mode": {{.Values.iptablesMode | quote}},
-        "ipv6": {{.Values.disableIPv6 | ternary "false" "true"}}
-      }
-    }
 ---
 kind: DaemonSet
 apiVersion: apps/v1
@@ -285,6 +115,9 @@ spec:
         {{- end }}
         - mountPath: /tmp
           name: linkerd-tmp-dir
+        {{- if .Values.extraVolumeMounts }}
+        {{- toYaml .Values.extraVolumeMounts | nindent 8 }}
+        {{- end }}
         securityContext:
           readOnlyRootFilesystem: true
           privileged: {{.Values.privileged}}
@@ -360,3 +193,7 @@ spec:
       {{- end }}
       - name: linkerd-tmp-dir
         emptyDir: {}
+      {{- if .Values.extraVolumes }}
+      {{- toYaml .Values.extraVolumes | nindent 6 }}
+      {{- end }}
+

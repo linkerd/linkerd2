@@ -80,6 +80,12 @@ imagePullSecrets: []
 # -- Add additional initContainers to the daemonset
 extraInitContainers: []
 
+# -- Add additional volumes to the daemonset
+extraVolumes: []
+
+# -- Add additional volumeMounts to the daemonset
+extraVolumeMounts: []
+
 # The cni-repair-controller scans pods in each node to find those that have
 # been injected by linkerd, and whose linkerd-network-validator container has
 # failed. This is usually caused by a race between linkerd-cni and the CNI

@@ -1,0 +1,68 @@
+{{- /*
+Copyright 2017 CNI authors
+Modifications copyright (c) Linkerd authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+This file was inspired by
+1) https://github.com/istio/cni/blob/c63a509539b5ed165a6617548c31b686f13c2133/deployments/kubernetes/install/manifests/istio-cni.yaml
+*/ -}}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-cni-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    linkerd.io/cni-resource: "true"
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+data:
+  dest_cni_net_dir: "{{.Values.destCNINetDir}}"
+  dest_cni_bin_dir: "{{.Values.destCNIBinDir}}"
+  # The CNI network configuration to install on each node. The special
+  # values in this config will be automatically populated.
+  # iptables-mode and ipv6 flags are only considered as of linkerd-cni v1.4.0
+  cni_network_config: |-
+    {
+      "name": "linkerd-cni",
+      "type": "linkerd-cni",
+      "log_level": "{{.Values.logLevel}}",
+      "policy": {
+          "type": "k8s",
+          "k8s_api_root": "https://__KUBERNETES_SERVICE_HOST__:__KUBERNETES_SERVICE_PORT__",
+          "k8s_auth_token": "__SERVICEACCOUNT_TOKEN__"
+      },
+      "kubernetes": {
+          "kubeconfig": "__KUBECONFIG_FILEPATH__"
+      },
+      "linkerd": {
+        "incoming-proxy-port": {{.Values.inboundProxyPort}},
+        "outgoing-proxy-port": {{.Values.outboundProxyPort}},
+        "proxy-uid": {{.Values.proxyUID}},
+        {{- if ge (int .Values.proxyGID) 0 }}
+        "proxy-gid": {{.Values.proxyGID}},
+        {{- end }}
+        "ports-to-redirect": [{{.Values.portsToRedirect}}],
+        "inbound-ports-to-ignore": ["{{- .Values.proxyAdminPort }}","{{ .Values.proxyControlPort }}"
+        {{- if .Values.ignoreInboundPorts }},{{- include "partials.splitStringList" .Values.ignoreInboundPorts -}}{{- end }}],
+        {{- if .Values.ignoreOutboundPorts }}
+        "outbound-ports-to-ignore": [
+          {{- include "partials.splitStringList" .Values.ignoreOutboundPorts -}}
+        ],
+        {{- end }}
+        "simulate": false,
+        "use-wait-flag": {{.Values.useWaitFlag}},
+        "iptables-mode": {{.Values.iptablesMode | quote}},
+        "ipv6": {{.Values.disableIPv6 | ternary "false" "true"}}
+      }
+    }
