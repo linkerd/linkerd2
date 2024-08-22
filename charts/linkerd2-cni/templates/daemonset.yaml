@@ -1,0 +1,198 @@
+{{- /*
+Copyright 2017 CNI authors
+Modifications copyright (c) Linkerd authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+This file was inspired by
+1) https://github.com/istio/cni/blob/c63a509539b5ed165a6617548c31b686f13c2133/deployments/kubernetes/install/manifests/istio-cni.yaml
+*/ -}}
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: linkerd-cni
+  namespace: {{ .Release.Namespace }}
+  labels:
+    k8s-app: linkerd-cni
+    linkerd.io/cni-resource: "true"
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+spec:
+  revisionHistoryLimit: {{.Values.revisionHistoryLimit}}
+  selector:
+    matchLabels:
+      k8s-app: linkerd-cni
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: linkerd-cni
+        linkerd.io/cni-resource: "true"
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+      annotations:
+        {{ include "partials.annotations.created-by" . }}
+        linkerd.io/inject: disabled
+    spec:
+      {{- if .Values.tolerations }}
+      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- end }}
+      nodeSelector:
+        kubernetes.io/os: linux
+      {{- if .Values.nodeAffinity }}
+      affinity:
+      {{- include "linkerd.node-affinity" . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: linkerd-cni
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
+      {{- if .Values.extraInitContainers }}
+      initContainers:
+      {{- toYaml .Values.extraInitContainers | nindent 6 }}
+      {{- end }}
+      containers:
+      # This container installs the linkerd CNI binaries
+      # and CNI network config file on each node. The install
+      # script copies the files into place and then sleeps so
+      # that Kubernetes doesn't keep trying to restart it.
+      - name: install-cni
+        image: {{ .Values.image.name -}}:{{- .Values.image.version }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: DEST_CNI_NET_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: dest_cni_net_dir
+        - name: DEST_CNI_BIN_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: dest_cni_bin_dir
+        - name: CNI_NETWORK_CONFIG
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: cni_network_config
+        - name: SLEEP
+          value: "true"
+        lifecycle:
+          # In some edge-cases this helps ensure that cleanup() is called in the container's script
+          # https://github.com/linkerd/linkerd2/issues/2355
+          preStop:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - kill -15 1; sleep 15s
+        volumeMounts:
+        {{- if ne .Values.destCNIBinDir .Values.destCNINetDir }}
+        - mountPath: /host{{.Values.destCNIBinDir}}
+          name: cni-bin-dir
+        - mountPath: /host{{.Values.destCNINetDir}}
+          name: cni-net-dir
+        {{- else }}
+        - mountPath: /host{{.Values.destCNINetDir}}
+          name: cni-net-dir
+        {{- end }}
+        - mountPath: /tmp
+          name: linkerd-tmp-dir
+        {{- if .Values.extraVolumeMounts }}
+        {{- toYaml .Values.extraVolumeMounts | nindent 8 }}
+        {{- end }}
+        securityContext:
+          readOnlyRootFilesystem: true
+          privileged: {{.Values.privileged}}
+        {{- if .Values.resources }}
+        {{- include "partials.resources" .Values.resources | nindent 8 }}
+        {{- end }}
+      {{- if .Values.repairController.enabled }}
+      # This container watches over pods whose linkerd-network-validator
+      # container failed, probably because of a race condition while setting up
+      # the CNI plugin chain, and deletes those pods so they can try acquiring a
+      # proper network config again
+      - name: repair-controller
+        image: {{ .Values.image.name -}}:{{- .Values.image.version }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{- if .Values.repairController.enableSecurityContext }}
+        env:
+        - name: LINKERD_CNI_REPAIR_CONTROLLER_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: LINKERD_CNI_REPAIR_CONTROLLER_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        command:
+          - /usr/lib/linkerd/linkerd-cni-repair-controller
+        args:
+          - --admin-addr
+          - "{{ if .Values.disableIPv6 }}0.0.0.0{{ else }}[::]{{ end }}:9990"
+          - --log-format
+          - {{ .Values.repairController.logFormat }}
+          - --log-level
+          - {{ .Values.repairController.logLevel }}
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: admin-http
+          initialDelaySeconds: 10
+        ports:
+        - containerPort: 9990
+          name: admin-http
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+        {{- end }}
+        {{- if .Values.repairController.resources }}
+        {{- include "partials.resources" .Values.repairController.resources | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      volumes:
+      {{- if ne .Values.destCNIBinDir .Values.destCNINetDir }}
+      - name: cni-bin-dir
+        hostPath:
+          path: {{.Values.destCNIBinDir}}
+      - name: cni-net-dir
+        hostPath:
+          path: {{.Values.destCNINetDir}}
+      {{- else }}
+      - name: cni-net-dir
+        hostPath:
+          path: {{.Values.destCNINetDir}}
+      {{- end }}
+      - name: linkerd-tmp-dir
+        emptyDir: {}
+      {{- if .Values.extraVolumes }}
+      {{- toYaml .Values.extraVolumes | nindent 6 }}
+      {{- end }}
