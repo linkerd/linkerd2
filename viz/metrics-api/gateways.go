@@ -6,6 +6,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	"github.com/linkerd/linkerd2/viz/pkg/prometheus"
 	"github.com/prometheus/common/model"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,14 +43,14 @@ func buildGatewaysRequestLabels(req *pb.GatewaysRequest) (labels model.LabelSet,
 	labels = model.LabelSet{}
 
 	if req.GatewayNamespace != "" {
-		labels[gatewayNamespaceLabel] = model.LabelValue(req.GatewayNamespace)
+		labels[prometheus.GatewayNamespaceLabel] = model.LabelValue(req.GatewayNamespace)
 	}
 
 	if req.RemoteClusterName != "" {
-		labels[remoteClusterNameLabel] = model.LabelValue(req.RemoteClusterName)
+		labels[prometheus.RemoteClusterNameLabel] = model.LabelValue(req.RemoteClusterName)
 	}
 
-	groupBy := model.LabelNames{gatewayNamespaceLabel, remoteClusterNameLabel, gatewayNameLabel}
+	groupBy := model.LabelNames{prometheus.GatewayNamespaceLabel, prometheus.RemoteClusterNameLabel, prometheus.GatewayNameLabel}
 
 	return labels, groupBy
 }
@@ -80,7 +81,7 @@ func processPrometheusResult(results []promResult, numSvcMap map[string]uint64) 
 	for _, result := range results {
 		for _, sample := range result.vec {
 
-			clusterName := string(sample.Metric[remoteClusterNameLabel])
+			clusterName := string(sample.Metric[prometheus.RemoteClusterNameLabel])
 			numPairedSvc := numSvcMap[clusterName]
 
 			addRow := func() {

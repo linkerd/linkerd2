@@ -8,6 +8,7 @@ import (
 
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	"github.com/linkerd/linkerd2/viz/pkg/prometheus"
 	"github.com/prometheus/common/model"
 	"google.golang.org/protobuf/proto"
 )
@@ -29,12 +30,12 @@ func genOutboundPromSample(resourceNamespace, resourceName, resourceNameDst, res
 
 	return &model.Sample{
 		Metric: model.Metric{
-			resourceLabel:     model.LabelValue(resourceName),
-			namespaceLabel:    model.LabelValue(resourceNamespace),
-			dstNamespaceLabel: model.LabelValue(resourceNamespaceDst),
-			dstResourceLabel:  model.LabelValue(resourceNameDst),
-			serverIDLabel:     model.LabelValue(serverID),
-			podLabel:          model.LabelValue(resourceName + "-0"),
+			resourceLabel:                model.LabelValue(resourceName),
+			prometheus.NamespaceLabel:    model.LabelValue(resourceNamespace),
+			prometheus.DstNamespaceLabel: model.LabelValue(resourceNamespaceDst),
+			dstResourceLabel:             model.LabelValue(resourceNameDst),
+			serverIDLabel:                model.LabelValue(serverID),
+			podLabel:                     model.LabelValue(resourceName + "-0"),
 		},
 		Value:     123,
 		Timestamp: 456,
