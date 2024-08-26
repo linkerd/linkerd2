@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -30,9 +32,9 @@ type outboundRowKey struct {
 type outboundBackendRow struct {
 	successes  uint64
 	failures   uint64
-	latencyP50 string
-	latencyP95 string
-	latencyP99 string
+	latencyP50 float64
+	latencyP95 float64
+	latencyP99 float64
 	timeouts   uint64
 }
 
@@ -45,6 +47,23 @@ type outboundRouteRow struct {
 	outboundBackendRow
 	retries  uint64
 	backends map[backendKey]outboundBackendRow
+}
+
+type outboundJsonRow struct {
+	Name        string   `json:"name"`
+	Service     string   `json:"service"`
+	Port        string   `json:"port"`
+	Route       string   `json:"route"`
+	RouteType   string   `json:"routeType"`
+	Backend     string   `json:"backend,omitempty"`
+	BackendPort string   `json:"backendPort,omitempty"`
+	SuccessRate float64  `json:"successRate"`
+	RPS         float64  `json:"rps"`
+	LatencyP50  *float64 `json:"latencyMsP50"`
+	LatencyP95  *float64 `json:"latencyMsP95"`
+	LatencyP99  *float64 `json:"latencyMsP99"`
+	TimeoutRate float64  `json:"timeoutRate"`
+	RetryRate   *float64 `json:"retryRate,omitempty"`
 }
 
 // NewCmdStatOutbound creates a new cobra command `stat-outbound` for outbound stat functionality
@@ -228,11 +247,6 @@ func NewCmdStatOutbound() *cobra.Command {
 				resource,
 			)
 
-			windowLength, err := time.ParseDuration(options.timeWindow)
-			if err != nil {
-				return err
-			}
-
 			// Collect Prometheus results for HTTP.
 
 			results := make(map[outboundRowKey]outboundRouteRow)
@@ -315,69 +329,19 @@ func NewCmdStatOutbound() *cobra.Command {
 
 			// Render output.
 
-			rows := make([][]string, 0)
-
-			for key, row := range results {
-				if row.failures+row.successes == 0 {
-					continue
-				}
-				rows = append(rows, []string{
-					key.name,
-					fmt.Sprintf("%s:%s", key.service, key.port),
-					key.route,
-					key.routeType,
-					"", // backend
-					fmt.Sprintf("%.2f%%", (float32)(row.successes)/(float32)(row.successes+row.failures)*100.0),
-					fmt.Sprintf("%.2f", (float32)(row.successes+row.failures)/float32(windowLength.Seconds())),
-					row.latencyP50,
-					row.latencyP95,
-					row.latencyP99,
-					fmt.Sprintf("%.2f%%", (float32)(row.timeouts)/(float32)(row.successes+row.failures)*100.0),
-					fmt.Sprintf("%.2f%%", (float32)(row.retries)/(float32)(row.successes+row.failures+row.retries)*100.0),
-				})
-				for backend, backendRow := range row.backends {
-					line := "├"
-					if len(key.route) > 0 {
-						line += strings.Repeat("─", len(key.route)-1)
-					}
-					rows = append(rows, []string{
-						"",
-						"",
-						line,
-						"────────►",
-						fmt.Sprintf("%s:%s", backend.name, backend.port),
-						fmt.Sprintf("%.2f%%", (float32)(backendRow.successes)/(float32)(backendRow.successes+backendRow.failures)*100.0),
-						fmt.Sprintf("%.2f", (float32)(backendRow.successes+backendRow.failures)/float32(windowLength.Seconds())),
-						backendRow.latencyP50,
-						backendRow.latencyP95,
-						backendRow.latencyP99,
-						fmt.Sprintf("%.2f%%", (float32)(backendRow.timeouts)/(float32)(backendRow.successes+backendRow.failures)*100.0),
-						"", // retries
-					})
-				}
-				lastBackendLine := rows[len(rows)-1][2]
-				rows[len(rows)-1][2] = strings.Replace(lastBackendLine, "├", "└", 1)
+			windowLength, err := time.ParseDuration(options.timeWindow)
+			if err != nil {
+				return err
 			}
 
-			columns := []table.Column{
-				table.NewColumn("NAME").WithLeftAlign(),
-				table.NewColumn("SERVICE").WithLeftAlign(),
-				table.NewColumn("ROUTE").WithLeftAlign(),
-				table.NewColumn("TYPE").WithLeftAlign(),
-				table.NewColumn("BACKEND").WithLeftAlign(),
-				table.NewColumn("SUCCESS"),
-				table.NewColumn("RPS"),
-				table.NewColumn("LATENCY_P50"),
-				table.NewColumn("LATENCY_P95"),
-				table.NewColumn("LATENCY_P99"),
-				table.NewColumn("TIMEOUTS"),
-				table.NewColumn("RETRIES"),
+			if options.outputFormat == "json" {
+				return renderStatOutboundJSON(results, windowLength)
+			} else if options.outputFormat == "table" || options.outputFormat == "" {
+				renderStatOutboundTable(results, windowLength)
+				return nil
+			} else {
+				return fmt.Errorf("Invalid output format: %s", options.outputFormat)
 			}
-
-			table := table.NewTable(columns, rows)
-			table.Render(os.Stdout)
-
-			return err
 		},
 	}
 
@@ -410,14 +374,13 @@ func outboundKeyForSample(sample *model.Sample, resource *pb.Resource) outboundR
 }
 
 func (r *outboundBackendRow) populateLatency(quantile string, sample *model.Sample) {
-	latency := formatLatencyMs(float64(sample.Value * 1000))
 	switch quantile {
 	case "0.5":
-		r.latencyP50 = latency
+		r.latencyP50 = float64(sample.Value * 1000)
 	case "0.95":
-		r.latencyP95 = latency
+		r.latencyP95 = float64(sample.Value * 1000)
 	case "0.99":
-		r.latencyP99 = latency
+		r.latencyP99 = float64(sample.Value * 1000)
 	}
 }
 
@@ -482,4 +445,144 @@ func (r *outboundRouteRow) populateBackendGRPCCounts(sample *model.Sample) {
 		r.backends = make(map[backendKey]outboundBackendRow)
 	}
 	r.backends[key] = backend
+}
+
+func renderStatOutboundTable(results map[outboundRowKey]outboundRouteRow, windowLength time.Duration) {
+	rows := make([][]string, 0)
+
+	for key, row := range results {
+		if row.failures+row.successes == 0 {
+			continue
+		}
+		rows = append(rows, []string{
+			key.name,
+			fmt.Sprintf("%s:%s", key.service, key.port),
+			key.route,
+			key.routeType,
+			"", // backend
+			fmt.Sprintf("%.2f%%", (float32)(row.successes)/(float32)(row.successes+row.failures)*100.0),
+			fmt.Sprintf("%.2f", (float32)(row.successes+row.failures)/float32(windowLength.Seconds())),
+			formatLatencyMs(row.latencyP50),
+			formatLatencyMs(row.latencyP95),
+			formatLatencyMs(row.latencyP99),
+			fmt.Sprintf("%.2f%%", (float32)(row.timeouts)/(float32)(row.successes+row.failures)*100.0),
+			fmt.Sprintf("%.2f%%", (float32)(row.retries)/(float32)(row.successes+row.failures+row.retries)*100.0),
+		})
+		for backend, backendRow := range row.backends {
+			line := "├"
+			if len(key.route) > 0 {
+				line += strings.Repeat("─", len(key.route)-1)
+			}
+			rows = append(rows, []string{
+				"",
+				"",
+				line,
+				"────────►",
+				fmt.Sprintf("%s:%s", backend.name, backend.port),
+				fmt.Sprintf("%.2f%%", (float32)(backendRow.successes)/(float32)(backendRow.successes+backendRow.failures)*100.0),
+				fmt.Sprintf("%.2f", (float32)(backendRow.successes+backendRow.failures)/float32(windowLength.Seconds())),
+				formatLatencyMs(backendRow.latencyP50),
+				formatLatencyMs(backendRow.latencyP95),
+				formatLatencyMs(backendRow.latencyP99),
+				fmt.Sprintf("%.2f%%", (float32)(backendRow.timeouts)/(float32)(backendRow.successes+backendRow.failures)*100.0),
+				"", // retries
+			})
+		}
+		lastBackendLine := rows[len(rows)-1][2]
+		rows[len(rows)-1][2] = strings.Replace(lastBackendLine, "├", "└", 1)
+	}
+
+	columns := []table.Column{
+		table.NewColumn("NAME").WithLeftAlign(),
+		table.NewColumn("SERVICE").WithLeftAlign(),
+		table.NewColumn("ROUTE").WithLeftAlign(),
+		table.NewColumn("TYPE").WithLeftAlign(),
+		table.NewColumn("BACKEND").WithLeftAlign(),
+		table.NewColumn("SUCCESS"),
+		table.NewColumn("RPS"),
+		table.NewColumn("LATENCY_P50"),
+		table.NewColumn("LATENCY_P95"),
+		table.NewColumn("LATENCY_P99"),
+		table.NewColumn("TIMEOUTS"),
+		table.NewColumn("RETRIES"),
+	}
+
+	table := table.NewTable(columns, rows)
+	table.Render(os.Stdout)
+}
+
+func renderStatOutboundJSON(results map[outboundRowKey]outboundRouteRow, windowLength time.Duration) error {
+	rows := make([]outboundJsonRow, 0)
+
+	for key, result := range results {
+		result := result // To avoid golangci-lint complaining about memory aliasing.
+		if result.failures+result.successes == 0 {
+			continue
+		}
+		retryRate := (float64)(result.retries) / (float64)(result.successes+result.failures+result.retries)
+		row := outboundJsonRow{
+			Name:        key.name,
+			Service:     key.service,
+			Port:        key.port,
+			Route:       key.route,
+			RouteType:   key.routeType,
+			SuccessRate: (float64)(result.successes) / (float64)(result.successes+result.failures),
+			RPS:         (float64)(result.successes+result.failures) / windowLength.Seconds(),
+			LatencyP50:  &result.latencyP50,
+			LatencyP95:  &result.latencyP95,
+			LatencyP99:  &result.latencyP99,
+			TimeoutRate: (float64)(result.timeouts) / (float64)(result.successes+result.failures),
+			RetryRate:   &retryRate,
+		}
+		if math.IsNaN(result.latencyP50) {
+			row.LatencyP50 = nil
+		}
+		if math.IsNaN(result.latencyP95) {
+			row.LatencyP95 = nil
+		}
+		if math.IsNaN(result.latencyP99) {
+			row.LatencyP99 = nil
+		}
+
+		rows = append(rows, row)
+
+		for backend, result := range result.backends {
+			result := result // To avoid golangci-lint complaining about memory aliasing.
+			if result.failures+result.successes == 0 {
+				continue
+			}
+			row := outboundJsonRow{
+				Name:        key.name,
+				Service:     key.service,
+				Port:        key.port,
+				Route:       key.route,
+				RouteType:   key.routeType,
+				Backend:     backend.name,
+				BackendPort: backend.port,
+				SuccessRate: (float64)(result.successes) / (float64)(result.successes+result.failures),
+				RPS:         (float64)(result.successes+result.failures) / windowLength.Seconds(),
+				LatencyP50:  &result.latencyP50,
+				LatencyP95:  &result.latencyP95,
+				LatencyP99:  &result.latencyP99,
+				TimeoutRate: (float64)(result.timeouts) / (float64)(result.successes+result.failures),
+			}
+			if math.IsNaN(result.latencyP50) {
+				row.LatencyP50 = nil
+			}
+			if math.IsNaN(result.latencyP95) {
+				row.LatencyP95 = nil
+			}
+			if math.IsNaN(result.latencyP99) {
+				row.LatencyP99 = nil
+			}
+			rows = append(rows, row)
+		}
+	}
+
+	out, err := json.Marshal(rows)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(out))
+	return nil
 }

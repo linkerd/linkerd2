@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -38,9 +39,22 @@ type inboundRowKey struct {
 type inboundRow struct {
 	successes  uint64
 	failures   uint64
-	latencyP50 string
-	latencyP95 string
-	latencyP99 string
+	latencyP50 float64
+	latencyP95 float64
+	latencyP99 float64
+}
+
+type inboundJsonRow struct {
+	Name        string   `json:"name"`
+	Server      string   `json:"server"`
+	Port        string   `json:"port"`
+	Route       string   `json:"route"`
+	RouteType   string   `json:"routeType"`
+	SuccessRate float64  `json:"successesRate"`
+	RPS         float64  `json:"rps"`
+	LatencyP50  *float64 `json:"latencyMsP50"`
+	LatencyP95  *float64 `json:"latencyMsP95"`
+	LatencyP99  *float64 `json:"latencyMsP99"`
 }
 
 func newStatInboundOptions() *statInboundOptions {
@@ -175,48 +189,17 @@ func NewCmdStatInbound() *cobra.Command {
 			}
 
 			// Render output.
-
-			rows := make([][]string, 0)
-
-			windowLength, err := time.ParseDuration(options.timeWindow)
+			timeWindow, err := time.ParseDuration(options.timeWindow)
 			if err != nil {
 				return err
 			}
-
-			for key, row := range results {
-				if row.failures+row.successes == 0 {
-					continue
-				}
-				rows = append(rows, []string{
-					key.name,
-					fmt.Sprintf("%s:%s", key.server, key.port),
-					key.route,
-					key.routeType,
-					fmt.Sprintf("%.2f%%", (float32)(row.successes)/(float32)(row.successes+row.failures)*100.0),
-					fmt.Sprintf("%.2f", (float32)(row.successes+row.failures)/float32(windowLength.Seconds())),
-					row.latencyP50,
-					row.latencyP95,
-					row.latencyP99,
-				})
+			if options.outputFormat == "json" {
+				return renderStatInboundJson(results, timeWindow)
+			} else if options.outputFormat == "table" || options.outputFormat == "" {
+				return renderStatInboundTable(results, timeWindow)
+			} else {
+				return fmt.Errorf("Invalid output format: %s", options.outputFormat)
 			}
-
-			columns := []table.Column{
-				table.NewColumn("NAME").WithLeftAlign(),
-				table.NewColumn("SERVER").WithLeftAlign(),
-				table.NewColumn("ROUTE").WithLeftAlign(),
-				table.NewColumn("TYPE").WithLeftAlign(),
-				table.NewColumn("SUCCESS"),
-				table.NewColumn("RPS"),
-				table.NewColumn("LATENCY_P50"),
-				table.NewColumn("LATENCY_P95"),
-				table.NewColumn("LATENCY_P99"),
-			}
-
-			table := table.NewTable(columns, rows)
-			table.Sort = []int{0, 1, 3} // Name, Server, Route
-			table.Render(os.Stdout)
-
-			return err
 		},
 	}
 
@@ -336,13 +319,92 @@ func formatLatencyMs(value float64) string {
 }
 
 func (r *inboundRow) populateLatency(quantile string, sample *model.Sample) {
-	latency := formatLatencyMs(float64(sample.Value))
 	switch quantile {
 	case "0.5":
-		r.latencyP50 = latency
+		r.latencyP50 = float64(sample.Value)
 	case "0.95":
-		r.latencyP95 = latency
+		r.latencyP95 = float64(sample.Value)
 	case "0.99":
-		r.latencyP99 = latency
+		r.latencyP99 = float64(sample.Value)
 	}
+}
+
+func renderStatInboundTable(results map[inboundRowKey]inboundRow, windowLength time.Duration) error {
+	rows := make([][]string, 0)
+
+	for key, row := range results {
+		if row.failures+row.successes == 0 {
+			continue
+		}
+		rows = append(rows, []string{
+			key.name,
+			fmt.Sprintf("%s:%s", key.server, key.port),
+			key.route,
+			key.routeType,
+			fmt.Sprintf("%.2f%%", (float32)(row.successes)/(float32)(row.successes+row.failures)*100.0),
+			fmt.Sprintf("%.2f", (float32)(row.successes+row.failures)/float32(windowLength.Seconds())),
+			formatLatencyMs(row.latencyP50),
+			formatLatencyMs(row.latencyP95),
+			formatLatencyMs(row.latencyP99),
+		})
+	}
+
+	columns := []table.Column{
+		table.NewColumn("NAME").WithLeftAlign(),
+		table.NewColumn("SERVER").WithLeftAlign(),
+		table.NewColumn("ROUTE").WithLeftAlign(),
+		table.NewColumn("TYPE").WithLeftAlign(),
+		table.NewColumn("SUCCESS"),
+		table.NewColumn("RPS"),
+		table.NewColumn("LATENCY_P50"),
+		table.NewColumn("LATENCY_P95"),
+		table.NewColumn("LATENCY_P99"),
+	}
+
+	table := table.NewTable(columns, rows)
+	table.Sort = []int{0, 1, 3} // Name, Server, Route
+	table.Render(os.Stdout)
+
+	return nil
+}
+
+func renderStatInboundJson(results map[inboundRowKey]inboundRow, windowLength time.Duration) error {
+	rows := make([]inboundJsonRow, 0)
+	for key, result := range results {
+		result := result // To avoid golangci-lint complaining about memory aliasing.
+		if result.failures+result.successes == 0 {
+			continue
+		}
+
+		row := inboundJsonRow{
+			Name:        key.name,
+			Server:      key.server,
+			Port:        key.port,
+			Route:       key.route,
+			RouteType:   key.routeType,
+			SuccessRate: float64(result.successes) / float64(result.successes+result.failures),
+			RPS:         float64(result.successes+result.failures) / windowLength.Seconds(),
+			LatencyP50:  &result.latencyP50,
+			LatencyP95:  &result.latencyP95,
+			LatencyP99:  &result.latencyP99,
+		}
+
+		if math.IsNaN(result.latencyP50) {
+			row.LatencyP50 = nil
+		}
+		if math.IsNaN(result.latencyP95) {
+			row.LatencyP95 = nil
+		}
+		if math.IsNaN(result.latencyP99) {
+			row.LatencyP99 = nil
+		}
+
+		rows = append(rows, row)
+	}
+	out, err := json.Marshal(rows)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(out))
+	return nil
 }
