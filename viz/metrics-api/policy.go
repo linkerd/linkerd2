@@ -221,7 +221,7 @@ func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet
 		// if --to flag is passed, Calculate traffic sent to the policy resource
 		// with additional filtering narrowing down to the workload
 		// it is sent to.
-		labels = labels.Merge(prometheus.PromQueryLabels(out.ToResource))
+		labels = labels.Merge(prometheus.QueryLabels(out.ToResource))
 
 	// No FromResource case as policy metrics are all inbound
 	default:

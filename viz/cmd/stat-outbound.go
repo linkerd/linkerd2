@@ -365,7 +365,7 @@ func outboundKeyForSample(sample *model.Sample, resource *pb.Resource) outboundR
 	}
 
 	return outboundRowKey{
-		name:      (string)(labels[prometheus.PromResourceType(resource)]),
+		name:      (string)(labels[prometheus.ResourceType(resource)]),
 		service:   (string)(labels["parent_name"]),
 		port:      (string)(labels["parent_port"]),
 		route:     route,

@@ -23,17 +23,17 @@ const (
 
 // add filtering by resource type
 // note that metricToKey assumes the label ordering (namespace, name)
-func PromGroupByLabelNames(resource *pb.Resource) model.LabelNames {
+func GroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	names := model.LabelNames{NamespaceLabel}
 
 	if resource.Type != k8s.Namespace {
-		names = append(names, PromResourceType(resource))
+		names = append(names, ResourceType(resource))
 	}
 	return names
 }
 
 // query a named resource
-func PromQueryLabels(resource *pb.Resource) model.LabelSet {
+func QueryLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource != nil {
 		if resource.Name != "" {
@@ -49,7 +49,7 @@ func PromQueryLabels(resource *pb.Resource) model.LabelSet {
 			} else if resource.GetType() == k8s.HTTPRoute {
 				set[RouteNameLabel] = model.LabelValue(resource.GetName())
 			} else if resource.GetType() != k8s.Service {
-				set[PromResourceType(resource)] = model.LabelValue(resource.Name)
+				set[ResourceType(resource)] = model.LabelValue(resource.Name)
 			}
 		}
 		if shouldAddNamespaceLabel(resource) {
@@ -61,25 +61,25 @@ func PromQueryLabels(resource *pb.Resource) model.LabelSet {
 
 // add filtering by resource type
 // note that metricToKey assumes the label ordering (namespace, name)
-func PromDstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
+func DstGroupByLabelNames(resource *pb.Resource) model.LabelNames {
 	names := model.LabelNames{DstNamespaceLabel}
 
 	if IsNonK8sResourceQuery(resource.GetType()) {
-		names = append(names, PromResourceType(resource))
+		names = append(names, ResourceType(resource))
 	} else if resource.Type != k8s.Namespace {
-		names = append(names, "dst_"+PromResourceType(resource))
+		names = append(names, "dst_"+ResourceType(resource))
 	}
 	return names
 }
 
 // query a named resource
-func PromDstQueryLabels(resource *pb.Resource) model.LabelSet {
+func DstQueryLabels(resource *pb.Resource) model.LabelSet {
 	set := model.LabelSet{}
 	if resource.Name != "" {
 		if IsNonK8sResourceQuery(resource.GetType()) {
-			set[PromResourceType(resource)] = model.LabelValue(resource.Name)
+			set[ResourceType(resource)] = model.LabelValue(resource.Name)
 		} else {
-			set["dst_"+PromResourceType(resource)] = model.LabelValue(resource.Name)
+			set["dst_"+ResourceType(resource)] = model.LabelValue(resource.Name)
 			if shouldAddNamespaceLabel(resource) {
 				set[DstNamespaceLabel] = model.LabelValue(resource.Namespace)
 			}
@@ -89,7 +89,7 @@ func PromDstQueryLabels(resource *pb.Resource) model.LabelSet {
 	return set
 }
 
-func PromResourceType(resource *pb.Resource) model.LabelName {
+func ResourceType(resource *pb.Resource) model.LabelName {
 	l5dLabel := k8s.KindToL5DLabel(resource.Type)
 	return model.LabelName(l5dLabel)
 }

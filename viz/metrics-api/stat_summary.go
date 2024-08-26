@@ -427,23 +427,23 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
-		labelNames = prometheus.PromGroupByLabelNames(req.Selector.Resource)
+		labelNames = prometheus.GroupByLabelNames(req.Selector.Resource)
 
-		labels = labels.Merge(prometheus.PromDstQueryLabels(out.ToResource))
-		labels = labels.Merge(prometheus.PromQueryLabels(req.Selector.Resource))
+		labels = labels.Merge(prometheus.DstQueryLabels(out.ToResource))
+		labels = labels.Merge(prometheus.QueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	case *pb.StatSummaryRequest_FromResource:
-		labelNames = prometheus.PromDstGroupByLabelNames(req.Selector.Resource)
+		labelNames = prometheus.DstGroupByLabelNames(req.Selector.Resource)
 
-		labels = labels.Merge(prometheus.PromQueryLabels(out.FromResource))
-		labels = labels.Merge(prometheus.PromDstQueryLabels(req.Selector.Resource))
+		labels = labels.Merge(prometheus.QueryLabels(out.FromResource))
+		labels = labels.Merge(prometheus.DstQueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	default:
-		labelNames = prometheus.PromGroupByLabelNames(req.Selector.Resource)
+		labelNames = prometheus.GroupByLabelNames(req.Selector.Resource)
 
-		labels = labels.Merge(prometheus.PromQueryLabels(req.Selector.Resource))
+		labels = labels.Merge(prometheus.QueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("inbound"))
 	}
 
@@ -463,11 +463,11 @@ func buildServiceRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSe
 		// if --to flag is passed, Calculate traffic sent to the service
 		// with additional filtering narrowing down to the workload
 		// it is sent to.
-		labels = labels.Merge(prometheus.PromDstQueryLabels(out.ToResource))
+		labels = labels.Merge(prometheus.DstQueryLabels(out.ToResource))
 
 	case *pb.StatSummaryRequest_FromResource:
 		// if --from flag is passed, FromResource is never a service here
-		labels = labels.Merge(prometheus.PromQueryLabels(out.FromResource))
+		labels = labels.Merge(prometheus.QueryLabels(out.FromResource))
 
 	default:
 		// no extra labels needed

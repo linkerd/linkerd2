@@ -225,9 +225,9 @@ func queryRate(
 		defer close(results)
 		query := fmt.Sprintf("sum(increase(%s%s[%s])) by (%s)",
 			metric,
-			labels.Merge(prometheus.PromQueryLabels(resource)),
+			labels.Merge(prometheus.QueryLabels(resource)),
 			timeWindow,
-			append(groupBy, prometheus.PromGroupByLabelNames(resource)...),
+			append(groupBy, prometheus.GroupByLabelNames(resource)...),
 		)
 		log.Debug(query)
 		val, warn, err := promAPI.Query(ctx, query, time.Time{})
@@ -265,9 +265,9 @@ func queryQuantiles(
 			query := fmt.Sprintf("histogram_quantile(%s, sum(irate(%s%s[%s])) by (le, %s))",
 				quantile,
 				metric,
-				labels.Merge(prometheus.PromQueryLabels(resource)),
+				labels.Merge(prometheus.QueryLabels(resource)),
 				timeWindow,
-				append(groupBy, prometheus.PromGroupByLabelNames(resource)...),
+				append(groupBy, prometheus.GroupByLabelNames(resource)...),
 			)
 			log.Debug(query)
 			val, warn, err := promAPI.Query(ctx, query, time.Time{})
@@ -302,7 +302,7 @@ func inboundKeyForSample(sample *model.Sample, resource *pb.Resource) inboundRow
 	}
 
 	return inboundRowKey{
-		name:      (string)(labels[prometheus.PromResourceType(resource)]),
+		name:      (string)(labels[prometheus.ResourceType(resource)]),
 		server:    server,
 		route:     route,
 		port:      (string)(labels["target_port"]),

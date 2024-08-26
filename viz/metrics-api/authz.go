@@ -23,7 +23,7 @@ func (s *grpcServer) Authz(ctx context.Context, req *pb.AuthzRequest) (*pb.Authz
 		}, nil
 	}
 
-	labels := prometheus.PromQueryLabels(req.GetResource())
+	labels := prometheus.QueryLabels(req.GetResource())
 	reqLabels := labels.Merge(model.LabelSet{
 		"direction": model.LabelValue("inbound"),
 	})
