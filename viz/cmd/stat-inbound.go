@@ -299,7 +299,6 @@ func inboundKeyForSample(sample *model.Sample, resource *pb.Resource) inboundRow
 	}
 	if labels["route_kind"] == "default" {
 		routeType = ""
-		route = "[default]"
 	}
 
 	return inboundRowKey{
