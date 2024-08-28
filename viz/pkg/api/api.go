@@ -67,14 +67,14 @@ func exitOnError(result *healthcheck.CheckResult) {
 }
 
 func NewPrometheusClient(ctx context.Context, hcOptions vizHealthCheck.VizOptions, addr string) (promv1.API, error) {
-	checks := []healthcheck.CategoryID{
-		healthcheck.KubernetesAPIChecks,
-	}
-	hc := vizHealthCheck.NewHealthChecker(checks, &hcOptions)
-	hc.AppendCategories(hc.VizCategory(false))
-	hc.RunChecks(exitOnError)
-
 	if addr == "" {
+		checks := []healthcheck.CategoryID{
+			healthcheck.KubernetesAPIChecks,
+		}
+		hc := vizHealthCheck.NewHealthChecker(checks, &hcOptions)
+		hc.AppendCategories(hc.VizCategory(false))
+		hc.RunChecks(exitOnError)
+
 		if hc.ExternalPrometheusURL() == "" {
 			portforward, err := k8s.NewPortForward(
 				ctx,

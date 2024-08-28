@@ -345,7 +345,7 @@ func NewCmdStatOutbound() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; one of: \"table\" or \"json\" or \"wide\"")
+	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; one of: \"table\" or \"json\"")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace")
 	cmd.PersistentFlags().StringVarP(&options.timeWindow, "time-window", "t", options.timeWindow, "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
 	cmd.PersistentFlags().StringVar(&options.prometheusURL, "prometheusURL", options.prometheusURL, "Address of Prometheus instance to query")
