@@ -362,6 +362,7 @@ func outboundKeyForSample(sample *model.Sample, resource *pb.Resource) outboundR
 	}
 	if labels["route_kind"] == "default" {
 		routeType = ""
+		route = "[default]"
 	}
 
 	return outboundRowKey{
@@ -469,15 +470,11 @@ func renderStatOutboundTable(results map[outboundRowKey]outboundRouteRow, window
 			fmt.Sprintf("%.2f%%", (float32)(row.retries)/(float32)(row.successes+row.failures+row.retries)*100.0),
 		})
 		for backend, backendRow := range row.backends {
-			line := "├"
-			if len(key.route) > 0 {
-				line += strings.Repeat("─", len(key.route)-1)
-			}
 			rows = append(rows, []string{
 				"",
 				"",
-				line,
-				"────────►",
+				"├─",
+				"─►",
 				fmt.Sprintf("%s:%s", backend.name, backend.port),
 				fmt.Sprintf("%.2f%%", (float32)(backendRow.successes)/(float32)(backendRow.successes+backendRow.failures)*100.0),
 				fmt.Sprintf("%.2f", (float32)(backendRow.successes+backendRow.failures)/float32(windowLength.Seconds())),

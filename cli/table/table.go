@@ -115,7 +115,13 @@ func (t *Table) renderRow(w io.Writer, row Row, columnWidths []int) {
 		if strings.HasSuffix(value, "─") && c < len(t.Columns)-1 && strings.HasPrefix(row[c+1], "─") {
 			spacing = "──"
 		}
-		if col.LeftAlign {
+		if strings.HasPrefix(value, "─") {
+			padding = strings.Repeat("─", columnWidths[c]-utf8.RuneCountInString(value))
+			fmt.Fprintf(w, "%s%s%s", padding, value, spacing)
+		} else if strings.HasSuffix(value, "─") {
+			padding = strings.Repeat("─", columnWidths[c]-utf8.RuneCountInString(value))
+			fmt.Fprintf(w, "%s%s%s", value, padding, spacing)
+		} else if col.LeftAlign {
 			fmt.Fprintf(w, "%s%s%s", value, padding, spacing)
 		} else {
 			fmt.Fprintf(w, "%s%s%s", padding, value, spacing)
