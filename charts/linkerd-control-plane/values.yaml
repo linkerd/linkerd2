@@ -118,6 +118,11 @@ policyController:
       # -- Amount of ephemeral storage that the policy controller requests
       request: ""
 
+  livenessProbe:
+    timeoutSeconds: 1
+  readinessProbe:
+    timeoutSeconds: 1
+
 # proxy configuration
 proxy:
   # -- Enable service profiles for non-Kubernetes services
@@ -379,6 +384,10 @@ destinationController:
       timeout:
         seconds: 3
       while_idle: true
+  livenessProbe:
+    timeoutSeconds: 1
+  readinessProbe:
+    timeoutSeconds: 1
 
 # debug configuration
 debugContainer:
@@ -418,6 +427,11 @@ identity:
       keyPEM: |
 
   kubeAPI: *kubeapi
+
+  livenessProbe:
+    timeoutSeconds: 1
+  readinessProbe:
+    timeoutSeconds: 1
 
 # -|- CPU, Memory and Ephemeral Storage resources required by the identity controller (see `proxy.resources` for sub-fields)
 #identityResources:
@@ -490,6 +504,11 @@ proxyInjector:
   # See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource)
   # for more information.
   injectCaFromSecret: ""
+
+  livenessProbe:
+    timeoutSeconds: 1
+  readinessProbe:
+    timeoutSeconds: 1
 
 # -|- CPU, Memory and Ephemeral Storage resources required by the proxy injector (see
 #`proxy.resources` for sub-fields)
@@ -593,6 +612,13 @@ policyValidator:
 # for more information
 nodeSelector:
   kubernetes.io/os: linux
+
+# -- SP validator configuration
+spValidator:
+  livenessProbe:
+    timeoutSeconds: 1
+  readinessProbe:
+    timeoutSeconds: 1
 
 # -|- CPU, Memory and Ephemeral Storage resources required by the SP validator (see
 #`proxy.resources` for sub-fields)

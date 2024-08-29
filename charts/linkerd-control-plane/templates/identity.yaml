@@ -185,6 +185,9 @@ spec:
             path: /ping
             port: 9990
           initialDelaySeconds: 10
+          {{- with (.Values.identity.livenessProbe).timeoutSeconds }}
+          timeoutSeconds: {{ . }}
+          {{- end }}
         name: identity
         ports:
         - containerPort: 8080
@@ -196,6 +199,9 @@ spec:
           httpGet:
             path: /ready
             port: 9990
+          {{- with (.Values.identity.readinessProbe).timeoutSeconds }}
+          timeoutSeconds: {{ . }}
+          {{- end }}
         {{- if .Values.identityResources -}}
         {{- include "partials.resources" .Values.identityResources | nindent 8 }}
         {{- end }}

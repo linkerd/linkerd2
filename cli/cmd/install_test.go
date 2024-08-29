@@ -60,6 +60,7 @@ func TestRender(t *testing.T) {
 		CNIEnabled:              false,
 		IdentityTrustDomain:     defaultValues.IdentityTrustDomain,
 		IdentityTrustAnchorsPEM: defaultValues.IdentityTrustAnchorsPEM,
+		DestinationController:   map[string]any{},
 		PodAnnotations:          map[string]string{},
 		PodLabels:               map[string]string{},
 		PriorityClassName:       "PriorityClassName",
