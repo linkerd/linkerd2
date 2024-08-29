@@ -7,6 +7,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	"github.com/linkerd/linkerd2/viz/pkg/prometheus"
 	"github.com/prometheus/common/model"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -168,49 +169,49 @@ func (s *grpcServer) getPolicyMetrics(
 func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
 	if req.GetSelector().GetResource().GetNamespace() != "" {
 		labels = labels.Merge(model.LabelSet{
-			namespaceLabel: model.LabelValue(req.GetSelector().GetResource().GetNamespace()),
+			prometheus.NamespaceLabel: model.LabelValue(req.GetSelector().GetResource().GetNamespace()),
 		})
 	}
 	var groupBy model.LabelNames
 	if req.GetSelector().GetResource().GetType() == k8s.Server {
 		// note that metricToKey assumes the label ordering (..., namespace, name)
-		groupBy = model.LabelNames{serverKindLabel, namespaceLabel, serverNameLabel}
+		groupBy = model.LabelNames{prometheus.ServerKindLabel, prometheus.NamespaceLabel, prometheus.ServerNameLabel}
 		labels = labels.Merge(model.LabelSet{
-			serverKindLabel: model.LabelValue("server"),
+			prometheus.ServerKindLabel: model.LabelValue("server"),
 		})
 		if req.GetSelector().GetResource().GetName() != "" {
 			labels = labels.Merge(model.LabelSet{
-				serverNameLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
+				prometheus.ServerNameLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
 			})
 		}
 	} else if req.GetSelector().GetResource().GetType() == k8s.ServerAuthorization {
 		// note that metricToKey assumes the label ordering (..., namespace, name)
-		groupBy = model.LabelNames{namespaceLabel, authorizationNameLabel}
+		groupBy = model.LabelNames{prometheus.NamespaceLabel, prometheus.AuthorizationNameLabel}
 		labels = labels.Merge(model.LabelSet{
-			authorizationKindLabel: model.LabelValue("serverauthorization"),
+			prometheus.AuthorizationKindLabel: model.LabelValue("serverauthorization"),
 		})
 		if req.GetSelector().GetResource().GetName() != "" {
 			labels = labels.Merge(model.LabelSet{
-				authorizationNameLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
+				prometheus.AuthorizationNameLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
 			})
 		}
 	} else if req.GetSelector().GetResource().GetType() == k8s.AuthorizationPolicy {
 		// note that metricToKey assumes the label ordering (..., namespace, name)
-		groupBy = model.LabelNames{namespaceLabel, authorizationNameLabel}
+		groupBy = model.LabelNames{prometheus.NamespaceLabel, prometheus.AuthorizationNameLabel}
 		labels = labels.Merge(model.LabelSet{
-			authorizationKindLabel: model.LabelValue("authorizationpolicy"),
+			prometheus.AuthorizationKindLabel: model.LabelValue("authorizationpolicy"),
 		})
 		if req.GetSelector().GetResource().GetName() != "" {
 			labels = labels.Merge(model.LabelSet{
-				authorizationNameLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
+				prometheus.AuthorizationNameLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
 			})
 		}
 	} else if req.GetSelector().GetResource().GetType() == k8s.HTTPRoute {
 		// note that metricToKey assumes the label ordering (..., namespace, name)
-		groupBy = model.LabelNames{serverNameLabel, serverKindLabel, routeNameLabel, routeKindLabel, namespaceLabel, routeNameLabel}
+		groupBy = model.LabelNames{prometheus.ServerNameLabel, prometheus.ServerKindLabel, prometheus.RouteNameLabel, prometheus.RouteKindLabel, prometheus.NamespaceLabel, prometheus.RouteNameLabel}
 		if req.GetSelector().GetResource().GetName() != "" {
 			labels = labels.Merge(model.LabelSet{
-				routeNameLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
+				prometheus.RouteNameLabel: model.LabelValue(req.GetSelector().GetResource().GetName()),
 			})
 		}
 	}
@@ -220,7 +221,7 @@ func buildServerRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet
 		// if --to flag is passed, Calculate traffic sent to the policy resource
 		// with additional filtering narrowing down to the workload
 		// it is sent to.
-		labels = labels.Merge(promQueryLabels(out.ToResource))
+		labels = labels.Merge(prometheus.QueryLabels(out.ToResource))
 
 	// No FromResource case as policy metrics are all inbound
 	default:

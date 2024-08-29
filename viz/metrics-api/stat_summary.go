@@ -9,6 +9,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	"github.com/linkerd/linkerd2/viz/pkg/prometheus"
 	vizutil "github.com/linkerd/linkerd2/viz/pkg/util"
 	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
@@ -124,7 +125,7 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 		statReq.Selector.Resource.Type = resource
 
 		go func() {
-			if isNonK8sResourceQuery(statReq.GetSelector().GetResource().GetType()) {
+			if prometheus.IsNonK8sResourceQuery(statReq.GetSelector().GetResource().GetType()) {
 				resultChan <- s.nonK8sResourceQuery(ctx, statReq)
 			} else if statReq.GetSelector().GetResource().GetType() == k8s.Service {
 				resultChan <- s.serviceResourceQuery(ctx, statReq)
@@ -397,10 +398,6 @@ func (s *grpcServer) nonK8sResourceQuery(ctx context.Context, req *pb.StatSummar
 	return resourceResult{res: &rsp, err: nil}
 }
 
-func isNonK8sResourceQuery(resourceType string) bool {
-	return resourceType == k8s.Authority
-}
-
 // get the list of objects for which we want to return results
 func getResultKeys(
 	req *pb.StatSummaryRequest,
@@ -430,23 +427,23 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 
 	switch out := req.Outbound.(type) {
 	case *pb.StatSummaryRequest_ToResource:
-		labelNames = promGroupByLabelNames(req.Selector.Resource)
+		labelNames = prometheus.GroupByLabelNames(req.Selector.Resource)
 
-		labels = labels.Merge(promDstQueryLabels(out.ToResource))
-		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
+		labels = labels.Merge(prometheus.DstQueryLabels(out.ToResource))
+		labels = labels.Merge(prometheus.QueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	case *pb.StatSummaryRequest_FromResource:
-		labelNames = promDstGroupByLabelNames(req.Selector.Resource)
+		labelNames = prometheus.DstGroupByLabelNames(req.Selector.Resource)
 
-		labels = labels.Merge(promQueryLabels(out.FromResource))
-		labels = labels.Merge(promDstQueryLabels(req.Selector.Resource))
+		labels = labels.Merge(prometheus.QueryLabels(out.FromResource))
+		labels = labels.Merge(prometheus.DstQueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("outbound"))
 
 	default:
-		labelNames = promGroupByLabelNames(req.Selector.Resource)
+		labelNames = prometheus.GroupByLabelNames(req.Selector.Resource)
 
-		labels = labels.Merge(promQueryLabels(req.Selector.Resource))
+		labels = labels.Merge(prometheus.QueryLabels(req.Selector.Resource))
 		labels = labels.Merge(promDirectionLabels("inbound"))
 	}
 
@@ -466,11 +463,11 @@ func buildServiceRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSe
 		// if --to flag is passed, Calculate traffic sent to the service
 		// with additional filtering narrowing down to the workload
 		// it is sent to.
-		labels = labels.Merge(promDstQueryLabels(out.ToResource))
+		labels = labels.Merge(prometheus.DstQueryLabels(out.ToResource))
 
 	case *pb.StatSummaryRequest_FromResource:
 		// if --from flag is passed, FromResource is never a service here
-		labels = labels.Merge(promQueryLabels(out.FromResource))
+		labels = labels.Merge(prometheus.QueryLabels(out.FromResource))
 
 	default:
 		// no extra labels needed
@@ -532,7 +529,7 @@ func (s *grpcServer) getServiceMetrics(ctx context.Context, req *pb.StatSummaryR
 	}
 	authority := fmt.Sprintf("%s.%s.svc.%s", service, namespace, s.clusterDomain)
 
-	reqLabels := generateLabelStringWithRegex(labels, string(authorityLabel), authority)
+	reqLabels := generateLabelStringWithRegex(labels, string(prometheus.AuthorityLabel), authority)
 
 	promQueries := map[promType]string{
 		promRequests: fmt.Sprintf(reqQuery, reqLabels, timeWindow, groupBy.String()),
@@ -541,7 +538,7 @@ func (s *grpcServer) getServiceMetrics(ctx context.Context, req *pb.StatSummaryR
 	if req.TcpStats {
 		// Service stats always need to have `peer=dst`, cuz there is no `src` with `authority` label
 		tcpLabels := labels.Merge(promPeerLabel("dst"))
-		tcpLabelString := generateLabelStringWithRegex(tcpLabels, string(authorityLabel), authority)
+		tcpLabelString := generateLabelStringWithRegex(tcpLabels, string(prometheus.AuthorityLabel), authority)
 		promQueries[promTCPConnections] = fmt.Sprintf(tcpConnectionsQuery, tcpLabelString, groupBy.String())
 		promQueries[promTCPReadBytes] = fmt.Sprintf(tcpReadBytesQuery, tcpLabelString, timeWindow, groupBy.String())
 		promQueries[promTCPWriteBytes] = fmt.Sprintf(tcpWriteBytesQuery, tcpLabelString, timeWindow, groupBy.String())
@@ -610,16 +607,16 @@ func processPrometheusMetrics(req *pb.StatSummaryRequest, results []promResult, 
 
 			if authzStats[resource] == nil {
 				srv := pb.Resource{
-					Type: string(sample.Metric[serverKindLabel]),
-					Name: string(sample.Metric[serverNameLabel]),
+					Type: string(sample.Metric[prometheus.ServerKindLabel]),
+					Name: string(sample.Metric[prometheus.ServerNameLabel]),
 				}
 				route := pb.Resource{
-					Type: string(sample.Metric[routeKindLabel]),
-					Name: string(sample.Metric[routeNameLabel]),
+					Type: string(sample.Metric[prometheus.RouteKindLabel]),
+					Name: string(sample.Metric[prometheus.RouteNameLabel]),
 				}
 				authz := pb.Resource{
-					Type: string(sample.Metric[authorizationKindLabel]),
-					Name: string(sample.Metric[authorizationNameLabel]),
+					Type: string(sample.Metric[prometheus.AuthorizationKindLabel]),
+					Name: string(sample.Metric[prometheus.AuthorizationNameLabel]),
 				}
 				authzStats[resource] = &pb.ServerStats{
 					Srv:   &srv,
