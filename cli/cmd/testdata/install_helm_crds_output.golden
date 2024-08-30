@@ -12061,16 +12061,16 @@ spec:
               workloadIPs:
                 type: array
                 description: workloadIPs contains a list of IP addresses that
-                  can be used to send traffic to the workload.
+                  can be used to send traffic to the workload. This field may
+                  hold a maximum of two entries. If one entry, it can be an
+                  IPv4 or IPv6 address; if two entries it should contain one
+                  IPv4 address and one IPv6 address.
                 items:
                   type: object
                   properties:
                     ip:
                       type: string
-                # TODO: relax this in the future when ipv6 is supported
-                # an external workload (like a pod) should only
-                # support 2 interfaces
-                maxItems: 1
+                maxItems: 2
             type: object
             required:
             - meshTLS

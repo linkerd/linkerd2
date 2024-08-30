@@ -78,10 +78,9 @@ func (r *endpointsReconciler) reconcile(svc *corev1.Service, ews []*ewv1beta1.Ex
 	// Get the list of supported address types for the service
 	supportedAddrTypes := getSupportedAddressTypes(svc)
 	for _, slice := range existingSlices {
-		// If a slice has an address type that the slice does not support, then
+		// If a slice has an address type that the service does not support, then
 		// it should be deleted
-		_, supported := supportedAddrTypes[slice.AddressType]
-		if !supported {
+		if _, supported := supportedAddrTypes[slice.AddressType]; !supported {
 			toDelete = append(toDelete, slice)
 			continue
 		}
