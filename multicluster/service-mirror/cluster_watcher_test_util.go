@@ -43,7 +43,7 @@ type testEnvironment struct {
 	link            multicluster.Link
 }
 
-func (te *testEnvironment) runEnvironment(watcherQueue workqueue.RateLimitingInterface) (*k8s.API, error) {
+func (te *testEnvironment) runEnvironment(watcherQueue workqueue.TypedRateLimitingInterface[any]) (*k8s.API, error) {
 	remoteAPI, err := k8s.NewFakeAPI(te.remoteResources...)
 	if err != nil {
 		return nil, err

@@ -56,7 +56,7 @@ const (
 type EndpointsController struct {
 	k8sAPI     *k8s.API
 	log        *logging.Entry
-	queue      workqueue.RateLimitingInterface
+	queue      workqueue.TypedRateLimitingInterface[string]
 	reconciler *endpointsReconciler
 	stop       chan struct{}
 
@@ -95,7 +95,7 @@ type informerHandlers struct {
 // started with its `Start()` method.
 func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stopCh chan struct{}, exportQueueMetrics bool) (*EndpointsController, error) {
 	queueName := "endpoints_controller_workqueue"
-	workQueueConfig := workqueue.RateLimitingQueueConfig{
+	workQueueConfig := workqueue.TypedRateLimitingQueueConfig[string]{
 		Name: queueName,
 	}
 
@@ -109,7 +109,7 @@ func NewEndpointsController(k8sAPI *k8s.API, hostname, controllerNs string, stop
 	ec := &EndpointsController{
 		k8sAPI:     k8sAPI,
 		reconciler: newEndpointsReconciler(k8sAPI, managedBy, maxEndpointsQuota),
-		queue:      workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), workQueueConfig),
+		queue:      workqueue.NewTypedRateLimitingQueueWithConfig[string](workqueue.DefaultTypedControllerRateLimiter[string](), workQueueConfig),
 		stop:       stopCh,
 		log: logging.WithFields(logging.Fields{
 			"component": "external-endpoints-controller",
@@ -297,17 +297,12 @@ func (ec *EndpointsController) Start() {
 // at the same time.
 func (ec *EndpointsController) processQueue() {
 	for {
-		item, quit := ec.queue.Get()
+		key, quit := ec.queue.Get()
 		if quit {
 			ec.log.Trace("queue received shutdown signal")
 			return
 		}
 
-		key, ok := item.(string)
-		if !ok {
-			ec.log.Errorf("Found queue element of type %T, was expecting a string", item)
-			continue
-		}
 		err := ec.syncService(key)
 		ec.handleError(err, key)
 
