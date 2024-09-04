@@ -98,6 +98,12 @@ func TestNewValues(t *testing.T) {
 					"while_idle": true,
 				},
 			},
+			"livenessProbe":  map[string]interface{}{"timeoutSeconds": 1.0},
+			"readinessProbe": map[string]interface{}{"timeoutSeconds": 1.0},
+		},
+		SPValidator: map[string]interface{}{
+			"livenessProbe":  map[string]interface{}{"timeoutSeconds": 1.0},
+			"readinessProbe": map[string]interface{}{"timeoutSeconds": 1.0},
 		},
 		PolicyController: &PolicyController{
 			Image: &Image{
