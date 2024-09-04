@@ -833,7 +833,6 @@ rules:
 ###
 ### Identity Controller Service
 ###
----
 kind: Secret
 apiVersion: v1
 metadata:
