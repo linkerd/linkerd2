@@ -52,20 +52,6 @@ contributing changes.
   list][linkerd-dev], and [announcements mailing list][linkerd-announce].
 * Follow [@Linkerd][twitter] on Twitter.
 * Join the [Linkerd Slack][slack].
-* Join us in the regular online community meetings!
-
-## Community meetings
-
-We host regular online meetings for contributors, adopters, maintainers, and
-anyone else interested to connect in a synchronous fashion. These meetings
-usually take place the last Thursday of the month at 9am Pacific / 4pm UTC.
-
-* [Zoom link](https://zoom.us/my/cncflinkerd)
-* [Google calendar](https://calendar.google.com/calendar/embed?src=buoyant.io_j28ik70vrl3418f4oldkdici7o%40group.calendar.google.com)
-* [Minutes from previous meetings](https://docs.google.com/document/d/1OvXYL5Q53klQFZPokQJas72YqkWXplkPQUguFbRW7Wo/edit)
-* [Recordings from previous meetings](https://www.youtube.com/playlist?list=PLI9FkLPXDscBHP91Ud3lyJScI4ZCjRG6F)
-
-We're a friendly group, so please feel free to join us!
 
 ## Steering Committee meetings
 

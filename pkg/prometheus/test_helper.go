@@ -70,12 +70,12 @@ func (m *MockProm) Flags(ctx context.Context) (promv1.FlagsResult, error) {
 }
 
 // LabelValues performs a query for the values of the given label, time range and matchers.
-func (m *MockProm) LabelValues(ctx context.Context, label string, matches []string, startTime time.Time, endTime time.Time) (model.LabelValues, promv1.Warnings, error) {
+func (m *MockProm) LabelValues(ctx context.Context, label string, matches []string, startTime time.Time, endTime time.Time, opts ...promv1.Option) (model.LabelValues, promv1.Warnings, error) {
 	return nil, nil, nil
 }
 
 // Series finds series by label matchers.
-func (m *MockProm) Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, promv1.Warnings, error) {
+func (m *MockProm) Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time, opts ...promv1.Option) ([]model.LabelSet, promv1.Warnings, error) {
 	return nil, nil, nil
 }
 
@@ -93,7 +93,7 @@ func (m *MockProm) Targets(ctx context.Context) (promv1.TargetsResult, error) {
 }
 
 // LabelNames returns the unique label names present in the block in sorted order by given time range and matchers.
-func (m *MockProm) LabelNames(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]string, promv1.Warnings, error) {
+func (m *MockProm) LabelNames(ctx context.Context, matches []string, startTime time.Time, endTime time.Time, opts ...promv1.Option) ([]string, promv1.Warnings, error) {
 	return []string{}, nil, nil
 }
 
@@ -128,7 +128,7 @@ func (m *MockProm) QueryExemplars(ctx context.Context, query string, startTime t
 }
 
 // TSDB returns the cardinality statistics.
-func (m *MockProm) TSDB(ctx context.Context) (promv1.TSDBResult, error) {
+func (m *MockProm) TSDB(ctx context.Context, opts ...promv1.Option) (promv1.TSDBResult, error) {
 	return promv1.TSDBResult{}, nil
 }
 
