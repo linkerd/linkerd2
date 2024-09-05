@@ -55,6 +55,41 @@ subjects:
   name: metrics-api
   namespace: linkerd-viz
 ---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: prometheus-credentials
+  namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: viz
+    component: metrics-api
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: metrics-api-prometheus-credentials
+  namespace: linkerd-viz
+  labels:
+    linkerd.io/extension: viz
+    component: metrics-api
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: prometheus-credentials
+subjects:
+- kind: ServiceAccount
+  name: metrics-api
+  namespace: linkerd-viz
+---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
@@ -368,7 +403,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: b73fb1bf343c4203fbab8ee108c5eba2e07d184177e204677dc83d4cad2cd12b
+        checksum/config: 02e1d99894d26cb0b2a39e2b73ad02b39d1f64661cca88c219fc441ee9c7e67b
         linkerd.io/created-by: linkerd/helm dev-undefined
         linkerd.io/inject: enabled
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
@@ -388,6 +423,7 @@ spec:
         - -cluster-domain=cluster.local
         - -prometheus-url=external-prom.com
         - -enable-pprof=false
+        - -viz-namespace=linkerd-viz
         image: cr.l5d.io/linkerd/metrics-api:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:

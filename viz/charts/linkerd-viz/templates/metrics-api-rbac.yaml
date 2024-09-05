@@ -44,6 +44,43 @@ subjects:
   name: metrics-api
   namespace: {{.Release.Namespace}}
 ---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: prometheus-credentials
+  namespace: {{.Release.Namespace}}
+  labels:
+    linkerd.io/extension: viz
+    component: metrics-api
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: metrics-api-prometheus-credentials
+  namespace: {{.Release.Namespace}}
+  labels:
+    linkerd.io/extension: viz
+    component: metrics-api
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: prometheus-credentials
+subjects:
+- kind: ServiceAccount
+  name: metrics-api
+  namespace: {{.Release.Namespace}}
+---
 kind: ServiceAccount
 apiVersion: v1
 metadata:

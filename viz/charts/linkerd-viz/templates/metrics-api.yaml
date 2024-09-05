@@ -88,7 +88,11 @@ spec:
         {{- else }}
         {{ fail "Please enable `linkerd-prometheus` or provide `prometheusUrl` for the viz extension to function properly"}}
         {{- end }}
+        {{- if .Values.prometheusCredsSecret }}
+        - -prometheus-creds-secret={{.Values.prometheusCredsSecret}}
+        {{- end}}
         - -enable-pprof={{.Values.enablePprof | default false}}
+        - -viz-namespace={{.Release.Namespace}}
         image: {{.Values.metricsAPI.image.registry | default .Values.defaultRegistry}}/{{.Values.metricsAPI.image.name}}:{{.Values.metricsAPI.image.tag | default .Values.linkerdVersion}}
         imagePullPolicy: {{.Values.metricsAPI.image.pullPolicy | default .Values.defaultImagePullPolicy}}
         livenessProbe:
