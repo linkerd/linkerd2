@@ -85,6 +85,7 @@ Kubernetes: `>=1.22.0-0`
 | gateway.probe.seconds | int | `3` | The interval (in seconds) between liveness probes |
 | gateway.replicas | int | `1` | Number of replicas for the gateway pod |
 | gateway.serviceAnnotations | object | `{}` | Annotations to add to the gateway service |
+| gateway.serviceExternalTrafficPolicy | string | `""` | Set externalTrafficPolicy on gateway service |
 | gateway.serviceType | string | `"LoadBalancer"` | Service Type of gateway Service |
 | gateway.terminationGracePeriodSeconds | string | `""` | Set terminationGracePeriodSeconds on gateway deployment |
 | gateway.tolerations | list | `[]` | Tolerations for the gateway pod |
