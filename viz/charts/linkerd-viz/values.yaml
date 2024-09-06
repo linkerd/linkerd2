@@ -75,11 +75,11 @@ enablePSP: false
 # -- url of external prometheus instance
 prometheusUrl: ""
 
-# -- name of the prometheus credentials secret
-# If this is set, the metrics-api will use basic auth to connect to prometheus
-# and load the user and password from the "user" and "password" keys
-# respectively in the given secret. The secret must be in the same namespace
-# and must exist before the metrics-api is deployed.
+# -- Name of the prometheus credentials secret. If this is set, the metrics-api
+# will use basic auth to connect to prometheus and load the user and password
+# from the "user" and "password" keys respectively in the given secret. The
+# secret must be in the same namespace and must exist before the metrics-api is
+# deployed.
 prometheusCredsSecret: ""
 
 # -- url of external jaeger instance

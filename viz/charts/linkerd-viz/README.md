@@ -160,7 +160,7 @@ Kubernetes: `>=1.22.0-0`
 | prometheus.scrapeConfigs | string | `nil` | A scrapeConfigs section specifies a set of targets and parameters describing how to scrape them. |
 | prometheus.sidecarContainers | string | `nil` | A sidecarContainers section specifies a list of secondary containers to run in the prometheus pod e.g. to export data to non-prometheus systems |
 | prometheus.tolerations | string | `nil` | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information |
-| prometheusCredsSecret | string | `""` | name of the prometheus credentials secret If this is set, the metrics-api will use basic auth to connect to prometheus and load the user and password from the "user" and "password" keys respectively in the given secret. The secret must be in the same namespace and must exist before the metrics-api is deployed. |
+| prometheusCredsSecret | string | `""` | Name of the prometheus credentials secret. If this is set, the metrics-api will use basic auth to connect to prometheus and load the user and password from the "user" and "password" keys respectively in the given secret. The secret must be in the same namespace and must exist before the metrics-api is deployed. |
 | prometheusUrl | string | `""` | url of external prometheus instance |
 | revisionHistoryLimit | int | `10` | Specifies the number of old ReplicaSets to retain to allow rollback. |
 | tap.GID | string | `nil` | GID for the tap component |
