@@ -159,9 +159,11 @@ Kubernetes: `>=1.22.0-0`
 | debugContainer.image.pullPolicy | string | imagePullPolicy | Pull policy for the debug container image |
 | debugContainer.image.version | string | linkerdVersion | Tag for the debug container image |
 | deploymentStrategy | object | `{"rollingUpdate":{"maxSurge":"25%","maxUnavailable":"25%"}}` | default kubernetes deployment strategy |
+| destinationController.livenessProbe.timeoutSeconds | int | `1` |  |
 | destinationController.meshedHttp2ClientProtobuf.keep_alive.interval.seconds | int | `10` |  |
 | destinationController.meshedHttp2ClientProtobuf.keep_alive.timeout.seconds | int | `3` |  |
 | destinationController.meshedHttp2ClientProtobuf.keep_alive.while_idle | bool | `true` |  |
+| destinationController.readinessProbe.timeoutSeconds | int | `1` |  |
 | disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob |
 | disableIPv6 | bool | `true` | disables routing IPv6 traffic in addition to IPv4 traffic through the proxy (IPv6 routing only available as of proxy-init v2.3.0 and linkerd-cni v1.4.0) |
 | enableEndpointSlices | bool | `true` | enables the use of EndpointSlice informers for the destination service; enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on |
@@ -179,6 +181,8 @@ Kubernetes: `>=1.22.0-0`
 | identity.issuer.tls.keyPEM | string | `""` | Key for the issuer certificate (ECDSA). It must be provided during install |
 | identity.kubeAPI.clientBurst | int | `200` | Burst value over clientQPS |
 | identity.kubeAPI.clientQPS | int | `100` | Maximum QPS sent to the kube-apiserver before throttling. See [token bucket rate limiter implementation](https://github.com/kubernetes/client-go/blob/v12.0.0/util/flowcontrol/throttle.go) |
+| identity.livenessProbe.timeoutSeconds | int | `1` |  |
+| identity.readinessProbe.timeoutSeconds | int | `1` |  |
 | identity.serviceAccountTokenProjection | bool | `true` | Use [Service Account token Volume projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection) for pod validation instead of the default token |
 | identityTrustAnchorsPEM | string | `""` | Trust root certificate (ECDSA). It must be provided during install. |
 | identityTrustDomain | string | clusterDomain | Trust domain used for identity |
@@ -207,8 +211,10 @@ Kubernetes: `>=1.22.0-0`
 | policyController.image.name | string | `"cr.l5d.io/linkerd/policy-controller"` | Docker image for the policy controller |
 | policyController.image.pullPolicy | string | imagePullPolicy | Pull policy for the policy controller container image |
 | policyController.image.version | string | linkerdVersion | Tag for the policy controller container image |
+| policyController.livenessProbe.timeoutSeconds | int | `1` |  |
 | policyController.logLevel | string | `"info"` | Log level for the policy controller |
 | policyController.probeNetworks | list | `["0.0.0.0/0","::/0"]` | The networks from which probes are performed.  By default, all networks are allowed so that all probes are authorized. |
+| policyController.readinessProbe.timeoutSeconds | int | `1` |  |
 | policyController.resources | object | `{"cpu":{"limit":"","request":""},"ephemeral-storage":{"limit":"","request":""},"memory":{"limit":"","request":""}}` | policy controller resource requests & limits |
 | policyController.resources.cpu.limit | string | `""` | Maximum amount of CPU units that the policy controller can use |
 | policyController.resources.cpu.request | string | `""` | Amount of CPU units that the policy controller requests |
@@ -301,11 +307,14 @@ Kubernetes: `>=1.22.0-0`
 | proxyInjector.injectCaFrom | string | `""` | Inject the CA bundle from a cert-manager Certificate. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-certificate-resource) for more information. |
 | proxyInjector.injectCaFromSecret | string | `""` | Inject the CA bundle from a Secret. If set, the `cert-manager.io/inject-ca-from-secret` annotation will be added to the webhook. The Secret must have the CA Bundle stored in the `ca.crt` key and have the `cert-manager.io/allow-direct-injection` annotation set to `true`. See the cert-manager [CA Injector Docs](https://cert-manager.io/docs/concepts/ca-injector/#injecting-ca-data-from-a-secret-resource) for more information. |
 | proxyInjector.keyPEM | string | `""` | Certificate key for the proxy injector. If not provided and not using an external secret then Helm will generate one. |
+| proxyInjector.livenessProbe.timeoutSeconds | int | `1` |  |
 | proxyInjector.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]},{"key":"kubernetes.io/metadata.name","operator":"NotIn","values":["kube-system","cert-manager"]}]}` | Namespace selector used by admission webhook. |
 | proxyInjector.objectSelector | object | `{"matchExpressions":[{"key":"linkerd.io/control-plane-component","operator":"DoesNotExist"},{"key":"linkerd.io/cni-resource","operator":"DoesNotExist"}]}` | Object selector used by admission webhook. |
+| proxyInjector.readinessProbe.timeoutSeconds | int | `1` |  |
 | proxyInjector.timeoutSeconds | int | `10` | Timeout in seconds before the API Server cancels a request to the proxy injector. If timeout is exceeded, the webhookfailurePolicy is used. |
 | revisionHistoryLimit | int | `10` | Specifies the number of old ReplicaSets to retain to allow rollback. |
 | runtimeClassName | string | `""` | Runtime Class Name for all the pods |
+| spValidator | object | `{"livenessProbe":{"timeoutSeconds":1},"readinessProbe":{"timeoutSeconds":1}}` | SP validator configuration |
 | webhookFailurePolicy | string | `"Ignore"` | Failure policy for the proxy injector |
 
 ----------------------------------------------
