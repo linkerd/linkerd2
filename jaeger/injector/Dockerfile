@@ -23,6 +23,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/injector -tags 
 
 ## package runtime
 FROM scratch
+LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
 COPY --from=golang /out/injector /injector
