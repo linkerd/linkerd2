@@ -18,7 +18,6 @@ import (
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/config"
 	log "github.com/sirupsen/logrus"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func main() {
@@ -27,10 +26,10 @@ func main() {
 	addr := cmd.String("addr", ":8085", "address to serve on")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 	prometheusURL := cmd.String("prometheus-url", "", "prometheus url")
-	prometheusCredentials := cmd.String("prometheus-creds-secret", "", "name of the Secret containing prometheus credentials")
+	prometheusUser := cmd.String("prometheus-user-file", "", "file containing username for prometheus basic auth")
+	prometheusPassword := cmd.String("prometheus-password-file", "", "file containing password for prometheus basic auth")
 	metricsAddr := cmd.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-	vizNamespace := cmd.String("viz-namespace", "linkerd-viz", "namespace in which Linkerd-Viz is installed")
 	ignoredNamespaces := cmd.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
 	clusterDomain := cmd.String("cluster-domain", "cluster.local", "kubernetes cluster domain")
 	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
@@ -68,16 +67,22 @@ func main() {
 	var prometheusClient promApi.Client
 	if *prometheusURL != "" {
 		promConfig := promApi.Config{Address: *prometheusURL}
-		if *prometheusCredentials != "" {
-			secret, err := k8sAPI.Client.CoreV1().Secrets(*vizNamespace).Get(ctx, *prometheusCredentials, metav1.GetOptions{})
+		if *prometheusUser != "" && *prometheusPassword != "" {
+			user, err := os.ReadFile(*prometheusUser)
 			if err != nil {
-				log.Fatal(err.Error())
+				log.Fatalf("failed to read file containing username for prometheus basic auth: %s", err)
+			}
+			password, err := os.ReadFile(*prometheusPassword)
+			if err != nil {
+				log.Fatalf("failed to read file containing password for prometheus basic auth: %s", err)
 			}
 			promConfig.RoundTripper = config.NewBasicAuthRoundTripper(
-				config.NewInlineSecret(string(secret.Data["user"])),
-				config.NewInlineSecret(string(secret.Data["password"])),
+				config.NewInlineSecret(string(user)),
+				config.NewInlineSecret(string(password)),
 				promApi.DefaultRoundTripper,
 			)
+		} else if *prometheusUser != "" || *prometheusPassword != "" {
+			log.Fatal("both prometheus-user-file and prometheus-password-file must be set")
 		}
 		prometheusClient, err = promApi.NewClient(promConfig)
 		if err != nil {
