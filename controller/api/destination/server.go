@@ -172,7 +172,82 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		return status.Errorf(codes.Internal, "Failed to get service %s", dest.GetPath())
 	}
 
-	if cluster, found := svc.Labels[labels.RemoteDiscoveryLabel]; found {
+	remoteDiscovery, remoteDiscoveryFound := svc.Annotations["multicluster.linkerd.io/remote-discovery"]
+	localDiscovery, localDiscoveryFound := svc.Annotations["multicluster.linkerd.io/local-discovery"]
+
+	if remoteDiscoveryFound || localDiscoveryFound {
+		remotes := strings.Split(remoteDiscovery, ",")
+		for _, remote := range remotes {
+			parts := strings.Split(remote, "@")
+			remoteSvc := parts[0]
+			cluster := parts[1]
+			remoteWatcher, remoteConfig, found := s.clusterStore.Get(cluster)
+			if !found {
+				log.Errorf("Failed to get remote cluster %s", cluster)
+				return status.Errorf(codes.NotFound, "Remote cluster not found: %s", cluster)
+			}
+			translator := newEndpointTranslator(
+				s.config.ControllerNS,
+				remoteConfig.TrustDomain,
+				s.config.EnableH2Upgrade,
+				false, // Disable endpoint filtering for remote discovery.
+				s.config.EnableIPv6,
+				s.config.ExtEndpointZoneWeights,
+				s.config.MeshedHttp2ClientParams,
+				fmt.Sprintf("%s.%s.svc.%s:%d", remoteSvc, service.Namespace, remoteConfig.ClusterDomain, port),
+				token.NodeName,
+				s.config.DefaultOpaquePorts,
+				s.metadataAPI,
+				stream,
+				streamEnd,
+				log,
+			)
+			err = remoteWatcher.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
+			if err != nil {
+				var ise watcher.InvalidService
+				if errors.As(err, &ise) {
+					log.Debugf("Invalid remote discovery service %s", dest.GetPath())
+					return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+				}
+				log.Errorf("Failed to subscribe to remote disocvery service %q in cluster %s: %s", dest.GetPath(), cluster, err)
+				return err
+			}
+			defer remoteWatcher.Unsubscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
+		}
+
+		// Local discovery
+		translator := newEndpointTranslator(
+			s.config.ControllerNS,
+			s.config.IdentityTrustDomain,
+			s.config.EnableH2Upgrade,
+			true,
+			s.config.EnableIPv6,
+			s.config.ExtEndpointZoneWeights,
+			s.config.MeshedHttp2ClientParams,
+			localDiscovery,
+			token.NodeName,
+			s.config.DefaultOpaquePorts,
+			s.metadataAPI,
+			stream,
+			streamEnd,
+			log,
+		)
+		translator.Start()
+		defer translator.Stop()
+
+		err = s.endpoints.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: localDiscovery}, port, instanceID, translator)
+		if err != nil {
+			var ise watcher.InvalidService
+			if errors.As(err, &ise) {
+				log.Debugf("Invalid service %s", dest.GetPath())
+				return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
+			}
+			log.Errorf("Failed to subscribe to %s: %s", dest.GetPath(), err)
+			return err
+		}
+		defer s.endpoints.Unsubscribe(service, port, instanceID, translator)
+
+	} else if cluster, found := svc.Labels[labels.RemoteDiscoveryLabel]; found {
 		// Remote discovery
 		remoteSvc, found := svc.Labels[labels.RemoteServiceLabel]
 		if !found {
