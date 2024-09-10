@@ -80,9 +80,11 @@ Kubernetes: `>=1.22.0-0`
 | gateway.nodeSelector | object | `{}` | Node selectors for the gateway pod |
 | gateway.pauseImage | string | `"gcr.io/google_containers/pause:3.2"` | The pause container to use |
 | gateway.port | int | `4143` | The port on which all the gateway will accept incoming traffic |
+| gateway.probe.failureThreshold | int | `3` | Minimum consecutive failures for the probe to be considered failed |
 | gateway.probe.path | string | `"/ready"` | The path that will be used by remote clusters for determining whether the gateway is alive |
 | gateway.probe.port | int | `4191` | The port used for liveliness probing |
 | gateway.probe.seconds | int | `3` | The interval (in seconds) between liveness probes |
+| gateway.probe.timeout | string | `"30s"` | Probe request timeout (in go's time.Duration format) |
 | gateway.replicas | int | `1` | Number of replicas for the gateway pod |
 | gateway.serviceAnnotations | object | `{}` | Annotations to add to the gateway service |
 | gateway.serviceExternalTrafficPolicy | string | `""` | Set externalTrafficPolicy on gateway service |
