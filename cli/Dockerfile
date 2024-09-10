@@ -76,6 +76,7 @@ RUN CGO_ENABLED=0 GOOS=windows go build -o /out/linkerd -tags prod -mod=readonly
 #
 
 FROM scratch as linux-amd64
+LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 COPY LICENSE /linkerd/LICENSE
 COPY --from=linux-amd64-full /out/linkerd /out/linkerd-linux-amd64
 # `ENTRYPOINT` prevents `docker build` from otherwise failing with "Error
@@ -83,31 +84,37 @@ COPY --from=linux-amd64-full /out/linkerd /out/linkerd-linux-amd64
 ENTRYPOINT ["/out/linkerd-linux-amd64"]
 
 FROM scratch as linux-arm64
+LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 COPY LICENSE /linkerd/LICENSE
 COPY --from=linux-arm64-full /out/linkerd /out/linkerd-linux-arm64
 ENTRYPOINT ["/out/linkerd-linux-arm64"]
 
 FROM scratch as linux-arm
+LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 COPY LICENSE /linkerd/LICENSE
 COPY --from=linux-arm64-full /out/linkerd /out/linkerd-linux-arm
 ENTRYPOINT ["/out/linkerd-linux-arm"]
 
 FROM scratch as darwin
+LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 COPY LICENSE /linkerd/LICENSE
 COPY --from=darwin-full /out/linkerd /out/linkerd-darwin
 ENTRYPOINT ["/out/linkerd-darwin"]
 
 FROM scratch as darwin-arm64
+LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 COPY LICENSE /linkerd/LICENSE
 COPY --from=darwin-arm64-full /out/linkerd /out/linkerd-darwin-arm64
 ENTRYPOINT ["/out/linkerd-darwin-arm64"]
 
 FROM scratch as windows
+LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 COPY LICENSE /linkerd/LICENSE
 COPY --from=windows-full /out/linkerd /out/linkerd-windows
 ENTRYPOINT ["/out/linkerd-windows"]
 
 FROM scratch as multi-arch
+LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 COPY LICENSE /linkerd/LICENSE
 COPY --from=linux-amd64-full /out/linkerd /out/linkerd-linux-amd64
 COPY --from=linux-arm64-full /out/linkerd /out/linkerd-linux-arm64

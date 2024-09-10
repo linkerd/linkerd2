@@ -22,5 +22,6 @@ RUN --mount=type=cache,target=target \
     mv "target/$target/$BUILD_TYPE/linkerd-policy-controller" /tmp/
 
 FROM scratch as runtime
+LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 COPY --from=controller /tmp/linkerd-policy-controller /bin/
 ENTRYPOINT ["/bin/linkerd-policy-controller"]

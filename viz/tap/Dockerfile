@@ -26,6 +26,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/tap -tags prod 
 
 ## package runtime
 FROM scratch
+LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 COPY LICENSE /linkerd/LICENSE
 COPY --from=golang /out/tap /tap
 

@@ -22,6 +22,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/metrics-api -ta
 
 ## package runtime
 FROM scratch
+LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 COPY LICENSE /linkerd/LICENSE
 COPY --from=golang /out/metrics-api /metrics-api
 COPY --from=golang /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/

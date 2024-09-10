@@ -48,6 +48,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -mod=readonly -o web/we
 
 ## package it all up
 FROM scratch
+LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 WORKDIR /linkerd
 
 COPY LICENSE .

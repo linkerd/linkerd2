@@ -44,6 +44,7 @@ COPY proxy-identity proxy-identity
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/proxy-identity -mod=readonly -ldflags "-s -w" ./proxy-identity
 
 FROM $RUNTIME_IMAGE as runtime
+LABEL org.opencontainers.image.source=https://github.com/linkerd/linkerd2
 COPY --from=fetch /build/target/proxy/LICENSE /usr/lib/linkerd/LICENSE
 COPY --from=fetch /build/proxy-version /usr/lib/linkerd/linkerd2-proxy-version.txt
 COPY --from=fetch /build/linkerd2-proxy /usr/lib/linkerd/linkerd2-proxy
