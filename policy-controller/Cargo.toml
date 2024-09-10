@@ -41,7 +41,7 @@ default-features = false
 features = ["derive", "env", "std"]
 
 [dependencies.kube]
-version = "0.87.1"
+version = "0.94.1"
 default-features = false
 features = ["admission", "derive"]
 

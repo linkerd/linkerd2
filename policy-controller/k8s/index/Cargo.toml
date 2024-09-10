@@ -10,7 +10,7 @@ ahash = "0.8"
 anyhow = "1"
 futures = { version = "0.3", default-features = false }
 http = "0.2"
-kube = { version = "0.87.1", default-features = false, features = [
+kube = { version = "0.94.1", default-features = false, features = [
     "client",
     "derive",
     "runtime",
