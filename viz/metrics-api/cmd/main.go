@@ -16,6 +16,7 @@ import (
 	api "github.com/linkerd/linkerd2/viz/metrics-api"
 	promApi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/config"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -25,6 +26,8 @@ func main() {
 	addr := cmd.String("addr", ":8085", "address to serve on")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 	prometheusURL := cmd.String("prometheus-url", "", "prometheus url")
+	prometheusUser := cmd.String("prometheus-user-file", "", "file containing username for prometheus basic auth")
+	prometheusPassword := cmd.String("prometheus-password-file", "", "file containing password for prometheus basic auth")
 	metricsAddr := cmd.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	ignoredNamespaces := cmd.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
@@ -63,7 +66,25 @@ func main() {
 
 	var prometheusClient promApi.Client
 	if *prometheusURL != "" {
-		prometheusClient, err = promApi.NewClient(promApi.Config{Address: *prometheusURL})
+		promConfig := promApi.Config{Address: *prometheusURL}
+		if *prometheusUser != "" && *prometheusPassword != "" {
+			user, err := os.ReadFile(*prometheusUser)
+			if err != nil {
+				log.Fatalf("failed to read file containing username for prometheus basic auth: %s", err)
+			}
+			password, err := os.ReadFile(*prometheusPassword)
+			if err != nil {
+				log.Fatalf("failed to read file containing password for prometheus basic auth: %s", err)
+			}
+			promConfig.RoundTripper = config.NewBasicAuthRoundTripper(
+				config.NewInlineSecret(string(user)),
+				config.NewInlineSecret(string(password)),
+				promApi.DefaultRoundTripper,
+			)
+		} else if *prometheusUser != "" || *prometheusPassword != "" {
+			log.Fatal("both prometheus-user-file and prometheus-password-file must be set")
+		}
+		prometheusClient, err = promApi.NewClient(promConfig)
 		if err != nil {
 			log.Fatal(err.Error())
 		}

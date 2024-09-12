@@ -1,13 +1,17 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
 	vizHealthCheck "github.com/linkerd/linkerd2/viz/pkg/healthcheck"
+	promApi "github.com/prometheus/client_golang/api"
+	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 )
 
 // CheckClientOrExit builds a new Viz API client and executes default status
@@ -60,4 +64,46 @@ func exitOnError(result *healthcheck.CheckResult) {
 
 		os.Exit(1)
 	}
+}
+
+func NewPrometheusClient(ctx context.Context, hcOptions vizHealthCheck.VizOptions, addr string) (promv1.API, error) {
+	if addr == "" {
+		checks := []healthcheck.CategoryID{
+			healthcheck.KubernetesAPIChecks,
+		}
+		hc := vizHealthCheck.NewHealthChecker(checks, &hcOptions)
+		hc.AppendCategories(hc.VizCategory(false))
+		hc.RunChecks(exitOnError)
+
+		if hc.ExternalPrometheusURL() == "" {
+			portforward, err := k8s.NewPortForward(
+				ctx,
+				hc.KubeAPIClient(),
+				hc.VizNamespace(),
+				"prometheus",
+				"localhost",
+				0,
+				9090,
+				false,
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			addr = fmt.Sprintf("http://%s", portforward.AddressAndPort())
+
+			if err = portforward.Init(); err != nil {
+				return nil, err
+			}
+		} else {
+			addr = hc.ExternalPrometheusURL()
+		}
+	}
+
+	promClient, err := promApi.NewClient(promApi.Config{Address: addr})
+	if err != nil {
+		return nil, err
+	}
+
+	return promv1.NewAPI(promClient), nil
 }

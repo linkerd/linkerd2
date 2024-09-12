@@ -4,7 +4,6 @@
 ### Identity Controller Service
 ###
 {{ if and (.Values.identity.issuer) (eq .Values.identity.issuer.scheme "linkerd.io/tls") -}}
----
 kind: Secret
 apiVersion: v1
 metadata:
@@ -19,9 +18,9 @@ metadata:
 data:
   crt.pem: {{b64enc (required "Please provide the identity issuer certificate" .Values.identity.issuer.tls.crtPEM | trim)}}
   key.pem: {{b64enc (required "Please provide the identity issue private key" .Values.identity.issuer.tls.keyPEM | trim)}}
+---
 {{- end}}
 {{ if not (.Values.identity.externalCA) -}}
----
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -35,8 +34,8 @@ metadata:
     {{ include "partials.annotations.created-by" . }}
 data:
   ca-bundle.crt: |-{{.Values.identityTrustAnchorsPEM | trim | nindent 4}}
-{{- end}}
 ---
+{{- end}}
 kind: Service
 apiVersion: v1
 metadata:
@@ -76,8 +75,8 @@ spec:
   - name: grpc
     port: 8080
     targetPort: 8080
-{{- if .Values.enablePodDisruptionBudget }}
 ---
+{{- if .Values.enablePodDisruptionBudget }}
 kind: PodDisruptionBudget
 apiVersion: policy/v1
 metadata:
@@ -94,8 +93,8 @@ spec:
   selector:
     matchLabels:
       linkerd.io/control-plane-component: identity
-{{- end }}
 ---
+{{- end }}
 {{- $tree := deepCopy . }}
 {{ $_ := set $tree.Values.proxy "workloadKind" "deployment" -}}
 {{ $_ := set $tree.Values.proxy "component" "linkerd-identity" -}}
@@ -185,6 +184,9 @@ spec:
             path: /ping
             port: 9990
           initialDelaySeconds: 10
+          {{- with (.Values.identity.livenessProbe).timeoutSeconds }}
+          timeoutSeconds: {{ . }}
+          {{- end }}
         name: identity
         ports:
         - containerPort: 8080
@@ -196,6 +198,9 @@ spec:
           httpGet:
             path: /ready
             port: 9990
+          {{- with (.Values.identity.readinessProbe).timeoutSeconds }}
+          timeoutSeconds: {{ . }}
+          {{- end }}
         {{- if .Values.identityResources -}}
         {{- include "partials.resources" .Values.identityResources | nindent 8 }}
         {{- end }}

@@ -235,6 +235,9 @@ spec:
             path: /ping
             port: 9996
           initialDelaySeconds: 10
+          {{- with (.Values.destinationController.livenessProbe).timeoutSeconds }}
+          timeoutSeconds: {{ . }}
+          {{- end }}
         name: destination
         ports:
         - containerPort: 8086
@@ -246,6 +249,9 @@ spec:
           httpGet:
             path: /ready
             port: 9996
+          {{- with (.Values.destinationController.readinessProbe).timeoutSeconds }}
+          timeoutSeconds: {{ . }}
+          {{- end }}
         {{- if .Values.destinationResources -}}
         {{- include "partials.resources" .Values.destinationResources | nindent 8 }}
         {{- end }}
@@ -283,6 +289,9 @@ spec:
             path: /ping
             port: 9997
           initialDelaySeconds: 10
+          {{- with ((.Values.spValidator).livenessProbe).timeoutSeconds }}
+          timeoutSeconds: {{ . }}
+          {{- end }}
         name: sp-validator
         ports:
         - containerPort: 8443
@@ -294,6 +303,9 @@ spec:
           httpGet:
             path: /ready
             port: 9997
+          {{- with ((.Values.spValidator).readinessProbe).timeoutSeconds }}
+          timeoutSeconds: {{ . }}
+          {{- end }}
         {{- if .Values.spValidatorResources -}}
         {{- include "partials.resources" .Values.spValidatorResources | nindent 8 }}
         {{- end }}
@@ -343,6 +355,9 @@ spec:
           httpGet:
             path: /live
             port: admin-http
+          {{- with (.Values.policyController.livenessProbe).timeoutSeconds }}
+          timeoutSeconds: {{ . }}
+          {{- end }}
         name: policy
         ports:
         - containerPort: 8090
@@ -357,6 +372,9 @@ spec:
             path: /ready
             port: admin-http
           initialDelaySeconds: 10
+          {{- with (.Values.policyController.readinessProbe).timeoutSeconds }}
+          timeoutSeconds: {{ . }}
+          {{- end }}
         {{- if .Values.policyController.resources }}
         {{- include "partials.resources" .Values.policyController.resources | nindent 8 }}
         {{- end }}

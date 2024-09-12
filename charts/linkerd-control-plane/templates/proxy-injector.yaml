@@ -98,6 +98,9 @@ spec:
             path: /ping
             port: 9995
           initialDelaySeconds: 10
+          {{- with (.Values.proxyInjector.livenessProbe).timeoutSeconds }}
+          timeoutSeconds: {{ . }}
+          {{- end }}
         name: proxy-injector
         ports:
         - containerPort: 8443
@@ -109,6 +112,9 @@ spec:
           httpGet:
             path: /ready
             port: 9995
+          {{- with (.Values.proxyInjector.readinessProbe).timeoutSeconds }}
+          timeoutSeconds: {{ . }}
+          {{- end }}
         {{- if .Values.proxyInjectorResources -}}
         {{- include "partials.resources" .Values.proxyInjectorResources | nindent 8 }}
         {{- end }}

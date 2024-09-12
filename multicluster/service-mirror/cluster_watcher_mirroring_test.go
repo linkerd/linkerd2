@@ -28,7 +28,7 @@ type mirroringTestCase struct {
 func (tc *mirroringTestCase) run(t *testing.T) {
 	t.Run(tc.description, func(t *testing.T) {
 
-		q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+		q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]())
 		localAPI, err := tc.environment.runEnvironment(q)
 		if err != nil {
 			t.Fatal(err)
@@ -267,7 +267,7 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 	remoteAPI.Sync(nil)
 	localAPI.Sync(nil)
 
-	q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	q := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]())
 	eventRecorder := record.NewFakeRecorder(100)
 
 	watcher := RemoteClusterServiceWatcher{
@@ -358,7 +358,7 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 	remoteAPI.Sync(nil)
 	localAPI.Sync(nil)
 
-	events := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	events := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]())
 	watcher := RemoteClusterServiceWatcher{
 		link: &multicluster.Link{
 			TargetClusterName:       clusterName,
@@ -506,7 +506,7 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 	remoteAPI.Sync(nil)
 	localAPI.Sync(nil)
 
-	events := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	events := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]())
 	watcher := RemoteClusterServiceWatcher{
 		link: &multicluster.Link{
 			TargetClusterName:       clusterName,

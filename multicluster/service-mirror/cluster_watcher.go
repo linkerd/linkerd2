@@ -47,7 +47,7 @@ type (
 		eventBroadcaster        record.EventBroadcaster
 		recorder                record.EventRecorder
 		log                     *logging.Entry
-		eventsQueue             workqueue.RateLimitingInterface
+		eventsQueue             workqueue.TypedRateLimitingInterface[any]
 		requeueLimit            int
 		repairPeriod            time.Duration
 		gatewayAlive            bool
@@ -201,7 +201,7 @@ func NewRemoteClusterServiceWatcher(
 			"cluster":    clusterName,
 			"apiAddress": cfg.Host,
 		}),
-		eventsQueue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		eventsQueue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]()),
 		requeueLimit:            requeueLimit,
 		repairPeriod:            repairPeriod,
 		liveness:                liveness,

@@ -7,6 +7,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	"github.com/linkerd/linkerd2/viz/pkg/prometheus"
 	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -38,7 +39,7 @@ func (s *grpcServer) Edges(ctx context.Context, req *pb.EdgesRequest) (*pb.Edges
 		return edgesError(req, "Edges request missing Selector Resource"), nil
 	}
 
-	resourceType := promResourceType(req.GetSelector().GetResource())
+	resourceType := prometheus.ResourceType(req.GetSelector().GetResource())
 	dstResourceType := "dst_" + resourceType
 	labelsOutbound := promDirectionLabels("outbound")
 	labelsOutboundStr := generateLabelStringWithExclusion(labelsOutbound, string(resourceType), string(dstResourceType))

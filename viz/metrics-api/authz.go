@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	pb "github.com/linkerd/linkerd2/viz/metrics-api/gen/viz"
+	"github.com/linkerd/linkerd2/viz/pkg/prometheus"
 	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
 )
@@ -22,13 +23,13 @@ func (s *grpcServer) Authz(ctx context.Context, req *pb.AuthzRequest) (*pb.Authz
 		}, nil
 	}
 
-	labels := promQueryLabels(req.GetResource())
+	labels := prometheus.QueryLabels(req.GetResource())
 	reqLabels := labels.Merge(model.LabelSet{
 		"direction": model.LabelValue("inbound"),
 	})
 
 	groupBy := model.LabelNames{
-		routeKindLabel, routeNameLabel, authorizationKindLabel, authorizationNameLabel, serverKindLabel, serverNameLabel,
+		prometheus.RouteKindLabel, prometheus.RouteNameLabel, prometheus.AuthorizationKindLabel, prometheus.AuthorizationNameLabel, prometheus.ServerKindLabel, prometheus.ServerNameLabel,
 	}
 	promQueries := make(map[promType]string)
 	promQueries[promRequests] = fmt.Sprintf(reqQuery, reqLabels, req.TimeWindow, groupBy.String())
@@ -60,12 +61,12 @@ func (s *grpcServer) Authz(ctx context.Context, req *pb.AuthzRequest) (*pb.Authz
 	for _, result := range results {
 		for _, sample := range result.vec {
 			key := rowKey{
-				routeName:  string(sample.Metric[routeNameLabel]),
-				routeKind:  string(sample.Metric[routeKindLabel]),
-				serverName: string(sample.Metric[serverNameLabel]),
-				serverKind: string(sample.Metric[serverKindLabel]),
-				authzName:  string(sample.Metric[authorizationNameLabel]),
-				authzKind:  string(sample.Metric[authorizationKindLabel]),
+				routeName:  string(sample.Metric[prometheus.RouteNameLabel]),
+				routeKind:  string(sample.Metric[prometheus.RouteKindLabel]),
+				serverName: string(sample.Metric[prometheus.ServerNameLabel]),
+				serverKind: string(sample.Metric[prometheus.ServerKindLabel]),
+				authzName:  string(sample.Metric[prometheus.AuthorizationNameLabel]),
+				authzKind:  string(sample.Metric[prometheus.AuthorizationKindLabel]),
 			}
 			// Get the row if it exists or initialize an empty one
 			row := rows[key]
@@ -75,17 +76,17 @@ func (s *grpcServer) Authz(ctx context.Context, req *pb.AuthzRequest) (*pb.Authz
 					Stats:    &pb.BasicStats{},
 					SrvStats: &pb.ServerStats{
 						Srv: &pb.Resource{
-							Namespace: string(sample.Metric[namespaceLabel]),
+							Namespace: string(sample.Metric[prometheus.NamespaceLabel]),
 							Type:      key.serverKind,
 							Name:      key.serverName,
 						},
 						Route: &pb.Resource{
-							Namespace: string(sample.Metric[namespaceLabel]),
+							Namespace: string(sample.Metric[prometheus.NamespaceLabel]),
 							Type:      key.routeKind,
 							Name:      key.routeName,
 						},
 						Authz: &pb.Resource{
-							Namespace: string(sample.Metric[namespaceLabel]),
+							Namespace: string(sample.Metric[prometheus.NamespaceLabel]),
 							Type:      key.authzKind,
 							Name:      key.authzName,
 						},

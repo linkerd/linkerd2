@@ -450,6 +450,8 @@ data:
         maxSurge: 25%
         maxUnavailable: 25%
     destinationController:
+      livenessProbe:
+        timeoutSeconds: 1
       meshedHttp2ClientProtobuf:
         keep_alive:
           interval:
@@ -457,6 +459,8 @@ data:
           timeout:
             seconds: 3
           while_idle: true
+      readinessProbe:
+        timeoutSeconds: 1
     destinationProxyResources: null
     destinationResources: null
     disableHeartBeat: true
@@ -706,7 +710,11 @@ data:
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     revisionHistoryLimit: 10
-    spValidator: null
+    spValidator:
+      livenessProbe:
+        timeoutSeconds: 1
+      readinessProbe:
+        timeoutSeconds: 1
     tolerations: null
     webhookFailurePolicy: Ignore
 ---
@@ -728,7 +736,6 @@ rules:
 ###
 ### Identity Controller Service
 ###
----
 kind: Secret
 apiVersion: v1
 metadata:
@@ -1427,6 +1434,7 @@ spec:
             path: /ping
             port: 9996
           initialDelaySeconds: 10
+          timeoutSeconds: 1
         name: destination
         ports:
         - containerPort: 8086
@@ -1438,6 +1446,7 @@ spec:
           httpGet:
             path: /ready
             port: 9996
+          timeoutSeconds: 1
         securityContext:
           capabilities:
             drop:
@@ -1460,6 +1469,7 @@ spec:
             path: /ping
             port: 9997
           initialDelaySeconds: 10
+          timeoutSeconds: 1
         name: sp-validator
         ports:
         - containerPort: 8443
@@ -1471,6 +1481,7 @@ spec:
           httpGet:
             path: /ready
             port: 9997
+          timeoutSeconds: 1
         securityContext:
           capabilities:
             drop:

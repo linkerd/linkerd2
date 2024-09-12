@@ -126,6 +126,9 @@ spec:
   selector:
     app: {{.Values.gateway.name}}
   type: {{ .Values.gateway.serviceType }}
+{{- with .Values.gateway.serviceExternalTrafficPolicy }}
+  externalTrafficPolicy: {{ . }}
+{{- end }}
 {{- if .Values.gateway.loadBalancerClass }}
   loadBalancerClass: {{ .Values.gateway.loadBalancerClass }}
 {{- end }}

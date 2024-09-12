@@ -71,6 +71,17 @@ func (hc *HealthChecker) VizAPIClient() pb.ApiClient {
 	return hc.vizAPIClient
 }
 
+// ExternalPrometheusURL returns URL of the external prometheus if one is
+// configured. Otherwise, it returns an empty string.
+func (hc *HealthChecker) ExternalPrometheusURL() string {
+	return hc.externalPrometheusURL
+}
+
+// VizNamespace returns the namespace where the viz extension is installed.
+func (hc *HealthChecker) VizNamespace() string {
+	return hc.vizNamespace
+}
+
 // RunChecks implements the healthcheck.Runner interface
 func (hc *HealthChecker) RunChecks(observer healthcheck.CheckObserver) (bool, bool) {
 	return hc.HealthChecker.RunChecks(observer)
