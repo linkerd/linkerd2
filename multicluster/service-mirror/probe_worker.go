@@ -13,8 +13,6 @@ import (
 	logging "github.com/sirupsen/logrus"
 )
 
-const httpGatewayTimeoutMillis = 50000
-
 // ProbeWorker is responsible for monitoring gateways using a probe specification
 type ProbeWorker struct {
 	localGatewayName string
@@ -65,10 +63,15 @@ func (pw *ProbeWorker) Start() {
 }
 
 func (pw *ProbeWorker) run() {
+	successLabel := prometheus.Labels{probeSuccessfulLabel: "true"}
+	notSuccessLabel := prometheus.Labels{probeSuccessfulLabel: "false"}
+
 	probeTickerPeriod := pw.probeSpec.Period
 	maxJitter := pw.probeSpec.Period / 10 // max jitter is 10% of period
 	probeTicker := NewTicker(probeTickerPeriod, maxJitter)
 	defer probeTicker.Stop()
+
+	var failures uint32 = 0
 
 probeLoop:
 	for {
@@ -76,65 +79,65 @@ probeLoop:
 		case <-pw.stopCh:
 			break probeLoop
 		case <-probeTicker.C:
-			pw.doProbe()
+			start := time.Now()
+			if err := pw.doProbe(); err != nil {
+				pw.log.Warn(err)
+				failures++
+				if failures < pw.probeSpec.FailureThreshold {
+					continue probeLoop
+				}
+
+				pw.log.Warnf("Failure threshold (%d) reached - Marking as unhealthy", pw.probeSpec.FailureThreshold)
+				pw.metrics.alive.Set(0)
+				pw.metrics.probes.With(notSuccessLabel).Inc()
+				if pw.alive {
+					pw.alive = false
+					pw.Liveness <- false
+				}
+			} else {
+				end := time.Since(start)
+				failures = 0
+
+				pw.log.Debug("Gateway is healthy")
+				pw.metrics.alive.Set(1)
+				pw.metrics.latency.Set(float64(end.Milliseconds()))
+				pw.metrics.latencies.Observe(float64(end.Milliseconds()))
+				pw.metrics.probes.With(successLabel).Inc()
+				if !pw.alive {
+					pw.alive = true
+					pw.Liveness <- true
+				}
+			}
 		}
 	}
 }
 
-func (pw *ProbeWorker) doProbe() {
+func (pw *ProbeWorker) doProbe() error {
 	pw.RLock()
 	defer pw.RUnlock()
 
-	successLabel := prometheus.Labels{probeSuccessfulLabel: "true"}
-	notSuccessLabel := prometheus.Labels{probeSuccessfulLabel: "false"}
-
 	client := http.Client{
-		Timeout: httpGatewayTimeoutMillis * time.Millisecond,
+		Timeout: pw.probeSpec.Timeout,
 	}
 
 	strPort := strconv.Itoa(int(pw.probeSpec.Port))
 	urlAddress := net.JoinHostPort(pw.localGatewayName, strPort)
 	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s%s", urlAddress, pw.probeSpec.Path), nil)
 	if err != nil {
-		pw.log.Errorf("Could not create a GET request to gateway: %s", err)
-		return
+		return fmt.Errorf("could not create a GET request to gateway: %w", err)
 	}
 
-	start := time.Now()
 	resp, err := client.Do(req)
-	end := time.Since(start)
 	if err != nil {
-		pw.log.Warnf("Problem connecting with gateway. Marking as unhealthy %s", err)
-		pw.metrics.alive.Set(0)
-		pw.metrics.probes.With(notSuccessLabel).Inc()
-		if pw.alive {
-			pw.alive = false
-			pw.Liveness <- false
-		}
-		return
+		return fmt.Errorf("problem connecting with gateway: %w", err)
 	}
 	if resp.StatusCode != 200 {
-		pw.log.Warnf("Gateway returned unexpected status %d. Marking as unhealthy", resp.StatusCode)
-		pw.metrics.alive.Set(0)
-		pw.metrics.probes.With(notSuccessLabel).Inc()
-		if pw.alive {
-			pw.alive = false
-			pw.Liveness <- false
-		}
-	} else {
-		pw.log.Debug("Gateway is healthy")
-		pw.metrics.alive.Set(1)
-		pw.metrics.latency.Set(float64(end.Milliseconds()))
-		pw.metrics.latencies.Observe(float64(end.Milliseconds()))
-		pw.metrics.probes.With(successLabel).Inc()
-		if !pw.alive {
-			pw.alive = true
-			pw.Liveness <- true
-		}
+		return fmt.Errorf("gateway returned unexpected status %d", resp.StatusCode)
 	}
 
 	if err := resp.Body.Close(); err != nil {
 		pw.log.Warnf("Failed to close response body %s", err)
 	}
 
+	return nil
 }

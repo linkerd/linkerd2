@@ -62,10 +62,12 @@ type Gateway struct {
 
 // Probe contains all options for the Probe Service
 type Probe struct {
-	Path     string `json:"path"`
-	Port     uint32 `json:"port"`
-	NodePort uint32 `json:"nodePort"`
-	Seconds  uint32 `json:"seconds"`
+	FailureThreshold uint32 `json:"failureThreshold"`
+	Path             string `json:"path"`
+	Port             uint32 `json:"port"`
+	NodePort         uint32 `json:"nodePort"`
+	Seconds          uint32 `json:"seconds"`
+	Timeout          string `json:"timeout"`
 }
 
 // NewInstallValues returns a new instance of the Values type.

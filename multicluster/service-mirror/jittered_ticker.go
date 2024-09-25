@@ -38,7 +38,7 @@ func NewTicker(minDuration time.Duration, maxJitter time.Duration) *Ticker {
 	if maxJitter < 0 {
 		log.WithField("jitter", minDuration).Panic("Negative jitter")
 	}
-	c := make(chan time.Time, 1)
+	c := make(chan time.Time)
 	ticker := &Ticker{
 		C:           c,
 		stop:        make(chan bool),
