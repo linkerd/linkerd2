@@ -68,8 +68,10 @@ metadata:
     linkerd.io/extension: multicluster
   annotations:
     mirror.linkerd.io/gateway-identity: linkerd-gateway.linkerd-multicluster.serviceaccount.identity.linkerd.cluster.local
+    mirror.linkerd.io/probe-failure-threshold: "3"
     mirror.linkerd.io/probe-period: "3"
     mirror.linkerd.io/probe-path: /ready
+    mirror.linkerd.io/probe-timeout: "30s"
     mirror.linkerd.io/multicluster-gateway: "true"
     component: gateway
     linkerd.io/created-by: linkerd/helm linkerdVersionValue
@@ -277,6 +279,10 @@ spec:
                 description: Spec for gateway health probe
                 type: object
                 properties:
+                  failureThreshold:
+                    default: "3"
+                    description: Minimum consecutive failures for the probe to be considered failed
+                    type: string
                   path:
                     description: Path of remote gateway health endpoint
                     type: string
@@ -285,6 +291,11 @@ spec:
                     type: string
                   port:
                     description: Port of remote gateway health endpoint
+                    type: string
+                  timeout:
+                    default: 30s
+                    description: Probe request timeout
+                    format: duration
                     type: string
               selector:
                 description: Kubernetes Label Selector

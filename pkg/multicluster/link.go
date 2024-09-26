@@ -17,14 +17,19 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
+const DefaultFailureThreshold = 3
+const DefaultProbeTimeout = "30s"
+
 type (
 	// ProbeSpec defines how a gateway should be queried for health. Once per
 	// period, the probe workers will send an HTTP request to the remote gateway
 	// on the given  port with the given path and expect a HTTP 200 response.
 	ProbeSpec struct {
-		Path   string
-		Port   uint32
-		Period time.Duration
+		FailureThreshold uint32
+		Path             string
+		Port             uint32
+		Period           time.Duration
+		Timeout          time.Duration
 	}
 
 	// Link is an internal representation of the link.multicluster.linkerd.io
@@ -176,9 +181,11 @@ func (l Link) ToUnstructured() (unstructured.Unstructured, error) {
 		"gatewayPort":                   fmt.Sprintf("%d", l.GatewayPort),
 		"gatewayIdentity":               l.GatewayIdentity,
 		"probeSpec": map[string]interface{}{
-			"path":   l.ProbeSpec.Path,
-			"port":   fmt.Sprintf("%d", l.ProbeSpec.Port),
-			"period": l.ProbeSpec.Period.String(),
+			"failureThreshold": fmt.Sprintf("%d", l.ProbeSpec.FailureThreshold),
+			"path":             l.ProbeSpec.Path,
+			"port":             fmt.Sprintf("%d", l.ProbeSpec.Port),
+			"period":           l.ProbeSpec.Period.String(),
+			"timeout":          l.ProbeSpec.Timeout.String(),
 		},
 	}
 
@@ -219,6 +226,17 @@ func (l Link) ToUnstructured() (unstructured.Unstructured, error) {
 
 // ExtractProbeSpec parses the ProbSpec from a gateway service's annotations.
 func ExtractProbeSpec(gateway *corev1.Service) (ProbeSpec, error) {
+	// older gateways might not have this field
+	failureThreshold := uint64(DefaultFailureThreshold)
+	failureThresholdStr := gateway.Annotations[k8s.GatewayProbeFailureThreshold]
+	if failureThresholdStr != "" {
+		var err error
+		failureThreshold, err = strconv.ParseUint(failureThresholdStr, 10, 32)
+		if err != nil {
+			return ProbeSpec{}, err
+		}
+	}
+
 	path := gateway.Annotations[k8s.GatewayProbePath]
 	if path == "" {
 		return ProbeSpec{}, errors.New("probe path is empty")
@@ -234,10 +252,22 @@ func ExtractProbeSpec(gateway *corev1.Service) (ProbeSpec, error) {
 		return ProbeSpec{}, err
 	}
 
+	timeoutStr := gateway.Annotations[k8s.GatewayProbeTimeout]
+	if timeoutStr == "" {
+		timeoutStr = DefaultProbeTimeout
+	}
+
+	timeout, err := time.ParseDuration(timeoutStr)
+	if err != nil {
+		return ProbeSpec{}, err
+	}
+
 	return ProbeSpec{
-		Path:   path,
-		Port:   port,
-		Period: time.Duration(period) * time.Second,
+		FailureThreshold: uint32(failureThreshold),
+		Path:             path,
+		Port:             port,
+		Period:           time.Duration(period) * time.Second,
+		Timeout:          timeout,
 	}, nil
 }
 
@@ -294,6 +324,24 @@ func newProbeSpec(obj map[string]interface{}) (ProbeSpec, error) {
 		return ProbeSpec{}, err
 	}
 
+	failureThresholdStr, err := stringField(obj, "failureThreshold")
+	if err != nil {
+		return ProbeSpec{}, err
+	}
+	failureThreshold, err := strconv.ParseUint(failureThresholdStr, 10, 32)
+	if err != nil {
+		return ProbeSpec{}, err
+	}
+
+	timeoutStr, err := stringField(obj, "timeout")
+	if err != nil {
+		return ProbeSpec{}, err
+	}
+	timeout, err := time.ParseDuration(timeoutStr)
+	if err != nil {
+		return ProbeSpec{}, err
+	}
+
 	path, err := stringField(obj, "path")
 	if err != nil {
 		return ProbeSpec{}, err
@@ -309,9 +357,11 @@ func newProbeSpec(obj map[string]interface{}) (ProbeSpec, error) {
 	}
 
 	return ProbeSpec{
-		Path:   path,
-		Port:   uint32(port),
-		Period: period,
+		FailureThreshold: uint32(failureThreshold),
+		Path:             path,
+		Port:             uint32(port),
+		Period:           period,
+		Timeout:          timeout,
 	}, nil
 }
 

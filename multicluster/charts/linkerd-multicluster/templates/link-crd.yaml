@@ -40,6 +40,10 @@ spec:
                 description: Spec for gateway health probe
                 type: object
                 properties:
+                  failureThreshold:
+                    default: "3"
+                    description: Minimum consecutive failures for the probe to be considered failed
+                    type: string
                   path:
                     description: Path of remote gateway health endpoint
                     type: string
@@ -48,6 +52,11 @@ spec:
                     type: string
                   port:
                     description: Port of remote gateway health endpoint
+                    type: string
+                  timeout:
+                    default: 30s
+                    description: Probe request timeout
+                    format: duration
                     type: string
               selector:
                 description: Kubernetes Label Selector
