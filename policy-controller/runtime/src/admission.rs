@@ -73,7 +73,8 @@ impl hyper::service::Service<Request<Body>> for Admission {
 
         let admission = self.clone();
         Box::pin(async move {
-            let bytes = hyper::body::aggregate(req.into_body()).await?;
+            use http_body::Body as _;
+            let bytes = req.into_body().collect().await?.aggregate();
             let review: Review = match serde_json::from_reader(bytes.reader()) {
                 Ok(review) => review,
                 Err(error) => {

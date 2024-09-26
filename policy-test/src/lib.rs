@@ -8,6 +8,8 @@ pub mod grpc;
 pub mod outbound_api;
 pub mod web;
 
+mod rt;
+
 use kube::runtime::wait::Condition;
 use linkerd_policy_controller_k8s_api::{
     self as k8s,
