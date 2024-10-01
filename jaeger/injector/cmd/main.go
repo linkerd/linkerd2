@@ -20,6 +20,8 @@ func main() {
 	kubeconfig := cmd.String("kubeconfig", "", "path to kubeconfig")
 	collectorSvcAddr := cmd.String("collector-svc-addr", "",
 		"collector service address for the proxies to send trace data")
+	collectorTraceProtocol := cmd.String("collector-trace-protocol", "",
+		"protocol proxies should use to send trace data.")
 	collectorSvcAccount := cmd.String("collector-svc-account", "",
 		"service account associated with the collector instance")
 	clusterDomain := cmd.String("cluster-domain", "cluster.local", "kubernetes cluster domain")
@@ -31,7 +33,7 @@ func main() {
 	webhook.Launch(
 		context.Background(),
 		[]k8s.APIResource{k8s.NS},
-		mutator.Mutate(*collectorSvcAddr, *collectorSvcAccount, *clusterDomain, *linkerdNamespace),
+		mutator.Mutate(*collectorSvcAddr, *collectorTraceProtocol, *collectorSvcAccount, *clusterDomain, *linkerdNamespace),
 		"linkerd-jaeger-injector",
 		*metricsAddr,
 		*addr,
