@@ -20,23 +20,25 @@ import (
 )
 
 const (
-	collectorSvcAddrAnnotation    = l5dLabels.ProxyConfigAnnotationsPrefix + "/trace-collector"
-	collectorSvcAccountAnnotation = l5dLabels.ProxyConfigAnnotationsPrefixAlpha +
+	collectorSvcAddrAnnotation       = l5dLabels.ProxyConfigAnnotationsPrefix + "/trace-collector"
+	collectorTraceProtocolAnnotation = l5dLabels.ProxyConfigAnnotationsPrefix + "/trace-collector-protocol"
+	collectorSvcAccountAnnotation    = l5dLabels.ProxyConfigAnnotationsPrefixAlpha +
 		"/trace-collector-service-account"
 )
 
 // Params holds the values used in the patch template
 type Params struct {
-	ProxyPath           string
-	CollectorSvcAddr    string
-	CollectorSvcAccount string
-	ClusterDomain       string
-	LinkerdNamespace    string
+	ProxyPath              string
+	CollectorSvcAddr       string
+	CollectorTraceProtocol string
+	CollectorSvcAccount    string
+	ClusterDomain          string
+	LinkerdNamespace       string
 }
 
 // Mutate returns an AdmissionResponse containing the patch, if any, to apply
 // to the proxy
-func Mutate(collectorSvcAddr, collectorSvcAccount, clusterDomain, linkerdNamespace string) webhook.Handler {
+func Mutate(collectorSvcAddr, collectorTraceProtocol, collectorSvcAccount, clusterDomain, linkerdNamespace string) webhook.Handler {
 	return func(
 		_ context.Context,
 		api *k8s.MetadataAPI,
@@ -59,11 +61,12 @@ func Mutate(collectorSvcAddr, collectorSvcAccount, clusterDomain, linkerdNamespa
 			return nil, err
 		}
 		params := Params{
-			ProxyPath:           webhook.GetProxyContainerPath(pod.Spec),
-			CollectorSvcAddr:    collectorSvcAddr,
-			CollectorSvcAccount: collectorSvcAccount,
-			ClusterDomain:       clusterDomain,
-			LinkerdNamespace:    linkerdNamespace,
+			ProxyPath:              webhook.GetProxyContainerPath(pod.Spec),
+			CollectorSvcAddr:       collectorSvcAddr,
+			CollectorTraceProtocol: collectorTraceProtocol,
+			CollectorSvcAccount:    collectorSvcAccount,
+			ClusterDomain:          clusterDomain,
+			LinkerdNamespace:       linkerdNamespace,
 		}
 		if params.ProxyPath == "" || labels.IsTracingEnabled(pod) {
 			return admissionResponse, nil
@@ -103,6 +106,9 @@ func applyOverrides(ns metav1.Object, pod *corev1.Pod, params *Params) {
 	}
 	if override, ok := ann[collectorSvcAddrAnnotation]; ok {
 		params.CollectorSvcAddr = override
+	}
+	if override, ok := ann[collectorTraceProtocolAnnotation]; ok {
+		params.CollectorTraceProtocol = override
 	}
 	if override, ok := ann[collectorSvcAccountAnnotation]; ok {
 		params.CollectorSvcAccount = override

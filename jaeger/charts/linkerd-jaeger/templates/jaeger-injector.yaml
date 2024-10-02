@@ -50,6 +50,7 @@ spec:
       containers:
       - args:
         - -collector-svc-addr={{.Values.webhook.collectorSvcAddr}}
+        - -collector-trace-protocol={{.Values.webhook.collectorTraceProtocol}}
         - -collector-svc-account={{.Values.webhook.collectorSvcAccount}}
         - -log-level={{.Values.webhook.logLevel}}
         - -cluster-domain={{.Values.clusterDomain}}
