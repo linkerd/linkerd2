@@ -175,7 +175,9 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	remoteDiscovery, remoteDiscoveryFound := svc.Annotations["multicluster.linkerd.io/remote-discovery"]
 	localDiscovery, localDiscoveryFound := svc.Annotations["multicluster.linkerd.io/local-discovery"]
 
+	log.Debugf("Service annotations: %v", svc.Annotations)
 	if remoteDiscoveryFound || localDiscoveryFound {
+		log.Debug("Ensemble service detected")
 		remotes := strings.Split(remoteDiscovery, ",")
 		for _, remote := range remotes {
 			parts := strings.Split(remote, "@")
@@ -186,6 +188,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 				log.Errorf("Failed to get remote cluster %s", cluster)
 				return status.Errorf(codes.NotFound, "Remote cluster not found: %s", cluster)
 			}
+			log.Debugf("Remote discovery service %s in cluster %s", remoteSvc, cluster)
 			translator := newEndpointTranslator(
 				s.config.ControllerNS,
 				remoteConfig.TrustDomain,
@@ -202,6 +205,9 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 				streamEnd,
 				log,
 			)
+			translator.Start()
+			defer translator.Stop()
+
 			err = remoteWatcher.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
 			if err != nil {
 				var ise watcher.InvalidService
@@ -235,6 +241,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		translator.Start()
 		defer translator.Stop()
 
+		log.Debugf("Local discovery service %s", localDiscovery)
 		err = s.endpoints.Subscribe(watcher.ServiceID{Namespace: service.Namespace, Name: localDiscovery}, port, instanceID, translator)
 		if err != nil {
 			var ise watcher.InvalidService
@@ -248,6 +255,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		defer s.endpoints.Unsubscribe(service, port, instanceID, translator)
 
 	} else if cluster, found := svc.Labels[labels.RemoteDiscoveryLabel]; found {
+		log.Debug("Remote discovery service detected")
 		// Remote discovery
 		remoteSvc, found := svc.Labels[labels.RemoteServiceLabel]
 		if !found {
@@ -291,6 +299,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		defer remoteWatcher.Unsubscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
 
 	} else {
+		log.Debug("Local discovery service detected")
 		// Local discovery
 		translator := newEndpointTranslator(
 			s.config.ControllerNS,
