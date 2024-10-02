@@ -1,1 +1,2 @@
 enableHttpRoutes: true
+enableTlsRoutes: true

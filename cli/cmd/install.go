@@ -58,6 +58,7 @@ var (
 		"templates/serviceprofile.yaml",
 		"templates/gateway.networking.k8s.io_httproutes.yaml",
 		"templates/gateway.networking.k8s.io_grpcroutes.yaml",
+		"templates/gateway.networking.k8s.io_tlsroutes.yaml",
 		"templates/workload/external-workload.yaml",
 	}
 

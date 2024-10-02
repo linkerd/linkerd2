@@ -145,7 +145,7 @@ func configureAndRunChecks(cmd *cobra.Command, wout io.Writer, werr io.Writer, o
 	crdManifest := bytes.Buffer{}
 	err = renderCRDs(&crdManifest, valuespkg.Options{
 		// GatewayAPI CRDs are optional so don't check for them.
-		Values: []string{"enableHttpRoutes=false"},
+		Values: []string{"enableHttpRoutes=false", "enableTlsRoutes=false"},
 	}, "yaml")
 	if err != nil {
 		return err
