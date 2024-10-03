@@ -199,14 +199,20 @@ func (rcsw *RemoteClusterServiceWatcher) createRemoteHeadlessService(ctx context
 	serviceInfo := fmt.Sprintf("%s/%s", remoteService.Namespace, remoteService.Name)
 	localServiceName := rcsw.mirroredResourceName(remoteService.Name)
 
-	// Ensure the namespace exists, and skip mirroring if it doesn't
-	if _, err := rcsw.localAPIClient.NS().Lister().Get(remoteService.Namespace); err != nil {
-		if kerrors.IsNotFound(err) {
-			rcsw.log.Warnf("Skipping mirroring of service %s: namespace %s does not exist", serviceInfo, remoteService.Namespace)
-			return &corev1.Service{}, nil
+	if rcsw.namespaceCreationEnabled {
+		if err := rcsw.mirrorNamespaceIfNecessary(ctx, remoteService.Namespace); err != nil {
+			return &corev1.Service{}, err
 		}
-		// something else went wrong, so we can just retry
-		return nil, RetryableError{[]error{err}}
+	} else {
+		// Ensure the namespace exists, and skip mirroring if it doesn't
+		if _, err := rcsw.localAPIClient.NS().Lister().Get(remoteService.Namespace); err != nil {
+			if kerrors.IsNotFound(err) {
+				rcsw.log.Warnf("Skipping mirroring of service %s: namespace %s does not exist", serviceInfo, remoteService.Namespace)
+				return &corev1.Service{}, nil
+			}
+			// something else went wrong, so we can just retry
+			return nil, RetryableError{[]error{err}}
+		}
 	}
 
 	serviceToCreate := &corev1.Service{

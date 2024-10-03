@@ -138,6 +138,9 @@ spec:
         {{- if .Values.enableHeadlessServices }}
         - -enable-headless-services
         {{- end }}
+        {{- if .Values.enableNamespaceCreation }}
+        - -enable-namespace-creation
+        {{- end }}
         - -enable-pprof={{.Values.enablePprof | default false}}
         - {{.Values.targetClusterName}}
         {{- if or .Values.serviceMirrorAdditionalEnv .Values.serviceMirrorExperimentalEnv }}
