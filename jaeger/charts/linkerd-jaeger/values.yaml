@@ -102,6 +102,9 @@ collector:
   config:
     receivers:
       opencensus:
+      otlp:
+        protocols:
+          grpc:
     processors:
       batch:
       resource:
@@ -177,7 +180,7 @@ collector:
       extensions: [health_check]
       pipelines:
         traces:
-          receivers: [opencensus]
+          receivers: [opencensus, otlp]
           processors: [resource, k8sattributes, batch]
           exporters: [jaeger]
 
@@ -290,6 +293,9 @@ webhook:
   # -- collector service address for the proxies to send trace data.
   # Points by default to the linkerd-jaeger collector
   collectorSvcAddr: collector.linkerd-jaeger:55678
+  # -- protocol proxies should use to send trace data.
+  # Can be `opencensus` (default) or `opentelemetry`
+  collectorTraceProtocol: opencensus
   # -- service account associated with the collector instance
   collectorSvcAccount: collector
 

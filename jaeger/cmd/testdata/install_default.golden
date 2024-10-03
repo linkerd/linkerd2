@@ -46,6 +46,7 @@ spec:
       containers:
       - args:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
+        - -collector-trace-protocol=opencensus
         - -collector-svc-account=collector
         - -log-level=info
         - -cluster-domain=cluster.local
@@ -371,6 +372,9 @@ data:
           key: k8s.namespace.name
     receivers:
       opencensus: null
+      otlp:
+        protocols:
+          grpc: null
     service:
       extensions:
       - health_check
@@ -384,6 +388,7 @@ data:
           - batch
           receivers:
           - opencensus
+          - otlp
 ---
 apiVersion: v1
 kind: Service
@@ -444,7 +449,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 319d95c61f89ff68538c097cca12358ac58383e2c1d93fe3d92e35c501b0541a
+        checksum/config: a5b9a0f939a556548f732f80a6cfe7b27a55f1c309ad2decacd1ce63d469d4a3
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
         config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
         config.linkerd.io/proxy-await: "enabled"

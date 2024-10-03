@@ -264,7 +264,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
       - name: Log into GCP
-        uses: "google-github-actions/auth@62cf5bd3e4211a0a0b51f2c6d6a37129d828611d"
+        uses: "google-github-actions/auth@8254fb75a33b976a221574d287e93919e6a36f70"
         with:
           credentials_json: ${{ secrets.LINKERD_SITE_TOKEN }}
       - name: Edge Helm chart creation and upload
