@@ -218,6 +218,7 @@ rules:
       - networkauthentications
       - servers
       - serverauthorizations
+      - unmeshednetworks
     verbs:
       - get
       - list
@@ -1249,7 +1250,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 7523675f365af90bf6840b8b1eb0b12bbb4c819738cc9353608cbd16a9bf4196
+        checksum/config: 75aefe4ed043b3174f5ed97ea39d6166cfedf1a81eee5ab0e8f22018c82b1de4
         linkerd.io/created-by: CliVersion
         linkerd.io/proxy-version: ProxyVersion
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"

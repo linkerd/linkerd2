@@ -226,6 +226,7 @@ rules:
       - networkauthentications
       - servers
       - serverauthorizations
+      - unmeshednetworks
     verbs:
       - get
       - list

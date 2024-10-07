@@ -32,6 +32,13 @@ impl Cidr {
             (Self::Addr(this), Self::Addr(other)) => this == other,
         }
     }
+
+    pub fn size(&self) -> usize {
+        match self {
+            Cidr::Net(net) => net.hosts().count(),
+            Cidr::Addr(_) => 1,
+        }
+    }
 }
 
 impl std::str::FromStr for Cidr {

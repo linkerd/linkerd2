@@ -3,7 +3,7 @@ use crate::k8s::policy::{
     httproute, server::Selector, AuthorizationPolicy, AuthorizationPolicySpec, HttpRoute,
     HttpRouteSpec, LocalTargetRef, MeshTLSAuthentication, MeshTLSAuthenticationSpec,
     NamespacedTargetRef, NetworkAuthentication, NetworkAuthenticationSpec, Server,
-    ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
+    ServerAuthorization, ServerAuthorizationSpec, ServerSpec, UnmeshedNetwork, UnmeshedNetworkSpec,
 };
 use anyhow::{anyhow, bail, ensure, Result};
 use futures::future;
@@ -126,6 +126,10 @@ impl Admission {
 
         if is_kind::<HttpRoute>(&req) {
             return self.admit_spec::<HttpRouteSpec>(req).await;
+        }
+
+        if is_kind::<UnmeshedNetwork>(&req) {
+            return self.admit_spec::<UnmeshedNetworkSpec>(req).await;
         }
 
         if is_kind::<k8s_gateway_api::HttpRoute>(&req) {
@@ -435,6 +439,23 @@ impl Validate<NetworkAuthenticationSpec> for Admission {
                     );
                 }
             }
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Validate<UnmeshedNetworkSpec> for Admission {
+    async fn validate(
+        self,
+        _ns: &str,
+        _name: &str,
+        _annotations: &BTreeMap<String, String>,
+        spec: UnmeshedNetworkSpec,
+    ) -> Result<()> {
+        if spec.networks.is_empty() {
+            bail!("at least one network must be specified");
         }
 
         Ok(())

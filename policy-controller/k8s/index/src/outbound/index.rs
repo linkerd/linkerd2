@@ -14,27 +14,32 @@ use linkerd_policy_controller_core::{
 };
 use linkerd_policy_controller_k8s_api::{
     gateway::{self as k8s_gateway_api, ParentReference},
-    policy as linkerd_k8s_api, ResourceExt, Service,
+    policy as linkerd_k8s_api, Pod, ResourceExt, Service,
 };
 use parking_lot::RwLock;
-use std::{hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time};
+use std::{hash::Hash, net::IpAddr, num::NonZeroU16, str::FromStr, sync::Arc, time};
 use tokio::sync::watch;
-
-#[derive(Debug)]
-pub struct Index {
-    namespaces: NamespaceIndex,
-    services_by_ip: HashMap<IpAddr, ServiceRef>,
-    service_info: HashMap<ServiceRef, ServiceInfo>,
-}
 
 pub mod grpc;
 pub mod http;
 pub mod metrics;
+mod unmeshed_network;
+
+use unmeshed_network::UnmeshedNetwork;
+
+#[derive(Debug)]
+pub struct Index {
+    namespaces: NamespaceIndex,
+    services_by_ip: HashMap<IpAddr, ResourceRef>,
+    service_info: HashMap<ResourceRef, ServiceInfo>,
+    unmeshed_networks: HashMap<ResourceRef, UnmeshedNetwork>,
+    pods_by_ip: HashMap<IpAddr, ResourceRef>,
+}
 
 pub type SharedIndex = Arc<RwLock<Index>>;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct ServiceRef {
+pub struct ResourceRef {
     pub name: String,
     pub namespace: String,
 }
@@ -180,7 +185,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                 }
                 match cluster_ip.parse() {
                     Ok(addr) => {
-                        let service_ref = ServiceRef {
+                        let service_ref = ResourceRef {
                             name: name.clone(),
                             namespace: ns.clone(),
                         };
@@ -213,7 +218,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             .update_service(service.name_unchecked(), &service_info);
 
         self.service_info.insert(
-            ServiceRef {
+            ResourceRef {
                 name: service.name_unchecked(),
                 namespace: service.namespace().expect("Service must have Namespace"),
             },
@@ -225,11 +230,66 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
 
     fn delete(&mut self, namespace: String, name: String) {
         tracing::debug!(name, namespace, "deleting service");
-        let service_ref = ServiceRef { name, namespace };
+        let service_ref = ResourceRef { name, namespace };
         self.service_info.remove(&service_ref);
         self.services_by_ip.retain(|_, v| *v != service_ref);
 
         self.reindex_services()
+    }
+}
+
+impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::UnmeshedNetwork> for Index {
+    fn apply(&mut self, u: linkerd_k8s_api::UnmeshedNetwork) {
+        let um: UnmeshedNetwork = u.into();
+        tracing::debug!(um.name, um.namespace, "indexing unmeshed network");
+
+        self.unmeshed_networks.insert(
+            ResourceRef {
+                name: um.name.clone(),
+                namespace: um.namespace.clone(),
+            },
+            um,
+        );
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        tracing::debug!(name, namespace, "deleting unmeshed networks");
+        let um_ref = ResourceRef { name, namespace };
+        self.unmeshed_networks.remove(&um_ref);
+    }
+}
+
+impl kubert::index::IndexNamespacedResource<Pod> for Index {
+    fn apply(&mut self, pod: Pod) {
+        let ns = pod.namespace().unwrap();
+        let name = pod.name_unchecked();
+        tracing::debug!(name, ns, "indexing pod");
+
+        if let Some(ips) = pod.status.and_then(|s| s.pod_ips) {
+            let pod_ref = ResourceRef {
+                name,
+                namespace: ns,
+            };
+            for ip in ips.iter() {
+                if let Some(ip) = &ip.ip {
+                    let pod_ip_addr = match IpAddr::from_str(ip) {
+                        Ok(addr) => addr,
+                        Err(error) => {
+                            tracing::error!(%error, "malformed PodIp");
+                            return;
+                        }
+                    };
+
+                    self.pods_by_ip.insert(pod_ip_addr, pod_ref.clone());
+                }
+            }
+        }
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        tracing::debug!(name, namespace, "deleting pod");
+        let pod_ref = ResourceRef { name, namespace };
+        self.pods_by_ip.retain(|_, v| *v != pod_ref);
     }
 }
 
@@ -242,6 +302,8 @@ impl Index {
             },
             services_by_ip: HashMap::default(),
             service_info: HashMap::default(),
+            unmeshed_networks: HashMap::default(),
+            pods_by_ip: HashMap::default(),
         }))
     }
 
@@ -278,8 +340,24 @@ impl Index {
         Ok(watch.watch.subscribe())
     }
 
-    pub fn lookup_service(&self, addr: IpAddr) -> Option<ServiceRef> {
+    pub fn lookup_service(&self, addr: IpAddr) -> Option<ResourceRef> {
         self.services_by_ip.get(&addr).cloned()
+    }
+
+    pub fn pod_exists(&self, addr: IpAddr) -> bool {
+        self.pods_by_ip.contains_key(&addr)
+    }
+
+    pub fn lookup_unmeshed_network(
+        &self,
+        addr: IpAddr,
+        source_namespace: String,
+    ) -> Option<ResourceRef> {
+        unmeshed_network::resolve_unmeshed_network(
+            addr,
+            source_namespace,
+            self.unmeshed_networks.values(),
+        )
     }
 
     fn apply_http(&mut self, route: HttpRouteResource) {
@@ -366,7 +444,7 @@ impl Namespace {
         route: HttpRouteResource,
         parent_ref: &ParentReference,
         cluster_info: &ClusterInfo,
-        service_info: &HashMap<ServiceRef, ServiceInfo>,
+        service_info: &HashMap<ResourceRef, ServiceInfo>,
     ) {
         tracing::debug!(?route);
 
@@ -424,7 +502,7 @@ impl Namespace {
         route: k8s_gateway_api::GrpcRoute,
         parent_ref: &ParentReference,
         cluster_info: &ClusterInfo,
-        service_info: &HashMap<ServiceRef, ServiceInfo>,
+        service_info: &HashMap<ResourceRef, ServiceInfo>,
     ) {
         tracing::debug!(?route);
 
@@ -481,10 +559,10 @@ impl Namespace {
         }
     }
 
-    fn reindex_services(&mut self, service_info: &HashMap<ServiceRef, ServiceInfo>) {
+    fn reindex_services(&mut self, service_info: &HashMap<ResourceRef, ServiceInfo>) {
         let update_service = |backend: &mut Backend| {
             if let Backend::Service(svc) = backend {
-                let service_ref = ServiceRef {
+                let service_ref = ResourceRef {
                     name: svc.name.clone(),
                     namespace: svc.namespace.clone(),
                 };
@@ -557,7 +635,7 @@ impl Namespace {
         &mut self,
         sp: ServicePort,
         cluster: &ClusterInfo,
-        service_info: &HashMap<ServiceRef, ServiceInfo>,
+        service_info: &HashMap<ResourceRef, ServiceInfo>,
     ) -> &mut ServiceRoutes {
         self.service_port_routes
             .entry(sp.clone())
@@ -565,7 +643,7 @@ impl Namespace {
                 let authority =
                     cluster.service_dns_authority(&self.namespace, &sp.service, sp.port);
 
-                let service_ref = ServiceRef {
+                let service_ref = ResourceRef {
                     name: sp.service.clone(),
                     namespace: self.namespace.to_string(),
                 };

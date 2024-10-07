@@ -10,6 +10,7 @@ use linkerd_policy_controller_core::inbound::{
 };
 use linkerd_policy_controller_core::outbound::{
     DiscoverOutboundPolicy, OutboundDiscoverTarget, OutboundPolicy, OutboundPolicyStream,
+    TargetKind,
 };
 pub use linkerd_policy_controller_core::IpNet;
 pub use linkerd_policy_controller_grpc as grpc;
@@ -88,18 +89,23 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
     async fn get_outbound_policy(
         &self,
         OutboundDiscoverTarget {
-            service_name,
-            service_namespace,
-            service_port,
+            kind,
+            name,
+            namespace,
+            port,
             source_namespace,
         }: OutboundDiscoverTarget,
     ) -> Result<Option<OutboundPolicy>> {
-        let rx = match self.0.write().outbound_policy_rx(
-            service_name,
-            service_namespace,
-            service_port,
-            source_namespace,
-        ) {
+        if let TargetKind::UnmeshedNetwork = kind {
+            tracing::debug!("UnmeshedNetwork is not supported yet");
+            return Ok(None);
+        }
+
+        let rx = match self
+            .0
+            .write()
+            .outbound_policy_rx(name, namespace, port, source_namespace)
+        {
             Ok(rx) => rx,
             Err(error) => {
                 tracing::error!(%error, "failed to get outbound policy rx");
@@ -113,18 +119,23 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
     async fn watch_outbound_policy(
         &self,
         OutboundDiscoverTarget {
-            service_name,
-            service_namespace,
-            service_port,
+            kind,
+            name,
+            namespace,
+            port,
             source_namespace,
         }: OutboundDiscoverTarget,
     ) -> Result<Option<OutboundPolicyStream>> {
-        match self.0.write().outbound_policy_rx(
-            service_name,
-            service_namespace,
-            service_port,
-            source_namespace,
-        ) {
+        if let TargetKind::UnmeshedNetwork = kind {
+            tracing::debug!("UnmeshedNetwork network is not supported yet");
+            return Ok(None);
+        }
+
+        match self
+            .0
+            .write()
+            .outbound_policy_rx(name, namespace, port, source_namespace)
+        {
             Ok(rx) => Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx)))),
             Err(_) => Ok(None),
         }
@@ -136,14 +147,35 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
         port: NonZeroU16,
         source_namespace: String,
     ) -> Option<OutboundDiscoverTarget> {
+        // first try to lookup a service that we have indexed
+        if let Some(outbound::ResourceRef { name, namespace }) = self.0.read().lookup_service(addr)
+        {
+            return Some(OutboundDiscoverTarget {
+                kind: TargetKind::Service,
+                name,
+                namespace,
+                port,
+                source_namespace: source_namespace.clone(),
+            });
+        }
+
+        // next, check if a pod with this IP exists. If it does, return a None
+        // so we can let the destinations controller serve the discovery request
+        // as usual
+        if self.0.read().pod_exists(addr) {
+            return None;
+        }
+
+        // now try and look for an UnmeshedNetwork that matches this IP address.
         self.0
             .read()
-            .lookup_service(addr)
+            .lookup_unmeshed_network(addr, source_namespace.clone())
             .map(
-                |outbound::ServiceRef { name, namespace }| OutboundDiscoverTarget {
-                    service_name: name,
-                    service_namespace: namespace,
-                    service_port: port,
+                |outbound::ResourceRef { name, namespace }| OutboundDiscoverTarget {
+                    kind: TargetKind::UnmeshedNetwork,
+                    name,
+                    namespace,
+                    port,
                     source_namespace,
                 },
             )

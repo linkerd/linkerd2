@@ -301,6 +301,23 @@ async fn main() -> Result<()> {
         kubert::index::namespaced(services_indexes, services).instrument(info_span!("services")),
     );
 
+    // we spawn a dedicated watch from the one of the inbound index in order to watch all pods
+    // this allows us to determine whether a discovery request should be considered for
+    // returning policies associated with UnmeshedNetwork objects or not.
+    let all_pods = runtime.watch_all::<k8s::Pod>(watcher::Config::default());
+    let all_pods_indexes = IndexList::new(outbound_index.clone()).shared();
+    tokio::spawn(
+        kubert::index::namespaced(all_pods_indexes, all_pods).instrument(info_span!("all pods")),
+    );
+
+    let unmeshed_networks =
+        runtime.watch_all::<k8s::policy::UnmeshedNetwork>(watcher::Config::default());
+    let unmeshed_networks_indexes = IndexList::new(outbound_index.clone()).shared();
+    tokio::spawn(
+        kubert::index::namespaced(unmeshed_networks_indexes, unmeshed_networks)
+            .instrument(info_span!("unmeshed networks")),
+    );
+
     // Spawn the status Controller reconciliation.
     tokio::spawn(
         status::Index::run(status_index.clone(), RECONCILIATION_PERIOD)

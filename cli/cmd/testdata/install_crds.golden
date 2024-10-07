@@ -101,6 +101,59 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  name: unmeshednetworks.policy.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+  labels:
+    helm.sh/chart: linkerd-crds-0.0.0-undefined
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: policy.linkerd.io
+  names:
+    categories:
+    - policy
+    kind: UnmeshedNetwork
+    listKind: UnmeshedNetworkList
+    plural: unmeshednetworks
+    singular: unmeshednetwork
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        description: >-
+          An UnmeshedNetwork captures traffic to destinations considered
+          to be external to the mesh.
+        type: object
+        required: [spec]
+        properties:
+          apiVerson:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              defaultPolicy:
+                type: string
+                enum:
+                - AllowAll
+                - DenyAll
+              networks:
+                type: array
+                items:
+                  type: string
+                default: ["0.0.0.0/0", "::/0"]
+            type: object
+            required:
+            - defaultPolicy
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
   name: httproutes.policy.linkerd.io
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined

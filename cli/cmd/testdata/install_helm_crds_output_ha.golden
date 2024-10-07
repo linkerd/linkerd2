@@ -100,6 +100,61 @@ spec:
                         maxLength: 253
                         type: string
 ---
+# Source: linkerd-crds/templates/policy/unmeshed-network.yaml
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: unmeshednetworks.policy.linkerd.io
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+  labels:
+    helm.sh/chart: linkerd-crds-
+    linkerd.io/control-plane-ns: linkerd-dev
+spec:
+  group: policy.linkerd.io
+  names:
+    categories:
+    - policy
+    kind: UnmeshedNetwork
+    listKind: UnmeshedNetworkList
+    plural: unmeshednetworks
+    singular: unmeshednetwork
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        description: >-
+          An UnmeshedNetwork captures traffic to destinations considered
+          to be external to the mesh.
+        type: object
+        required: [spec]
+        properties:
+          apiVerson:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              defaultPolicy:
+                type: string
+                enum:
+                - AllowAll
+                - DenyAll
+              networks:
+                type: array
+                items:
+                  type: string
+                default: ["0.0.0.0/0", "::/0"]
+            type: object
+            required:
+            - defaultPolicy
+---
 # Source: linkerd-crds/templates/policy/httproute.yaml
 ---
 apiVersion: apiextensions.k8s.io/v1

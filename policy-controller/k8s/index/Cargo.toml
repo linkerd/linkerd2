@@ -6,6 +6,7 @@ license = "Apache-2.0"
 publish = false
 
 [dependencies]
+chrono = { version = "0.4.38", default_features = false }
 ahash = "0.8"
 anyhow = "1"
 futures = { version = "0.3", default-features = false }
