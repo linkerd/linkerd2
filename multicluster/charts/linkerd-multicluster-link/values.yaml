@@ -14,6 +14,8 @@ podLabels: {}
 commonLabels: {}
 # -- Toggle support for mirroring headless services
 enableHeadlessServices: false
+# -- Toggle support for creating namespaces for mirror services when necessary
+enableNamespaceCreation: false
 # -- Enables Pod Anti Affinity logic to balance the placement of replicas
 # across hosts and zones for High Availability.
 # Enable this only when you have multiple replicas of components.

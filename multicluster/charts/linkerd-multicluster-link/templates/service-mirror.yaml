@@ -14,6 +14,11 @@ rules:
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["list", "get", "watch"]
+{{- if .Values.enableNamespaceCreation }}
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["create"]
+{{- end}}
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -137,6 +142,9 @@ spec:
         - -namespace={{.Release.Namespace}}
         {{- if .Values.enableHeadlessServices }}
         - -enable-headless-services
+        {{- end }}
+        {{- if .Values.enableNamespaceCreation }}
+        - -enable-namespace-creation
         {{- end }}
         - -enable-pprof={{.Values.enablePprof | default false}}
         - {{.Values.targetClusterName}}

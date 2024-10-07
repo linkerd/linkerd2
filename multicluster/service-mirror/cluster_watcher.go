@@ -39,20 +39,21 @@ type (
 	// it can be requeued up to N times, to ensure that the failure is not due to some temporary network
 	// problems or general glitch in the Matrix.
 	RemoteClusterServiceWatcher struct {
-		serviceMirrorNamespace  string
-		link                    *multicluster.Link
-		remoteAPIClient         *k8s.API
-		localAPIClient          *k8s.API
-		stopper                 chan struct{}
-		eventBroadcaster        record.EventBroadcaster
-		recorder                record.EventRecorder
-		log                     *logging.Entry
-		eventsQueue             workqueue.TypedRateLimitingInterface[any]
-		requeueLimit            int
-		repairPeriod            time.Duration
-		gatewayAlive            bool
-		liveness                chan bool
-		headlessServicesEnabled bool
+		serviceMirrorNamespace   string
+		link                     *multicluster.Link
+		remoteAPIClient          *k8s.API
+		localAPIClient           *k8s.API
+		stopper                  chan struct{}
+		eventBroadcaster         record.EventBroadcaster
+		recorder                 record.EventRecorder
+		log                      *logging.Entry
+		eventsQueue              workqueue.TypedRateLimitingInterface[any]
+		requeueLimit             int
+		repairPeriod             time.Duration
+		gatewayAlive             bool
+		liveness                 chan bool
+		headlessServicesEnabled  bool
+		namespaceCreationEnabled bool
 
 		informerHandlers
 	}
@@ -168,6 +169,7 @@ func NewRemoteClusterServiceWatcher(
 	repairPeriod time.Duration,
 	liveness chan bool,
 	enableHeadlessSvc bool,
+	enableNamespaceCreation bool,
 ) (*RemoteClusterServiceWatcher, error) {
 	remoteAPI, err := k8s.InitializeAPIForConfig(ctx, cfg, false, clusterName, k8s.Svc, k8s.Endpoint)
 	if err != nil {
@@ -201,11 +203,12 @@ func NewRemoteClusterServiceWatcher(
 			"cluster":    clusterName,
 			"apiAddress": cfg.Host,
 		}),
-		eventsQueue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]()),
-		requeueLimit:            requeueLimit,
-		repairPeriod:            repairPeriod,
-		liveness:                liveness,
-		headlessServicesEnabled: enableHeadlessSvc,
+		eventsQueue:              workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]()),
+		requeueLimit:             requeueLimit,
+		repairPeriod:             repairPeriod,
+		liveness:                 liveness,
+		headlessServicesEnabled:  enableHeadlessSvc,
+		namespaceCreationEnabled: enableNamespaceCreation,
 		// always instantiate the gatewayAlive=true to prevent unexpected service fail fast
 		gatewayAlive: true,
 	}, nil
@@ -273,6 +276,35 @@ func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceAnnotations(remoteSer
 	}
 
 	return annotations
+}
+
+func (rcsw *RemoteClusterServiceWatcher) mirrorNamespaceIfNecessary(ctx context.Context, namespace string) error {
+	// if the namespace is already present we do not need to change it.
+	// if we are creating it we want to put a label indicating this is a
+	// mirrored resource
+	if _, err := rcsw.localAPIClient.NS().Lister().Get(namespace); err != nil {
+		if kerrors.IsNotFound(err) {
+			// if the namespace is not found, we can just create it
+			ns := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						consts.MirroredResourceLabel:  "true",
+						consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
+					},
+					Name: namespace,
+				},
+			}
+			_, err := rcsw.localAPIClient.Client.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
+			if err != nil {
+				// something went wrong with the create, we can just retry as well
+				return RetryableError{[]error{err}}
+			}
+		} else {
+			// something else went wrong, so we can just retry
+			return RetryableError{[]error{err}}
+		}
+	}
+	return nil
 }
 
 // This method takes care of port remapping. What it does essentially is get the one gateway port
@@ -528,15 +560,21 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ctx context.
 	serviceInfo := fmt.Sprintf("%s/%s", remoteService.Namespace, remoteService.Name)
 	localServiceName := rcsw.mirroredResourceName(remoteService.Name)
 
-	// Ensure the namespace exists, and skip mirroring if it doesn't
-	if _, err := rcsw.localAPIClient.Client.CoreV1().Namespaces().Get(ctx, remoteService.Namespace, metav1.GetOptions{}); err != nil {
-		if kerrors.IsNotFound(err) {
-			rcsw.recorder.Event(remoteService, corev1.EventTypeNormal, eventTypeSkipped, "Skipped mirroring service: namespace does not exist")
-			rcsw.log.Warnf("Skipping mirroring of service %s: namespace %s does not exist", serviceInfo, remoteService.Namespace)
-			return nil
+	if rcsw.namespaceCreationEnabled {
+		if err := rcsw.mirrorNamespaceIfNecessary(ctx, remoteService.Namespace); err != nil {
+			return err
 		}
-		// something else went wrong, so we can just retry
-		return RetryableError{[]error{err}}
+	} else {
+		// Ensure the namespace exists, and skip mirroring if it doesn't
+		if _, err := rcsw.localAPIClient.Client.CoreV1().Namespaces().Get(ctx, remoteService.Namespace, metav1.GetOptions{}); err != nil {
+			if kerrors.IsNotFound(err) {
+				rcsw.recorder.Event(remoteService, corev1.EventTypeNormal, eventTypeSkipped, "Skipped mirroring service: namespace does not exist")
+				rcsw.log.Warnf("Skipping mirroring of service %s: namespace %s does not exist", serviceInfo, remoteService.Namespace)
+				return nil
+			}
+			// something else went wrong, so we can just retry
+			return RetryableError{[]error{err}}
+		}
 	}
 
 	serviceToCreate := &corev1.Service{
