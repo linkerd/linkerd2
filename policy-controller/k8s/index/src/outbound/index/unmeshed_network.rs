@@ -80,8 +80,8 @@ impl std::cmp::Ord for MatchedUnmeshedNetwork {
         self.matched_cidr
             .cmp(&other.matched_cidr)
             .then_with(|| self.creation_timestamp.cmp(&other.creation_timestamp))
-            .then_with(|| self.namespace.cmp(&other.namespace))
-            .then_with(|| self.name.cmp(&other.name))
+            .then_with(|| self.namespace.cmp(&other.namespace).reverse())
+            .then_with(|| self.name.cmp(&other.name).reverse())
     }
 }
 
@@ -158,7 +158,7 @@ mod test {
             },
         ];
 
-        let resolved = resolve_unmeshed_network(ip_addr, "ns".into(), networks.into_iter());
+        let resolved = resolve_unmeshed_network(ip_addr, "ns".into(), networks.iter());
         assert_eq!(resolved.unwrap().name, "net-2".to_string())
     }
 
@@ -180,7 +180,7 @@ mod test {
             },
         ];
 
-        let resolved = resolve_unmeshed_network(ip_addr, "ns-1".into(), networks.into_iter());
+        let resolved = resolve_unmeshed_network(ip_addr, "ns-1".into(), networks.iter());
         assert_eq!(resolved.unwrap().name, "net-1".to_string())
     }
 
@@ -202,7 +202,7 @@ mod test {
             },
         ];
 
-        let resolved = resolve_unmeshed_network(ip_addr, "ns".into(), networks.into_iter());
+        let resolved = resolve_unmeshed_network(ip_addr, "ns".into(), networks.iter());
         assert_eq!(resolved.unwrap().name, "net-1".to_string())
     }
 
@@ -224,7 +224,7 @@ mod test {
             },
         ];
 
-        let resolved = resolve_unmeshed_network(ip_addr, "ns".into(), networks.into_iter());
+        let resolved = resolve_unmeshed_network(ip_addr, "ns".into(), networks.iter());
         assert_eq!(resolved.unwrap().name, "b".to_string())
     }
 }
