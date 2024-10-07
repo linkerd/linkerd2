@@ -1,9 +1,6 @@
 use linkerd_policy_controller_k8s_api::{
     self as api,
-    policy::{
-        network_authentication::{Network, NetworkAuthentication, NetworkAuthenticationSpec},
-        unmeshed_network::{DefaultPolicy, UnmeshedNetwork, UnmeshedNetworkSpec},
-    },
+    policy::unmeshed_network::{DefaultPolicy, UnmeshedNetwork, UnmeshedNetworkSpec},
 };
 use linkerd_policy_test::admission;
 
