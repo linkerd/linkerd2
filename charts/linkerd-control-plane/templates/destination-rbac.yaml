@@ -185,6 +185,7 @@ webhooks:
     - meshtlsauthentications
     - serverauthorizations
     - servers
+    - unmeshednetworks
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["gateway.networking.k8s.io"]
     apiVersions: ["*"]
