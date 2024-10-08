@@ -13,7 +13,7 @@ async fn accepts_valid() {
             ..Default::default()
         },
         spec: UnmeshedNetworkSpec {
-            default_policy: DefaultPolicy::AllowUnknown,
+            traffic_policy: DefaultPolicy::AllowUnknown,
             networks: vec![
                 "10.1.0.0/24".parse().unwrap(),
                 "10.1.1.0/24".parse().unwrap(),
@@ -32,7 +32,7 @@ async fn rejects_empty_networks() {
             ..Default::default()
         },
         spec: UnmeshedNetworkSpec {
-            default_policy: DefaultPolicy::AllowUnknown,
+            traffic_policy: DefaultPolicy::AllowUnknown,
             networks: Default::default(),
         },
     })

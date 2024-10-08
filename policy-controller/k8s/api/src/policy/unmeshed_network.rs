@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct UnmeshedNetworkSpec {
     pub networks: Vec<Cidr>,
-    pub default_policy: DefaultPolicy,
+    pub traffic_policy: DefaultPolicy,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]

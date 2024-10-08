@@ -163,7 +163,7 @@ spec:
                 default: ["0.0.0.0/0", "::/0"]
             type: object
             required:
-            - defaultPolicy
+            - trafficPolicy
 ---
 # Source: linkerd-crds/templates/policy/httproute.yaml
 ---
