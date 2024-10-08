@@ -179,6 +179,8 @@ webhooks:
     resources:
     - httproutes
     - grpcroutes
+    - tcproutes
+    - tlsroutes
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -1287,7 +1289,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 074af221fb5bbd6b3bc96c6aee168d6911786e90851551ad2beb20be8985684d
+        checksum/config: 4544d8ac904256c8122adfe9dd92960fa5370c1d34511aff183e5d074763ef78
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
