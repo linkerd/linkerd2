@@ -58,17 +58,6 @@ impl From<linkerd_k8s_api::UnmeshedNetwork> for UnmeshedNetwork {
 
 // === impl MatchedUnmeshedNetwork ===
 
-impl From<(Cidr, &UnmeshedNetwork)> for MatchedUnmeshedNetwork {
-    fn from((cidr, unet): (Cidr, &UnmeshedNetwork)) -> Self {
-        Self {
-            name: unet.name.clone(),
-            namespace: unet.namespace.clone(),
-            matched_cidr: MatchedCidr(cidr),
-            creation_timestamp: unet.creation_timestamp,
-        }
-    }
-}
-
 impl std::cmp::PartialOrd for MatchedUnmeshedNetwork {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
@@ -124,10 +113,15 @@ pub(crate) fn resolve_unmeshed_network<'n>(
 
     to_pick_from
         .iter()
-        .filter_map(|un| {
-            un.networks
+        .filter_map(|unet| {
+            unet.networks
                 .find_match(addr)
-                .map(|cidr| MatchedUnmeshedNetwork::from((cidr, *un)))
+                .map(|cidr| MatchedUnmeshedNetwork {
+                    name: unet.name.clone(),
+                    namespace: unet.namespace.clone(),
+                    matched_cidr: MatchedCidr(cidr),
+                    creation_timestamp: unet.creation_timestamp,
+                })
         })
         .max()
         .map(|m| super::ResourceRef {
