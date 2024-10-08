@@ -768,6 +768,15 @@ fn is_service(group: Option<&str>, kind: &str) -> bool {
 }
 
 #[inline]
+fn is_unmeshed_network(group: Option<&str>, kind: &str) -> bool {
+    // If the group is not specified or empty, assume it's 'core'.
+    group
+        .map(|g| g.eq_ignore_ascii_case("policy.linkerd.io"))
+        .unwrap_or(false)
+        && kind.eq_ignore_ascii_case("UnmeshedNetwork")
+}
+
+#[inline]
 pub fn is_parent_service(parent: &ParentReference) -> bool {
     parent
         .kind
@@ -775,6 +784,21 @@ pub fn is_parent_service(parent: &ParentReference) -> bool {
         .map(|k| is_service(parent.group.as_deref(), k))
         // Parent refs require a `kind`.
         .unwrap_or(false)
+}
+
+#[inline]
+pub fn is_parent_unmeshed_network(parent: &ParentReference) -> bool {
+    parent
+        .kind
+        .as_deref()
+        .map(|k| is_unmeshed_network(parent.group.as_deref(), k))
+        // Parent refs require a `kind`.
+        .unwrap_or(false)
+}
+
+#[inline]
+pub fn is_parent_service_or_unmeshed_network(parent: &ParentReference) -> bool {
+    is_parent_service(parent) || is_parent_unmeshed_network(parent)
 }
 
 #[inline]

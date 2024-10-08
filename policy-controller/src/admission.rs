@@ -140,6 +140,14 @@ impl Admission {
             return self.admit_spec::<k8s_gateway_api::GrpcRouteSpec>(req).await;
         }
 
+        if is_kind::<k8s_gateway_api::TlsRoute>(&req) {
+            return self.admit_spec::<k8s_gateway_api::TlsRouteSpec>(req).await;
+        }
+
+        if is_kind::<k8s_gateway_api::TcpRoute>(&req) {
+            return self.admit_spec::<k8s_gateway_api::TcpRouteSpec>(req).await;
+        }
+
         AdmissionResponse::invalid(format_args!(
             "unsupported resource type: {}.{}.{}",
             req.kind.group, req.kind.version, req.kind.kind
@@ -547,12 +555,16 @@ impl Validate<HttpRouteSpec> for Admission {
         annotations: &BTreeMap<String, String>,
         spec: HttpRouteSpec,
     ) -> Result<()> {
+        for parent in spec.inner.parent_refs.iter().flatten() {
+            validate_parent_ref_port_requirements(parent)?;
+        }
+
         if spec
             .inner
             .parent_refs
             .iter()
             .flatten()
-            .any(index::outbound::index::is_parent_service)
+            .any(index::outbound::index::is_parent_service_or_unmeshed_network)
         {
             index::outbound::index::http::parse_http_retry(annotations)?;
             index::outbound::index::parse_accrual_config(annotations)?;
@@ -633,12 +645,16 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
         annotations: &BTreeMap<String, String>,
         spec: k8s_gateway_api::HttpRouteSpec,
     ) -> Result<()> {
+        for parent in spec.inner.parent_refs.iter().flatten() {
+            validate_parent_ref_port_requirements(parent)?;
+        }
+
         if spec
             .inner
             .parent_refs
             .iter()
             .flatten()
-            .any(outbound_index::is_parent_service)
+            .any(outbound_index::is_parent_service_or_unmeshed_network)
         {
             outbound_index::http::parse_http_retry(annotations)?;
             outbound_index::parse_accrual_config(annotations)?;
@@ -692,12 +708,16 @@ impl Validate<k8s_gateway_api::GrpcRouteSpec> for Admission {
         annotations: &BTreeMap<String, String>,
         spec: k8s_gateway_api::GrpcRouteSpec,
     ) -> Result<()> {
+        for parent in spec.inner.parent_refs.iter().flatten() {
+            validate_parent_ref_port_requirements(parent)?;
+        }
+
         if spec
             .inner
             .parent_refs
             .iter()
             .flatten()
-            .any(outbound_index::is_parent_service)
+            .any(outbound_index::is_parent_service_or_unmeshed_network)
         {
             outbound_index::grpc::parse_grpc_retry(annotations)?;
             outbound_index::parse_accrual_config(annotations)?;
@@ -764,4 +784,54 @@ impl Validate<k8s_gateway_api::GrpcRouteSpec> for Admission {
 
         Ok(())
     }
+}
+
+#[async_trait::async_trait]
+impl Validate<k8s_gateway_api::TlsRouteSpec> for Admission {
+    async fn validate(
+        self,
+        _ns: &str,
+        _name: &str,
+        _annotations: &BTreeMap<String, String>,
+        spec: k8s_gateway_api::TlsRouteSpec,
+    ) -> Result<()> {
+        for parent in spec.inner.parent_refs.iter().flatten() {
+            validate_parent_ref_port_requirements(parent)?;
+        }
+
+        if spec.rules.len() != 1 {
+            bail!("TlsRoute supports a single rule only")
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Validate<k8s_gateway_api::TcpRouteSpec> for Admission {
+    async fn validate(
+        self,
+        _ns: &str,
+        _name: &str,
+        _annotations: &BTreeMap<String, String>,
+        spec: k8s_gateway_api::TcpRouteSpec,
+    ) -> Result<()> {
+        for parent in spec.inner.parent_refs.iter().flatten() {
+            validate_parent_ref_port_requirements(parent)?;
+        }
+
+        if spec.rules.len() != 1 {
+            bail!("TcpRoute supports a single rule only")
+        }
+
+        Ok(())
+    }
+}
+
+fn validate_parent_ref_port_requirements(parent: &k8s_gateway_api::ParentReference) -> Result<()> {
+    if index::outbound::index::is_parent_unmeshed_network(parent) && parent.port.is_none() {
+        bail!("cannot target an UnmeshedNetwork without specifying a port");
+    }
+
+    Ok(())
 }
