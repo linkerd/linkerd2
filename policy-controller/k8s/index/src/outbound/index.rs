@@ -1,3 +1,4 @@
+use self::unmeshed_network::UnmeshedNetwork;
 use crate::{
     ports::{ports_annotation, PortSet},
     routes::{ExplicitGKN, HttpRouteResource, ImpliedGKN},
@@ -24,8 +25,6 @@ pub mod grpc;
 pub mod http;
 pub mod metrics;
 mod unmeshed_network;
-
-use unmeshed_network::UnmeshedNetwork;
 
 #[derive(Debug)]
 pub struct Index {
@@ -261,7 +260,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::UnmeshedNetwork> fo
 
 impl kubert::index::IndexNamespacedResource<Pod> for Index {
     fn apply(&mut self, pod: Pod) {
-        let ns = pod.namespace().unwrap();
+        let ns = pod.namespace().expect("Pod must have a namespace");
         let name = pod.name_unchecked();
         tracing::debug!(name, ns, "indexing pod");
 
@@ -275,7 +274,7 @@ impl kubert::index::IndexNamespacedResource<Pod> for Index {
                     let pod_ip_addr = match IpAddr::from_str(ip) {
                         Ok(addr) => addr,
                         Err(error) => {
-                            tracing::error!(%error, "malformed PodIp");
+                            tracing::error!(%error, "malformed pod IP: {ip}");
                             return;
                         }
                     };

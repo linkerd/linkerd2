@@ -25,7 +25,7 @@ struct MatchedUnmeshedNetwork {
 #[derive(Debug, PartialEq, Eq)]
 struct MatchedCidr(Cidr);
 
-// === impl MatchedUnmeshedNetwork ===
+// === impl Networks ===
 
 impl Networks {
     pub fn find_match(&self, ip: IpAddr) -> Option<Cidr> {
@@ -33,7 +33,7 @@ impl Networks {
         self.0
             .iter()
             .filter(|c| c.contains(&ip))
-            .min_by(|a, b| a.size().cmp(&b.size()))
+            .min_by(|a, b| a.block_size().cmp(&b.block_size()))
             .cloned()
     }
 }
@@ -95,8 +95,8 @@ impl std::cmp::PartialOrd for MatchedCidr {
 
 impl std::cmp::Ord for MatchedCidr {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        let cidr_size_self = self.0.size();
-        let cidr_size_other = other.0.size();
+        let cidr_size_self = self.0.block_size();
+        let cidr_size_other = other.0.block_size();
 
         match cidr_size_self.cmp(&cidr_size_other) {
             std::cmp::Ordering::Less => std::cmp::Ordering::Greater,

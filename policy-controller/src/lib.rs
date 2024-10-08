@@ -127,7 +127,7 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
         }: OutboundDiscoverTarget,
     ) -> Result<Option<OutboundPolicyStream>> {
         if let TargetKind::UnmeshedNetwork = kind {
-            tracing::debug!("UnmeshedNetwork network is not supported yet");
+            tracing::debug!("UnmeshedNetwork is not supported yet");
             return Ok(None);
         }
 

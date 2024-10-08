@@ -33,7 +33,10 @@ impl Cidr {
         }
     }
 
-    pub fn size(&self) -> usize {
+    /// Returns the size of this CIDR block.
+    ///
+    /// Returns `1` if this represents a single address.
+    pub fn block_size(&self) -> usize {
         match self {
             Cidr::Net(net) => net.hosts().count(),
             Cidr::Addr(_) => 1,
