@@ -4,11 +4,8 @@ use linkerd_policy_controller_k8s_api::{policy as linkerd_k8s_api, ResourceExt};
 use std::net::IpAddr;
 
 #[derive(Debug, Default)]
-pub(crate) struct Networks(pub Vec<Cidr>);
-
-#[derive(Debug, Default)]
 pub(crate) struct UnmeshedNetwork {
-    pub networks: Networks,
+    pub networks: Vec<Cidr>,
     pub name: String,
     pub namespace: String,
     pub creation_timestamp: Option<DateTime<Utc>>,
@@ -25,19 +22,6 @@ struct MatchedUnmeshedNetwork {
 #[derive(Debug, PartialEq, Eq)]
 struct MatchedCidr(Cidr);
 
-// === impl Networks ===
-
-impl Networks {
-    pub fn find_match(&self, ip: IpAddr) -> Option<Cidr> {
-        let ip: Cidr = ip.into();
-        self.0
-            .iter()
-            .filter(|c| c.contains(&ip))
-            .min_by(|a, b| a.block_size().cmp(&b.block_size()))
-            .cloned()
-    }
-}
-
 // === impl UnmeshedNetwork ===
 
 impl From<linkerd_k8s_api::UnmeshedNetwork> for UnmeshedNetwork {
@@ -50,7 +34,7 @@ impl From<linkerd_k8s_api::UnmeshedNetwork> for UnmeshedNetwork {
         UnmeshedNetwork {
             name,
             namespace,
-            networks: Networks(u.spec.networks.clone()),
+            networks: u.spec.networks.clone(),
             creation_timestamp: u.creation_timestamp().map(|d| d.0),
         }
     }
@@ -114,20 +98,32 @@ pub(crate) fn resolve_unmeshed_network<'n>(
     to_pick_from
         .iter()
         .filter_map(|unet| {
-            unet.networks
-                .find_match(addr)
-                .map(|cidr| MatchedUnmeshedNetwork {
-                    name: unet.name.clone(),
-                    namespace: unet.namespace.clone(),
-                    matched_cidr: MatchedCidr(cidr),
-                    creation_timestamp: unet.creation_timestamp,
-                })
+            let matched_cidr = find_matched_cidr(&unet.networks, addr)?;
+            Some(MatchedUnmeshedNetwork {
+                name: unet.name.clone(),
+                namespace: unet.namespace.clone(),
+                matched_cidr,
+                creation_timestamp: unet.creation_timestamp,
+            })
         })
         .max()
         .map(|m| super::ResourceRef {
             name: m.name,
             namespace: m.namespace,
         })
+}
+
+// This finds a CIDR that contains the given IpAddr. When there are
+// multiple CIDRS that match this criteria, the CIDR that is most
+// specific (as in having the smallest address space) wins.
+fn find_matched_cidr(cidrs: &[Cidr], addr: IpAddr) -> Option<MatchedCidr> {
+    let ip: Cidr = addr.into();
+    cidrs
+        .iter()
+        .filter(|c| c.contains(&ip))
+        .min_by(|a, b| a.block_size().cmp(&b.block_size()))
+        .cloned()
+        .map(MatchedCidr)
 }
 
 #[cfg(test)]
