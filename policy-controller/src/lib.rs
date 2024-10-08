@@ -147,9 +147,9 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
         port: NonZeroU16,
         source_namespace: String,
     ) -> Option<OutboundDiscoverTarget> {
+        let index = self.0.read();
         // first try to lookup a service that we have indexed
-        if let Some(outbound::ResourceRef { name, namespace }) = self.0.read().lookup_service(addr)
-        {
+        if let Some(outbound::ResourceRef { name, namespace }) = index.lookup_service(addr) {
             return Some(OutboundDiscoverTarget {
                 kind: TargetKind::Service,
                 name,
@@ -162,13 +162,12 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
         // next, check if a pod with this IP exists. If it does, return a None
         // so we can let the destinations controller serve the discovery request
         // as usual
-        if self.0.read().pod_exists(addr) {
+        if index.pod_exists(addr) {
             return None;
         }
 
         // now try and look for an UnmeshedNetwork that matches this IP address.
-        self.0
-            .read()
+        index
             .lookup_unmeshed_network(addr, source_namespace.clone())
             .map(
                 |outbound::ResourceRef { name, namespace }| OutboundDiscoverTarget {
