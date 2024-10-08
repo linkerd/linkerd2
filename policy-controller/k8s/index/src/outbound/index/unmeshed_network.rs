@@ -13,14 +13,11 @@ pub(crate) struct UnmeshedNetwork {
 
 #[derive(Debug, PartialEq, Eq)]
 struct MatchedUnmeshedNetwork {
-    matched_cidr: MatchedCidr,
+    matched_cidr: Cidr,
     name: String,
     namespace: String,
     creation_timestamp: Option<DateTime<Utc>>,
 }
-
-#[derive(Debug, PartialEq, Eq)]
-struct MatchedCidr(Cidr);
 
 // === impl UnmeshedNetwork ===
 
@@ -40,53 +37,11 @@ impl From<linkerd_k8s_api::UnmeshedNetwork> for UnmeshedNetwork {
     }
 }
 
-// === impl MatchedUnmeshedNetwork ===
-
-impl std::cmp::PartialOrd for MatchedUnmeshedNetwork {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl std::cmp::Ord for MatchedUnmeshedNetwork {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.matched_cidr
-            .cmp(&other.matched_cidr)
-            .then_with(|| self.creation_timestamp.cmp(&other.creation_timestamp))
-            .then_with(|| self.namespace.cmp(&other.namespace).reverse())
-            .then_with(|| self.name.cmp(&other.name).reverse())
-    }
-}
-
-// === impl MatchedCidr ===
-
-impl std::cmp::PartialOrd for MatchedCidr {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl std::cmp::Ord for MatchedCidr {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        let cidr_size_self = self.0.block_size();
-        let cidr_size_other = other.0.block_size();
-
-        match cidr_size_self.cmp(&cidr_size_other) {
-            std::cmp::Ordering::Less => std::cmp::Ordering::Greater,
-            std::cmp::Ordering::Greater => std::cmp::Ordering::Less,
-            std::cmp::Ordering::Equal => std::cmp::Ordering::Equal,
-        }
-    }
-}
-
 // Attempts to find the best matching network for a certain discovery look-up.
 // Logic is:
 // 1. if there are Unmeshed networks in the source_namespace, only these are considered
 // 2. the target IP is matches against the cidrs of the UnmeshedNetwork
-// 3. ambiguity is resolved as:
-//    - prefer the more specific cidr match
-//    - prefer older resource
-//    - if all fails, rely on alphabetical sort of namespace/name
+// 3. ambiguity is resolved as by comparing the networks using compare_matched_unmeshed_network
 pub(crate) fn resolve_unmeshed_network<'n>(
     addr: IpAddr,
     source_namespace: String,
@@ -98,7 +53,7 @@ pub(crate) fn resolve_unmeshed_network<'n>(
     to_pick_from
         .iter()
         .filter_map(|unet| {
-            let matched_cidr = find_matched_cidr(&unet.networks, addr)?;
+            let matched_cidr = match_cidr(&unet.networks, addr)?;
             Some(MatchedUnmeshedNetwork {
                 name: unet.name.clone(),
                 namespace: unet.namespace.clone(),
@@ -106,7 +61,7 @@ pub(crate) fn resolve_unmeshed_network<'n>(
                 creation_timestamp: unet.creation_timestamp,
             })
         })
-        .max()
+        .max_by(compare_matched_unmeshed_network)
         .map(|m| super::ResourceRef {
             name: m.name,
             namespace: m.namespace,
@@ -116,14 +71,33 @@ pub(crate) fn resolve_unmeshed_network<'n>(
 // This finds a CIDR that contains the given IpAddr. When there are
 // multiple CIDRS that match this criteria, the CIDR that is most
 // specific (as in having the smallest address space) wins.
-fn find_matched_cidr(cidrs: &[Cidr], addr: IpAddr) -> Option<MatchedCidr> {
+fn match_cidr(cidrs: &[Cidr], addr: IpAddr) -> Option<Cidr> {
     let ip: Cidr = addr.into();
     cidrs
         .iter()
         .filter(|c| c.contains(&ip))
         .min_by(|a, b| a.block_size().cmp(&b.block_size()))
         .cloned()
-        .map(MatchedCidr)
+}
+
+// This logic compares two MatchedUnmeshedNetwork objects with the purpose
+// of picking the one that is more specific. The disambiguation rules are
+// as follows:
+//  1. prefer the more specific cidr match (smaller address space size)
+//  2. prefer older resource
+//  3. all being equal, rely on alphabetical sort of namespace/name
+fn compare_matched_unmeshed_network(
+    a: &MatchedUnmeshedNetwork,
+    b: &MatchedUnmeshedNetwork,
+) -> std::cmp::Ordering {
+    let cidr_size_a = a.matched_cidr.block_size();
+    let cidr_size_b = b.matched_cidr.block_size();
+
+    cidr_size_b
+        .cmp(&cidr_size_a)
+        .then_with(|| a.creation_timestamp.cmp(&b.creation_timestamp))
+        .then_with(|| a.namespace.cmp(&b.namespace).reverse())
+        .then_with(|| a.name.cmp(&b.name).reverse())
 }
 
 #[cfg(test)]
@@ -135,13 +109,13 @@ mod test {
         let ip_addr = "192.168.0.4".parse().unwrap();
         let networks = vec![
             UnmeshedNetwork {
-                networks: Networks(vec!["192.168.0.1/16".parse().unwrap()]),
+                networks: vec!["192.168.0.1/16".parse().unwrap()],
                 name: "net-1".to_string(),
                 namespace: "ns".to_string(),
                 creation_timestamp: None,
             },
             UnmeshedNetwork {
-                networks: Networks(vec!["192.168.0.1/24".parse().unwrap()]),
+                networks: vec!["192.168.0.1/24".parse().unwrap()],
                 name: "net-2".to_string(),
                 namespace: "ns".to_string(),
                 creation_timestamp: None,
@@ -157,13 +131,13 @@ mod test {
         let ip_addr = "192.168.0.4".parse().unwrap();
         let networks = vec![
             UnmeshedNetwork {
-                networks: Networks(vec!["192.168.0.1/16".parse().unwrap()]),
+                networks: vec!["192.168.0.1/16".parse().unwrap()],
                 name: "net-1".to_string(),
                 namespace: "ns-1".to_string(),
                 creation_timestamp: None,
             },
             UnmeshedNetwork {
-                networks: Networks(vec!["192.168.0.1/24".parse().unwrap()]),
+                networks: vec!["192.168.0.1/24".parse().unwrap()],
                 name: "net-2".to_string(),
                 namespace: "ns".to_string(),
                 creation_timestamp: None,
@@ -179,13 +153,13 @@ mod test {
         let ip_addr = "192.168.0.4".parse().unwrap();
         let networks = vec![
             UnmeshedNetwork {
-                networks: Networks(vec!["192.168.0.1/16".parse().unwrap()]),
+                networks: vec!["192.168.0.1/16".parse().unwrap()],
                 name: "net-1".to_string(),
                 namespace: "ns".to_string(),
                 creation_timestamp: Some(DateTime::<Utc>::MAX_UTC),
             },
             UnmeshedNetwork {
-                networks: Networks(vec!["192.168.0.1/16".parse().unwrap()]),
+                networks: vec!["192.168.0.1/16".parse().unwrap()],
                 name: "net-2".to_string(),
                 namespace: "ns".to_string(),
                 creation_timestamp: Some(DateTime::<Utc>::MIN_UTC),
@@ -201,13 +175,13 @@ mod test {
         let ip_addr = "192.168.0.4".parse().unwrap();
         let networks = vec![
             UnmeshedNetwork {
-                networks: Networks(vec!["192.168.0.1/16".parse().unwrap()]),
+                networks: vec!["192.168.0.1/16".parse().unwrap()],
                 name: "b".to_string(),
                 namespace: "a".to_string(),
                 creation_timestamp: None,
             },
             UnmeshedNetwork {
-                networks: Networks(vec!["192.168.0.1/16".parse().unwrap()]),
+                networks: vec!["192.168.0.1/16".parse().unwrap()],
                 name: "d".to_string(),
                 namespace: "c".to_string(),
                 creation_timestamp: None,
