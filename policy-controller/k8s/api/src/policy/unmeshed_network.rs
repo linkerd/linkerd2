@@ -18,12 +18,12 @@ pub struct UnmeshedNetworkSpec {
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
 pub enum DefaultPolicy {
-    AllowAll,
-    DenyAll,
+    AllowUnknown,
+    DenyUnknown,
 }
 
 impl Default for DefaultPolicy {
     fn default() -> Self {
-        Self::AllowAll
+        Self::AllowUnknown
     }
 }
