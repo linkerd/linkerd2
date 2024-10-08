@@ -307,7 +307,7 @@ async fn main() -> Result<()> {
     let all_pods = runtime.watch_all::<k8s::Pod>(watcher::Config::default());
     let all_pods_indexes = IndexList::new(outbound_index.clone()).shared();
     tokio::spawn(
-        kubert::index::namespaced(all_pods_indexes, all_pods).instrument(info_span!("all pods")),
+        kubert::index::namespaced(all_pods_indexes, all_pods).instrument(info_span!("pods")),
     );
 
     let unmeshed_networks =
@@ -315,7 +315,7 @@ async fn main() -> Result<()> {
     let unmeshed_networks_indexes = IndexList::new(outbound_index.clone()).shared();
     tokio::spawn(
         kubert::index::namespaced(unmeshed_networks_indexes, unmeshed_networks)
-            .instrument(info_span!("unmeshed networks")),
+            .instrument(info_span!("unmeshednetworks")),
     );
 
     // Spawn the status Controller reconciliation.
