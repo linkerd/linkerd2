@@ -1,6 +1,6 @@
 use linkerd_policy_controller_k8s_api::{
     self as api,
-    policy::unmeshed_network::{DefaultPolicy, UnmeshedNetwork, UnmeshedNetworkSpec},
+    policy::unmeshed_network::{TrafficPolicy, UnmeshedNetwork, UnmeshedNetworkSpec},
 };
 use linkerd_policy_test::admission;
 
@@ -13,7 +13,7 @@ async fn accepts_valid() {
             ..Default::default()
         },
         spec: UnmeshedNetworkSpec {
-            traffic_policy: DefaultPolicy::AllowUnknown,
+            traffic_policy: TrafficPolicy::AllowUnknown,
             networks: vec![
                 "10.1.0.0/24".parse().unwrap(),
                 "10.1.1.0/24".parse().unwrap(),
@@ -32,7 +32,7 @@ async fn rejects_empty_networks() {
             ..Default::default()
         },
         spec: UnmeshedNetworkSpec {
-            traffic_policy: DefaultPolicy::AllowUnknown,
+            traffic_policy: TrafficPolicy::AllowUnknown,
             networks: Default::default(),
         },
     })

@@ -13,17 +13,11 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct UnmeshedNetworkSpec {
     pub networks: Vec<Cidr>,
-    pub traffic_policy: DefaultPolicy,
+    pub traffic_policy: TrafficPolicy,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
-pub enum DefaultPolicy {
+pub enum TrafficPolicy {
     AllowUnknown,
     DenyUnknown,
-}
-
-impl Default for DefaultPolicy {
-    fn default() -> Self {
-        Self::AllowUnknown
-    }
 }

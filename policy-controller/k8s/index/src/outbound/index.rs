@@ -275,7 +275,7 @@ impl kubert::index::IndexNamespacedResource<Pod> for Index {
                         Ok(addr) => addr,
                         Err(error) => {
                             tracing::error!(%error, "malformed pod IP: {ip}");
-                            return;
+                            continue;
                         }
                     };
 
