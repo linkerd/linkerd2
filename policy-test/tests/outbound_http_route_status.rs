@@ -76,7 +76,7 @@ async fn accepted_parent_unmeshed_network() {
             },
             spec: policy::UnmeshedNetworkSpec {
                 networks: vec!["192.168.0.1/16".parse().unwrap()],
-                traffic_policy: policy::unmeshed_network::DefaultPolicy::AllowUnknown,
+                traffic_policy: policy::unmeshed_network::TrafficPolicy::AllowUnknown,
             },
         };
         let unet = create(&client, unet).await;
@@ -318,7 +318,7 @@ async fn multiple_statuses_unmeshed_network() {
             },
             spec: policy::UnmeshedNetworkSpec {
                 networks: vec!["192.168.0.1/16".parse().unwrap()],
-                traffic_policy: policy::unmeshed_network::DefaultPolicy::AllowUnknown,
+                traffic_policy: policy::unmeshed_network::TrafficPolicy::AllowUnknown,
             },
         };
         let unet = create(&client, unet).await;
