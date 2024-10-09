@@ -82,6 +82,7 @@ pub struct Index {
     route_refs: HashMap<NamespaceGroupKindName, RouteRef>,
     servers: HashSet<ResourceId>,
     services: HashMap<ResourceId, Service>,
+    unmeshed_nets: HashSet<ResourceId>,
 
     metrics: IndexMetrics,
 }
@@ -238,6 +239,10 @@ impl Controller {
                             self.patch_status::<k8s_gateway_api::HttpRoute>(&id.gkn.name, &id.namespace, patch).await;
                         } else if id.gkn.group == k8s_gateway_api::GrpcRoute::group(&()) && id.gkn.kind == k8s_gateway_api::GrpcRoute::kind(&()) {
                             self.patch_status::<k8s_gateway_api::GrpcRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.gkn.group == k8s_gateway_api::TlsRoute::group(&()) && id.gkn.kind == k8s_gateway_api::TlsRoute::kind(&()) {
+                            self.patch_status::<k8s_gateway_api::TlsRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.gkn.group == k8s_gateway_api::TcpRoute::group(&()) && id.gkn.kind == k8s_gateway_api::TcpRoute::kind(&()) {
+                            self.patch_status::<k8s_gateway_api::TcpRoute>(&id.gkn.name, &id.namespace, patch).await;
                         }
                     } else {
                         self.metrics.patch_drops.inc();
@@ -302,6 +307,7 @@ impl Index {
             route_refs: HashMap::new(),
             servers: HashSet::new(),
             services: HashMap::new(),
+            unmeshed_nets: HashSet::new(),
             metrics,
         }))
     }
@@ -399,13 +405,11 @@ impl Index {
                 // service is a valid parent if it exists and it has a cluster_ip.
                 let condition = match self.services.get(service) {
                     Some(svc) if svc.valid_parent_service() => {
-                        // If this route is an HTTPRoute and there exists a GRPCRoute
-                        // with the same parent, the HTTPRoute should not be accepted
-                        // because it is less specific.
-                        // https://gateway-api.sigs.k8s.io/geps/gep-1426/#route-types
-                        if id.gkn.kind == k8s_gateway_api::HttpRoute::kind(&())
-                            && self.parent_has_grpcroute_children(parent_ref)
-                        {
+                        if parent_has_conflicting_routes(
+                            &mut self.route_refs.iter(),
+                            parent_ref,
+                            &id.gkn.kind,
+                        ) {
                             route_conflicted()
                         } else {
                             accepted()
@@ -421,6 +425,35 @@ impl Index {
                         kind: Some("Service".to_string()),
                         namespace: Some(service.namespace.clone()),
                         name: service.name.clone(),
+                        section_name: None,
+                        port: *port,
+                    },
+                    controller_name: POLICY_CONTROLLER_NAME.to_string(),
+                    conditions: vec![condition, backend_condition],
+                })
+            }
+            routes::ParentReference::UnmeshedNetwork(unet, port) => {
+                // unmeshed network is a valid parent if it exists.
+                let condition = if self.unmeshed_nets.contains(unet) {
+                    if parent_has_conflicting_routes(
+                        &mut self.route_refs.iter(),
+                        parent_ref,
+                        &id.gkn.kind,
+                    ) {
+                        route_conflicted()
+                    } else {
+                        accepted()
+                    }
+                } else {
+                    no_matching_parent()
+                };
+
+                Some(k8s_gateway_api::RouteParentStatus {
+                    parent_ref: k8s_gateway_api::ParentReference {
+                        group: Some("policy.linkerd.io".to_string()),
+                        kind: Some("UnmeshedNetwork".to_string()),
+                        namespace: Some(unet.namespace.clone()),
+                        name: unet.name.clone(),
                         section_name: None,
                         port: *port,
                     },
@@ -456,6 +489,7 @@ impl Index {
         // return positive status, otherwise, one of them does not exist
         if backend_refs.iter().all(|backend_ref| match backend_ref {
             routes::BackendReference::Service(service) => self.services.contains_key(service),
+            routes::BackendReference::UnmeshedNetwork(unet) => self.unmeshed_nets.contains(unet),
             _ => false,
         }) {
             resolved_refs()
@@ -520,6 +554,24 @@ impl Index {
 
                 make_patch(id, status)
             }
+            (GATEWAY_API_GROUP, "TCPRoute") => {
+                let status = k8s_gateway_api::TcpRouteStatus {
+                    inner: k8s_gateway_api::RouteStatus {
+                        parents: all_statuses,
+                    },
+                };
+
+                make_patch(id, status)
+            }
+            (GATEWAY_API_GROUP, "TLSRoute") => {
+                let status = k8s_gateway_api::TlsRouteStatus {
+                    inner: k8s_gateway_api::RouteStatus {
+                        parents: all_statuses,
+                    },
+                };
+
+                make_patch(id, status)
+            }
             _ => None,
         }
     }
@@ -560,7 +612,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::HttpRoute> for Inde
         };
 
         // Create the route parents
-        let parents = routes::http::make_parents(&namespace, &resource.spec.inner);
+        let parents = routes::make_parents(&namespace, &resource.spec.inner);
 
         // Create the route backends
         let backends = routes::http::make_backends(
@@ -622,7 +674,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         };
 
         // Create the route parents
-        let parents = routes::http::make_parents(&namespace, &resource.spec.inner);
+        let parents = routes::make_parents(&namespace, &resource.spec.inner);
 
         // Create the route backends
         let backends = routes::http::make_backends(
@@ -684,7 +736,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Inde
         };
 
         // Create the route parents
-        let parents = routes::http::make_parents(&namespace, &resource.spec.inner);
+        let parents = routes::make_parents(&namespace, &resource.spec.inner);
 
         // Create the route backends
         let backends = routes::grpc::make_backends(
@@ -763,6 +815,122 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::Server> for Index {
     // to handle resets specially.
 }
 
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::TlsRoute> for Index {
+    fn apply(&mut self, resource: k8s_gateway_api::TlsRoute) {
+        let namespace = resource
+            .namespace()
+            .expect("TlsRoute must have a namespace");
+        let name = resource.name_unchecked();
+        let id = NamespaceGroupKindName {
+            namespace: namespace.clone(),
+            gkn: GroupKindName {
+                group: k8s_gateway_api::TlsRoute::group(&()),
+                kind: k8s_gateway_api::TlsRoute::kind(&()),
+                name: name.into(),
+            },
+        };
+
+        // Create the route parents
+        let parents = routes::make_parents(&namespace, &resource.spec.inner);
+
+        let backends = resource
+            .spec
+            .rules
+            .into_iter()
+            .flat_map(|rule| rule.backend_refs)
+            .map(|br| routes::BackendReference::from_backend_ref(&br.inner, &namespace))
+            .collect();
+
+        let statuses = resource
+            .status
+            .into_iter()
+            .flat_map(|status| status.inner.parents)
+            .collect();
+
+        // Construct route and insert into the index; if the TLSRoute is
+        // already in the index, and it hasn't changed, skip creating a patch.
+        let route = RouteRef {
+            parents,
+            backends,
+            statuses,
+        };
+        self.index_route(id, route);
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let id = NamespaceGroupKindName {
+            namespace,
+            gkn: GroupKindName {
+                group: k8s_gateway_api::TlsRoute::group(&()),
+                kind: k8s_gateway_api::TlsRoute::kind(&()),
+                name: name.into(),
+            },
+        };
+        self.route_refs.remove(&id);
+    }
+
+    // Since apply only reindexes a single HTTPRoute at a time, there's no need
+    // to handle resets specially.
+}
+
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::TcpRoute> for Index {
+    fn apply(&mut self, resource: k8s_gateway_api::TcpRoute) {
+        let namespace = resource
+            .namespace()
+            .expect("TcpRoute must have a namespace");
+        let name = resource.name_unchecked();
+        let id = NamespaceGroupKindName {
+            namespace: namespace.clone(),
+            gkn: GroupKindName {
+                group: k8s_gateway_api::TcpRoute::group(&()),
+                kind: k8s_gateway_api::TcpRoute::kind(&()),
+                name: name.into(),
+            },
+        };
+
+        // Create the route parents
+        let parents = routes::make_parents(&namespace, &resource.spec.inner);
+
+        let backends = resource
+            .spec
+            .rules
+            .into_iter()
+            .flat_map(|rule| rule.backend_refs)
+            .map(|br| routes::BackendReference::from_backend_ref(&br.inner, &namespace))
+            .collect();
+
+        let statuses = resource
+            .status
+            .into_iter()
+            .flat_map(|status| status.inner.parents)
+            .collect();
+
+        // Construct route and insert into the index; if the TCPRoute is
+        // already in the index, and it hasn't changed, skip creating a patch.
+        let route = RouteRef {
+            parents,
+            backends,
+            statuses,
+        };
+        self.index_route(id, route);
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let id = NamespaceGroupKindName {
+            namespace,
+            gkn: GroupKindName {
+                group: k8s_gateway_api::TcpRoute::group(&()),
+                kind: k8s_gateway_api::TcpRoute::kind(&()),
+                name: name.into(),
+            },
+        };
+        self.route_refs.remove(&id);
+    }
+
+    // Since apply only reindexes a single HTTPRoute at a time, there's no need
+    // to handle resets specially.
+}
+
 impl kubert::index::IndexNamespacedResource<k8s_core_api::Service> for Index {
     fn apply(&mut self, resource: k8s_core_api::Service) {
         let namespace = resource.namespace().expect("Service must have a namespace");
@@ -793,6 +961,41 @@ impl kubert::index::IndexNamespacedResource<k8s_core_api::Service> for Index {
     }
 
     // Since apply only reindexes a single Service at a time, there's no need
+    // to handle resets specially.
+}
+
+impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::UnmeshedNetwork> for Index {
+    fn apply(&mut self, resource: linkerd_k8s_api::UnmeshedNetwork) {
+        let namespace = resource
+            .namespace()
+            .expect("UnmeshedNetwork must have a namespace");
+        let name = resource.name_unchecked();
+        let id = ResourceId::new(namespace, name);
+
+        self.unmeshed_nets.insert(id);
+
+        // If we're not the leader, skip reconciling the cluster.
+        if !self.claims.borrow().is_current_for(&self.name) {
+            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
+            return;
+        }
+        self.reconcile();
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let id = ResourceId::new(namespace, name);
+
+        self.unmeshed_nets.remove(&id);
+
+        // If we're not the leader, skip reconciling the cluster.
+        if !self.claims.borrow().is_current_for(&self.name) {
+            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
+            return;
+        }
+        self.reconcile();
+    }
+
+    // Since apply only reindexes a single UnmeshedNetwork at a time, there's no need
     // to handle resets specially.
 }
 
@@ -846,6 +1049,36 @@ fn now() -> DateTime<Utc> {
     #[cfg(test)]
     let now = DateTime::<Utc>::MIN_UTC;
     now
+}
+
+// This method determines whether a parent that a route attempts to
+// attach to has any routes attached that are in conflict with the one
+// that we are about to attach. This is done following the logs outlined in:
+// https://gateway-api.sigs.k8s.io/geps/gep-1426/#route-types
+fn parent_has_conflicting_routes<'p>(
+    mut existing_routes: impl Iterator<Item = (&'p NamespaceGroupKindName, &'p RouteRef)>,
+    parent_ref: &routes::ParentReference,
+    candidate_kind: &str,
+) -> bool {
+    let grpc_kind = k8s_gateway_api::GrpcRoute::kind(&());
+    let http_kind = k8s_gateway_api::HttpRoute::kind(&());
+    let tls_kind = k8s_gateway_api::TlsRoute::kind(&());
+
+    let more_specific_routes: HashSet<_> = if *candidate_kind == grpc_kind {
+        vec![]
+    } else if *candidate_kind == http_kind {
+        vec![grpc_kind]
+    } else if *candidate_kind == tls_kind {
+        vec![grpc_kind, http_kind]
+    } else {
+        vec![grpc_kind, http_kind, tls_kind]
+    }
+    .into_iter()
+    .collect();
+
+    existing_routes.any(|(id, route)| {
+        more_specific_routes.contains(&id.gkn.kind) && route.parents.contains(parent_ref)
+    })
 }
 
 fn no_matching_parent() -> k8s_core_api::Condition {
@@ -944,4 +1177,592 @@ fn eq_time_insensitive(
                     && l.type_ == r.type_
             })
     })
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use ahash::HashMap;
+    use linkerd_policy_controller_k8s_api::gateway as k8s_gateway_api;
+    use std::vec;
+
+    enum ParentRefType {
+        Service,
+        UnmeshedNetwork,
+    }
+
+    fn grpc_route_no_conflict(p: ParentRefType) {
+        let parent = match p {
+            ParentRefType::Service => routes::ParentReference::Service(
+                ResourceId::new("ns".to_string(), "service".to_string()),
+                None,
+            ),
+
+            ParentRefType::UnmeshedNetwork => routes::ParentReference::UnmeshedNetwork(
+                ResourceId::new("ns".to_string(), "unmeshed-net".to_string()),
+                None,
+            ),
+        };
+
+        let known_routes: HashMap<_, _> = vec![
+            (
+                NamespaceGroupKindName {
+                    namespace: "default".to_string(),
+                    gkn: GroupKindName {
+                        group: k8s_gateway_api::GrpcRoute::group(&()),
+                        kind: k8s_gateway_api::GrpcRoute::kind(&()),
+                        name: "grpc-1".into(),
+                    },
+                },
+                RouteRef {
+                    parents: vec![parent.clone()],
+                    statuses: vec![],
+                    backends: vec![],
+                },
+            ),
+            (
+                NamespaceGroupKindName {
+                    namespace: "default".to_string(),
+                    gkn: GroupKindName {
+                        group: k8s_gateway_api::HttpRoute::group(&()),
+                        kind: k8s_gateway_api::HttpRoute::kind(&()),
+                        name: "http-1".into(),
+                    },
+                },
+                RouteRef {
+                    parents: vec![parent.clone()],
+                    statuses: vec![],
+                    backends: vec![],
+                },
+            ),
+            (
+                NamespaceGroupKindName {
+                    namespace: "default".to_string(),
+                    gkn: GroupKindName {
+                        group: k8s_gateway_api::TlsRoute::group(&()),
+                        kind: k8s_gateway_api::TlsRoute::kind(&()),
+                        name: "tls-1".into(),
+                    },
+                },
+                RouteRef {
+                    parents: vec![parent.clone()],
+                    statuses: vec![],
+                    backends: vec![],
+                },
+            ),
+            (
+                NamespaceGroupKindName {
+                    namespace: "default".to_string(),
+                    gkn: GroupKindName {
+                        group: k8s_gateway_api::TcpRoute::group(&()),
+                        kind: k8s_gateway_api::TcpRoute::kind(&()),
+                        name: "tcp-1".into(),
+                    },
+                },
+                RouteRef {
+                    parents: vec![parent.clone()],
+                    statuses: vec![],
+                    backends: vec![],
+                },
+            ),
+        ]
+        .into_iter()
+        .collect();
+
+        assert!(!parent_has_conflicting_routes(
+            &mut known_routes.iter(),
+            &parent,
+            "GRPCRoute"
+        ));
+    }
+
+    fn http_route_conflict_grpc(p: ParentRefType) {
+        let parent = match p {
+            ParentRefType::Service => routes::ParentReference::Service(
+                ResourceId::new("ns".to_string(), "service".to_string()),
+                None,
+            ),
+
+            ParentRefType::UnmeshedNetwork => routes::ParentReference::UnmeshedNetwork(
+                ResourceId::new("ns".to_string(), "unmeshed-net".to_string()),
+                None,
+            ),
+        };
+
+        let known_routes: HashMap<_, _> = vec![(
+            NamespaceGroupKindName {
+                namespace: "default".to_string(),
+                gkn: GroupKindName {
+                    group: k8s_gateway_api::GrpcRoute::group(&()),
+                    kind: k8s_gateway_api::GrpcRoute::kind(&()),
+                    name: "grpc-1".into(),
+                },
+            },
+            RouteRef {
+                parents: vec![parent.clone()],
+                statuses: vec![],
+                backends: vec![],
+            },
+        )]
+        .into_iter()
+        .collect();
+
+        assert!(parent_has_conflicting_routes(
+            &mut known_routes.iter(),
+            &parent,
+            "HTTPRoute"
+        ));
+    }
+
+    fn http_route_no_conflict(p: ParentRefType) {
+        let parent = match p {
+            ParentRefType::Service => routes::ParentReference::Service(
+                ResourceId::new("ns".to_string(), "service".to_string()),
+                None,
+            ),
+
+            ParentRefType::UnmeshedNetwork => routes::ParentReference::UnmeshedNetwork(
+                ResourceId::new("ns".to_string(), "unmeshed-net".to_string()),
+                None,
+            ),
+        };
+
+        let known_routes: HashMap<_, _> = vec![
+            (
+                NamespaceGroupKindName {
+                    namespace: "default".to_string(),
+                    gkn: GroupKindName {
+                        group: k8s_gateway_api::HttpRoute::group(&()),
+                        kind: k8s_gateway_api::HttpRoute::kind(&()),
+                        name: "http-1".into(),
+                    },
+                },
+                RouteRef {
+                    parents: vec![parent.clone()],
+                    statuses: vec![],
+                    backends: vec![],
+                },
+            ),
+            (
+                NamespaceGroupKindName {
+                    namespace: "default".to_string(),
+                    gkn: GroupKindName {
+                        group: k8s_gateway_api::TlsRoute::group(&()),
+                        kind: k8s_gateway_api::TlsRoute::kind(&()),
+                        name: "tls-1".into(),
+                    },
+                },
+                RouteRef {
+                    parents: vec![parent.clone()],
+                    statuses: vec![],
+                    backends: vec![],
+                },
+            ),
+            (
+                NamespaceGroupKindName {
+                    namespace: "default".to_string(),
+                    gkn: GroupKindName {
+                        group: k8s_gateway_api::TcpRoute::group(&()),
+                        kind: k8s_gateway_api::TcpRoute::kind(&()),
+                        name: "tcp-1".into(),
+                    },
+                },
+                RouteRef {
+                    parents: vec![parent.clone()],
+                    statuses: vec![],
+                    backends: vec![],
+                },
+            ),
+        ]
+        .into_iter()
+        .collect();
+
+        assert!(!parent_has_conflicting_routes(
+            &mut known_routes.iter(),
+            &parent,
+            "HTTPRoute"
+        ));
+    }
+
+    fn tls_route_conflict_http(p: ParentRefType) {
+        let parent = match p {
+            ParentRefType::Service => routes::ParentReference::Service(
+                ResourceId::new("ns".to_string(), "service".to_string()),
+                None,
+            ),
+
+            ParentRefType::UnmeshedNetwork => routes::ParentReference::UnmeshedNetwork(
+                ResourceId::new("ns".to_string(), "unmeshed-net".to_string()),
+                None,
+            ),
+        };
+
+        let known_routes: HashMap<_, _> = vec![(
+            NamespaceGroupKindName {
+                namespace: "default".to_string(),
+                gkn: GroupKindName {
+                    group: k8s_gateway_api::HttpRoute::group(&()),
+                    kind: k8s_gateway_api::HttpRoute::kind(&()),
+                    name: "http-1".into(),
+                },
+            },
+            RouteRef {
+                parents: vec![parent.clone()],
+                statuses: vec![],
+                backends: vec![],
+            },
+        )]
+        .into_iter()
+        .collect();
+
+        assert!(parent_has_conflicting_routes(
+            &mut known_routes.iter(),
+            &parent,
+            "TLSRoute"
+        ));
+    }
+
+    fn tls_route_conflict_grpc(p: ParentRefType) {
+        let parent = match p {
+            ParentRefType::Service => routes::ParentReference::Service(
+                ResourceId::new("ns".to_string(), "service".to_string()),
+                None,
+            ),
+
+            ParentRefType::UnmeshedNetwork => routes::ParentReference::UnmeshedNetwork(
+                ResourceId::new("ns".to_string(), "unmeshed-net".to_string()),
+                None,
+            ),
+        };
+
+        let known_routes: HashMap<_, _> = vec![(
+            NamespaceGroupKindName {
+                namespace: "default".to_string(),
+                gkn: GroupKindName {
+                    group: k8s_gateway_api::GrpcRoute::group(&()),
+                    kind: k8s_gateway_api::GrpcRoute::kind(&()),
+                    name: "grpc-1".into(),
+                },
+            },
+            RouteRef {
+                parents: vec![parent.clone()],
+                statuses: vec![],
+                backends: vec![],
+            },
+        )]
+        .into_iter()
+        .collect();
+
+        assert!(parent_has_conflicting_routes(
+            &mut known_routes.iter(),
+            &parent,
+            "TLSRoute"
+        ));
+    }
+
+    fn tls_route_no_conflict(p: ParentRefType) {
+        let parent = match p {
+            ParentRefType::Service => routes::ParentReference::Service(
+                ResourceId::new("ns".to_string(), "service".to_string()),
+                None,
+            ),
+
+            ParentRefType::UnmeshedNetwork => routes::ParentReference::UnmeshedNetwork(
+                ResourceId::new("ns".to_string(), "unmeshed-net".to_string()),
+                None,
+            ),
+        };
+        let known_routes: HashMap<_, _> = vec![
+            (
+                NamespaceGroupKindName {
+                    namespace: "default".to_string(),
+                    gkn: GroupKindName {
+                        group: k8s_gateway_api::TlsRoute::group(&()),
+                        kind: k8s_gateway_api::TlsRoute::kind(&()),
+                        name: "tls-1".into(),
+                    },
+                },
+                RouteRef {
+                    parents: vec![parent.clone()],
+                    statuses: vec![],
+                    backends: vec![],
+                },
+            ),
+            (
+                NamespaceGroupKindName {
+                    namespace: "default".to_string(),
+                    gkn: GroupKindName {
+                        group: k8s_gateway_api::TcpRoute::group(&()),
+                        kind: k8s_gateway_api::TcpRoute::kind(&()),
+                        name: "tcp-1".into(),
+                    },
+                },
+                RouteRef {
+                    parents: vec![parent.clone()],
+                    statuses: vec![],
+                    backends: vec![],
+                },
+            ),
+        ]
+        .into_iter()
+        .collect();
+
+        assert!(!parent_has_conflicting_routes(
+            &mut known_routes.iter(),
+            &parent,
+            "TLSRoute"
+        ));
+    }
+
+    fn tcp_route_conflict_grpc(p: ParentRefType) {
+        let parent = match p {
+            ParentRefType::Service => routes::ParentReference::Service(
+                ResourceId::new("ns".to_string(), "service".to_string()),
+                None,
+            ),
+
+            ParentRefType::UnmeshedNetwork => routes::ParentReference::UnmeshedNetwork(
+                ResourceId::new("ns".to_string(), "unmeshed-net".to_string()),
+                None,
+            ),
+        };
+
+        let known_routes: HashMap<_, _> = vec![(
+            NamespaceGroupKindName {
+                namespace: "default".to_string(),
+                gkn: GroupKindName {
+                    group: k8s_gateway_api::GrpcRoute::group(&()),
+                    kind: k8s_gateway_api::GrpcRoute::kind(&()),
+                    name: "grpc-1".into(),
+                },
+            },
+            RouteRef {
+                parents: vec![parent.clone()],
+                statuses: vec![],
+                backends: vec![],
+            },
+        )]
+        .into_iter()
+        .collect();
+
+        assert!(parent_has_conflicting_routes(
+            &mut known_routes.iter(),
+            &parent,
+            "TCPRoute"
+        ));
+    }
+
+    fn tcp_route_conflict_http(p: ParentRefType) {
+        let parent = match p {
+            ParentRefType::Service => routes::ParentReference::Service(
+                ResourceId::new("ns".to_string(), "service".to_string()),
+                None,
+            ),
+
+            ParentRefType::UnmeshedNetwork => routes::ParentReference::UnmeshedNetwork(
+                ResourceId::new("ns".to_string(), "unmeshed-net".to_string()),
+                None,
+            ),
+        };
+
+        let known_routes: HashMap<_, _> = vec![(
+            NamespaceGroupKindName {
+                namespace: "default".to_string(),
+                gkn: GroupKindName {
+                    group: k8s_gateway_api::HttpRoute::group(&()),
+                    kind: k8s_gateway_api::HttpRoute::kind(&()),
+                    name: "http-1".into(),
+                },
+            },
+            RouteRef {
+                parents: vec![parent.clone()],
+                statuses: vec![],
+                backends: vec![],
+            },
+        )]
+        .into_iter()
+        .collect();
+
+        assert!(parent_has_conflicting_routes(
+            &mut known_routes.iter(),
+            &parent,
+            "TCPRoute"
+        ));
+    }
+
+    fn tcp_route_conflict_tls(p: ParentRefType) {
+        let parent = match p {
+            ParentRefType::Service => routes::ParentReference::Service(
+                ResourceId::new("ns".to_string(), "service".to_string()),
+                None,
+            ),
+
+            ParentRefType::UnmeshedNetwork => routes::ParentReference::UnmeshedNetwork(
+                ResourceId::new("ns".to_string(), "unmeshed-net".to_string()),
+                None,
+            ),
+        };
+
+        let known_routes: HashMap<_, _> = vec![(
+            NamespaceGroupKindName {
+                namespace: "default".to_string(),
+                gkn: GroupKindName {
+                    group: k8s_gateway_api::TlsRoute::group(&()),
+                    kind: k8s_gateway_api::TlsRoute::kind(&()),
+                    name: "tls-1".into(),
+                },
+            },
+            RouteRef {
+                parents: vec![parent.clone()],
+                statuses: vec![],
+                backends: vec![],
+            },
+        )]
+        .into_iter()
+        .collect();
+
+        assert!(parent_has_conflicting_routes(
+            &mut known_routes.iter(),
+            &parent,
+            "TCPRoute"
+        ));
+    }
+
+    fn tcp_route_no_conflict(p: ParentRefType) {
+        let parent = match p {
+            ParentRefType::Service => routes::ParentReference::Service(
+                ResourceId::new("ns".to_string(), "service".to_string()),
+                None,
+            ),
+
+            ParentRefType::UnmeshedNetwork => routes::ParentReference::UnmeshedNetwork(
+                ResourceId::new("ns".to_string(), "unmeshed-net".to_string()),
+                None,
+            ),
+        };
+
+        let known_routes: HashMap<_, _> = vec![(
+            NamespaceGroupKindName {
+                namespace: "default".to_string(),
+                gkn: GroupKindName {
+                    group: k8s_gateway_api::TcpRoute::group(&()),
+                    kind: k8s_gateway_api::TcpRoute::kind(&()),
+                    name: "tcp-1".into(),
+                },
+            },
+            RouteRef {
+                parents: vec![parent.clone()],
+                statuses: vec![],
+                backends: vec![],
+            },
+        )]
+        .into_iter()
+        .collect();
+
+        assert!(!parent_has_conflicting_routes(
+            &mut known_routes.iter(),
+            &parent,
+            "TCPRoute"
+        ));
+    }
+
+    #[test]
+    fn grpc_route_no_conflict_service() {
+        grpc_route_no_conflict(ParentRefType::Service)
+    }
+
+    #[test]
+    fn http_route_conflict_grpc_service() {
+        http_route_conflict_grpc(ParentRefType::Service)
+    }
+
+    #[test]
+    fn http_route_no_conflict_service() {
+        http_route_no_conflict(ParentRefType::Service)
+    }
+
+    #[test]
+    fn tls_route_conflict_http_service() {
+        tls_route_conflict_http(ParentRefType::Service)
+    }
+
+    #[test]
+    fn tls_route_conflict_grpc_service() {
+        tls_route_conflict_grpc(ParentRefType::Service)
+    }
+
+    #[test]
+    fn tls_route_no_conflict_service() {
+        tls_route_no_conflict(ParentRefType::Service)
+    }
+
+    #[test]
+    fn tcp_route_conflict_grpc_service() {
+        tcp_route_conflict_grpc(ParentRefType::Service)
+    }
+
+    #[test]
+    fn tcp_route_conflict_http_service() {
+        tcp_route_conflict_http(ParentRefType::Service)
+    }
+
+    #[test]
+    fn tcp_route_conflict_tls_service() {
+        tcp_route_conflict_tls(ParentRefType::Service)
+    }
+
+    #[test]
+    fn tcp_route_no_conflict_service() {
+        tcp_route_no_conflict(ParentRefType::Service)
+    }
+
+    #[test]
+    fn grpc_route_no_conflict_unmeshed_network() {
+        grpc_route_no_conflict(ParentRefType::UnmeshedNetwork)
+    }
+
+    #[test]
+    fn http_route_conflict_grpc_unmeshed_network() {
+        http_route_conflict_grpc(ParentRefType::UnmeshedNetwork)
+    }
+
+    #[test]
+    fn http_route_no_conflict_unmeshed_network() {
+        http_route_no_conflict(ParentRefType::UnmeshedNetwork)
+    }
+
+    #[test]
+    fn tls_route_conflict_http_unmeshed_network() {
+        tls_route_conflict_http(ParentRefType::UnmeshedNetwork)
+    }
+
+    #[test]
+    fn tls_route_conflict_grpc_unmeshed_network() {
+        tls_route_conflict_grpc(ParentRefType::UnmeshedNetwork)
+    }
+
+    #[test]
+    fn tls_route_no_conflict_unmeshed_network() {
+        tls_route_no_conflict(ParentRefType::UnmeshedNetwork)
+    }
+
+    #[test]
+    fn tcp_route_conflict_grpc_unmeshed_network() {
+        tcp_route_conflict_grpc(ParentRefType::UnmeshedNetwork)
+    }
+
+    #[test]
+    fn tcp_route_conflict_http_unmeshed_network() {
+        tcp_route_conflict_http(ParentRefType::UnmeshedNetwork)
+    }
+
+    #[test]
+    fn tcp_route_conflict_tls_unmeshed_network() {
+        tcp_route_conflict_tls(ParentRefType::UnmeshedNetwork)
+    }
+
+    #[test]
+    fn tcp_route_no_conflict_unmeshed_network() {
+        tcp_route_no_conflict(ParentRefType::UnmeshedNetwork)
+    }
 }

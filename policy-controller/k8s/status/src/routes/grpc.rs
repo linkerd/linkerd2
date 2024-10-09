@@ -134,6 +134,13 @@ mod test {
                         },
                         k8s_gateway_api::BackendObjectReference {
                             group: Some(POLICY_API_GROUP.to_string()),
+                            kind: Some("UnmeshedNetwork".to_string()),
+                            name: "ref-3".to_string(),
+                            namespace: None,
+                            port: Some(555),
+                        },
+                        k8s_gateway_api::BackendObjectReference {
+                            group: Some(POLICY_API_GROUP.to_string()),
                             kind: Some("Server".to_string()),
                             name: "ref-2".to_string(),
                             namespace: None,
@@ -160,13 +167,15 @@ mod test {
                 .flatten(),
         );
         assert_eq!(
-            2,
+            3,
             result.len(),
             "expected only two BackendReferences from route"
         );
         let mut iter = result.into_iter();
-        let known = iter.next().unwrap();
-        assert!(matches!(known, BackendReference::Service(_)));
+        let service = iter.next().unwrap();
+        assert!(matches!(service, BackendReference::Service(_)));
+        let unmeshed_net = iter.next().unwrap();
+        assert!(matches!(unmeshed_net, BackendReference::UnmeshedNetwork(_)));
         let unknown = iter.next().unwrap();
         assert!(matches!(unknown, BackendReference::Unknown))
     }

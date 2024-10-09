@@ -276,6 +276,36 @@ async fn main() -> Result<()> {
         );
     }
 
+    let tls_routes_indexes = IndexList::new(status_index.clone()).shared();
+
+    if api_resource_exists::<k8s_gateway_api::TlsRoute>(&runtime.client()).await {
+        let gateway_tls_routes =
+            runtime.watch_all::<k8s_gateway_api::TlsRoute>(watcher::Config::default());
+        tokio::spawn(
+            kubert::index::namespaced(tls_routes_indexes, gateway_tls_routes)
+                .instrument(info_span!("tlsroutes.gateway.networking.k8s.io")),
+        );
+    } else {
+        tracing::warn!(
+            "tlsroutes.gateway.networking.k8s.io resource kind not found, skipping watches"
+        );
+    }
+
+    let tcp_routes_indexes = IndexList::new(status_index.clone()).shared();
+
+    if api_resource_exists::<k8s_gateway_api::TcpRoute>(&runtime.client()).await {
+        let gateway_tcp_routes =
+            runtime.watch_all::<k8s_gateway_api::TcpRoute>(watcher::Config::default());
+        tokio::spawn(
+            kubert::index::namespaced(tcp_routes_indexes, gateway_tcp_routes)
+                .instrument(info_span!("tcproutes.gateway.networking.k8s.io")),
+        );
+    } else {
+        tracing::warn!(
+            "tcproutes.gateway.networking.k8s.io resource kind not found, skipping watches"
+        );
+    }
+
     if api_resource_exists::<k8s_gateway_api::GrpcRoute>(&runtime.client()).await {
         let gateway_grpc_routes =
             runtime.watch_all::<k8s_gateway_api::GrpcRoute>(watcher::Config::default());
@@ -312,7 +342,9 @@ async fn main() -> Result<()> {
 
     let unmeshed_networks =
         runtime.watch_all::<k8s::policy::UnmeshedNetwork>(watcher::Config::default());
-    let unmeshed_networks_indexes = IndexList::new(outbound_index.clone()).shared();
+    let unmeshed_networks_indexes = IndexList::new(outbound_index.clone())
+        .push(status_index.clone())
+        .shared();
     tokio::spawn(
         kubert::index::namespaced(unmeshed_networks_indexes, unmeshed_networks)
             .instrument(info_span!("unmeshednetworks")),

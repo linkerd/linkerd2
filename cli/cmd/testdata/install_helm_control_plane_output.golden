@@ -225,6 +225,8 @@ rules:
     resources:
       - httproutes
       - grpcroutes
+      - tlsroutes
+      - tcproutes
     verbs:
       - get
       - list
@@ -240,6 +242,8 @@ rules:
     resources:
       - httproutes/status
       - grpcroutes/status
+      - tlsroutes/status
+      - tcproutes/status
     verbs:
       - patch
   - apiGroups:
@@ -1289,7 +1293,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 4544d8ac904256c8122adfe9dd92960fa5370c1d34511aff183e5d074763ef78
+        checksum/config: 6e1411ea883e84adc4a1afcb9af1fcf9e263ca983d6c092b6f322e4b1089ea8a
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/proxy-version: test-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
