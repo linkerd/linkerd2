@@ -8,7 +8,9 @@ pub mod grpc;
 pub mod outbound_api;
 pub mod web;
 
-use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
+use linkerd_policy_controller_k8s_api::{
+    self as k8s, policy::httproute::ParentReference, ResourceExt,
+};
 use maplit::{btreemap, convert_args};
 use tokio::time;
 use tracing::Instrument;
@@ -479,6 +481,17 @@ async fn await_service_account(client: &kube::Client, ns: &str, name: &str) {
     // XXX In some versions of k8s, it may be appropriate to wait for the
     // ServiceAccount's secret to be created, but, as of v1.24,
     // ServiceAccounts don't have secrets.
+}
+
+pub fn unmeshed_network_parent_ref(ns: impl ToString, port: Option<u16>) -> ParentReference {
+    ParentReference {
+        group: Some("policy.linkerd.io".to_string()),
+        kind: Some("UnmeshedNetwork".to_string()),
+        namespace: Some(ns.to_string()),
+        name: "my-unmeshed-net".to_string(),
+        section_name: None,
+        port,
+    }
 }
 
 pub fn random_suffix(len: usize) -> String {

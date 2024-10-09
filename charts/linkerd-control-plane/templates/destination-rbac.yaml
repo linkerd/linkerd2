@@ -192,6 +192,8 @@ webhooks:
     resources:
     - httproutes
     - grpcroutes
+    - tcproutes
+    - tlsroutes
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1
