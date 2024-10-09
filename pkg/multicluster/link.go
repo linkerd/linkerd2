@@ -50,6 +50,10 @@ type (
 		Selector                      metav1.LabelSelector
 		RemoteDiscoverySelector       metav1.LabelSelector
 	}
+
+	ErrFieldMissing struct {
+		Field string
+	}
 )
 
 // LinkGVR is the Group Version and Resource of the Link custom resource.
@@ -61,6 +65,10 @@ var LinkGVR = schema.GroupVersionResource{
 
 func (ps ProbeSpec) String() string {
 	return fmt.Sprintf("ProbeSpec: {path: %s, port: %d, period: %s}", ps.Path, ps.Port, ps.Period)
+}
+
+func (e *ErrFieldMissing) Error() string {
+	return fmt.Sprintf("Field '%s' is missing", e.Field)
 }
 
 // NewLink parses an unstructured link.multicluster.linkerd.io resource and
@@ -326,7 +334,13 @@ func newProbeSpec(obj map[string]interface{}) (ProbeSpec, error) {
 
 	failureThresholdStr, err := stringField(obj, "failureThreshold")
 	if err != nil {
-		return ProbeSpec{}, err
+		var efm *ErrFieldMissing
+		if errors.As(err, &efm) {
+			// older Links might not have this field
+			failureThresholdStr = fmt.Sprint(DefaultFailureThreshold)
+		} else {
+			return ProbeSpec{}, err
+		}
 	}
 	failureThreshold, err := strconv.ParseUint(failureThresholdStr, 10, 32)
 	if err != nil {
@@ -335,7 +349,13 @@ func newProbeSpec(obj map[string]interface{}) (ProbeSpec, error) {
 
 	timeoutStr, err := stringField(obj, "timeout")
 	if err != nil {
-		return ProbeSpec{}, err
+		var efm *ErrFieldMissing
+		if errors.As(err, &efm) {
+			// older Links might not have this field
+			timeoutStr = DefaultProbeTimeout
+		} else {
+			return ProbeSpec{}, err
+		}
 	}
 	timeout, err := time.ParseDuration(timeoutStr)
 	if err != nil {
@@ -368,7 +388,7 @@ func newProbeSpec(obj map[string]interface{}) (ProbeSpec, error) {
 func stringField(obj map[string]interface{}, key string) (string, error) {
 	value, ok := obj[key]
 	if !ok {
-		return "", fmt.Errorf("Field '%s' is missing", key)
+		return "", &ErrFieldMissing{Field: key}
 	}
 	str, ok := value.(string)
 	if !ok {
