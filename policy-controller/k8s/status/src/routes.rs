@@ -6,6 +6,11 @@ use linkerd_policy_controller_k8s_api::{
 pub(crate) mod grpc;
 pub(crate) mod http;
 
+#[cfg(test)]
+pub(crate) mod tcp;
+#[cfg(test)]
+pub(crate) mod tls;
+
 /// Represents an xRoute's parent reference from its spec.
 ///
 /// This is separate from the policy controller index's `InboundParentRef`
@@ -17,12 +22,14 @@ pub(crate) mod http;
 pub enum ParentReference {
     Server(ResourceId),
     Service(ResourceId, Option<u16>),
+    UnmeshedNetwork(ResourceId, Option<u16>),
     UnknownKind,
 }
 
 #[derive(Clone, Eq, PartialEq)]
 pub enum BackendReference {
     Service(ResourceId),
+    UnmeshedNetwork(ResourceId),
     Unknown,
 }
 
@@ -51,6 +58,17 @@ impl ParentReference {
                 ResourceId::new(namespace.to_string(), parent_ref.name.clone()),
                 parent_ref.port,
             )
+        } else if linkerd_k8s_api::httproute::parent_ref_targets_kind::<
+            linkerd_k8s_api::UnmeshedNetwork,
+        >(parent_ref)
+        {
+            // If the parent reference does not have a namespace, default to using
+            // the route's namespace.
+            let namespace = parent_ref.namespace.as_deref().unwrap_or(default_namespace);
+            Self::UnmeshedNetwork(
+                ResourceId::new(namespace.to_string(), parent_ref.name.clone()),
+                parent_ref.port,
+            )
         } else {
             Self::UnknownKind
         }
@@ -58,7 +76,7 @@ impl ParentReference {
 }
 
 impl BackendReference {
-    fn from_backend_ref(
+    pub(crate) fn from_backend_ref(
         backend_ref: &k8s_gateway_api::BackendObjectReference,
         default_namespace: &str,
     ) -> Self {
@@ -73,8 +91,32 @@ impl BackendReference {
                 namespace.to_string(),
                 backend_ref.name.clone(),
             ))
+        } else if linkerd_k8s_api::httproute::backend_ref_targets_kind::<
+            linkerd_k8s_api::UnmeshedNetwork,
+        >(backend_ref)
+        {
+            let namespace = backend_ref
+                .namespace
+                .as_deref()
+                .unwrap_or(default_namespace);
+            Self::UnmeshedNetwork(ResourceId::new(
+                namespace.to_string(),
+                backend_ref.name.clone(),
+            ))
         } else {
             Self::Unknown
         }
     }
+}
+
+pub(crate) fn make_parents(
+    namespace: &str,
+    route: &k8s_gateway_api::CommonRouteSpec,
+) -> Vec<ParentReference> {
+    route
+        .parent_refs
+        .iter()
+        .flatten()
+        .map(|pr| ParentReference::from_parent_ref(pr, namespace))
+        .collect()
 }
