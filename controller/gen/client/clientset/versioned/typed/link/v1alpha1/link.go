@@ -20,14 +20,13 @@ package v1alpha1
 
 import (
 	"context"
-	"time"
 
 	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
 	scheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	rest "k8s.io/client-go/rest"
+	gentype "k8s.io/client-go/gentype"
 )
 
 // LinksGetter has a method to return a LinkInterface.
@@ -51,128 +50,18 @@ type LinkInterface interface {
 
 // links implements LinkInterface
 type links struct {
-	client rest.Interface
-	ns     string
+	*gentype.ClientWithList[*v1alpha1.Link, *v1alpha1.LinkList]
 }
 
 // newLinks returns a Links
 func newLinks(c *LinkV1alpha1Client, namespace string) *links {
 	return &links{
-		client: c.RESTClient(),
-		ns:     namespace,
+		gentype.NewClientWithList[*v1alpha1.Link, *v1alpha1.LinkList](
+			"links",
+			c.RESTClient(),
+			scheme.ParameterCodec,
+			namespace,
+			func() *v1alpha1.Link { return &v1alpha1.Link{} },
+			func() *v1alpha1.LinkList { return &v1alpha1.LinkList{} }),
 	}
-}
-
-// Get takes name of the link, and returns the corresponding link object, and an error if there is any.
-func (c *links) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Link, err error) {
-	result = &v1alpha1.Link{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("links").
-		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of Links that match those selectors.
-func (c *links) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.LinkList, err error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	result = &v1alpha1.LinkList{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("links").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested links.
-func (c *links) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	opts.Watch = true
-	return c.client.Get().
-		Namespace(c.ns).
-		Resource("links").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch(ctx)
-}
-
-// Create takes the representation of a link and creates it.  Returns the server's representation of the link, and an error, if there is any.
-func (c *links) Create(ctx context.Context, link *v1alpha1.Link, opts v1.CreateOptions) (result *v1alpha1.Link, err error) {
-	result = &v1alpha1.Link{}
-	err = c.client.Post().
-		Namespace(c.ns).
-		Resource("links").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(link).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Update takes the representation of a link and updates it. Returns the server's representation of the link, and an error, if there is any.
-func (c *links) Update(ctx context.Context, link *v1alpha1.Link, opts v1.UpdateOptions) (result *v1alpha1.Link, err error) {
-	result = &v1alpha1.Link{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("links").
-		Name(link.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(link).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Delete takes name of the link and deletes it. Returns an error if one occurs.
-func (c *links) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("links").
-		Name(name).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *links) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
-	}
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("links").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// Patch applies the patch and returns the patched link.
-func (c *links) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Link, err error) {
-	result = &v1alpha1.Link{}
-	err = c.client.Patch(pt).
-		Namespace(c.ns).
-		Resource("links").
-		Name(name).
-		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
 }
