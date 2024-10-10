@@ -1,6 +1,6 @@
 use std::{num::NonZeroU16, time};
 
-use super::{is_service, parse_duration, parse_timeouts, ServiceInfo, ServiceRef};
+use super::{is_service, parse_duration, parse_timeouts, ResourceRef, ServiceInfo};
 use crate::{
     routes::{self, HttpRouteResource},
     ClusterInfo,
@@ -21,7 +21,7 @@ pub(super) fn convert_route(
     ns: &str,
     route: HttpRouteResource,
     cluster: &ClusterInfo,
-    service_info: &HashMap<ServiceRef, ServiceInfo>,
+    service_info: &HashMap<ResourceRef, ServiceInfo>,
 ) -> Result<OutboundRoute<HttpRouteMatch, HttpRetryCondition>> {
     match route {
         HttpRouteResource::LinkerdHttp(route) => {
@@ -105,7 +105,7 @@ fn convert_linkerd_rule(
     ns: &str,
     rule: policy::httproute::HttpRouteRule,
     cluster: &ClusterInfo,
-    service_info: &HashMap<ServiceRef, ServiceInfo>,
+    service_info: &HashMap<ResourceRef, ServiceInfo>,
     mut timeouts: RouteTimeouts,
     retry: Option<RouteRetry<HttpRetryCondition>>,
 ) -> Result<OutboundRouteRule<HttpRouteMatch, HttpRetryCondition>> {
@@ -156,7 +156,7 @@ fn convert_gateway_rule(
     ns: &str,
     rule: gateway::HttpRouteRule,
     cluster: &ClusterInfo,
-    service_info: &HashMap<ServiceRef, ServiceInfo>,
+    service_info: &HashMap<ResourceRef, ServiceInfo>,
     timeouts: RouteTimeouts,
     retry: Option<RouteRetry<HttpRetryCondition>>,
 ) -> Result<OutboundRouteRule<HttpRouteMatch, HttpRetryCondition>> {
@@ -194,7 +194,7 @@ pub(super) fn convert_backend<BackendRef: Into<gateway::HttpBackendRef>>(
     ns: &str,
     backend: BackendRef,
     cluster: &ClusterInfo,
-    services: &HashMap<ServiceRef, ServiceInfo>,
+    services: &HashMap<ResourceRef, ServiceInfo>,
 ) -> Option<Backend> {
     let backend = backend.into();
     let filters = backend.filters;
@@ -229,7 +229,7 @@ pub(super) fn convert_backend<BackendRef: Into<gateway::HttpBackendRef>>(
             })
         }
     };
-    let service_ref = ServiceRef {
+    let service_ref = ResourceRef {
         name: name.clone(),
         namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
     };

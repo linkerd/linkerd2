@@ -6,16 +6,18 @@ pub mod network_authentication;
 pub mod server;
 pub mod server_authorization;
 pub mod target_ref;
+pub mod unmeshed_network;
 
 pub use self::{
     authorization_policy::{AuthorizationPolicy, AuthorizationPolicySpec},
     httproute::{HttpRoute, HttpRouteSpec},
     meshtls_authentication::{MeshTLSAuthentication, MeshTLSAuthenticationSpec},
-    network::Network,
+    network::{Cidr, Network},
     network_authentication::{NetworkAuthentication, NetworkAuthenticationSpec},
     server::{Server, ServerSpec},
     server_authorization::{ServerAuthorization, ServerAuthorizationSpec},
     target_ref::{ClusterTargetRef, LocalTargetRef, NamespacedTargetRef},
+    unmeshed_network::{UnmeshedNetwork, UnmeshedNetworkSpec},
 };
 
 fn targets_kind<T>(group: Option<&str>, kind: &str) -> bool

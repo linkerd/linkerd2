@@ -178,6 +178,7 @@ webhooks:
     - meshtlsauthentications
     - serverauthorizations
     - servers
+    - unmeshednetworks
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["gateway.networking.k8s.io"]
     apiVersions: ["*"]
@@ -218,6 +219,7 @@ rules:
       - networkauthentications
       - servers
       - serverauthorizations
+      - unmeshednetworks
     verbs:
       - get
       - list
@@ -1249,7 +1251,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 7523675f365af90bf6840b8b1eb0b12bbb4c819738cc9353608cbd16a9bf4196
+        checksum/config: 57c861889553506b3301f7b5e72d6040ec8470b502a0a4d57c2c20f9b47956ae
         linkerd.io/created-by: CliVersion
         linkerd.io/proxy-version: ProxyVersion
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"

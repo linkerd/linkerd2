@@ -50,6 +50,7 @@ You can use the --ignore-cluster flag if you just want to generate the installat
 var (
 	TemplatesCrdFiles = []string{
 		"templates/policy/authorization-policy.yaml",
+		"templates/policy/unmeshed-network.yaml",
 		"templates/policy/httproute.yaml",
 		"templates/policy/meshtls-authentication.yaml",
 		"templates/policy/network-authentication.yaml",

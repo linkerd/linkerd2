@@ -24,10 +24,16 @@ pub type HttpRoute = OutboundRoute<HttpRouteMatch, HttpRetryCondition>;
 pub type GrpcRoute = OutboundRoute<GrpcRouteMatch, GrpcRetryCondition>;
 pub type RouteSet<T> = HashMap<GroupKindNamespaceName, T>;
 
+pub enum TargetKind {
+    UnmeshedNetwork,
+    Service,
+}
+
 pub struct OutboundDiscoverTarget {
-    pub service_name: String,
-    pub service_namespace: String,
-    pub service_port: NonZeroU16,
+    pub kind: TargetKind,
+    pub name: String,
+    pub namespace: String,
+    pub port: NonZeroU16,
     pub source_namespace: String,
 }
 

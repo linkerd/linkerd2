@@ -1,7 +1,7 @@
 use std::time;
 
 use super::http::{convert_backend, convert_gateway_filter};
-use super::{parse_duration, parse_timeouts, ServiceInfo, ServiceRef};
+use super::{parse_duration, parse_timeouts, ResourceRef, ServiceInfo};
 use crate::{routes, ClusterInfo};
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Result};
@@ -16,7 +16,7 @@ pub(super) fn convert_route(
     ns: &str,
     route: gateway::GrpcRoute,
     cluster: &ClusterInfo,
-    service_info: &HashMap<ServiceRef, ServiceInfo>,
+    service_info: &HashMap<ResourceRef, ServiceInfo>,
 ) -> Result<GrpcRoute> {
     let timeouts = parse_timeouts(route.annotations())?;
     let retry = parse_grpc_retry(route.annotations())?;
@@ -59,7 +59,7 @@ fn convert_rule(
     ns: &str,
     rule: gateway::GrpcRouteRule,
     cluster: &ClusterInfo,
-    service_info: &HashMap<ServiceRef, ServiceInfo>,
+    service_info: &HashMap<ResourceRef, ServiceInfo>,
     timeouts: RouteTimeouts,
     retry: Option<RouteRetry<GrpcRetryCondition>>,
 ) -> Result<OutboundRouteRule<GrpcRouteMatch, GrpcRetryCondition>> {

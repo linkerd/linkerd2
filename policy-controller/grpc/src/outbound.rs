@@ -14,7 +14,7 @@ use linkerd2_proxy_api::{
 use linkerd_policy_controller_core::{
     outbound::{
         DiscoverOutboundPolicy, OutboundDiscoverTarget, OutboundPolicy, OutboundPolicyStream,
-        OutboundRoute,
+        OutboundRoute, TargetKind,
     },
     routes::GroupKindNamespaceName,
 };
@@ -62,14 +62,15 @@ where
         let target = match target {
             outbound::traffic_spec::Target::Addr(target) => target,
             outbound::traffic_spec::Target::Authority(auth) => {
-                return self.lookup_authority(&auth).map(
-                    |(service_namespace, service_name, service_port)| OutboundDiscoverTarget {
-                        service_name,
-                        service_namespace,
-                        service_port,
+                return self.lookup_authority(&auth).map(|(namespace, name, port)| {
+                    OutboundDiscoverTarget {
+                        kind: TargetKind::Service,
+                        name,
+                        namespace,
+                        port,
                         source_namespace,
-                    },
-                )
+                    }
+                })
             }
         };
 

@@ -10,6 +10,7 @@ use linkerd_policy_controller_core::inbound::{
 };
 use linkerd_policy_controller_core::outbound::{
     DiscoverOutboundPolicy, OutboundDiscoverTarget, OutboundPolicy, OutboundPolicyStream,
+    TargetKind,
 };
 pub use linkerd_policy_controller_core::IpNet;
 pub use linkerd_policy_controller_grpc as grpc;
@@ -88,18 +89,23 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
     async fn get_outbound_policy(
         &self,
         OutboundDiscoverTarget {
-            service_name,
-            service_namespace,
-            service_port,
+            kind,
+            name,
+            namespace,
+            port,
             source_namespace,
         }: OutboundDiscoverTarget,
     ) -> Result<Option<OutboundPolicy>> {
-        let rx = match self.0.write().outbound_policy_rx(
-            service_name,
-            service_namespace,
-            service_port,
-            source_namespace,
-        ) {
+        if let TargetKind::UnmeshedNetwork = kind {
+            tracing::debug!("UnmeshedNetwork is not supported yet");
+            return Ok(None);
+        }
+
+        let rx = match self
+            .0
+            .write()
+            .outbound_policy_rx(name, namespace, port, source_namespace)
+        {
             Ok(rx) => rx,
             Err(error) => {
                 tracing::error!(%error, "failed to get outbound policy rx");
@@ -113,18 +119,23 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
     async fn watch_outbound_policy(
         &self,
         OutboundDiscoverTarget {
-            service_name,
-            service_namespace,
-            service_port,
+            kind,
+            name,
+            namespace,
+            port,
             source_namespace,
         }: OutboundDiscoverTarget,
     ) -> Result<Option<OutboundPolicyStream>> {
-        match self.0.write().outbound_policy_rx(
-            service_name,
-            service_namespace,
-            service_port,
-            source_namespace,
-        ) {
+        if let TargetKind::UnmeshedNetwork = kind {
+            tracing::debug!("UnmeshedNetwork is not supported yet");
+            return Ok(None);
+        }
+
+        match self
+            .0
+            .write()
+            .outbound_policy_rx(name, namespace, port, source_namespace)
+        {
             Ok(rx) => Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx)))),
             Err(_) => Ok(None),
         }
@@ -136,14 +147,46 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
         port: NonZeroU16,
         source_namespace: String,
     ) -> Option<OutboundDiscoverTarget> {
-        self.0
-            .read()
-            .lookup_service(addr)
+        let index = self.0.read();
+        // First try to lookup a service that we have indexed
+        if let Some(outbound::ResourceRef { name, namespace }) = index.lookup_service(addr) {
+            return Some(OutboundDiscoverTarget {
+                kind: TargetKind::Service,
+                name,
+                namespace,
+                port,
+                source_namespace: source_namespace.clone(),
+            });
+        }
+
+        // Next, check if a pod with this IP exists. If it does, return a None
+        // so we can let the destinations controller serve the discovery request
+        // as usual.
+        // The reason we need to do that is because the proxy would prefer a policy
+        // resolution over a profiles one. The precise logic that is being implemented
+        // in the proxy at the time of this commit is the following:
+        //
+        // 1. The outbound discovery does two requests to both profiles and policy
+        // 2. If policy is served, it is returned along with the profiles (https://github.com/linkerd/linkerd2-proxy/blob/53b528a38ff2eabe79ef4f6986e56e00eefb4c1c/linkerd/app/outbound/src/discover.rs#L106)
+        // 3. If no policy is served, we synthesize one from the profiles result is there is one (https://github.com/linkerd/linkerd2-proxy/blob/53b528a38ff2eabe79ef4f6986e56e00eefb4c1c/linkerd/app/outbound/src/discover.rs#L122)
+        // 4. Otherwise an original destination Policy is synthesized (https://github.com/linkerd/linkerd2-proxy/blob/53b528a38ff2eabe79ef4f6986e56e00eefb4c1c/linkerd/app/outbound/src/discover.rs#L144)
+        // 3. Profiles are used only if the re is explicit profiles configuration or there is no policy (https://github.com/linkerd/linkerd2-proxy/blob/53b528a38ff2eabe79ef4f6986e56e00eefb4c1c/linkerd/app/outbound/src/sidecar.rs#L182)
+        //
+        // As we want to preserve the current behavior, we need to avoid serving any policy for known pods as
+        // it will be in fact used by the proxy.
+        if index.pod_exists(addr) {
+            return None;
+        }
+
+        // Now try and look for an UnmeshedNetwork that matches this IP address.
+        index
+            .lookup_unmeshed_network(addr, source_namespace.clone())
             .map(
-                |outbound::ServiceRef { name, namespace }| OutboundDiscoverTarget {
-                    service_name: name,
-                    service_namespace: namespace,
-                    service_port: port,
+                |outbound::ResourceRef { name, namespace }| OutboundDiscoverTarget {
+                    kind: TargetKind::UnmeshedNetwork,
+                    name,
+                    namespace,
+                    port,
                     source_namespace,
                 },
             )

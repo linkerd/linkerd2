@@ -1,0 +1,63 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: unmeshednetworks.policy.linkerd.io
+  annotations:
+    {{ include "partials.annotations.created-by" . }}
+  labels:
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    linkerd.io/control-plane-ns: {{.Release.Namespace}}
+spec:
+  group: policy.linkerd.io
+  names:
+    categories:
+    - policy
+    kind: UnmeshedNetwork
+    listKind: UnmeshedNetworkList
+    plural: unmeshednetworks
+    singular: unmeshednetwork
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        description: >-
+          An UnmeshedNetwork captures traffic to destinations considered
+          to be external to the mesh.
+        type: object
+        required: [spec]
+        properties:
+          apiVerson:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              trafficPolicy:
+                description: >-
+                  This field controls the traffic policy enforced upon traffic
+                  that does not match any explicit route resources associated
+                  with an instance of this object. The values that are allowed
+                  currently are:
+                   - AllowUnknown - permits all traffic, even if it has not been
+                                    explicitly described via attaching an xRoute
+                                    resources.
+                   - DenyUnknown - blocks all traffic that has not been described via
+                                   attaching an xRoute resource.
+                type: string
+                enum:
+                - AllowUnknown
+                - DenyUnknown
+              networks:
+                type: array
+                items:
+                  type: string
+                default: ["0.0.0.0/0", "::/0"]
+            type: object
+            required:
+            - trafficPolicy
