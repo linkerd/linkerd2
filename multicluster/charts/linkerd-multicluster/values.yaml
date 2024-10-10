@@ -12,8 +12,6 @@ gateway:
   # nodePort -- Set the gateway nodePort (for LoadBalancer or NodePort) to a specific value
   # nodePort:
   probe:
-    # -- Minimum consecutive failures for the probe to be considered failed
-    failureThreshold: 3
     # -- The path that will be used by remote clusters for determining whether the
     # gateway is alive
     path: /ready
@@ -23,8 +21,6 @@ gateway:
     # nodePort:
     # -- The interval (in seconds) between liveness probes
     seconds: 3
-    # -- Probe request timeout (in go's time.Duration format)
-    timeout: 30s
   # -- Annotations to add to the gateway service
   serviceAnnotations: {}
   # -- Set externalTrafficPolicy on gateway service

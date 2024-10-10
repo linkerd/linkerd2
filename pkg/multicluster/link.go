@@ -180,6 +180,21 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 // ToUnstructured converts a Link struct into an unstructured resource that can
 // be used by a kubernetes dynamic client.
 func (l Link) ToUnstructured() (unstructured.Unstructured, error) {
+	// only specify failureThreshold and timeout if they're not empty, to
+	// remain compatible with older Link CRDs
+	probeSpec := map[string]interface{}{
+		"path":   l.ProbeSpec.Path,
+		"port":   fmt.Sprintf("%d", l.ProbeSpec.Port),
+		"period": l.ProbeSpec.Period.String(),
+	}
+
+	if l.ProbeSpec.FailureThreshold > 0 {
+		probeSpec["failureThreshold"] = fmt.Sprintf("%d", l.ProbeSpec.FailureThreshold)
+	}
+	if l.ProbeSpec.Timeout > 0 {
+		probeSpec["timeout"] = l.ProbeSpec.Timeout.String()
+	}
+
 	spec := map[string]interface{}{
 		"targetClusterName":             l.TargetClusterName,
 		"targetClusterDomain":           l.TargetClusterDomain,
@@ -188,13 +203,7 @@ func (l Link) ToUnstructured() (unstructured.Unstructured, error) {
 		"gatewayAddress":                l.GatewayAddress,
 		"gatewayPort":                   fmt.Sprintf("%d", l.GatewayPort),
 		"gatewayIdentity":               l.GatewayIdentity,
-		"probeSpec": map[string]interface{}{
-			"failureThreshold": fmt.Sprintf("%d", l.ProbeSpec.FailureThreshold),
-			"path":             l.ProbeSpec.Path,
-			"port":             fmt.Sprintf("%d", l.ProbeSpec.Port),
-			"period":           l.ProbeSpec.Period.String(),
-			"timeout":          l.ProbeSpec.Timeout.String(),
-		},
+		"probeSpec":                     probeSpec,
 	}
 
 	data, err := json.Marshal(l.Selector)
@@ -233,18 +242,10 @@ func (l Link) ToUnstructured() (unstructured.Unstructured, error) {
 }
 
 // ExtractProbeSpec parses the ProbSpec from a gateway service's annotations.
+// For now we're not including the failureThreshold and timeout fields which
+// are new since edge-24.9.3, to avoid errors when attempting to apply them in
+// clusters with an older Link CRD.
 func ExtractProbeSpec(gateway *corev1.Service) (ProbeSpec, error) {
-	// older gateways might not have this field
-	failureThreshold := uint64(DefaultFailureThreshold)
-	failureThresholdStr := gateway.Annotations[k8s.GatewayProbeFailureThreshold]
-	if failureThresholdStr != "" {
-		var err error
-		failureThreshold, err = strconv.ParseUint(failureThresholdStr, 10, 32)
-		if err != nil {
-			return ProbeSpec{}, err
-		}
-	}
-
 	path := gateway.Annotations[k8s.GatewayProbePath]
 	if path == "" {
 		return ProbeSpec{}, errors.New("probe path is empty")
@@ -260,22 +261,10 @@ func ExtractProbeSpec(gateway *corev1.Service) (ProbeSpec, error) {
 		return ProbeSpec{}, err
 	}
 
-	timeoutStr := gateway.Annotations[k8s.GatewayProbeTimeout]
-	if timeoutStr == "" {
-		timeoutStr = DefaultProbeTimeout
-	}
-
-	timeout, err := time.ParseDuration(timeoutStr)
-	if err != nil {
-		return ProbeSpec{}, err
-	}
-
 	return ProbeSpec{
-		FailureThreshold: uint32(failureThreshold),
-		Path:             path,
-		Port:             port,
-		Period:           time.Duration(period) * time.Second,
-		Timeout:          timeout,
+		Path:   path,
+		Port:   port,
+		Period: time.Duration(period) * time.Second,
 	}, nil
 }
 
