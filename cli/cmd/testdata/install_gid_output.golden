@@ -924,7 +924,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - args:
         - identity
@@ -988,6 +988,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: LINKERD2_PROXY_TRACE_SERVICE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['jaeger.linkerd.io/proxy-service-name']
         - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_TLS
           value: "8080"
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
@@ -1328,7 +1332,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - env:
         - name: _pod_name
@@ -1343,6 +1347,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: LINKERD2_PROXY_TRACE_SERVICE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['jaeger.linkerd.io/proxy-service-name']
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG
@@ -1790,7 +1798,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       containers:
       - env:
         - name: _pod_name
@@ -1805,6 +1813,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: LINKERD2_PROXY_TRACE_SERVICE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['jaeger.linkerd.io/proxy-service-name']
         - name: LINKERD2_PROXY_SHUTDOWN_ENDPOINT_ENABLED
           value: "false"
         - name: LINKERD2_PROXY_LOG
