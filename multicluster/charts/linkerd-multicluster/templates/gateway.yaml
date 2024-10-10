@@ -102,10 +102,8 @@ metadata:
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
   annotations:
     mirror.linkerd.io/gateway-identity: {{.Values.gateway.name}}.{{.Release.Namespace}}.serviceaccount.identity.{{.Values.linkerdNamespace}}.{{.Values.identityTrustDomain}}
-    mirror.linkerd.io/probe-failure-threshold: "{{.Values.gateway.probe.failureThreshold}}"
     mirror.linkerd.io/probe-period: "{{.Values.gateway.probe.seconds}}"
     mirror.linkerd.io/probe-path: {{.Values.gateway.probe.path}}
-    mirror.linkerd.io/probe-timeout: "{{.Values.gateway.probe.timeout}}"
     mirror.linkerd.io/multicluster-gateway: "true"
     component: gateway
     {{ include "partials.annotations.created-by" . }}

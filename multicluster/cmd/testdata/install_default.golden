@@ -68,10 +68,8 @@ metadata:
     linkerd.io/extension: multicluster
   annotations:
     mirror.linkerd.io/gateway-identity: linkerd-gateway.linkerd-multicluster.serviceaccount.identity.linkerd.cluster.local
-    mirror.linkerd.io/probe-failure-threshold: "3"
     mirror.linkerd.io/probe-period: "3"
     mirror.linkerd.io/probe-path: /ready
-    mirror.linkerd.io/probe-timeout: "30s"
     mirror.linkerd.io/multicluster-gateway: "true"
     component: gateway
     linkerd.io/created-by: linkerd/helm linkerdVersionValue
