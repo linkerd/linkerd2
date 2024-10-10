@@ -97,9 +97,9 @@ func Mutate(collectorSvcAddr, collectorTraceProtocol, collectorSvcAccount, clust
 }
 
 func applyOverrides(ns metav1.Object, pod *corev1.Pod, params *Params) {
-	ann := ns.GetAnnotations()
-	if ann == nil {
-		ann = map[string]string{}
+	ann := map[string]string{}
+	for k, v := range ns.GetAnnotations() {
+		ann[k] = v
 	}
 	for k, v := range pod.Annotations {
 		ann[k] = v
