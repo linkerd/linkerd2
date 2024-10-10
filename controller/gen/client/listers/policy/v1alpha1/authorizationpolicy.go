@@ -20,8 +20,8 @@ package v1alpha1
 
 import (
 	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -38,25 +38,17 @@ type AuthorizationPolicyLister interface {
 
 // authorizationPolicyLister implements the AuthorizationPolicyLister interface.
 type authorizationPolicyLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1alpha1.AuthorizationPolicy]
 }
 
 // NewAuthorizationPolicyLister returns a new AuthorizationPolicyLister.
 func NewAuthorizationPolicyLister(indexer cache.Indexer) AuthorizationPolicyLister {
-	return &authorizationPolicyLister{indexer: indexer}
-}
-
-// List lists all AuthorizationPolicies in the indexer.
-func (s *authorizationPolicyLister) List(selector labels.Selector) (ret []*v1alpha1.AuthorizationPolicy, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.AuthorizationPolicy))
-	})
-	return ret, err
+	return &authorizationPolicyLister{listers.New[*v1alpha1.AuthorizationPolicy](indexer, v1alpha1.Resource("authorizationpolicy"))}
 }
 
 // AuthorizationPolicies returns an object that can list and get AuthorizationPolicies.
 func (s *authorizationPolicyLister) AuthorizationPolicies(namespace string) AuthorizationPolicyNamespaceLister {
-	return authorizationPolicyNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return authorizationPolicyNamespaceLister{listers.NewNamespaced[*v1alpha1.AuthorizationPolicy](s.ResourceIndexer, namespace)}
 }
 
 // AuthorizationPolicyNamespaceLister helps list and get AuthorizationPolicies.
@@ -74,26 +66,5 @@ type AuthorizationPolicyNamespaceLister interface {
 // authorizationPolicyNamespaceLister implements the AuthorizationPolicyNamespaceLister
 // interface.
 type authorizationPolicyNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all AuthorizationPolicies in the indexer for a given namespace.
-func (s authorizationPolicyNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.AuthorizationPolicy, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.AuthorizationPolicy))
-	})
-	return ret, err
-}
-
-// Get retrieves the AuthorizationPolicy from the indexer for a given namespace and name.
-func (s authorizationPolicyNamespaceLister) Get(name string) (*v1alpha1.AuthorizationPolicy, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("authorizationpolicy"), name)
-	}
-	return obj.(*v1alpha1.AuthorizationPolicy), nil
+	listers.ResourceIndexer[*v1alpha1.AuthorizationPolicy]
 }

@@ -20,8 +20,8 @@ package v1alpha1
 
 import (
 	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/link/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -38,25 +38,17 @@ type LinkLister interface {
 
 // linkLister implements the LinkLister interface.
 type linkLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1alpha1.Link]
 }
 
 // NewLinkLister returns a new LinkLister.
 func NewLinkLister(indexer cache.Indexer) LinkLister {
-	return &linkLister{indexer: indexer}
-}
-
-// List lists all Links in the indexer.
-func (s *linkLister) List(selector labels.Selector) (ret []*v1alpha1.Link, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Link))
-	})
-	return ret, err
+	return &linkLister{listers.New[*v1alpha1.Link](indexer, v1alpha1.Resource("link"))}
 }
 
 // Links returns an object that can list and get Links.
 func (s *linkLister) Links(namespace string) LinkNamespaceLister {
-	return linkNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return linkNamespaceLister{listers.NewNamespaced[*v1alpha1.Link](s.ResourceIndexer, namespace)}
 }
 
 // LinkNamespaceLister helps list and get Links.
@@ -74,26 +66,5 @@ type LinkNamespaceLister interface {
 // linkNamespaceLister implements the LinkNamespaceLister
 // interface.
 type linkNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all Links in the indexer for a given namespace.
-func (s linkNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.Link, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Link))
-	})
-	return ret, err
-}
-
-// Get retrieves the Link from the indexer for a given namespace and name.
-func (s linkNamespaceLister) Get(name string) (*v1alpha1.Link, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("link"), name)
-	}
-	return obj.(*v1alpha1.Link), nil
+	listers.ResourceIndexer[*v1alpha1.Link]
 }
