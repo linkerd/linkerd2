@@ -22,6 +22,8 @@ func main() {
 		"collector service address for the proxies to send trace data")
 	collectorTraceProtocol := cmd.String("collector-trace-protocol", "",
 		"protocol proxies should use to send trace data.")
+	collectorTraceSvcName := cmd.String("collector-trace-svc-name", "",
+		"name of the service proxies should use for exported traces.")
 	collectorSvcAccount := cmd.String("collector-svc-account", "",
 		"service account associated with the collector instance")
 	clusterDomain := cmd.String("cluster-domain", "cluster.local", "kubernetes cluster domain")
@@ -33,7 +35,7 @@ func main() {
 	webhook.Launch(
 		context.Background(),
 		[]k8s.APIResource{k8s.NS},
-		mutator.Mutate(*collectorSvcAddr, *collectorTraceProtocol, *collectorSvcAccount, *clusterDomain, *linkerdNamespace),
+		mutator.Mutate(*collectorSvcAddr, *collectorTraceProtocol, *collectorTraceSvcName, *collectorSvcAccount, *clusterDomain, *linkerdNamespace),
 		"linkerd-jaeger-injector",
 		*metricsAddr,
 		*addr,

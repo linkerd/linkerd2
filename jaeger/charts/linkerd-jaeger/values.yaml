@@ -296,6 +296,8 @@ webhook:
   # -- protocol proxies should use to send trace data.
   # Can be `opencensus` (default) or `opentelemetry`
   collectorTraceProtocol: opencensus
+  # -- name of the service proxies should use for exported traces
+  collectorTraceSvcName: linkerd-proxy
   # -- service account associated with the collector instance
   collectorSvcAccount: collector
 

@@ -47,6 +47,7 @@ spec:
       - args:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
         - -collector-trace-protocol=opencensus
+        - -collector-trace-svc-name=linkerd-proxy
         - -collector-svc-account=collector
         - -log-level=info
         - -cluster-domain=cluster.local
