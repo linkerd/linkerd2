@@ -126,6 +126,7 @@ Kubernetes: `>=1.22.0-0`
 | webhook.collectorSvcAccount | string | `"collector"` | service account associated with the collector instance |
 | webhook.collectorSvcAddr | string | `"collector.linkerd-jaeger:55678"` | collector service address for the proxies to send trace data. Points by default to the linkerd-jaeger collector |
 | webhook.collectorTraceProtocol | string | `"opencensus"` | protocol proxies should use to send trace data. Can be `opencensus` (default) or `opentelemetry` |
+| webhook.collectorTraceSvcName | string | `"linkerd-proxy"` | name of the service proxies should use for exported traces |
 | webhook.crtPEM | string | `""` | Certificate for the webhook. If not provided and not using an external secret then Helm will generate one. |
 | webhook.externalSecret | bool | `false` | Do not create a secret resource for the webhook. If this is set to `true`, the value `webhook.caBundle` must be set or the ca bundle must injected with cert-manager ca injector using `webhook.injectCaFrom` or `webhook.injectCaFromSecret` (see below). |
 | webhook.failurePolicy | string | `"Ignore"` |  |

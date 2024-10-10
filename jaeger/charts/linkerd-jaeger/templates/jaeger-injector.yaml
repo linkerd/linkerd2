@@ -51,6 +51,7 @@ spec:
       - args:
         - -collector-svc-addr={{.Values.webhook.collectorSvcAddr}}
         - -collector-trace-protocol={{.Values.webhook.collectorTraceProtocol}}
+        - -collector-trace-svc-name={{.Values.webhook.collectorTraceSvcName}}
         - -collector-svc-account={{.Values.webhook.collectorSvcAccount}}
         - -log-level={{.Values.webhook.logLevel}}
         - -cluster-domain={{.Values.clusterDomain}}

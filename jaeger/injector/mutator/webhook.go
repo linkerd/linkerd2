@@ -22,6 +22,7 @@ import (
 const (
 	collectorSvcAddrAnnotation       = l5dLabels.ProxyConfigAnnotationsPrefix + "/trace-collector"
 	collectorTraceProtocolAnnotation = l5dLabels.ProxyConfigAnnotationsPrefix + "/trace-collector-protocol"
+	collectorTraceSvcNameAnnotation  = l5dLabels.ProxyConfigAnnotationsPrefix + "/trace-collector-name"
 	collectorSvcAccountAnnotation    = l5dLabels.ProxyConfigAnnotationsPrefixAlpha +
 		"/trace-collector-service-account"
 )
@@ -31,6 +32,7 @@ type Params struct {
 	ProxyPath              string
 	CollectorSvcAddr       string
 	CollectorTraceProtocol string
+	CollectorTraceSvcName  string
 	CollectorSvcAccount    string
 	ClusterDomain          string
 	LinkerdNamespace       string
@@ -38,7 +40,7 @@ type Params struct {
 
 // Mutate returns an AdmissionResponse containing the patch, if any, to apply
 // to the proxy
-func Mutate(collectorSvcAddr, collectorTraceProtocol, collectorSvcAccount, clusterDomain, linkerdNamespace string) webhook.Handler {
+func Mutate(collectorSvcAddr, collectorTraceProtocol, collectorTraceSvcName, collectorSvcAccount, clusterDomain, linkerdNamespace string) webhook.Handler {
 	return func(
 		_ context.Context,
 		api *k8s.MetadataAPI,
@@ -64,6 +66,7 @@ func Mutate(collectorSvcAddr, collectorTraceProtocol, collectorSvcAccount, clust
 			ProxyPath:              webhook.GetProxyContainerPath(pod.Spec),
 			CollectorSvcAddr:       collectorSvcAddr,
 			CollectorTraceProtocol: collectorTraceProtocol,
+			CollectorTraceSvcName:  collectorTraceSvcName,
 			CollectorSvcAccount:    collectorSvcAccount,
 			ClusterDomain:          clusterDomain,
 			LinkerdNamespace:       linkerdNamespace,
@@ -109,6 +112,9 @@ func applyOverrides(ns metav1.Object, pod *corev1.Pod, params *Params) {
 	}
 	if override, ok := ann[collectorTraceProtocolAnnotation]; ok {
 		params.CollectorTraceProtocol = override
+	}
+	if override, ok := ann[collectorTraceSvcNameAnnotation]; ok {
+		params.CollectorTraceSvcName = override
 	}
 	if override, ok := ann[collectorSvcAccountAnnotation]; ok {
 		params.CollectorSvcAccount = override
