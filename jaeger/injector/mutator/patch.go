@@ -34,6 +34,14 @@ const tpl = `[
     "op": "add",
     "path": "/spec/{{.ProxyPath}}/env/-",
     "value": {
+      "name": "LINKERD2_PROXY_TRACE_SERVICE_NAME",
+      "value": "{{.CollectorTraceSvcName}}"
+    }
+  },
+  {
+    "op": "add",
+    "path": "/spec/{{.ProxyPath}}/env/-",
+    "value": {
       "name": "LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME",
       "value": "{{.CollectorSvcAccount}}.serviceaccount.identity.{{.LinkerdNamespace}}.{{.ClusterDomain}}"
     }
