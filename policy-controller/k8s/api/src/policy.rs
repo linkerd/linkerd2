@@ -1,4 +1,5 @@
 pub mod authorization_policy;
+pub mod egress_network;
 pub mod httproute;
 pub mod meshtls_authentication;
 mod network;
@@ -9,9 +10,10 @@ pub mod target_ref;
 
 pub use self::{
     authorization_policy::{AuthorizationPolicy, AuthorizationPolicySpec},
+    egress_network::{EgressNetwork, EgressNetworkSpec, EgressNetworkStatus, TrafficPolicy},
     httproute::{HttpRoute, HttpRouteSpec},
     meshtls_authentication::{MeshTLSAuthentication, MeshTLSAuthenticationSpec},
-    network::Network,
+    network::{Cidr, Network},
     network_authentication::{NetworkAuthentication, NetworkAuthenticationSpec},
     server::{Server, ServerSpec},
     server_authorization::{ServerAuthorization, ServerAuthorizationSpec},

@@ -147,7 +147,7 @@ async fn main() -> Result<()> {
     // Build the API index data structures which will maintain information
     // necessary for serving the inbound policy and outbound policy gRPC APIs.
     let inbound_index = inbound::Index::shared(cluster_info.clone());
-    let outbound_index = outbound::Index::shared(cluster_info);
+    let outbound_index = outbound::Index::shared(cluster_info.clone());
 
     let mut prom = <Registry>::default();
     let resource_status = prom.sub_registry_with_prefix("resource_status");
@@ -194,6 +194,7 @@ async fn main() -> Result<()> {
         claims.clone(),
         updates_tx,
         status_index_metrcs,
+        cluster_networks.clone(),
     );
 
     // Spawn resource watches.
@@ -293,12 +294,46 @@ async fn main() -> Result<()> {
         );
     }
 
+    if api_resource_exists::<k8s_gateway_api::TlsRoute>(&runtime.client()).await {
+        let tls_routes = runtime.watch_all::<k8s_gateway_api::TlsRoute>(watcher::Config::default());
+        let tls_routes_indexes = IndexList::new(status_index.clone()).shared();
+        tokio::spawn(
+            kubert::index::namespaced(tls_routes_indexes.clone(), tls_routes)
+                .instrument(info_span!("tlsroutes.gateway.networking.k8s.io")),
+        );
+    } else {
+        tracing::warn!(
+            "tlsroutes.gateway.networking.k8s.io resource kind not found, skipping watches"
+        );
+    }
+
+    if api_resource_exists::<k8s_gateway_api::TcpRoute>(&runtime.client()).await {
+        let tcp_routes = runtime.watch_all::<k8s_gateway_api::TcpRoute>(watcher::Config::default());
+        let tcp_routes_indexes = IndexList::new(status_index.clone()).shared();
+        tokio::spawn(
+            kubert::index::namespaced(tcp_routes_indexes.clone(), tcp_routes)
+                .instrument(info_span!("tcproutes.gateway.networking.k8s.io")),
+        );
+    } else {
+        tracing::warn!(
+            "tcproutes.gateway.networking.k8s.io resource kind not found, skipping watches"
+        );
+    }
+
     let services = runtime.watch_all::<k8s::Service>(watcher::Config::default());
     let services_indexes = IndexList::new(outbound_index.clone())
         .push(status_index.clone())
         .shared();
     tokio::spawn(
         kubert::index::namespaced(services_indexes, services).instrument(info_span!("services")),
+    );
+
+    let egress_networks =
+        runtime.watch_all::<k8s::policy::EgressNetwork>(watcher::Config::default());
+    let egress_networks_indexes = IndexList::new(status_index.clone()).shared();
+    tokio::spawn(
+        kubert::index::namespaced(egress_networks_indexes, egress_networks)
+            .instrument(info_span!("egressnetworks")),
     );
 
     // Spawn the status Controller reconciliation.

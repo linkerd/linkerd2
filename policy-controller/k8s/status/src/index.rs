@@ -3,12 +3,14 @@ use crate::{
     routes,
     service::Service,
 };
+
 use ahash::{AHashMap as HashMap, AHashSet as HashSet};
 use chrono::{offset::Utc, DateTime};
 use kubert::lease::Claim;
-use linkerd_policy_controller_core::{routes::GroupKindName, POLICY_CONTROLLER_NAME};
+use linkerd_policy_controller_core::{routes::GroupKindName, IpNet, POLICY_CONTROLLER_NAME};
 use linkerd_policy_controller_k8s_api::{
-    self as k8s_core_api, gateway as k8s_gateway_api, policy as linkerd_k8s_api,
+    self as k8s_core_api, gateway as k8s_gateway_api,
+    policy::{self as linkerd_k8s_api, Cidr, Network},
     NamespaceResourceScope, Resource, ResourceExt,
 };
 use parking_lot::RwLock;
@@ -26,6 +28,8 @@ use tokio::{
 pub(crate) const POLICY_API_GROUP: &str = "policy.linkerd.io";
 pub(crate) const GATEWAY_API_GROUP: &str = "gateway.networking.k8s.io";
 
+mod conflict;
+
 mod conditions {
     pub const RESOLVED_REFS: &str = "ResolvedRefs";
     pub const ACCEPTED: &str = "Accepted";
@@ -36,6 +40,7 @@ mod reasons {
     pub const INVALID_KIND: &str = "InvalidKind";
     pub const NO_MATCHING_PARENT: &str = "NoMatchingParent";
     pub const ROUTE_REASON_CONFLICTED: &str = "RouteReasonConflicted";
+    pub const EGRESS_NET_REASON_OVERLAP: &str = "EgressReasonNetworkOverlap";
 }
 
 mod cond_statuses {
@@ -80,8 +85,13 @@ pub struct Index {
     /// Maps route ids to a list of their parent and backend refs,
     /// regardless of if those parents have accepted the route.
     route_refs: HashMap<NamespaceGroupKindName, RouteRef>,
+
+    /// Maps egress network ids to a list of details about these networks.
+    egress_networks: HashMap<ResourceId, EgressNetworkRef>,
+
     servers: HashSet<ResourceId>,
     services: HashMap<ResourceId, Service>,
+    cluster_networks: Vec<Cidr>,
 
     metrics: IndexMetrics,
 }
@@ -96,6 +106,21 @@ struct RouteRef {
     parents: Vec<routes::ParentReference>,
     backends: Vec<routes::BackendReference>,
     statuses: Vec<k8s_gateway_api::RouteParentStatus>,
+}
+
+#[derive(Clone, PartialEq)]
+struct EgressNetworkRef {
+    networks: Vec<Network>,
+    status_conditions: Vec<k8s_core_api::Condition>,
+}
+
+impl EgressNetworkRef {
+    fn is_accepted(&self) -> bool {
+        self.status_conditions.iter().any(|c| {
+            c.type_ == conditions::ACCEPTED.to_string()
+                && c.status == cond_statuses::STATUS_TRUE.to_string()
+        })
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -238,6 +263,12 @@ impl Controller {
                             self.patch_status::<k8s_gateway_api::HttpRoute>(&id.gkn.name, &id.namespace, patch).await;
                         } else if id.gkn.group == k8s_gateway_api::GrpcRoute::group(&()) && id.gkn.kind == k8s_gateway_api::GrpcRoute::kind(&()) {
                             self.patch_status::<k8s_gateway_api::GrpcRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.gkn.group == k8s_gateway_api::TcpRoute::group(&()) && id.gkn.kind == k8s_gateway_api::TcpRoute::kind(&()) {
+                            self.patch_status::<k8s_gateway_api::TcpRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.gkn.group == k8s_gateway_api::TlsRoute::group(&()) && id.gkn.kind == k8s_gateway_api::TlsRoute::kind(&()) {
+                            self.patch_status::<k8s_gateway_api::TlsRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.gkn.group == linkerd_k8s_api::EgressNetwork::group(&()) && id.gkn.kind == linkerd_k8s_api::EgressNetwork::kind(&()) {
+                            self.patch_status::<linkerd_k8s_api::EgressNetwork>(&id.gkn.name, &id.namespace, patch).await;
                         }
                     } else {
                         self.metrics.patch_drops.inc();
@@ -294,15 +325,19 @@ impl Index {
         claims: Receiver<Arc<Claim>>,
         updates: mpsc::Sender<Update>,
         metrics: IndexMetrics,
+        cluster_networks: Vec<IpNet>,
     ) -> SharedIndex {
+        let cluster_networks = cluster_networks.into_iter().map(Into::into).collect();
         Arc::new(RwLock::new(Self {
             name: name.to_string(),
             claims,
             updates,
             route_refs: HashMap::new(),
+            egress_networks: HashMap::new(),
             servers: HashSet::new(),
             services: HashMap::new(),
             metrics,
+            cluster_networks,
         }))
     }
 
@@ -341,6 +376,23 @@ impl Index {
         }
     }
 
+    // If the network is new or its contents have changed, return true, so that a
+    // patch is generated; otherwise return false.
+    fn update_egress_net(&mut self, id: ResourceId, net: &EgressNetworkRef) -> bool {
+        match self.egress_networks.entry(id) {
+            Entry::Vacant(entry) => {
+                entry.insert(net.clone());
+            }
+            Entry::Occupied(mut entry) => {
+                if entry.get() == net {
+                    return false;
+                }
+                entry.insert(net.clone());
+            }
+        }
+        true
+    }
+
     // If the route is new or its contents have changed, return true, so that a
     // patch is generated; otherwise return false.
     fn update_route(&mut self, id: NamespaceGroupKindName, route: &RouteRef) -> bool {
@@ -367,13 +419,11 @@ impl Index {
         match parent_ref {
             routes::ParentReference::Server(server) => {
                 let condition = if self.servers.contains(server) {
-                    // If this route is an HTTPRoute and there exists a GRPCRoute
-                    // with the same parent, the HTTPRoute should not be accepted
-                    // because it is less specific.
-                    // https://gateway-api.sigs.k8s.io/geps/gep-1426/#route-types
-                    if id.gkn.kind == k8s_gateway_api::HttpRoute::kind(&())
-                        && self.parent_has_grpcroute_children(parent_ref)
-                    {
+                    if conflict::parent_has_conflicting_routes(
+                        &mut self.route_refs.iter(),
+                        parent_ref,
+                        &id.gkn.kind,
+                    ) {
                         route_conflicted()
                     } else {
                         accepted()
@@ -395,17 +445,16 @@ impl Index {
                     conditions: vec![condition],
                 })
             }
+
             routes::ParentReference::Service(service, port) => {
                 // service is a valid parent if it exists and it has a cluster_ip.
                 let condition = match self.services.get(service) {
                     Some(svc) if svc.valid_parent_service() => {
-                        // If this route is an HTTPRoute and there exists a GRPCRoute
-                        // with the same parent, the HTTPRoute should not be accepted
-                        // because it is less specific.
-                        // https://gateway-api.sigs.k8s.io/geps/gep-1426/#route-types
-                        if id.gkn.kind == k8s_gateway_api::HttpRoute::kind(&())
-                            && self.parent_has_grpcroute_children(parent_ref)
-                        {
+                        if conflict::parent_has_conflicting_routes(
+                            &mut self.route_refs.iter(),
+                            parent_ref,
+                            &id.gkn.kind,
+                        ) {
                             route_conflicted()
                         } else {
                             accepted()
@@ -428,15 +477,40 @@ impl Index {
                     conditions: vec![condition, backend_condition],
                 })
             }
+
+            routes::ParentReference::EgressNetwork(egress_net, port) => {
+                // egress network is a valid parent if it exists and is accepted.
+                let condition = match self.egress_networks.get(egress_net) {
+                    Some(egress_net) if egress_net.is_accepted() => {
+                        if conflict::parent_has_conflicting_routes(
+                            &mut self.route_refs.iter(),
+                            parent_ref,
+                            &id.gkn.kind,
+                        ) {
+                            route_conflicted()
+                        } else {
+                            accepted()
+                        }
+                    }
+                    Some(_) => egress_net_not_accepted(),
+                    None => no_matching_parent(),
+                };
+
+                Some(k8s_gateway_api::RouteParentStatus {
+                    parent_ref: k8s_gateway_api::ParentReference {
+                        group: Some("policy.linkerd.io".to_string()),
+                        kind: Some("EgressNetwork".to_string()),
+                        namespace: Some(egress_net.namespace.clone()),
+                        name: egress_net.name.clone(),
+                        section_name: None,
+                        port: *port,
+                    },
+                    controller_name: POLICY_CONTROLLER_NAME.to_string(),
+                    conditions: vec![condition, backend_condition],
+                })
+            }
             routes::ParentReference::UnknownKind => None,
         }
-    }
-
-    fn parent_has_grpcroute_children(&self, parent_ref: &routes::ParentReference) -> bool {
-        self.route_refs.iter().any(|(id, route)| {
-            id.gkn.kind == k8s_gateway_api::GrpcRoute::kind(&())
-                && route.parents.contains(parent_ref)
-        })
     }
 
     fn backend_condition(
@@ -456,6 +530,9 @@ impl Index {
         // return positive status, otherwise, one of them does not exist
         if backend_refs.iter().all(|backend_ref| match backend_ref {
             routes::BackendReference::Service(service) => self.services.contains_key(service),
+            routes::BackendReference::EgressNetwork(egress_net) => {
+                self.egress_networks.contains_key(egress_net)
+            }
             _ => false,
         }) {
             resolved_refs()
@@ -486,7 +563,7 @@ impl Index {
 
         let all_statuses = unowned_statuses.chain(parent_statuses).collect::<Vec<_>>();
 
-        if eq_time_insensitive(&all_statuses, &route.statuses) {
+        if eq_time_insensitive_route_parent_statuses(&all_statuses, &route.statuses) {
             return None;
         }
 
@@ -520,11 +597,95 @@ impl Index {
 
                 make_patch(id, status)
             }
+            (GATEWAY_API_GROUP, "TLSRoute") => {
+                let status = k8s_gateway_api::TlsRouteStatus {
+                    inner: k8s_gateway_api::RouteStatus {
+                        parents: all_statuses,
+                    },
+                };
+
+                make_patch(id, status)
+            }
+            (GATEWAY_API_GROUP, "TCPRoute") => {
+                let status = k8s_gateway_api::TcpRouteStatus {
+                    inner: k8s_gateway_api::RouteStatus {
+                        parents: all_statuses,
+                    },
+                };
+
+                make_patch(id, status)
+            }
             _ => None,
         }
     }
 
+    fn network_condition(&self, egress_net: &EgressNetworkRef) -> k8s_core_api::Condition {
+        for egress_network_block in &egress_net.networks {
+            for cluster_network_block in &self.cluster_networks {
+                if egress_network_block.intersect(cluster_network_block) {
+                    return in_cluster_net_overlap();
+                }
+            }
+        }
+
+        accepted()
+    }
+
+    fn make_egress_net_patch(
+        &self,
+        id: &NamespaceGroupKindName,
+        egress_net: &EgressNetworkRef,
+    ) -> Option<k8s_core_api::Patch<serde_json::Value>> {
+        let unowned_conditions = egress_net
+            .status_conditions
+            .iter()
+            .filter(|c| c.type_ != conditions::ACCEPTED)
+            .cloned();
+
+        let all_conditions: Vec<linkerd_policy_controller_k8s_api::Condition> = unowned_conditions
+            .chain(std::iter::once(self.network_condition(egress_net)))
+            .collect::<Vec<_>>();
+
+        if eq_time_insensitive_conditions(&all_conditions, &egress_net.status_conditions) {
+            return None;
+        }
+
+        let status = linkerd_k8s_api::EgressNetworkStatus {
+            conditions: all_conditions,
+        };
+
+        make_patch(id, status)
+    }
+
     fn reconcile(&self) {
+        // first update all egress networks and their statuses
+        for (id, net) in self.egress_networks.iter() {
+            let id = NamespaceGroupKindName {
+                namespace: id.namespace.clone(),
+                gkn: GroupKindName {
+                    group: linkerd_k8s_api::EgressNetwork::group(&()),
+                    kind: linkerd_k8s_api::EgressNetwork::kind(&()),
+                    name: id.name.clone().into(),
+                },
+            };
+
+            if let Some(patch) = self.make_egress_net_patch(&id, net) {
+                match self.updates.try_send(Update {
+                    id: id.clone(),
+                    patch,
+                }) {
+                    Ok(()) => {
+                        self.metrics.patch_enqueues.inc();
+                    }
+                    Err(error) => {
+                        self.metrics.patch_channel_full.inc();
+                        tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send egress network patch");
+                    }
+                }
+            }
+        }
+
+        // then update all route refs
         for (id, route) in self.route_refs.iter() {
             if let Some(patch) = self.make_route_patch(id, route) {
                 match self.updates.try_send(Update {
@@ -560,7 +721,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::HttpRoute> for Inde
         };
 
         // Create the route parents
-        let parents = routes::http::make_parents(&namespace, &resource.spec.inner);
+        let parents = routes::make_parents(&namespace, &resource.spec.inner);
 
         // Create the route backends
         let backends = routes::http::make_backends(
@@ -622,7 +783,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::HttpRoute> for Inde
         };
 
         // Create the route parents
-        let parents = routes::http::make_parents(&namespace, &resource.spec.inner);
+        let parents = routes::make_parents(&namespace, &resource.spec.inner);
 
         // Create the route backends
         let backends = routes::http::make_backends(
@@ -684,7 +845,7 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Inde
         };
 
         // Create the route parents
-        let parents = routes::http::make_parents(&namespace, &resource.spec.inner);
+        let parents = routes::make_parents(&namespace, &resource.spec.inner);
 
         // Create the route backends
         let backends = routes::grpc::make_backends(
@@ -727,6 +888,122 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Inde
     }
 
     // Since apply only reindexes a single GRPCRoute at a time, there's no need
+    // to handle resets specially.
+}
+
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::TlsRoute> for Index {
+    fn apply(&mut self, resource: k8s_gateway_api::TlsRoute) {
+        let namespace = resource
+            .namespace()
+            .expect("TlsRoute must have a namespace");
+        let name = resource.name_unchecked();
+        let id = NamespaceGroupKindName {
+            namespace: namespace.clone(),
+            gkn: GroupKindName {
+                group: k8s_gateway_api::TlsRoute::group(&()),
+                kind: k8s_gateway_api::TlsRoute::kind(&()),
+                name: name.into(),
+            },
+        };
+
+        // Create the route parents
+        let parents = routes::make_parents(&namespace, &resource.spec.inner);
+
+        let backends = resource
+            .spec
+            .rules
+            .into_iter()
+            .flat_map(|rule| rule.backend_refs)
+            .map(|br| routes::BackendReference::from_backend_ref(&br.inner, &namespace))
+            .collect();
+
+        let statuses = resource
+            .status
+            .into_iter()
+            .flat_map(|status| status.inner.parents)
+            .collect();
+
+        // Construct route and insert into the index; if the TLSRoute is
+        // already in the index, and it hasn't changed, skip creating a patch.
+        let route = RouteRef {
+            parents,
+            backends,
+            statuses,
+        };
+        self.index_route(id, route);
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let id = NamespaceGroupKindName {
+            namespace,
+            gkn: GroupKindName {
+                group: k8s_gateway_api::TlsRoute::group(&()),
+                kind: k8s_gateway_api::TlsRoute::kind(&()),
+                name: name.into(),
+            },
+        };
+        self.route_refs.remove(&id);
+    }
+
+    // Since apply only reindexes a single HTTPRoute at a time, there's no need
+    // to handle resets specially.
+}
+
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::TcpRoute> for Index {
+    fn apply(&mut self, resource: k8s_gateway_api::TcpRoute) {
+        let namespace = resource
+            .namespace()
+            .expect("TcpRoute must have a namespace");
+        let name = resource.name_unchecked();
+        let id = NamespaceGroupKindName {
+            namespace: namespace.clone(),
+            gkn: GroupKindName {
+                group: k8s_gateway_api::TcpRoute::group(&()),
+                kind: k8s_gateway_api::TcpRoute::kind(&()),
+                name: name.into(),
+            },
+        };
+
+        // Create the route parents
+        let parents = routes::make_parents(&namespace, &resource.spec.inner);
+
+        let backends = resource
+            .spec
+            .rules
+            .into_iter()
+            .flat_map(|rule| rule.backend_refs)
+            .map(|br| routes::BackendReference::from_backend_ref(&br.inner, &namespace))
+            .collect();
+
+        let statuses = resource
+            .status
+            .into_iter()
+            .flat_map(|status| status.inner.parents)
+            .collect();
+
+        // Construct route and insert into the index; if the TCPRoute is
+        // already in the index, and it hasn't changed, skip creating a patch.
+        let route = RouteRef {
+            parents,
+            backends,
+            statuses,
+        };
+        self.index_route(id, route);
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let id = NamespaceGroupKindName {
+            namespace,
+            gkn: GroupKindName {
+                group: k8s_gateway_api::TcpRoute::group(&()),
+                kind: k8s_gateway_api::TcpRoute::kind(&()),
+                name: name.into(),
+            },
+        };
+        self.route_refs.remove(&id);
+    }
+
+    // Since apply only reindexes a single HTTPRoute at a time, there's no need
     // to handle resets specially.
 }
 
@@ -796,7 +1073,79 @@ impl kubert::index::IndexNamespacedResource<k8s_core_api::Service> for Index {
     // to handle resets specially.
 }
 
+impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for Index {
+    fn apply(&mut self, resource: linkerd_k8s_api::EgressNetwork) {
+        let namespace = resource
+            .namespace()
+            .expect("EgressNetwork must have a namespace");
+        let name = resource.name_unchecked();
+
+        let status_conditions = resource
+            .status
+            .into_iter()
+            .flat_map(|s| s.conditions)
+            .collect();
+
+        let networks = resource.spec.networks.unwrap_or_else(|| {
+            let (v6, v4) = self
+                .cluster_networks
+                .iter()
+                .cloned()
+                .partition(Cidr::is_ipv6);
+
+            vec![
+                Network {
+                    cidr: "0.0.0.0/0".parse().expect("should parse"),
+                    except: Some(v4),
+                },
+                Network {
+                    cidr: "::/0".parse().expect("should parse"),
+                    except: Some(v6),
+                },
+            ]
+        });
+
+        let id = ResourceId::new(namespace, name);
+
+        let net = EgressNetworkRef {
+            status_conditions,
+            networks,
+        };
+
+        self.index_egress_network(id, net);
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let id = ResourceId::new(namespace, name);
+        self.egress_networks.remove(&id);
+
+        // If we're not the leader, skip reconciling the cluster.
+        if !self.claims.borrow().is_current_for(&self.name) {
+            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
+            return;
+        }
+        self.reconcile();
+    }
+}
+
 impl Index {
+    fn index_egress_network(&mut self, id: ResourceId, net: EgressNetworkRef) {
+        // Insert into the index; if the network is already in the index, and it hasn't
+        // changed, skip creating a patch.
+        if !self.update_egress_net(id, &net) {
+            return;
+        }
+
+        // If we're not the leader, skip creating a patch and sending an
+        // update to the Controller.
+        if !self.claims.borrow().is_current_for(&self.name) {
+            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
+            return;
+        }
+
+        self.reconcile()
+    }
+
     fn index_route(&mut self, id: NamespaceGroupKindName, route: RouteRef) {
         // Insert into the index; if the route is already in the index, and it hasn't
         // changed, skip creating a patch.
@@ -815,23 +1164,23 @@ impl Index {
     }
 }
 
-pub(crate) fn make_patch<RouteStatus>(
-    route_id: &NamespaceGroupKindName,
-    status: RouteStatus,
+pub(crate) fn make_patch<Status>(
+    resource_id: &NamespaceGroupKindName,
+    status: Status,
 ) -> Option<k8s_core_api::Patch<serde_json::Value>>
 where
-    RouteStatus: serde::Serialize,
+    Status: serde::Serialize,
 {
-    match route_id.api_version() {
+    match resource_id.api_version() {
         Err(error) => {
-            tracing::error!(error = %error, "failed to create patch for route");
+            tracing::error!(error = %error, "failed to create patch for resource");
             None
         }
         Ok(api_version) => {
             let patch = serde_json::json!({
                 "apiVersion": api_version,
-                    "kind": &route_id.gkn.kind,
-                    "name": &route_id.gkn.name,
+                    "kind": &resource_id.gkn.kind,
+                    "name": &resource_id.gkn.name,
                     "status": status,
             });
 
@@ -848,7 +1197,7 @@ fn now() -> DateTime<Utc> {
     now
 }
 
-fn no_matching_parent() -> k8s_core_api::Condition {
+pub(crate) fn no_matching_parent() -> k8s_core_api::Condition {
     k8s_core_api::Condition {
         last_transition_time: k8s_core_api::Time(now()),
         message: "".to_string(),
@@ -870,7 +1219,18 @@ fn headless_parent() -> k8s_core_api::Condition {
     }
 }
 
-fn route_conflicted() -> k8s_core_api::Condition {
+fn egress_net_not_accepted() -> k8s_core_api::Condition {
+    k8s_core_api::Condition {
+        last_transition_time: k8s_core_api::Time(now()),
+        message: "EgressNetwork parent has not been accepted".to_string(),
+        observed_generation: None,
+        reason: reasons::NO_MATCHING_PARENT.to_string(),
+        status: cond_statuses::STATUS_FALSE.to_string(),
+        type_: conditions::ACCEPTED.to_string(),
+    }
+}
+
+pub(crate) fn route_conflicted() -> k8s_core_api::Condition {
     k8s_core_api::Condition {
         last_transition_time: k8s_core_api::Time(now()),
         message: "".to_string(),
@@ -881,7 +1241,7 @@ fn route_conflicted() -> k8s_core_api::Condition {
     }
 }
 
-fn accepted() -> k8s_core_api::Condition {
+pub(crate) fn accepted() -> k8s_core_api::Condition {
     k8s_core_api::Condition {
         last_transition_time: k8s_core_api::Time(now()),
         message: "".to_string(),
@@ -892,7 +1252,18 @@ fn accepted() -> k8s_core_api::Condition {
     }
 }
 
-fn resolved_refs() -> k8s_core_api::Condition {
+pub(crate) fn in_cluster_net_overlap() -> k8s_core_api::Condition {
+    k8s_core_api::Condition {
+        last_transition_time: k8s_core_api::Time(now()),
+        message: "networks overlap with clusterNetworks".to_string(),
+        observed_generation: None,
+        reason: reasons::EGRESS_NET_REASON_OVERLAP.to_string(),
+        status: cond_statuses::STATUS_FALSE.to_string(),
+        type_: conditions::ACCEPTED.to_string(),
+    }
+}
+
+pub(crate) fn resolved_refs() -> k8s_core_api::Condition {
     k8s_core_api::Condition {
         last_transition_time: k8s_core_api::Time(now()),
         message: "".to_string(),
@@ -903,7 +1274,7 @@ fn resolved_refs() -> k8s_core_api::Condition {
     }
 }
 
-fn backend_not_found() -> k8s_core_api::Condition {
+pub(crate) fn backend_not_found() -> k8s_core_api::Condition {
     k8s_core_api::Condition {
         last_transition_time: k8s_core_api::Time(now()),
         message: "".to_string(),
@@ -925,7 +1296,7 @@ fn invalid_backend_kind() -> k8s_core_api::Condition {
     }
 }
 
-fn eq_time_insensitive(
+fn eq_time_insensitive_route_parent_statuses(
     left: &[k8s_gateway_api::RouteParentStatus],
     right: &[k8s_gateway_api::RouteParentStatus],
 ) -> bool {
@@ -943,5 +1314,23 @@ fn eq_time_insensitive(
                     && l.status == r.status
                     && l.type_ == r.type_
             })
+    })
+}
+
+fn eq_time_insensitive_conditions(
+    left: &[k8s_core_api::Condition],
+    right: &[k8s_core_api::Condition],
+) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+
+    left.iter().zip(right.iter()).all(|(l, r)| {
+        let result = l.message == r.message
+            && l.observed_generation == r.observed_generation
+            && l.reason == r.reason
+            && l.status == r.status
+            && l.type_ == r.type_;
+        result
     })
 }
