@@ -6,7 +6,12 @@ use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use chrono::{offset::Utc, DateTime};
 use futures::prelude::*;
-use std::{net::IpAddr, num::NonZeroU16, pin::Pin, time};
+use std::{
+    net::{IpAddr, SocketAddr},
+    num::NonZeroU16,
+    pin::Pin,
+    time,
+};
 
 /// Models outbound policy discovery.
 #[async_trait::async_trait]
@@ -24,8 +29,16 @@ pub type HttpRoute = OutboundRoute<HttpRouteMatch, HttpRetryCondition>;
 pub type GrpcRoute = OutboundRoute<GrpcRouteMatch, GrpcRetryCondition>;
 pub type RouteSet<T> = HashMap<GroupKindNamespaceName, T>;
 
+pub enum TrafficPolicy {
+    AllowUnknown,
+    DenyUnknown,
+}
+
 pub enum TargetKind {
-    UnmeshedNetwork,
+    UnmeshedNetwork {
+        original_dst: SocketAddr,
+        traffic_policy: TrafficPolicy,
+    },
     Service,
 }
 
@@ -75,6 +88,7 @@ pub struct OutboundRouteRule<M, R> {
 pub enum Backend {
     Addr(WeightedAddr),
     Service(WeightedService),
+    Forward,
     Invalid { weight: u32, message: String },
 }
 

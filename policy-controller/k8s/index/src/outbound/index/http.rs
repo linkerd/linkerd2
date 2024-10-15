@@ -1,6 +1,9 @@
 use std::{num::NonZeroU16, time};
 
-use super::{is_service, parse_duration, parse_timeouts, ResourceRef, ServiceInfo};
+use super::{
+    is_service, is_unmeshed_network, parse_duration, parse_timeouts, ResourceKind, ResourceRef,
+    ServiceInfo,
+};
 use crate::{
     routes::{self, HttpRouteResource},
     ClusterInfo,
@@ -199,65 +202,69 @@ pub(super) fn convert_backend<BackendRef: Into<gateway::HttpBackendRef>>(
     let backend = backend.into();
     let filters = backend.filters;
     let backend = backend.backend_ref?;
-    if !is_backend_service(&backend.inner) {
-        return Some(Backend::Invalid {
+
+    if is_backend_service(&backend.inner) {
+        let name = backend.inner.name;
+        let weight = backend.weight.unwrap_or(1);
+
+        // The gateway API dictates:
+        //
+        // Port is required when the referent is a Kubernetes Service.
+        let port = match backend
+            .inner
+            .port
+            .and_then(|p| NonZeroU16::try_from(p).ok())
+        {
+            Some(port) => port,
+            None => {
+                return Some(Backend::Invalid {
+                    weight: weight.into(),
+                    message: format!("missing port for backend Service {name}"),
+                })
+            }
+        };
+        let service_ref = ResourceRef {
+            kind: ResourceKind::Service,
+            name: name.clone(),
+            namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
+        };
+
+        let filters = match filters
+            .into_iter()
+            .flatten()
+            .map(convert_gateway_filter)
+            .collect::<Result<_>>()
+        {
+            Ok(filters) => filters,
+            Err(error) => {
+                return Some(Backend::Invalid {
+                    weight: backend.weight.unwrap_or(1).into(),
+                    message: format!("unsupported backend filter: {error}"),
+                });
+            }
+        };
+
+        Some(Backend::Service(WeightedService {
+            weight: weight.into(),
+            authority: cluster.service_dns_authority(&service_ref.namespace, &name, port),
+            name,
+            namespace: service_ref.namespace.to_string(),
+            port,
+            filters,
+            exists: services.contains_key(&service_ref),
+        }))
+    } else if is_backend_unmeshed_network(&backend.inner) {
+        Some(Backend::Forward)
+    } else {
+        Some(Backend::Invalid {
             weight: backend.weight.unwrap_or(1).into(),
             message: format!(
                 "unsupported backend type {group} {kind}",
                 group = backend.inner.group.as_deref().unwrap_or("core"),
                 kind = backend.inner.kind.as_deref().unwrap_or("<empty>"),
             ),
-        });
+        })
     }
-
-    let name = backend.inner.name;
-    let weight = backend.weight.unwrap_or(1);
-
-    // The gateway API dictates:
-    //
-    // Port is required when the referent is a Kubernetes Service.
-    let port = match backend
-        .inner
-        .port
-        .and_then(|p| NonZeroU16::try_from(p).ok())
-    {
-        Some(port) => port,
-        None => {
-            return Some(Backend::Invalid {
-                weight: weight.into(),
-                message: format!("missing port for backend Service {name}"),
-            })
-        }
-    };
-    let service_ref = ResourceRef {
-        name: name.clone(),
-        namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
-    };
-
-    let filters = match filters
-        .into_iter()
-        .flatten()
-        .map(convert_gateway_filter)
-        .collect::<Result<_>>()
-    {
-        Ok(filters) => filters,
-        Err(error) => {
-            return Some(Backend::Invalid {
-                weight: backend.weight.unwrap_or(1).into(),
-                message: format!("unsupported backend filter: {error}"),
-            });
-        }
-    };
-
-    Some(Backend::Service(WeightedService {
-        weight: weight.into(),
-        authority: cluster.service_dns_authority(&service_ref.namespace, &name, port),
-        name,
-        namespace: service_ref.namespace.to_string(),
-        port,
-        filters,
-        exists: services.contains_key(&service_ref),
-    }))
 }
 
 fn convert_linkerd_filter(filter: policy::httproute::HttpRouteFilter) -> Result<Filter> {
@@ -323,6 +330,15 @@ pub(crate) fn convert_gateway_filter<RouteFilter: Into<gateway::HttpRouteFilter>
 #[inline]
 fn is_backend_service(backend: &gateway::BackendObjectReference) -> bool {
     is_service(
+        backend.group.as_deref(),
+        // Backends default to `Service` if no kind is specified.
+        backend.kind.as_deref().unwrap_or("Service"),
+    )
+}
+
+#[inline]
+fn is_backend_unmeshed_network(backend: &gateway::BackendObjectReference) -> bool {
+    is_unmeshed_network(
         backend.group.as_deref(),
         // Backends default to `Service` if no kind is specified.
         backend.kind.as_deref().unwrap_or("Service"),

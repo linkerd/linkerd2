@@ -18,7 +18,7 @@ use linkerd_policy_controller_core::{
     },
     routes::GroupKindNamespaceName,
 };
-use std::{num::NonZeroU16, str::FromStr, sync::Arc, time};
+use std::{net::SocketAddr, num::NonZeroU16, str::FromStr, sync::Arc, time};
 
 mod grpc;
 mod http;
@@ -160,6 +160,7 @@ where
             Ok(tonic::Response::new(to_service(
                 policy,
                 self.allow_l5d_request_headers,
+                original_dst,
             )))
         } else {
             Err(tonic::Status::not_found("No such policy"))
@@ -173,6 +174,8 @@ where
         req: tonic::Request<outbound::TrafficSpec>,
     ) -> Result<tonic::Response<BoxWatchStream>, tonic::Status> {
         let service = self.lookup(req.into_inner())?;
+        let original_dst = service.original_dst;
+
         let drain = self.drain.clone();
 
         let rx = self
@@ -185,6 +188,7 @@ where
             drain,
             rx,
             self.allow_l5d_request_headers,
+            original_dst,
         )))
     }
 }
@@ -197,6 +201,7 @@ fn response_stream(
     drain: drain::Watch,
     mut rx: OutboundPolicyStream,
     allow_l5d_request_headers: bool,
+    original_dst: Option<SocketAddr>,
 ) -> BoxWatchStream {
     Box::pin(async_stream::try_stream! {
         tokio::pin! {
@@ -208,7 +213,7 @@ fn response_stream(
                 // When the port is updated with a new server, update the server watch.
                 res = rx.next() => match res {
                     Some(policy) => {
-                        yield to_service(policy, allow_l5d_request_headers);
+                        yield to_service(policy, allow_l5d_request_headers,original_dst);
                     }
                     None => return,
                 },
@@ -226,6 +231,7 @@ fn response_stream(
 fn to_service(
     outbound: OutboundPolicy,
     allow_l5d_request_headers: bool,
+    original_dst: Option<SocketAddr>,
 ) -> outbound::OutboundPolicy {
     let backend: outbound::Backend = default_backend(&outbound);
 
@@ -264,6 +270,7 @@ fn to_service(
                 outbound.grpc_retry,
                 outbound.timeouts,
                 allow_l5d_request_headers,
+                original_dst,
             )
         } else {
             http_routes.sort_by(timestamp_then_name);
@@ -274,6 +281,7 @@ fn to_service(
                 outbound.http_retry,
                 outbound.timeouts,
                 allow_l5d_request_headers,
+                original_dst,
             )
         }
     };

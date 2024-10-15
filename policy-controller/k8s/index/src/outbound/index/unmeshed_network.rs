@@ -63,6 +63,7 @@ pub(crate) fn resolve_unmeshed_network<'n>(
         })
         .max_by(compare_matched_unmeshed_network)
         .map(|m| super::ResourceRef {
+            kind: super::ResourceKind::UnmeshedNetwork,
             name: m.name,
             namespace: m.namespace,
         })

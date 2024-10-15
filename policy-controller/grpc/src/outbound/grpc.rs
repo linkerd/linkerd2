@@ -19,6 +19,7 @@ pub(crate) fn protocol(
     service_retry: Option<RouteRetry<GrpcRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
+    original_dst: Option<SocketAddr>,
 ) -> outbound::proxy_protocol::Kind {
     let routes = routes
         .map(|(gknn, route)| {
@@ -29,6 +30,7 @@ pub(crate) fn protocol(
                 service_retry.clone(),
                 service_timeouts.clone(),
                 allow_l5d_request_headers,
+                original_dst,
             )
         })
         .collect::<Vec<_>>();
@@ -49,6 +51,7 @@ fn convert_outbound_route(
     service_retry: Option<RouteRetry<GrpcRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
+    original_dst: Option<SocketAddr>,
 ) -> outbound::GrpcRoute {
     // This encoder sets deprecated timeouts for older proxies.
     #![allow(deprecated)]
@@ -77,7 +80,7 @@ fn convert_outbound_route(
              }| {
                 let backends = backends
                     .into_iter()
-                    .map(convert_backend)
+                    .map(|b| convert_backend(b, original_dst))
                     .collect::<Vec<_>>();
                 let dist = if backends.is_empty() {
                     outbound::grpc_route::distribution::Kind::FirstAvailable(
@@ -158,8 +161,56 @@ fn convert_outbound_route(
     }
 }
 
-fn convert_backend(backend: Backend) -> outbound::grpc_route::WeightedRouteBackend {
+fn convert_backend(
+    backend: Backend,
+    original_dst: Option<SocketAddr>,
+) -> outbound::grpc_route::WeightedRouteBackend {
     match backend {
+        Backend::Forward => {
+            if let Some(original_dst) = original_dst {
+                outbound::grpc_route::WeightedRouteBackend {
+                    weight: 1,
+                    backend: Some(outbound::grpc_route::RouteBackend {
+                        backend: Some(outbound::Backend {
+                            metadata: None,
+                            queue: Some(default_queue_config()),
+                            kind: Some(outbound::backend::Kind::Forward(
+                                destination::WeightedAddr {
+                                    addr: Some(original_dst.into()),
+                                    weight: 1,
+                                    ..Default::default()
+                                },
+                            )),
+                        }),
+                        filters: Default::default(),
+                        ..Default::default()
+                    }),
+                }
+            } else {
+                outbound::grpc_route::WeightedRouteBackend {
+                    weight: 1,
+                    backend: Some(outbound::grpc_route::RouteBackend {
+                        backend: Some(outbound::Backend {
+                            metadata: Some(meta::Metadata {
+                                kind: Some(meta::metadata::Kind::Default("invalid".to_string())),
+                            }),
+                            queue: Some(default_queue_config()),
+                            kind: None,
+                        }),
+                        filters: vec![outbound::grpc_route::Filter {
+                            kind: Some(outbound::grpc_route::filter::Kind::FailureInjector(
+                                grpc_route::GrpcFailureInjector {
+                                    code: 500,
+                                    message: "Forward backend needs an original_dst".to_string(),
+                                    ratio: None,
+                                },
+                            )),
+                        }],
+                        ..Default::default()
+                    }),
+                }
+            }
+        }
         Backend::Addr(addr) => {
             let socket_addr = SocketAddr::new(addr.addr, addr.port.get());
             outbound::grpc_route::WeightedRouteBackend {

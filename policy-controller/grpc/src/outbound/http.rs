@@ -23,6 +23,7 @@ pub(crate) fn protocol(
     service_retry: Option<RouteRetry<HttpRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
+    original_dst: Option<SocketAddr>,
 ) -> outbound::proxy_protocol::Kind {
     let opaque_route = default_outbound_opaq_route(default_backend.clone());
     let mut routes = routes
@@ -34,6 +35,7 @@ pub(crate) fn protocol(
                 service_retry.clone(),
                 service_timeouts.clone(),
                 allow_l5d_request_headers,
+                original_dst,
             )
         })
         .collect::<Vec<_>>();
@@ -76,6 +78,7 @@ fn convert_outbound_route(
     service_retry: Option<RouteRetry<HttpRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
+    original_dst: Option<SocketAddr>,
 ) -> outbound::HttpRoute {
     // This encoder sets deprecated timeouts for older proxies.
     #![allow(deprecated)]
@@ -104,7 +107,7 @@ fn convert_outbound_route(
              }| {
                 let backends = backends
                     .into_iter()
-                    .map(convert_backend)
+                    .map(|b| convert_backend(b, original_dst))
                     .collect::<Vec<_>>();
                 let dist = if backends.is_empty() {
                     outbound::http_route::distribution::Kind::FirstAvailable(
@@ -149,8 +152,56 @@ fn convert_outbound_route(
     }
 }
 
-fn convert_backend(backend: Backend) -> outbound::http_route::WeightedRouteBackend {
+fn convert_backend(
+    backend: Backend,
+    original_dst: Option<SocketAddr>,
+) -> outbound::http_route::WeightedRouteBackend {
     match backend {
+        Backend::Forward => {
+            if let Some(original_dst) = original_dst {
+                outbound::http_route::WeightedRouteBackend {
+                    weight: 1,
+                    backend: Some(outbound::http_route::RouteBackend {
+                        backend: Some(outbound::Backend {
+                            metadata: None,
+                            queue: Some(default_queue_config()),
+                            kind: Some(outbound::backend::Kind::Forward(
+                                destination::WeightedAddr {
+                                    addr: Some(original_dst.into()),
+                                    weight: 1,
+                                    ..Default::default()
+                                },
+                            )),
+                        }),
+                        filters: Default::default(),
+                        ..Default::default()
+                    }),
+                }
+            } else {
+                outbound::http_route::WeightedRouteBackend {
+                    weight: 1,
+                    backend: Some(outbound::http_route::RouteBackend {
+                        backend: Some(outbound::Backend {
+                            metadata: Some(meta::Metadata {
+                                kind: Some(meta::metadata::Kind::Default("invalid".to_string())),
+                            }),
+                            queue: Some(default_queue_config()),
+                            kind: None,
+                        }),
+                        filters: vec![outbound::http_route::Filter {
+                            kind: Some(outbound::http_route::filter::Kind::FailureInjector(
+                                http_route::HttpFailureInjector {
+                                    status: 500,
+                                    message: "Forward backend needs an original_dst".to_string(),
+                                    ratio: None,
+                                },
+                            )),
+                        }],
+                        ..Default::default()
+                    }),
+                }
+            }
+        }
         Backend::Addr(addr) => {
             let socket_addr = SocketAddr::new(addr.addr, addr.port.get());
             outbound::http_route::WeightedRouteBackend {

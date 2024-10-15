@@ -38,7 +38,15 @@ pub struct Index {
 pub type SharedIndex = Arc<RwLock<Index>>;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum ResourceKind {
+    UnmeshedNetwork,
+    Service,
+    Other,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ResourceRef {
+    pub kind: ResourceKind,
     pub name: String,
     pub namespace: String,
 }
@@ -76,6 +84,7 @@ struct ServiceInfo {
 struct ServicePort {
     service: String,
     port: NonZeroU16,
+    resource_kind: ResourceKind,
 }
 
 #[derive(Debug)]
@@ -185,6 +194,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                 match cluster_ip.parse() {
                     Ok(addr) => {
                         let service_ref = ResourceRef {
+                            kind: ResourceKind::Service,
                             name: name.clone(),
                             namespace: ns.clone(),
                         };
@@ -218,6 +228,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
 
         self.service_info.insert(
             ResourceRef {
+                kind: ResourceKind::Service,
                 name: service.name_unchecked(),
                 namespace: service.namespace().expect("Service must have Namespace"),
             },
@@ -229,7 +240,11 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
 
     fn delete(&mut self, namespace: String, name: String) {
         tracing::debug!(name, namespace, "deleting service");
-        let service_ref = ResourceRef { name, namespace };
+        let service_ref = ResourceRef {
+            name,
+            namespace,
+            kind: ResourceKind::Service,
+        };
         self.service_info.remove(&service_ref);
         self.services_by_ip.retain(|_, v| *v != service_ref);
 
@@ -244,6 +259,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::UnmeshedNetwork> fo
 
         self.unmeshed_networks.insert(
             ResourceRef {
+                kind: ResourceKind::UnmeshedNetwork,
                 name: um.name.clone(),
                 namespace: um.namespace.clone(),
             },
@@ -253,7 +269,11 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::UnmeshedNetwork> fo
 
     fn delete(&mut self, namespace: String, name: String) {
         tracing::debug!(name, namespace, "deleting unmeshed networks");
-        let um_ref = ResourceRef { name, namespace };
+        let um_ref = ResourceRef {
+            kind: ResourceKind::UnmeshedNetwork,
+            name,
+            namespace,
+        };
         self.unmeshed_networks.remove(&um_ref);
     }
 }
@@ -268,6 +288,7 @@ impl kubert::index::IndexNamespacedResource<Pod> for Index {
             let pod_ref = ResourceRef {
                 name,
                 namespace: ns,
+                kind: ResourceKind::Other,
             };
             for ip in ips.iter() {
                 if let Some(ip) = &ip.ip {
@@ -287,7 +308,11 @@ impl kubert::index::IndexNamespacedResource<Pod> for Index {
 
     fn delete(&mut self, namespace: String, name: String) {
         tracing::debug!(name, namespace, "deleting pod");
-        let pod_ref = ResourceRef { name, namespace };
+        let pod_ref = ResourceRef {
+            name,
+            namespace,
+            kind: ResourceKind::Other,
+        };
         self.pods_by_ip.retain(|_, v| *v != pod_ref);
     }
 }
@@ -312,6 +337,7 @@ impl Index {
         service_namespace: String,
         service_port: NonZeroU16,
         source_namespace: String,
+        resource_kind: ResourceKind,
     ) -> Result<watch::Receiver<OutboundPolicy>> {
         let ns = self
             .namespaces
@@ -327,6 +353,7 @@ impl Index {
         let key = ServicePort {
             service: service_name,
             port: service_port,
+            resource_kind,
         };
 
         tracing::debug!(?key, "subscribing to service port");
@@ -359,11 +386,23 @@ impl Index {
         )
     }
 
+    fn get_parent_kind(pr: &ParentReference) -> ResourceKind {
+        if is_parent_service(pr) {
+            ResourceKind::Service
+        } else if !is_parent_unmeshed_network(pr) {
+            ResourceKind::UnmeshedNetwork
+        } else {
+            ResourceKind::Other
+        }
+    }
+
     fn apply_http(&mut self, route: HttpRouteResource) {
         tracing::debug!(name = route.name(), "indexing httproute");
 
         for parent_ref in route.inner().parent_refs.iter().flatten() {
-            if !is_parent_service(parent_ref) {
+            let kind = Self::get_parent_kind(parent_ref);
+
+            if kind == ResourceKind::Other {
                 continue;
             }
 
@@ -390,6 +429,7 @@ impl Index {
                     parent_ref,
                     &self.namespaces.cluster_info,
                     &self.service_info,
+                    kind,
                 );
         }
     }
@@ -398,7 +438,9 @@ impl Index {
         tracing::debug!(name = route.name_unchecked(), "indexing grpcroute");
 
         for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
-            if !is_parent_service(parent_ref) {
+            let kind = Self::get_parent_kind(parent_ref);
+
+            if kind == ResourceKind::Other {
                 continue;
             }
 
@@ -426,6 +468,7 @@ impl Index {
                     parent_ref,
                     &self.namespaces.cluster_info,
                     &self.service_info,
+                    kind,
                 );
         }
     }
@@ -444,6 +487,7 @@ impl Namespace {
         parent_ref: &ParentReference,
         cluster_info: &ClusterInfo,
         service_info: &HashMap<ResourceRef, ServiceInfo>,
+        parent_kind: ResourceKind,
     ) {
         tracing::debug!(?route);
 
@@ -464,6 +508,7 @@ impl Namespace {
             let service_port = ServicePort {
                 port,
                 service: parent_ref.name.clone(),
+                resource_kind: parent_kind,
             };
 
             tracing::debug!(
@@ -476,19 +521,27 @@ impl Namespace {
                 self.service_routes_or_default(service_port, cluster_info, service_info);
 
             service_routes.apply_http_route(route.gknn(), outbound_route);
-        } else {
+        } else if parent_kind == ResourceKind::Service {
             // If the parent_ref doesn't include a port, apply this route
             // to all ServiceRoutes which match the Service name.
             self.service_port_routes.iter_mut().for_each(
-                |(ServicePort { service, port: _ }, routes)| {
-                    if service == &parent_ref.name {
+                |(
+                    ServicePort {
+                        service,
+                        port: _,
+                        resource_kind,
+                    },
+                    routes,
+                )| {
+                    if service == &parent_ref.name && resource_kind == &parent_kind {
                         routes.apply_http_route(route.gknn(), outbound_route.clone());
                     }
                 },
             );
 
             // Also add the route to the list of routes that target the
-            // Service without specifying a port.
+            // Service without specifying a port. This is possible only for
+            // service parents.
             self.service_http_routes
                 .entry(parent_ref.name.clone())
                 .or_default()
@@ -502,6 +555,7 @@ impl Namespace {
         parent_ref: &ParentReference,
         cluster_info: &ClusterInfo,
         service_info: &HashMap<ResourceRef, ServiceInfo>,
+        parent_kind: ResourceKind,
     ) {
         tracing::debug!(?route);
 
@@ -526,6 +580,7 @@ impl Namespace {
             let service_port = ServicePort {
                 port,
                 service: parent_ref.name.clone(),
+                resource_kind: parent_kind,
             };
 
             tracing::debug!(
@@ -538,12 +593,19 @@ impl Namespace {
                 self.service_routes_or_default(service_port, cluster_info, service_info);
 
             service_routes.apply_grpc_route(gknn, outbound_route);
-        } else {
+        } else if parent_kind == ResourceKind::Service {
             // If the parent_ref doesn't include a port, apply this route
             // to all ServiceRoutes which match the Service name.
             self.service_port_routes.iter_mut().for_each(
-                |(ServicePort { service, port: _ }, routes)| {
-                    if service == &parent_ref.name {
+                |(
+                    ServicePort {
+                        service,
+                        port: _,
+                        resource_kind,
+                    },
+                    routes,
+                )| {
+                    if service == &parent_ref.name && resource_kind == &parent_kind {
                         routes.apply_grpc_route(gknn.clone(), outbound_route.clone());
                     }
                 },
@@ -562,6 +624,7 @@ impl Namespace {
         let update_service = |backend: &mut Backend| {
             if let Backend::Service(svc) = backend {
                 let service_ref = ResourceRef {
+                    kind: ResourceKind::Service,
                     name: svc.name.clone(),
                     namespace: svc.namespace.clone(),
                 };
@@ -645,6 +708,7 @@ impl Namespace {
                 let service_ref = ResourceRef {
                     name: sp.service.clone(),
                     namespace: self.namespace.to_string(),
+                    kind: sp.resource_kind,
                 };
 
                 let mut opaque = false;

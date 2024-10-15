@@ -94,6 +94,7 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
             namespace,
             port,
             source_namespace,
+            ..
         }: OutboundDiscoverTarget,
     ) -> Result<Option<OutboundPolicy>> {
         if let TargetKind::UnmeshedNetwork = kind {
@@ -101,17 +102,18 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
             return Ok(None);
         }
 
-        let rx = match self
-            .0
-            .write()
-            .outbound_policy_rx(name, namespace, port, source_namespace)
-        {
-            Ok(rx) => rx,
-            Err(error) => {
-                tracing::error!(%error, "failed to get outbound policy rx");
-                return Ok(None);
-            }
-        };
+        let rx =
+            match self
+                .0
+                .write()
+                .outbound_policy_rx(name, namespace, port, source_namespace, kind)
+            {
+                Ok(rx) => rx,
+                Err(error) => {
+                    tracing::error!(%error, "failed to get outbound policy rx");
+                    return Ok(None);
+                }
+            };
         let policy = (*rx.borrow()).clone();
         Ok(Some(policy))
     }
