@@ -485,6 +485,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 			"serviceaccount":        "serviceaccount-name",
 			"control_plane_ns":      "linkerd",
 			"zone":                  "",
+			"zone_locality":         "unknown",
 		}
 		if diff := deep.Equal(actualAddedAddress1MetricLabels, expectedAddedAddress1MetricLabels); diff != nil {
 			t.Fatalf("Expected global metric labels sent to be [%v] but was [%v]", expectedAddedAddress1MetricLabels, actualAddedAddress1MetricLabels)
@@ -658,6 +659,7 @@ func TestEndpointTranslatorExternalWorkloads(t *testing.T) {
 		expectedAddedAddress1MetricLabels := map[string]string{
 			"external_workload": "ew-1",
 			"zone":              "",
+			"zone_locality":     "unknown",
 			"workloadgroup":     "wg-name",
 		}
 		if diff := deep.Equal(actualAddedAddress1MetricLabels, expectedAddedAddress1MetricLabels); diff != nil {
