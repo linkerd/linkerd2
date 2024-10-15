@@ -29,7 +29,7 @@
     "make-plural": "^7.4.0",
     "path": "0.12.7",
     "prop-types": "15.8.1",
-    "query-string": "^9.1.0",
+    "query-string": "^9.1.1",
     "react": "16.14.0",
     "react-dom": "16.14.0",
     "react-linkify": "1.0.0-alpha",
