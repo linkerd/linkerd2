@@ -52,6 +52,7 @@ spec:
               type: RuntimeDefault
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never
+          automountServiceAccountToken: false
           containers:
           - name: heartbeat
             image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion | default .Values.linkerdVersion}}
@@ -91,4 +92,10 @@ spec:
               allowPrivilegeEscalation: false
               seccompProfile:
                 type: RuntimeDefault
+            volumeMounts:
+            - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              name: kube-api-access
+              readOnly: true
+          volumes:
+          - {{- include "partials.volumes.manualMountServiceAccountToken" . | indent 12 | trimPrefix (repeat 11 " ") }}
 {{- end }}

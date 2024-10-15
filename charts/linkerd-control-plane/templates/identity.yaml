@@ -154,6 +154,7 @@ spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- $_ := set $tree "component" "identity" -}}
       {{- include "linkerd.affinity" $tree | nindent 6 }}
+      automountServiceAccountToken: false
       containers:
       - args:
         - identity
@@ -222,6 +223,9 @@ spec:
           name: identity-issuer
         - mountPath: /var/run/linkerd/identity/trust-roots/
           name: trust-roots
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       {{- $_ := set $tree.Values.proxy "await" false }}
       {{- $_ := set $tree.Values.proxy "loadTrustBundleFromConfigMap" true }}
       {{- $_ := set $tree.Values.proxy "podInboundPorts" "8080,9990" }}
@@ -262,6 +266,7 @@ spec:
       - configMap:
           name: linkerd-identity-trust-roots
         name: trust-roots
+      - {{- include "partials.volumes.manualMountServiceAccountToken" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.cniEnabled -}}
       - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
