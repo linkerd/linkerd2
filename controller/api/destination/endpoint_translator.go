@@ -444,6 +444,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 				Addr:              addr,
 				Weight:            defaultWeight,
 				AuthorityOverride: authOverride,
+				MetricLabels:      map[string]string{},
 			}
 
 			if address.Identity != "" {
@@ -465,12 +466,20 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			}
 		}
 
-		if et.extEndpointZoneWeights {
-			// EXPERIMENTAL: Use the endpoint weight field to indicate zonal
-			// preference so that local endoints are more heavily weighted.
-			if et.nodeTopologyZone != "" && address.Zone != nil && *address.Zone == et.nodeTopologyZone {
-				wa.Weight *= 10
+		if et.nodeTopologyZone != "" && address.Zone != nil {
+			if *address.Zone == et.nodeTopologyZone {
+				wa.MetricLabels["zone_locality"] = "local"
+
+				if et.extEndpointZoneWeights {
+					// EXPERIMENTAL: Use the endpoint weight field to indicate zonal
+					// preference so that local endoints are more heavily weighted.
+					wa.Weight *= 10
+				}
+			} else {
+				wa.MetricLabels["zone_locality"] = "remote"
 			}
+		} else {
+			wa.MetricLabels["zone_locality"] = "unknown"
 		}
 
 		addrs = append(addrs, wa)
