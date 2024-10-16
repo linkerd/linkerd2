@@ -13,7 +13,7 @@ async fn accepts_valid() {
             ..Default::default()
         },
         spec: EgressNetworkSpec {
-            traffic_policy: TrafficPolicy::AllowAll,
+            traffic_policy: TrafficPolicy::Allow,
             networks: Some(vec![
                 Network {
                     cidr: "10.1.0.0/24".parse().unwrap(),
@@ -39,7 +39,7 @@ async fn rejects_empty_networks() {
             ..Default::default()
         },
         spec: EgressNetworkSpec {
-            traffic_policy: TrafficPolicy::AllowAll,
+            traffic_policy: TrafficPolicy::Allow,
             networks: Some(Default::default()),
         },
         status: None,

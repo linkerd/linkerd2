@@ -20,8 +20,8 @@ pub struct EgressNetworkSpec {
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
 pub enum TrafficPolicy {
-    AllowAll,
-    DenyAll,
+    Allow,
+    Deny,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, JsonSchema)]

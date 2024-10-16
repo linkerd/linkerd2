@@ -116,10 +116,9 @@ struct EgressNetworkRef {
 
 impl EgressNetworkRef {
     fn is_accepted(&self) -> bool {
-        self.status_conditions.iter().any(|c| {
-            c.type_ == conditions::ACCEPTED.to_string()
-                && c.status == cond_statuses::STATUS_TRUE.to_string()
-        })
+        self.status_conditions
+            .iter()
+            .any(|c| c.type_ == *conditions::ACCEPTED && c.status == *cond_statuses::STATUS_TRUE)
     }
 }
 
@@ -1306,14 +1305,7 @@ fn eq_time_insensitive_route_parent_statuses(
     left.iter().zip(right.iter()).all(|(l, r)| {
         l.parent_ref == r.parent_ref
             && l.controller_name == r.controller_name
-            && l.conditions.len() == r.conditions.len()
-            && l.conditions.iter().zip(r.conditions.iter()).all(|(l, r)| {
-                l.message == r.message
-                    && l.observed_generation == r.observed_generation
-                    && l.reason == r.reason
-                    && l.status == r.status
-                    && l.type_ == r.type_
-            })
+            && eq_time_insensitive_conditions(&l.conditions, &r.conditions)
     })
 }
 
@@ -1326,11 +1318,10 @@ fn eq_time_insensitive_conditions(
     }
 
     left.iter().zip(right.iter()).all(|(l, r)| {
-        let result = l.message == r.message
+        l.message == r.message
             && l.observed_generation == r.observed_generation
             && l.reason == r.reason
             && l.status == r.status
-            && l.type_ == r.type_;
-        result
+            && l.type_ == r.type_
     })
 }

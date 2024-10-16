@@ -148,15 +148,15 @@ spec:
                   that does not match any explicit route resources associated
                   with an instance of this object. The values that are allowed
                   currently are:
-                   - AllowAll - permits all traffic, even if it has not been
+                   - Allow - permits all traffic, even if it has not been
                                 explicitly described via attaching an xRoute
                                 resources.
-                   - DenyAll -  blocks all traffic that has not been described via
+                   - Deny -  blocks all traffic that has not been described via
                                 attaching an xRoute resource.
                 type: string
                 enum:
-                - AllowAll
-                - DenyAll
+                - Allow
+                - Deny
               networks:
                 type: array
                 items:

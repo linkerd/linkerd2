@@ -49,7 +49,7 @@ fn egress_network_with_no_networks_specified() {
         },
         spec: linkerd_k8s_api::EgressNetworkSpec {
             networks: None,
-            traffic_policy: linkerd_k8s_api::TrafficPolicy::AllowAll,
+            traffic_policy: linkerd_k8s_api::TrafficPolicy::Allow,
         },
         status: None,
     };
@@ -111,7 +111,7 @@ fn egress_network_with_nonoverlapping_networks_specified() {
                     "fd00::/8".parse().unwrap(),
                 ]),
             }]),
-            traffic_policy: linkerd_k8s_api::TrafficPolicy::AllowAll,
+            traffic_policy: linkerd_k8s_api::TrafficPolicy::Allow,
         },
         status: None,
     };
@@ -171,7 +171,7 @@ fn egress_network_with_overlapping_networks_specified() {
                     "192.168.0.0/16".parse().unwrap(),
                 ]),
             }]),
-            traffic_policy: linkerd_k8s_api::TrafficPolicy::AllowAll,
+            traffic_policy: linkerd_k8s_api::TrafficPolicy::Allow,
         },
         status: None,
     };

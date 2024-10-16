@@ -1,7 +1,6 @@
 use super::RouteRef;
 use crate::{resource_id::NamespaceGroupKindName, routes};
 
-use ahash::AHashSet as HashSet;
 use linkerd_policy_controller_k8s_api::{gateway as k8s_gateway_api, Resource};
 
 // This method determines whether a parent that a route attempts to
@@ -9,28 +8,28 @@ use linkerd_policy_controller_k8s_api::{gateway as k8s_gateway_api, Resource};
 // that we are about to attach. This is done following the logs outlined in:
 // https://gateway-api.sigs.k8s.io/geps/gep-1426/#route-types
 pub(super) fn parent_has_conflicting_routes<'p>(
-    mut existing_routes: impl Iterator<Item = (&'p NamespaceGroupKindName, &'p RouteRef)>,
+    existing_routes: impl Iterator<Item = (&'p NamespaceGroupKindName, &'p RouteRef)>,
     parent_ref: &routes::ParentReference,
     candidate_kind: &str,
 ) -> bool {
     let grpc_kind = k8s_gateway_api::GrpcRoute::kind(&());
     let http_kind = k8s_gateway_api::HttpRoute::kind(&());
     let tls_kind = k8s_gateway_api::TlsRoute::kind(&());
+    let tcp_kind = k8s_gateway_api::TcpRoute::kind(&());
 
-    let more_specific_routes: HashSet<_> = if *candidate_kind == grpc_kind {
-        vec![]
-    } else if *candidate_kind == http_kind {
-        vec![grpc_kind]
-    } else if *candidate_kind == tls_kind {
-        vec![grpc_kind, http_kind]
-    } else {
-        vec![grpc_kind, http_kind, tls_kind]
-    }
-    .into_iter()
-    .collect();
-
-    existing_routes.any(|(id, route)| {
-        more_specific_routes.contains(&id.gkn.kind) && route.parents.contains(parent_ref)
+    let mut siblings = existing_routes.filter(|(_, route)| route.parents.contains(parent_ref));
+    siblings.any(|(id, _sibling)| {
+        if *candidate_kind == grpc_kind {
+            false
+        } else if *candidate_kind == http_kind {
+            id.gkn.kind == grpc_kind
+        } else if *candidate_kind == tls_kind {
+            id.gkn.kind == grpc_kind || id.gkn.kind == http_kind
+        } else if *candidate_kind == tcp_kind {
+            id.gkn.kind == grpc_kind || id.gkn.kind == http_kind || id.gkn.kind == tls_kind
+        } else {
+            false
+        }
     })
 }
 

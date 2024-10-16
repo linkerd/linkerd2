@@ -81,7 +81,7 @@ fn make_egress_network(
                     "fd00::/8".parse().unwrap(),
                 ]),
             }]),
-            traffic_policy: linkerd_k8s_api::TrafficPolicy::AllowAll,
+            traffic_policy: linkerd_k8s_api::TrafficPolicy::Allow,
         },
         status: Some(linkerd_k8s_api::EgressNetworkStatus {
             conditions: vec![condition],
