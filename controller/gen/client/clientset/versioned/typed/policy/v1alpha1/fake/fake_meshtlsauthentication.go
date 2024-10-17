@@ -41,22 +41,24 @@ var meshtlsauthenticationsKind = v1alpha1.SchemeGroupVersion.WithKind("MeshTLSAu
 
 // Get takes name of the meshTLSAuthentication, and returns the corresponding meshTLSAuthentication object, and an error if there is any.
 func (c *FakeMeshTLSAuthentications) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.MeshTLSAuthentication, err error) {
+	emptyResult := &v1alpha1.MeshTLSAuthentication{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(meshtlsauthenticationsResource, c.ns, name), &v1alpha1.MeshTLSAuthentication{})
+		Invokes(testing.NewGetActionWithOptions(meshtlsauthenticationsResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.MeshTLSAuthentication), err
 }
 
 // List takes label and field selectors, and returns the list of MeshTLSAuthentications that match those selectors.
 func (c *FakeMeshTLSAuthentications) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.MeshTLSAuthenticationList, err error) {
+	emptyResult := &v1alpha1.MeshTLSAuthenticationList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(meshtlsauthenticationsResource, meshtlsauthenticationsKind, c.ns, opts), &v1alpha1.MeshTLSAuthenticationList{})
+		Invokes(testing.NewListActionWithOptions(meshtlsauthenticationsResource, meshtlsauthenticationsKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -75,28 +77,30 @@ func (c *FakeMeshTLSAuthentications) List(ctx context.Context, opts v1.ListOptio
 // Watch returns a watch.Interface that watches the requested meshTLSAuthentications.
 func (c *FakeMeshTLSAuthentications) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(meshtlsauthenticationsResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(meshtlsauthenticationsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a meshTLSAuthentication and creates it.  Returns the server's representation of the meshTLSAuthentication, and an error, if there is any.
 func (c *FakeMeshTLSAuthentications) Create(ctx context.Context, meshTLSAuthentication *v1alpha1.MeshTLSAuthentication, opts v1.CreateOptions) (result *v1alpha1.MeshTLSAuthentication, err error) {
+	emptyResult := &v1alpha1.MeshTLSAuthentication{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(meshtlsauthenticationsResource, c.ns, meshTLSAuthentication), &v1alpha1.MeshTLSAuthentication{})
+		Invokes(testing.NewCreateActionWithOptions(meshtlsauthenticationsResource, c.ns, meshTLSAuthentication, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.MeshTLSAuthentication), err
 }
 
 // Update takes the representation of a meshTLSAuthentication and updates it. Returns the server's representation of the meshTLSAuthentication, and an error, if there is any.
 func (c *FakeMeshTLSAuthentications) Update(ctx context.Context, meshTLSAuthentication *v1alpha1.MeshTLSAuthentication, opts v1.UpdateOptions) (result *v1alpha1.MeshTLSAuthentication, err error) {
+	emptyResult := &v1alpha1.MeshTLSAuthentication{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(meshtlsauthenticationsResource, c.ns, meshTLSAuthentication), &v1alpha1.MeshTLSAuthentication{})
+		Invokes(testing.NewUpdateActionWithOptions(meshtlsauthenticationsResource, c.ns, meshTLSAuthentication, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.MeshTLSAuthentication), err
 }
@@ -111,7 +115,7 @@ func (c *FakeMeshTLSAuthentications) Delete(ctx context.Context, name string, op
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeMeshTLSAuthentications) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(meshtlsauthenticationsResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(meshtlsauthenticationsResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.MeshTLSAuthenticationList{})
 	return err
@@ -119,11 +123,12 @@ func (c *FakeMeshTLSAuthentications) DeleteCollection(ctx context.Context, opts 
 
 // Patch applies the patch and returns the patched meshTLSAuthentication.
 func (c *FakeMeshTLSAuthentications) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.MeshTLSAuthentication, err error) {
+	emptyResult := &v1alpha1.MeshTLSAuthentication{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(meshtlsauthenticationsResource, c.ns, name, pt, data, subresources...), &v1alpha1.MeshTLSAuthentication{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(meshtlsauthenticationsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.MeshTLSAuthentication), err
 }
