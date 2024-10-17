@@ -23,7 +23,7 @@ ipnet = { version = "2", default-features = false }
 linkerd-policy-controller-core = { path = "./core" }
 linkerd-policy-controller-grpc = { path = "./grpc" }
 linkerd-policy-controller-k8s-api = { path = "./k8s/api" }
-openssl = { version = "0.10.67", optional = true }
+openssl = { version = "0.10.68", optional = true }
 linkerd-policy-controller-k8s-index = { path = "./k8s/index" }
 linkerd-policy-controller-k8s-status = { path = "./k8s/status" }
 parking_lot = "0.12"
