@@ -61,6 +61,7 @@ spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- $_ := set $tree "component" "proxy-injector" -}}
       {{- include "linkerd.affinity" $tree | nindent 6 }}
+      automountServiceAccountToken: false
       containers:
       {{- $_ := set $tree.Values.proxy "await" $tree.Values.proxy.await }}
       {{- $_ := set $tree.Values.proxy "loadTrustBundleFromConfigMap" true }}
@@ -139,6 +140,9 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       initContainers:
       {{ if .Values.cniEnabled -}}
       - {{- include "partials.network-validator" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
@@ -173,6 +177,7 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-k8s-tls
+      - {{- include "partials.volumes.manualMountServiceAccountToken" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.cniEnabled -}}
       - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
