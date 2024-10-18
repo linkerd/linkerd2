@@ -5919,7 +5919,7 @@ spec:
       served: true
       storage: false
       deprecated: true
-      deprecationWarning: "policy.linkerd.io/v1alpha1 Server is deprecated; use policy.linkerd.io/v1beta3 Server"
+      deprecationWarning: "policy.linkerd.io/v1beta1 Server is deprecated; use policy.linkerd.io/v1beta3 Server"
       schema:
         openAPIV3Schema:
           type: object
