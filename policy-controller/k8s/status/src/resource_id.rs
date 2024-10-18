@@ -27,8 +27,13 @@ impl NamespaceGroupKindName {
     pub fn api_version(&self) -> anyhow::Result<Cow<'static, str>> {
         match (self.gkn.group.as_ref(), self.gkn.kind.as_ref()) {
             (POLICY_API_GROUP, "HTTPRoute") => Ok(linkerd_k8s_api::HttpRoute::api_version(&())),
+            (POLICY_API_GROUP, "EgressNetwork") => {
+                Ok(linkerd_k8s_api::EgressNetwork::api_version(&()))
+            }
             (GATEWAY_API_GROUP, "HTTPRoute") => Ok(k8s_gateway_api::HttpRoute::api_version(&())),
             (GATEWAY_API_GROUP, "GRPCRoute") => Ok(k8s_gateway_api::GrpcRoute::api_version(&())),
+            (GATEWAY_API_GROUP, "TCPRoute") => Ok(k8s_gateway_api::TcpRoute::api_version(&())),
+            (GATEWAY_API_GROUP, "TLSRoute") => Ok(k8s_gateway_api::TlsRoute::api_version(&())),
             (group, kind) => {
                 anyhow::bail!("unknown group + kind combination: ({}, {})", group, kind)
             }
