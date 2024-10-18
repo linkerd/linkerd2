@@ -8,7 +8,9 @@ pub mod grpc;
 pub mod outbound_api;
 pub mod web;
 
-use linkerd_policy_controller_k8s_api::{self as k8s, ResourceExt};
+use linkerd_policy_controller_k8s_api::{
+    self as k8s, policy::httproute::ParentReference, ResourceExt,
+};
 use maplit::{btreemap, convert_args};
 use tokio::time;
 use tracing::Instrument;
@@ -489,6 +491,17 @@ pub fn random_suffix(len: usize) -> String {
         .take(len)
         .map(char::from)
         .collect()
+}
+
+pub fn egress_network_parent_ref(ns: impl ToString, port: Option<u16>) -> ParentReference {
+    ParentReference {
+        group: Some("policy.linkerd.io".to_string()),
+        kind: Some("EgressNetwork".to_string()),
+        namespace: Some(ns.to_string()),
+        name: "my-egress-net".to_string(),
+        section_name: None,
+        port,
+    }
 }
 
 fn init_tracing() -> tracing::subscriber::DefaultGuard {
