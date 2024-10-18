@@ -514,30 +514,45 @@ impl Index {
 
     fn backend_condition(
         &self,
+        parent_ref: &routes::ParentReference,
         backend_refs: &[routes::BackendReference],
     ) -> k8s_core_api::Condition {
-        // If even one backend has a reference to an unknown / unsupported
-        // reference, return invalid backend condition
-        if backend_refs
-            .iter()
-            .any(|reference| matches!(reference, routes::BackendReference::Unknown))
-        {
-            return invalid_backend_kind();
+        for backend_ref in backend_refs.iter() {
+            match backend_ref {
+                routes::BackendReference::Unknown => {
+                    // If even one backend has a reference to an unknown / unsupported
+                    // reference, return invalid backend condition
+                    return invalid_backend_kind("");
+                }
+
+                routes::BackendReference::Service(service) => {
+                    if !self.services.contains_key(service) {
+                        return backend_not_found();
+                    }
+                }
+                routes::BackendReference::EgressNetwork(egress_net) => {
+                    println!("backend is a net");
+                    if !self.egress_networks.contains_key(egress_net) {
+                        return backend_not_found();
+                    }
+
+                    match parent_ref {
+                        routes::ParentReference::EgressNetwork(parent_resource, _)
+                            if parent_resource == egress_net =>
+                        {
+                            continue;
+                        }
+                        _ => {
+                            let message =
+                            "EgressNetwork backend needs to be on a route that has an EgressNetwork parent";
+                            return invalid_backend_kind(message);
+                        }
+                    }
+                }
+            }
         }
 
-        // If all references have been resolved (i.e. exist in our services cache),
-        // return positive status, otherwise, one of them does not exist
-        if backend_refs.iter().all(|backend_ref| match backend_ref {
-            routes::BackendReference::Service(service) => self.services.contains_key(service),
-            routes::BackendReference::EgressNetwork(egress_net) => {
-                self.egress_networks.contains_key(egress_net)
-            }
-            _ => false,
-        }) {
-            resolved_refs()
-        } else {
-            backend_not_found()
-        }
+        return resolved_refs();
     }
 
     fn make_route_patch(
@@ -554,11 +569,10 @@ impl Index {
             .cloned();
 
         // Compute a status for each parent_ref which has a kind we support.
-        let backend_condition = self.backend_condition(&route.backends);
-        let parent_statuses = route
-            .parents
-            .iter()
-            .filter_map(|parent_ref| self.parent_status(id, parent_ref, backend_condition.clone()));
+        let parent_statuses = route.parents.iter().filter_map(|parent_ref| {
+            let backend_condition = self.backend_condition(parent_ref, &route.backends);
+            self.parent_status(id, parent_ref, backend_condition.clone())
+        });
 
         let all_statuses = unowned_statuses.chain(parent_statuses).collect::<Vec<_>>();
 
@@ -1284,10 +1298,10 @@ pub(crate) fn backend_not_found() -> k8s_core_api::Condition {
     }
 }
 
-fn invalid_backend_kind() -> k8s_core_api::Condition {
+pub(crate) fn invalid_backend_kind(message: &str) -> k8s_core_api::Condition {
     k8s_core_api::Condition {
         last_transition_time: k8s_core_api::Time(now()),
-        message: "".to_string(),
+        message: message.to_string(),
         observed_generation: None,
         reason: reasons::INVALID_KIND.to_string(),
         status: cond_statuses::STATUS_FALSE.to_string(),

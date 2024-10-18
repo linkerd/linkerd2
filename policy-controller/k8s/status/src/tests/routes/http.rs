@@ -1,6 +1,9 @@
 use super::make_parent_status;
 use crate::{
-    index::{accepted, backend_not_found, no_matching_parent, resolved_refs, POLICY_API_GROUP},
+    index::{
+        accepted, backend_not_found, invalid_backend_kind, no_matching_parent, resolved_refs,
+        POLICY_API_GROUP,
+    },
     resource_id::NamespaceGroupKindName,
     tests::default_cluster_networks,
     Index, IndexMetrics,
@@ -254,16 +257,6 @@ fn linkerd_route_with_valid_egress_networks_backends() {
         super::make_egress_network("ns-0", "egress", accepted());
     index.write().apply(parent.clone());
 
-    // Apply one backend egress network
-    let backend1: linkerd_k8s_api::EgressNetwork =
-        super::make_egress_network("ns-0", "backend-1", accepted());
-    index.write().apply(backend1.clone());
-
-    // Apply one backend egress network
-    let backend2 = super::make_egress_network("ns-0", "backend-2", accepted());
-    index.write().apply(backend2.clone());
-
-    // Apply the route.
     let id = NamespaceGroupKindName {
         namespace: parent.namespace().as_deref().unwrap().to_string(),
         gkn: GroupKindName {
@@ -283,34 +276,19 @@ fn linkerd_route_with_valid_egress_networks_backends() {
     let route = make_linkerd_route(
         &id,
         parent.clone(),
-        Some(vec![
-            linkerd_k8s_api::httproute::HttpBackendRef {
-                backend_ref: Some(k8s_gateway_api::BackendRef {
-                    weight: None,
-                    inner: k8s_gateway_api::BackendObjectReference {
-                        group: Some("policy.linkerd.io".to_string()),
-                        kind: Some("EgressNetwork".to_string()),
-                        name: backend1.name_unchecked(),
-                        namespace: backend1.namespace(),
-                        port: Some(8080),
-                    },
-                }),
-                filters: None,
-            },
-            linkerd_k8s_api::httproute::HttpBackendRef {
-                backend_ref: Some(k8s_gateway_api::BackendRef {
-                    weight: None,
-                    inner: k8s_gateway_api::BackendObjectReference {
-                        group: Some("policy.linkerd.io".to_string()),
-                        kind: Some("EgressNetwork".to_string()),
-                        name: backend2.name_unchecked(),
-                        namespace: backend2.namespace(),
-                        port: Some(8080),
-                    },
-                }),
-                filters: None,
-            },
-        ]),
+        Some(vec![linkerd_k8s_api::httproute::HttpBackendRef {
+            backend_ref: Some(k8s_gateway_api::BackendRef {
+                weight: None,
+                inner: k8s_gateway_api::BackendObjectReference {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("EgressNetwork".to_string()),
+                    name: parent.name.clone(),
+                    namespace: parent.namespace.clone(),
+                    port: Some(8080),
+                },
+            }),
+            filters: None,
+        }]),
     );
     index.write().apply(route);
 
@@ -452,14 +430,6 @@ fn gateway_route_with_valid_egress_networks_backends() {
     let parent = super::make_egress_network("ns-0", "egress", accepted());
     index.write().apply(parent.clone());
 
-    // Apply one backend egress network
-    let backend1 = super::make_egress_network("ns-0", "backend-1", accepted());
-    index.write().apply(backend1.clone());
-
-    // Apply one backend egress network
-    let backend2 = super::make_egress_network("ns-0", "backend-2", accepted());
-    index.write().apply(backend2.clone());
-
     // Apply the route.
     let parent = k8s_gateway_api::ParentReference {
         group: Some("policy.linkerd.io".to_string()),
@@ -480,34 +450,19 @@ fn gateway_route_with_valid_egress_networks_backends() {
     let route = make_gateway_route(
         &id,
         parent.clone(),
-        Some(vec![
-            k8s_gateway_api::HttpBackendRef {
-                backend_ref: Some(k8s_gateway_api::BackendRef {
-                    weight: None,
-                    inner: k8s_gateway_api::BackendObjectReference {
-                        group: Some("policy.linkerd.io".to_string()),
-                        kind: Some("EgressNetwork".to_string()),
-                        name: backend1.name_unchecked(),
-                        namespace: backend1.namespace(),
-                        port: Some(8080),
-                    },
-                }),
-                filters: None,
-            },
-            k8s_gateway_api::HttpBackendRef {
-                backend_ref: Some(k8s_gateway_api::BackendRef {
-                    weight: None,
-                    inner: k8s_gateway_api::BackendObjectReference {
-                        group: Some("policy.linkerd.io".to_string()),
-                        kind: Some("EgressNetwork".to_string()),
-                        name: backend2.name_unchecked(),
-                        namespace: backend2.namespace(),
-                        port: Some(8080),
-                    },
-                }),
-                filters: None,
-            },
-        ]),
+        Some(vec![k8s_gateway_api::HttpBackendRef {
+            backend_ref: Some(k8s_gateway_api::BackendRef {
+                weight: None,
+                inner: k8s_gateway_api::BackendObjectReference {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("EgressNetwork".to_string()),
+                    name: parent.name.clone(),
+                    namespace: parent.namespace.clone(),
+                    port: Some(8080),
+                },
+            }),
+            filters: None,
+        }]),
     );
     index.write().apply(route);
 
@@ -624,7 +579,168 @@ fn linkerd_route_with_invalid_service_backend() {
 }
 
 #[test]
-fn linkerd_route_with_invalid_egress_network_backend() {
+fn linkerd_route_with_egress_network_backend_different_from_parent() {
+    let hostname = "test";
+    let claim = kubert::lease::Claim {
+        holder: "test".to_string(),
+        expiry: DateTime::<Utc>::MAX_UTC,
+    };
+    let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
+    let (updates_tx, mut updates_rx) = mpsc::channel(10000);
+    let index = Index::shared(
+        hostname,
+        claims_rx,
+        updates_tx,
+        IndexMetrics::register(&mut Default::default()),
+        default_cluster_networks(),
+    );
+
+    // Apply the parent egress network
+    let parent = super::make_egress_network("ns-0", "svc", accepted());
+    index.write().apply(parent.clone());
+
+    // Apply one backend egress network
+    let backend = super::make_egress_network("ns-0", "backend-1", accepted());
+    index.write().apply(backend.clone());
+
+    // Apply the route.
+    let parent = k8s_gateway_api::ParentReference {
+        group: Some("policy.linkerd.io".to_string()),
+        kind: Some("EgressNetwork".to_string()),
+        namespace: parent.namespace(),
+        name: parent.name_unchecked(),
+        section_name: None,
+        port: Some(8080),
+    };
+    let id = NamespaceGroupKindName {
+        namespace: parent.namespace.as_deref().unwrap().to_string(),
+        gkn: GroupKindName {
+            group: linkerd_k8s_api::HttpRoute::group(&()),
+            kind: linkerd_k8s_api::HttpRoute::kind(&()),
+            name: "route-foo".into(),
+        },
+    };
+    let route = make_linkerd_route(
+        &id,
+        parent.clone(),
+        Some(vec![linkerd_k8s_api::httproute::HttpBackendRef {
+            backend_ref: Some(k8s_gateway_api::BackendRef {
+                inner: k8s_gateway_api::BackendObjectReference {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("EgressNetwork".to_string()),
+                    name: backend.name_unchecked(),
+                    namespace: backend.namespace(),
+                    port: Some(8080),
+                },
+                weight: None,
+            }),
+            filters: None,
+        }]),
+    );
+    index.write().apply(route);
+
+    // Create the expected update.
+    let accepted_condition = accepted();
+    let backend_condition = invalid_backend_kind(
+        "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
+    );
+    let parent_status = k8s_gateway_api::RouteParentStatus {
+        parent_ref: parent,
+        controller_name: POLICY_CONTROLLER_NAME.to_string(),
+        conditions: vec![accepted_condition, backend_condition],
+    };
+    let status = make_status(vec![parent_status]);
+    let patch = crate::index::make_patch(&id, status).unwrap();
+
+    let update = updates_rx.try_recv().unwrap();
+    assert_eq!(id, update.id);
+    assert_eq!(patch, update.patch);
+    assert!(updates_rx.try_recv().is_err())
+}
+
+#[test]
+fn linkerd_route_with_egress_network_backend_and_service_parent() {
+    let hostname = "test";
+    let claim = kubert::lease::Claim {
+        holder: "test".to_string(),
+        expiry: DateTime::<Utc>::MAX_UTC,
+    };
+    let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
+    let (updates_tx, mut updates_rx) = mpsc::channel(10000);
+    let index = Index::shared(
+        hostname,
+        claims_rx,
+        updates_tx,
+        IndexMetrics::register(&mut Default::default()),
+        default_cluster_networks(),
+    );
+
+    // Apply the parent service
+    let parent = super::make_service("ns-0", "svc");
+    index.write().apply(parent.clone());
+
+    // Apply one backend egress network
+    let backend = super::make_egress_network("ns-0", "backend-1", accepted());
+    index.write().apply(backend.clone());
+
+    // Apply the route.
+    let parent = k8s_gateway_api::ParentReference {
+        group: Some("core".to_string()),
+        kind: Some("Service".to_string()),
+        namespace: parent.namespace(),
+        name: parent.name_unchecked(),
+        section_name: None,
+        port: Some(8080),
+    };
+    let id = NamespaceGroupKindName {
+        namespace: parent.namespace.as_deref().unwrap().to_string(),
+        gkn: GroupKindName {
+            group: linkerd_k8s_api::HttpRoute::group(&()),
+            kind: linkerd_k8s_api::HttpRoute::kind(&()),
+            name: "route-foo".into(),
+        },
+    };
+
+    let route = make_linkerd_route(
+        &id,
+        parent.clone(),
+        Some(vec![linkerd_k8s_api::httproute::HttpBackendRef {
+            backend_ref: Some(k8s_gateway_api::BackendRef {
+                inner: k8s_gateway_api::BackendObjectReference {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("EgressNetwork".to_string()),
+                    name: backend.name_unchecked(),
+                    namespace: backend.namespace(),
+                    port: Some(8080),
+                },
+                weight: None,
+            }),
+            filters: None,
+        }]),
+    );
+    index.write().apply(route);
+
+    // Create the expected update.
+    let accepted_condition = accepted();
+    let backend_condition = invalid_backend_kind(
+        "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
+    );
+    let parent_status = k8s_gateway_api::RouteParentStatus {
+        parent_ref: parent,
+        controller_name: POLICY_CONTROLLER_NAME.to_string(),
+        conditions: vec![accepted_condition, backend_condition],
+    };
+    let status = make_status(vec![parent_status]);
+    let patch = crate::index::make_patch(&id, status).unwrap();
+
+    let update = updates_rx.try_recv().unwrap();
+    assert_eq!(id, update.id);
+    assert_eq!(patch, update.patch);
+    assert!(updates_rx.try_recv().is_err())
+}
+
+#[test]
+fn linkerd_route_with_egress_network_parent_and_service_backend() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
@@ -644,12 +760,12 @@ fn linkerd_route_with_invalid_egress_network_backend() {
     let parent = super::make_egress_network("ns-0", "egress", accepted());
     index.write().apply(parent.clone());
 
-    // Apply one backend egress network
-    let backend = super::make_egress_network("ns-0", "backend-1", accepted());
+    // Apply one backend service
+    let backend = super::make_service("ns-0", "backend-1");
     index.write().apply(backend.clone());
 
     // Apply the route.
-    let parent = linkerd_k8s_api::httproute::ParentReference {
+    let parent = k8s_gateway_api::ParentReference {
         group: Some("policy.linkerd.io".to_string()),
         kind: Some("EgressNetwork".to_string()),
         namespace: parent.namespace(),
@@ -665,44 +781,29 @@ fn linkerd_route_with_invalid_egress_network_backend() {
             name: "route-foo".into(),
         },
     };
+
     let route = make_linkerd_route(
         &id,
         parent.clone(),
-        Some(vec![
-            linkerd_k8s_api::httproute::HttpBackendRef {
-                backend_ref: Some(k8s_gateway_api::BackendRef {
-                    weight: None,
-                    inner: k8s_gateway_api::BackendObjectReference {
-                        group: Some("policy.linkerd.io".to_string()),
-                        kind: Some("EgressNetwork".to_string()),
-                        name: backend.name_unchecked(),
-                        namespace: backend.namespace(),
-                        port: Some(8080),
-                    },
-                }),
-                filters: None,
-            },
-            linkerd_k8s_api::httproute::HttpBackendRef {
-                backend_ref: Some(k8s_gateway_api::BackendRef {
-                    weight: None,
-                    inner: k8s_gateway_api::BackendObjectReference {
-                        group: Some("policy.linkerd.io".to_string()),
-                        kind: Some("EgressNetwork".to_string()),
-                        name: "nonexistent-backend".to_string(),
-                        namespace: backend.namespace(),
-                        port: Some(8080),
-                    },
-                }),
-                filters: None,
-            },
-        ]),
+        Some(vec![linkerd_k8s_api::httproute::HttpBackendRef {
+            backend_ref: Some(k8s_gateway_api::BackendRef {
+                inner: k8s_gateway_api::BackendObjectReference {
+                    group: Some("core".to_string()),
+                    kind: Some("Service".to_string()),
+                    name: backend.name_unchecked(),
+                    namespace: backend.namespace(),
+                    port: Some(8080),
+                },
+                weight: None,
+            }),
+            filters: None,
+        }]),
     );
     index.write().apply(route);
 
     // Create the expected update.
     let accepted_condition = accepted();
-    // One of the backends does not exist so the status should be BackendNotFound.
-    let backend_condition = backend_not_found();
+    let backend_condition = resolved_refs();
     let parent_status = k8s_gateway_api::RouteParentStatus {
         parent_ref: parent,
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
@@ -812,7 +913,7 @@ fn gateway_route_with_invalid_service_backend() {
 }
 
 #[test]
-fn gateway_route_with_invalid_egress_network_backend() {
+fn gateway_route_with_egress_network_backend_different_from_parent() {
     let hostname = "test";
     let claim = kubert::lease::Claim {
         holder: "test".to_string(),
@@ -829,7 +930,7 @@ fn gateway_route_with_invalid_egress_network_backend() {
     );
 
     // Apply the parent egress network
-    let parent = super::make_egress_network("ns-0", "egress", accepted());
+    let parent = super::make_egress_network("ns-0", "svc", accepted());
     index.write().apply(parent.clone());
 
     // Apply one backend egress network
@@ -856,41 +957,187 @@ fn gateway_route_with_invalid_egress_network_backend() {
     let route = make_gateway_route(
         &id,
         parent.clone(),
-        Some(vec![
-            k8s_gateway_api::HttpBackendRef {
-                backend_ref: Some(k8s_gateway_api::BackendRef {
-                    weight: None,
-                    inner: k8s_gateway_api::BackendObjectReference {
-                        group: Some("policy.linkerd.io".to_string()),
-                        kind: Some("EgressNetwork".to_string()),
-                        name: backend.name_unchecked(),
-                        namespace: backend.namespace(),
-                        port: Some(8080),
-                    },
-                }),
-                filters: None,
-            },
-            k8s_gateway_api::HttpBackendRef {
-                backend_ref: Some(k8s_gateway_api::BackendRef {
-                    weight: None,
-                    inner: k8s_gateway_api::BackendObjectReference {
-                        group: Some("policy.linkerd.io".to_string()),
-                        kind: Some("EgressNetwork".to_string()),
-                        name: "nonexistent-backend".to_string(),
-                        namespace: backend.namespace(),
-                        port: Some(8080),
-                    },
-                }),
-                filters: None,
-            },
-        ]),
+        Some(vec![linkerd_k8s_api::httproute::HttpBackendRef {
+            backend_ref: Some(k8s_gateway_api::BackendRef {
+                inner: k8s_gateway_api::BackendObjectReference {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("EgressNetwork".to_string()),
+                    name: backend.name_unchecked(),
+                    namespace: backend.namespace(),
+                    port: Some(8080),
+                },
+                weight: None,
+            }),
+            filters: None,
+        }]),
     );
     index.write().apply(route);
 
     // Create the expected update.
     let accepted_condition = accepted();
-    // One of the backends does not exist so the status should be BackendNotFound.
-    let backend_condition = backend_not_found();
+    let backend_condition = invalid_backend_kind(
+        "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
+    );
+    let parent_status = k8s_gateway_api::RouteParentStatus {
+        parent_ref: parent,
+        controller_name: POLICY_CONTROLLER_NAME.to_string(),
+        conditions: vec![accepted_condition, backend_condition],
+    };
+    let status = make_status(vec![parent_status]);
+    let patch = crate::index::make_patch(&id, status).unwrap();
+
+    let update = updates_rx.try_recv().unwrap();
+    assert_eq!(id, update.id);
+    assert_eq!(patch, update.patch);
+    assert!(updates_rx.try_recv().is_err())
+}
+
+#[test]
+fn gateway_route_with_egress_network_backend_and_service_parent() {
+    let hostname = "test";
+    let claim = kubert::lease::Claim {
+        holder: "test".to_string(),
+        expiry: DateTime::<Utc>::MAX_UTC,
+    };
+    let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
+    let (updates_tx, mut updates_rx) = mpsc::channel(10000);
+    let index = Index::shared(
+        hostname,
+        claims_rx,
+        updates_tx,
+        IndexMetrics::register(&mut Default::default()),
+        default_cluster_networks(),
+    );
+
+    // Apply the parent service
+    let parent = super::make_service("ns-0", "svc");
+    index.write().apply(parent.clone());
+
+    // Apply one backend egress network
+    let backend = super::make_egress_network("ns-0", "backend-1", accepted());
+    index.write().apply(backend.clone());
+
+    // Apply the route.
+    let parent = k8s_gateway_api::ParentReference {
+        group: Some("core".to_string()),
+        kind: Some("Service".to_string()),
+        namespace: parent.namespace(),
+        name: parent.name_unchecked(),
+        section_name: None,
+        port: Some(8080),
+    };
+    let id = NamespaceGroupKindName {
+        namespace: parent.namespace.as_deref().unwrap().to_string(),
+        gkn: GroupKindName {
+            group: k8s_gateway_api::HttpRoute::group(&()),
+            kind: k8s_gateway_api::HttpRoute::kind(&()),
+            name: "route-foo".into(),
+        },
+    };
+
+    let route = make_gateway_route(
+        &id,
+        parent.clone(),
+        Some(vec![linkerd_k8s_api::httproute::HttpBackendRef {
+            backend_ref: Some(k8s_gateway_api::BackendRef {
+                inner: k8s_gateway_api::BackendObjectReference {
+                    group: Some("policy.linkerd.io".to_string()),
+                    kind: Some("EgressNetwork".to_string()),
+                    name: backend.name_unchecked(),
+                    namespace: backend.namespace(),
+                    port: Some(8080),
+                },
+                weight: None,
+            }),
+            filters: None,
+        }]),
+    );
+    index.write().apply(route);
+
+    // Create the expected update.
+    let accepted_condition = accepted();
+    let backend_condition = invalid_backend_kind(
+        "EgressNetwork backend needs to be on a route that has an EgressNetwork parent",
+    );
+    let parent_status = k8s_gateway_api::RouteParentStatus {
+        parent_ref: parent,
+        controller_name: POLICY_CONTROLLER_NAME.to_string(),
+        conditions: vec![accepted_condition, backend_condition],
+    };
+    let status = make_status(vec![parent_status]);
+    let patch = crate::index::make_patch(&id, status).unwrap();
+
+    let update = updates_rx.try_recv().unwrap();
+    assert_eq!(id, update.id);
+    assert_eq!(patch, update.patch);
+    assert!(updates_rx.try_recv().is_err())
+}
+
+#[test]
+fn gateway_route_with_egress_network_parent_and_service_backend() {
+    let hostname = "test";
+    let claim = kubert::lease::Claim {
+        holder: "test".to_string(),
+        expiry: DateTime::<Utc>::MAX_UTC,
+    };
+    let (_claims_tx, claims_rx) = watch::channel(Arc::new(claim));
+    let (updates_tx, mut updates_rx) = mpsc::channel(10000);
+    let index = Index::shared(
+        hostname,
+        claims_rx,
+        updates_tx,
+        IndexMetrics::register(&mut Default::default()),
+        default_cluster_networks(),
+    );
+
+    // Apply the parent egress network
+    let parent = super::make_egress_network("ns-0", "egress", accepted());
+    index.write().apply(parent.clone());
+
+    // Apply one backend service
+    let backend = super::make_service("ns-0", "backend-1");
+    index.write().apply(backend.clone());
+
+    // Apply the route.
+    let parent = k8s_gateway_api::ParentReference {
+        group: Some("policy.linkerd.io".to_string()),
+        kind: Some("EgressNetwork".to_string()),
+        namespace: parent.namespace(),
+        name: parent.name_unchecked(),
+        section_name: None,
+        port: Some(8080),
+    };
+    let id = NamespaceGroupKindName {
+        namespace: parent.namespace.as_deref().unwrap().to_string(),
+        gkn: GroupKindName {
+            group: k8s_gateway_api::HttpRoute::group(&()),
+            kind: k8s_gateway_api::HttpRoute::kind(&()),
+            name: "route-foo".into(),
+        },
+    };
+
+    let route = make_gateway_route(
+        &id,
+        parent.clone(),
+        Some(vec![k8s_gateway_api::HttpBackendRef {
+            backend_ref: Some(k8s_gateway_api::BackendRef {
+                inner: k8s_gateway_api::BackendObjectReference {
+                    group: Some("core".to_string()),
+                    kind: Some("Service".to_string()),
+                    name: backend.name_unchecked(),
+                    namespace: backend.namespace(),
+                    port: Some(8080),
+                },
+                weight: None,
+            }),
+            filters: None,
+        }]),
+    );
+    index.write().apply(route);
+
+    // Create the expected update.
+    let accepted_condition = accepted();
+    let backend_condition = resolved_refs();
     let parent_status = k8s_gateway_api::RouteParentStatus {
         parent_ref: parent,
         controller_name: POLICY_CONTROLLER_NAME.to_string(),
