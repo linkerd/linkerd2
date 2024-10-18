@@ -41,22 +41,24 @@ var serverauthorizationsKind = v1beta1.SchemeGroupVersion.WithKind("ServerAuthor
 
 // Get takes name of the serverAuthorization, and returns the corresponding serverAuthorization object, and an error if there is any.
 func (c *FakeServerAuthorizations) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.ServerAuthorization, err error) {
+	emptyResult := &v1beta1.ServerAuthorization{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(serverauthorizationsResource, c.ns, name), &v1beta1.ServerAuthorization{})
+		Invokes(testing.NewGetActionWithOptions(serverauthorizationsResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.ServerAuthorization), err
 }
 
 // List takes label and field selectors, and returns the list of ServerAuthorizations that match those selectors.
 func (c *FakeServerAuthorizations) List(ctx context.Context, opts v1.ListOptions) (result *v1beta1.ServerAuthorizationList, err error) {
+	emptyResult := &v1beta1.ServerAuthorizationList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(serverauthorizationsResource, serverauthorizationsKind, c.ns, opts), &v1beta1.ServerAuthorizationList{})
+		Invokes(testing.NewListActionWithOptions(serverauthorizationsResource, serverauthorizationsKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -75,28 +77,30 @@ func (c *FakeServerAuthorizations) List(ctx context.Context, opts v1.ListOptions
 // Watch returns a watch.Interface that watches the requested serverAuthorizations.
 func (c *FakeServerAuthorizations) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(serverauthorizationsResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(serverauthorizationsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a serverAuthorization and creates it.  Returns the server's representation of the serverAuthorization, and an error, if there is any.
 func (c *FakeServerAuthorizations) Create(ctx context.Context, serverAuthorization *v1beta1.ServerAuthorization, opts v1.CreateOptions) (result *v1beta1.ServerAuthorization, err error) {
+	emptyResult := &v1beta1.ServerAuthorization{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(serverauthorizationsResource, c.ns, serverAuthorization), &v1beta1.ServerAuthorization{})
+		Invokes(testing.NewCreateActionWithOptions(serverauthorizationsResource, c.ns, serverAuthorization, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.ServerAuthorization), err
 }
 
 // Update takes the representation of a serverAuthorization and updates it. Returns the server's representation of the serverAuthorization, and an error, if there is any.
 func (c *FakeServerAuthorizations) Update(ctx context.Context, serverAuthorization *v1beta1.ServerAuthorization, opts v1.UpdateOptions) (result *v1beta1.ServerAuthorization, err error) {
+	emptyResult := &v1beta1.ServerAuthorization{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(serverauthorizationsResource, c.ns, serverAuthorization), &v1beta1.ServerAuthorization{})
+		Invokes(testing.NewUpdateActionWithOptions(serverauthorizationsResource, c.ns, serverAuthorization, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.ServerAuthorization), err
 }
@@ -111,7 +115,7 @@ func (c *FakeServerAuthorizations) Delete(ctx context.Context, name string, opts
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeServerAuthorizations) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(serverauthorizationsResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(serverauthorizationsResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1beta1.ServerAuthorizationList{})
 	return err
@@ -119,11 +123,12 @@ func (c *FakeServerAuthorizations) DeleteCollection(ctx context.Context, opts v1
 
 // Patch applies the patch and returns the patched serverAuthorization.
 func (c *FakeServerAuthorizations) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.ServerAuthorization, err error) {
+	emptyResult := &v1beta1.ServerAuthorization{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(serverauthorizationsResource, c.ns, name, pt, data, subresources...), &v1beta1.ServerAuthorization{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(serverauthorizationsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1beta1.ServerAuthorization), err
 }
