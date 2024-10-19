@@ -531,7 +531,6 @@ impl Index {
                     }
                 }
                 routes::BackendReference::EgressNetwork(egress_net) => {
-                    println!("backend is a net");
                     if !self.egress_networks.contains_key(egress_net) {
                         return backend_not_found();
                     }
@@ -552,7 +551,7 @@ impl Index {
             }
         }
 
-        return resolved_refs();
+        resolved_refs()
     }
 
     fn make_route_patch(
