@@ -934,6 +934,7 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       
+      automountServiceAccountToken: false
       containers:
       - args:
         - identity
@@ -983,6 +984,9 @@ spec:
           name: identity-issuer
         - mountPath: /var/run/linkerd/identity/trust-roots/
           name: trust-roots
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       - env:
         - name: _pod_name
           valueFrom:
@@ -1174,6 +1178,24 @@ spec:
       - configMap:
           name: linkerd-identity-trust-roots
         name: trust-roots
+      - name: kube-api-access
+        projected:
+          defaultMode: 420
+          sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              items:
+              - key: ca.crt
+                path: ca.crt
+              name: kube-root-ca.crt
+          - downwardAPI:
+              items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+                path: namespace
       - name: linkerd-identity-token
         projected:
           sources:
@@ -1327,6 +1349,7 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       
+      automountServiceAccountToken: false
       containers:
       - env:
         - name: _pod_name
@@ -1528,6 +1551,10 @@ spec:
           allowPrivilegeEscalation: false
           seccompProfile:
             type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       - args:
         - sp-validator
         - -log-level=info
@@ -1566,6 +1593,9 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: sp-tls
+          readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
           readOnly: true
       - args:
         - --admin-addr=0.0.0.0:9990
@@ -1617,6 +1647,9 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: policy-tls
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       initContainers:
       - name: linkerd-network-validator
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
@@ -1657,6 +1690,24 @@ spec:
       - name: policy-tls
         secret:
           secretName: linkerd-policy-validator-k8s-tls
+      - name: kube-api-access
+        projected:
+          defaultMode: 420
+          sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              items:
+              - key: ca.crt
+                path: ca.crt
+              name: kube-root-ca.crt
+          - downwardAPI:
+              items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+                path: namespace
       - name: linkerd-identity-token
         projected:
           sources:
@@ -1705,6 +1756,7 @@ spec:
               type: RuntimeDefault
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never
+          automountServiceAccountToken: false
           containers:
           - name: heartbeat
             image: cr.l5d.io/linkerd/controller:install-control-plane-version
@@ -1728,6 +1780,29 @@ spec:
               allowPrivilegeEscalation: false
               seccompProfile:
                 type: RuntimeDefault
+            volumeMounts:
+            - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              name: kube-api-access
+              readOnly: true
+          volumes:
+          - name: kube-api-access
+            projected:
+              defaultMode: 420
+              sources:
+              - serviceAccountToken:
+                  expirationSeconds: 3607
+                  path: token
+              - configMap:
+                  items:
+                  - key: ca.crt
+                    path: ca.crt
+                  name: kube-root-ca.crt
+              - downwardAPI:
+                  items:
+                  - fieldRef:
+                      apiVersion: v1
+                      fieldPath: metadata.namespace
+                    path: namespace
 ---
 ###
 ### Proxy Injector
@@ -1775,6 +1850,7 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       
+      automountServiceAccountToken: false
       containers:
       - env:
         - name: _pod_name
@@ -1974,6 +2050,9 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       initContainers:
       - name: linkerd-network-validator
         image: cr.l5d.io/linkerd/proxy:install-proxy-version
@@ -2017,6 +2096,24 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-k8s-tls
+      - name: kube-api-access
+        projected:
+          defaultMode: 420
+          sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              items:
+              - key: ca.crt
+                path: ca.crt
+              name: kube-root-ca.crt
+          - downwardAPI:
+              items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+                path: namespace
       - name: linkerd-identity-token
         projected:
           sources:
