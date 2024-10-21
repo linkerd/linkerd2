@@ -26,6 +26,7 @@ async fn service_does_not_exist() {
         let mut policy_api = grpc::OutboundPolicyClient::port_forwarded(&client).await;
         let rsp = policy_api.watch(&ns, &svc, 4191).await;
 
+        println!("{:?}", rsp);
         assert!(rsp.is_err());
         assert_eq!(rsp.err().unwrap().code(), tonic::Code::NotFound);
     })

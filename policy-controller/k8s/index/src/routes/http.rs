@@ -54,20 +54,6 @@ pub fn path_match(path_match: api::HttpPathMatch) -> Result<routes::PathMatch> {
     }
 }
 
-pub fn host_match(hostname: api::Hostname) -> routes::HostMatch {
-    if hostname.starts_with("*.") {
-        let mut reverse_labels = hostname
-            .split('.')
-            .skip(1)
-            .map(|label| label.to_string())
-            .collect::<Vec<String>>();
-        reverse_labels.reverse();
-        routes::HostMatch::Suffix { reverse_labels }
-    } else {
-        routes::HostMatch::Exact(hostname)
-    }
-}
-
 pub fn header_match(header_match: api::HttpHeaderMatch) -> Result<routes::HeaderMatch> {
     match header_match {
         api::HttpHeaderMatch::Exact { name, value } => {

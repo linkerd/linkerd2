@@ -12,3 +12,6 @@ members = [
 
 [profile.release]
 lto = "thin"
+
+[patch.crates-io]
+linkerd2-proxy-api = { git = 'https://github.com/linkerd/linkerd2-proxy-api', branch = 'zd/add-error-type-to-tls-and-tcp-route' }

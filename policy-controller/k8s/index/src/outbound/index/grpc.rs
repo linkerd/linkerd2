@@ -1,7 +1,7 @@
 use std::time;
 
 use super::http::{convert_backend, convert_gateway_filter};
-use super::{parse_duration, parse_timeouts, ServiceInfo, ServiceRef};
+use super::{parse_duration, parse_timeouts, ResourceInfo, ResourceRef};
 use crate::{routes, ClusterInfo};
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, Result};
@@ -16,7 +16,7 @@ pub(super) fn convert_route(
     ns: &str,
     route: gateway::GrpcRoute,
     cluster: &ClusterInfo,
-    service_info: &HashMap<ServiceRef, ServiceInfo>,
+    resource_info: &HashMap<ResourceRef, ResourceInfo>,
 ) -> Result<GrpcRoute> {
     let timeouts = parse_timeouts(route.annotations())?;
     let retry = parse_grpc_retry(route.annotations())?;
@@ -26,7 +26,7 @@ pub(super) fn convert_route(
         .hostnames
         .into_iter()
         .flatten()
-        .map(routes::http::host_match)
+        .map(routes::host_match)
         .collect();
 
     let rules = route
@@ -39,7 +39,7 @@ pub(super) fn convert_route(
                 ns,
                 rule,
                 cluster,
-                service_info,
+                resource_info,
                 timeouts.clone(),
                 retry.clone(),
             )
@@ -59,7 +59,7 @@ fn convert_rule(
     ns: &str,
     rule: gateway::GrpcRouteRule,
     cluster: &ClusterInfo,
-    service_info: &HashMap<ServiceRef, ServiceInfo>,
+    resource_info: &HashMap<ResourceRef, ResourceInfo>,
     timeouts: RouteTimeouts,
     retry: Option<RouteRetry<GrpcRetryCondition>>,
 ) -> Result<OutboundRouteRule<GrpcRouteMatch, GrpcRetryCondition>> {
@@ -74,7 +74,7 @@ fn convert_rule(
         .backend_refs
         .into_iter()
         .flatten()
-        .filter_map(|b| convert_backend(ns, b, cluster, service_info))
+        .filter_map(|b| convert_backend(ns, b, cluster, resource_info))
         .collect();
 
     let filters = rule

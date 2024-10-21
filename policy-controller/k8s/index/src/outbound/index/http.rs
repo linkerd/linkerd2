@@ -1,6 +1,6 @@
 use std::{num::NonZeroU16, time};
 
-use super::{is_service, parse_duration, parse_timeouts, ServiceInfo, ServiceRef};
+use super::{parse_duration, parse_timeouts, ResourceInfo, ResourceKind, ResourceRef};
 use crate::{
     routes::{self, HttpRouteResource},
     ClusterInfo,
@@ -11,7 +11,7 @@ use kube::ResourceExt;
 use linkerd_policy_controller_core::{
     outbound::{
         Backend, Filter, HttpRetryCondition, OutboundRoute, OutboundRouteRule, RouteRetry,
-        RouteTimeouts, WeightedService,
+        RouteTimeouts, WeightedEgressNetwork, WeightedService,
     },
     routes::HttpRouteMatch,
 };
@@ -21,7 +21,7 @@ pub(super) fn convert_route(
     ns: &str,
     route: HttpRouteResource,
     cluster: &ClusterInfo,
-    service_info: &HashMap<ServiceRef, ServiceInfo>,
+    resource_info: &HashMap<ResourceRef, ResourceInfo>,
 ) -> Result<OutboundRoute<HttpRouteMatch, HttpRetryCondition>> {
     match route {
         HttpRouteResource::LinkerdHttp(route) => {
@@ -33,7 +33,7 @@ pub(super) fn convert_route(
                 .hostnames
                 .into_iter()
                 .flatten()
-                .map(routes::http::host_match)
+                .map(routes::host_match)
                 .collect();
 
             let rules = route
@@ -46,7 +46,7 @@ pub(super) fn convert_route(
                         ns,
                         r,
                         cluster,
-                        service_info,
+                        resource_info,
                         timeouts.clone(),
                         retry.clone(),
                     )
@@ -70,7 +70,7 @@ pub(super) fn convert_route(
                 .hostnames
                 .into_iter()
                 .flatten()
-                .map(routes::http::host_match)
+                .map(routes::host_match)
                 .collect();
 
             let rules = route
@@ -83,7 +83,7 @@ pub(super) fn convert_route(
                         ns,
                         r,
                         cluster,
-                        service_info,
+                        resource_info,
                         timeouts.clone(),
                         retry.clone(),
                     )
@@ -105,7 +105,7 @@ fn convert_linkerd_rule(
     ns: &str,
     rule: policy::httproute::HttpRouteRule,
     cluster: &ClusterInfo,
-    service_info: &HashMap<ServiceRef, ServiceInfo>,
+    resource_info: &HashMap<ResourceRef, ResourceInfo>,
     mut timeouts: RouteTimeouts,
     retry: Option<RouteRetry<HttpRetryCondition>>,
 ) -> Result<OutboundRouteRule<HttpRouteMatch, HttpRetryCondition>> {
@@ -120,7 +120,7 @@ fn convert_linkerd_rule(
         .backend_refs
         .into_iter()
         .flatten()
-        .filter_map(|b| convert_backend(ns, b, cluster, service_info))
+        .filter_map(|b| convert_backend(ns, b, cluster, resource_info))
         .collect();
 
     let filters = rule
@@ -156,7 +156,7 @@ fn convert_gateway_rule(
     ns: &str,
     rule: gateway::HttpRouteRule,
     cluster: &ClusterInfo,
-    service_info: &HashMap<ServiceRef, ServiceInfo>,
+    resource_info: &HashMap<ResourceRef, ResourceInfo>,
     timeouts: RouteTimeouts,
     retry: Option<RouteRetry<HttpRetryCondition>>,
 ) -> Result<OutboundRouteRule<HttpRouteMatch, HttpRetryCondition>> {
@@ -171,7 +171,7 @@ fn convert_gateway_rule(
         .backend_refs
         .into_iter()
         .flatten()
-        .filter_map(|b| convert_backend(ns, b, cluster, service_info))
+        .filter_map(|b| convert_backend(ns, b, cluster, resource_info))
         .collect();
 
     let filters = rule
@@ -194,45 +194,34 @@ pub(super) fn convert_backend<BackendRef: Into<gateway::HttpBackendRef>>(
     ns: &str,
     backend: BackendRef,
     cluster: &ClusterInfo,
-    services: &HashMap<ServiceRef, ServiceInfo>,
+    resources: &HashMap<ResourceRef, ResourceInfo>,
 ) -> Option<Backend> {
     let backend = backend.into();
     let filters = backend.filters;
     let backend = backend.backend_ref?;
-    if !is_backend_service(&backend.inner) {
-        return Some(Backend::Invalid {
-            weight: backend.weight.unwrap_or(1).into(),
-            message: format!(
-                "unsupported backend type {group} {kind}",
-                group = backend.inner.group.as_deref().unwrap_or("core"),
-                kind = backend.inner.kind.as_deref().unwrap_or("<empty>"),
-            ),
-        });
-    }
+
+    let backend_kind = match super::backend_kind(&backend.inner) {
+        Some(backend_kind) => backend_kind,
+        None => {
+            return Some(Backend::Invalid {
+                weight: backend.weight.unwrap_or(1).into(),
+                message: format!(
+                    "unsupported backend type {group} {kind}",
+                    group = backend.inner.group.as_deref().unwrap_or("core"),
+                    kind = backend.inner.kind.as_deref().unwrap_or("<empty>"),
+                ),
+            });
+        }
+    };
+
+    let backend_ref = ResourceRef {
+        name: backend.inner.name.clone(),
+        namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
+        kind: backend_kind.clone(),
+    };
 
     let name = backend.inner.name;
     let weight = backend.weight.unwrap_or(1);
-
-    // The gateway API dictates:
-    //
-    // Port is required when the referent is a Kubernetes Service.
-    let port = match backend
-        .inner
-        .port
-        .and_then(|p| NonZeroU16::try_from(p).ok())
-    {
-        Some(port) => port,
-        None => {
-            return Some(Backend::Invalid {
-                weight: weight.into(),
-                message: format!("missing port for backend Service {name}"),
-            })
-        }
-    };
-    let service_ref = ServiceRef {
-        name: name.clone(),
-        namespace: backend.inner.namespace.unwrap_or_else(|| ns.to_string()),
-    };
 
     let filters = match filters
         .into_iter()
@@ -249,15 +238,45 @@ pub(super) fn convert_backend<BackendRef: Into<gateway::HttpBackendRef>>(
         }
     };
 
-    Some(Backend::Service(WeightedService {
-        weight: weight.into(),
-        authority: cluster.service_dns_authority(&service_ref.namespace, &name, port),
-        name,
-        namespace: service_ref.namespace.to_string(),
-        port,
-        filters,
-        exists: services.contains_key(&service_ref),
-    }))
+    let port = backend
+        .inner
+        .port
+        .and_then(|p| NonZeroU16::try_from(p).ok());
+
+    match backend_kind {
+        ResourceKind::Service => {
+            // The gateway API dictates:
+            //
+            // Port is required when the referent is a Kubernetes Service.
+            let port = match port {
+                Some(port) => port,
+                None => {
+                    return Some(Backend::Invalid {
+                        weight: weight.into(),
+                        message: format!("missing port for backend Service {name}"),
+                    })
+                }
+            };
+
+            Some(Backend::Service(WeightedService {
+                weight: weight.into(),
+                authority: cluster.service_dns_authority(&backend_ref.namespace, &name, port),
+                name,
+                namespace: backend_ref.namespace.to_string(),
+                port,
+                filters,
+                exists: resources.contains_key(&backend_ref),
+            }))
+        }
+        ResourceKind::EgressNetwork => Some(Backend::EgressNetwork(WeightedEgressNetwork {
+            weight: weight.into(),
+            name,
+            namespace: backend_ref.namespace.to_string(),
+            port,
+            filters,
+            exists: resources.contains_key(&backend_ref),
+        })),
+    }
 }
 
 fn convert_linkerd_filter(filter: policy::httproute::HttpRouteFilter) -> Result<Filter> {
@@ -318,15 +337,6 @@ pub(crate) fn convert_gateway_filter<RouteFilter: Into<gateway::HttpRouteFilter>
         }
     };
     Ok(filter)
-}
-
-#[inline]
-fn is_backend_service(backend: &gateway::BackendObjectReference) -> bool {
-    is_service(
-        backend.group.as_deref(),
-        // Backends default to `Service` if no kind is specified.
-        backend.kind.as_deref().unwrap_or("Service"),
-    )
 }
 
 pub fn parse_http_retry(
