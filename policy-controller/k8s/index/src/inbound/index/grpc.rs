@@ -19,7 +19,7 @@ impl TryFrom<gateway::GrpcRoute> for RouteBinding<GrpcRoute> {
             .hostnames
             .into_iter()
             .flatten()
-            .map(crate::routes::http::host_match)
+            .map(crate::routes::host_match)
             .collect();
 
         let rules = route

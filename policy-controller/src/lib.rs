@@ -9,12 +9,13 @@ use linkerd_policy_controller_core::inbound::{
     DiscoverInboundServer, InboundServer, InboundServerStream,
 };
 use linkerd_policy_controller_core::outbound::{
-    DiscoverOutboundPolicy, OutboundDiscoverTarget, OutboundPolicy, OutboundPolicyStream,
+    DiscoverOutboundPolicy, Kind, OutboundDiscoverTarget, OutboundPolicy, OutboundPolicyStream,
 };
 pub use linkerd_policy_controller_core::IpNet;
 pub use linkerd_policy_controller_grpc as grpc;
 pub use linkerd_policy_controller_k8s_api as k8s;
 pub use linkerd_policy_controller_k8s_index::{inbound, outbound, ClusterInfo, DefaultPolicy};
+use std::net::SocketAddr;
 use std::{net::IpAddr, num::NonZeroU16};
 
 #[derive(Clone, Debug)]
@@ -87,19 +88,9 @@ impl DiscoverInboundServer<(grpc::workload::Workload, NonZeroU16)> for InboundDi
 impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
     async fn get_outbound_policy(
         &self,
-        OutboundDiscoverTarget {
-            service_name,
-            service_namespace,
-            service_port,
-            source_namespace,
-        }: OutboundDiscoverTarget,
+        target: OutboundDiscoverTarget,
     ) -> Result<Option<OutboundPolicy>> {
-        let rx = match self.0.write().outbound_policy_rx(
-            service_name,
-            service_namespace,
-            service_port,
-            source_namespace,
-        ) {
+        let rx = match self.0.write().outbound_policy_rx(target) {
             Ok(rx) => rx,
             Err(error) => {
                 tracing::error!(%error, "failed to get outbound policy rx");
@@ -112,19 +103,9 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
 
     async fn watch_outbound_policy(
         &self,
-        OutboundDiscoverTarget {
-            service_name,
-            service_namespace,
-            service_port,
-            source_namespace,
-        }: OutboundDiscoverTarget,
+        target: OutboundDiscoverTarget,
     ) -> Result<Option<OutboundPolicyStream>> {
-        match self.0.write().outbound_policy_rx(
-            service_name,
-            service_namespace,
-            service_port,
-            source_namespace,
-        ) {
+        match self.0.write().outbound_policy_rx(target) {
             Ok(rx) => Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx)))),
             Err(_) => Ok(None),
         }
@@ -136,16 +117,31 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
         port: NonZeroU16,
         source_namespace: String,
     ) -> Option<OutboundDiscoverTarget> {
-        self.0
-            .read()
-            .lookup_service(addr)
-            .map(
-                |outbound::ServiceRef { name, namespace }| OutboundDiscoverTarget {
-                    service_name: name,
-                    service_namespace: namespace,
-                    service_port: port,
+        let index = self.0.read();
+        if let Some((namespace, name)) = index.lookup_service(addr) {
+            return Some(OutboundDiscoverTarget {
+                name,
+                namespace,
+                port,
+                source_namespace,
+                kind: Kind::Service,
+            });
+        }
+
+        index
+            .lookup_egress_network(addr, source_namespace.clone())
+            .map(|(namespace, name, traffic_policy)| {
+                let original_dst = SocketAddr::new(addr, port.into());
+                OutboundDiscoverTarget {
+                    name,
+                    namespace,
+                    port,
                     source_namespace,
-                },
-            )
+                    kind: Kind::EgressNetwork {
+                        original_dst,
+                        traffic_policy,
+                    },
+                }
+            })
     }
 }

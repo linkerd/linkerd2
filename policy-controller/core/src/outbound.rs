@@ -6,7 +6,16 @@ use ahash::AHashMap as HashMap;
 use anyhow::Result;
 use chrono::{offset::Utc, DateTime};
 use futures::prelude::*;
-use std::{net::IpAddr, num::NonZeroU16, pin::Pin, time};
+use std::{
+    net::{IpAddr, SocketAddr},
+    num::NonZeroU16,
+    pin::Pin,
+    time,
+};
+
+pub trait Route {
+    fn creation_timestamp(&self) -> Option<DateTime<Utc>>;
+}
 
 /// Models outbound policy discovery.
 #[async_trait::async_trait]
@@ -22,20 +31,40 @@ pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send
 
 pub type HttpRoute = OutboundRoute<HttpRouteMatch, HttpRetryCondition>;
 pub type GrpcRoute = OutboundRoute<GrpcRouteMatch, GrpcRetryCondition>;
+
 pub type RouteSet<T> = HashMap<GroupKindNamespaceName, T>;
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum TrafficPolicy {
+    Allow,
+    Deny,
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum Kind {
+    EgressNetwork {
+        original_dst: SocketAddr,
+        traffic_policy: TrafficPolicy,
+    },
+    Service,
+}
+
+#[derive(Clone, Debug)]
 pub struct OutboundDiscoverTarget {
-    pub service_name: String,
-    pub service_namespace: String,
-    pub service_port: NonZeroU16,
+    pub name: String,
+    pub namespace: String,
+    pub port: NonZeroU16,
     pub source_namespace: String,
+    pub kind: Kind,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OutboundPolicy {
     pub http_routes: RouteSet<HttpRoute>,
     pub grpc_routes: RouteSet<GrpcRoute>,
-    pub authority: String,
+    pub tls_routes: RouteSet<TlsRoute>,
+    pub tcp_routes: RouteSet<TcpRoute>,
+    pub service_authority: String,
     pub name: String,
     pub namespace: String,
     pub port: NonZeroU16,
@@ -57,6 +86,24 @@ pub struct OutboundRoute<M, R> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TlsRoute {
+    pub hostnames: Vec<HostMatch>,
+    pub rule: TcpRouteRule,
+    /// This is required for ordering returned routes
+    /// by their creation timestamp.
+    pub creation_timestamp: Option<DateTime<Utc>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TcpRoute {
+    pub rule: TcpRouteRule,
+
+    /// This is required for ordering returned routes
+    /// by their creation timestamp.
+    pub creation_timestamp: Option<DateTime<Utc>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OutboundRouteRule<M, R> {
     pub matches: Vec<M>,
     pub backends: Vec<Backend>,
@@ -66,9 +113,15 @@ pub struct OutboundRouteRule<M, R> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TcpRouteRule {
+    pub backends: Vec<Backend>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Backend {
     Addr(WeightedAddr),
     Service(WeightedService),
+    EgressNetwork(WeightedEgressNetwork),
     Invalid { weight: u32, message: String },
 }
 
@@ -86,6 +139,16 @@ pub struct WeightedService {
     pub name: String,
     pub namespace: String,
     pub port: NonZeroU16,
+    pub filters: Vec<Filter>,
+    pub exists: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WeightedEgressNetwork {
+    pub weight: u32,
+    pub name: String,
+    pub namespace: String,
+    pub port: Option<NonZeroU16>,
     pub filters: Vec<Filter>,
     pub exists: bool,
 }
@@ -137,4 +200,22 @@ pub enum GrpcRetryCondition {
     ResourceExhausted,
     Internal,
     Unavailable,
+}
+
+impl<M, R> Route for OutboundRoute<M, R> {
+    fn creation_timestamp(&self) -> Option<DateTime<Utc>> {
+        self.creation_timestamp
+    }
+}
+
+impl Route for TcpRoute {
+    fn creation_timestamp(&self) -> Option<DateTime<Utc>> {
+        self.creation_timestamp
+    }
+}
+
+impl Route for TlsRoute {
+    fn creation_timestamp(&self) -> Option<DateTime<Utc>> {
+        self.creation_timestamp
+    }
 }

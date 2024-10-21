@@ -1,13 +1,14 @@
-use std::sync::Arc;
+use std::{sync::Arc, vec};
 
 use crate::{
     defaults::DefaultPolicy,
     outbound::index::{Index, SharedIndex},
     ClusterInfo,
 };
+use k8s_openapi::chrono::Utc;
 use kubert::index::IndexNamespacedResource;
 use linkerd_policy_controller_core::IpNet;
-use linkerd_policy_controller_k8s_api::{self as k8s};
+use linkerd_policy_controller_k8s_api::{self as k8s, policy};
 use tokio::time;
 
 mod routes;
@@ -31,6 +32,30 @@ pub fn mk_service(ns: impl ToString, name: impl ToString, port: i32) -> k8s::Ser
             ..Default::default()
         }),
         ..Default::default()
+    }
+}
+
+pub fn mk_egress_network(ns: impl ToString, name: impl ToString) -> policy::EgressNetwork {
+    policy::EgressNetwork {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: policy::EgressNetworkSpec {
+            traffic_policy: policy::TrafficPolicy::Allow,
+            networks: None,
+        },
+        status: Some(policy::EgressNetworkStatus {
+            conditions: vec![k8s::Condition {
+                last_transition_time: k8s::Time(Utc::now()),
+                message: "".to_string(),
+                observed_generation: None,
+                reason: "Accepted".to_string(),
+                status: "True".to_string(),
+                type_: "Accepted".to_string(),
+            }],
+        }),
     }
 }
 
