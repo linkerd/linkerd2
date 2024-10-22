@@ -48,20 +48,21 @@ spec:
       {{- if .Values.gateway.terminationGracePeriodSeconds }}
       terminationGracePeriodSeconds: {{.Values.gateway.terminationGracePeriodSeconds}}
       {{- end }}
+      automountServiceAccountToken: false
       containers:
-        - name: pause
-          image: {{ .Values.gateway.pauseImage }}
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-              - ALL
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            runAsUser: {{.Values.gateway.UID}}
-            runAsGroup: {{.Values.gateway.GID}}
-            seccompProfile:
-              type: RuntimeDefault
+      - name: pause
+        image: {{ .Values.gateway.pauseImage }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: {{.Values.gateway.UID}}
+          runAsGroup: {{.Values.gateway.GID}}
+          seccompProfile:
+            type: RuntimeDefault
       securityContext:
         seccompProfile:
           type: RuntimeDefault
