@@ -63,16 +63,10 @@ spec:
           runAsGroup: {{.Values.gateway.GID}}
           seccompProfile:
             type: RuntimeDefault
-        volumeMounts:
-        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
-          name: kube-api-access
-          readOnly: true
       securityContext:
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: {{.Values.gateway.name}}
-      volumes:
-      - {{- include "partials.volumes.manual-mount-service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{- with .Values.gateway.nodeSelector }}
       nodeSelector: {{ toYaml . | nindent 8 }}
       {{- end }}
