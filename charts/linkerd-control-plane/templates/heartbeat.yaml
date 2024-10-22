@@ -97,5 +97,5 @@ spec:
               name: kube-api-access
               readOnly: true
           volumes:
-          - {{- include "partials.volumes.manualMountServiceAccountToken" . | indent 12 | trimPrefix (repeat 11 " ") }}
+          - {{- include "partials.volumes.manual-mount-service-account-token" . | indent 12 | trimPrefix (repeat 11 " ") }}
 {{- end }}

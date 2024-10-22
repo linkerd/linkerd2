@@ -19,7 +19,7 @@ projected:
       audience: identity.l5d.io
 {{- end -}}
 
-{{- define "partials.volumes.manualMountServiceAccountToken" -}}
+{{- define "partials.volumes.manual-mount-service-account-token" -}}
 name: kube-api-access
 projected:
   defaultMode: 420
