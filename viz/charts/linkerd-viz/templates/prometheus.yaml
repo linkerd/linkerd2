@@ -236,6 +236,7 @@ spec:
       {{- include "linkerd.tolerations" (dict "Values" .Values.prometheus) | nindent 6 }}
       {{- end -}}
       {{- include "linkerd.node-selector" (dict "Values" .Values.prometheus) | nindent 6 }}
+      automountServiceAccountToken: false
       containers:
       {{- if .Values.prometheus.sidecarContainers -}}
       {{- toYaml .Values.prometheus.sidecarContainers | trim | nindent 6 }}
@@ -295,6 +296,9 @@ spec:
           name: prometheus-config
           subPath: prometheus.yml
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       securityContext:
         fsGroup: 65534
         seccompProfile:
@@ -316,6 +320,7 @@ spec:
       - configMap:
           name: prometheus-config
         name: prometheus-config
+      - {{- include "partials.volumes.manual-mount-service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
 {{- if .Values.prometheus.persistence }}
 ---
 kind: PersistentVolumeClaim

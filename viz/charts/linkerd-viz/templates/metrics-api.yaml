@@ -75,6 +75,7 @@ spec:
       {{- $_ := set $tree "component" "metrics-api" -}}
       {{- $_ := set $tree "label" "component" -}}
       {{- include "linkerd.affinity" $tree | nindent 6 }}
+      automountServiceAccountToken: false
       containers:
       - args:
         - -controller-namespace={{.Values.linkerdNamespace}}
@@ -125,8 +126,11 @@ spec:
           runAsGroup: {{.Values.metricsAPI.GID | default .Values.defaultGID}}
           seccompProfile:
             type: RuntimeDefault
-        {{- if .Values.prometheusCredsSecret }}
         volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
+        {{- if .Values.prometheusCredsSecret }}
         - mountPath: /var/prometheus
           name: prom-creds
           readOnly: true
@@ -135,8 +139,9 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: metrics-api
-      {{- with .Values.prometheusCredsSecret }}
       volumes:
+      - {{- include "partials.volumes.manual-mount-service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- with .Values.prometheusCredsSecret }}
       - name: prom-creds
         secret:
           secretName: {{ . }}

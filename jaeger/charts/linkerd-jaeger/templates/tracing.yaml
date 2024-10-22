@@ -103,6 +103,7 @@ spec:
       {{- $_ := set $tree "component" "collector" -}}
       {{- $_ := set $tree "label" "component" -}}
       {{- include "linkerd.affinity" $tree | nindent 6 }}
+      automountServiceAccountToken: false
       containers:
       - command:
         - {{ .Values.collector.command }}
@@ -161,6 +162,9 @@ spec:
         volumeMounts:
         - mountPath: /conf
           name: collector-config-val
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       securityContext:
         seccompProfile:
           type: RuntimeDefault
@@ -172,6 +176,7 @@ spec:
             path: collector-config.yaml
           name: collector-config
         name: collector-config-val
+      - {{- include "partials.volumes.manual-mount-service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
 {{ end -}}
 {{ if .Values.jaeger.enabled -}}
 ---
@@ -243,6 +248,7 @@ spec:
       {{- $_ := set $tree "component" "jaeger" -}}
       {{- $_ := set $tree "label" "component" -}}
       {{- include "linkerd.affinity" $tree | nindent 6 }}
+      automountServiceAccountToken: false
       containers:
       - args:
         {{-  range .Values.jaeger.args }}
@@ -276,9 +282,15 @@ spec:
           runAsGroup: {{.Values.jaeger.GID | default .Values.defaultGID}}
           seccompProfile:
             type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       dnsPolicy: ClusterFirst
       securityContext:
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: jaeger
+      volumes:
+      - {{- include "partials.volumes.manual-mount-service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
 {{ end -}}
