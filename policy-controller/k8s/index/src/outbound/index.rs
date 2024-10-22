@@ -691,6 +691,15 @@ fn is_service(group: Option<&str>, kind: &str) -> bool {
 }
 
 #[inline]
+fn is_egress_network(group: Option<&str>, kind: &str) -> bool {
+    // If the group is not specified or empty, assume it's 'policy.linkerd.io'.
+    group
+        .map(|g| g.eq_ignore_ascii_case("policy.linkerd.io"))
+        .unwrap_or(false)
+        && kind.eq_ignore_ascii_case("EgressNetwork")
+}
+
+#[inline]
 pub fn is_parent_service(parent: &ParentReference) -> bool {
     parent
         .kind
@@ -698,6 +707,21 @@ pub fn is_parent_service(parent: &ParentReference) -> bool {
         .map(|k| is_service(parent.group.as_deref(), k))
         // Parent refs require a `kind`.
         .unwrap_or(false)
+}
+
+#[inline]
+pub fn is_parent_egress_network(parent: &ParentReference) -> bool {
+    parent
+        .kind
+        .as_deref()
+        .map(|k| is_egress_network(parent.group.as_deref(), k))
+        // Parent refs require a `kind`.
+        .unwrap_or(false)
+}
+
+#[inline]
+pub fn is_parent_service_or_egress_network(parent: &ParentReference) -> bool {
+    is_parent_service(parent) || is_parent_egress_network(parent)
 }
 
 #[inline]

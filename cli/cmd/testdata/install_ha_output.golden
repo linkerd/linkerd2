@@ -181,12 +181,15 @@ webhooks:
     - meshtlsauthentications
     - serverauthorizations
     - servers
+    - egressnetworks
   - operations: ["CREATE", "UPDATE"]
     apiGroups: ["gateway.networking.k8s.io"]
     apiVersions: ["*"]
     resources:
     - httproutes
     - grpcroutes
+    - tlsroutes
+    - tcproutes
   sideEffects: None
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -221,6 +224,7 @@ rules:
       - networkauthentications
       - servers
       - serverauthorizations
+      - egressnetworks
     verbs:
       - get
       - list
@@ -230,6 +234,8 @@ rules:
     resources:
       - httproutes
       - grpcroutes
+      - tlsroutes
+      - tcproutes
     verbs:
       - get
       - list
@@ -238,6 +244,7 @@ rules:
       - policy.linkerd.io
     resources:
       - httproutes/status
+      - egressnetworks/status
     verbs:
       - patch
   - apiGroups:
@@ -245,6 +252,8 @@ rules:
     resources:
       - httproutes/status
       - grpcroutes/status
+      - tlsroutes/status
+      - tcproutes/status
     verbs:
       - patch
   - apiGroups:
@@ -1435,7 +1444,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 92d3d7185abd241437f7889dabe15a840b3b91f8910f9491ab10de3a1074ed6d
+        checksum/config: 02b4e06690c7d152f22038a65218d7bd14f7afa20d872db332cdc66b5d8aa477
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: install-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"

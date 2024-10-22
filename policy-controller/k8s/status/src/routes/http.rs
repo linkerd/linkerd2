@@ -1,17 +1,5 @@
-use super::{BackendReference, ParentReference};
+use super::BackendReference;
 use linkerd_policy_controller_k8s_api::gateway as k8s_gateway_api;
-
-pub(crate) fn make_parents(
-    namespace: &str,
-    route: &k8s_gateway_api::CommonRouteSpec,
-) -> Vec<ParentReference> {
-    route
-        .parent_refs
-        .iter()
-        .flatten()
-        .map(|pr| ParentReference::from_parent_ref(pr, namespace))
-        .collect()
-}
 
 pub(crate) fn make_backends(
     namespace: &str,
@@ -152,6 +140,13 @@ mod test {
                         },
                         k8s_gateway_api::BackendObjectReference {
                             group: Some(POLICY_API_GROUP.to_string()),
+                            kind: Some("EgressNetwork".to_string()),
+                            name: "ref-3".to_string(),
+                            namespace: None,
+                            port: Some(555),
+                        },
+                        k8s_gateway_api::BackendObjectReference {
+                            group: Some(POLICY_API_GROUP.to_string()),
                             kind: Some("Server".to_string()),
                             name: "ref-2".to_string(),
                             namespace: None,
@@ -179,13 +174,15 @@ mod test {
                 .flatten(),
         );
         assert_eq!(
-            2,
+            3,
             result.len(),
             "expected only two BackendReferences from route"
         );
         let mut iter = result.into_iter();
-        let known = iter.next().unwrap();
-        assert!(matches!(known, BackendReference::Service(_)));
+        let service = iter.next().unwrap();
+        assert!(matches!(service, BackendReference::Service(_)));
+        let egress_net = iter.next().unwrap();
+        assert!(matches!(egress_net, BackendReference::EgressNetwork(_)));
         let unknown = iter.next().unwrap();
         assert!(matches!(unknown, BackendReference::Unknown))
     }

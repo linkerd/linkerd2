@@ -32,7 +32,7 @@ Kubernetes: `>=1.22.0-0`
 | ignoreOutboundPorts | string | `""` | Default set of outbound ports to skip via iptables |
 | image.name | string | `"cr.l5d.io/linkerd/cni-plugin"` | Docker image for the CNI plugin |
 | image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the linkerd-cni container |
-| image.version | string | `"v1.5.1"` | Tag for the CNI container Docker image |
+| image.version | string | `"v1.5.2"` | Tag for the CNI container Docker image |
 | imagePullSecrets | list | `[]` |  |
 | inboundProxyPort | int | `4143` | Inbound port for the proxy container |
 | iptablesMode | string | `"legacy"` | Variant of iptables that will be used to configure routing |

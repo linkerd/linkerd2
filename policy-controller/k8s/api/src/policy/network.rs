@@ -1,3 +1,5 @@
+use ipnet::IpNet;
+
 #[derive(
     Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema,
 )]
@@ -5,6 +7,18 @@
 pub struct Network {
     pub cidr: Cidr,
     pub except: Option<Vec<Cidr>>,
+}
+
+// === impl Network ===
+
+impl Network {
+    #[inline]
+    pub fn intersect(&self, cidr: &Cidr) -> bool {
+        let cidr_is_exception = self.except.iter().flatten().any(|ex| ex.contains(cidr));
+        let intersect = cidr.contains(&self.cidr) || self.cidr.contains(cidr);
+
+        intersect && !cidr_is_exception
+    }
 }
 
 #[derive(
@@ -30,6 +44,15 @@ impl Cidr {
             (Self::Net(this), Self::Addr(other)) => this.contains(other),
             (Self::Addr(this), Self::Net(other)) => ipnet::IpNet::from(*this).contains(other),
             (Self::Addr(this), Self::Addr(other)) => this == other,
+        }
+    }
+
+    #[inline]
+    pub fn is_ipv6(&self) -> bool {
+        match self {
+            Self::Addr(addr) => addr.is_ipv6(),
+            Self::Net(IpNet::V4(_)) => false,
+            Self::Net(IpNet::V6(_)) => true,
         }
     }
 }
