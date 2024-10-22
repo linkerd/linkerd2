@@ -420,6 +420,7 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       
+      automountServiceAccountToken: false
       containers:
       - args:
         - -controller-namespace=linkerd
@@ -458,10 +459,33 @@ spec:
           runAsGroup: 2103
           seccompProfile:
             type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       securityContext:
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: metrics-api
+      volumes:
+      - name: kube-api-access
+        projected:
+          defaultMode: 420
+          sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              items:
+              - key: ca.crt
+                path: ca.crt
+              name: kube-root-ca.crt
+          - downwardAPI:
+              items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+                path: namespace
 ---
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server
@@ -732,6 +756,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
+      automountServiceAccountToken: false
       containers:
       - args:
         - --log.level=info
@@ -776,6 +801,9 @@ spec:
           name: prometheus-config
           subPath: prometheus.yml
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       securityContext:
         fsGroup: 65534
         seccompProfile:
@@ -787,6 +815,24 @@ spec:
       - configMap:
           name: prometheus-config
         name: prometheus-config
+      - name: kube-api-access
+        projected:
+          defaultMode: 420
+          sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              items:
+              - key: ca.crt
+                path: ca.crt
+              name: kube-root-ca.crt
+          - downwardAPI:
+              items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+                path: namespace
 ---
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server
@@ -897,6 +943,7 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       
+      automountServiceAccountToken: false
       containers:
       - args:
         - api
@@ -941,6 +988,9 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       securityContext:
         seccompProfile:
           type: RuntimeDefault
@@ -949,6 +999,24 @@ spec:
       - name: tls
         secret:
           secretName: tap-k8s-tls
+      - name: kube-api-access
+        projected:
+          defaultMode: 420
+          sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              items:
+              - key: ca.crt
+                path: ca.crt
+              name: kube-root-ca.crt
+          - downwardAPI:
+              items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+                path: namespace
 ---
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server
@@ -1115,6 +1183,7 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       
+      automountServiceAccountToken: false
       containers:
       - args:
         - injector
@@ -1156,6 +1225,9 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       securityContext:
         seccompProfile:
           type: RuntimeDefault
@@ -1164,6 +1236,24 @@ spec:
       - name: tls
         secret:
           secretName: tap-injector-k8s-tls
+      - name: kube-api-access
+        projected:
+          defaultMode: 420
+          sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              items:
+              - key: ca.crt
+                path: ca.crt
+              name: kube-root-ca.crt
+          - downwardAPI:
+              items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+                path: namespace
 ---
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server
@@ -1291,6 +1381,7 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       
+      automountServiceAccountToken: false
       containers:
       - args:
         - -linkerd-metrics-api-addr=metrics-api.linkerd-viz.svc.cluster.local:8085
@@ -1330,10 +1421,33 @@ spec:
           runAsGroup: 2103
           seccompProfile:
             type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       securityContext:
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: web
+      volumes:
+      - name: kube-api-access
+        projected:
+          defaultMode: 420
+          sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              items:
+              - key: ca.crt
+                path: ca.crt
+              name: kube-root-ca.crt
+          - downwardAPI:
+              items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+                path: namespace
 ---
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
