@@ -383,8 +383,8 @@ fn to_proto(
     }
 }
 
-fn timestamp_then_name<L: Route, R: Route>(
-    (left_id, left_route): &(GroupKindNamespaceName, L),
+fn timestamp_then_name<R: Route>(
+    (left_id, left_route): &(GroupKindNamespaceName, R),
     (right_id, right_route): &(GroupKindNamespaceName, R),
 ) -> std::cmp::Ordering {
     let by_ts = match (

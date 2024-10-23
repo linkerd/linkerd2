@@ -116,7 +116,7 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
                         policy: policy.clone(),
                     },
 
-                    (ParentMeta::Service { authority }, Kind::EgressNetwork(_)) => {
+                    (ParentMeta::Service { authority }, Kind::Service) => {
                         ResourceOutboundPolicy::Service {
                             authority: authority.clone(),
                             policy,
@@ -162,7 +162,7 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
                                         policy: policy.clone(),
                                     }),
 
-                                    (ParentMeta::Service { authority }, Kind::EgressNetwork(_)) => {
+                                    (ParentMeta::Service { authority }, Kind::Service) => {
                                         Some(ResourceOutboundPolicy::Service { authority, policy })
                                     }
                                     (policy_kind, resource_kind) => {
