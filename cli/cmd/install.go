@@ -50,6 +50,7 @@ You can use the --ignore-cluster flag if you just want to generate the installat
 var (
 	TemplatesCrdFiles = []string{
 		"templates/policy/authorization-policy.yaml",
+		"templates/policy/egress-network.yaml",
 		"templates/policy/httproute.yaml",
 		"templates/policy/meshtls-authentication.yaml",
 		"templates/policy/network-authentication.yaml",
@@ -58,6 +59,8 @@ var (
 		"templates/serviceprofile.yaml",
 		"templates/gateway.networking.k8s.io_httproutes.yaml",
 		"templates/gateway.networking.k8s.io_grpcroutes.yaml",
+		"templates/gateway.networking.k8s.io_tlsroutes.yaml",
+		"templates/gateway.networking.k8s.io_tcproutes.yaml",
 		"templates/workload/external-workload.yaml",
 	}
 

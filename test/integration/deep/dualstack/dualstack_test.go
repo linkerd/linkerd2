@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 // IPv6 endpoint.
 func TestDualStack(t *testing.T) {
 	if !TestHelper.DualStack() {
-		t.Skip("Skipping Skip DualStack test")
+		t.Skip("Skipping DualStack test")
 	}
 
 	TestHelper.WithDataPlaneNamespace(context.Background(), "dualstack-test", map[string]string{}, t, func(t *testing.T, ns string) {
@@ -120,7 +120,7 @@ func TestDualStack(t *testing.T) {
 				"-c", "curl",
 				"-n", ns,
 				"--",
-				"curl", "-s", "http://"+serverIPv4+":8080",
+				"curl", "-s", "-S", "--stderr", "-", "http://"+serverIPv4+":8080",
 			)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\noutput:\n%s", err, out)
@@ -136,7 +136,7 @@ func TestDualStack(t *testing.T) {
 				"-c", "curl",
 				"-n", ns,
 				"--",
-				"curl", "-s", "http://["+serverIPv6+"]:8080",
+				"curl", "-s", "-S", "--stderr", "-", "http://["+serverIPv6+"]:8080",
 			)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\noutput:\n%s", err, out)
@@ -153,7 +153,7 @@ func TestDualStack(t *testing.T) {
 					"-c", "curl",
 					"-n", ns,
 					"--",
-					"curl", "-s", "http://ipfamilies-server:8080",
+					"curl", "-s", "-S", "--stderr", "-", "http://ipfamilies-server:8080",
 				)
 				if err != nil {
 					testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\noutput:\n%s", err, out)

@@ -130,6 +130,7 @@ spec:
                 values:
                 - test-cluster
             topologyKey: kubernetes.io/hostname
+      automountServiceAccountToken: false
       containers:
       - args:
         - service-mirror
@@ -147,11 +148,15 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
-          runAsGroup: 2103
           runAsNonRoot: true
           runAsUser: 2103
+          runAsGroup: 2103
           seccompProfile:
             type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
         ports:
         - containerPort: 9999
           name: admin-http
@@ -159,6 +164,25 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: linkerd-service-mirror-test-cluster
+      volumes:
+      - name: kube-api-access
+        projected:
+          defaultMode: 420
+          sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              items:
+              - key: ca.crt
+                path: ca.crt
+              name: kube-root-ca.crt
+          - downwardAPI:
+              items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+                path: namespace
 ---
 kind: PodDisruptionBudget
 apiVersion: policy/v1

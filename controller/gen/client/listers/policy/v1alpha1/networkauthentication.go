@@ -20,8 +20,8 @@ package v1alpha1
 
 import (
 	v1alpha1 "github.com/linkerd/linkerd2/controller/gen/apis/policy/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -38,25 +38,17 @@ type NetworkAuthenticationLister interface {
 
 // networkAuthenticationLister implements the NetworkAuthenticationLister interface.
 type networkAuthenticationLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1alpha1.NetworkAuthentication]
 }
 
 // NewNetworkAuthenticationLister returns a new NetworkAuthenticationLister.
 func NewNetworkAuthenticationLister(indexer cache.Indexer) NetworkAuthenticationLister {
-	return &networkAuthenticationLister{indexer: indexer}
-}
-
-// List lists all NetworkAuthentications in the indexer.
-func (s *networkAuthenticationLister) List(selector labels.Selector) (ret []*v1alpha1.NetworkAuthentication, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.NetworkAuthentication))
-	})
-	return ret, err
+	return &networkAuthenticationLister{listers.New[*v1alpha1.NetworkAuthentication](indexer, v1alpha1.Resource("networkauthentication"))}
 }
 
 // NetworkAuthentications returns an object that can list and get NetworkAuthentications.
 func (s *networkAuthenticationLister) NetworkAuthentications(namespace string) NetworkAuthenticationNamespaceLister {
-	return networkAuthenticationNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return networkAuthenticationNamespaceLister{listers.NewNamespaced[*v1alpha1.NetworkAuthentication](s.ResourceIndexer, namespace)}
 }
 
 // NetworkAuthenticationNamespaceLister helps list and get NetworkAuthentications.
@@ -74,26 +66,5 @@ type NetworkAuthenticationNamespaceLister interface {
 // networkAuthenticationNamespaceLister implements the NetworkAuthenticationNamespaceLister
 // interface.
 type networkAuthenticationNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all NetworkAuthentications in the indexer for a given namespace.
-func (s networkAuthenticationNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.NetworkAuthentication, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.NetworkAuthentication))
-	})
-	return ret, err
-}
-
-// Get retrieves the NetworkAuthentication from the indexer for a given namespace and name.
-func (s networkAuthenticationNamespaceLister) Get(name string) (*v1alpha1.NetworkAuthentication, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("networkauthentication"), name)
-	}
-	return obj.(*v1alpha1.NetworkAuthentication), nil
+	listers.ResourceIndexer[*v1alpha1.NetworkAuthentication]
 }

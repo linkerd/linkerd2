@@ -47,6 +47,7 @@ spec:
       {{- $_ := set $tree "component" "jaeger-injector" -}}
       {{- $_ := set $tree "label" "component" -}}
       {{- include "linkerd.affinity" $tree | nindent 6 }}
+      automountServiceAccountToken: false
       containers:
       - args:
         - -collector-svc-addr={{.Values.webhook.collectorSvcAddr}}
@@ -92,6 +93,9 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
         {{- if .Values.webhook.resources -}}
         {{- include "partials.resources" .Values.webhook.resources | nindent 8 }}
         {{- end }}
@@ -103,6 +107,7 @@ spec:
       - name: tls
         secret:
           secretName: jaeger-injector-k8s-tls
+      - {{- include "partials.volumes.manual-mount-service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
 ---
 kind: Service
 apiVersion: v1

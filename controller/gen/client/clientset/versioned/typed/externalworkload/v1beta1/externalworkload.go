@@ -20,14 +20,13 @@ package v1beta1
 
 import (
 	"context"
-	"time"
 
 	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
 	scheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	rest "k8s.io/client-go/rest"
+	gentype "k8s.io/client-go/gentype"
 )
 
 // ExternalWorkloadsGetter has a method to return a ExternalWorkloadInterface.
@@ -51,128 +50,18 @@ type ExternalWorkloadInterface interface {
 
 // externalWorkloads implements ExternalWorkloadInterface
 type externalWorkloads struct {
-	client rest.Interface
-	ns     string
+	*gentype.ClientWithList[*v1beta1.ExternalWorkload, *v1beta1.ExternalWorkloadList]
 }
 
 // newExternalWorkloads returns a ExternalWorkloads
 func newExternalWorkloads(c *ExternalworkloadV1beta1Client, namespace string) *externalWorkloads {
 	return &externalWorkloads{
-		client: c.RESTClient(),
-		ns:     namespace,
+		gentype.NewClientWithList[*v1beta1.ExternalWorkload, *v1beta1.ExternalWorkloadList](
+			"externalworkloads",
+			c.RESTClient(),
+			scheme.ParameterCodec,
+			namespace,
+			func() *v1beta1.ExternalWorkload { return &v1beta1.ExternalWorkload{} },
+			func() *v1beta1.ExternalWorkloadList { return &v1beta1.ExternalWorkloadList{} }),
 	}
-}
-
-// Get takes name of the externalWorkload, and returns the corresponding externalWorkload object, and an error if there is any.
-func (c *externalWorkloads) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.ExternalWorkload, err error) {
-	result = &v1beta1.ExternalWorkload{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("externalworkloads").
-		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of ExternalWorkloads that match those selectors.
-func (c *externalWorkloads) List(ctx context.Context, opts v1.ListOptions) (result *v1beta1.ExternalWorkloadList, err error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	result = &v1beta1.ExternalWorkloadList{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("externalworkloads").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested externalWorkloads.
-func (c *externalWorkloads) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	opts.Watch = true
-	return c.client.Get().
-		Namespace(c.ns).
-		Resource("externalworkloads").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch(ctx)
-}
-
-// Create takes the representation of a externalWorkload and creates it.  Returns the server's representation of the externalWorkload, and an error, if there is any.
-func (c *externalWorkloads) Create(ctx context.Context, externalWorkload *v1beta1.ExternalWorkload, opts v1.CreateOptions) (result *v1beta1.ExternalWorkload, err error) {
-	result = &v1beta1.ExternalWorkload{}
-	err = c.client.Post().
-		Namespace(c.ns).
-		Resource("externalworkloads").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(externalWorkload).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Update takes the representation of a externalWorkload and updates it. Returns the server's representation of the externalWorkload, and an error, if there is any.
-func (c *externalWorkloads) Update(ctx context.Context, externalWorkload *v1beta1.ExternalWorkload, opts v1.UpdateOptions) (result *v1beta1.ExternalWorkload, err error) {
-	result = &v1beta1.ExternalWorkload{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("externalworkloads").
-		Name(externalWorkload.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(externalWorkload).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Delete takes name of the externalWorkload and deletes it. Returns an error if one occurs.
-func (c *externalWorkloads) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("externalworkloads").
-		Name(name).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *externalWorkloads) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
-	}
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("externalworkloads").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// Patch applies the patch and returns the patched externalWorkload.
-func (c *externalWorkloads) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.ExternalWorkload, err error) {
-	result = &v1beta1.ExternalWorkload{}
-	err = c.client.Patch(pt).
-		Namespace(c.ns).
-		Resource("externalworkloads").
-		Name(name).
-		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
 }

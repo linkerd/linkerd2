@@ -1,9 +1,9 @@
 use super::validation;
 use crate::k8s::policy::{
-    httproute, server::Selector, AuthorizationPolicy, AuthorizationPolicySpec, HttpRoute,
-    HttpRouteSpec, LocalTargetRef, MeshTLSAuthentication, MeshTLSAuthenticationSpec,
-    NamespacedTargetRef, NetworkAuthentication, NetworkAuthenticationSpec, Server,
-    ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
+    httproute, server::Selector, AuthorizationPolicy, AuthorizationPolicySpec, EgressNetwork,
+    EgressNetworkSpec, HttpRoute, HttpRouteSpec, LocalTargetRef, MeshTLSAuthentication,
+    MeshTLSAuthenticationSpec, NamespacedTargetRef, Network, NetworkAuthentication,
+    NetworkAuthenticationSpec, Server, ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
 };
 use anyhow::{anyhow, bail, ensure, Result};
 use futures::future;
@@ -128,12 +128,24 @@ impl Admission {
             return self.admit_spec::<HttpRouteSpec>(req).await;
         }
 
+        if is_kind::<EgressNetwork>(&req) {
+            return self.admit_spec::<EgressNetworkSpec>(req).await;
+        }
+
         if is_kind::<k8s_gateway_api::HttpRoute>(&req) {
             return self.admit_spec::<k8s_gateway_api::HttpRouteSpec>(req).await;
         }
 
         if is_kind::<k8s_gateway_api::GrpcRoute>(&req) {
             return self.admit_spec::<k8s_gateway_api::GrpcRouteSpec>(req).await;
+        }
+
+        if is_kind::<k8s_gateway_api::TlsRoute>(&req) {
+            return self.admit_spec::<k8s_gateway_api::TlsRouteSpec>(req).await;
+        }
+
+        if is_kind::<k8s_gateway_api::TcpRoute>(&req) {
+            return self.admit_spec::<k8s_gateway_api::TcpRouteSpec>(req).await;
         }
 
         AdmissionResponse::invalid(format_args!(
@@ -418,27 +430,53 @@ impl Validate<NetworkAuthenticationSpec> for Admission {
         if spec.networks.is_empty() {
             bail!("at least one network must be specified");
         }
-        for net in spec.networks.into_iter() {
-            for except in net.except.into_iter().flatten() {
-                if except.contains(&net.cidr) {
-                    bail!(
-                        "cidr '{}' is completely negated by exception '{}'",
-                        net.cidr,
-                        except
-                    );
-                }
-                if !net.cidr.contains(&except) {
-                    bail!(
-                        "cidr '{}' does not include exception '{}'",
-                        net.cidr,
-                        except
-                    );
-                }
+
+        validate_networks(spec.networks)
+    }
+}
+
+#[async_trait::async_trait]
+impl Validate<EgressNetworkSpec> for Admission {
+    async fn validate(
+        self,
+        _ns: &str,
+        _name: &str,
+        _annotations: &BTreeMap<String, String>,
+        spec: EgressNetworkSpec,
+    ) -> Result<()> {
+        if let Some(networks) = spec.networks {
+            if networks.is_empty() {
+                bail!("at least one network must be specified");
             }
+
+            return validate_networks(networks);
         }
 
         Ok(())
     }
+}
+
+fn validate_networks(networks: Vec<Network>) -> Result<()> {
+    for net in networks.into_iter() {
+        for except in net.except.into_iter().flatten() {
+            if except.contains(&net.cidr) {
+                bail!(
+                    "cidr '{}' is completely negated by exception '{}'",
+                    net.cidr,
+                    except
+                );
+            }
+            if !net.cidr.contains(&except) {
+                bail!(
+                    "cidr '{}' does not include exception '{}'",
+                    net.cidr,
+                    except
+                );
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[async_trait::async_trait]
@@ -526,12 +564,16 @@ impl Validate<HttpRouteSpec> for Admission {
         annotations: &BTreeMap<String, String>,
         spec: HttpRouteSpec,
     ) -> Result<()> {
+        for parent in spec.inner.parent_refs.iter().flatten() {
+            validate_parent_ref_port_requirements(parent)?;
+        }
+
         if spec
             .inner
             .parent_refs
             .iter()
             .flatten()
-            .any(index::outbound::index::is_parent_service)
+            .any(outbound_index::is_parent_service_or_egress_network)
         {
             index::outbound::index::http::parse_http_retry(annotations)?;
             index::outbound::index::parse_accrual_config(annotations)?;
@@ -612,12 +654,16 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
         annotations: &BTreeMap<String, String>,
         spec: k8s_gateway_api::HttpRouteSpec,
     ) -> Result<()> {
+        for parent in spec.inner.parent_refs.iter().flatten() {
+            validate_parent_ref_port_requirements(parent)?;
+        }
+
         if spec
             .inner
             .parent_refs
             .iter()
             .flatten()
-            .any(outbound_index::is_parent_service)
+            .any(outbound_index::is_parent_service_or_egress_network)
         {
             outbound_index::http::parse_http_retry(annotations)?;
             outbound_index::parse_accrual_config(annotations)?;
@@ -671,12 +717,16 @@ impl Validate<k8s_gateway_api::GrpcRouteSpec> for Admission {
         annotations: &BTreeMap<String, String>,
         spec: k8s_gateway_api::GrpcRouteSpec,
     ) -> Result<()> {
+        for parent in spec.inner.parent_refs.iter().flatten() {
+            validate_parent_ref_port_requirements(parent)?;
+        }
+
         if spec
             .inner
             .parent_refs
             .iter()
             .flatten()
-            .any(outbound_index::is_parent_service)
+            .any(outbound_index::is_parent_service_or_egress_network)
         {
             outbound_index::grpc::parse_grpc_retry(annotations)?;
             outbound_index::parse_accrual_config(annotations)?;
@@ -743,4 +793,54 @@ impl Validate<k8s_gateway_api::GrpcRouteSpec> for Admission {
 
         Ok(())
     }
+}
+
+#[async_trait::async_trait]
+impl Validate<k8s_gateway_api::TlsRouteSpec> for Admission {
+    async fn validate(
+        self,
+        _ns: &str,
+        _name: &str,
+        _annotations: &BTreeMap<String, String>,
+        spec: k8s_gateway_api::TlsRouteSpec,
+    ) -> Result<()> {
+        for parent in spec.inner.parent_refs.iter().flatten() {
+            validate_parent_ref_port_requirements(parent)?;
+        }
+
+        if spec.rules.len() != 1 {
+            bail!("TlsRoute supports a single rule only")
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Validate<k8s_gateway_api::TcpRouteSpec> for Admission {
+    async fn validate(
+        self,
+        _ns: &str,
+        _name: &str,
+        _annotations: &BTreeMap<String, String>,
+        spec: k8s_gateway_api::TcpRouteSpec,
+    ) -> Result<()> {
+        for parent in spec.inner.parent_refs.iter().flatten() {
+            validate_parent_ref_port_requirements(parent)?;
+        }
+
+        if spec.rules.len() != 1 {
+            bail!("TcpRoute supports a single rule only")
+        }
+
+        Ok(())
+    }
+}
+
+fn validate_parent_ref_port_requirements(parent: &k8s_gateway_api::ParentReference) -> Result<()> {
+    if index::outbound::index::is_parent_egress_network(parent) && parent.port.is_none() {
+        bail!("cannot target an EgressNetwork without specifying a port");
+    }
+
+    Ok(())
 }

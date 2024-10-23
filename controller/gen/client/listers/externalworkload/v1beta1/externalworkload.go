@@ -20,8 +20,8 @@ package v1beta1
 
 import (
 	v1beta1 "github.com/linkerd/linkerd2/controller/gen/apis/externalworkload/v1beta1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -38,25 +38,17 @@ type ExternalWorkloadLister interface {
 
 // externalWorkloadLister implements the ExternalWorkloadLister interface.
 type externalWorkloadLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1beta1.ExternalWorkload]
 }
 
 // NewExternalWorkloadLister returns a new ExternalWorkloadLister.
 func NewExternalWorkloadLister(indexer cache.Indexer) ExternalWorkloadLister {
-	return &externalWorkloadLister{indexer: indexer}
-}
-
-// List lists all ExternalWorkloads in the indexer.
-func (s *externalWorkloadLister) List(selector labels.Selector) (ret []*v1beta1.ExternalWorkload, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1beta1.ExternalWorkload))
-	})
-	return ret, err
+	return &externalWorkloadLister{listers.New[*v1beta1.ExternalWorkload](indexer, v1beta1.Resource("externalworkload"))}
 }
 
 // ExternalWorkloads returns an object that can list and get ExternalWorkloads.
 func (s *externalWorkloadLister) ExternalWorkloads(namespace string) ExternalWorkloadNamespaceLister {
-	return externalWorkloadNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return externalWorkloadNamespaceLister{listers.NewNamespaced[*v1beta1.ExternalWorkload](s.ResourceIndexer, namespace)}
 }
 
 // ExternalWorkloadNamespaceLister helps list and get ExternalWorkloads.
@@ -74,26 +66,5 @@ type ExternalWorkloadNamespaceLister interface {
 // externalWorkloadNamespaceLister implements the ExternalWorkloadNamespaceLister
 // interface.
 type externalWorkloadNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all ExternalWorkloads in the indexer for a given namespace.
-func (s externalWorkloadNamespaceLister) List(selector labels.Selector) (ret []*v1beta1.ExternalWorkload, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1beta1.ExternalWorkload))
-	})
-	return ret, err
-}
-
-// Get retrieves the ExternalWorkload from the indexer for a given namespace and name.
-func (s externalWorkloadNamespaceLister) Get(name string) (*v1beta1.ExternalWorkload, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1beta1.Resource("externalworkload"), name)
-	}
-	return obj.(*v1beta1.ExternalWorkload), nil
+	listers.ResourceIndexer[*v1beta1.ExternalWorkload]
 }

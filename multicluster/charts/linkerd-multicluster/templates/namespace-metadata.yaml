@@ -39,6 +39,7 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: namespace-metadata
+      automountServiceAccountToken: false
       containers:
       - name: namespace-metadata
         image: {{.Values.namespaceMetadata.image.registry}}/{{.Values.namespaceMetadata.image.name}}:{{.Values.namespaceMetadata.image.tag}}
@@ -54,6 +55,10 @@ spec:
           runAsGroup: {{.Values.gateway.GID}}
           seccompProfile:
             type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
         args:
         - --extension
         - multicluster
@@ -61,4 +66,6 @@ spec:
         - {{.Release.Namespace}}
         - --linkerd-namespace
         - {{.Values.linkerdNamespace}}
+      volumes:
+      - {{- include "partials.volumes.manual-mount-service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
 {{- end }}

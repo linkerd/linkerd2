@@ -87,6 +87,7 @@ spec:
       {{- $_ := set $tree "component" "tap" -}}
       {{- $_ := set $tree "label" "component" -}}
       {{- include "linkerd.affinity" $tree | nindent 6 }}
+      automountServiceAccountToken: false
       containers:
       - args:
         - api
@@ -136,6 +137,9 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       securityContext:
         seccompProfile:
           type: RuntimeDefault
@@ -144,6 +148,7 @@ spec:
       - name: tls
         secret:
           secretName: tap-k8s-tls
+      - {{- include "partials.volumes.manual-mount-service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
 {{- if and .Values.enablePodDisruptionBudget (gt (int .Values.tap.replicas) 1) }}
 ---
 kind: PodDisruptionBudget

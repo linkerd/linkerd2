@@ -133,6 +133,7 @@ spec:
     {{- include "linkerd.affinity" $tree | nindent 6 }}
     {{- end }}
     {{- end }}
+      automountServiceAccountToken: false
       containers:
       - args:
         - service-mirror
@@ -170,6 +171,10 @@ spec:
           runAsGroup: {{.Values.serviceMirrorGID}}
           seccompProfile:
             type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
         ports:
         - containerPort: 9999
           name: admin-http
@@ -180,6 +185,8 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: linkerd-service-mirror-{{.Values.targetClusterName}}
+      volumes:
+      - {{- include "partials.volumes.manual-mount-service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{- with .Values.nodeSelector }}
       nodeSelector: {{ toYaml . | nindent 8 }}
       {{- end }}

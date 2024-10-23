@@ -40,20 +40,21 @@ spec:
         linkerd.io/extension: multicluster
     spec:
       
+      automountServiceAccountToken: false
       containers:
-        - name: pause
-          image: gcr.io/google_containers/pause:3.2
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-              - ALL
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            runAsUser: 2103
-            runAsGroup: 2103
-            seccompProfile:
-              type: RuntimeDefault
+      - name: pause
+        image: gcr.io/google_containers/pause:3.2
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 2103
+          runAsGroup: 2103
+          seccompProfile:
+            type: RuntimeDefault
       securityContext:
         seccompProfile:
           type: RuntimeDefault

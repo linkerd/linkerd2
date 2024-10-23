@@ -43,6 +43,7 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       
+      automountServiceAccountToken: false
       containers:
       - args:
         - -collector-svc-addr=collector.linkerd-jaeger:55678
@@ -85,6 +86,9 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
         resources:
       securityContext:
         seccompProfile:
@@ -94,6 +98,24 @@ spec:
       - name: tls
         secret:
           secretName: jaeger-injector-k8s-tls
+      - name: kube-api-access
+        projected:
+          defaultMode: 420
+          sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              items:
+              - key: ca.crt
+                path: ca.crt
+              name: kube-root-ca.crt
+          - downwardAPI:
+              items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+                path: namespace
 ---
 kind: Service
 apiVersion: v1
@@ -454,6 +476,7 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       
+      automountServiceAccountToken: false
       containers:
       - command:
         - /otelcol-contrib
@@ -504,6 +527,9 @@ spec:
         volumeMounts:
         - mountPath: /conf
           name: collector-config-val
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
       securityContext:
         seccompProfile:
           type: RuntimeDefault
@@ -515,6 +541,24 @@ spec:
             path: collector-config.yaml
           name: collector-config
         name: collector-config-val
+      - name: kube-api-access
+        projected:
+          defaultMode: 420
+          sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              items:
+              - key: ca.crt
+                path: ca.crt
+              name: kube-root-ca.crt
+          - downwardAPI:
+              items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+                path: namespace
 ---
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server

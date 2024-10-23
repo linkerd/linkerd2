@@ -37,6 +37,7 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: namespace-metadata
+      automountServiceAccountToken: false
       containers:
       - name: namespace-metadata
         image: {{.Values.namespaceMetadata.image.registry | default .Values.defaultRegistry}}/{{.Values.namespaceMetadata.image.name}}:{{.Values.namespaceMetadata.image.tag}}
@@ -52,6 +53,10 @@ spec:
           runAsGroup: {{.Values.defaultGID}}
           seccompProfile:
             type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
         args:
         - --log-format
         - {{.Values.defaultLogFormat}}
@@ -67,4 +72,6 @@ spec:
         - --prometheus-url
         - {{.}}
         {{- end }}
+      volumes:
+      - {{- include "partials.volumes.manual-mount-service-account-token" . | indent 8 | trimPrefix (repeat 7 " ") }}
 {{- end }}
