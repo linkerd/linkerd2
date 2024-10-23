@@ -10,7 +10,7 @@ require (
 	github.com/clarketm/json v1.15.7
 	github.com/emicklei/proto v1.13.2
 	github.com/evanphx/json-patch v5.9.0+incompatible
-	github.com/fatih/color v1.17.0
+	github.com/fatih/color v1.18.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-openapi/spec v0.21.0
 	github.com/go-test/deep v1.1.1
