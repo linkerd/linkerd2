@@ -2,11 +2,15 @@ use super::{convert_duration, default_balancer_config, default_queue_config};
 use crate::routes::{
     convert_host_match, convert_request_header_modifier_filter, grpc::convert_match,
 };
-use linkerd2_proxy_api::{destination, grpc_route, http_route, meta, outbound};
+use linkerd2_proxy_api::{
+    destination, grpc_route, http_route,
+    meta::{self},
+    outbound,
+};
 use linkerd_policy_controller_core::{
     outbound::{
-        Backend, Filter, GrpcRetryCondition, GrpcRoute, Kind, OutboundDiscoverTarget,
-        OutboundRoute, OutboundRouteRule, RouteRetry, RouteTimeouts, TrafficPolicy,
+        Backend, Filter, GrpcRetryCondition, GrpcRoute, OutboundRoute, OutboundRouteRule,
+        ResourceOutboundPolicy, RouteRetry, RouteTimeouts, TrafficPolicy,
     },
     routes::{FailureInjectorFilter, GroupKindNamespaceName},
 };
@@ -19,7 +23,7 @@ pub(crate) fn protocol(
     service_retry: Option<RouteRetry<GrpcRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
-    target: OutboundDiscoverTarget,
+    policy: &ResourceOutboundPolicy,
 ) -> outbound::proxy_protocol::Kind {
     let mut routes = routes
         .map(|(gknn, route)| {
@@ -30,12 +34,12 @@ pub(crate) fn protocol(
                 service_retry.clone(),
                 service_timeouts.clone(),
                 allow_l5d_request_headers,
-                target.clone(),
+                policy,
             )
         })
         .collect::<Vec<_>>();
 
-    if let Kind::EgressNetwork { traffic_policy, .. } = target.kind {
+    if let ResourceOutboundPolicy::Egress { traffic_policy, .. } = policy {
         routes.push(default_outbound_egress_route(
             default_backend,
             service_retry,
@@ -61,7 +65,7 @@ fn convert_outbound_route(
     service_retry: Option<RouteRetry<GrpcRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
-    target: OutboundDiscoverTarget,
+    policy: &ResourceOutboundPolicy,
 ) -> outbound::GrpcRoute {
     // This encoder sets deprecated timeouts for older proxies.
     #![allow(deprecated)]
@@ -90,7 +94,7 @@ fn convert_outbound_route(
              }| {
                 let backends = backends
                     .into_iter()
-                    .map(|b| convert_backend(b, target.clone()))
+                    .map(|b| convert_backend(b, policy))
                     .collect::<Vec<_>>();
                 let dist = if backends.is_empty() {
                     outbound::grpc_route::distribution::Kind::FirstAvailable(
@@ -173,11 +177,11 @@ fn convert_outbound_route(
 
 fn convert_backend(
     backend: Backend,
-    target: OutboundDiscoverTarget,
+    policy: &ResourceOutboundPolicy,
 ) -> outbound::grpc_route::WeightedRouteBackend {
-    let original_dst_port = match target.kind {
-        Kind::EgressNetwork { original_dst, .. } => Some(original_dst.port()),
-        Kind::Service => None,
+    let original_dst_port = match policy {
+        ResourceOutboundPolicy::Egress { original_dst, .. } => Some(original_dst.port()),
+        _ => None,
     };
 
     match backend {
@@ -238,9 +242,13 @@ fn convert_backend(
             format!("Service not found {}", svc.name),
             super::service_meta(svc),
         ),
-        Backend::EgressNetwork(egress_net) if egress_net.exists => match target.kind {
-            Kind::EgressNetwork { original_dst, .. } => {
-                if target.name == egress_net.name && target.namespace == egress_net.namespace {
+        Backend::EgressNetwork(egress_net) if egress_net.exists => match policy {
+            ResourceOutboundPolicy::Egress {
+                original_dst,
+                policy,
+                ..
+            } => {
+                if policy.name == egress_net.name && policy.namespace == egress_net.namespace {
                     let filters = egress_net
                         .filters
                         .clone()
@@ -259,7 +267,7 @@ fn convert_backend(
                                 queue: Some(default_queue_config()),
                                 kind: Some(outbound::backend::Kind::Forward(
                                     destination::WeightedAddr {
-                                        addr: Some(original_dst.into()),
+                                        addr: Some((*original_dst).into()),
                                         weight: egress_net.weight,
                                         ..Default::default()
                                     },
@@ -279,7 +287,7 @@ fn convert_backend(
                     )
                 }
             }
-            Kind::Service => invalid_backend(
+            ResourceOutboundPolicy::Service { .. } => invalid_backend(
                 egress_net.weight,
                 "EgressNetwork backends attach to EgressNetwork parents only".to_string(),
                 super::egress_net_meta(egress_net, original_dst_port),
@@ -331,7 +339,7 @@ pub(crate) fn default_outbound_egress_route(
     backend: outbound::Backend,
     service_retry: Option<RouteRetry<GrpcRetryCondition>>,
     service_timeouts: RouteTimeouts,
-    traffic_policy: TrafficPolicy,
+    traffic_policy: &TrafficPolicy,
 ) -> outbound::GrpcRoute {
     #![allow(deprecated)]
     let (filters, name) = match traffic_policy {

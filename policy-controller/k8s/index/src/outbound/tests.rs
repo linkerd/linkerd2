@@ -7,9 +7,14 @@ use crate::{
 };
 use k8s_openapi::chrono::Utc;
 use kubert::index::IndexNamespacedResource;
+use linkerd_policy_controller_core::outbound::{Kind, ResourceTarget};
 use linkerd_policy_controller_core::IpNet;
-use linkerd_policy_controller_k8s_api::{self as k8s, policy};
+use linkerd_policy_controller_k8s_api::{
+    self as k8s,
+    policy::{self, EgressNetwork},
+};
 use tokio::time;
+use tracing::Level;
 
 mod routes;
 
@@ -92,4 +97,120 @@ impl Default for TestConfig {
             cluster_only: true,
         })
     }
+}
+
+#[test]
+fn switch_to_another_egress_network_parent() {
+    tracing_subscriber::fmt()
+        .with_max_level(Level::TRACE)
+        .try_init()
+        .ok();
+
+    let test = TestConfig::default();
+    // Create network b.
+    let network_b = mk_egress_network("ns", "b");
+    test.index.write().apply(network_b);
+
+    let (ns, name) = test
+        .index
+        .write()
+        .lookup_egress_network("192.168.0.1".parse().unwrap(), "ns".to_string())
+        .expect("should resolve");
+
+    assert_eq!(ns, "ns".to_string());
+    assert_eq!(name, "b".to_string());
+
+    let mut rx_b = test
+        .index
+        .write()
+        .outbound_policy_rx(ResourceTarget {
+            name,
+            namespace: ns.clone(),
+            port: 8080.try_into().unwrap(),
+            source_namespace: ns,
+            kind: Kind::EgressNetwork("192.168.0.1:8080".parse().unwrap()),
+        })
+        .expect("b.ns should exist");
+
+    // first resolution is for network B
+    let policy_b = rx_b.borrow_and_update();
+    assert_eq!(policy_b.namespace, "ns".to_string());
+    assert_eq!(policy_b.name, "b".to_string());
+    drop(policy_b);
+
+    // Create network a.
+    let network_a = mk_egress_network("ns", "a");
+    test.index.write().apply(network_a);
+
+    // watch should be dropped at this point
+    assert!(rx_b.has_changed().is_err());
+
+    // now a new resolution should resolve network a
+
+    let (ns, name) = test
+        .index
+        .write()
+        .lookup_egress_network("192.168.0.1".parse().unwrap(), "ns".to_string())
+        .expect("should resolve");
+
+    let mut rx_a = test
+        .index
+        .write()
+        .outbound_policy_rx(ResourceTarget {
+            name,
+            namespace: ns.clone(),
+            port: 8080.try_into().unwrap(),
+            source_namespace: ns,
+            kind: Kind::EgressNetwork("192.168.0.1:8080".parse().unwrap()),
+        })
+        .expect("a.ns should exist");
+
+    // second resolution is for network A
+    let policy_b = rx_a.borrow_and_update();
+    assert_eq!(policy_b.namespace, "ns".to_string());
+    assert_eq!(policy_b.name, "a".to_string());
+}
+
+#[test]
+fn fallback_rx_closed_when_egress_net_created() {
+    tracing_subscriber::fmt()
+        .with_max_level(Level::TRACE)
+        .try_init()
+        .ok();
+
+    let test = TestConfig::default();
+
+    let fallback_rx = test.index.read().fallback_policy_rx();
+    assert!(fallback_rx.has_changed().is_ok());
+
+    // Create network.
+    let network = mk_egress_network("ns", "egress-net");
+    test.index.write().apply(network);
+
+    assert!(fallback_rx.has_changed().is_err());
+}
+
+#[test]
+fn fallback_rx_closed_when_egress_net_deleted() {
+    tracing_subscriber::fmt()
+        .with_max_level(Level::TRACE)
+        .try_init()
+        .ok();
+
+    let test = TestConfig::default();
+
+    // Create network.
+    let network = mk_egress_network("ns", "egress-net");
+    test.index.write().apply(network);
+
+    let fallback_rx = test.index.read().fallback_policy_rx();
+    assert!(fallback_rx.has_changed().is_ok());
+
+    <Index as kubert::index::IndexNamespacedResource<EgressNetwork>>::delete(
+        &mut test.index.write(),
+        "ns".into(),
+        "egress-net".into(),
+    );
+
+    assert!(fallback_rx.has_changed().is_err());
 }

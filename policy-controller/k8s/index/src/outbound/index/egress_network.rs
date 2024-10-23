@@ -1,5 +1,4 @@
 use chrono::{offset::Utc, DateTime};
-use linkerd_policy_controller_core::outbound;
 use linkerd_policy_controller_k8s_api::policy::{Cidr, Network, TrafficPolicy};
 use linkerd_policy_controller_k8s_api::{policy as linkerd_k8s_api, ResourceExt};
 use std::net::IpAddr;
@@ -68,7 +67,7 @@ pub(crate) fn resolve_egress_network<'n>(
     addr: IpAddr,
     source_namespace: String,
     nets: impl Iterator<Item = &'n EgressNetwork>,
-) -> Option<(super::ResourceRef, outbound::TrafficPolicy)> {
+) -> Option<super::ResourceRef> {
     let (same_ns, rest): (Vec<_>, Vec<_>) = nets.partition(|un| un.namespace == source_namespace);
     let to_pick_from = if !same_ns.is_empty() { same_ns } else { rest };
 
@@ -85,18 +84,10 @@ pub(crate) fn resolve_egress_network<'n>(
             })
         })
         .max_by(compare_matched_egress_network)
-        .map(|m| {
-            (
-                super::ResourceRef {
-                    kind: super::ResourceKind::EgressNetwork,
-                    name: m.name,
-                    namespace: m.namespace,
-                },
-                match m.traffic_policy {
-                    TrafficPolicy::Allow => outbound::TrafficPolicy::Allow,
-                    TrafficPolicy::Deny => outbound::TrafficPolicy::Deny,
-                },
-            )
+        .map(|m| super::ResourceRef {
+            kind: super::ResourceKind::EgressNetwork,
+            name: m.name,
+            namespace: m.namespace,
         })
 }
 
@@ -159,7 +150,7 @@ mod test {
         ];
 
         let resolved = resolve_egress_network(ip_addr, "ns".into(), networks.iter());
-        assert_eq!(resolved.unwrap().0.name, "net-2".to_string())
+        assert_eq!(resolved.unwrap().name, "net-2".to_string())
     }
 
     #[test]
@@ -189,7 +180,7 @@ mod test {
         ];
 
         let resolved = resolve_egress_network(ip_addr, "ns-1".into(), networks.iter());
-        assert_eq!(resolved.unwrap().0.name, "net-1".to_string())
+        assert_eq!(resolved.unwrap().name, "net-1".to_string())
     }
 
     #[test]
@@ -219,7 +210,7 @@ mod test {
         ];
 
         let resolved = resolve_egress_network(ip_addr, "ns".into(), networks.iter());
-        assert_eq!(resolved.unwrap().0.name, "net-2".to_string())
+        assert_eq!(resolved.unwrap().name, "net-2".to_string())
     }
 
     #[test]
@@ -249,7 +240,7 @@ mod test {
         ];
 
         let resolved = resolve_egress_network(ip_addr, "ns".into(), networks.iter());
-        assert_eq!(resolved.unwrap().0.name, "b".to_string())
+        assert_eq!(resolved.unwrap().name, "b".to_string())
     }
 
     #[test]
@@ -279,6 +270,6 @@ mod test {
         ];
 
         let resolved = resolve_egress_network(ip_addr, "ns".into(), networks.iter());
-        assert_eq!(resolved.unwrap().0.name, "d".to_string())
+        assert_eq!(resolved.unwrap().name, "d".to_string())
     }
 }

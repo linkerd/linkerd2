@@ -5,11 +5,13 @@ pub mod index_list;
 mod validation;
 pub use self::admission::Admission;
 use anyhow::Result;
+use futures::StreamExt;
 use linkerd_policy_controller_core::inbound::{
     DiscoverInboundServer, InboundServer, InboundServerStream,
 };
 use linkerd_policy_controller_core::outbound::{
-    DiscoverOutboundPolicy, Kind, OutboundDiscoverTarget, OutboundPolicy, OutboundPolicyStream,
+    DiscoverOutboundPolicy, Kind, OutboundDiscoverTarget, OutboundPolicyKind, OutboundPolicyStream,
+    ParentMeta, ResourceOutboundPolicy, ResourceTarget,
 };
 pub use linkerd_policy_controller_core::IpNet;
 pub use linkerd_policy_controller_grpc as grpc;
@@ -89,25 +91,99 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
     async fn get_outbound_policy(
         &self,
         target: OutboundDiscoverTarget,
-    ) -> Result<Option<OutboundPolicy>> {
-        let rx = match self.0.write().outbound_policy_rx(target) {
-            Ok(rx) => rx,
-            Err(error) => {
-                tracing::error!(%error, "failed to get outbound policy rx");
-                return Ok(None);
+    ) -> Result<Option<OutboundPolicyKind>> {
+        match target {
+            OutboundDiscoverTarget::Fallback(original_dst) => {
+                Ok(Some(OutboundPolicyKind::Fallback(original_dst)))
             }
-        };
-        let policy = (*rx.borrow()).clone();
-        Ok(Some(policy))
+            OutboundDiscoverTarget::Resource(resource) => {
+                let rx = match self.0.write().outbound_policy_rx(resource.clone()) {
+                    Ok(rx) => rx,
+                    Err(error) => {
+                        tracing::error!(%error, "failed to get outbound policy rx");
+                        return Ok(None);
+                    }
+                };
+                let policy = (*rx.borrow()).clone();
+
+                let resource = match (&policy.parent_meta, &resource.kind) {
+                    (
+                        ParentMeta::EgressNetwork(traffic_policy),
+                        Kind::EgressNetwork(original_dst),
+                    ) => ResourceOutboundPolicy::Egress {
+                        traffic_policy: *traffic_policy,
+                        original_dst: *original_dst,
+                        policy: policy.clone(),
+                    },
+
+                    (ParentMeta::Service { authority }, Kind::EgressNetwork(_)) => {
+                        ResourceOutboundPolicy::Service {
+                            authority: authority.clone(),
+                            policy,
+                        }
+                    }
+                    (policy_kind, resource_kind) => {
+                        anyhow::bail!(
+                            "policy kind {:?} incorrect for resource kind: {:?}",
+                            policy_kind,
+                            resource_kind
+                        );
+                    }
+                };
+                Ok(Some(OutboundPolicyKind::Resource(resource)))
+            }
+        }
     }
 
     async fn watch_outbound_policy(
         &self,
         target: OutboundDiscoverTarget,
     ) -> Result<Option<OutboundPolicyStream>> {
-        match self.0.write().outbound_policy_rx(target) {
-            Ok(rx) => Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx)))),
-            Err(_) => Ok(None),
+        match target {
+            OutboundDiscoverTarget::Fallback(original_dst) => {
+                let rx = self.0.write().fallback_policy_rx();
+                let stream = tokio_stream::wrappers::WatchStream::new(rx)
+                    .map(move |_| OutboundPolicyKind::Fallback(original_dst));
+                Ok(Some(Box::pin(stream)))
+            }
+
+            OutboundDiscoverTarget::Resource(resource) => {
+                match self.0.write().outbound_policy_rx(resource.clone()) {
+                    Ok(rx) => {
+                        let stream = tokio_stream::wrappers::WatchStream::new(rx).filter_map(
+                            move |policy| {
+                                let resource = match (policy.parent_meta.clone(), resource.kind) {
+                                    (
+                                        ParentMeta::EgressNetwork(traffic_policy),
+                                        Kind::EgressNetwork(original_dst),
+                                    ) => Some(ResourceOutboundPolicy::Egress {
+                                        traffic_policy,
+                                        original_dst,
+                                        policy: policy.clone(),
+                                    }),
+
+                                    (ParentMeta::Service { authority }, Kind::EgressNetwork(_)) => {
+                                        Some(ResourceOutboundPolicy::Service { authority, policy })
+                                    }
+                                    (policy_kind, resource_kind) => {
+                                        tracing::error!(
+                                            "policy kind {:?} incorrect for resource kind: {:?}",
+                                            policy_kind,
+                                            resource_kind
+                                        );
+                                        None
+                                    }
+                                }
+                                .map(OutboundPolicyKind::Resource);
+
+                                futures::future::ready(resource)
+                            },
+                        );
+                        Ok(Some(Box::pin(stream)))
+                    }
+                    Err(_) => Ok(None),
+                }
+            }
         }
     }
 
@@ -119,29 +195,32 @@ impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
     ) -> Option<OutboundDiscoverTarget> {
         let index = self.0.read();
         if let Some((namespace, name)) = index.lookup_service(addr) {
-            return Some(OutboundDiscoverTarget {
+            return Some(OutboundDiscoverTarget::Resource(ResourceTarget {
                 name,
                 namespace,
                 port,
                 source_namespace,
                 kind: Kind::Service,
-            });
+            }));
         }
 
-        index
-            .lookup_egress_network(addr, source_namespace.clone())
-            .map(|(namespace, name, traffic_policy)| {
-                let original_dst = SocketAddr::new(addr, port.into());
-                OutboundDiscoverTarget {
-                    name,
-                    namespace,
-                    port,
-                    source_namespace,
-                    kind: Kind::EgressNetwork {
-                        original_dst,
-                        traffic_policy,
-                    },
-                }
-            })
+        if let Some((namespace, name)) = index.lookup_egress_network(addr, source_namespace.clone())
+        {
+            let original_dst = SocketAddr::new(addr, port.into());
+            return Some(OutboundDiscoverTarget::Resource(ResourceTarget {
+                name,
+                namespace,
+                port,
+                source_namespace,
+                kind: Kind::EgressNetwork(original_dst),
+            }));
+        }
+
+        if !index.is_address_in_cluster(addr) {
+            let original_dst = SocketAddr::new(addr, port.into());
+            return Some(OutboundDiscoverTarget::Fallback(original_dst));
+        }
+
+        None
     }
 }

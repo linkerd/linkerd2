@@ -9,7 +9,7 @@ use egress_network::EgressNetwork;
 use linkerd_policy_controller_core::{
     outbound::{
         Backend, Backoff, FailureAccrual, GrpcRetryCondition, GrpcRoute, HttpRetryCondition,
-        HttpRoute, Kind, OutboundDiscoverTarget, OutboundPolicy, RouteRetry, RouteSet,
+        HttpRoute, Kind, OutboundPolicy, ParentMeta, ResourceTarget, RouteRetry, RouteSet,
         RouteTimeouts, TcpRoute, TlsRoute, TrafficPolicy,
     },
     routes::GroupKindNamespaceName,
@@ -32,6 +32,7 @@ pub struct Index {
     // holds information about resources. currently EgressNetworks and Services
     resource_info: HashMap<ResourceRef, ResourceInfo>,
     cluster_networks: Vec<linkerd_k8s_api::Cidr>,
+    fallback_polcy_tx: watch::Sender<()>,
 }
 
 pub mod egress_network;
@@ -87,6 +88,7 @@ struct ResourceInfo {
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
     grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
     timeouts: RouteTimeouts,
+    traffic_policy: Option<TrafficPolicy>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -98,10 +100,10 @@ struct ResourcePort {
 
 #[derive(Debug)]
 struct ResourceRoutes {
+    parent_meta: ParentMeta,
     namespace: Arc<String>,
     name: String,
     port: NonZeroU16,
-    authority: Option<String>, // present only on services
     watches_by_ns: HashMap<String, RoutesWatch>,
     opaque: bool,
     accrual: Option<FailureAccrual>,
@@ -112,6 +114,7 @@ struct ResourceRoutes {
 
 #[derive(Debug)]
 struct RoutesWatch {
+    parent_meta: ParentMeta,
     opaque: bool,
     accrual: Option<FailureAccrual>,
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
@@ -254,6 +257,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             http_retry,
             grpc_retry,
             timeouts,
+            traffic_policy: None,
         };
 
         self.namespaces
@@ -267,7 +271,11 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                 resource_port_routes: Default::default(),
                 namespace: Arc::new(ns),
             })
-            .update_resource(service.name_unchecked(), &service_info);
+            .update_resource(
+                service.name_unchecked(),
+                ResourceKind::Service,
+                &service_info,
+            );
 
         self.resource_info.insert(
             ResourceRef {
@@ -278,7 +286,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             service_info,
         );
 
-        self.reindex_resources()
+        self.reindex_resources();
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -291,7 +299,7 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
         self.resource_info.remove(&service_ref);
         self.services_by_ip.retain(|_, v| *v != service_ref);
 
-        self.reindex_resources()
+        self.reindex_resources();
     }
 }
 
@@ -327,8 +335,15 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
             name: name.clone(),
             namespace: ns.clone(),
         };
+
         let egress_net =
             EgressNetwork::from_resource(&egress_network, self.cluster_networks.clone());
+
+        let traffic_policy = Some(match egress_net.traffic_policy {
+            linkerd_k8s_api::TrafficPolicy::Allow => TrafficPolicy::Allow,
+            linkerd_k8s_api::TrafficPolicy::Deny => TrafficPolicy::Deny,
+        });
+
         self.egress_networks_by_ref
             .insert(egress_net_ref.clone(), egress_net);
 
@@ -338,6 +353,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
             http_retry,
             grpc_retry,
             timeouts,
+            traffic_policy,
         };
 
         self.namespaces
@@ -351,12 +367,18 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
                 resource_port_routes: Default::default(),
                 namespace: Arc::new(ns),
             })
-            .update_resource(egress_network.name_unchecked(), &egress_network_info);
+            .update_resource(
+                egress_network.name_unchecked(),
+                ResourceKind::EgressNetwork,
+                &egress_network_info,
+            );
 
         self.resource_info
             .insert(egress_net_ref, egress_network_info);
 
-        self.reindex_resources()
+        self.reindex_resources();
+        self.reinitialize_egress_watches();
+        self.reinitialize_fallback_watches()
     }
 
     fn delete(&mut self, namespace: String, name: String) {
@@ -368,13 +390,16 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
         };
         self.egress_networks_by_ref.remove(&egress_net_ref);
 
-        self.reindex_resources()
+        self.reindex_resources();
+        self.reinitialize_egress_watches();
+        self.reinitialize_fallback_watches()
     }
 }
 
 impl Index {
     pub fn shared(cluster_info: Arc<ClusterInfo>) -> SharedIndex {
         let cluster_networks = cluster_info.networks.clone();
+        let (fallback_polcy_tx, _) = watch::channel(());
         Arc::new(RwLock::new(Self {
             namespaces: NamespaceIndex {
                 by_ns: HashMap::default(),
@@ -384,14 +409,30 @@ impl Index {
             egress_networks_by_ref: HashMap::default(),
             resource_info: HashMap::default(),
             cluster_networks: cluster_networks.into_iter().map(Cidr::from).collect(),
+            fallback_polcy_tx,
         }))
+    }
+
+    pub fn is_address_in_cluster(&self, addr: IpAddr) -> bool {
+        self.cluster_networks
+            .iter()
+            .any(|net| net.contains(&addr.into()))
+    }
+
+    pub fn fallback_policy_rx(&self) -> watch::Receiver<()> {
+        self.fallback_polcy_tx.subscribe()
+    }
+
+    fn reinitialize_fallback_watches(&mut self) {
+        let (new_fallback_tx, _) = watch::channel(());
+        self.fallback_polcy_tx = new_fallback_tx;
     }
 
     pub fn outbound_policy_rx(
         &mut self,
-        target: OutboundDiscoverTarget,
+        target: ResourceTarget,
     ) -> Result<watch::Receiver<OutboundPolicy>> {
-        let OutboundDiscoverTarget {
+        let ResourceTarget {
             name,
             namespace,
             port,
@@ -440,13 +481,13 @@ impl Index {
         &self,
         addr: IpAddr,
         source_namespace: String,
-    ) -> Option<(String, String, TrafficPolicy)> {
+    ) -> Option<(String, String)> {
         egress_network::resolve_egress_network(
             addr,
             source_namespace,
             self.egress_networks_by_ref.values(),
         )
-        .map(|(r, p)| (r.namespace, r.name, p))
+        .map(|r| (r.namespace, r.name))
     }
 
     fn apply_http(&mut self, route: HttpRouteResource) {
@@ -623,6 +664,12 @@ impl Index {
     fn reindex_resources(&mut self) {
         for ns in self.namespaces.by_ns.values_mut() {
             ns.reindex_resources(&self.resource_info);
+        }
+    }
+
+    fn reinitialize_egress_watches(&mut self) {
+        for ns in self.namespaces.by_ns.values_mut() {
+            ns.reinitialize_egress_watches();
         }
     }
 }
@@ -940,11 +987,19 @@ impl Namespace {
         }
     }
 
-    fn update_resource(&mut self, name: String, resource: &ResourceInfo) {
+    fn reinitialize_egress_watches(&mut self) {
+        for routes in self.resource_port_routes.values_mut() {
+            if let ParentMeta::EgressNetwork(_) = routes.parent_meta {
+                routes.reinitialize_watches();
+            }
+        }
+    }
+
+    fn update_resource(&mut self, name: String, kind: ResourceKind, resource: &ResourceInfo) {
         tracing::debug!(?name, ?resource, "updating resource");
 
         for (resource_port, resource_routes) in self.resource_port_routes.iter_mut() {
-            if resource_port.name != name {
+            if resource_port.name != name || kind != resource_port.kind {
                 continue;
             }
 
@@ -1019,13 +1074,14 @@ impl Namespace {
                     kind: rp.kind.clone(),
                 };
 
-                let authority = match rp.kind {
-                    ResourceKind::EgressNetwork => None,
+                let mut parent_meta = match rp.kind {
+                    ResourceKind::EgressNetwork => ParentMeta::EgressNetwork(TrafficPolicy::Deny),
                     ResourceKind::Service => {
-                        Some(cluster.service_dns_authority(&self.namespace, &rp.name, rp.port))
+                        let authority =
+                            cluster.service_dns_authority(&self.namespace, &rp.name, rp.port);
+                        ParentMeta::Service { authority }
                     }
                 };
-
                 let mut opaque = false;
                 let mut accrual = None;
                 let mut http_retry = None;
@@ -1037,6 +1093,10 @@ impl Namespace {
                     http_retry = resource.http_retry.clone();
                     grpc_retry = resource.grpc_retry.clone();
                     timeouts = resource.timeouts.clone();
+
+                    if let Some(traffic_policy) = resource.traffic_policy {
+                        parent_meta = ParentMeta::EgressNetwork(traffic_policy)
+                    }
                 }
 
                 // The routes which target this Resource but don't specify
@@ -1063,12 +1123,12 @@ impl Namespace {
                     .unwrap_or_default();
 
                 let mut resource_routes = ResourceRoutes {
+                    parent_meta,
                     opaque,
                     accrual,
                     http_retry,
                     grpc_retry,
                     timeouts,
-                    authority,
                     port: rp.port,
                     name: rp.name,
                     namespace: self.namespace.clone(),
@@ -1273,6 +1333,12 @@ fn route_accepted_by_parent(
 }
 
 impl ResourceRoutes {
+    fn reinitialize_watches(&mut self) {
+        for watch in self.watches_by_ns.values_mut() {
+            watch.reinitialize_watch();
+        }
+    }
+
     fn watch_for_ns_or_default(&mut self, namespace: String) -> &mut RoutesWatch {
         // The routes from the producer namespace apply to watches in all
         // namespaces, so we copy them.
@@ -1301,6 +1367,7 @@ impl ResourceRoutes {
 
         self.watches_by_ns.entry(namespace).or_insert_with(|| {
             let (sender, _) = watch::channel(OutboundPolicy {
+                parent_meta: self.parent_meta.clone(),
                 port: self.port,
                 opaque: self.opaque,
                 accrual: self.accrual,
@@ -1312,11 +1379,11 @@ impl ResourceRoutes {
                 tls_routes: tls_routes.clone(),
                 tcp_routes: tcp_routes.clone(),
                 name: self.name.to_string(),
-                service_authority: self.authority.clone().unwrap_or("".into()),
                 namespace: self.namespace.to_string(),
             });
 
             RoutesWatch {
+                parent_meta: self.parent_meta.clone(),
                 http_routes,
                 grpc_routes,
                 tls_routes,
@@ -1468,9 +1535,20 @@ impl ResourceRoutes {
 }
 
 impl RoutesWatch {
+    fn reinitialize_watch(&mut self) {
+        let current_policy = self.watch.borrow().clone();
+        let (new_sender, _) = watch::channel(current_policy);
+        self.watch = new_sender;
+    }
+
     fn send_if_modified(&mut self) {
         self.watch.send_if_modified(|policy| {
             let mut modified = false;
+
+            if self.parent_meta != policy.parent_meta {
+                policy.parent_meta = self.parent_meta.clone();
+                modified = true;
+            }
 
             if self.http_routes != policy.http_routes {
                 policy.http_routes = self.http_routes.clone();

@@ -1,7 +1,7 @@
 use super::{default_balancer_config, default_queue_config};
 use linkerd2_proxy_api::{destination, meta, outbound};
 use linkerd_policy_controller_core::{
-    outbound::{Backend, Kind, OutboundDiscoverTarget, TcpRoute, TrafficPolicy},
+    outbound::{Backend, ResourceOutboundPolicy, TcpRoute, TrafficPolicy},
     routes::GroupKindNamespaceName,
 };
 use std::net::SocketAddr;
@@ -9,15 +9,13 @@ use std::net::SocketAddr;
 pub(crate) fn protocol(
     default_backend: outbound::Backend,
     routes: impl Iterator<Item = (GroupKindNamespaceName, TcpRoute)>,
-    target: OutboundDiscoverTarget,
+    policy: &ResourceOutboundPolicy,
 ) -> outbound::proxy_protocol::Kind {
     let mut routes = routes
-        .map(|(gknn, route)| {
-            convert_outbound_route(gknn, route, default_backend.clone(), target.clone())
-        })
+        .map(|(gknn, route)| convert_outbound_route(gknn, route, default_backend.clone(), policy))
         .collect::<Vec<_>>();
 
-    if let Kind::EgressNetwork { traffic_policy, .. } = target.kind {
+    if let ResourceOutboundPolicy::Egress { traffic_policy, .. } = policy {
         routes.push(default_outbound_egress_route(
             default_backend,
             traffic_policy,
@@ -34,7 +32,7 @@ fn convert_outbound_route(
         creation_timestamp: _,
     }: TcpRoute,
     backend: outbound::Backend,
-    target: OutboundDiscoverTarget,
+    policy: &ResourceOutboundPolicy,
 ) -> outbound::OpaqueRoute {
     // This encoder sets deprecated timeouts for older proxies.
     #![allow(deprecated)]
@@ -52,7 +50,7 @@ fn convert_outbound_route(
     let backends = rule
         .backends
         .into_iter()
-        .map(|b| convert_backend(b, target.clone()))
+        .map(|b| convert_backend(b, policy))
         .collect::<Vec<_>>();
 
     let dist = if backends.is_empty() {
@@ -82,11 +80,11 @@ fn convert_outbound_route(
 
 fn convert_backend(
     backend: Backend,
-    target: OutboundDiscoverTarget,
+    policy: &ResourceOutboundPolicy,
 ) -> outbound::opaque_route::WeightedRouteBackend {
-    let original_dst_port = match target.kind {
-        Kind::EgressNetwork { original_dst, .. } => Some(original_dst.port()),
-        Kind::Service => None,
+    let original_dst_port = match policy {
+        ResourceOutboundPolicy::Egress { original_dst, .. } => Some(original_dst.port()),
+        ResourceOutboundPolicy::Service { .. } => None,
     };
 
     match backend {
@@ -137,9 +135,13 @@ fn convert_backend(
             format!("Service not found {}", svc.name),
             super::service_meta(svc),
         ),
-        Backend::EgressNetwork(egress_net) if egress_net.exists => match target.kind {
-            Kind::EgressNetwork { original_dst, .. } => {
-                if target.name == egress_net.name && target.namespace == egress_net.namespace {
+        Backend::EgressNetwork(egress_net) if egress_net.exists => match policy {
+            ResourceOutboundPolicy::Egress {
+                original_dst,
+                policy,
+                ..
+            } => {
+                if policy.name == egress_net.name && policy.namespace == egress_net.namespace {
                     outbound::opaque_route::WeightedRouteBackend {
                         weight: egress_net.weight,
                         backend: Some(outbound::opaque_route::RouteBackend {
@@ -151,7 +153,7 @@ fn convert_backend(
                                 queue: Some(default_queue_config()),
                                 kind: Some(outbound::backend::Kind::Forward(
                                     destination::WeightedAddr {
-                                        addr: Some(original_dst.into()),
+                                        addr: Some((*original_dst).into()),
                                         weight: egress_net.weight,
                                         ..Default::default()
                                     },
@@ -170,7 +172,7 @@ fn convert_backend(
                     )
                 }
             }
-            Kind::Service { .. } => invalid_backend(
+            ResourceOutboundPolicy::Service { .. } => invalid_backend(
                 egress_net.weight,
                 "EgressNetwork backends attach to EgressNetwork parents only".to_string(),
                 super::egress_net_meta(egress_net, original_dst_port),
@@ -211,7 +213,7 @@ fn invalid_backend(
 
 pub(crate) fn default_outbound_egress_route(
     backend: outbound::Backend,
-    traffic_policy: TrafficPolicy,
+    traffic_policy: &TrafficPolicy,
 ) -> outbound::OpaqueRoute {
     #![allow(deprecated)]
     let (error, name) = match traffic_policy {
