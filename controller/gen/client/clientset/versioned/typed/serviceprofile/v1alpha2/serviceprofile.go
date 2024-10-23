@@ -20,14 +20,13 @@ package v1alpha2
 
 import (
 	"context"
-	"time"
 
 	v1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	scheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	rest "k8s.io/client-go/rest"
+	gentype "k8s.io/client-go/gentype"
 )
 
 // ServiceProfilesGetter has a method to return a ServiceProfileInterface.
@@ -51,128 +50,18 @@ type ServiceProfileInterface interface {
 
 // serviceProfiles implements ServiceProfileInterface
 type serviceProfiles struct {
-	client rest.Interface
-	ns     string
+	*gentype.ClientWithList[*v1alpha2.ServiceProfile, *v1alpha2.ServiceProfileList]
 }
 
 // newServiceProfiles returns a ServiceProfiles
 func newServiceProfiles(c *LinkerdV1alpha2Client, namespace string) *serviceProfiles {
 	return &serviceProfiles{
-		client: c.RESTClient(),
-		ns:     namespace,
+		gentype.NewClientWithList[*v1alpha2.ServiceProfile, *v1alpha2.ServiceProfileList](
+			"serviceprofiles",
+			c.RESTClient(),
+			scheme.ParameterCodec,
+			namespace,
+			func() *v1alpha2.ServiceProfile { return &v1alpha2.ServiceProfile{} },
+			func() *v1alpha2.ServiceProfileList { return &v1alpha2.ServiceProfileList{} }),
 	}
-}
-
-// Get takes name of the serviceProfile, and returns the corresponding serviceProfile object, and an error if there is any.
-func (c *serviceProfiles) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha2.ServiceProfile, err error) {
-	result = &v1alpha2.ServiceProfile{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("serviceprofiles").
-		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of ServiceProfiles that match those selectors.
-func (c *serviceProfiles) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha2.ServiceProfileList, err error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	result = &v1alpha2.ServiceProfileList{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("serviceprofiles").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested serviceProfiles.
-func (c *serviceProfiles) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	opts.Watch = true
-	return c.client.Get().
-		Namespace(c.ns).
-		Resource("serviceprofiles").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch(ctx)
-}
-
-// Create takes the representation of a serviceProfile and creates it.  Returns the server's representation of the serviceProfile, and an error, if there is any.
-func (c *serviceProfiles) Create(ctx context.Context, serviceProfile *v1alpha2.ServiceProfile, opts v1.CreateOptions) (result *v1alpha2.ServiceProfile, err error) {
-	result = &v1alpha2.ServiceProfile{}
-	err = c.client.Post().
-		Namespace(c.ns).
-		Resource("serviceprofiles").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(serviceProfile).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Update takes the representation of a serviceProfile and updates it. Returns the server's representation of the serviceProfile, and an error, if there is any.
-func (c *serviceProfiles) Update(ctx context.Context, serviceProfile *v1alpha2.ServiceProfile, opts v1.UpdateOptions) (result *v1alpha2.ServiceProfile, err error) {
-	result = &v1alpha2.ServiceProfile{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("serviceprofiles").
-		Name(serviceProfile.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(serviceProfile).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Delete takes name of the serviceProfile and deletes it. Returns an error if one occurs.
-func (c *serviceProfiles) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("serviceprofiles").
-		Name(name).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *serviceProfiles) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
-	}
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("serviceprofiles").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// Patch applies the patch and returns the patched serviceProfile.
-func (c *serviceProfiles) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha2.ServiceProfile, err error) {
-	result = &v1alpha2.ServiceProfile{}
-	err = c.client.Patch(pt).
-		Namespace(c.ns).
-		Resource("serviceprofiles").
-		Name(name).
-		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
 }
