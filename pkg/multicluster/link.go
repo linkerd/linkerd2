@@ -49,6 +49,7 @@ type (
 		ProbeSpec                     ProbeSpec
 		Selector                      metav1.LabelSelector
 		RemoteDiscoverySelector       metav1.LabelSelector
+		FederatedServiceSelector      metav1.LabelSelector
 	}
 
 	ErrFieldMissing struct {

@@ -227,18 +227,7 @@ func (et *endpointTranslator) noEndpoints(exists bool) {
 	et.availableEndpoints.Addresses = map[watcher.ID]watcher.Address{}
 	et.filteredSnapshot.Addresses = map[watcher.ID]watcher.Address{}
 
-	u := &pb.Update{
-		Update: &pb.Update_NoEndpoints{
-			NoEndpoints: &pb.NoEndpoints{
-				Exists: exists,
-			},
-		},
-	}
-
-	et.log.Debugf("Sending destination no endpoints: %+v", u)
-	if err := et.stream.Send(u); err != nil {
-		et.log.Debugf("Failed to send address update: %s", err)
-	}
+	et.sendFilteredUpdate()
 }
 
 func (et *endpointTranslator) sendFilteredUpdate() {

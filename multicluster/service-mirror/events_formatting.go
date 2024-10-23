@@ -52,15 +52,15 @@ func formatEndpoints(endpoints *corev1.Endpoints) string {
 }
 
 // Events for cluster watcher
-func (rsc RemoteServiceCreated) String() string {
+func (rsc RemoteServiceExported) String() string {
 	return fmt.Sprintf("RemoteServiceCreated: {service: %s}", formatService(rsc.service))
 }
 
-func (rsu RemoteServiceUpdated) String() string {
+func (rsu RemoteExportedServiceUpdated) String() string {
 	return fmt.Sprintf("RemoteServiceUpdated: {localService: %s, localEndpoints: %s, remoteUpdate: %s}", formatService(rsu.localService), formatEndpoints(rsu.localEndpoints), formatService(rsu.remoteUpdate))
 }
 
-func (rsd RemoteServiceDeleted) String() string {
+func (rsd RemoteServiceUnexported) String() string {
 	return fmt.Sprintf("RemoteServiceDeleted: {name: %s, namespace: %s }", rsd.Name, rsd.Namespace)
 }
 

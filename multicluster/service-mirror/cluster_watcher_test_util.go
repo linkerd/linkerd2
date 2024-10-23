@@ -83,7 +83,7 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.TypedRateLimiti
 
 var createExportedService = &testEnvironment{
 	events: []interface{}{
-		&RemoteServiceCreated{
+		&RemoteServiceExported{
 			service: remoteService("service-one", "ns1", "111", map[string]string{
 				consts.DefaultExportedServiceSelector: "true",
 			}, []corev1.ServicePort{
@@ -121,7 +121,7 @@ var createExportedService = &testEnvironment{
 
 var createRemoteDiscoveryService = &testEnvironment{
 	events: []interface{}{
-		&RemoteServiceCreated{
+		&RemoteServiceExported{
 			service: remoteService("service-one", "ns1", "111", map[string]string{
 				consts.DefaultExportedServiceSelector: "remote-discovery",
 			}, []corev1.ServicePort{
@@ -158,7 +158,7 @@ var createRemoteDiscoveryService = &testEnvironment{
 
 var createExportedHeadlessService = &testEnvironment{
 	events: []interface{}{
-		&RemoteServiceCreated{
+		&RemoteServiceExported{
 			service: remoteHeadlessService("service-one", "ns2", "111", map[string]string{
 				consts.DefaultExportedServiceSelector: "true",
 			}, []corev1.ServicePort{
@@ -238,7 +238,7 @@ var createExportedHeadlessService = &testEnvironment{
 
 var deleteMirrorService = &testEnvironment{
 	events: []interface{}{
-		&RemoteServiceDeleted{
+		&RemoteServiceUnexported{
 			Name:      "test-service-remote-to-delete",
 			Namespace: "test-namespace-to-delete",
 		},
@@ -261,7 +261,7 @@ var deleteMirrorService = &testEnvironment{
 
 var updateServiceWithChangedPorts = &testEnvironment{
 	events: []interface{}{
-		&RemoteServiceUpdated{
+		&RemoteExportedServiceUpdated{
 			remoteUpdate: remoteService("test-service", "test-namespace", "currentServiceResVersion", map[string]string{
 				consts.DefaultExportedServiceSelector: "true",
 			}, []corev1.ServicePort{
@@ -501,7 +501,7 @@ var gcTriggered = &testEnvironment{
 
 var noGatewayLink = &testEnvironment{
 	events: []interface{}{
-		&RemoteServiceCreated{
+		&RemoteServiceExported{
 			service: remoteService("service-one", "ns1", "111", map[string]string{
 				consts.DefaultExportedServiceSelector: "remote-discovery",
 			}, []corev1.ServicePort{
@@ -517,7 +517,7 @@ var noGatewayLink = &testEnvironment{
 				},
 			}),
 		},
-		&RemoteServiceCreated{
+		&RemoteServiceExported{
 			service: remoteService("service-two", "ns1", "111", map[string]string{
 				consts.DefaultExportedServiceSelector: "true",
 			}, []corev1.ServicePort{

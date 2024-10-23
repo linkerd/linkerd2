@@ -351,6 +351,34 @@ spec:
                           type: array
                           items:
                             type: string
+              federatedServiceSelector:
+                description: Selector for Services to mirror as federated services
+                type: object
+                properties:
+                  matchLabels:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  matchExpressions:
+                    description: List of selector requirements
+                    type: array
+                    items:
+                      description: A selector item requires a key and an operator
+                      type: object
+                      required:
+                      - key
+                      - operator
+                      properties:
+                        key:
+                          description: Label key that selector should apply to
+                          type: string
+                        operator:
+                          description: Evaluation of a label in relation to set
+                          type: string
+                          enum: [In, NotIn, Exists, DoesNotExist]
+                        values:
+                          type: array
+                          items:
+                            type: string
               targetClusterName:
                 description: Name of target cluster to link to
                 type: string
