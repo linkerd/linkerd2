@@ -18,6 +18,6 @@ jobs:
     container: ghcr.io/linkerd/dev:v43-go
     steps:
       - run: apt update && apt install -y unzip
-      - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: git config --global --add safe.directory "$PWD" # actions/runner#2033
       - run: bin/protoc-diff
