@@ -11,8 +11,10 @@ use std::{net::IpAddr, num::NonZeroU16, pin::Pin, time};
 mod policy;
 mod target;
 
+type FallbackPolicy = ();
+
 pub use self::{
-    policy::{OutboundPolicy, OutboundPolicyKind, ParentMeta, ResourceOutboundPolicy},
+    policy::{OutboundPolicy, ParentInfo, ResourceOutboundPolicy},
     target::{Kind, OutboundDiscoverTarget, ResourceTarget},
 };
 
@@ -22,16 +24,18 @@ pub trait Route {
 
 /// Models outbound policy discovery.
 #[async_trait::async_trait]
-pub trait DiscoverOutboundPolicy<T> {
-    async fn get_outbound_policy(&self, target: T) -> Result<Option<OutboundPolicyKind>>;
+pub trait DiscoverOutboundPolicy<R, T> {
+    async fn get_outbound_policy(&self, target: R) -> Result<Option<OutboundPolicy>>;
 
-    async fn watch_outbound_policy(&self, target: T) -> Result<Option<OutboundPolicyStream>>;
+    async fn watch_outbound_policy(&self, target: R) -> Result<Option<OutboundPolicyStream>>;
+
+    async fn watch_fallback_policy(&self) -> FallbackPolicyStream;
 
     fn lookup_ip(&self, addr: IpAddr, port: NonZeroU16, source_namespace: String) -> Option<T>;
 }
 
-pub type OutboundPolicyStream =
-    Pin<Box<dyn Stream<Item = OutboundPolicyKind> + Send + Sync + 'static>>;
+pub type OutboundPolicyStream = Pin<Box<dyn Stream<Item = OutboundPolicy> + Send + Sync + 'static>>;
+pub type FallbackPolicyStream = Pin<Box<dyn Stream<Item = FallbackPolicy> + Send + Sync + 'static>>;
 
 pub type HttpRoute = OutboundRoute<HttpRouteMatch, HttpRetryCondition>;
 pub type GrpcRoute = OutboundRoute<GrpcRouteMatch, GrpcRetryCondition>;

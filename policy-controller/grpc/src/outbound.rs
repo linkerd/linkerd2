@@ -1,7 +1,7 @@
 extern crate http as http_crate;
 
 use crate::workload;
-use futures::prelude::*;
+use futures::{prelude::*, StreamExt};
 use http_crate::uri::Authority;
 use linkerd2_proxy_api::{
     self as api, destination,
@@ -13,8 +13,8 @@ use linkerd2_proxy_api::{
 };
 use linkerd_policy_controller_core::{
     outbound::{
-        DiscoverOutboundPolicy, Kind, OutboundDiscoverTarget, OutboundPolicyKind,
-        OutboundPolicyStream, ResourceOutboundPolicy, ResourceTarget, Route, WeightedEgressNetwork,
+        DiscoverOutboundPolicy, FallbackPolicyStream, Kind, OutboundDiscoverTarget, OutboundPolicy,
+        OutboundPolicyStream, ParentInfo, ResourceTarget, Route, WeightedEgressNetwork,
         WeightedService,
     },
     routes::GroupKindNamespaceName,
@@ -37,7 +37,7 @@ pub struct OutboundPolicyServer<T> {
 
 impl<T> OutboundPolicyServer<T>
 where
-    T: DiscoverOutboundPolicy<OutboundDiscoverTarget> + Send + Sync + 'static,
+    T: DiscoverOutboundPolicy<ResourceTarget, OutboundDiscoverTarget> + Send + Sync + 'static,
 {
     pub fn new(
         discover: T,
@@ -143,7 +143,7 @@ where
 #[async_trait::async_trait]
 impl<T> OutboundPolicies for OutboundPolicyServer<T>
 where
-    T: DiscoverOutboundPolicy<OutboundDiscoverTarget> + Send + Sync + 'static,
+    T: DiscoverOutboundPolicy<ResourceTarget, OutboundDiscoverTarget> + Send + Sync + 'static,
 {
     async fn get(
         &self,
@@ -151,25 +151,32 @@ where
     ) -> Result<tonic::Response<outbound::OutboundPolicy>, tonic::Status> {
         let target = self.lookup(req.into_inner())?;
 
-        let policy = self
-            .index
-            .get_outbound_policy(target)
-            .await
-            .map_err(|error| {
-                tonic::Status::internal(format!("failed to get outbound policy: {error}"))
-            })?;
+        match target.clone() {
+            OutboundDiscoverTarget::Resource(resource) => {
+                let original_dst = resource.original_dst();
+                let policy = self
+                    .index
+                    .get_outbound_policy(resource)
+                    .await
+                    .map_err(|error| {
+                        tonic::Status::internal(format!("failed to get outbound policy: {error}"))
+                    })?;
 
-        let message = match policy {
-            Some(OutboundPolicyKind::Fallback(original_dst)) => fallback(original_dst),
-            Some(OutboundPolicyKind::Resource(resource)) => {
-                to_proto(resource, self.allow_l5d_request_headers)
+                if let Some(policy) = policy {
+                    Ok(tonic::Response::new(to_proto(
+                        policy,
+                        self.allow_l5d_request_headers,
+                        original_dst,
+                    )))
+                } else {
+                    Err(tonic::Status::not_found("No such policy"))
+                }
             }
-            None => {
-                return Err(tonic::Status::not_found("No such policy"));
-            }
-        };
 
-        Ok(tonic::Response::new(message))
+            OutboundDiscoverTarget::Fallback(original_dst) => {
+                Ok(tonic::Response::new(fallback(original_dst)))
+            }
+        }
     }
 
     type WatchStream = BoxWatchStream;
@@ -178,21 +185,35 @@ where
         &self,
         req: tonic::Request<outbound::TrafficSpec>,
     ) -> Result<tonic::Response<BoxWatchStream>, tonic::Status> {
-        let service = self.lookup(req.into_inner())?;
-
+        let target = self.lookup(req.into_inner())?;
         let drain = self.drain.clone();
 
-        let rx = self
-            .index
-            .watch_outbound_policy(service)
-            .await
-            .map_err(|e| tonic::Status::internal(format!("lookup failed: {e}")))?
-            .ok_or_else(|| tonic::Status::not_found("unknown server"))?;
-        Ok(tonic::Response::new(response_stream(
-            drain,
-            rx,
-            self.allow_l5d_request_headers,
-        )))
+        match target.clone() {
+            OutboundDiscoverTarget::Resource(resource) => {
+                let original_dst = resource.original_dst();
+                let rx = self
+                    .index
+                    .watch_outbound_policy(resource)
+                    .await
+                    .map_err(|e| tonic::Status::internal(format!("lookup failed: {e}")))?
+                    .ok_or_else(|| tonic::Status::not_found("unknown server"))?;
+                Ok(tonic::Response::new(response_stream(
+                    drain,
+                    rx,
+                    self.allow_l5d_request_headers,
+                    original_dst,
+                )))
+            }
+
+            OutboundDiscoverTarget::Fallback(original_dst) => {
+                let rx = self.index.watch_fallback_policy().await;
+                Ok(tonic::Response::new(fallback_stream(
+                    drain,
+                    rx,
+                    original_dst,
+                )))
+            }
+        }
     }
 }
 
@@ -204,6 +225,7 @@ fn response_stream(
     drain: drain::Watch,
     mut rx: OutboundPolicyStream,
     allow_l5d_request_headers: bool,
+    original_dst: Option<SocketAddr>,
 ) -> BoxWatchStream {
     Box::pin(async_stream::try_stream! {
         tokio::pin! {
@@ -214,10 +236,36 @@ fn response_stream(
             tokio::select! {
                 // When the port is updated with a new server, update the server watch.
                 res = rx.next() => match res {
-                    Some(OutboundPolicyKind::Resource(resource)) => {
-                        yield to_proto(resource, allow_l5d_request_headers);
+                    Some(policy) => {
+                        yield to_proto(policy, allow_l5d_request_headers, original_dst);
                     }
-                    Some(OutboundPolicyKind::Fallback(original_dst)) => {
+                    None => return,
+                },
+
+                // If the server starts shutting down, close the stream so that it doesn't hold the
+                // server open.
+                _ = &mut shutdown => {
+                    return;
+                }
+            }
+        }
+    })
+}
+
+fn fallback_stream(
+    drain: drain::Watch,
+    mut rx: FallbackPolicyStream,
+    original_dst: SocketAddr,
+) -> BoxWatchStream {
+    Box::pin(async_stream::try_stream! {
+        tokio::pin! {
+            let shutdown = drain.signaled();
+        }
+
+        loop {
+            tokio::select! {
+                res = rx.next() => match res {
+                    Some(_) => {
                         yield fallback(original_dst);
                     }
                     None => return,
@@ -323,37 +371,34 @@ fn fallback(original_dst: SocketAddr) -> outbound::OutboundPolicy {
 }
 
 fn to_proto(
-    resource_policy: ResourceOutboundPolicy,
+    policy: OutboundPolicy,
     allow_l5d_request_headers: bool,
+    original_dst: Option<SocketAddr>,
 ) -> outbound::OutboundPolicy {
-    let policy = resource_policy.policy();
-    let backend: outbound::Backend = default_backend(&resource_policy);
+    let backend: outbound::Backend = default_backend(&policy, original_dst);
 
     let kind = if policy.opaque {
         outbound::proxy_protocol::Kind::Opaque(outbound::proxy_protocol::Opaque {
-            routes: vec![default_outbound_opaq_route(backend, &resource_policy)],
+            routes: vec![default_outbound_opaq_route(backend, &policy.parent_info)],
         })
     } else {
-        let accrual = resource_policy
-            .policy()
-            .accrual
-            .map(|accrual| outbound::FailureAccrual {
-                kind: Some(match accrual {
-                    linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
+        let accrual = policy.accrual.map(|accrual| outbound::FailureAccrual {
+            kind: Some(match accrual {
+                linkerd_policy_controller_core::outbound::FailureAccrual::Consecutive {
+                    max_failures,
+                    backoff,
+                } => outbound::failure_accrual::Kind::ConsecutiveFailures(
+                    outbound::failure_accrual::ConsecutiveFailures {
                         max_failures,
-                        backoff,
-                    } => outbound::failure_accrual::Kind::ConsecutiveFailures(
-                        outbound::failure_accrual::ConsecutiveFailures {
-                            max_failures,
-                            backoff: Some(outbound::ExponentialBackoff {
-                                min_backoff: convert_duration("min_backoff", backoff.min_penalty),
-                                max_backoff: convert_duration("max_backoff", backoff.max_penalty),
-                                jitter_ratio: backoff.jitter,
-                            }),
-                        },
-                    ),
-                }),
-            });
+                        backoff: Some(outbound::ExponentialBackoff {
+                            min_backoff: convert_duration("min_backoff", backoff.min_penalty),
+                            max_backoff: convert_duration("max_backoff", backoff.max_penalty),
+                            jitter_ratio: backoff.jitter,
+                        }),
+                    },
+                ),
+            }),
+        });
 
         let mut grpc_routes = policy.grpc_routes.clone().into_iter().collect::<Vec<_>>();
         let mut http_routes = policy.http_routes.clone().into_iter().collect::<Vec<_>>();
@@ -369,7 +414,8 @@ fn to_proto(
                 policy.grpc_retry.clone(),
                 policy.timeouts.clone(),
                 allow_l5d_request_headers,
-                &resource_policy,
+                &policy.parent_info,
+                original_dst,
             )
         } else if !http_routes.is_empty() {
             http_routes.sort_by(timestamp_then_name);
@@ -380,14 +426,25 @@ fn to_proto(
                 policy.http_retry.clone(),
                 policy.timeouts.clone(),
                 allow_l5d_request_headers,
-                &resource_policy,
+                &policy.parent_info,
+                original_dst,
             )
         } else if !tls_routes.is_empty() {
             tls_routes.sort_by(timestamp_then_name);
-            tls::protocol(backend, tls_routes.into_iter(), &resource_policy)
+            tls::protocol(
+                backend,
+                tls_routes.into_iter(),
+                &policy.parent_info,
+                original_dst,
+            )
         } else if !tcp_routes.is_empty() {
             tcp_routes.sort_by(timestamp_then_name);
-            tcp::protocol(backend, tcp_routes.into_iter(), &resource_policy)
+            tcp::protocol(
+                backend,
+                tcp_routes.into_iter(),
+                &policy.parent_info,
+                original_dst,
+            )
         } else {
             http_routes.sort_by(timestamp_then_name);
             http::protocol(
@@ -397,22 +454,27 @@ fn to_proto(
                 policy.http_retry.clone(),
                 policy.timeouts.clone(),
                 allow_l5d_request_headers,
-                &resource_policy,
+                &policy.parent_info,
+                original_dst,
             )
         }
     };
 
-    let (parent_group, parent_kind) = match resource_policy {
-        ResourceOutboundPolicy::Egress { .. } => ("policy.linkerd.io", "EgressNetwork"),
-        ResourceOutboundPolicy::Service { .. } => ("core", "Service"),
+    let (parent_group, parent_kind, namespace, name) = match policy.parent_info {
+        ParentInfo::EgressNetwork {
+            namespace, name, ..
+        } => ("policy.linkerd.io", "EgressNetwork", namespace, name),
+        ParentInfo::Service {
+            name, namespace, ..
+        } => ("core", "Service", namespace, name),
     };
 
     let metadata = Metadata {
         kind: Some(metadata::Kind::Resource(api::meta::Resource {
             group: parent_group.into(),
             kind: parent_kind.into(),
-            namespace: policy.namespace.clone(),
-            name: policy.name.clone(),
+            namespace,
+            name,
             port: u16::from(policy.port).into(),
             ..Default::default()
         })),
@@ -442,15 +504,20 @@ fn timestamp_then_name<R: Route>(
     by_ts.then_with(|| left_id.name.cmp(&right_id.name))
 }
 
-fn default_backend(policy: &ResourceOutboundPolicy) -> outbound::Backend {
-    match policy {
-        ResourceOutboundPolicy::Service { authority, policy } => outbound::Backend {
+fn default_backend(policy: &OutboundPolicy, original_dst: Option<SocketAddr>) -> outbound::Backend {
+    match policy.parent_info.clone() {
+        ParentInfo::Service {
+            authority,
+            namespace,
+            name,
+            ..
+        } => outbound::Backend {
             metadata: Some(Metadata {
                 kind: Some(metadata::Kind::Resource(api::meta::Resource {
                     group: "core".to_string(),
                     kind: "Service".to_string(),
-                    name: policy.name.clone(),
-                    namespace: policy.namespace.clone(),
+                    name,
+                    namespace,
                     section: Default::default(),
                     port: u16::from(policy.port).into(),
                 })),
@@ -469,42 +536,52 @@ fn default_backend(policy: &ResourceOutboundPolicy) -> outbound::Backend {
                 },
             )),
         },
-        ResourceOutboundPolicy::Egress {
-            original_dst,
-            policy,
-            ..
-        } => outbound::Backend {
-            metadata: Some(Metadata {
-                kind: Some(metadata::Kind::Resource(api::meta::Resource {
-                    group: "policy.linkerd.io".to_string(),
-                    kind: "EgressNetwork".to_string(),
-                    name: policy.name.clone(),
-                    namespace: policy.namespace.clone(),
-                    section: Default::default(),
-                    port: u16::from(policy.port).into(),
-                })),
-            }),
-            queue: Some(default_queue_config()),
-            kind: Some(outbound::backend::Kind::Forward(
-                destination::WeightedAddr {
-                    addr: Some((*original_dst).into()),
-                    weight: 1,
-                    ..Default::default()
-                },
-            )),
+        ParentInfo::EgressNetwork {
+            namespace, name, ..
+        } => match original_dst {
+            Some(original_dst) => outbound::Backend {
+                metadata: Some(Metadata {
+                    kind: Some(metadata::Kind::Resource(api::meta::Resource {
+                        group: "policy.linkerd.io".to_string(),
+                        kind: "EgressNetwork".to_string(),
+                        name,
+                        namespace,
+                        section: Default::default(),
+                        port: u16::from(policy.port).into(),
+                    })),
+                }),
+                queue: Some(default_queue_config()),
+                kind: Some(outbound::backend::Kind::Forward(
+                    destination::WeightedAddr {
+                        addr: Some(original_dst.into()),
+                        weight: 1,
+                        ..Default::default()
+                    },
+                )),
+            },
+            None => {
+                tracing::error!("no original_dst for Egresspolicy");
+                outbound::Backend {
+                    metadata: Some(Metadata {
+                        kind: Some(metadata::Kind::Default("invalid".to_string())),
+                    }),
+                    queue: None,
+                    kind: None,
+                }
+            }
         },
     }
 }
 
 fn default_outbound_opaq_route(
     backend: outbound::Backend,
-    resource_policy: &ResourceOutboundPolicy,
+    parent_info: &ParentInfo,
 ) -> outbound::OpaqueRoute {
-    match resource_policy {
-        ResourceOutboundPolicy::Egress { traffic_policy, .. } => {
+    match parent_info {
+        ParentInfo::EgressNetwork { traffic_policy, .. } => {
             tcp::default_outbound_egress_route(backend, traffic_policy)
         }
-        ResourceOutboundPolicy::Service { .. } => {
+        ParentInfo::Service { .. } => {
             let metadata = Some(Metadata {
                 kind: Some(metadata::Kind::Default("opaq".to_string())),
             });

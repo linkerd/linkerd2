@@ -134,8 +134,8 @@ fn switch_to_another_egress_network_parent() {
 
     // first resolution is for network B
     let policy_b = rx_b.borrow_and_update();
-    assert_eq!(policy_b.namespace, "ns".to_string());
-    assert_eq!(policy_b.name, "b".to_string());
+    assert_eq!(policy_b.parent_namespace(), "ns");
+    assert_eq!(policy_b.parent_name(), "b");
     drop(policy_b);
 
     // Create network a.
@@ -167,8 +167,8 @@ fn switch_to_another_egress_network_parent() {
 
     // second resolution is for network A
     let policy_b = rx_a.borrow_and_update();
-    assert_eq!(policy_b.namespace, "ns".to_string());
-    assert_eq!(policy_b.name, "a".to_string());
+    assert_eq!(policy_b.parent_namespace(), "ns");
+    assert_eq!(policy_b.parent_name(), "a");
 }
 
 #[test]

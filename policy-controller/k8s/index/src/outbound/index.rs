@@ -9,7 +9,7 @@ use egress_network::EgressNetwork;
 use linkerd_policy_controller_core::{
     outbound::{
         Backend, Backoff, FailureAccrual, GrpcRetryCondition, GrpcRoute, HttpRetryCondition,
-        HttpRoute, Kind, OutboundPolicy, ParentMeta, ResourceTarget, RouteRetry, RouteSet,
+        HttpRoute, Kind, OutboundPolicy, ParentInfo, ResourceTarget, RouteRetry, RouteSet,
         RouteTimeouts, TcpRoute, TlsRoute, TrafficPolicy,
     },
     routes::GroupKindNamespaceName,
@@ -100,9 +100,8 @@ struct ResourcePort {
 
 #[derive(Debug)]
 struct ResourceRoutes {
-    parent_meta: ParentMeta,
+    parent_info: ParentInfo,
     namespace: Arc<String>,
-    name: String,
     port: NonZeroU16,
     watches_by_ns: HashMap<String, RoutesWatch>,
     opaque: bool,
@@ -114,7 +113,7 @@ struct ResourceRoutes {
 
 #[derive(Debug)]
 struct RoutesWatch {
-    parent_meta: ParentMeta,
+    parent_info: ParentInfo,
     opaque: bool,
     accrual: Option<FailureAccrual>,
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
@@ -989,7 +988,7 @@ impl Namespace {
 
     fn reinitialize_egress_watches(&mut self) {
         for routes in self.resource_port_routes.values_mut() {
-            if let ParentMeta::EgressNetwork(_) = routes.parent_meta {
+            if let ParentInfo::EgressNetwork { .. } = routes.parent_info {
                 routes.reinitialize_watches();
             }
         }
@@ -1075,12 +1074,20 @@ impl Namespace {
                     kind: rp.kind.clone(),
                 };
 
-                let mut parent_meta = match rp.kind {
-                    ResourceKind::EgressNetwork => ParentMeta::EgressNetwork(TrafficPolicy::Deny),
+                let mut parent_info = match rp.kind {
+                    ResourceKind::EgressNetwork => ParentInfo::EgressNetwork {
+                        traffic_policy: TrafficPolicy::Deny,
+                        name: resource_ref.name.clone(),
+                        namespace: resource_ref.namespace.clone(),
+                    },
                     ResourceKind::Service => {
                         let authority =
                             cluster.service_dns_authority(&self.namespace, &rp.name, rp.port);
-                        ParentMeta::Service { authority }
+                        ParentInfo::Service {
+                            authority,
+                            name: resource_ref.name.clone(),
+                            namespace: resource_ref.namespace.clone(),
+                        }
                     }
                 };
                 let mut opaque = false;
@@ -1096,7 +1103,11 @@ impl Namespace {
                     timeouts = resource.timeouts.clone();
 
                     if let Some(traffic_policy) = resource.traffic_policy {
-                        parent_meta = ParentMeta::EgressNetwork(traffic_policy)
+                        parent_info = ParentInfo::EgressNetwork {
+                            traffic_policy,
+                            name: resource_ref.name,
+                            namespace: resource_ref.namespace,
+                        }
                     }
                 }
 
@@ -1124,14 +1135,13 @@ impl Namespace {
                     .unwrap_or_default();
 
                 let mut resource_routes = ResourceRoutes {
-                    parent_meta,
+                    parent_info,
                     opaque,
                     accrual,
                     http_retry,
                     grpc_retry,
                     timeouts,
                     port: rp.port,
-                    name: rp.name,
                     namespace: self.namespace.clone(),
                     watches_by_ns: Default::default(),
                 };
@@ -1368,7 +1378,7 @@ impl ResourceRoutes {
 
         self.watches_by_ns.entry(namespace).or_insert_with(|| {
             let (sender, _) = watch::channel(OutboundPolicy {
-                parent_meta: self.parent_meta.clone(),
+                parent_info: self.parent_info.clone(),
                 port: self.port,
                 opaque: self.opaque,
                 accrual: self.accrual,
@@ -1379,12 +1389,10 @@ impl ResourceRoutes {
                 grpc_routes: grpc_routes.clone(),
                 tls_routes: tls_routes.clone(),
                 tcp_routes: tcp_routes.clone(),
-                name: self.name.to_string(),
-                namespace: self.namespace.to_string(),
             });
 
             RoutesWatch {
-                parent_meta: self.parent_meta.clone(),
+                parent_info: self.parent_info.clone(),
                 http_routes,
                 grpc_routes,
                 tls_routes,
@@ -1514,11 +1522,11 @@ impl ResourceRoutes {
     }
 
     fn update_traffic_policy(&mut self, traffic_policy: Option<TrafficPolicy>) {
-        if let (ParentMeta::EgressNetwork(current), Some(new)) =
-            (self.parent_meta.clone(), traffic_policy)
+        if let (ParentInfo::EgressNetwork { traffic_policy, .. }, Some(new)) =
+            (&mut self.parent_info, traffic_policy)
         {
-            if current != new {
-                self.parent_meta = ParentMeta::EgressNetwork(new)
+            if *traffic_policy != new {
+                *traffic_policy = new;
             }
         }
     }
@@ -1556,11 +1564,11 @@ impl RoutesWatch {
     }
 
     fn update_traffic_policy(&mut self, traffic_policy: Option<TrafficPolicy>) {
-        if let (ParentMeta::EgressNetwork(current), Some(new)) =
-            (self.parent_meta.clone(), traffic_policy)
+        if let (ParentInfo::EgressNetwork { traffic_policy, .. }, Some(new)) =
+            (&mut self.parent_info, traffic_policy)
         {
-            if current != new {
-                self.parent_meta = ParentMeta::EgressNetwork(new)
+            if *traffic_policy != new {
+                *traffic_policy = new;
             }
         }
     }
@@ -1569,8 +1577,8 @@ impl RoutesWatch {
         self.watch.send_if_modified(|policy| {
             let mut modified = false;
 
-            if self.parent_meta != policy.parent_meta {
-                policy.parent_meta = self.parent_meta.clone();
+            if self.parent_info != policy.parent_info {
+                policy.parent_info = self.parent_info.clone();
                 modified = true;
             }
 

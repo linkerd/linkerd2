@@ -10,12 +10,13 @@ use linkerd2_proxy_api::{
 use linkerd_policy_controller_core::{
     outbound::{
         Backend, Filter, GrpcRetryCondition, GrpcRoute, OutboundRoute, OutboundRouteRule,
-        ResourceOutboundPolicy, RouteRetry, RouteTimeouts, TrafficPolicy,
+        ParentInfo, RouteRetry, RouteTimeouts, TrafficPolicy,
     },
     routes::{FailureInjectorFilter, GroupKindNamespaceName},
 };
 use std::{net::SocketAddr, time};
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn protocol(
     default_backend: outbound::Backend,
     routes: impl Iterator<Item = (GroupKindNamespaceName, GrpcRoute)>,
@@ -23,7 +24,8 @@ pub(crate) fn protocol(
     service_retry: Option<RouteRetry<GrpcRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
-    policy: &ResourceOutboundPolicy,
+    parent_info: &ParentInfo,
+    original_dst: Option<SocketAddr>,
 ) -> outbound::proxy_protocol::Kind {
     let mut routes = routes
         .map(|(gknn, route)| {
@@ -34,12 +36,13 @@ pub(crate) fn protocol(
                 service_retry.clone(),
                 service_timeouts.clone(),
                 allow_l5d_request_headers,
-                policy,
+                parent_info,
+                original_dst,
             )
         })
         .collect::<Vec<_>>();
 
-    if let ResourceOutboundPolicy::Egress { traffic_policy, .. } = policy {
+    if let ParentInfo::EgressNetwork { traffic_policy, .. } = parent_info {
         routes.push(default_outbound_egress_route(
             default_backend,
             service_retry,
@@ -54,6 +57,7 @@ pub(crate) fn protocol(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn convert_outbound_route(
     gknn: GroupKindNamespaceName,
     OutboundRoute {
@@ -65,7 +69,8 @@ fn convert_outbound_route(
     service_retry: Option<RouteRetry<GrpcRetryCondition>>,
     service_timeouts: RouteTimeouts,
     allow_l5d_request_headers: bool,
-    policy: &ResourceOutboundPolicy,
+    parent_info: &ParentInfo,
+    original_dst: Option<SocketAddr>,
 ) -> outbound::GrpcRoute {
     // This encoder sets deprecated timeouts for older proxies.
     #![allow(deprecated)]
@@ -94,7 +99,7 @@ fn convert_outbound_route(
              }| {
                 let backends = backends
                     .into_iter()
-                    .map(|b| convert_backend(b, policy))
+                    .map(|b| convert_backend(b, parent_info, original_dst))
                     .collect::<Vec<_>>();
                 let dist = if backends.is_empty() {
                     outbound::grpc_route::distribution::Kind::FirstAvailable(
@@ -177,12 +182,10 @@ fn convert_outbound_route(
 
 fn convert_backend(
     backend: Backend,
-    policy: &ResourceOutboundPolicy,
+    parent_info: &ParentInfo,
+    original_dst: Option<SocketAddr>,
 ) -> outbound::grpc_route::WeightedRouteBackend {
-    let original_dst_port = match policy {
-        ResourceOutboundPolicy::Egress { original_dst, .. } => Some(original_dst.port()),
-        _ => None,
-    };
+    let original_dst_port = original_dst.map(|o| o.port());
 
     match backend {
         Backend::Addr(addr) => {
@@ -242,57 +245,65 @@ fn convert_backend(
             format!("Service not found {}", svc.name),
             super::service_meta(svc),
         ),
-        Backend::EgressNetwork(egress_net) if egress_net.exists => match policy {
-            ResourceOutboundPolicy::Egress {
-                original_dst,
-                policy,
-                ..
-            } => {
-                if policy.name == egress_net.name && policy.namespace == egress_net.namespace {
-                    let filters = egress_net
-                        .filters
-                        .clone()
-                        .into_iter()
-                        .map(convert_to_filter)
-                        .collect();
+        Backend::EgressNetwork(egress_net) if egress_net.exists => {
+            match (parent_info, original_dst) {
+                (
+                    ParentInfo::EgressNetwork {
+                        name, namespace, ..
+                    },
+                    Some(original_dst),
+                ) => {
+                    if *name == egress_net.name && *namespace == egress_net.namespace {
+                        let filters = egress_net
+                            .filters
+                            .clone()
+                            .into_iter()
+                            .map(convert_to_filter)
+                            .collect();
 
-                    outbound::grpc_route::WeightedRouteBackend {
-                        weight: egress_net.weight,
-                        backend: Some(outbound::grpc_route::RouteBackend {
-                            backend: Some(outbound::Backend {
-                                metadata: Some(super::egress_net_meta(
-                                    egress_net.clone(),
-                                    original_dst_port,
-                                )),
-                                queue: Some(default_queue_config()),
-                                kind: Some(outbound::backend::Kind::Forward(
-                                    destination::WeightedAddr {
-                                        addr: Some((*original_dst).into()),
-                                        weight: egress_net.weight,
-                                        ..Default::default()
-                                    },
-                                )),
+                        outbound::grpc_route::WeightedRouteBackend {
+                            weight: egress_net.weight,
+                            backend: Some(outbound::grpc_route::RouteBackend {
+                                backend: Some(outbound::Backend {
+                                    metadata: Some(super::egress_net_meta(
+                                        egress_net.clone(),
+                                        original_dst_port,
+                                    )),
+                                    queue: Some(default_queue_config()),
+                                    kind: Some(outbound::backend::Kind::Forward(
+                                        destination::WeightedAddr {
+                                            addr: Some(original_dst.into()),
+                                            weight: egress_net.weight,
+                                            ..Default::default()
+                                        },
+                                    )),
+                                }),
+                                filters,
+                                ..Default::default()
                             }),
-                            filters,
-                            ..Default::default()
-                        }),
+                        }
+                    } else {
+                        let weight = egress_net.weight;
+                        let message =  "Route with EgressNetwork backend needs to have the same EgressNetwork as a parent".to_string();
+                        invalid_backend(
+                            weight,
+                            message,
+                            super::egress_net_meta(egress_net, original_dst_port),
+                        )
                     }
-                } else {
-                    let weight = egress_net.weight;
-                    let message =  "Route with EgressNetwork backend needs to have the same EgressNetwork as a parent".to_string();
-                    invalid_backend(
-                        weight,
-                        message,
-                        super::egress_net_meta(egress_net, original_dst_port),
-                    )
                 }
+                (ParentInfo::EgressNetwork { .. }, None) => invalid_backend(
+                    egress_net.weight,
+                    "EgressNetwork can be resolved from an ip:port combo only".to_string(),
+                    super::egress_net_meta(egress_net, original_dst_port),
+                ),
+                (ParentInfo::Service { .. }, _) => invalid_backend(
+                    egress_net.weight,
+                    "EgressNetwork backends attach to EgressNetwork parents only".to_string(),
+                    super::egress_net_meta(egress_net, original_dst_port),
+                ),
             }
-            ResourceOutboundPolicy::Service { .. } => invalid_backend(
-                egress_net.weight,
-                "EgressNetwork backends attach to EgressNetwork parents only".to_string(),
-                super::egress_net_meta(egress_net, original_dst_port),
-            ),
-        },
+        }
         Backend::EgressNetwork(egress_net) => invalid_backend(
             egress_net.weight,
             format!("EgressNetwork not found {}", egress_net.name),

@@ -5,13 +5,12 @@ pub mod index_list;
 mod validation;
 pub use self::admission::Admission;
 use anyhow::Result;
-use futures::StreamExt;
 use linkerd_policy_controller_core::inbound::{
     DiscoverInboundServer, InboundServer, InboundServerStream,
 };
 use linkerd_policy_controller_core::outbound::{
-    DiscoverOutboundPolicy, Kind, OutboundDiscoverTarget, OutboundPolicyKind, OutboundPolicyStream,
-    ParentMeta, ResourceOutboundPolicy, ResourceTarget,
+    DiscoverOutboundPolicy, FallbackPolicyStream, Kind, OutboundDiscoverTarget, OutboundPolicy,
+    OutboundPolicyStream, ResourceTarget,
 };
 pub use linkerd_policy_controller_core::IpNet;
 pub use linkerd_policy_controller_grpc as grpc;
@@ -87,104 +86,37 @@ impl DiscoverInboundServer<(grpc::workload::Workload, NonZeroU16)> for InboundDi
 }
 
 #[async_trait::async_trait]
-impl DiscoverOutboundPolicy<OutboundDiscoverTarget> for OutboundDiscover {
+impl DiscoverOutboundPolicy<ResourceTarget, OutboundDiscoverTarget> for OutboundDiscover {
     async fn get_outbound_policy(
         &self,
-        target: OutboundDiscoverTarget,
-    ) -> Result<Option<OutboundPolicyKind>> {
-        match target {
-            OutboundDiscoverTarget::Fallback(original_dst) => {
-                Ok(Some(OutboundPolicyKind::Fallback(original_dst)))
+        resource: ResourceTarget,
+    ) -> Result<Option<OutboundPolicy>> {
+        let rx = match self.0.write().outbound_policy_rx(resource.clone()) {
+            Ok(rx) => rx,
+            Err(error) => {
+                tracing::error!(%error, "failed to get outbound policy rx");
+                return Ok(None);
             }
-            OutboundDiscoverTarget::Resource(resource) => {
-                let rx = match self.0.write().outbound_policy_rx(resource.clone()) {
-                    Ok(rx) => rx,
-                    Err(error) => {
-                        tracing::error!(%error, "failed to get outbound policy rx");
-                        return Ok(None);
-                    }
-                };
-                let policy = (*rx.borrow()).clone();
+        };
 
-                let resource = match (&policy.parent_meta, &resource.kind) {
-                    (
-                        ParentMeta::EgressNetwork(traffic_policy),
-                        Kind::EgressNetwork(original_dst),
-                    ) => ResourceOutboundPolicy::Egress {
-                        traffic_policy: *traffic_policy,
-                        original_dst: *original_dst,
-                        policy: policy.clone(),
-                    },
-
-                    (ParentMeta::Service { authority }, Kind::Service) => {
-                        ResourceOutboundPolicy::Service {
-                            authority: authority.clone(),
-                            policy,
-                        }
-                    }
-                    (policy_kind, resource_kind) => {
-                        anyhow::bail!(
-                            "policy kind {:?} incorrect for resource kind: {:?}",
-                            policy_kind,
-                            resource_kind
-                        );
-                    }
-                };
-                Ok(Some(OutboundPolicyKind::Resource(resource)))
-            }
-        }
+        let policy = (*rx.borrow()).clone();
+        Ok(Some(policy))
     }
 
     async fn watch_outbound_policy(
         &self,
-        target: OutboundDiscoverTarget,
+        target: ResourceTarget,
     ) -> Result<Option<OutboundPolicyStream>> {
-        match target {
-            OutboundDiscoverTarget::Fallback(original_dst) => {
-                let rx = self.0.write().fallback_policy_rx();
-                let stream = tokio_stream::wrappers::WatchStream::new(rx)
-                    .map(move |_| OutboundPolicyKind::Fallback(original_dst));
-                Ok(Some(Box::pin(stream)))
-            }
-
-            OutboundDiscoverTarget::Resource(resource) => {
-                match self.0.write().outbound_policy_rx(resource.clone()) {
-                    Ok(rx) => {
-                        let stream = tokio_stream::wrappers::WatchStream::new(rx).filter_map(
-                            move |policy| {
-                                let resource = match (policy.parent_meta.clone(), resource.kind) {
-                                    (
-                                        ParentMeta::EgressNetwork(traffic_policy),
-                                        Kind::EgressNetwork(original_dst),
-                                    ) => Some(ResourceOutboundPolicy::Egress {
-                                        traffic_policy,
-                                        original_dst,
-                                        policy: policy.clone(),
-                                    }),
-
-                                    (ParentMeta::Service { authority }, Kind::Service) => {
-                                        Some(ResourceOutboundPolicy::Service { authority, policy })
-                                    }
-                                    (policy_kind, resource_kind) => {
-                                        tracing::error!(
-                                            "policy kind {:?} incorrect for resource kind: {:?}",
-                                            policy_kind,
-                                            resource_kind
-                                        );
-                                        None
-                                    }
-                                }
-                                .map(OutboundPolicyKind::Resource);
-
-                                futures::future::ready(resource)
-                            },
-                        );
-                        Ok(Some(Box::pin(stream)))
-                    }
-                    Err(_) => Ok(None),
-                }
-            }
+        match self.0.write().outbound_policy_rx(target) {
+            Ok(rx) => Ok(Some(Box::pin(tokio_stream::wrappers::WatchStream::new(rx)))),
+            Err(_) => Ok(None),
         }
+    }
+
+    async fn watch_fallback_policy(&self) -> FallbackPolicyStream {
+        Box::pin(tokio_stream::wrappers::WatchStream::new(
+            self.0.read().fallback_policy_rx(),
+        ))
     }
 
     fn lookup_ip(

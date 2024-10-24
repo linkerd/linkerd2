@@ -24,3 +24,12 @@ pub enum Kind {
     EgressNetwork(SocketAddr),
     Service,
 }
+
+impl ResourceTarget {
+    pub fn original_dst(&self) -> Option<SocketAddr> {
+        match self.kind {
+            Kind::EgressNetwork(original_dst) => Some(original_dst),
+            Kind::Service => None,
+        }
+    }
+}
