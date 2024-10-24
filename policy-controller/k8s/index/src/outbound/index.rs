@@ -1011,6 +1011,7 @@ impl Namespace {
                 resource.http_retry.clone(),
                 resource.grpc_retry.clone(),
                 resource.timeouts.clone(),
+                resource.traffic_policy,
             );
         }
     }
@@ -1493,19 +1494,32 @@ impl ResourceRoutes {
         http_retry: Option<RouteRetry<HttpRetryCondition>>,
         grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
         timeouts: RouteTimeouts,
+        traffic_policy: Option<TrafficPolicy>,
     ) {
         self.opaque = opaque;
         self.accrual = accrual;
         self.http_retry = http_retry.clone();
         self.grpc_retry = grpc_retry.clone();
         self.timeouts = timeouts.clone();
+        self.update_traffic_policy(traffic_policy);
         for watch in self.watches_by_ns.values_mut() {
             watch.opaque = opaque;
             watch.accrual = accrual;
             watch.http_retry = http_retry.clone();
             watch.grpc_retry = grpc_retry.clone();
             watch.timeouts = timeouts.clone();
+            watch.update_traffic_policy(traffic_policy);
             watch.send_if_modified();
+        }
+    }
+
+    fn update_traffic_policy(&mut self, traffic_policy: Option<TrafficPolicy>) {
+        if let (ParentMeta::EgressNetwork(current), Some(new)) =
+            (self.parent_meta.clone(), traffic_policy)
+        {
+            if current != new {
+                self.parent_meta = ParentMeta::EgressNetwork(new)
+            }
         }
     }
 
@@ -1539,6 +1553,16 @@ impl RoutesWatch {
         let current_policy = self.watch.borrow().clone();
         let (new_sender, _) = watch::channel(current_policy);
         self.watch = new_sender;
+    }
+
+    fn update_traffic_policy(&mut self, traffic_policy: Option<TrafficPolicy>) {
+        if let (ParentMeta::EgressNetwork(current), Some(new)) =
+            (self.parent_meta.clone(), traffic_policy)
+        {
+            if current != new {
+                self.parent_meta = ParentMeta::EgressNetwork(new)
+            }
+        }
     }
 
     fn send_if_modified(&mut self) {

@@ -34,9 +34,6 @@ fn convert_outbound_route(
     backend: outbound::Backend,
     policy: &ResourceOutboundPolicy,
 ) -> outbound::OpaqueRoute {
-    // This encoder sets deprecated timeouts for older proxies.
-    #![allow(deprecated)]
-
     let metadata = Some(meta::Metadata {
         kind: Some(meta::metadata::Kind::Resource(meta::Resource {
             group: gknn.group.to_string(),
@@ -215,7 +212,6 @@ pub(crate) fn default_outbound_egress_route(
     backend: outbound::Backend,
     traffic_policy: &TrafficPolicy,
 ) -> outbound::OpaqueRoute {
-    #![allow(deprecated)]
     let (error, name) = match traffic_policy {
         TrafficPolicy::Allow => (None, "tcp-egress-allow"),
         TrafficPolicy::Deny => (
@@ -226,7 +222,6 @@ pub(crate) fn default_outbound_egress_route(
         ),
     };
 
-    // This encoder sets deprecated timeouts for older proxies.
     let metadata = Some(meta::Metadata {
         kind: Some(meta::metadata::Kind::Default(name.to_string())),
     });

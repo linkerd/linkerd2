@@ -435,7 +435,7 @@ where
         drop(_tracing);
     }
 
-    if std::env::var("POLICY_TEST_NO_CLEANUP").is_ok() {
+    if std::env::var("POLICY_TEST_NO_CLEANUP").is_err() {
         tracing::debug!(ns = %ns.name_unchecked(), "Deleting");
         api.delete(&ns.name_unchecked(), &kube::api::DeleteParams::background())
             .await

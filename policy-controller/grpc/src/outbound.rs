@@ -234,47 +234,88 @@ fn response_stream(
 }
 
 fn fallback(original_dst: SocketAddr) -> outbound::OutboundPolicy {
-    outbound::OutboundPolicy {
-        metadata: Some(Metadata {
-            kind: Some(metadata::Kind::Default("egress-fallback".to_string())),
-        }),
+    // This encoder sets deprecated timeouts for older proxies.
+    #![allow(deprecated)]
 
-        protocol: Some(outbound::ProxyProtocol {
-            kind: Some(outbound::proxy_protocol::Kind::Opaque(
-                outbound::proxy_protocol::Opaque {
-                    routes: vec![outbound::OpaqueRoute {
-                        metadata: Some(Metadata {
-                            kind: Some(metadata::Kind::Default("egress-fallback".to_string())),
-                        }),
-                        rules: vec![outbound::opaque_route::Rule {
-                            backends: Some(outbound::opaque_route::Distribution {
-                                kind: Some(
-                                    outbound::opaque_route::distribution::Kind::FirstAvailable(
-                                        outbound::opaque_route::distribution::FirstAvailable {
-                                            backends: vec![outbound::opaque_route::RouteBackend {
-                                                backend: Some(outbound::Backend {
-                                                    metadata: Some(Metadata {
-                                                        kind: Some(metadata::Kind::Default(
-                                                            "egress-fallback".to_string(),
-                                                        )),
-                                                    }),
-                                                    queue: Some(default_queue_config()),
-                                                    kind: Some(outbound::backend::Kind::Forward(
-                                                        destination::WeightedAddr {
-                                                            addr: Some(original_dst.into()),
-                                                            weight: 1,
-                                                            ..Default::default()
-                                                        },
-                                                    )),
-                                                }),
-                                            }],
-                                        },
-                                    ),
-                                ),
-                            }),
+    let metadata = Some(Metadata {
+        kind: Some(metadata::Kind::Default("egress-fallback".to_string())),
+    });
+
+    let backend = outbound::Backend {
+        metadata: metadata.clone(),
+        queue: Some(default_queue_config()),
+        kind: Some(outbound::backend::Kind::Forward(
+            destination::WeightedAddr {
+                addr: Some(original_dst.into()),
+                weight: 1,
+                ..Default::default()
+            },
+        )),
+    };
+
+    let opaque = outbound::proxy_protocol::Opaque {
+        routes: vec![outbound::OpaqueRoute {
+            metadata: Some(Metadata {
+                kind: Some(metadata::Kind::Default("egress-fallback".to_string())),
+            }),
+            rules: vec![outbound::opaque_route::Rule {
+                backends: Some(outbound::opaque_route::Distribution {
+                    kind: Some(outbound::opaque_route::distribution::Kind::FirstAvailable(
+                        outbound::opaque_route::distribution::FirstAvailable {
+                            backends: vec![outbound::opaque_route::RouteBackend {
+                                backend: Some(backend.clone()),
+                            }],
+                        },
+                    )),
+                }),
+            }],
+            error: None,
+        }],
+    };
+
+    let http_routes = vec![outbound::HttpRoute {
+        hosts: Vec::default(),
+        metadata: metadata.clone(),
+        rules: vec![outbound::http_route::Rule {
+            backends: Some(outbound::http_route::Distribution {
+                kind: Some(outbound::http_route::distribution::Kind::FirstAvailable(
+                    outbound::http_route::distribution::FirstAvailable {
+                        backends: vec![outbound::http_route::RouteBackend {
+                            backend: Some(backend),
+                            filters: Vec::default(),
+                            request_timeout: None,
                         }],
-                        error: None,
-                    }],
+                    },
+                )),
+            }),
+            matches: vec![api::http_route::HttpRouteMatch::default()],
+            filters: Vec::default(),
+            request_timeout: None,
+            timeouts: None,
+            retry: None,
+            allow_l5d_request_headers: false,
+        }],
+    }];
+
+    outbound::OutboundPolicy {
+        metadata,
+        protocol: Some(outbound::ProxyProtocol {
+            kind: Some(outbound::proxy_protocol::Kind::Detect(
+                outbound::proxy_protocol::Detect {
+                    timeout: Some(
+                        time::Duration::from_secs(10)
+                            .try_into()
+                            .expect("failed to convert detect timeout to protobuf"),
+                    ),
+                    opaque: Some(opaque),
+                    http1: Some(outbound::proxy_protocol::Http1 {
+                        routes: http_routes.clone(),
+                        failure_accrual: None,
+                    }),
+                    http2: Some(outbound::proxy_protocol::Http2 {
+                        routes: http_routes,
+                        failure_accrual: None,
+                    }),
                 },
             )),
         }),
