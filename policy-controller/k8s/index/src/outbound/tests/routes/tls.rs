@@ -4,7 +4,7 @@ use linkerd_policy_controller_core::{
     routes::GroupKindNamespaceName,
     POLICY_CONTROLLER_NAME,
 };
-use linkerd_policy_controller_k8s_api::gateway::BackendRef;
+use linkerd_policy_controller_k8s_api::gateway as k8s_gateway_api;
 use tracing::Level;
 
 use super::super::*;
@@ -17,12 +17,11 @@ fn backend_service() {
         .ok();
 
     let test = TestConfig::default();
-
     // Create apex service.
     let apex = mk_service("ns", "apex", 8080);
     test.index.write().apply(apex);
 
-    // Create httproute.
+    // Create tlsroute.
     let route = mk_route(
         "ns",
         "route",
@@ -48,25 +47,22 @@ fn backend_service() {
     {
         let policy = rx.borrow_and_update();
         let backend = policy
-            .http_routes
+            .tls_routes
             .get(&GroupKindNamespaceName {
-                group: k8s::policy::HttpRoute::group(&()),
-                kind: k8s::policy::HttpRoute::kind(&()),
+                group: k8s_gateway_api::TlsRoute::group(&()),
+                kind: k8s_gateway_api::TlsRoute::kind(&()),
                 namespace: "ns".into(),
                 name: "route".into(),
             })
             .expect("route should exist")
-            .rules
-            .first()
-            .expect("rule should exist")
+            .rule
             .backends
             .first()
             .expect("backend should exist");
 
         let exists = match backend {
-            Backend::Invalid { .. } => &false,
             Backend::Service(WeightedService { exists, .. }) => exists,
-            _ => panic!("backend should be a service, but got {backend:?}"),
+            _ => panic!("backend should be a service"),
         };
 
         // Backend should not exist.
@@ -81,24 +77,22 @@ fn backend_service() {
     {
         let policy = rx.borrow_and_update();
         let backend = policy
-            .http_routes
+            .tls_routes
             .get(&GroupKindNamespaceName {
-                group: k8s::policy::HttpRoute::group(&()),
-                kind: k8s::policy::HttpRoute::kind(&()),
+                group: k8s_gateway_api::TlsRoute::group(&()),
+                kind: k8s_gateway_api::TlsRoute::kind(&()),
                 namespace: "ns".into(),
                 name: "route".into(),
             })
             .expect("route should exist")
-            .rules
-            .first()
-            .expect("rule should exist")
+            .rule
             .backends
             .first()
             .expect("backend should exist");
 
         let exists = match backend {
             Backend::Service(WeightedService { exists, .. }) => exists,
-            backend => panic!("backend should be a service, but got {:?}", backend),
+            _ => panic!("backend should be a service"),
         };
 
         // Backend should exist.
@@ -114,12 +108,11 @@ fn backend_egress_network() {
         .ok();
 
     let test = TestConfig::default();
-
     // Create apex service.
     let apex = mk_egress_network("ns", "apex");
     test.index.write().apply(apex);
 
-    // Create httproute.
+    // Create tlsroute.
     let route = mk_route(
         "ns",
         "route",
@@ -145,17 +138,15 @@ fn backend_egress_network() {
     {
         let policy = rx.borrow_and_update();
         let backend = policy
-            .http_routes
+            .tls_routes
             .get(&GroupKindNamespaceName {
-                group: k8s::policy::HttpRoute::group(&()),
-                kind: k8s::policy::HttpRoute::kind(&()),
+                group: k8s_gateway_api::TlsRoute::group(&()),
+                kind: k8s_gateway_api::TlsRoute::kind(&()),
                 namespace: "ns".into(),
                 name: "route".into(),
             })
             .expect("route should exist")
-            .rules
-            .first()
-            .expect("rule should exist")
+            .rule
             .backends
             .first()
             .expect("backend should exist");
@@ -178,7 +169,7 @@ fn mk_route(
     parent: impl ToString,
     backend_name: impl ToString,
     backend: super::BackendKind,
-) -> k8s::policy::HttpRoute {
+) -> k8s_gateway_api::TlsRoute {
     use k8s::{policy::httproute::*, Time};
     let (group, kind) = match backend {
         super::BackendKind::Service => ("core".to_string(), "Service".to_string()),
@@ -187,14 +178,14 @@ fn mk_route(
         }
     };
 
-    HttpRoute {
+    k8s_gateway_api::TlsRoute {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
             creation_timestamp: Some(Time(Utc::now())),
             ..Default::default()
         },
-        spec: HttpRouteSpec {
+        spec: k8s_gateway_api::TlsRouteSpec {
             inner: CommonRouteSpec {
                 parent_refs: Some(vec![ParentReference {
                     group: Some(group.clone()),
@@ -206,38 +197,25 @@ fn mk_route(
                 }]),
             },
             hostnames: None,
-            rules: Some(vec![HttpRouteRule {
-                matches: Some(vec![HttpRouteMatch {
-                    path: Some(HttpPathMatch::PathPrefix {
-                        value: "/foo/bar".to_string(),
-                    }),
-                    headers: None,
-                    query_params: None,
-                    method: Some("GET".to_string()),
-                }]),
-                filters: None,
-                backend_refs: Some(vec![HttpBackendRef {
-                    backend_ref: Some(BackendRef {
-                        weight: None,
-                        inner: BackendObjectReference {
-                            group: Some(group.clone()),
-                            kind: Some(kind.clone()),
-                            namespace: Some(ns.to_string()),
-                            name: backend_name.to_string(),
-                            port: Some(port),
-                        },
-                    }),
-                    filters: None,
-                }]),
-                timeouts: None,
-            }]),
+            rules: vec![k8s_gateway_api::TlsRouteRule {
+                backend_refs: vec![k8s_gateway_api::BackendRef {
+                    weight: None,
+                    inner: BackendObjectReference {
+                        group: Some(group.clone()),
+                        kind: Some(kind.clone()),
+                        namespace: Some(ns.to_string()),
+                        name: backend_name.to_string(),
+                        port: Some(port),
+                    },
+                }],
+            }],
         },
-        status: Some(HttpRouteStatus {
+        status: Some(k8s_gateway_api::TlsRouteStatus {
             inner: RouteStatus {
                 parents: vec![k8s::gateway::RouteParentStatus {
                     parent_ref: ParentReference {
-                        group: Some(group),
-                        kind: Some(kind),
+                        group: Some(group.clone()),
+                        kind: Some(kind.clone()),
                         namespace: Some(ns.to_string()),
                         name: parent.to_string(),
                         section_name: None,

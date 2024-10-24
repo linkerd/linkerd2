@@ -5,36 +5,59 @@ use crate::{
 };
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
+use egress_network::EgressNetwork;
 use linkerd_policy_controller_core::{
     outbound::{
         Backend, Backoff, FailureAccrual, GrpcRetryCondition, GrpcRoute, HttpRetryCondition,
-        HttpRoute, OutboundPolicy, RouteRetry, RouteSet, RouteTimeouts,
+        HttpRoute, Kind, OutboundPolicy, ParentInfo, ResourceTarget, RouteRetry, RouteSet,
+        RouteTimeouts, TcpRoute, TlsRoute, TrafficPolicy,
     },
     routes::GroupKindNamespaceName,
 };
 use linkerd_policy_controller_k8s_api::{
     gateway::{self as k8s_gateway_api, ParentReference},
-    policy as linkerd_k8s_api, ResourceExt, Service,
+    policy::{self as linkerd_k8s_api, Cidr},
+    ResourceExt, Service,
 };
 use parking_lot::RwLock;
 use std::{hash::Hash, net::IpAddr, num::NonZeroU16, sync::Arc, time};
 use tokio::sync::watch;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Index {
     namespaces: NamespaceIndex,
-    services_by_ip: HashMap<IpAddr, ServiceRef>,
-    service_info: HashMap<ServiceRef, ServiceInfo>,
+    services_by_ip: HashMap<IpAddr, ResourceRef>,
+    egress_networks_by_ref: HashMap<ResourceRef, EgressNetwork>,
+    // holds information about resources. currently EgressNetworks and Services
+    resource_info: HashMap<ResourceRef, ResourceInfo>,
+    cluster_networks: Vec<linkerd_k8s_api::Cidr>,
+
+    // holds a no-op sender to which all clients that have been returned
+    // a Fallback policy are subsribed. It is used to force these clients
+    // to reconnect an obtain new policy once the current one may no longer
+    // be valid
+    fallback_polcy_tx: watch::Sender<()>,
 }
 
+pub mod egress_network;
 pub mod grpc;
 pub mod http;
 pub mod metrics;
+pub mod tcp;
+pub(crate) mod tls;
 
 pub type SharedIndex = Arc<RwLock<Index>>;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct ServiceRef {
+pub enum ResourceKind {
+    EgressNetwork,
+    Service,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct ResourceRef {
+    pub kind: ResourceKind,
     pub name: String,
     pub namespace: String,
 }
@@ -48,38 +71,43 @@ struct NamespaceIndex {
 
 #[derive(Debug)]
 struct Namespace {
-    /// Stores an observable handle for each known service:port,
+    /// Stores an observable handle for each known resource:port,
     /// as well as any route resources in the cluster that specify
     /// a port.
-    service_port_routes: HashMap<ServicePort, ServiceRoutes>,
+    resource_port_routes: HashMap<ResourcePort, ResourceRoutes>,
     /// Stores the route resources (by service name) that do not
-    /// explicitly target a port.
+    /// explicitly target a port. These are only valid for Service
+    /// as EgressNetworks cannot be parents without an explicit
+    /// port declaration
     service_http_routes: HashMap<String, RouteSet<HttpRoute>>,
     service_grpc_routes: HashMap<String, RouteSet<GrpcRoute>>,
+    service_tls_routes: HashMap<String, RouteSet<TlsRoute>>,
+    service_tcp_routes: HashMap<String, RouteSet<TcpRoute>>,
     namespace: Arc<String>,
 }
 
-#[derive(Debug, Default)]
-struct ServiceInfo {
+#[derive(Debug)]
+struct ResourceInfo {
     opaque_ports: PortSet,
     accrual: Option<FailureAccrual>,
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
     grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
     timeouts: RouteTimeouts,
+    traffic_policy: Option<TrafficPolicy>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-struct ServicePort {
-    service: String,
+struct ResourcePort {
+    kind: ResourceKind,
+    name: String,
     port: NonZeroU16,
 }
 
 #[derive(Debug)]
-struct ServiceRoutes {
+struct ResourceRoutes {
+    parent_info: ParentInfo,
     namespace: Arc<String>,
-    name: String,
     port: NonZeroU16,
-    authority: String,
     watches_by_ns: HashMap<String, RoutesWatch>,
     opaque: bool,
     accrual: Option<FailureAccrual>,
@@ -90,6 +118,7 @@ struct ServiceRoutes {
 
 #[derive(Debug)]
 struct RoutesWatch {
+    parent_info: ParentInfo,
     opaque: bool,
     accrual: Option<FailureAccrual>,
     http_retry: Option<RouteRetry<HttpRetryCondition>>,
@@ -97,6 +126,8 @@ struct RoutesWatch {
     timeouts: RouteTimeouts,
     http_routes: RouteSet<HttpRoute>,
     grpc_routes: RouteSet<GrpcRoute>,
+    tls_routes: RouteSet<TlsRoute>,
+    tcp_routes: RouteSet<TcpRoute>,
     watch: watch::Sender<OutboundPolicy>,
 }
 
@@ -146,6 +177,36 @@ impl kubert::index::IndexNamespacedResource<k8s_gateway_api::GrpcRoute> for Inde
     }
 }
 
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::TlsRoute> for Index {
+    fn apply(&mut self, route: k8s_gateway_api::TlsRoute) {
+        self.apply_tls(route)
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let gknn = name
+            .gkn::<k8s_gateway_api::TlsRoute>()
+            .namespaced(namespace);
+        for ns_index in self.namespaces.by_ns.values_mut() {
+            ns_index.delete_tls_route(&gknn);
+        }
+    }
+}
+
+impl kubert::index::IndexNamespacedResource<k8s_gateway_api::TcpRoute> for Index {
+    fn apply(&mut self, route: k8s_gateway_api::TcpRoute) {
+        self.apply_tcp(route)
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let gknn = name
+            .gkn::<k8s_gateway_api::TcpRoute>()
+            .namespaced(namespace);
+        for ns_index in self.namespaces.by_ns.values_mut() {
+            ns_index.delete_tcp_route(&gknn);
+        }
+    }
+}
+
 impl kubert::index::IndexNamespacedResource<Service> for Index {
     fn apply(&mut self, service: Service) {
         let name = service.name_unchecked();
@@ -180,7 +241,8 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
                 }
                 match cluster_ip.parse() {
                     Ok(addr) => {
-                        let service_ref = ServiceRef {
+                        let service_ref = ResourceRef {
+                            kind: ResourceKind::Service,
                             name: name.clone(),
                             namespace: ns.clone(),
                         };
@@ -193,12 +255,13 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             }
         }
 
-        let service_info = ServiceInfo {
+        let service_info = ResourceInfo {
             opaque_ports,
             accrual,
             http_retry,
             grpc_retry,
             timeouts,
+            traffic_policy: None,
         };
 
         self.namespaces
@@ -207,90 +270,243 @@ impl kubert::index::IndexNamespacedResource<Service> for Index {
             .or_insert_with(|| Namespace {
                 service_http_routes: Default::default(),
                 service_grpc_routes: Default::default(),
-                service_port_routes: Default::default(),
+                service_tls_routes: Default::default(),
+                service_tcp_routes: Default::default(),
+                resource_port_routes: Default::default(),
                 namespace: Arc::new(ns),
             })
-            .update_service(service.name_unchecked(), &service_info);
+            .update_resource(
+                service.name_unchecked(),
+                ResourceKind::Service,
+                &service_info,
+            );
 
-        self.service_info.insert(
-            ServiceRef {
+        self.resource_info.insert(
+            ResourceRef {
+                kind: ResourceKind::Service,
                 name: service.name_unchecked(),
                 namespace: service.namespace().expect("Service must have Namespace"),
             },
             service_info,
         );
 
-        self.reindex_services()
+        self.reindex_resources();
     }
 
     fn delete(&mut self, namespace: String, name: String) {
         tracing::debug!(name, namespace, "deleting service");
-        let service_ref = ServiceRef { name, namespace };
-        self.service_info.remove(&service_ref);
+        let service_ref = ResourceRef {
+            kind: ResourceKind::Service,
+            name,
+            namespace,
+        };
+        self.resource_info.remove(&service_ref);
         self.services_by_ip.retain(|_, v| *v != service_ref);
 
-        self.reindex_services()
+        self.reindex_resources();
+    }
+}
+
+impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for Index {
+    fn apply(&mut self, egress_network: linkerd_k8s_api::EgressNetwork) {
+        let name = egress_network.name_unchecked();
+        let ns = egress_network
+            .namespace()
+            .expect("EgressNetwork must have a namespace");
+        tracing::debug!(name, ns, "indexing EgressNetwork");
+        let accrual = parse_accrual_config(egress_network.annotations())
+            .map_err(|error| tracing::error!(%error, service=name, namespace=ns, "failed to parse accrual config"))
+            .unwrap_or_default();
+        let opaque_ports = ports_annotation(
+            egress_network.annotations(),
+            "config.linkerd.io/opaque-ports",
+        )
+        .unwrap_or_else(|| self.namespaces.cluster_info.default_opaque_ports.clone());
+
+        let timeouts = parse_timeouts(egress_network.annotations())
+            .map_err(|error| tracing::error!(%error, service=name, namespace=ns, "failed to parse timeouts"))
+            .unwrap_or_default();
+
+        let http_retry = http::parse_http_retry(egress_network.annotations()).map_err(|error| {
+            tracing::error!(%error, service=name, namespace=ns, "failed to parse http retry")
+        }).unwrap_or_default();
+        let grpc_retry = grpc::parse_grpc_retry(egress_network.annotations()).map_err(|error| {
+            tracing::error!(%error, service=name, namespace=ns, "failed to parse grpc retry")
+        }).unwrap_or_default();
+
+        let egress_net_ref = ResourceRef {
+            kind: ResourceKind::EgressNetwork,
+            name: name.clone(),
+            namespace: ns.clone(),
+        };
+
+        let egress_net =
+            EgressNetwork::from_resource(&egress_network, self.cluster_networks.clone());
+
+        let traffic_policy = Some(match egress_net.traffic_policy {
+            linkerd_k8s_api::TrafficPolicy::Allow => TrafficPolicy::Allow,
+            linkerd_k8s_api::TrafficPolicy::Deny => TrafficPolicy::Deny,
+        });
+
+        self.egress_networks_by_ref
+            .insert(egress_net_ref.clone(), egress_net);
+
+        let egress_network_info = ResourceInfo {
+            opaque_ports,
+            accrual,
+            http_retry,
+            grpc_retry,
+            timeouts,
+            traffic_policy,
+        };
+
+        self.namespaces
+            .by_ns
+            .entry(ns.clone())
+            .or_insert_with(|| Namespace {
+                service_http_routes: Default::default(),
+                service_grpc_routes: Default::default(),
+                service_tls_routes: Default::default(),
+                service_tcp_routes: Default::default(),
+                resource_port_routes: Default::default(),
+                namespace: Arc::new(ns),
+            })
+            .update_resource(
+                egress_network.name_unchecked(),
+                ResourceKind::EgressNetwork,
+                &egress_network_info,
+            );
+
+        self.resource_info
+            .insert(egress_net_ref, egress_network_info);
+
+        self.reindex_resources();
+        self.reinitialize_egress_watches();
+        self.reinitialize_fallback_watches()
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        tracing::debug!(name, namespace, "deleting EgressNetwork");
+        let egress_net_ref = ResourceRef {
+            kind: ResourceKind::EgressNetwork,
+            name,
+            namespace,
+        };
+        self.egress_networks_by_ref.remove(&egress_net_ref);
+
+        self.reindex_resources();
+        self.reinitialize_egress_watches();
+        self.reinitialize_fallback_watches()
     }
 }
 
 impl Index {
     pub fn shared(cluster_info: Arc<ClusterInfo>) -> SharedIndex {
+        let cluster_networks = cluster_info.networks.clone();
+        let (fallback_polcy_tx, _) = watch::channel(());
         Arc::new(RwLock::new(Self {
             namespaces: NamespaceIndex {
                 by_ns: HashMap::default(),
                 cluster_info,
             },
             services_by_ip: HashMap::default(),
-            service_info: HashMap::default(),
+            egress_networks_by_ref: HashMap::default(),
+            resource_info: HashMap::default(),
+            cluster_networks: cluster_networks.into_iter().map(Cidr::from).collect(),
+            fallback_polcy_tx,
         }))
+    }
+
+    pub fn is_address_in_cluster(&self, addr: IpAddr) -> bool {
+        self.cluster_networks
+            .iter()
+            .any(|net| net.contains(&addr.into()))
+    }
+
+    pub fn fallback_policy_rx(&self) -> watch::Receiver<()> {
+        self.fallback_polcy_tx.subscribe()
+    }
+
+    fn reinitialize_fallback_watches(&mut self) {
+        let (new_fallback_tx, _) = watch::channel(());
+        self.fallback_polcy_tx = new_fallback_tx;
     }
 
     pub fn outbound_policy_rx(
         &mut self,
-        service_name: String,
-        service_namespace: String,
-        service_port: NonZeroU16,
-        source_namespace: String,
+        target: ResourceTarget,
     ) -> Result<watch::Receiver<OutboundPolicy>> {
+        let ResourceTarget {
+            name,
+            namespace,
+            port,
+            source_namespace,
+            kind,
+        } = target;
+
+        let kind = match kind {
+            Kind::EgressNetwork { .. } => ResourceKind::EgressNetwork,
+            Kind::Service { .. } => ResourceKind::Service,
+        };
+
         let ns = self
             .namespaces
             .by_ns
-            .entry(service_namespace.clone())
+            .entry(namespace.clone())
             .or_insert_with(|| Namespace {
-                namespace: Arc::new(service_namespace.to_string()),
+                namespace: Arc::new(namespace.to_string()),
                 service_http_routes: Default::default(),
                 service_grpc_routes: Default::default(),
-                service_port_routes: Default::default(),
+                service_tls_routes: Default::default(),
+                service_tcp_routes: Default::default(),
+                resource_port_routes: Default::default(),
             });
 
-        let key = ServicePort {
-            service: service_name,
-            port: service_port,
-        };
+        let key = ResourcePort { kind, name, port };
 
-        tracing::debug!(?key, "subscribing to service port");
+        tracing::debug!(?key, "subscribing to resource port");
 
         let routes =
-            ns.service_routes_or_default(key, &self.namespaces.cluster_info, &self.service_info);
+            ns.resource_routes_or_default(key, &self.namespaces.cluster_info, &self.resource_info);
 
         let watch = routes.watch_for_ns_or_default(source_namespace);
 
         Ok(watch.watch.subscribe())
     }
 
-    pub fn lookup_service(&self, addr: IpAddr) -> Option<ServiceRef> {
-        self.services_by_ip.get(&addr).cloned()
+    pub fn lookup_service(&self, addr: IpAddr) -> Option<(String, String)> {
+        self.services_by_ip
+            .get(&addr)
+            .cloned()
+            .map(|r| (r.namespace, r.name))
+    }
+
+    pub fn lookup_egress_network(
+        &self,
+        addr: IpAddr,
+        source_namespace: String,
+    ) -> Option<(String, String)> {
+        egress_network::resolve_egress_network(
+            addr,
+            source_namespace,
+            self.egress_networks_by_ref.values(),
+        )
+        .map(|r| (r.namespace, r.name))
     }
 
     fn apply_http(&mut self, route: HttpRouteResource) {
         tracing::debug!(name = route.name(), "indexing httproute");
 
         for parent_ref in route.inner().parent_refs.iter().flatten() {
-            if !is_parent_service(parent_ref) {
+            let parent_kind = if is_parent_service(parent_ref) {
+                ResourceKind::Service
+            } else if is_parent_egress_network(parent_ref) {
+                ResourceKind::EgressNetwork
+            } else {
                 continue;
-            }
+            };
 
-            if !route_accepted_by_service(route.status(), &parent_ref.name) {
+            if !route_accepted_by_parent(route.status(), &parent_ref.name) {
                 continue;
             }
 
@@ -306,13 +522,16 @@ impl Index {
                     namespace: Arc::new(ns),
                     service_http_routes: Default::default(),
                     service_grpc_routes: Default::default(),
-                    service_port_routes: Default::default(),
+                    service_tls_routes: Default::default(),
+                    service_tcp_routes: Default::default(),
+                    resource_port_routes: Default::default(),
                 })
                 .apply_http_route(
                     route.clone(),
                     parent_ref,
+                    parent_kind,
                     &self.namespaces.cluster_info,
-                    &self.service_info,
+                    &self.resource_info,
                 );
         }
     }
@@ -321,11 +540,15 @@ impl Index {
         tracing::debug!(name = route.name_unchecked(), "indexing grpcroute");
 
         for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
-            if !is_parent_service(parent_ref) {
+            let parent_kind = if is_parent_service(parent_ref) {
+                ResourceKind::Service
+            } else if is_parent_egress_network(parent_ref) {
+                ResourceKind::EgressNetwork
+            } else {
                 continue;
-            }
+            };
 
-            if !route_accepted_by_service(route.status.as_ref().map(|s| &s.inner), &parent_ref.name)
+            if !route_accepted_by_parent(route.status.as_ref().map(|s| &s.inner), &parent_ref.name)
             {
                 continue;
             }
@@ -342,20 +565,115 @@ impl Index {
                     namespace: Arc::new(ns),
                     service_http_routes: Default::default(),
                     service_grpc_routes: Default::default(),
-                    service_port_routes: Default::default(),
+                    service_tls_routes: Default::default(),
+                    service_tcp_routes: Default::default(),
+                    resource_port_routes: Default::default(),
                 })
                 .apply_grpc_route(
                     route.clone(),
                     parent_ref,
+                    parent_kind,
                     &self.namespaces.cluster_info,
-                    &self.service_info,
+                    &self.resource_info,
                 );
         }
     }
 
-    fn reindex_services(&mut self) {
+    fn apply_tls(&mut self, route: k8s_gateway_api::TlsRoute) {
+        tracing::debug!(name = route.name_unchecked(), "indexing tlsroute");
+
+        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
+            let parent_kind = if is_parent_service(parent_ref) {
+                ResourceKind::Service
+            } else if is_parent_egress_network(parent_ref) {
+                ResourceKind::EgressNetwork
+            } else {
+                continue;
+            };
+
+            if !route_accepted_by_parent(route.status.as_ref().map(|s| &s.inner), &parent_ref.name)
+            {
+                continue;
+            }
+
+            let ns = parent_ref
+                .namespace
+                .clone()
+                .unwrap_or_else(|| route.namespace().expect("TlsRoute must have a namespace"));
+
+            self.namespaces
+                .by_ns
+                .entry(ns.clone())
+                .or_insert_with(|| Namespace {
+                    namespace: Arc::new(ns),
+                    service_http_routes: Default::default(),
+                    service_grpc_routes: Default::default(),
+                    service_tls_routes: Default::default(),
+                    service_tcp_routes: Default::default(),
+                    resource_port_routes: Default::default(),
+                })
+                .apply_tls_route(
+                    route.clone(),
+                    parent_ref,
+                    parent_kind,
+                    &self.namespaces.cluster_info,
+                    &self.resource_info,
+                );
+        }
+    }
+
+    fn apply_tcp(&mut self, route: k8s_gateway_api::TcpRoute) {
+        tracing::debug!(name = route.name_unchecked(), "indexing tcproute");
+
+        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
+            let parent_kind = if is_parent_service(parent_ref) {
+                ResourceKind::Service
+            } else if is_parent_egress_network(parent_ref) {
+                ResourceKind::EgressNetwork
+            } else {
+                continue;
+            };
+
+            if !route_accepted_by_parent(route.status.as_ref().map(|s| &s.inner), &parent_ref.name)
+            {
+                continue;
+            }
+
+            let ns = parent_ref
+                .namespace
+                .clone()
+                .unwrap_or_else(|| route.namespace().expect("TcpRoute must have a namespace"));
+
+            self.namespaces
+                .by_ns
+                .entry(ns.clone())
+                .or_insert_with(|| Namespace {
+                    namespace: Arc::new(ns),
+                    service_http_routes: Default::default(),
+                    service_grpc_routes: Default::default(),
+                    service_tls_routes: Default::default(),
+                    service_tcp_routes: Default::default(),
+                    resource_port_routes: Default::default(),
+                })
+                .apply_tcp_route(
+                    route.clone(),
+                    parent_ref,
+                    parent_kind,
+                    &self.namespaces.cluster_info,
+                    &self.resource_info,
+                );
+        }
+    }
+
+    fn reindex_resources(&mut self) {
         for ns in self.namespaces.by_ns.values_mut() {
-            ns.reindex_services(&self.service_info);
+            ns.reindex_resources(&self.resource_info);
+        }
+    }
+
+    fn reinitialize_egress_watches(&mut self) {
+        for ns in self.namespaces.by_ns.values_mut() {
+            ns.reinitialize_egress_watches();
         }
     }
 }
@@ -365,53 +683,59 @@ impl Namespace {
         &mut self,
         route: HttpRouteResource,
         parent_ref: &ParentReference,
+        parent_kind: ResourceKind,
         cluster_info: &ClusterInfo,
-        service_info: &HashMap<ServiceRef, ServiceInfo>,
+        resource_info: &HashMap<ResourceRef, ResourceInfo>,
     ) {
         tracing::debug!(?route);
 
-        let outbound_route =
-            match http::convert_route(&self.namespace, route.clone(), cluster_info, service_info) {
-                Ok(route) => route,
-                Err(error) => {
-                    tracing::error!(%error, "failed to convert route");
-                    return;
-                }
-            };
+        let outbound_route = match http::convert_route(
+            &self.namespace,
+            route.clone(),
+            cluster_info,
+            resource_info,
+        ) {
+            Ok(route) => route,
+            Err(error) => {
+                tracing::error!(%error, "failed to convert route");
+                return;
+            }
+        };
 
         tracing::debug!(?outbound_route);
 
         let port = parent_ref.port.and_then(NonZeroU16::new);
 
         if let Some(port) = port {
-            let service_port = ServicePort {
+            let resource_port = ResourcePort {
+                kind: parent_kind,
                 port,
-                service: parent_ref.name.clone(),
+                name: parent_ref.name.clone(),
             };
 
             tracing::debug!(
-                ?service_port,
+                ?resource_port,
                 route = route.name(),
-                "inserting httproute for service"
+                "inserting httproute for resource"
             );
 
             let service_routes =
-                self.service_routes_or_default(service_port, cluster_info, service_info);
+                self.resource_routes_or_default(resource_port, cluster_info, resource_info);
 
             service_routes.apply_http_route(route.gknn(), outbound_route);
         } else {
             // If the parent_ref doesn't include a port, apply this route
-            // to all ServiceRoutes which match the Service name.
-            self.service_port_routes.iter_mut().for_each(
-                |(ServicePort { service, port: _ }, routes)| {
-                    if service == &parent_ref.name {
+            // to all ResourceRoutes which match the resource name.
+            self.resource_port_routes.iter_mut().for_each(
+                |(ResourcePort { name, port: _, .. }, routes)| {
+                    if name == &parent_ref.name {
                         routes.apply_http_route(route.gknn(), outbound_route.clone());
                     }
                 },
             );
 
             // Also add the route to the list of routes that target the
-            // Service without specifying a port.
+            // resource without specifying a port.
             self.service_http_routes
                 .entry(parent_ref.name.clone())
                 .or_default()
@@ -423,13 +747,79 @@ impl Namespace {
         &mut self,
         route: k8s_gateway_api::GrpcRoute,
         parent_ref: &ParentReference,
+        parent_kind: ResourceKind,
         cluster_info: &ClusterInfo,
-        service_info: &HashMap<ServiceRef, ServiceInfo>,
+        resource_info: &HashMap<ResourceRef, ResourceInfo>,
     ) {
         tracing::debug!(?route);
+        let outbound_route = match grpc::convert_route(
+            &self.namespace,
+            route.clone(),
+            cluster_info,
+            resource_info,
+        ) {
+            Ok(route) => route,
+            Err(error) => {
+                tracing::error!(%error, "failed to convert route");
+                return;
+            }
+        };
 
+        tracing::debug!(?outbound_route);
+
+        let gknn = route
+            .gkn()
+            .namespaced(route.namespace().expect("Route must have namespace"));
+
+        let port = parent_ref.port.and_then(NonZeroU16::new);
+
+        if let Some(port) = port {
+            let port = ResourcePort {
+                kind: parent_kind,
+                port,
+                name: parent_ref.name.clone(),
+            };
+
+            tracing::debug!(
+                ?port,
+                route = route.name_unchecked(),
+                "inserting grpcroute for resource"
+            );
+
+            let service_routes = self.resource_routes_or_default(port, cluster_info, resource_info);
+
+            service_routes.apply_grpc_route(gknn, outbound_route);
+        } else {
+            // If the parent_ref doesn't include a port, apply this route
+            // to all ResourceRoutes which match the resource name.
+            self.resource_port_routes.iter_mut().for_each(
+                |(ResourcePort { name, port: _, .. }, routes)| {
+                    if name == &parent_ref.name {
+                        routes.apply_grpc_route(gknn.clone(), outbound_route.clone());
+                    }
+                },
+            );
+
+            // Also add the route to the list of routes that target the
+            // resource without specifying a port.
+            self.service_grpc_routes
+                .entry(parent_ref.name.clone())
+                .or_default()
+                .insert(gknn, outbound_route);
+        }
+    }
+
+    fn apply_tls_route(
+        &mut self,
+        route: k8s_gateway_api::TlsRoute,
+        parent_ref: &ParentReference,
+        parent_kind: ResourceKind,
+        cluster_info: &ClusterInfo,
+        resource_info: &HashMap<ResourceRef, ResourceInfo>,
+    ) {
+        tracing::debug!(?route);
         let outbound_route =
-            match grpc::convert_route(&self.namespace, route.clone(), cluster_info, service_info) {
+            match tls::convert_route(&self.namespace, route.clone(), cluster_info, resource_info) {
                 Ok(route) => route,
                 Err(error) => {
                     tracing::error!(%error, "failed to convert route");
@@ -446,53 +836,130 @@ impl Namespace {
         let port = parent_ref.port.and_then(NonZeroU16::new);
 
         if let Some(port) = port {
-            let service_port = ServicePort {
+            let port = ResourcePort {
+                kind: parent_kind,
                 port,
-                service: parent_ref.name.clone(),
+                name: parent_ref.name.clone(),
             };
 
             tracing::debug!(
-                ?service_port,
+                ?port,
                 route = route.name_unchecked(),
-                "inserting grpcroute for service"
+                "inserting tlsroute for resource"
             );
 
-            let service_routes =
-                self.service_routes_or_default(service_port, cluster_info, service_info);
+            let resource_routes =
+                self.resource_routes_or_default(port, cluster_info, resource_info);
 
-            service_routes.apply_grpc_route(gknn, outbound_route);
+            resource_routes.apply_tls_route(gknn, outbound_route);
         } else {
             // If the parent_ref doesn't include a port, apply this route
-            // to all ServiceRoutes which match the Service name.
-            self.service_port_routes.iter_mut().for_each(
-                |(ServicePort { service, port: _ }, routes)| {
-                    if service == &parent_ref.name {
-                        routes.apply_grpc_route(gknn.clone(), outbound_route.clone());
+            // to all ResourceRoutes which match the resource name.
+            self.resource_port_routes.iter_mut().for_each(
+                |(ResourcePort { name, port: _, .. }, routes)| {
+                    if name == &parent_ref.name {
+                        routes.apply_tls_route(gknn.clone(), outbound_route.clone());
                     }
                 },
             );
 
             // Also add the route to the list of routes that target the
-            // Service without specifying a port.
-            self.service_grpc_routes
+            // resource without specifying a port.
+            self.service_tls_routes
                 .entry(parent_ref.name.clone())
                 .or_default()
                 .insert(gknn, outbound_route);
         }
     }
 
-    fn reindex_services(&mut self, service_info: &HashMap<ServiceRef, ServiceInfo>) {
-        let update_service = |backend: &mut Backend| {
-            if let Backend::Service(svc) = backend {
-                let service_ref = ServiceRef {
-                    name: svc.name.clone(),
-                    namespace: svc.namespace.clone(),
-                };
-                svc.exists = service_info.contains_key(&service_ref);
-            }
+    fn apply_tcp_route(
+        &mut self,
+        route: k8s_gateway_api::TcpRoute,
+        parent_ref: &ParentReference,
+        parent_kind: ResourceKind,
+        cluster_info: &ClusterInfo,
+        resource_info: &HashMap<ResourceRef, ResourceInfo>,
+    ) {
+        tracing::debug!(?route);
+        let outbound_route =
+            match tcp::convert_route(&self.namespace, route.clone(), cluster_info, resource_info) {
+                Ok(route) => route,
+                Err(error) => {
+                    tracing::error!(%error, "failed to convert route");
+                    return;
+                }
+            };
+
+        tracing::debug!(?outbound_route);
+
+        let gknn = route
+            .gkn()
+            .namespaced(route.namespace().expect("Route must have namespace"));
+
+        let port = parent_ref.port.and_then(NonZeroU16::new);
+
+        if let Some(port) = port {
+            let port = ResourcePort {
+                kind: parent_kind,
+                port,
+                name: parent_ref.name.clone(),
+            };
+
+            tracing::debug!(
+                ?port,
+                route = route.name_unchecked(),
+                "inserting tcproute for resource"
+            );
+
+            let resource_routes =
+                self.resource_routes_or_default(port, cluster_info, resource_info);
+
+            resource_routes.apply_tcp_route(gknn, outbound_route);
+        } else {
+            // If the parent_ref doesn't include a port, apply this route
+            // to all ResourceRoutes which match the resource name.
+            self.resource_port_routes.iter_mut().for_each(
+                |(ResourcePort { name, port: _, .. }, routes)| {
+                    if name == &parent_ref.name {
+                        routes.apply_tcp_route(gknn.clone(), outbound_route.clone());
+                    }
+                },
+            );
+
+            // Also add the route to the list of routes that target the
+            // resource without specifying a port.
+            self.service_tcp_routes
+                .entry(parent_ref.name.clone())
+                .or_default()
+                .insert(gknn, outbound_route);
+        }
+    }
+
+    fn reindex_resources(&mut self, resource_info: &HashMap<ResourceRef, ResourceInfo>) {
+        let update_backend = |backend: &mut Backend| {
+            match backend {
+                Backend::Service(svc) => {
+                    let service_ref = ResourceRef {
+                        kind: ResourceKind::Service,
+                        name: svc.name.clone(),
+                        namespace: svc.namespace.clone(),
+                    };
+                    svc.exists = resource_info.contains_key(&service_ref);
+                }
+                Backend::EgressNetwork(egress_net) => {
+                    let egress_net_ref = ResourceRef {
+                        kind: ResourceKind::EgressNetwork,
+                        name: egress_net.name.clone(),
+                        namespace: egress_net.namespace.clone(),
+                    };
+                    egress_net.exists = resource_info.contains_key(&egress_net_ref);
+                }
+
+                _ => {}
+            };
         };
 
-        for routes in self.service_port_routes.values_mut() {
+        for routes in self.resource_port_routes.values_mut() {
             for watch in routes.watches_by_ns.values_mut() {
                 let http_backends = watch
                     .http_routes
@@ -504,36 +971,58 @@ impl Namespace {
                     .values_mut()
                     .flat_map(|route| route.rules.iter_mut())
                     .flat_map(|rule| rule.backends.iter_mut());
+                let tls_backends = watch
+                    .tls_routes
+                    .values_mut()
+                    .flat_map(|route| route.rule.backends.iter_mut());
+                let tcp_backends = watch
+                    .tcp_routes
+                    .values_mut()
+                    .flat_map(|route| route.rule.backends.iter_mut());
 
-                http_backends.chain(grpc_backends).for_each(update_service);
+                http_backends
+                    .chain(grpc_backends)
+                    .chain(tls_backends)
+                    .chain(tcp_backends)
+                    .for_each(update_backend);
+
                 watch.send_if_modified();
             }
         }
     }
 
-    fn update_service(&mut self, name: String, service: &ServiceInfo) {
-        tracing::debug!(?name, ?service, "updating service");
+    fn reinitialize_egress_watches(&mut self) {
+        for routes in self.resource_port_routes.values_mut() {
+            if let ParentInfo::EgressNetwork { .. } = routes.parent_info {
+                routes.reinitialize_watches();
+            }
+        }
+    }
 
-        for (svc_port, svc_routes) in self.service_port_routes.iter_mut() {
-            if svc_port.service != name {
+    fn update_resource(&mut self, name: String, kind: ResourceKind, resource: &ResourceInfo) {
+        tracing::debug!(?name, ?resource, "updating resource");
+
+        for (resource_port, resource_routes) in self.resource_port_routes.iter_mut() {
+            if resource_port.name != name || kind != resource_port.kind {
                 continue;
             }
 
-            let opaque = service.opaque_ports.contains(&svc_port.port);
+            let opaque = resource.opaque_ports.contains(&resource_port.port);
 
-            svc_routes.update_service(
+            resource_routes.update_resource(
                 opaque,
-                service.accrual,
-                service.http_retry.clone(),
-                service.grpc_retry.clone(),
-                service.timeouts.clone(),
+                resource.accrual,
+                resource.http_retry.clone(),
+                resource.grpc_retry.clone(),
+                resource.timeouts.clone(),
+                resource.traffic_policy,
             );
         }
     }
 
     fn delete_http_route(&mut self, gknn: &GroupKindNamespaceName) {
-        for service in self.service_port_routes.values_mut() {
-            service.delete_http_route(gknn);
+        for resource in self.resource_port_routes.values_mut() {
+            resource.delete_http_route(gknn);
         }
 
         self.service_http_routes.retain(|_, routes| {
@@ -543,8 +1032,8 @@ impl Namespace {
     }
 
     fn delete_grpc_route(&mut self, gknn: &GroupKindNamespaceName) {
-        for service in self.service_port_routes.values_mut() {
-            service.delete_grpc_route(gknn);
+        for resource in self.resource_port_routes.values_mut() {
+            resource.delete_grpc_route(gknn);
         }
 
         self.service_grpc_routes.retain(|_, routes| {
@@ -553,58 +1042,111 @@ impl Namespace {
         });
     }
 
-    fn service_routes_or_default(
-        &mut self,
-        sp: ServicePort,
-        cluster: &ClusterInfo,
-        service_info: &HashMap<ServiceRef, ServiceInfo>,
-    ) -> &mut ServiceRoutes {
-        self.service_port_routes
-            .entry(sp.clone())
-            .or_insert_with(|| {
-                let authority =
-                    cluster.service_dns_authority(&self.namespace, &sp.service, sp.port);
+    fn delete_tls_route(&mut self, gknn: &GroupKindNamespaceName) {
+        for resource in self.resource_port_routes.values_mut() {
+            resource.delete_tls_route(gknn);
+        }
 
-                let service_ref = ServiceRef {
-                    name: sp.service.clone(),
+        self.service_tls_routes.retain(|_, routes| {
+            routes.remove(gknn);
+            !routes.is_empty()
+        });
+    }
+
+    fn delete_tcp_route(&mut self, gknn: &GroupKindNamespaceName) {
+        for resource in self.resource_port_routes.values_mut() {
+            resource.delete_tcp_route(gknn);
+        }
+
+        self.service_tcp_routes.retain(|_, routes| {
+            routes.remove(gknn);
+            !routes.is_empty()
+        });
+    }
+
+    fn resource_routes_or_default(
+        &mut self,
+        rp: ResourcePort,
+        cluster: &ClusterInfo,
+        resource_info: &HashMap<ResourceRef, ResourceInfo>,
+    ) -> &mut ResourceRoutes {
+        self.resource_port_routes
+            .entry(rp.clone())
+            .or_insert_with(|| {
+                let resource_ref = ResourceRef {
+                    name: rp.name.clone(),
                     namespace: self.namespace.to_string(),
+                    kind: rp.kind.clone(),
                 };
 
+                let mut parent_info = match rp.kind {
+                    ResourceKind::EgressNetwork => ParentInfo::EgressNetwork {
+                        traffic_policy: TrafficPolicy::Deny,
+                        name: resource_ref.name.clone(),
+                        namespace: resource_ref.namespace.clone(),
+                    },
+                    ResourceKind::Service => {
+                        let authority =
+                            cluster.service_dns_authority(&self.namespace, &rp.name, rp.port);
+                        ParentInfo::Service {
+                            authority,
+                            name: resource_ref.name.clone(),
+                            namespace: resource_ref.namespace.clone(),
+                        }
+                    }
+                };
                 let mut opaque = false;
                 let mut accrual = None;
                 let mut http_retry = None;
                 let mut grpc_retry = None;
                 let mut timeouts = Default::default();
-                if let Some(svc) = service_info.get(&service_ref) {
-                    opaque = svc.opaque_ports.contains(&sp.port);
-                    accrual = svc.accrual;
-                    http_retry = svc.http_retry.clone();
-                    grpc_retry = svc.grpc_retry.clone();
-                    timeouts = svc.timeouts.clone();
+                if let Some(resource) = resource_info.get(&resource_ref) {
+                    opaque = resource.opaque_ports.contains(&rp.port);
+                    accrual = resource.accrual;
+                    http_retry = resource.http_retry.clone();
+                    grpc_retry = resource.grpc_retry.clone();
+                    timeouts = resource.timeouts.clone();
+
+                    if let Some(traffic_policy) = resource.traffic_policy {
+                        parent_info = ParentInfo::EgressNetwork {
+                            traffic_policy,
+                            name: resource_ref.name,
+                            namespace: resource_ref.namespace,
+                        }
+                    }
                 }
 
-                // The routes which target this Service but don't specify
+                // The routes which target this Resource but don't specify
                 // a port apply to all ports. Therefore, we include them.
                 let http_routes = self
                     .service_http_routes
-                    .get(&sp.service)
+                    .get(&rp.name)
                     .cloned()
                     .unwrap_or_default();
                 let grpc_routes = self
                     .service_grpc_routes
-                    .get(&sp.service)
+                    .get(&rp.name)
+                    .cloned()
+                    .unwrap_or_default();
+                let tls_routes = self
+                    .service_tls_routes
+                    .get(&rp.name)
+                    .cloned()
+                    .unwrap_or_default();
+                let tcp_routes = self
+                    .service_tcp_routes
+                    .get(&rp.name)
                     .cloned()
                     .unwrap_or_default();
 
-                let mut service_routes = ServiceRoutes {
+                let mut resource_routes = ResourceRoutes {
+                    parent_info,
                     opaque,
                     accrual,
                     http_retry,
                     grpc_retry,
                     timeouts,
-                    authority,
-                    port: sp.port,
-                    name: sp.service,
+                    port: rp.port,
                     namespace: self.namespace.clone(),
                     watches_by_ns: Default::default(),
                 };
@@ -618,34 +1160,57 @@ impl Namespace {
                 let (producer_grpc_routes, consumer_grpc_routes): (Vec<_>, Vec<_>) = grpc_routes
                     .into_iter()
                     .partition(|(gknn, _)| gknn.namespace == *self.namespace);
+                let (producer_tls_routes, consumer_tls_routes): (Vec<_>, Vec<_>) = tls_routes
+                    .into_iter()
+                    .partition(|(gknn, _)| gknn.namespace == *self.namespace);
+                let (producer_tcp_routes, consumer_tcp_routes): (Vec<_>, Vec<_>) = tcp_routes
+                    .into_iter()
+                    .partition(|(gknn, _)| gknn.namespace == *self.namespace);
 
                 for (consumer_gknn, consumer_route) in consumer_http_routes {
                     // Consumer routes should only apply to watches from the
                     // consumer namespace.
-                    let consumer_watch =
-                        service_routes.watch_for_ns_or_default(consumer_gknn.namespace.to_string());
+                    let consumer_watch = resource_routes
+                        .watch_for_ns_or_default(consumer_gknn.namespace.to_string());
 
                     consumer_watch.insert_http_route(consumer_gknn.clone(), consumer_route.clone());
                 }
                 for (consumer_gknn, consumer_route) in consumer_grpc_routes {
                     // Consumer routes should only apply to watches from the
                     // consumer namespace.
-                    let consumer_watch =
-                        service_routes.watch_for_ns_or_default(consumer_gknn.namespace.to_string());
+                    let consumer_watch = resource_routes
+                        .watch_for_ns_or_default(consumer_gknn.namespace.to_string());
 
                     consumer_watch.insert_grpc_route(consumer_gknn.clone(), consumer_route.clone());
+                }
+                for (consumer_gknn, consumer_route) in consumer_tls_routes {
+                    // Consumer routes should only apply to watches from the
+                    // consumer namespace.
+                    let consumer_watch = resource_routes
+                        .watch_for_ns_or_default(consumer_gknn.namespace.to_string());
+
+                    consumer_watch.insert_tls_route(consumer_gknn.clone(), consumer_route.clone());
+                }
+
+                for (consumer_gknn, consumer_route) in consumer_tcp_routes {
+                    // Consumer routes should only apply to watches from the
+                    // consumer namespace.
+                    let consumer_watch = resource_routes
+                        .watch_for_ns_or_default(consumer_gknn.namespace.to_string());
+
+                    consumer_watch.insert_tcp_route(consumer_gknn.clone(), consumer_route.clone());
                 }
 
                 for (producer_gknn, producer_route) in producer_http_routes {
                     // Insert the route into the producer namespace.
-                    let producer_watch =
-                        service_routes.watch_for_ns_or_default(producer_gknn.namespace.to_string());
+                    let producer_watch = resource_routes
+                        .watch_for_ns_or_default(producer_gknn.namespace.to_string());
 
                     producer_watch.insert_http_route(producer_gknn.clone(), producer_route.clone());
 
                     // Producer routes apply to clients in all namespaces, so
                     // apply it to watches for all other namespaces too.
-                    service_routes
+                    resource_routes
                         .watches_by_ns
                         .iter_mut()
                         .filter(|(namespace, _)| {
@@ -658,14 +1223,14 @@ impl Namespace {
 
                 for (producer_gknn, producer_route) in producer_grpc_routes {
                     // Insert the route into the producer namespace.
-                    let producer_watch =
-                        service_routes.watch_for_ns_or_default(producer_gknn.namespace.to_string());
+                    let producer_watch = resource_routes
+                        .watch_for_ns_or_default(producer_gknn.namespace.to_string());
 
                     producer_watch.insert_grpc_route(producer_gknn.clone(), producer_route.clone());
 
                     // Producer routes apply to clients in all namespaces, so
                     // apply it to watches for all other namespaces too.
-                    service_routes
+                    resource_routes
                         .watches_by_ns
                         .iter_mut()
                         .filter(|(namespace, _)| {
@@ -676,7 +1241,47 @@ impl Namespace {
                         });
                 }
 
-                service_routes
+                for (producer_gknn, producer_route) in producer_tls_routes {
+                    // Insert the route into the producer namespace.
+                    let producer_watch = resource_routes
+                        .watch_for_ns_or_default(producer_gknn.namespace.to_string());
+
+                    producer_watch.insert_tls_route(producer_gknn.clone(), producer_route.clone());
+
+                    // Producer routes apply to clients in all namespaces, so
+                    // apply it to watches for all other namespaces too.
+                    resource_routes
+                        .watches_by_ns
+                        .iter_mut()
+                        .filter(|(namespace, _)| {
+                            namespace.as_str() != producer_gknn.namespace.as_ref()
+                        })
+                        .for_each(|(_, watch)| {
+                            watch.insert_tls_route(producer_gknn.clone(), producer_route.clone())
+                        });
+                }
+
+                for (producer_gknn, producer_route) in producer_tcp_routes {
+                    // Insert the route into the producer namespace.
+                    let producer_watch = resource_routes
+                        .watch_for_ns_or_default(producer_gknn.namespace.to_string());
+
+                    producer_watch.insert_tcp_route(producer_gknn.clone(), producer_route.clone());
+
+                    // Producer routes apply to clients in all namespaces, so
+                    // apply it to watches for all other namespaces too.
+                    resource_routes
+                        .watches_by_ns
+                        .iter_mut()
+                        .filter(|(namespace, _)| {
+                            namespace.as_str() != producer_gknn.namespace.as_ref()
+                        })
+                        .for_each(|(_, watch)| {
+                            watch.insert_tcp_route(producer_gknn.clone(), producer_route.clone())
+                        });
+                }
+
+                resource_routes
             })
     }
 }
@@ -725,7 +1330,7 @@ pub fn is_parent_service_or_egress_network(parent: &ParentReference) -> bool {
 }
 
 #[inline]
-fn route_accepted_by_service(
+fn route_accepted_by_parent(
     route_status: Option<&k8s_gateway_api::RouteStatus>,
     service: &str,
 ) -> bool {
@@ -743,7 +1348,13 @@ fn route_accepted_by_service(
         })
 }
 
-impl ServiceRoutes {
+impl ResourceRoutes {
+    fn reinitialize_watches(&mut self) {
+        for watch in self.watches_by_ns.values_mut() {
+            watch.reinitialize_watch();
+        }
+    }
+
     fn watch_for_ns_or_default(&mut self, namespace: String) -> &mut RoutesWatch {
         // The routes from the producer namespace apply to watches in all
         // namespaces, so we copy them.
@@ -758,8 +1369,21 @@ impl ServiceRoutes {
             .map(|watch| watch.grpc_routes.clone())
             .unwrap_or_default();
 
+        let tls_routes = self
+            .watches_by_ns
+            .get(self.namespace.as_ref())
+            .map(|watch| watch.tls_routes.clone())
+            .unwrap_or_default();
+
+        let tcp_routes = self
+            .watches_by_ns
+            .get(self.namespace.as_ref())
+            .map(|watch| watch.tcp_routes.clone())
+            .unwrap_or_default();
+
         self.watches_by_ns.entry(namespace).or_insert_with(|| {
             let (sender, _) = watch::channel(OutboundPolicy {
+                parent_info: self.parent_info.clone(),
                 port: self.port,
                 opaque: self.opaque,
                 accrual: self.accrual,
@@ -768,14 +1392,16 @@ impl ServiceRoutes {
                 timeouts: self.timeouts.clone(),
                 http_routes: http_routes.clone(),
                 grpc_routes: grpc_routes.clone(),
-                name: self.name.to_string(),
-                authority: self.authority.clone(),
-                namespace: self.namespace.to_string(),
+                tls_routes: tls_routes.clone(),
+                tcp_routes: tcp_routes.clone(),
             });
 
             RoutesWatch {
+                parent_info: self.parent_info.clone(),
                 http_routes,
                 grpc_routes,
+                tls_routes,
+                tcp_routes,
                 watch: sender,
                 opaque: self.opaque,
                 accrual: self.accrual,
@@ -830,26 +1456,83 @@ impl ServiceRoutes {
         }
     }
 
-    fn update_service(
+    fn apply_tls_route(&mut self, gknn: GroupKindNamespaceName, route: TlsRoute) {
+        if *gknn.namespace == *self.namespace {
+            // This is a producer namespace route.
+            let watch = self.watch_for_ns_or_default(gknn.namespace.to_string());
+
+            watch.insert_tls_route(gknn.clone(), route.clone());
+
+            // Producer routes apply to clients in all namespaces, so
+            // apply it to watches for all other namespaces too.
+            for (ns, ns_watch) in self.watches_by_ns.iter_mut() {
+                if ns != &gknn.namespace {
+                    ns_watch.insert_tls_route(gknn.clone(), route.clone());
+                }
+            }
+        } else {
+            // This is a consumer namespace route and should only apply to
+            // watches from that namespace.
+            let watch = self.watch_for_ns_or_default(gknn.namespace.to_string());
+            watch.insert_tls_route(gknn, route);
+        }
+    }
+
+    fn apply_tcp_route(&mut self, gknn: GroupKindNamespaceName, route: TcpRoute) {
+        if *gknn.namespace == *self.namespace {
+            // This is a producer namespace route.
+            let watch = self.watch_for_ns_or_default(gknn.namespace.to_string());
+
+            watch.insert_tcp_route(gknn.clone(), route.clone());
+
+            // Producer routes apply to clients in all namespaces, so
+            // apply it to watches for all other namespaces too.
+            for (ns, ns_watch) in self.watches_by_ns.iter_mut() {
+                if ns != &gknn.namespace {
+                    ns_watch.insert_tcp_route(gknn.clone(), route.clone());
+                }
+            }
+        } else {
+            // This is a consumer namespace route and should only apply to
+            // watches from that namespace.
+            let watch = self.watch_for_ns_or_default(gknn.namespace.to_string());
+            watch.insert_tcp_route(gknn, route);
+        }
+    }
+
+    fn update_resource(
         &mut self,
         opaque: bool,
         accrual: Option<FailureAccrual>,
         http_retry: Option<RouteRetry<HttpRetryCondition>>,
         grpc_retry: Option<RouteRetry<GrpcRetryCondition>>,
         timeouts: RouteTimeouts,
+        traffic_policy: Option<TrafficPolicy>,
     ) {
         self.opaque = opaque;
         self.accrual = accrual;
         self.http_retry = http_retry.clone();
         self.grpc_retry = grpc_retry.clone();
         self.timeouts = timeouts.clone();
+        self.update_traffic_policy(traffic_policy);
         for watch in self.watches_by_ns.values_mut() {
             watch.opaque = opaque;
             watch.accrual = accrual;
             watch.http_retry = http_retry.clone();
             watch.grpc_retry = grpc_retry.clone();
             watch.timeouts = timeouts.clone();
+            watch.update_traffic_policy(traffic_policy);
             watch.send_if_modified();
+        }
+    }
+
+    fn update_traffic_policy(&mut self, traffic_policy: Option<TrafficPolicy>) {
+        if let (ParentInfo::EgressNetwork { traffic_policy, .. }, Some(new)) =
+            (&mut self.parent_info, traffic_policy)
+        {
+            if *traffic_policy != new {
+                *traffic_policy = new;
+            }
         }
     }
 
@@ -864,12 +1547,45 @@ impl ServiceRoutes {
             watch.remove_grpc_route(gknn);
         }
     }
+
+    fn delete_tls_route(&mut self, gknn: &GroupKindNamespaceName) {
+        for watch in self.watches_by_ns.values_mut() {
+            watch.remove_tls_route(gknn);
+        }
+    }
+
+    fn delete_tcp_route(&mut self, gknn: &GroupKindNamespaceName) {
+        for watch in self.watches_by_ns.values_mut() {
+            watch.remove_tcp_route(gknn);
+        }
+    }
 }
 
 impl RoutesWatch {
+    fn reinitialize_watch(&mut self) {
+        let current_policy = self.watch.borrow().clone();
+        let (new_sender, _) = watch::channel(current_policy);
+        self.watch = new_sender;
+    }
+
+    fn update_traffic_policy(&mut self, traffic_policy: Option<TrafficPolicy>) {
+        if let (ParentInfo::EgressNetwork { traffic_policy, .. }, Some(new)) =
+            (&mut self.parent_info, traffic_policy)
+        {
+            if *traffic_policy != new {
+                *traffic_policy = new;
+            }
+        }
+    }
+
     fn send_if_modified(&mut self) {
         self.watch.send_if_modified(|policy| {
             let mut modified = false;
+
+            if self.parent_info != policy.parent_info {
+                policy.parent_info = self.parent_info.clone();
+                modified = true;
+            }
 
             if self.http_routes != policy.http_routes {
                 policy.http_routes = self.http_routes.clone();
@@ -878,6 +1594,16 @@ impl RoutesWatch {
 
             if self.grpc_routes != policy.grpc_routes {
                 policy.grpc_routes = self.grpc_routes.clone();
+                modified = true;
+            }
+
+            if self.tls_routes != policy.tls_routes {
+                policy.tls_routes = self.tls_routes.clone();
+                modified = true;
+            }
+
+            if self.tcp_routes != policy.tcp_routes {
+                policy.tcp_routes = self.tcp_routes.clone();
                 modified = true;
             }
 
@@ -922,6 +1648,18 @@ impl RoutesWatch {
         self.send_if_modified();
     }
 
+    fn insert_tls_route(&mut self, gknn: GroupKindNamespaceName, route: TlsRoute) {
+        self.tls_routes.insert(gknn, route);
+
+        self.send_if_modified();
+    }
+
+    fn insert_tcp_route(&mut self, gknn: GroupKindNamespaceName, route: TcpRoute) {
+        self.tcp_routes.insert(gknn, route);
+
+        self.send_if_modified();
+    }
+
     fn remove_http_route(&mut self, gknn: &GroupKindNamespaceName) {
         self.http_routes.remove(gknn);
         self.send_if_modified();
@@ -929,6 +1667,16 @@ impl RoutesWatch {
 
     fn remove_grpc_route(&mut self, gknn: &GroupKindNamespaceName) {
         self.grpc_routes.remove(gknn);
+        self.send_if_modified();
+    }
+
+    fn remove_tls_route(&mut self, gknn: &GroupKindNamespaceName) {
+        self.tls_routes.remove(gknn);
+        self.send_if_modified();
+    }
+
+    fn remove_tcp_route(&mut self, gknn: &GroupKindNamespaceName) {
+        self.tcp_routes.remove(gknn);
         self.send_if_modified();
     }
 }
@@ -1035,4 +1783,20 @@ fn parse_duration(s: &str) -> Result<time::Duration> {
         .checked_mul(mul)
         .ok_or_else(|| anyhow::anyhow!("Timeout value {} overflows when converted to 'ms'", s))?;
     Ok(time::Duration::from_millis(ms))
+}
+
+#[inline]
+pub(crate) fn backend_kind(
+    backend: &k8s_gateway_api::BackendObjectReference,
+) -> Option<ResourceKind> {
+    let group = backend.group.as_deref();
+    // Backends default to `Service` if no kind is specified.
+    let kind = backend.kind.as_deref().unwrap_or("Service");
+    if is_service(group, kind) {
+        Some(ResourceKind::Service)
+    } else if is_egress_network(group, kind) {
+        Some(ResourceKind::EgressNetwork)
+    } else {
+        None
+    }
 }

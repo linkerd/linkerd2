@@ -295,7 +295,6 @@ impl OutboundPolicyClient {
         svc: &k8s::Service,
         port: u16,
     ) -> Result<tonic::Streaming<outbound::OutboundPolicy>, tonic::Status> {
-        use std::net::Ipv4Addr;
         let address = svc
             .spec
             .as_ref()
@@ -303,7 +302,17 @@ impl OutboundPolicyClient {
             .cluster_ip
             .as_ref()
             .expect("Service must have a cluster ip");
-        let ip = address.parse::<Ipv4Addr>().unwrap();
+        self.watch_ip(ns, address, port).await
+    }
+
+    pub async fn watch_ip(
+        &mut self,
+        ns: &str,
+        addr: &str,
+        port: u16,
+    ) -> Result<tonic::Streaming<outbound::OutboundPolicy>, tonic::Status> {
+        use std::net::Ipv4Addr;
+        let ip = addr.parse::<Ipv4Addr>().unwrap();
         let rsp = self
             .client
             .watch(tonic::Request::new(outbound::TrafficSpec {

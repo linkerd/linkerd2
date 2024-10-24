@@ -21,7 +21,7 @@ async fn service_does_not_exist() {
         // Build a service but don't apply it to the cluster.
         let mut svc = mk_service(&ns, "my-svc", 4191);
         // Give it a bogus cluster ip.
-        svc.spec.as_mut().unwrap().cluster_ip = Some("1.1.1.1".to_string());
+        svc.spec.as_mut().unwrap().cluster_ip = Some("192.168.0.2".to_string());
 
         let mut policy_api = grpc::OutboundPolicyClient::port_forwarded(&client).await;
         let rsp = policy_api.watch(&ns, &svc, 4191).await;

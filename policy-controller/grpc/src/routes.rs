@@ -1,4 +1,4 @@
-use linkerd2_proxy_api::{http_route as proto, http_types};
+use linkerd2_proxy_api::{http_route as proto, http_types, tls_route as tls_proto};
 use linkerd_policy_controller_core::routes::{
     HeaderModifierFilter, HostMatch, PathModifier, RequestRedirectFilter,
 };
@@ -12,6 +12,19 @@ pub(crate) fn convert_host_match(h: HostMatch) -> proto::HostMatch {
             HostMatch::Exact(host) => proto::host_match::Match::Exact(host),
             HostMatch::Suffix { reverse_labels } => {
                 proto::host_match::Match::Suffix(proto::host_match::Suffix {
+                    reverse_labels: reverse_labels.to_vec(),
+                })
+            }
+        }),
+    }
+}
+
+pub(crate) fn convert_sni_match(h: HostMatch) -> tls_proto::SniMatch {
+    tls_proto::SniMatch {
+        r#match: Some(match h {
+            HostMatch::Exact(host) => tls_proto::sni_match::Match::Exact(host),
+            HostMatch::Suffix { reverse_labels } => {
+                tls_proto::sni_match::Match::Suffix(tls_proto::sni_match::Suffix {
                     reverse_labels: reverse_labels.to_vec(),
                 })
             }
