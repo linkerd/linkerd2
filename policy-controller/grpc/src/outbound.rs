@@ -13,7 +13,7 @@ use linkerd2_proxy_api::{
 };
 use linkerd_policy_controller_core::{
     outbound::{
-        DiscoverOutboundPolicy, FallbackPolicyStream, Kind, OutboundDiscoverTarget, OutboundPolicy,
+        DiscoverOutboundPolicy, ExternalPolicyStream, Kind, OutboundDiscoverTarget, OutboundPolicy,
         OutboundPolicyStream, ParentInfo, ResourceTarget, Route, WeightedEgressNetwork,
         WeightedService,
     },
@@ -173,7 +173,7 @@ where
                 }
             }
 
-            OutboundDiscoverTarget::Fallback(original_dst) => {
+            OutboundDiscoverTarget::External(original_dst) => {
                 Ok(tonic::Response::new(fallback(original_dst)))
             }
         }
@@ -205,9 +205,9 @@ where
                 )))
             }
 
-            OutboundDiscoverTarget::Fallback(original_dst) => {
-                let rx = self.index.watch_fallback_policy().await;
-                Ok(tonic::Response::new(fallback_stream(
+            OutboundDiscoverTarget::External(original_dst) => {
+                let rx = self.index.watch_external_policy().await;
+                Ok(tonic::Response::new(external_stream(
                     drain,
                     rx,
                     original_dst,
@@ -252,9 +252,9 @@ fn response_stream(
     })
 }
 
-fn fallback_stream(
+fn external_stream(
     drain: drain::Watch,
-    mut rx: FallbackPolicyStream,
+    mut rx: ExternalPolicyStream,
     original_dst: SocketAddr,
 ) -> BoxWatchStream {
     Box::pin(async_stream::try_stream! {

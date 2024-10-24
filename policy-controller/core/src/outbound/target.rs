@@ -7,7 +7,7 @@ use std::{net::SocketAddr, num::NonZeroU16};
 #[derive(Clone, Debug)]
 pub enum OutboundDiscoverTarget {
     Resource(ResourceTarget),
-    Fallback(SocketAddr),
+    External(SocketAddr),
 }
 
 #[derive(Clone, Debug)]

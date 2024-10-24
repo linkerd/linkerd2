@@ -1,10 +1,11 @@
 use futures::prelude::*;
 use kube::ResourceExt;
+use linkerd2_proxy_api::meta;
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
     assert_default_accrual_backoff, assert_svc_meta, create, create_annotated_service,
-    create_cluster_scoped, create_opaque_service, create_service, delete_cluster_scoped, grpc,
-    mk_service, outbound_api::*, with_temp_ns,
+    create_cluster_scoped, create_egress_network, create_opaque_service, create_service, delete,
+    delete_cluster_scoped, grpc, mk_service, outbound_api::*, with_temp_ns,
 };
 use maplit::{btreemap, convert_args};
 use std::{collections::BTreeMap, time::Duration};
@@ -27,6 +28,45 @@ async fn service_does_not_exist() {
 
         assert!(rsp.is_err());
         assert_eq!(rsp.err().unwrap().code(), tonic::Code::NotFound);
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn egress_switches_to_fallback() {
+    with_temp_ns(|client, ns| async move {
+        let egress_net = create_egress_network(&client, &ns, "egress-net").await;
+
+        let mut policy_api = grpc::OutboundPolicyClient::port_forwarded(&client).await;
+        let mut rsp = policy_api.watch_ip(&ns, "1.1.1.1", 80).await.unwrap();
+
+        let policy = rsp.next().await.unwrap().unwrap();
+        let meta = policy.metadata.unwrap();
+
+        let expected_meta = meta::Metadata {
+            kind: Some(meta::metadata::Kind::Resource(meta::Resource {
+                group: "policy.linkerd.io".to_string(),
+                port: 80,
+                kind: "EgressNetwork".to_string(),
+                name: "egress-net".to_string(),
+                namespace: ns.clone(),
+                section: "".to_string(),
+            })),
+        };
+
+        assert_eq!(meta, expected_meta);
+
+        delete(&client, egress_net).await;
+        assert!(rsp.next().await.is_none());
+
+        let mut rsp = policy_api.watch_ip(&ns, "1.1.1.1", 80).await.unwrap();
+
+        let policy = rsp.next().await.unwrap().unwrap();
+        let meta = policy.metadata.unwrap();
+        let expected_meta = meta::Metadata {
+            kind: Some(meta::metadata::Kind::Default("egress-fallback".to_string())),
+        };
+        assert_eq!(meta, expected_meta);
     })
     .await;
 }

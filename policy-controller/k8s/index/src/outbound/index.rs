@@ -32,6 +32,11 @@ pub struct Index {
     // holds information about resources. currently EgressNetworks and Services
     resource_info: HashMap<ResourceRef, ResourceInfo>,
     cluster_networks: Vec<linkerd_k8s_api::Cidr>,
+
+    // holds a no-op sender to which all clients that have been returned
+    // a Fallback policy are subsribed. It is used to force these clients
+    // to reconnect an obtain new policy once the current one may no longer
+    // be valid
     fallback_polcy_tx: watch::Sender<()>,
 }
 

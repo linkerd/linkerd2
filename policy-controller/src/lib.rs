@@ -9,7 +9,7 @@ use linkerd_policy_controller_core::inbound::{
     DiscoverInboundServer, InboundServer, InboundServerStream,
 };
 use linkerd_policy_controller_core::outbound::{
-    DiscoverOutboundPolicy, FallbackPolicyStream, Kind, OutboundDiscoverTarget, OutboundPolicy,
+    DiscoverOutboundPolicy, ExternalPolicyStream, Kind, OutboundDiscoverTarget, OutboundPolicy,
     OutboundPolicyStream, ResourceTarget,
 };
 pub use linkerd_policy_controller_core::IpNet;
@@ -113,7 +113,7 @@ impl DiscoverOutboundPolicy<ResourceTarget, OutboundDiscoverTarget> for Outbound
         }
     }
 
-    async fn watch_fallback_policy(&self) -> FallbackPolicyStream {
+    async fn watch_external_policy(&self) -> ExternalPolicyStream {
         Box::pin(tokio_stream::wrappers::WatchStream::new(
             self.0.read().fallback_policy_rx(),
         ))
@@ -150,7 +150,7 @@ impl DiscoverOutboundPolicy<ResourceTarget, OutboundDiscoverTarget> for Outbound
 
         if !index.is_address_in_cluster(addr) {
             let original_dst = SocketAddr::new(addr, port.into());
-            return Some(OutboundDiscoverTarget::Fallback(original_dst));
+            return Some(OutboundDiscoverTarget::External(original_dst));
         }
 
         None
