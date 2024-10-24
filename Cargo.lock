@@ -1325,7 +1325,7 @@ dependencies = [
 [[package]]
 name = "linkerd2-proxy-api"
 version = "0.14.0"
-source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=zd/add-error-type-to-tls-and-tcp-route#d7385b43d087da05ef4356e51d81be0a1a736a14"
+source = "git+https://github.com/linkerd/linkerd2-proxy-api?branch=zd/make-route-error-optional#5493beff7e0713e048c845fbb92777cfe1a58274"
 dependencies = [
  "http",
  "ipnet",

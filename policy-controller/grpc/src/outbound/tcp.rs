@@ -65,6 +65,7 @@ fn convert_outbound_route(
             outbound::opaque_route::distribution::FirstAvailable {
                 backends: vec![outbound::opaque_route::RouteBackend {
                     backend: Some(backend.clone()),
+                    invalid: None,
                 }],
             },
         )
@@ -109,8 +110,8 @@ fn convert_backend(
                             },
                         )),
                     }),
+                    invalid: None,
                 }),
-                error: None,
             }
         }
         Backend::Service(svc) if svc.exists => outbound::opaque_route::WeightedRouteBackend {
@@ -132,8 +133,8 @@ fn convert_backend(
                         },
                     )),
                 }),
+                invalid: None,
             }),
-            error: None,
         },
         Backend::Service(svc) => invalid_backend(
             svc.weight,
@@ -166,8 +167,8 @@ fn convert_backend(
                                         },
                                     )),
                                 }),
+                                invalid: None,
                             }),
-                            error: None,
                         }
                     } else {
                         let weight = egress_net.weight;
@@ -219,8 +220,8 @@ fn invalid_backend(
                 queue: Some(default_queue_config()),
                 kind: None,
             }),
+            invalid: Some(outbound::opaque_route::route_backend::Invalid { message }),
         }),
-        error: Some(outbound::BackendError { message }),
     }
 }
 
@@ -231,8 +232,8 @@ pub(crate) fn default_outbound_egress_route(
     let (error, name) = match traffic_policy {
         TrafficPolicy::Allow => (None, "tcp-egress-allow"),
         TrafficPolicy::Deny => (
-            Some(outbound::RouteError {
-                message: "traffic not allowed".to_string(),
+            Some(outbound::opaque_route::RouteError {
+                kind: outbound::opaque_route::route_error::Kind::Forbidden as i32,
             }),
             "tcp-egress-deny",
         ),
@@ -247,6 +248,7 @@ pub(crate) fn default_outbound_egress_route(
                 outbound::opaque_route::distribution::FirstAvailable {
                     backends: vec![outbound::opaque_route::RouteBackend {
                         backend: Some(backend),
+                        invalid: None,
                     }],
                 },
             )),

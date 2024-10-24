@@ -69,6 +69,7 @@ fn convert_outbound_route(
             outbound::tls_route::distribution::FirstAvailable {
                 backends: vec![outbound::tls_route::RouteBackend {
                     backend: Some(backend.clone()),
+                    invalid: None,
                 }],
             },
         )
@@ -114,8 +115,8 @@ fn convert_backend(
                             },
                         )),
                     }),
+                    invalid: None,
                 }),
-                error: None,
             }
         }
         Backend::Service(svc) if svc.exists => outbound::tls_route::WeightedRouteBackend {
@@ -137,8 +138,8 @@ fn convert_backend(
                         },
                     )),
                 }),
+                invalid: None,
             }),
-            error: None,
         },
         Backend::Service(svc) => invalid_backend(
             svc.weight,
@@ -171,8 +172,8 @@ fn convert_backend(
                                         },
                                     )),
                                 }),
+                                invalid: None,
                             }),
-                            error: None,
                         }
                     } else {
                         let weight = egress_net.weight;
@@ -224,8 +225,8 @@ fn invalid_backend(
                 queue: Some(default_queue_config()),
                 kind: None,
             }),
+            invalid: Some(outbound::tls_route::route_backend::Invalid { message }),
         }),
-        error: Some(outbound::BackendError { message }),
     }
 }
 
@@ -236,8 +237,8 @@ pub(crate) fn default_outbound_egress_route(
     let (error, name) = match traffic_policy {
         TrafficPolicy::Allow => (None, "tls-egress-allow"),
         TrafficPolicy::Deny => (
-            Some(outbound::RouteError {
-                message: "traffic not allowed".to_string(),
+            Some(outbound::tls_route::RouteError {
+                kind: outbound::tls_route::route_error::Kind::Forbidden as i32,
             }),
             "tls-egress-deny",
         ),
@@ -252,6 +253,7 @@ pub(crate) fn default_outbound_egress_route(
                 outbound::tls_route::distribution::FirstAvailable {
                     backends: vec![outbound::tls_route::RouteBackend {
                         backend: Some(backend),
+                        invalid: None,
                     }],
                 },
             )),

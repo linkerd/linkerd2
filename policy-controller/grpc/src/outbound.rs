@@ -312,6 +312,7 @@ fn fallback(original_dst: SocketAddr) -> outbound::OutboundPolicy {
                         outbound::opaque_route::distribution::FirstAvailable {
                             backends: vec![outbound::opaque_route::RouteBackend {
                                 backend: Some(backend.clone()),
+                                invalid: None,
                             }],
                         },
                     )),
@@ -591,6 +592,7 @@ fn default_outbound_opaq_route(
                         outbound::opaque_route::distribution::FirstAvailable {
                             backends: vec![outbound::opaque_route::RouteBackend {
                                 backend: Some(backend),
+                                invalid: None,
                             }],
                         },
                     )),
