@@ -31,6 +31,7 @@ fn server_with_default_route() {
         InboundServer {
             reference: ServerRef::Server("srv-8080".to_string()),
             authorizations: Default::default(),
+            ratelimit: None,
             protocol: ProxyProtocol::Grpc,
             http_routes: mk_default_http_routes(),
             grpc_routes: mk_default_grpc_routes(),
