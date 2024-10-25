@@ -53,15 +53,27 @@ func formatEndpoints(endpoints *corev1.Endpoints) string {
 
 // Events for cluster watcher
 func (rsc RemoteServiceExported) String() string {
-	return fmt.Sprintf("RemoteServiceCreated: {service: %s}", formatService(rsc.service))
+	return fmt.Sprintf("RemoteServiceExported: {service: %s}", formatService(rsc.service))
 }
 
 func (rsu RemoteExportedServiceUpdated) String() string {
-	return fmt.Sprintf("RemoteServiceUpdated: {localService: %s, localEndpoints: %s, remoteUpdate: %s}", formatService(rsu.localService), formatEndpoints(rsu.localEndpoints), formatService(rsu.remoteUpdate))
+	return fmt.Sprintf("RemoteExportedServiceUpdated: {localService: %s, localEndpoints: %s, remoteUpdate: %s}", formatService(rsu.localService), formatEndpoints(rsu.localEndpoints), formatService(rsu.remoteUpdate))
 }
 
 func (rsd RemoteServiceUnexported) String() string {
-	return fmt.Sprintf("RemoteServiceDeleted: {name: %s, namespace: %s }", rsd.Name, rsd.Namespace)
+	return fmt.Sprintf("RemoteServiceUnexported: {name: %s, namespace: %s }", rsd.Name, rsd.Namespace)
+}
+
+func (rsf RemoteServiceFederated) String() string {
+	return fmt.Sprintf("RemoteServiceFederated: {service: %s}", formatService(rsf.service))
+}
+
+func (fsu FederatedServiceUpdated) String() string {
+	return fmt.Sprintf("FederatedServiceUpdated: {localService: %s, remoteUpdate: %s}", formatService(fsu.localService), formatService(fsu.remoteUpdate))
+}
+
+func (rsu RemoteServiceUnfederated) String() string {
+	return fmt.Sprintf("RemoteServiceUnfederated: {name: %s, namespace: %s }", rsu.Name, rsu.Namespace)
 }
 
 func (cgu ClusterUnregistered) String() string {

@@ -181,6 +181,10 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		remotes := strings.Split(remoteDiscovery, ",")
 		for _, remote := range remotes {
 			parts := strings.Split(remote, "@")
+			if len(parts) != 2 {
+				log.Errorf("Invalid remote discovery service '%s'", remote)
+				continue
+			}
 			remoteSvc := parts[0]
 			cluster := parts[1]
 			remoteWatcher, remoteConfig, found := s.clusterStore.Get(cluster)

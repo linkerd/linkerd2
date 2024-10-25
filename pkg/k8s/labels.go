@@ -464,7 +464,7 @@ const (
 	// RemoteDiscoveryAnnotation is like the RemoteDiscoveryLabel but it allows
 	// a list of remote discovery targets to be specified in the format:
 	// <svc>@<cluster>,<svc>@<cluster>,...
-	RemoteDiscoveryAnnotation = SvcMirrorPrefix + "/remote-discovery"
+	RemoteDiscoveryAnnotation = MulticlusterPrefix + "/remote-discovery"
 
 	// RemoteGatewayIdentity follows the same kind of logic as RemoteGatewayNameLabel
 	RemoteGatewayIdentity = SvcMirrorPrefix + "/remote-gateway-identity"

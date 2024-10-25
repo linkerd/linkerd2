@@ -646,11 +646,15 @@ func (rcsw *RemoteClusterServiceWatcher) handleFederatedServiceUpdated(ctx conte
 	if remoteDiscoveryContains(ev.localService.Annotations[consts.RemoteDiscoveryAnnotation], remoteTarget) {
 		return nil
 	}
-	ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] = fmt.Sprintf(
-		"%s,%s",
-		ev.localService.Annotations[consts.RemoteDiscoveryAnnotation],
-		remoteTarget,
-	)
+	if ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] == "" {
+		ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] = remoteTarget
+	} else {
+		ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] = fmt.Sprintf(
+			"%s,%s",
+			ev.localService.Annotations[consts.RemoteDiscoveryAnnotation],
+			remoteTarget,
+		)
+	}
 
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(ev.localService.Namespace).Update(ctx, ev.localService, metav1.UpdateOptions{}); err != nil {
 		return RetryableError{[]error{err}}
@@ -959,7 +963,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 		localService, err := rcsw.localAPIClient.Svc().Lister().Services(service.Namespace).Get(federatedName)
 		if err != nil {
 			if kerrors.IsNotFound(err) {
-				rcsw.eventsQueue.Add(&RemoteServiceExported{
+				rcsw.eventsQueue.Add(&RemoteServiceFederated{
 					service: service,
 				})
 				return nil
@@ -967,10 +971,9 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 			return RetryableError{[]error{err}}
 		}
 		// if we have the local service present, we need to issue an update
-		rcsw.eventsQueue.Add(&RemoteExportedServiceUpdated{
-			localService:   localService,
-			localEndpoints: nil,
-			remoteUpdate:   service,
+		rcsw.eventsQueue.Add(&FederatedServiceUpdated{
+			localService: localService,
+			remoteUpdate: service,
 		})
 	} else {
 		// The desired state is that the local federated service should not

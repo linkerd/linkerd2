@@ -162,6 +162,18 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		}
 	}
 
+	federatedServiceSelector := metav1.LabelSelector{}
+	if selectorObj, ok := specObj["federatedServiceSelector"]; ok {
+		bytes, err := json.Marshal(selectorObj)
+		if err != nil {
+			return Link{}, err
+		}
+		err = json.Unmarshal(bytes, &federatedServiceSelector)
+		if err != nil {
+			return Link{}, err
+		}
+	}
+
 	return Link{
 		Name:                          u.GetName(),
 		Namespace:                     u.GetNamespace(),
@@ -175,6 +187,7 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		ProbeSpec:                     probeSpec,
 		Selector:                      selector,
 		RemoteDiscoverySelector:       remoteDiscoverySelector,
+		FederatedServiceSelector:      federatedServiceSelector,
 	}, nil
 }
 
