@@ -4,6 +4,7 @@ pub mod httproute;
 pub mod meshtls_authentication;
 mod network;
 pub mod network_authentication;
+pub mod ratelimit_policy;
 pub mod server;
 pub mod server_authorization;
 pub mod target_ref;
@@ -15,6 +16,7 @@ pub use self::{
     meshtls_authentication::{MeshTLSAuthentication, MeshTLSAuthenticationSpec},
     network::{Cidr, Network},
     network_authentication::{NetworkAuthentication, NetworkAuthenticationSpec},
+    ratelimit_policy::{HTTPLocalRateLimitPolicy, Limit, Override, RateLimitPolicySpec},
     server::{Server, ServerSpec},
     server_authorization::{ServerAuthorization, ServerAuthorizationSpec},
     target_ref::{ClusterTargetRef, LocalTargetRef, NamespacedTargetRef},
