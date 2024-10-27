@@ -1,4 +1,4 @@
-use linkerd_policy_controller_core::routes::{GroupKindName, GroupKindNamespaceName};
+use linkerd_policy_controller_core::routes::{GroupKindName, GroupKindNamespaceName, HostMatch};
 use linkerd_policy_controller_k8s_api::{gateway as api, policy, Resource, ResourceExt};
 
 pub mod grpc;
@@ -75,5 +75,19 @@ impl ExplicitGKN for str {
         let (kind, group, name) = (R::kind(&()), R::group(&()), self.to_string().into());
 
         GroupKindName { group, kind, name }
+    }
+}
+
+pub fn host_match(hostname: api::Hostname) -> HostMatch {
+    if hostname.starts_with("*.") {
+        let mut reverse_labels = hostname
+            .split('.')
+            .skip(1)
+            .map(|label| label.to_string())
+            .collect::<Vec<String>>();
+        reverse_labels.reverse();
+        HostMatch::Suffix { reverse_labels }
+    } else {
+        HostMatch::Exact(hostname)
     }
 }

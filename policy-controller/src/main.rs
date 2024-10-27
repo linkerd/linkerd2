@@ -296,7 +296,9 @@ async fn main() -> Result<()> {
 
     if api_resource_exists::<k8s_gateway_api::TlsRoute>(&runtime.client()).await {
         let tls_routes = runtime.watch_all::<k8s_gateway_api::TlsRoute>(watcher::Config::default());
-        let tls_routes_indexes = IndexList::new(status_index.clone()).shared();
+        let tls_routes_indexes = IndexList::new(status_index.clone())
+            .push(outbound_index.clone())
+            .shared();
         tokio::spawn(
             kubert::index::namespaced(tls_routes_indexes.clone(), tls_routes)
                 .instrument(info_span!("tlsroutes.gateway.networking.k8s.io")),
@@ -309,7 +311,9 @@ async fn main() -> Result<()> {
 
     if api_resource_exists::<k8s_gateway_api::TcpRoute>(&runtime.client()).await {
         let tcp_routes = runtime.watch_all::<k8s_gateway_api::TcpRoute>(watcher::Config::default());
-        let tcp_routes_indexes = IndexList::new(status_index.clone()).shared();
+        let tcp_routes_indexes = IndexList::new(status_index.clone())
+            .push(outbound_index.clone())
+            .shared();
         tokio::spawn(
             kubert::index::namespaced(tcp_routes_indexes.clone(), tcp_routes)
                 .instrument(info_span!("tcproutes.gateway.networking.k8s.io")),
@@ -330,7 +334,9 @@ async fn main() -> Result<()> {
 
     let egress_networks =
         runtime.watch_all::<k8s::policy::EgressNetwork>(watcher::Config::default());
-    let egress_networks_indexes = IndexList::new(status_index.clone()).shared();
+    let egress_networks_indexes = IndexList::new(status_index.clone())
+        .push(outbound_index.clone())
+        .shared();
     tokio::spawn(
         kubert::index::namespaced(egress_networks_indexes, egress_networks)
             .instrument(info_span!("egressnetworks")),

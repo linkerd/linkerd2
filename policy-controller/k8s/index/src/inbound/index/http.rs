@@ -20,7 +20,7 @@ impl TryFrom<gateway::HttpRoute> for RouteBinding<HttpRoute> {
             .hostnames
             .into_iter()
             .flatten()
-            .map(crate::routes::http::host_match)
+            .map(crate::routes::host_match)
             .collect();
 
         let rules = route
@@ -66,7 +66,7 @@ impl TryFrom<policy::HttpRoute> for RouteBinding<HttpRoute> {
             .hostnames
             .into_iter()
             .flatten()
-            .map(crate::routes::http::host_match)
+            .map(crate::routes::host_match)
             .collect();
 
         let rules = route

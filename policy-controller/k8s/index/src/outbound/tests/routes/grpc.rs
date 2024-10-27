@@ -1,6 +1,6 @@
 use kube::Resource;
 use linkerd_policy_controller_core::{
-    outbound::{Backend, WeightedService},
+    outbound::{Backend, Kind, ResourceTarget, WeightedEgressNetwork, WeightedService},
     routes::GroupKindNamespaceName,
     POLICY_CONTROLLER_NAME,
 };
@@ -22,18 +22,26 @@ fn backend_service() {
     test.index.write().apply(apex);
 
     // Create httproute.
-    let route = mk_route("ns", "route", 8080, "apex", "backend");
+    let route = mk_route(
+        "ns",
+        "route",
+        8080,
+        "apex",
+        "backend",
+        super::BackendKind::Service,
+    );
     test.index.write().apply(route);
 
     let mut rx = test
         .index
         .write()
-        .outbound_policy_rx(
-            "apex".to_string(),
-            "ns".to_string(),
-            8080.try_into().unwrap(),
-            "ns".to_string(),
-        )
+        .outbound_policy_rx(ResourceTarget {
+            name: "apex".to_string(),
+            namespace: "ns".to_string(),
+            port: 8080.try_into().unwrap(),
+            source_namespace: "ns".to_string(),
+            kind: Kind::Service,
+        })
         .expect("apex.ns should exist");
 
     {
@@ -96,15 +104,85 @@ fn backend_service() {
     }
 }
 
+#[test]
+fn backend_egress_network() {
+    tracing_subscriber::fmt()
+        .with_max_level(Level::TRACE)
+        .try_init()
+        .ok();
+
+    let test = TestConfig::default();
+    // Create apex service.
+    let apex = mk_egress_network("ns", "apex");
+    test.index.write().apply(apex);
+
+    // Create httproute.
+    let route = mk_route(
+        "ns",
+        "route",
+        8080,
+        "apex",
+        "apex",
+        super::BackendKind::Egress,
+    );
+    test.index.write().apply(route);
+
+    let mut rx = test
+        .index
+        .write()
+        .outbound_policy_rx(ResourceTarget {
+            name: "apex".to_string(),
+            namespace: "ns".to_string(),
+            port: 8080.try_into().unwrap(),
+            source_namespace: "ns".to_string(),
+            kind: Kind::EgressNetwork("192.168.0.1:8080".parse().unwrap()),
+        })
+        .expect("apex.ns should exist");
+
+    {
+        let policy = rx.borrow_and_update();
+        let backend = policy
+            .grpc_routes
+            .get(&GroupKindNamespaceName {
+                group: k8s_gateway_api::GrpcRoute::group(&()),
+                kind: k8s_gateway_api::GrpcRoute::kind(&()),
+                namespace: "ns".into(),
+                name: "route".into(),
+            })
+            .expect("route should exist")
+            .rules
+            .first()
+            .expect("rule should exist")
+            .backends
+            .first()
+            .expect("backend should exist");
+
+        let exists = match backend {
+            Backend::Invalid { .. } => &false,
+            Backend::EgressNetwork(WeightedEgressNetwork { exists, .. }) => exists,
+            _ => panic!("backend should be an egress network, but got {backend:?}"),
+        };
+
+        // Backend should exist.
+        assert!(exists);
+    }
+}
+
 fn mk_route(
     ns: impl ToString,
     name: impl ToString,
     port: u16,
     parent: impl ToString,
-    backend: impl ToString,
+    backend_name: impl ToString,
+    backend: super::BackendKind,
 ) -> k8s_gateway_api::GrpcRoute {
-    use chrono::Utc;
     use k8s::{policy::httproute::*, Time};
+    let (group, kind) = match backend {
+        super::BackendKind::Service => ("core".to_string(), "Service".to_string()),
+        super::BackendKind::Egress => {
+            ("policy.linkerd.io".to_string(), "EgressNetwork".to_string())
+        }
+    };
 
     k8s_gateway_api::GrpcRoute {
         metadata: k8s::ObjectMeta {
@@ -116,8 +194,8 @@ fn mk_route(
         spec: k8s_gateway_api::GrpcRouteSpec {
             inner: CommonRouteSpec {
                 parent_refs: Some(vec![ParentReference {
-                    group: Some("core".to_string()),
-                    kind: Some("Service".to_string()),
+                    group: Some(group.clone()),
+                    kind: Some(kind.clone()),
                     namespace: Some(ns.to_string()),
                     name: parent.to_string(),
                     section_name: None,
@@ -138,10 +216,10 @@ fn mk_route(
                     filters: None,
                     weight: None,
                     inner: BackendObjectReference {
-                        group: Some("core".to_string()),
-                        kind: Some("Service".to_string()),
+                        group: Some(group.clone()),
+                        kind: Some(kind.clone()),
                         namespace: Some(ns.to_string()),
-                        name: backend.to_string(),
+                        name: backend_name.to_string(),
                         port: Some(port),
                     },
                 }]),
@@ -151,8 +229,8 @@ fn mk_route(
             inner: RouteStatus {
                 parents: vec![k8s::gateway::RouteParentStatus {
                     parent_ref: ParentReference {
-                        group: Some("core".to_string()),
-                        kind: Some("Service".to_string()),
+                        group: Some(group.clone()),
+                        kind: Some(kind.clone()),
                         namespace: Some(ns.to_string()),
                         name: parent.to_string(),
                         section_name: None,

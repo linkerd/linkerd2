@@ -75,6 +75,25 @@ where
         .expect("failed to create resource")
 }
 
+/// Deletes a namespace-scoped resource.
+pub async fn delete<T>(client: &kube::Client, obj: T)
+where
+    T: kube::Resource<Scope = kube::core::NamespaceResourceScope>,
+    T: serde::Serialize + serde::de::DeserializeOwned + Clone + std::fmt::Debug,
+    T::DynamicType: Default,
+{
+    let params = kube::api::DeleteParams::default();
+    let api = obj
+        .namespace()
+        .map(|ns| kube::Api::<T>::namespaced(client.clone(), &ns))
+        .unwrap_or_else(|| kube::Api::<T>::default_namespaced(client.clone()));
+
+    tracing::trace!(?obj, "Deleting");
+    api.delete(&obj.name_any(), &params)
+        .await
+        .expect("failed to delete resource");
+}
+
 /// Updates a namespace-scoped resource.
 pub async fn update<T>(client: &kube::Client, mut new: T) -> T
 where
@@ -238,6 +257,16 @@ pub async fn create_service(
     create(client, svc).await
 }
 
+/// Creates an egress network resource.
+pub async fn create_egress_network(
+    client: &kube::Client,
+    ns: &str,
+    name: &str,
+) -> k8s::policy::EgressNetwork {
+    let en = mk_egress_net(ns, name);
+    create(client, en).await
+}
+
 /// Creates a service resource.
 pub async fn create_opaque_service(
     client: &kube::Client,
@@ -297,6 +326,21 @@ pub fn mk_service(ns: &str, name: &str, port: i32) -> k8s::Service {
             ..Default::default()
         }),
         ..k8s::Service::default()
+    }
+}
+
+pub fn mk_egress_net(ns: &str, name: &str) -> k8s::policy::EgressNetwork {
+    k8s::policy::EgressNetwork {
+        metadata: k8s::ObjectMeta {
+            namespace: Some(ns.to_string()),
+            name: Some(name.to_string()),
+            ..Default::default()
+        },
+        spec: k8s::policy::EgressNetworkSpec {
+            networks: None,
+            traffic_policy: k8s::policy::egress_network::TrafficPolicy::Allow,
+        },
+        status: None,
     }
 }
 
