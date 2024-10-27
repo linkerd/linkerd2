@@ -14,7 +14,7 @@ mod target;
 type FallbackPolicy = ();
 
 pub use self::{
-    policy::{OutboundPolicy, ParentInfo, ResourceOutboundPolicy},
+    policy::{OutboundPolicy, ParentInfo},
     target::{Kind, OutboundDiscoverTarget, ResourceTarget},
 };
 

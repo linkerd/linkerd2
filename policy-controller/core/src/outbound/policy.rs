@@ -3,7 +3,7 @@ use super::{
     RouteSet, RouteTimeouts, TcpRoute, TlsRoute, TrafficPolicy,
 };
 
-use std::{net::SocketAddr, num::NonZeroU16};
+use std::num::NonZeroU16;
 
 // ParentInfo carries resource-specific information about
 // the parent to which outbound policy is associated.
@@ -59,14 +59,5 @@ impl OutboundPolicy {
 
     pub fn parent_namespace(&self) -> &str {
         self.parent_info.namespace()
-    }
-}
-
-impl ResourceOutboundPolicy {
-    pub fn policy(&self) -> &OutboundPolicy {
-        match self {
-            Self::Egress { policy, .. } => policy,
-            Self::Service { policy, .. } => policy,
-        }
     }
 }
