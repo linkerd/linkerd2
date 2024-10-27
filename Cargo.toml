@@ -14,4 +14,5 @@ members = [
 lto = "thin"
 
 [patch.crates-io]
-linkerd2-proxy-api = { git = 'https://github.com/linkerd/linkerd2-proxy-api', branch = 'zd/make-route-error-optional' }
+# TODO(Zahari): switch released version once TLS protocol support is out.
+linkerd2-proxy-api = { git = 'https://github.com/linkerd/linkerd2-proxy-api', rev = 'c5648ae2a1e405cc6b8aca20522356ebdf20f1ea' }
