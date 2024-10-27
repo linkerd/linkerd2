@@ -283,8 +283,6 @@ fn external_stream(
 
 fn fallback(original_dst: SocketAddr) -> outbound::OutboundPolicy {
     // This encoder sets deprecated timeouts for older proxies.
-    #![allow(deprecated)]
-
     let metadata = Some(Metadata {
         kind: Some(metadata::Kind::Default("egress-fallback".to_string())),
     });
@@ -331,18 +329,14 @@ fn fallback(original_dst: SocketAddr) -> outbound::OutboundPolicy {
                     outbound::http_route::distribution::FirstAvailable {
                         backends: vec![outbound::http_route::RouteBackend {
                             backend: Some(backend),
-                            filters: Vec::default(),
-                            request_timeout: None,
+                            ..Default::default()
                         }],
                     },
                 )),
             }),
             matches: vec![api::http_route::HttpRouteMatch::default()],
             filters: Vec::default(),
-            request_timeout: None,
-            timeouts: None,
-            retry: None,
-            allow_l5d_request_headers: false,
+            ..Default::default()
         }],
     }];
 

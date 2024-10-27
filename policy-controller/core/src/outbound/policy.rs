@@ -5,23 +5,6 @@ use super::{
 
 use std::{net::SocketAddr, num::NonZeroU16};
 
-/// ResourceOutboundPolicy expresses the known resource types
-/// that can be parents for outbound policy. They each come with
-/// specific metadata that is used when putting together the final
-/// policy response.
-#[derive(Clone, Debug, PartialEq)]
-pub enum ResourceOutboundPolicy {
-    Service {
-        authority: String,
-        policy: OutboundPolicy,
-    },
-    Egress {
-        traffic_policy: TrafficPolicy,
-        original_dst: SocketAddr,
-        policy: OutboundPolicy,
-    },
-}
-
 // ParentInfo carries resource-specific information about
 // the parent to which outbound policy is associated.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
