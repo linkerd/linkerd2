@@ -64,8 +64,8 @@ func (rsd RemoteServiceUnexported) String() string {
 	return fmt.Sprintf("RemoteServiceUnexported: {name: %s, namespace: %s }", rsd.Name, rsd.Namespace)
 }
 
-func (rsf CreateFederatedService) String() string {
-	return fmt.Sprintf("RemoteServiceFederated: {service: %s}", formatService(rsf.service))
+func (cfs CreateFederatedService) String() string {
+	return fmt.Sprintf("CreateFederatedService: {service: %s}", formatService(cfs.service))
 }
 
 func (jfs RemoteServiceJoinsFederatedService) String() string {
