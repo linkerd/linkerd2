@@ -51,6 +51,8 @@ gateway:
 
 # -- Control plane version
 linkerdVersion: linkerdVersionValue
+# -- Additional annotations to add to all pods
+podAnnotations: {}
 # -- Additional labels to add to all pods
 podLabels: {}
 # -- Labels to apply to all resources
@@ -112,3 +114,44 @@ createNamespaceMetadataJob: true
 
 # -- Specifies the number of old ReplicaSets to retain to allow rollback.
 revisionHistoryLimit: 10
+
+localServiceMirror:
+  # -- Number of times local service mirror updates are allowed to be requeued
+  # (retried)
+  serviceMirrorRetryLimit: 3
+
+  # -- Label selector indicating which local services should join federated
+  # services.
+  federatedServiceSelector: "mirror.linkerd.io/federated=true"
+
+  # -- Number of local service mirror replicas to run
+  replicas: 1
+
+  image:
+    # -- Docker image for the Service mirror component (uses the Linkerd controller
+    # image)
+    name: cr.l5d.io/linkerd/controller
+    # -- Pull policy for the Service mirror container image
+    # @default -- imagePullPolicy
+    pullPolicy: ""
+    # -- Tag for the Service mirror container image
+    # @default -- linkerdVersion
+    version: linkerdVersionValue
+
+  # -- Log level for the Multicluster components
+  logLevel: info
+
+  # -- Log format (`plain` or `json`)
+  logFormat: plain
+
+  # -- enables the use of pprof endpoints on control plane component's admin
+  # servers
+  enablePprof: false
+
+  # -- User id under which the Service Mirror shall be ran
+  UID: 2103
+  # -- Group id under which the Service Mirror shall be ran
+  GID: 2103
+
+  # -- Resources for the Service mirror container
+  resources: {}

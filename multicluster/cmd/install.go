@@ -45,6 +45,7 @@ var TemplatesMulticluster = []string{
 	"templates/remote-access-service-mirror-rbac.yaml",
 	"templates/link-crd.yaml",
 	"templates/service-mirror-policy.yaml",
+	"templates/local-service-mirror.yaml",
 }
 
 func newMulticlusterInstallCommand() *cobra.Command {
@@ -232,6 +233,7 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 		return nil, err
 	}
 
+	defaults.LocalServiceMirror.Image.Version = version.Version
 	defaults.Gateway.Enabled = opts.gateway.Enabled
 	defaults.Gateway.Port = opts.gateway.Port
 	defaults.Gateway.Probe.Seconds = opts.gateway.Probe.Seconds

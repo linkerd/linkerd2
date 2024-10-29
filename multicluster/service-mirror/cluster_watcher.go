@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -184,7 +183,7 @@ func NewRemoteClusterServiceWatcher(
 	ctx context.Context,
 	serviceMirrorNamespace string,
 	localAPI *k8s.API,
-	cfg *rest.Config,
+	remoteAPI *k8s.API,
 	link *multicluster.Link,
 	requeueLimit int,
 	repairPeriod time.Duration,
@@ -192,14 +191,10 @@ func NewRemoteClusterServiceWatcher(
 	enableHeadlessSvc bool,
 	enableNamespaceCreation bool,
 ) (*RemoteClusterServiceWatcher, error) {
-	remoteAPI, err := k8s.InitializeAPIForConfig(ctx, cfg, false, clusterName, k8s.Svc, k8s.Endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("cannot initialize api for target cluster %s: %w", clusterName, err)
-	}
-	_, err = remoteAPI.Client.Discovery().ServerVersion()
+	_, err := remoteAPI.Client.Discovery().ServerVersion()
 	if err != nil {
 		remoteAPI.UnregisterGauges()
-		return nil, fmt.Errorf("cannot connect to api for target cluster %s: %w", clusterName, err)
+		return nil, fmt.Errorf("cannot connect to api for target cluster %s: %w", link.TargetClusterName, err)
 	}
 
 	// Create k8s event recorder
@@ -208,7 +203,7 @@ func NewRemoteClusterServiceWatcher(
 		Interface: remoteAPI.Client.CoreV1().Events(""),
 	})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{
-		Component: fmt.Sprintf("linkerd-service-mirror-%s", clusterName),
+		Component: fmt.Sprintf("linkerd-service-mirror-%s", link.TargetClusterName),
 	})
 
 	stopper := make(chan struct{})
@@ -221,8 +216,7 @@ func NewRemoteClusterServiceWatcher(
 		eventBroadcaster:       eventBroadcaster,
 		recorder:               recorder,
 		log: logging.WithFields(logging.Fields{
-			"cluster":    clusterName,
-			"apiAddress": cfg.Host,
+			"cluster": link.TargetClusterName,
 		}),
 		eventsQueue:              workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[any]()),
 		requeueLimit:             requeueLimit,
@@ -326,7 +320,13 @@ func (rcsw *RemoteClusterServiceWatcher) getMirrorServiceAnnotations(remoteServi
 func (rcsw *RemoteClusterServiceWatcher) getFederationServiceAnnotations(remoteService *corev1.Service) map[string]string {
 	annotations := rcsw.getCommonServiceAnnotations(remoteService)
 
-	annotations[consts.RemoteDiscoveryAnnotation] = fmt.Sprintf("%s@%s", remoteService.Name, rcsw.link.TargetClusterName)
+	if rcsw.link.TargetClusterName == "" {
+		// Local discovery
+		annotations[consts.LocalDiscoveryAnnotation] = remoteService.Name
+	} else {
+		// Remote discovery
+		annotations[consts.RemoteDiscoveryAnnotation] = fmt.Sprintf("%s@%s", remoteService.Name, rcsw.link.TargetClusterName)
+	}
 
 	return annotations
 }
@@ -545,22 +545,27 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUnfederated(ctx cont
 		return RetryableError{[]error{fmt.Errorf("could not fetch service %s/%s: %w", ev.Namespace, localServiceName, err)}}
 	}
 
-	remoteTarget := fmt.Sprintf("%s@%s", ev.Name, rcsw.link.TargetClusterName)
-	if !remoteDiscoveryContains(localService.Annotations[consts.RemoteDiscoveryAnnotation], remoteTarget) {
-		return nil
-	}
-
-	remoteDiscoveryList := strings.Split(localService.Annotations[consts.RemoteDiscoveryAnnotation], ",")
-	newRemoteDiscoveryList := []string{}
-	for _, member := range remoteDiscoveryList {
-		if member == remoteTarget {
-			continue
+	if rcsw.link.TargetClusterName == "" {
+		// Local discovery
+		delete(localService.Annotations, consts.LocalDiscoveryAnnotation)
+	} else {
+		remoteTarget := fmt.Sprintf("%s@%s", ev.Name, rcsw.link.TargetClusterName)
+		if !remoteDiscoveryContains(localService.Annotations[consts.RemoteDiscoveryAnnotation], remoteTarget) {
+			return nil
 		}
-		newRemoteDiscoveryList = append(newRemoteDiscoveryList, member)
-	}
-	localService.Annotations[consts.RemoteDiscoveryAnnotation] = strings.Join(newRemoteDiscoveryList, ",")
 
-	if len(newRemoteDiscoveryList) == 0 {
+		remoteDiscoveryList := strings.Split(localService.Annotations[consts.RemoteDiscoveryAnnotation], ",")
+		newRemoteDiscoveryList := []string{}
+		for _, member := range remoteDiscoveryList {
+			if member == remoteTarget {
+				continue
+			}
+			newRemoteDiscoveryList = append(newRemoteDiscoveryList, member)
+		}
+		localService.Annotations[consts.RemoteDiscoveryAnnotation] = strings.Join(newRemoteDiscoveryList, ",")
+	}
+
+	if len(localService.Annotations[consts.RemoteDiscoveryAnnotation]) == 0 && len(localService.Annotations[consts.LocalDiscoveryAnnotation]) == 0 {
 		rcsw.log.Infof("Deleting federation service %s/%s", ev.Namespace, localServiceName)
 		if err := rcsw.localAPIClient.Client.CoreV1().Services(ev.Namespace).Delete(ctx, localServiceName, metav1.DeleteOptions{}); err != nil {
 			if !kerrors.IsNotFound(err) {
@@ -642,18 +647,24 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteExportedServiceUpdated(ctx 
 func (rcsw *RemoteClusterServiceWatcher) handleFederatedServiceUpdated(ctx context.Context, ev *FederatedServiceUpdated) error {
 	rcsw.log.Infof("Updating federation service %s/%s", ev.localService.Namespace, ev.localService.Name)
 
-	remoteTarget := fmt.Sprintf("%s@%s", ev.remoteUpdate.Name, rcsw.link.TargetClusterName)
-	if remoteDiscoveryContains(ev.localService.Annotations[consts.RemoteDiscoveryAnnotation], remoteTarget) {
-		return nil
-	}
-	if ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] == "" {
-		ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] = remoteTarget
+	if rcsw.link.TargetClusterName == "" {
+		// Local discovery
+		ev.localService.Annotations[consts.LocalDiscoveryAnnotation] = ev.remoteUpdate.Name
 	} else {
-		ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] = fmt.Sprintf(
-			"%s,%s",
-			ev.localService.Annotations[consts.RemoteDiscoveryAnnotation],
-			remoteTarget,
-		)
+		// Remote discovery
+		remoteTarget := fmt.Sprintf("%s@%s", ev.remoteUpdate.Name, rcsw.link.TargetClusterName)
+		if remoteDiscoveryContains(ev.localService.Annotations[consts.RemoteDiscoveryAnnotation], remoteTarget) {
+			return nil
+		}
+		if ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] == "" {
+			ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] = remoteTarget
+		} else {
+			ev.localService.Annotations[consts.RemoteDiscoveryAnnotation] = fmt.Sprintf(
+				"%s,%s",
+				ev.localService.Annotations[consts.RemoteDiscoveryAnnotation],
+				remoteTarget,
+			)
+		}
 	}
 
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(ev.localService.Namespace).Update(ctx, ev.localService, metav1.UpdateOptions{}); err != nil {
@@ -1521,10 +1532,13 @@ func (rcsw *RemoteClusterServiceWatcher) updateReadiness(endpoints *corev1.Endpo
 func (rcsw *RemoteClusterServiceWatcher) isExported(l map[string]string) bool {
 	// Treat an empty selector as "Nothing" instead of "Everything" so that
 	// when the selector field is unset, we don't export all Services.
+	if rcsw.link.Selector == nil {
+		return false
+	}
 	if len(rcsw.link.Selector.MatchExpressions)+len(rcsw.link.Selector.MatchLabels) == 0 {
 		return false
 	}
-	selector, err := metav1.LabelSelectorAsSelector(&rcsw.link.Selector)
+	selector, err := metav1.LabelSelectorAsSelector(rcsw.link.Selector)
 	if err != nil {
 		rcsw.log.Errorf("Invalid selector: %s", err)
 		return false
@@ -1536,10 +1550,13 @@ func (rcsw *RemoteClusterServiceWatcher) isRemoteDiscovery(l map[string]string) 
 	// Treat an empty remoteDiscoverySelector as "Nothing" instead of
 	// "Everything" so that when the remoteDiscoverySelector field is unset, we
 	// don't export all Services.
+	if rcsw.link.RemoteDiscoverySelector == nil {
+		return false
+	}
 	if len(rcsw.link.RemoteDiscoverySelector.MatchExpressions)+len(rcsw.link.RemoteDiscoverySelector.MatchLabels) == 0 {
 		return false
 	}
-	remoteDiscoverySelector, err := metav1.LabelSelectorAsSelector(&rcsw.link.RemoteDiscoverySelector)
+	remoteDiscoverySelector, err := metav1.LabelSelectorAsSelector(rcsw.link.RemoteDiscoverySelector)
 	if err != nil {
 		rcsw.log.Errorf("Invalid selector: %s", err)
 		return false
@@ -1552,10 +1569,13 @@ func (rcsw *RemoteClusterServiceWatcher) isFederatedService(l map[string]string)
 	// Treat an empty federatedServiceSelector as "Nothing" instead of
 	// "Everything" so that when the federatedServiceSelector field is unset, we
 	// don't export all Services.
+	if rcsw.link.FederatedServiceSelector == nil {
+		return false
+	}
 	if len(rcsw.link.FederatedServiceSelector.MatchExpressions)+len(rcsw.link.FederatedServiceSelector.MatchLabels) == 0 {
 		return false
 	}
-	federatedServiceSelector, err := metav1.LabelSelectorAsSelector(&rcsw.link.FederatedServiceSelector)
+	federatedServiceSelector, err := metav1.LabelSelectorAsSelector(rcsw.link.FederatedServiceSelector)
 	if err != nil {
 		rcsw.log.Errorf("Invalid selector: %s", err)
 		return false

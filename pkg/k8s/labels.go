@@ -431,6 +431,10 @@ const (
 	// services.
 	DefaultExportedServiceSelector = SvcMirrorPrefix + "/exported"
 
+	// DefaultFederatedServiceSelector is the default label selector for
+	// federated services.
+	DefaultFederatedServiceSelector = SvcMirrorPrefix + "/federated"
+
 	// MirroredResourceLabel indicates that this resource is the result
 	// of a mirroring operation (can be a namespace or a service)
 	MirroredResourceLabel = SvcMirrorPrefix + "/mirrored-service"
@@ -465,6 +469,10 @@ const (
 	// a list of remote discovery targets to be specified in the format:
 	// <svc>@<cluster>,<svc>@<cluster>,...
 	RemoteDiscoveryAnnotation = MulticlusterPrefix + "/remote-discovery"
+
+	// LocalDiscoveryAnnotation is like the RemoteDiscoveryAnnotation but it
+	// specifies a single service in the local cluster.
+	LocalDiscoveryAnnotation = MulticlusterPrefix + "/local-discovery"
 
 	// RemoteGatewayIdentity follows the same kind of logic as RemoteGatewayNameLabel
 	RemoteGatewayIdentity = SvcMirrorPrefix + "/remote-gateway-identity"

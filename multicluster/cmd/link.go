@@ -40,24 +40,25 @@ const (
 
 type (
 	linkOptions struct {
-		namespace               string
-		clusterName             string
-		apiServerAddress        string
-		serviceAccountName      string
-		gatewayName             string
-		gatewayNamespace        string
-		serviceMirrorRetryLimit uint32
-		logLevel                string
-		logFormat               string
-		controlPlaneVersion     string
-		dockerRegistry          string
-		selector                string
-		remoteDiscoverySelector string
-		gatewayAddresses        string
-		gatewayPort             uint32
-		ha                      bool
-		enableGateway           bool
-		output                  string
+		namespace                string
+		clusterName              string
+		apiServerAddress         string
+		serviceAccountName       string
+		gatewayName              string
+		gatewayNamespace         string
+		serviceMirrorRetryLimit  uint32
+		logLevel                 string
+		logFormat                string
+		controlPlaneVersion      string
+		dockerRegistry           string
+		selector                 string
+		remoteDiscoverySelector  string
+		federatedServiceSelector string
+		gatewayAddresses         string
+		gatewayPort              uint32
+		ha                       bool
+		enableGateway            bool
+		output                   string
 	}
 )
 
@@ -237,6 +238,11 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				return err
 			}
 
+			federatedServiceSelector, err := metav1.ParseToLabelSelector(opts.federatedServiceSelector)
+			if err != nil {
+				return err
+			}
+
 			link := mc.Link{
 				Name:                          opts.clusterName,
 				Namespace:                     opts.namespace,
@@ -244,7 +250,8 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				TargetClusterDomain:           configMap.ClusterDomain,
 				TargetClusterLinkerdNamespace: controlPlaneNamespace,
 				ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
-				RemoteDiscoverySelector:       *remoteDiscoverySelector,
+				RemoteDiscoverySelector:       remoteDiscoverySelector,
+				FederatedServiceSelector:      federatedServiceSelector,
 			}
 
 			// If there is a gateway in the exporting cluster, populate Link
@@ -298,12 +305,10 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 				}
 				link.GatewayPort = gatewayPort
 
-				selector, err := metav1.ParseToLabelSelector(opts.selector)
+				link.Selector, err = metav1.ParseToLabelSelector(opts.selector)
 				if err != nil {
 					return err
 				}
-
-				link.Selector = *selector
 			}
 
 			obj, err := link.ToUnstructured()
@@ -384,6 +389,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 		fmt.Sprintf("Docker registry to pull service mirror controller image from ($%s)", flags.EnvOverrideDockerRegistry))
 	cmd.Flags().StringVarP(&opts.selector, "selector", "l", opts.selector, "Selector (label query) to filter which services in the target cluster to mirror")
 	cmd.Flags().StringVar(&opts.remoteDiscoverySelector, "remote-discovery-selector", opts.remoteDiscoverySelector, "Selector (label query) to filter which services in the target cluster to mirror in remote discovery mode")
+	cmd.Flags().StringVar(&opts.federatedServiceSelector, "federated-service-selector", opts.federatedServiceSelector, "Selector (label query) to filter which services in the target cluster to mirror as federated services")
 	cmd.Flags().StringVar(&opts.gatewayAddresses, "gateway-addresses", opts.gatewayAddresses, "If specified, overwrites gateway addresses when gateway service is not type LoadBalancer (comma separated list)")
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
 	cmd.Flags().BoolVar(&opts.ha, "ha", opts.ha, "Enable HA configuration for the service-mirror deployment (default false)")
@@ -482,19 +488,20 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 	}
 
 	return &linkOptions{
-		controlPlaneVersion:     version.Version,
-		namespace:               defaultMulticlusterNamespace,
-		dockerRegistry:          pkgcmd.DefaultDockerRegistry,
-		serviceMirrorRetryLimit: defaults.ServiceMirrorRetryLimit,
-		logLevel:                defaults.LogLevel,
-		logFormat:               defaults.LogFormat,
-		selector:                fmt.Sprintf("%s=%s", k8s.DefaultExportedServiceSelector, "true"),
-		remoteDiscoverySelector: fmt.Sprintf("%s=%s", k8s.DefaultExportedServiceSelector, "remote-discovery"),
-		gatewayAddresses:        "",
-		gatewayPort:             0,
-		ha:                      false,
-		enableGateway:           true,
-		output:                  "yaml",
+		controlPlaneVersion:      version.Version,
+		namespace:                defaultMulticlusterNamespace,
+		dockerRegistry:           pkgcmd.DefaultDockerRegistry,
+		serviceMirrorRetryLimit:  defaults.ServiceMirrorRetryLimit,
+		logLevel:                 defaults.LogLevel,
+		logFormat:                defaults.LogFormat,
+		selector:                 fmt.Sprintf("%s=%s", k8s.DefaultExportedServiceSelector, "true"),
+		remoteDiscoverySelector:  fmt.Sprintf("%s=%s", k8s.DefaultExportedServiceSelector, "remote-discovery"),
+		federatedServiceSelector: fmt.Sprintf("%s=%s", k8s.DefaultFederatedServiceSelector, "federated"),
+		gatewayAddresses:         "",
+		gatewayPort:              0,
+		ha:                       false,
+		enableGateway:            true,
+		output:                   "yaml",
 	}, nil
 }
 

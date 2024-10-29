@@ -114,8 +114,8 @@ var createExportedService = &testEnvironment{
 		GatewayAddress:          "192.0.2.127",
 		GatewayPort:             888,
 		ProbeSpec:               defaultProbeSpec,
-		Selector:                *defaultSelector,
-		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+		Selector:                defaultSelector,
+		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -151,8 +151,8 @@ var createRemoteDiscoveryService = &testEnvironment{
 		GatewayAddress:          "192.0.2.127",
 		GatewayPort:             888,
 		ProbeSpec:               defaultProbeSpec,
-		Selector:                *defaultSelector,
-		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+		Selector:                defaultSelector,
+		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -231,8 +231,8 @@ var createExportedHeadlessService = &testEnvironment{
 			Path:   "/probe1",
 			Period: 120,
 		},
-		Selector:                *defaultSelector,
-		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+		Selector:                defaultSelector,
+		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -254,8 +254,8 @@ var deleteMirrorService = &testEnvironment{
 		GatewayAddress:          "192.0.2.127",
 		GatewayPort:             888,
 		ProbeSpec:               defaultProbeSpec,
-		Selector:                *defaultSelector,
-		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+		Selector:                defaultSelector,
+		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -348,8 +348,8 @@ var updateServiceWithChangedPorts = &testEnvironment{
 		GatewayAddress:          "192.0.2.127",
 		GatewayPort:             888,
 		ProbeSpec:               defaultProbeSpec,
-		Selector:                *defaultSelector,
-		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+		Selector:                defaultSelector,
+		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -457,8 +457,8 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 		GatewayAddress:          "192.0.2.127",
 		GatewayPort:             888,
 		ProbeSpec:               defaultProbeSpec,
-		Selector:                *defaultSelector,
-		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+		Selector:                defaultSelector,
+		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 	},
 }
 var clusterUnregistered = &testEnvironment{
@@ -552,8 +552,8 @@ var noGatewayLink = &testEnvironment{
 			Port:   0,
 			Period: time.Duration(0) * time.Second,
 		},
-		Selector:                metav1.LabelSelector{},
-		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+		Selector:                &metav1.LabelSelector{},
+		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -571,8 +571,8 @@ func onAddOrUpdateExportedSvc(isAdd bool) *testEnvironment {
 			GatewayAddress:          "192.0.2.127",
 			GatewayPort:             888,
 			ProbeSpec:               defaultProbeSpec,
-			Selector:                *defaultSelector,
-			RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 		},
 	}
 
@@ -596,8 +596,8 @@ func onAddOrUpdateRemoteServiceUpdated(isAdd bool) *testEnvironment {
 			GatewayAddress:          "192.0.2.127",
 			GatewayPort:             888,
 			ProbeSpec:               defaultProbeSpec,
-			Selector:                *defaultSelector,
-			RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 		},
 	}
 }
@@ -620,8 +620,8 @@ func onAddOrUpdateSameResVersion(isAdd bool) *testEnvironment {
 			GatewayAddress:          "192.0.2.127",
 			GatewayPort:             888,
 			ProbeSpec:               defaultProbeSpec,
-			Selector:                *defaultSelector,
-			RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 		},
 	}
 }
@@ -642,8 +642,8 @@ func serviceNotExportedAnymore(isAdd bool) *testEnvironment {
 			GatewayAddress:          "192.0.2.127",
 			GatewayPort:             888,
 			ProbeSpec:               defaultProbeSpec,
-			Selector:                *defaultSelector,
-			RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 		},
 	}
 }
@@ -663,8 +663,8 @@ var onDeleteExportedService = &testEnvironment{
 		GatewayAddress:          "192.0.2.127",
 		GatewayPort:             888,
 		ProbeSpec:               defaultProbeSpec,
-		Selector:                *defaultSelector,
-		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+		Selector:                defaultSelector,
+		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -681,8 +681,8 @@ var onDeleteNonExportedService = &testEnvironment{
 		GatewayAddress:          "192.0.2.127",
 		GatewayPort:             888,
 		ProbeSpec:               defaultProbeSpec,
-		Selector:                *defaultSelector,
-		RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+		Selector:                defaultSelector,
+		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 	},
 }
 
@@ -1286,8 +1286,8 @@ func createEnvWithSelector(defaultSelector, remoteSelector *metav1.LabelSelector
 				Port:   0,
 				Period: time.Duration(0) * time.Second,
 			},
-			Selector:                *defaultSelector,
-			RemoteDiscoverySelector: *remoteSelector,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: remoteSelector,
 		},
 	}
 }

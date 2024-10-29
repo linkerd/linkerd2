@@ -5,6 +5,7 @@ import (
 
 	"github.com/linkerd/linkerd2/multicluster/static"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -42,6 +43,8 @@ type Values struct {
 
 	ServiceMirrorAdditionalEnv   []corev1.EnvVar `json:"serviceMirrorAdditionalEnv"`
 	ServiceMirrorExperimentalEnv []corev1.EnvVar `json:"serviceMirrorExperimentalEnv"`
+
+	LocalServiceMirror *LocalServiceMirror `json:"localServiceMirror"`
 }
 
 // Gateway contains all options related to the Gateway Service
@@ -68,6 +71,18 @@ type Probe struct {
 	NodePort         uint32 `json:"nodePort"`
 	Seconds          uint32 `json:"seconds"`
 	Timeout          string `json:"timeout"`
+}
+
+type LocalServiceMirror struct {
+	ServiceMirrorRetryLimit  uint32          `json:"serviceMirrorRetryLimit"`
+	FederatedServiceSelector string          `json:"federatedServiceSelector"`
+	Replias                  uint32          `json:"replicas"`
+	Image                    *linkerd2.Image `json:"image"`
+	LogLevel                 string          `json:"logLevel"`
+	LogFormat                string          `json:"logFormat"`
+	EnablePprof              bool            `json:"enablePprof"`
+	UID                      int64           `json:"UID"`
+	GID                      int64           `json:"GID"`
 }
 
 // NewInstallValues returns a new instance of the Values type.

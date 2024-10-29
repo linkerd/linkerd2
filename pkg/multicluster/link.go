@@ -47,9 +47,9 @@ type (
 		GatewayPort                   uint32
 		GatewayIdentity               string
 		ProbeSpec                     ProbeSpec
-		Selector                      metav1.LabelSelector
-		RemoteDiscoverySelector       metav1.LabelSelector
-		FederatedServiceSelector      metav1.LabelSelector
+		Selector                      *metav1.LabelSelector
+		RemoteDiscoverySelector       *metav1.LabelSelector
+		FederatedServiceSelector      *metav1.LabelSelector
 	}
 
 	ErrFieldMissing struct {
@@ -185,9 +185,9 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		GatewayPort:                   uint32(gatewayPort),
 		GatewayIdentity:               gatewayIdentity,
 		ProbeSpec:                     probeSpec,
-		Selector:                      selector,
-		RemoteDiscoverySelector:       remoteDiscoverySelector,
-		FederatedServiceSelector:      federatedServiceSelector,
+		Selector:                      &selector,
+		RemoteDiscoverySelector:       &remoteDiscoverySelector,
+		FederatedServiceSelector:      &federatedServiceSelector,
 	}, nil
 }
 
