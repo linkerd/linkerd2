@@ -69,9 +69,9 @@ type (
 		service *corev1.Service
 	}
 
-	// RemoteServiceFederated is generated whenever a remote service becomes
-	// federated and there is no existing local federation service.
-	RemoteServiceFederated struct {
+	// CreateFederatedService is generated whenever a remote service joins a
+	// federated service and the local federated service does not exist yet.
+	CreateFederatedService struct {
 		service *corev1.Service
 	}
 
@@ -85,10 +85,9 @@ type (
 		remoteUpdate   *corev1.Service
 	}
 
-	// FederatedServiceUpdated is generated when we see something about a
-	// federated service change on the remote cluster when the local federation
-	// service already exists.
-	FederatedServiceUpdated struct {
+	// RemoteServiceJoinedFederatedService is generated when a remote server
+	// joins a federated service and the local federated service already exists.
+	RemoteServiceJoinsFederatedService struct {
 		localService *corev1.Service
 		remoteUpdate *corev1.Service
 	}
@@ -100,9 +99,9 @@ type (
 		Namespace string
 	}
 
-	// RemoteServiceFederated when a remote service is going away or it is not
-	// considered federated anymore
-	RemoteServiceUnfederated struct {
+	// RemoteServiceLeavesFederatedService when a remote service is going away or
+	// it is no longer part of the federated service
+	RemoteServiceLeavesFederatedService struct {
 		Name      string
 		Namespace string
 	}
@@ -245,7 +244,7 @@ func (rcsw *RemoteClusterServiceWatcher) originalResourceName(mirroredName strin
 	return strings.TrimSuffix(mirroredName, fmt.Sprintf("-%s", rcsw.link.TargetClusterName))
 }
 
-// Provides labels for mirrored or federation service.
+// Provides labels for mirrored or federatedservice.
 // Copies all labels from the remote service to local service (except labels
 // with the "SvcMirrorPrefix").
 func (rcsw *RemoteClusterServiceWatcher) getCommonServiceLabels(remoteService *corev1.Service) map[string]string {
@@ -278,15 +277,15 @@ func (rcsw *RemoteClusterServiceWatcher) getMirrorServiceLabels(remoteService *c
 	return labels
 }
 
-// Provides labels for federation services. Copies all labels from the remote
-// service to the federation service (except labels with the "SvcMirrorPrefix").
-func (rcsw *RemoteClusterServiceWatcher) getFederationServiceLabels(remoteService *corev1.Service) map[string]string {
+// Provides labels for federated services. Copies all labels from the remote
+// service to the federated service (except labels with the "SvcMirrorPrefix").
+func (rcsw *RemoteClusterServiceWatcher) getFederatedServiceLabels(remoteService *corev1.Service) map[string]string {
 	labels := rcsw.getCommonServiceLabels(remoteService)
 
 	return labels
 }
 
-// Provides annotations for mirror or federation services
+// Provides annotations for mirror or federated services
 func (rcsw *RemoteClusterServiceWatcher) getCommonServiceAnnotations(remoteService *corev1.Service) map[string]string {
 	annotations := map[string]string{}
 
@@ -316,8 +315,8 @@ func (rcsw *RemoteClusterServiceWatcher) getMirrorServiceAnnotations(remoteServi
 	return annotations
 }
 
-// Provides annotations for mirrored service
-func (rcsw *RemoteClusterServiceWatcher) getFederationServiceAnnotations(remoteService *corev1.Service) map[string]string {
+// Provides annotations for federated service
+func (rcsw *RemoteClusterServiceWatcher) getFederatedServiceAnnotations(remoteService *corev1.Service) map[string]string {
 	annotations := rcsw.getCommonServiceAnnotations(remoteService)
 
 	if rcsw.link.TargetClusterName == "" {
@@ -532,14 +531,14 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUnexported(ctx conte
 	return nil
 }
 
-// Removes a remote service from a local federation service.
-func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUnfederated(ctx context.Context, ev *RemoteServiceUnfederated) error {
+// Removes a remote service from a local federated service.
+func (rcsw *RemoteClusterServiceWatcher) handleFederatedServiceLeave(ctx context.Context, ev *RemoteServiceLeavesFederatedService) error {
 	localServiceName := rcsw.federatedServiceName(ev.Name)
 	localService, err := rcsw.localAPIClient.Svc().Lister().Services(ev.Namespace).Get(localServiceName)
 
 	if err != nil {
 		if kerrors.IsNotFound(err) {
-			rcsw.log.Debugf("Failed to update federation service %s/%s: %v", ev.Namespace, ev.Name, err)
+			rcsw.log.Debugf("Failed to update federated service %s/%s: %v", ev.Namespace, ev.Name, err)
 			return nil
 		}
 		return RetryableError{[]error{fmt.Errorf("could not fetch service %s/%s: %w", ev.Namespace, localServiceName, err)}}
@@ -566,7 +565,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUnfederated(ctx cont
 	}
 
 	if len(localService.Annotations[consts.RemoteDiscoveryAnnotation]) == 0 && len(localService.Annotations[consts.LocalDiscoveryAnnotation]) == 0 {
-		rcsw.log.Infof("Deleting federation service %s/%s", ev.Namespace, localServiceName)
+		rcsw.log.Infof("Deleting federated service %s/%s", ev.Namespace, localServiceName)
 		if err := rcsw.localAPIClient.Client.CoreV1().Services(ev.Namespace).Delete(ctx, localServiceName, metav1.DeleteOptions{}); err != nil {
 			if !kerrors.IsNotFound(err) {
 				return RetryableError{[]error{fmt.Errorf("could not delete service: %s/%s: %w", ev.Namespace, localServiceName, err)}}
@@ -643,9 +642,9 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteExportedServiceUpdated(ctx 
 	return nil
 }
 
-// Updates a federation service to include the remote service as a member.
-func (rcsw *RemoteClusterServiceWatcher) handleFederatedServiceUpdated(ctx context.Context, ev *FederatedServiceUpdated) error {
-	rcsw.log.Infof("Updating federation service %s/%s", ev.localService.Namespace, ev.localService.Name)
+// Updates a federated service to include the remote service as a member.
+func (rcsw *RemoteClusterServiceWatcher) handleFederatedServiceJoin(ctx context.Context, ev *RemoteServiceJoinsFederatedService) error {
+	rcsw.log.Infof("Updating federated service %s/%s", ev.localService.Namespace, ev.localService.Name)
 
 	if rcsw.link.TargetClusterName == "" {
 		// Local discovery
@@ -750,12 +749,12 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceExported(ctx context
 	return rcsw.createGatewayEndpoints(ctx, remoteService)
 }
 
-func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceFederated(ctx context.Context, ev *RemoteServiceFederated) error {
+func (rcsw *RemoteClusterServiceWatcher) handleCreateFederatedService(ctx context.Context, ev *CreateFederatedService) error {
 	remoteService := ev.service.DeepCopy()
 	serviceInfo := fmt.Sprintf("%s/%s", remoteService.Namespace, remoteService.Name)
 
 	if remoteService.Spec.ClusterIP == corev1.ClusterIPNone {
-		return fmt.Errorf("headless service %s cannot be federated", serviceInfo)
+		return fmt.Errorf("headless service %s cannot join federated service", serviceInfo)
 	}
 
 	localServiceName := rcsw.federatedServiceName(remoteService.Name)
@@ -781,15 +780,15 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceFederated(ctx contex
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        localServiceName,
 			Namespace:   remoteService.Namespace,
-			Annotations: rcsw.getFederationServiceAnnotations(remoteService),
-			Labels:      rcsw.getFederationServiceLabels(remoteService),
+			Annotations: rcsw.getFederatedServiceAnnotations(remoteService),
+			Labels:      rcsw.getFederatedServiceLabels(remoteService),
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: remapRemoteServicePorts(remoteService.Spec.Ports),
 		},
 	}
 
-	rcsw.log.Infof("Creating a new federation service for %s", serviceInfo)
+	rcsw.log.Infof("Creating a new federated service for %s", serviceInfo)
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(remoteService.Namespace).Create(ctx, serviceToCreate, metav1.CreateOptions{}); err != nil {
 		if !kerrors.IsAlreadyExists(err) {
 			// we might have created it during earlier attempt, if that is not the case, we retry
@@ -969,12 +968,12 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 
 	federatedName := rcsw.federatedServiceName(service.Name)
 
-	if rcsw.isFederatedService(service.Labels) {
+	if rcsw.isFederatedServiceMember(service.Labels) {
 		// The desired state is that the local federated service should exist.
 		localService, err := rcsw.localAPIClient.Svc().Lister().Services(service.Namespace).Get(federatedName)
 		if err != nil {
 			if kerrors.IsNotFound(err) {
-				rcsw.eventsQueue.Add(&RemoteServiceFederated{
+				rcsw.eventsQueue.Add(&CreateFederatedService{
 					service: service,
 				})
 				return nil
@@ -982,7 +981,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 			return RetryableError{[]error{err}}
 		}
 		// if we have the local service present, we need to issue an update
-		rcsw.eventsQueue.Add(&FederatedServiceUpdated{
+		rcsw.eventsQueue.Add(&RemoteServiceJoinsFederatedService{
 			localService: localService,
 			remoteUpdate: service,
 		})
@@ -994,7 +993,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 			if localSvc.Labels != nil {
 				_, isMirroredRes := localSvc.Labels[consts.MirroredResourceLabel]
 				if isMirroredRes {
-					rcsw.eventsQueue.Add(&RemoteServiceUnfederated{
+					rcsw.eventsQueue.Add(&RemoteServiceLeavesFederatedService{
 						Name:      service.Name,
 						Namespace: service.Namespace,
 					})
@@ -1025,8 +1024,8 @@ func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service)
 			Namespace: service.Namespace,
 		})
 	}
-	if rcsw.isFederatedService(service.Labels) {
-		rcsw.eventsQueue.Add(&RemoteServiceUnfederated{
+	if rcsw.isFederatedServiceMember(service.Labels) {
+		rcsw.eventsQueue.Add(&RemoteServiceLeavesFederatedService{
 			Name:      service.Name,
 			Namespace: service.Namespace,
 		})
@@ -1059,12 +1058,12 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent(ctx context.Context) (
 		err = rcsw.handleRemoteExportedServiceUpdated(ctx, ev)
 	case *RemoteServiceUnexported:
 		err = rcsw.handleRemoteServiceUnexported(ctx, ev)
-	case *RemoteServiceFederated:
-		err = rcsw.handleRemoteServiceFederated(ctx, ev)
-	case *FederatedServiceUpdated:
-		err = rcsw.handleFederatedServiceUpdated(ctx, ev)
-	case *RemoteServiceUnfederated:
-		err = rcsw.handleRemoteServiceUnfederated(ctx, ev)
+	case *CreateFederatedService:
+		err = rcsw.handleCreateFederatedService(ctx, ev)
+	case *RemoteServiceJoinsFederatedService:
+		err = rcsw.handleFederatedServiceJoin(ctx, ev)
+	case *RemoteServiceLeavesFederatedService:
+		err = rcsw.handleFederatedServiceLeave(ctx, ev)
 	case *ClusterUnregistered:
 		err = rcsw.cleanupMirroredResources(ctx)
 	case *OrphanedServicesGcTriggered:
@@ -1565,7 +1564,7 @@ func (rcsw *RemoteClusterServiceWatcher) isRemoteDiscovery(l map[string]string) 
 	return remoteDiscoverySelector.Matches(labels.Set(l))
 }
 
-func (rcsw *RemoteClusterServiceWatcher) isFederatedService(l map[string]string) bool {
+func (rcsw *RemoteClusterServiceWatcher) isFederatedServiceMember(l map[string]string) bool {
 	// Treat an empty federatedServiceSelector as "Nothing" instead of
 	// "Everything" so that when the federatedServiceSelector field is unset, we
 	// don't export all Services.

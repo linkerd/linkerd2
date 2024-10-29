@@ -120,9 +120,8 @@ localServiceMirror:
   # (retried)
   serviceMirrorRetryLimit: 3
 
-  # -- Label selector indicating which local services should join federated
-  # services.
-  federatedServiceSelector: "mirror.linkerd.io/federated=true"
+  # -- Label selector for federated service members in the local cluster.
+  federatedServiceSelector: "mirror.linkerd.io/federated=member"
 
   # -- Number of local service mirror replicas to run
   replicas: 1

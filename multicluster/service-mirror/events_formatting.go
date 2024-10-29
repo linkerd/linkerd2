@@ -64,16 +64,16 @@ func (rsd RemoteServiceUnexported) String() string {
 	return fmt.Sprintf("RemoteServiceUnexported: {name: %s, namespace: %s }", rsd.Name, rsd.Namespace)
 }
 
-func (rsf RemoteServiceFederated) String() string {
+func (rsf CreateFederatedService) String() string {
 	return fmt.Sprintf("RemoteServiceFederated: {service: %s}", formatService(rsf.service))
 }
 
-func (fsu FederatedServiceUpdated) String() string {
-	return fmt.Sprintf("FederatedServiceUpdated: {localService: %s, remoteUpdate: %s}", formatService(fsu.localService), formatService(fsu.remoteUpdate))
+func (jfs RemoteServiceJoinsFederatedService) String() string {
+	return fmt.Sprintf("RemoteServiceJoinsFederatedService: {localService: %s, remoteUpdate: %s}", formatService(jfs.localService), formatService(jfs.remoteUpdate))
 }
 
-func (rsu RemoteServiceUnfederated) String() string {
-	return fmt.Sprintf("RemoteServiceUnfederated: {name: %s, namespace: %s }", rsu.Name, rsu.Namespace)
+func (lfs RemoteServiceLeavesFederatedService) String() string {
+	return fmt.Sprintf("RemoteServiceLeavesFederatedService: {name: %s, namespace: %s }", lfs.Name, lfs.Namespace)
 }
 
 func (cgu ClusterUnregistered) String() string {

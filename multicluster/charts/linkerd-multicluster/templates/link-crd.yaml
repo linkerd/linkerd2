@@ -115,7 +115,7 @@ spec:
                           items:
                             type: string
               federatedServiceSelector:
-                description: Selector for Services to mirror as federated services
+                description: Selector for federated service memebers
                 type: object
                 properties:
                   matchLabels:

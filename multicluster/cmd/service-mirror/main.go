@@ -54,8 +54,8 @@ func Main(args []string) {
 	enableHeadlessSvc := cmd.Bool("enable-headless-services", false, "toggle support for headless service mirroring")
 	enableNamespaceCreation := cmd.Bool("enable-namespace-creation", false, "toggle support for namespace creation")
 	enablePprof := cmd.Bool("enable-pprof", false, "Enable pprof endpoints on the admin server")
-	localMirror := cmd.Bool("local-mirror", false, "watch the local cluster for federated services")
-	federatedServiceSelector := cmd.String("federated-service-selector", k8s.DefaultFederatedServiceSelector, "Selector (label query) to filter which services in the local cluster to mirror as federated services")
+	localMirror := cmd.Bool("local-mirror", false, "watch the local cluster for federated service members")
+	federatedServiceSelector := cmd.String("federated-service-selector", k8s.DefaultFederatedServiceSelector, "Selector (label query) for federated service members in the local cluster")
 
 	flags.ConfigureAndParse(cmd, args)
 	linkName := cmd.Arg(0)

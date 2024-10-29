@@ -389,7 +389,7 @@ A full list of configurable values can be found at https://github.com/linkerd/li
 		fmt.Sprintf("Docker registry to pull service mirror controller image from ($%s)", flags.EnvOverrideDockerRegistry))
 	cmd.Flags().StringVarP(&opts.selector, "selector", "l", opts.selector, "Selector (label query) to filter which services in the target cluster to mirror")
 	cmd.Flags().StringVar(&opts.remoteDiscoverySelector, "remote-discovery-selector", opts.remoteDiscoverySelector, "Selector (label query) to filter which services in the target cluster to mirror in remote discovery mode")
-	cmd.Flags().StringVar(&opts.federatedServiceSelector, "federated-service-selector", opts.federatedServiceSelector, "Selector (label query) to filter which services in the target cluster to mirror as federated services")
+	cmd.Flags().StringVar(&opts.federatedServiceSelector, "federated-service-selector", opts.federatedServiceSelector, "Selector (label query) for federated service members in the target cluster")
 	cmd.Flags().StringVar(&opts.gatewayAddresses, "gateway-addresses", opts.gatewayAddresses, "If specified, overwrites gateway addresses when gateway service is not type LoadBalancer (comma separated list)")
 	cmd.Flags().Uint32Var(&opts.gatewayPort, "gateway-port", opts.gatewayPort, "If specified, overwrites gateway port when gateway service is not type LoadBalancer")
 	cmd.Flags().BoolVar(&opts.ha, "ha", opts.ha, "Enable HA configuration for the service-mirror deployment (default false)")
@@ -496,7 +496,7 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 		logFormat:                defaults.LogFormat,
 		selector:                 fmt.Sprintf("%s=%s", k8s.DefaultExportedServiceSelector, "true"),
 		remoteDiscoverySelector:  fmt.Sprintf("%s=%s", k8s.DefaultExportedServiceSelector, "remote-discovery"),
-		federatedServiceSelector: fmt.Sprintf("%s=%s", k8s.DefaultFederatedServiceSelector, "federated"),
+		federatedServiceSelector: fmt.Sprintf("%s=%s", k8s.DefaultFederatedServiceSelector, "member"),
 		gatewayAddresses:         "",
 		gatewayPort:              0,
 		ha:                       false,
