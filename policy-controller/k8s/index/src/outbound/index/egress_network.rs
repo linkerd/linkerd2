@@ -1,7 +1,7 @@
 use chrono::{offset::Utc, DateTime};
 use linkerd_policy_controller_k8s_api::policy::{Cidr, Network, TrafficPolicy};
 use linkerd_policy_controller_k8s_api::{policy as linkerd_k8s_api, ResourceExt};
-use std::net::IpAddr;
+use std::{net::IpAddr, sync::Arc};
 
 #[derive(Debug)]
 pub(crate) struct EgressNetwork {
@@ -61,14 +61,20 @@ impl EgressNetwork {
 // Attempts to find the best matching network for a certain discovery look-up.
 // Logic is:
 // 1. if there are Egress networks in the source_namespace, only these are considered
+// 2. otherwise only networks from the global egress network namespace are considered
 // 2. the target IP is matched against the networks of the EgressNetwork
 // 3. ambiguity is resolved as by comparing the networks using compare_matched_egress_network
 pub(crate) fn resolve_egress_network<'n>(
     addr: IpAddr,
     source_namespace: String,
+    global_external_network_namespace: Arc<String>,
     nets: impl Iterator<Item = &'n EgressNetwork>,
 ) -> Option<super::ResourceRef> {
-    let (same_ns, rest): (Vec<_>, Vec<_>) = nets.partition(|un| un.namespace == source_namespace);
+    let (same_ns, rest): (Vec<_>, Vec<_>) = nets
+        .filter(|en| {
+            en.namespace == source_namespace || en.namespace == *global_external_network_namespace
+        })
+        .partition(|un| un.namespace == source_namespace);
     let to_pick_from = if !same_ns.is_empty() { same_ns } else { rest };
 
     to_pick_from
@@ -122,6 +128,10 @@ fn compare_matched_egress_network(
 #[cfg(test)]
 mod test {
     use super::*;
+    use once_cell::sync::Lazy;
+
+    const EGRESS_NETS_NS: &str = "linkerd-external";
+    static EN_NS: Lazy<Arc<String>> = Lazy::new(|| Arc::new(EGRESS_NETS_NS.to_string()));
 
     #[test]
     fn test_picks_smallest_cidr() {
@@ -133,7 +143,7 @@ mod test {
                     except: None,
                 }],
                 name: "net-1".to_string(),
-                namespace: "ns".to_string(),
+                namespace: EGRESS_NETS_NS.to_string(),
                 creation_timestamp: None,
                 traffic_policy: TrafficPolicy::Allow,
             },
@@ -143,13 +153,13 @@ mod test {
                     except: None,
                 }],
                 name: "net-2".to_string(),
-                namespace: "ns".to_string(),
+                namespace: EGRESS_NETS_NS.to_string(),
                 creation_timestamp: None,
                 traffic_policy: TrafficPolicy::Allow,
             },
         ];
 
-        let resolved = resolve_egress_network(ip_addr, "ns".into(), networks.iter());
+        let resolved = resolve_egress_network(ip_addr, "ns".into(), EN_NS.clone(), networks.iter());
         assert_eq!(resolved.unwrap().name, "net-2".to_string())
     }
 
@@ -173,14 +183,34 @@ mod test {
                     except: None,
                 }],
                 name: "net-2".to_string(),
-                namespace: "ns".to_string(),
+                namespace: EGRESS_NETS_NS.to_string(),
                 creation_timestamp: None,
                 traffic_policy: TrafficPolicy::Allow,
             },
         ];
 
-        let resolved = resolve_egress_network(ip_addr, "ns-1".into(), networks.iter());
+        let resolved =
+            resolve_egress_network(ip_addr, "ns-1".into(), EN_NS.clone(), networks.iter());
         assert_eq!(resolved.unwrap().name, "net-1".to_string())
+    }
+
+    #[test]
+    fn does_not_pick_network_in_unralated_ns() {
+        let ip_addr = "192.168.0.4".parse().unwrap();
+        let networks = vec![EgressNetwork {
+            networks: vec![Network {
+                cidr: "192.168.0.1/16".parse().unwrap(),
+                except: None,
+            }],
+            name: "net-1".to_string(),
+            namespace: "other-ns".to_string(),
+            creation_timestamp: None,
+            traffic_policy: TrafficPolicy::Allow,
+        }];
+
+        let resolved =
+            resolve_egress_network(ip_addr, "ns-1".into(), EN_NS.clone(), networks.iter());
+        assert!(resolved.is_none());
     }
 
     #[test]
@@ -193,7 +223,7 @@ mod test {
                     except: None,
                 }],
                 name: "net-1".to_string(),
-                namespace: "ns".to_string(),
+                namespace: EGRESS_NETS_NS.to_string(),
                 creation_timestamp: Some(DateTime::<Utc>::MAX_UTC),
                 traffic_policy: TrafficPolicy::Allow,
             },
@@ -203,13 +233,13 @@ mod test {
                     except: None,
                 }],
                 name: "net-2".to_string(),
-                namespace: "ns".to_string(),
+                namespace: EGRESS_NETS_NS.to_string(),
                 creation_timestamp: Some(DateTime::<Utc>::MIN_UTC),
                 traffic_policy: TrafficPolicy::Allow,
             },
         ];
 
-        let resolved = resolve_egress_network(ip_addr, "ns".into(), networks.iter());
+        let resolved = resolve_egress_network(ip_addr, "ns".into(), EN_NS.clone(), networks.iter());
         assert_eq!(resolved.unwrap().name, "net-2".to_string())
     }
 
@@ -222,8 +252,8 @@ mod test {
                     cidr: "192.168.0.1/16".parse().unwrap(),
                     except: None,
                 }],
-                name: "b".to_string(),
-                namespace: "a".to_string(),
+                name: "a".to_string(),
+                namespace: EGRESS_NETS_NS.to_string(),
                 creation_timestamp: None,
                 traffic_policy: TrafficPolicy::Allow,
             },
@@ -232,15 +262,15 @@ mod test {
                     cidr: "192.168.0.1/16".parse().unwrap(),
                     except: None,
                 }],
-                name: "d".to_string(),
-                namespace: "c".to_string(),
+                name: "b".to_string(),
+                namespace: EGRESS_NETS_NS.to_string(),
                 creation_timestamp: None,
                 traffic_policy: TrafficPolicy::Allow,
             },
         ];
 
-        let resolved = resolve_egress_network(ip_addr, "ns".into(), networks.iter());
-        assert_eq!(resolved.unwrap().name, "b".to_string())
+        let resolved = resolve_egress_network(ip_addr, "ns".into(), EN_NS.clone(), networks.iter());
+        assert_eq!(resolved.unwrap().name, "a".to_string())
     }
 
     #[test]
@@ -253,7 +283,7 @@ mod test {
                     except: Some(vec!["192.168.0.4".parse().unwrap()]),
                 }],
                 name: "b".to_string(),
-                namespace: "a".to_string(),
+                namespace: EGRESS_NETS_NS.to_string(),
                 creation_timestamp: None,
                 traffic_policy: TrafficPolicy::Allow,
             },
@@ -263,13 +293,13 @@ mod test {
                     except: None,
                 }],
                 name: "d".to_string(),
-                namespace: "c".to_string(),
+                namespace: EGRESS_NETS_NS.to_string(),
                 creation_timestamp: None,
                 traffic_policy: TrafficPolicy::Allow,
             },
         ];
 
-        let resolved = resolve_egress_network(ip_addr, "ns".into(), networks.iter());
+        let resolved = resolve_egress_network(ip_addr, "ns".into(), EN_NS.clone(), networks.iter());
         assert_eq!(resolved.unwrap().name, "d".to_string())
     }
 }

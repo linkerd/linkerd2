@@ -26,6 +26,7 @@ use linkerd_policy_controller_k8s_api::{
     ResourceExt,
 };
 use maplit::*;
+use std::sync::Arc;
 use tokio::time;
 
 #[test]
@@ -224,6 +225,7 @@ impl TestConfig {
             default_detect_timeout: detect_timeout,
             default_opaque_ports: Default::default(),
             probe_networks,
+            global_external_network_namespace: Arc::new("linkerd-external".to_string()),
         };
         let index = Index::shared(cluster.clone());
         Self {

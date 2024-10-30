@@ -1266,6 +1266,7 @@ dependencies = [
  "linkerd-policy-controller-core",
  "linkerd-policy-controller-k8s-api",
  "maplit",
+ "once_cell",
  "parking_lot",
  "prometheus-client",
  "thiserror",
