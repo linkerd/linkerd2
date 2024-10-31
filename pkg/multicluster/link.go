@@ -242,6 +242,17 @@ func (l Link) ToUnstructured() (unstructured.Unstructured, error) {
 	}
 	spec["remoteDiscoverySelector"] = remoteDiscoverySelector
 
+	data, err = json.Marshal(l.FederatedServiceSelector)
+	if err != nil {
+		return unstructured.Unstructured{}, err
+	}
+	federatedServiceSelector := make(map[string]interface{})
+	err = json.Unmarshal(data, &federatedServiceSelector)
+	if err != nil {
+		return unstructured.Unstructured{}, err
+	}
+	spec["federatedServiceSelector"] = federatedServiceSelector
+
 	return unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": k8s.LinkAPIGroupVersion,
@@ -250,7 +261,8 @@ func (l Link) ToUnstructured() (unstructured.Unstructured, error) {
 				"name":      l.Name,
 				"namespace": l.Namespace,
 			},
-			"spec": spec,
+			"spec":   spec,
+			"status": map[string]interface{}{},
 		},
 	}, nil
 }
