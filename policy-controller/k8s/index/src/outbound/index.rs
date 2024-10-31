@@ -495,7 +495,7 @@ impl Index {
         egress_network::resolve_egress_network(
             addr,
             source_namespace,
-            self.global_external_network_namespace.clone(),
+            &self.global_external_network_namespace,
             self.egress_networks_by_ref.values(),
         )
         .map(|r| (r.namespace, r.name))
