@@ -1,9 +1,10 @@
 use super::validation;
 use crate::k8s::policy::{
     httproute, server::Selector, AuthorizationPolicy, AuthorizationPolicySpec, EgressNetwork,
-    EgressNetworkSpec, HttpRoute, HttpRouteSpec, LocalTargetRef, MeshTLSAuthentication,
-    MeshTLSAuthenticationSpec, NamespacedTargetRef, Network, NetworkAuthentication,
-    NetworkAuthenticationSpec, Server, ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
+    EgressNetworkSpec, HTTPLocalRateLimitPolicy, HttpRoute, HttpRouteSpec, LocalTargetRef,
+    MeshTLSAuthentication, MeshTLSAuthenticationSpec, NamespacedTargetRef, Network,
+    NetworkAuthentication, NetworkAuthenticationSpec, RateLimitPolicySpec, Server,
+    ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
 };
 use anyhow::{anyhow, bail, ensure, Result};
 use futures::future;
@@ -146,6 +147,10 @@ impl Admission {
 
         if is_kind::<k8s_gateway_api::TcpRoute>(&req) {
             return self.admit_spec::<k8s_gateway_api::TcpRouteSpec>(req).await;
+        }
+
+        if is_kind::<HTTPLocalRateLimitPolicy>(&req) {
+            return self.admit_spec::<RateLimitPolicySpec>(req).await;
         }
 
         AdmissionResponse::invalid(format_args!(
@@ -843,4 +848,60 @@ fn validate_parent_ref_port_requirements(parent: &k8s_gateway_api::ParentReferen
     }
 
     Ok(())
+}
+
+#[async_trait::async_trait]
+impl Validate<RateLimitPolicySpec> for Admission {
+    async fn validate(
+        self,
+        _ns: &str,
+        _name: &str,
+        _annotations: &BTreeMap<String, String>,
+        spec: RateLimitPolicySpec,
+    ) -> Result<()> {
+        if !spec.target_ref.targets_kind::<Server>() {
+            bail!(
+                "invalid targetRef kind: {}",
+                spec.target_ref.canonical_kind()
+            );
+        }
+
+        if let Some(total) = spec.total {
+            if total.requests_per_second == 0 {
+                bail!("total.requestsPerSecond must be greater than 0");
+            }
+
+            if let Some(ref identity) = spec.identity {
+                if identity.requests_per_second > total.requests_per_second {
+                    bail!("identity.requestsPerSecond must be less than or equal to total.requestsPerSecond");
+                }
+            }
+
+            for ovr in spec.overrides.clone().unwrap_or_default().iter() {
+                if ovr.requests_per_second > total.requests_per_second {
+                    bail!("override.requestsPerSecond must be less than or equal to total.requestsPerSecond");
+                }
+            }
+        }
+
+        if let Some(identity) = spec.identity {
+            if identity.requests_per_second == 0 {
+                bail!("identity.requestsPerSecond must be greater than 0");
+            }
+        }
+
+        for ovr in spec.overrides.unwrap_or_default().iter() {
+            if ovr.requests_per_second == 0 {
+                bail!("override.requestsPerSecond must be greater than 0");
+            }
+
+            for target_ref in ovr.client_refs.iter() {
+                if target_ref.kind != "ServiceAccount" {
+                    bail!("overrides.clientRefs must target a ServiceAccount");
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
