@@ -31,7 +31,9 @@ pub struct Index {
     egress_networks_by_ref: HashMap<ResourceRef, EgressNetwork>,
     // holds information about resources. currently EgressNetworks and Services
     resource_info: HashMap<ResourceRef, ResourceInfo>,
+
     cluster_networks: Vec<linkerd_k8s_api::Cidr>,
+    global_external_network_namespace: Arc<String>,
 
     // holds a no-op sender to which all clients that have been returned
     // a Fallback policy are subsribed. It is used to force these clients
@@ -403,6 +405,9 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for 
 impl Index {
     pub fn shared(cluster_info: Arc<ClusterInfo>) -> SharedIndex {
         let cluster_networks = cluster_info.networks.clone();
+        let global_external_network_namespace =
+            cluster_info.global_external_network_namespace.clone();
+
         let (fallback_polcy_tx, _) = watch::channel(());
         Arc::new(RwLock::new(Self {
             namespaces: NamespaceIndex {
@@ -414,6 +419,7 @@ impl Index {
             resource_info: HashMap::default(),
             cluster_networks: cluster_networks.into_iter().map(Cidr::from).collect(),
             fallback_polcy_tx,
+            global_external_network_namespace,
         }))
     }
 
@@ -489,6 +495,7 @@ impl Index {
         egress_network::resolve_egress_network(
             addr,
             source_namespace,
+            &self.global_external_network_namespace,
             self.egress_networks_by_ref.values(),
         )
         .map(|r| (r.namespace, r.name))

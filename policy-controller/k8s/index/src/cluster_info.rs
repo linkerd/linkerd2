@@ -1,4 +1,4 @@
-use std::num::NonZeroU16;
+use std::{num::NonZeroU16, sync::Arc};
 
 use crate::{ports::PortSet, DefaultPolicy};
 use linkerd_policy_controller_core::IpNet;
@@ -32,6 +32,10 @@ pub struct ClusterInfo {
 
     /// The networks that probes are expected to be from.
     pub probe_networks: Vec<IpNet>,
+
+    /// The namespace that is designated for egress configuration
+    /// affecting all workloads across the cluster
+    pub global_external_network_namespace: Arc<String>,
 }
 
 impl ClusterInfo {
