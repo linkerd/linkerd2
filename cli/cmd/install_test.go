@@ -161,6 +161,7 @@ func TestRender(t *testing.T) {
 		ProxyInjector:      defaultValues.ProxyInjector,
 		ProfileValidator:   defaultValues.ProfileValidator,
 		PolicyValidator:    defaultValues.PolicyValidator,
+		Egress:             defaultValues.Egress,
 	}
 
 	haValues, err := testInstallOptionsHA(true)
