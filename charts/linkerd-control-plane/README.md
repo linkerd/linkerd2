@@ -166,6 +166,7 @@ Kubernetes: `>=1.22.0-0`
 | destinationController.readinessProbe.timeoutSeconds | int | `1` |  |
 | disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob |
 | disableIPv6 | bool | `true` | disables routing IPv6 traffic in addition to IPv4 traffic through the proxy (IPv6 routing only available as of proxy-init v2.3.0 and linkerd-cni v1.4.0) |
+| egress.globalEgressNetworkNamespace | string | `"linkerd-egress"` | The namespace that is used to store egress configuration that affects all client workloads in the cluster |
 | enableEndpointSlices | bool | `true` | enables the use of EndpointSlice informers for the destination service; enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on |
 | enableH2Upgrade | bool | `true` | Allow proxies to perform transparent HTTP/2 upgrading |
 | enablePSP | bool | `false` | Add a PSP resource and bind it to the control plane ServiceAccounts. Note PSP has been deprecated since k8s v1.21 |

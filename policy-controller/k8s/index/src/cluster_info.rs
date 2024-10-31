@@ -35,7 +35,7 @@ pub struct ClusterInfo {
 
     /// The namespace that is designated for egress configuration
     /// affecting all workloads across the cluster
-    pub global_external_network_namespace: Arc<String>,
+    pub global_egress_network_namespace: Arc<String>,
 }
 
 impl ClusterInfo {

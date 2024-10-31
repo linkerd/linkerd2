@@ -543,6 +543,8 @@ data:
     destinationResources: null
     disableHeartBeat: false
     disableIPv6: true
+    egress:
+      globalEgressNetworkNamespace: linkerd-egress
     enableEndpointSlices: true
     enableH2Upgrade: true
     enablePodAntiAffinity: false
@@ -1625,6 +1627,7 @@ spec:
         - --log-level=info
         - --log-format=plain
         - --default-opaque-ports=25,587,3306,4444,5432,6379,9300,11211
+        - --global-egress-network-namespace=linkerd-egress
         - --probe-networks=0.0.0.0/0,::/0
         image: cr.l5d.io/linkerd/policy-controller:install-control-plane-version
         imagePullPolicy: IfNotPresent

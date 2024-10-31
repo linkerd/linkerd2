@@ -89,6 +89,12 @@ type (
 		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
+		Egress                      *Egress    `json:"egress"`
+	}
+
+	// Resources represents the computational resources setup for a given container
+	Egress struct {
+		GlobalEgressNetworkNamespace string `json:"globalEgressNetworkNamespace"`
 	}
 
 	// Controller contains the fields to set the controller container

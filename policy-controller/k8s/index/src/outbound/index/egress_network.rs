@@ -67,12 +67,12 @@ impl EgressNetwork {
 pub(crate) fn resolve_egress_network<'n>(
     addr: IpAddr,
     source_namespace: String,
-    global_external_network_namespace: &str,
+    global_egress_network_namespace: &str,
     nets: impl Iterator<Item = &'n EgressNetwork>,
 ) -> Option<super::ResourceRef> {
     let (same_ns, rest): (Vec<_>, Vec<_>) = nets
         .filter(|en| {
-            en.namespace == source_namespace || en.namespace == *global_external_network_namespace
+            en.namespace == source_namespace || en.namespace == *global_egress_network_namespace
         })
         .partition(|un| un.namespace == source_namespace);
     let to_pick_from = if !same_ns.is_empty() { same_ns } else { rest };

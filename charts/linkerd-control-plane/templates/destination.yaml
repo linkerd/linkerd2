@@ -348,6 +348,7 @@ spec:
         - --log-level={{.Values.policyController.logLevel | default "linkerd=info,warn"}}
         - --log-format={{.Values.controllerLogFormat}}
         - --default-opaque-ports={{.Values.proxy.opaquePorts}}
+        - --global-egress-network-namespace={{.Values.egress.globalEgressNetworkNamespace}}
         {{- if .Values.policyController.probeNetworks }}
         - --probe-networks={{.Values.policyController.probeNetworks | join ","}}
         {{- end}}
