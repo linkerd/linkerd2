@@ -101,8 +101,8 @@ struct Args {
     #[clap(long)]
     allow_l5d_request_headers: bool,
 
-    #[clap(long, default_value = "linkerd-external")]
-    global_external_network_namespace: String,
+    #[clap(long, default_value = "linkerd-egress")]
+    global_egress_network_namespace: String,
 }
 
 #[tokio::main]
@@ -125,7 +125,7 @@ async fn main() -> Result<()> {
         default_opaque_ports,
         patch_timeout_ms,
         allow_l5d_request_headers,
-        global_external_network_namespace,
+        global_egress_network_namespace,
     } = Args::parse();
 
     let server = if admission_controller_disabled {
@@ -135,7 +135,7 @@ async fn main() -> Result<()> {
     };
 
     let probe_networks = probe_networks.map(|IpNets(nets)| nets).unwrap_or_default();
-    let global_external_network_namespace = Arc::new(global_external_network_namespace);
+    let global_egress_network_namespace = Arc::new(global_egress_network_namespace);
     let default_opaque_ports = parse_portset(&default_opaque_ports)?;
     let cluster_info = Arc::new(ClusterInfo {
         networks: cluster_networks.clone(),
@@ -146,7 +146,7 @@ async fn main() -> Result<()> {
         default_detect_timeout: DETECT_TIMEOUT,
         default_opaque_ports,
         probe_networks,
-        global_external_network_namespace,
+        global_egress_network_namespace,
     });
 
     // Build the API index data structures which will maintain information
