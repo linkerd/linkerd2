@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
 )
@@ -113,6 +114,8 @@ func TestDualStack(t *testing.T) {
 				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\noutput:\n%s", err, out)
 			}
 		})
+
+		time.Sleep(10 * time.Second)
 
 		t.Run("Hit IPv4 addr directly", func(t *testing.T) {
 			out, err = TestHelper.Kubectl("",
