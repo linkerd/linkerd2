@@ -231,7 +231,7 @@ spec:
 		tc := tc // pin
 
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			_, _, _, _, err := NewFakeClientSets(tc.k8sConfigs...)
+			_, _, _, _, _, err := NewFakeClientSets(tc.k8sConfigs...)
 			if diff := deep.Equal(err, tc.err); diff != nil {
 				t.Errorf("%+v", diff)
 			}
@@ -330,7 +330,7 @@ spec:
 				readers = append(readers, strings.NewReader(m))
 			}
 
-			_, _, _, _, err := newFakeClientSetsFromManifests(readers)
+			_, _, _, _, _, err := newFakeClientSetsFromManifests(readers)
 			if diff := deep.Equal(err, tc.err); diff != nil {
 				t.Errorf("%+v", diff)
 			}

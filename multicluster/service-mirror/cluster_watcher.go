@@ -489,6 +489,10 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources(ctx context.Co
 
 // Deletes a locally mirrored service as it is not present on the remote cluster anymore
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUnexported(ctx context.Context, ev *RemoteServiceUnexported) error {
+	rcsw.deleteLinkMirrorStatus(
+		ev.Name, ev.Namespace,
+	)
+
 	localServiceName := rcsw.mirrorServiceName(ev.Name)
 	localService, err := rcsw.localAPIClient.Svc().Lister().Services(ev.Namespace).Get(localServiceName)
 	var errors []error
@@ -540,6 +544,10 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUnexported(ctx conte
 
 // Removes a remote service from a local federated service.
 func (rcsw *RemoteClusterServiceWatcher) handleFederatedServiceLeave(ctx context.Context, ev *RemoteServiceLeavesFederatedService) error {
+	rcsw.deleteLinkFederatedStatus(
+		ev.Name, ev.Namespace,
+	)
+
 	localServiceName := rcsw.federatedServiceName(ev.Name)
 	localService, err := rcsw.localAPIClient.Svc().Lister().Services(ev.Namespace).Get(localServiceName)
 
@@ -588,10 +596,6 @@ func (rcsw *RemoteClusterServiceWatcher) handleFederatedServiceLeave(ctx context
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(ev.Namespace).Update(ctx, localService, metav1.UpdateOptions{}); err != nil {
 		return RetryableError{[]error{err}}
 	}
-
-	rcsw.deleteLinkFederatedStatus(
-		ev.Name, ev.Namespace,
-	)
 	return nil
 }
 
@@ -606,6 +610,10 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteExportedServiceUpdated(ctx 
 		if ev.localEndpoints != nil {
 			err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ev.localService.Namespace).Delete(ctx, ev.localService.Name, metav1.DeleteOptions{})
 			if err != nil {
+				rcsw.updateLinkMirrorStatus(
+					ev.remoteUpdate.GetName(), ev.remoteUpdate.GetNamespace(),
+					mirrorStatusCondition(false, reasonError, fmt.Sprintf("Failed to delete mirror endpoints: %s", err), nil),
+				)
 				return RetryableError{[]error{
 					fmt.Errorf("failed to delete mirror endpoints for %s/%s: %w", ev.localService.Namespace, ev.localService.Name, err),
 				}}
@@ -616,6 +624,10 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteExportedServiceUpdated(ctx 
 		// be created for it.
 		err := rcsw.createGatewayEndpoints(ctx, ev.remoteUpdate)
 		if err != nil {
+			rcsw.updateLinkMirrorStatus(
+				ev.remoteUpdate.GetName(), ev.remoteUpdate.GetNamespace(),
+				mirrorStatusCondition(false, reasonError, fmt.Sprintf("Failed to create mirror endpoints: %s", err), nil),
+			)
 			return err
 		}
 	} else {
@@ -623,6 +635,10 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteExportedServiceUpdated(ctx 
 		// exist for it but may need to be updated.
 		gatewayAddresses, err := rcsw.resolveGatewayAddress()
 		if err != nil {
+			rcsw.updateLinkMirrorStatus(
+				ev.remoteUpdate.GetName(), ev.remoteUpdate.GetNamespace(),
+				mirrorStatusCondition(false, reasonError, fmt.Sprintf("Failed to get gateway address: %s", err), nil),
+			)
 			return err
 		}
 
@@ -641,6 +657,10 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteExportedServiceUpdated(ctx 
 
 		err = rcsw.updateMirrorEndpoints(ctx, copiedEndpoints)
 		if err != nil {
+			rcsw.updateLinkMirrorStatus(
+				ev.remoteUpdate.GetName(), ev.remoteUpdate.GetNamespace(),
+				mirrorStatusCondition(false, reasonError, fmt.Sprintf("Failed to update mirror endpoints: %s", err), nil),
+			)
 			return RetryableError{[]error{err}}
 		}
 	}
@@ -650,8 +670,16 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteExportedServiceUpdated(ctx 
 	ev.localService.Spec.Ports = remapRemoteServicePorts(ev.remoteUpdate.Spec.Ports)
 
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(ev.localService.Namespace).Update(ctx, ev.localService, metav1.UpdateOptions{}); err != nil {
+		rcsw.updateLinkMirrorStatus(
+			ev.remoteUpdate.GetName(), ev.remoteUpdate.GetNamespace(),
+			mirrorStatusCondition(false, reasonError, fmt.Sprintf("Failed to update mirror service: %s", err), nil),
+		)
 		return RetryableError{[]error{err}}
 	}
+	rcsw.updateLinkMirrorStatus(
+		ev.remoteUpdate.GetName(), ev.remoteUpdate.GetNamespace(),
+		mirrorStatusCondition(true, reasonMirrored, "", ev.localService),
+	)
 	return nil
 }
 
@@ -728,6 +756,10 @@ func remapRemoteServicePorts(ports []corev1.ServicePort) []corev1.ServicePort {
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceExported(ctx context.Context, ev *RemoteServiceExported) error {
 	remoteService := ev.service.DeepCopy()
 	if rcsw.headlessServicesEnabled && remoteService.Spec.ClusterIP == corev1.ClusterIPNone {
+		rcsw.updateLinkMirrorStatus(
+			ev.service.GetName(), ev.service.GetNamespace(),
+			mirrorStatusCondition(false, reasonInvalidService, "Headless mirror services are disabled", nil),
+		)
 		return nil
 	}
 
@@ -736,6 +768,10 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceExported(ctx context
 
 	if rcsw.namespaceCreationEnabled {
 		if err := rcsw.mirrorNamespaceIfNecessary(ctx, remoteService.Namespace); err != nil {
+			rcsw.updateLinkMirrorStatus(
+				ev.service.GetName(), ev.service.GetNamespace(),
+				mirrorStatusCondition(false, reasonError, fmt.Sprintf("Failed to create namespace: %s", err), nil),
+			)
 			return err
 		}
 	} else {
@@ -744,8 +780,16 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceExported(ctx context
 			if kerrors.IsNotFound(err) {
 				rcsw.recorder.Event(remoteService, corev1.EventTypeNormal, eventTypeSkipped, "Skipped mirroring service: namespace does not exist")
 				rcsw.log.Warnf("Skipping mirroring of service %s: namespace %s does not exist", serviceInfo, remoteService.Namespace)
+				rcsw.updateLinkMirrorStatus(
+					ev.service.GetName(), ev.service.GetNamespace(),
+					mirrorStatusCondition(false, reasonMissingNamespace, "Namespace does not exist", nil),
+				)
 				return nil
 			}
+			rcsw.updateLinkMirrorStatus(
+				ev.service.GetName(), ev.service.GetNamespace(),
+				mirrorStatusCondition(false, reasonError, fmt.Sprintf("Failed get namespace: %s", err), nil),
+			)
 			// something else went wrong, so we can just retry
 			return RetryableError{[]error{err}}
 		}
@@ -766,6 +810,10 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceExported(ctx context
 	rcsw.log.Infof("Creating a new service mirror for %s", serviceInfo)
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(remoteService.Namespace).Create(ctx, serviceToCreate, metav1.CreateOptions{}); err != nil {
 		if !kerrors.IsAlreadyExists(err) {
+			rcsw.updateLinkMirrorStatus(
+				ev.service.GetName(), ev.service.GetNamespace(),
+				mirrorStatusCondition(false, reasonError, fmt.Sprintf("Failed to create mirror service: %s", err), nil),
+			)
 			// we might have created it during earlier attempt, if that is not the case, we retry
 			return RetryableError{[]error{err}}
 		}
@@ -773,9 +821,27 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceExported(ctx context
 
 	if rcsw.isRemoteDiscovery(remoteService.Labels) {
 		// For remote discovery services, skip creating gateway endpoints.
+		rcsw.updateLinkMirrorStatus(
+			ev.service.GetName(), ev.service.GetNamespace(),
+			mirrorStatusCondition(true, reasonMirrored, "", serviceToCreate),
+		)
 		return nil
 	}
-	return rcsw.createGatewayEndpoints(ctx, remoteService)
+
+	err := rcsw.createGatewayEndpoints(ctx, remoteService)
+	if err != nil {
+		rcsw.updateLinkMirrorStatus(
+			ev.service.GetName(), ev.service.GetNamespace(),
+			mirrorStatusCondition(false, reasonError, fmt.Sprintf("Failed to create mirror endpoints: %s", err), nil),
+		)
+		return err
+	}
+
+	rcsw.updateLinkMirrorStatus(
+		ev.service.GetName(), ev.service.GetNamespace(),
+		mirrorStatusCondition(true, reasonMirrored, "", serviceToCreate),
+	)
+	return nil
 }
 
 func (rcsw *RemoteClusterServiceWatcher) handleCreateFederatedService(ctx context.Context, ev *CreateFederatedService) error {
