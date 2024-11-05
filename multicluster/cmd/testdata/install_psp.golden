@@ -437,3 +437,131 @@ spec:
     - kind: ServiceAccount
       name: prometheus
       namespace: linkerd-viz
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-local-service-mirror-access-local-resources
+  labels:
+    linkerd.io/extension: multicluster
+    component: local-service-mirror
+rules:
+- apiGroups: [""]
+  resources: ["endpoints", "services"]
+  verbs: ["list", "get", "watch", "create", "delete", "update"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["create", "get", "update", "patch"]
+- apiGroups: ["multicluster.linkerd.io"]
+  resources: ["links"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["multicluster.linkerd.io"]
+  resources: ["links/status"]
+  verbs: ["update"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-local-service-mirror-access-local-resources
+  labels:
+    linkerd.io/extension: multicluster
+    component: local-service-mirror
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-local-service-mirror-access-local-resources
+subjects:
+- kind: ServiceAccount
+  name: linkerd-local-service-mirror
+  namespace: linkerd-multicluster
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-local-service-mirror
+  namespace: linkerd-multicluster
+  labels:
+    linkerd.io/extension: multicluster
+    component: local-service-mirror
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    linkerd.io/extension: multicluster
+    component: local-service-mirror
+  name: linkerd-local-service-mirror
+  namespace: linkerd-multicluster
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      component: local-service-mirror
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+        config.alpha.linkerd.io/proxy-wait-before-exit-seconds: "0"
+      labels:
+        linkerd.io/extension: multicluster
+        component: local-service-mirror
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - service-mirror
+        - -log-level=info
+        - -log-format=plain
+        - -event-requeue-limit=3
+        - -namespace=linkerd-multicluster
+        - -enable-pprof=false
+        - -local-mirror
+        - -federated-service-selector=mirror.linkerd.io/federated=member
+        image: cr.l5d.io/linkerd/controller:linkerdVersionValue
+        name: service-mirror
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 2103
+          runAsGroup: 2103
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access
+          readOnly: true
+        ports:
+        - containerPort: 9999
+          name: admin-http
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: linkerd-local-service-mirror
+      volumes:
+      - name: kube-api-access
+        projected:
+          defaultMode: 420
+          sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              items:
+              - key: ca.crt
+                path: ca.crt
+              name: kube-root-ca.crt
+          - downwardAPI:
+              items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+                path: namespace
