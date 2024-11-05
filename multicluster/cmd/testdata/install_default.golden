@@ -254,7 +254,7 @@ spec:
   versions:
   - name: v1alpha1
     served: true
-    storage: true
+    storage: false
     schema:
       openAPIV3Schema:
         type: object
@@ -361,6 +361,435 @@ spec:
               targetClusterLinkerdNamespace:
                 description: Name of namespace Linkerd control plane is installed in on target cluster
                 type: string
+  - name: v1alpha2
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              clusterCredentialsSecret:
+                description: Kubernetes secret of target cluster
+                type: string
+              gatewayAddress:
+                description: Gateway address of target cluster
+                type: string
+              gatewayIdentity:
+                description: Gateway Identity FQDN
+                type: string
+              gatewayPort:
+                description: Gateway Port
+                type: string
+              probeSpec:
+                description: Spec for gateway health probe
+                type: object
+                properties:
+                  failureThreshold:
+                    default: "3"
+                    description: Minimum consecutive failures for the probe to be considered failed
+                    type: string
+                  path:
+                    description: Path of remote gateway health endpoint
+                    type: string
+                  period:
+                    description: Interval in between probe requests
+                    type: string
+                  port:
+                    description: Port of remote gateway health endpoint
+                    type: string
+                  timeout:
+                    default: 30s
+                    description: Probe request timeout
+                    format: duration
+                    type: string
+              selector:
+                description: Kubernetes Label Selector
+                type: object
+                properties:
+                  matchLabels:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  matchExpressions:
+                    description: List of selector requirements
+                    type: array
+                    items:
+                      description: A selector item requires a key and an operator
+                      type: object
+                      required:
+                      - key
+                      - operator
+                      properties:
+                        key:
+                          description: Label key that selector should apply to
+                          type: string
+                        operator:
+                          description: Evaluation of a label in relation to set
+                          type: string
+                          enum: [In, NotIn, Exists, DoesNotExist]
+                        values:
+                          type: array
+                          items:
+                            type: string
+              remoteDiscoverySelector:
+                description: Selector for Services to mirror in remote discovery mode
+                type: object
+                properties:
+                  matchLabels:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  matchExpressions:
+                    description: List of selector requirements
+                    type: array
+                    items:
+                      description: A selector item requires a key and an operator
+                      type: object
+                      required:
+                      - key
+                      - operator
+                      properties:
+                        key:
+                          description: Label key that selector should apply to
+                          type: string
+                        operator:
+                          description: Evaluation of a label in relation to set
+                          type: string
+                          enum: [In, NotIn, Exists, DoesNotExist]
+                        values:
+                          type: array
+                          items:
+                            type: string
+              federatedServiceSelector:
+                description: Selector for federated service memebers
+                type: object
+                properties:
+                  matchLabels:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  matchExpressions:
+                    description: List of selector requirements
+                    type: array
+                    items:
+                      description: A selector item requires a key and an operator
+                      type: object
+                      required:
+                      - key
+                      - operator
+                      properties:
+                        key:
+                          description: Label key that selector should apply to
+                          type: string
+                        operator:
+                          description: Evaluation of a label in relation to set
+                          type: string
+                          enum: [In, NotIn, Exists, DoesNotExist]
+                        values:
+                          type: array
+                          items:
+                            type: string
+              targetClusterName:
+                description: Name of target cluster to link to
+                type: string
+              targetClusterDomain:
+                description: Domain name of target cluster to link to
+                type: string
+              targetClusterLinkerdNamespace:
+                description: Name of namespace Linkerd control plane is installed in on target cluster
+                type: string
+          status:
+            description: Status defines the state of resources managed by this Link
+            properties:
+              mirrorServices:
+                description: List of services mirrored by this Link
+                type: array
+                items:
+                  description: The status of a mirrored service
+                  properties:
+                    conditions:
+                      description: Conditions of the mirrored service
+                      type: array
+                      items:
+                        description: The status of a condition
+                        properties:
+                          lastTransitionTime:
+                            description: lastTransitionTime is the last time the condition
+                              transitioned from one status to another. This should
+                              be when the underlying condition changed.  If that is
+                              not known, then using the time when the API field changed
+                              is acceptable.
+                            format: date-time
+                            type: string
+                          message:
+                            description: message is a human readable message indicating
+                              details about the transition. This may be an empty string.
+                            type: string
+                          reason:
+                            description: reason contains a programmatic identifier
+                              indicating the reason for the condition's last transition.
+                              Producers of specific condition types may define expected
+                              values and meanings for this field, and whether the
+                              values are considered a guaranteed API. The value should
+                              be a CamelCase string. This field may not be empty.
+                            maxLength: 1024
+                            minLength: 1
+                            pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                            type: string
+                          status:
+                            description: status of the condition, one of True, False,
+                              Unknown.
+                            enum:
+                            - "True"
+                            - "False"
+                            - Unknown
+                            type: string
+                          type:
+                            description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                              --- Many .condition.type values are consistent across
+                              resources like Available, but because arbitrary conditions
+                              can be useful (see .node.status.conditions), the ability
+                              to deconflict is important. The regex it matches is
+                              (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                            maxLength: 316
+                            pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                            type: string
+                          localRef:
+                            description: LocalRef corresponds with the Service in the
+                              local cluster that this Link is managing.
+                            properties:
+                              group:
+                                default: core
+                                description: "Group is the group of the referent."
+                                maxLength: 253
+                                pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                type: string
+                              kind:
+                                default: Service
+                                description: "Kind is kind of the referent."
+                                maxLength: 63
+                                minLength: 1
+                                pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                                type: string
+                              name:
+                                description: "Name is the name of the referent."
+                                maxLength: 253
+                                minLength: 1
+                                type: string
+                              namespace:
+                                description: "Namespace is the namespace of the referent."
+                                maxLength: 63
+                                minLength: 1
+                                pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                type: string
+                            type: object
+                            required:
+                            - name
+                            - namespace
+                        required:
+                        - lastTransitionTime
+                        - message
+                        - reason
+                        - status
+                        - type
+                        type: object
+                    controllerName:
+                      description: "ControllerName is a domain/path string that indicates
+                        the name of the controller that wrote this status. This corresponds
+                        with the controllerName field on GatewayClass. \n Example:
+                        \"example.net/gateway-controller\". \n The format of this
+                        field is DOMAIN \"/\" PATH, where DOMAIN and PATH are valid
+                        Kubernetes names (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+                        \n Controllers MUST populate this field when writing status.
+                        Controllers should ensure that entries to status populated
+                        with their ControllerName are cleaned up when they are no
+                        longer necessary."
+                      maxLength: 253
+                      minLength: 1
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\/[A-Za-z0-9\/\-._~%!$&'()*+,;=:]+$
+                      type: string
+                    remoteRef:
+                      description: RemoteRef corresponds with the Service in the
+                        target cluster that this Link is mirroring.
+                      properties:
+                        group:
+                          default: core
+                          description: "Group is the group of the referent."
+                          maxLength: 253
+                          pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                          type: string
+                        kind:
+                          default: Service
+                          description: "Kind is kind of the referent."
+                          maxLength: 63
+                          minLength: 1
+                          pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                          type: string
+                        name:
+                          description: "Name is the name of the referent."
+                          maxLength: 253
+                          minLength: 1
+                          type: string
+                        namespace:
+                          description: "Namespace is the namespace of the referent."
+                          maxLength: 63
+                          minLength: 1
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                  type: object
+                  required:
+                  - controllerName
+                  - remoteRef
+              federatedServices:
+                description: List of federated services mirrored by this Link
+                type: array
+                items:
+                  description: The status of a federated service
+                  properties:
+                    conditions:
+                      description: Conditions of the federated service
+                      type: array
+                      items:
+                        description: The status of a condition
+                        properties:
+                          lastTransitionTime:
+                            description: lastTransitionTime is the last time the condition
+                              transitioned from one status to another. This should
+                              be when the underlying condition changed.  If that is
+                              not known, then using the time when the API field changed
+                              is acceptable.
+                            format: date-time
+                            type: string
+                          message:
+                            description: message is a human readable message indicating
+                              details about the transition. This may be an empty string.
+                            type: string
+                          reason:
+                            description: reason contains a programmatic identifier
+                              indicating the reason for the condition's last transition.
+                              Producers of specific condition types may define expected
+                              values and meanings for this field, and whether the
+                              values are considered a guaranteed API. The value should
+                              be a CamelCase string. This field may not be empty.
+                            maxLength: 1024
+                            minLength: 1
+                            pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                            type: string
+                          status:
+                            description: status of the condition, one of True, False,
+                              Unknown.
+                            enum:
+                            - "True"
+                            - "False"
+                            - Unknown
+                            type: string
+                          type:
+                            description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                              --- Many .condition.type values are consistent across
+                              resources like Available, but because arbitrary conditions
+                              can be useful (see .node.status.conditions), the ability
+                              to deconflict is important. The regex it matches is
+                              (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                            maxLength: 316
+                            pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                            type: string
+                          localRef:
+                            description: LocalRef corresponds with the Service in the
+                              local cluster that this Link is managing.
+                            properties:
+                              group:
+                                default: core
+                                description: "Group is the group of the referent."
+                                maxLength: 253
+                                pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                type: string
+                              kind:
+                                default: Service
+                                description: "Kind is kind of the referent."
+                                maxLength: 63
+                                minLength: 1
+                                pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                                type: string
+                              name:
+                                description: "Name is the name of the referent."
+                                maxLength: 253
+                                minLength: 1
+                                type: string
+                              namespace:
+                                description: "Namespace is the namespace of the referent."
+                                maxLength: 63
+                                minLength: 1
+                                pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                type: string
+                            type: object
+                            required:
+                            - name
+                            - namespace
+                        required:
+                        - lastTransitionTime
+                        - message
+                        - reason
+                        - status
+                        - type
+                        type: object
+                    controllerName:
+                      description: "ControllerName is a domain/path string that indicates
+                        the name of the controller that wrote this status. This corresponds
+                        with the controllerName field on GatewayClass. \n Example:
+                        \"example.net/gateway-controller\". \n The format of this
+                        field is DOMAIN \"/\" PATH, where DOMAIN and PATH are valid
+                        Kubernetes names (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+                        \n Controllers MUST populate this field when writing status.
+                        Controllers should ensure that entries to status populated
+                        with their ControllerName are cleaned up when they are no
+                        longer necessary."
+                      maxLength: 253
+                      minLength: 1
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\/[A-Za-z0-9\/\-._~%!$&'()*+,;=:]+$
+                      type: string
+                    remoteRef:
+                      description: RemoteRef corresponds with the Service in the
+                        target cluster that this Link is mirroring.
+                      properties:
+                        group:
+                          default: core
+                          description: "Group is the group of the referent."
+                          maxLength: 253
+                          pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                          type: string
+                        kind:
+                          default: Service
+                          description: "Kind is kind of the referent."
+                          maxLength: 63
+                          minLength: 1
+                          pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                          type: string
+                        name:
+                          description: "Name is the name of the referent."
+                          maxLength: 253
+                          minLength: 1
+                          type: string
+                        namespace:
+                          description: "Namespace is the namespace of the referent."
+                          maxLength: 63
+                          minLength: 1
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                  type: object
+                  required:
+                  - controllerName
+                  - remoteRef
+            type: object
+    subresources:
+      status: {}
   scope: Namespaced
   names:
     plural: links
