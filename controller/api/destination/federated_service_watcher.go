@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
@@ -48,6 +49,8 @@ type federatedService struct {
 	localEndpoints *watcher.EndpointsWatcher
 	clusterStore   *watcher.ClusterStore
 	log            *logging.Entry
+
+	sync.Mutex
 }
 
 // FederatedServiceSubscriber holds all the state for an individual subscriber
@@ -60,7 +63,7 @@ type federatedServiceSubscriber struct {
 	localTranslators  map[string]*endpointTranslator
 	remoteTranslators map[remoteDiscoveryID]*endpointTranslator
 
-	stream    pb.Destination_GetServer
+	stream    *synchronizedGetStream
 	endStream chan struct{}
 }
 
@@ -198,6 +201,9 @@ func (fsw *federatedServiceWatcher) newFederatedService(service *corev1.Service)
 }
 
 func (fs *federatedService) update(service *corev1.Service) {
+	fs.Lock()
+	defer fs.Unlock()
+
 	newRemoteDiscovery := remoteDiscoveryIDs(service, fs.log)
 	for _, id := range newRemoteDiscovery {
 		if !slices.Contains(fs.remoteDiscovery, id) {
@@ -234,6 +240,9 @@ func (fs *federatedService) update(service *corev1.Service) {
 }
 
 func (fs *federatedService) delete() {
+	fs.Lock()
+	defer fs.Unlock()
+
 	for _, subscriber := range fs.subscribers {
 		for id, translator := range subscriber.remoteTranslators {
 			remoteWatcher, _, found := fs.clusterStore.Get(id.cluster)
@@ -259,8 +268,11 @@ func (fs *federatedService) subscribe(
 	stream pb.Destination_GetServer,
 	endStream chan struct{},
 ) {
+	syncStream := newSyncronizedGetStream(stream, fs.log)
+	syncStream.Start()
+
 	subscriber := federatedServiceSubscriber{
-		stream:            stream,
+		stream:            syncStream,
 		endStream:         endStream,
 		remoteTranslators: make(map[remoteDiscoveryID]*endpointTranslator, 0),
 		localTranslators:  make(map[string]*endpointTranslator, 0),
@@ -274,21 +286,28 @@ func (fs *federatedService) subscribe(
 	if fs.localDiscovery != "" {
 		fs.localDiscoverySubscribe(&subscriber, fs.localDiscovery)
 	}
+
+	fs.Lock()
+	defer fs.Unlock()
 	fs.subscribers = append(fs.subscribers, subscriber)
 }
 
 func (fs *federatedService) unsubscribe(
 	stream pb.Destination_GetServer,
 ) {
+	fs.Lock()
+	defer fs.Unlock()
+
 	subscribers := make([]federatedServiceSubscriber, 0)
 	for i, subscriber := range fs.subscribers {
-		if subscriber.stream == stream {
+		if subscriber.stream.inner == stream {
 			for id := range subscriber.remoteTranslators {
 				fs.remoteDiscoveryUnsubscribe(&fs.subscribers[i], id)
 			}
 			for localDiscovery := range subscriber.localTranslators {
 				fs.localDiscoveryUnsubscribe(&fs.subscribers[i], localDiscovery)
 			}
+			subscriber.stream.Stop()
 		} else {
 			subscribers = append(subscribers, subscriber)
 		}
