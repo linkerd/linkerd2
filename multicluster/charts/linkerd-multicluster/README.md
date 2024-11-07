@@ -94,12 +94,25 @@ Kubernetes: `>=1.22.0-0`
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | linkerdNamespace | string | `"linkerd"` | Namespace of linkerd installation |
 | linkerdVersion | string | `"linkerdVersionValue"` | Control plane version |
+| localServiceMirror.GID | int | `2103` | Group id under which the Service Mirror shall be ran |
+| localServiceMirror.UID | int | `2103` | User id under which the Service Mirror shall be ran |
+| localServiceMirror.enablePprof | bool | `false` | enables the use of pprof endpoints on control plane component's admin servers |
+| localServiceMirror.federatedServiceSelector | string | `"mirror.linkerd.io/federated=member"` | Label selector for federated service members in the local cluster. |
+| localServiceMirror.image.name | string | `"cr.l5d.io/linkerd/controller"` | Docker image for the Service mirror component (uses the Linkerd controller image) |
+| localServiceMirror.image.pullPolicy | string | imagePullPolicy | Pull policy for the Service mirror container image |
+| localServiceMirror.image.version | string | linkerdVersion | Tag for the Service mirror container image |
+| localServiceMirror.logFormat | string | `"plain"` | Log format (`plain` or `json`) |
+| localServiceMirror.logLevel | string | `"info"` | Log level for the Multicluster components |
+| localServiceMirror.replicas | int | `1` | Number of local service mirror replicas to run |
+| localServiceMirror.resources | object | `{}` | Resources for the Service mirror container |
+| localServiceMirror.serviceMirrorRetryLimit | int | `3` | Number of times local service mirror updates are allowed to be requeued (retried) |
 | namespaceMetadata.image.name | string | `"extension-init"` | Docker image name for the namespace-metadata instance |
 | namespaceMetadata.image.pullPolicy | string | imagePullPolicy | Pull policy for the namespace-metadata instance |
 | namespaceMetadata.image.registry | string | `"cr.l5d.io/linkerd"` | Docker registry for the namespace-metadata instance |
 | namespaceMetadata.image.tag | string | `"v0.1.1"` | Docker image tag for the namespace-metadata instance |
 | namespaceMetadata.nodeSelector | object | `{}` | Node selectors for the namespace-metadata instance |
 | namespaceMetadata.tolerations | list | `[]` | Tolerations for the namespace-metadata instance |
+| podAnnotations | object | `{}` | Additional annotations to add to all pods |
 | podLabels | object | `{}` | Additional labels to add to all pods |
 | proxyOutboundPort | int | `4140` | The port on which the proxy accepts outbound traffic |
 | remoteMirrorServiceAccount | bool | `true` | If the remote mirror service account should be installed |

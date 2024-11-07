@@ -278,8 +278,8 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 			GatewayAddress:          "192.0.2.127",
 			GatewayPort:             888,
 			ProbeSpec:               defaultProbeSpec,
-			Selector:                *defaultSelector,
-			RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 		},
 		remoteAPIClient:         remoteAPI,
 		localAPIClient:          localAPI,
@@ -292,7 +292,7 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 		headlessServicesEnabled: true,
 	}
 
-	q.Add(&RemoteServiceCreated{
+	q.Add(&RemoteServiceExported{
 		service: remoteService("service-one", "ns1", "111", map[string]string{
 			consts.DefaultExportedServiceSelector: "true",
 		}, []corev1.ServicePort{
@@ -367,8 +367,8 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 			GatewayAddress:          "192.0.0.1",
 			GatewayPort:             888,
 			ProbeSpec:               defaultProbeSpec,
-			Selector:                *defaultSelector,
-			RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 		},
 		remoteAPIClient: remoteAPI,
 		localAPIClient:  localAPI,
@@ -378,7 +378,7 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 		gatewayAlive:    true,
 	}
 
-	events.Add(&RemoteServiceCreated{
+	events.Add(&RemoteServiceExported{
 		service: remoteService("svc", "ns", "1", map[string]string{
 			consts.DefaultExportedServiceSelector: "true",
 		}, []corev1.ServicePort{
@@ -446,7 +446,7 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 	// 'new-label'. This should exercise RemoteServiceUpdated which should
 	// update svc-remote; the gateway is still not alive though so we expect
 	// the Endpoints of svc-remote to still have no ready addresses.
-	events.Add(&RemoteServiceUpdated{
+	events.Add(&RemoteExportedServiceUpdated{
 		localService:   remoteService("svc-remote", "ns", "2", nil, nil),
 		localEndpoints: endpoints,
 		remoteUpdate: remoteService("svc", "ns", "2", map[string]string{
@@ -515,8 +515,8 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 			GatewayAddress:          "192.0.0.1",
 			GatewayPort:             888,
 			ProbeSpec:               defaultProbeSpec,
-			Selector:                *defaultSelector,
-			RemoteDiscoverySelector: *defaultRemoteDiscoverySelector,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
 		},
 		remoteAPIClient: remoteAPI,
 		localAPIClient:  localAPI,
@@ -526,7 +526,7 @@ func TestServiceCreatedGatewayDown(t *testing.T) {
 		gatewayAlive:    false,
 	}
 
-	events.Add(&RemoteServiceCreated{
+	events.Add(&RemoteServiceExported{
 		service: remoteService("svc", "ns", "1", map[string]string{
 			consts.DefaultExportedServiceSelector: "true",
 		}, []corev1.ServicePort{
@@ -651,7 +651,7 @@ func TestEmptyRemoteSelectors(t *testing.T) {
 		{
 			description: "empty remote discovery selector does not result in exports",
 			environment: createEnvWithSelector(defaultSelector, &metav1.LabelSelector{}),
-			expectedEventsInQueue: []interface{}{&RemoteServiceCreated{
+			expectedEventsInQueue: []interface{}{&RemoteServiceExported{
 				service: remoteService("service-one", "ns1", "111", map[string]string{
 					consts.DefaultExportedServiceSelector: "true",
 				}, []corev1.ServicePort{
@@ -672,7 +672,7 @@ func TestEmptyRemoteSelectors(t *testing.T) {
 		{
 			description: "empty default selector does not result in exports",
 			environment: createEnvWithSelector(&metav1.LabelSelector{}, defaultRemoteDiscoverySelector),
-			expectedEventsInQueue: []interface{}{&RemoteServiceCreated{
+			expectedEventsInQueue: []interface{}{&RemoteServiceExported{
 				service: remoteService("service-two", "ns1", "111", map[string]string{
 					consts.DefaultExportedServiceSelector: "remote-discovery",
 				}, []corev1.ServicePort{
@@ -851,7 +851,7 @@ func onAddOrUpdateTestCases(isAdd bool) []mirroringTestCase {
 		{
 			description: fmt.Sprintf("enqueue a RemoteServiceCreated event when this is not a gateway and we have the needed annotations (%s)", testType),
 			environment: onAddOrUpdateExportedSvc(isAdd),
-			expectedEventsInQueue: []interface{}{&RemoteServiceCreated{
+			expectedEventsInQueue: []interface{}{&RemoteServiceExported{
 				service: remoteService("test-service", "test-namespace", "resVersion", map[string]string{
 					consts.DefaultExportedServiceSelector: "true",
 				}, nil),
@@ -860,7 +860,7 @@ func onAddOrUpdateTestCases(isAdd bool) []mirroringTestCase {
 		{
 			description: fmt.Sprintf("enqueue a RemoteServiceUpdated event if this is a service that we have already mirrored and its res version is different (%s)", testType),
 			environment: onAddOrUpdateRemoteServiceUpdated(isAdd),
-			expectedEventsInQueue: []interface{}{&RemoteServiceUpdated{
+			expectedEventsInQueue: []interface{}{&RemoteExportedServiceUpdated{
 				localService:   mirrorService("test-service-remote", "test-namespace", "pastResourceVersion", nil),
 				localEndpoints: endpoints("test-service-remote", "test-namespace", "0.0.0.0", "", nil),
 				remoteUpdate: remoteService("test-service", "test-namespace", "currentResVersion", map[string]string{
@@ -887,7 +887,7 @@ func onAddOrUpdateTestCases(isAdd bool) []mirroringTestCase {
 		{
 			description: fmt.Sprintf("enqueue RemoteServiceDeleted event as this service is not mirrorable anymore (%s)", testType),
 			environment: serviceNotExportedAnymore(isAdd),
-			expectedEventsInQueue: []interface{}{&RemoteServiceDeleted{
+			expectedEventsInQueue: []interface{}{&RemoteServiceUnexported{
 				Name:      "test-service",
 				Namespace: "test-namespace",
 			}},
@@ -922,7 +922,7 @@ func TestOnDelete(t *testing.T) {
 			description: "enqueues a RemoteServiceDeleted because there is gateway metadata present on the service",
 			environment: onDeleteExportedService,
 			expectedEventsInQueue: []interface{}{
-				&RemoteServiceDeleted{
+				&RemoteServiceUnexported{
 					Name:      "test-service",
 					Namespace: "test-namespace",
 				},
