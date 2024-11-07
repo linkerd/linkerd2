@@ -12,7 +12,7 @@ func TestClusterStoreHandlers(t *testing.T) {
 		name                 string
 		k8sConfigs           []string
 		enableEndpointSlices bool
-		expectedClusters     map[string]clusterConfig
+		expectedClusters     map[string]ClusterConfig
 		deleteClusters       map[string]struct{}
 	}{
 		{
@@ -21,7 +21,7 @@ func TestClusterStoreHandlers(t *testing.T) {
 				validRemoteSecret,
 			},
 			enableEndpointSlices: true,
-			expectedClusters: map[string]clusterConfig{
+			expectedClusters: map[string]ClusterConfig{
 				"remote": {
 					TrustDomain:   "identity.org",
 					ClusterDomain: "cluster.local",
@@ -38,7 +38,7 @@ func TestClusterStoreHandlers(t *testing.T) {
 				validTargetSecret,
 			},
 			enableEndpointSlices: false,
-			expectedClusters: map[string]clusterConfig{
+			expectedClusters: map[string]ClusterConfig{
 				"remote": {
 					TrustDomain:   "identity.org",
 					ClusterDomain: "cluster.local",
@@ -62,7 +62,7 @@ func TestClusterStoreHandlers(t *testing.T) {
 				invalidTypeSecret,
 			},
 			enableEndpointSlices: true,
-			expectedClusters: map[string]clusterConfig{
+			expectedClusters: map[string]ClusterConfig{
 				"remote": {
 					TrustDomain:   "identity.org",
 					ClusterDomain: "cluster.local",
