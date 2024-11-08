@@ -1869,10 +1869,16 @@ impl PolicyIndex {
     }
 
     fn client_ratelimit(&self, server_name: &str) -> Option<RateLimit> {
+        use ratelimit_policy::{ClientRef, Target};
+
         // sort the ratelimit policies by creation timestamp and name so we can
         // deterministically always return the same policy when more than one point to the same
         // server
-        let mut rate_limits = self.ratelimit_policies.iter().collect::<Vec<_>>();
+        let mut rate_limits = self
+            .ratelimit_policies
+            .iter()
+            .filter(|(_, spec)| matches!(spec.target, Target::Server(ref n) if n == server_name))
+            .collect::<Vec<_>>();
         rate_limits.sort_by(|(a_name, a), (b_name, b)| {
             let by_ts = match (&a.creation_timestamp, &b.creation_timestamp) {
                 (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
@@ -1884,62 +1890,45 @@ impl PolicyIndex {
             by_ts.then_with(|| a_name.cmp(b_name))
         });
 
-        for (name, spec) in rate_limits.iter() {
-            // Skip the policy if it doesn't apply to the server.
-            let ratelimit_policy::Target::Server(this_name) = &spec.target;
-            if this_name != server_name {
-                tracing::trace!(
-                    ns = %self.namespace,
-                    ratelimitpolicy = %name,
-                    server = %server_name,
-                    target = %name,
-                    "HTTPLocalRateLimitPolicy does not target server",
-                );
-                continue;
-            }
+        let (name, spec) = rate_limits.first()?;
 
-            tracing::trace!(
-                ns = %self.namespace,
-                ratelimitpolicy = %name,
-                server = %server_name,
-                "HTTPLocalRateLimitPolicy targets server",
-            );
+        tracing::trace!(
+            ns = %self.namespace,
+            ratelimitpolicy = %name,
+            server = %server_name,
+            "HTTPLocalRateLimitPolicy targets server",
+        );
 
-            let overrides = spec
-                .overrides
-                .iter()
-                .map(|ovr| {
-                    let client_identities = ovr
-                        .client_refs
-                        .iter()
-                        .map(|client_ref| {
-                            let ratelimit_policy::ClientRef::ServiceAccount { namespace, name } =
-                                client_ref;
-                            let namespace = namespace.as_deref().unwrap_or(&self.namespace);
-                            self.cluster_info.service_account_identity(namespace, name)
-                        })
-                        .collect();
+        let overrides = spec
+            .overrides
+            .iter()
+            .map(|ovr| {
+                let client_identities = ovr
+                    .client_refs
+                    .iter()
+                    .map(|ClientRef::ServiceAccount { namespace, name }| {
+                        let namespace = namespace.as_deref().unwrap_or(&self.namespace);
+                        self.cluster_info.service_account_identity(namespace, name)
+                    })
+                    .collect();
 
-                    Override {
-                        requests_per_second: ovr.requests_per_second,
-                        client_identities,
-                    }
-                })
-                .collect();
+                Override {
+                    requests_per_second: ovr.requests_per_second,
+                    client_identities,
+                }
+            })
+            .collect();
 
-            return Some(RateLimit {
-                name: name.to_string(),
-                total: spec.total.as_ref().map(|l| Limit {
-                    requests_per_second: l.requests_per_second,
-                }),
-                identity: spec.identity.as_ref().map(|l| Limit {
-                    requests_per_second: l.requests_per_second,
-                }),
-                overrides,
-            });
-        }
-
-        None
+        Some(RateLimit {
+            name: name.to_string(),
+            total: spec.total.as_ref().map(|l| Limit {
+                requests_per_second: l.requests_per_second,
+            }),
+            identity: spec.identity.as_ref().map(|l| Limit {
+                requests_per_second: l.requests_per_second,
+            }),
+            overrides,
+        })
     }
 
     fn route_client_authzs(
