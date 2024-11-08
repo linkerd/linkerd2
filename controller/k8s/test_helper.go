@@ -6,6 +6,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/metadata/fake"
@@ -14,40 +15,40 @@ import (
 
 // NewFakeAPI provides a mock Kubernetes API for testing.
 func NewFakeAPI(configs ...string) (*API, error) {
-	clientSet, _, _, spClientSet, err := k8s.NewFakeClientSets(configs...)
+	clientSet, _, _, spClientSet, dynamicClient, err := k8s.NewFakeClientSets(configs...)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewFakeClusterScopedAPI(clientSet, spClientSet), nil
+	return NewFakeClusterScopedAPI(clientSet, spClientSet, dynamicClient), nil
 }
 
 // NewFakeAPI provides a mock Kubernetes API for testing.
 func NewFakeAPIWithActions(configs ...string) (*API, func() []testing.Action, error) {
-	clientSet, _, _, spClientSet, err := k8s.NewFakeClientSets(configs...)
+	clientSet, _, _, spClientSet, dynamicClient, err := k8s.NewFakeClientSets(configs...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return NewFakeClusterScopedAPI(clientSet, spClientSet), clientSet.Actions, nil
+	return NewFakeClusterScopedAPI(clientSet, spClientSet, dynamicClient), clientSet.Actions, nil
 }
 
 // NewFakeAPIWithL5dClient provides a mock Kubernetes API for testing like
 // NewFakeAPI, but it also returns the mock client for linkerd CRDs
 func NewFakeAPIWithL5dClient(configs ...string) (*API, l5dcrdclient.Interface, error) {
-	clientSet, _, _, l5dClientSet, err := k8s.NewFakeClientSets(configs...)
+	clientSet, _, _, l5dClientSet, dynamicClient, err := k8s.NewFakeClientSets(configs...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return NewFakeClusterScopedAPI(clientSet, l5dClientSet), l5dClientSet, nil
+	return NewFakeClusterScopedAPI(clientSet, l5dClientSet, dynamicClient), l5dClientSet, nil
 }
 
 // NewFakeClusterScopedAPI provides a mock Kubernetes API for testing.
-func NewFakeClusterScopedAPI(clientSet kubernetes.Interface, l5dClientSet l5dcrdclient.Interface) *API {
+func NewFakeClusterScopedAPI(clientSet kubernetes.Interface, l5dClientSet l5dcrdclient.Interface, dynamicClient dynamic.Interface) *API {
 	return NewClusterScopedAPI(
 		clientSet,
-		nil,
+		dynamicClient,
 		l5dClientSet,
 		"fake",
 		CJ,

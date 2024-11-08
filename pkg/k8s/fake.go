@@ -23,6 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	discoveryfake "k8s.io/client-go/discovery/fake"
+	"k8s.io/client-go/dynamic"
+	dynamicFake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -44,7 +46,7 @@ func init() {
 
 // NewFakeAPI provides a mock KubernetesAPI backed by hard-coded resources
 func NewFakeAPI(configs ...string) (*KubernetesAPI, error) {
-	client, apiextClient, apiregClient, _, err := NewFakeClientSets(configs...)
+	client, apiextClient, apiregClient, _, _, err := NewFakeClientSets(configs...)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +62,7 @@ func NewFakeAPI(configs ...string) (*KubernetesAPI, error) {
 // NewFakeAPIFromManifests reads from a slice of readers, each representing a
 // manifest or collection of manifests, and returns a mock KubernetesAPI.
 func NewFakeAPIFromManifests(readers []io.Reader) (*KubernetesAPI, error) {
-	client, apiextClient, apiregClient, _, err := newFakeClientSetsFromManifests(readers)
+	client, apiextClient, apiregClient, _, _, err := newFakeClientSetsFromManifests(readers)
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +81,7 @@ func NewFakeClientSets(configs ...string) (
 	apiextensionsclient.Interface,
 	apiregistrationclient.Interface,
 	spclient.Interface,
+	dynamic.Interface,
 	error,
 ) {
 	objs := []runtime.Object{}
@@ -89,7 +92,7 @@ func NewFakeClientSets(configs ...string) (
 	for _, config := range configs {
 		obj, err := ToRuntimeObject(config)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, err
 		}
 		switch strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind) {
 		case "customresourcedefinition":
@@ -115,7 +118,7 @@ metadata:
   name: kubernetes
   namespace: default`)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	objs = append(objs, endpointslice)
 
@@ -167,6 +170,7 @@ metadata:
 		apiextensionsfake.NewSimpleClientset(apiextObjs...),
 		apiregistrationfake.NewSimpleClientset(apiRegObjs...),
 		spfake.NewSimpleClientset(spObjs...),
+		dynamicFake.NewSimpleDynamicClient(scheme.Scheme, objs...),
 		nil
 }
 
@@ -180,6 +184,7 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (
 	apiextensionsclient.Interface,
 	apiregistrationclient.Interface,
 	spclient.Interface,
+	dynamic.Interface,
 	error,
 ) {
 	configs := []string{}
@@ -195,13 +200,13 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (
 				if errors.Is(err, io.EOF) {
 					break
 				}
-				return nil, nil, nil, nil, err
+				return nil, nil, nil, nil, nil, err
 			}
 
 			// check for kind
 			var typeMeta metav1.TypeMeta
 			if err := yaml.Unmarshal(bytes, &typeMeta); err != nil {
-				return nil, nil, nil, nil, err
+				return nil, nil, nil, nil, nil, err
 			}
 
 			switch typeMeta.Kind {
@@ -211,7 +216,7 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (
 			case "List":
 				var sourceList corev1.List
 				if err := yaml.Unmarshal(bytes, &sourceList); err != nil {
-					return nil, nil, nil, nil, err
+					return nil, nil, nil, nil, nil, err
 				}
 				for _, item := range sourceList.Items {
 					configs = append(configs, string(item.Raw))
