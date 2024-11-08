@@ -311,7 +311,7 @@ jobs:
     needs: [meta, build-cli, build-core, build-ext]
     if: needs.meta.outputs.changed == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       matrix:
         k8s:
