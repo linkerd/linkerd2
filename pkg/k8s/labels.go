@@ -478,15 +478,6 @@ const (
 	// on the remote cluster
 	RemoteServiceFqName = SvcMirrorPrefix + "/remote-svc-fq-name"
 
-	// RemoteDiscoveryAnnotation is like the RemoteDiscoveryLabel but it allows
-	// a list of remote discovery targets to be specified in the format:
-	// <svc>@<cluster>,<svc>@<cluster>,...
-	RemoteDiscoveryAnnotation = MulticlusterPrefix + "/remote-discovery"
-
-	// LocalDiscoveryAnnotation is like the RemoteDiscoveryAnnotation but it
-	// specifies a single service in the local cluster.
-	LocalDiscoveryAnnotation = MulticlusterPrefix + "/local-discovery"
-
 	// RemoteGatewayIdentity follows the same kind of logic as RemoteGatewayNameLabel
 	RemoteGatewayIdentity = SvcMirrorPrefix + "/remote-gateway-identity"
 
