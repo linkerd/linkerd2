@@ -15,7 +15,7 @@ import (
 // This type implemenets the pb.Destination_GetServer interface but only the
 // Send method is supported. Calls to other methods will panic.
 type synchronizedGetStream struct {
-	done  bool
+	done  chan struct{}
 	ch    chan *pb.Update
 	inner pb.Destination_GetServer
 	log   *logging.Entry
@@ -23,7 +23,7 @@ type synchronizedGetStream struct {
 
 func newSyncronizedGetStream(stream pb.Destination_GetServer, log *logging.Entry) *synchronizedGetStream {
 	return &synchronizedGetStream{
-		done:  false,
+		done:  make(chan struct{}),
 		ch:    make(chan *pb.Update),
 		inner: stream,
 		log:   log,
@@ -57,18 +57,19 @@ func (s *synchronizedGetStream) Send(update *pb.Update) error {
 func (s *synchronizedGetStream) Start() {
 	go func() {
 		for {
-			if s.done {
+			select {
+			case <-s.done:
 				return
-			}
-			update := <-s.ch
-			err := s.inner.Send(update)
-			if err != nil {
-				s.log.Errorf("Error sending update: %v", err)
+			case update := <-s.ch:
+				err := s.inner.Send(update)
+				if err != nil {
+					s.log.Errorf("Error sending update: %v", err)
+				}
 			}
 		}
 	}()
 }
 
 func (s *synchronizedGetStream) Stop() {
-	s.done = true
+	s.done <- struct{}{}
 }
