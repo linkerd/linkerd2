@@ -47,19 +47,16 @@ var profileUpdatesQueueOverflowCounter = promauto.NewCounterVec(
 )
 
 func newProfileTranslator(serviceID watcher.ServiceID, stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endStream chan struct{}) *profileTranslator {
-	var parentRef *meta.Metadata
-	if serviceID.Namespace != "" {
-		parentRef = &meta.Metadata{
-			Kind: &meta.Metadata_Resource{
-				Resource: &meta.Resource{
-					Group:     "core",
-					Kind:      "Service",
-					Name:      serviceID.Name,
-					Namespace: serviceID.Namespace,
-					Port:      port,
-				},
+	parentRef := &meta.Metadata{
+		Kind: &meta.Metadata_Resource{
+			Resource: &meta.Resource{
+				Group:     "core",
+				Kind:      "Service",
+				Name:      serviceID.Name,
+				Namespace: serviceID.Namespace,
+				Port:      port,
 			},
-		}
+		},
 	}
 
 	return &profileTranslator{
