@@ -944,7 +944,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HTTPLocalRateLimitPolic
         let name = policy.name_unchecked();
         let _span = info_span!("apply", %ns, saz = %name).entered();
 
-        let spec = match ratelimit_policy::Spec::try_from(policy.spec) {
+        let spec = match ratelimit_policy::Spec::try_from(policy) {
             Ok(spec) => spec,
             Err(error) => {
                 tracing::warn!(%error, "Invalid rate limit policy");
@@ -978,7 +978,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HTTPLocalRateLimitPolic
                 .namespace()
                 .expect("ratelimitolicy must be namespaced");
             let name = policy.name_unchecked();
-            match ratelimit_policy::Spec::try_from(policy.spec) {
+            match ratelimit_policy::Spec::try_from(policy) {
                 Ok(spec) => updates_by_ns
                     .entry(namespace)
                     .or_default()
@@ -1869,7 +1869,22 @@ impl PolicyIndex {
     }
 
     fn client_ratelimit(&self, server_name: &str) -> Option<RateLimit> {
-        for (name, spec) in self.ratelimit_policies.iter() {
+        // sort the ratelimit policies by creation timestamp and name so we can
+        // deterministically always return the same policy when more than one point to the same
+        // server
+        let mut rate_limits = self.ratelimit_policies.iter().collect::<Vec<_>>();
+        rate_limits.sort_by(|(a_name, a), (b_name, b)| {
+            let by_ts = match (&a.creation_timestamp, &b.creation_timestamp) {
+                (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
+                (None, None) => std::cmp::Ordering::Equal,
+                // entries with timestamps are preferred over ones without
+                (Some(_), None) => return std::cmp::Ordering::Less,
+                (None, Some(_)) => return std::cmp::Ordering::Greater,
+            };
+            by_ts.then_with(|| a_name.cmp(b_name))
+        });
+
+        for (name, spec) in rate_limits.iter() {
             // Skip the policy if it doesn't apply to the server.
             let ratelimit_policy::Target::Server(this_name) = &spec.target;
             if this_name != server_name {
