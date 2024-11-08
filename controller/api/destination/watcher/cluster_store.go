@@ -42,14 +42,14 @@ type (
 	// remoteCluster is a helper struct that represents a store item
 	remoteCluster struct {
 		watcher *EndpointsWatcher
-		config  clusterConfig
+		config  ClusterConfig
 
 		// Used to signal shutdown to the associated watcher's informers
 		stopCh chan<- struct{}
 	}
 
 	// clusterConfig holds immutable configuration for a given cluster
-	clusterConfig struct {
+	ClusterConfig struct {
 		TrustDomain   string
 		ClusterDomain string
 	}
@@ -166,7 +166,7 @@ func NewClusterStoreWithDecoder(client kubernetes.Interface, namespace string, e
 }
 
 // Get safely retrieves a store item given a cluster name.
-func (cs *ClusterStore) Get(clusterName string) (*EndpointsWatcher, clusterConfig, bool) {
+func (cs *ClusterStore) Get(clusterName string) (*EndpointsWatcher, ClusterConfig, bool) {
 	cs.RLock()
 	defer cs.RUnlock()
 	cw, found := cs.store[clusterName]
@@ -234,7 +234,7 @@ func (cs *ClusterStore) addCluster(clusterName string, secret *v1.Secret) error 
 	defer cs.Unlock()
 	cs.store[clusterName] = remoteCluster{
 		watcher,
-		clusterConfig{
+		ClusterConfig{
 			trustDomain,
 			clusterDomain,
 		},
