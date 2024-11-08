@@ -6,6 +6,9 @@ use linkerd_policy_controller_core::{
 };
 use std::net::SocketAddr;
 
+// Since there is no way to do real selection on a TCPRoute, we only allow 1
+const MAXIMUM_ALLOWED_TCP_ROUTES: usize = 1;
+
 pub(crate) fn protocol(
     default_backend: outbound::Backend,
     routes: impl Iterator<Item = (GroupKindNamespaceName, TcpRoute)>,
@@ -13,6 +16,7 @@ pub(crate) fn protocol(
     original_dst: Option<SocketAddr>,
 ) -> outbound::proxy_protocol::Kind {
     let mut routes = routes
+        .take(MAXIMUM_ALLOWED_TCP_ROUTES)
         .map(|(gknn, route)| {
             convert_outbound_route(
                 gknn,
@@ -24,11 +28,13 @@ pub(crate) fn protocol(
         })
         .collect::<Vec<_>>();
 
-    if let ParentInfo::EgressNetwork { traffic_policy, .. } = parent_info {
-        routes.push(default_outbound_egress_route(
-            default_backend,
-            traffic_policy,
-        ));
+    if routes.is_empty() {
+        if let ParentInfo::EgressNetwork { traffic_policy, .. } = parent_info {
+            routes.push(default_outbound_egress_route(
+                default_backend,
+                traffic_policy,
+            ));
+        }
     }
 
     outbound::proxy_protocol::Kind::Opaque(outbound::proxy_protocol::Opaque { routes })

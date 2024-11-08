@@ -374,7 +374,6 @@ pub(crate) fn default_outbound_egress_route(
         kind: Some(meta::metadata::Kind::Default(name.to_string())),
     });
     let rules = vec![outbound::grpc_route::Rule {
-        matches: vec![grpc_route::GrpcRouteMatch::default()],
         backends: Some(outbound::grpc_route::Distribution {
             kind: Some(outbound::grpc_route::distribution::Kind::FirstAvailable(
                 outbound::grpc_route::distribution::FirstAvailable {
