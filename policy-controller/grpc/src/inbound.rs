@@ -147,16 +147,19 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                 proto::proxy_protocol::Detect {
                     timeout: timeout.try_into().map_err(|error| tracing::warn!(%error, "failed to convert protocol detect timeout to protobuf")).ok(),
                     http_routes: http::to_route_list(&srv.http_routes, cluster_networks),
+                    http_local_rate_limit: None,
                 },
             )),
             ProxyProtocol::Http1 => Some(proto::proxy_protocol::Kind::Http1(
                 proto::proxy_protocol::Http1 {
                     routes: http::to_route_list(&srv.http_routes, cluster_networks),
+                    local_rate_limit: None,
                 },
             )),
             ProxyProtocol::Http2 => Some(proto::proxy_protocol::Kind::Http2(
                 proto::proxy_protocol::Http2 {
                     routes: http::to_route_list(&srv.http_routes, cluster_networks),
+                    local_rate_limit: None,
                 },
             )),
             ProxyProtocol::Grpc => Some(proto::proxy_protocol::Kind::Grpc(

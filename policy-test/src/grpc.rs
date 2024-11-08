@@ -52,6 +52,7 @@ macro_rules! assert_protocol_detect {
                             $crate::grpc::defaults::http_route(),
                             $crate::grpc::defaults::probe_route(),
                         ],
+                        http_local_rate_limit: None,
                     }
                 )),
             }),
@@ -71,6 +72,7 @@ macro_rules! assert_protocol_detect_external {
                     inbound::proxy_protocol::Detect {
                         timeout: Some(std::time::Duration::from_secs(10).try_into().unwrap()),
                         http_routes: vec![$crate::grpc::defaults::http_route()],
+                        http_local_rate_limit: None,
                     }
                 ))
             })
@@ -381,6 +383,7 @@ pub mod defaults {
         inbound::ProxyProtocol {
             kind: Some(Kind::Http1(Http1 {
                 routes: vec![http_route(), probe_route()],
+                local_rate_limit: None,
             })),
         }
     }
@@ -390,6 +393,7 @@ pub mod defaults {
         inbound::ProxyProtocol {
             kind: Some(Kind::Http1(Http1 {
                 routes: vec![http_route()],
+                local_rate_limit: None,
             })),
         }
     }

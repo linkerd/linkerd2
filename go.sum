@@ -291,8 +291,8 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de h1:9TO3cAIGXtEhnIaL+V+BEER86oLrvS+kWobKpbJuye0=
 github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de/go.mod h1:zAbeS9B/r2mtpb6U+EI2rYA5OAXxsYw6wTamcNW+zcE=
-github.com/linkerd/linkerd2-proxy-api v0.14.0 h1:gSMKSFzA43yyut6DOHFbGWggNgqIuFz90Y3+Ox17v/8=
-github.com/linkerd/linkerd2-proxy-api v0.14.0/go.mod h1:ElmA+VVHurWqjtcEcKApJ9dbox76Aeo8lUPpJ6wWMu4=
+github.com/linkerd/linkerd2-proxy-api v0.14.1-0.20241106205231-6c316cc41a3a h1:oVj8r0T7eUFLnwTvKmikeqedeJ8fnLE9keOdtpES8tE=
+github.com/linkerd/linkerd2-proxy-api v0.14.1-0.20241106205231-6c316cc41a3a/go.mod h1:gV0wEXbhnurC6HQPEI9Ea1f4gTfVXEJYC6MPVM21Xs8=
 github.com/mailru/easyjson v0.7.7 h1:UGYAvKxe3sBsEDzO8ZeWOSlIQfWFlxbzLZe7hwFURr0=
 github.com/mailru/easyjson v0.7.7/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
 github.com/mattn/go-colorable v0.1.13 h1:fFA4WZxdEF4tXPZVKMLwD8oUnCTTo08duU7wxecdEvA=
