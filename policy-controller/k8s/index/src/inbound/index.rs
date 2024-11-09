@@ -7,8 +7,8 @@
 //! kubernetes resources.
 
 use super::{
-    authorization_policy, meshtls_authentication, network_authentication, routes::RouteBinding,
-    server, server_authorization, workload,
+    authorization_policy, meshtls_authentication, network_authentication, ratelimit_policy,
+    routes::RouteBinding, server, server_authorization, workload,
 };
 use crate::{
     ports::{PortHasher, PortMap, PortSet},
@@ -20,7 +20,8 @@ use anyhow::{anyhow, bail, Result};
 use linkerd_policy_controller_core::{
     inbound::{
         AuthorizationRef, ClientAuthentication, ClientAuthorization, GrpcRoute, HttpRoute,
-        InboundRouteRule, InboundServer, ProxyProtocol, RouteRef, ServerRef,
+        InboundRouteRule, InboundServer, Limit, Override, ProxyProtocol, RateLimit, RouteRef,
+        ServerRef,
     },
     routes::{GroupKindName, HttpRouteMatch, Method, PathMatch},
     IdentityMatch, Ipv4Net, Ipv6Net, NetworkMatch,
@@ -162,6 +163,7 @@ struct PolicyIndex {
     server_authorizations: HashMap<String, server_authorization::ServerAuthz>,
 
     authorization_policies: HashMap<String, authorization_policy::Spec>,
+    ratelimit_policies: HashMap<String, ratelimit_policy::Spec>,
     http_routes: HashMap<GroupKindName, RouteBinding<HttpRoute>>,
     grpc_routes: HashMap<GroupKindName, RouteBinding<GrpcRoute>>,
 }
@@ -936,6 +938,90 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
     }
 }
 
+impl kubert::index::IndexNamespacedResource<k8s::policy::HTTPLocalRateLimitPolicy> for Index {
+    fn apply(&mut self, policy: k8s::policy::HTTPLocalRateLimitPolicy) {
+        let ns = policy.namespace().unwrap();
+        let name = policy.name_unchecked();
+        let _span = info_span!("apply", %ns, saz = %name).entered();
+
+        let spec = match ratelimit_policy::Spec::try_from(policy) {
+            Ok(spec) => spec,
+            Err(error) => {
+                tracing::warn!(%error, "Invalid rate limit policy");
+                return;
+            }
+        };
+
+        self.ns_or_default_with_reindex(ns, |ns| ns.policy.update_ratelimit_policy(name, spec))
+    }
+
+    fn delete(&mut self, ns: String, ap: String) {
+        let _span = info_span!("delete", %ns, %ap).entered();
+        tracing::trace!(name = %ap, "Delete");
+        self.ns_with_reindex(ns, |ns| ns.policy.ratelimit_policies.remove(&ap).is_some())
+    }
+
+    fn reset(
+        &mut self,
+        policies: Vec<k8s::policy::HTTPLocalRateLimitPolicy>,
+        deleted: HashMap<String, HashSet<String>>,
+    ) {
+        let _span = info_span!("reset");
+
+        tracing::trace!(?deleted, ?policies, "Reset");
+        // Aggregate all of the updates by namespace so that we only reindex
+        // once per namespace.
+        type Ns = NsUpdate<String, ratelimit_policy::Spec>;
+        let mut updates_by_ns = HashMap::<String, Ns>::default();
+        for policy in policies.into_iter() {
+            let namespace = policy
+                .namespace()
+                .expect("ratelimitolicy must be namespaced");
+            let name = policy.name_unchecked();
+            match ratelimit_policy::Spec::try_from(policy) {
+                Ok(spec) => updates_by_ns
+                    .entry(namespace)
+                    .or_default()
+                    .added
+                    .push((name, spec)),
+                Err(error) => {
+                    tracing::error!(ns = %namespace, %name, %error, "Illegal server ratelimit update")
+                }
+            }
+        }
+        for (ns, names) in deleted.into_iter() {
+            updates_by_ns.entry(ns).or_default().removed = names;
+        }
+
+        for (namespace, Ns { added, removed }) in updates_by_ns.into_iter() {
+            if added.is_empty() {
+                // If there are no live resources in the namespace, we do not
+                // want to create a default namespace instance, we just want to
+                // clear out all resources for the namespace (and then drop the
+                // whole namespace, if necessary).
+                self.ns_with_reindex(namespace, |ns| {
+                    ns.policy.ratelimit_policies.clear();
+                    true
+                });
+            } else {
+                // Otherwise, we take greater care to reindex only when the
+                // state actually changed. The vast majority of resets will see
+                // no actual data change.
+                self.ns_or_default_with_reindex(namespace, |ns| {
+                    let mut changed = !removed.is_empty();
+                    for name in removed.into_iter() {
+                        ns.policy.ratelimit_policies.remove(&name);
+                    }
+                    for (name, spec) in added.into_iter() {
+                        changed = ns.policy.update_ratelimit_policy(name, spec) || changed;
+                    }
+                    changed
+                });
+            }
+        }
+    }
+}
+
 impl kubert::index::IndexNamespacedResource<k8s::policy::HttpRoute> for Index {
     fn apply(&mut self, route: k8s::policy::HttpRoute) {
         self.apply_http_route(route)
@@ -1059,6 +1145,7 @@ impl Namespace {
                 servers: HashMap::default(),
                 server_authorizations: HashMap::default(),
                 authorization_policies: HashMap::default(),
+                ratelimit_policies: HashMap::default(),
                 http_routes: HashMap::default(),
                 grpc_routes: HashMap::default(),
             },
@@ -1628,6 +1715,22 @@ impl PolicyIndex {
         true
     }
 
+    fn update_ratelimit_policy(&mut self, name: String, spec: ratelimit_policy::Spec) -> bool {
+        match self.ratelimit_policies.entry(name) {
+            Entry::Vacant(entry) => {
+                entry.insert(spec);
+            }
+            Entry::Occupied(entry) => {
+                let rl = entry.into_mut();
+                if *rl == spec {
+                    return false;
+                }
+                *rl = spec;
+            }
+        }
+        true
+    }
+
     fn default_inbound_server<'p>(
         port: NonZeroU16,
         settings: &workload::Settings,
@@ -1655,12 +1758,15 @@ impl PolicyIndex {
 
         let authorizations = policy.default_authzs(config);
 
+        let ratelimit = Default::default();
+
         let http_routes = config.default_inbound_http_routes(probe_paths);
 
         InboundServer {
             reference: ServerRef::Default(policy.as_str()),
             protocol,
             authorizations,
+            ratelimit,
             http_routes,
             grpc_routes: HashMap::default(),
         }
@@ -1675,12 +1781,14 @@ impl PolicyIndex {
     ) -> InboundServer {
         tracing::trace!(%name, ?server, "Creating inbound server");
         let authorizations = self.client_authzs(&name, server, authentications);
+        let ratelimit = self.client_ratelimit(&name);
         let http_routes = self.http_routes(&name, authentications, probe_paths);
         let grpc_routes = self.grpc_routes(&name, authentications);
 
         InboundServer {
             reference: ServerRef::Server(name),
             authorizations,
+            ratelimit,
             protocol: server.protocol.clone(),
             http_routes,
             grpc_routes,
@@ -1758,6 +1866,69 @@ impl PolicyIndex {
         }
 
         authzs
+    }
+
+    fn client_ratelimit(&self, server_name: &str) -> Option<RateLimit> {
+        use ratelimit_policy::{ClientRef, Target};
+
+        // sort the ratelimit policies by creation timestamp and name so we can
+        // deterministically always return the same policy when more than one point to the same
+        // server
+        let mut rate_limits = self
+            .ratelimit_policies
+            .iter()
+            .filter(|(_, spec)| matches!(spec.target, Target::Server(ref n) if n == server_name))
+            .collect::<Vec<_>>();
+        rate_limits.sort_by(|(a_name, a), (b_name, b)| {
+            let by_ts = match (&a.creation_timestamp, &b.creation_timestamp) {
+                (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
+                (None, None) => std::cmp::Ordering::Equal,
+                // entries with timestamps are preferred over ones without
+                (Some(_), None) => return std::cmp::Ordering::Less,
+                (None, Some(_)) => return std::cmp::Ordering::Greater,
+            };
+            by_ts.then_with(|| a_name.cmp(b_name))
+        });
+
+        let (name, spec) = rate_limits.first()?;
+
+        tracing::trace!(
+            ns = %self.namespace,
+            ratelimitpolicy = %name,
+            server = %server_name,
+            "HTTPLocalRateLimitPolicy targets server",
+        );
+
+        let overrides = spec
+            .overrides
+            .iter()
+            .map(|ovr| {
+                let client_identities = ovr
+                    .client_refs
+                    .iter()
+                    .map(|ClientRef::ServiceAccount { namespace, name }| {
+                        let namespace = namespace.as_deref().unwrap_or(&self.namespace);
+                        self.cluster_info.service_account_identity(namespace, name)
+                    })
+                    .collect();
+
+                Override {
+                    requests_per_second: ovr.requests_per_second,
+                    client_identities,
+                }
+            })
+            .collect();
+
+        Some(RateLimit {
+            name: name.to_string(),
+            total: spec.total.as_ref().map(|l| Limit {
+                requests_per_second: l.requests_per_second,
+            }),
+            identity: spec.identity.as_ref().map(|l| Limit {
+                requests_per_second: l.requests_per_second,
+            }),
+            overrides,
+        })
     }
 
     fn route_client_authzs(

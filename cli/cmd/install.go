@@ -51,6 +51,7 @@ var (
 	TemplatesCrdFiles = []string{
 		"templates/policy/authorization-policy.yaml",
 		"templates/policy/egress-network.yaml",
+		"templates/policy/http-local-ratelimit-policy.yaml",
 		"templates/policy/httproute.yaml",
 		"templates/policy/meshtls-authentication.yaml",
 		"templates/policy/network-authentication.yaml",

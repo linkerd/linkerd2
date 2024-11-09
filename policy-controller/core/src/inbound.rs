@@ -72,6 +72,25 @@ pub enum ClientAuthentication {
     TlsAuthenticated(Vec<IdentityMatch>),
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RateLimit {
+    pub name: String,
+    pub total: Option<Limit>,
+    pub identity: Option<Limit>,
+    pub overrides: Vec<Override>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Limit {
+    pub requests_per_second: u32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Override {
+    pub requests_per_second: u32,
+    pub client_identities: Vec<String>,
+}
+
 /// Models inbound server configuration discovery.
 #[async_trait::async_trait]
 pub trait DiscoverInboundServer<T> {
@@ -89,6 +108,7 @@ pub struct InboundServer {
 
     pub protocol: ProxyProtocol,
     pub authorizations: HashMap<AuthorizationRef, ClientAuthorization>,
+    pub ratelimit: Option<RateLimit>,
     pub http_routes: HashMap<RouteRef, InboundRoute<HttpRouteMatch>>,
     pub grpc_routes: HashMap<RouteRef, InboundRoute<GrpcRouteMatch>>,
 }

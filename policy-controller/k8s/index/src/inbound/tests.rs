@@ -2,6 +2,7 @@ mod annotation;
 mod authorization_policy;
 mod grpc_routes;
 mod http_routes;
+mod ratelimit_policy;
 mod server_authorization;
 
 use crate::{
@@ -241,6 +242,7 @@ impl TestConfig {
         InboundServer {
             reference: ServerRef::Default(self.default_policy.as_str()),
             authorizations: mk_default_policy(self.default_policy, self.cluster.networks.clone()),
+            ratelimit: None,
             protocol: ProxyProtocol::Detect {
                 timeout: self.detect_timeout,
             },
