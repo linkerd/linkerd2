@@ -394,7 +394,7 @@ func (s *server) subscribeToServiceProfile(
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
-	translator := newProfileTranslator(stream, log, fqn, port, streamEnd)
+	translator := newProfileTranslator(service, stream, log, fqn, port, streamEnd)
 	translator.Start()
 	defer translator.Stop()
 
