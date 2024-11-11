@@ -12,6 +12,7 @@ metadata:
     component: web
     namespace: {{.Release.Namespace}}
     {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+    {{- with .Values.dashboard.service.labels }}{{ toYaml . | trim | nindent 4 }}{{ end }}
   annotations:
     {{ include "partials.annotations.created-by" . }}
     {{ with .Values.dashboard.service.annotations }}{{ toYaml . | trim | nindent 4 }}{{ end }}
