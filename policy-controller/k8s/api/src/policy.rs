@@ -16,7 +16,10 @@ pub use self::{
     meshtls_authentication::{MeshTLSAuthentication, MeshTLSAuthenticationSpec},
     network::{Cidr, Network},
     network_authentication::{NetworkAuthentication, NetworkAuthenticationSpec},
-    ratelimit_policy::{HTTPLocalRateLimitPolicy, Limit, Override, RateLimitPolicySpec},
+    ratelimit_policy::{
+        HTTPLocalRateLimitPolicy, HTTPLocalRateLimitPolicyStatus, Limit, Override,
+        RateLimitPolicySpec,
+    },
     server::{Server, ServerSpec},
     server_authorization::{ServerAuthorization, ServerAuthorizationSpec},
     target_ref::{ClusterTargetRef, LocalTargetRef, NamespacedTargetRef},
