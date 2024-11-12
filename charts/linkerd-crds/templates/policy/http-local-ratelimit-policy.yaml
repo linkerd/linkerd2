@@ -15,7 +15,6 @@ spec:
     listKind: HTTPLocalRateLimitPolicyList
     plural: httplocalratelimitpolicies
     singular: httplocalratelimitpolicy
-    shortNames: []
   scope: Namespaced
   versions:
     - name: v1alpha1
