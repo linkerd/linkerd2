@@ -144,6 +144,7 @@ Kubernetes: `>=1.22.0-0`
 | clusterNetworks | string | `"10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fd00::/8"` | The cluster networks for which service discovery is performed. This should include the pod and service networks, but need not include the node network.  By default, all IPv4 private networks and all accepted IPv6 ULAs are specified so that resolution works in typical Kubernetes environments. |
 | cniEnabled | bool | `false` | enabling this omits the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed |
 | commonLabels | object | `{}` | Labels to apply to all resources |
+| commonDeploymentAnnotations | object | `{}` | Annotations to be appended to control plane deployments |
 | controlPlaneTracing | bool | `false` | enables control plane tracing |
 | controlPlaneTracingNamespace | string | `"linkerd-jaeger"` | namespace to send control plane traces to |
 | controller.podDisruptionBudget | object | `{"maxUnavailable":1}` | sets pod disruption budget parameter for all deployments |
