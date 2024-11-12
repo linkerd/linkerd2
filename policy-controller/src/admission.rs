@@ -896,7 +896,7 @@ impl Validate<RateLimitPolicySpec> for Admission {
             }
 
             for target_ref in ovr.client_refs.iter() {
-                if target_ref.kind != "ServiceAccount" {
+                if !target_ref.targets_kind::<ServiceAccount>() {
                     bail!("overrides.clientRefs must target a ServiceAccount");
                 }
             }
