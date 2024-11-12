@@ -105,5 +105,20 @@ fn mk_ratelimit(
             identity: None,
             overrides: Some(overrides),
         },
+        status: Some(k8s::policy::HTTPLocalRateLimitPolicyStatus {
+            conditions: vec![k8s::Condition {
+                last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
+                message: "".to_string(),
+                observed_generation: None,
+                reason: "".to_string(),
+                status: "True".to_string(),
+                type_: "Accepted".to_string(),
+            }],
+            target_ref: LocalTargetRef {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: "Server".to_string(),
+                name: server_name.to_string(),
+            },
+        }),
     }
 }
