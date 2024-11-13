@@ -1,8 +1,9 @@
+use k8s_openapi::chrono;
 use linkerd_policy_controller_k8s_api::{
     self as api,
     policy::{
-        HTTPLocalRateLimitPolicy, Limit, LocalTargetRef, NamespacedTargetRef, Override,
-        RateLimitPolicySpec,
+        HTTPLocalRateLimitPolicy, HTTPLocalRateLimitPolicyStatus, Limit, LocalTargetRef,
+        NamespacedTargetRef, Override, RateLimitPolicySpec,
     },
 };
 use linkerd_policy_test::admission;
@@ -90,5 +91,20 @@ fn mk_ratelimiter(
             }),
             overrides: Some(overrides),
         },
+        status: Some(HTTPLocalRateLimitPolicyStatus {
+            conditions: vec![api::Condition {
+                last_transition_time: api::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
+                message: "".to_string(),
+                observed_generation: None,
+                reason: "".to_string(),
+                status: "True".to_string(),
+                type_: "Accepted".to_string(),
+            }],
+            target_ref: LocalTargetRef {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: "Server".to_string(),
+                name: "linkerd-admin".to_string(),
+            },
+        }),
     }
 }

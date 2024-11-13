@@ -255,8 +255,11 @@ async fn main() -> Result<()> {
 
     let ratelimit_policies =
         runtime.watch_all::<k8s::policy::HTTPLocalRateLimitPolicy>(watcher::Config::default());
+    let ratelimit_policies_indexes = IndexList::new(inbound_index.clone())
+        .push(status_index.clone())
+        .shared();
     tokio::spawn(
-        kubert::index::namespaced(inbound_index.clone(), ratelimit_policies)
+        kubert::index::namespaced(ratelimit_policies_indexes.clone(), ratelimit_policies)
             .instrument(info_span!("httplocalratelimitpolicies")),
     );
 

@@ -1871,26 +1871,10 @@ impl PolicyIndex {
     fn client_ratelimit(&self, server_name: &str) -> Option<RateLimit> {
         use ratelimit_policy::{ClientRef, Target};
 
-        // sort the ratelimit policies by creation timestamp and name so we can
-        // deterministically always return the same policy when more than one point to the same
-        // server
-        let mut rate_limits = self
+        let (name, spec) = self
             .ratelimit_policies
             .iter()
-            .filter(|(_, spec)| matches!(spec.target, Target::Server(ref n) if n == server_name))
-            .collect::<Vec<_>>();
-        rate_limits.sort_by(|(a_name, a), (b_name, b)| {
-            let by_ts = match (&a.creation_timestamp, &b.creation_timestamp) {
-                (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
-                (None, None) => std::cmp::Ordering::Equal,
-                // entries with timestamps are preferred over ones without
-                (Some(_), None) => return std::cmp::Ordering::Less,
-                (None, Some(_)) => return std::cmp::Ordering::Greater,
-            };
-            by_ts.then_with(|| a_name.cmp(b_name))
-        });
-
-        let (name, spec) = rate_limits.first()?;
+            .find(|(_, spec)| matches!(spec.target, Target::Server(ref n) if n == server_name && spec.accepted_by_server(server_name)))?;
 
         tracing::trace!(
             ns = %self.namespace,

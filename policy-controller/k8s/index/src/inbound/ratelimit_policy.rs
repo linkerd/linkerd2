@@ -5,6 +5,7 @@ use linkerd_policy_controller_k8s_api::{
     policy::{LocalTargetRef, NamespacedTargetRef},
     ServiceAccount, Time,
 };
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct Spec {
@@ -13,9 +14,10 @@ pub(crate) struct Spec {
     pub total: Option<Limit>,
     pub identity: Option<Limit>,
     pub overrides: Vec<Override>,
+    pub status: Status,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum Target {
     Server(String),
 }
@@ -39,14 +41,67 @@ pub(crate) enum ClientRef {
     },
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Status {
+    pub conditions: Vec<Condition>,
+    pub target: Target,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Condition {
+    pub type_: ConditionType,
+    pub status: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ConditionType {
+    Accepted,
+}
+
+impl Spec {
+    pub fn accepted_by_server(&self, name: &str) -> bool {
+        self.status.target == Target::Server(name.to_string())
+            && self
+                .status
+                .conditions
+                .iter()
+                .any(|condition| condition.type_ == ConditionType::Accepted && condition.status)
+    }
+}
+
 impl TryFrom<k8s::policy::HTTPLocalRateLimitPolicy> for Spec {
     type Error = anyhow::Error;
 
     fn try_from(rl: k8s::policy::HTTPLocalRateLimitPolicy) -> Result<Self> {
         let creation_timestamp = rl.metadata.creation_timestamp.map(|Time(t)| t);
+        let conditions = rl.status.map_or(vec![], |status| {
+            status
+            .conditions
+            .iter()
+            .filter_map(|condition| {
+                let type_ = match condition.type_.as_ref() {
+                    "Accepted" => ConditionType::Accepted,
+                    condition_type => {
+                        tracing::error!(%status.target_ref.name, %condition_type, "Unexpected condition type found in status");
+                        return None;
+                    }
+                };
+                let status = match condition.status.as_ref() {
+                    "True" => true,
+                    "False" => false,
+                    condition_status => {
+                        tracing::error!(%status.target_ref.name, %type_, %condition_status, "Unexpected condition status found in status");
+                        return None
+                    },
+                };
+                Some(Condition { type_, status })
+            }).collect()
+        });
+        let target = target(rl.spec.target_ref)?;
+
         Ok(Self {
             creation_timestamp,
-            target: target(rl.spec.target_ref)?,
+            target: target.clone(),
             total: rl.spec.total.map(|lim| Limit {
                 requests_per_second: lim.requests_per_second,
             }),
@@ -70,7 +125,16 @@ impl TryFrom<k8s::policy::HTTPLocalRateLimitPolicy> for Spec {
                     })
                 })
                 .collect::<Result<Vec<_>>>()?,
+            status: Status { conditions, target },
         })
+    }
+}
+
+impl fmt::Display for ConditionType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Accepted => write!(f, "Accepted"),
+        }
     }
 }
 
