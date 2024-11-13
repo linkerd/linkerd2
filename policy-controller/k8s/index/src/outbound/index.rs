@@ -503,19 +503,9 @@ impl Index {
     fn apply_http(&mut self, route: HttpRouteResource) {
         tracing::debug!(name = route.name(), "indexing httproute");
 
+        // For each parent_ref, create a namespace index for it if it doesn't
+        // already exist.
         for parent_ref in route.inner().parent_refs.iter().flatten() {
-            let parent_kind = if is_parent_service(parent_ref) {
-                ResourceKind::Service
-            } else if is_parent_egress_network(parent_ref) {
-                ResourceKind::EgressNetwork
-            } else {
-                continue;
-            };
-
-            if !route_accepted_by_parent(route.status(), &parent_ref.name) {
-                continue;
-            }
-
             let ns = parent_ref
                 .namespace
                 .clone()
@@ -531,34 +521,27 @@ impl Index {
                     service_tls_routes: Default::default(),
                     service_tcp_routes: Default::default(),
                     resource_port_routes: Default::default(),
-                })
-                .apply_http_route(
-                    route.clone(),
-                    parent_ref,
-                    parent_kind,
-                    &self.namespaces.cluster_info,
-                    &self.resource_info,
-                );
+                });
         }
+
+        // We must send the route update to all namespace indexes in case this
+        // route's parent_refs have changed and this route must be removed be
+        // any of them.
+        self.namespaces.by_ns.values_mut().for_each(|ns| {
+            ns.apply_http_route(
+                route.clone(),
+                &self.namespaces.cluster_info,
+                &self.resource_info,
+            );
+        });
     }
 
     fn apply_grpc(&mut self, route: k8s_gateway_api::GrpcRoute) {
         tracing::debug!(name = route.name_unchecked(), "indexing grpcroute");
 
+        // For each parent_ref, create a namespace index for it if it doesn't
+        // already exist.
         for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
-            let parent_kind = if is_parent_service(parent_ref) {
-                ResourceKind::Service
-            } else if is_parent_egress_network(parent_ref) {
-                ResourceKind::EgressNetwork
-            } else {
-                continue;
-            };
-
-            if !route_accepted_by_parent(route.status.as_ref().map(|s| &s.inner), &parent_ref.name)
-            {
-                continue;
-            }
-
             let ns = parent_ref
                 .namespace
                 .clone()
@@ -574,34 +557,27 @@ impl Index {
                     service_tls_routes: Default::default(),
                     service_tcp_routes: Default::default(),
                     resource_port_routes: Default::default(),
-                })
-                .apply_grpc_route(
-                    route.clone(),
-                    parent_ref,
-                    parent_kind,
-                    &self.namespaces.cluster_info,
-                    &self.resource_info,
-                );
+                });
+        }
+
+        // We must send the route update to all namespace indexes in case this
+        // route's parent_refs have changed and this route must be removed be
+        // any of them.
+        for ns in self.namespaces.by_ns.values_mut() {
+            ns.apply_grpc_route(
+                route.clone(),
+                &self.namespaces.cluster_info,
+                &self.resource_info,
+            );
         }
     }
 
     fn apply_tls(&mut self, route: k8s_gateway_api::TlsRoute) {
         tracing::debug!(name = route.name_unchecked(), "indexing tlsroute");
 
+        // For each parent_ref, create a namespace index for it if it doesn't
+        // already exist.
         for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
-            let parent_kind = if is_parent_service(parent_ref) {
-                ResourceKind::Service
-            } else if is_parent_egress_network(parent_ref) {
-                ResourceKind::EgressNetwork
-            } else {
-                continue;
-            };
-
-            if !route_accepted_by_parent(route.status.as_ref().map(|s| &s.inner), &parent_ref.name)
-            {
-                continue;
-            }
-
             let ns = parent_ref
                 .namespace
                 .clone()
@@ -617,34 +593,27 @@ impl Index {
                     service_tls_routes: Default::default(),
                     service_tcp_routes: Default::default(),
                     resource_port_routes: Default::default(),
-                })
-                .apply_tls_route(
-                    route.clone(),
-                    parent_ref,
-                    parent_kind,
-                    &self.namespaces.cluster_info,
-                    &self.resource_info,
-                );
+                });
+        }
+
+        // We must send the route update to all namespace indexes in case this
+        // route's parent_refs have changed and this route must be removed be
+        // any of them.
+        for ns in self.namespaces.by_ns.values_mut() {
+            ns.apply_tls_route(
+                route.clone(),
+                &self.namespaces.cluster_info,
+                &self.resource_info,
+            );
         }
     }
 
     fn apply_tcp(&mut self, route: k8s_gateway_api::TcpRoute) {
         tracing::debug!(name = route.name_unchecked(), "indexing tcproute");
 
+        // For each parent_ref, create a namespace index for it if it doesn't
+        // already exist.
         for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
-            let parent_kind = if is_parent_service(parent_ref) {
-                ResourceKind::Service
-            } else if is_parent_egress_network(parent_ref) {
-                ResourceKind::EgressNetwork
-            } else {
-                continue;
-            };
-
-            if !route_accepted_by_parent(route.status.as_ref().map(|s| &s.inner), &parent_ref.name)
-            {
-                continue;
-            }
-
             let ns = parent_ref
                 .namespace
                 .clone()
@@ -660,14 +629,18 @@ impl Index {
                     service_tls_routes: Default::default(),
                     service_tcp_routes: Default::default(),
                     resource_port_routes: Default::default(),
-                })
-                .apply_tcp_route(
-                    route.clone(),
-                    parent_ref,
-                    parent_kind,
-                    &self.namespaces.cluster_info,
-                    &self.resource_info,
-                );
+                });
+        }
+
+        // We must send the route update to all namespace indexes in case this
+        // route's parent_refs have changed and this route must be removed be
+        // any of them.
+        for ns in self.namespaces.by_ns.values_mut() {
+            ns.apply_tcp_route(
+                route.clone(),
+                &self.namespaces.cluster_info,
+                &self.resource_info,
+            );
         }
     }
 
@@ -688,8 +661,6 @@ impl Namespace {
     fn apply_http_route(
         &mut self,
         route: HttpRouteResource,
-        parent_ref: &ParentReference,
-        parent_kind: ResourceKind,
         cluster_info: &ClusterInfo,
         resource_info: &HashMap<ResourceRef, ResourceInfo>,
     ) {
@@ -710,50 +681,82 @@ impl Namespace {
 
         tracing::debug!(?outbound_route);
 
-        let port = parent_ref.port.and_then(NonZeroU16::new);
-
-        if let Some(port) = port {
-            let resource_port = ResourcePort {
-                kind: parent_kind,
-                port,
-                name: parent_ref.name.clone(),
+        for parent_ref in route.inner().parent_refs.iter().flatten() {
+            let parent_kind = if is_parent_service(parent_ref) {
+                ResourceKind::Service
+            } else if is_parent_egress_network(parent_ref) {
+                ResourceKind::EgressNetwork
+            } else {
+                continue;
             };
+            let route_namespace = route.namespace();
+            let parent_namespace = parent_ref.namespace.as_ref().unwrap_or(&route_namespace);
+            if *parent_namespace != *self.namespace {
+                continue;
+            }
 
-            tracing::debug!(
-                ?resource_port,
-                route = route.name(),
-                "inserting httproute for resource"
-            );
+            let port = parent_ref.port.and_then(NonZeroU16::new);
 
-            let service_routes =
-                self.resource_routes_or_default(resource_port, cluster_info, resource_info);
+            if let Some(port) = port {
+                let resource_port = ResourcePort {
+                    kind: parent_kind,
+                    port,
+                    name: parent_ref.name.clone(),
+                };
 
-            service_routes.apply_http_route(route.gknn(), outbound_route);
-        } else {
-            // If the parent_ref doesn't include a port, apply this route
-            // to all ResourceRoutes which match the resource name.
-            self.resource_port_routes.iter_mut().for_each(
-                |(ResourcePort { name, port: _, .. }, routes)| {
+                if !route_accepted_by_resource_port(route.status(), &resource_port) {
+                    continue;
+                }
+
+                tracing::debug!(
+                    ?resource_port,
+                    route = route.name(),
+                    "inserting httproute for resource"
+                );
+
+                let service_routes =
+                    self.resource_routes_or_default(resource_port, cluster_info, resource_info);
+
+                service_routes.apply_http_route(route.gknn(), outbound_route.clone());
+            } else {
+                if !route_accepted_by_service(route.status(), &parent_ref.name) {
+                    continue;
+                }
+                // If the parent_ref doesn't include a port, apply this route
+                // to all ResourceRoutes which match the resource name.
+                for (ResourcePort { name, port: _, .. }, routes) in
+                    self.resource_port_routes.iter_mut()
+                {
                     if name == &parent_ref.name {
                         routes.apply_http_route(route.gknn(), outbound_route.clone());
                     }
-                },
-            );
+                }
 
-            // Also add the route to the list of routes that target the
-            // resource without specifying a port.
-            self.service_http_routes
-                .entry(parent_ref.name.clone())
-                .or_default()
-                .insert(route.gknn(), outbound_route);
+                // Also add the route to the list of routes that target the
+                // resource without specifying a port.
+                self.service_http_routes
+                    .entry(parent_ref.name.clone())
+                    .or_default()
+                    .insert(route.gknn(), outbound_route.clone());
+            }
+        }
+
+        // Remove the route from all parents that are not in the route's parent_refs.
+        for (resource_port, resource_routes) in self.resource_port_routes.iter_mut() {
+            if !route_accepted_by_resource_port(route.status(), resource_port) {
+                resource_routes.delete_http_route(&route.gknn());
+            }
+        }
+        for (parent_name, routes) in self.service_http_routes.iter_mut() {
+            if !route_accepted_by_service(route.status(), parent_name) {
+                routes.remove(&route.gknn());
+            }
         }
     }
 
     fn apply_grpc_route(
         &mut self,
         route: k8s_gateway_api::GrpcRoute,
-        parent_ref: &ParentReference,
-        parent_kind: ResourceKind,
         cluster_info: &ClusterInfo,
         resource_info: &HashMap<ResourceRef, ResourceInfo>,
     ) {
@@ -770,56 +773,89 @@ impl Namespace {
                 return;
             }
         };
-
-        tracing::debug!(?outbound_route);
-
         let gknn = route
             .gkn()
             .namespaced(route.namespace().expect("Route must have namespace"));
+        let status = route.status.as_ref().map(|s| &s.inner);
 
-        let port = parent_ref.port.and_then(NonZeroU16::new);
+        tracing::debug!(?outbound_route);
 
-        if let Some(port) = port {
-            let port = ResourcePort {
-                kind: parent_kind,
-                port,
-                name: parent_ref.name.clone(),
+        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
+            let parent_kind = if is_parent_service(parent_ref) {
+                ResourceKind::Service
+            } else if is_parent_egress_network(parent_ref) {
+                ResourceKind::EgressNetwork
+            } else {
+                continue;
             };
+            let route_namespace = route.namespace().expect("GrpcRoute must have a namespace");
+            let parent_namespace = parent_ref.namespace.as_ref().unwrap_or(&route_namespace);
+            if *parent_namespace != *self.namespace {
+                continue;
+            }
 
-            tracing::debug!(
-                ?port,
-                route = route.name_unchecked(),
-                "inserting grpcroute for resource"
-            );
+            let port = parent_ref.port.and_then(NonZeroU16::new);
 
-            let service_routes = self.resource_routes_or_default(port, cluster_info, resource_info);
+            if let Some(port) = port {
+                let port = ResourcePort {
+                    kind: parent_kind,
+                    port,
+                    name: parent_ref.name.clone(),
+                };
 
-            service_routes.apply_grpc_route(gknn, outbound_route);
-        } else {
-            // If the parent_ref doesn't include a port, apply this route
-            // to all ResourceRoutes which match the resource name.
-            self.resource_port_routes.iter_mut().for_each(
-                |(ResourcePort { name, port: _, .. }, routes)| {
-                    if name == &parent_ref.name {
-                        routes.apply_grpc_route(gknn.clone(), outbound_route.clone());
-                    }
-                },
-            );
+                if !route_accepted_by_resource_port(status, &port) {
+                    continue;
+                }
 
-            // Also add the route to the list of routes that target the
-            // resource without specifying a port.
-            self.service_grpc_routes
-                .entry(parent_ref.name.clone())
-                .or_default()
-                .insert(gknn, outbound_route);
+                tracing::debug!(
+                    ?port,
+                    route = route.name_unchecked(),
+                    "inserting grpcroute for resource"
+                );
+
+                let service_routes =
+                    self.resource_routes_or_default(port, cluster_info, resource_info);
+
+                service_routes.apply_grpc_route(gknn.clone(), outbound_route.clone());
+            } else {
+                if !route_accepted_by_service(status, &parent_ref.name) {
+                    continue;
+                }
+                // If the parent_ref doesn't include a port, apply this route
+                // to all ResourceRoutes which match the resource name.
+                self.resource_port_routes.iter_mut().for_each(
+                    |(ResourcePort { name, port: _, .. }, routes)| {
+                        if name == &parent_ref.name {
+                            routes.apply_grpc_route(gknn.clone(), outbound_route.clone());
+                        }
+                    },
+                );
+
+                // Also add the route to the list of routes that target the
+                // resource without specifying a port.
+                self.service_grpc_routes
+                    .entry(parent_ref.name.clone())
+                    .or_default()
+                    .insert(gknn.clone(), outbound_route.clone());
+            }
+        }
+
+        // Remove the route from all parents that are not in the route's parent_refs.
+        for (resource_port, resource_routes) in self.resource_port_routes.iter_mut() {
+            if !route_accepted_by_resource_port(status, resource_port) {
+                resource_routes.delete_grpc_route(&gknn);
+            }
+        }
+        for (parent_name, routes) in self.service_grpc_routes.iter_mut() {
+            if !route_accepted_by_service(status, parent_name) {
+                routes.remove(&gknn);
+            }
         }
     }
 
     fn apply_tls_route(
         &mut self,
         route: k8s_gateway_api::TlsRoute,
-        parent_ref: &ParentReference,
-        parent_kind: ResourceKind,
         cluster_info: &ClusterInfo,
         resource_info: &HashMap<ResourceRef, ResourceInfo>,
     ) {
@@ -838,51 +874,84 @@ impl Namespace {
         let gknn = route
             .gkn()
             .namespaced(route.namespace().expect("Route must have namespace"));
+        let status = route.status.as_ref().map(|s| &s.inner);
 
-        let port = parent_ref.port.and_then(NonZeroU16::new);
-
-        if let Some(port) = port {
-            let port = ResourcePort {
-                kind: parent_kind,
-                port,
-                name: parent_ref.name.clone(),
+        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
+            let parent_kind = if is_parent_service(parent_ref) {
+                ResourceKind::Service
+            } else if is_parent_egress_network(parent_ref) {
+                ResourceKind::EgressNetwork
+            } else {
+                continue;
             };
+            let route_namespace = route.namespace().expect("GrpcRoute must have a namespace");
+            let parent_namespace = parent_ref.namespace.as_ref().unwrap_or(&route_namespace);
+            if *parent_namespace != *self.namespace {
+                continue;
+            }
 
-            tracing::debug!(
-                ?port,
-                route = route.name_unchecked(),
-                "inserting tlsroute for resource"
-            );
+            let port = parent_ref.port.and_then(NonZeroU16::new);
 
-            let resource_routes =
-                self.resource_routes_or_default(port, cluster_info, resource_info);
+            if let Some(port) = port {
+                let port = ResourcePort {
+                    kind: parent_kind,
+                    port,
+                    name: parent_ref.name.clone(),
+                };
 
-            resource_routes.apply_tls_route(gknn, outbound_route);
-        } else {
-            // If the parent_ref doesn't include a port, apply this route
-            // to all ResourceRoutes which match the resource name.
-            self.resource_port_routes.iter_mut().for_each(
-                |(ResourcePort { name, port: _, .. }, routes)| {
-                    if name == &parent_ref.name {
-                        routes.apply_tls_route(gknn.clone(), outbound_route.clone());
-                    }
-                },
-            );
+                if !route_accepted_by_resource_port(status, &port) {
+                    continue;
+                }
 
-            // Also add the route to the list of routes that target the
-            // resource without specifying a port.
-            self.service_tls_routes
-                .entry(parent_ref.name.clone())
-                .or_default()
-                .insert(gknn, outbound_route);
+                tracing::debug!(
+                    ?port,
+                    route = route.name_unchecked(),
+                    "inserting tlsroute for resource"
+                );
+
+                let resource_routes =
+                    self.resource_routes_or_default(port, cluster_info, resource_info);
+
+                resource_routes.apply_tls_route(gknn.clone(), outbound_route.clone());
+            } else {
+                if !route_accepted_by_service(status, &parent_ref.name) {
+                    continue;
+                }
+                // If the parent_ref doesn't include a port, apply this route
+                // to all ResourceRoutes which match the resource name.
+                self.resource_port_routes.iter_mut().for_each(
+                    |(ResourcePort { name, port: _, .. }, routes)| {
+                        if name == &parent_ref.name {
+                            routes.apply_tls_route(gknn.clone(), outbound_route.clone());
+                        }
+                    },
+                );
+
+                // Also add the route to the list of routes that target the
+                // resource without specifying a port.
+                self.service_tls_routes
+                    .entry(parent_ref.name.clone())
+                    .or_default()
+                    .insert(gknn.clone(), outbound_route.clone());
+            }
+        }
+
+        // Remove the route from all parents that are not in the route's parent_refs.
+        for (resource_port, resource_routes) in self.resource_port_routes.iter_mut() {
+            if !route_accepted_by_resource_port(status, resource_port) {
+                resource_routes.delete_tls_route(&gknn);
+            }
+        }
+        for (parent_name, routes) in self.service_tls_routes.iter_mut() {
+            if !route_accepted_by_service(status, parent_name) {
+                routes.remove(&gknn);
+            }
         }
     }
 
     fn apply_tcp_route(
         &mut self,
         route: k8s_gateway_api::TcpRoute,
-        parent_ref: &ParentReference,
-        parent_kind: ResourceKind,
         cluster_info: &ClusterInfo,
         resource_info: &HashMap<ResourceRef, ResourceInfo>,
     ) {
@@ -901,43 +970,78 @@ impl Namespace {
         let gknn = route
             .gkn()
             .namespaced(route.namespace().expect("Route must have namespace"));
+        let status = route.status.as_ref().map(|s| &s.inner);
 
-        let port = parent_ref.port.and_then(NonZeroU16::new);
-
-        if let Some(port) = port {
-            let port = ResourcePort {
-                kind: parent_kind,
-                port,
-                name: parent_ref.name.clone(),
+        for parent_ref in route.spec.inner.parent_refs.iter().flatten() {
+            let parent_kind = if is_parent_service(parent_ref) {
+                ResourceKind::Service
+            } else if is_parent_egress_network(parent_ref) {
+                ResourceKind::EgressNetwork
+            } else {
+                continue;
             };
+            let route_namespace = route.namespace().expect("GrpcRoute must have a namespace");
+            let parent_namespace = parent_ref.namespace.as_ref().unwrap_or(&route_namespace);
+            if *parent_namespace != *self.namespace {
+                continue;
+            }
 
-            tracing::debug!(
-                ?port,
-                route = route.name_unchecked(),
-                "inserting tcproute for resource"
-            );
+            let port = parent_ref.port.and_then(NonZeroU16::new);
 
-            let resource_routes =
-                self.resource_routes_or_default(port, cluster_info, resource_info);
+            if let Some(port) = port {
+                let port = ResourcePort {
+                    kind: parent_kind,
+                    port,
+                    name: parent_ref.name.clone(),
+                };
 
-            resource_routes.apply_tcp_route(gknn, outbound_route);
-        } else {
-            // If the parent_ref doesn't include a port, apply this route
-            // to all ResourceRoutes which match the resource name.
-            self.resource_port_routes.iter_mut().for_each(
-                |(ResourcePort { name, port: _, .. }, routes)| {
-                    if name == &parent_ref.name {
-                        routes.apply_tcp_route(gknn.clone(), outbound_route.clone());
-                    }
-                },
-            );
+                if !route_accepted_by_resource_port(status, &port) {
+                    continue;
+                }
 
-            // Also add the route to the list of routes that target the
-            // resource without specifying a port.
-            self.service_tcp_routes
-                .entry(parent_ref.name.clone())
-                .or_default()
-                .insert(gknn, outbound_route);
+                tracing::debug!(
+                    ?port,
+                    route = route.name_unchecked(),
+                    "inserting tcproute for resource"
+                );
+
+                let resource_routes =
+                    self.resource_routes_or_default(port, cluster_info, resource_info);
+
+                resource_routes.apply_tcp_route(gknn.clone(), outbound_route.clone());
+            } else {
+                if !route_accepted_by_service(status, &parent_ref.name) {
+                    continue;
+                }
+                // If the parent_ref doesn't include a port, apply this route
+                // to all ResourceRoutes which match the resource name.
+                self.resource_port_routes.iter_mut().for_each(
+                    |(ResourcePort { name, port: _, .. }, routes)| {
+                        if name == &parent_ref.name {
+                            routes.apply_tcp_route(gknn.clone(), outbound_route.clone());
+                        }
+                    },
+                );
+
+                // Also add the route to the list of routes that target the
+                // resource without specifying a port.
+                self.service_tcp_routes
+                    .entry(parent_ref.name.clone())
+                    .or_default()
+                    .insert(gknn.clone(), outbound_route.clone());
+            }
+        }
+
+        // Remove the route from all parents that are not in the route's parent_refs.
+        for (resource_port, resource_routes) in self.resource_port_routes.iter_mut() {
+            if !route_accepted_by_resource_port(status, resource_port) {
+                resource_routes.delete_tcp_route(&gknn);
+            }
+        }
+        for (parent_name, routes) in self.service_tcp_routes.iter_mut() {
+            if !route_accepted_by_service(status, parent_name) {
+                routes.remove(&gknn);
+            }
         }
     }
 
@@ -1336,7 +1440,37 @@ pub fn is_parent_service_or_egress_network(parent: &ParentReference) -> bool {
 }
 
 #[inline]
-fn route_accepted_by_parent(
+fn route_accepted_by_resource_port(
+    route_status: Option<&k8s_gateway_api::RouteStatus>,
+    resource_port: &ResourcePort,
+) -> bool {
+    let (kind, group) = match resource_port.kind {
+        ResourceKind::Service => ("Service", "core"),
+        ResourceKind::EgressNetwork => ("EgressNetwork", "policy.linkerd.io"),
+    };
+    route_status
+        .as_ref()
+        .map(|status| status.parents.as_slice())
+        .unwrap_or_default()
+        .iter()
+        .any(|parent_status| {
+            let port_matches = match parent_status.parent_ref.port {
+                Some(port) => port == resource_port.port.get(),
+                None => true,
+            };
+            resource_port.name == parent_status.parent_ref.name
+                && Some(kind) == parent_status.parent_ref.kind.as_deref()
+                && Some(group) == parent_status.parent_ref.group.as_deref()
+                && port_matches
+                && parent_status
+                    .conditions
+                    .iter()
+                    .any(|condition| condition.type_ == "Accepted" && condition.status == "True")
+        })
+}
+
+#[inline]
+fn route_accepted_by_service(
     route_status: Option<&k8s_gateway_api::RouteStatus>,
     service: &str,
 ) -> bool {
@@ -1347,6 +1481,8 @@ fn route_accepted_by_parent(
         .iter()
         .any(|parent_status| {
             parent_status.parent_ref.name == service
+                && parent_status.parent_ref.kind.as_deref() == Some("Service")
+                && parent_status.parent_ref.group.as_deref() == Some("core")
                 && parent_status
                     .conditions
                     .iter()
