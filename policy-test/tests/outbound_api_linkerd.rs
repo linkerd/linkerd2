@@ -80,6 +80,7 @@ async fn service_with_http_route_without_rules() {
         });
 
         let _route = create(&client, mk_empty_http_route(&ns, "foo-route", &svc, 4191)).await;
+        await_route_status(&client, &ns, "foo-route").await;
 
         let config = rx
             .next()
@@ -126,6 +127,7 @@ async fn service_with_http_routes_without_backends() {
             mk_http_route(&ns, "foo-route", &svc, Some(4191)).build(),
         )
         .await;
+        await_route_status(&client, &ns, "foo-route").await;
 
         let config = rx
             .next()
@@ -178,6 +180,7 @@ async fn service_with_http_routes_with_backend() {
             None,
         );
         let _route = create(&client, route.build()).await;
+        await_route_status(&client, &ns, "foo-route").await;
 
         let config = rx
             .next()
@@ -247,6 +250,7 @@ async fn service_with_http_routes_with_cross_namespace_backend() {
             None,
         );
         let _route = create(&client, route.build()).await;
+        await_route_status(&client, &ns, "foo-route").await;
 
         let config = rx
             .next()
@@ -302,6 +306,7 @@ async fn service_with_http_routes_with_invalid_backend() {
             None,
         );
         let _route = create(&client, route.build()).await;
+        await_route_status(&client, &ns, "foo-route").await;
 
         let config = rx
             .next()
@@ -355,6 +360,7 @@ async fn service_with_multiple_http_routes() {
             mk_http_route(&ns, "a-route", &svc, Some(4191)).build(),
         )
         .await;
+        await_route_status(&client, &ns, "a-route").await;
 
         // First route update.
         let config = rx
@@ -371,6 +377,7 @@ async fn service_with_multiple_http_routes() {
             mk_http_route(&ns, "b-route", &svc, Some(4191)).build(),
         )
         .await;
+        await_route_status(&client, &ns, "b-route").await;
 
         // Second route update.
         let config = rx
@@ -715,6 +722,7 @@ async fn route_rule_with_filters() {
             route.build(),
         )
         .await;
+    await_route_status(&client, &ns, "foo-route").await;
 
         let config = rx
             .next()
@@ -832,6 +840,7 @@ async fn backend_with_filters() {
             ]));
         let _route = create(&client, route.build())
         .await;
+    await_route_status(&client, &ns, "foo-route").await;
 
         let config = rx
             .next()
@@ -934,6 +943,7 @@ async fn http_route_with_no_port() {
         });
 
         let _route = create(&client, mk_http_route(&ns, "foo-route", &svc, None).build()).await;
+        await_route_status(&client, &ns, "foo-route").await;
 
         let config_4191 = rx_4191
             .next()
@@ -1004,6 +1014,7 @@ async fn producer_route() {
             mk_http_route(&ns, "foo-route", &svc, Some(4191)).build(),
         )
         .await;
+        await_route_status(&client, &ns, "foo-route").await;
 
         let producer_config = producer_rx
             .next()
@@ -1049,6 +1060,7 @@ async fn pre_existing_producer_route() {
             mk_http_route(&ns, "foo-route", &svc, Some(4191)).build(),
         )
         .await;
+        await_route_status(&client, &ns, "foo-route").await;
 
         let mut producer_rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let producer_config = producer_rx
@@ -1151,6 +1163,7 @@ async fn consumer_route() {
             mk_http_route(&consumer_ns_name, "foo-route", &svc, Some(4191)).build(),
         )
         .await;
+        await_route_status(&client, &consumer_ns_name, "foo-route").await;
 
         // The route should NOT be returned in queries from the producer namespace.
         // There should be a default route.
@@ -1198,6 +1211,7 @@ async fn http_route_retries_and_timeouts() {
                 .build(),
         )
         .await;
+        await_route_status(&client, &ns, "foo-route").await;
 
         let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
