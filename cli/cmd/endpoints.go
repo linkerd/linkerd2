@@ -183,7 +183,7 @@ func requestEndpointsFromAPI(client destinationPb.DestinationClient, token strin
 		}(authority)
 	}
 	// Wait an amount of time for some endpoint responses to be received.
-	time.Sleep(5 * time.Second)
+	timeout := time.NewTimer(5 * time.Second)
 
 	for {
 		select {
@@ -216,9 +216,7 @@ func requestEndpointsFromAPI(client destinationPb.DestinationClient, token strin
 					http2:   addr.GetHttp2(),
 				})
 			}
-		default:
-			// Once we consume all of the available messages in the channel,
-			// terminate.
+		case <-timeout.C:
 			return info, nil
 		}
 	}
