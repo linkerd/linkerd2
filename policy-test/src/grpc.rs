@@ -52,6 +52,7 @@ macro_rules! assert_protocol_detect {
                             $crate::grpc::defaults::http_route(),
                             $crate::grpc::defaults::probe_route(),
                         ],
+                        http_local_rate_limit: None,
                     }
                 )),
             }),
@@ -71,6 +72,7 @@ macro_rules! assert_protocol_detect_external {
                     inbound::proxy_protocol::Detect {
                         timeout: Some(std::time::Duration::from_secs(10).try_into().unwrap()),
                         http_routes: vec![$crate::grpc::defaults::http_route()],
+                        http_local_rate_limit: None,
                     }
                 ))
             })
@@ -376,13 +378,20 @@ impl hyper::service::Service<hyper::Request<tonic::body::BoxBody>> for GrpcHttp 
 pub mod defaults {
     use super::*;
 
-    pub fn proxy_protocol() -> inbound::ProxyProtocol {
+    pub fn proxy_protocol(
+        local_rate_limit: Option<inbound::HttpLocalRateLimit>,
+    ) -> inbound::ProxyProtocol {
         use inbound::proxy_protocol::{Http1, Kind};
         inbound::ProxyProtocol {
             kind: Some(Kind::Http1(Http1 {
                 routes: vec![http_route(), probe_route()],
+                local_rate_limit,
             })),
         }
+    }
+
+    pub fn proxy_protocol_no_ratelimit() -> inbound::ProxyProtocol {
+        proxy_protocol(None)
     }
 
     pub fn proxy_protocol_external() -> inbound::ProxyProtocol {
@@ -390,7 +399,57 @@ pub mod defaults {
         inbound::ProxyProtocol {
             kind: Some(Kind::Http1(Http1 {
                 routes: vec![http_route()],
+                local_rate_limit: None,
             })),
+        }
+    }
+
+    pub fn http_local_ratelimit(
+        name: &str,
+        rps_total: Option<u32>,
+        rps_identity: Option<u32>,
+        overrides: Vec<(u32, Vec<String>)>,
+    ) -> inbound::HttpLocalRateLimit {
+        use inbound::http_local_rate_limit::{r#override, Limit, Override};
+        use meta::{metadata, Metadata, Resource};
+
+        let overrides = overrides
+            .iter()
+            .map(|ovr| {
+                let identities = r#override::ClientIdentities {
+                    identities: ovr
+                        .1
+                        .iter()
+                        .map(|name| inbound::Identity {
+                            name: name.to_string(),
+                        })
+                        .collect(),
+                };
+                Override {
+                    limit: Some(Limit {
+                        requests_per_second: ovr.0,
+                    }),
+                    clients: Some(identities),
+                }
+            })
+            .collect();
+
+        inbound::HttpLocalRateLimit {
+            metadata: Some(Metadata {
+                kind: Some(metadata::Kind::Resource(Resource {
+                    group: "policy.linkerd.io".to_string(),
+                    kind: "HTTPLocalRateLimitPolicy".to_string(),
+                    name: name.to_owned(),
+                    ..Default::default()
+                })),
+            }),
+            total: rps_total.map(|requests_per_second| Limit {
+                requests_per_second,
+            }),
+            identity: rps_identity.map(|requests_per_second| Limit {
+                requests_per_second,
+            }),
+            overrides,
         }
     }
 

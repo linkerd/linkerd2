@@ -34,7 +34,10 @@ async fn server_with_server_authorization() {
         // that the update now uses this server, which has no authorizations
         let server = create(&client, mk_admin_server(&ns, "linkerd-admin", None)).await;
         let config = next_config(&mut rx).await;
-        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
+        assert_eq!(
+            config.protocol,
+            Some(grpc::defaults::proxy_protocol_no_ratelimit())
+        );
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,
@@ -75,7 +78,10 @@ async fn server_with_server_authorization() {
             .expect("watch must not fail")
             .expect("watch must return an updated config");
         tracing::trace!(?config);
-        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
+        assert_eq!(
+            config.protocol,
+            Some(grpc::defaults::proxy_protocol_no_ratelimit())
+        );
         assert_eq!(
             config.authorizations.first().unwrap().labels,
             convert_args!(hashmap!(
@@ -146,7 +152,10 @@ async fn server_with_authorization_policy() {
         // that the update now uses this server, which has no authorizations
         let server = create(&client, mk_admin_server(&ns, "linkerd-admin", None)).await;
         let config = next_config(&mut rx).await;
-        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
+        assert_eq!(
+            config.protocol,
+            Some(grpc::defaults::proxy_protocol_no_ratelimit())
+        );
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,
@@ -203,7 +212,10 @@ async fn server_with_authorization_policy() {
             .await
             .expect("watch must update within 10s");
 
-        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
+        assert_eq!(
+            config.protocol,
+            Some(grpc::defaults::proxy_protocol_no_ratelimit())
+        );
         assert_eq!(config.authorizations.len(), 1);
         assert_eq!(
             config.authorizations.first().unwrap().labels,
@@ -265,7 +277,10 @@ async fn server_with_audit_policy() {
         )
         .await;
         let config = next_config(&mut rx).await;
-        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
+        assert_eq!(
+            config.protocol,
+            Some(grpc::defaults::proxy_protocol_no_ratelimit())
+        );
         assert_eq!(config.authorizations.len(), 1);
         assert_eq!(
             config.authorizations.first().unwrap().labels,
@@ -302,6 +317,67 @@ async fn server_with_audit_policy() {
 }
 
 #[tokio::test(flavor = "current_thread")]
+async fn http_local_rate_limit_policy() {
+    with_temp_ns(|client, ns| async move {
+        // Create a pod that does nothing. It's injected with a proxy, so we can
+        // attach policies to its admin server.
+        let pod = create_ready_pod(&client, mk_pause(&ns, "pause")).await;
+
+        // Create a server with audit access policy that selects the pod's proxy admin server
+        let server = create(
+            &client,
+            mk_admin_server(&ns, "linkerd-admin", Some("audit".to_string())),
+        )
+        .await;
+
+        // Create a rate-limit policy associated to the server
+        create(
+            &client,
+            k8s::policy::ratelimit_policy::HTTPLocalRateLimitPolicy {
+                metadata: k8s::ObjectMeta {
+                    namespace: Some(ns.to_string()),
+                    name: Some("rl-0".to_string()),
+                    ..Default::default()
+                },
+                spec: k8s::policy::ratelimit_policy::RateLimitPolicySpec {
+                    target_ref: k8s::policy::LocalTargetRef::from_resource(&server),
+                    total: Some(k8s::policy::ratelimit_policy::Limit {
+                        requests_per_second: 1000,
+                    }),
+                    identity: None,
+                    overrides: Some(vec![k8s::policy::ratelimit_policy::Override {
+                        requests_per_second: 200,
+                        client_refs: vec![k8s::policy::NamespacedTargetRef {
+                            group: None,
+                            kind: "ServiceAccount".to_string(),
+                            name: "sa-0".to_string(),
+                            namespace: None,
+                        }],
+                    }]),
+                },
+            },
+        )
+        .await;
+
+        let client_id = format!("sa-0.{}.serviceaccount.identity.linkerd.cluster.local", ns);
+        let ratelimit_overrides = vec![(200, vec![client_id])];
+        let ratelimit =
+            grpc::defaults::http_local_ratelimit("rl-0", Some(1000), None, ratelimit_overrides);
+        let protocol = grpc::defaults::proxy_protocol(Some(ratelimit));
+
+        let mut rx = retry_watch_server(&client, &ns, &pod.name_unchecked()).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+        assert_eq!(config.protocol, Some(protocol));
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
 async fn server_with_http_route() {
     with_temp_ns(|client, ns| async move {
         // Create a pod that does nothing. It's injected with a proxy, so we can
@@ -323,7 +399,10 @@ async fn server_with_http_route() {
         // and no routes.
         let _server = create(&client, mk_admin_server(&ns, "linkerd-admin", None)).await;
         let config = next_config(&mut rx).await;
-        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
+        assert_eq!(
+            config.protocol,
+            Some(grpc::defaults::proxy_protocol_no_ratelimit())
+        );
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,
@@ -438,7 +517,10 @@ async fn server_with_http_route() {
             .await
             .expect("HttpRoute must be deleted");
         let config = next_config(&mut rx).await;
-        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
+        assert_eq!(
+            config.protocol,
+            Some(grpc::defaults::proxy_protocol_no_ratelimit())
+        );
     })
     .await
 }
@@ -483,7 +565,10 @@ async fn http_routes_ordered_by_creation() {
         // and no routes.
         let _server = create(&client, mk_admin_server(&ns, "linkerd-admin", None)).await;
         let config = next_config(&mut rx).await;
-        assert_eq!(config.protocol, Some(grpc::defaults::proxy_protocol()));
+        assert_eq!(
+            config.protocol,
+            Some(grpc::defaults::proxy_protocol_no_ratelimit())
+        );
         assert_eq!(config.authorizations, vec![]);
         assert_eq!(
             config.labels,

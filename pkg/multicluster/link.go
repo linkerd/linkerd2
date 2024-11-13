@@ -47,8 +47,9 @@ type (
 		GatewayPort                   uint32
 		GatewayIdentity               string
 		ProbeSpec                     ProbeSpec
-		Selector                      metav1.LabelSelector
-		RemoteDiscoverySelector       metav1.LabelSelector
+		Selector                      *metav1.LabelSelector
+		RemoteDiscoverySelector       *metav1.LabelSelector
+		FederatedServiceSelector      *metav1.LabelSelector
 	}
 
 	ErrFieldMissing struct {
@@ -161,6 +162,18 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		}
 	}
 
+	federatedServiceSelector := metav1.LabelSelector{}
+	if selectorObj, ok := specObj["federatedServiceSelector"]; ok {
+		bytes, err := json.Marshal(selectorObj)
+		if err != nil {
+			return Link{}, err
+		}
+		err = json.Unmarshal(bytes, &federatedServiceSelector)
+		if err != nil {
+			return Link{}, err
+		}
+	}
+
 	return Link{
 		Name:                          u.GetName(),
 		Namespace:                     u.GetNamespace(),
@@ -172,8 +185,9 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		GatewayPort:                   uint32(gatewayPort),
 		GatewayIdentity:               gatewayIdentity,
 		ProbeSpec:                     probeSpec,
-		Selector:                      selector,
-		RemoteDiscoverySelector:       remoteDiscoverySelector,
+		Selector:                      &selector,
+		RemoteDiscoverySelector:       &remoteDiscoverySelector,
+		FederatedServiceSelector:      &federatedServiceSelector,
 	}, nil
 }
 
@@ -228,6 +242,17 @@ func (l Link) ToUnstructured() (unstructured.Unstructured, error) {
 	}
 	spec["remoteDiscoverySelector"] = remoteDiscoverySelector
 
+	data, err = json.Marshal(l.FederatedServiceSelector)
+	if err != nil {
+		return unstructured.Unstructured{}, err
+	}
+	federatedServiceSelector := make(map[string]interface{})
+	err = json.Unmarshal(data, &federatedServiceSelector)
+	if err != nil {
+		return unstructured.Unstructured{}, err
+	}
+	spec["federatedServiceSelector"] = federatedServiceSelector
+
 	return unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": k8s.LinkAPIGroupVersion,
@@ -236,7 +261,8 @@ func (l Link) ToUnstructured() (unstructured.Unstructured, error) {
 				"name":      l.Name,
 				"namespace": l.Namespace,
 			},
-			"spec": spec,
+			"spec":   spec,
+			"status": map[string]interface{}{},
 		},
 	}, nil
 }

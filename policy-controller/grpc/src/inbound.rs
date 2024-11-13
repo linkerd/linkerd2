@@ -11,7 +11,7 @@ use linkerd2_proxy_api::{
 use linkerd_policy_controller_core::{
     inbound::{
         AuthorizationRef, ClientAuthentication, ClientAuthorization, DiscoverInboundServer,
-        InboundServer, InboundServerStream, ProxyProtocol, ServerRef,
+        InboundServer, InboundServerStream, ProxyProtocol, RateLimit, ServerRef,
     },
     IdentityMatch, IpNet, NetworkMatch,
 };
@@ -147,16 +147,19 @@ fn to_server(srv: &InboundServer, cluster_networks: &[IpNet]) -> proto::Server {
                 proto::proxy_protocol::Detect {
                     timeout: timeout.try_into().map_err(|error| tracing::warn!(%error, "failed to convert protocol detect timeout to protobuf")).ok(),
                     http_routes: http::to_route_list(&srv.http_routes, cluster_networks),
+                    http_local_rate_limit: srv.ratelimit.as_ref().map(to_rate_limit),
                 },
             )),
             ProxyProtocol::Http1 => Some(proto::proxy_protocol::Kind::Http1(
                 proto::proxy_protocol::Http1 {
                     routes: http::to_route_list(&srv.http_routes, cluster_networks),
+                    local_rate_limit: srv.ratelimit.as_ref().map(to_rate_limit),
                 },
             )),
             ProxyProtocol::Http2 => Some(proto::proxy_protocol::Kind::Http2(
                 proto::proxy_protocol::Http2 {
                     routes: http::to_route_list(&srv.http_routes, cluster_networks),
+                    local_rate_limit: srv.ratelimit.as_ref().map(to_rate_limit),
                 },
             )),
             ProxyProtocol::Grpc => Some(proto::proxy_protocol::Kind::Grpc(
@@ -325,5 +328,50 @@ fn to_authz(
         labels,
         networks,
         authentication: Some(authn),
+    }
+}
+
+fn to_rate_limit(rl: &RateLimit) -> proto::HttpLocalRateLimit {
+    let meta = Metadata {
+        kind: Some(metadata::Kind::Resource(api::meta::Resource {
+            group: "policy.linkerd.io".to_string(),
+            kind: "HTTPLocalRateLimitPolicy".to_string(),
+            name: rl.name.to_string(),
+            ..Default::default()
+        })),
+    };
+
+    proto::HttpLocalRateLimit {
+        metadata: Some(meta),
+        total: rl
+            .total
+            .as_ref()
+            .map(|lim| proto::http_local_rate_limit::Limit {
+                requests_per_second: lim.requests_per_second,
+            }),
+        identity: rl
+            .identity
+            .as_ref()
+            .map(|lim| proto::http_local_rate_limit::Limit {
+                requests_per_second: lim.requests_per_second,
+            }),
+        overrides: rl
+            .overrides
+            .iter()
+            .map(|ovr| proto::http_local_rate_limit::Override {
+                limit: Some(proto::http_local_rate_limit::Limit {
+                    requests_per_second: ovr.requests_per_second,
+                }),
+                clients: Some(proto::http_local_rate_limit::r#override::ClientIdentities {
+                    identities: ovr
+                        .client_identities
+                        .iter()
+                        .map(|id| proto::Identity {
+                            name: id.to_string(),
+                        })
+                        .collect(),
+                }),
+            })
+            .collect(),
     }
 }

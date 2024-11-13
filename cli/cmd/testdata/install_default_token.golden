@@ -176,6 +176,7 @@ webhooks:
     apiVersions: ["*"]
     resources:
     - authorizationpolicies
+    - httplocalratelimitpolicies
     - httproutes
     - networkauthentications
     - meshtlsauthentications
@@ -219,6 +220,7 @@ rules:
       - policy.linkerd.io
     resources:
       - authorizationpolicies
+      - httplocalratelimitpolicies
       - httproutes
       - meshtlsauthentications
       - networkauthentications
@@ -1334,7 +1336,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 742b40a4b565b2bb0fe1bb5c644952dfd4fe4c0d015fa618a9a895cd107b6627
+        checksum/config: 726a0d9a61f222ca9efb64bc6ec38ad1d4beeab125c79f00b45a1d64be642875
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: install-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"

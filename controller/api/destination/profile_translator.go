@@ -8,6 +8,8 @@ import (
 
 	"github.com/golang/protobuf/ptypes/duration"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	meta "github.com/linkerd/linkerd2-proxy-api/go/meta"
+	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/util"
@@ -22,6 +24,7 @@ const millisPerDecimilli = 10
 type profileTranslator struct {
 	fullyQualifiedName string
 	port               uint32
+	parentRef          *meta.Metadata
 
 	stream          pb.Destination_GetProfileServer
 	endStream       chan struct{}
@@ -43,10 +46,23 @@ var profileUpdatesQueueOverflowCounter = promauto.NewCounterVec(
 	},
 )
 
-func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endStream chan struct{}) *profileTranslator {
+func newProfileTranslator(serviceID watcher.ServiceID, stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endStream chan struct{}) *profileTranslator {
+	parentRef := &meta.Metadata{
+		Kind: &meta.Metadata_Resource{
+			Resource: &meta.Resource{
+				Group:     "core",
+				Kind:      "Service",
+				Name:      serviceID.Name,
+				Namespace: serviceID.Namespace,
+				Port:      port,
+			},
+		},
+	}
+
 	return &profileTranslator{
 		fullyQualifiedName: fqn,
 		port:               port,
+		parentRef:          parentRef,
 
 		stream:          stream,
 		endStream:       endStream,
@@ -154,6 +170,19 @@ func toDuration(d time.Duration) *duration.Duration {
 // createDestinationProfile returns a Proxy API DestinationProfile, given a
 // ServiceProfile.
 func (pt *profileTranslator) createDestinationProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error) {
+	var profileRef *meta.Metadata
+	if profile != nil {
+		profileRef = &meta.Metadata{
+			Kind: &meta.Metadata_Resource{
+				Resource: &meta.Resource{
+					Group:     sp.SchemeGroupVersion.Group,
+					Kind:      profile.Kind,
+					Name:      profile.Name,
+					Namespace: profile.Namespace,
+				},
+			},
+		}
+	}
 	routes := make([]*pb.Route, 0)
 	for _, route := range profile.Spec.Routes {
 		pbRoute, err := toRoute(profile, route)
@@ -177,6 +206,8 @@ func (pt *profileTranslator) createDestinationProfile(profile *sp.ServiceProfile
 		_, opaqueProtocol = profile.Spec.OpaquePorts[pt.port]
 	}
 	return &pb.DestinationProfile{
+		ParentRef:          pt.parentRef,
+		ProfileRef:         profileRef,
 		Routes:             routes,
 		RetryBudget:        budget,
 		DstOverrides:       toDstOverrides(profile.Spec.DstOverrides, pt.port),

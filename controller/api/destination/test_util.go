@@ -961,6 +961,11 @@ spec:
 		t.Fatalf("can't create cluster store: %s", err)
 	}
 
+	federatedServices, err := newFederatedServiceWatcher(k8sAPI, metadataAPI, &Config{}, clusterStore, endpoints, log)
+	if err != nil {
+		t.Fatalf("can't create federated service watcher: %s", err)
+	}
+
 	// Sync after creating watchers so that the indexers added get updated
 	// properly
 	k8sAPI.Sync(nil)
@@ -982,6 +987,7 @@ spec:
 		opaquePorts,
 		profiles,
 		clusterStore,
+		federatedServices,
 		k8sAPI,
 		metadataAPI,
 		log,

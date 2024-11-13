@@ -527,7 +527,7 @@ mc-flat-network-init:
 # Run the multicluster tests without any setup
 mc-test-run:
     LINKERD_DOCKER_REGISTRY='{{ DOCKER_REGISTRY }}' \
-        go test -v -test.timeout=15m --failfast --mod=readonly \
+        go test -v -test.timeout=20m --failfast --mod=readonly \
             ./test/integration/multicluster/... \
                 -integration-tests \
                 -linkerd='{{ justfile_directory() }}/bin/linkerd' \

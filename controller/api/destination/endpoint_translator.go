@@ -177,7 +177,10 @@ func (et *endpointTranslator) Start() {
 	go func() {
 		for {
 			select {
-			case update := <-et.updates:
+			case update, ok := <-et.updates:
+				if !ok {
+					return
+				}
 				et.processUpdate(update)
 			case <-et.stop:
 				return
@@ -189,6 +192,12 @@ func (et *endpointTranslator) Start() {
 // Stop terminates the goroutine started by Start.
 func (et *endpointTranslator) Stop() {
 	close(et.stop)
+}
+
+// DrainAndStop closes the updates channel, causing the goroutine started by
+// Start to terminate after processing all remaining updates.
+func (et *endpointTranslator) DrainAndStop() {
+	close(et.updates)
 }
 
 func (et *endpointTranslator) processUpdate(update interface{}) {
@@ -225,20 +234,8 @@ func (et *endpointTranslator) noEndpoints(exists bool) {
 	et.log.Debugf("NoEndpoints(%+v)", exists)
 
 	et.availableEndpoints.Addresses = map[watcher.ID]watcher.Address{}
-	et.filteredSnapshot.Addresses = map[watcher.ID]watcher.Address{}
 
-	u := &pb.Update{
-		Update: &pb.Update_NoEndpoints{
-			NoEndpoints: &pb.NoEndpoints{
-				Exists: exists,
-			},
-		},
-	}
-
-	et.log.Debugf("Sending destination no endpoints: %+v", u)
-	if err := et.stream.Send(u); err != nil {
-		et.log.Debugf("Failed to send address update: %s", err)
-	}
+	et.sendFilteredUpdate()
 }
 
 func (et *endpointTranslator) sendFilteredUpdate() {

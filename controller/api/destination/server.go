@@ -45,11 +45,12 @@ type (
 
 		config Config
 
-		workloads    *watcher.WorkloadWatcher
-		endpoints    *watcher.EndpointsWatcher
-		opaquePorts  *watcher.OpaquePortsWatcher
-		profiles     *watcher.ProfileWatcher
-		clusterStore *watcher.ClusterStore
+		workloads         *watcher.WorkloadWatcher
+		endpoints         *watcher.EndpointsWatcher
+		opaquePorts       *watcher.OpaquePortsWatcher
+		profiles          *watcher.ProfileWatcher
+		clusterStore      *watcher.ClusterStore
+		federatedServices *federatedServiceWatcher
 
 		k8sAPI      *k8s.API
 		metadataAPI *k8s.MetadataAPI
@@ -105,6 +106,10 @@ func NewServer(
 	if err != nil {
 		return nil, err
 	}
+	federatedServices, err := newFederatedServiceWatcher(k8sAPI, metadataAPI, &config, clusterStore, endpoints, log)
+	if err != nil {
+		return nil, err
+	}
 
 	srv := server{
 		pb.UnimplementedDestinationServer{},
@@ -114,6 +119,7 @@ func NewServer(
 		opaquePorts,
 		profiles,
 		clusterStore,
+		federatedServices,
 		k8sAPI,
 		metadataAPI,
 		log,
@@ -172,7 +178,19 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		return status.Errorf(codes.Internal, "Failed to get service %s", dest.GetPath())
 	}
 
-	if cluster, found := svc.Labels[labels.RemoteDiscoveryLabel]; found {
+	if isFederatedService(svc) {
+		// Federated service
+		remoteDiscovery := svc.Annotations[labels.RemoteDiscoveryAnnotation]
+		localDiscovery := svc.Annotations[labels.LocalDiscoveryAnnotation]
+		log.Debugf("Federated service discovery, remote:[%s] local:[%s]", remoteDiscovery, localDiscovery)
+		err := s.federatedServices.Subscribe(svc.Name, svc.Namespace, port, token.NodeName, instanceID, stream, streamEnd)
+		if err != nil {
+			log.Errorf("Failed to subscribe to federated service %q: %s", dest.GetPath(), err)
+			return err
+		}
+		defer s.federatedServices.Unsubscribe(svc.Name, svc.Namespace, stream)
+	} else if cluster, found := svc.Labels[labels.RemoteDiscoveryLabel]; found {
+		log.Debug("Remote discovery service detected")
 		// Remote discovery
 		remoteSvc, found := svc.Labels[labels.RemoteServiceLabel]
 		if !found {
@@ -210,12 +228,13 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 				log.Debugf("Invalid remote discovery service %s", dest.GetPath())
 				return status.Errorf(codes.InvalidArgument, "Invalid authority: %s", dest.GetPath())
 			}
-			log.Errorf("Failed to subscribe to remote disocvery service %q in cluster %s: %s", dest.GetPath(), cluster, err)
+			log.Errorf("Failed to subscribe to remote discovery service %q in cluster %s: %s", dest.GetPath(), cluster, err)
 			return err
 		}
 		defer remoteWatcher.Unsubscribe(watcher.ServiceID{Namespace: service.Namespace, Name: remoteSvc}, port, instanceID, translator)
 
 	} else {
+		log.Debug("Local discovery service detected")
 		// Local discovery
 		translator := newEndpointTranslator(
 			s.config.ControllerNS,
@@ -375,7 +394,7 @@ func (s *server) subscribeToServiceProfile(
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
-	translator := newProfileTranslator(stream, log, fqn, port, streamEnd)
+	translator := newProfileTranslator(service, stream, log, fqn, port, streamEnd)
 	translator.Start()
 	defer translator.Stop()
 

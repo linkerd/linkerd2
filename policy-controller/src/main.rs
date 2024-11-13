@@ -253,6 +253,13 @@ async fn main() -> Result<()> {
             .instrument(info_span!("networkauthentications")),
     );
 
+    let ratelimit_policies =
+        runtime.watch_all::<k8s::policy::HTTPLocalRateLimitPolicy>(watcher::Config::default());
+    tokio::spawn(
+        kubert::index::namespaced(inbound_index.clone(), ratelimit_policies)
+            .instrument(info_span!("httplocalratelimitpolicies")),
+    );
+
     let http_routes_indexes = IndexList::new(inbound_index.clone())
         .push(outbound_index.clone())
         .push(status_index.clone())

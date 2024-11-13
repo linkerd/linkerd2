@@ -431,6 +431,10 @@ const (
 	// services.
 	DefaultExportedServiceSelector = SvcMirrorPrefix + "/exported"
 
+	// DefaultFederatedServiceSelector is the default label selector for
+	// federated services.
+	DefaultFederatedServiceSelector = SvcMirrorPrefix + "/federated"
+
 	// MirroredResourceLabel indicates that this resource is the result
 	// of a mirroring operation (can be a namespace or a service)
 	MirroredResourceLabel = SvcMirrorPrefix + "/mirrored-service"
@@ -452,6 +456,19 @@ const (
 
 	// RemoteServiceLabel is the name of the service in the remote cluster.
 	RemoteServiceLabel = MulticlusterPrefix + "/remote-service"
+
+	// RemoteDiscoveryAnnotation indicates that this service is a remote discovery
+	// service and the value of this label is a comma-separated list of remote
+	// discovery targets of the form <service>@<cluster>. This can be used in
+	// conjunction with LocalDiscoveryAnnotation and the endpoints will be
+	// unioned.
+	RemoteDiscoveryAnnotation = MulticlusterPrefix + "/remote-discovery"
+
+	// LocalDiscoveryAnnotation indicates that service discovery information for
+	// this service should be fetched from another service in the local cluster
+	// instead of the target service itself. This can be used in conjunction
+	// with RemoteDiscoveryAnnotation and the endpoints will be unioned.
+	LocalDiscoveryAnnotation = MulticlusterPrefix + "/local-discovery"
 
 	// RemoteResourceVersionAnnotation is the last observed remote resource
 	// version of a mirrored resource. Useful when doing updates
