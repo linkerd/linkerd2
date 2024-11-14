@@ -2,7 +2,7 @@ use k8s_openapi::chrono;
 use linkerd_policy_controller_k8s_api::{
     self as api,
     policy::{
-        HTTPLocalRateLimitPolicy, HTTPLocalRateLimitPolicyStatus, Limit, LocalTargetRef,
+        HttpLocalRateLimitPolicy, HttpLocalRateLimitPolicyStatus, Limit, LocalTargetRef,
         NamespacedTargetRef, Override, RateLimitPolicySpec,
     },
 };
@@ -74,8 +74,8 @@ fn mk_ratelimiter(
     total_rps: u32,
     identity_rps: u32,
     overrides: Vec<Override>,
-) -> HTTPLocalRateLimitPolicy {
-    HTTPLocalRateLimitPolicy {
+) -> HttpLocalRateLimitPolicy {
+    HttpLocalRateLimitPolicy {
         metadata: api::ObjectMeta {
             namespace: Some(namespace),
             name: Some("test".to_string()),
@@ -91,7 +91,7 @@ fn mk_ratelimiter(
             }),
             overrides: Some(overrides),
         },
-        status: Some(HTTPLocalRateLimitPolicyStatus {
+        status: Some(HttpLocalRateLimitPolicyStatus {
             conditions: vec![api::Condition {
                 last_transition_time: api::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
                 message: "".to_string(),

@@ -28,7 +28,7 @@ impl NamespaceGroupKindName {
         match (self.gkn.group.as_ref(), self.gkn.kind.as_ref()) {
             (POLICY_API_GROUP, "HTTPRoute") => Ok(linkerd_k8s_api::HttpRoute::api_version(&())),
             (POLICY_API_GROUP, "HTTPLocalRateLimitPolicy") => {
-                Ok(linkerd_k8s_api::HTTPLocalRateLimitPolicy::api_version(&()))
+                Ok(linkerd_k8s_api::HttpLocalRateLimitPolicy::api_version(&()))
             }
             (POLICY_API_GROUP, "EgressNetwork") => {
                 Ok(linkerd_k8s_api::EgressNetwork::api_version(&()))

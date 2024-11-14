@@ -17,7 +17,7 @@ pub use self::{
     network::{Cidr, Network},
     network_authentication::{NetworkAuthentication, NetworkAuthenticationSpec},
     ratelimit_policy::{
-        HTTPLocalRateLimitPolicy, HTTPLocalRateLimitPolicyStatus, Limit, Override,
+        HttpLocalRateLimitPolicy, HttpLocalRateLimitPolicyStatus, Limit, Override,
         RateLimitPolicySpec,
     },
     server::{Server, ServerSpec},

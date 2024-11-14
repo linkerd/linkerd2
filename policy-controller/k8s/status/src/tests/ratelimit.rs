@@ -37,7 +37,7 @@ fn ratelimit_accepted() {
     let (ratelimit_id, ratelimit) = make_ratelimit("rl-1".to_string(), "server-1".to_string());
     index.write().apply(ratelimit);
 
-    let expected_status = linkerd_k8s_api::HTTPLocalRateLimitPolicyStatus {
+    let expected_status = linkerd_k8s_api::HttpLocalRateLimitPolicyStatus {
         conditions: vec![accepted()],
         target_ref: linkerd_k8s_api::LocalTargetRef {
             group: Some("policy.linkerd.io".to_string()),
@@ -73,7 +73,7 @@ fn ratelimit_not_accepted_no_matching_target() {
     let (ratelimit_id, ratelimit) = make_ratelimit("rl-1".to_string(), "server-2".to_string());
     index.write().apply(ratelimit);
 
-    let expected_status = linkerd_k8s_api::HTTPLocalRateLimitPolicyStatus {
+    let expected_status = linkerd_k8s_api::HttpLocalRateLimitPolicyStatus {
         conditions: vec![no_matching_target()],
         target_ref: linkerd_k8s_api::LocalTargetRef {
             group: Some("policy.linkerd.io".to_string()),
@@ -109,7 +109,7 @@ fn ratelimit_not_accepted_already_exists() {
     let (rl_1_id, rl_1) = make_ratelimit("rl-1".to_string(), "server-1".to_string());
     index.write().apply(rl_1);
 
-    let expected_status = linkerd_k8s_api::HTTPLocalRateLimitPolicyStatus {
+    let expected_status = linkerd_k8s_api::HttpLocalRateLimitPolicyStatus {
         conditions: vec![accepted()],
         target_ref: linkerd_k8s_api::LocalTargetRef {
             group: Some("policy.linkerd.io".to_string()),
@@ -129,7 +129,7 @@ fn ratelimit_not_accepted_already_exists() {
     let (rl_2_id, rl_2) = make_ratelimit("rl-2".to_string(), "server-1".to_string());
     index.write().apply(rl_2);
 
-    let expected_status = linkerd_k8s_api::HTTPLocalRateLimitPolicyStatus {
+    let expected_status = linkerd_k8s_api::HttpLocalRateLimitPolicyStatus {
         conditions: vec![ratelimit_already_exists()],
         target_ref: linkerd_k8s_api::LocalTargetRef {
             group: Some("policy.linkerd.io".to_string()),
@@ -182,18 +182,18 @@ fn make_ratelimit(
     server: String,
 ) -> (
     NamespaceGroupKindName,
-    linkerd_k8s_api::HTTPLocalRateLimitPolicy,
+    linkerd_k8s_api::HttpLocalRateLimitPolicy,
 ) {
     let ratelimit_id = NamespaceGroupKindName {
         namespace: "ns".to_string(),
         gkn: GroupKindName {
-            group: linkerd_k8s_api::HTTPLocalRateLimitPolicy::group(&()),
-            kind: linkerd_k8s_api::HTTPLocalRateLimitPolicy::kind(&()),
+            group: linkerd_k8s_api::HttpLocalRateLimitPolicy::group(&()),
+            kind: linkerd_k8s_api::HttpLocalRateLimitPolicy::kind(&()),
             name: name.clone().into(),
         },
     };
 
-    let ratelimit = linkerd_k8s_api::HTTPLocalRateLimitPolicy {
+    let ratelimit = linkerd_k8s_api::HttpLocalRateLimitPolicy {
         metadata: k8s_core_api::ObjectMeta {
             name: Some(name),
             namespace: Some("ns".to_string()),

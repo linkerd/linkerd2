@@ -8,7 +8,8 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
     group = "policy.linkerd.io",
     version = "v1alpha1",
     kind = "HTTPLocalRateLimitPolicy",
-    status = "HTTPLocalRateLimitPolicyStatus",
+    root = "HttpLocalRateLimitPolicy",
+    status = "HttpLocalRateLimitPolicyStatus",
     namespaced
 )]
 #[serde(rename_all = "camelCase")]
@@ -21,7 +22,7 @@ pub struct RateLimitPolicySpec {
 
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct HTTPLocalRateLimitPolicyStatus {
+pub struct HttpLocalRateLimitPolicyStatus {
     pub conditions: Vec<Condition>,
     pub target_ref: LocalTargetRef,
 }

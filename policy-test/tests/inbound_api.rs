@@ -334,7 +334,7 @@ async fn http_local_rate_limit_policy() {
         // Create a rate-limit policy associated to the server
         create(
             &client,
-            k8s::policy::ratelimit_policy::HTTPLocalRateLimitPolicy {
+            k8s::policy::ratelimit_policy::HttpLocalRateLimitPolicy {
                 metadata: k8s::ObjectMeta {
                     namespace: Some(ns.to_string()),
                     name: Some("rl-0".to_string()),
@@ -356,7 +356,7 @@ async fn http_local_rate_limit_policy() {
                         }],
                     }]),
                 },
-                status: Some(k8s::policy::HTTPLocalRateLimitPolicyStatus {
+                status: Some(k8s::policy::HttpLocalRateLimitPolicyStatus {
                     conditions: vec![k8s::Condition {
                         last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
                         message: "".to_string(),

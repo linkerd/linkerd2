@@ -938,8 +938,8 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::NetworkAuthentication> 
     }
 }
 
-impl kubert::index::IndexNamespacedResource<k8s::policy::HTTPLocalRateLimitPolicy> for Index {
-    fn apply(&mut self, policy: k8s::policy::HTTPLocalRateLimitPolicy) {
+impl kubert::index::IndexNamespacedResource<k8s::policy::HttpLocalRateLimitPolicy> for Index {
+    fn apply(&mut self, policy: k8s::policy::HttpLocalRateLimitPolicy) {
         let ns = policy.namespace().unwrap();
         let name = policy.name_unchecked();
         let _span = info_span!("apply", %ns, saz = %name).entered();
@@ -963,7 +963,7 @@ impl kubert::index::IndexNamespacedResource<k8s::policy::HTTPLocalRateLimitPolic
 
     fn reset(
         &mut self,
-        policies: Vec<k8s::policy::HTTPLocalRateLimitPolicy>,
+        policies: Vec<k8s::policy::HttpLocalRateLimitPolicy>,
         deleted: HashMap<String, HashSet<String>>,
     ) {
         let _span = info_span!("reset");

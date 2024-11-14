@@ -69,10 +69,10 @@ impl Spec {
     }
 }
 
-impl TryFrom<k8s::policy::HTTPLocalRateLimitPolicy> for Spec {
+impl TryFrom<k8s::policy::HttpLocalRateLimitPolicy> for Spec {
     type Error = anyhow::Error;
 
-    fn try_from(rl: k8s::policy::HTTPLocalRateLimitPolicy) -> Result<Self> {
+    fn try_from(rl: k8s::policy::HttpLocalRateLimitPolicy) -> Result<Self> {
         let creation_timestamp = rl.metadata.creation_timestamp.map(|Time(t)| t);
         let conditions = rl.status.map_or(vec![], |status| {
             status
