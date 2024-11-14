@@ -533,7 +533,7 @@ where
     }
 }
 
-async fn await_service_account(client: &kube::Client, ns: &str, name: &str) {
+pub async fn await_service_account(client: &kube::Client, ns: &str, name: &str) {
     use futures::StreamExt;
 
     tracing::trace!(%name, %ns, "Waiting for serviceaccount");
