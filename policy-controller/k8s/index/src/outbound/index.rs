@@ -6,6 +6,7 @@ use crate::{
 use ahash::AHashMap as HashMap;
 use anyhow::{bail, ensure, Result};
 use egress_network::EgressNetwork;
+use kube::Resource;
 use linkerd_policy_controller_core::{
     outbound::{
         Backend, Backoff, FailureAccrual, GrpcRetryCondition, GrpcRoute, HttpRetryCondition,
@@ -525,7 +526,7 @@ impl Index {
         }
 
         // We must send the route update to all namespace indexes in case this
-        // route's parent_refs have changed and this route must be removed be
+        // route's parent_refs have changed and this route must be removed by
         // any of them.
         self.namespaces.by_ns.values_mut().for_each(|ns| {
             ns.apply_http_route(
@@ -561,7 +562,7 @@ impl Index {
         }
 
         // We must send the route update to all namespace indexes in case this
-        // route's parent_refs have changed and this route must be removed be
+        // route's parent_refs have changed and this route must be removed by
         // any of them.
         for ns in self.namespaces.by_ns.values_mut() {
             ns.apply_grpc_route(
@@ -597,7 +598,7 @@ impl Index {
         }
 
         // We must send the route update to all namespace indexes in case this
-        // route's parent_refs have changed and this route must be removed be
+        // route's parent_refs have changed and this route must be removed by
         // any of them.
         for ns in self.namespaces.by_ns.values_mut() {
             ns.apply_tls_route(
@@ -633,7 +634,7 @@ impl Index {
         }
 
         // We must send the route update to all namespace indexes in case this
-        // route's parent_refs have changed and this route must be removed be
+        // route's parent_refs have changed and this route must be removed by
         // any of them.
         for ns in self.namespaces.by_ns.values_mut() {
             ns.apply_tcp_route(
@@ -1445,11 +1446,17 @@ fn route_accepted_by_resource_port(
     resource_port: &ResourcePort,
 ) -> bool {
     let (kind, group) = match resource_port.kind {
-        ResourceKind::Service => ("Service", "core"),
-        ResourceKind::EgressNetwork => ("EgressNetwork", "policy.linkerd.io"),
+        ResourceKind::Service => (Service::kind(&()), Service::group(&())),
+        ResourceKind::EgressNetwork => (
+            linkerd_k8s_api::EgressNetwork::kind(&()),
+            linkerd_k8s_api::EgressNetwork::group(&()),
+        ),
     };
+    let mut group = &*group;
+    if group.is_empty() {
+        group = "core";
+    }
     route_status
-        .as_ref()
         .map(|status| status.parents.as_slice())
         .unwrap_or_default()
         .iter()
@@ -1458,9 +1465,13 @@ fn route_accepted_by_resource_port(
                 Some(port) => port == resource_port.port.get(),
                 None => true,
             };
+            let mut parent_group = parent_status.parent_ref.group.as_deref().unwrap_or("core");
+            if parent_group.is_empty() {
+                parent_group = "core";
+            }
             resource_port.name == parent_status.parent_ref.name
-                && Some(kind) == parent_status.parent_ref.kind.as_deref()
-                && Some(group) == parent_status.parent_ref.group.as_deref()
+                && Some(kind.as_ref()) == parent_status.parent_ref.kind.as_deref()
+                && group == parent_group
                 && port_matches
                 && parent_status
                     .conditions
@@ -1474,15 +1485,22 @@ fn route_accepted_by_service(
     route_status: Option<&k8s_gateway_api::RouteStatus>,
     service: &str,
 ) -> bool {
+    let mut service_group = &*Service::group(&());
+    if service_group.is_empty() {
+        service_group = "core";
+    }
     route_status
-        .as_ref()
         .map(|status| status.parents.as_slice())
         .unwrap_or_default()
         .iter()
         .any(|parent_status| {
+            let mut parent_group = parent_status.parent_ref.group.as_deref().unwrap_or("core");
+            if parent_group.is_empty() {
+                parent_group = "core";
+            }
             parent_status.parent_ref.name == service
-                && parent_status.parent_ref.kind.as_deref() == Some("Service")
-                && parent_status.parent_ref.group.as_deref() == Some("core")
+                && parent_status.parent_ref.kind.as_deref() == Some(Service::kind(&()).as_ref())
+                && parent_group == service_group
                 && parent_status
                     .conditions
                     .iter()
