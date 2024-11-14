@@ -310,7 +310,7 @@ async fn rejects_relative_redirect_path() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn rejects_backend_service_without_port() {
-    admission::accepts(|ns| HttpRoute {
+    admission::rejects(|ns| HttpRoute {
         metadata: meta(&ns),
         spec: HttpRouteSpec {
             inner: CommonRouteSpec {
@@ -347,7 +347,7 @@ async fn rejects_backend_service_without_port() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn rejects_backend_service_implicit_without_port() {
-    admission::accepts(|ns| HttpRoute {
+    admission::rejects(|ns| HttpRoute {
         metadata: meta(&ns),
         spec: HttpRouteSpec {
             inner: CommonRouteSpec {
