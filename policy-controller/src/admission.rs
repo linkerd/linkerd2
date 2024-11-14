@@ -9,7 +9,7 @@ use crate::k8s::policy::{
 use anyhow::{anyhow, bail, ensure, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
-use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
+use k8s_openapi::api::core::v1::{self as corev1, Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_core as core;
 use linkerd_policy_controller_k8s_api::gateway::{self as k8s_gateway_api, GrpcRoute};
@@ -692,12 +692,39 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
             }
         }
 
+        fn validate_backend(br: &k8s_gateway_api::BackendRef) -> Result<()> {
+            // If the backend points at something Linkerd doesn't know about it,
+            // let status resolution determine the handling of the route.
+            if let Some(ref brg) = br.inner.group {
+                if *brg != corev1::Service::group(&()) {
+                    return Ok(());
+                }
+            }
+            if let Some(ref brk) = br.inner.kind {
+                if *brk != corev1::Service::kind(&()) {
+                    return Ok(());
+                }
+            }
+
+            // But if a service is specified, it must have a port.
+            let Some(port) = br.inner.port else {
+                bail!("cannot target a Service without specifying a port");
+            };
+            if port == 0 {
+                bail!("cannot target a Service with port 0");
+            }
+
+            Ok(())
+        }
+
         // Validate the rules in this spec.
         // This is essentially equivalent to the indexer's conversion function
         // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
         // actually allocate stuff in order to return an `InboundRouteBinding`.
         for k8s_gateway_api::HttpRouteRule {
-            filters, matches, ..
+            filters,
+            matches,
+            backend_refs,
         } in spec.rules.into_iter().flatten()
         {
             for m in matches.into_iter().flatten() {
@@ -706,6 +733,14 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
 
             for f in filters.into_iter().flatten() {
                 validate_filter(f)?;
+            }
+
+            for br in backend_refs
+                .iter()
+                .flatten()
+                .filter_map(|br| br.backend_ref.as_ref())
+            {
+                validate_backend(br)?;
             }
         }
 

@@ -138,6 +138,117 @@ async fn accepts_not_implemented_extensionref() {
 }
 
 #[tokio::test(flavor = "current_thread")]
+async fn accepts_backend_unknown_kind() {
+    admission::accepts(|ns| HttpRoute {
+        metadata: meta(&ns),
+        spec: HttpRouteSpec {
+            inner: CommonRouteSpec {
+                parent_refs: Some(vec![server_parent_ref(ns)]),
+            },
+            hostnames: None,
+            rules: Some(vec![HttpRouteRule {
+                matches: Some(vec![HttpRouteMatch {
+                    path: Some(HttpPathMatch::Exact {
+                        value: "/foo".to_string(),
+                    }),
+                    ..HttpRouteMatch::default()
+                }]),
+                filters: None,
+                backend_refs: Some(vec![k8s_gateway_api::HttpBackendRef {
+                    backend_ref: Some(k8s_gateway_api::BackendRef {
+                        weight: None,
+                        inner: BackendObjectReference {
+                            group: Some("alien.example.com".to_string()),
+                            kind: Some("ExoService".to_string()),
+                            namespace: Some("foo".to_string()),
+                            name: "foo".to_string(),
+                            port: None,
+                        },
+                    }),
+                    filters: None,
+                }]),
+            }]),
+        },
+        status: None,
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn accepts_backend_service_with_port() {
+    admission::accepts(|ns| HttpRoute {
+        metadata: meta(&ns),
+        spec: HttpRouteSpec {
+            inner: CommonRouteSpec {
+                parent_refs: Some(vec![server_parent_ref(ns)]),
+            },
+            hostnames: None,
+            rules: Some(vec![HttpRouteRule {
+                matches: Some(vec![HttpRouteMatch {
+                    path: Some(HttpPathMatch::Exact {
+                        value: "/foo".to_string(),
+                    }),
+                    ..HttpRouteMatch::default()
+                }]),
+                filters: None,
+                backend_refs: Some(vec![k8s_gateway_api::HttpBackendRef {
+                    backend_ref: Some(k8s_gateway_api::BackendRef {
+                        weight: None,
+                        inner: BackendObjectReference {
+                            group: Some("core".to_string()),
+                            kind: Some("Service".to_string()),
+                            namespace: Some("foo".to_string()),
+                            name: "foo".to_string(),
+                            port: Some(8080),
+                        },
+                    }),
+                    filters: None,
+                }]),
+            }]),
+        },
+        status: None,
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn accepts_backend_service_implicit_with_port() {
+    admission::accepts(|ns| HttpRoute {
+        metadata: meta(&ns),
+        spec: HttpRouteSpec {
+            inner: CommonRouteSpec {
+                parent_refs: Some(vec![server_parent_ref(ns)]),
+            },
+            hostnames: None,
+            rules: Some(vec![HttpRouteRule {
+                matches: Some(vec![HttpRouteMatch {
+                    path: Some(HttpPathMatch::Exact {
+                        value: "/foo".to_string(),
+                    }),
+                    ..HttpRouteMatch::default()
+                }]),
+                filters: None,
+                backend_refs: Some(vec![k8s_gateway_api::HttpBackendRef {
+                    backend_ref: Some(k8s_gateway_api::BackendRef {
+                        weight: None,
+                        inner: BackendObjectReference {
+                            group: None,
+                            kind: None,
+                            namespace: Some("foo".to_string()),
+                            name: "foo".to_string(),
+                            port: Some(8080),
+                        },
+                    }),
+                    filters: None,
+                }]),
+            }]),
+        },
+        status: None,
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
 async fn rejects_relative_path_match() {
     admission::rejects(|ns| HttpRoute {
         metadata: meta(&ns),
@@ -190,6 +301,80 @@ async fn rejects_relative_redirect_path() {
                     },
                 }]),
                 backend_refs: None,
+            }]),
+        },
+        status: None,
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn rejects_backend_service_without_port() {
+    admission::accepts(|ns| HttpRoute {
+        metadata: meta(&ns),
+        spec: HttpRouteSpec {
+            inner: CommonRouteSpec {
+                parent_refs: Some(vec![server_parent_ref(ns)]),
+            },
+            hostnames: None,
+            rules: Some(vec![HttpRouteRule {
+                matches: Some(vec![HttpRouteMatch {
+                    path: Some(HttpPathMatch::Exact {
+                        value: "/foo".to_string(),
+                    }),
+                    ..HttpRouteMatch::default()
+                }]),
+                filters: None,
+                backend_refs: Some(vec![k8s_gateway_api::HttpBackendRef {
+                    backend_ref: Some(k8s_gateway_api::BackendRef {
+                        weight: None,
+                        inner: BackendObjectReference {
+                            group: Some("core".to_string()),
+                            kind: Some("Service".to_string()),
+                            namespace: Some("foo".to_string()),
+                            name: "foo".to_string(),
+                            port: None,
+                        },
+                    }),
+                    filters: None,
+                }]),
+            }]),
+        },
+        status: None,
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn rejects_backend_service_implicit_without_port() {
+    admission::accepts(|ns| HttpRoute {
+        metadata: meta(&ns),
+        spec: HttpRouteSpec {
+            inner: CommonRouteSpec {
+                parent_refs: Some(vec![server_parent_ref(ns)]),
+            },
+            hostnames: None,
+            rules: Some(vec![HttpRouteRule {
+                matches: Some(vec![HttpRouteMatch {
+                    path: Some(HttpPathMatch::Exact {
+                        value: "/foo".to_string(),
+                    }),
+                    ..HttpRouteMatch::default()
+                }]),
+                filters: None,
+                backend_refs: Some(vec![k8s_gateway_api::HttpBackendRef {
+                    backend_ref: Some(k8s_gateway_api::BackendRef {
+                        weight: None,
+                        inner: BackendObjectReference {
+                            group: None,
+                            kind: None,
+                            namespace: Some("foo".to_string()),
+                            name: "foo".to_string(),
+                            port: None,
+                        },
+                    }),
+                    filters: None,
+                }]),
             }]),
         },
         status: None,
