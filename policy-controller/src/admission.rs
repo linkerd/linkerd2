@@ -738,7 +738,6 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
                 .flatten()
                 .filter_map(|br| br.backend_ref.as_ref())
             {
-                tracing::info!("validating backendRef: {:?}", br);
                 validate_backend_if_service(&br.inner).context("invalid backendRef")?;
             }
         }
