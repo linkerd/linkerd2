@@ -9,7 +9,7 @@ use crate::k8s::policy::{
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
-use k8s_openapi::api::core::v1::{self as corev1, Namespace, ServiceAccount};
+use k8s_openapi::api::core::v1::{Namespace, ServiceAccount};
 use kube::{core::DynamicObject, Resource, ResourceExt};
 use linkerd_policy_controller_core as core;
 use linkerd_policy_controller_k8s_api::gateway::{self as k8s_gateway_api, GrpcRoute};
@@ -650,6 +650,29 @@ impl Validate<HttpRouteSpec> for Admission {
     }
 }
 
+fn validate_backend_if_service(br: &k8s_gateway_api::BackendObjectReference) -> Result<()> {
+    fn is_service(br: &k8s_gateway_api::BackendObjectReference) -> bool {
+        matches!(br.group.as_deref(), Some("core") | Some("") | None)
+            && matches!(br.kind.as_deref(), Some("Service") | None)
+    }
+
+    // If the backend references something Linkerd doesn't know about it, let
+    // status resolution determine the handling of the route.
+    if !is_service(br) {
+        return Ok(());
+    }
+
+    // But if a service is specified, it must have a port.
+    let Some(port) = br.port else {
+        bail!("cannot reference a Service without specifying a port");
+    };
+    if port == 0 {
+        bail!("cannot reference a Service with port 0");
+    }
+
+    Ok(())
+}
+
 #[async_trait::async_trait]
 impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
     async fn validate(
@@ -692,31 +715,6 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
             }
         }
 
-        fn validate_backend(br: &k8s_gateway_api::BackendRef) -> Result<()> {
-            // If the backend points at something Linkerd doesn't know about it,
-            // let status resolution determine the handling of the route.
-            if let Some(ref brg) = br.inner.group {
-                if *brg != corev1::Service::group(&()) {
-                    return Ok(());
-                }
-            }
-            if let Some(ref brk) = br.inner.kind {
-                if *brk != corev1::Service::kind(&()) {
-                    return Ok(());
-                }
-            }
-
-            // But if a service is specified, it must have a port.
-            let Some(port) = br.inner.port else {
-                bail!("cannot target a Service without specifying a port");
-            };
-            if port == 0 {
-                bail!("cannot target a Service with port 0");
-            }
-
-            Ok(())
-        }
-
         // Validate the rules in this spec.
         // This is essentially equivalent to the indexer's conversion function
         // from `HttpRouteSpec` to `InboundRouteBinding`, except that we don't
@@ -740,7 +738,8 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
                 .flatten()
                 .filter_map(|br| br.backend_ref.as_ref())
             {
-                validate_backend(br).context("invalid backendRef")?;
+                tracing::info!("validating backendRef: {:?}", br);
+                validate_backend_if_service(&br.inner).context("invalid backendRef")?;
             }
         }
 
@@ -819,7 +818,9 @@ impl Validate<k8s_gateway_api::GrpcRouteSpec> for Admission {
         // a `GrpcMethodMatch` rule where neither `method.method`
         // nor `method.service` actually contain a value)
         for k8s_gateway_api::GrpcRouteRule {
-            filters, matches, ..
+            filters,
+            matches,
+            backend_refs,
         } in spec.rules.into_iter().flatten()
         {
             for rule in matches.into_iter().flatten() {
@@ -828,6 +829,10 @@ impl Validate<k8s_gateway_api::GrpcRouteSpec> for Admission {
 
             for filter in filters.into_iter().flatten() {
                 validate_filter(filter)?;
+            }
+
+            for br in backend_refs.iter().flatten() {
+                validate_backend_if_service(&br.inner).context("invalid backendRef")?;
             }
         }
 
