@@ -10,6 +10,7 @@ mod grpc;
 mod http;
 mod tcp;
 mod tls;
+mod helpers;
 
 fn make_parent_status(
     namespace: impl ToString,
