@@ -6,7 +6,7 @@ use crate::k8s::policy::{
     NetworkAuthentication, NetworkAuthenticationSpec, RateLimitPolicySpec, Server,
     ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
 };
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Context, Result};
 use futures::future;
 use hyper::{body::Buf, http, Body, Request, Response};
 use k8s_openapi::api::core::v1::{self as corev1, Namespace, ServiceAccount};
@@ -740,7 +740,7 @@ impl Validate<k8s_gateway_api::HttpRouteSpec> for Admission {
                 .flatten()
                 .filter_map(|br| br.backend_ref.as_ref())
             {
-                validate_backend(br)?;
+                validate_backend(br).context("invalid backendRef")?;
             }
         }
 
