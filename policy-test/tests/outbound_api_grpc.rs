@@ -1,7 +1,10 @@
 use futures::prelude::*;
 use kube::ResourceExt;
 use linkerd_policy_controller_k8s_api as k8s;
-use linkerd_policy_test::{create, create_service, mk_service, outbound_api::*, with_temp_ns};
+use linkerd_policy_test::{
+    assert_svc_meta, await_grpc_route_status, create, create_service, mk_service, outbound_api::*,
+    update, with_temp_ns,
+};
 use std::collections::BTreeMap;
 
 #[tokio::test(flavor = "current_thread")]
@@ -108,6 +111,94 @@ async fn service_retries_and_timeouts() {
         assert_eq!(timeouts.response, None);
         let request_timeout = timeouts.request.as_ref().expect("request timeout expected");
         assert_eq!(request_timeout.seconds, 5);
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn service_grpc_route_reattachment() {
+    with_temp_ns(|client, ns| async move {
+        // Create a service
+        let svc = create_service(&client, &ns, "my-svc", 4191).await;
+
+        let mut route = create(
+            &client,
+            mk_grpc_route(&ns, "foo-route", &svc, Some(4191)).build(),
+        )
+        .await;
+        await_grpc_route_status(&client, &ns, "foo-route").await;
+
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
+        {
+            // The route should be attached.
+            let routes = grpc_routes(&config);
+            let route = assert_singleton(routes);
+            assert_name_eq(route.metadata.as_ref().unwrap(), "foo-route");
+        }
+
+        route
+            .spec
+            .inner
+            .parent_refs
+            .as_mut()
+            .unwrap()
+            .first_mut()
+            .unwrap()
+            .name = "other".to_string();
+        update(&client, route.clone()).await;
+
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an updated config");
+        tracing::trace!(?config);
+
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
+        // The grpc route should be unattached and the default (http) route
+        // should be present.
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
+
+        route
+            .spec
+            .inner
+            .parent_refs
+            .as_mut()
+            .unwrap()
+            .first_mut()
+            .unwrap()
+            .name = svc.name_unchecked();
+        update(&client, route).await;
+
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an updated config");
+        tracing::trace!(?config);
+
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
+        // The route should be attached again.
+        {
+            // The route should be attached.
+            let routes = grpc_routes(&config);
+            let route = assert_singleton(routes);
+            assert_name_eq(route.metadata.as_ref().unwrap(), "foo-route");
+        }
     })
     .await;
 }

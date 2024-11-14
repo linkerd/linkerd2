@@ -3,9 +3,10 @@ use kube::ResourceExt;
 use linkerd2_proxy_api::meta;
 use linkerd_policy_controller_k8s_api as k8s;
 use linkerd_policy_test::{
-    assert_default_accrual_backoff, assert_svc_meta, create, create_annotated_service,
-    create_cluster_scoped, create_egress_network, create_opaque_service, create_service, delete,
-    delete_cluster_scoped, grpc, mk_service, outbound_api::*, with_temp_ns,
+    assert_default_accrual_backoff, assert_svc_meta, await_gateway_route_status, create,
+    create_annotated_service, create_cluster_scoped, create_egress_network, create_opaque_service,
+    create_service, delete, delete_cluster_scoped, grpc, mk_service, outbound_api::*, update,
+    with_temp_ns,
 };
 use maplit::{btreemap, convert_args};
 use std::{collections::BTreeMap, time::Duration};
@@ -157,6 +158,7 @@ async fn service_with_http_route_without_rules() {
         });
 
         let _route = create(&client, mk_empty_http_route(&ns, "foo-route", &svc, 4191)).await;
+        await_gateway_route_status(&client, &ns, "foo-route").await;
 
         let config = rx
             .next()
@@ -203,6 +205,7 @@ async fn service_with_http_routes_without_backends() {
             mk_http_route(&ns, "foo-route", &svc, Some(4191)).build(),
         )
         .await;
+        await_gateway_route_status(&client, &ns, "foo-route").await;
 
         let config = rx
             .next()
@@ -255,6 +258,7 @@ async fn service_with_http_routes_with_backend() {
             None,
         );
         let _route = create(&client, route.build()).await;
+        await_gateway_route_status(&client, &ns, "foo-route").await;
 
         let config = rx
             .next()
@@ -324,6 +328,7 @@ async fn service_with_http_routes_with_cross_namespace_backend() {
             None,
         );
         let _route = create(&client, route.build()).await;
+        await_gateway_route_status(&client, &ns, "foo-route").await;
 
         let config = rx
             .next()
@@ -379,6 +384,7 @@ async fn service_with_http_routes_with_invalid_backend() {
             None,
         );
         let _route = create(&client, route.build()).await;
+        await_gateway_route_status(&client, &ns, "foo-route").await;
 
         let config = rx
             .next()
@@ -432,6 +438,7 @@ async fn service_with_multiple_http_routes() {
             mk_http_route(&ns, "a-route", &svc, Some(4191)).build(),
         )
         .await;
+        await_gateway_route_status(&client, &ns, "a-route").await;
 
         // First route update.
         let config = rx
@@ -448,6 +455,7 @@ async fn service_with_multiple_http_routes() {
             mk_http_route(&ns, "b-route", &svc, Some(4191)).build(),
         )
         .await;
+        await_gateway_route_status(&client, &ns, "b-route").await;
 
         // Second route update.
         let config = rx
@@ -779,6 +787,7 @@ async fn route_with_filters() {
                 },
             ]));
         let _route = create(&client, route.build()).await;
+        await_gateway_route_status(&client, &ns, "foo-route").await;
 
         let config = rx
             .next()
@@ -889,6 +898,7 @@ async fn backend_with_filters() {
                 },
             ]));
         let _route = create(&client, route.build()).await;
+        await_gateway_route_status(&client, &ns, "foo-route").await;
 
         let config = rx
             .next()
@@ -985,6 +995,7 @@ async fn http_route_with_no_port() {
         });
 
         let _route = create(&client, mk_http_route(&ns, "foo-route", &svc, None).build()).await;
+        await_gateway_route_status(&client, &ns, "foo-route").await;
 
         let config_4191 = rx_4191
             .next()
@@ -1055,6 +1066,7 @@ async fn producer_route() {
             mk_http_route(&ns, "foo-route", &svc, Some(4191)).build(),
         )
         .await;
+        await_gateway_route_status(&client, &ns, "foo-route").await;
 
         let producer_config = producer_rx
             .next()
@@ -1100,6 +1112,7 @@ async fn pre_existing_producer_route() {
             mk_http_route(&ns, "foo-route", &svc, Some(4191)).build(),
         )
         .await;
+        await_gateway_route_status(&client, &ns, "foo-route").await;
 
         let mut producer_rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let producer_config = producer_rx
@@ -1202,6 +1215,7 @@ async fn consumer_route() {
             mk_http_route(&consumer_ns_name, "foo-route", &svc, Some(4191)).build(),
         )
         .await;
+        await_gateway_route_status(&client, &consumer_ns_name, "foo-route").await;
 
         // The route should NOT be returned in queries from the producer namespace.
         // There should be a default route.
@@ -1250,6 +1264,7 @@ async fn http_route_retries_and_timeouts() {
                 .build(),
         )
         .await;
+        await_gateway_route_status(&client, &ns, "foo-route").await;
 
         let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
@@ -1311,6 +1326,7 @@ async fn service_retries_and_timeouts() {
                 .build(),
         )
         .await;
+        await_gateway_route_status(&client, &ns, "foo-route").await;
 
         let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
         let config = rx
@@ -1339,6 +1355,86 @@ async fn service_retries_and_timeouts() {
             assert_eq!(timeouts.response, None);
             let request_timeout = timeouts.request.as_ref().expect("request timeout expected");
             assert_eq!(request_timeout.seconds, 5);
+        });
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn service_http_route_reattachment() {
+    with_temp_ns(|client, ns| async move {
+        // Create a service
+        let svc = create_service(&client, &ns, "my-svc", 4191).await;
+
+        let mut route = create(&client, mk_empty_http_route(&ns, "foo-route", &svc, 4191)).await;
+        await_gateway_route_status(&client, &ns, "foo-route").await;
+
+        let mut rx = retry_watch_outbound_policy(&client, &ns, &svc, 4191).await;
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an initial config");
+        tracing::trace!(?config);
+
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
+        // The route should be attached.
+        detect_http_routes(&config, |routes| {
+            let route: &grpc::outbound::HttpRoute = assert_singleton(routes);
+            assert_route_name_eq(route, "foo-route");
+        });
+
+        route
+            .spec
+            .inner
+            .parent_refs
+            .as_mut()
+            .unwrap()
+            .first_mut()
+            .unwrap()
+            .name = "other".to_string();
+        update(&client, route.clone()).await;
+
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an updated config");
+        tracing::trace!(?config);
+
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
+        // The route should be unattached and the default route should be present.
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_is_default(route, &svc, 4191);
+        });
+
+        route
+            .spec
+            .inner
+            .parent_refs
+            .as_mut()
+            .unwrap()
+            .first_mut()
+            .unwrap()
+            .name = svc.name_unchecked();
+        update(&client, route).await;
+
+        let config = rx
+            .next()
+            .await
+            .expect("watch must not fail")
+            .expect("watch must return an updated config");
+        tracing::trace!(?config);
+
+        assert_svc_meta(&config.metadata, &svc, 4191);
+
+        // The route should be attached again.
+        detect_http_routes(&config, |routes| {
+            let route = assert_singleton(routes);
+            assert_route_name_eq(route, "foo-route");
         });
     })
     .await;

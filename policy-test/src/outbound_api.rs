@@ -249,7 +249,12 @@ pub fn assert_singleton<T>(ts: &[T]) -> &T {
 
 #[track_caller]
 pub fn assert_route_name_eq(route: &grpc::outbound::HttpRoute, name: &str) {
-    let kind = route.metadata.as_ref().unwrap().kind.as_ref().unwrap();
+    assert_name_eq(route.metadata.as_ref().unwrap(), name)
+}
+
+#[track_caller]
+pub fn assert_name_eq(meta: &grpc::meta::Metadata, name: &str) {
+    let kind = meta.kind.as_ref().unwrap();
     match kind {
         grpc::meta::metadata::Kind::Default(d) => {
             panic!("route expected to not be default, but got default {d:?}")
