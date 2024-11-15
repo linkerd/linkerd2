@@ -656,14 +656,10 @@ fn validate_backend_if_service(br: &k8s_gateway_api::BackendObjectReference) -> 
             && matches!(br.kind.as_deref(), Some("Service") | None)
     }
 
-    // If the backend references something Linkerd doesn't know about it, let
-    // status resolution determine the handling of the route.
-    if !is_service(br) {
-        return Ok(());
-    }
-
-    // But if a service is specified, it must have a port.
-    if matches!(br.port, None | Some(0)) {
+    // If the backend references is a Service, it must have a port. If it is not
+    // a Service, then we have to admit it for interoperability with other
+    // controllers.
+    if is_service(br) && matches!(br.port, None | Some(0)) {
         bail!("cannot reference a Service without a port");
     }
 
