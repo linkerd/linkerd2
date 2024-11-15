@@ -663,11 +663,8 @@ fn validate_backend_if_service(br: &k8s_gateway_api::BackendObjectReference) -> 
     }
 
     // But if a service is specified, it must have a port.
-    let Some(port) = br.port else {
-        bail!("cannot reference a Service without specifying a port");
-    };
-    if port == 0 {
-        bail!("cannot reference a Service with port 0");
+    if matches!(br.port, None | Some(0)) {
+        bail!("cannot reference a Service without a port");
     }
 
     Ok(())
