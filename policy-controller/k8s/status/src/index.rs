@@ -1521,14 +1521,33 @@ pub(crate) fn invalid_backend_kind(message: &str) -> k8s_core_api::Condition {
     }
 }
 
-fn eq_time_insensitive_route_parent_statuses(
+pub(crate) fn eq_time_insensitive_route_parent_statuses(
     left: &[k8s_gateway_api::RouteParentStatus],
     right: &[k8s_gateway_api::RouteParentStatus],
 ) -> bool {
     if left.len() != right.len() {
         return false;
     }
-    left.iter().zip(right.iter()).all(|(l, r)| {
+
+    // Create sorted versions of the input slices
+    let mut left_sorted: Vec<_> = left.to_vec();
+    let mut right_sorted: Vec<_> = right.to_vec();
+
+    left_sorted.sort_by(|a, b| {
+        a.controller_name
+            .cmp(&b.controller_name)
+            .then_with(|| a.parent_ref.name.cmp(&b.parent_ref.name))
+            .then_with(|| a.parent_ref.namespace.cmp(&b.parent_ref.namespace))
+    });
+    right_sorted.sort_by(|a, b| {
+        a.controller_name
+            .cmp(&b.controller_name)
+            .then_with(|| a.parent_ref.name.cmp(&b.parent_ref.name))
+            .then_with(|| a.parent_ref.namespace.cmp(&b.parent_ref.namespace))
+    });
+
+    // Compare each element in sorted order
+    left_sorted.iter().zip(right_sorted.iter()).all(|(l, r)| {
         l.parent_ref == r.parent_ref
             && l.controller_name == r.controller_name
             && eq_time_insensitive_conditions(&l.conditions, &r.conditions)
