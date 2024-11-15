@@ -1,4 +1,5 @@
 use crate::{
+    ratelimit,
     resource_id::{NamespaceGroupKindName, ResourceId},
     routes,
     service::Service,
@@ -11,7 +12,7 @@ use linkerd_policy_controller_core::{routes::GroupKindName, IpNet, POLICY_CONTRO
 use linkerd_policy_controller_k8s_api::{
     self as k8s_core_api, gateway as k8s_gateway_api,
     policy::{self as linkerd_k8s_api, Cidr, Network},
-    NamespaceResourceScope, Resource, ResourceExt,
+    NamespaceResourceScope, Resource, ResourceExt, Time,
 };
 use parking_lot::RwLock;
 use prometheus_client::{
@@ -39,7 +40,9 @@ mod reasons {
     pub const BACKEND_NOT_FOUND: &str = "BackendNotFound";
     pub const INVALID_KIND: &str = "InvalidKind";
     pub const NO_MATCHING_PARENT: &str = "NoMatchingParent";
+    pub const NO_MATCHING_TARGET: &str = "NoMatchingTarget";
     pub const ROUTE_REASON_CONFLICTED: &str = "RouteReasonConflicted";
+    pub const RATELIMIT_REASON_ALREADY_EXISTS: &str = "RateLimitReasonAlreadyExists";
     pub const EGRESS_NET_REASON_OVERLAP: &str = "EgressReasonNetworkOverlap";
 }
 
@@ -86,6 +89,9 @@ pub struct Index {
     /// regardless of if those parents have accepted the route.
     route_refs: HashMap<NamespaceGroupKindName, RouteRef>,
 
+    /// Maps rate limit ids to a list of details about these rate limits.
+    ratelimits: HashMap<ResourceId, HttpLocalRateLimitPolicyRef>,
+
     /// Maps egress network ids to a list of details about these networks.
     egress_networks: HashMap<ResourceId, EgressNetworkRef>,
 
@@ -106,6 +112,13 @@ struct RouteRef {
     parents: Vec<routes::ParentReference>,
     backends: Vec<routes::BackendReference>,
     statuses: Vec<k8s_gateway_api::RouteParentStatus>,
+}
+
+#[derive(Clone, PartialEq)]
+struct HttpLocalRateLimitPolicyRef {
+    creation_timestamp: Option<DateTime<Utc>>,
+    target_ref: ratelimit::TargetReference,
+    status_conditions: Vec<k8s_core_api::Condition>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -266,6 +279,8 @@ impl Controller {
                             self.patch_status::<k8s_gateway_api::TcpRoute>(&id.gkn.name, &id.namespace, patch).await;
                         } else if id.gkn.group == k8s_gateway_api::TlsRoute::group(&()) && id.gkn.kind == k8s_gateway_api::TlsRoute::kind(&()) {
                             self.patch_status::<k8s_gateway_api::TlsRoute>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.gkn.group == linkerd_k8s_api::HttpLocalRateLimitPolicy::group(&()) && id.gkn.kind == linkerd_k8s_api::HttpLocalRateLimitPolicy::kind(&()) {
+                            self.patch_status::<linkerd_k8s_api::HttpLocalRateLimitPolicy>(&id.gkn.name, &id.namespace, patch).await;
                         } else if id.gkn.group == linkerd_k8s_api::EgressNetwork::group(&()) && id.gkn.kind == linkerd_k8s_api::EgressNetwork::kind(&()) {
                             self.patch_status::<linkerd_k8s_api::EgressNetwork>(&id.gkn.name, &id.namespace, patch).await;
                         }
@@ -332,6 +347,7 @@ impl Index {
             claims,
             updates,
             route_refs: HashMap::new(),
+            ratelimits: HashMap::new(),
             egress_networks: HashMap::new(),
             servers: HashSet::new(),
             services: HashMap::new(),
@@ -404,6 +420,27 @@ impl Index {
                     return false;
                 }
                 entry.insert(route.clone());
+            }
+        }
+        true
+    }
+
+    // If the rate limit is new or its contents have changed, return true, so that a patch is
+    // generated; otherwise return false.
+    fn update_ratelimit(
+        &mut self,
+        id: ResourceId,
+        ratelimit: &HttpLocalRateLimitPolicyRef,
+    ) -> bool {
+        match self.ratelimits.entry(id) {
+            Entry::Vacant(entry) => {
+                entry.insert(ratelimit.clone());
+            }
+            Entry::Occupied(mut entry) => {
+                if entry.get() == ratelimit {
+                    return false;
+                }
+                entry.insert(ratelimit.clone());
             }
         }
         true
@@ -631,6 +668,77 @@ impl Index {
         }
     }
 
+    fn target_ref_status(
+        &self,
+        id: &NamespaceGroupKindName,
+        target_ref: &ratelimit::TargetReference,
+    ) -> Option<linkerd_k8s_api::HttpLocalRateLimitPolicyStatus> {
+        match target_ref {
+            ratelimit::TargetReference::Server(server) => {
+                let condition = if self.servers.contains(server) {
+                    // Collect rate limits for this server, sorted by creation timestamp and then
+                    // by name. If the current RL is the first one in the list, it is accepted.
+                    let mut rate_limits = self
+                        .ratelimits
+                        .iter()
+                        .filter(|(_, rl_ref)| rl_ref.target_ref == *target_ref)
+                        .collect::<Vec<_>>();
+                    rate_limits.sort_by(|(a_id, a), (b_id, b)| {
+                        let by_ts = match (&a.creation_timestamp, &b.creation_timestamp) {
+                            (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
+                            (None, None) => std::cmp::Ordering::Equal,
+                            // entries with timestamps are preferred over ones without
+                            (Some(_), None) => return std::cmp::Ordering::Less,
+                            (None, Some(_)) => return std::cmp::Ordering::Greater,
+                        };
+                        by_ts.then_with(|| a_id.name.cmp(&b_id.name))
+                    });
+
+                    let Some((first_id, _)) = rate_limits.first() else {
+                        // No rate limits exist for this server; we shouldn't reach this point!
+                        return None;
+                    };
+
+                    if first_id.name == id.gkn.name {
+                        accepted()
+                    } else {
+                        ratelimit_already_exists()
+                    }
+                } else {
+                    no_matching_target()
+                };
+
+                Some(linkerd_k8s_api::HttpLocalRateLimitPolicyStatus {
+                    conditions: vec![condition],
+                    target_ref: linkerd_k8s_api::LocalTargetRef {
+                        group: Some(POLICY_API_GROUP.to_string()),
+                        kind: "Server".to_string(),
+                        name: server.name.clone(),
+                    },
+                })
+            }
+            ratelimit::TargetReference::UnknownKind => None,
+        }
+    }
+
+    fn make_ratelimit_patch(
+        &self,
+        id: &NamespaceGroupKindName,
+        ratelimit: &HttpLocalRateLimitPolicyRef,
+    ) -> Option<k8s_core_api::Patch<serde_json::Value>> {
+        let status = self.target_ref_status(id, &ratelimit.target_ref);
+
+        let Some(status) = status else {
+            return None;
+        };
+
+        if eq_time_insensitive_conditions(&status.conditions, &ratelimit.status_conditions) {
+            return None;
+        }
+
+        make_patch(id, status)
+    }
+
     fn network_condition(&self, egress_net: &EgressNetworkRef) -> k8s_core_api::Condition {
         for egress_network_block in &egress_net.networks {
             for cluster_network_block in &self.cluster_networks {
@@ -710,6 +818,33 @@ impl Index {
                     Err(error) => {
                         self.metrics.patch_channel_full.inc();
                         tracing::error!(%id.namespace, route = ?id.gkn, %error, "Failed to send route patch");
+                    }
+                }
+            }
+        }
+
+        // then update all ratelimit policies and their statuses
+        for (id, rl) in self.ratelimits.iter() {
+            let id = NamespaceGroupKindName {
+                namespace: id.namespace.clone(),
+                gkn: GroupKindName {
+                    group: linkerd_k8s_api::HttpLocalRateLimitPolicy::group(&()),
+                    kind: linkerd_k8s_api::HttpLocalRateLimitPolicy::kind(&()),
+                    name: id.name.clone().into(),
+                },
+            };
+
+            if let Some(patch) = self.make_ratelimit_patch(&id, rl) {
+                match self.updates.try_send(Update {
+                    id: id.clone(),
+                    patch,
+                }) {
+                    Ok(()) => {
+                        self.metrics.patch_enqueues.inc();
+                    }
+                    Err(error) => {
+                        self.metrics.patch_channel_full.inc();
+                        tracing::error!(%id.namespace, ratelimit = ?id.gkn, %error, "Failed to send ratelimit patch");
                     }
                 }
             }
@@ -1085,6 +1220,45 @@ impl kubert::index::IndexNamespacedResource<k8s_core_api::Service> for Index {
     // to handle resets specially.
 }
 
+impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::HttpLocalRateLimitPolicy> for Index {
+    fn apply(&mut self, resource: linkerd_k8s_api::HttpLocalRateLimitPolicy) {
+        let namespace = resource
+            .namespace()
+            .expect("HTTPLocalRateLimitPolicy must have a namespace");
+        let name = resource.name_unchecked();
+
+        let status_conditions = resource
+            .status
+            .into_iter()
+            .flat_map(|s| s.conditions)
+            .collect();
+
+        let id = ResourceId::new(namespace.clone(), name);
+        let creation_timestamp = resource.metadata.creation_timestamp.map(|Time(t)| t);
+        let target_ref = ratelimit::TargetReference::make_target_ref(&namespace, &resource.spec);
+
+        let rl = HttpLocalRateLimitPolicyRef {
+            creation_timestamp,
+            target_ref,
+            status_conditions,
+        };
+
+        self.index_ratelimit(id, rl);
+    }
+
+    fn delete(&mut self, namespace: String, name: String) {
+        let id = ResourceId::new(namespace, name);
+        self.ratelimits.remove(&id);
+
+        // If we're not the leader, skip reconciling the cluster.
+        if !self.claims.borrow().is_current_for(&self.name) {
+            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
+            return;
+        }
+        self.reconcile();
+    }
+}
+
 impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::EgressNetwork> for Index {
     fn apply(&mut self, resource: linkerd_k8s_api::EgressNetwork) {
         let namespace = resource
@@ -1174,6 +1348,23 @@ impl Index {
 
         self.reconcile()
     }
+
+    fn index_ratelimit(&mut self, id: ResourceId, ratelimit: HttpLocalRateLimitPolicyRef) {
+        // Insert into the index; if the route is already in the index, and it hasn't
+        // changed, skip creating a patch.
+        if !self.update_ratelimit(id.clone(), &ratelimit) {
+            return;
+        }
+
+        // If we're not the leader, skip creating a patch and sending an
+        // update to the Controller.
+        if !self.claims.borrow().is_current_for(&self.name) {
+            tracing::debug!(%self.name, "Lease non-holder skipping controller update");
+            return;
+        }
+
+        self.reconcile()
+    }
 }
 
 pub(crate) fn make_patch<Status>(
@@ -1220,6 +1411,17 @@ pub(crate) fn no_matching_parent() -> k8s_core_api::Condition {
     }
 }
 
+pub(crate) fn no_matching_target() -> k8s_core_api::Condition {
+    k8s_core_api::Condition {
+        last_transition_time: k8s_core_api::Time(now()),
+        message: "".to_string(),
+        observed_generation: None,
+        reason: reasons::NO_MATCHING_TARGET.to_string(),
+        status: cond_statuses::STATUS_FALSE.to_string(),
+        type_: conditions::ACCEPTED.to_string(),
+    }
+}
+
 fn headless_parent() -> k8s_core_api::Condition {
     k8s_core_api::Condition {
         last_transition_time: k8s_core_api::Time(now()),
@@ -1248,6 +1450,17 @@ pub(crate) fn route_conflicted() -> k8s_core_api::Condition {
         message: "".to_string(),
         observed_generation: None,
         reason: reasons::ROUTE_REASON_CONFLICTED.to_string(),
+        status: cond_statuses::STATUS_FALSE.to_string(),
+        type_: conditions::ACCEPTED.to_string(),
+    }
+}
+
+pub(crate) fn ratelimit_already_exists() -> k8s_core_api::Condition {
+    k8s_core_api::Condition {
+        last_transition_time: k8s_core_api::Time(now()),
+        message: "".to_string(),
+        observed_generation: None,
+        reason: reasons::RATELIMIT_REASON_ALREADY_EXISTS.to_string(),
         status: cond_statuses::STATUS_FALSE.to_string(),
         type_: conditions::ACCEPTED.to_string(),
     }

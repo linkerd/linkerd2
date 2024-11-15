@@ -246,6 +246,7 @@ rules:
       - policy.linkerd.io
     resources:
       - httproutes/status
+      - httplocalratelimitpolicies/status
       - egressnetworks/status
     verbs:
       - patch
@@ -1338,7 +1339,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 726a0d9a61f222ca9efb64bc6ec38ad1d4beeab125c79f00b45a1d64be642875
+        checksum/config: a39770e2a1ac1f4bb452509e52a4ffd176bcb034f1ce906491f2649e28c67319
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/proxy-version: install-proxy-version
         cluster-autoscaler.kubernetes.io/safe-to-evict: "true"

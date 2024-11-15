@@ -5,7 +5,7 @@ use crate::{
         route_conflicted, POLICY_API_GROUP,
     },
     resource_id::NamespaceGroupKindName,
-    tests::default_cluster_networks,
+    tests::{default_cluster_networks, make_server},
     Index, IndexMetrics,
 };
 use chrono::{DateTime, Utc};
@@ -564,7 +564,7 @@ fn route_accepted_after_server_create() {
     assert_eq!(patch, update.patch);
 
     // Apply the server
-    let server = super::make_server(
+    let server = make_server(
         "ns-0",
         "srv-8080",
         8080,
@@ -685,7 +685,7 @@ fn route_rejected_after_server_delete() {
         default_cluster_networks(),
     );
 
-    let server = super::make_server(
+    let server = make_server(
         "ns-0",
         "srv-8080",
         8080,

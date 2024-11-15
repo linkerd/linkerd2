@@ -251,6 +251,7 @@ rules:
       - policy.linkerd.io
     resources:
       - httproutes/status
+      - httplocalratelimitpolicies/status
       - egressnetworks/status
     verbs:
       - patch
