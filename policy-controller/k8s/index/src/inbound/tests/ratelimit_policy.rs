@@ -88,8 +88,8 @@ fn mk_ratelimit(
     total: Option<k8s::policy::Limit>,
     overrides: Vec<k8s::policy::Override>,
     server_name: impl ToString,
-) -> k8s::policy::HTTPLocalRateLimitPolicy {
-    k8s::policy::HTTPLocalRateLimitPolicy {
+) -> k8s::policy::HttpLocalRateLimitPolicy {
+    k8s::policy::HttpLocalRateLimitPolicy {
         metadata: k8s::ObjectMeta {
             namespace: Some(ns.to_string()),
             name: Some(name.to_string()),
@@ -105,5 +105,20 @@ fn mk_ratelimit(
             identity: None,
             overrides: Some(overrides),
         },
+        status: Some(k8s::policy::HttpLocalRateLimitPolicyStatus {
+            conditions: vec![k8s::Condition {
+                last_transition_time: k8s::Time(chrono::DateTime::<chrono::Utc>::MIN_UTC),
+                message: "".to_string(),
+                observed_generation: None,
+                reason: "".to_string(),
+                status: "True".to_string(),
+                type_: "Accepted".to_string(),
+            }],
+            target_ref: LocalTargetRef {
+                group: Some("policy.linkerd.io".to_string()),
+                kind: "Server".to_string(),
+                name: server_name.to_string(),
+            },
+        }),
     }
 }
