@@ -90,7 +90,7 @@ pub struct Index {
     route_refs: HashMap<NamespaceGroupKindName, RouteRef>,
 
     /// Maps rate limit ids to a list of details about these rate limits.
-    ratelimits: HashMap<ResourceId, HTTPLocalRateLimitPolicyRef>,
+    ratelimits: HashMap<ResourceId, HttpLocalRateLimitPolicyRef>,
 
     /// Maps egress network ids to a list of details about these networks.
     egress_networks: HashMap<ResourceId, EgressNetworkRef>,
@@ -115,7 +115,7 @@ struct RouteRef {
 }
 
 #[derive(Clone, PartialEq)]
-struct HTTPLocalRateLimitPolicyRef {
+struct HttpLocalRateLimitPolicyRef {
     creation_timestamp: Option<DateTime<Utc>>,
     target_ref: ratelimit::TargetReference,
     status_conditions: Vec<k8s_core_api::Condition>,
@@ -279,8 +279,8 @@ impl Controller {
                             self.patch_status::<k8s_gateway_api::TcpRoute>(&id.gkn.name, &id.namespace, patch).await;
                         } else if id.gkn.group == k8s_gateway_api::TlsRoute::group(&()) && id.gkn.kind == k8s_gateway_api::TlsRoute::kind(&()) {
                             self.patch_status::<k8s_gateway_api::TlsRoute>(&id.gkn.name, &id.namespace, patch).await;
-                        } else if id.gkn.group == linkerd_k8s_api::HTTPLocalRateLimitPolicy::group(&()) && id.gkn.kind == linkerd_k8s_api::HTTPLocalRateLimitPolicy::kind(&()) {
-                            self.patch_status::<linkerd_k8s_api::HTTPLocalRateLimitPolicy>(&id.gkn.name, &id.namespace, patch).await;
+                        } else if id.gkn.group == linkerd_k8s_api::HttpLocalRateLimitPolicy::group(&()) && id.gkn.kind == linkerd_k8s_api::HttpLocalRateLimitPolicy::kind(&()) {
+                            self.patch_status::<linkerd_k8s_api::HttpLocalRateLimitPolicy>(&id.gkn.name, &id.namespace, patch).await;
                         } else if id.gkn.group == linkerd_k8s_api::EgressNetwork::group(&()) && id.gkn.kind == linkerd_k8s_api::EgressNetwork::kind(&()) {
                             self.patch_status::<linkerd_k8s_api::EgressNetwork>(&id.gkn.name, &id.namespace, patch).await;
                         }
@@ -430,7 +430,7 @@ impl Index {
     fn update_ratelimit(
         &mut self,
         id: ResourceId,
-        ratelimit: &HTTPLocalRateLimitPolicyRef,
+        ratelimit: &HttpLocalRateLimitPolicyRef,
     ) -> bool {
         match self.ratelimits.entry(id) {
             Entry::Vacant(entry) => {
@@ -672,7 +672,7 @@ impl Index {
         &self,
         id: &NamespaceGroupKindName,
         target_ref: &ratelimit::TargetReference,
-    ) -> Option<linkerd_k8s_api::HTTPLocalRateLimitPolicyStatus> {
+    ) -> Option<linkerd_k8s_api::HttpLocalRateLimitPolicyStatus> {
         match target_ref {
             ratelimit::TargetReference::Server(server) => {
                 let condition = if self.servers.contains(server) {
@@ -708,7 +708,7 @@ impl Index {
                     no_matching_target()
                 };
 
-                Some(linkerd_k8s_api::HTTPLocalRateLimitPolicyStatus {
+                Some(linkerd_k8s_api::HttpLocalRateLimitPolicyStatus {
                     conditions: vec![condition],
                     target_ref: linkerd_k8s_api::LocalTargetRef {
                         group: Some(POLICY_API_GROUP.to_string()),
@@ -724,7 +724,7 @@ impl Index {
     fn make_ratelimit_patch(
         &self,
         id: &NamespaceGroupKindName,
-        ratelimit: &HTTPLocalRateLimitPolicyRef,
+        ratelimit: &HttpLocalRateLimitPolicyRef,
     ) -> Option<k8s_core_api::Patch<serde_json::Value>> {
         let status = self.target_ref_status(id, &ratelimit.target_ref);
 
@@ -828,8 +828,8 @@ impl Index {
             let id = NamespaceGroupKindName {
                 namespace: id.namespace.clone(),
                 gkn: GroupKindName {
-                    group: linkerd_k8s_api::HTTPLocalRateLimitPolicy::group(&()),
-                    kind: linkerd_k8s_api::HTTPLocalRateLimitPolicy::kind(&()),
+                    group: linkerd_k8s_api::HttpLocalRateLimitPolicy::group(&()),
+                    kind: linkerd_k8s_api::HttpLocalRateLimitPolicy::kind(&()),
                     name: id.name.clone().into(),
                 },
             };
@@ -1220,8 +1220,8 @@ impl kubert::index::IndexNamespacedResource<k8s_core_api::Service> for Index {
     // to handle resets specially.
 }
 
-impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::HTTPLocalRateLimitPolicy> for Index {
-    fn apply(&mut self, resource: linkerd_k8s_api::HTTPLocalRateLimitPolicy) {
+impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::HttpLocalRateLimitPolicy> for Index {
+    fn apply(&mut self, resource: linkerd_k8s_api::HttpLocalRateLimitPolicy) {
         let namespace = resource
             .namespace()
             .expect("HTTPLocalRateLimitPolicy must have a namespace");
@@ -1237,7 +1237,7 @@ impl kubert::index::IndexNamespacedResource<linkerd_k8s_api::HTTPLocalRateLimitP
         let creation_timestamp = resource.metadata.creation_timestamp.map(|Time(t)| t);
         let target_ref = ratelimit::TargetReference::make_target_ref(&namespace, &resource.spec);
 
-        let rl = HTTPLocalRateLimitPolicyRef {
+        let rl = HttpLocalRateLimitPolicyRef {
             creation_timestamp,
             target_ref,
             status_conditions,
@@ -1349,7 +1349,7 @@ impl Index {
         self.reconcile()
     }
 
-    fn index_ratelimit(&mut self, id: ResourceId, ratelimit: HTTPLocalRateLimitPolicyRef) {
+    fn index_ratelimit(&mut self, id: ResourceId, ratelimit: HttpLocalRateLimitPolicyRef) {
         // Insert into the index; if the route is already in the index, and it hasn't
         // changed, skip creating a patch.
         if !self.update_ratelimit(id.clone(), &ratelimit) {

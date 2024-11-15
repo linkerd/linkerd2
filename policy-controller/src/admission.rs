@@ -1,7 +1,7 @@
 use super::validation;
 use crate::k8s::policy::{
     httproute, server::Selector, AuthorizationPolicy, AuthorizationPolicySpec, EgressNetwork,
-    EgressNetworkSpec, HTTPLocalRateLimitPolicy, HttpRoute, HttpRouteSpec, LocalTargetRef,
+    EgressNetworkSpec, HttpLocalRateLimitPolicy, HttpRoute, HttpRouteSpec, LocalTargetRef,
     MeshTLSAuthentication, MeshTLSAuthenticationSpec, NamespacedTargetRef, Network,
     NetworkAuthentication, NetworkAuthenticationSpec, RateLimitPolicySpec, Server,
     ServerAuthorization, ServerAuthorizationSpec, ServerSpec,
@@ -149,7 +149,7 @@ impl Admission {
             return self.admit_spec::<k8s_gateway_api::TcpRouteSpec>(req).await;
         }
 
-        if is_kind::<HTTPLocalRateLimitPolicy>(&req) {
+        if is_kind::<HttpLocalRateLimitPolicy>(&req) {
             return self.admit_spec::<RateLimitPolicySpec>(req).await;
         }
 
