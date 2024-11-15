@@ -7,10 +7,10 @@ use chrono::{DateTime, Utc};
 use linkerd_policy_controller_core::POLICY_CONTROLLER_NAME;
 
 mod grpc;
+mod helpers;
 mod http;
 mod tcp;
 mod tls;
-mod helpers;
 
 fn make_parent_status(
     namespace: impl ToString,
