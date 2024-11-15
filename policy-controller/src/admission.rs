@@ -656,7 +656,7 @@ fn validate_backend_if_service(br: &k8s_gateway_api::BackendObjectReference) -> 
             && matches!(br.kind.as_deref(), Some("Service") | None)
     }
 
-    // If the backend references is a Service, it must have a port. If it is not
+    // If the backend reference is a Service, it must have a port. If it is not
     // a Service, then we have to admit it for interoperability with other
     // controllers.
     if is_service(br) && matches!(br.port, None | Some(0)) {
