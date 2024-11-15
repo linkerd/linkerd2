@@ -322,6 +322,7 @@ func (fs *federatedService) remoteDiscoverySubscribe(
 	remoteWatcher, remoteConfig, found := fs.clusterStore.Get(id.cluster)
 	if !found {
 		fs.log.Errorf("Failed to get remote cluster %s", id.cluster)
+		return
 	}
 
 	translator := newEndpointTranslator(
