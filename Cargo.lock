@@ -1312,6 +1312,7 @@ dependencies = [
  "linkerd2-proxy-api",
  "maplit",
  "rand",
+ "regex",
  "schemars",
  "serde",
  "serde_json",

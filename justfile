@@ -160,6 +160,7 @@ policy-test-deps-load: _k3d-init policy-test-deps-pull
     for i in {1..3} ; do {{ _k3d-load }} \
         bitnami/kubectl:latest \
         curlimages/curl:latest \
+        fortio/fortio:latest \
         ghcr.io/olix0r/hokay:latest && exit ; sleep 1 ; done
 
 ##
