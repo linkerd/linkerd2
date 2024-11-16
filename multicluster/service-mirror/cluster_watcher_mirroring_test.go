@@ -245,6 +245,73 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 			},
 			expectedLocalEndpoints: []*corev1.Endpoints{},
 		},
+		{
+			description: "federated service created",
+			environment: createFederatedService,
+			expectedLocalServices: []*corev1.Service{
+				federatedService(
+					"service-one",
+					"ns1",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					},
+					"", fmt.Sprintf("%s@%s", "service-one", clusterName)),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{},
+		},
+		{
+			description: "federated service joined",
+			environment: joinFederatedService(),
+			expectedLocalServices: []*corev1.Service{
+				federatedService(
+					"service-one",
+					"ns1",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					}, "", fmt.Sprintf("%s@%s,%s@%s", "service-one", "other", "service-one", clusterName)),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{},
+		},
+		{
+			description: "federated service left",
+			environment: leftFederatedService,
+			expectedLocalServices: []*corev1.Service{
+				federatedService(
+					"service-one",
+					"ns1",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					}, "", fmt.Sprintf("%s@%s", "service-one", "other")),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{},
+		},
 	} {
 		tc := tt // pin
 		tc.run(t)
@@ -253,9 +320,9 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 
 func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 	remoteAPI, err := k8s.NewFakeAPI(
-		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
-		remoteServiceAsYaml("service-one", "ns1", "111", []corev1.ServicePort{}),
-		endpointsAsYaml("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{}),
+		asYaml(gateway("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod)),
+		asYaml(remoteService("service-one", "ns1", "111", map[string]string{consts.DefaultExportedServiceSelector: "true"}, []corev1.ServicePort{})),
+		asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -342,15 +409,15 @@ func TestLocalNamespaceCreatedAfterServiceExport(t *testing.T) {
 
 func TestServiceCreatedGatewayAlive(t *testing.T) {
 	remoteAPI, err := k8s.NewFakeAPI(
-		gatewayAsYaml("gateway", "gateway-ns", "1", "192.0.0.1", "gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
-		remoteServiceAsYaml("svc", "ns", "1", []corev1.ServicePort{}),
-		endpointsAsYaml("svc", "ns", "192.0.0.1", "gateway-identity", []corev1.EndpointPort{}),
+		asYaml(gateway("gateway", "gateway-ns", "1", "192.0.0.1", "gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod)),
+		asYaml(remoteService("svc", "ns", "1", map[string]string{consts.DefaultExportedServiceSelector: "true"}, []corev1.ServicePort{})),
+		asYaml(endpoints("svc", "ns", "192.0.0.1", "gateway-identity", []corev1.EndpointPort{})),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	localAPI, err := k8s.NewFakeAPI(
-		namespaceAsYaml("ns"),
+		asYaml(namespace("ns")),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -490,15 +557,15 @@ func TestServiceCreatedGatewayAlive(t *testing.T) {
 
 func TestServiceCreatedGatewayDown(t *testing.T) {
 	remoteAPI, err := k8s.NewFakeAPI(
-		gatewayAsYaml("gateway", "gateway-ns", "1", "192.0.0.1", "gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
-		remoteServiceAsYaml("svc", "ns", "1", []corev1.ServicePort{}),
-		endpointsAsYaml("svc", "ns", "192.0.0.1", "gateway-identity", []corev1.EndpointPort{}),
+		asYaml(gateway("gateway", "gateway-ns", "1", "192.0.0.1", "gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod)),
+		asYaml(remoteService("svc", "ns", "1", map[string]string{consts.DefaultExportedServiceSelector: "true"}, []corev1.ServicePort{})),
+		asYaml(endpoints("svc", "ns", "192.0.0.1", "gateway-identity", []corev1.EndpointPort{})),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	localAPI, err := k8s.NewFakeAPI(
-		namespaceAsYaml("ns"),
+		asYaml(namespace("ns")),
 	)
 	if err != nil {
 		t.Fatal(err)
