@@ -283,6 +283,133 @@ var leftFederatedService = &testEnvironment{
 	},
 }
 
+var createLocalFederatedService = &testEnvironment{
+	events: []interface{}{
+		&CreateFederatedService{
+			service: remoteService("service-one", "ns1", "111", map[string]string{
+				consts.DefaultFederatedServiceSelector: "member",
+			}, []corev1.ServicePort{
+				{
+					Name:     "port1",
+					Protocol: "TCP",
+					Port:     555,
+				},
+				{
+					Name:     "port2",
+					Protocol: "TCP",
+					Port:     666,
+				},
+			}),
+		},
+	},
+	remoteResources: []string{
+		asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
+	},
+	localResources: []string{
+		asYaml(namespace("ns1")),
+	},
+	link: multicluster.Link{
+		TargetClusterName:       "", // local cluster
+		TargetClusterDomain:     clusterDomain,
+		GatewayIdentity:         "gateway-identity",
+		GatewayAddress:          "192.0.2.127",
+		GatewayPort:             888,
+		ProbeSpec:               defaultProbeSpec,
+		Selector:                defaultSelector,
+		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+	},
+}
+
+func joinLocalFederatedService() *testEnvironment {
+	fedSvc := federatedService("service-one", "ns1", []corev1.ServicePort{
+		{
+			Name:     "port1",
+			Protocol: "TCP",
+			Port:     555,
+		},
+		{
+			Name:     "port2",
+			Protocol: "TCP",
+			Port:     666,
+		},
+	}, "", "service-one@other")
+	return &testEnvironment{
+		events: []interface{}{
+			&RemoteServiceJoinsFederatedService{
+				localService: fedSvc,
+				remoteUpdate: remoteService("service-one", "ns1", "111", map[string]string{
+					consts.DefaultFederatedServiceSelector: "member",
+				}, []corev1.ServicePort{
+					{
+						Name:     "port1",
+						Protocol: "TCP",
+						Port:     555,
+					},
+					{
+						Name:     "port2",
+						Protocol: "TCP",
+						Port:     666,
+					},
+				}),
+			},
+		},
+		remoteResources: []string{
+			asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
+		},
+		localResources: []string{
+			asYaml(namespace("ns1")),
+			asYaml(fedSvc),
+		},
+		link: multicluster.Link{
+			TargetClusterName:       "", // local cluster
+			TargetClusterDomain:     clusterDomain,
+			GatewayIdentity:         "gateway-identity",
+			GatewayAddress:          "192.0.2.127",
+			GatewayPort:             888,
+			ProbeSpec:               defaultProbeSpec,
+			Selector:                defaultSelector,
+			RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+		},
+	}
+}
+
+var leftLocalFederatedService = &testEnvironment{
+	events: []interface{}{
+		&RemoteServiceLeavesFederatedService{
+			Name:      "service-one",
+			Namespace: "ns1",
+		},
+	},
+	remoteResources: []string{
+		asYaml(endpoints("service-one", "ns1", "192.0.2.127", "gateway-identity", []corev1.EndpointPort{})),
+	},
+	localResources: []string{
+		asYaml(namespace("ns1")),
+		asYaml(federatedService("service-one", "ns1", []corev1.ServicePort{
+			{
+				Name:     "port1",
+				Protocol: "TCP",
+				Port:     555,
+			},
+			{
+				Name:     "port2",
+				Protocol: "TCP",
+				Port:     666,
+			},
+		}, "service-one", "service-one@other")),
+	},
+	link: multicluster.Link{
+		TargetClusterName:       "", // local cluster
+		TargetClusterDomain:     clusterDomain,
+		GatewayIdentity:         "gateway-identity",
+		GatewayAddress:          "192.0.2.127",
+		GatewayPort:             888,
+		ProbeSpec:               defaultProbeSpec,
+		Selector:                defaultSelector,
+		RemoteDiscoverySelector: defaultRemoteDiscoverySelector,
+	},
+}
+
 var createExportedHeadlessService = &testEnvironment{
 	events: []interface{}{
 		&RemoteServiceExported{
@@ -543,7 +670,6 @@ var updateEndpointsWithChangedHosts = &testEnvironment{
 		asYaml(headlessMirrorEndpoints(
 			"service-two-remote",
 			"eptest",
-			"pod-0",
 			"",
 			"gateway-identity",
 			[]corev1.EndpointPort{
@@ -614,7 +740,7 @@ var gcTriggered = &testEnvironment{
 		asYaml(endpoints("test-service-2-remote", "test-namespace", "", "", nil)),
 		asYaml(headlessMirrorService("test-headless-service-remote", "test-namespace", "", nil)),
 		asYaml(endpointMirrorService("pod-0", "test-headless-service-remote", "test-namespace", "", nil)),
-		asYaml(headlessMirrorEndpoints("test-headless-service-remote", "test-namespace", "pod-0", "", "", nil)),
+		asYaml(headlessMirrorEndpoints("test-headless-service-remote", "test-namespace", "", "", nil)),
 		asYaml(endpointMirrorEndpoints("test-headless-service-remote", "test-namespace", "pod-0", "", "", nil)),
 	},
 	remoteResources: []string{
@@ -1189,7 +1315,7 @@ func endpointMirrorEndpoints(rootName, namespace, hostname, gatewayIP, gatewayId
 	return ep
 }
 
-func headlessMirrorEndpoints(name, namespace, hostname, hostIP, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
+func headlessMirrorEndpoints(name, namespace, hostIP, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
 	endpoints := &corev1.Endpoints{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Endpoints",
@@ -1210,7 +1336,7 @@ func headlessMirrorEndpoints(name, namespace, hostname, hostIP, gatewayIdentity 
 			{
 				Addresses: []corev1.EndpointAddress{
 					{
-						Hostname: hostname,
+						Hostname: "pod-0",
 						IP:       hostIP,
 					},
 				},

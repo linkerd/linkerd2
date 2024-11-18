@@ -167,7 +167,7 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 				),
 			},
 			expectedLocalEndpoints: []*corev1.Endpoints{
-				headlessMirrorEndpoints("service-one-remote", "ns2", "pod-0", "", "gateway-identity", []corev1.EndpointPort{
+				headlessMirrorEndpoints("service-one-remote", "ns2", "", "gateway-identity", []corev1.EndpointPort{
 					{
 						Name:     "port1",
 						Port:     555,
@@ -309,6 +309,72 @@ func TestRemoteServiceCreatedMirroring(t *testing.T) {
 							Port:     666,
 						},
 					}, "", fmt.Sprintf("%s@%s", "service-one", "other")),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{},
+		},
+		{
+			description: "local federated service created",
+			environment: createLocalFederatedService,
+			expectedLocalServices: []*corev1.Service{
+				federatedService(
+					"service-one",
+					"ns1",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					}, "service-one", ""),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{},
+		},
+		{
+			description: "local federated service joined",
+			environment: joinLocalFederatedService(),
+			expectedLocalServices: []*corev1.Service{
+				federatedService(
+					"service-one",
+					"ns1",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					}, "service-one", "service-one@other"),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{},
+		},
+		{
+			description: "local federated service left",
+			environment: leftLocalFederatedService,
+			expectedLocalServices: []*corev1.Service{
+				federatedService(
+					"service-one",
+					"ns1",
+					[]corev1.ServicePort{
+						{
+							Name:     "port1",
+							Protocol: "TCP",
+							Port:     555,
+						},
+						{
+							Name:     "port2",
+							Protocol: "TCP",
+							Port:     666,
+						},
+					}, "", "service-one@other"),
 			},
 			expectedLocalEndpoints: []*corev1.Endpoints{},
 		},
@@ -897,7 +963,7 @@ func TestGcOrphanedServicesMirroring(t *testing.T) {
 
 			expectedLocalEndpoints: []*corev1.Endpoints{
 				endpoints("test-service-1-remote", "test-namespace", "", "", nil),
-				headlessMirrorEndpoints("test-headless-service-remote", "test-namespace", "pod-0", "", "", nil),
+				headlessMirrorEndpoints("test-headless-service-remote", "test-namespace", "", "", nil),
 				endpointMirrorEndpoints("test-headless-service-remote", "test-namespace", "pod-0", "", "", nil),
 			},
 		},
